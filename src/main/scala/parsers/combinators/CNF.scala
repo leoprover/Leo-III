@@ -9,4 +9,5 @@ import scala.util.parsing.combinator.PackratParsers
  */
 object CNF extends PExec with PackratParsers {
   override type Target = tptp.CNF
+  override def target = null
 }

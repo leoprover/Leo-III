@@ -8,4 +8,5 @@ import scala.util.parsing.combinator.PackratParsers
  */
 object TFF extends PExec with PackratParsers {
   override type Target = tptp.TFF
+  override def target = null
 }
