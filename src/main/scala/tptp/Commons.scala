@@ -31,19 +31,14 @@ object Commons {
   // First-order terms
   sealed abstract class Term
   case class Func(name: String, args: List[Term]) extends Term
-  case class Defined(term: DefinedTerm) extends Term
-  case class System(name: String, args: List[Term]) extends Term
+  case class DefinedFunc(name: String, args: List[Term]) extends Term
+  case class SystemFunc(name: String, args: List[Term]) extends Term
   case class Var(name: Variable) extends Term
   case class Number(value: Double) extends Term
   case class Distinct(data: String) extends Term
   case class Cond(cond: TFF, then: Term, els: Term) extends Term // Cond used by TFF only
   // can Let be modeled like this?
-  case class Let(let: Either[TFF], in: Term) extends Term // Let used by TFF only
-
-  sealed abstract class DefinedTerm
-  case class Distinct(data: String) extends DefinedTerm
-  case class Number(value: Double) extends DefinedTerm
-  case class DefinedFunc(name: String, args: List[Term]) extends DefinedTerm
+  case class Let(let: TFF, in: Term) extends Term // Let used by TFF only
 
   type Variable = String
 

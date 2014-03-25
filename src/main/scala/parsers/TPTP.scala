@@ -14,17 +14,19 @@ import tptp._
 object TPTP {
   // Delegate object, so that no instance of parsers needs to created manually
 
+  val commonP = new combinators.Commons
+  //val fofP = new combinators.FOF
+
   /**
    * Parses a complete tptp file yielding a [[Commons.TPTPInput]] value if succeeded.
    *
    * @param input A string containing a tptp file
    * @return A representation of the in file in [[Commons.TPTPInput]] format
    */
-  def parseFile(input: String): Option[Commons.TPTPInput] =
-    combinators.Commons.exec(input)
+  def parseFile(input: String): Option[Commons.TPTPInput] = commonP.exec(input)
 
-  def parseFormula(input: String): Option[Commons.AnnotatedFormula] =
-    combinators.Commons.exec(input, combinators.Commons.formula)
+  def parseFormula(input: String): Option[Commons.AnnotatedFormula] = null
+   // combinators.Commons.exec(input, combinators.Commons.formula)
 
   def parseFOF(input: String): Option[FOF] = combinators.FOF.exec(input)
   def parseTHF(input: String): Option[THF] = combinators.THF.exec(input)
