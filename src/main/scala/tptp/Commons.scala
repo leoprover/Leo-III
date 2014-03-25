@@ -5,12 +5,16 @@ package tptp
  */
 object Commons {
 
-  sealed abstract class Formula
-  case class TPIFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends Formula
-  case class THFFormula(name: Name, role: Role, formula: THF, annotations: Annotations) extends Formula
-  case class TFFFormula(name: Name, role: Role, formula: TFF, annotations: Annotations) extends Formula
-  case class FOFFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends Formula
-  case class CNFFormula(name: Name, role: Role, formula: CNF, annotations: Annotations) extends Formula
+  // File input
+  sealed case class TPTPInput(inputs: List[Either[AnnotatedFormula, Include]])
+
+
+  sealed abstract class AnnotatedFormula
+  case class TPIFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
+  case class THFFormula(name: Name, role: Role, formula: THF, annotations: Annotations) extends AnnotatedFormula
+  case class TFFFormula(name: Name, role: Role, formula: TFF, annotations: Annotations) extends AnnotatedFormula
+  case class FOFFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
+  case class CNFFormula(name: Name, role: Role, formula: CNF, annotations: Annotations) extends AnnotatedFormula
 
   // Annotations for annotated formulae
   type Annotations = Option[(Source, List[GeneralTerm])]
@@ -18,9 +22,29 @@ object Commons {
 
 
   // First-order atoms
-
+  sealed abstract class AtomicFormula
+  case class Plain(name: String, args: List[Term]) extends AtomicFormula
+  case class DefinedPlain(name: String, args: List[Term]) extends AtomicFormula
+  case class Equality(left: Term, right: Term) extends AtomicFormula
+  case class SystemPlain(name: String, args: List[Term]) extends AtomicFormula
 
   // First-order terms
+  sealed abstract class Term
+  case class Func(name: String, args: List[Term]) extends Term
+  case class Defined(term: DefinedTerm) extends Term
+  case class System(name: String, args: List[Term]) extends Term
+  case class Var(name: Variable) extends Term
+  case class Number(value: Double) extends Term
+  case class Distinct(data: String) extends Term
+  case class Cond(cond: TFF, then: Term, els: Term) extends Term // Cond used by TFF only
+  // can Let be modeled like this?
+  case class Let(let: Either[TFF], in: Term) extends Term // Let used by TFF only
+
+  sealed abstract class DefinedTerm
+  case class Distinct(data: String) extends DefinedTerm
+  case class Number(value: Double) extends DefinedTerm
+  case class DefinedFunc(name: String, args: List[Term]) extends DefinedTerm
+
   type Variable = String
 
   // System terms
@@ -28,6 +52,8 @@ object Commons {
   // General purpose things
   type Source = GeneralTerm
 
+  // Include directives
+  type Include = (String, List[Name])
 
   // Non-logical data (GeneralTerm, General data)
   sealed abstract class GeneralTerm
@@ -43,7 +69,6 @@ object Commons {
   case class GDistinct(data: String) extends GeneralData
   case class GFormulaData(data: FormulaData) extends GeneralData
 
-
   sealed abstract class FormulaData
   case class THFData(formula: THF) extends FormulaData
   case class TFFData(formula: TFF) extends FormulaData
@@ -54,8 +79,5 @@ object Commons {
 
   // General purpose
   type Name = Either[String, Int]
-
-  // File input
-  type TPTPInput = String
 
 }

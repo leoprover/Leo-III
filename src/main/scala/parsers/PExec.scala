@@ -7,8 +7,8 @@ import scala.util.parsing.combinator.RegexParsers
  */
 trait PExec extends RegexParsers {
   def exec[Target](input: String, target: Parser[Target]) = parseAll(target, input) match {
-    case Success(x, in)  =>  Some(x)
-    case f => None
+    case Success(x, in)  => Some(x)
+    case _               => None
   }
 
   type Target

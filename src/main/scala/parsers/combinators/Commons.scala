@@ -13,5 +13,5 @@ object Commons extends PExec with PackratParsers {
 
   def input: Parser[tptp.Commons.TPTPInput] = null
 
-  def formula: Parser[tptp.Commons.Formula] = null
+  def formula: Parser[tptp.Commons.AnnotatedFormula] = null
 }

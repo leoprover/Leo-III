@@ -23,7 +23,7 @@ object TPTP {
   def parseFile(input: String): Option[Commons.TPTPInput] =
     combinators.Commons.exec(input)
 
-  def parseFormula(input: String): Option[Commons.Formula] =
+  def parseFormula(input: String): Option[Commons.AnnotatedFormula] =
     combinators.Commons.exec(input, combinators.Commons.formula)
 
   def parseFOF(input: String): Option[FOF] = combinators.FOF.exec(input)
