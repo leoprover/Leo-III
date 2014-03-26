@@ -5,10 +5,10 @@ package tptp
  */
 object Commons {
 
-  // File input
+  // Files
   sealed case class TPTPInput(inputs: List[Either[AnnotatedFormula, Include]])
 
-
+  // Formula records
   sealed abstract class AnnotatedFormula
   case class TPIFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
   case class THFFormula(name: Name, role: Role, formula: THF, annotations: Annotations) extends AnnotatedFormula
@@ -16,10 +16,8 @@ object Commons {
   case class FOFFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
   case class CNFFormula(name: Name, role: Role, formula: CNF, annotations: Annotations) extends AnnotatedFormula
 
-  // Annotations for annotated formulae
   type Annotations = Option[(Source, List[GeneralTerm])]
   type Role = String
-
 
   // First-order atoms
   sealed abstract class AtomicFormula

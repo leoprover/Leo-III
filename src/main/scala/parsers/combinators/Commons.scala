@@ -1,13 +1,12 @@
 package parsers.combinators
 
-import scala.util.parsing.combinator.RegexParsers
-import scala.util.parsing.combinator.PackratParsers
+import scala.util.parsing.combinator.{JavaTokenParsers, RegexParsers, PackratParsers}
 import parsers.PExec
 
 /**
  * Created by lex on 3/23/14.
  */
-class Commons extends PExec with PackratParsers {
+class Commons extends PExec with PackratParsers with JavaTokenParsers {
   override type Target = tptp.Commons.TPTPInput
   override def target = tptpFile
 
@@ -28,7 +27,13 @@ class Commons extends PExec with PackratParsers {
   def dollarWord: Parser[String] ="""\$[a-z][A-Za-z0-9_]*""".r
   def dollarDollarWord: Parser[String] ="""\$\$[a-z][A-Za-z0-9_]*""".r
 
-  // Parsing rules
+  def integer: Parser[Int] = """(-)?[1-9][0-9]*""".r ^^ {_.toInt}
+
+  /*
+   * Parsing rules
+   */
+
+  // Files
   def tptpFile: Parser[tptp.Commons.TPTPInput] = rep(tptpInput) ^^ {tptp.Commons.TPTPInput(_)}
 
   def tptpInput: Parser[Either[tptp.Commons.AnnotatedFormula, tptp.Commons.Include]] = (annotatedFormula ||| include) ^^ {
@@ -36,8 +41,23 @@ class Commons extends PExec with PackratParsers {
     case e2: tptp.Commons.Include  => Right(e2)
   }
 
-  def annotatedFormula: Parser[tptp.Commons.AnnotatedFormula] = ???
-  def include: Parser[tptp.Commons.Include] = ???
+  // Formula records
+  def annotatedFormula: Parser[tptp.Commons.AnnotatedFormula] = failure("asd")
 
+
+  // Include directives
+  def include: Parser[tptp.Commons.Include] =
+    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")" ^^ {
+      case name ~ Some(names) => (name, names)
+      case name ~ _           => (name, List.empty)
+    }
+  // Non-logical data (GeneralTerm, General data)
+
+  // General purpose
+  def name: Parser[Either[String, Int]] = atomicWord ^^ {Left(_)} | integer ^^ {Right(_)}
+  def atomicWord: Parser[String] = lowerWord | singleQuoted
+  def atomicDefinedWord: Parser[String] = dollarWord
+  def atomicSystemWord: Parser[String] = dollarDollarWord
+  def fileName: Parser[String] = singleQuoted
   //def formula: Parser[tptp.Commons.AnnotatedFormula] = null
 }
