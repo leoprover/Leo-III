@@ -102,15 +102,53 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
 
   // First-order terms
-  def term: Parser[tptp.Commons.Term] = ???
-  def variable: Parser[String] = upperWord
+  def term: Parser[Commons.Term] = functionTerm |
+    variable ^^ {Commons.Var(_)} |
+    conditionalTerm |
+    letTerm
+
+  def functionTerm: Parser[Commons.Term] =
+    plainTerm |
+    definedPlainTerm |
+    systemTerm |
+    number ^^ {Commons.Number(_)} |
+    distinctObject ^^ {Commons.Distinct(_)}
+
+  def plainTerm: Parser[Commons.Func] =
+    constant ~ opt("(" ~> arguments <~ ")") ^^ {
+      case c ~ Some(x) => Commons.Func(c,x)
+      case c ~ _       => Commons.Func(c,List())
+    }
+
+  def constant: Parser[String] = atomicWord
+  def definedPlainTerm: Parser[Commons.DefinedFunc] =
+    atomicDefinedWord ~ opt("(" ~> arguments <~ ")") ^^ {
+      case c ~ Some(x) => Commons.DefinedFunc(c,x)
+      case c ~ _       => Commons.DefinedFunc(c,List())
+    }
+  def systemTerm: Parser[Commons.SystemFunc] =
+    atomicSystemWord ~ opt("(" ~> arguments <~ ")") ^^ {
+      case c ~ Some(x) => Commons.SystemFunc(c,x)
+      case c ~ _       => Commons.SystemFunc(c,List())
+    }
+
+  def variable: Parser[Commons.Variable] = upperWord
+  def arguments: Parser[List[Commons.Term]] = rep1sep(term, ",")
+  def conditionalTerm: Parser[Commons.Cond] =
+    "$ite_t(" ~> tffLogicFormula ~ "," ~ term ~ "," ~ term <~ ")" ^^ {
+      case formula ~ "," ~ thn ~ "," ~ els => Commons.Cond(formula,thn,els)
+    }
+  def letTerm: Parser[Commons.Let] =
+    "$let_ft(" ~> (tffLetFormulaDefn | tffLetTermDefn) ~ "," ~ term <~ ")" ^^ {
+      case lets ~ "," ~ in => Commons.Let(lets,in)
+    }
 
   // Formula sources and infos
-  def source: Parser[tptp.Commons.GeneralTerm] = generalTerm
-  def optionalInfo: Parser[List[tptp.Commons.GeneralTerm]] =
+  def source: Parser[Commons.GeneralTerm] = generalTerm
+  def optionalInfo: Parser[List[Commons.GeneralTerm]] =
     "^$".r ^^ {_ => List.empty} | "," ~> usefulInfo
 
-  def usefulInfo: Parser[List[tptp.Commons.GeneralTerm]] = generalList
+  def usefulInfo: Parser[List[Commons.GeneralTerm]] = generalList
 
   // Include directives
   def include: Parser[tptp.Commons.Include] =
@@ -170,7 +208,10 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
    * TFF BNFs
    */
   def tffFormula: Parser[TFF] = ???
+  def tffLogicFormula: Parser[TFF] = ???
 
+  def tffLetFormulaDefn: Parser[TFF] = ???
+  def tffLetTermDefn: Parser[TFF] = ???
   /**
    * FOF BNFs
    */
