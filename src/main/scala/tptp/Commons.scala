@@ -1,8 +1,5 @@
 package tptp
 
-/**
- * Created by lex on 3/21/14.
- */
 object Commons {
 
   // Files
@@ -10,11 +7,11 @@ object Commons {
 
   // Formula records
   sealed abstract class AnnotatedFormula
-  case class TPIFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
-  case class THFFormula(name: Name, role: Role, formula: THF, annotations: Annotations) extends AnnotatedFormula
-  case class TFFFormula(name: Name, role: Role, formula: TFF, annotations: Annotations) extends AnnotatedFormula
-  case class FOFFormula(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
-  case class CNFFormula(name: Name, role: Role, formula: CNF, annotations: Annotations) extends AnnotatedFormula
+  case class TPIAnnotated(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
+  case class THFAnnotated(name: Name, role: Role, formula: THF, annotations: Annotations) extends AnnotatedFormula
+  case class TFFAnnotated(name: Name, role: Role, formula: TFF, annotations: Annotations) extends AnnotatedFormula
+  case class FOFAnnotated(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
+  case class CNFAnnotated(name: Name, role: Role, formula: CNF, annotations: Annotations) extends AnnotatedFormula
 
   type Annotations = Option[(Source, List[GeneralTerm])]
   type Role = String
