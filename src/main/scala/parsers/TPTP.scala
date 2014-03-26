@@ -71,11 +71,26 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def annotatedFormula: Parser[Commons.AnnotatedFormula] =
     tpiAnnotated | thfAnnotated | tffAnnotated | fofAnnotated | cnfAnnotated
 
-  def tpiAnnotated: Parser[Commons.TPIAnnotated] = ???
-  def thfAnnotated: Parser[Commons.THFAnnotated] = ???
-  def tffAnnotated: Parser[Commons.TFFAnnotated] = ???
-  def fofAnnotated: Parser[Commons.FOFAnnotated] = ???
-  def cnfAnnotated: Parser[Commons.CNFAnnotated] = ???
+  def tpiAnnotated: Parser[Commons.TPIAnnotated] =
+    "tpi(" ~> name ~ ("," ~> formulaRole <~ ",") ~ fofFormula ~ annotations <~ ")." ^^ {
+      case name ~ role ~ formula ~ annotations => Commons.TPIAnnotated(name,role,formula,annotations)
+    }
+  def thfAnnotated: Parser[Commons.THFAnnotated] =
+    "thf(" ~> name ~ ("," ~> formulaRole <~ ",") ~ thfFormula ~ annotations <~ ")." ^^ {
+      case name ~ role ~ formula ~ annotations => Commons.THFAnnotated(name,role,formula,annotations)
+    }
+  def tffAnnotated: Parser[Commons.TFFAnnotated] =
+    "tff(" ~> name ~ ("," ~> formulaRole <~ ",") ~ tffFormula ~ annotations <~ ")." ^^ {
+      case name ~ role ~ formula ~ annotations => Commons.TFFAnnotated(name,role,formula,annotations)
+    }
+  def fofAnnotated: Parser[Commons.FOFAnnotated] =
+    "fof(" ~> name ~ ("," ~> formulaRole <~ ",") ~ fofFormula ~ annotations <~ ")." ^^ {
+      case name ~ role ~ formula ~ annotations => Commons.FOFAnnotated(name,role,formula,annotations)
+    }
+  def cnfAnnotated: Parser[Commons.CNFAnnotated] =
+    "cnf(" ~> name ~ ("," ~> formulaRole <~ ",") ~ cnfFormula ~ annotations <~ ")." ^^ {
+      case name ~ role ~ formula ~ annotations => Commons.CNFAnnotated(name,role,formula,annotations)
+    }
 
   def annotations: Parser[tptp.Commons.Annotations] =
     "^$".r ^^ {_ => None} | ("," ~> source ~ optionalInfo) ^^ {
