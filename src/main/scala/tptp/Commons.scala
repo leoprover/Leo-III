@@ -56,7 +56,7 @@ object Commons {
 
   sealed abstract class GeneralData
   case class GWord(gWord: String) extends GeneralData
-  case class GFunc(gFunc: GeneralFunction) extends GeneralData
+  case class GFunc(name: String, args: List[GeneralTerm]) extends GeneralData
   case class GVar(gVar: Variable) extends GeneralData
   case class GNumber(gNumber: Double) extends GeneralData
   case class GDistinct(data: String) extends GeneralData
@@ -67,8 +67,7 @@ object Commons {
   case class TFFData(formula: TFF) extends FormulaData
   case class FOFData(formula: FOF) extends FormulaData
   case class CNFData(formula: CNF) extends FormulaData
-
-  sealed case class GeneralFunction(name: String, args: List[GeneralTerm])
+  case class FOTData(term: Term) extends FormulaData
 
   // General purpose
   type Name = Either[String, Int]

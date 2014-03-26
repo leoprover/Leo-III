@@ -27,7 +27,8 @@ class Commons extends PExec with PackratParsers with JavaTokenParsers {
   def dollarWord: Parser[String] ="""\$[a-z][A-Za-z0-9_]*""".r
   def dollarDollarWord: Parser[String] ="""\$\$[a-z][A-Za-z0-9_]*""".r
 
-  def integer: Parser[Int] = """(-)?[1-9][0-9]*""".r ^^ {_.toInt}
+  def integer: Parser[Int] = wholeNumber ^^ {_.toInt}
+  def real: Parser[Double] = floatingPointNumber ^^ {_.toDouble}
 
   /*
    * Parsing rules
@@ -44,6 +45,28 @@ class Commons extends PExec with PackratParsers with JavaTokenParsers {
   // Formula records
   def annotatedFormula: Parser[tptp.Commons.AnnotatedFormula] = failure("asd")
 
+  def tpiAnnotated: Parser[tptp.FOF] = ???
+  def thfAnnotated: Parser[tptp.THF] = ???
+  def tffAnnotated: Parser[tptp.TFF] = ???
+  def fofAnnotated: Parser[tptp.FOF] = ???
+  def cnfAnnotated: Parser[tptp.CNF] = ???
+
+  def annotations: Parser[tptp.Commons.Annotations] =
+    "^$".r ^^ {_ => None} | ("," ~> source ~ optionalInfo) ^^ {
+      case src ~ opt => Some((src,opt))
+      }
+  def formulaRole: Parser[String] = lowerWord
+
+
+  def term: Parser[tptp.Commons.Term] = ???
+  def variable: Parser[String] = upperWord
+
+  // Formula sources and infos
+  def source: Parser[tptp.Commons.GeneralTerm] = generalTerm
+  def optionalInfo: Parser[List[tptp.Commons.GeneralTerm]] =
+    "^$".r ^^ {_ => List.empty} | "," ~> usefulInfo
+
+  def usefulInfo: Parser[List[tptp.Commons.GeneralTerm]] = generalList
 
   // Include directives
   def include: Parser[tptp.Commons.Include] =
@@ -52,12 +75,41 @@ class Commons extends PExec with PackratParsers with JavaTokenParsers {
       case name ~ _           => (name, List.empty)
     }
   // Non-logical data (GeneralTerm, General data)
+  def generalTerm: Parser[tptp.Commons.GeneralTerm] = ???
+
+  def generalData: Parser[tptp.Commons.GeneralData] =
+    atomicWord ^^ {tptp.Commons.GWord(_)} |
+      generalFunction |
+      variable ^^ {tptp.Commons.GVar(_)} |
+      number ^^ {tptp.Commons.GNumber(_)} |
+      distinctObject ^^ {tptp.Commons.GDistinct(_)} |
+      formulaData ^^ {tptp.Commons.GFormulaData(_)}
+
+  def generalFunction: Parser[tptp.Commons.GFunc] = atomicWord ~ "(" ~ generalTerms ~ ")" ^^ {
+    case name ~ "(" ~ args ~ ")"  => tptp.Commons.GFunc(name,args)
+  }
+
+  def formulaData: Parser[tptp.Commons.FormulaData] =
+    "$thf(" ~> THF.thfFormula <~ ")" ^^ {tptp.Commons.THFData(_)} |
+      "$thf(" ~> TFF.tffFormula <~ ")" ^^ {tptp.Commons.TFFData(_)} |
+      "$fof(" ~> FOF.fofFormula <~ ")" ^^ {tptp.Commons.FOFData(_)} |
+      "$cnf(" ~> CNF.cnfFormula <~ ")" ^^ {tptp.Commons.CNFData(_)} |
+      "$fot(" ~> term <~ ")" ^^ {tptp.Commons.FOTData(_)}
+
+  def generalList: Parser[List[tptp.Commons.GeneralTerm]] =
+    "[" ~> opt(generalTerms) <~ "]" ^^ {
+      case Some(gt)   => gt
+      case _       => List.empty
+    }
+  def generalTerms: Parser[List[tptp.Commons.GeneralTerm]] = rep1sep(generalTerm, ",")
 
   // General purpose
   def name: Parser[Either[String, Int]] = atomicWord ^^ {Left(_)} | integer ^^ {Right(_)}
   def atomicWord: Parser[String] = lowerWord | singleQuoted
   def atomicDefinedWord: Parser[String] = dollarWord
   def atomicSystemWord: Parser[String] = dollarDollarWord
+  def number: Parser[Double] = integer ^^ {_.toDouble} | real
+
   def fileName: Parser[String] = singleQuoted
   //def formula: Parser[tptp.Commons.AnnotatedFormula] = null
 }

@@ -6,7 +6,7 @@ import scala.util.parsing.combinator.PackratParsers
 /**
  * Created by lex on 3/23/14.
  */
-object TFA extends PExec with PackratParsers {
+object TFA extends Commons with PackratParsers {
   override type Target = tptp.TFA
   override def target = null
 }
