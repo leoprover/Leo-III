@@ -31,7 +31,7 @@ object Commons {
   case class Var(name: Variable) extends Term
   case class Number(value: Double) extends Term
   case class Distinct(data: String) extends Term
-  case class Cond(cond: TFF, then: Term, els: Term) extends Term // Cond used by TFF only
+  case class Cond(cond: TFF, thn: Term, els: Term) extends Term // Cond used by TFF only
   // can Let be modeled like this?
   case class Let(let: TFF, in: Term) extends Term // Let used by TFF only
 
