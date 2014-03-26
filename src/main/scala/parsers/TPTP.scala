@@ -98,6 +98,34 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     }
   def formulaRole: Parser[String] = lowerWord
 
+  // special formulae
+  // futher...
+
+  // Connectives THF
+  def thfQuantifier: Parser[String] =
+    folQuantifier | "^" | "!>" | "?*" | "@+" | "@-"
+  def thfPairConnective: Parser[String] =
+    "=" | "!=" | binaryConnective
+  def thfUnaryConnective: Parser[String] = unaryConnective | "!!" | "??"
+
+  // Connectives TFF and THF
+  def subtypeSign: Parser[String] = "<<"
+
+  // Connectives FOF
+  def folQuantifier: Parser[String] = "!" | "?"
+  def binaryConnective: Parser[String] =
+    "<=>" | "=>" | "<=" | "<~>" | "~|" | "~&"
+  def assocConnective: Parser[String] =
+    "|" | "&"
+  def unaryConnective: Parser[String] = "~"
+
+  // Gentzen arrow
+  def gentzenArrow: Parser[String] = "-->"
+
+  // Types for tff and thf
+  def definedType: Parser[String] = atomicDefinedWord
+  def systemType: Parser[String] = atomicSystemWord
+
   // First-order atoms
   def atomicFormula: Parser[Commons.AtomicFormula] =
     plainAtomicFormula | definedPlainFormula | definedInfixFormula | systemAtomicFormula
