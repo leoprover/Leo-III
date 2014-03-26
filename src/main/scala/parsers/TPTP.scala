@@ -99,7 +99,16 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def formulaRole: Parser[String] = lowerWord
 
   // First-order atoms
+  def atomicFormula: Parser[Commons.AtomicFormula] =
+    plainAtomicFormula | definedPlainFormula | definedInfixFormula | systemAtomicFormula
 
+  def plainAtomicFormula: Parser[Commons.Plain] = plainTerm ^^ {Commons.Plain(_)}
+  def definedPlainFormula: Parser[Commons.DefinedPlain] = definedPlainTerm ^^ {Commons.DefinedPlain(_)}
+  def definedInfixFormula: Parser[Commons.Equality] =
+    term ~ "=" ~ term ^^ {
+      case t1 ~ "=" ~ t2 => Commons.Equality(t1,t2)
+    }
+  def systemAtomicFormula: Parser[Commons.SystemPlain] = systemTerm ^^ {Commons.SystemPlain(_)}
 
   // First-order terms
   def term: Parser[Commons.Term] = functionTerm |

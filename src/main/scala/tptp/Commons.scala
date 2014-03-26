@@ -18,10 +18,10 @@ object Commons {
 
   // First-order atoms
   sealed abstract class AtomicFormula
-  case class Plain(name: String, args: List[Term]) extends AtomicFormula
-  case class DefinedPlain(name: String, args: List[Term]) extends AtomicFormula
+  case class Plain(data: Func) extends AtomicFormula
+  case class DefinedPlain(data: DefinedFunc) extends AtomicFormula
   case class Equality(left: Term, right: Term) extends AtomicFormula
-  case class SystemPlain(name: String, args: List[Term]) extends AtomicFormula
+  case class SystemPlain(data: SystemFunc) extends AtomicFormula
 
   // First-order terms
   sealed abstract class Term
