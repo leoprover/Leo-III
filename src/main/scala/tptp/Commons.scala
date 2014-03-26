@@ -46,9 +46,9 @@ object Commons {
   type Include = (String, List[Name])
 
   // Non-logical data (GeneralTerm, General data)
-  sealed abstract class GeneralTerm
-  case class SingleTerm(term: Either[GeneralData, (GeneralData, GeneralTerm)]) extends GeneralTerm
-  case class ListTerm(terms: List[GeneralTerm]) extends GeneralTerm
+  sealed case class GeneralTerm(term: List[Either[GeneralData, List[GeneralTerm]]])
+  //case class SingleTerm(term: Either[GeneralData, (GeneralData, GeneralTerm)]) extends GeneralTerm
+  //case class ListTerm(terms: List[GeneralTerm]) extends GeneralTerm
 
 
   sealed abstract class GeneralData

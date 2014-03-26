@@ -98,7 +98,10 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     }
   def formulaRole: Parser[String] = lowerWord
 
+  // First-order atoms
 
+
+  // First-order terms
   def term: Parser[tptp.Commons.Term] = ???
   def variable: Parser[String] = upperWord
 
@@ -116,7 +119,12 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
       case name ~ _           => (name, List.empty)
     }
   // Non-logical data (GeneralTerm, General data)
-  def generalTerm: Parser[tptp.Commons.GeneralTerm] = ???
+  def generalTerm: Parser[tptp.Commons.GeneralTerm] =
+    generalList ^^ {x => Commons.GeneralTerm(List(Right(x)))} |
+    generalData ^^ {x => Commons.GeneralTerm(List(Left(x)))} |
+    generalData ~ ":" ~ generalTerm ^^ {
+      case data ~ ":" ~ gterm => Commons.GeneralTerm(Left(data) :: gterm.term)
+    }
 
   def generalData: Parser[tptp.Commons.GeneralData] =
     atomicWord ^^ {tptp.Commons.GWord(_)} |
