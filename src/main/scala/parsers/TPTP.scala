@@ -2,7 +2,7 @@ package parsers
 
 import util.parsing.combinator._
 import tptp._
-import tptp.Commons.FOFAnnotated
+import scala.Some
 
 /**
  * Provides a parsing interface for TPTP files and single formulae.
@@ -100,6 +100,9 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // special formulae
   // futher...
+
+  def folInfixUnary: Parser[Commons.Term ~ Commons.Term] =
+    (term <~ "!=") ~ term
 
   // Connectives THF
   def thfQuantifier: Parser[String] =
@@ -249,14 +252,70 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   def tffLetFormulaDefn: Parser[TFF] = ???
   def tffLetTermDefn: Parser[TFF] = ???
+
   /**
    * FOF BNFs
    */
-  def fofFormula: Parser[FOF] = ???
+  def fofFormula: Parser[fof.Formula] = fofLogicFormula ^^ {fof.Logical(_)} | fofSequent
+
+  def fofLogicFormula: Parser[fof.LogicFormula] = fofBinaryFormula | fofUnitaryFormula
+
+  def fofBinaryFormula: Parser[fof.Binary] = fofBinaryAssoc | fofBinaryNonAssoc
+  def fofBinaryNonAssoc: Parser[fof.Binary] = fofUnitaryFormula ~ binaryConnective ~ fofUnitaryFormula ^^ {
+    case left ~ "<=>" ~ right => fof.Binary(left,fof.<=>,right)
+    case left ~ "=>" ~ right => fof.Binary(left,fof.Impl,right)
+    case left ~ "<=" ~ right => fof.Binary(left,fof.<=,right)
+    case left ~ "<~>" ~ right => fof.Binary(left,fof.<~>,right)
+    case left ~ "~|" ~ right => fof.Binary(left,fof.~|,right)
+    case left ~ "~&" ~ right => fof.Binary(left,fof.~&,right)
+  }
+  def fofBinaryAssoc: Parser[fof.Binary] = fofOrFormula | fofAndFormula
+  def fofOrFormula: Parser[fof.Binary] = fofUnitaryFormula ~ "|" ~ fofUnitaryFormula ^^ {
+    case left ~ "|" ~ right => fof.Binary(left,fof.|,right)
+  } |
+  fofOrFormula ~ "|" ~ fofUnitaryFormula ^^ {
+    case left ~ "|" ~ right => fof.Binary(left,fof.|,right)
+  }
+  def fofAndFormula: Parser[fof.Binary] = fofUnitaryFormula ~ "&" ~ fofUnitaryFormula ^^ {
+    case left ~ "&" ~ right => fof.Binary(left,fof.&,right)
+  } |
+  fofAndFormula ~ "&" ~ fofUnitaryFormula ^^ {
+    case left ~ "&" ~ right => fof.Binary(left,fof.&,right)
+  }
+
+  def fofUnitaryFormula: Parser[fof.LogicFormula] = fofQuantifiedFormula | fofUnaryFormula |
+    atomicFormula ^^ {fof.Atomic(_)} |
+    "(" ~> fofLogicFormula <~ ")"
+  def fofQuantifiedFormula: Parser[fof.Quantified] =
+    folQuantifier ~ "[" ~ rep1(variable) ~ "]" ~ fofUnitaryFormula ^^ {
+      case "!" ~ "[" ~ vars ~ "]" ~ matrix => fof.Quantified(fof.Forall,vars,matrix)
+      case "?" ~ "[" ~ vars ~ "]" ~ matrix => fof.Quantified(fof.Exists,vars,matrix)
+    }
+  def fofUnaryFormula: Parser[fof.LogicFormula] = unaryConnective ~ fofUnitaryFormula ^^ {
+    case "~" ~ formula => fof.Unary(fof.Not, formula)
+  } | folInfixUnary ^^ {
+    case left ~ right => fof.Inequality(left,right)
+  }
+
+  def fofSequent: Parser[fof.Sequent] =
+    fofTuple ~ gentzenArrow ~ fofTuple ^^ {
+      case t1 ~ _ ~ t2 => fof.Sequent(t1,t2)
+    } | "(" ~> fofSequent <~ ")"
+  def fofTuple: Parser[List[fof.LogicFormula]] =
+    "[" ~> repsep(fofLogicFormula, ",") <~ "]"
 
   /**
    * CNF formula BNFs
    */
-  def cnfFormula: Parser[CNF] = ???
+  def cnfFormula: Parser[cnf.Formula] =
+    ("(" ~> disjunction <~ ")" | disjunction) ^^ {cnf.Formula(_)}
+  def disjunction: Parser[List[cnf.Literal]] =
+    rep1sep(literal, "|")
+  def literal: Parser[cnf.Literal] =
+    atomicFormula ^^ {cnf.Positive(_)} |
+    "~" ~> atomicFormula ^^ {cnf.Negative(_)} |
+    folInfixUnary ^^ {
+      case left ~ right => cnf.Inequality(left,right)
+    }
 
 }
