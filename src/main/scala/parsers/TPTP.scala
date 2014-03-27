@@ -284,13 +284,13 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     case left ~ "&" ~ right => fof.Binary(left,fof.&,right)
   }
 
-  def fofUnitaryFormula: Parser[fof.LogicFormula] = fofQuantifiedFormula ||| fofUnaryFormula |||
-    atomicFormula ^^ {fof.Atomic(_)} |||
-    "(" ~> fofLogicFormula <~ ")"
+  def fofUnitaryFormula: Parser[fof.LogicFormula] = "(" ~> fofLogicFormula <~ ")" | fofQuantifiedFormula | fofUnaryFormula |
+    atomicFormula ^^ {fof.Atomic(_)}
+
   def fofQuantifiedFormula: Parser[fof.Quantified] =
-    folQuantifier ~ "[" ~ rep1(variable) ~ "]" ~ fofUnitaryFormula ^^ {
-      case "!" ~ "[" ~ vars ~ "]" ~ matrix => fof.Quantified(fof.Forall,vars,matrix)
-      case "?" ~ "[" ~ vars ~ "]" ~ matrix => fof.Quantified(fof.Exists,vars,matrix)
+    folQuantifier ~ "[" ~ rep1(variable) ~ "]" ~ ":" ~ fofUnitaryFormula ^^ {
+      case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Forall,vars,matrix)
+      case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Exists,vars,matrix)
     }
   def fofUnaryFormula: Parser[fof.LogicFormula] = unaryConnective ~ fofUnitaryFormula ^^ {
     case "~" ~ formula => fof.Unary(fof.Not, formula)
