@@ -103,7 +103,9 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   // futher...
 
   def folInfixUnary: Parser[Commons.Term ~ Commons.Term] =
-    (term <~ "!=") ~ term
+    term ~ "!=" ~ term ^^ {
+      case l ~ _ ~ r => this.~(l,r)
+    }
 
   // Connectives THF
   def thfQuantifier: Parser[String] =
@@ -261,7 +263,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   def fofLogicFormula: Parser[fof.LogicFormula] = fofBinaryFormula ||| fofUnitaryFormula
 
-  def fofBinaryFormula: Parser[fof.Binary] = fofBinaryAssoc ||| fofBinaryNonAssoc
+  def fofBinaryFormula: Parser[fof.Binary] = fofBinaryNonAssoc ||| fofBinaryAssoc
   def fofBinaryNonAssoc: Parser[fof.Binary] = fofUnitaryFormula ~ binaryConnective ~ fofUnitaryFormula ^^ {
     case left ~ "<=>" ~ right => fof.Binary(left,fof.<=>,right)
     case left ~ "=>" ~ right => fof.Binary(left,fof.Impl,right)
@@ -271,13 +273,13 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     case left ~ "~&" ~ right => fof.Binary(left,fof.~&,right)
   }
   def fofBinaryAssoc: Parser[fof.Binary] = fofOrFormula ||| fofAndFormula
-  def fofOrFormula: Parser[fof.Binary] = fofUnitaryFormula ~ "|" ~ fofUnitaryFormula ^^ {
+  lazy val fofOrFormula: PackratParser[fof.Binary] = fofUnitaryFormula ~ "|" ~ fofUnitaryFormula ^^ {
     case left ~ "|" ~ right => fof.Binary(left,fof.|,right)
   } |||
   fofOrFormula ~ "|" ~ fofUnitaryFormula ^^ {
     case left ~ "|" ~ right => fof.Binary(left,fof.|,right)
   }
-  def fofAndFormula: Parser[fof.Binary] = fofUnitaryFormula ~ "&" ~ fofUnitaryFormula ^^ {
+  lazy val fofAndFormula: PackratParser[fof.Binary] = fofUnitaryFormula ~ "&" ~ fofUnitaryFormula ^^ {
     case left ~ "&" ~ right => fof.Binary(left,fof.&,right)
   } |||
   fofAndFormula ~ "&" ~ fofUnitaryFormula ^^ {
@@ -288,13 +290,13 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     atomicFormula ^^ {fof.Atomic(_)}
 
   def fofQuantifiedFormula: Parser[fof.Quantified] =
-    folQuantifier ~ "[" ~ rep1(variable) ~ "]" ~ ":" ~ fofUnitaryFormula ^^ {
+    folQuantifier ~ "[" ~ rep1sep(variable,",") ~ "]" ~ ":" ~ fofUnitaryFormula ^^ {
       case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Forall,vars,matrix)
       case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Exists,vars,matrix)
     }
   def fofUnaryFormula: Parser[fof.LogicFormula] = unaryConnective ~ fofUnitaryFormula ^^ {
     case "~" ~ formula => fof.Unary(fof.Not, formula)
-  } ||| folInfixUnary ^^ {
+  } | folInfixUnary ^^ {
     case left ~ right => fof.Inequality(left,right)
   }
 
