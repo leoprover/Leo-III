@@ -7,11 +7,11 @@ object Commons {
 
   // Formula records
   sealed abstract class AnnotatedFormula
-  case class TPIAnnotated(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
+  case class TPIAnnotated(name: Name, role: Role, formula: fof.Formula, annotations: Annotations) extends AnnotatedFormula
   case class THFAnnotated(name: Name, role: Role, formula: THF, annotations: Annotations) extends AnnotatedFormula
   case class TFFAnnotated(name: Name, role: Role, formula: TFF, annotations: Annotations) extends AnnotatedFormula
-  case class FOFAnnotated(name: Name, role: Role, formula: FOF, annotations: Annotations) extends AnnotatedFormula
-  case class CNFAnnotated(name: Name, role: Role, formula: CNF, annotations: Annotations) extends AnnotatedFormula
+  case class FOFAnnotated(name: Name, role: Role, formula: fof.Formula, annotations: Annotations) extends AnnotatedFormula
+  case class CNFAnnotated(name: Name, role: Role, formula: cnf.Formula, annotations: Annotations) extends AnnotatedFormula
 
   type Annotations = Option[(Source, List[GeneralTerm])]
   type Role = String
@@ -62,8 +62,8 @@ object Commons {
   sealed abstract class FormulaData
   case class THFData(formula: THF) extends FormulaData
   case class TFFData(formula: TFF) extends FormulaData
-  case class FOFData(formula: FOF) extends FormulaData
-  case class CNFData(formula: CNF) extends FormulaData
+  case class FOFData(formula: fof.Formula) extends FormulaData
+  case class CNFData(formula: cnf.Formula) extends FormulaData
   case class FOTData(term: Term) extends FormulaData
 
   // General purpose
