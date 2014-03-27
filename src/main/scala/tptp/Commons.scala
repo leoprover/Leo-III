@@ -3,13 +3,18 @@ package tptp
 object Commons {
 
   // Files
-  sealed case class TPTPInput(inputs: List[Either[AnnotatedFormula, Include]])
+  sealed case class TPTPInput(inputs: List[Either[AnnotatedFormula, Include]]) {
+    def getIncludes:List[Include] = inputs.filter(x => x.isRight).map(_.merge).asInstanceOf[List[Include]]
+    def getIncludeCount: Int = getIncludes.size
+    def getFormulae:List[AnnotatedFormula] = inputs.filter(x => x.isLeft).map(_.merge).asInstanceOf[List[AnnotatedFormula]]
+    def getFormulaeCount: Int = getFormulae.size
+  }
 
   // Formula records
   sealed abstract class AnnotatedFormula
   case class TPIAnnotated(name: Name, role: Role, formula: fof.Formula, annotations: Annotations) extends AnnotatedFormula
-  case class THFAnnotated(name: Name, role: Role, formula: THF, annotations: Annotations) extends AnnotatedFormula
-  case class TFFAnnotated(name: Name, role: Role, formula: TFF, annotations: Annotations) extends AnnotatedFormula
+  case class THFAnnotated(name: Name, role: Role, formula: thf.Formula, annotations: Annotations) extends AnnotatedFormula
+  case class TFFAnnotated(name: Name, role: Role, formula: tff.Formula, annotations: Annotations) extends AnnotatedFormula
   case class FOFAnnotated(name: Name, role: Role, formula: fof.Formula, annotations: Annotations) extends AnnotatedFormula
   case class CNFAnnotated(name: Name, role: Role, formula: cnf.Formula, annotations: Annotations) extends AnnotatedFormula
 
@@ -31,9 +36,9 @@ object Commons {
   case class Var(name: Variable) extends Term
   case class Number(value: Double) extends Term
   case class Distinct(data: String) extends Term
-  case class Cond(cond: TFF, thn: Term, els: Term) extends Term // Cond used by TFF only
+  case class Cond(cond: tff.Formula, thn: Term, els: Term) extends Term // Cond used by TFF only
   // can Let be modeled like this?
-  case class Let(let: TFF, in: Term) extends Term // Let used by TFF only
+  case class Let(let: tff.Formula, in: Term) extends Term // Let used by TFF only
 
   type Variable = String
 
@@ -60,8 +65,8 @@ object Commons {
   case class GFormulaData(data: FormulaData) extends GeneralData
 
   sealed abstract class FormulaData
-  case class THFData(formula: THF) extends FormulaData
-  case class TFFData(formula: TFF) extends FormulaData
+  case class THFData(formula: thf.Formula) extends FormulaData
+  case class TFFData(formula: tff.Formula) extends FormulaData
   case class FOFData(formula: fof.Formula) extends FormulaData
   case class CNFData(formula: cnf.Formula) extends FormulaData
   case class FOTData(term: Term) extends FormulaData

@@ -69,7 +69,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // Formula records
   def annotatedFormula: Parser[Commons.AnnotatedFormula] =
-    tpiAnnotated | thfAnnotated | tffAnnotated | fofAnnotated | cnfAnnotated
+    tpiAnnotated ||| thfAnnotated ||| tffAnnotated ||| fofAnnotated ||| cnfAnnotated
 
   def tpiAnnotated: Parser[Commons.TPIAnnotated] =
     "tpi(" ~> name ~ ("," ~> formulaRole <~ ",") ~ fofFormula ~ annotations <~ ")." ^^ {
@@ -93,8 +93,9 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     }
 
   def annotations: Parser[tptp.Commons.Annotations] =
-    "^$".r ^^ {_ => None} | ("," ~> source ~ optionalInfo) ^^ {
-      case src ~ opt => Some((src,opt))
+    opt("," ~> source ~ optionalInfo) ^^ {
+      case None => None
+      case Some(src ~ info) => Some((src,info))
     }
   def formulaRole: Parser[String] = lowerWord
 
@@ -106,10 +107,10 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // Connectives THF
   def thfQuantifier: Parser[String] =
-    folQuantifier | "^" | "!>" | "?*" | "@+" | "@-"
+    folQuantifier ||| "^" ||| "!>" ||| "?*" ||| "@+" ||| "@-"
   def thfPairConnective: Parser[String] =
-    "=" | "!=" | binaryConnective
-  def thfUnaryConnective: Parser[String] = unaryConnective | "!!" | "??"
+    "=" ||| "!=" ||| binaryConnective
+  def thfUnaryConnective: Parser[String] = unaryConnective ||| "!!" ||| "??"
 
   // Connectives TFF and THF
   def subtypeSign: Parser[String] = "<<"
@@ -131,7 +132,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // First-order atoms
   def atomicFormula: Parser[Commons.AtomicFormula] =
-    plainAtomicFormula | definedPlainFormula | definedInfixFormula | systemAtomicFormula
+    plainAtomicFormula ||| definedPlainFormula ||| definedInfixFormula ||| systemAtomicFormula
 
   def plainAtomicFormula: Parser[Commons.Plain] = plainTerm ^^ {Commons.Plain(_)}
   def definedPlainFormula: Parser[Commons.DefinedPlain] = definedPlainTerm ^^ {Commons.DefinedPlain(_)}
@@ -142,16 +143,16 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def systemAtomicFormula: Parser[Commons.SystemPlain] = systemTerm ^^ {Commons.SystemPlain(_)}
 
   // First-order terms
-  def term: Parser[Commons.Term] = functionTerm |
-    variable ^^ {Commons.Var(_)} |
-    conditionalTerm |
+  def term: Parser[Commons.Term] = functionTerm |||
+    variable ^^ {Commons.Var(_)} |||
+    conditionalTerm |||
     letTerm
 
   def functionTerm: Parser[Commons.Term] =
-    plainTerm |
-    definedPlainTerm |
-    systemTerm |
-    number ^^ {Commons.Number(_)} |
+    plainTerm |||
+    definedPlainTerm |||
+    systemTerm |||
+    number ^^ {Commons.Number(_)} |||
     distinctObject ^^ {Commons.Distinct(_)}
 
   def plainTerm: Parser[Commons.Func] =
@@ -179,14 +180,14 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
       case formula ~ "," ~ thn ~ "," ~ els => Commons.Cond(formula,thn,els)
     }
   def letTerm: Parser[Commons.Let] =
-    "$let_ft(" ~> (tffLetFormulaDefn | tffLetTermDefn) ~ "," ~ term <~ ")" ^^ {
+    "$let_ft(" ~> (tffLetFormulaDefn ||| tffLetTermDefn) ~ "," ~ term <~ ")" ^^ {
       case lets ~ "," ~ in => Commons.Let(lets,in)
     }
 
   // Formula sources and infos
   def source: Parser[Commons.GeneralTerm] = generalTerm
   def optionalInfo: Parser[List[Commons.GeneralTerm]] =
-    "^$".r ^^ {_ => List.empty} | "," ~> usefulInfo
+    "^$".r ^^ {_ => List.empty} ||| "," ~> usefulInfo
 
   def usefulInfo: Parser[List[Commons.GeneralTerm]] = generalList
 
@@ -198,18 +199,18 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     }
   // Non-logical data (GeneralTerm, General data)
   def generalTerm: Parser[tptp.Commons.GeneralTerm] =
-    generalList ^^ {x => Commons.GeneralTerm(List(Right(x)))} |
-    generalData ^^ {x => Commons.GeneralTerm(List(Left(x)))} |
+    generalList ^^ {x => Commons.GeneralTerm(List(Right(x)))} |||
+    generalData ^^ {x => Commons.GeneralTerm(List(Left(x)))} |||
     generalData ~ ":" ~ generalTerm ^^ {
       case data ~ ":" ~ gterm => Commons.GeneralTerm(Left(data) :: gterm.term)
     }
 
   def generalData: Parser[tptp.Commons.GeneralData] =
-    atomicWord ^^ {tptp.Commons.GWord(_)} |
-      generalFunction |
-      variable ^^ {tptp.Commons.GVar(_)} |
-      number ^^ {tptp.Commons.GNumber(_)} |
-      distinctObject ^^ {tptp.Commons.GDistinct(_)} |
+    atomicWord ^^ {tptp.Commons.GWord(_)} |||
+      generalFunction |||
+      variable ^^ {tptp.Commons.GVar(_)} |||
+      number ^^ {tptp.Commons.GNumber(_)} |||
+      distinctObject ^^ {tptp.Commons.GDistinct(_)} |||
       formulaData ^^ {tptp.Commons.GFormulaData(_)}
 
   def generalFunction: Parser[tptp.Commons.GFunc] = atomicWord ~ "(" ~ generalTerms ~ ")" ^^ {
@@ -217,10 +218,10 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   }
 
   def formulaData: Parser[tptp.Commons.FormulaData] =
-    "$thf(" ~> thfFormula <~ ")" ^^ {tptp.Commons.THFData(_)} |
-      "$tff(" ~> tffFormula <~ ")" ^^ {tptp.Commons.TFFData(_)} |
-      "$fof(" ~> fofFormula <~ ")" ^^ {tptp.Commons.FOFData(_)} |
-      "$cnf(" ~> cnfFormula <~ ")" ^^ {tptp.Commons.CNFData(_)} |
+    "$thf(" ~> thfFormula <~ ")" ^^ {tptp.Commons.THFData(_)} |||
+      "$tff(" ~> tffFormula <~ ")" ^^ {tptp.Commons.TFFData(_)} |||
+      "$fof(" ~> fofFormula <~ ")" ^^ {tptp.Commons.FOFData(_)} |||
+      "$cnf(" ~> cnfFormula <~ ")" ^^ {tptp.Commons.CNFData(_)} |||
       "$fot(" ~> term <~ ")" ^^ {tptp.Commons.FOTData(_)}
 
   def generalList: Parser[List[tptp.Commons.GeneralTerm]] =
@@ -231,36 +232,36 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def generalTerms: Parser[List[tptp.Commons.GeneralTerm]] = rep1sep(generalTerm, ",")
 
   // General purpose
-  def name: Parser[Either[String, Int]] = atomicWord ^^ {Left(_)} | integer ^^ {Right(_)}
-  def atomicWord: Parser[String] = lowerWord | singleQuoted
+  def name: Parser[Either[String, Int]] = atomicWord ^^ {Left(_)} ||| integer ^^ {Right(_)}
+  def atomicWord: Parser[String] = lowerWord ||| singleQuoted
   def atomicDefinedWord: Parser[String] = dollarWord
   def atomicSystemWord: Parser[String] = dollarDollarWord
-  def number: Parser[Double] = integer ^^ {_.toDouble} | real
+  def number: Parser[Double] = integer ^^ {_.toDouble} ||| real
 
   def fileName: Parser[String] = singleQuoted
 
   /**
    * THF BNFs
    */
-  def thfFormula: Parser[THF] = ???
+  def thfFormula: Parser[thf.Formula] = ???
 
   /**
    * TFF BNFs
    */
-  def tffFormula: Parser[TFF] = ???
-  def tffLogicFormula: Parser[TFF] = ???
+  def tffFormula: Parser[tff.Formula] = ???
+  def tffLogicFormula: Parser[tff.Formula] = ???
 
-  def tffLetFormulaDefn: Parser[TFF] = ???
-  def tffLetTermDefn: Parser[TFF] = ???
+  def tffLetFormulaDefn: Parser[tff.Formula] = ???
+  def tffLetTermDefn: Parser[tff.Formula] = ???
 
   /**
    * FOF BNFs
    */
-  def fofFormula: Parser[fof.Formula] = fofLogicFormula ^^ {fof.Logical(_)} | fofSequent
+  def fofFormula: Parser[fof.Formula] = fofLogicFormula ^^ {fof.Logical(_)} ||| fofSequent
 
-  def fofLogicFormula: Parser[fof.LogicFormula] = fofBinaryFormula | fofUnitaryFormula
+  def fofLogicFormula: Parser[fof.LogicFormula] = fofBinaryFormula ||| fofUnitaryFormula
 
-  def fofBinaryFormula: Parser[fof.Binary] = fofBinaryAssoc | fofBinaryNonAssoc
+  def fofBinaryFormula: Parser[fof.Binary] = fofBinaryAssoc ||| fofBinaryNonAssoc
   def fofBinaryNonAssoc: Parser[fof.Binary] = fofUnitaryFormula ~ binaryConnective ~ fofUnitaryFormula ^^ {
     case left ~ "<=>" ~ right => fof.Binary(left,fof.<=>,right)
     case left ~ "=>" ~ right => fof.Binary(left,fof.Impl,right)
@@ -269,22 +270,22 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     case left ~ "~|" ~ right => fof.Binary(left,fof.~|,right)
     case left ~ "~&" ~ right => fof.Binary(left,fof.~&,right)
   }
-  def fofBinaryAssoc: Parser[fof.Binary] = fofOrFormula | fofAndFormula
+  def fofBinaryAssoc: Parser[fof.Binary] = fofOrFormula ||| fofAndFormula
   def fofOrFormula: Parser[fof.Binary] = fofUnitaryFormula ~ "|" ~ fofUnitaryFormula ^^ {
     case left ~ "|" ~ right => fof.Binary(left,fof.|,right)
-  } |
+  } |||
   fofOrFormula ~ "|" ~ fofUnitaryFormula ^^ {
     case left ~ "|" ~ right => fof.Binary(left,fof.|,right)
   }
   def fofAndFormula: Parser[fof.Binary] = fofUnitaryFormula ~ "&" ~ fofUnitaryFormula ^^ {
     case left ~ "&" ~ right => fof.Binary(left,fof.&,right)
-  } |
+  } |||
   fofAndFormula ~ "&" ~ fofUnitaryFormula ^^ {
     case left ~ "&" ~ right => fof.Binary(left,fof.&,right)
   }
 
-  def fofUnitaryFormula: Parser[fof.LogicFormula] = fofQuantifiedFormula | fofUnaryFormula |
-    atomicFormula ^^ {fof.Atomic(_)} |
+  def fofUnitaryFormula: Parser[fof.LogicFormula] = fofQuantifiedFormula ||| fofUnaryFormula |||
+    atomicFormula ^^ {fof.Atomic(_)} |||
     "(" ~> fofLogicFormula <~ ")"
   def fofQuantifiedFormula: Parser[fof.Quantified] =
     folQuantifier ~ "[" ~ rep1(variable) ~ "]" ~ fofUnitaryFormula ^^ {
@@ -293,14 +294,14 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     }
   def fofUnaryFormula: Parser[fof.LogicFormula] = unaryConnective ~ fofUnitaryFormula ^^ {
     case "~" ~ formula => fof.Unary(fof.Not, formula)
-  } | folInfixUnary ^^ {
+  } ||| folInfixUnary ^^ {
     case left ~ right => fof.Inequality(left,right)
   }
 
   def fofSequent: Parser[fof.Sequent] =
     fofTuple ~ gentzenArrow ~ fofTuple ^^ {
       case t1 ~ _ ~ t2 => fof.Sequent(t1,t2)
-    } | "(" ~> fofSequent <~ ")"
+    } ||| "(" ~> fofSequent <~ ")"
   def fofTuple: Parser[List[fof.LogicFormula]] =
     "[" ~> repsep(fofLogicFormula, ",") <~ "]"
 
@@ -308,12 +309,12 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
    * CNF formula BNFs
    */
   def cnfFormula: Parser[cnf.Formula] =
-    ("(" ~> disjunction <~ ")" | disjunction) ^^ {cnf.Formula(_)}
+    ("(" ~> disjunction <~ ")" ||| disjunction) ^^ {cnf.Formula(_)}
   def disjunction: Parser[List[cnf.Literal]] =
     rep1sep(literal, "|")
   def literal: Parser[cnf.Literal] =
-    atomicFormula ^^ {cnf.Positive(_)} |
-    "~" ~> atomicFormula ^^ {cnf.Negative(_)} |
+    atomicFormula ^^ {cnf.Positive(_)} |||
+    "~" ~> atomicFormula ^^ {cnf.Negative(_)} |||
     folInfixUnary ^^ {
       case left ~ right => cnf.Inequality(left,right)
     }
