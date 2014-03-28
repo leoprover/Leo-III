@@ -3,6 +3,7 @@ package interpreter
 import parsers._
 import tptp._
 import tptp.Commons.{AnnotatedFormula => Formula}
+import scala.io.Source
 
 /**
  * Created by ryu on 3/28/14.
@@ -41,15 +42,26 @@ package object interpreter {
   }
 
   /**
-   * Calling
+   * Loading a file + its includes.
+   * No circle detection or double imports removed at the time.
+   * No relative paths either,
    */
-  def load (file : String) = ???
+  def load (file : String) {
+    val source = scala.io.Source.fromFile(file, "utf-8")
+    val input = source.getLines().mkString("\n")
+
+    TPTP.parseFile(input).foreach(x => {
+      x.getFormulae.foreach(x => FormulaHandle.formula = x :: FormulaHandle.formula)
+      x.getIncludes.foreach(x => load(x._1))
+    })
+    source.close()
+  }
 
   def add(s : String) = FormulaHandle.addFormulaString(s)
 
   def get(i : Int) = FormulaHandle.getFormula(i)
 
-  def display = FormulaHandle.formula
+  def display = FormulaHandle.formula.foreach(x => println(x))
 
   def clear = FormulaHandle.clearContext
 
@@ -65,7 +77,7 @@ object FormulaHandle {
 
   def addFormula(f : Formula) = formula = f :: formula
 
-  def addFormulaString(s : String) = TPTP.parseFormula(s).foreach(x => x :: formula)
+  def addFormulaString(s : String) = TPTP.parseFormula(s).foreach(x => formula = x :: formula)
 
   def removeFormula(i : Int) = formula.take(i) ++ formula.drop(i+1)
 
