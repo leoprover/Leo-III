@@ -277,17 +277,18 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   }
 
   def thfBinaryTuple: Parser[thf.Binary] = thfOrFormula | thfAndFormula | thfApplyFormula
-  def thfOrFormula: Parser[thf.Binary] = thfUnitaryFormula ~ "|" ~ thfUnitaryFormula ^^ {
+
+  lazy val thfOrFormula: PackratParser[thf.Binary] = thfUnitaryFormula ~ "|" ~ thfUnitaryFormula ^^ {
     case left ~ _ ~ right => thf.Binary(left, thf.|, right)
   } ||| thfOrFormula ~ "|" ~ thfUnitaryFormula ^^ {
     case left ~ _ ~ right => thf.Binary(left, thf.|, right)
   }
-  def thfAndFormula: Parser[thf.Binary] = thfUnitaryFormula ~ "&" ~ thfUnitaryFormula ^^ {
+  lazy val thfAndFormula: PackratParser[thf.Binary] = thfUnitaryFormula ~ "&" ~ thfUnitaryFormula ^^ {
     case left ~ _ ~ right => thf.Binary(left, thf.&, right)
   } ||| thfAndFormula ~ "&" ~ thfUnitaryFormula ^^ {
     case left ~ _ ~ right => thf.Binary(left, thf.&, right)
   }
-  def thfApplyFormula: Parser[thf.Binary] = thfUnitaryFormula ~ "@" ~ thfUnitaryFormula ^^ {
+  lazy val thfApplyFormula: PackratParser[thf.Binary] = thfUnitaryFormula ~ "@" ~ thfUnitaryFormula ^^ {
     case left ~ _ ~ right => thf.Binary(left, thf.App, right)
   } ||| thfApplyFormula ~ "@" ~ thfUnitaryFormula ^^ {
     case left ~ _ ~ right => thf.Binary(left, thf.App, right)
@@ -312,7 +313,11 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     variable ~ ":" ~ thfTopLevelType ^^ {
       case vari ~ _ ~ typ => (vari, Some(typ))
     }
-  def thfUnaryFormula: Parser[thf.Unary] = ???
+  def thfUnaryFormula: Parser[thf.Unary] = thfUnaryConnective ~ "(" ~ thfLogicFormula <~ ")" ^^ {
+    case "~" ~ _ ~ formula => thf.Unary(thf.~, formula)
+    case "!!" ~ _ ~ formula => thf.Unary(thf.!!, formula)
+    case "??" ~ _ ~ formula => thf.Unary(thf.??, formula)
+  }
   def thfAtom: Parser[thf.LogicFormula] = term ^^ {thf.Term(_)} | thfConnTerm
   def thfConditional: Parser[thf.Cond] = "$ite_f(" ~> thfLogicFormula ~ "," ~ thfLogicFormula ~ "," ~ thfLogicFormula  <~ ")" ^^ {
     case cond ~ _ ~ thn ~ _ ~ els => thf.Cond(cond,thn,els)
@@ -329,9 +334,21 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def thfUnitaryType: Parser[thf.LogicFormula] = thfUnitaryFormula
   def thfBinaryType: Parser[thf.BinaryType] = thfMappingType | thfXProdType | thfUnionType
 
-  def thfMappingType: Parser[thf.->] = ???
-  def thfXProdType: Parser[thf.*] = ???
-  def thfUnionType: Parser[thf.+] = ???
+  lazy val thfMappingType: PackratParser[thf.->] = thfUnitaryType ~ ">" ~ thfUnitaryType ^^ {
+    case l ~ _ ~ r => thf.->(List(l,r))
+  } ||| thfUnitaryType ~ ">" ~ thfMappingType ^^ {
+    case l ~ _ ~ typ => thf.->(l::typ.t)
+  }
+  lazy val thfXProdType: PackratParser[thf.*] = thfUnitaryType ~ "*" ~ thfUnitaryType ^^ {
+    case l ~ _ ~ r => thf.*(List(l,r))
+  } ||| thfXProdType ~ "*" ~ thfUnitaryType ^^ {
+    case typ ~ _ ~ r => thf.*(typ.t ++ List(r)) //This may need to be optimized
+  }
+  lazy val thfUnionType: PackratParser[thf.+] = thfUnitaryType ~ "+" ~ thfUnitaryType ^^ {
+    case l ~ _ ~ r => thf.+(List(l,r))
+  } ||| thfUnionType ~ "+" ~ thfUnitaryType ^^ {
+    case typ ~ _ ~ r => thf.+(typ.t ++ List(r)) //This may need to be optimized
+  }
 
   def thfSequent: Parser[thf.Sequent] =
     thfTuple ~ gentzenArrow ~ thfTuple ^^ {
