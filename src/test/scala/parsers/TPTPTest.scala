@@ -5,6 +5,7 @@ package parsers
  */
 object TPTPTest extends TPTPParser {
   def main(args: Array[String]) {
+    /*
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -14,7 +15,11 @@ object TPTPTest extends TPTPParser {
     runTestOn(col074_2)
     // FOF
     println("#### Test on mgt011p1 ####")
-    runTestOn(mgt011p1)
+    runTestOn(mgt011p1)*/
+
+    // THF
+    println("#### Test on syn000power2 ####")
+    runTestOn(syn000power2)
   }
 
   def runTestOn(input: String) {
@@ -153,5 +158,32 @@ object TPTPTest extends TPTPParser {
       |          & size(X,S2,T2)
       |          & greater(T2,T1) )
       |       => ~ greater(S1,S2) ) )).
+    """.stripMargin
+
+
+  // THF
+  val syn000power2: String =
+    """
+      |%----Quoted symbols
+      |thf(distinct_object,axiom,(
+      |    "An Apple" != "A \"Microsoft \\ escape\"" )).
+      |    
+      |thf(integers,axiom,
+      |    ( ( p_int @ 123 )
+      |    | ( p_int @ -123 ) )).
+      |
+      |thf(rationals,axiom,
+      |    ( ( p_rat @ 123/456 )
+      |    | ( p_rat @ -123/456 )
+      |    | ( p_rat @ +123/456 ) )).
+      |
+      |thf(reals,axiom,
+      |    ( ( p_real @ 123.456 )
+      |    | ( p_real @ -123.456 )
+      |    | ( p_real @ 123.456E789 )
+      |    | ( p_real @ 123.456e789 )
+      |    | ( p_real @ -123.456E789 )
+      |    | ( p_real @ 123.456E-789 )
+      |    | ( p_real @ -123.456E-789 ) )).
     """.stripMargin
 }
