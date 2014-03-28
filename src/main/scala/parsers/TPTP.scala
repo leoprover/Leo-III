@@ -100,7 +100,22 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def formulaRole: Parser[String] = lowerWord
 
   // special formulae
-  // futher...
+  def thfConnTerm: Parser[thf.Connective] = (thfPairConnective | assocConnective) ^^ {
+    case "="   => thf.Connective(Left(thf.Eq))
+    case "!="  => thf.Connective(Left(thf.Neq))
+    case "<=>" => thf.Connective(Left(thf.<=>))
+    case "=>"  => thf.Connective(Left(thf.Impl))
+    case "<="  => thf.Connective(Left(thf.<=))
+    case "<~>" => thf.Connective(Left(thf.<~>))
+    case "~|"  => thf.Connective(Left(thf.~|))
+    case "~&"  => thf.Connective(Left(thf.~&))
+    case "&"  => thf.Connective(Left(thf.&))
+    case "|"  => thf.Connective(Left(thf.|))
+  } | thfUnaryConnective ^^ {
+    case "~"   => thf.Connective(Right(thf.~))
+    case "!!"  => thf.Connective(Right(thf.!!))
+    case "??" => thf.Connective(Right(thf.??))
+  }
 
   def folInfixUnary: Parser[Commons.Term ~ Commons.Term] =
     term ~ "!=" ~ term ^^ {
@@ -245,8 +260,68 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   /**
    * THF BNFs
    */
-  def thfFormula: Parser[thf.Formula] = ???
+  def thfFormula: Parser[thf.Formula] = thfLogicFormula ^^ {thf.Logical(_)} | thfSequent
+  def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula | thfUnitaryFormula |
+      thfTypeFormula | thfSubtype
+  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair | thfBinaryTuple | thfBinaryType ^^ {thf.BinType(_)}
 
+  def thfBinaryPair:Parser[thf.Binary] = thfUnitaryFormula ~ thfPairConnective ~ thfUnitaryFormula ^^ {
+    case left ~ "=" ~ right => thf.Binary(left, thf.Eq,right)
+    case left ~ "!=" ~  right => thf.Binary(left, thf.Neq, right)
+    case left ~ "<=>" ~  right => thf.Binary(left, thf.<=>, right)
+    case left ~ "=>" ~  right => thf.Binary(left, thf.Impl, right)
+    case left ~ "<=" ~  right => thf.Binary(left, thf.<=, right)
+    case left ~ "<~>" ~  right => thf.Binary(left, thf.<~>, right)
+    case left ~ "~|" ~  right => thf.Binary(left, thf.~|, right)
+    case left ~ "~&" ~  right => thf.Binary(left, thf.~&, right)
+  }
+
+  def thfBinaryTuple: Parser[thf.Binary] = thfOrFormula | thfAndFormula | thfApplyFormula
+  def thfOrFormula: Parser[thf.Binary] = thfUnitaryFormula ~ "|" ~ thfUnitaryFormula ^^ {
+    case left ~ _ ~ right => thf.Binary(left, thf.|, right)
+  } ||| thfOrFormula ~ "|" ~ thfUnitaryFormula ^^ {
+    case left ~ _ ~ right => thf.Binary(left, thf.|, right)
+  }
+  def thfAndFormula: Parser[thf.Binary] = thfUnitaryFormula ~ "&" ~ thfUnitaryFormula ^^ {
+    case left ~ _ ~ right => thf.Binary(left, thf.&, right)
+  } ||| thfAndFormula ~ "&" ~ thfUnitaryFormula ^^ {
+    case left ~ _ ~ right => thf.Binary(left, thf.&, right)
+  }
+  def thfApplyFormula: Parser[thf.Binary] = thfUnitaryFormula ~ "@" ~ thfUnitaryFormula ^^ {
+    case left ~ _ ~ right => thf.Binary(left, thf.App, right)
+  } ||| thfApplyFormula ~ "@" ~ thfUnitaryFormula ^^ {
+    case left ~ _ ~ right => thf.Binary(left, thf.App, right)
+  }
+
+  def thfUnitaryFormula: Parser[thf.LogicFormula] = ???
+  def thfQuantifiedFormula: Parser[thf.Quantified] = ???
+  def thfUnaryFormula: Parser[thf.Unary] = ???
+  def thfAtom: Parser[thf.LogicFormula] = term ^^ {thf.Term(_)} | thfConnTerm
+  def thfConditional: Parser[thf.Cond] = "$ite_f(" ~> thfLogicFormula ~ "," ~ thfLogicFormula ~ "," ~ thfLogicFormula  <~ ")" ^^ {
+    case cond ~ _ ~ thn ~ _ ~ els => thf.Cond(cond,thn,els)
+  }
+
+  def thfTypeFormula: Parser[thf.Typed] = thfTypeableFormula ~ ":" ~ thfTopLevelType ^^ {
+    case formula ~ _ ~ typ => thf.Typed(formula, typ)
+  }
+  def thfTypeableFormula: Parser[thf.LogicFormula] = thfAtom | "(" ~> thfLogicFormula <~ ")"
+  def thfSubtype: Parser[thf.Subtype] = constant ~ subtypeSign ~ constant ^^ {
+    case l ~ _ ~ r => thf.Subtype(l,r)
+  }
+  def thfTopLevelType: Parser[thf.LogicFormula] = thfLogicFormula
+  def thfUnitaryType: Parser[thf.LogicFormula] = thfUnitaryFormula
+  def thfBinaryType: Parser[thf.BinaryType] = thfMappingType | thfXProdType | thfUnionType
+
+  def thfMappingType: Parser[thf.->] = ???
+  def thfXProdType: Parser[thf.*] = ???
+  def thfUnionType: Parser[thf.+] = ???
+
+  def thfSequent: Parser[thf.Sequent] =
+    thfTuple ~ gentzenArrow ~ thfTuple ^^ {
+      case t1 ~ _ ~ t2 => thf.Sequent(t1,t2)
+    } ||| "(" ~> thfSequent <~ ")"
+  def thfTuple: Parser[List[thf.LogicFormula]] =
+    repsep(thfLogicFormula, ",")
   /**
    * TFF BNFs
    */
