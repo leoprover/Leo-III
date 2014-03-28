@@ -293,8 +293,25 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     case left ~ _ ~ right => thf.Binary(left, thf.App, right)
   }
 
-  def thfUnitaryFormula: Parser[thf.LogicFormula] = ???
-  def thfQuantifiedFormula: Parser[thf.Quantified] = ???
+  def thfUnitaryFormula: Parser[thf.LogicFormula] = thfQuantifiedFormula | thfUnaryFormula |
+    thfAtom | thfConditional | "(" ~> thfLogicFormula <~ ")"
+  def thfQuantifiedFormula: Parser[thf.Quantified] =
+    thfQuantifier ~ "[" ~ rep1sep(thfVariable, ",") ~ "]" ~ ":" ~ thfUnitaryFormula ^^ {
+      case "!" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.All,varList,matrix)
+      case "?" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Exists,varList,matrix)
+      case "^" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Lambda,varList,matrix)
+      case "!>" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.BigPi,varList,matrix)
+      case "?*" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.BigSigma,varList,matrix)
+      case "@+" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Choice,varList,matrix)
+      case "@-" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Description,varList,matrix)
+    }
+
+  def thfVariable: Parser[(Commons.Variable, Option[thf.LogicFormula])] =
+    thfTypedVariable | variable ^^ { (_, None)}
+  def thfTypedVariable: Parser[(Commons.Variable, Option[thf.LogicFormula])] =
+    variable ~ ":" ~ thfTopLevelType ^^ {
+      case vari ~ _ ~ typ => (vari, Some(typ))
+    }
   def thfUnaryFormula: Parser[thf.Unary] = ???
   def thfAtom: Parser[thf.LogicFormula] = term ^^ {thf.Term(_)} | thfConnTerm
   def thfConditional: Parser[thf.Cond] = "$ite_f(" ~> thfLogicFormula ~ "," ~ thfLogicFormula ~ "," ~ thfLogicFormula  <~ ")" ^^ {
