@@ -35,6 +35,11 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   override type Target = Commons.TPTPInput
   override def target = tptpFile
 
+  override def preprocess(input: String): String =
+    input.replaceAll(commentLineRegex,"")
+
+  def commentLineRegex = "%(.*?)\\r?\\n"
+
   // Defining lexical tokens
   // Character classes
   def doChar: Parser[String] = """[\040-\041\043-\0133\0135-\0176]|[\\]["\\]""".r
@@ -42,8 +47,6 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def alphaNumeric: Parser[String] = """[a-zA-Z0-9\_]""".r
 
   // Other tokens
-  def commentLine: Parser[String] = """%.*""".r
-
   def singleQuoted: Parser[String] = "'" ~> rep1(sqChar) <~ "'" ^^ {_.fold("")((a,b) => a++b)}
   def distinctObject: Parser[String] = "\"" ~> rep(doChar) <~ "\"" ^^ {_.fold("")((a,b) => a++b)}
 
