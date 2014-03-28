@@ -52,8 +52,11 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def dollarWord: Parser[String] ="""\$[a-z][A-Za-z0-9_]*""".r
   def dollarDollarWord: Parser[String] ="""\$\$[a-z][A-Za-z0-9_]*""".r
 
-  def integer: Parser[Int] = wholeNumber ^^ {_.toInt}
-  def real: Parser[Double] = floatingPointNumber ^^ {_.toDouble}
+  def integer: Parser[Int] = opt("+") ~> wholeNumber ^^ {_.toInt}
+  def real: Parser[Double] = opt("+") ~> floatingPointNumber ^^ {_.toDouble}
+  def rational: Parser[Double] = opt("+") ~> wholeNumber ~ "/" ~ "[1-9][0-9]*".r ^^ {
+    case p ~ _ ~ q => p.toDouble / q.toDouble
+  }
 
   /*
    * Parsing rules
@@ -253,7 +256,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def atomicWord: Parser[String] = lowerWord ||| singleQuoted
   def atomicDefinedWord: Parser[String] = dollarWord
   def atomicSystemWord: Parser[String] = dollarDollarWord
-  def number: Parser[Double] = integer ^^ {_.toDouble} ||| real
+  def number: Parser[Double] = integer ^^ {_.toDouble} ||| real ||| rational
 
   def fileName: Parser[String] = singleQuoted
 
