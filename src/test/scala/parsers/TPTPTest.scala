@@ -5,7 +5,7 @@ package parsers
  */
 object TPTPTest extends TPTPParser {
   def main(args: Array[String]) {
-    /*
+
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -15,7 +15,7 @@ object TPTPTest extends TPTPParser {
     runTestOn(col074_2)
     // FOF
     println("#### Test on mgt011p1 ####")
-    runTestOn(mgt011p1)*/
+    runTestOn(mgt011p1)
 
     // THF
     println("#### Test on syn000power2 ####")
@@ -167,7 +167,17 @@ object TPTPTest extends TPTPParser {
       |%----Quoted symbols
       |thf(distinct_object,axiom,(
       |    "An Apple" != "A \"Microsoft \\ escape\"" )).
-      |    
+      |
+      |%----Numbers
+      |thf(p_int_type,type,(
+      |    p_int: $int > $o )).
+      |
+      |thf(p_rat_type,type,(
+      |    p_rat: $rat > $o )).
+      |
+      |thf(p_real_type,type,(
+      |    p_real: $real > $o )).
+      |
       |thf(integers,axiom,
       |    ( ( p_int @ 123 )
       |    | ( p_int @ -123 ) )).
