@@ -267,9 +267,9 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
    * THF BNFs
    */
   def thfFormula: Parser[thf.Formula] = thfLogicFormula ^^ {thf.Logical(_)} | thfSequent
-  def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula | thfUnitaryFormula |
-      thfTypeFormula | thfSubtype
-  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair | thfBinaryTuple | thfBinaryType ^^ {thf.BinType(_)}
+  def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula ||| thfUnitaryFormula |||
+      thfTypeFormula ||| thfSubtype
+  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair ||| thfBinaryTuple ||| thfBinaryType ^^ {thf.BinType(_)}
 
   def thfBinaryPair:Parser[thf.Binary] = thfUnitaryFormula ~ thfPairConnective ~ thfUnitaryFormula ^^ {
     case left ~ "=" ~ right => thf.Binary(left, thf.Eq,right)
