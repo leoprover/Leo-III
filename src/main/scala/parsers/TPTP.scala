@@ -366,10 +366,32 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
    * TFF BNFs
    */
   def tffFormula: Parser[tff.Formula] = ???
-  def tffLogicFormula: Parser[tff.Formula] = ???
 
-  def tffLetFormulaDefn: Parser[tff.Formula] = ???
-  def tffLetTermDefn: Parser[tff.Formula] = ???
+  def tffLogicFormula: Parser[tff.LogicFormula] = ???
+  def tffBinaryFormula: Parser[tff.Binary] = ???
+  def tffBinaryNonAssoc: Parser[tff.Binary]  = ???
+  def tffBinaryAssoc: Parser[tff.Binary] = ???
+  def tffOrFormula: Parser[tff.Binary] = ???
+  def tffAndFormula: Parser[tff.Binary] = ???
+
+  def tffUnitaryFormula: Parser[tff.LogicFormula] = ???
+  def tffQuantifiedFormula: Parser[tff.Quantified] = ???
+  def tffVariable: Parser[(Commons.Variable,Option[tff.AtomicType])] = ???
+  def tffTypedVariable: Parser[(Commons.Variable,Option[tff.AtomicType])] = ???
+  def tffUnaryFormula: Parser[tff.Unary] = ???
+  def tffConditional: Parser[tff.Cond] = ???
+
+  def tffLet: Parser[tff.Let] = ???
+  def tffLetTermDefn: Parser[tff.LetBinding] = ???
+  def tffLetTermBinding: Parser[Commons.Term ~ Commons.Term] = ???
+  def tffLetFormulaDefn: Parser[tff.LetBinding] = ???
+  def tffLetFormulaBinding: Parser[tff.Atomic ~ tff.LogicFormula] = ???
+
+
+  def tffSequent: Parser[tff.Sequent] =  tffTuple ~ gentzenArrow ~ tffTuple ^^ {
+    case t1 ~ _ ~ t2 => tff.Sequent(t1,t2)
+  } ||| "(" ~> tffSequent <~ ")"
+  def tffTuple: Parser[List[tff.LogicFormula]] = repsep(tffLogicFormula, ",")
 
   /**
    * FOF BNFs
