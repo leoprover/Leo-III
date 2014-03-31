@@ -4,6 +4,7 @@ import parsers._
 import tptp._
 import tptp.Commons.{AnnotatedFormula => Formula}
 import scala.io.Source
+import scala.collection.mutable
 
 /**
  * Created by ryu on 3/28/14.
@@ -34,8 +35,8 @@ package object interpreter {
       case "add"  => println("Adds a formula string in tptp syntax to the current context")
       case "help" => println("Shows a list of commands to leoIII")
       case "context" => println("Shows all forumlas in the current context")
-      case "get"  => println("Returns the i-th formula in the context")
-      case "rm"   => println("Removes the i-th formula in the context")
+      case "get"  => println("Returns the formula with the given name in the context")
+      case "rm"   => println("Removes the formula with the given name from the context")
       case "clear" => println("Clears all formulas from the current context")
       case _      => println("No recognized command found.\nType 'help' for a list of commands.")
     }
@@ -51,7 +52,7 @@ package object interpreter {
     val input = source.getLines().mkString("\n")
 
     TPTP.parseFile(input).foreach(x => {
-      x.getFormulae.foreach(x => FormulaHandle.formula = x :: FormulaHandle.formula)
+      x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
       x.getIncludes.foreach(x => load(x._1))
     })
     source.close()
@@ -59,13 +60,17 @@ package object interpreter {
 
   def add(s : String) = FormulaHandle.addFormulaString(s)
 
-  def get(i : Int) = FormulaHandle.getFormula(i)
+  def get(s : String) = FormulaHandle.getFormula(s)
 
-  def display = FormulaHandle.formula.foreach(x => println(x))
+  def display = {
+    println("Name\t\tRole\t\tFormula");
+    println("-----------------------------------")
+    FormulaHandle.formulaMap.foreach(x => print(x._1 + "\t\t" + x._2._1 + "\t\t" + x._2._2))
+    println()}
 
   def clear = FormulaHandle.clearContext
 
-  def rm(i : Int) = FormulaHandle.removeFormula(i)
+  def rm(s : String) = FormulaHandle.removeFormula(s)
 }
 
 /**
@@ -73,16 +78,16 @@ package object interpreter {
  * outside the access should not differ that much.
  */
 object FormulaHandle {
-  protected[interpreter] var formula : List[Formula] = Nil
+  protected[interpreter] var formulaMap: mutable.HashMap[String, (String, Formula)] = new mutable.HashMap[String, (String, Formula)]()
 
-  def addFormula(f : Formula) = formula = f :: formula
+  def addFormula(f : Formula) = formulaMap.put(f.name, (f.role, f))
 
-  def addFormulaString(s : String) = TPTP.parseFormula(s).foreach(x => formula = x :: formula)
+  def addFormulaString(s : String) = addFormula(TPTP.parseFormula(s).get)
 
-  def removeFormula(i : Int) = formula.take(i) ++ formula.drop(i+1)
+  def removeFormula(name : String) = formulaMap.remove(name)
 
-  def clearContext = formula = Nil
+  def clearContext = formulaMap.empty
 
-  def getFormula(i : Int) : Formula = formula.apply(i)
+  def getFormula(name: String) : Formula = formulaMap.apply(name)._2
 
 }

@@ -255,7 +255,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def generalTerms: Parser[List[tptp.Commons.GeneralTerm]] = rep1sep(generalTerm, ",")
 
   // General purpose
-  def name: Parser[Either[String, Int]] = atomicWord ^^ {Left(_)} ||| integer ^^ {Right(_)}
+  def name: Parser[String] = atomicWord ||| integer ^^ {_.toString}
   def atomicWord: Parser[String] = lowerWord ||| singleQuoted
   def atomicDefinedWord: Parser[String] = dollarWord
   def atomicSystemWord: Parser[String] = dollarDollarWord

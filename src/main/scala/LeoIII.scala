@@ -56,7 +56,7 @@ class LeoILoop extends ILoop {
       intp.interpret("def add(f : String)= interpreter.add(f)")
       intp.interpret("def context = interpreter.display")
       intp.interpret("def clear = interpreter.clear")
-      intp.interpret("def rm(i : Int) = interpreter.rm(i)")
+      intp.interpret("def rm(s : String) = interpreter.rm(s)")
     }
     super.loop()
   }
