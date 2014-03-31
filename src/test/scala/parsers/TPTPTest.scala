@@ -24,6 +24,9 @@ object TPTPTest extends TPTPParser {
     // TFF
     println("#### Test on ari022Eq1 ####")
     runTestOn(ari022Eq1)
+
+    println("#### Test on ari175Eq1 ####")
+    runTestOn(ari175Eq1)
   }
 
   def runTestOn(input: String) {
@@ -205,5 +208,11 @@ object TPTPTest extends TPTPParser {
     """
       |tff(n4_lesseq_n2,conjecture,(
       |    $lesseq(-4,-2) )).
+    """.stripMargin
+
+  val ari175Eq1: String =
+    """
+      |tff(co1,conjecture,(
+      |    ? [U: $int,V: $int] : $sum($product(3,U),$product(5,V)) = 23 )).
     """.stripMargin
 }
