@@ -40,7 +40,7 @@ sealed abstract class Type
 case class AtomicType(typ: String, args: List[AtomicType]) extends Type
 case class ->(t: List[Type]) extends Type
 case class *(t: List[Type]) extends Type
-case class QuantifiedType(varList: List[(Variable,Option[AtomicType])], typ: Type)
+case class QuantifiedType(varList: List[(Variable,Option[AtomicType])], typ: Type) extends Type
 
 
 sealed abstract class LetBinding
