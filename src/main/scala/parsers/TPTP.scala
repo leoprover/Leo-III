@@ -445,17 +445,34 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   } ||| "(" ~> tffSequent <~ ")"
   def tffTuple: Parser[List[tff.LogicFormula]] = repsep(tffLogicFormula, ",")
 
-  def tffTypedAtom: Parser[tff.TypedAtom] = ???
-  def tffUntypedAtom: Parser[String] = ???
+  def tffTypedAtom: Parser[tff.TypedAtom] = tffUntypedAtom ~ ":" ~ tffTopLevelType ^^ {
+    case atom ~ _ ~ typ => tff.TypedAtom(atom, typ)
+  }
+  def tffUntypedAtom: Parser[String] = atomicWord | atomicSystemWord
 
-  def tffTopLevelType: Parser[tff.Type] = ???
-  def tffQuantifiedType: Parser[tff.QuantifiedType] = ???
-  def tffMonotype: Parser[tff.Type] = ???
-  def tffUnitaryType: Parser[tff.Type] = ???
-  def tffAtomicType: Parser[tff.AtomicType] = ???
-  def tffTypeArguments: Parser[List[tff.AtomicType]] = ???
-  def tffMappingType: Parser[tff.->] = ???
-  def tffXProdType: Parser[tff.*] = ???
+  def tffTopLevelType: Parser[tff.Type] = tffAtomicType | tffMappingType | tffQuantifiedType |
+    "(" ~> tffTopLevelType <~ ")"
+
+  def tffQuantifiedType: Parser[tff.QuantifiedType] =
+    "!>" ~> "[" ~ rep1sep(tffTypedVariable, ",")  ~ "]" ~ ":" ~ tffMonotype ^^ {
+      case _ ~ vars ~ _ ~ _ ~ typ => tff.QuantifiedType(vars, typ)
+    }
+  def tffMonotype: Parser[tff.Type] = tffAtomicType | "(" ~> tffMappingType <~ ")"
+  def tffUnitaryType: Parser[tff.Type] = tffAtomicType | "(" ~> tffXProdType <~ ")"
+  def tffAtomicType: Parser[tff.AtomicType] =
+    (atomicWord | definedType | variable) ^^ {tff.AtomicType(_, List())} |
+    atomicWord ~ "(" ~ tffTypeArguments <~ ")" ^^ {
+      case name ~ _ ~ args => tff.AtomicType(name, args)
+    }
+  def tffTypeArguments: Parser[List[tff.AtomicType]] = rep1sep(tffAtomicType, ",")
+  def tffMappingType: Parser[tff.->] = tffUnitaryType ~ ">" ~ tffAtomicType ^^ {
+    case l ~ _ ~ r => tff.->(List(l,r))
+  }
+  def tffXProdType: Parser[tff.*] = tffUnitaryType ~ "*" ~ tffAtomicType ^^ {
+    case l ~ _ ~ r => tff.*(List(l,r))
+  } ||| tffXProdType ~ "*" ~ tffAtomicType ^^ {
+    case l ~ _ ~ r => tff.*(l.t ++ List(r))
+  }
 
   /**
    * FOF BNFs
