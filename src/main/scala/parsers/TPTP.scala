@@ -393,6 +393,18 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   } ||| "(" ~> tffSequent <~ ")"
   def tffTuple: Parser[List[tff.LogicFormula]] = repsep(tffLogicFormula, ",")
 
+  def tffTypedAtom: Parser[tff.TypedAtom] = ???
+  def tffUntypedAtom: Parser[String] = ???
+
+  def tffTopLevelType: Parser[tff.Type] = ???
+  def tffQuantifiedType: Parser[tff.QuantifiedType] = ???
+  def tffMonotype: Parser[tff.Type] = ???
+  def tffUnitaryType: Parser[tff.Type] = ???
+  def tffAtomicType: Parser[tff.AtomicType] = ???
+  def tffTypeArguments: Parser[List[tff.AtomicType]] = ???
+  def tffMappingType: Parser[tff.->] = ???
+  def tffXProdType: Parser[tff.*] = ???
+
   /**
    * FOF BNFs
    */
