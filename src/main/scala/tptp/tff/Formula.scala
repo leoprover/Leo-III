@@ -17,7 +17,7 @@ case class Unary(connective: UnaryConnective, formula: LogicFormula) extends Log
 case class Inequality(left: Term, right: Term) extends LogicFormula
 case class Atomic(formula: AtomicFormula) extends LogicFormula
 case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extends LogicFormula
-case class Let(binding: LetBinding, in: LogicFormula) extends LogicFormula
+case class Let(binding: LetBinding, in: Formula) extends LogicFormula
 
 sealed abstract class BinaryConnective
 case object <=> extends BinaryConnective
@@ -44,5 +44,5 @@ case class QuantifiedType(varList: List[(Variable,Option[AtomicType])], typ: Typ
 
 
 sealed abstract class LetBinding
-case class FormulaBinding(left: Atomic, right: LogicFormula) extends LetBinding
-case class TermBinding(left: Term, right: Term) extends LetBinding
+case class FormulaBinding(varList: List[(Variable,Option[AtomicType])], left: Atomic, right: LogicFormula) extends LetBinding
+case class TermBinding(varList: List[(Variable,Option[AtomicType])], left: Term, right: Term) extends LetBinding
