@@ -468,7 +468,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def tffMappingType: Parser[tff.->] = tffUnitaryType ~ ">" ~ tffAtomicType ^^ {
     case l ~ _ ~ r => tff.->(List(l,r))
   }
-  def tffXProdType: Parser[tff.*] = tffUnitaryType ~ "*" ~ tffAtomicType ^^ {
+  lazy val tffXProdType: PackratParser[tff.*] = tffUnitaryType ~ "*" ~ tffAtomicType ^^ {
     case l ~ _ ~ r => tff.*(List(l,r))
   } ||| tffXProdType ~ "*" ~ tffAtomicType ^^ {
     case l ~ _ ~ r => tff.*(l.t ++ List(r))

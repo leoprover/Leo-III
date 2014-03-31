@@ -5,7 +5,7 @@ package parsers
  */
 object TPTPTest extends TPTPParser {
   def main(args: Array[String]) {
-
+/*
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -19,7 +19,11 @@ object TPTPTest extends TPTPParser {
 
     // THF
     println("#### Test on syn000power2 ####")
-    runTestOn(syn000power2)
+    runTestOn(syn000power2)*/
+
+    // TFF
+    println("#### Test on ari022Eq1 ####")
+    runTestOn(ari022Eq1)
   }
 
   def runTestOn(input: String) {
@@ -195,5 +199,11 @@ object TPTPTest extends TPTPParser {
       |    | ( p_real @ -123.456E789 )
       |    | ( p_real @ 123.456E-789 )
       |    | ( p_real @ -123.456E-789 ) )).
+    """.stripMargin
+
+  val ari022Eq1: String =
+    """
+      |tff(n4_lesseq_n2,conjecture,(
+      |    $lesseq(-4,-2) )).
     """.stripMargin
 }
