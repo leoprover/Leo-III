@@ -17,7 +17,7 @@ case class Unary(connective: UnaryConnective, formula: LogicFormula) extends Log
 case class Inequality(left: Term, right: Term) extends LogicFormula
 case class Atomic(formula: AtomicFormula) extends LogicFormula
 case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extends LogicFormula
-case class LetCond(binding: LetBinding, in: LogicFormula) extends LogicFormula
+case class Let(binding: LetBinding, in: LogicFormula) extends LogicFormula
 
 sealed abstract class BinaryConnective
 case object <=> extends BinaryConnective
