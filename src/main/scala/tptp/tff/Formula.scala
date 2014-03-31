@@ -7,10 +7,10 @@ import tptp.Commons._
  */
 sealed abstract class Formula
 case class Logical(formula: LogicFormula) extends Formula
+case class TypedAtom(formula: String, typ: Type) extends Formula
 case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula
 
 sealed abstract class LogicFormula
-case class TypedAtom(formula: String, typ: Type) extends LogicFormula
 case class Binary(left: LogicFormula, connective: BinaryConnective, right: LogicFormula) extends LogicFormula
 case class Quantified(quantifier: Quantifier, varList: List[(Variable,Option[AtomicType])], matrix: LogicFormula) extends LogicFormula
 case class Unary(connective: UnaryConnective, formula: LogicFormula) extends LogicFormula
