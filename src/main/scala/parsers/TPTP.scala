@@ -255,7 +255,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def generalTerms: Parser[List[tptp.Commons.GeneralTerm]] = rep1sep(generalTerm, ",")
 
   // General purpose
-  def name: Parser[Either[String, Int]] = atomicWord ^^ {Left(_)} ||| integer ^^ {Right(_)}
+  def name: Parser[String] = atomicWord ||| integer ^^ {_.toString}
   def atomicWord: Parser[String] = lowerWord ||| singleQuoted
   def atomicDefinedWord: Parser[String] = dollarWord
   def atomicSystemWord: Parser[String] = dollarDollarWord
@@ -267,9 +267,9 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
    * THF BNFs
    */
   def thfFormula: Parser[thf.Formula] = thfLogicFormula ^^ {thf.Logical(_)} | thfSequent
-  def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula | thfUnitaryFormula |
-      thfTypeFormula | thfSubtype
-  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair | thfBinaryTuple | thfBinaryType ^^ {thf.BinType(_)}
+  def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula ||| thfUnitaryFormula |||
+      thfTypeFormula ||| thfSubtype
+  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair ||| thfBinaryTuple ||| thfBinaryType ^^ {thf.BinType(_)}
 
   def thfBinaryPair:Parser[thf.Binary] = thfUnitaryFormula ~ thfPairConnective ~ thfUnitaryFormula ^^ {
     case left ~ "=" ~ right => thf.Binary(left, thf.Eq,right)
@@ -365,11 +365,114 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   /**
    * TFF BNFs
    */
-  def tffFormula: Parser[tff.Formula] = ???
-  def tffLogicFormula: Parser[tff.Formula] = ???
+  def tffFormula: Parser[tff.Formula] = tffLogicFormula ^^ {tff.Logical(_)} ||| tffTypedAtom ||| tffSequent
 
-  def tffLetFormulaDefn: Parser[tff.Formula] = ???
-  def tffLetTermDefn: Parser[tff.Formula] = ???
+  def tffLogicFormula: Parser[tff.LogicFormula] = tffBinaryFormula | tffUnitaryFormula
+  def tffBinaryFormula: Parser[tff.Binary] = tffBinaryNonAssoc | tffBinaryAssoc
+  def tffBinaryNonAssoc: Parser[tff.Binary]  = tffUnitaryFormula ~ binaryConnective ~ tffUnitaryFormula ^^ {
+    case left ~ "<=>" ~ right => tff.Binary(left,tff.<=>,right)
+    case left ~ "=>" ~ right => tff.Binary(left,tff.Impl,right)
+    case left ~ "<=" ~ right => tff.Binary(left,tff.<=,right)
+    case left ~ "<~>" ~ right => tff.Binary(left,tff.<~>,right)
+    case left ~ "~|" ~ right => tff.Binary(left,tff.~|,right)
+    case left ~ "~&" ~ right => tff.Binary(left,tff.~&,right)
+  }
+  def tffBinaryAssoc: Parser[tff.Binary] = tffOrFormula | tffAndFormula
+  lazy val tffOrFormula: PackratParser[tff.Binary] = tffUnitaryFormula ~ "|" ~ tffUnitaryFormula ^^ {
+    case left ~ "|" ~ right => tff.Binary(left,tff.|,right)
+  } |||
+    tffOrFormula ~ "|" ~ tffUnitaryFormula ^^ {
+      case left ~ "|" ~ right => tff.Binary(left,tff.|,right)
+    }
+  lazy val tffAndFormula: PackratParser[tff.Binary] = tffUnitaryFormula ~ "&" ~ tffUnitaryFormula ^^ {
+    case left ~ "&" ~ right => tff.Binary(left,tff.&,right)
+  } |||
+    tffAndFormula ~ "&" ~ tffUnitaryFormula ^^ {
+      case left ~ "&" ~ right => tff.Binary(left,tff.&,right)
+    }
+
+  def tffUnitaryFormula: Parser[tff.LogicFormula] = tffQuantifiedFormula | tffUnaryFormula |
+    atomicFormula ^^ {tff.Atomic(_)} | tffConditional | tffLet |
+    "(" ~> tffLogicFormula <~ ")"
+  def tffQuantifiedFormula: Parser[tff.Quantified] =
+    folQuantifier ~ "[" ~ rep1sep(tffVariable, ",") ~ "]" ~ ":" ~ tffUnitaryFormula ^^{
+      case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => tff.Quantified(tff.!,vars,matrix)
+      case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => tff.Quantified(tff.?,vars,matrix)
+    }
+  def tffVariable: Parser[(Commons.Variable,Option[tff.AtomicType])] = tffTypedVariable | variable ^^ {(_,None)}
+  def tffTypedVariable: Parser[(Commons.Variable,Option[tff.AtomicType])] =
+    variable ~ ":" ~ tffAtomicType ^^ {
+      case variable ~ _ ~ typ  => (variable, Some(typ))
+    }
+  def tffUnaryFormula: Parser[tff.LogicFormula] = unaryConnective ~ tffUnitaryFormula ^^ {
+    case "~" ~ formula => tff.Unary(tff.Not, formula)
+  } |
+  folInfixUnary ^^ {
+    case left ~ right => tff.Inequality(left, right)
+  }
+  def tffConditional: Parser[tff.Cond] =
+    "$ite_f(" ~> tffLogicFormula ~ "," ~ tffLogicFormula ~ "," ~ tffLogicFormula <~ ")" ^^ {
+      case cond ~ _ ~ thn ~ _ ~ els => tff.Cond(cond,thn,els)
+    }
+
+  def tffLet: Parser[tff.Let] = "$let_tf(" ~> tffLetTermDefn ~ "," ~ tffFormula <~ ")" ^^ {
+    case lets ~ _ ~ in => tff.Let(lets, in)
+  } | "$let_ff(" ~> tffLetFormulaDefn ~ "," ~ tffFormula <~ ")" ^^ {
+    case lets ~ _ ~ in => tff.Let(lets, in)
+  }
+
+  def tffLetTermDefn: Parser[tff.TermBinding] = "!" ~ "[" ~ rep1sep(tffVariable, ",") ~ "]" ~ ":" ~ tffLetTermDefn ^^ {
+    case _ ~ _ ~ vars ~ _ ~ _ ~ defn =>  tff.TermBinding(vars ++ defn.varList, defn.left, defn.right)
+  } ||| tffLetTermBinding ^^ {
+    case l ~ r => tff.TermBinding(List(), l, r)
+  }
+  def tffLetTermBinding: Parser[Commons.Term ~ Commons.Term] = term ~ "=" ~ term ^^ {
+    case left ~ _ ~ right => this.~(left,right)
+  } | "(" ~> tffLetTermBinding <~ ")"
+
+  def tffLetFormulaDefn: Parser[tff.FormulaBinding] = "!" ~ "[" ~ rep1sep(tffVariable, ",") ~ "]" ~ ":" ~ tffLetFormulaDefn ^^ {
+    case _ ~ _ ~ vars ~ _ ~ _ ~ defn =>  tff.FormulaBinding(vars ++ defn.varList, defn.left, defn.right)
+  } ||| tffLetFormulaBinding ^^ {
+    case l ~ r => tff.FormulaBinding(List(), l, r)
+  }
+  def tffLetFormulaBinding: Parser[tff.Atomic ~ tff.LogicFormula] = atomicFormula ~ "=" ~ tffUnitaryFormula ^^ {
+    case left ~ _ ~ right => this.~(tff.Atomic(left),right)
+  } | "(" ~> tffLetFormulaBinding <~ ")"
+
+
+  def tffSequent: Parser[tff.Sequent] =  tffTuple ~ gentzenArrow ~ tffTuple ^^ {
+    case t1 ~ _ ~ t2 => tff.Sequent(t1,t2)
+  } ||| "(" ~> tffSequent <~ ")"
+  def tffTuple: Parser[List[tff.LogicFormula]] = repsep(tffLogicFormula, ",")
+
+  def tffTypedAtom: Parser[tff.TypedAtom] = tffUntypedAtom ~ ":" ~ tffTopLevelType ^^ {
+    case atom ~ _ ~ typ => tff.TypedAtom(atom, typ)
+  }
+  def tffUntypedAtom: Parser[String] = atomicWord | atomicSystemWord
+
+  def tffTopLevelType: Parser[tff.Type] = tffAtomicType | tffMappingType | tffQuantifiedType |
+    "(" ~> tffTopLevelType <~ ")"
+
+  def tffQuantifiedType: Parser[tff.QuantifiedType] =
+    "!>" ~> "[" ~ rep1sep(tffTypedVariable, ",")  ~ "]" ~ ":" ~ tffMonotype ^^ {
+      case _ ~ vars ~ _ ~ _ ~ typ => tff.QuantifiedType(vars, typ)
+    }
+  def tffMonotype: Parser[tff.Type] = tffAtomicType | "(" ~> tffMappingType <~ ")"
+  def tffUnitaryType: Parser[tff.Type] = tffAtomicType | "(" ~> tffXProdType <~ ")"
+  def tffAtomicType: Parser[tff.AtomicType] =
+    (atomicWord | definedType | variable) ^^ {tff.AtomicType(_, List())} |
+    atomicWord ~ "(" ~ tffTypeArguments <~ ")" ^^ {
+      case name ~ _ ~ args => tff.AtomicType(name, args)
+    }
+  def tffTypeArguments: Parser[List[tff.AtomicType]] = rep1sep(tffAtomicType, ",")
+  def tffMappingType: Parser[tff.->] = tffUnitaryType ~ ">" ~ tffAtomicType ^^ {
+    case l ~ _ ~ r => tff.->(List(l,r))
+  }
+  lazy val tffXProdType: PackratParser[tff.*] = tffUnitaryType ~ "*" ~ tffAtomicType ^^ {
+    case l ~ _ ~ r => tff.*(List(l,r))
+  } ||| tffXProdType ~ "*" ~ tffAtomicType ^^ {
+    case l ~ _ ~ r => tff.*(l.t ++ List(r))
+  }
 
   /**
    * FOF BNFs

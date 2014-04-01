@@ -11,12 +11,30 @@ object Commons {
   }
 
   // Formula records
-  sealed abstract class AnnotatedFormula
-  case class TPIAnnotated(name: Name, role: Role, formula: fof.Formula, annotations: Annotations) extends AnnotatedFormula
-  case class THFAnnotated(name: Name, role: Role, formula: thf.Formula, annotations: Annotations) extends AnnotatedFormula
-  case class TFFAnnotated(name: Name, role: Role, formula: tff.Formula, annotations: Annotations) extends AnnotatedFormula
-  case class FOFAnnotated(name: Name, role: Role, formula: fof.Formula, annotations: Annotations) extends AnnotatedFormula
-  case class CNFAnnotated(name: Name, role: Role, formula: cnf.Formula, annotations: Annotations) extends AnnotatedFormula
+  sealed abstract class AnnotatedFormula(val name: Name, val role: Role,val annotations: Annotations) {
+    type FormulaType
+    def f: FormulaType
+  }
+  case class TPIAnnotated(override val name: Name,override val role: Role,formula: fof.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
+    override type FormulaType = fof.Formula
+    override def f = formula
+  }
+  case class THFAnnotated(override val name: Name, override val role: Role, formula: thf.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
+    override type FormulaType = thf.Formula
+    override def f = formula
+  }
+  case class TFFAnnotated(override val name: Name, override val role: Role, formula: tff.Formula, override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
+    override type FormulaType = tff.Formula
+    override def f = formula
+  }
+  case class FOFAnnotated(override val name: Name, override val role: Role, formula: fof.Formula, override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
+    override type FormulaType = fof.Formula
+    override def f = formula
+  }
+  case class CNFAnnotated(override val name: Name, override val role: Role, formula: cnf.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
+    override type FormulaType = cnf.Formula
+    override def f = formula
+  }
 
   type Annotations = Option[(Source, List[GeneralTerm])]
   type Role = String
@@ -36,9 +54,9 @@ object Commons {
   case class Var(name: Variable) extends Term
   case class Number(value: Double) extends Term
   case class Distinct(data: String) extends Term
-  case class Cond(cond: tff.Formula, thn: Term, els: Term) extends Term // Cond used by TFF only
+  case class Cond(cond: tff.LogicFormula, thn: Term, els: Term) extends Term // Cond used by TFF only
   // can Let be modeled like this?
-  case class Let(let: tff.Formula, in: Term) extends Term // Let used by TFF only
+  case class Let(let: tff.LetBinding, in: Term) extends Term // Let used by TFF only
 
   type Variable = String
 
@@ -72,6 +90,6 @@ object Commons {
   case class FOTData(term: Term) extends FormulaData
 
   // General purpose
-  type Name = Either[String, Int]
+  type Name = String
 
 }

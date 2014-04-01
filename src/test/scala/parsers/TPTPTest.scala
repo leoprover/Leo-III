@@ -5,7 +5,7 @@ package parsers
  */
 object TPTPTest extends TPTPParser {
   def main(args: Array[String]) {
-    /*
+/*
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -15,11 +15,18 @@ object TPTPTest extends TPTPParser {
     runTestOn(col074_2)
     // FOF
     println("#### Test on mgt011p1 ####")
-    runTestOn(mgt011p1)*/
+    runTestOn(mgt011p1)
 
     // THF
     println("#### Test on syn000power2 ####")
-    runTestOn(syn000power2)
+    runTestOn(syn000power2)*/
+
+    // TFF
+    println("#### Test on ari022Eq1 ####")
+    runTestOn(ari022Eq1)
+
+    println("#### Test on ari175Eq1 ####")
+    runTestOn(ari175Eq1)
   }
 
   def runTestOn(input: String) {
@@ -167,7 +174,17 @@ object TPTPTest extends TPTPParser {
       |%----Quoted symbols
       |thf(distinct_object,axiom,(
       |    "An Apple" != "A \"Microsoft \\ escape\"" )).
-      |    
+      |
+      |%----Numbers
+      |thf(p_int_type,type,(
+      |    p_int: $int > $o )).
+      |
+      |thf(p_rat_type,type,(
+      |    p_rat: $rat > $o )).
+      |
+      |thf(p_real_type,type,(
+      |    p_real: $real > $o )).
+      |
       |thf(integers,axiom,
       |    ( ( p_int @ 123 )
       |    | ( p_int @ -123 ) )).
@@ -185,5 +202,17 @@ object TPTPTest extends TPTPParser {
       |    | ( p_real @ -123.456E789 )
       |    | ( p_real @ 123.456E-789 )
       |    | ( p_real @ -123.456E-789 ) )).
+    """.stripMargin
+
+  val ari022Eq1: String =
+    """
+      |tff(n4_lesseq_n2,conjecture,(
+      |    $lesseq(-4,-2) )).
+    """.stripMargin
+
+  val ari175Eq1: String =
+    """
+      |tff(co1,conjecture,(
+      |    ? [U: $int,V: $int] : $sum($product(3,U),$product(5,V)) = 23 )).
     """.stripMargin
 }
