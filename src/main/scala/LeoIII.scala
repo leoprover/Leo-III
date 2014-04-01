@@ -17,7 +17,7 @@ object LeoIII extends App {
   settings.Yreplsync.value = true
 
   // No JLineReader Added to Project at the moment
-  settings.Xnojline.value =true
+  // settings.Xnojline.value = true
 
   val console = new LeoILoop()
   console.process(settings)
