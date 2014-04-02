@@ -135,27 +135,10 @@ object Context extends Command {
 
   def init () = interpreter.addCommand(this)
 
-
-  val maxNameSize = 20
-  val maxRoleSize = 20
-  val maxFormulaSize = 100
-  val maxSize = maxNameSize + maxRoleSize + maxFormulaSize + 4
-
   def context = {
-    println("Name" + " "*(maxNameSize-4) + " | Role" + " "*(maxRoleSize-4) + " | Formula")
-    println("-"*maxSize)
-    FormulaHandle.formulaMap.foreach(x => {
-      val name = x._1.toString.take(maxNameSize)
-      val role = x._2._1.toString.take(maxRoleSize)
-      val form = x._2._2.toString
-      val form1 = form.take(maxFormulaSize)
-      val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
-
-      val nameOffset = maxNameSize - name.length
-      val roleOffset = maxNameSize - role.length
-      println(name + " "*nameOffset + " | " + x._2._1 + " "*roleOffset + " | " + form1)
-      form2.foreach(x => println(" "*maxNameSize+" | "+ " "*maxRoleSize+ " | "+ x))
-    })
+    println("Name\t\tRole\t\tFormula");
+    println("-----------------------------------")
+    FormulaHandle.formulaMap.foreach(x => println(x._1 + "\t\t" + x._2._1 + "\t\t" + x._2._2))
     println()
   }
 }
