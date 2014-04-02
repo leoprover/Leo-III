@@ -1,4 +1,4 @@
-package interpreter
+package leoshell
 
 import parsers._
 import tptp._
@@ -8,10 +8,10 @@ import scala.collection.mutable
 import commands._
 
 /**
- * Interface for the leo interpreter to use the functions of leoIII
+ * Interface for the leo shell to use the functions of leoIII
  * @author{Max Wisniewski}
  */
-package object interpreter {
+package object leoshell {
   /**
    * List of all registered commands
    */
@@ -31,7 +31,7 @@ package object interpreter {
     "Call 'help' for help\n"
 
 
-  val imports : List[String] = List("interpreter._", "commands._", "tptp.Commons._", "tptp.Commons.{AnnotatedFormula=>Formula}")
+  val imports : List[String] = List("leoshell._", "commands._", "tptp.Commons._", "tptp.Commons.{AnnotatedFormula=>Formula}")
 
   /**
    * If smth has to be done
@@ -59,7 +59,7 @@ package object interpreter {
  * outside the access should not differ that much.
  */
 object FormulaHandle {
-  protected[interpreter] var formulaMap: mutable.HashMap[String, (String, Formula)] = new mutable.HashMap[String, (String, Formula)]()
+  protected[leoshell] var formulaMap: mutable.HashMap[String, (String, Formula)] = new mutable.HashMap[String, (String, Formula)]()
 
   def addFormula(f : Formula) {
     formulaMap.put(f.name, (f.role, f))
