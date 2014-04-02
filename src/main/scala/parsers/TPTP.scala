@@ -216,7 +216,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // Include directives
   def include: Parser[tptp.Commons.Include] =
-    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")" ^^ {
+    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")." ^^ {
       case name ~ Some(names) => (name, names)
       case name ~ _           => (name, List.empty)
     }
