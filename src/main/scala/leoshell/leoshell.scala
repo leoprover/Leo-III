@@ -70,7 +70,7 @@ object FormulaHandle {
     TPTP.parseFormula(s) match {
       case Some(a)  => {
         addFormula(a)
-        println("Added '"++a++"' to the context.")
+        println("Added '"++a.toString++"' to the context.")
       }
       case None     => println("'"++s ++ "' is not a valid formula.")
     }
