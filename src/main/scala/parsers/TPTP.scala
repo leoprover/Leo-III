@@ -304,13 +304,13 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     thfAtom | thfConditional | "(" ~> thfLogicFormula <~ ")"
   def thfQuantifiedFormula: Parser[thf.Quantified] =
     thfQuantifier ~ "[" ~ rep1sep(thfVariable, ",") ~ "]" ~ ":" ~ thfUnitaryFormula ^^ {
-      case "!" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.All,varList,matrix)
-      case "?" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Exists,varList,matrix)
-      case "^" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Lambda,varList,matrix)
-      case "!>" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.BigPi,varList,matrix)
-      case "?*" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.BigSigma,varList,matrix)
-      case "@+" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Choice,varList,matrix)
-      case "@-" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Description,varList,matrix)
+      case "!" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!,varList,matrix)
+      case "?" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?,varList,matrix)
+      case "^" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.^,varList,matrix)
+      case "!>" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!>,varList,matrix)
+      case "?*" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?*,varList,matrix)
+      case "@+" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.@+,varList,matrix)
+      case "@-" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.@-,varList,matrix)
     }
 
   def thfVariable: Parser[(Commons.Variable, Option[thf.LogicFormula])] =
