@@ -1,3 +1,3 @@
 #!/bin/sh
 
-java -jar target/idea_output/artifacts/leo_iii_jar/leo-iii.jar
+java -Dfile.encoding="UTF-8" -jar target/leo-iii-jar-with-dependencies.jar
