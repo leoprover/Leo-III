@@ -71,7 +71,7 @@ object Load extends Command {
     val (fileAbs, path) = newPath(rel, file)
     if (!leoshell.loadedSet.contains(fileAbs)) {
       try {
-        val source = scala.io.Source.fromFile(fileAbs, "ut  f-8")
+        val source = scala.io.Source.fromFile(fileAbs, "utf-8")
         val input = (source.getLines()).mkString("\n") ++ "\n"
 
         val parsed = TPTP.parseFile(input)
