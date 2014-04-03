@@ -6,7 +6,7 @@ import tptp.Commons._
  * Created by lex on 3/23/14.
  */
 case class Formula(literals: List[Literal]) {
-  override def toString = literals.map(x => "(" + x.toString + ")").mkString(" | ")
+  override def toString = literals.mkString(" | ")
 }
 
 sealed abstract class Literal
