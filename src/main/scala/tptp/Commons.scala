@@ -15,7 +15,7 @@ object Commons {
     type FormulaType
     def f: FormulaType
 
-    val rep = "(" + List(name, role, f).mkString(",") + annoToString(annotations) + ")."
+    val rep = "(" + List(name, role, "(" + f.toString + ")").mkString(",") + annoToString(annotations) + ")."
   }
   case class TPIAnnotated(override val name: Name,override val role: Role,formula: fof.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
     override type FormulaType = fof.Formula
