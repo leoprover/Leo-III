@@ -7,4 +7,4 @@ fof(ia2,axiom,
 fof(ia3,axiom,
     ia3).
 
-include('../testdir/test2.tptp')
+include('../testdir/test2.tptp').
