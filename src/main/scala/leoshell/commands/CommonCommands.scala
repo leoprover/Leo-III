@@ -54,8 +54,6 @@ object Load extends Command {
 
   def init () = leoshell.addCommand(this)
 
-  // Stores already loaded paths
-
   /**
    * Loading a file + its includes.
    */
@@ -73,17 +71,18 @@ object Load extends Command {
     val (fileAbs, path) = newPath(rel, file)
     if (!leoshell.loadedSet.contains(fileAbs)) {
       try {
-        val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-        val input = source.getLines().mkString("\n")
+        val source = scala.io.Source.fromFile(fileAbs, "ut  f-8")
+        val input = (source.getLines()).mkString("\n") ++ "\n"
 
-        println("Loaded " + fileAbs)
-        leoshell.loadedSet.add(fileAbs)
+        val parsed = TPTP.parseFile(input)
 
-
-        TPTP.parseFile(input).foreach(x => {
-          x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
-          x.getIncludes.foreach(x => loadRelative(x._1, path))
-        })
+        parsed match {
+          case None => println("Parse error in file " + fileAbs)
+          case Some(x) => { x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
+                            println("Loaded " + fileAbs)
+                            leoshell.loadedSet.add(fileAbs)
+                            x.getIncludes.foreach(x => loadRelative(x._1, path))}
+        }
         source.close()
       } catch { case ex : FileNotFoundException => println("'" + fileAbs + "' does not exist.")}
     }

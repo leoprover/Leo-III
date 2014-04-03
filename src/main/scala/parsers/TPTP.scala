@@ -47,8 +47,8 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
   def alphaNumeric: Parser[String] = """[a-zA-Z0-9\_]""".r
 
   // Other tokens
-  def singleQuoted: Parser[String] = "'" ~> rep1(sqChar) <~ "'" ^^ {_.fold("")((a,b) => a++b)}
-  def distinctObject: Parser[String] = "\"" ~> rep(doChar) <~ "\"" ^^ {_.fold("")((a,b) => a++b)}
+  def singleQuoted: Parser[String] = "'" ~> rep1(sqChar) <~ "'" ^^ {"'" + _.fold("")((a,b) => a++b) + "'"}
+  def distinctObject: Parser[String] = "\"" ~> rep(doChar) <~ "\"" ^^ {"\"" + _.fold("")((a,b) => a++b) + "\""}
 
   def lowerWord: Parser[String] = """[a-z][A-Za-z0-9_]*""".r
   def upperWord: Parser[String] = """[A-Z][A-Za-z0-9_]*""".r
@@ -216,9 +216,9 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // Include directives
   def include: Parser[tptp.Commons.Include] =
-    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")" ^^ {
-      case name ~ Some(names) => (name, names)
-      case name ~ _           => (name, List.empty)
+    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")." ^^ {
+      case name ~ Some(names) => (name.substring(1,name.length-1), names)
+      case name ~ _           => (name.substring(1,name.length-1), List.empty)
     }
   // Non-logical data (GeneralTerm, General data)
   def generalTerm: Parser[tptp.Commons.GeneralTerm] =
@@ -304,13 +304,13 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
     thfAtom | thfConditional | "(" ~> thfLogicFormula <~ ")"
   def thfQuantifiedFormula: Parser[thf.Quantified] =
     thfQuantifier ~ "[" ~ rep1sep(thfVariable, ",") ~ "]" ~ ":" ~ thfUnitaryFormula ^^ {
-      case "!" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.All,varList,matrix)
-      case "?" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Exists,varList,matrix)
-      case "^" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Lambda,varList,matrix)
-      case "!>" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.BigPi,varList,matrix)
-      case "?*" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.BigSigma,varList,matrix)
-      case "@+" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Choice,varList,matrix)
-      case "@-" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.Description,varList,matrix)
+      case "!" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!,varList,matrix)
+      case "?" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?,varList,matrix)
+      case "^" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.^,varList,matrix)
+      case "!>" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!>,varList,matrix)
+      case "?*" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?*,varList,matrix)
+      case "@+" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.@+,varList,matrix)
+      case "@-" ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.@-,varList,matrix)
     }
 
   def thfVariable: Parser[(Commons.Variable, Option[thf.LogicFormula])] =
@@ -509,8 +509,8 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   def fofQuantifiedFormula: Parser[fof.Quantified] =
     folQuantifier ~ "[" ~ rep1sep(variable,",") ~ "]" ~ ":" ~ fofUnitaryFormula ^^ {
-      case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Forall,vars,matrix)
-      case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Exists,vars,matrix)
+      case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.!,vars,matrix)
+      case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.?,vars,matrix)
     }
   def fofUnaryFormula: Parser[fof.LogicFormula] = unaryConnective ~ fofUnitaryFormula ^^ {
     case "~" ~ formula => fof.Unary(fof.Not, formula)
@@ -530,8 +530,10 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
    */
   def cnfFormula: Parser[cnf.Formula] =
     ("(" ~> disjunction <~ ")" ||| disjunction) ^^ {cnf.Formula(_)}
-  def disjunction: Parser[List[cnf.Literal]] =
-    rep1sep(literal, "|")
+  lazy val disjunction: PackratParser[List[cnf.Literal]] =
+    literal ^^ {List(_)} ||| disjunction ~ "|" ~ literal ^^ {
+      case dis ~ _ ~ l => dis ++ List(l)
+    }
   def literal: Parser[cnf.Literal] =
     atomicFormula ^^ {cnf.Positive(_)} |||
     "~" ~> atomicFormula ^^ {cnf.Negative(_)} |||
