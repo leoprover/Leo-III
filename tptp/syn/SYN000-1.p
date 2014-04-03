@@ -75,4 +75,3 @@ cnf(role_negated_conjecture,negated_conjecture,
 include('Axioms/SYN000-0.ax').
 
 %------------------------------------------------------------------------------
-
