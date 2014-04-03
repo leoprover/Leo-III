@@ -6,8 +6,12 @@ import tptp._
  * Created by lex on 3/23/14.
  */
 sealed abstract class Formula
-case class Logical(formula: LogicFormula) extends Formula
-case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula
+case class Logical(formula: LogicFormula) extends Formula {
+  override def toString = formula.toString
+}
+case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula {
+  override def toString = "[" + tuple1.mkString(",") +"]" + " --> " + "[" + tuple2.mkString(",") + "]"
+}
 
 sealed abstract class LogicFormula
 case class Typed(formula: LogicFormula, typ: LogicFormula) extends LogicFormula
@@ -22,17 +26,25 @@ case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extend
 // Let omitted
 
 sealed abstract class BinaryConnective
-case object Eq extends BinaryConnective
-case object Neq extends BinaryConnective
+case object Eq extends BinaryConnective {
+  override def toString = "="
+}
+case object Neq extends BinaryConnective {
+  override def toString = "!="
+}
 case object <=> extends BinaryConnective
-case object Impl extends BinaryConnective
+case object Impl extends BinaryConnective {
+  override def toString = "=>"
+}
 case object <= extends BinaryConnective
 case object <~> extends BinaryConnective
 case object ~| extends BinaryConnective
 case object ~& extends BinaryConnective
 case object | extends BinaryConnective
 case object & extends BinaryConnective
-case object App extends BinaryConnective
+case object App extends BinaryConnective {
+  override def toString = "@"
+}
 
 sealed abstract class UnaryConnective
 case object ~ extends UnaryConnective
@@ -40,13 +52,13 @@ case object !! extends UnaryConnective
 case object ?? extends UnaryConnective
 
 sealed abstract class Quantifier
-case object All extends Quantifier  // !
-case object Exists extends Quantifier // ?
-case object Lambda extends Quantifier // ^
-case object BigPi extends Quantifier // !>
-case object BigSigma extends Quantifier // ?*
-case object Choice extends Quantifier // @+
-case object Description extends Quantifier // @-
+case object ! extends Quantifier  // All
+case object ? extends Quantifier // Exists
+case object ^ extends Quantifier // Lambda
+case object !> extends Quantifier // Big pi
+case object ?* extends Quantifier // Big sigma
+case object @+ extends Quantifier // Choice
+case object @- extends Quantifier // Description
 
 // type TopType = LogicFormula
 sealed abstract class BinaryType
