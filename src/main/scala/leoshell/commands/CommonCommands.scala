@@ -54,8 +54,6 @@ object Load extends Command {
 
   def init () = leoshell.addCommand(this)
 
-  // Stores already loaded paths
-
   /**
    * Loading a file + its includes.
    */
