@@ -67,17 +67,28 @@ object FormulaHandle {
   }
 
   def addFormulaString(s : String) {
-    addFormula(TPTP.parseFormula(s).get)
+    TPTP.parseFormula(s) match {
+      case Some(a)  => {
+        addFormula(a)
+        println("Added '"++a++"' to the context.")
+      }
+      case None     => println("'"++s ++ "' is not a valid formula.")
+    }
     return
   }
 
   def removeFormula(name : String)  {
-    formulaMap.remove(name)
+
+    formulaMap.remove(name) match {
+      case Some((a,b))  => println("Removed '"++b.toString++"' from formula set")
+      case None         => println("There is no formula '"++name++"'\nNothing was removed.")
+    }
     return
   }
 
   def clearContext {
     formulaMap.clear()
+    println("Context cleared")
     return
   }
 
