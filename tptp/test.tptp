@@ -61,4 +61,4 @@ fof(role_hypothesis,hypothesis,(
 fof(role_conjecture,conjecture,(
     ? [X] : p(X) )).
 
-include('testdir/test2.tptp')
+include('testdir/test2.tptp').

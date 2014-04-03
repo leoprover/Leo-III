@@ -1,5 +1,5 @@
 
 thf(import_test,axiom, (= = =)).
 
-include('../testdir2/test3.tptp')
+include('../testdir2/test3.tptp').
 

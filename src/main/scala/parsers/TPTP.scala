@@ -216,7 +216,7 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   // Include directives
   def include: Parser[tptp.Commons.Include] =
-    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")" ^^ {
+    "include(" ~> singleQuoted ~ opt(",[" ~> repsep(name,",") <~"]") <~ ")." ^^ {
       case name ~ Some(names) => (name, names)
       case name ~ _           => (name, List.empty)
     }
@@ -509,8 +509,8 @@ class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
 
   def fofQuantifiedFormula: Parser[fof.Quantified] =
     folQuantifier ~ "[" ~ rep1sep(variable,",") ~ "]" ~ ":" ~ fofUnitaryFormula ^^ {
-      case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Forall,vars,matrix)
-      case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.Exists,vars,matrix)
+      case "!" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.!,vars,matrix)
+      case "?" ~ "[" ~ vars ~ "]" ~ ":" ~ matrix => fof.Quantified(fof.?,vars,matrix)
     }
   def fofUnaryFormula: Parser[fof.LogicFormula] = unaryConnective ~ fofUnitaryFormula ^^ {
     case "~" ~ formula => fof.Unary(fof.Not, formula)
