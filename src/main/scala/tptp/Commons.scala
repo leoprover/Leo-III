@@ -164,4 +164,9 @@ object Commons {
     case None => ""
     case Some((src, termList)) => "," + src.toString + ",[" + termList.mkString(",") + "]"
   }
+
+  def typedVarToString(input: (Variable,Option[Any])) = input match {
+    case (v, None) => v.toString
+    case (v, Some(typ)) => v.toString + " : " + typ.toString
+  }
 }
