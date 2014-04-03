@@ -81,9 +81,9 @@ object Load extends Command {
         parsed match {
           case None => println("Parse error in file " + fileAbs)
           case Some(x) => { x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
-                            x.getIncludes.foreach(x => loadRelative(x._1, path))
                             println("Loaded " + fileAbs)
-                            leoshell.loadedSet.add(fileAbs)}
+                            leoshell.loadedSet.add(fileAbs)
+                            x.getIncludes.foreach(x => loadRelative(x._1, path))}
         }
         source.close()
       } catch { case ex : FileNotFoundException => println("'" + fileAbs + "' does not exist.")}
