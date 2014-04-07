@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.leo</groupId>
   <artifactId>leo-iii</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0</version>
   <packaging>jar</packaging>
   <name>leo-iii</name>
   <inceptionYear>2007</inceptionYear>
