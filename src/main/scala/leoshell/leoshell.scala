@@ -6,6 +6,7 @@ import tptp.Commons.{AnnotatedFormula => Formula}
 import scala.io.Source
 import scala.collection.mutable
 import commands._
+import scala.tools.nsc.interpreter.ILoop
 
 /**
  * Interface for the leo shell to use the functions of leoIII
@@ -22,6 +23,8 @@ package object leoshell {
    */
   val loadedSet : mutable.Set[String] = new mutable.HashSet[String]()
 
+  var console : ILoop = null
+
   // For the help Text to align
   var longestName : Int = 0
 
@@ -36,7 +39,7 @@ package object leoshell {
   /**
    * If smth has to be done
    */
-  def init {
+  def init (console : ILoop) {
     Help.init()
     Info.init()
     Context.init()
@@ -45,6 +48,7 @@ package object leoshell {
     Get.init()
     Clear.init()
     Remove.init()
+    this.console = console
   }
 
   def addCommand(c : Command) {

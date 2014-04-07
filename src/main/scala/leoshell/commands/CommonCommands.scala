@@ -5,6 +5,8 @@ import parsers._
 import leoshell._
 import scala.collection.mutable
 import java.io.FileNotFoundException
+import scala.tools.jline.Terminal
+
 
 /**
  * Help Command
@@ -136,10 +138,14 @@ object Context extends Command {
 
   val maxNameSize = 20
   val maxRoleSize = 20
-  val maxFormulaSize = 100
-  val maxSize = maxNameSize + maxRoleSize + maxFormulaSize + 4
+
+
 
   def context = {
+    var maxSize = scala.tools.jline.TerminalFactory.get().getWidth()
+    maxSize = if (maxSize > 60) maxSize else 60
+    println("Window Size : " + maxSize)
+    val maxFormulaSize = maxSize - maxNameSize - maxRoleSize - 6
     println("Name" + " "*(maxNameSize-4) + " | Role" + " "*(maxRoleSize-4) + " | Formula")
     println("-"*maxSize)
     FormulaHandle.formulaMap.foreach(x => {
