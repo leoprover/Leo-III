@@ -3,6 +3,8 @@ package parsers
 import util.parsing.combinator._
 import tptp._
 import scala.Some
+import util.parsing.input.CharArrayReader.EofCh
+import scala.util.parsing.combinator.lexical.Lexical
 
 /**
  * Provides a parsing interface for TPTP files and single formulae.
@@ -29,6 +31,159 @@ object TPTP {
   //def parseTFA(input: String): Option[TFA] = parser.exec(input, parser.tfaFormula)
 
   val parser = new TPTPParser
+}
+
+class TPTPLexer extends Lexical with TPTPTokens {
+  override def token = (
+      singleQuoted
+    | distinctObject
+    | dollarWord
+    | dollarDollarWord
+    | upperWord
+    | acceptSeq("include".toList)         ^^^ Include
+    | acceptSeq("fof".toList)             ^^^ FOF
+    | acceptSeq("cnf".toList)             ^^^ CNF
+    | acceptSeq("thf".toList)             ^^^ THF
+    | acceptSeq("tff".toList)             ^^^ TFF
+    | acceptSeq("tpi".toList)             ^^^ TPI
+    | lowerWord
+    | integer
+    | real
+    | rational
+    | '*'                                 ^^^ Star
+    | '+'                                 ^^^ Plus
+    | '-'                                 ^^^ Minus
+    | '@'                                 ^^^ Application
+    | '^'                                 ^^^ Lambda
+    | '('                                 ^^^ LeftParenthesis
+    | ')'                                 ^^^ RightParenthesis
+    | '['                                 ^^^ LeftBracket
+    | ']'                                 ^^^ RightBracket
+    | ','                                 ^^^ Comma
+    | '.'                                 ^^^ Dot
+    | ':'                                 ^^^ Colon
+    | '?'                                 ^^^ Questionmark
+    // BEGIN The Order of these tokens should not be altered
+    | '<' ~ '=' ~ '>'                     ^^^ Leftrightarrow
+    | '<' ~ '='                           ^^^ Leftarrow
+    | '=' ~ '>'                           ^^^ Rightarrow
+    | '<' ~ '~' ~ '>'                     ^^^ Leftrighttildearrow
+    | '<'                                 ^^^ LessSign
+    | '~' ~ '|'                           ^^^ TildePipe
+    | '~' ~ '&'                           ^^^ TildeAmpersand
+    | '~'                                 ^^^ Tilde
+    | '|'                                 ^^^ VLine
+    | '&'                                 ^^^ Ampersand
+    | '>'                                 ^^^ Arrow
+    | '!' ~ '='                           ^^^ NotEquals
+    | '!'                                 ^^^ Exclamationmark
+    | '='                                 ^^^ Equals
+    // END
+    | EofCh                               ^^^ EOF
+    | failure ("unexcepted character")
+  )
+
+  /**
+   * Symbols that are to be ignored if on top-level
+   */
+  override def whitespace: Parser[Any] = rep(
+      whitespaceChar
+    | '/' ~ '*' ~ commentBlock
+    | '%' ~ rep( chrExcept(EofCh, '\n'))
+    | '/' ~ '*' ~ failure("Lexer error: Unclosed comment block")
+  )
+
+  protected def commentBlock: Parser[Any] = (
+      '*' ~ '/' ^^ { case _ =>' ' }
+    | chrExcept(EofCh) ~ commentBlock
+  )
+
+  def singleQuoted: Parser[SingleQuoted] = (
+    '\'' ~ rep1(sqChar) ~ '\'' ^^ {case '\'' ~ content ~ '\'' => SingleQuoted(content.mkString(""))}
+  )
+  protected def sqChar = chrExcept('\'', '\\', '\n', EofCh) | '\\' ~ '\'' ^^ { case '\\' ~ '\'' => "\\'"}
+
+  def distinctObject: Parser[DistinctObject] = (
+    '\"' ~ rep(doChar) ~ '\"' ^^ {case '\"' ~ content ~ '\"' => DistinctObject(content.mkString(""))}
+    )
+  protected def doChar = chrExcept('\"', '\\', '\n', EofCh) | '\\' ~ '\"' ^^ { case '\\' ~ '\"' => "\\\""}
+
+  def dollarWord: Parser[DollarWord] = '$' ~ lowerWord ^^ {case '$' ~ word => DollarWord('$' + word.data)}
+  def dollarDollarWord: Parser[DollarDollarWord] = '$' ~ '$' ~ lowerWord ^^ {case '$' ~ '$' ~ word => DollarDollarWord("$$" + word.data)}
+
+
+  protected def lowerWord: Parser[LowerWord] = elem("lowerword", _.isLower) ~ rep(letter | digit) ^^ {
+    case start ~ rest => LowerWord(start :: rest mkString "")
+  }
+  protected def upperWord: Parser[UpperWord] = elem("upperword", _.isUpper) ~ rep(letter | digit) ^^ {
+    case start ~ rest => UpperWord(start :: rest mkString "")
+  }
+
+  protected def integer: Parser[Integer] = ???
+
+  protected def rational: Parser[Rational] = ???
+
+  protected def real: Parser[Real] = ???
+
+
+}
+
+trait TPTPTokens extends token.Tokens {
+  case class SingleQuoted(data: String) extends Token
+  case class DistinctObject(data: String) extends Token
+  case class DollarWord(data: String) extends Token
+  case class DollarDollarWord(data: String) extends Token
+  case class UpperWord(data: String) extends Token
+  case class LowerWord(data: String) extends Token
+
+  // %----Tokens used in syntax, and cannot be character classes
+  case object VLine extends Token
+  case object Star extends Token
+  case object Plus extends Token
+  case object Minus extends Token
+  case object Arrow extends Token
+  case object LessSign extends Token
+
+  case object Application extends Token
+  case object Lambda extends Token
+
+  // Keywords
+  case object FOF extends Token
+  case object CNF extends Token
+  case object THF extends Token
+  case object TFF extends Token
+  case object TPI extends Token
+  case object Include extends Token
+
+  // Punctuation
+  case object LeftParenthesis extends Token
+  case object RightParenthesis extends Token
+  case object LeftBracket extends Token
+  case object RightBracket extends Token
+  case object Comma extends Token
+  case object Dot extends Token
+  case object Colon extends Token
+
+  // Operators
+  case object Exclamationmark extends Token
+  case object Questionmark extends Token
+  case object Tilde extends Token
+  case object Ampersand extends Token
+  case object Leftrightarrow extends Token
+  case object Rightarrow extends Token
+  case object Leftarrow extends Token
+  case object Leftrighttildearrow extends Token
+  case object TildePipe extends Token
+  case object TildeAmpersand extends Token
+
+  // Predicates
+  case object Equals extends Token
+  case object NotEquals extends Token
+
+  // %----Numbers. Signs are made part of the same token here.
+  case class Real(value: Double) extends Token
+  case class Rational(value: (Integer, Integer)) extends Token
+  case class Integer(value: Int) extends Token
 }
 
 class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
