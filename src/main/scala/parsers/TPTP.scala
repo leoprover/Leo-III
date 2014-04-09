@@ -140,7 +140,6 @@ class TPTPLexer extends Lexical with TPTPTokens {
     case _ ~ v => Real(v)
   }
 
-
   protected def fraction: Parser[Double] = unsignedInteger ~ '.' ~ digit ~ rep(digit) ^^ {
     case i ~ '.' ~ d0 ~ ds => (i.toString ++ "." ++ (d0 :: ds).mkString("")).toDouble
   }
@@ -149,65 +148,148 @@ class TPTPLexer extends Lexical with TPTPTokens {
     case (i: Int) ~ _ ~ exp => (i.toString ++ "e" ++ exp.toString).toDouble
     case (d: Double) ~ _ ~ exp => (d.toString ++ "e" ++ exp.toString).toDouble
   }
-
 }
 
 trait TPTPTokens extends token.Tokens {
-  case class SingleQuoted(data: String) extends Token
-  case class DistinctObject(data: String) extends Token
-  case class DollarWord(data: String) extends Token
-  case class DollarDollarWord(data: String) extends Token
-  case class UpperWord(data: String) extends Token
-  case class LowerWord(data: String) extends Token
+  case class SingleQuoted(data: String) extends Token {
+    override def chars = "'" + data + "'"
+  }
+  case class DistinctObject(data: String) extends Token {
+    override def chars = "\"" + data + "\""
+  }
+  case class DollarWord(data: String) extends Token {
+    override def chars = data
+  }
+  case class DollarDollarWord(data: String) extends Token {
+    override def chars = data
+  }
+  case class UpperWord(data: String) extends Token {
+    override def chars = data
+  }
+  case class LowerWord(data: String) extends Token {
+    override def chars = data
+  }
 
   // %----Tokens used in syntax, and cannot be character classes
-  case object VLine extends Token
-  case object Star extends Token
-  case object Plus extends Token
-  case object Minus extends Token
-  case object Arrow extends Token
-  case object LessSign extends Token
+  case object VLine extends Token {
+    override def chars = "|"
+  }
+  case object Star extends Token {
+    override def chars = "*"
+  }
+  case object Plus extends Token {
+    override def chars = "+"
+  }
+  case object Minus extends Token {
+    override def chars = "-"
+  }
+  case object Arrow extends Token {
+    override def chars = ">"
+  }
+  case object LessSign extends Token {
+    override def chars = "<"
+  }
 
-  case object Application extends Token
-  case object Lambda extends Token
+  case object Application extends Token {
+    override def chars = "@"
+  }
+  case object Lambda extends Token {
+    override def chars = "^"
+  }
 
   // Keywords
-  case object FOF extends Token
-  case object CNF extends Token
-  case object THF extends Token
-  case object TFF extends Token
-  case object TPI extends Token
-  case object Include extends Token
+  case object FOF extends Token {
+    override def chars = "fof"
+  }
+  case object CNF extends Token {
+    override def chars = "cnf"
+  }
+  case object THF extends Token {
+    override def chars = "thf"
+  }
+  case object TFF extends Token {
+    override def chars = "tff"
+  }
+  case object TPI extends Token {
+    override def chars = "tpi"
+  }
+  case object Include extends Token {
+    override def chars = "include"
+  }
 
   // Punctuation
-  case object LeftParenthesis extends Token
-  case object RightParenthesis extends Token
-  case object LeftBracket extends Token
-  case object RightBracket extends Token
-  case object Comma extends Token
-  case object Dot extends Token
-  case object Colon extends Token
+  case object LeftParenthesis extends Token {
+    override def chars = "("
+  }
+  case object RightParenthesis extends Token {
+    override def chars = ")"
+  }
+  case object LeftBracket extends Token {
+    override def chars = "["
+  }
+  case object RightBracket extends Token {
+    override def chars = "]"
+  }
+  case object Comma extends Token {
+    override def chars = ","
+  }
+  case object Dot extends Token {
+    override def chars = "."
+  }
+  case object Colon extends Token {
+    override def chars = ":"
+  }
 
   // Operators
-  case object Exclamationmark extends Token
-  case object Questionmark extends Token
-  case object Tilde extends Token
-  case object Ampersand extends Token
-  case object Leftrightarrow extends Token
-  case object Rightarrow extends Token
-  case object Leftarrow extends Token
-  case object Leftrighttildearrow extends Token
-  case object TildePipe extends Token
-  case object TildeAmpersand extends Token
+  case object Exclamationmark extends Token {
+    override def chars = "!"
+  }
+  case object Questionmark extends Token {
+    override def chars = "?"
+  }
+  case object Tilde extends Token {
+    override def chars = "~"
+  }
+  case object Ampersand extends Token {
+    override def chars = "&"
+  }
+  case object Leftrightarrow extends Token {
+    override def chars = "<=>"
+  }
+  case object Rightarrow extends Token {
+    override def chars = "=>"
+  }
+  case object Leftarrow extends Token {
+    override def chars = "<="
+  }
+  case object Leftrighttildearrow extends Token {
+    override def chars = "<~>"
+  }
+  case object TildePipe extends Token {
+    override def chars = "~|"
+  }
+  case object TildeAmpersand extends Token {
+    override def chars = "~&"
+  }
 
   // Predicates
-  case object Equals extends Token
-  case object NotEquals extends Token
+  case object Equals extends Token {
+    override def chars = "="
+  }
+  case object NotEquals extends Token {
+    override def chars = "!="
+  }
 
   // %----Numbers. Signs are made part of the same token here.
-  case class Real(value: Double) extends Token
-  case class Rational(p: Int, q: Int) extends Token
-  case class Integer(value: Int) extends Token
+  case class Real(value: Double) extends Token {
+    override def chars = value.toString
+  }
+  case class Rational(p: Int, q: Int) extends Token {
+    override def chars = p.toString + "/" + q.toString
+  }
+  case class Integer(value: Int) extends Token {
+    override def chars = value.toString
+  }
 }
 
 class TPTPParser extends PExec with PackratParsers with JavaTokenParsers {
