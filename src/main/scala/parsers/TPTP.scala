@@ -47,9 +47,9 @@ class TPTPLexer extends Lexical with TPTPTokens {
     | acceptSeq("tff".toList)             ^^^ TFF
     | acceptSeq("tpi".toList)             ^^^ TPI
     | lowerWord
-    | integer
     | real
     | rational
+    | integer
     | '*'                                 ^^^ Star
     | '+'                                 ^^^ Plus
     | '-'                                 ^^^ Minus
@@ -112,19 +112,43 @@ class TPTPLexer extends Lexical with TPTPTokens {
   def dollarDollarWord: Parser[DollarDollarWord] = '$' ~ '$' ~ lowerWord ^^ {case '$' ~ '$' ~ word => DollarDollarWord("$$" + word.data)}
 
 
-  protected def lowerWord: Parser[LowerWord] = elem("lowerword", _.isLower) ~ rep(letter | digit) ^^ {
+  def lowerWord: Parser[LowerWord] = elem("lowerword", _.isLower) ~ rep(letter | digit) ^^ {
     case start ~ rest => LowerWord(start :: rest mkString "")
   }
-  protected def upperWord: Parser[UpperWord] = elem("upperword", _.isUpper) ~ rep(letter | digit) ^^ {
+  def upperWord: Parser[UpperWord] = elem("upperword", _.isUpper) ~ rep(letter | digit) ^^ {
     case start ~ rest => UpperWord(start :: rest mkString "")
   }
 
-  protected def integer: Parser[Integer] = ???
+  def integer: Parser[Integer] =
+    opt(elem('+') | elem('-')) ~ unsignedInteger ^^ {
+      case Some('-') ~ i => Integer(-i)
+      case _         ~ i => Integer(i)
+  }
 
-  protected def rational: Parser[Rational] = ???
+  def unsignedInteger: Parser[Int] = digit ~ rep(digit) ^^ {
+    case d0 ~ ds => (d0 :: ds).mkString("").toInt
+  }
 
-  protected def real: Parser[Real] = ???
+  def rational: Parser[Rational] = opt(elem('+') | elem('-')) ~ unsignedInteger ~ '/' ~ unsignedInteger ^^ {
+    //case _         ~ _ ~ '/' ~ 0 => failure ("Division by zero not allowed")
+    case Some('-') ~ p ~ '/' ~ q => Rational(-p,q)
+    case _         ~ p ~ '/' ~ q => Rational(p,q)
+  }
 
+  def real: Parser[Real] = opt(elem('+') | elem('-')) ~ (fraction | exponent) ^^ {
+    case Some('-') ~ v => Real(-v)
+    case _ ~ v => Real(v)
+  }
+
+
+  protected def fraction: Parser[Double] = unsignedInteger ~ '.' ~ digit ~ rep(digit) ^^ {
+    case i ~ '.' ~ d0 ~ ds => (i.toString ++ "." ++ (d0 :: ds).mkString("")).toDouble
+  }
+
+  protected def exponent: Parser[Double] = (unsignedInteger | fraction) ~ (elem('E') | elem('e')) ~ integer ^^ {
+    case (i: Int) ~ _ ~ exp => (i.toString ++ "e" ++ exp.toString).toDouble
+    case (d: Double) ~ _ ~ exp => (d.toString ++ "e" ++ exp.toString).toDouble
+  }
 
 }
 
@@ -182,7 +206,7 @@ trait TPTPTokens extends token.Tokens {
 
   // %----Numbers. Signs are made part of the same token here.
   case class Real(value: Double) extends Token
-  case class Rational(value: (Integer, Integer)) extends Token
+  case class Rational(p: Int, q: Int) extends Token
   case class Integer(value: Int) extends Token
 }
 
