@@ -57,7 +57,7 @@ class LeoILoop extends ILoop {
     intp.beQuietDuring {
 
       MyIntp.init(this)
-      MyIntp.commandList.foreach{case (_,c) => intp.interpret(c.initText)}
+      MyIntp.commandList.foreach{case (_,c) => c.initText.foreach(intp.interpret(_))}
       intp.interpret("def exit = sys.exit(0)")
     }
       super.loop()

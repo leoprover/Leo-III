@@ -48,6 +48,8 @@ package object leoshell {
     Get.init()
     Clear.init()
     Remove.init()
+    Parse.init()
+    Normalize.init()
     this.console = console
   }
 

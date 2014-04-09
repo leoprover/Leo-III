@@ -44,3 +44,16 @@ abstract class AbstractNormalize extends Normalize {
   def apply(formula : AnnotatedFormula) : AnnotatedFormula = if (applicable(formula)) normalize(formula) else formula
 
 }
+
+/**
+ * For testing a first Object, that turns every Input into $true
+ */
+object NoneSenseSimplify extends AbstractNormalize {
+  def applicable (formula : AnnotatedFormula) : Boolean = true
+
+  def normalize(formula : AnnotatedFormula) : AnnotatedFormula = formula match {
+    case FOFAnnotated(name, role, _, anno) => FOFAnnotated(name, role, tptp.fof.Logical(tptp.fof.Atomic(tptp.Commons.DefinedPlain(tptp.Commons.DefinedFunc("$true", List())))), anno)
+    case TPIAnnotated(name, role, _, anno) => FOFAnnotated(name, role, tptp.fof.Logical(tptp.fof.Atomic(tptp.Commons.DefinedPlain(tptp.Commons.DefinedFunc("$true", List())))), anno)
+    case _  => println("error, not yet implemented"); null
+  }
+}
