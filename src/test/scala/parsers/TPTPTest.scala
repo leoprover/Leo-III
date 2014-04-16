@@ -7,8 +7,7 @@ import parsers.syntactical.TPTPParsers
  */
 object TPTPTest {
   def main(args: Array[String]) {
-    tokensOf(syn000power2)
-    // testruns
+    testruns
   }
 
   def testruns {
