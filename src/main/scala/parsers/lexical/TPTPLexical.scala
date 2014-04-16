@@ -80,10 +80,10 @@ class TPTPLexical extends Scanners with TPTPTokens {
   def dollarDollarWord: Parser[DollarDollarWord] = '$' ~ '$' ~ lowerWord ^^ {case '$' ~ '$' ~ word => DollarDollarWord("$$" + word.data)}
 
 
-  def lowerWord: Parser[LowerWord] = elem("lowerword", _.isLower) ~ rep(letter | digit) ^^ {
+  def lowerWord: Parser[LowerWord] = elem("lowerword", _.isLower) ~ rep(letter | digit | elem('_')) ^^ {
     case start ~ rest => LowerWord(start :: rest mkString "")
   }
-  def upperWord: Parser[UpperWord] = elem("upperword", _.isUpper) ~ rep(letter | digit) ^^ {
+  def upperWord: Parser[UpperWord] = elem("upperword", _.isUpper) ~ rep(letter | digit | elem('_')) ^^ {
     case start ~ rest => UpperWord(start :: rest mkString "")
   }
 
