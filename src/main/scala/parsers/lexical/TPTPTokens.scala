@@ -133,8 +133,8 @@ trait TPTPTokens extends Tokens {
   }
 
   // %----Numbers. Signs are made part of the same token here.
-  case class Real(value: Double) extends Token {
-    override def chars = value.toString
+  case class Real(coeff: Double, exp: Int) extends Token {
+    override def chars = coeff.toString + "e" + exp.toString
   }
   case class Rational(p: Int, q: Int) extends Token {
     override def chars = p.toString + "/" + q.toString

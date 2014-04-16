@@ -262,7 +262,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def atomicSystemWord: Parser[String] = elem("Dollar Dollar word", _.isInstanceOf[DollarDollarWord]) ^^ {_.chars}
   def number: Parser[Double] = (
       elem("Integer", _.isInstanceOf[Integer]) ^^ {_.asInstanceOf[Integer].value.toDouble}
-    | elem("Real", _.isInstanceOf[Real]) ^^ {_.asInstanceOf[Real].value}
+    | elem("Real", _.isInstanceOf[Real]) ^^ {x => (x.asInstanceOf[Real].coeff.toString + "E" + x.asInstanceOf[Real].exp.toString).toDouble}
     | elem("Rational", _.isInstanceOf[Rational]) ^^ {x => (x.asInstanceOf[Rational]).p / (x.asInstanceOf[Rational]).q}
   )
 
@@ -300,8 +300,8 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   )
 
   lazy val thfApplyFormula: PackratParser[thf.Binary] = (
-        thfUnitaryFormula ~ elem(Lambda) ~ thfUnitaryFormula ^^ {case left ~ _ ~ right => thf.Binary(left, thf.App, right)}
-    ||| thfApplyFormula ~ elem(Lambda) ~ thfUnitaryFormula   ^^ {case left ~ _ ~ right => thf.Binary(left, thf.App, right)}
+        thfUnitaryFormula ~ elem(Application) ~ thfUnitaryFormula ^^ {case left ~ _ ~ right => thf.Binary(left, thf.App, right)}
+    ||| thfApplyFormula ~ elem(Application) ~ thfUnitaryFormula   ^^ {case left ~ _ ~ right => thf.Binary(left, thf.App, right)}
   )
 
   def thfUnitaryFormula: Parser[thf.LogicFormula] = (

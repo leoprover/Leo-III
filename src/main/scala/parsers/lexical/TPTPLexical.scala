@@ -10,6 +10,9 @@ class TPTPLexical extends Scanners with TPTPTokens {
       | distinctObject
       | dollarWord
       | dollarDollarWord
+      | real
+      | rational
+      | integer
       | upperWord
       | acceptSeq("include".toList)         ^^^ Include
       | acceptSeq("fof".toList)             ^^^ FOF
@@ -18,9 +21,6 @@ class TPTPLexical extends Scanners with TPTPTokens {
       | acceptSeq("tff".toList)             ^^^ TFF
       | acceptSeq("tpi".toList)             ^^^ TPI
       | lowerWord
-      | real
-      | rational
-      | integer
       | '*'                                 ^^^ Star
       | '+'                                 ^^^ Plus
       | '-'                                 ^^^ Minus
@@ -69,12 +69,20 @@ class TPTPLexical extends Scanners with TPTPTokens {
   def singleQuoted: Parser[SingleQuoted] =
     '\'' ~ rep1(sqChar) ~ '\'' ^^ {case '\'' ~ content ~ '\'' => SingleQuoted(content.mkString(""))}
 
-  protected def sqChar = chrExcept('\'', '\\', '\n', EofCh) | '\\' ~ '\'' ^^ { case '\\' ~ '\'' => "\\'"}
+  protected def sqChar = (
+      chrExcept('\'', '\\', '\n', EofCh)
+    | '\\' ~ '\'' ^^ { case '\\' ~ '\'' => "'"}
+    | '\\' ~ '\\' ^^ { case '\\' ~ '\\' => "\\"}
+  )
 
   def distinctObject: Parser[DistinctObject] =
     '\"' ~ rep(doChar) ~ '\"' ^^ {case '\"' ~ content ~ '\"' => DistinctObject(content.mkString(""))}
 
-  protected def doChar = chrExcept('\"', '\\', '\n', EofCh) | '\\' ~ '\"' ^^ { case '\\' ~ '\"' => "\\\""}
+  protected def doChar = (
+      chrExcept('\"', '\\', '\n', EofCh)
+    | '\\' ~ '\"' ^^ { case '\\' ~ '\"' => "\""}
+    | '\\' ~ '\\' ^^ { case '\\' ~ '\\' => "\\"}
+  )
 
   def dollarWord: Parser[DollarWord] = '$' ~ lowerWord ^^ {case '$' ~ word => DollarWord('$' + word.data)}
   def dollarDollarWord: Parser[DollarDollarWord] = '$' ~ '$' ~ lowerWord ^^ {case '$' ~ '$' ~ word => DollarDollarWord("$$" + word.data)}
@@ -103,18 +111,18 @@ class TPTPLexical extends Scanners with TPTPTokens {
     case _         ~ p ~ '/' ~ q => Rational(p,q)
   }
 
-  def real: Parser[Real] = opt(elem('+') | elem('-')) ~ (fraction | exponent) ^^ {
-    case Some('-') ~ v => Real(-v)
-    case _ ~ v => Real(v)
+  def real: Parser[Real] = opt(elem('+') | elem('-')) ~ (exponent ||| fraction) ^^ {
+    case Some('-') ~ v => Real(-v.coeff, v.exp)
+    case _ ~ v => v
   }
 
-  protected def fraction: Parser[Double] = unsignedInteger ~ '.' ~ digit ~ rep(digit) ^^ {
-    case i ~ '.' ~ d0 ~ ds => (i.toString ++ "." ++ (d0 :: ds).mkString("")).toDouble
+  protected def fraction: Parser[Real] = unsignedInteger ~ '.' ~ digit ~ rep(digit) ^^ {
+    case i ~ '.' ~ d0 ~ ds => Real((i.toString ++ "." ++ (d0 :: ds).mkString("")).toDouble, 1)
   }
 
-  protected def exponent: Parser[Double] = (unsignedInteger | fraction) ~ (elem('E') | elem('e')) ~ integer ^^ {
-    case (i: Int) ~ _ ~ exp => (i.toString ++ "e" ++ exp.toString).toDouble
-    case (d: Double) ~ _ ~ exp => (d.toString ++ "e" ++ exp.toString).toDouble
+  protected def exponent: Parser[Real] = (unsignedInteger ||| fraction) ~ (elem('E') | elem('e')) ~ integer ^^ {
+    case (i: Int) ~ _ ~ exp => Real(i, exp.value)
+    case (d: Real) ~ _ ~ exp => Real(d.coeff, exp.value)
   }
 
   /** A character-parser that matches a digit (and returns it).*/
