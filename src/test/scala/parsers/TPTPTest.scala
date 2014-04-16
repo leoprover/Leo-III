@@ -1,11 +1,18 @@
 package parsers
 
+import parsers.syntactical.TPTPParsers
+
 /**
  * Created by lex on 3/25/14.
  */
-object TPTPTest extends TPTPParser {
+object TPTPTest {
   def main(args: Array[String]) {
-/*
+    tokensOf(syn000power2)
+    // testruns
+  }
+
+  def testruns {
+
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -19,7 +26,7 @@ object TPTPTest extends TPTPParser {
 
     // THF
     println("#### Test on syn000power2 ####")
-    runTestOn(syn000power2)*/
+    runTestOn(syn000power2)
 
     // TFF
     println("#### Test on ari022Eq1 ####")
@@ -29,16 +36,33 @@ object TPTPTest extends TPTPParser {
     runTestOn(ari175Eq1)
   }
 
+  def tokensOf(input: String) {
+    val parser = new TPTPParsers
+    println(input)
+    var tokenstream = parser.tokens(input)
+
+        while (!tokenstream.atEnd) {
+          println(tokenstream.first)
+          tokenstream = tokenstream.rest
+        }
+
+  }
+
   def runTestOn(input: String) {
     val result = TPTP.parseFile(input)
-      println("Includes:" + result.get.getIncludeCount)
-      println(result.get.getIncludes)
-      println("Formulae:" + result.get.getFormulaeCount)
-      println(result.get.getFormulae)
-      println("")
-      println("Complete parse output:")
-      println(result)
-      println()
+    result match {
+      case Left(x) => println("Error:" + x)
+      case Right(x) => {
+        println("Includes:" + x.getIncludeCount)
+        println(x.getIncludes)
+        println("Formulae:" + x.getFormulaeCount)
+        println(x.getFormulae)
+        println("")
+        println("Complete parse output:")
+        println(x)
+        println()
+      }
+    }
   }
 
   /// Inputs
@@ -46,8 +70,8 @@ object TPTPTest extends TPTPParser {
   // CNF
   val includeTest: String =
     """
-      |include('test')
-      |include('test2',['asd','asd2'])
+      |include('test').
+      |include('test2',['asd','asd2']).
       |
       |cnf(b_definition,axiom,
       |    ( apply(apply(apply(b,X),Y),Z) = apply(X,apply(Y,Z)) )).
