@@ -15,6 +15,10 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     phrase(parser)(tokens)
   }
 
+  def tokens(input: String) = {
+    new lexical.Scanner(input)
+  }
+
   import lexical._
 
   //  Files
@@ -30,23 +34,23 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     tpiAnnotated ||| thfAnnotated ||| tffAnnotated ||| fofAnnotated ||| cnfAnnotated
 
   def tpiAnnotated: Parser[Commons.TPIAnnotated] =
-    elem(TPI) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ fofFormula ~ annotations <~ elem(LeftParenthesis) ~ elem(Dot)  ^^ {
+    (elem(TPI) ~ elem(LeftParenthesis)) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ fofFormula ~ annotations <~ elem(RightParenthesis) ~ elem(Dot)  ^^ {
       case name ~ role ~ formula ~ annotations => Commons.TPIAnnotated(name,role,formula,annotations)
     }
   def thfAnnotated: Parser[Commons.THFAnnotated] =
-    elem(THF) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ thfFormula ~ annotations <~ elem(LeftParenthesis) ~ elem(Dot)  ^^ {
+    (elem(THF) ~ elem(LeftParenthesis)) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ thfFormula ~ annotations <~ elem(RightParenthesis) ~ elem(Dot)  ^^ {
       case name ~ role ~ formula ~ annotations => Commons.THFAnnotated(name,role,formula,annotations)
     }
   def tffAnnotated: Parser[Commons.TFFAnnotated] =
-    elem(TFF) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ tffFormula ~ annotations <~ elem(LeftParenthesis) ~ elem(Dot)  ^^ {
+    (elem(TFF) ~ elem(LeftParenthesis)) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ tffFormula ~ annotations <~ elem(RightParenthesis) ~ elem(Dot)  ^^ {
       case name ~ role ~ formula ~ annotations => Commons.TFFAnnotated(name,role,formula,annotations)
     }
   def fofAnnotated: Parser[Commons.FOFAnnotated] =
-    elem(FOF) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ fofFormula ~ annotations <~ elem(LeftParenthesis) ~ elem(Dot)  ^^ {
+    (elem(FOF) ~ elem(LeftParenthesis)) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ fofFormula ~ annotations <~ elem(RightParenthesis) ~ elem(Dot)  ^^ {
       case name ~ role ~ formula ~ annotations => Commons.FOFAnnotated(name,role,formula,annotations)
     }
   def cnfAnnotated: Parser[Commons.CNFAnnotated] =
-    elem(CNF) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ cnfFormula ~ annotations <~ elem(LeftParenthesis) ~ elem(Dot)  ^^ {
+    (elem(CNF) ~ elem(LeftParenthesis)) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ cnfFormula ~ annotations <~ elem(RightParenthesis) ~ elem(Dot)  ^^ {
       case name ~ role ~ formula ~ annotations => Commons.CNFAnnotated(name,role,formula,annotations)
     }
 
