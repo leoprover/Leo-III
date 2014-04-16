@@ -77,8 +77,8 @@ object Load extends Command {
         val parsed = TPTP.parseFile(input)
 
         parsed match {
-          case None => println("Parse error in file " + fileAbs)
-          case Some(x) => { x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
+          case Left(x) => println("Parse error in file " + fileAbs + ": " + x)
+          case Right(x) => { x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
                             println("Loaded " + fileAbs)
                             leoshell.loadedSet.add(fileAbs)
                             x.getIncludes.foreach(x => loadRelative(x._1, path))}
