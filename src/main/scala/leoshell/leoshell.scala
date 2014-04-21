@@ -68,11 +68,11 @@ object FormulaHandle {
 
   def addFormulaString(s : String) {
     TPTP.parseFormula(s) match {
-      case Some(a)  => {
+      case Right(a)  => {
         addFormula(a)
         println("Added '"++a.toString++"' to the context.")
       }
-      case None     => println("'"++s ++ "' is not a valid formula.")
+      case Left(err) => println("'"++s ++ "' is not a valid formula: " + err)
     }
     return
   }

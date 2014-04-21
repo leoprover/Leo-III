@@ -5,6 +5,7 @@ import parsers._
 import leoshell._
 import scala.collection.mutable
 import java.io.FileNotFoundException
+import scala.util.parsing.input.CharArrayReader
 
 /**
  * Help Command
@@ -72,8 +73,7 @@ object Load extends Command {
     if (!leoshell.loadedSet.contains(fileAbs)) {
       try {
         val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-        val input = (source.getLines()).mkString("\n") ++ "\n"
-
+        lazy val input = new CharArrayReader(source.toArray)
         val parsed = TPTP.parseFile(input)
 
         parsed match {
