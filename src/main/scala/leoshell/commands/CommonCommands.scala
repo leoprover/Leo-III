@@ -1,11 +1,13 @@
 package leoshell.commands
 
-import tptp._
+
 import parsers._
 import leoshell._
-import scala.collection.mutable
 import java.io.FileNotFoundException
+
 import scala.util.parsing.input.CharArrayReader
+import tptp.Commons.AnnotatedFormula
+import normalization.{Simplification, NoneSenseSimplify}
 
 /**
  * Help Command
@@ -15,7 +17,7 @@ object Help extends Command {
   val name = "help"
   val infoText = "Shows a list of commands to leoIII"
   val helpText = "Shows this list"
-  val initText = "def " + name + " = commands.Help.help"
+  val initText = List("def " + name + " = commands.Help.help")
 
   def init () = leoshell.addCommand(this)
 
@@ -36,7 +38,7 @@ object Info extends Command {
   val name = "info"
   val infoText = "Displays a more detailed description of a command"
   val helpText = "Displays info to a specific command"
-  val initText = "def " + name + "(ask : String) = commands.Info.info(ask)"
+  val initText = List("def " + name + "(ask : String) = commands.Info.info(ask)")
 
   def init () = leoshell.addCommand(this)
 
@@ -51,7 +53,7 @@ object Load extends Command {
   val name = "load"
   val infoText = "Given a filename, the file is loaded and then parse into the TPTP format."
   val helpText = "Loads a tptp file and saves the formulas in the context"
-  val initText = "def " + name + " (file : String) = commands.Load.load(file)"
+  val initText = List("def " + name + " (file : String) = commands.Load.load(file)")
 
   def init () = leoshell.addCommand(this)
 
@@ -106,20 +108,23 @@ object Load extends Command {
 
 object Add extends Command {
   val name = "add"
-  val infoText = "Adds an annotated formula in tptp syntax to the current context."
+  val infoText = "Adds either a AnnotatedFormula or a string in tptp Syntax to the context."
   val helpText = "Adds a formula."
-  val initText = "def " + name + " (f : String) = commands.Add.add(f)"
+  val initText = List("def " + name + " (f : String) = commands.Add.add(f)",
+                      "def "+ name +" (f : tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
 
   def init () = leoshell.addCommand(this)
 
   def add(s: String) = FormulaHandle.addFormulaString(s)
+
+  def add(s : tptp.Commons.AnnotatedFormula) = FormulaHandle.addFormula(s)
 }
 
 object Get extends Command {
   val name = "get"
   val infoText = "Returns the formula with the given name in the context."
   val helpText = "Shows a specific formula"
-  val initText = "def " + name + " (s : String) = commands.Get.get(s)"
+  val initText = List("def " + name + " (s : String) = commands.Get.get(s)")
 
   def init () = leoshell.addCommand(this)
 
@@ -130,16 +135,20 @@ object Context extends Command {
   val name = "context"
   val infoText = "Shows all forumlas in the current context."
   val helpText = "Lists all formulas"
-  val initText = "def " + name + " = commands.Context.context"
+  val initText = List("def " + name + " = commands.Context.context")
 
   def init () = leoshell.addCommand(this)
 
   val maxNameSize = 20
   val maxRoleSize = 20
-  val maxFormulaSize = 100
-  val maxSize = maxNameSize + maxRoleSize + maxFormulaSize + 4
+
+
 
   def context = {
+    var maxSize = scala.tools.jline.TerminalFactory.get().getWidth()
+    maxSize = if (maxSize > 60) maxSize else 60
+    println("Window Size : " + maxSize)
+    val maxFormulaSize = maxSize - maxNameSize - maxRoleSize - 6
     println("Name" + " "*(maxNameSize-4) + " | Role" + " "*(maxRoleSize-4) + " | Formula")
     println("-"*maxSize)
     FormulaHandle.formulaMap.foreach(x => {
@@ -162,7 +171,7 @@ object Clear extends Command {
   val name = "clear"
   val infoText = "Deletes all formulas from the current context."
   val helpText = "Clears the context"
-  val initText = "def " + name + " = commands.Clear.clear"
+  val initText = List("def " + name + " = commands.Clear.clear")
 
   def init () = leoshell.addCommand(this)
 
@@ -176,9 +185,45 @@ object Remove extends Command {
   val name = "rm"
   val infoText = "Deletes a formula by name from the context"
   val helpText = "Removes a formula"
-  val initText = "def " + name + " (s : String) = commands.Remove.rm(s)"
+  val initText = List("def " + name + " (s : String) = commands.Remove.rm(s)")
 
   def init () = leoshell.addCommand(this)
 
   def rm(s: String) = FormulaHandle.removeFormula(s)
+}
+
+object Parse extends Command {
+  val name = "parse"
+  val infoText = "Takes a String in tptp Syntax and returns a Formula, if the Syntax is correct or null otherwise"
+  val helpText = "Parses a string in tptp syntax"
+  val initText = List("def " + name + "(s : String) : tptp.Commons.AnnotatedFormula = commands.Parse.parse(s)")
+
+  def init() = leoshell.addCommand(this)
+
+  def parse(s : String) : tptp.Commons.AnnotatedFormula = {
+    parsers.TPTP.parseFormula(s) match {
+      case Right(x) => x
+      case Left(err)   => {
+        println("The formula `"+ s +"` is malformed:" + err)
+        return null
+      }
+    }
+  }
+}
+
+/**
+ * Heavier for syntactic sugar
+ */
+object Normalize extends Command{
+  val name = "normalize"
+  val infoText = "Applies a normalization algorithm to the given argument. At the" +
+    "moment the algorithms are\nsimplify\ntoTrue"
+  val helpText = "Applies different normalization schemes"
+  val initText = List("import commands.{Normalize => "+name+"}")
+
+  def init() = leoshell.addCommand(this)
+
+  def simplify(f : AnnotatedFormula) : AnnotatedFormula = Simplification(f)
+
+  def toTrue(f : AnnotatedFormula) : AnnotatedFormula = NoneSenseSimplify(f)
 }

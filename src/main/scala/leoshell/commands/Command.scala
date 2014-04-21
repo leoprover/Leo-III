@@ -24,7 +24,7 @@ package leoshell.commands
     /**
      * Text for initializing it in the shell
      */
-    val initText: String
+    val initText: List[String]
 
     /**
      * Initializes the object for starting issues

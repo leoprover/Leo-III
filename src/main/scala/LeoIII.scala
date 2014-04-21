@@ -56,10 +56,10 @@ class LeoILoop extends ILoop {
     // Calling the interpreter loop
     intp.beQuietDuring {
 
-      MyIntp.init
-      MyIntp.commandList.foreach{case (_,c) => intp.interpret(c.initText)}
-      intp.interpret("def exit = sys.exit()")
+      MyIntp.init(this)
+      MyIntp.commandList.foreach{case (_,c) => c.initText.foreach(intp.interpret(_))}
+      intp.interpret("def exit = sys.exit(0)")
     }
-    super.loop()
+      super.loop()
   }
 }
