@@ -4,6 +4,7 @@ import tptp._
 import parsers.lexical._
 import scala.util.parsing.combinator.syntactical.TokenParsers
 import scala.util.parsing.combinator.PackratParsers
+import scala.util.parsing.input.Reader
 
 class TPTPParsers extends TokenParsers with PackratParsers {
   type Tokens = TPTPTokens
@@ -15,7 +16,16 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     phrase(parser)(tokens)
   }
 
+  def parse[Target](input: Reader[Char], parser: Parser[Target]) = {
+    val tokens = new lexical.Scanner(input)
+    phrase(parser)(tokens)
+  }
+
   def tokens(input: String) = {
+    new lexical.Scanner(input)
+  }
+
+  def tokens(input: Reader[Char]) = {
     new lexical.Scanner(input)
   }
 
@@ -24,14 +34,14 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   //  Files
   def tptpFile: Parser[Commons.TPTPInput] = rep(tptpInput) ^^ {tptp.Commons.TPTPInput(_)}
 
-  def tptpInput: Parser[Either[Commons.AnnotatedFormula, Commons.Include]] = (annotatedFormula ||| include) ^^ {
+  def tptpInput: Parser[Either[Commons.AnnotatedFormula, Commons.Include]] = (annotatedFormula | include) ^^ {
     case e1: Commons.AnnotatedFormula => Left(e1)
     case e2: Commons.Include  => Right(e2)
   }
 
   // Formula records
   def annotatedFormula: Parser[Commons.AnnotatedFormula] =
-    tpiAnnotated ||| thfAnnotated ||| tffAnnotated ||| fofAnnotated ||| cnfAnnotated
+    tpiAnnotated | thfAnnotated | tffAnnotated | fofAnnotated | cnfAnnotated
 
   def tpiAnnotated: Parser[Commons.TPIAnnotated] =
     (elem(TPI) ~ elem(LeftParenthesis)) ~> name ~ (elem(Comma) ~> formulaRole <~ elem(Comma)) ~ fofFormula ~ annotations <~ elem(RightParenthesis) ~ elem(Dot)  ^^ {
@@ -146,16 +156,16 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def systemAtomicFormula: Parser[Commons.SystemPlain] = systemTerm ^^ {Commons.SystemPlain(_)}
 
   // First-order terms
-  def term: Parser[Commons.Term] = functionTerm |||
-    variable ^^ {Commons.Var(_)} |||
-    conditionalTerm |||
+  def term: Parser[Commons.Term] = functionTerm |
+    variable ^^ {Commons.Var(_)} |
+    conditionalTerm |
     letTerm
 
   def functionTerm: Parser[Commons.Term] =
-    plainTerm |||
-    definedPlainTerm |||
-    systemTerm |||
-    number ^^ {Commons.Number(_)} |||
+    plainTerm |
+    definedPlainTerm |
+    systemTerm |
+    number ^^ {Commons.Number(_)} |
     elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => Commons.Distinct(x.chars)}
 
   def plainTerm: Parser[Commons.Func] =
@@ -204,8 +214,8 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     (elem(Include) ~ elem(LeftParenthesis)) ~> elem("Single quoted", _.isInstanceOf[SingleQuoted])
       ~ opt((elem(Comma) ~ elem(LeftBracket)) ~> repsep(name,elem(Comma)) <~ elem(RightBracket))
       <~ (elem(RightParenthesis) ~ elem(Dot)) ^^ {
-        case SingleQuoted(data) ~ Some(names) => (data.substring(1,data.length-1), names)
-        case SingleQuoted(data) ~ _           => (data.substring(1,data.length-1), List.empty)
+        case SingleQuoted(data) ~ Some(names) => (data, names)
+        case SingleQuoted(data) ~ _           => (data, List.empty)
     }
   )
   // Non-logical data (GeneralTerm, General data)
@@ -217,11 +227,11 @@ class TPTPParsers extends TokenParsers with PackratParsers {
 
   def generalData: Parser[tptp.Commons.GeneralData] = (
         atomicWord                                              ^^ {tptp.Commons.GWord(_)}
-    ||| generalFunction
-    ||| variable                                                ^^ {tptp.Commons.GVar(_)}
-    ||| number                                                  ^^ {tptp.Commons.GNumber(_)}
-    ||| elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => tptp.Commons.GDistinct(x.chars)}
-    ||| formulaData                                             ^^ {tptp.Commons.GFormulaData(_)}
+    | generalFunction
+    | variable                                                ^^ {tptp.Commons.GVar(_)}
+    | number                                                  ^^ {tptp.Commons.GNumber(_)}
+    | elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => tptp.Commons.GDistinct(x.chars)}
+    | formulaData                                             ^^ {tptp.Commons.GFormulaData(_)}
   )
 
   def generalFunction: Parser[tptp.Commons.GFunc] =
@@ -274,7 +284,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def thfFormula: Parser[thf.Formula] = thfLogicFormula ^^ {thf.Logical(_)} | thfSequent
   def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula ||| thfUnitaryFormula |||
       thfTypeFormula ||| thfSubtype
-  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair ||| thfBinaryTuple ||| thfBinaryType ^^ {thf.BinType(_)}
+  def thfBinaryFormula:Parser[thf.LogicFormula] = thfBinaryPair | thfBinaryTuple | thfBinaryType ^^ {thf.BinType(_)}
 
   def thfBinaryPair:Parser[thf.Binary] = thfUnitaryFormula ~ thfPairConnective ~ thfUnitaryFormula ^^ {
     case left ~ Equals         ~ right => thf.Binary(left, thf.Eq,right)
@@ -389,7 +399,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   /**
    * TFF BNFs
    */
-  def tffFormula: Parser[tff.Formula] = tffLogicFormula ^^ {tff.Logical(_)} ||| tffTypedAtom ||| tffSequent
+  def tffFormula: Parser[tff.Formula] = tffLogicFormula ^^ {tff.Logical(_)} | tffTypedAtom | tffSequent
 
   def tffLogicFormula: Parser[tff.LogicFormula] = tffBinaryFormula | tffUnitaryFormula
   def tffBinaryFormula: Parser[tff.Binary] = tffBinaryNonAssoc | tffBinaryAssoc
@@ -536,7 +546,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   /**
    * FOF BNFs
    */
-  def fofFormula: Parser[fof.Formula] = fofLogicFormula ^^ {fof.Logical(_)} ||| fofSequent
+  def fofFormula: Parser[fof.Formula] = fofLogicFormula ^^ {fof.Logical(_)} | fofSequent
 
   def fofLogicFormula: Parser[fof.LogicFormula] = fofBinaryFormula ||| fofUnitaryFormula
 

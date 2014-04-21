@@ -2,6 +2,7 @@ package parsers
 
 import tptp._
 import syntactical.TPTPParsers
+import scala.util.parsing.input.Reader
 
 /**
  * Provides a parsing interface for TPTP files and single formulae.
@@ -17,15 +18,16 @@ object TPTP {
    * @return A representation of the in file in [[Commons.TPTPInput]] format
    */
     def parseFile(input: String)= extract(parser.parse(input, parser.tptpFile))
-  //
-    def parseFormula(input: String): Option[Commons.AnnotatedFormula] = ??? //  parser.exec(input, parser.annotatedFormula)
+    def parseFile(input: Reader[Char])= extract(parser.parse(input, parser.tptpFile))
 
-  //  def parseFOF(input: String): Option[Commons.FOFAnnotated] = parser.exec(input, parser.fofAnnotated)
-  //  def parseTHF(input: String): Option[Commons.THFAnnotated] = parser.exec(input, parser.thfAnnotated)
-  //  def parseTFF(input: String): Option[Commons.TFFAnnotated] = parser.exec(input, parser.tffAnnotated)
-  //  def parseCNF(input: String): Option[Commons.CNFAnnotated] = parser.exec(input, parser.cnfAnnotated)
-  //  def parseTPI(input: String): Option[Commons.TPIAnnotated] = parser.exec(input, parser.tpiAnnotated)
-  //def parseTFA(input: String): Option[TFA] = parser.exec(input, parser.tfaFormula)
+    def parseFormula(input: String) = extract(parser.parse(input, parser.annotatedFormula))
+
+    def parseFOF(input: String) = extract(parser.parse(input, parser.fofAnnotated))
+    def parseTHF(input: String) = extract(parser.parse(input, parser.thfAnnotated))
+    def parseTFF(input: String) = extract(parser.parse(input, parser.tffAnnotated))
+    def parseCNF(input: String) = extract(parser.parse(input, parser.cnfAnnotated))
+    def parseTPI(input: String) = extract(parser.parse(input, parser.tpiAnnotated))
+//    def parseTFA(input: String) = parser.exec(input, parser.tfaFormula)
 
   protected def extract[T](res: parser.ParseResult[T]): Either[String, T] = {
     res match {
