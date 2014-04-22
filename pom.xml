@@ -31,6 +31,11 @@
       <name>Scala-Tools Maven2 Repository</name>
       <url>http://scala-tools.org/repo-releases</url>
     </pluginRepository>
+   <pluginRepository>
+      <id>sonatype.org</id>
+      <name>OSS Sonatype Repository</name>
+      <url>http://oss.sonatype.org</url>
+   </pluginRepository>
   </pluginRepositories>  
 
   <dependencies>
@@ -57,15 +62,53 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>3.8.1</version>
+      <version>4.8.1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.scalatest</groupId>
+      <artifactId>scalatest_2.10</artifactId>
+      <version>2.1.0</version>
+      <scope>test</scope>
+   </dependency>
   </dependencies>
   
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
     <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
+
+      <!-- Disable Surefire to use scalatest -->
+      <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-surefire-plugin</artifactId>
+         <version>2.7</version>
+         <configuration>
+            <skipTests>true</skipTests>
+         </configuration>
+      </plugin>
+
+      <!-- Enable scalatest -->
+      <plugin>
+         <groupId>org.scalatest</groupId>
+         <artifactId>scalatest-maven-plugin</artifactId>
+         <version>1.0-RC1</version>
+         <configuration>
+            <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory> <!-- So Maven can Display it good -->
+            <junitxml>.</junitxml>
+            <filereports>WDF TestSuite.txt</filereports>
+         </configuration>
+         <executions>
+            <execution>
+               <id>test</id>
+               <goals>
+                  <goal>test</goal>
+               </goals>
+            </execution> 
+         </executions>
+      </plugin>
+
+      <!-- Copmilieren von Code und Tests -->
       <plugin>
         <groupId>org.scala-tools</groupId>
         <artifactId>maven-scala-plugin</artifactId>
@@ -73,9 +116,7 @@
           <execution>
             <goals>
               <goal>compile</goal>
-              <!-- <goal>testCompile</goal> 
-                  Comment in to do JUnit tests
-                  -->
+              <goal>testCompile</goal> 
             </goals>
           </execution>
         </executions>
@@ -83,6 +124,7 @@
           <scalaVersion>${scala.version}</scalaVersion>
         </configuration>
       </plugin>
+
       <!--
          Executable jar
       -->
