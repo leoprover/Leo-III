@@ -39,7 +39,13 @@ case class Subtype(left: String, right: String) extends LogicFormula {
 case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extends LogicFormula{
   override def toString = "$ite_f(" + List(cond,thn,els).mkString(",") + ")"
 }
-// Let omitted
+
+case class Let(binding: LetBinding, in: Formula) extends LogicFormula {
+  override def toString = binding match {
+    case _:TermBinding => "$let_tf(" + List(binding,in).mkString(",") + ")"
+    case _:FormulaBinding => "$let_ff(" + List(binding,in).mkString(",") + ")"
+  }
+}
 
 sealed abstract class BinaryConnective
 case object Eq extends BinaryConnective {
@@ -88,3 +94,10 @@ case class +(t: List[LogicFormula]) extends BinaryType {
   override def toString = "(" + t.mkString(" + ") + ")"
 }
 
+sealed abstract class LetBinding
+case class FormulaBinding(binding: Quantified) extends LetBinding {
+  override def toString = binding.toString
+}
+case class TermBinding(binding: Quantified) extends LetBinding {
+  override def toString = binding.toString
+}

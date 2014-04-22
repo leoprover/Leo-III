@@ -156,9 +156,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def systemAtomicFormula: Parser[Commons.SystemPlain] = systemTerm ^^ {Commons.SystemPlain(_)}
 
   // First-order terms
-  def term: Parser[Commons.Term] = functionTerm |
-    variable ^^ {Commons.Var(_)} |
-    conditionalTerm |
+  def term: Parser[Commons.Term] = functionTerm |||
+    variable ^^ {Commons.Var(_)} |||
+    conditionalTerm |||
     letTerm
 
   def functionTerm: Parser[Commons.Term] =
@@ -194,11 +194,16 @@ class TPTPParsers extends TokenParsers with PackratParsers {
       tffLogicFormula ~ elem(Comma) ~ term ~ elem(Comma) ~ term <~ elem(RightParenthesis) ^^ {
         case formula ~ _ ~ thn ~ _ ~ els => Commons.Cond(formula,thn,els)
     }
-  def letTerm: Parser[Commons.Let] =
-    (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_ft"))(_ => "Error in Let Term") ~ elem(LeftParenthesis)) ~>
-      (tffLetFormulaDefn ||| tffLetTermDefn) ~ elem(Comma) ~ term <~ elem(RightParenthesis) ^^ {
-        case lets ~ _ ~ in => Commons.Let(lets,in)
-    }
+  def letTerm: Parser[Commons.Let] = (
+      (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_ft"))(_ => "Error in Let Term") ~ elem(LeftParenthesis)) ~>
+        tffLetFormulaDefn ~ elem(Comma) ~ term <~ elem(RightParenthesis) ^^ {
+         case lets ~ _ ~ in => Commons.Let(lets,in)
+        }
+    | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_tt"))(_ => "Error in Let Term") ~ elem(LeftParenthesis)) ~>
+        tffLetTermDefn ~ elem(Comma) ~ term <~ elem(RightParenthesis) ^^ {
+          case lets ~ _ ~ in => Commons.Let(lets,in)
+        }
+    )
 
   // Formula sources and infos
   def source: Parser[Commons.GeneralTerm] = generalTerm
@@ -226,12 +231,12 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   )
 
   def generalData: Parser[tptp.Commons.GeneralData] = (
-        atomicWord                                              ^^ {tptp.Commons.GWord(_)}
-    | generalFunction
-    | variable                                                ^^ {tptp.Commons.GVar(_)}
-    | number                                                  ^^ {tptp.Commons.GNumber(_)}
-    | elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => tptp.Commons.GDistinct(x.chars)}
-    | formulaData                                             ^^ {tptp.Commons.GFormulaData(_)}
+      atomicWord                                              ^^ {tptp.Commons.GWord(_)}
+    ||| generalFunction
+    ||| variable                                                ^^ {tptp.Commons.GVar(_)}
+    ||| number                                                  ^^ {tptp.Commons.GNumber(_)}
+    ||| elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => tptp.Commons.GDistinct(x.chars)}
+    ||| formulaData                                             ^^ {tptp.Commons.GFormulaData(_)}
   )
 
   def generalFunction: Parser[tptp.Commons.GFunc] =
@@ -317,8 +322,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def thfUnitaryFormula: Parser[thf.LogicFormula] = (
       thfQuantifiedFormula
     | thfUnaryFormula
-    | thfAtom
+    | thfLet
     | thfConditional
+    | thfAtom
     | elem(LeftParenthesis) ~> thfLogicFormula <~ elem(RightParenthesis)
   )
 
@@ -354,6 +360,17 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     ~> thfLogicFormula ~ elem(Comma) ~ thfLogicFormula ~ elem(Comma) ~ thfLogicFormula  <~ elem(RightParenthesis) ^^ {
     case cond ~ _ ~ thn ~ _ ~ els => thf.Cond(cond,thn,els)
   }
+  )
+  //<thf_let_term_defn>,<thf_formula>)
+  def thfLet: Parser[thf.Let] = (
+      (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_tf"))(_ => "Error in thfLet") ~ elem(LeftParenthesis)) ~>
+        thfQuantifiedFormula ~ elem(Comma) ~ thfFormula <~ elem(RightParenthesis) ^^ {
+          case let ~ _ ~ in => thf.Let(thf.TermBinding(let), in)
+        }
+    | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_ff"))(_ => "Error in thfLet") ~ elem(LeftParenthesis)) ~>
+        thfQuantifiedFormula ~ elem(Comma) ~ thfFormula <~ elem(RightParenthesis) ^^ {
+        case let ~ _ ~ in => thf.Let(thf.FormulaBinding(let), in)
+      }
   )
 
   def thfTypeFormula: Parser[thf.Typed] = thfTypeableFormula ~ elem(Colon) ~ thfTopLevelType ^^ {
@@ -427,9 +444,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def tffUnitaryFormula: Parser[tff.LogicFormula] = (
       tffQuantifiedFormula
     | tffUnaryFormula
-    | atomicFormula ^^ {tff.Atomic(_)}
     | tffConditional
     | tffLet
+    | atomicFormula ^^ {tff.Atomic(_)}
     | elem(LeftParenthesis) ~> tffLogicFormula <~ elem(RightParenthesis)
   )
 
@@ -460,7 +477,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
       tffLetTermDefn ~ elem(Comma) ~ tffFormula <~ elem(RightParenthesis) ^^ {
         case lets ~ _ ~ in => tff.Let(lets, in)
       }
-    | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_ff"))(_ => "Error in tffLet") ~ elem(LeftParenthesis)) ~>
+    ||| (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_ff"))(_ => "Error in tffLet") ~ elem(LeftParenthesis)) ~>
       tffLetFormulaDefn ~ elem(Comma) ~ tffFormula <~ elem(RightParenthesis) ^^ {
         case lets ~ _ ~ in => tff.Let(lets, in)
       }
@@ -486,8 +503,8 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   )
 
   def tffLetFormulaBinding: Parser[tff.Atomic ~ tff.LogicFormula] = (
-      atomicFormula ~ elem(Equals) ~ tffUnitaryFormula ^^ {case left ~ _ ~ right => this.~(tff.Atomic(left),right)}
-    | elem(LeftParenthesis) ~> tffLetFormulaBinding <~ elem(RightParenthesis)
+      atomicFormula ~ elem(Leftrightarrow) ~ tffUnitaryFormula ^^ {case left ~ _ ~ right => this.~(tff.Atomic(left),right)}
+    ||| elem(LeftParenthesis) ~> tffLetFormulaBinding <~ elem(RightParenthesis)
   )
 
   def tffSequent: Parser[tff.Sequent] = (
@@ -497,17 +514,18 @@ class TPTPParsers extends TokenParsers with PackratParsers {
 
   def tffTuple: Parser[List[tff.LogicFormula]] = repsep(tffLogicFormula, elem(Comma))
 
-  def tffTypedAtom: Parser[tff.TypedAtom] = tffUntypedAtom ~ elem(Colon) ~ tffTopLevelType ^^ {
-    case atom ~ _ ~ typ => tff.TypedAtom(atom, typ)
-  }
+  def tffTypedAtom: Parser[tff.TypedAtom] = (
+      tffUntypedAtom ~ elem(Colon) ~ tffTopLevelType ^^ {case atom ~ _ ~ typ => tff.TypedAtom(atom, typ)}
+    | elem(LeftParenthesis) ~> tffTypedAtom <~ elem(RightParenthesis)
+  )
 
   def tffUntypedAtom: Parser[String] = atomicWord | atomicSystemWord
 
   def tffTopLevelType: Parser[tff.Type] = (
       tffAtomicType
-    | tffMappingType
-    | tffQuantifiedType
-    | elem(LeftParenthesis) ~> tffTopLevelType <~ elem(RightParenthesis)
+    ||| tffMappingType
+    ||| tffQuantifiedType
+    ||| elem(LeftParenthesis) ~> tffTopLevelType <~ elem(RightParenthesis)
   )
 
   def tffQuantifiedType: Parser[tff.QuantifiedType] =
