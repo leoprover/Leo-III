@@ -6,10 +6,25 @@ import scala.util.parsing.combinator.syntactical.TokenParsers
 import scala.util.parsing.combinator.PackratParsers
 import scala.util.parsing.input.Reader
 
+/**
+ * This class offers several (token) parser combinators for parsing TPTP problems,
+ * including complete fof, cnf, tff, thf and tpi expressions as described by
+ * [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html]].
+ * The `parse` method can be used to parse an input with respect to the
+ * given combinator.
+ * E.g., a complete tptp file can be parsed using the `tptpInput` combinator.
+ *
+ * @author Alexander Steen
+ * @since April 2014
+ * @see [[parsers.lexical.TPTPLexical]]  for the associated Scanner declaration
+ * @see [[tptp]] for the data structures the parser generates
+ * @note Last update on 22.04.2014
+ */
 class TPTPParsers extends TokenParsers with PackratParsers {
   type Tokens = TPTPTokens
   val lexical = new TPTPLexical
 
+  /** Methods for parsing and tokenizing whole input streams */
 
   def parse[Target](input: String, parser: Parser[Target]) = {
     val tokens = new lexical.Scanner(input)
@@ -29,7 +44,18 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     new lexical.Scanner(input)
   }
 
+  // From here on the combinators are implemented according to the syntax bnf declaration
+  // from http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html
+  // (Almost) each single bnf rule is reflected by a combinator declaration, where the name is adjusted
+  // to camelCase format. Where possible, several rules are contracted to a single rule.
+
+  // A Packratparser is used when the bnf is left-recursive, such as in `thfOrFormula` and many other.
+
   import lexical._
+
+  /////////////////////////////////////
+  // General combinators
+  /////////////////////////////////////
 
   //  Files
   def tptpFile: Parser[Commons.TPTPInput] = rep(tptpInput) ^^ {tptp.Commons.TPTPInput(_)}
@@ -283,9 +309,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
 
   def fileName: Parser[String] = elem("single quoted", _.isInstanceOf[SingleQuoted]) ^^ {_.chars}
 
-  /**
-   * THF BNFs
-   */
+  //////////////////////////////////////
+  // Rules for THF formulae
+  //////////////////////////////////////
   def thfFormula: Parser[thf.Formula] = thfLogicFormula ^^ {thf.Logical(_)} | thfSequent
   def thfLogicFormula: Parser[thf.LogicFormula] = thfBinaryFormula ||| thfUnitaryFormula |||
       thfTypeFormula ||| thfSubtype
@@ -361,7 +387,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     case cond ~ _ ~ thn ~ _ ~ els => thf.Cond(cond,thn,els)
   }
   )
-  //<thf_let_term_defn>,<thf_formula>)
+
   def thfLet: Parser[thf.Let] = (
       (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$let_tf"))(_ => "Error in thfLet") ~ elem(LeftParenthesis)) ~>
         thfQuantifiedFormula ~ elem(Comma) ~ thfFormula <~ elem(RightParenthesis) ^^ {
@@ -413,9 +439,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
 
   def thfTuple: Parser[List[thf.LogicFormula]] = repsep(thfLogicFormula, elem(Comma))
 
-  /**
-   * TFF BNFs
-   */
+  //////////////////////////////////////
+  // Rules for TFF formulae
+  //////////////////////////////////////
   def tffFormula: Parser[tff.Formula] = tffLogicFormula ^^ {tff.Logical(_)} | tffTypedAtom | tffSequent
 
   def tffLogicFormula: Parser[tff.LogicFormula] = tffBinaryFormula | tffUnitaryFormula
@@ -561,9 +587,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     ||| tffXProdType   ~ elem(Star) ~ tffAtomicType ^^ {case l ~ _ ~ r => tff.*(l.t ++ List(r))}
   )
 
-  /**
-   * FOF BNFs
-   */
+  //////////////////////////////////////
+  // Rules for FOF formulae
+  //////////////////////////////////////
   def fofFormula: Parser[fof.Formula] = fofLogicFormula ^^ {fof.Logical(_)} | fofSequent
 
   def fofLogicFormula: Parser[fof.LogicFormula] = fofBinaryFormula ||| fofUnitaryFormula
@@ -615,9 +641,9 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def fofTuple: Parser[List[fof.LogicFormula]] =
     elem(LeftBracket) ~> repsep(fofLogicFormula, elem(Comma)) <~ elem(RightBracket)
 
-  /**
-   * CNF formula BNFs
-   */
+  //////////////////////////////////////
+  // Rules for CNF formulae
+  //////////////////////////////////////
   def cnfFormula: Parser[cnf.Formula] = (
         (elem(LeftParenthesis) ~> disjunction <~ elem(RightParenthesis)
     ||| disjunction) ^^ {cnf.Formula(_)}
@@ -634,4 +660,3 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     ||| folInfixUnary                ^^ {case left ~ right => cnf.Inequality(left,right)}
   )
 }
-

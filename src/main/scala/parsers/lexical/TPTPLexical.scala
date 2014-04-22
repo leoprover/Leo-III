@@ -1,10 +1,10 @@
 package parsers.lexical
 
-import scala.util.parsing.combinator.lexical.{Scanners, Lexical}
+import scala.util.parsing.combinator.lexical.Lexical
 import scala.util.parsing.input.CharArrayReader._
 import scala.Some
 
-class TPTPLexical extends Scanners with TPTPTokens {
+class TPTPLexical extends Lexical with TPTPTokens {
   def token = (
     singleQuoted
       | distinctObject
@@ -124,16 +124,4 @@ class TPTPLexical extends Scanners with TPTPTokens {
     case (i: Int) ~ _ ~ exp => Real(i, exp.value)
     case (d: Real) ~ _ ~ exp => Real(d.coeff, exp.value)
   }
-
-  /** A character-parser that matches a digit (and returns it).*/
-  def digit = elem("digit", _.isDigit)
-
-  /** A character-parser that matches any character except the ones given in `cs` (and returns it).*/
-  def chrExcept(cs: Char*) = elem("", ch => (cs forall (ch != _)))
-
-  /** A character-parser that matches a white-space character (and returns it).*/
-  def whitespaceChar = elem("space char", ch => ch <= ' ' && ch != EofCh)
-
-  /** A character-parser that matches a letter (and returns it).*/
-  def letter = elem("letter", _.isLetter)
 }
