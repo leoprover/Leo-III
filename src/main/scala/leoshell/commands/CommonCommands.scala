@@ -1,13 +1,13 @@
 package leoshell.commands
 
-import tptp._
+
 import parsers._
 import leoshell._
-import scala.collection.mutable
 import java.io.FileNotFoundException
-import scala.tools.jline.Terminal
-import tptp.Commons.AnnotatedFormula
 
+import scala.util.parsing.input.CharArrayReader
+import tptp.Commons.AnnotatedFormula
+import normalization.{Simplification, NoneSenseSimplify}
 
 /**
  * Help Command
@@ -75,8 +75,7 @@ object Load extends Command {
     if (!leoshell.loadedSet.contains(fileAbs)) {
       try {
         val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-        val input = (source.getLines()).mkString("\n") ++ "\n"
-
+        lazy val input = new CharArrayReader(source.toArray)
         val parsed = TPTP.parseFile(input)
 
         parsed match {
@@ -203,9 +202,9 @@ object Parse extends Command {
 
   def parse(s : String) : tptp.Commons.AnnotatedFormula = {
     parsers.TPTP.parseFormula(s) match {
-      case Some(x) => x
-      case None   => {
-        println("The formula `"+ s +"` is malformed.")
+      case Right(x) => x
+      case Left(err)   => {
+        println("The formula `"+ s +"` is malformed:" + err)
         return null
       }
     }
@@ -224,7 +223,7 @@ object Normalize extends Command{
 
   def init() = leoshell.addCommand(this)
 
-  def simplify(f : AnnotatedFormula) : AnnotatedFormula = normalization.Simplification(f)
+  def simplify(f : AnnotatedFormula) : AnnotatedFormula = Simplification(f)
 
-  def toTrue(f : AnnotatedFormula) : AnnotatedFormula = normalization.NoneSenseSimplify(f)
+  def toTrue(f : AnnotatedFormula) : AnnotatedFormula = NoneSenseSimplify(f)
 }
