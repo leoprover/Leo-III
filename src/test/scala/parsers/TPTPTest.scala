@@ -1,13 +1,16 @@
 package parsers
 
 import parsers.syntactical.TPTPParsers
+import scala.util.parsing.input.CharArrayReader
+import scala.util.parsing.input.Reader
 
 /**
  * Created by lex on 3/25/14.
  */
 object TPTPTest {
   def main(args: Array[String]) {
-    testruns
+//    testruns
+    fileTests
   }
 
   def testruns {
@@ -35,6 +38,27 @@ object TPTPTest {
     runTestOn(ari175Eq1)
   }
 
+  def fileTest(file: String) {
+    val source = scala.io.Source.fromFile(file, "utf-8")
+    lazy val input = new CharArrayReader(source.toArray)
+    val parser = new TPTPParsers
+    println(parser.parse(input, parser.tptpFile))
+  }
+
+  def fileTests {
+    import java.nio.file.{Files, Path}
+    val files = new java.io.File("./tptp/syn").listFiles.filter(_.getName.endsWith(".p"))
+    for (f <- files) {
+      val source = scala.io.Source.fromFile(f, "utf-8")
+      lazy val input = new CharArrayReader(source.toArray)
+      val parsed = TPTP.parseFile(input)
+      println("Result of " + f.getName + ": "+ parsed)
+    }
+  }
+
+  def tokensOf(input: Reader[Char]) {
+    tokensOf(input.source.toString)
+  }
   def tokensOf(input: String) {
     val parser = new TPTPParsers
     println(input)
@@ -237,5 +261,75 @@ object TPTPTest {
     """
       |tff(co1,conjecture,(
       |    ? [U: $int,V: $int] : $sum($product(3,U),$product(5,V)) = 23 )).
+    """.stripMargin
+
+
+  val tptptest: String =
+    """
+      |
+      |%----Propositional
+      |fof(propositional,axiom,
+      |    ( ( p0
+      |      & ~ q0 )
+      |   => ( r0
+      |      | ~ s0 ) )).
+      |
+      |%----First-order
+      |fof(first_order,axiom,(
+      |    ! [X] :
+      |      ( ( p(X)
+      |        | ~ q(X,a) )
+      |     => ? [Y,Z] :
+      |          ( r(X,f(Y),g(X,f(Y),Z))
+      |          & ~ s(f(f(f(b)))) ) ) )).
+      |
+      |%----Equality
+      |fof(equality,axiom,(
+      |    ? [Y] :
+      |    ! [X,Z] :
+      |      ( f(Y) = g(X,f(Y),Z)
+      |      | f(f(f(b))) != a
+      |      | X = f(Y) ) )).
+      |
+      |%----True and false
+      |fof(true_false,axiom,
+      |    ( $true
+      |    | $false )).
+      |
+      |%----Quoted symbols
+      |fof(single_quoted,axiom,
+      |    ( 'A proposition'
+      |    | 'A predicate'(a)
+      |    | p('A constant')
+      |    | p('A function'(a))
+      |    | p('A \'quoted \\ escape\'') )).
+      |
+      |%----Connectives - seen |, &, =>, ~ already
+      |fof(useful_connectives,axiom,(
+      |    ! [X] :
+      |      ( ( p(X)
+      |       <= ~ q(X,a) )
+      |    <=> ? [Y,Z] :
+      |          ( r(X,f(Y),g(X,f(Y),Z))
+      |        <~> ~ s(f(f(f(b)))) ) ) )).
+      |
+      |%----Annotated formula names
+      |fof(123,axiom,(
+      |    ! [X] :
+      |      ( ( p(X)
+      |        | ~ q(X,a) )
+      |     => ? [Y,Z] :
+      |          ( r(X,f(Y),g(X,f(Y),Z))
+      |          & ~ s(f(f(f(b)))) ) ) )).
+      |
+      |%----Roles
+      |fof(role_hypothesis,hypothesis,(
+      |    p(h) )).
+      |
+      |fof(role_conjecture,conjecture,(
+      |    ? [X] : p(X) )).
+      |
+      |include('testdir/test2.tptp').
+      |
     """.stripMargin
 }
