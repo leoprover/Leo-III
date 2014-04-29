@@ -8,6 +8,7 @@ import java.io.FileNotFoundException
 import scala.util.parsing.input.CharArrayReader
 import tptp.Commons.AnnotatedFormula
 import normalization.{Simplification, NoneSenseSimplify}
+import blackboard.SimpleBlackboard
 
 /**
  * Help Command
@@ -80,10 +81,10 @@ object Load extends Command {
 
         parsed match {
           case Left(x) => println("Parse error in file " + fileAbs + ": " + x)
-          case Right(x) => { x.getFormulae.foreach(x => FormulaHandle.formulaMap.put(x.name, (x.role, x)))
+          case Right(x) =>  x.getFormulae.foreach(x => SimpleBlackboard.addFormula(x))
                             println("Loaded " + fileAbs)
                             leoshell.loadedSet.add(fileAbs)
-                            x.getIncludes.foreach(x => loadRelative(x._1, path))}
+                            x.getIncludes.foreach(x => loadRelative(x._1, path))
         }
         source.close()
       } catch { case ex : FileNotFoundException => println("'" + fileAbs + "' does not exist.")}
@@ -102,7 +103,7 @@ object Load extends Command {
     val relSplit  = relPath.split('/')
     var path = oldDir.take(oldDir.length - relSplit.filter(x => x == "..").length)
     path = path ++ relSplit.dropWhile(x => x == "..")
-    return (path.mkString("/"), path.init)
+    (path.mkString("/"), path.init)
   }
 }
 
@@ -115,9 +116,16 @@ object Add extends Command {
 
   def init () = leoshell.addCommand(this)
 
-  def add(s: String) = FormulaHandle.addFormulaString(s)
+  def add(s: String) = {
+    TPTP.parseFormula(s) match {
+      case Right(a) =>
+        SimpleBlackboard.addFormula(a)
+        println("Added '"++a.toString++"' to the context.")
+      case Left(err)  => println ("'"++s++"# is not a valid formula: "+err)
+    }
+  }
 
-  def add(s : tptp.Commons.AnnotatedFormula) = FormulaHandle.addFormula(s)
+  def add(s : tptp.Commons.AnnotatedFormula) = SimpleBlackboard.addFormula(s)
 }
 
 object Get extends Command {
@@ -128,7 +136,14 @@ object Get extends Command {
 
   def init () = leoshell.addCommand(this)
 
-  def get(s: String) = FormulaHandle.getFormula(s)
+  def get(s: String) = {
+    SimpleBlackboard.getFormulaByName(s) match{
+      case Some(x) => x
+      case None =>
+            println("There is no formula named '"++s++"'.")
+            null
+    }
+  }
 }
 
 object Context extends Command {
@@ -139,28 +154,27 @@ object Context extends Command {
 
   def init () = leoshell.addCommand(this)
 
-  val maxNameSize = 20
-  val maxRoleSize = 20
+  val maxNameSize = 25
+  val maxRoleSize = 15
 
 
 
   def context = {
-    var maxSize = scala.tools.jline.TerminalFactory.get().getWidth()
+    var maxSize = scala.tools.jline.TerminalFactory.get.getWidth()
     maxSize = if (maxSize > 60) maxSize else 60
-    println("Window Size : " + maxSize)
     val maxFormulaSize = maxSize - maxNameSize - maxRoleSize - 6
     println("Name" + " "*(maxNameSize-4) + " | Role" + " "*(maxRoleSize-4) + " | Formula")
     println("-"*maxSize)
-    FormulaHandle.formulaMap.foreach(x => {
-      val name = x._1.toString.take(maxNameSize)
-      val role = x._2._1.toString.take(maxRoleSize)
-      val form = x._2._2.toString
+    SimpleBlackboard.getFormulas().foreach(x => {
+      val name = x.name.toString.take(maxNameSize)
+      val role = x.role.toString.take(maxRoleSize)
+      val form = x.f.toString
       val form1 = form.take(maxFormulaSize)
       val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
       val nameOffset = maxNameSize - name.length
-      val roleOffset = maxNameSize - role.length
-      println(name + " "*nameOffset + " | " + x._2._1 + " "*roleOffset + " | " + form1)
+      val roleOffset = maxRoleSize - role.length
+      println(name + " "*nameOffset + " | " + role + " "*roleOffset + " | " + form1)
       form2.foreach(x => println(" "*maxNameSize+" | "+ " "*maxRoleSize+ " | "+ x))
     })
     println()
@@ -176,7 +190,7 @@ object Clear extends Command {
   def init () = leoshell.addCommand(this)
 
   def clear {
-    FormulaHandle.clearContext
+    SimpleBlackboard.rmAll(_ => false)
     leoshell.loadedSet.clear()
   }
 }
@@ -189,7 +203,12 @@ object Remove extends Command {
 
   def init () = leoshell.addCommand(this)
 
-  def rm(s: String) = FormulaHandle.removeFormula(s)
+  def rm(s: String) {
+    if (SimpleBlackboard.rmFormulaByName(s))
+      println("Removed "++s++" from the context.")
+    else
+      println("There was no "++s++". Removed nothing.")
+  }
 }
 
 object Parse extends Command {
@@ -203,10 +222,9 @@ object Parse extends Command {
   def parse(s : String) : tptp.Commons.AnnotatedFormula = {
     parsers.TPTP.parseFormula(s) match {
       case Right(x) => x
-      case Left(err)   => {
+      case Left(err)   =>
         println("The formula `"+ s +"` is malformed:" + err)
-        return null
-      }
+        null
     }
   }
 }

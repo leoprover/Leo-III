@@ -1,12 +1,9 @@
 package leoshell
 
-import parsers._
-import tptp._
-import tptp.Commons.{AnnotatedFormula => Formula}
-import scala.io.Source
 import scala.collection.mutable
-import commands._
 import scala.tools.nsc.interpreter.ILoop
+
+import commands._
 
 /**
  * Interface for the leo shell to use the functions of leoIII
@@ -60,44 +57,4 @@ package object leoshell {
 
 }
 
-/**
- * At the moment a bit silly but later one we will use the blackboard anyway, so from the
- * outside the access should not differ that much.
- */
-object FormulaHandle {
-  protected[leoshell] var formulaMap: mutable.HashMap[String, (String, Formula)] = new mutable.HashMap[String, (String, Formula)]()
 
-  def addFormula(f : Formula) {
-    formulaMap.put(f.name, (f.role, f))
-    return
-  }
-
-  def addFormulaString(s : String) {
-    TPTP.parseFormula(s) match {
-      case Right(a)  => {
-        addFormula(a)
-        println("Added '"++a.toString++"' to the context.")
-      }
-      case Left(err) => println("'"++s ++ "' is not a valid formula: " + err)
-    }
-    return
-  }
-
-  def removeFormula(name : String)  {
-
-    formulaMap.remove(name) match {
-      case Some((a,b))  => println("Removed '"++b.toString++"' from formula set")
-      case None         => println("There is no formula '"++name++"'\nNothing was removed.")
-    }
-    return
-  }
-
-  def clearContext {
-    formulaMap.clear()
-    println("Context cleared")
-    return
-  }
-
-  def getFormula(name: String) : Formula = formulaMap.apply(name)._2
-
-}
