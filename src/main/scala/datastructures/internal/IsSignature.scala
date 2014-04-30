@@ -3,6 +3,7 @@ package datastructures.internal
 /**
  * Interface for signature representations.
  * The signature table can contain types, variables, and constants (which may be uninterpreted symbols or defined symbols).
+ * Type variables will follow in next revision.
  *
  * @author Alexander Steen
  * @since 29.04.2014
@@ -58,7 +59,7 @@ trait IsSignature {
   }
 
 
-  /** Case class for meta information for variables that are indexed in the signature */
+  /** Case class for meta information for variables */
   case class VarMeta(name: String,
                      key: VarKey,
                      typ: Option[Type])
@@ -74,17 +75,23 @@ trait IsSignature {
       def hasType: Boolean = typ.isDefined
   }
 
-  /** Case class for meta information for (possibly uninterpreted) constant symbols that are indexed in the signature */
+  /** abstract type for meta information for (possibly uninterpreted) constant symbols */
   protected sealed abstract class ConstMeta
     extends Meta[ConstKey] {
+      /** Returns true iff the constant has a type associated with it */
       def hasType: Boolean
+      /** Returns true iff the constant has a definition term associated with it */
       def hasDefn: Boolean
 
+      /** Returns true iff the symbol is a uninterpreted symbol */
       def isUninterpreted: Boolean = getSymType == Uninterpreted
+      /** Returns true iff the symbol is a defined symbol */
       def isDefinedConstant: Boolean = getSymType == Defined
+      /** Returns true iff the symbol is a fixed (interpreted) symbol */
       def isFixed: Boolean = getSymType == Fixed
   }
 
+  /** Case class for meta information for uninterpreted symbols */
   case class UninterpretedMeta(name: String,
                                key: ConstKey,
                                typ: Type) extends ConstMeta {
@@ -95,6 +102,7 @@ trait IsSignature {
     def hasDefn = false
   }
 
+  /** Case class for meta information for defined symbols */
   case class DefinedMeta(name: String,
                          key: ConstKey,
                          typ: Option[Type],
@@ -106,6 +114,7 @@ trait IsSignature {
     def hasDefn = true
   }
 
+  /** Case class for meta information for fixed (interpreted) symbols */
   case class FixedMeta(name: String,
                        key: ConstKey,
                        typ: Type) extends ConstMeta {
@@ -116,6 +125,7 @@ trait IsSignature {
     def hasDefn = false
   }
 
+  // Comments will follow
   def addBaseType(typ: String): TypeKey
   def isBaseType(typ: String): Boolean
   def getTypeMeta(typ: String): TypeMeta
@@ -138,17 +148,19 @@ trait IsSignature {
   def addConstant_(identifier: String, defn: Term): ConstKey =
     addConstant0(identifier, None, Some(defn))
   def isDefinedSymbol(identifier: String): Boolean
+  def isFixedSymbol(identifier: String): Boolean
 
   def addUninterpreted(identifier: String, typ: Type): ConstKey =
     addConstant0(identifier, Some(typ), None)
   def isUninterpreted(identifier: String): Boolean
+
   def getConstMeta(key: ConstKey): ConstMeta
   def getConstMeta(identifier: String): ConstMeta
 
   def getBaseTypes: Set[TypeMeta]
   def getVariables: Set[VarMeta]
   def getAllConstants: Set[ConstMeta]
-  def getDefinedSymbols: Set[ConstMeta]
-  def getFixedDefinedSymbols: Set[ConstMeta]
-  def getUninterpretedSymbols: Set[ConstMeta]
+  def getDefinedSymbols: Set[DefinedMeta]
+  def getFixedDefinedSymbols: Set[FixedMeta]
+  def getUninterpretedSymbols: Set[UninterpretedMeta]
 }
