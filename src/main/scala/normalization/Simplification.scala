@@ -1,8 +1,8 @@
 package normalization
 
-import tptp.Commons._
-import tptp._
-import tptp.fof.Logical
+import datastructures.tptp.Commons._
+import datastructures.tptp._
+import datastructures.tptp.fof.Logical
 
 /**
  *

@@ -6,7 +6,7 @@ import leoshell._
 import java.io.FileNotFoundException
 
 import scala.util.parsing.input.CharArrayReader
-import tptp.Commons.AnnotatedFormula
+import datastructures.tptp.Commons.AnnotatedFormula
 import normalization.{Simplification, NoneSenseSimplify}
 
 /**
@@ -111,13 +111,13 @@ object Add extends Command {
   val infoText = "Adds either a AnnotatedFormula or a string in tptp Syntax to the context."
   val helpText = "Adds a formula."
   val initText = List("def " + name + " (f : String) = commands.Add.add(f)",
-                      "def "+ name +" (f : tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
+                      "def "+ name +" (f : datastructures.tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
 
   def init () = leoshell.addCommand(this)
 
   def add(s: String) = FormulaHandle.addFormulaString(s)
 
-  def add(s : tptp.Commons.AnnotatedFormula) = FormulaHandle.addFormula(s)
+  def add(s : datastructures.tptp.Commons.AnnotatedFormula) = FormulaHandle.addFormula(s)
 }
 
 object Get extends Command {
@@ -196,11 +196,11 @@ object Parse extends Command {
   val name = "parse"
   val infoText = "Takes a String in tptp Syntax and returns a Formula, if the Syntax is correct or null otherwise"
   val helpText = "Parses a string in tptp syntax"
-  val initText = List("def " + name + "(s : String) : tptp.Commons.AnnotatedFormula = commands.Parse.parse(s)")
+  val initText = List("def " + name + "(s : String) : datastructures.tptp.Commons.AnnotatedFormula = commands.Parse.parse(s)")
 
   def init() = leoshell.addCommand(this)
 
-  def parse(s : String) : tptp.Commons.AnnotatedFormula = {
+  def parse(s : String) : datastructures.tptp.Commons.AnnotatedFormula = {
     parsers.TPTP.parseFormula(s) match {
       case Right(x) => x
       case Left(err)   => {

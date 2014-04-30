@@ -1,6 +1,6 @@
 package parsers.syntactical
 
-import tptp._
+import datastructures.tptp._
 import parsers.lexical._
 import scala.util.parsing.combinator.syntactical.TokenParsers
 import scala.util.parsing.combinator.PackratParsers
@@ -17,7 +17,7 @@ import scala.util.parsing.input.Reader
  * @author Alexander Steen
  * @since April 2014
  * @see [[parsers.lexical.TPTPLexical]]  for the associated Scanner declaration
- * @see [[tptp]] for the data structures the parser generates
+ * @see [[datastructures.tptp]] for the data structures the parser generates
  * @note Last update on 22.04.2014
  */
 class TPTPParsers extends TokenParsers with PackratParsers {
@@ -58,7 +58,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   /////////////////////////////////////
 
   //  Files
-  def tptpFile: Parser[Commons.TPTPInput] = rep(tptpInput) ^^ {tptp.Commons.TPTPInput(_)}
+  def tptpFile: Parser[Commons.TPTPInput] = rep(tptpInput) ^^ {Commons.TPTPInput(_)}
 
   def tptpInput: Parser[Either[Commons.AnnotatedFormula, Commons.Include]] = (annotatedFormula | include) ^^ {
     case e1: Commons.AnnotatedFormula => Left(e1)
@@ -90,7 +90,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
       case name ~ role ~ formula ~ annotations => Commons.CNFAnnotated(name,role,formula,annotations)
     }
 
-  def annotations: Parser[tptp.Commons.Annotations] =
+  def annotations: Parser[datastructures.tptp.Commons.Annotations] =
     opt(elem(Comma) ~> source ~ optionalInfo) ^^ {
       case None => None
       case Some(src ~ info) => Some((src,info))
@@ -241,7 +241,7 @@ class TPTPParsers extends TokenParsers with PackratParsers {
   def usefulInfo: Parser[List[Commons.GeneralTerm]] = generalList
 
   // Include directives
-  def include: Parser[tptp.Commons.Include] = (
+  def include: Parser[datastructures.tptp.Commons.Include] = (
     (elem(Include) ~ elem(LeftParenthesis)) ~> elem("Single quoted", _.isInstanceOf[SingleQuoted])
       ~ opt((elem(Comma) ~ elem(LeftBracket)) ~> repsep(name,elem(Comma)) <~ elem(RightBracket))
       <~ (elem(RightParenthesis) ~ elem(Dot)) ^^ {
@@ -250,45 +250,45 @@ class TPTPParsers extends TokenParsers with PackratParsers {
     }
   )
   // Non-logical data (GeneralTerm, General data)
-  def generalTerm: Parser[tptp.Commons.GeneralTerm] = (
+  def generalTerm: Parser[Commons.GeneralTerm] = (
         generalList                             ^^ {x => Commons.GeneralTerm(List(Right(x)))}
     ||| generalData                             ^^ {x => Commons.GeneralTerm(List(Left(x)))}
     ||| generalData ~ elem(Colon) ~ generalTerm ^^ {case data ~ _ ~ gterm => Commons.GeneralTerm(Left(data) :: gterm.term)}
   )
 
-  def generalData: Parser[tptp.Commons.GeneralData] = (
-      atomicWord                                              ^^ {tptp.Commons.GWord(_)}
+  def generalData: Parser[Commons.GeneralData] = (
+      atomicWord                                              ^^ {Commons.GWord(_)}
     ||| generalFunction
-    ||| variable                                                ^^ {tptp.Commons.GVar(_)}
-    ||| number                                                  ^^ {tptp.Commons.GNumber(_)}
-    ||| elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => tptp.Commons.GDistinct(x.chars)}
-    ||| formulaData                                             ^^ {tptp.Commons.GFormulaData(_)}
+    ||| variable                                                ^^ {Commons.GVar(_)}
+    ||| number                                                  ^^ {Commons.GNumber(_)}
+    ||| elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => Commons.GDistinct(x.chars)}
+    ||| formulaData                                             ^^ {Commons.GFormulaData(_)}
   )
 
-  def generalFunction: Parser[tptp.Commons.GFunc] =
+  def generalFunction: Parser[Commons.GFunc] =
     atomicWord ~ elem(LeftParenthesis) ~ generalTerms ~ elem(RightParenthesis) ^^ {
-      case name ~ _ ~ args ~ _  => tptp.Commons.GFunc(name,args)
+      case name ~ _ ~ args ~ _  => Commons.GFunc(name,args)
     }
 
-  def formulaData: Parser[tptp.Commons.FormulaData] = (
+  def formulaData: Parser[Commons.FormulaData] = (
       (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$thf"))(_ => "Parse error in formulaData") ~ elem(LeftParenthesis)) ~>
-        thfFormula <~ elem(RightParenthesis) ^^ {tptp.Commons.THFData(_)}
+        thfFormula <~ elem(RightParenthesis) ^^ {Commons.THFData(_)}
     | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$tff"))(_ => "Parse error in formulaData") ~ elem(LeftParenthesis)) ~>
-        tffFormula <~ elem(RightParenthesis) ^^ {tptp.Commons.TFFData(_)}
+        tffFormula <~ elem(RightParenthesis) ^^ {Commons.TFFData(_)}
     | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$fof"))(_ => "Parse error in formulaData") ~ elem(LeftParenthesis)) ~>
-        fofFormula <~ elem(RightParenthesis) ^^ {tptp.Commons.FOFData(_)}
+        fofFormula <~ elem(RightParenthesis) ^^ {Commons.FOFData(_)}
     | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$cnf"))(_ => "Parse error in formulaData") ~ elem(LeftParenthesis)) ~>
-        cnfFormula <~ elem(RightParenthesis) ^^ {tptp.Commons.CNFData(_)}
+        cnfFormula <~ elem(RightParenthesis) ^^ {Commons.CNFData(_)}
     | (acceptIf(x => x.isInstanceOf[DollarWord] && x.chars.equals("$fot"))(_ => "Parse error in formulaData") ~ elem(LeftParenthesis)) ~>
-        term <~ elem(RightParenthesis) ^^ {tptp.Commons.FOTData(_)}
+        term <~ elem(RightParenthesis) ^^ {Commons.FOTData(_)}
   )
 
-  def generalList: Parser[List[tptp.Commons.GeneralTerm]] =
+  def generalList: Parser[List[Commons.GeneralTerm]] =
     elem(LeftBracket) ~> opt(generalTerms) <~ elem(RightBracket) ^^ {
       case Some(gt)   => gt
       case _       => List.empty
     }
-  def generalTerms: Parser[List[tptp.Commons.GeneralTerm]] = rep1sep(generalTerm, elem(Comma))
+  def generalTerms: Parser[List[Commons.GeneralTerm]] = rep1sep(generalTerm, elem(Comma))
 
   // General purpose
   def name: Parser[String] = (

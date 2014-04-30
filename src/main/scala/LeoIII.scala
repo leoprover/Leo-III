@@ -37,8 +37,8 @@ class LeoILoop extends ILoop {
       MyIntp.imports.foreach(intp.addImports(_))
 
       // Shorten Names for representation
-      intp.addImports("tptp.Commons._")
-      intp.addImports("tptp.Commons.{AnnotatedFormula=>Formula}")
+      intp.addImports("datastructures.tptp.Commons._")
+      intp.addImports("datastructures.tptp.Commons.{AnnotatedFormula=>Formula}")
     }
   }
 

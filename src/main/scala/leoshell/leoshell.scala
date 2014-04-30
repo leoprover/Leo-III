@@ -1,8 +1,8 @@
 package leoshell
 
 import parsers._
-import tptp._
-import tptp.Commons.{AnnotatedFormula => Formula}
+import datastructures.tptp._
+import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 import scala.io.Source
 import scala.collection.mutable
 import commands._
@@ -34,7 +34,7 @@ package object leoshell {
     "Call 'help' for help\n"
 
 
-  val imports : List[String] = List("leoshell._", "commands._", "tptp.Commons._", "tptp.Commons.{AnnotatedFormula=>Formula}")
+  val imports : List[String] = List("leoshell._", "commands._", "datastructures.tptp.Commons._", "datastructures.tptp.Commons.{AnnotatedFormula=>Formula}")
 
   /**
    * If smth has to be done

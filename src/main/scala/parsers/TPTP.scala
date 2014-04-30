@@ -1,6 +1,6 @@
 package parsers
 
-import tptp._
+import datastructures.tptp._
 import syntactical.TPTPParsers
 import scala.util.parsing.input.Reader
 
@@ -15,12 +15,12 @@ import scala.util.parsing.input.Reader
  */
 object TPTP {
   /**
-   * Parses a complete TPTP file yielding a [[tptp.Commons.TPTPInput]] value if succeeded.
+   * Parses a complete TPTP file yielding a [[datastructures.tptp.Commons.TPTPInput]] value if succeeded.
    * On success, the result is wrapped in an instance of [[scala.util.Right]]; on failure
    * a [[scala.util.Left]] containing an error message is returned.
    *
    * @param input A [[scala.util.parsing.input.Reader]] wrapping the TPTP input
-   * @return A representation of the in file in [[tptp.Commons.TPTPInput]] format
+   * @return A representation of the in file in [[datastructures.tptp.Commons.TPTPInput]] format
    */
   def parseFile(input: Reader[Char])= extract(parser.parse(input, parser.tptpFile))
 
@@ -29,7 +29,7 @@ object TPTP {
    * it takes a string instead of a [[scala.util.parsing.input.Reader]].
    *
    * @param input The String that is to be parsed
-   * @return A representation of the input file in [[tptp.Commons.TPTPInput]] format
+   * @return A representation of the input file in [[datastructures.tptp.Commons.TPTPInput]] format
    */
   def parseFile(input: String)= extract(parser.parse(input, parser.tptpFile))
 
