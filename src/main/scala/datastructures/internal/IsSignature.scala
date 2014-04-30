@@ -28,61 +28,96 @@ trait IsSignature {
 
   /**
    * Entry base class for Meta information saved along with symbols in signature table
-   * @param name    The name of the symbol (i.e. string representation of it)
-   * @param key     The key of type `Key` that is used as table key for that entry
-   * @param symType The type of symbol the entry describes
    * @tparam Key    The type of key that is used to save the `Meta` in the signature table
    */
-  sealed abstract class Meta[+Key](val name: String,
-                                   val key: Key,
-                                   val symType: SymbolType)
+  sealed abstract class Meta[+Key] {
+    /**
+     * The name of the symbol (i.e. string representation of it)
+     * @return Symbol name
+     */
+    def getName: String
+
+    /**
+      * The key of type `Key` that is used as table key for that entry
+      * @return Table key
+      */
+    def getKey: Key
+
+    /**
+     * The type of symbol the entry describes
+     * @return The [[datastructures.internal.IsSignature.SymbolType]] of the symbol
+     */
+    def getSymType: SymbolType
+  }
 
 
   /** Case class for meta information for base types that are indexed in the signature */
-  case class TypeMeta(override val name: String,
-                      override val key: TypeKey,
-                      typeRep: Type)
-    extends Meta[TypeKey](name, key, BaseType)
+  case class TypeMeta(name: String,
+                      key: TypeKey,
+                      typeRep: Type) extends Meta[TypeKey] {
+    def getName = name
+    def getKey = key
+    def getSymType = BaseType
+
+    /**
+     * Gets the type representation of the entry as [[datastructures.internal.Type]]
+     * @return Type representation
+     */
+    def getTypeRep = typeRep
+  }
 
 
   /** Case class for meta information for variables that are indexed in the signature */
-  case class VarMeta(override val name: String,
-                     override val key: VarKey,
+  case class VarMeta(name: String,
+                     key: VarKey,
                      typ: Option[Type])
-    extends Meta[VarKey](name, key, Variable) {
+    extends Meta[VarKey] {
+      def getName = name
+      def getKey = key
+      def getSymType = Variable
       def hasType: Boolean = typ.isDefined
   }
 
   /** Case class for meta information for (possibly uninterpreted) constant symbols that are indexed in the signature */
-  protected sealed abstract class ConstMeta(override val name: String,
-                                            override val key: ConstKey,
-                                            override val symType: SymbolType,
-                                            typ: Option[Type],
-                                            defn: Option[Term])
-    extends Meta[ConstKey](name, key, symType) {
-      def hasType: Boolean = typ.isDefined
+  protected sealed abstract class ConstMeta
+    extends Meta[ConstKey] {
+      def hasType: Boolean
+      def hasDefn: Boolean
 
-      def isUninterpreted: Boolean
-      def isDefinedConstant: Boolean
-      def isFixed: Boolean
+      def isUninterpreted: Boolean = getSymType == Uninterpreted
+      def isDefinedConstant: Boolean = getSymType == Defined
+      def isFixed: Boolean = getSymType == Fixed
   }
 
-  case class UninterpretedMeta(override val name: String, override val key: ConstKey, typ: Type) extends ConstMeta(name, key, Uninterpreted, Some(typ), None) {
-   def isUninterpreted = true
-   def isDefinedConstant = false
-   def isFixed = false
+  case class UninterpretedMeta(name: String,
+                               key: ConstKey,
+                               typ: Type) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = Uninterpreted
+    def hasType = true
+    def hasDefn = false
   }
 
-  case class DefinedMeta(override val name: String, override val key: ConstKey, typ: Option[Type], defn: Term) extends ConstMeta(name, key, Defined, typ, Some(defn)) {
-    def isUninterpreted = false
-    def isDefinedConstant = true
-    def isFixed = false
+  case class DefinedMeta(name: String,
+                         key: ConstKey,
+                         typ: Option[Type],
+                         defn: Term) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = Defined
+    def hasType = typ.isDefined
+    def hasDefn = true
   }
 
-  case class FixedMeta(override val name: String, override val key: ConstKey, typ: Type) extends ConstMeta(name, key, Fixed, Some(typ), None) {
-    def isUninterpreted = false
-    def isDefinedConstant = false
-    def isFixed = true
+  case class FixedMeta(name: String,
+                       key: ConstKey,
+                       typ: Type) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = Fixed
+    def hasType = true
+    def hasDefn = false
   }
 
   def addBaseType(typ: String): TypeKey
