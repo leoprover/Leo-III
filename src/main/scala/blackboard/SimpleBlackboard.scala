@@ -2,6 +2,7 @@ package blackboard
 
 import tptp.Commons.{AnnotatedFormula => Formula}
 import scala.collection.mutable
+import java.util.concurrent.locks.{ReentrantLock, Condition}
 
 /**
  *
@@ -22,6 +23,10 @@ object SimpleBlackboard extends Blackboard {
   protected[blackboard] var observeRmPredSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
 
 
+  private val lock : ReentrantLock = new ReentrantLock(true)
+  private val writeCond : Condition = lock.newCondition()
+  private val readCond : Condition = lock.newCondition()
+
   /**
    * <p>
    * Adds a formula to the Set of formulas of the Blackboard.
@@ -29,6 +34,16 @@ object SimpleBlackboard extends Blackboard {
    * @param formula to be added.
    */
   override def addFormula(formula: Formula) {
+    // Entry
+    lock.lock()
+    try {
+      readCond.await()
+      if(lock.hasWaiters(writeCond)) writeCond.await()
+      readCond.signal()
+    } finally {
+      lock.unlock()
+    }
+
     formulaMap.put(formula.name, (formula.name, formula))
   }
 
