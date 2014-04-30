@@ -2,6 +2,12 @@ package parsers.lexical
 
 import scala.util.parsing.combinator.token.Tokens
 
+/**
+ * Tokens for the TPTP problem language.
+ *
+ * @author Alexander Steen
+ * @since 10.04.2014
+ */
 trait TPTPTokens extends Tokens {
   case class SingleQuoted(data: String) extends Token {
     override def chars = "'" + data + "'"

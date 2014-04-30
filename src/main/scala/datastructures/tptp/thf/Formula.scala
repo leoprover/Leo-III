@@ -1,6 +1,6 @@
-package tptp.thf
+package datastructures.tptp.thf
 
-import tptp._
+import datastructures.tptp._
 
 /**
  * Created by lex on 3/23/14.

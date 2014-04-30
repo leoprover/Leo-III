@@ -1,6 +1,6 @@
-package tptp.tff
+package datastructures.tptp.tff
 
-import tptp.Commons._
+import datastructures.tptp.Commons._
 
 /**
  * Created by lex on 3/23/14.

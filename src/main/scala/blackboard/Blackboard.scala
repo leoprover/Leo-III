@@ -1,6 +1,6 @@
 package blackboard
 
-import tptp.Commons.{AnnotatedFormula => Formula}
+import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 
 /**
  *

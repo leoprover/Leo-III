@@ -1,6 +1,6 @@
 package blackboard
 
-import tptp.Commons.{AnnotatedFormula => Formula}
+import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 import scala.collection.mutable
 import java.util.concurrent.locks.{ReentrantLock, Condition}
 
@@ -22,10 +22,15 @@ object SimpleBlackboard extends Blackboard {
   protected[blackboard] var observeAddPredSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
   protected[blackboard] var observeRmPredSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
 
+  // Monitor for the formulas
+  private val formulaLock : ReentrantLock = new ReentrantLock(true)
+  private val writeCond : Condition = formulaLock.newCondition()
+  private var writeCount = 0
+  private val readCond : Condition = formulaLock.newCondition()
+  private var readCount = 0
 
-  private val lock : ReentrantLock = new ReentrantLock(true)
-  private val writeCond : Condition = lock.newCondition()
-  private val readCond : Condition = lock.newCondition()
+  // Monitor for the observer Lists (One because we assume not that many changes
+  private val observerLock : ReentrantLock = new ReentrantLock(true)
 
   /**
    * <p>
@@ -35,16 +40,26 @@ object SimpleBlackboard extends Blackboard {
    */
   override def addFormula(formula: Formula) {
     // Entry
-    lock.lock()
+    formulaLock.lock()
     try {
-      readCond.await()
-      if(lock.hasWaiters(writeCond)) writeCond.await()
-      readCond.signal()
+      while(readCount > 0 || writeCount > 0) writeCond.await()
+      writeCount += 1
     } finally {
-      lock.unlock()
+      formulaLock.unlock()
     }
 
+    //CS:
     formulaMap.put(formula.name, (formula.name, formula))
+
+    // Exit
+    formulaLock.lock()
+    try {
+      writeCount -= 1
+      if(formulaLock.hasWaiters(readCond)) readCond.signalAll()
+      else writeCond.signal()
+    } finally {
+      formulaLock.unlock()
+    }
   }
 
   /**
@@ -54,7 +69,12 @@ object SimpleBlackboard extends Blackboard {
    * @param o - Observer to add.
    */
   override def observeAllAdds(o: BlackboardObserver) {
-    observeAddAllSet.add(o)
+    observerLock.lock()
+    try {
+      observeAddAllSet.add(o)
+    } finally {
+      observerLock.unlock()
+    }
   }
 
   /**
@@ -64,7 +84,7 @@ object SimpleBlackboard extends Blackboard {
    *
    * @return All formulas of the blackboard.
    */
-  override def getFormulas(): List[Formula] = formulaMap.values.toList.map(x => x._2)
+  override def getFormulas(): List[Formula] = getAll(_ => true)
 
   /**
    * <p>
@@ -76,7 +96,12 @@ object SimpleBlackboard extends Blackboard {
    * @param o - Observer.
    */
   override def observeAddPredicate(p: (Formula) => Boolean, o: BlackboardObserver) {
-    observeAddPredSet.add(o)
+    observerLock.lock()
+    try {
+      observeAddPredSet.add(o)
+    } finally {
+      observerLock.unlock()
+    }
   }
 
   /**
@@ -87,7 +112,12 @@ object SimpleBlackboard extends Blackboard {
    * @param o - Observer.
    */
   override def observeRemPredicate(p: (Formula) => Boolean, o: BlackboardObserver) {
-    observeRmPredSet.add(o)
+    observerLock.lock()
+    try {
+      observeRmPredSet.add(o)
+    } finally {
+      observerLock.unlock()
+    }
   }
 
   /**
@@ -96,12 +126,7 @@ object SimpleBlackboard extends Blackboard {
    * </p>
    * @return true if the formula was removed, false if the formula does not exist.
    */
-  override def removeFormula(formula: Formula): Boolean = {
-    formulaMap.remove(formula.name) match {
-      case Some(x) => true
-      case None => false
-    }
-  }
+  override def removeFormula(formula: Formula): Boolean = rmFormulaByName(formula.name)
 
   /**
    * <p>
@@ -110,7 +135,12 @@ object SimpleBlackboard extends Blackboard {
    * @param o - Observer
    */
   override def observeAllRem(o: BlackboardObserver) {
-    observeRmAllSet.add(o)
+    observerLock.lock()
+    try {
+      observeRmAllSet.add(o)
+    } finally {
+      observerLock.unlock()
+    }
   }
 
   /**
@@ -122,7 +152,30 @@ object SimpleBlackboard extends Blackboard {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  override def getAll(p: (Formula) => Boolean): List[Formula] = formulaMap.values.toList.map(_._2).filter(p)
+  override def getAll(p: (Formula) => Boolean): List[Formula] = {
+    // Entry
+    formulaLock.lock()
+    try {
+      while(writeCount > 0 || formulaLock.hasWaiters(writeCond)) readCond.await()
+      readCount += 1
+    } finally {
+      formulaLock.unlock()
+    }
+
+    val a = formulaMap.values.toList.map(_._2).filter(p)
+
+    formulaLock.lock()
+    try{
+      readCount -= 1
+      if(formulaLock.hasWaiters(writeCond)) {
+        if (readCount == 0) writeCond.signal()
+      }
+      else readCond.signal()  // Nur zur Sicherheit, falls noch jmd rein gelaufen ist.
+    } finally {
+      formulaLock.unlock()
+    }
+    return a
+  }
 
   /**
    * <p>
@@ -132,7 +185,31 @@ object SimpleBlackboard extends Blackboard {
    * @param name - Name of the Formula
    * @return Some(x) if x.name = name exists otherwise None
    */
-  override def getFormulaByName(name: String): Option[Formula] = formulaMap.get(name).map(_._2)
+  override def getFormulaByName(name: String): Option[Formula] = {
+
+    // Entry
+    formulaLock.lock()
+    try {
+      while(writeCount > 0 || formulaLock.hasWaiters(writeCond)) readCond.await()
+      readCount += 1
+    } finally {
+      formulaLock.unlock()
+    }
+
+    val a = formulaMap.get(name).map(_._2)
+
+    formulaLock.lock()
+    try{
+      readCount -= 1
+      if(formulaLock.hasWaiters(writeCond)) {
+        if (readCount == 0) writeCond.signal()
+      }
+      else readCond.signal()  // Nur zur Sicherheit, falls noch jmd rein gelaufen ist.
+    } finally {
+      formulaLock.unlock()
+    }
+    return a
+  }
 
   /**
    * <p>
@@ -143,10 +220,32 @@ object SimpleBlackboard extends Blackboard {
    * @return true, iff the element existed.
    */
   override def rmFormulaByName(name: String): Boolean = {
-    formulaMap.remove(name) match {
+    // Entry
+    formulaLock.lock()
+    try {
+      while(readCount > 0 || writeCount > 0) writeCond.await()
+      writeCount += 1
+    } finally {
+      formulaLock.unlock()
+    }
+
+    //CS:
+    val r : Boolean = formulaMap.remove(name) match {
       case Some(_) => true
       case None => false
     }
+
+    // Exit
+    formulaLock.lock()
+    try {
+      writeCount -= 1
+      if(formulaLock.hasWaiters(readCond)) readCond.signalAll()
+      else writeCond.signal()
+    } finally {
+      formulaLock.unlock()
+    }
+    return r
+
   }
 
   /**
@@ -157,6 +256,25 @@ object SimpleBlackboard extends Blackboard {
    * @param p - All x with p(x) will be removed.
    */
   override def rmAll(p: (Formula) => Boolean) {
-    formulaMap.clear()
+    formulaLock.lock()
+    try {
+      while(readCount > 0 || writeCount > 0) writeCond.await()
+      writeCount += 1
+    } finally {
+      formulaLock.unlock()
+    }
+
+    //CS:
+    formulaMap.values.filter(x=>p(x._2)).foreach(x => formulaMap.remove(x._1))
+
+    // Exit
+    formulaLock.lock()
+    try {
+      writeCount -= 1
+      if(formulaLock.hasWaiters(readCond)) readCond.signalAll()
+      else writeCond.signal()
+    } finally {
+      formulaLock.unlock()
+    }
   }
 }

@@ -1,4 +1,4 @@
-package tptp
+package datastructures.tptp
 
 object Commons {
 
