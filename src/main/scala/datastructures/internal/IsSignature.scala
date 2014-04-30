@@ -33,19 +33,16 @@ trait IsSignature {
   sealed abstract class Meta[+Key] {
     /**
      * The name of the symbol (i.e. string representation of it)
-     * @return Symbol name
      */
     def getName: String
 
     /**
       * The key of type `Key` that is used as table key for that entry
-      * @return Table key
       */
     def getKey: Key
 
     /**
      * The type of symbol the entry describes
-     * @return The [[datastructures.internal.IsSignature.SymbolType]] of the symbol
      */
     def getSymType: SymbolType
   }
@@ -58,12 +55,6 @@ trait IsSignature {
     def getName = name
     def getKey = key
     def getSymType = BaseType
-
-    /**
-     * Gets the type representation of the entry as [[datastructures.internal.Type]]
-     * @return Type representation
-     */
-    def getTypeRep = typeRep
   }
 
 
@@ -75,6 +66,11 @@ trait IsSignature {
       def getName = name
       def getKey = key
       def getSymType = Variable
+
+      /**
+       * Tests whether the entry has a type associated with it.
+       * @return True if `VarMeta.typ` is an instance of `Some`
+       */
       def hasType: Boolean = typ.isDefined
   }
 
