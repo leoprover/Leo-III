@@ -49,7 +49,10 @@ case class ForallType(typeVar: TypeVar, body: Type) extends Type {
 
 /**Constructor for a function type `in -> out` */
 case class FunType(in: Type, out: Type) extends Type {
-  def pretty = "(" + in.pretty + ")" + " -> " + "(" + out.pretty + ")"
+  def pretty = in match {
+    case funTy:FunType => "(" + funTy.pretty + ") -> " + out.pretty
+    case otherTy:Type  => otherTy.pretty + " -> " + out.pretty
+  }
 }
 
 /** Application of type arguments to a constructor, yielding a Type
@@ -60,7 +63,7 @@ case class ContructorAppType(typeCon: TypeConstructor, args: List[Type]) extends
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
 case class TypeVarType(typeVar: TypeVar) extends Type {
-  def pretty = typeVar.pretty
+  def pretty = typeVar.name // name instead of pretty to avoid repitition of types
 }
 
 /** Literal type, i.e. `$o` */
