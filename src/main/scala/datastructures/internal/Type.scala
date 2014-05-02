@@ -35,7 +35,7 @@ object Type {
  * @since 30.04.2014
  */
 sealed abstract class Type extends Pretty {
-  def ->:(body: Type) = FunType(this, body)
+  def ->:(hd: Type) = FunType(hd, this)
 }
 
 /**
@@ -49,7 +49,7 @@ case class ForallType(typeVar: TypeVar, body: Type) extends Type {
 
 /**Constructor for a function type `in -> out` */
 case class FunType(in: Type, out: Type) extends Type {
-  def pretty = in.pretty + " -> " + out.pretty
+  def pretty = "(" + in.pretty + ")" + " -> " + "(" + out.pretty + ")"
 }
 
 /** Application of type arguments to a constructor, yielding a Type
