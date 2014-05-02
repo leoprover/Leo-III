@@ -9,8 +9,6 @@ package datastructures.internal
  * @since 29.04.2014
  */
 trait IsSignature {
-  /** This type is used as indexing key for base types in the underlying dictionary implementation */
-  type TypeKey
   /** This type is used as indexing key for variables in the underlying dictionary implementation */
   type VarKey
   /** This type is used as indexing key for (possibly uninterpreted) constant symbols in the underlying dictionary implementation */
@@ -18,14 +16,17 @@ trait IsSignature {
 
   /** Type of symbols in the signature table */
   sealed abstract class SymbolType
-  /** A base type symbol, e.g. `$o` */
-  case object BaseType extends SymbolType
+  // Variables
   /** A variable symbol, e.g. `X` */
   case object Variable extends SymbolType
+  case object TypeVariable extends SymbolType
+  // Constants
   /** A fixed symbol, e.g. `$true` or `$false` */
   case object Fixed extends SymbolType
   case object Defined extends SymbolType
   case object Uninterpreted extends SymbolType
+  /** A base type symbol, e.g. `$o` */
+  case object BaseType extends SymbolType
 
   /**
    * Entry base class for Meta information saved along with symbols in signature table
@@ -49,13 +50,13 @@ trait IsSignature {
   }
 
 
-  /** Case class for meta information for base types that are indexed in the signature */
-  case class TypeMeta(name: String,
-                      key: TypeKey,
-                      typeRep: Type) extends Meta[TypeKey] {
-    def getName = name
-    def getKey = key
-    def getSymType = BaseType
+  case class TypeVarMeta(name: String,
+                         key: VarKey,
+                         typ: Kind)
+    extends Meta[VarKey] {
+      def getName = name
+      def getKey = key
+      def getSymType = TypeVariable
   }
 
 
@@ -76,19 +77,32 @@ trait IsSignature {
   }
 
   /** abstract type for meta information for (possibly uninterpreted) constant symbols */
-  protected sealed abstract class ConstMeta
-    extends Meta[ConstKey] {
-      /** Returns true iff the constant has a type associated with it */
-      def hasType: Boolean
-      /** Returns true iff the constant has a definition term associated with it */
-      def hasDefn: Boolean
+  protected sealed abstract class ConstMeta extends Meta[ConstKey] {
+    /** Returns true iff the constant has a type associated with it */
+    def hasType: Boolean
+    /** Returns true iff the constant has a definition term associated with it */
+    def hasDefn: Boolean
 
-      /** Returns true iff the symbol is a uninterpreted symbol */
-      def isUninterpreted: Boolean = getSymType == Uninterpreted
-      /** Returns true iff the symbol is a defined symbol */
-      def isDefinedConstant: Boolean = getSymType == Defined
-      /** Returns true iff the symbol is a fixed (interpreted) symbol */
-      def isFixed: Boolean = getSymType == Fixed
+    /** Returns true iff the symbol is a uninterpreted symbol */
+    def isUninterpreted: Boolean = getSymType == Uninterpreted
+    /** Returns true iff the symbol is a defined symbol */
+    def isDefinedConstant: Boolean = getSymType == Defined
+    /** Returns true iff the symbol is a fixed (interpreted) symbol */
+    def isFixed: Boolean = getSymType == Fixed
+    /** Returns true iff the symbol is a type symbol */
+    def isType: Boolean = getSymType == BaseType
+  }
+
+  /** Case class for meta information for base types that are indexed in the signature */
+  case class TypeMeta(name: String,
+                      key: ConstKey,
+                      typ:  Kind,
+                      typeRep: Type) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = BaseType
+    def hasType = true
+    def hasDefn = false
   }
 
   /** Case class for meta information for uninterpreted symbols */
@@ -125,11 +139,11 @@ trait IsSignature {
     def hasDefn = false
   }
 
-  // Comments will follow
-  def addBaseType(typ: String): TypeKey
+  // method names and parameters will change!
+  def addBaseType(typ: String): ConstKey
   def isBaseType(typ: String): Boolean
   def getTypeMeta(typ: String): TypeMeta
-  def getTypeMeta(key: TypeKey): TypeMeta
+  def getTypeMeta(key: ConstKey): TypeMeta
 
   protected def addVariable0(identifier: String, typ: Option[Type]): VarKey
 
