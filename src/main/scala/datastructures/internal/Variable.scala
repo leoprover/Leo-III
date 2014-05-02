@@ -7,7 +7,7 @@ package datastructures.internal
  * @since 30.04.2014
  */
 object Variable {
-  def mkTypeVar(name: String = {Variable.lastUsedIndex += 1; Variable.typeVarNames(Variable.lastUsedIndex)}, varType: Kind = BaseKind) = TypeVar(name, varTypels)
+  def mkTypeVar(name: String = {Variable.lastUsedIndex += 1; Variable.typeVarNames(Variable.lastUsedIndex)}, varType: Kind = BaseKind) = TypeVar(name, varType)
   def mkVar     = TermVar(_,_)
 
   lazy val typeVarNames: List[String] = Nil
