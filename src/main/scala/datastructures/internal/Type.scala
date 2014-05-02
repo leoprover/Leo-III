@@ -16,7 +16,11 @@ object Type {
   def mkTypeVarType = TypeVarType(_)
   def mkTypeVarType(name: String): Type = mkTypeVarType(mkTypeVar(name))
   def mkForAllType = ForallType(_,_)
+
+  def mkConstructorType = ConstructorType(_)
+  def mkConstructorType(name: String): Type = mkConstructorType(TypeConstructor.mkConstructor(name))
   def getBaseKind = BaseKind
+  def getSuperKind = SuperKind
   def mkFunKind = FunKind(_,_)
 
   implicit def strToType(in: String): Type = {
@@ -61,6 +65,10 @@ case class ContructorAppType(typeCon: TypeConstructor, args: List[Type]) extends
   def pretty = typeCon.pretty + " " + args.map(x => x.pretty).mkString(" ")
 }
 
+case class ConstructorType(typeCon: TypeConstructor) extends Type {
+  def pretty = typeCon.pretty
+}
+
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
 case class TypeVarType(typeVar: TypeVar) extends Type {
   def pretty = typeVar.name // name instead of pretty to avoid repitition of types
@@ -72,23 +80,40 @@ case class BaseType(name: String) extends Type {// string???
 }
 /** Abstract type of kinds (i.e. types of types).
   * The `Kind` class extends the `Type` class to allow unified handling */
-sealed abstract class Kind extends Type
+sealed abstract class Kind extends Type {
+  val isBaseKind: Boolean
+  val isFunKind: Boolean
+}
 /** Represents the kind `*` (i.e. the type of a type) */
 case object BaseKind extends Kind {
   val name = "#*"
   def pretty = "*"
+  val isBaseKind = true
+  val isFunKind = false
 }
 /** Constructs function kinds.
   * Invariant: `out` must not be `SuperKind`. */
 case class FunKind(in: Type, body: Kind) extends Kind {
   def pretty = in.pretty + " -> " + body.pretty
+  val isBaseKind = false
+  val isFunKind = true
 }
 
 /** Artificial kind that models the type of `*` (represented by `BaseKind`) */
 case object SuperKind extends Kind {
   def pretty = "**"
+
+  val isBaseKind = false
+  val isFunKind = false
 }
 
 
+object TypeConstructor {
+  def mkConstructor = TypeCon(_)
+}
+
 /** For future use: Type constructor representation */
 sealed abstract class TypeConstructor extends Pretty
+case class TypeCon(name: String) extends TypeConstructor {
+  def pretty = name
+}
