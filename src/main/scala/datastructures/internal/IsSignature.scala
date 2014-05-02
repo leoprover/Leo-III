@@ -49,35 +49,43 @@ trait IsSignature {
     def getSymType: SymbolType
   }
 
+  sealed abstract class VarMeta extends Meta[VarKey] {
+    /** Returns true iff the variable has a type (or kind) associated with it */
+    def hasType: Boolean
 
+    /** Returns true iff the symbol is a variable symbol */
+    def isVariable: Boolean = getSymType == Variable
+    /** Returns true iff the symbol is a tyoe variable symbol */
+    def isTypeVariable: Boolean = getSymType == TypeVariable
+  }
+
+  /** Case class for meta information for type variables */
   case class TypeVarMeta(name: String,
                          key: VarKey,
                          typ: Kind)
-    extends Meta[VarKey] {
+    extends VarMeta {
       def getName = name
       def getKey = key
       def getSymType = TypeVariable
+
+      def hasType: Boolean = true
   }
 
 
-  /** Case class for meta information for variables */
-  case class VarMeta(name: String,
-                     key: VarKey,
-                     typ: Option[Type])
-    extends Meta[VarKey] {
+  /** Case class for meta information for term variables */
+  case class TermVarMeta(name: String,
+                         key: VarKey,
+                         typ: Option[Type])
+    extends VarMeta {
       def getName = name
       def getKey = key
       def getSymType = Variable
 
-      /**
-       * Tests whether the entry has a type associated with it.
-       * @return True if `VarMeta.typ` is an instance of `Some`
-       */
       def hasType: Boolean = typ.isDefined
   }
 
   /** abstract type for meta information for (possibly uninterpreted) constant symbols */
-  protected sealed abstract class ConstMeta extends Meta[ConstKey] {
+  sealed abstract class ConstMeta extends Meta[ConstKey] {
     /** Returns true iff the constant has a type associated with it */
     def hasType: Boolean
     /** Returns true iff the constant has a definition term associated with it */
@@ -140,10 +148,6 @@ trait IsSignature {
   }
 
   // method names and parameters will change!
-  def addBaseType(typ: String): ConstKey
-  def isBaseType(typ: String): Boolean
-  def getTypeMeta(typ: String): TypeMeta
-  def getTypeMeta(key: ConstKey): TypeMeta
 
   protected def addVariable0(identifier: String, typ: Option[Type]): VarKey
 
@@ -151,30 +155,41 @@ trait IsSignature {
     addVariable0(identifier, Some(typ))
   def addVariable_(identifier: String): VarKey =
     addVariable0(identifier, None)
-  def isVariable(identifier: String): Boolean
+
   def getVarMeta(key: VarKey): VarMeta
+  def getVarMeta(identifier: String): VarMeta
+
+  def isVariable(key: VarKey): Boolean = getVarMeta(key).isVariable
+  def isVariable(identifier: String): Boolean = getVarMeta(identifier).isVariable
+  def isTypeVariable(key: VarKey): Boolean = getVarMeta(key).isTypeVariable
+  def isTypeVariable(identifier: String): Boolean = getVarMeta(identifier).isTypeVariable
 
   protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey
 
   def addConstant(identifier: String, typ: Type, defn: Term): ConstKey =
     addConstant0(identifier, Some(typ), Some(defn))
-
   def addConstant_(identifier: String, defn: Term): ConstKey =
     addConstant0(identifier, None, Some(defn))
-  def isDefinedSymbol(identifier: String): Boolean
-  def isFixedSymbol(identifier: String): Boolean
-
   def addUninterpreted(identifier: String, typ: Type): ConstKey =
     addConstant0(identifier, Some(typ), None)
-  def isUninterpreted(identifier: String): Boolean
+  def addBaseType(typ: String): ConstKey = addUninterpreted(typ, Type.getBaseKind)
 
   def getConstMeta(key: ConstKey): ConstMeta
   def getConstMeta(identifier: String): ConstMeta
 
-  def getBaseTypes: Set[TypeMeta]
-  def getVariables: Set[VarMeta]
-  def getAllConstants: Set[ConstMeta]
-  def getDefinedSymbols: Set[DefinedMeta]
-  def getFixedDefinedSymbols: Set[FixedMeta]
-  def getUninterpretedSymbols: Set[UninterpretedMeta]
+  def isDefinedSymbol(identifier: String): Boolean = getConstMeta(identifier).isDefinedConstant
+  def isFixedSymbol(identifier: String): Boolean = getConstMeta(identifier).isFixed
+  def isUninterpreted(identifier: String): Boolean = getConstMeta(identifier).isUninterpreted
+  def isBaseType(typ: String): Boolean = getConstMeta(typ).isType
+
+
+  def getAllVariables: Set[VarKey]
+  def getTermVariables: Set[VarKey]
+  def getTypeVariables: Set[VarKey]
+
+  def getAllConstants: Set[ConstKey]
+  def getBaseTypes: Set[ConstKey]
+  def getDefinedSymbols: Set[ConstKey]
+  def getFixedDefinedSymbols: Set[ConstKey]
+  def getUninterpretedSymbols: Set[ConstKey]
 }
