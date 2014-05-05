@@ -3,7 +3,12 @@ package datastructures.internal
 import scala.collection.immutable.{HashSet, BitSet, IntMap, HashMap}
 
 /**
- * Created by lex on 29.04.14.
+ * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
+ * it contains some predefined symbols (including types, fixed symbols and defined symbols).
+ * For details on that predefined symbols, check [[datastructures.internal.HOLSignature]].
+ *
+ * @author Alexander Steen
+ * @since 02.05.2014
  */
 abstract sealed class Signature extends IsSignature with HOLSignature {
   override type ConstKey = Int // Invariant: Positive integers
@@ -16,6 +21,77 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
 
   protected var typeVarsSet, termVarsSet: BitSet = BitSet.empty
   protected var typeSet, fixedSet, definedSet, uiSet: BitSet = BitSet.empty
+
+  /** Case class for meta information for type variables */
+  protected[internal] case class TypeVarMeta(name: String,
+                                             key: VarKey,
+                                             typ: Kind)
+    extends VarMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = TypeVariable
+
+    def hasType: Boolean = true
+  }
+
+
+  /** Case class for meta information for term variables */
+  protected[internal] case class TermVarMeta(name: String,
+                                             key: VarKey,
+                                             typ: Option[Type])
+    extends VarMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = TermVariable
+
+    def hasType: Boolean = typ.isDefined
+  }
+
+  /** Case class for meta information for base types that are indexed in the signature */
+  protected[internal] case class TypeMeta(name: String,
+                                          key: ConstKey,
+                                          typ:  Kind,
+                                          typeRep: Type) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = BaseType
+    def hasType = true
+    def hasDefn = false
+  }
+
+  /** Case class for meta information for uninterpreted symbols */
+  protected[internal] case class UninterpretedMeta(name: String,
+                                                   key: ConstKey,
+                                                   typ: Type) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = Uninterpreted
+    def hasType = true
+    def hasDefn = false
+  }
+
+  /** Case class for meta information for defined symbols */
+  protected[internal] case class DefinedMeta(name: String,
+                                             key: ConstKey,
+                                             typ: Option[Type],
+                                             defn: Term) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = Defined
+    def hasType = typ.isDefined
+    def hasDefn = true
+  }
+
+  /** Case class for meta information for fixed (interpreted) symbols */
+  protected[internal] case class FixedMeta(name: String,
+                                           key: ConstKey,
+                                           typ: Type) extends ConstMeta {
+    def getName = name
+    def getKey = key
+    def getSymType = Fixed
+    def hasType = true
+    def hasDefn = false
+  }
 
   protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey = {
     val key = curConstKey
@@ -36,7 +112,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
                 val meta = TypeMeta(identifier, key, k, Type.mkConstructorType(identifier))
                 metaMap += (key, meta)
               }
-              case true => {
+              case _ => { // it is neither a base or funKind, then it's a super kind.
                 val meta = TypeMeta(identifier, key, Type.getSuperKind, Type.getSuperKind)
                 metaMap += (key, meta)
               }
@@ -133,7 +209,7 @@ object Signature {
   private case object Nil extends Signature
 
   def empty: Signature = Signature.Nil
-  def create: Signature = {
+  def createWithHOL: Signature = {
     val sig = empty
     for ((name, k) <- sig.types) {
       sig.addConstant0(name, Some(k), None)
