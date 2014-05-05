@@ -8,6 +8,9 @@ import Variable.{mkTypeVar, typeVarNames}
  *  2. Defined symbols
  *  3. Standard base types
  *
+ * Details:
+ * It defines eight fixed symbols ($true, $false, #box, #diamond, ~, !, |, =),
+ * five defined symbols (?, &, =>, <=, <=>) and three types ($o, $i, *)
  * @author Alexander Steen
  * @since 02.05.2014
  */

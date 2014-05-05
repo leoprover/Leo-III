@@ -272,7 +272,10 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
 object Signature {
   private case object Nil extends Signature
 
+  /** Create an empty signature */
   def empty: Signature = Signature.Nil
+
+  /** Create a signature with predefined symbols as described by [[datastructures.internal.HOLSignature]] */
   def createWithHOL: Signature = {
     val sig = empty
     for ((name, k) <- sig.types) {
