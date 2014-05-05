@@ -80,47 +80,46 @@ trait IsSignature {
 
   // method names and parameters will change!
 
-  protected def addVariable0(identifier: String, typ: Option[Type]): VarKey
-
-  def addVariable(identifier: String, typ: Type): VarKey =
-    addVariable0(identifier, Some(typ))
-  def addVariable_(identifier: String): VarKey =
-    addVariable0(identifier, None)
-
-  def getVarMeta(key: VarKey): VarMeta
-  def getVarMeta(identifier: String): VarMeta
-
-  def isVariable(key: VarKey): Boolean = getVarMeta(key).isTermVariable
-  def isVariable(identifier: String): Boolean = getVarMeta(identifier).isTermVariable
-  def isTypeVariable(key: VarKey): Boolean = getVarMeta(key).isTypeVariable
-  def isTypeVariable(identifier: String): Boolean = getVarMeta(identifier).isTypeVariable
-
+  protected def addVariable0(identifier: String, typ: Option[Type]):                     VarKey
   protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey
 
-  def addConstant(identifier: String, typ: Type, defn: Term): ConstKey =
-    addConstant0(identifier, Some(typ), Some(defn))
-  def addConstant_(identifier: String, defn: Term): ConstKey =
-    addConstant0(identifier, None, Some(defn))
-  def addUninterpreted(identifier: String, typ: Type): ConstKey =
-    addConstant0(identifier, Some(typ), None)
-  def addBaseType(typ: String): ConstKey = addUninterpreted(typ, Type.getBaseKind)
+  // Utility for variable symbols
 
-  def getConstMeta(key: ConstKey): ConstMeta
-  def getConstMeta(identifier: String): ConstMeta
+  def addVariable(identifier: String, typ: Type): VarKey = addVariable0(identifier, Some(typ))
+  def addVariable(identifier: String):            VarKey = addVariable0(identifier, None)
+
+  def getVarMeta(key: VarKey):             VarMeta
+  def getVarMeta(identifier: String):      VarMeta
+
+  def isVariable(key: VarKey):             Boolean = getVarMeta(key).isTermVariable
+  def isVariable(identifier: String):      Boolean = getVarMeta(identifier).isTermVariable
+  def isTypeVariable(key: VarKey):         Boolean = getVarMeta(key).isTypeVariable
+  def isTypeVariable(identifier: String):  Boolean = getVarMeta(identifier).isTypeVariable
+
+
+  // Utility for constant symbols
+
+  def addConstant(identifier: String, defn: Term, typ: Type): ConstKey = addConstant0(identifier, Some(typ), Some(defn))
+  def addConstant(identifier: String, defn: Term):            ConstKey = addConstant0(identifier, None, Some(defn))
+  def addUninterpreted(identifier: String, typ: Type):        ConstKey = addConstant0(identifier, Some(typ), None)
+  def addBaseType(typ: String):                               ConstKey = addUninterpreted(typ, Type.getBaseKind)
+
+  def getConstMeta(key: ConstKey):         ConstMeta
+  def getConstMeta(identifier: String):    ConstMeta
 
   def isDefinedSymbol(identifier: String): Boolean = getConstMeta(identifier).isDefined
-  def isFixedSymbol(identifier: String): Boolean = getConstMeta(identifier).isFixed
+  def isFixedSymbol(identifier: String):   Boolean = getConstMeta(identifier).isFixed
   def isUninterpreted(identifier: String): Boolean = getConstMeta(identifier).isUninterpreted
-  def isBaseType(typ: String): Boolean = getConstMeta(typ).isType
+  def isBaseType(identifier: String):      Boolean = getConstMeta(identifier).isType
 
 
-  def getAllVariables: Set[VarKey]
-  def getTermVariables: Set[VarKey]
-  def getTypeVariables: Set[VarKey]
+  def getAllVariables:                     Set[VarKey]
+  def getTermVariables:                    Set[VarKey]
+  def getTypeVariables:                    Set[VarKey]
 
-  def getAllConstants: Set[ConstKey]
-  def getBaseTypes: Set[ConstKey]
-  def getDefinedSymbols: Set[ConstKey]
-  def getFixedDefinedSymbols: Set[ConstKey]
-  def getUninterpretedSymbols: Set[ConstKey]
+  def getAllConstants:                     Set[ConstKey]
+  def getBaseTypes:                        Set[ConstKey]
+  def getDefinedSymbols:                   Set[ConstKey]
+  def getFixedDefinedSymbols:              Set[ConstKey]
+  def getUninterpretedSymbols:             Set[ConstKey]
 }
