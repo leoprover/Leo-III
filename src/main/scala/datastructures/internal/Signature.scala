@@ -229,6 +229,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
 
     val meta = FixedMeta(identifier, key, typ)
     metaMap += (key, meta)
+    fixedSet += key
   }
 
   ///////////////////////////////
