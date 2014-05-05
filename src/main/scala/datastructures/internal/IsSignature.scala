@@ -78,12 +78,37 @@ trait IsSignature {
     def isType: Boolean = getSymType == BaseType
   }
 
-  // method names and parameters will change!
+  // Maintenance methods for the signature
 
+  /** Multi-purpose method for adding all types of variables (i.e. term variables and type variables).
+    * The actual type of variable is determined by the `typ` parameter. It no type is given (i.e.
+    * `typ = None`), it is assumed that a term variable is added.
+    *
+    * @return the generated key that the freshly added symbol is indexed by
+    * @throws IllegalArgumentException if the symbol described by `identifier` already exists in the signature
+    */
   protected def addVariable0(identifier: String, typ: Option[Type]):                     VarKey
-  protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey
+  /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
+    * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
+    */
+  def removeVariable(key: VarKey):   Boolean
 
-  // Utility for variable symbols
+  /** Multi-purpose method for adding all types of constant symbols (i.e. defined, uninterpreted, types).
+    * The actual symbol type is determined by the typ and whether a definition is supplied.
+    * If some definition is passed, the constant is a `Defined`, otherwise it is a `Basetype` or a `Uninterpreted`
+    * (depending on the type supplied).
+    *
+    * @return the generated key that the freshly added symbol is indexed by
+    * @throws IllegalArgumentException if the symbol described by `identifier` already exists or a
+    *                                  illegal typ/definition combination is supplied
+    */
+  protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey
+  /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
+    * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
+    */
+  def removeConstant(key: ConstKey): Boolean
+
+  // Utility methods for variable symbols
 
   def addVariable(identifier: String, typ: Type): VarKey = addVariable0(identifier, Some(typ))
   def addVariable(identifier: String):            VarKey = addVariable0(identifier, None)
@@ -97,12 +122,12 @@ trait IsSignature {
   def isTypeVariable(identifier: String):  Boolean = getVarMeta(identifier).isTypeVariable
 
 
-  // Utility for constant symbols
+  // Utility methods for constant symbols
 
-  def addConstant(identifier: String, defn: Term, typ: Type): ConstKey = addConstant0(identifier, Some(typ), Some(defn))
-  def addConstant(identifier: String, defn: Term):            ConstKey = addConstant0(identifier, None, Some(defn))
-  def addUninterpreted(identifier: String, typ: Type):        ConstKey = addConstant0(identifier, Some(typ), None)
-  def addBaseType(typ: String):                               ConstKey = addUninterpreted(typ, Type.getBaseKind)
+  def addDefined(identifier: String, defn: Term, typ: Type): ConstKey = addConstant0(identifier, Some(typ), Some(defn))
+  def addDefined(identifier: String, defn: Term):            ConstKey = addConstant0(identifier, None, Some(defn))
+  def addUninterpreted(identifier: String, typ: Type):       ConstKey = addConstant0(identifier, Some(typ), None)
+  def addBaseType(identifier: String):                       ConstKey = addUninterpreted(identifier, Type.getBaseKind)
 
   def getConstMeta(key: ConstKey):         ConstMeta
   def getConstMeta(identifier: String):    ConstMeta
