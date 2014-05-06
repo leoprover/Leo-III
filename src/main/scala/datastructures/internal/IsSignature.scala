@@ -56,13 +56,19 @@ trait IsSignature {
     def getKey: Key
     /** The type of symbol the entry describes */
     def getSymType: SymbolType
+    /** Returns the type saved with the symbol if any, `None` otherwise */
+    def getType: Option[Type]
+    /** Unsafe variant of `getType`.
+      * @throws NoSuchElementException if no type is available
+      */
+    def _getType: Type = getType.get
+
+    /** Returns true iff the symbol has a type associated with it */
+    def hasType: Boolean
   }
 
   /** Entry type for variable meta information */
   abstract class VarMeta extends Meta[VarKey] {
-    /** Returns true iff the variable has a type (or kind) associated with it */
-    def hasType: Boolean
-
     /** Returns true iff the symbol is a variable symbol */
     def isTermVariable: Boolean = getSymType == TermVariable
     /** Returns true iff the symbol is a type variable symbol */
@@ -71,11 +77,15 @@ trait IsSignature {
 
   /** Entry type for meta information for (possibly uninterpreted) constant symbols */
   abstract class ConstMeta extends Meta[ConstKey] {
-    /** Returns true iff the constant has a type associated with it */
-    def hasType: Boolean
     /** Returns true iff the constant has a definition term associated with it */
     def hasDefn: Boolean
-
+    /** Returns the definition saved with the symbol if any, `None` otherwise */
+    def getDefn: Option[Term]
+    /**
+     * Unsafe variant of `getDefn`. Gets the definition term directly
+     * @throws NoSuchElementException if no definition is available
+     */
+    def _getDefn: Term = getDefn.get
 
     /** Returns true iff the symbol is a fixed (interpreted) symbol */
     def isFixed: Boolean         = getSymType == Fixed
