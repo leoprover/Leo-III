@@ -14,7 +14,7 @@ object SignatureTest {
       val meta = sig.getConstMeta(c)
       println(meta.getName + "\t\t\t|"
             + meta._getType.pretty + "\t\t\t|"
-            + meta._getType.getTypeVars.map(f => f.pretty) + "\t\t\t|"
+            + meta._getType.getTypeVars.map(f => f.getName) + "\t\t\t|"
             + meta._getType.isApplicableWith(Type.i) + "\t\t\t\t|"
             + meta._getType.isApplicableWith(Type.o))
 
