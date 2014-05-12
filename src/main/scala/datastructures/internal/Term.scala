@@ -6,3 +6,7 @@ package datastructures.internal
 class Term {
 
 }
+
+object Term { // extends HOLTerm {
+
+}
