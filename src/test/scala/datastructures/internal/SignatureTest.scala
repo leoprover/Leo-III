@@ -15,8 +15,8 @@ object SignatureTest {
       println(meta.getName + "\t\t\t|"
             + meta._getType.pretty + "\t\t\t|"
             + meta._getType.getTypeVars.map(f => f.pretty) + "\t\t\t|"
-            + meta._getType.isApplicable(Type.i) + "\t\t\t\t|"
-            + meta._getType.isApplicable(Type.o))
+            + meta._getType.isApplicableWith(Type.i) + "\t\t\t\t|"
+            + meta._getType.isApplicableWith(Type.o))
 
     }
   }

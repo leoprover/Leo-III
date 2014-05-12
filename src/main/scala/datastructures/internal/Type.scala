@@ -17,7 +17,7 @@ sealed abstract class Type extends Pretty {
   val isFunType: Boolean
   val isPolyType: Boolean
   val isBoundTypeVar: Boolean
-  def isApplicable(arg: Type): Boolean
+  def isApplicableWith(arg: Type): Boolean
 
   // Queries on types
   def getTypeVars: Set[Variable]
@@ -39,7 +39,7 @@ protected[internal] case class ForallType(typeVar: TypeVar, body: Type) extends 
   val isFunType      = false
   val isPolyType     = true
   val isBoundTypeVar = false
-  def isApplicable(arg: Type): Boolean = (arg.getKind == typeVar.getType.get)
+  def isApplicableWith(arg: Type): Boolean = (arg.getKind == typeVar.getType.get)
 
   def getTypeVars: Set[Variable] = Set(typeVar) ++ body.getTypeVars
 }
@@ -55,7 +55,7 @@ protected[internal] case class FunType(in: Type, out: Type) extends Type {
   val isFunType      = true
   val isPolyType     = false
   val isBoundTypeVar = false
-  def isApplicable(arg: Type): Boolean = (arg == in)
+  def isApplicableWith(arg: Type): Boolean = (arg == in)
 
   def getTypeVars: Set[Variable] = in.getTypeVars ++ out.getTypeVars
 }
@@ -68,7 +68,7 @@ protected[internal] case class TypeVarType(typeVar: TypeVar) extends Type {
   val isFunType      = false
   val isPolyType     = false
   val isBoundTypeVar = true
-  def isApplicable(arg: Type): Boolean = false
+  def isApplicableWith(arg: Type): Boolean = false
 
   def getTypeVars: Set[Variable] = Set.empty
 }
@@ -81,7 +81,7 @@ protected[internal] case class BaseType(name: String) extends Type {// string???
   val isFunType      = false
   val isPolyType     = false
   val isBoundTypeVar = false
-  def isApplicable(arg: Type): Boolean = false
+  def isApplicableWith(arg: Type): Boolean = false
 
   def getTypeVars: Set[Variable] = Set.empty
 }
@@ -130,7 +130,7 @@ sealed abstract class Kind extends Type with Pretty {
   val isFunType = false
   val isPolyType = false
   val isBoundTypeVar = false
-  def isApplicable(arg: Type): Boolean = false
+  def isApplicableWith(arg: Type): Boolean = false
   def getTypeVars: Set[Variable] = Set.empty
 }
 
