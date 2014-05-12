@@ -22,6 +22,8 @@ abstract sealed class Variable extends Pretty {
   def isTermVar: Boolean
 
   def hasType: Boolean
+  def getName: String
+  def getType: Option[Type]
 
   //vielleicht local/global scope speichern? (Alex)
 }
@@ -31,6 +33,9 @@ protected[internal] case class TypeVar(name: String, varType: Kind) extends Vari
   def isTermVar = false
 
   def hasType = true
+
+  def getName = name
+  def getType = Some(varType)
 
   def #!(body: Type): ForallType = {
     ForallType(this, body)
@@ -43,6 +48,9 @@ protected[internal] case class TermVar(name: String, varType: Option[Type]) exte
   def isTermVar = true
 
   def hasType = varType.isDefined
+
+  def getName = name
+  def getType = varType
 
   def pretty = varType match {
     case None      => name
