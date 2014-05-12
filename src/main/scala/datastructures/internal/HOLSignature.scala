@@ -34,7 +34,7 @@ trait HOLSignature {
                            ("<=",  ifDef,         Type.o ->: Type.o ->: Type.o),
                            ("<=>", iffDef,        Type.o ->: Type.o ->: Type.o))
 
-  private val X = newTyVar
+  private lazy val X = newTyVar
 
   protected def existsDef: Term = null
 
