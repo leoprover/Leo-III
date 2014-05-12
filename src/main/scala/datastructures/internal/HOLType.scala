@@ -1,6 +1,5 @@
 package datastructures.internal
 
-import datastructures.Pretty
 import scala.language.implicitConversions
 
 /**
@@ -62,13 +61,4 @@ trait HOLType {
   }
 
   implicit def typeVarToType(typeVar: Variable): Type = mkVarType(typeVar)
-
-  abstract class Type extends Pretty {
-
-  }
-
-  abstract class Kind extends Pretty {
-
-  }
-
 }

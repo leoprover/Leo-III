@@ -9,10 +9,11 @@ import datastructures.Pretty
  * @since 30.04.2014
  */
 object Variable {
-  def mkTypeVar(name: String = {Variable.lastUsedIndex += 1; Variable.typeVarNames(Variable.lastUsedIndex)}, varType: Kind = BaseKind) = TypeVar(name, varType)
+  def mkTypeVar(name: String = {Variable.lastUsedIndex += 1; Variable.typeVarName + Variable.lastUsedIndex.toString}, varType: Kind = TypeKind) = TypeVar(name, varType)
   def mkVar     = TermVar(_,_)
+  def newTyVar = mkTypeVar()
 
-  lazy val typeVarNames: List[String] = Nil
+  val typeVarName: String = "TV"
   var lastUsedIndex = -1
 }
 
@@ -24,7 +25,8 @@ abstract sealed class Variable extends Pretty {
 
   //vielleicht local/global scope speichern? (Alex)
 }
-case class TypeVar(name: String, varType: Kind) extends Variable {
+
+protected[internal] case class TypeVar(name: String, varType: Kind) extends Variable {
   def isTypeVar = true
   def isTermVar = false
 
@@ -36,7 +38,7 @@ case class TypeVar(name: String, varType: Kind) extends Variable {
 
   def pretty = name + ":" + varType.pretty
 }
-case class TermVar(name: String, varType: Option[Type]) extends Variable {
+protected[internal] case class TermVar(name: String, varType: Option[Type]) extends Variable {
   def isTypeVar = false
   def isTermVar = true
 

@@ -1,7 +1,7 @@
 package datastructures.internal
 
-import Type.{mkTypeVarType, getBaseKind}
-import Variable.{mkTypeVar, typeVarNames}
+import Type.{typeKind, superKind}
+import Variable.{newTyVar}
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
  *
  *  1. Fixed (interpreted) symbols
@@ -15,24 +15,26 @@ import Variable.{mkTypeVar, typeVarNames}
  * @since 02.05.2014
  */
 trait HOLSignature {
-  val types = List((Type.o.name,      getBaseKind),
-                   (Type.i.name,      getBaseKind),
-                   (getBaseKind.name,   SuperKind))
+  val types = List((Type.o.name,      typeKind),
+                   (Type.i.name,      typeKind),
+                   (typeKind.name,   superKind))
 
-  val fixedConsts = List(("$true",                                              Type.o),
-                         ("$false",                                             Type.o),
-                         ("#box",                                    Type.o ->: Type.o),
-                         ("#diamond",                                Type.o ->: Type.o),
-                         ("~",                                       Type.o ->: Type.o),
-                         ("!",        mkTypeVar("X") #!  (("X" ->: Type.o) ->: Type.o)),
-                         ("|",                            Type.o ->: Type.o ->: Type.o),
-                         ("=",              mkTypeVar("X") #! ("X" ->: "X" ->: Type.o)))
+  val fixedConsts = List(("$true",                                Type.o),
+                         ("$false",                               Type.o),
+                         ("#box",                      Type.o ->: Type.o),
+                         ("#diamond",                  Type.o ->: Type.o),
+                         ("~",                         Type.o ->: Type.o),
+                         ("!",          X #! ((X ->: Type.o) ->: Type.o)),
+                         ("|",              Type.o ->: Type.o ->: Type.o),
+                         ("=",                 X #! (X ->: X ->: Type.o)))
 
-  val definedConsts = List(("?",   existsDef, mkTypeVar("X") #! (("X" ->: Type.o) ->: Type.o)),
-                           ("&",   andDef,                      Type.o ->: Type.o ->: Type.o),
-                           ("=>",  implDef,                     Type.o ->: Type.o ->: Type.o),
-                           ("<=",  ifDef,                       Type.o ->: Type.o ->: Type.o),
-                           ("<=>", iffDef,                      Type.o ->: Type.o ->: Type.o))
+  val definedConsts = List(("?",   existsDef, X #! ((X ->: Type.o) ->: Type.o)),
+                           ("&",   andDef,        Type.o ->: Type.o ->: Type.o),
+                           ("=>",  implDef,       Type.o ->: Type.o ->: Type.o),
+                           ("<=",  ifDef,         Type.o ->: Type.o ->: Type.o),
+                           ("<=>", iffDef,        Type.o ->: Type.o ->: Type.o))
+
+  private val X = newTyVar
 
   protected def existsDef: Term = null
 

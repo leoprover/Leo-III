@@ -182,7 +182,7 @@ trait IsSignature {
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
-  def addBaseType(identifier: String): ConstKey                       = addUninterpreted(identifier, Type.getBaseKind)
+  def addBaseType(identifier: String): ConstKey                       = addUninterpreted(identifier, Type.typeKind)
 
   /** Returns the meta information stored under key `key`*/
   def getConstMeta(key: ConstKey): ConstMeta

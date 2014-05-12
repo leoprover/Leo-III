@@ -180,16 +180,17 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
           case None => throw new IllegalArgumentException("Neither definition nor type was passed to addConstant0.")
           case Some(k:Kind) => { // Type
             true match {
-              case k.isBaseKind => {
-                val meta = TypeMeta(identifier, key, k, Type.mkBaseType(identifier))
+              case k.isTypeKind => {
+                val meta = TypeMeta(identifier, key, k, Type.mkType(identifier))
                 metaMap += (key, meta)
               }
               case k.isFunKind => {
-                val meta = TypeMeta(identifier, key, k, Type.mkConstructorType(identifier))
-                metaMap += (key, meta)
+                  throw new IllegalArgumentException("Constructor types not yet supported")
+//                val meta = TypeMeta(identifier, key, k, Type.mkConstructorType(identifier))
+//                metaMap += (key, meta)
               }
               case _ => { // it is neither a base or funKind, then it's a super kind.
-              val meta = TypeMeta(identifier, key, Type.getSuperKind, Type.getSuperKind)
+              val meta = TypeMeta(identifier, key, Type.superKind, Type.superKind)
                 metaMap += (key, meta)
               }
             }
