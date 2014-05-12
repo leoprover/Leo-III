@@ -9,12 +9,22 @@ import datastructures.Pretty
  *  @note Updated 12.05.2014 (Re-organized structure of classes)
   */
 sealed abstract class Type extends Pretty {
+  // Syntactic nice constructors
   def ->:(hd: Type) = Type.mkFunType(hd, this)
 
+  // Predicates on types
   val isBaseType: Boolean
   val isFunType: Boolean
   val isPolyType: Boolean
   val isBoundTypeVar: Boolean
+  def isApplicable(arg: Type): Boolean
+
+  // Queries on types
+  def getTypeVars: Set[Variable]
+  def getKind: Kind = TypeKind // since we dont have any (unsaturated) type constructors, the kind is always * for types
+
+  // Substitutions
+  // ....
 }
 
 /**
@@ -25,10 +35,13 @@ sealed abstract class Type extends Pretty {
 protected[internal] case class ForallType(typeVar: TypeVar, body: Type) extends Type {
   def pretty = "forall " + typeVar.pretty + ". " + body.pretty
 
-  val isBaseType = false
-  val isFunType = false
-  val isPolyType = true
+  val isBaseType     = false
+  val isFunType      = false
+  val isPolyType     = true
   val isBoundTypeVar = false
+  def isApplicable(arg: Type): Boolean = (arg.getKind == typeVar.getType.get)
+
+  def getTypeVars: Set[Variable] = Set(typeVar) ++ body.getTypeVars
 }
 
 /**Constructor for a function type `in -> out` */
@@ -38,30 +51,39 @@ protected[internal] case class FunType(in: Type, out: Type) extends Type {
     case otherTy:Type  => otherTy.pretty + " -> " + out.pretty
   }
 
-  val isBaseType = false
-  val isFunType = true
-  val isPolyType = false
+  val isBaseType     = false
+  val isFunType      = true
+  val isPolyType     = false
   val isBoundTypeVar = false
+  def isApplicable(arg: Type): Boolean = (arg == in)
+
+  def getTypeVars: Set[Variable] = in.getTypeVars ++ out.getTypeVars
 }
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
 protected[internal] case class TypeVarType(typeVar: TypeVar) extends Type {
   def pretty = typeVar.name // name instead of pretty to avoid repitition of types
 
-  val isBaseType = false
-  val isFunType = false
-  val isPolyType = false
+  val isBaseType     = false
+  val isFunType      = false
+  val isPolyType     = false
   val isBoundTypeVar = true
+  def isApplicable(arg: Type): Boolean = false
+
+  def getTypeVars: Set[Variable] = Set.empty
 }
 
 /** Literal type, i.e. `$o` */
 protected[internal] case class BaseType(name: String) extends Type {// string???
   def pretty = name
 
-  val isBaseType = true
-  val isFunType = false
-  val isPolyType = false
+  val isBaseType     = true
+  val isFunType      = false
+  val isPolyType     = false
   val isBoundTypeVar = false
+  def isApplicable(arg: Type): Boolean = false
+
+  def getTypeVars: Set[Variable] = Set.empty
 }
 
 object Type extends HOLType {
@@ -108,6 +130,8 @@ sealed abstract class Kind extends Type with Pretty {
   val isFunType = false
   val isPolyType = false
   val isBoundTypeVar = false
+  def isApplicable(arg: Type): Boolean = false
+  def getTypeVars: Set[Variable] = Set.empty
 }
 
 
@@ -128,6 +152,7 @@ protected[internal]case class FunKind(in: Kind, out: Kind) extends Kind {
   val isTypeKind = false
   val isSuperKind = false
   val isFunKind = true
+  override def getKind = this
 }
 
 /** Artificial kind that models the type of `*` (represented by `BaseKind`) */
@@ -137,4 +162,5 @@ protected[internal] case object SuperKind extends Kind {
   val isTypeKind = false
   val isSuperKind = true
   val isFunKind = false
+  override def getKind = this
 }
