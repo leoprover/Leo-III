@@ -25,5 +25,5 @@ trait HOLTerm {
 
   def \(hd: Variable, body: Term): Term
 
-  def /\ : Term
+  def /\(hd: Variable, body: Term): Term
 }
