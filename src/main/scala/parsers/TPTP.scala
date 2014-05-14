@@ -1,7 +1,7 @@
 package parsers
 
 import datastructures.tptp._
-import syntactical.TPTPParsers
+import syntactical.TPTPParsers._
 import scala.util.parsing.input.Reader
 
 /**
@@ -22,7 +22,7 @@ object TPTP {
    * @param input A [[scala.util.parsing.input.Reader]] wrapping the TPTP input
    * @return A representation of the in file in [[datastructures.tptp.Commons.TPTPInput]] format
    */
-  def parseFile(input: Reader[Char])= extract(parser.parse(input, parser.tptpFile))
+  def parseFile(input: Reader[Char])= extract(parse(input, tptpFile))
 
   /**
    * Convenience method for parsing. Same as `parseFile(input: Reader[Char])`, just that
@@ -31,24 +31,21 @@ object TPTP {
    * @param input The String that is to be parsed
    * @return A representation of the input file in [[datastructures.tptp.Commons.TPTPInput]] format
    */
-  def parseFile(input: String)= extract(parser.parse(input, parser.tptpFile))
+  def parseFile(input: String)= extract(parse(input, tptpFile))
 
-  def parseFormula(input: String) = extract(parser.parse(input, parser.annotatedFormula))
-  def parseFOF(input: String) = extract(parser.parse(input, parser.fofAnnotated))
-  def parseTHF(input: String) = extract(parser.parse(input, parser.thfAnnotated))
-  def parseTFF(input: String) = extract(parser.parse(input, parser.tffAnnotated))
-  def parseCNF(input: String) = extract(parser.parse(input, parser.cnfAnnotated))
-  def parseTPI(input: String) = extract(parser.parse(input, parser.tpiAnnotated))
-//    def parseTFA(input: String) = parser.exec(input, parser.tfaFormula)
+  def parseFormula(input: String) = extract(parse(input, annotatedFormula))
+  def parseFOF(input: String) = extract(parse(input, fofAnnotated))
+  def parseTHF(input: String) = extract(parse(input, thfAnnotated))
+  def parseTFF(input: String) = extract(parse(input, tffAnnotated))
+  def parseCNF(input: String) = extract(parse(input, cnfAnnotated))
+  def parseTPI(input: String) = extract(parse(input, tpiAnnotated))
+//    def parseTFA(input: String) = parser.exec(input, tfaFormula)
 
   // give simplified parsing result representations to the outside
-  protected def extract[T](res: parser.ParseResult[T]): Either[String, T] = {
+  private def extract[T](res: ParseResult[T]): Either[String, T] = {
     res match {
-      case parser.Success(x, _) => Right(x)
-      case parser.Failure(msg,_) => Left(msg)
-      case parser.Error(msg,_) => Left(msg)
+      case Success(x, _) => Right(x)
+      case noSu: NoSuccess => Left(noSu.msg)
     }
   }
-
-  val parser = new TPTPParsers
 }
