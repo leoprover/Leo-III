@@ -17,10 +17,8 @@ object SimpleBlackboard extends Blackboard {
   protected[blackboard] var formulaMap: mutable.HashMap[String, (String, Formula)] = new mutable.HashMap[String, (String, Formula)]
 
   // Observer
-  protected[blackboard] var observeAddAllSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
-  protected[blackboard] var observeRmAllSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
-  protected[blackboard] var observeAddPredSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
-  protected[blackboard] var observeRmPredSet: mutable.HashSet[BlackboardObserver] = new mutable.HashSet[BlackboardObserver]
+  protected[blackboard] var observeAddSet: mutable.HashSet[FormulaAddObserver] = new mutable.HashSet[FormulaAddObserver]
+  protected[blackboard] var observeRemoveSet: mutable.HashSet[FormulaRemoveObserver] = new mutable.HashSet[FormulaRemoveObserver]
 
   // Monitor for the formulas
   private val formulaLock : ReentrantLock = new ReentrantLock(true)
@@ -39,6 +37,7 @@ object SimpleBlackboard extends Blackboard {
    * @param formula to be added.
    */
   override def addFormula(formula: Formula) {
+    val toWakeUp : mutable.Set[FormulaAddObserver] = new mutable.HashSet[FormulaAddObserver]()
     // Entry
     formulaLock.lock()
     try {
@@ -50,7 +49,7 @@ object SimpleBlackboard extends Blackboard {
 
     //CS:
     formulaMap.put(formula.name, (formula.name, formula))
-
+    observeAddSet.foreach(o => if (o.filterAdd(formula)) {o.addFormula(formula); toWakeUp.add(o)})
     // Exit
     formulaLock.lock()
     try {
@@ -60,21 +59,7 @@ object SimpleBlackboard extends Blackboard {
     } finally {
       formulaLock.unlock()
     }
-  }
-
-  /**
-   * <p>
-   * Informs an Observer over all Add Operations.
-   * </p>
-   * @param o - Observer to add.
-   */
-  override def observeAllAdds(o: BlackboardObserver) {
-    observerLock.lock()
-    try {
-      observeAddAllSet.add(o)
-    } finally {
-      observerLock.unlock()
-    }
+    toWakeUp.foreach(_.wakeUp())
   }
 
   /**
@@ -88,60 +73,11 @@ object SimpleBlackboard extends Blackboard {
 
   /**
    * <p>
-   * Informs an Observer over all Add Actions satisfying a
-   * Predicate p.
-   * </p>
-   *
-   * @param p - Predicate to be satisfied.
-   * @param o - Observer.
-   */
-  override def observeAddPredicate(p: (Formula) => Boolean, o: BlackboardObserver) {
-    observerLock.lock()
-    try {
-      observeAddPredSet.add(o)
-    } finally {
-      observerLock.unlock()
-    }
-  }
-
-  /**
-   * Informs an Observer over all Remove Actions satisfying
-   * a Predicate p.
-   *
-   * @param p - Predicate to be satisfied.
-   * @param o - Observer.
-   */
-  override def observeRemPredicate(p: (Formula) => Boolean, o: BlackboardObserver) {
-    observerLock.lock()
-    try {
-      observeRmPredSet.add(o)
-    } finally {
-      observerLock.unlock()
-    }
-  }
-
-  /**
-   * <p>
    * Removes a formula from the Set fo formulas of the Blackboard.
    * </p>
    * @return true if the formula was removed, false if the formula does not exist.
    */
   override def removeFormula(formula: Formula): Boolean = rmFormulaByName(formula.name)
-
-  /**
-   * <p>
-   * Informs an Observer over all Remove Operations.
-   * </p>
-   * @param o - Observer
-   */
-  override def observeAllRem(o: BlackboardObserver) {
-    observerLock.lock()
-    try {
-      observeRmAllSet.add(o)
-    } finally {
-      observerLock.unlock()
-    }
-  }
 
   /**
    *
@@ -220,6 +156,7 @@ object SimpleBlackboard extends Blackboard {
    * @return true, iff the element existed.
    */
   override def rmFormulaByName(name: String): Boolean = {
+    val toWakeUp : mutable.Set[FormulaRemoveObserver] = new mutable.HashSet[FormulaRemoveObserver]()
     // Entry
     formulaLock.lock()
     try {
@@ -231,7 +168,10 @@ object SimpleBlackboard extends Blackboard {
 
     //CS:
     val r : Boolean = formulaMap.remove(name) match {
-      case Some(_) => true
+      case Some(x) => {
+        observeRemoveSet.foreach(o => if (o.filterRemove(x._2)) {o.removeFormula(x._2); toWakeUp.add(o)})
+        true
+      }
       case None => false
     }
 
@@ -244,18 +184,20 @@ object SimpleBlackboard extends Blackboard {
     } finally {
       formulaLock.unlock()
     }
+    toWakeUp.foreach(_.wakeUp())
     return r
 
   }
 
   /**
    * <p>
-   * Removex all Formulas from the Blackboard satisfying a Predicate.
+   * Removes all Formulas from the Blackboard satisfying a Predicate.
    * </p>
    *
    * @param p - All x with p(x) will be removed.
    */
   override def rmAll(p: (Formula) => Boolean) {
+    val toWakeUp : mutable.Set[FormulaRemoveObserver] = new mutable.HashSet[FormulaRemoveObserver]()
     formulaLock.lock()
     try {
       while(readCount > 0 || writeCount > 0) writeCond.await()
@@ -265,7 +207,15 @@ object SimpleBlackboard extends Blackboard {
     }
 
     //CS:
-    formulaMap.values.filter(x=>p(x._2)).foreach(x => formulaMap.remove(x._1))
+    formulaMap.values.filter(x=>p(x._2)).foreach(x => {
+      formulaMap.remove(x._1)
+      observeRemoveSet.foreach(o => {
+        if(o.filterRemove(x._2)){
+          o.removeFormula(x._2)
+          toWakeUp.add(o)
+        }
+      })
+    })
 
     // Exit
     formulaLock.lock()
@@ -275,6 +225,36 @@ object SimpleBlackboard extends Blackboard {
       else writeCond.signal()
     } finally {
       formulaLock.unlock()
+    }
+    toWakeUp.foreach(_.wakeUp())
+  }
+
+  /**
+   * Register a new Handler for Formula adding Handlers.
+   * @param o - The Handler that is to register
+   */
+  override def registerAddObserver(o: FormulaAddObserver) {
+    observerLock.lock()
+    try {
+      this.observeAddSet.add(o)
+    } finally {
+      observerLock.unlock()
+    }
+  }
+
+  /**
+   * <p>
+   * Method to add an Handler for the removing of a Formula of the Blackboard.
+   * </p>
+   *
+   * @param o - The Handler that is registered.
+   */
+  override def registerRemoveObserver(o: FormulaRemoveObserver) {
+    observerLock.lock()
+    try {
+      this.observeRemoveSet.add(o)
+    } finally {
+      observerLock.unlock()
     }
   }
 }

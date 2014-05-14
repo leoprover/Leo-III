@@ -34,7 +34,7 @@ protected[internal] case class TermApp(left: Term, right: Term) extends Term {
   override def isTermApp = true
   def isApplicable(arg: Term): Boolean = ???
 
-  def getType: Boolean = ???
+  def getType: Option[Type] = ???
   def getFreeVars: Set[Variable] = left.getFreeVars ++ right.getFreeVars
 
   def betaNormalize: Term = this // do not normalize yet

@@ -6,6 +6,8 @@
  */
 
 
+import agents.impl.NormalClauseAgent
+import blackboard.SimpleBlackboard
 import scala.tools.nsc.Settings
 import scala.tools.nsc.interpreter.ILoop
 import leoshell.{leoshell => MyIntp}
@@ -53,13 +55,45 @@ class LeoILoop extends ILoop {
    * If something should be done in the start up phase
    */
   override def loop(){
-    // Calling the interpreter loop
-    intp.beQuietDuring {
+      consoleInitialize(true)
 
+      // Initializes leoIII
+      programInitialization()
+      super.loop()
+  }
+
+  /**
+   * Initializes the program independently of interpreter or fixed usage
+   */
+  def programInitialization() {
+    // Initializes a testing thread for the simplification agent
+    new Thread(new Runnable {
+      override def run() {
+        val agent = new NormalClauseAgent(normalization.Simplification)
+        agent.register(SimpleBlackboard)
+        while (true) {
+          if(agent.guard())
+            agent.apply()
+          agent.goSleep()
+        }
+      }
+    }).start()
+  }
+
+  /**
+   * Initializes the console of leo3
+   */
+  def consoleInitialize(quite : Boolean) {
+    if(quite)
+    intp.beQuietDuring {
       MyIntp.init(this)
       MyIntp.commandList.foreach{case (_,c) => c.initText.foreach(intp.interpret(_))}
       intp.interpret("def exit = sys.exit(0)")
     }
-      super.loop()
+    else {
+      MyIntp.init(this)
+      MyIntp.commandList.foreach{case (_,c) => c.initText.foreach(intp.interpret(_))}
+      intp.interpret("def exit = sys.exit(0)")
+    }
   }
 }
