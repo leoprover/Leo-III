@@ -2,16 +2,28 @@ package datastructures.internal
 
 import datastructures.Pretty
 /**
-  * Abstract type for modeling types
-  *
-  * @author Alexander Steen
-  * @since 30.04.2014
- *  @note Updated 12.05.2014 (Re-organized structure of classes)
-  */
-sealed abstract class Type extends Pretty {
-  // Syntactic nice constructors
-  def ->:(hd: Type) = Type.mkFunType(hd, this)
+ * Abstract type for modeling types
+ *
+ * @author Alexander Steen
+ * @since 30.04.2014
+ * @note Updated 15.05.2014 (Re-Re-organized structure of classes for types: abstract type with
+ *       companion object here [without explicit interfaces], implementation in extra file.
+ *       Type language is now fixed: System F (omega).
+ */
+abstract class Type extends Pretty with SignatureTypes {
 
+}
+
+/**
+ * Constructor methods the `Type` class.
+ */
+object Type {
+  mkTypegit
+}
+
+
+
+/*
   // Predicates on types
   val isBaseType: Boolean
   val isFunType: Boolean
@@ -25,6 +37,10 @@ sealed abstract class Type extends Pretty {
 
   // Substitutions
   // ....
+
+
+  // Syntactic nice constructors
+  def ->:(hd: Type) = Type.mkFunType(hd, this)
 }
 
 /**
@@ -164,3 +180,4 @@ protected[internal] case object SuperKind extends Kind {
   val isFunKind = false
   override def getKind = this
 }
+*/

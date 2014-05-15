@@ -311,3 +311,8 @@ object Signature {
     sig
   }
 }
+
+trait SignatureTypes {
+  type Var = Signature#VarKey
+  type Const = Signature#ConstKey
+}
