@@ -9,10 +9,12 @@ package datastructures.internal
  * @since 29.04.2014
  */
 trait IsSignature {
+  type Key
+
   /** This type is used as indexing key for variables in the underlying dictionary implementation */
-  type VarKey
+  type VarKey <: Key
   /** This type is used as indexing key for (possibly uninterpreted) constant symbols in the underlying dictionary implementation */
-  type ConstKey
+  type ConstKey <: Key
 
   type TypeOrKind = Either[Type, Kind]
 
@@ -144,6 +146,14 @@ trait IsSignature {
   def symbolExists(identifier: String): Boolean
   /** Returns the symbol type of  `identifier`, if it exists in signature */
   def symbolType(identifier: String): SymbolType
+  /** Returns the symbol type of  `identifier`, if it exists in signature */
+  def symbolType(identifier: Key): SymbolType
+
+  def isVarSymbol(identifier: Key): Boolean = {
+    symbolType(identifier).is(TermVariable) | symbolType(identifier).is(TypeVariable) }
+  def isConstSymbol(identifier: Key): Boolean = !isVarSymbol(identifier)
+
+  def getMeta(identifier: Key): Meta[Key]
 
   ///////////////////////////////
   // Utility methods for variable symbols

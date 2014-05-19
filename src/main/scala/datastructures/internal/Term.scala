@@ -6,21 +6,20 @@ import datastructures.Pretty
  * Created by lex on 29.04.14.
  */
 abstract sealed class Term extends Pretty {
-
   // Predicates on terms
-  def isVar: Boolean = false
-  def isConst: Boolean = false
-  def isTermApp: Boolean = false
-  def isTermAbs: Boolean = false
-  def isTypeApp: Boolean = false
-  def isTypeAbs: Boolean = false
+  val isVar: Boolean
+  val isConst: Boolean
+  val isTermApp: Boolean
+  val isTermAbs: Boolean
+  val isTypeApp: Boolean
+  val isTypeAbs: Boolean
   def isApplicable(arg: Term): Boolean
 
   // Queries on terms
   def getType: Option[Type]
   def _getType: Type = getType.get
-  def getFreeVars: Set[Variable]
-
+  def freeVars: Set[Variable]
+  def herbrandUniverse: Set[Term]
   // Substitutions
   // ...
 
@@ -29,14 +28,67 @@ abstract sealed class Term extends Pretty {
   // compare, order...
 }
 
-protected[internal] case class TermApp(left: Term, right: Term) extends Term {
-  def pretty = left.pretty + " " + right.pretty
+protected[internal] case class Atom(id: Signature#Key) extends Term {
+  // Pretty printing
+  import Signature.{get => signature}
+  val sig = signature
+  def pretty = sig.getMeta(id).getName
 
-  override def isTermApp = true
+  // Predicates on terms
+  val isVar = sig.isVarSymbol(id)
+  val isConst = sig.isConstSymbol(id)
+  val isTermApp = false
+  val isTermAbs = false
+  val isTypeApp = false
+  val isTypeAbs = false
   def isApplicable(arg: Term): Boolean = ???
 
+  // Queries
+  def getType: Option[Type] = sig.getMeta(id).getType
+  def freeVars: Set[Variable] = ???
+  def herbrandUniverse: Set[Term] = ???
+
+  def betaNormalize: Term = this // do not normalize yet
+}
+
+protected[internal] case class TermAbs(body: Term) extends Term {// hier fehlt type!
+  // Pretty printing
+  def pretty = "\\." + body.pretty
+
+  // Predicates on terms
+  val isVar = false
+  val isConst = false
+  val isTermApp = true
+  val isTermAbs = false
+  val isTypeApp = false
+  val isTypeAbs = false
+  def isApplicable(arg: Term): Boolean = ???
+  
+  // Queries
   def getType: Option[Type] = ???
-  def getFreeVars: Set[Variable] = left.getFreeVars ++ right.getFreeVars
+  def freeVars: Set[Variable] = ???
+  def herbrandUniverse: Set[Term] = ???
+
+  def betaNormalize: Term = this // do not normalize yet
+}
+
+protected[internal] case class TermApp(left: Term, right: Term) extends Term {
+  // Pretty printing
+  def pretty = left.pretty + " " + right.pretty
+
+  // Predicates on terms
+  val isVar = false
+  val isConst = false
+  val isTermApp = true
+  val isTermAbs = false
+  val isTypeApp = false
+  val isTypeAbs = false
+  def isApplicable(arg: Term): Boolean = ???
+
+  // Queries
+  def getType: Option[Type] = ???
+  def freeVars: Set[Variable] = left.freeVars ++ right.freeVars
+  def herbrandUniverse: Set[Term] = ???
 
   def betaNormalize: Term = this // do not normalize yet
 

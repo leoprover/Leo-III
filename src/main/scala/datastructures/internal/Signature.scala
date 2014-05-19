@@ -12,6 +12,7 @@ import scala.collection.immutable.{HashSet, BitSet, IntMap, HashMap}
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
 abstract sealed class Signature extends IsSignature with HOLSignature {
+  override type Key = Int
   override type ConstKey = Int // Invariant: Positive integers
   override type VarKey = Int // Invariant: Negative integers
   protected var curConstKey = 1
@@ -251,6 +252,12 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   def symbolExists(identifier: String): Boolean = keyMap.contains(identifier)
 
   def symbolType(identifier: String): SymbolType = metaMap(keyMap(identifier)).getSymType
+  def symbolType(identifier: Key): SymbolType = metaMap(identifier).getSymType
+
+  def getMeta(identifier: Key): Meta[Key] = isConstSymbol(identifier) match {
+    case true => getConstMeta(identifier)
+    case false => getVarMeta(identifier)
+  }
 
   /** Adds a symbol to the signature that is then marked as `Fixed` symbol type */
   protected def addFixed(identifier: String, typ: Type): Unit = {
