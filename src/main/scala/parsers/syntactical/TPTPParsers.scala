@@ -20,7 +20,7 @@ import scala.util.parsing.input.Reader
  * @see [[datastructures.tptp]] for the data structures the parser generates
  * @note Last update on 22.04.2014
  */
-class TPTPParsers extends TokenParsers with PackratParsers {
+object TPTPParsers extends TokenParsers with PackratParsers {
   type Tokens = TPTPTokens
   val lexical = new TPTPLexical
 

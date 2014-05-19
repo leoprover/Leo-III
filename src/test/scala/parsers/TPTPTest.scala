@@ -41,7 +41,7 @@ object TPTPTest {
   def fileTest(file: String) {
     val source = scala.io.Source.fromFile(file, "utf-8")
     lazy val input = new CharArrayReader(source.toArray)
-    val parser = new TPTPParsers
+    val parser = TPTPParsers
     println(parser.parse(input, parser.tptpFile))
   }
 
@@ -60,7 +60,7 @@ object TPTPTest {
     tokensOf(input.source.toString)
   }
   def tokensOf(input: String) {
-    val parser = new TPTPParsers
+    val parser = TPTPParsers
     println(input)
     var tokenstream = parser.tokens(input)
 
