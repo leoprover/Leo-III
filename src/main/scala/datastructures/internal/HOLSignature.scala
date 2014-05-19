@@ -1,7 +1,7 @@
 package datastructures.internal
 
-import Type.{typeKind, superKind}
-import Variable.{newTyVar}
+import Type.{typeKind, typeVarToType}
+import VarUtils.{freshTypeVar}
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
  *
  *  1. Fixed (interpreted) symbols
@@ -15,11 +15,12 @@ import Variable.{newTyVar}
  * @since 02.05.2014
  */
 trait HOLSignature {
-  val types = List((Type.o.name,      typeKind),
-                   (Type.i.name,      typeKind),
-                   (typeKind.name,   superKind))
+  // Don't change the order of the elements in this list.
+  // If you do so, you may need to update the Signature implementation.
+  val types = List(("$o",      typeKind),
+                   ("$i",      typeKind))
 
-  val fixedConsts = List(("$true",                                Type.o),
+  lazy val fixedConsts = List(("$true",                                Type.o),
                          ("$false",                               Type.o),
                          ("#box",                      Type.o ->: Type.o),
                          ("#diamond",                  Type.o ->: Type.o),
@@ -28,13 +29,13 @@ trait HOLSignature {
                          ("|",              Type.o ->: Type.o ->: Type.o),
                          ("=",                 X #! (X ->: X ->: Type.o)))
 
-  val definedConsts = List(("?",   existsDef, X #! ((X ->: Type.o) ->: Type.o)),
+  lazy val definedConsts = List(("?",   existsDef, X #! ((X ->: Type.o) ->: Type.o)),
                            ("&",   andDef,        Type.o ->: Type.o ->: Type.o),
                            ("=>",  implDef,       Type.o ->: Type.o ->: Type.o),
                            ("<=",  ifDef,         Type.o ->: Type.o ->: Type.o),
                            ("<=>", iffDef,        Type.o ->: Type.o ->: Type.o))
 
-  private lazy val X = newTyVar
+  private lazy val X = freshTypeVar()
 
   protected def existsDef: Term = null
 

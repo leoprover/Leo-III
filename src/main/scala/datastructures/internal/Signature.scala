@@ -30,14 +30,16 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   /** Case class for meta information for type variables */
   protected[internal] case class TypeVarMeta(name: String,
                                              key: VarKey,
-                                             typ: Kind)
+                                             k: Kind)
     extends VarMeta {
     def getName = name
     def getKey = key
     def getSymType = TypeVariable
-    def getType: Option[Type] = Some(typ)
+    def getType: Option[Type] = None
+    def getKind: Option[Kind] = Some(k)
 
-    def hasType: Boolean = true
+    def hasType: Boolean = false
+    def hasKind: Boolean = true
   }
 
 
@@ -50,22 +52,27 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     def getKey = key
     def getSymType = TermVariable
     def getType: Option[Type] = typ
+    def getKind: Option[Kind] = None
 
     def hasType: Boolean = typ.isDefined
+    def hasKind: Boolean = false
   }
 
   /** Case class for meta information for base types that are indexed in the signature */
   protected[internal] case class TypeMeta(name: String,
                                           key: ConstKey,
-                                          typ:  Kind,
-                                          typeRep: Type) extends ConstMeta { // method for extracting typeRep is missing
+                                          k:  Kind,
+                                          typeRep: Option[Type]) extends ConstMeta {
     def getName = name
     def getKey = key
     def getSymType = BaseType
-    def getType: Option[Type] = Some(typ)
+    /** Return type representation of the symbol */
+    def getType: Option[Type] = typeRep
+    def getKind: Option[Kind] = Some(k)
     def getDefn: Option[Term] = None
 
-    def hasType = true
+    def hasType = true // Since we provide type representation
+    def hasKind = true
     def hasDefn = false
   }
 
@@ -77,9 +84,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     def getKey = key
     def getSymType = Uninterpreted
     def getType: Option[Type] = Some(typ)
+    def getKind: Option[Kind] = None
     def getDefn: Option[Term] = None
 
     def hasType = true
+    def hasKind = false
     def hasDefn = false
   }
 
@@ -92,9 +101,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     def getKey = key
     def getSymType = Defined
     def getType: Option[Type] = typ
+    def getKind: Option[Kind] = None
     def getDefn: Option[Term] = Some(defn)
 
     def hasType = typ.isDefined
+    def hasKind = false
     def hasDefn = true
   }
 
@@ -106,9 +117,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     def getKey = key
     def getSymType = Fixed
     def getType: Option[Type] = Some(typ)
+    def getKind: Option[Kind] = None
     def getDefn: Option[Term] = None
 
     def hasType = true
+    def hasKind = false
     def hasDefn = false
   }
 
@@ -118,7 +131,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
 
   // note that not the key itself but the *inverted keys*
   // are saved in the xSets, since they cant store negative numbers
-  protected def addVariable0(identifier: String, typ: Option[Type]): VarKey = {
+  protected def addVariable0(identifier: String, typ: Option[TypeOrKind]): VarKey = {
     if (keyMap.contains(identifier)) {
       throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
@@ -132,12 +145,12 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
         metaMap += (key, meta)                        // to be a `TermVariable`
         termVarsSet += -key
       }
-      case Some(k: Kind) => { // It's a type variable symbol -- check first, since Kind <: Type
+      case Some(Right(k: Kind)) => { // It's a type variable symbol -- check first, since Kind <: Type
         val meta = TypeVarMeta(identifier, key, k)
         metaMap += (key, meta)
         typeVarsSet += -key
       }
-      case Some(ty: Type) => { // It's term variable symbol
+      case Some(Left(ty: Type)) => { // It's term variable symbol
         val meta = TermVarMeta(identifier, key, Some(ty))
         metaMap += (key, meta)
         termVarsSet += -key
@@ -165,7 +178,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     }
   }
 
-  protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey = {
+  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term]): ConstKey = {
     if (keyMap.contains(identifier)) {
       throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
@@ -178,25 +191,25 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
       case None => { // Uninterpreted or type
         typ match {
           case None => throw new IllegalArgumentException("Neither definition nor type was passed to addConstant0.")
-          case Some(k:Kind) => { // Type
+          case Some(Right(k:Kind)) => { // Type
             true match {
               case k.isTypeKind => {
-                val meta = TypeMeta(identifier, key, k, Type.mkType(identifier))
+                val meta = TypeMeta(identifier, key, k, Some(Type.mkType(key)))
                 metaMap += (key, meta)
               }
-              case k.isFunKind => {
+              /*case k.isFunKind => {
                   throw new IllegalArgumentException("Constructor types not yet supported")
 //                val meta = TypeMeta(identifier, key, k, Type.mkConstructorType(identifier))
 //                metaMap += (key, meta)
-              }
+              }*/
               case _ => { // it is neither a base or funKind, then it's a super kind.
-              val meta = TypeMeta(identifier, key, Type.superKind, Type.superKind)
+              val meta = TypeMeta(identifier, key, Type.superKind, None)
                 metaMap += (key, meta)
               }
             }
             typeSet += key
           }
-          case Some(t:Type) => { // Uninterpreted symbol
+          case Some(Left(t:Type)) => { // Uninterpreted symbol
           val meta = UninterpretedMeta(identifier, key, t)
             metaMap += (key, meta)
             uiSet += key
@@ -205,10 +218,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
       }
 
       case Some(fed) => { // Defined
-      val meta = DefinedMeta(identifier, key, typ, fed)
-        metaMap += (key, meta)
-        definedSet += key
-      }
+        val Left(ty) = typ.get
+        val meta = DefinedMeta(identifier, key, Some(ty), fed)
+          metaMap += (key, meta)
+          definedSet += key
+        }
     }
 
     key
@@ -285,6 +299,13 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     val e: HashSet[Int] = HashSet.empty
     set.foldLeft(e)(_+_)
   }
+
+
+  ////////////////////////////////
+  // Hard wired fixed keys
+  ////////////////////////////////
+  lazy val oKey = 1
+  lazy val iKey = 2
 }
 
 
@@ -293,12 +314,13 @@ object Signature {
 
   /** Create an empty signature */
   def empty: Signature = Signature.Nil
+  protected val globalSignature = empty
+  def get = globalSignature
 
-  /** Create a signature with predefined symbols as described by [[datastructures.internal.HOLSignature]] */
-  def createWithHOL: Signature = {
-    val sig = empty
+  /** Enriches the given signature with predefined symbols as described by [[datastructures.internal.HOLSignature]] */
+  def withHOL(sig: Signature): Unit = {
     for ((name, k) <- sig.types) {
-      sig.addConstant0(name, Some(k), None)
+      sig.addConstant0(name, Some(Right(k)), None)
     }
 
     for ((name, ty) <- sig.fixedConsts) {
@@ -306,9 +328,8 @@ object Signature {
     }
 
     for ((name, fed, ty) <- sig.definedConsts) {
-      sig.addConstant0(name, Some(ty), Some(fed))
+      sig.addConstant0(name, Some(Left(ty)), Some(fed))
     }
-    sig
   }
 }
 

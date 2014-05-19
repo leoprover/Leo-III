@@ -19,6 +19,6 @@ class HOLSignatureTest extends FunSuite with HOLSignature {
     assert(definedConsts.length == 5)
   }
   test("cardinality of type symbols") {
-    assert(types.length == 3)
+    assert(types.length == 2)
   }
 }

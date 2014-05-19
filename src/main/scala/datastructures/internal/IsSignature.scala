@@ -14,6 +14,8 @@ trait IsSignature {
   /** This type is used as indexing key for (possibly uninterpreted) constant symbols in the underlying dictionary implementation */
   type ConstKey
 
+  type TypeOrKind = Either[Type, Kind]
+
   ///////////////////////////////
   // Symbol types
   ///////////////////////////////
@@ -62,9 +64,13 @@ trait IsSignature {
       * @throws NoSuchElementException if no type is available
       */
     def _getType: Type = getType.get
+    def getKind: Option[Kind]
+    def _getKind: Kind = getKind.get
 
     /** Returns true iff the symbol has a type associated with it */
     def hasType: Boolean
+    /** Returns true iff the symbol has a kind associated with it */
+    def hasKind: Boolean
   }
 
   /** Entry type for variable meta information */
@@ -108,7 +114,7 @@ trait IsSignature {
     * @return the generated key that the freshly added symbol is indexed by
     * @throws IllegalArgumentException if the symbol described by `identifier` already exists in the signature
     */
-  protected def addVariable0(identifier: String, typ: Option[Type]): VarKey
+  protected def addVariable0(identifier: String, typ: Option[TypeOrKind]): VarKey
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
@@ -125,7 +131,7 @@ trait IsSignature {
     * @throws IllegalArgumentException if the symbol described by `identifier` already exists or a
     *                                  illegal typ/definition combination is supplied
     */
-  protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey
+  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term]): ConstKey
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
@@ -146,7 +152,7 @@ trait IsSignature {
   /** Add a variable of type (or kind) `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addVariable(id: String, typ: Type): VarKey = addVariable0(id, Some(typ))
+  def addVariable(id: String, typ: TypeOrKind): VarKey = addVariable0(id, Some(typ))
   /** Adds a term variable to the signature.
     * @return The key the symbol is indexed by
     */
@@ -170,7 +176,7 @@ trait IsSignature {
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term, typ: Type): ConstKey = addConstant0(identifier, Some(typ), Some(defn))
+  def addDefined(identifier: String, defn: Term, typ: Type): ConstKey = addConstant0(identifier, Some(Left(typ)), Some(defn))
   /** Adds a term variable without type to the signature.
     * @return The key the symbol is indexed by
     */
@@ -178,11 +184,11 @@ trait IsSignature {
   /** Adds an uninterpreted constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addUninterpreted(identifier: String, typ: Type): ConstKey       = addConstant0(identifier, Some(typ), None)
+  def addUninterpreted(identifier: String, typ: Type): ConstKey       = addConstant0(identifier, Some(Left(typ)), None)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
-  def addBaseType(identifier: String): ConstKey                       = addUninterpreted(identifier, Type.typeKind)
+  def addBaseType(identifier: String): ConstKey                       = addConstant0(identifier, Some(Right(Type.typeKind)), None)
 
   /** Returns the meta information stored under key `key`*/
   def getConstMeta(key: ConstKey): ConstMeta

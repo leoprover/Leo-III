@@ -8,13 +8,9 @@ import datastructures.Pretty
  * @author Alexander Steen
  * @since 30.04.2014
  */
-object Variable {
-  def mkTypeVar(name: String = {Variable.lastUsedIndex += 1; Variable.typeVarName + Variable.lastUsedIndex.toString}, varType: Kind = TypeKind) = TypeVar(name, varType)
+object Variable extends SignatureTypes{
+  def mkTypeVar(id: Var, varKind: Kind = TypeKind) = TypeVar(id, varKind)
   def mkVar     = TermVar(_,_)
-  def newTyVar = mkTypeVar()
-
-  val typeVarName: String = "TV"
-  var lastUsedIndex = -1
 }
 
 abstract sealed class Variable extends Pretty {
@@ -22,38 +18,52 @@ abstract sealed class Variable extends Pretty {
   def isTermVar: Boolean
 
   def hasType: Boolean
-  def getName: String
+  def hasKind: Boolean
+  def getName: Signature#VarKey
+
   def getType: Option[Type]
+  def _getType: Type = getType.get
+
+  def getKind: Option[Kind]
+  def _getKind: Kind = getKind.get
+
+  def #!(body: Type): Type = {
+    Type.mkPolyType(this, body)
+  }
 
   //vielleicht local/global scope speichern? (Alex)
 }
 
-protected[internal] case class TypeVar(name: String, varType: Kind) extends Variable {
+protected[internal] case class TypeVar(id: Signature#VarKey, varKind: Kind) extends Variable {
   def isTypeVar = true
   def isTermVar = false
 
-  def hasType = true
+  def hasType = false
+  def hasKind = true
 
-  def getName = name
-  def getType = Some(varType)
+  def getName = id
+  def getType = None
+  def getKind = Some(varKind)
 
-  def #!(body: Type): ForallType = {
-    ForallType(this, body)
-  }
-
-  def pretty = name + ":" + varType.pretty
+  import Signature.{get => signature}
+  val prettyName = signature.getVarMeta(id).getName
+  def pretty = prettyName + ":" + varKind.pretty
 }
-protected[internal] case class TermVar(name: String, varType: Option[Type]) extends Variable {
+protected[internal] case class TermVar(id: Signature#VarKey, varType: Option[Type]) extends Variable {
   def isTypeVar = false
   def isTermVar = true
 
   def hasType = varType.isDefined
+  def hasKind = false
 
-  def getName = name
+  def getName = id
   def getType = varType
+  def getKind = None
 
+  import Signature.{get => signature}
+  val prettyName = signature.getVarMeta(id).getName
   def pretty = varType match {
-    case None      => name
-    case Some(typ) => name + ":" + typ.pretty
+    case None      => prettyName
+    case Some(typ) => prettyName + ":" + typ.pretty
   }
 }
