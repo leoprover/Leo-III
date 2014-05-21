@@ -1,5 +1,7 @@
 package datastructures.internal
 
+import scala.language.implicitConversions
+
 /**
  * Created by lex on 19.05.14.
  */
