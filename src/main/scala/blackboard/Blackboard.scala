@@ -2,6 +2,7 @@ package blackboard
 
 import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 import agents.Agent
+import scheduler.Scheduler
 
 /**
  *
@@ -89,37 +90,26 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * @param p - All x with p(x) will be removed.
    */
   def rmAll(p : Formula => Boolean)
+
+  /**
+   * Access to the Scheduler at a central level.
+   *
+   * @return the currently used scheduler
+   */
+  def scheduler : Scheduler
 }
 
 /**
  * <p>
  * Common Trait for all Blackboard Observer,
- * for wakeup Handling and Sleeping
- * on some Condition.
+ * ATM only a Marker Interface. Maybe more in the future
  * </p>
  * @author Max Wisniewski
  * @since 5/14/14
  */
-trait Observer {
+trait Observer extends Agent {
 
-  /**
-   * <p>
-   * Wakes Up an Observer after a change.
-   * </p>
-   * <p>
-   * What happened during the change can be
-   * given to the observer in a specialization.
-   * </p>
-   */
-  def wakeUp() : Unit
 
-  /**
-   * <p>
-   * Testing method for an observer to sleep. (I.E. one run of its execution)
-   * </p>
-   * @deprecated
-   */
-  def goSleep() : Unit
 }
 
 /**

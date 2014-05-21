@@ -52,4 +52,23 @@ trait Agent {
    * Method that cancels an execution and possibly reverts its changes.
    */
   def cancel() : Unit
+
+  /**
+   * <p>
+   * Wakes Up an Observer after a change.
+   * </p>
+   * <p>
+   * What happened during the change can be
+   * given to the observer in a specialization.
+   * </p>
+   */
+  def wakeUp() : Unit
+
+  /**
+   * <p>
+   * Testing method for an observer to sleep. (I.E. one run of its execution)
+   * </p>
+   * @deprecated
+   */
+  def goSleep() : Unit
 }

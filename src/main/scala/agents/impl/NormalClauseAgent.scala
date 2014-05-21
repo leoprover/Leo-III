@@ -20,7 +20,7 @@ import scala.collection.mutable
  * @author Max Wisniewski
  * @since 5/14/14
  */
-class NormalClauseAgent(norm : Normalize) extends Agent with FormulaAddObserver {
+class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
 
   private val newFormulas : mutable.Set[Formula] = new mutable.HashSet[Formula]()
   private var blackboard : Blackboard = null  // Will be inserted by registering to a blackboard
@@ -64,7 +64,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent with FormulaAddObserver 
    * TriggerHandlers to check whether to execute the agent.
    * @return true if the agent can be executed, otherwise false.
    */
-  override def guard(): Boolean = true
+  override def guard(): Boolean = synchronized(!this.newFormulas.isEmpty)
 
   /**
    * <p>
@@ -93,11 +93,11 @@ class NormalClauseAgent(norm : Normalize) extends Agent with FormulaAddObserver 
 
   /**
    * <p>
-   * Testing method for an observer to sleep. (I.E. one run of its execution)
+   * If an Agent goes to sleep one execution should be done
    * </p>
    * @deprecated
    */
-  override def goSleep(): Unit = synchronized(if(this.newFormulas.isEmpty) this.wait())
+  override def goSleep(): Unit = return
 
   /**
    * <p>
@@ -108,6 +108,6 @@ class NormalClauseAgent(norm : Normalize) extends Agent with FormulaAddObserver 
    * given to the observer in a specialization.
    * </p>
    */
-  override def wakeUp(): Unit = synchronized(this.notifyAll())  // There should only be this thread waiting.
+  override def wakeUp(): Unit = blackboard.scheduler.toWork(this)  // There should only be this thread waiting.
 
 }

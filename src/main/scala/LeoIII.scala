@@ -67,17 +67,7 @@ class LeoILoop extends ILoop {
    */
   def programInitialization() {
     // Initializes a testing thread for the simplification agent
-    new Thread(new Runnable {
-      override def run() {
-        val agent = new NormalClauseAgent(normalization.Simplification)
-        agent.register(SimpleBlackboard)
-        while (true) {
-          if(agent.guard())
-            agent.apply()
-          agent.goSleep()
-        }
-      }
-    }).start()
+    (new NormalClauseAgent(normalization.Simplification)).register(SimpleBlackboard)
   }
 
   /**

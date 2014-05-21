@@ -3,6 +3,7 @@ package blackboard
 import datastructures.tptp.Commons.{ AnnotatedFormula => Formula }
 import scala.collection.mutable._
 import java.util.concurrent.locks.{ ReentrantLock, Condition }
+import scheduler.Scheduler
 
 /**
  * Starting Blackboard. Just to replace @see{leoshell.FormulaHandle}
@@ -19,6 +20,9 @@ object SimpleBlackboard extends Blackboard {
   protected[blackboard] val observeAddSet = new HashSet[FormulaAddObserver] with SynchronizedSet[FormulaAddObserver]
   protected[blackboard] val observeRemoveSet = new HashSet[FormulaRemoveObserver] with SynchronizedSet[FormulaRemoveObserver]
 
+  // Scheduler ATM Here because accessibility in prototype version
+  protected[blackboard] val _scheduler = new Scheduler(5)
+  def scheduler = _scheduler
 
   def getFormulas(): List[Formula] = getAll(_ => true)
 
