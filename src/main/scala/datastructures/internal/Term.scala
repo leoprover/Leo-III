@@ -34,18 +34,19 @@ abstract sealed class Term extends Pretty {
   def freeVars: Set[Signature#Key]
   def herbrandUniverse: Set[Term]
   // Substitutions
-  def substitute(what: Term, by: Term): Term
+  def substitute(what: Term, by: Term): Term = substitute0(what,by,0)
   def substitute(what: List[Term], by: List[Term]): Term = {
     require(what.length == by.length, "Substitution list do not match in length.")
     what.zip(by).foldRight(this)({case ((w,b), t:Term) => t.substitute(w,b)})
   }
-  protected[internal] def inc: Term = this
-  protected[internal] def dec: Term = this
+  protected[internal] def substitute0(what: Term, by: Term, scope: Int): Term
 
-  def scope: Int
+  protected[internal] def inc(scope: Int): Term = this
+  protected[internal] def dec(scope: Int): Term = this
 
   // Other operations
-  def betaNormalize: Term
+  def betaNormalize: Term = normalize0(0)
+  protected[internal] def normalize0(scope: Int): Term
   // compare, order...
 }
 
@@ -72,20 +73,17 @@ protected[internal] case class Atom(id: Signature#Key) extends Term {
   def herbrandUniverse: Set[Term] = Set.empty
 
   // Substitutions
-  def substitute(what: Term, by: Term): Term = what match {
+  def substitute0(what: Term, by: Term, scope: Int): Term = what match {
     case Atom(a) if a == id => by
     case _                  => this
   }
-
-  def scope = -1
-
-  def betaNormalize: Term = this // atoms are in β-nf
+  def normalize0(scope: Int) = this  // atoms are in β-nf
 }
 
 protected[internal] case class TermAbs(paramType: Type, body: Term) extends Term {
   // Pretty printing
-  def pretty = "(\\" + paramType.pretty + ". " + body.pretty + ")"
-
+//  def pretty = "(\\" + paramType.pretty + ". " + body.pretty + ")"
+  def pretty = "(\\. " + body.pretty + ")"
   // Predicates on terms
   val isAtom = false
   val isTermApp = false
@@ -103,17 +101,16 @@ protected[internal] case class TermAbs(paramType: Type, body: Term) extends Term
   def herbrandUniverse: Set[Term] = ???
 
   // Substitutions
-  def substitute(what: Term, by: Term): Term = what match {
-    case DeBruijnIndex(_,i) if i <= body.scope => TermAbs(paramType, body.substitute(what.inc,by.inc))
-    case _ => TermAbs(paramType, body.substitute(what.inc,by.inc))
+  def substitute0(what: Term, by: Term, scope: Int): Term = what match {
+    case _ => TermAbs(paramType, body.substitute(what.inc(scope),by.inc(scope+1)))
   }
-//
-  override def dec = TermAbs(paramType, body.dec)
-  override def inc = TermAbs(paramType, body.inc)
 
-  def scope = 1+ body.scope
+  override def dec(scope: Int) = TermAbs(paramType, body.dec(scope+1))
+  override def inc(scope: Int) = TermAbs(paramType, body.inc(scope+1))
 
-  def betaNormalize: Term = TermAbs(paramType, body.betaNormalize)
+  def normalize0(scope: Int): Term = {
+    TermAbs(paramType, body.normalize0(scope+1))
+  }
 }
 
 protected[internal] case class TermApp(left: Term, right: Term) extends Term {
@@ -138,18 +135,16 @@ protected[internal] case class TermApp(left: Term, right: Term) extends Term {
   def herbrandUniverse: Set[Term] = ???
 
   // Substitutions
-  def substitute(what: Term, by: Term): Term = TermApp(left.substitute(what, by), right.substitute(what, by))
+  def substitute0(what: Term, by: Term, scope: Int): Term = TermApp(left.substitute0(what, by,scope), right.substitute0(what, by, scope))
 
-  override def dec = TermApp(left.dec, right.dec)
-  override def inc = TermApp(left.inc, right.inc)
+  override def dec(scope: Int) = TermApp(left.dec(scope), right.dec(scope))
+  override def inc(scope: Int) = TermApp(left.inc(scope), right.inc(scope))
 
-  def scope = left.scope.max(right.scope)
-
-  def betaNormalize: Term = {
+  def normalize0(scope: Int): Term = {
     val leftNF = left.betaNormalize
     val rightNF = right.betaNormalize
     leftNF match {
-      case TermAbs(ty, body) => body.dec.substitute(DeBruijnIndex(ty, -1), rightNF)
+      case TermAbs(ty, body) => body.dec(scope+1).substitute(DeBruijnIndex(ty, 1), rightNF)
       case _ => TermApp(leftNF, rightNF)
     }
   }
@@ -178,17 +173,21 @@ protected[internal] case class DeBruijnIndex(boundType: Type, i: Int) extends Te
   def herbrandUniverse: Set[Term] = ???
 
   // Substitutions
-  def substitute(what: Term, by: Term): Term = what match {
+  def substitute0(what: Term, by: Term, scope: Int): Term = what match {
     case DeBruijnIndex(_,j) if i == j => by
     case _ => this
   }
 
-  override def dec = DeBruijnIndex(boundType, i-1)
-  override def inc = DeBruijnIndex(boundType, i+1)
+  override def dec(scope: Int) = scope match {
+    case s if s <= i => DeBruijnIndex(boundType, i-1)
+    case _ => this
+  }
+  override def inc(scope: Int) = scope match {
+    case s if s <= i => DeBruijnIndex(boundType, i+1)
+    case _ => this
+  }
 
-  def scope = -1
-
-  def betaNormalize: Term = this
+  def normalize0(scope: Int): Term = this
 }
 
 
