@@ -91,8 +91,8 @@ object Simplification extends AbstractNormalize{
       op match{
         case fof.& if leftR == rightR => leftR
         case fof.& if leftR == fof.Unary(fof.Not, rightR) || rightR == fof.Unary(fof.Not, leftR) => falseV
-        case fof.& if cTrue(leftR) => leftR
-        case fof.& if cTrue(rightR) => rightR
+        case fof.& if cTrue(leftR) => rightR
+        case fof.& if cTrue(rightR) => leftR
         case fof.& if cFalse(leftR) || cFalse(rightR) => falseV
 
         case fof.<=> if leftR == rightR => trueV

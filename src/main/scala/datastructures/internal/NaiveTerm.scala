@@ -71,7 +71,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   def ty = absType ->: term.ty
   def freeVars = term.freeVars
   def herbrandUniverse = ???
- 
+
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
    case BoundNode(t,i) => AbstractionNode(absType, term.substitute(BoundNode(t,i+1), by.inc(1)))

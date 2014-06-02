@@ -1,6 +1,8 @@
 package blackboard
 
 import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
+import agents.Agent
+import scheduler.Scheduler
 
 /**
  *
@@ -22,7 +24,7 @@ import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard {
+trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
 
   /**
    * <p>
@@ -82,92 +84,130 @@ trait Blackboard {
 
   /**
    * <p>
-   * Removex all Formulas from the Blackboard satisfying a Predicate.
+   * Remove all Formulas from the Blackboard satisfying a Predicate.
    * </p>
    *
    * @param p - All x with p(x) will be removed.
    */
   def rmAll(p : Formula => Boolean)
 
-  // Observing Methods.
-
   /**
-   * <p>
-   * Informs an Observer over all Add Operations.
-   * </p>
-   * @param o - Observer to add.
-   */
-  def observeAllAdds(o : BlackboardObserver)
-
-  /**
-   * <p>
-   * Informs an Observer over all Remove Operations.
-   * </p>
-   * @param o - Observer
-   */
-  def observeAllRem(o : BlackboardObserver)
-
-  /**
-   * <p>
-   * Informs an Observer over all Add Actions satisfying a
-   * Predicate p.
-   * </p>
+   * Access to the Scheduler at a central level.
    *
-   * @param p - Predicate to be satisfied.
-   * @param o - Observer.
+   * @return the currently used scheduler
    */
-  def observeAddPredicate(p : Formula => Boolean, o : BlackboardObserver)
-
-  /**
-   * Informs an Observer over all Remove Actions satisfying
-   * a Predicate p.
-   *
-   * @param p - Predicate to be satisfied.
-   * @param o - Observer.
-   */
-  def observeRemPredicate(p : Formula => Boolean, o : BlackboardObserver)
+  def scheduler : Scheduler
 }
 
 /**
- *
  * <p>
- * This Trait defines an observer to the blackboard. In the regestration
- * the Observer can choose one of the @see{Blackboard} Triggers from which he
- * would like to be called.
+ * Common Trait for all Blackboard Observer,
+ * ATM only a Marker Interface. Maybe more in the future
+ * </p>
+ * @author Max Wisniewski
+ * @since 5/14/14
+ */
+trait Observer extends Agent {
+
+
+}
+
+/**
+ *<p>
+ * BlackboardTrait for Registering AddHandler, that should be called
+ * as soon as a Formula is added.
  * </p>
  *
  * @author Max Wisniewski
- * @since 29.04.2014
+ * @since 5/14/14
  */
-trait BlackboardObserver{
+trait FormulaAddTrigger {
+  /**
+   * Register a new Handler for Formula adding Handlers.
+   * @param o - The Handler that is to register
+   */
+  def registerAddObserver(o : FormulaAddObserver)
+}
+
+/**
+ *
+ * <p>
+ * The Handler for the event of adding a Formula to the Blackboard.
+ * </p>
+ *
+ * <p>
+ * Note that an Agent, that implements this handler, should not
+ * compute immediately, but only save the change for later computation.
+ * </p>
+ *
+ * @author Max Wisniewski
+ * @since 5/14/14
+ */
+trait FormulaAddObserver extends Observer {
+
+  /**
+   * Passes the added formula to the Handler.
+   * @param f
+   */
+  def addFormula(f : Formula)
 
   /**
    * <p>
-   * Registers the Observer to a certain blackboard.
+   * A predicate that distinguishes interesting and uninteresing
+   * Formulas for the Handler.
    * </p>
-   *
-   * @param b - The Blackboard we want to react to.
+   * @param f - Newly added formula
+   * @return true if the formula is relevant and false otherwise
    */
-  def register(b : Blackboard) : Unit
-
-  /**
-   * <p>
-   * If the registered Triggers react, the changed
-   * Formulas will send to the Observer.
-   * </p>
-   *
-   * @param changes - New or Deleted Formulas
-   */
-  def apply(changes : BlackboardChanges) : Unit
+  def filterAdd(f : Formula) : Boolean
 }
 
 /**
  * <p>
- * Container for Blackboard Changes.
- * Contains a List of newly Added Formulas and a List of deleted Formulas.
+ * BlackboardTrait for registering Remove Handler.
  * </p>
  *
- * @param newFormulas - A List of newly added Formulas
- * @param delFormulas - A List of deleted Formulas
+ * @author Max Wisniewski
+ * @since 5/14/14
  */
-class BlackboardChanges (newFormulas : List[Formula], delFormulas : List[Formula])
+trait FormulaRemoveTrigger {
+
+  /**
+   * <p>
+   * Method to add an Handler for the removing of a Formula of the Blackboard.
+   * </p>
+   *
+   * @param o - The Handler that is registered.
+   */
+  def registerRemoveObserver(o : FormulaRemoveObserver)
+}
+
+/**
+ * <p>
+ * Handler for the event of removing a Formula from the Blackboard.
+ * </p>
+ *
+ * @author Max Wisniewski
+ * @since 5/14/14
+ */
+trait FormulaRemoveObserver extends Observer{
+
+  /**
+   * <p>
+   * Passes the removed Formula to the Handler.
+   * </p>
+   *
+   * @param f - Removed Formula
+   */
+  def removeFormula(f : Formula)
+
+  /**
+   * <p>
+   * Destinguishes usefull from unusefull Formulas for the Handler.
+   * </p>
+   * @param f - Recently removed Formula
+   * @return true if the formula is relevant to the handler and false otherwise
+   */
+  def filterRemove(f : Formula) : Boolean
+
+}

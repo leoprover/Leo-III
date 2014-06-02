@@ -1,7 +1,7 @@
 package normalization
 
+import datastructures.tptp.Commons._
 import datastructures.tptp._
-import Commons._
 
 /**
  * This trait is shared by every Normalizing Object.

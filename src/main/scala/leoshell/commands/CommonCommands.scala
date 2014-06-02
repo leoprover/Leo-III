@@ -112,7 +112,7 @@ object Add extends Command {
   val infoText = "Adds either a AnnotatedFormula or a string in tptp Syntax to the context."
   val helpText = "Adds a formula."
   val initText = List("def " + name + " (f : String) = commands.Add.add(f)",
-                      "def "+ name +" (f : datastructures.tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
+                      "def "+ name +"D (f : datastructures.tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
 
   def init () = leoshell.addCommand(this)
 

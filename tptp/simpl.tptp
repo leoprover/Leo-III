@@ -47,4 +47,4 @@ fof(forallFree, axiom, ! [X] : p).
 
 fof(existFree, axiom, ? [X] : p).
 
-fof(cmplx1, axiom, ! [X] : p(X) <=> p(X)).
+fof(cmplx1, axiom, ! [X] : (p(X) <=> p(X))).
