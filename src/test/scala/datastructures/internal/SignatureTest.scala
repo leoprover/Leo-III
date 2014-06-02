@@ -15,7 +15,8 @@ object SignatureTest {
       val meta = sig.getConstMeta(c)
       print(meta.getName + "\t\t\t|"
             + typeOrKindToString(meta) + "\t\t\t|")
-      meta.getType.foreach(x => print(x.typeVars.map(f => f.getName) + "\t\t\t|"))
+      meta.getType.foreach(x => print(x.typeVars.map(f => f.getName)))
+      print( "\t\t\t|")
       meta.getType.foreach(x => print(x.isApplicableWith(Type.i) + "\t\t\t\t|"))
       meta.getType.foreach(x => print(x.isApplicableWith(Type.o)))
       println()
@@ -23,7 +24,7 @@ object SignatureTest {
     }
   }
 
-  def typeOrKindToString(meta: IsSignature#Meta[Any]): String = {
+  def typeOrKindToString(meta: IsSignature#Meta): String = {
     meta.getType match {
       case Some(ty) => ty.pretty
       case None => {

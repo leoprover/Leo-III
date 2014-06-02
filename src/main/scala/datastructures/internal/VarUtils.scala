@@ -19,16 +19,15 @@ object VarUtils {
       name = typeVarName + lastUsedIndex.toString
     }
 
-    val key = sig.addVariable(name, Right(kind))
-    Variable.mkTypeVar(key, kind)
+    Variable.mkTypeVar(name, kind)
   }
 
   val typeVarName: String = "TV"
   var lastUsedIndex = -1
 
-
-  implicit def strToType: PartialFunction[String, Type] = {
-    case in: String if signature.getVarMeta(in).isTypeVariable => Variable.mkTypeVar(signature.getVarMeta(in).getKey)
-  }
+//
+//  implicit def strToType: PartialFunction[String, Type] = {
+//    case in: String if signature.getVarMeta(in).isTypeVariable => Variable.mkTypeVar(signature.getVarMeta(in).getKey)
+//  }
 
 }

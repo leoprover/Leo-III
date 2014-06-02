@@ -2,7 +2,7 @@ package datastructures.internal
 
 
 /** Literal type, i.e. `$o` */
-protected[internal] case class BaseType(id: Signature#ConstKey) extends Type {
+protected[internal] case class BaseType(id: Signature#Key) extends Type {
   // Pretty printing
   import Signature.{get => signature}
   def pretty = signature.getConstMeta(id).getName
@@ -78,10 +78,9 @@ protected[internal] case class ForallType(typeVar: TypeVar, body: Type) extends 
 }
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
-protected[internal] case class TypeVarType(typeVar: TypeVar) extends Type {
+protected[internal] case class TypeVarType(typeVar: Variable) extends Type { // changed for now
   // Pretty printing
-  import Signature.{get => signature}
-  def pretty = signature.getVarMeta(typeVar.getName).getName // name instead of pretty to avoid repitition of types
+  def pretty = typeVar.pretty // name instead of pretty to avoid repitition of types
 
   // Predicates on types
   val isBaseType     = false

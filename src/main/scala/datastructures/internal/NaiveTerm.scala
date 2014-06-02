@@ -16,7 +16,7 @@ sealed abstract class NaiveTerm extends Term {
   val isTypeAbs = false
 }
 
-protected[internal] case class SymbolNode(id: Signature#ConstKey) extends NaiveTerm {
+protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
   override val isAtom = true
 
   private val sym = Signature.get.getConstMeta(id)

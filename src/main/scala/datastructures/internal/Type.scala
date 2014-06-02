@@ -26,7 +26,7 @@ import datastructures.Pretty
  *       companion object here [without explicit interfaces], implementation in extra file.
  *       Type language is now fixed: System F (omega).
  */
-abstract class Type extends Pretty with SignatureTypes {
+abstract class Type extends Pretty {
   // Predicates on types
   val isBaseType: Boolean
   val isFunType: Boolean
@@ -52,7 +52,7 @@ abstract class Type extends Pretty with SignatureTypes {
 /**
  * Constructor methods the `Type` class.
  */
-object Type extends SignatureTypes {
+object Type {
   import Signature.{get => signature}
   /** The (fixed) type of individuals */
   lazy val i: Type = BaseType(signature.iKey)
@@ -60,7 +60,7 @@ object Type extends SignatureTypes {
   lazy val o: Type = BaseType(signature.oKey)
 
   /** Create type with name `identifier`. */
-  def mkType(identifier: Const): Type = BaseType(identifier)
+  def mkType(identifier: Signature#Key): Type = BaseType(identifier)
   /** Build type `in -> out`. */
   def mkFunType(in: Type, out: Type): Type = FunType(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
