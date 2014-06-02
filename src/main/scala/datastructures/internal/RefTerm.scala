@@ -23,4 +23,21 @@ abstract class RefTerm extends Pretty {
 
   // Other operations
   def betaNormalize: RefTerm
+
+  protected[internal] def substituteBound(scopeIndex: Int, by: RefTerm): RefTerm
+  protected[internal] def inc(scopeIndex: Int): RefTerm
+}
+
+
+object RefTerm {
+//  def mkAtom = Atom(_)
+  def mkBound = BoundNode(_,_)
+  def mkTermApp = ApplicationNode(_,_)
+  def mkTermAbs = AbstractionNode(_, _)
+  def mkTypeApp(left: Type, right: Type): Term = ???
+  def mkTypeAbs(hd: Variable, body: Term): Term = ???
+
+  def \(hd: Type, body: Term): Term = ???
+
+  def /\(hd: Variable, body: Term): Term = ???
 }
