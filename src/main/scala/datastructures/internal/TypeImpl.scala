@@ -118,3 +118,5 @@ protected[internal] case object SuperKind extends Kind {
   val isTypeKind = false
   val isSuperKind = true
 }
+
+

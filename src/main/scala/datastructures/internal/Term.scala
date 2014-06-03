@@ -2,6 +2,7 @@ package datastructures.internal
 
 import datastructures.Pretty
 
+
 /**
  * Abstract interface for generation of various terms that can be
  * displayed in the internal language.
@@ -58,3 +59,4 @@ object Term {
 
   def /\(hd: Variable, body: Term): Term = ???
 }
+

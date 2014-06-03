@@ -16,6 +16,10 @@ sealed abstract class NaiveTerm extends Term {
   val isTypeAbs = false
 }
 
+///////////////////
+// Term symbols
+///////////////////
+
 protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
   override val isAtom = true
 
