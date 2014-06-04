@@ -1,7 +1,6 @@
 package datastructures.internal
 
 import Type.{typeKind, typeVarToType}
-import VarUtils.{freshTypeVar}
 import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp}
 import scala.language.implicitConversions
 
@@ -25,22 +24,22 @@ trait HOLSignature {
   val types = List(("$o",      typeKind), // Key 1
                    ("$i",      typeKind)) // Key 2
 
-  lazy val fixedConsts = List(("$true",                                Type.o), // Key 3
+  import Type.{mkPolyType => forall}
+
+  lazy val fixedConsts = List(("$true",                           Type.o), // Key 3
                          ("$false",                               Type.o), // Key 4
                          ("#box",                      Type.o ->: Type.o), // Key 5
                          ("#diamond",                  Type.o ->: Type.o), // Key 6
                          ("~",                         Type.o ->: Type.o), // Key 7
-                         ("!",          X #! ((X ->: Type.o) ->: Type.o)), // Key 8
+                         ("!",        forall ((1 ->: Type.o) ->: Type.o)), // Key 8
                          ("|",              Type.o ->: Type.o ->: Type.o), // Key 9
-                         ("=",                 X #! (X ->: X ->: Type.o))) // Key 10
+                         ("=",                forall (1 ->: 1 ->: Type.o))) // Key 10
 
-  lazy val definedConsts = List(("?",   existsDef, X #! ((X ->: Type.o) ->: Type.o)), // Key 11
+  lazy val definedConsts = List(("?",   existsDef, forall ((1 ->: Type.o) ->: Type.o)), // Key 11
                            ("&",   andDef,        Type.o ->: Type.o ->: Type.o), // Key 12
                            ("=>",  implDef,       Type.o ->: Type.o ->: Type.o), // Key 13
                            ("<=",  ifDef,         Type.o ->: Type.o ->: Type.o), // Key 14
                            ("<=>", iffDef,        Type.o ->: Type.o ->: Type.o)) // Key 15
-
-  private lazy val X = freshTypeVar()
 
   private def o = Type.mkType(1)
   private def not = mkAtom(7)
