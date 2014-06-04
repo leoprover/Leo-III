@@ -1,12 +1,17 @@
 package datastructures.internal
 
-import Type.{typeKind, superKind}
-import Variable.{newTyVar}
+import Type.{typeKind, typeVarToType}
+import VarUtils.{freshTypeVar}
+import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp}
+import scala.language.implicitConversions
+
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
  *
  *  1. Fixed (interpreted) symbols
  *  2. Defined symbols
  *  3. Standard base types
+ *
+ * These symbols must be inserted into the signature before all other symbols and in the order described below!
  *
  * Details:
  * It defines eight fixed symbols ($true, $false, #box, #diamond, ~, !, |, =),
@@ -15,34 +20,65 @@ import Variable.{newTyVar}
  * @since 02.05.2014
  */
 trait HOLSignature {
-  val types = List((Type.o.name,      typeKind),
-                   (Type.i.name,      typeKind),
-                   (typeKind.name,   superKind))
+  // Don't change the order of the elements in this list.
+  // If you do so, you may need to update the Signature implementation.
+  val types = List(("$o",      typeKind), // Key 1
+                   ("$i",      typeKind)) // Key 2
 
-  val fixedConsts = List(("$true",                                Type.o),
-                         ("$false",                               Type.o),
-                         ("#box",                      Type.o ->: Type.o),
-                         ("#diamond",                  Type.o ->: Type.o),
-                         ("~",                         Type.o ->: Type.o),
-                         ("!",          X #! ((X ->: Type.o) ->: Type.o)),
-                         ("|",              Type.o ->: Type.o ->: Type.o),
-                         ("=",                 X #! (X ->: X ->: Type.o)))
+  lazy val fixedConsts = List(("$true",                                Type.o), // Key 3
+                         ("$false",                               Type.o), // Key 4
+                         ("#box",                      Type.o ->: Type.o), // Key 5
+                         ("#diamond",                  Type.o ->: Type.o), // Key 6
+                         ("~",                         Type.o ->: Type.o), // Key 7
+                         ("!",          X #! ((X ->: Type.o) ->: Type.o)), // Key 8
+                         ("|",              Type.o ->: Type.o ->: Type.o), // Key 9
+                         ("=",                 X #! (X ->: X ->: Type.o))) // Key 10
 
-  val definedConsts = List(("?",   existsDef, X #! ((X ->: Type.o) ->: Type.o)),
-                           ("&",   andDef,        Type.o ->: Type.o ->: Type.o),
-                           ("=>",  implDef,       Type.o ->: Type.o ->: Type.o),
-                           ("<=",  ifDef,         Type.o ->: Type.o ->: Type.o),
-                           ("<=>", iffDef,        Type.o ->: Type.o ->: Type.o))
+  lazy val definedConsts = List(("?",   existsDef, X #! ((X ->: Type.o) ->: Type.o)), // Key 11
+                           ("&",   andDef,        Type.o ->: Type.o ->: Type.o), // Key 12
+                           ("=>",  implDef,       Type.o ->: Type.o ->: Type.o), // Key 13
+                           ("<=",  ifDef,         Type.o ->: Type.o ->: Type.o), // Key 14
+                           ("<=>", iffDef,        Type.o ->: Type.o ->: Type.o)) // Key 15
 
-  private lazy val X = newTyVar
+  private lazy val X = freshTypeVar()
+
+  private def o = Type.mkType(1)
+  private def not = mkAtom(7)
+  private def disj = mkAtom(9)
+  private def conj = mkAtom(12)
+  private def impl = mkAtom(13)
+  private def lpmi = mkAtom(14)
 
   protected def existsDef: Term = null
 
-  protected def andDef: Term = null
+  protected def andDef: Term = mkTermAbs(o,
+                                mkTermAbs(o,
+                                  mkTermApp(not,
+                                    mkTermApp(
+                                      mkTermApp(disj, mkTermApp(not, (2,o))),
+                                                      mkTermApp(not, (1,o))))))
 
-  protected def implDef: Term = null
+  protected def implDef: Term = mkTermAbs(o,
+                                  mkTermAbs(o,
+                                    mkTermApp(
+                                      mkTermApp(disj, mkTermApp(not, (2,o))),
+                                                      (1,o))))
 
-  protected def ifDef: Term = null
+  protected def ifDef: Term =  mkTermAbs(o,
+                                  mkTermAbs(o,
+                                    mkTermApp(
+                                      mkTermApp(disj, (2,o)),
+                                                      mkTermApp(not, (1,o)))))
 
-  protected def iffDef: Term = null
+  protected def iffDef: Term = mkTermAbs(o,
+                                  mkTermAbs(o,
+                                    mkTermApp(
+                                      mkTermApp(conj, mkTermApp(
+                                                        mkTermApp(impl, (2,o)), (1,o))),
+                                                      mkTermApp(
+                                                        mkTermApp(lpmi, (2,o)), (1,o)))))
+
+
+
+  implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
 }

@@ -9,12 +9,8 @@ import datastructures.Pretty
  * @since 30.04.2014
  */
 object Variable {
-  def mkTypeVar(name: String = {Variable.lastUsedIndex += 1; Variable.typeVarName + Variable.lastUsedIndex.toString}, varType: Kind = TypeKind) = TypeVar(name, varType)
+  def mkTypeVar(name: String, varKind: Kind = TypeKind) = TypeVar(name, varKind)
   def mkVar     = TermVar(_,_)
-  def newTyVar = mkTypeVar()
-
-  val typeVarName: String = "TV"
-  var lastUsedIndex = -1
 }
 
 abstract sealed class Variable extends Pretty {
@@ -22,35 +18,46 @@ abstract sealed class Variable extends Pretty {
   def isTermVar: Boolean
 
   def hasType: Boolean
+  def hasKind: Boolean
   def getName: String
-  def getType: Option[Type]
 
-  //vielleicht local/global scope speichern? (Alex)
+  def getType: Option[Type]
+  def _getType: Type = getType.get
+
+  def getKind: Option[Kind]
+  def _getKind: Kind = getKind.get
+
+  def #!(body: Type): Type = {
+    Type.mkPolyType(this, body)
+  }
+
 }
 
-protected[internal] case class TypeVar(name: String, varType: Kind) extends Variable {
+protected[internal] case class TypeVar(name: String, varKind: Kind) extends Variable {
   def isTypeVar = true
   def isTermVar = false
 
-  def hasType = true
+  def hasType = false
+  def hasKind = true
 
   def getName = name
-  def getType = Some(varType)
+  def getType = None
+  def getKind = Some(varKind)
 
-  def #!(body: Type): ForallType = {
-    ForallType(this, body)
-  }
-
-  def pretty = name + ":" + varType.pretty
+  def pretty = name + ":" + varKind.pretty
 }
 protected[internal] case class TermVar(name: String, varType: Option[Type]) extends Variable {
   def isTypeVar = false
   def isTermVar = true
 
   def hasType = varType.isDefined
+  def hasKind = false
 
   def getName = name
   def getType = varType
+  def getKind = None
+
+  import Signature.{get => signature}
 
   def pretty = varType match {
     case None      => name

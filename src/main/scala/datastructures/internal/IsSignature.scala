@@ -7,12 +7,12 @@ package datastructures.internal
  *
  * @author Alexander Steen
  * @since 29.04.2014
+ * @note Updated 02.06.2014 Signature does not track variables names anymore, they are parsed to nameless terms instead
  */
 trait IsSignature {
-  /** This type is used as indexing key for variables in the underlying dictionary implementation */
-  type VarKey
-  /** This type is used as indexing key for (possibly uninterpreted) constant symbols in the underlying dictionary implementation */
-  type ConstKey
+  type Key
+
+  type TypeOrKind = Either[Type, Kind]
 
   ///////////////////////////////
   // Symbol types
@@ -24,13 +24,6 @@ trait IsSignature {
     def is(typ: SymbolType): Boolean = this.equals(typ)
   }
 
-  // Variables
-  /** `SymbolType` of a (term) variable symbol, e.g. `X: $i` */
-  case object TermVariable extends SymbolType
-  /** `SymbolType` of a type variable symbol, e.g. `X: *` */
-  case object TypeVariable extends SymbolType
-
-  // Constants
   /** `SymbolType` of a fixed symbol, e.g. `$true: $o` or `$false: $o` */
   case object Fixed extends SymbolType
   /** `SymbolType` of a defined symbol, e.g. `&: $o -> $o -> $o`  */
@@ -46,10 +39,8 @@ trait IsSignature {
 
   /**
    * Entry base class for meta information saved along with symbols in the signature table.
-   *
-   * @tparam Key    The type of key that is used to index the `Meta` in the signature table
    */
-  sealed abstract class Meta[+Key] {
+  abstract class Meta {
     /** The name of the symbol (i.e. string representation of it) */
     def getName: String
     /** The key of type `Key` that is used as table key for that entry */
@@ -62,23 +53,8 @@ trait IsSignature {
       * @throws NoSuchElementException if no type is available
       */
     def _getType: Type = getType.get
-
-    /** Returns true iff the symbol has a type associated with it */
-    def hasType: Boolean
-  }
-
-  /** Entry type for variable meta information */
-  abstract class VarMeta extends Meta[VarKey] {
-    /** Returns true iff the symbol is a variable symbol */
-    def isTermVariable: Boolean = getSymType == TermVariable
-    /** Returns true iff the symbol is a type variable symbol */
-    def isTypeVariable: Boolean = getSymType == TypeVariable
-  }
-
-  /** Entry type for meta information for (possibly uninterpreted) constant symbols */
-  abstract class ConstMeta extends Meta[ConstKey] {
-    /** Returns true iff the constant has a definition term associated with it */
-    def hasDefn: Boolean
+    def getKind: Option[Kind]
+    def _getKind: Kind = getKind.get
     /** Returns the definition saved with the symbol if any, `None` otherwise */
     def getDefn: Option[Term]
     /**
@@ -86,6 +62,14 @@ trait IsSignature {
      * @throws NoSuchElementException if no definition is available
      */
     def _getDefn: Term = getDefn.get
+
+    /** Returns true iff the symbol has a type associated with it */
+    def hasType: Boolean
+    /** Returns true iff the symbol has a kind associated with it */
+    def hasKind: Boolean
+    /** Returns true iff the constant has a definition term associated with it */
+    def hasDefn: Boolean
+
 
     /** Returns true iff the symbol is a fixed (interpreted) symbol */
     def isFixed: Boolean         = getSymType == Fixed
@@ -97,24 +81,10 @@ trait IsSignature {
     def isType: Boolean          = getSymType == BaseType
   }
 
+
   ///////////////////////////////
   // Maintenance methods for the signature
   ///////////////////////////////
-
-  /** Multi-purpose method for adding all types of variables (i.e. term variables and type variables).
-    * The actual type of variable is determined by the `typ` parameter. It no type is given (i.e.
-    * `typ = None`), it is assumed that a term variable is added.
-    *
-    * @return the generated key that the freshly added symbol is indexed by
-    * @throws IllegalArgumentException if the symbol described by `identifier` already exists in the signature
-    */
-  protected def addVariable0(identifier: String, typ: Option[Type]): VarKey
-  /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
-    * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
-    */
-  def removeVariable(key: VarKey): Boolean
-  /** Returns true iff a indexed variable with name `identifier` exists */
-  def varExists(identifier: String): Boolean
 
   /** Multi-purpose method for adding all types of constant symbols (i.e. defined, uninterpreted, types).
     * The actual symbol type is determined by the typ and whether a definition is supplied.
@@ -125,11 +95,11 @@ trait IsSignature {
     * @throws IllegalArgumentException if the symbol described by `identifier` already exists or a
     *                                  illegal typ/definition combination is supplied
     */
-  protected def addConstant0(identifier: String, typ: Option[Type], defn: Option[Term]): ConstKey
+  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term]): Key
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
-  def removeConstant(key: ConstKey): Boolean
+  def removeConstant(key: Key): Boolean
   /** Returns true iff a indexed constant symbol with name `identifier` exists */
   def constExists(identifier: String): Boolean
 
@@ -138,86 +108,59 @@ trait IsSignature {
   def symbolExists(identifier: String): Boolean
   /** Returns the symbol type of  `identifier`, if it exists in signature */
   def symbolType(identifier: String): SymbolType
+  /** Returns the symbol type of  `identifier`, if it exists in signature */
+  def symbolType(identifier: Key): SymbolType
+
+  def getMeta(identifier: Key): Meta
 
   ///////////////////////////////
-  // Utility methods for variable symbols
-  ///////////////////////////////
-
-  /** Add a variable of type (or kind) `typ` to the signature.
-    * @return The key the symbol is indexed by
-    */
-  def addVariable(id: String, typ: Type): VarKey = addVariable0(id, Some(typ))
-  /** Adds a term variable to the signature.
-    * @return The key the symbol is indexed by
-    */
-  def addVariable(id: String): VarKey            = addVariable0(id, None)
-
-  /** Returns the meta information stored under key `key`*/
-  def getVarMeta(key: VarKey): VarMeta
-  /** Returns the meta information stored with symbol with id `identifier`
-    * @throws IllegalArgumentException  if the symbol described by `identifier` does not exist in the signature */
-  def getVarMeta(identifier: String): VarMeta
-
-  /** Returns true iff the symbol index by `key` is a term variable */
-  def isTermVariable(key: VarKey): Boolean = getVarMeta(key).isTermVariable
-  /** Returns true iff the symbol index by `key` is a type variable */
-  def isTypeVariable(key: VarKey): Boolean = getVarMeta(key).isTypeVariable
-
-  ///////////////////////////////
-  // Utility methods for constant symbols
+  // Utility methods
   ///////////////////////////////
 
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term, typ: Type): ConstKey = addConstant0(identifier, Some(typ), Some(defn))
+  def addDefined(identifier: String, defn: Term, typ: Type): Key = addConstant0(identifier, Some(Left(typ)), Some(defn))
   /** Adds a term variable without type to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term): ConstKey            = addConstant0(identifier, None, Some(defn))
+  def addDefined(identifier: String, defn: Term): Key            = addConstant0(identifier, None, Some(defn))
   /** Adds an uninterpreted constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addUninterpreted(identifier: String, typ: Type): ConstKey       = addConstant0(identifier, Some(typ), None)
+  def addUninterpreted(identifier: String, typ: Type): Key       = addConstant0(identifier, Some(Left(typ)), None)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
-  def addBaseType(identifier: String): ConstKey                       = addUninterpreted(identifier, Type.typeKind)
+  def addBaseType(identifier: String): Key                       = addConstant0(identifier, Some(Right(Type.typeKind)), None)
 
   /** Returns the meta information stored under key `key`*/
-  def getConstMeta(key: ConstKey): ConstMeta
+  def getConstMeta(key: Key): Meta
   /** Returns the meta information stored with symbol with id `identifier`
     * @throws IllegalArgumentException  if the symbol described by `identifier` does not exist in the signature */
-  def getConstMeta(identifier: String): ConstMeta
+  def getConstMeta(identifier: String): Meta
 
   /** Returns true iff the symbol index by `key` is a defined symbol */
-  def isDefinedSymbol(key: ConstKey): Boolean = getConstMeta(key).isDefined
+  def isDefinedSymbol(key: Key): Boolean = getConstMeta(key).isDefined
   /** Returns true iff the symbol index by `key` is a fixed symbol */
-  def isFixedSymbol(key: ConstKey): Boolean   = getConstMeta(key).isFixed
+  def isFixedSymbol(key: Key): Boolean   = getConstMeta(key).isFixed
   /** Returns true iff the symbol index by `key` is a uninterpreted symbol */
-  def isUninterpreted(key: ConstKey): Boolean = getConstMeta(key).isUninterpreted
+  def isUninterpreted(key: Key): Boolean = getConstMeta(key).isUninterpreted
   /** Returns true iff the symbol index by `key` is a base type symbol */
-  def isBaseType(key: ConstKey): Boolean      = getConstMeta(key).isType
+  def isBaseType(key: Key): Boolean      = getConstMeta(key).isType
 
   ///////////////////////////////
   // Dumping of indexed symbols
   ///////////////////////////////
 
-  /** Returns a set of all indexed variable keys */
-  def getAllVariables: Set[VarKey]
-  /** Returns a set of all indexed term variable keys */
-  def getTermVariables: Set[VarKey]
-  /** Returns a set of all indexed type variable keys */
-  def getTypeVariables: Set[VarKey]
-
   /** Returns a set of all indexed constants keys */
-  def getAllConstants: Set[ConstKey]
+  def getAllConstants: Set[Key]
   /** Returns a set of all indexed fixed constants keys */
-  def getFixedDefinedSymbols: Set[ConstKey]
+  def getFixedDefinedSymbols: Set[Key]
   /** Returns a set of all indexed defined constants keys */
-  def getDefinedSymbols: Set[ConstKey]
+  def getDefinedSymbols: Set[Key]
   /** Returns a set of all indexed uninterpreted constants keys */
-  def getUninterpretedSymbols: Set[ConstKey]
+  def getUninterpretedSymbols: Set[Key]
   /** Returns a set of all indexed base type constants keys */
-  def getBaseTypes: Set[ConstKey]
+  def getBaseTypes: Set[Key]
 }
