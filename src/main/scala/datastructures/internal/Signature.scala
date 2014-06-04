@@ -26,17 +26,17 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   ///////////////////////////////
 
   /** Case class for meta information for base types that are indexed in the signature */
-  protected[internal] case class TypeMeta(name: String,
-                                          key: Key,
+  protected[internal] case class TypeMeta(identifier: String,
+                                          index: Key,
                                           k:  Kind,
                                           typeRep: Option[Type]) extends Meta {
-    def getName = name
-    def getKey = key
-    def getSymType = BaseType
+    def name = identifier
+    def key = index
+    def symType = BaseType
     /** Return type representation of the symbol */
-    def getType: Option[Type] = typeRep
-    def getKind: Option[Kind] = Some(k)
-    def getDefn: Option[Term] = None
+    def ty: Option[Type] = typeRep
+    def kind: Option[Kind] = Some(k)
+    def defn: Option[Term] = None
 
     def hasType = true // Since we provide type representation
     def hasKind = true
@@ -44,15 +44,15 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   }
 
   /** Case class for meta information for uninterpreted symbols */
-  protected[internal] case class UninterpretedMeta(name: String,
-                                                   key: Key,
+  protected[internal] case class UninterpretedMeta(identifier: String,
+                                                   index: Key,
                                                    typ: Type) extends Meta {
-    def getName = name
-    def getKey = key
-    def getSymType = Uninterpreted
-    def getType: Option[Type] = Some(typ)
-    def getKind: Option[Kind] = None
-    def getDefn: Option[Term] = None
+    def name = identifier
+    def key = index
+    def symType = Uninterpreted
+    def ty: Option[Type] = Some(typ)
+    def kind: Option[Kind] = None
+    def defn: Option[Term] = None
 
     def hasType = true
     def hasKind = false
@@ -60,16 +60,16 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   }
 
   /** Case class for meta information for defined symbols */
-  protected[internal] case class DefinedMeta(name: String,
-                                             key: Key,
+  protected[internal] case class DefinedMeta(identifier: String,
+                                             index: Key,
                                              typ: Option[Type],
-                                             defn: Term) extends Meta {
-    def getName = name
-    def getKey = key
-    def getSymType = Defined
-    def getType: Option[Type] = typ
-    def getKind: Option[Kind] = None
-    def getDefn: Option[Term] = Some(defn)
+                                             definition: Term) extends Meta {
+    def name = identifier
+    def key = index
+    def symType = Defined
+    def ty: Option[Type] = typ
+    def kind: Option[Kind] = None
+    def defn: Option[Term] = Some(definition)
 
     def hasType = typ.isDefined
     def hasKind = false
@@ -77,15 +77,15 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   }
 
   /** Case class for meta information for fixed (interpreted) symbols */
-  protected[internal] case class FixedMeta(name: String,
-                                           key: Key,
+  protected[internal] case class FixedMeta(identifier: String,
+                                           index: Key,
                                            typ: Type) extends Meta {
-    def getName = name
-    def getKey = key
-    def getSymType = Fixed
-    def getType: Option[Type] = Some(typ)
-    def getKind: Option[Kind] = None
-    def getDefn: Option[Term] = None
+    def name = identifier
+    def key = index
+    def symType = Fixed
+    def ty: Option[Type] = Some(typ)
+    def kind: Option[Kind] = None
+    def defn: Option[Term] = None
 
     def hasType = true
     def hasKind = false
@@ -146,11 +146,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
     key
   }
 
-  def removeConstant(key: Key): Boolean = {
+  def remove(key: Key): Boolean = {
      metaMap.get(key) match {
        case None => false
        case Some(meta) => {
-         val id = meta.getName
+         val id = meta.name
          metaMap -= key
          keyMap -= id
          true
@@ -158,7 +158,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
      }
   }
 
-  def constExists(identifier: String): Boolean = {
+  def exists(identifier: String): Boolean = {
     keyMap.get(identifier) match {
       case None => false
       case _    => true
@@ -168,10 +168,10 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
 
   def symbolExists(identifier: String): Boolean = keyMap.contains(identifier)
 
-  def symbolType(identifier: String): SymbolType = metaMap(keyMap(identifier)).getSymType
-  def symbolType(identifier: Key): SymbolType = metaMap(identifier).getSymType
+  def symbolType(identifier: String): SymbolType = metaMap(keyMap(identifier)).symType
+  def symbolType(identifier: Key): SymbolType = metaMap(identifier).symType
 
-  def getMeta(identifier: Key): Meta = getConstMeta(identifier)
+  def getMeta(identifier: Key): Meta = meta(identifier)
 
   /** Adds a symbol to the signature that is then marked as `Fixed` symbol type */
   protected def addFixed(identifier: String, typ: Type): Unit = {
@@ -188,18 +188,18 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   // Utility methods for constant symbols
   ///////////////////////////////
 
-  def getConstMeta(key: Key): Meta = metaMap(key)
-  def getConstMeta(identifier: String): Meta = getConstMeta(keyMap(identifier))
+  def meta(key: Key): Meta = metaMap(key)
+  def meta(identifier: String): Meta = meta(keyMap(identifier))
 
   ///////////////////////////////
   // Dumping of indexed symbols
   ///////////////////////////////
 
-  def getAllConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
-  def getFixedDefinedSymbols: Set[Key] = fixedSet.toSet
-  def getDefinedSymbols: Set[Key] = definedSet.toSet
-  def getUninterpretedSymbols: Set[Key] = uiSet.toSet
-  def getBaseTypes: Set[Key] = typeSet.toSet
+  def allConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
+  def fixedSymbols: Set[Key] = fixedSet.toSet
+  def definedSymbols: Set[Key] = definedSet.toSet
+  def uninterpretedSymbols: Set[Key] = uiSet.toSet
+  def baseTypes: Set[Key] = typeSet.toSet
 
   ////////////////////////////////
   // Hard wired fixed keys

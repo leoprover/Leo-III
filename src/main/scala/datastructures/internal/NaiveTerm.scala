@@ -26,9 +26,9 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
   override val isAtom = true
   override def is(symbol: Signature#Key) = id == symbol
 
-  private lazy val sym = Signature.get.getConstMeta(id)
+  private lazy val sym = Signature.get.meta(id)
   // Queries on terms
-  def ty = sym._getType
+  def ty = sym._ty
   def freeVars = Set(this)
 
   // Substitutions
@@ -49,7 +49,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = symFunc(id)
   // Pretty printing
-  def pretty = sym.getName
+  def pretty = sym.name
 }
 
 protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm {

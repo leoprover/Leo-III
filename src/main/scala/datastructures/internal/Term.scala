@@ -63,7 +63,7 @@ abstract class Term extends Pretty {
       case n => {
         val sym: Signature#Key => Term
         = { key =>
-          sig.getConstMeta(key).getDefn match {
+          sig.meta(key).defn match {
             case None => mkAtom(key)
             case Some(defn) => defn.expandDefinitions(minus(rep))
           }

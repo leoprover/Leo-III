@@ -42,26 +42,26 @@ trait IsSignature {
    */
   abstract class Meta {
     /** The name of the symbol (i.e. string representation of it) */
-    def getName: String
+    def name: String
     /** The key of type `Key` that is used as table key for that entry */
-    def getKey: Key
+    def key: Key
     /** The type of symbol the entry describes */
-    def getSymType: SymbolType
+    def symType: SymbolType
     /** Returns the type saved with the symbol if any, `None` otherwise */
-    def getType: Option[Type]
+    def ty: Option[Type]
     /** Unsafe variant of `getType`.
       * @throws NoSuchElementException if no type is available
       */
-    def _getType: Type = getType.get
-    def getKind: Option[Kind]
-    def _getKind: Kind = getKind.get
+    def _ty: Type = ty.get
+    def kind: Option[Kind]
+    def _kind: Kind = kind.get
     /** Returns the definition saved with the symbol if any, `None` otherwise */
-    def getDefn: Option[Term]
+    def defn: Option[Term]
     /**
      * Unsafe variant of `getDefn`. Gets the definition term directly
      * @throws NoSuchElementException if no definition is available
      */
-    def _getDefn: Term = getDefn.get
+    def _defn: Term = defn.get
 
     /** Returns true iff the symbol has a type associated with it */
     def hasType: Boolean
@@ -72,13 +72,13 @@ trait IsSignature {
 
 
     /** Returns true iff the symbol is a fixed (interpreted) symbol */
-    def isFixed: Boolean         = getSymType == Fixed
+    def isFixed: Boolean         = symType == Fixed
     /** Returns true iff the symbol is a defined symbol */
-    def isDefined: Boolean       = getSymType == Defined
+    def isDefined: Boolean       = symType == Defined
     /** Returns true iff the symbol is a uninterpreted symbol */
-    def isUninterpreted: Boolean = getSymType == Uninterpreted
+    def isUninterpreted: Boolean = symType == Uninterpreted
     /** Returns true iff the symbol is a type symbol */
-    def isType: Boolean          = getSymType == BaseType
+    def isType: Boolean          = symType == BaseType
   }
 
 
@@ -99,19 +99,14 @@ trait IsSignature {
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
-  def removeConstant(key: Key): Boolean
+  def remove(key: Key): Boolean
   /** Returns true iff a indexed constant symbol with name `identifier` exists */
-  def constExists(identifier: String): Boolean
+  def exists(identifier: String): Boolean
 
-
-  /** Returns true iff some indexed symbol with name `identifier` exists */
-  def symbolExists(identifier: String): Boolean
   /** Returns the symbol type of  `identifier`, if it exists in signature */
   def symbolType(identifier: String): SymbolType
   /** Returns the symbol type of  `identifier`, if it exists in signature */
   def symbolType(identifier: Key): SymbolType
-
-  def getMeta(identifier: Key): Meta
 
   ///////////////////////////////
   // Utility methods
@@ -135,32 +130,53 @@ trait IsSignature {
   def addBaseType(identifier: String): Key                       = addConstant0(identifier, Some(Right(Type.typeKind)), None)
 
   /** Returns the meta information stored under key `key`*/
-  def getConstMeta(key: Key): Meta
+  def meta(identifier: Key): Meta
   /** Returns the meta information stored with symbol with id `identifier`
     * @throws IllegalArgumentException  if the symbol described by `identifier` does not exist in the signature */
-  def getConstMeta(identifier: String): Meta
+  def meta(identifier: String): Meta
 
   /** Returns true iff the symbol index by `key` is a defined symbol */
-  def isDefinedSymbol(key: Key): Boolean = getConstMeta(key).isDefined
+  def isDefinedSymbol(key: Key): Boolean = meta(key).isDefined
   /** Returns true iff the symbol index by `key` is a fixed symbol */
-  def isFixedSymbol(key: Key): Boolean   = getConstMeta(key).isFixed
+  def isFixedSymbol(key: Key): Boolean   = meta(key).isFixed
   /** Returns true iff the symbol index by `key` is a uninterpreted symbol */
-  def isUninterpreted(key: Key): Boolean = getConstMeta(key).isUninterpreted
+  def isUninterpreted(key: Key): Boolean = meta(key).isUninterpreted
   /** Returns true iff the symbol index by `key` is a base type symbol */
-  def isBaseType(key: Key): Boolean      = getConstMeta(key).isType
+  def isBaseType(key: Key): Boolean      = meta(key).isType
 
   ///////////////////////////////
   // Dumping of indexed symbols
   ///////////////////////////////
 
   /** Returns a set of all indexed constants keys */
-  def getAllConstants: Set[Key]
+  def allConstants: Set[Key]
+  /** Returns a set of all indexed constants with given type*/
+  def constantsOfType(ty: Type): Set[Key] = allConstants.filter(meta(_).ty match {
+    case None => false
+    case Some(t) => t == ty
+  })
   /** Returns a set of all indexed fixed constants keys */
-  def getFixedDefinedSymbols: Set[Key]
+  def fixedSymbols: Set[Key]
+  /** Returns a set of all indexed fixed constants with given type */
+  def fixedSymbolsOfType(ty: Type): Set[Key] = fixedSymbols.filter(meta(_).ty match {
+    case None => false
+    case Some(t) => t == ty
+  })
+
   /** Returns a set of all indexed defined constants keys */
-  def getDefinedSymbols: Set[Key]
+  def definedSymbols: Set[Key]
+  /** Returns a set of all indexed defined constants with given type */
+  def definedSymbolsOfType(ty: Type): Set[Key] = definedSymbols.filter(meta(_).ty match {
+    case None => false
+    case Some(t) => t == ty
+  })
   /** Returns a set of all indexed uninterpreted constants keys */
-  def getUninterpretedSymbols: Set[Key]
+  def uninterpretedSymbols: Set[Key]
+  /** Returns a set of all indexed uninterpreted constants with given type */
+  def uninterpretedSymbolsOfType(ty: Type): Set[Key] = uninterpretedSymbols.filter(meta(_).ty match {
+    case None => false
+    case Some(t) => t == ty
+  })
   /** Returns a set of all indexed base type constants keys */
-  def getBaseTypes: Set[Key]
+  def baseTypes: Set[Key]
 }
