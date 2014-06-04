@@ -1,7 +1,7 @@
 package datastructures.internal
 
 import Type.{typeKind, typeVarToType}
-import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp}
+import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp,mkTypeAbs}
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
@@ -49,12 +49,13 @@ trait HOLSignature {
   private def impl = mkAtom(13)
   private def lpmi = mkAtom(14)
 
-  protected def existsDef: Term = mkTermAbs(forall (1 ->: Type.o),
+  protected def existsDef: Term = mkTypeAbs(
+                                  mkTermAbs(1 ->: o,
                                     mkTermApp(not,
                                       mkTermApp(all,
                                         mkTermAbs(1,
                                           mkTermApp(not,
-                                            mkTermApp((2,(1 ->: Type.o)), (1,1)))))))
+                                            mkTermApp((2,(1 ->: o)), (1,1))))))))
 
   protected def andDef: Term = mkTermAbs(o,
                                 mkTermAbs(o,
