@@ -26,7 +26,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
   override val isAtom = true
   override def is(symbol: Signature#Key) = id == symbol
 
-  private val sym = Signature.get.getConstMeta(id)
+  private lazy val sym = Signature.get.getConstMeta(id)
   // Queries on terms
   def ty = sym._getType
   def freeVars = Set(this)
