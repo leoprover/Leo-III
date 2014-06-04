@@ -114,7 +114,7 @@ protected[blackboard] class FormulaStoreImpl(blackboard : Blackboard) extends Fo
         if (_changedName != _name) {
           blackboard.rmFormulaByName(_name)
           _name = _changedName
-          blackboard.addFormula(_formula)
+          blackboard.addFormula(r1)
       }
       case _ => throw new ClassCastException("Returned not the right class.")
     }

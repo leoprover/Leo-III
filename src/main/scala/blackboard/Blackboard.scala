@@ -37,6 +37,15 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
 
   /**
    * <p>
+   * Adds or readds a formula if taken from the blackboard.
+   * </p>
+   *
+   * @param formula to be added.
+   */
+  def addFormula(formula : Store[FormulaStore])
+
+  /**
+   * <p>
    * Removes a formula from the Set fo formulas of the Blackboard.
    * </p>
    * @return true if the formula was removed, false if the formula does not exist.

@@ -20,7 +20,7 @@ object SimpleBlackboard extends Blackboard {
 
   import FormulaSet._
 
-  def DEBUG : Boolean = true
+  var DEBUG : Boolean = true
 
   // Observer
   protected[blackboard] val observeAddSet = new HashSet[FormulaAddObserver] with SynchronizedSet[FormulaAddObserver]
@@ -44,11 +44,14 @@ object SimpleBlackboard extends Blackboard {
 
   override def addFormula(formula: Formula) {
     //println("Form Name : "+formula.name+", formula : '"+formula.toString+"'")
-    val newStore : Store[FormulaStore] = Store.apply(formula.name, formula, SimpleBlackboard)
+    addFormula(Store.apply(formula.name, formula, SimpleBlackboard))
+  }
+
+  override def addFormula(formula : Store[FormulaStore]) {
     write { formulas =>
-      formulas put (formula.name, newStore)
+      formulas put (formula read {_.name}, formula)
     }
-    observeAddSet.filter(_.filterAdd(newStore)).foreach{ o=> o.addFormula(newStore); o.wakeUp() }
+    observeAddSet.filter(_.filterAdd(formula)).foreach{ o=> o.addFormula(formula); o.wakeUp() }
   }
 
   def removeFormula(formula: Store[FormulaStore]): Boolean = rmFormulaByName(formula read {_.name})
