@@ -43,12 +43,18 @@ trait HOLSignature {
 
   private def o = Type.mkType(1)
   private def not = mkAtom(7)
+  private def all = mkAtom(8)
   private def disj = mkAtom(9)
   private def conj = mkAtom(12)
   private def impl = mkAtom(13)
   private def lpmi = mkAtom(14)
 
-  protected def existsDef: Term = null
+  protected def existsDef: Term = mkTermAbs(forall (1 ->: Type.o),
+                                    mkTermApp(not,
+                                      mkTermApp(all,
+                                        mkTermAbs(1,
+                                          mkTermApp(not,
+                                            mkTermApp((2,(1 ->: Type.o)), (1,1)))))))
 
   protected def andDef: Term = mkTermAbs(o,
                                 mkTermAbs(o,
@@ -80,4 +86,5 @@ trait HOLSignature {
 
 
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
+  implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
 }
