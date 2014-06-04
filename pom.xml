@@ -71,6 +71,11 @@
       <version>2.1.0</version>
       <scope>test</scope>
    </dependency>
+   <dependency>
+      <groupId>org.scala-stm</groupId>
+      <artifactId>scala-stm_2.11</artifactId>
+      <version>0.7</version>
+   </dependency>
   </dependencies>
   
   <build>

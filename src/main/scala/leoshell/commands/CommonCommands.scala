@@ -8,7 +8,7 @@ import java.io.FileNotFoundException
 import scala.util.parsing.input.CharArrayReader
 import datastructures.tptp.Commons.AnnotatedFormula
 import normalization.{Simplification, NoneSenseSimplify}
-import blackboard.SimpleBlackboard
+import blackboard.impl.SimpleBlackboard
 
 /**
  * Help Command
@@ -167,10 +167,10 @@ object Context extends Command {
     val maxFormulaSize = maxSize - maxNameSize - maxRoleSize - 6
     println("Name" + " "*(maxNameSize-4) + " | Role" + " "*(maxRoleSize-4) + " | Formula")
     println("-"*maxSize)
-    SimpleBlackboard.getFormulas().foreach(x => {
+    SimpleBlackboard.getFormulas().foreach(_ read { x => {
       val name = x.name.toString.take(maxNameSize)
-      val role = x.role.toString.take(maxRoleSize)
-      val form = x.f.toString
+      val role = x.formula.role.toString.take(maxRoleSize)
+      val form = x.formula.f.toString
       val form1 = form.take(maxFormulaSize)
       val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -178,7 +178,7 @@ object Context extends Command {
       val roleOffset = maxRoleSize - role.length
       println(name + " "*nameOffset + " | " + role + " "*roleOffset + " | " + form1)
       form2.foreach(x => println(" "*maxNameSize+" | "+ " "*maxRoleSize+ " | "+ x))
-    })
+    }})
     println()
   }
 }

@@ -39,7 +39,7 @@ trait Agent {
    *
    * @param blackboard - The Blackboard the Agent will work on
    */
-  def register(blackboard : Blackboard);
+  def register(blackboard : Blackboard)
 
   /**
    * Takes the current state of the Blackboard or variables set by

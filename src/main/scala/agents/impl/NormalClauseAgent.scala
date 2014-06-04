@@ -1,10 +1,13 @@
 package agents
 package impl
 
-import blackboard.{FormulaRemoveObserver, Blackboard, FormulaAddObserver}
+import blackboard.{FormulaStore, FormulaRemoveObserver, Blackboard, FormulaAddObserver}
+import blackboard.{FormulaStore, Store}
 import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 import normalization.Normalize
 import scala.collection.mutable
+import scala.concurrent.stm._
+import blackboard.impl.SimpleBlackboard
 
 /**
  *
@@ -22,7 +25,7 @@ import scala.collection.mutable
  */
 class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
 
-  private val newFormulas : mutable.Set[Formula] = new mutable.HashSet[Formula]()
+  private val newFormulas : mutable.Set[Store[FormulaStore]] = new mutable.HashSet[Store[FormulaStore]]() with mutable.SynchronizedSet[Store[FormulaStore]]
   private var blackboard : Blackboard = null  // Will be inserted by registering to a blackboard
 
   /**
@@ -31,19 +34,21 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    */
   override def apply() {
     if (blackboard == null) throw new RuntimeException("An Apply was called for an Agent, that has no Blackboard assigned.")
-    // We cannot add the formulas in the synchronized block or we will knock ourselfs out.
-    val simplFormulas : mutable.Set[Formula] = new mutable.HashSet[Formula]()
-    synchronized{
-      newFormulas.foreach(f => {
-        val f1: Formula = norm.normalize(f)
-        if (!f1.equals(f)) {
-          simplFormulas.add(f1)
-          println("Simplified '" ++ f.toString ++ "' to '" ++ f1.toString ++ "'.")
+    // We cannot add the formulas in the synchronized block or we will knock ourselves out.
+    var workedFormulas = Set.empty[Store[FormulaStore]]
+    newFormulas foreach {store =>
+      store action { fS =>
+        val form = fS.formula
+        val form1 = norm.normalize(form)
+        if (form != form1) {
+          if (SimpleBlackboard.DEBUG) println("Simplified : '"+form+"' to '"+form1+"'.")
+          fS.formula = form1
         }
-       })
-      newFormulas.clear()
+        workedFormulas += store
+      }
     }
-    simplFormulas.foreach(blackboard.addFormula(_))
+
+    workedFormulas foreach (newFormulas remove _)
   }
 
   /**
@@ -65,26 +70,6 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * @return true if the agent can be executed, otherwise false.
    */
   override def guard(): Boolean = synchronized(!this.newFormulas.isEmpty)
-
-  /**
-   * <p>
-   * A predicate that distinguishes interesting and uninteresing
-   * Formulas for the Handler.
-   * </p>
-   * @param f - Newly added formula
-   * @return true if the formula is relevant and false otherwise
-   */
-  override def filterAdd(f: Formula): Boolean = synchronized {norm.applicable(f)}
-
-  /**
-   * Passes the added formula to the Handler.
-   * @param f
-   */
-  override def addFormula(f: Formula) {
-    synchronized {
-      newFormulas.add(f)
-    }
-  }
 
   /**
    * Method that cancels an execution and possibly reverts its changes.
@@ -109,5 +94,19 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * </p>
    */
   override def wakeUp(): Unit = blackboard.scheduler.toWork(this)  // There should only be this thread waiting.
+  /**
+   * Passes the added formula to the Handler.
+   * @param f
+   */
+  override def addFormula(f: Store[FormulaStore]): Unit = newFormulas.add(f)
 
+  /**
+   * <p>
+   * A predicate that distinguishes interesting and uninteresing
+   * Formulas for the Handler.
+   * </p>
+   * @param f - Newly added formula
+   * @return true if the formula is relevant and false otherwise
+   */
+  override def filterAdd(f: Store[FormulaStore]): Boolean = f read {norm applicable _.formula}
 }

@@ -4,6 +4,7 @@ import datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 import agents.Agent
 import scheduler.Scheduler
 
+
 /**
  *
  * <p>
@@ -40,7 +41,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * </p>
    * @return true if the formula was removed, false if the formula does not exist.
    */
-  def removeFormula(formula : Formula) : Boolean
+  def removeFormula(formula : Store[FormulaStore]) : Boolean
 
   /**
    * <p>
@@ -50,7 +51,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * @param name - Name of the Formula
    * @return Some(x) if x.name = name exists otherwise None
    */
-  def getFormulaByName(name : String) : Option[Formula]
+  def getFormulaByName(name : String) : Option[Store[FormulaStore]]
 
   /**
    * <p>
@@ -69,7 +70,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    *
    * @return All formulas of the blackboard.
    */
-  def getFormulas : List[Formula]
+  def getFormulas : List[Store[FormulaStore]]
 
   /**
    *
@@ -80,7 +81,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : Formula => Boolean) : List[Formula]
+  def getAll(p : Formula => Boolean) : List[Store[FormulaStore]]
 
   /**
    * <p>
@@ -92,11 +93,19 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
   def rmAll(p : Formula => Boolean)
 
   /**
+   * Used by Stores to mark a FormulaStore as Changed, if nothing
+   * has to be updated. Handlers can register to these updates
+   * @param f
+   */
+  protected[blackboard] def emptyUpdate(f : Store[FormulaStore])
+
+  /**
    * Access to the Scheduler at a central level.
    *
    * @return the currently used scheduler
    */
   def scheduler : Scheduler
+
 }
 
 /**
@@ -149,7 +158,7 @@ trait FormulaAddObserver extends Observer {
    * Passes the added formula to the Handler.
    * @param f
    */
-  def addFormula(f : Formula)
+  def addFormula(f : Store[FormulaStore])
 
   /**
    * <p>
@@ -159,7 +168,7 @@ trait FormulaAddObserver extends Observer {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  def filterAdd(f : Formula) : Boolean
+  def filterAdd(f : Store[FormulaStore]) : Boolean
 }
 
 /**
@@ -190,7 +199,7 @@ trait FormulaRemoveTrigger {
  * @author Max Wisniewski
  * @since 5/14/14
  */
-trait FormulaRemoveObserver extends Observer{
+trait FormulaRemoveObserver extends Observer {
 
   /**
    * <p>
@@ -199,7 +208,7 @@ trait FormulaRemoveObserver extends Observer{
    *
    * @param f - Removed Formula
    */
-  def removeFormula(f : Formula)
+  def removeFormula(f : Store[FormulaStore])
 
   /**
    * <p>
@@ -208,6 +217,6 @@ trait FormulaRemoveObserver extends Observer{
    * @param f - Recently removed Formula
    * @return true if the formula is relevant to the handler and false otherwise
    */
-  def filterRemove(f : Formula) : Boolean
+  def filterRemove(f : Store[FormulaStore]) : Boolean
 
 }

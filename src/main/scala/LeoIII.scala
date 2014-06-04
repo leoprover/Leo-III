@@ -7,7 +7,7 @@
 
 
 import agents.impl.NormalClauseAgent
-import blackboard.SimpleBlackboard
+import blackboard.impl.SimpleBlackboard
 import scala.tools.nsc.Settings
 import scala.tools.nsc.interpreter.ILoop
 import leoshell.{leoshell => MyIntp}
@@ -18,6 +18,7 @@ import leoshell.{leoshell => MyIntp}
  * @author{Max Wisniewski}
  */
 object LeoIII extends App {
+
   val settings = new Settings
   settings.usejavacp.value = true
   settings.deprecation.value = true
