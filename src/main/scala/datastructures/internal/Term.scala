@@ -28,11 +28,14 @@ abstract class Term extends Pretty {
   val isTypeApp: Boolean
   val isTypeAbs: Boolean
 
+  def is(term: Term): Boolean = term == this
+  def is(symbol: Signature#Key): Boolean = false
 
   // Queries on terms
   def ty: Type
   def freeVars: Set[Term]
-  def herbrandUniverse: Set[Term]
+  def symbolsOfType(ty: Type) = freeVars.filter(_.ty == ty)
+  def topLevelSymbol: Option[Term] = ???
   // Substitutions
   def substitute(what: Term, by: Term): Term
   def substitute(what: List[Term], by: List[Term]): Term = {
@@ -59,12 +62,13 @@ object Term {
   def mkAtom = SymbolNode(_)
   def mkBound = BoundNode(_,_)
   def mkTermApp = ApplicationNode(_,_)
+  def mkTermApp(func: Term, args: List[Term]): Term = args.foldRight(func)((arg,f) => mkTermApp(f,arg))
   def mkTermAbs = AbstractionNode(_, _)
-  def mkTypeApp(left: Type, right: Type): Term = ???
-  def mkTypeAbs(body: Term): Term = ???
+  def mkTypeApp = TypeApplicationNode(_,_)
+  def mkTypeAbs = TypeAbstractionNode(_)
 
-  def \(hd: Type, body: Term): Term = ???
+  def \(hd: Type)(body: Term): Term = mkTermAbs(hd, body)
 
-  def /\(body: Term): Term = ???
+  def /\(body: Term): Term = mkTypeAbs(body)
 }
 
