@@ -30,14 +30,14 @@ abstract class Type extends Pretty {
 
 
   // Predicates on types
-  val isBaseType: Boolean
-  val isFunType: Boolean
-  val isPolyType: Boolean
-  val isBoundTypeVar: Boolean
+  val isBaseType: Boolean = false
+  val isFunType: Boolean = false
+  val isPolyType: Boolean = false
+  val isBoundTypeVar: Boolean = false
   def isApplicableWith(arg: Type): Boolean
 
   // Queries on types
-  def typeVars: Set[Variable]
+  def typeVars: Set[Type]
 
   def funDomainType: Option[Type]
   def _funDomainType: Type = funDomainType.get
@@ -45,7 +45,13 @@ abstract class Type extends Pretty {
   def _funCodomainType: Type = funCodomainType.get
 
   // Substitutions
-  // ....
+  def substitute(what: Type, by: Type): Type
+
+  // Other operation
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (forAllFunc: A => A): A
 
   // Syntactic nice constructors
   def ->:(hd: Type) = Type.mkFunType(hd, this)
@@ -57,30 +63,24 @@ abstract class Type extends Pretty {
 object Type {
   import Signature.{get => signature}
   /** The (fixed) type of individuals */
-  lazy val i: Type = BaseType(signature.iKey)
+  lazy val i: Type = BaseTypeNode(signature.iKey)
   /** The (fixed) type of truth values. */
-  lazy val o: Type = BaseType(signature.oKey)
+  lazy val o: Type = BaseTypeNode(signature.oKey)
 
   /** Create type with name `identifier`. */
-  def mkType(identifier: Signature#Key): Type = BaseType(identifier)
+  def mkType(identifier: Signature#Key): Type = BaseTypeNode(identifier)
   /** Build type `in -> out`. */
-  def mkFunType(in: Type, out: Type): Type = FunType(in, out)
+  def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
   def mkFunType(in: List[Type], out: Type): Type = in match {
     case Nil => out
     case x::xs      => mkFunType(x, mkFunType(xs, out))
   }
   /** Build `forall $1. $2` (i.e. a universally quantified type) */
-  def mkPolyType(typeVar: Variable, bodyType: Type): Type = {
-    require(typeVar.isTypeVar, "Attempting to create forall-type with non-type variable.")
-    ForallType(typeVar.asInstanceOf[TypeVar], bodyType)
-  }
+  def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
 
   /** The (bound) type a type variable represents. This should always be bound by a `mkPolyType`*/
-  def mkVarType(typeVar: Variable): Type = {
-    require(typeVar.isTypeVar, "Attempting to use term variable as type.")
-    TypeVarType(typeVar.asInstanceOf[TypeVar])
-  }
+  def mkVarType(scope: Int): Type = BoundTypeNode(scope)
 
   /** Represents the kind `*` or `type` (i.e. the type of types). */
   def typeKind: Kind = TypeKind
@@ -93,7 +93,7 @@ object Type {
     */
   def mkFunKind(in: Kind, out: Kind): Kind = ???
 
-  implicit def typeVarToType(typeVar: Variable): Type = mkVarType(typeVar)
+  implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
 }
 
 

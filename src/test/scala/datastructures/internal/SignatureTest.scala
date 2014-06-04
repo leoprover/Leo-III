@@ -9,19 +9,22 @@ object SignatureTest {
     val sig = Signature.get
     Signature.withHOL(sig)
     val const = sig.getAllConstants
-    println("Symbol" + "\t\t|" + "Type/Kind" +"\t\t\t\t|" + "Type vars" + "\t\t|" + "Applicable with $i" + "\t|" + "Applicable with $o")
+    println("Key \t\t|" + "Symbol" + "\t\t|" + "Type/Kind" +"\t\t\t\t|" + "Type vars" + "\t\t|" + "Applicable with $i" + "\t|" + "Applicable with $o")
     println("--------------------------------------------")
     for (c <- const) {
       val meta = sig.getConstMeta(c)
+      print(meta.getKey.toString + "\t\t\t|")
       print(meta.getName + "\t\t\t|"
             + typeOrKindToString(meta) + "\t\t\t|")
-      meta.getType.foreach(x => print(x.typeVars.map(f => f.getName)))
+      meta.getType.foreach(x => print(x.typeVars.map(f => f.pretty)))
       print( "\t\t\t|")
       meta.getType.foreach(x => print(x.isApplicableWith(Type.i) + "\t\t\t\t|"))
       meta.getType.foreach(x => print(x.isApplicableWith(Type.o)))
       println()
 
     }
+
+    println(sig.getConstMeta(12)._getDefn.ty.pretty)
   }
 
   def typeOrKindToString(meta: IsSignature#Meta): String = {

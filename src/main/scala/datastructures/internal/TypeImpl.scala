@@ -2,102 +2,126 @@ package datastructures.internal
 
 
 /** Literal type, i.e. `$o` */
-protected[internal] case class BaseType(id: Signature#Key) extends Type {
+protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
   // Pretty printing
   import Signature.{get => signature}
   def pretty = signature.getConstMeta(id).getName
 
   // Predicates on types
-  val isBaseType     = true
-  val isFunType      = false
-  val isPolyType     = false
-  val isBoundTypeVar = false
-  def isApplicableWith(arg: Type): Boolean = false
+  override val isBaseType         = true
+  def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  def typeVars: Set[Variable] = Set.empty
+  def typeVars = Set.empty
 
-  def funDomainType: Option[Type] = None
-  def funCodomainType: Option[Type] = None
+  def funDomainType   = None
+  def funCodomainType = None
 
   // Substitutions
-  // ....
+  def substitute(what: Type, by: Type) = what match {
+    case BaseTypeNode(key) if key == id => by
+    case _ => this
+  }
+
+  // Other operations
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (forAllFunc: A => A) = baseFunc(id)
 }
 
+/** Type of a (bound) type variable when itself used as type in polymorphic function */
+protected[internal] case class BoundTypeNode(scope: Int) extends Type {
+  // Pretty printing
+  def pretty = scope.toString
+
+  // Predicates on types
+  override val isBoundTypeVar     = true
+  def isApplicableWith(arg: Type) = false
+
+  // Queries on types
+  def typeVars: Set[Type] = Set(this)
+
+  def funDomainType   = None
+  def funCodomainType = None
+
+  // Substitutions
+  def substitute(what: Type, by: Type) = what match {
+    case BoundTypeNode(i) if i == scope => by
+    case _ => this
+  }
+
+  // Other operations
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (forAllFunc: A => A) = boundFunc(scope)
+}
 
 /** Function type `in -> out` */
-protected[internal] case class FunType(in: Type, out: Type) extends Type {
+protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends Type {
   // Pretty printing
   def pretty = in match {
-    case funTy:FunType => "(" + funTy.pretty + ") -> " + out.pretty
-    case otherTy:Type  => otherTy.pretty + " -> " + out.pretty
+    case funTy:AbstractionTypeNode => "(" + funTy.pretty + ") -> " + out.pretty
+    case otherTy:Type              => otherTy.pretty + " -> " + out.pretty
   }
 
   // Predicates on types
-  val isBaseType     = false
-  val isFunType      = true
-  val isPolyType     = false
-  val isBoundTypeVar = false
-  def isApplicableWith(arg: Type): Boolean = (arg == in)
+  override val isFunType          = true
+  def isApplicableWith(arg: Type) = (arg == in)
 
   // Queries on types
-  def typeVars: Set[Variable] = in.typeVars ++ out.typeVars
+  def typeVars = in.typeVars ++ out.typeVars
 
-  def funDomainType: Option[Type] = Some(in)
-  def funCodomainType: Option[Type] = Some(out)
+  def funDomainType   = Some(in)
+  def funCodomainType = Some(out)
 
   // Substitutions
-  // ....
+  def substitute(what: Type, by: Type) = AbstractionTypeNode(in.substitute(what,by), out.substitute(what,by))
+
+  // Other operations
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (forAllFunc: A => A) = absFunc(in.foldRight(baseFunc)(boundFunc)(absFunc)(forAllFunc),out.foldRight(baseFunc)(boundFunc)(absFunc)(forAllFunc))
 }
 
 
 /**
  * Type of a polymorphic function
- * @param typeVar The type variable that is introduced to the type in `in`
- * @param body The type that can now use the type variable `typeVar` as bound type variable
+ * @param body The type in which a type variable is now bound to this binder
  */
-protected[internal] case class ForallType(typeVar: TypeVar, body: Type) extends Type {
+protected[internal] case class ForallTypeNode(body: Type) extends Type {
   // Pretty printing
-  def pretty = "forall " + typeVar.pretty + ". " + body.pretty
+  def pretty = "forall. " + body.pretty
 
   // Predicates on types
-  val isBaseType     = false
-  val isFunType      = false
-  val isPolyType     = true
-  val isBoundTypeVar = false
-  def isApplicableWith(arg: Type): Boolean = typeVar.getKind.get.isTypeKind
+  override val isPolyType         = true
+  def isApplicableWith(arg: Type) = arg match { // we dont allow instantiating type variables with polymorphic types
+    case ForallTypeNode(_) => false
+    case _ => true
+  }
 
   // Queries on types
-  def typeVars: Set[Variable] = Set(typeVar) ++ body.typeVars
+  def typeVars = body.typeVars
 
-  def funDomainType: Option[Type] = None
-  def funCodomainType: Option[Type] = None
-
-  // Substitutions
-  // ....
-}
-
-/** Type of a (bound) type variable when itself used as type in polymorphic function */
-protected[internal] case class TypeVarType(typeVar: Variable) extends Type { // changed for now
-  // Pretty printing
-  def pretty = typeVar.pretty // name instead of pretty to avoid repitition of types
-
-  // Predicates on types
-  val isBaseType     = false
-  val isFunType      = false
-  val isPolyType     = false
-  val isBoundTypeVar = true
-  def isApplicableWith(arg: Type): Boolean = false
-
-  // Queries on types
-  def typeVars: Set[Variable] = Set.empty
-
-  def funDomainType: Option[Type] = None
-  def funCodomainType: Option[Type] = None
+  def funDomainType   = None
+  def funCodomainType = None
 
   // Substitutions
-  // ....
+  def substitute(what: Type, by: Type) = what match {
+    case BoundTypeNode(i) => ForallTypeNode(body.substitute(BoundTypeNode(i+1), by))
+    case _ => ForallTypeNode(body.substitute(what,by))
+  }
+
+  // Other operations
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (forAllFunc: A => A) = forAllFunc(body.foldRight(baseFunc)(boundFunc)(absFunc)(forAllFunc))
 }
+
+
 
 
 //////////////////////////////////

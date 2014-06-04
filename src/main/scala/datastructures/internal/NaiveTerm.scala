@@ -35,9 +35,17 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
     case _                    => this
   }
   def inc(scopeIndex: Int) = this
+  def instantiate(scope: Int, by: Type) = this
 
   // Other operations
   def betaNormalize = this
+
+  def foldRight[A](symFunc: Signature#Key => A)
+                  (boundFunc: (Type, Int) => A)
+                  (absFunc: (Type, A) => A)
+                  (appFunc: (A,A) => A)
+                  (tAbsFunc: A => A)
+                  (tAppFunc: (A, Type) => A) = symFunc(id)
   // Pretty printing
   def pretty = sym.getName
 }
@@ -62,8 +70,17 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
     case _ => this
   }
 
+  def instantiate(scope: Int, by: Type) = BoundNode(t.substitute(BoundTypeNode(scope),by),scope)
+
   // Other operations
   def betaNormalize = this
+
+  def foldRight[A](symFunc: Signature#Key => A)
+                  (boundFunc: (Type, Int) => A)
+                  (absFunc: (Type, A) => A)
+                  (appFunc: (A,A) => A)
+                  (tAbsFunc: A => A)
+                  (tAppFunc: (A, Type) => A) = boundFunc(t,scope)
   // Pretty printing
   def pretty = scope.toString
 }
@@ -81,9 +98,20 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
    case BoundNode(t,i) => AbstractionNode(absType, term.substitute(BoundNode(t,i+1), by.inc(1)))
    case _ => AbstractionNode(absType, term.substitute(what,by))
   }
+
   def inc(scopeIndex: Int) = AbstractionNode(absType, term.inc(scopeIndex+1))
+
+  def instantiate(scope: Int, by: Type) = AbstractionNode(absType.substitute(BoundTypeNode(scope),by),term)
+
    // Other operations
   def betaNormalize = AbstractionNode(absType, term.betaNormalize)
+
+  def foldRight[A](symFunc: Signature#Key => A)
+                  (boundFunc: (Type, Int) => A)
+                  (absFunc: (Type, A) => A)
+                  (appFunc: (A,A) => A)
+                  (tAbsFunc: A => A)
+                  (tAppFunc: (A, Type) => A) = absFunc(absType, term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
   // Pretty printing
   def pretty = "[\\." + term.pretty + "]"
 }
@@ -107,11 +135,87 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
 
   def inc(scopeIndex: Int) = ApplicationNode(left.inc(scopeIndex), right.inc(scopeIndex))
 
+  def instantiate(scope: Int, by: Type) = ApplicationNode(left.instantiate(scope,by), right.instantiate(scope,by))
+
   // Other operations
   def betaNormalize = left match {
-    case AbstractionNode(ty, body) => body.substitute(BoundNode(ty ,1), right)
+    case AbstractionNode(ty, body) => body.substitute(BoundNode(ty ,1), right).betaNormalize
     case _ => this
   }
+
+  def foldRight[A](symFunc: Signature#Key => A)
+                  (boundFunc: (Type, Int) => A)
+                  (absFunc: (Type, A) => A)
+                  (appFunc: (A,A) => A)
+                  (tAbsFunc: A => A)
+                  (tAppFunc: (A, Type) => A) = appFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc),
+                                                       right.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
+  // Pretty printing
+  def pretty = "(" + left.pretty + " " + right.pretty + ")"
+}
+
+
+///////////////////
+// Type symbols
+///////////////////
+
+protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm {
+  override val isTypeAbs = true
+
+  // Queries on terms
+  def ty = ??? // Type.mkPolyType(term.ty)
+  def freeVars = term.freeVars
+  def herbrandUniverse = ???
+
+  // Substitutions
+  def substitute(what: Term, by: Term) = term.substitute(what,by)
+  def inc(scopeIndex: Int) = term.inc(scopeIndex)
+  def instantiate(scope: Int, by: Type) = TypeAbstractionNode(term.instantiate(scope+1,by))
+  // Other operations
+  def betaNormalize = TypeAbstractionNode(term.betaNormalize)
+
+  def foldRight[A](symFunc: Signature#Key => A)
+                  (boundFunc: (Type, Int) => A)
+                  (absFunc: (Type, A) => A)
+                  (appFunc: (A,A) => A)
+                  (tAbsFunc: A => A)
+                  (tAppFunc: (A, Type) => A) = tAbsFunc(term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
+
+  // Pretty printing
+  def pretty = "[/\\." + term.pretty + "]"
+}
+
+protected[internal] case class TypeApplicationNode(left: Term, right: Type) extends NaiveTerm {
+  override val isTypeApp = true
+
+  // Queries on terms
+  def ty = {
+    require(left.ty.isPolyType, "Type Application node not well typed: "+this.pretty)
+    left.instantiateBy(right).ty
+  } // assume everything is well-typed
+
+  def freeVars = left.freeVars
+  def herbrandUniverse = ???
+
+  // Substitutions
+  def substitute(what: Term, by: Term) = TypeApplicationNode(left.substitute(what,by), right)
+
+  def inc(scopeIndex: Int) = TypeApplicationNode(left.inc(scopeIndex), right)
+
+  def instantiate(scope: Int, by: Type) = TypeApplicationNode(left.instantiate(scope,by), right.substitute(BoundTypeNode(scope),by))
+  // Other operations
+  def betaNormalize = left match {
+    case TypeAbstractionNode(term) => term.instantiateBy(right).betaNormalize
+    case _ => this
+  }
+
+  def foldRight[A](symFunc: Signature#Key => A)
+                  (boundFunc: (Type, Int) => A)
+                  (absFunc: (Type, A) => A)
+                  (appFunc: (A,A) => A)
+                  (tAbsFunc: A => A)
+                  (tAppFunc: (A, Type) => A) = tAppFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc), right)
+
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
