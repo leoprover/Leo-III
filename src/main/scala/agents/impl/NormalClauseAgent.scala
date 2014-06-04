@@ -36,18 +36,20 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
     if (blackboard == null) throw new RuntimeException("An Apply was called for an Agent, that has no Blackboard assigned.")
     // We cannot add the formulas in the synchronized block or we will knock ourselves out.
     var workedFormulas = Set.empty[Store[FormulaStore]]
+    var output = ""
     newFormulas foreach {store =>
       store action { fS =>
+        output = ""           // Reset at start of transaction, because it will not be reseted thorugh STM
         val form = fS.formula
         val form1 = norm.normalize(form)
         if (form != form1) {
-          if (SimpleBlackboard.DEBUG) println("Simplified : '"+form+"' to '"+form1+"'.")
+          if (SimpleBlackboard.DEBUG) output = "Simplified : '"+form+"' to '"+form1+"'."
           fS.formula = form1
         }
         workedFormulas += store
       }
     }
-
+    if(output != "") println(output)
     workedFormulas foreach (newFormulas remove _)
   }
 
