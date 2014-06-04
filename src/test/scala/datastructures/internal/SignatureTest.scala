@@ -8,30 +8,36 @@ object SignatureTest {
   def main(args: Array[String]) {
     val sig = Signature.get
     Signature.withHOL(sig)
-    val const = sig.getAllConstants
+    val const = sig.allConstants
     println("Key \t\t|" + "Symbol" + "\t\t|" + "Type/Kind" +"\t\t\t\t|" + "Type vars" + "\t\t|" + "Applicable with $i" + "\t|" + "Applicable with $o")
     println("--------------------------------------------")
     for (c <- const) {
-      val meta = sig.getConstMeta(c)
-      print(meta.getKey.toString + "\t\t\t|")
-      print(meta.getName + "\t\t\t|"
+      val meta = sig.meta(c)
+      print(meta.key.toString + "\t\t\t|")
+      print(meta.name + "\t\t\t|"
             + typeOrKindToString(meta) + "\t\t\t|")
-      meta.getType.foreach(x => print(x.typeVars.map(f => f.pretty)))
+      meta.ty.foreach(x => print(x.typeVars.map(f => f.pretty)))
       print( "\t\t\t|")
-      meta.getType.foreach(x => print(x.isApplicableWith(Type.i) + "\t\t\t\t|"))
-      meta.getType.foreach(x => print(x.isApplicableWith(Type.o)))
+      meta.ty.foreach(x => print(x.isApplicableWith(Type.i) + "\t\t\t\t|"))
+      meta.ty.foreach(x => print(x.isApplicableWith(Type.o)))
       println()
 
     }
+    println("####################################################################")
 
-    println(sig.getConstMeta(12)._getDefn.ty.pretty)
+    val meta = sig.meta("<=>")
+    val term = meta._defn
+    println("Definition of <=>: " + term.pretty)
+    println("Expanded \t\t : " + term.expandDefinitions(1).pretty)
+
+    println(sig.meta("?")._defn.pretty)
   }
 
   def typeOrKindToString(meta: IsSignature#Meta): String = {
-    meta.getType match {
+    meta.ty match {
       case Some(ty) => ty.pretty
       case None => {
-        meta.getKind match {
+        meta.kind match {
           case Some(k) => k.pretty
           case None => "NONE"
         }

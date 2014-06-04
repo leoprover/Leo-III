@@ -5,7 +5,7 @@ package datastructures.internal
 protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
   // Pretty printing
   import Signature.{get => signature}
-  def pretty = signature.getConstMeta(id).getName
+  def pretty = signature.meta(id).name
 
   // Predicates on types
   override val isBaseType         = true

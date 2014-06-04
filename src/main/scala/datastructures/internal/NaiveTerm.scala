@@ -21,13 +21,15 @@ sealed abstract class NaiveTerm extends Term {
 ///////////////////
 
 protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
-  override val isAtom = true
 
-  private val sym = Signature.get.getConstMeta(id)
+  // Predicates on terms
+  override val isAtom = true
+  override def is(symbol: Signature#Key) = id == symbol
+
+  private lazy val sym = Signature.get.meta(id)
   // Queries on terms
-  def ty = sym._getType
+  def ty = sym._ty
   def freeVars = Set(this)
-  def herbrandUniverse = ???
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -47,7 +49,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = symFunc(id)
   // Pretty printing
-  def pretty = sym.getName
+  def pretty = sym.name
 }
 
 protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm {
@@ -56,7 +58,6 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
   // Queries on terms
   def ty = t
   def freeVars = Set.empty
-  def herbrandUniverse = ???
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -91,7 +92,6 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   // Queries on terms
   def ty = absType ->: term.ty
   def freeVars = term.freeVars
-  def herbrandUniverse = ???
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -128,7 +128,6 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   } // assume everything is well-typed
 
   def freeVars = left.freeVars ++ right.freeVars
-  def herbrandUniverse = ???
 
   // Substitutions
   def substitute(what: Term, by: Term) = ApplicationNode(left.substitute(what,by), right.substitute(what,by))
@@ -163,9 +162,8 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
   override val isTypeAbs = true
 
   // Queries on terms
-  def ty = ??? // Type.mkPolyType(term.ty)
+  def ty = Type.mkPolyType(term.ty)
   def freeVars = term.freeVars
-  def herbrandUniverse = ???
 
   // Substitutions
   def substitute(what: Term, by: Term) = term.substitute(what,by)
@@ -195,7 +193,6 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   } // assume everything is well-typed
 
   def freeVars = left.freeVars
-  def herbrandUniverse = ???
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeApplicationNode(left.substitute(what,by), right)

@@ -28,11 +28,14 @@ abstract class Term extends Pretty {
   val isTypeApp: Boolean
   val isTypeAbs: Boolean
 
+  def is(term: Term): Boolean = term == this
+  def is(symbol: Signature#Key): Boolean = false
 
   // Queries on terms
   def ty: Type
   def freeVars: Set[Term]
-  def herbrandUniverse: Set[Term]
+  def symbolsOfType(ty: Type) = freeVars.filter(_.ty == ty)
+  def topLevelSymbol: Option[Term] = ???
   // Substitutions
   def substitute(what: Term, by: Term): Term
   def substitute(what: List[Term], by: List[Term]): Term = {
@@ -51,6 +54,44 @@ abstract class Term extends Pretty {
              (tAbsFunc: A => A)
              (tAppFunc: (A, Type) => A): A
 
+  def expandDefinitions(rep: Int): Term = {
+    import Term.{mkAtom, mkBound, mkTermAbs, mkTermApp, mkTypeAbs, mkTypeApp}
+    val sig = Signature.get
+    def minus = {in: Int => in match {case -1 => -1 case a => a-1}}
+    rep match {
+      case 0 => this
+      case n => {
+        val sym: Signature#Key => Term
+        = { key =>
+          sig.meta(key).defn match {
+            case None => mkAtom(key)
+            case Some(defn) => defn.expandDefinitions(minus(rep))
+          }
+        }
+        val bound = mkBound(_, _)
+        val abs: (Type, Term) => Term
+        = { (ty, term) =>
+          mkTermAbs(ty, term.expandDefinitions(rep))
+        }
+        val app: (Term, Term) => Term
+        = { (left, right) =>
+          mkTermApp(left.expandDefinitions(rep), right.expandDefinitions(rep))
+        }
+        val tAbs: Term => Term
+        = { body =>
+          mkTypeAbs(body.expandDefinitions(rep))
+        }
+        val tApp: (Term, Type) => Term
+        = { (body, ty) =>
+          mkTypeApp(body.expandDefinitions(rep), ty)
+        }
+        foldRight(sym)(bound)(abs)(app)(tAbs)(tApp)
+
+      }
+    }
+  }
+  def expandAllDefinitions = expandDefinitions(-1)
+
   protected[internal] def inc(scopeIndex: Int): Term
 }
 
@@ -59,12 +100,13 @@ object Term {
   def mkAtom = SymbolNode(_)
   def mkBound = BoundNode(_,_)
   def mkTermApp = ApplicationNode(_,_)
+  def mkTermApp(func: Term, args: List[Term]): Term = args.foldRight(func)((arg,f) => mkTermApp(f,arg))
   def mkTermAbs = AbstractionNode(_, _)
-  def mkTypeApp(left: Type, right: Type): Term = ???
-  def mkTypeAbs(body: Term): Term = ???
+  def mkTypeApp = TypeApplicationNode(_,_)
+  def mkTypeAbs = TypeAbstractionNode(_)
 
-  def \(hd: Type, body: Term): Term = ???
+  def \(hd: Type)(body: Term): Term = mkTermAbs(hd, body)
 
-  def /\(body: Term): Term = ???
+  def /\(body: Term): Term = mkTypeAbs(body)
 }
 
