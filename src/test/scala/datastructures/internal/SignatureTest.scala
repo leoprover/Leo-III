@@ -23,8 +23,14 @@ object SignatureTest {
       println()
 
     }
+    println("####################################################################")
 
-    println(sig.getConstMeta(12)._getDefn.ty.pretty)
+    val meta = sig.getConstMeta("<=>")
+    val term = meta._getDefn
+    println("Definition of <=>: " + term.pretty)
+    println("Expanded \t\t : " + term.expandDefinitions(1).pretty)
+
+    println(sig.getConstMeta("?")._getDefn.pretty)
   }
 
   def typeOrKindToString(meta: IsSignature#Meta): String = {
