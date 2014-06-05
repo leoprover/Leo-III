@@ -137,9 +137,14 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   def instantiate(scope: Int, by: Type) = ApplicationNode(left.instantiate(scope,by), right.instantiate(scope,by))
 
   // Other operations
-  def betaNormalize = left match {
-    case AbstractionNode(ty, body) => body.substitute(BoundNode(ty ,1), right).betaNormalize
-    case _ => this
+  def betaNormalize = {
+    val leftNF = left.betaNormalize
+    val rightNF = right.betaNormalize
+
+    leftNF match {
+      case AbstractionNode(ty, body) => body.substitute(BoundNode(ty ,1), rightNF).betaNormalize
+      case _ => this
+    }
   }
 
   def foldRight[A](symFunc: Signature#Key => A)
@@ -166,7 +171,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
   def freeVars = term.freeVars
 
   // Substitutions
-  def substitute(what: Term, by: Term) = term.substitute(what,by)
+  def substitute(what: Term, by: Term) = TypeAbstractionNode(term.substitute(what,by))
   def inc(scopeIndex: Int) = term.inc(scopeIndex)
   def instantiate(scope: Int, by: Type) = TypeAbstractionNode(term.instantiate(scope+1,by))
   // Other operations
@@ -216,4 +221,5 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
+
 
