@@ -88,4 +88,83 @@ trait HOLSignature {
 
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
+
+
+  object <=> {
+    def unapply(t: Term): Option[(Term,Term)] = t match {
+      case (Symbol(15) ::: t1) ::: t2 => Some(t1,t2)
+      case _ => None
+    }
+  }
+
+  object <= {
+    def unapply(t: Term): Option[(Term,Term)] = t match {
+      case (Symbol(14) ::: t1) ::: t2 => Some(t1,t2)
+      case _ => None
+    }
+  }
+
+  object Impl {
+    def unapply(t: Term): Option[(Term,Term)] = t match {
+      case (Symbol(13) ::: t1) ::: t2 => Some(t1,t2)
+      case _ => None
+    }
+  }
+
+  object & {
+    def unapply(t: Term): Option[(Term,Term)] = t match {
+      case (Symbol(12) ::: t1) ::: t2 => Some(t1,t2)
+      case _ => None
+    }
+  }
+
+  object | {
+    def unapply(t: Term): Option[(Term,Term)] = t match {
+      case (Symbol(9) ::: t1) ::: t2 => Some(t1,t2)
+      case _ => None
+    }
+  }
+
+  object Forall {
+    def unapply(t: Term): Option[Term] = t match {
+      case (Symbol(8) ::: t1) => Some(t1)
+      case _ => None
+    }
+  }
+
+  object Exists {
+    def unapply(t: Term): Option[Term] = t match {
+      case (Symbol(11) ::: t1) => Some(t1)
+      case _ => None
+    }
+  }
+
+  object === {
+    def unapply(t: Term): Option[(Term,Term)] = t match {
+      case (Symbol(10) ::: t1) ::: t2 => Some(t1,t2)
+      case _ => None
+    }
+  }
+
+  object ~ {
+    def unapply(t: Term): Option[(Term)] = t match {
+      case (Symbol(7) ::: t1) => Some(t1)
+      case _ => None
+    }
+  }
+
+  object LitTrue {
+    def unapply(t: Term): Boolean = t match {
+      case Symbol(3) => true
+      case _ => false
+    }
+  }
+
+  object LitFalse {
+    def unapply(t: Term): Boolean = t match {
+      case Symbol(4) => true
+      case _ => false
+    }
+  }
 }
+
