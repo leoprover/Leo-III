@@ -1,6 +1,7 @@
 package datastructures.internal
 
 import datastructures.Pretty
+import scala.language.implicitConversions
 
 
 /**
@@ -106,7 +107,55 @@ object Term {
   def mkTypeAbs = TypeAbstractionNode(_)
 
   def \(hd: Type)(body: Term): Term = mkTermAbs(hd, body)
+  def \(hd: Type, hds: Type*)(body: Term): Term = {
+    \(hd)(hds.foldRight(body)((ty,t) => \(ty)(t)))
+  }
 
   def /\(body: Term): Term = mkTypeAbs(body)
+
+  implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
+  implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
+}
+
+object Bound {
+  def unapply(t: Term): Option[(Type, Int)] = t match {
+    case BoundNode(ty,scope) => Some(ty,scope)
+    case _ => None
+  }
+}
+
+object Symbol {
+  def unapply(t: Term): Option[Signature#Key] = t match {
+    case SymbolNode(k) => Some(k)
+    case _ => None
+  }
+}
+
+object ::: {
+  def unapply(t: Term): Option[(Term,Term)] = t match {
+    case ApplicationNode(l,r) => Some(l,r)
+    case _ => None
+  }
+}
+
+object :::: {
+  def unapply(t: Term): Option[(Term,Type)] = t match {
+    case TypeApplicationNode(l,r) => Some(l,r)
+    case _ => None
+  }
+}
+
+object :::> {
+  def unapply(t: Term): Option[(Type,Term)] = t match {
+    case AbstractionNode(ty,body) => Some(ty,body)
+    case _ => None
+  }
+}
+
+object TypeLambda {
+  def unapply(t: Term): Option[Term] = t match {
+    case TypeAbstractionNode(body) => Some(body)
+    case _ => None
+  }
 }
 
