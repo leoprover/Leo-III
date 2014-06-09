@@ -204,11 +204,17 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
   def inc(scopeIndex: Int) = TypeApplicationNode(left.inc(scopeIndex), right)
 
+  // TODO: instantiation needs to be fixed
+
   def instantiate(scope: Int, by: Type) = TypeApplicationNode(left.instantiate(scope,by), right.substitute(BoundTypeNode(scope),by))
   // Other operations
-  def betaNormalize = left match {
-    case TypeAbstractionNode(term) => term.instantiateBy(right).betaNormalize
-    case _ => this
+  def betaNormalize = {
+    val leftNF = left.betaNormalize
+
+    leftNF match {
+      case TypeAbstractionNode(term) => term.instantiateBy(right).betaNormalize
+      case _ => this
+    }
   }
 
   def foldRight[A](symFunc: Signature#Key => A)
