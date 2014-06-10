@@ -31,7 +31,7 @@ package object leoshell {
     "Call 'help' for help\n"
 
 
-  val imports : List[String] = List("leoshell._", "commands._", "datastructures.tptp.Commons._", "datastructures.tptp.Commons.{AnnotatedFormula=>Formula}")
+  val imports : List[String] = List("leoshell._", "commands._", "leo.datastructures.tptp.Commons._", "leo.datastructures.tptp.Commons.{AnnotatedFormula=>Formula}")
 
   /**
    * If smth has to be done

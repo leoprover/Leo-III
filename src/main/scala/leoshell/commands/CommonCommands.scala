@@ -1,14 +1,14 @@
 package leoshell.commands
 
 
-import parsers._
+import leo.modules.parsers._
 import leoshell._
 import java.io.FileNotFoundException
 
 import scala.util.parsing.input.CharArrayReader
-import datastructures.tptp.Commons.AnnotatedFormula
-import normalization.{Simplification, NoneSenseSimplify}
-import blackboard.impl.SimpleBlackboard
+import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.modules.normalization.{Simplification, NoneSenseSimplify}
+import leo.datastructures.blackboard.impl.SimpleBlackboard
 
 /**
  * Help Command
@@ -112,7 +112,7 @@ object Add extends Command {
   val infoText = "Adds either a AnnotatedFormula or a string in tptp Syntax to the context."
   val helpText = "Adds a formula."
   val initText = List("def " + name + " (f : String) = commands.Add.add(f)",
-                      "def "+ name +"D (f : datastructures.tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
+                      "def "+ name +"D (f : leo.datastructures.tptp.Commons.AnnotatedFormula) = commands.Add.add(f)")
 
   def init () = leoshell.addCommand(this)
 
@@ -126,7 +126,7 @@ object Add extends Command {
   }
 
 
-  def add(s : datastructures.tptp.Commons.AnnotatedFormula) = SimpleBlackboard.addFormula(s)
+  def add(s : leo.datastructures.tptp.Commons.AnnotatedFormula) = SimpleBlackboard.addFormula(s)
 
 }
 
@@ -217,12 +217,12 @@ object Parse extends Command {
   val name = "parse"
   val infoText = "Takes a String in tptp Syntax and returns a Formula, if the Syntax is correct or null otherwise"
   val helpText = "Parses a string in tptp syntax"
-  val initText = List("def " + name + "(s : String) : datastructures.tptp.Commons.AnnotatedFormula = commands.Parse.parse(s)")
+  val initText = List("def " + name + "(s : String) : leo.datastructures.tptp.Commons.AnnotatedFormula = commands.Parse.parse(s)")
 
   def init() = leoshell.addCommand(this)
 
-  def parse(s : String) : datastructures.tptp.Commons.AnnotatedFormula = {
-    parsers.TPTP.parseFormula(s) match {
+  def parse(s : String) : leo.datastructures.tptp.Commons.AnnotatedFormula = {
+    TPTP.parseFormula(s) match {
       case Right(x) => x
       case Left(err)   =>
         println("The formula `"+ s +"` is malformed:" + err)
