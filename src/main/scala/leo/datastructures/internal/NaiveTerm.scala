@@ -180,7 +180,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeAbstractionNode(term.substitute(what,by))
-  def inc(scopeIndex: Int) = term.inc(scopeIndex)
+  def inc(scopeIndex: Int) = TypeAbstractionNode(term.inc(scopeIndex))
   def instantiate(scope: Int, by: Type) = TypeAbstractionNode(term.instantiate(scope+1,by))
   // Other operations
   def betaNormalize = TypeAbstractionNode(term.betaNormalize)
@@ -202,7 +202,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   // Queries on terms
   def ty = {
     require(left.ty.isPolyType, "Type Application node not well typed: "+this.pretty)
-    left.instantiateBy(right).ty
+    left.ty.instantiate(right)
   } // assume everything is well-typed
 
   def freeVars = left.freeVars
