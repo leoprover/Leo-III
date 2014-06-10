@@ -1,137 +1,115 @@
 package leo.modules.normalization
 
-import leo.datastructures.tptp.Commons._
-import leo.datastructures.tptp._
-import leo.datastructures.tptp.fof.Logical
+import leo.datastructures.internal._
+import leo.datastructures.internal.Term._
 
 /**
  *
- * Simple object, that removes syntactic tatuologies
+ * Simple object, that removes syntactic tautologies
  * and idempotent operations.
  *
  *
  * Created by Max Wisniewski on 4/7/14.
  */
 object Simplification extends AbstractNormalize{
-
   /**
    * Normalizes a formula corresponding to the object.
    *
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: AnnotatedFormula): AnnotatedFormula = formula match {
-    case TPIAnnotated(name, role, formula, anno) => TPIAnnotated(name, role, normalizeFOF(formula), anno)
-    case THFAnnotated(name, role, formula, anno) => THFAnnotated(name, role, normalizeTHF(formula), anno)
-    case TFFAnnotated(name, role, formula, anno) => TFFAnnotated(name, role, normalizeTFF(formula), anno)
-    case FOFAnnotated(name, role, formula, anno) => FOFAnnotated(name, role, normalizeFOF(formula), anno)
-    case CNFAnnotated(name, role, formula, anno) => CNFAnnotated(name, role, normalizeCNF(formula), anno)
+  override def normalize(formula: Term): Term = norm(formula.betaNormalize)
+
+  private def norm(formula : Term) : Term = formula match {
+    //case Bound(ty)   => formula // Sollte egal sein
+    //case Symbol(key) => formula
+
+      // First normalize, then match
+    case s & t =>
+      (norm(s), norm(t)) match {
+        case (s1, t1) if s1 == t1     => s1
+        case (s1, Not(t1)) if s1 == t1  => LitFalse()
+        case (Not(s1), t1) if s1 == t1  => LitFalse()
+        case (s1, LitTrue())            => s1
+        case (LitTrue(), t1)            => t1
+        case (s1, LitFalse())           => LitFalse()
+        case (LitFalse(), t1)           => LitFalse()
+        case (s1, t1)                 => &(s1,t1)
+      }
+    case (s ||| t) =>
+      (norm(s),norm(t)) match {
+        case (s1,t1) if s1 == t1      => s1
+        case (s1, Not(t1)) if s1 == t1   => LitTrue()
+        case (Not(s1),t1) if s1 == t1   => LitTrue()
+        case (s1, LitTrue())            => LitTrue()
+        case (LitTrue(), t1)            => LitTrue()
+        case (s1, LitFalse())           => s1
+        case (LitFalse(), t1)           => t1
+        case (s1, t1)                 => |||(s1,t1)
+      }
+    case s <=> t =>
+      (norm(s), norm(t)) match {
+        case (s1, t1) if s1 == t1 => LitTrue()
+        case (s1, LitTrue())        => s1
+        case (LitTrue(), t1)        => t1
+        case (s1, LitFalse())       => norm(Not(s1))
+        case (LitFalse(), t1)       => norm(Not(t1))
+        case (s1, t1)             => <=>(s1,t1)
+      }
+    case s Impl t =>
+      (norm(s), norm(t)) match {
+        case (s1, t1) if s1 == t1 => LitTrue()
+        case (s1, LitTrue())        => LitTrue()
+        case (s1, LitFalse())       => norm(Not(s1))
+        case (LitTrue(), t1)        => t1
+        case (LitFalse(), t1)       => LitTrue()
+        case (s1,t1)                => Impl(s1,t1)
+      }
+    case Not(s) => norm(s) match {
+      case LitTrue()    => LitFalse()
+      case LitFalse()   => LitTrue()
+      case s1           => Not(s1)
+    }
+    case Forall(t) => norm(t) match {
+      case ty :::> t1 =>
+        def sigF(x:Signature#Key) : List[Int] = List()
+        def sigB(ty : Type, t : Int) : List[Int] = List(t)
+        def abs(ty : Type, t : List[Int]) : List[Int] = t.map(_-1).filter(_>0)
+        def app(t : List[Int], s : List[Int]) : List[Int] = t ++ s
+        def tabs(t : List[Int]) : List[Int] = t
+        def tapp(t : List[Int], ty : Type) : List[Int] = t
+        if (t1.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).contains(1))
+          Forall(mkTermAbs(ty, t1))
+        else
+          t1
+      case t1         => Forall(t1)
+    }
+    case Exists(t) => norm(t) match {
+      case ty :::> t1 =>
+        def sigF(x:Signature#Key) : List[Int] = List()
+        def sigB(ty : Type, t : Int) : List[Int] = List(t)
+        def abs(ty : Type, t : List[Int]) : List[Int] = t.map(_-1).filter(_>0)
+        def app(t : List[Int], s : List[Int]) : List[Int] = t ++ s
+        def tabs(t : List[Int]) : List[Int] = t
+        def tapp(t : List[Int], ty : Type) : List[Int] = t
+        if (t1.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).contains(1))
+          Exists(mkTermAbs(ty, t1))
+        else
+          t1
+      case t1         => Exists(t1)
+    }
+
+      // Pass through unimportant structures
+    case s ::: t    => Term.mkTermApp(norm(s),norm(t))  // Should not happen after beta normalize, unless s is irreduceable
+    case s :::: ty  => Term.mkTypeApp(norm(s), ty)
+    case ty :::> s  => Term.mkTermAbs(ty, norm(s))
+    case TypeLambda(t) => Term.mkTypeAbs(norm(t))
+    case _  => formula
   }
 
   /**
-   * Simplification is always applicable. Hence this is constantly true
-   *
-   * @param formula - Formula to be checked
-   * @return True
+   * Applies iff anything changes. Stupid, because we calculate the simplification very often
+   * until we apply it.
    */
-  override def applicable(formula: AnnotatedFormula): Boolean = true
-
-
-  private def normalizeFOF(formula : fof.Formula) : fof.Formula = formula match {
-    case Logical(form) => Logical(normalizeFOFLogical(form))
-    case a            => a    // Cannot be normalized I guess
-  }
-
-  private val trueV = fof.Atomic(Commons.DefinedPlain(Commons.DefinedFunc("$true", List())))
-  private val falseV = fof.Atomic(Commons.DefinedPlain(Commons.DefinedFunc("$false", List())))
-
-  private def cTrue(f : fof.LogicFormula) : Boolean = f match {
-      case fof.Atomic(atom) => atom match {
-        case Commons.SystemPlain(sysfun) => sysfun match{
-            case Commons.SystemFunc(name, _) =>  name == "$true"
-            case _                          => false
-        }
-        case Commons.DefinedPlain(data) => data match {
-            case DefinedFunc(name, _) => name == "$true"
-            case _  => false
-        }
-        case _  => false
-      }
-      case _    => false
-  }
-
-
-  private def cFalse(f : fof.LogicFormula) : Boolean = f match {
-    case fof.Atomic(atom) => atom match {
-      case Commons.SystemPlain(sysfun) => sysfun match{
-        case Commons.SystemFunc(name, _) =>  name == "$false"
-        case _                          => false
-      }
-      case Commons.DefinedPlain(data) => data match {
-        case DefinedFunc(name, _) => name == "$false"
-        case _  => false
-      }
-      case _  => false
-    }
-    case _    => false
-  }
-
-  private def filterFree(f : fof.LogicFormula, vars : List[Variable]) : List[Variable] = f match {
-    case fof.Binary(left, _, right) => filterFree(left, filterFree(right, vars))
-    case fof.Unary(_, form) => filterFree(form,vars)
-    case fof.Quantified(_,bvars, form) => vars filterNot bvars.contains
-    case fof.Atomic(_)  => vars
-    case fof.Inequality(_, _) => vars
-  }
-
-  private def normalizeFOFLogical(form : fof.LogicFormula) : fof.LogicFormula = form match {
-    case fof.Binary(left, op, right) => {
-      val leftR = normalizeFOFLogical(left)
-      val rightR = normalizeFOFLogical(right)
-      op match{
-        case fof.& if leftR == rightR => leftR
-        case fof.& if leftR == fof.Unary(fof.Not, rightR) || rightR == fof.Unary(fof.Not, leftR) => falseV
-        case fof.& if cTrue(leftR) => rightR
-        case fof.& if cTrue(rightR) => leftR
-        case fof.& if cFalse(leftR) || cFalse(rightR) => falseV
-
-        case fof.<=> if leftR == rightR => trueV
-        case fof.<=> if cTrue(rightR) => leftR
-        case fof.<=> if cTrue(leftR) => rightR
-        case fof.<=> if cFalse(leftR) => fof.Unary(fof.Not, rightR)
-        case fof.<=> if cFalse(rightR) => fof.Unary(fof.Not, leftR)
-
-        case fof.Impl if cTrue(rightR) => trueV
-        case fof.Impl if cFalse(rightR) => fof.Unary(fof.Not, rightR)
-        case fof.Impl if rightR == leftR => trueV
-        case fof.Impl if cTrue(leftR) => rightR
-        case fof.Impl if cFalse(leftR) => trueV
-
-        case fof.| if leftR == rightR => leftR
-        case fof.| if leftR == fof.Unary(fof.Not, rightR) || rightR == fof.Unary(fof.Not, leftR) => trueV
-        case fof.| if cTrue(leftR) || cTrue(rightR) => trueV
-        case fof.| if cFalse(leftR) => rightR
-        case fof.| if cFalse(rightR) => leftR
-
-        case _ => fof.Binary(leftR, op, rightR)
-      }
-
-    }
-    case fof.Unary(fof.Not, fof.Unary(fof.Not, right)) => right     // Remove double negation
-    case fof.Unary(fof.Not, f) if cTrue(f) => falseV                        // Negate top and bottom
-    case fof.Unary(fof.Not, f) if cFalse(f) => trueV
-
-    case fof.Quantified(quant, vars, formulas) => {
-      val formulaR = normalizeFOFLogical(formulas)
-      val nvars = vars filterNot filterFree(formulaR, vars).contains
-      if (nvars.isEmpty) formulaR else fof.Quantified(quant, nvars, formulaR)
-    }
-    case a => a                                                     // If no rule matches
-  }
-
-  private def normalizeTHF(formula : thf.Formula) : thf.Formula = formula
-
-  private def normalizeTFF(formula : tff.Formula) : tff.Formula = formula
-
-  private def normalizeCNF(formula : cnf.Formula) : cnf.Formula = formula
+  override def applicable(formula: Term): Boolean = normalize(formula) != formula
 }

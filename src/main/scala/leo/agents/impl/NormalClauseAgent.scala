@@ -41,7 +41,7 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
       store action { fS =>
         output = ""           // Reset at start of transaction, because it will not be reseted thorugh STM
         val form = fS.formula
-        val form1 = norm.normalize(form)
+        val form1 = form //norm.normalize(form)
         if (form != form1) {
           if (SimpleBlackboard.DEBUG) output = "Simplified : '"+form+"' to '"+form1+"'."
           fS.formula = form1
@@ -110,5 +110,5 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  override def filterAdd(f: Store[FormulaStore]): Boolean = f read {norm applicable _.formula}
+  override def filterAdd(f: Store[FormulaStore]): Boolean = false //f read {norm applicable _.formula}
 }

@@ -7,7 +7,7 @@ import java.io.FileNotFoundException
 
 import scala.util.parsing.input.CharArrayReader
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.normalization.{Simplification, NoneSenseSimplify}
+import leo.modules.normalization.{Simplification}
 import leo.datastructures.blackboard.impl.SimpleBlackboard
 
 /**
@@ -234,16 +234,14 @@ object Parse extends Command {
 /**
  * Heavier for syntactic sugar
  */
-object Normalize extends Command{
-  val name = "normalize"
-  val infoText = "Applies a normalization algorithm to the given argument. At the" +
-    "moment the algorithms are\nsimplify\ntoTrue"
-  val helpText = "Applies different normalization schemes"
-  val initText = List("import commands.{Normalize => "+name+"}")
-
-  def init() = leoshell.addCommand(this)
-
-  def simplify(f : AnnotatedFormula) : AnnotatedFormula = Simplification(f)
-
-  def toTrue(f : AnnotatedFormula) : AnnotatedFormula = NoneSenseSimplify(f)
-}
+//object Normalize extends Command{
+//  val name = "normalize"
+//  val infoText = "Applies a normalization algorithm to the given argument. At the" +
+//    "moment the algorithms are\nsimplify\ntoTrue"
+//  val helpText = "Applies different normalization schemes"
+//  val initText = List("import commands.{Normalize => "+name+"}")
+//
+//  def init() = leoshell.addCommand(this)
+//
+//  def simplify(f : AnnotatedFormula) : AnnotatedFormula = Simplification(f)
+//}
