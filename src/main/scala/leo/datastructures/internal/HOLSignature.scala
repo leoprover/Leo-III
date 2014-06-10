@@ -101,6 +101,8 @@ trait HOLSignature {
       case (Symbol(15) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
     }
+
+    def apply(t : Term, s :  Term) : Term = mkTermApp(mkTermApp(mkAtom(15), t),s)
   }
 
   object <= {
@@ -115,6 +117,8 @@ trait HOLSignature {
       case (Symbol(13) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
     }
+
+    def apply(t : Term, s : Term) : Term = mkTermApp(mkTermApp(mkAtom(13), t),s)
   }
 
   object & {
@@ -122,13 +126,17 @@ trait HOLSignature {
       case (Symbol(12) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
     }
+
+    def apply(t : Term, s : Term) : Term = mkTermApp(mkTermApp(mkAtom(12), t), s)
   }
 
-  object | {
+  object ||| {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(9) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
     }
+
+    def apply(t : Term, s : Term) : Term  = mkTermApp(mkTermApp(mkAtom(9), t),s)
   }
 
   object Forall {
@@ -136,6 +144,8 @@ trait HOLSignature {
       case (Symbol(8) ::: t1) => Some(t1)
       case _ => None
     }
+
+    def apply(t : Term) : Term = mkTermApp(mkAtom(8), t)
   }
 
   object Exists {
@@ -143,6 +153,8 @@ trait HOLSignature {
       case (Symbol(11) ::: t1) => Some(t1)
       case _ => None
     }
+
+    def apply(t : Term) : Term = mkTermApp(mkAtom(11), t)
   }
 
   object === {
@@ -152,11 +164,13 @@ trait HOLSignature {
     }
   }
 
-  object ~ {
+  object Not {
     def unapply(t: Term): Option[(Term)] = t match {
       case (Symbol(7) ::: t1) => Some(t1)
       case _ => None
     }
+
+    def apply(t : Term) : Term = mkTermApp(mkAtom(7), t)
   }
 
   object LitTrue {
@@ -164,6 +178,7 @@ trait HOLSignature {
       case Symbol(3) => true
       case _ => false
     }
+    def apply() : Term = Term.mkAtom(3)
   }
 
   object LitFalse {
@@ -171,5 +186,6 @@ trait HOLSignature {
       case Symbol(4) => true
       case _ => false
     }
+    def apply() : Term = Term.mkAtom(4)
   }
 

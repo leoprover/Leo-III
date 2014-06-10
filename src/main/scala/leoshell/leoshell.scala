@@ -31,7 +31,7 @@ package object leoshell {
     "Call 'help' for help\n"
 
 
-  val imports : List[String] = List("leoshell._", "commands._", "leo.datastructures.tptp.Commons._", "leo.datastructures.tptp.Commons.{AnnotatedFormula=>Formula}")
+  val imports : List[String] = List("leoshell._", "commands._", "leo.datastructures.tptp.Commons._", "leo.dgit atastructures.tptp.Commons.{AnnotatedFormula=>Formula}")
 
   /**
    * If smth has to be done
@@ -46,7 +46,7 @@ package object leoshell {
     Clear.init()
     Remove.init()
     Parse.init()
-    Normalize.init()
+    //Normalize.init()
     this.console = console
   }
 
