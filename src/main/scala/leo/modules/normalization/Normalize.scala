@@ -1,7 +1,6 @@
 package leo.modules.normalization
 
-import leo.datastructures.tptp.Commons._
-import leo.datastructures.tptp._
+import leo.datastructures.internal.Term
 
 /**
  * This trait is shared by every Normalizing Object.
@@ -9,7 +8,7 @@ import leo.datastructures.tptp._
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function1[AnnotatedFormula,AnnotatedFormula]{
+trait Normalize extends Function1[Term,Term]{
 
   /**
    * Normalizes a formula corresponding to the object.
@@ -17,7 +16,7 @@ trait Normalize extends Function1[AnnotatedFormula,AnnotatedFormula]{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  def normalize (formula : AnnotatedFormula) : AnnotatedFormula
+  def normalize (formula : Term) : Term
 
   /**
    * Checks whether the given formula is normalizable.
@@ -25,7 +24,7 @@ trait Normalize extends Function1[AnnotatedFormula,AnnotatedFormula]{
    * @param formula - Formula to be checked
    * @return True if a normaliziation is possible, false otherwise
    */
-  def applicable (formula : AnnotatedFormula) : Boolean
+  def applicable (formula : Term) : Boolean
 }
 
 /**
@@ -42,19 +41,6 @@ abstract class AbstractNormalize extends Normalize {
    * @param formula - Formula that should be normalized.
    * @return The possibly normalized formula.
    */
-  def apply(formula : AnnotatedFormula) : AnnotatedFormula = if (applicable(formula)) normalize(formula) else formula
+  def apply(formula : Term) : Term = if (applicable(formula)) normalize(formula) else formula
 
-}
-
-/**
- * For testing a first Object, that turns every Input into $true
- */
-object NoneSenseSimplify extends AbstractNormalize {
-  def applicable (formula : AnnotatedFormula) : Boolean = true
-
-  def normalize(formula : AnnotatedFormula) : AnnotatedFormula = formula match {
-    case FOFAnnotated(name, role, _, anno) => FOFAnnotated(name, role, fof.Logical(fof.Atomic(DefinedPlain(DefinedFunc("$true", List())))), anno)
-    case TPIAnnotated(name, role, _, anno) => FOFAnnotated(name, role, fof.Logical(fof.Atomic(DefinedPlain(DefinedFunc("$true", List())))), anno)
-    case _  => println("error, not yet implemented"); null
-  }
 }
