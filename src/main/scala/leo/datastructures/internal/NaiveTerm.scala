@@ -151,7 +151,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
 
     leftNF match {
       case AbstractionNode(ty, body) => body.substitute(BoundNode(ty ,1), rightNF).betaNormalize
-      case _ => this
+      case _ => ApplicationNode(leftNF, rightNF)
     }
   }
 
@@ -212,8 +212,6 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
   def inc(scopeIndex: Int) = TypeApplicationNode(left.inc(scopeIndex), right)
 
-  // TODO: instantiation needs to be fixed
-
   def instantiate(scope: Int, by: Type) = TypeApplicationNode(left.instantiate(scope,by), right.substitute(BoundTypeNode(scope),by))
   // Other operations
   def betaNormalize = {
@@ -221,7 +219,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
     leftNF match {
       case TypeAbstractionNode(term) => term.instantiateBy(right).betaNormalize
-      case _ => this
+      case _ => TypeApplicationNode(leftNF, right)
     }
   }
 
@@ -235,5 +233,6 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
+
 
 
