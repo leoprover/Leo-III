@@ -28,7 +28,6 @@ import leo.datastructures.Pretty
  */
 abstract class Type extends Pretty {
 
-
   // Predicates on types
   val isBaseType: Boolean = false
   val isFunType: Boolean = false
@@ -44,16 +43,32 @@ abstract class Type extends Pretty {
   def funCodomainType: Option[Type]
   def _funCodomainType: Type = funCodomainType.get
 
+  /** Returns true iff `ty` appears somewhere as subtype (e.g. as part of an abstraction type). */
+  def occurs(ty: Type): Boolean
+
   // Substitutions
+  /**
+   * Substitute (free) occurences of `what` by `by`, e.g.
+   * {{{
+   *   (Type.o ->: Type.i).substitute(Type.o, Type.i ->: Type.i)
+   * }}}
+   * yields {{{(Type.i ->: Type.i) ->: Type.i}}}
+   */
   def substitute(what: Type, by: Type): Type
 
+  /** if `this` is a polymorphic type (i.e. a forall type), the method returns the abstracted type where all type parameters bound
+    * by the head quantifier are replaced by `by`. In any other case, it does nothing */
+  def instantiate(by: Type): Type
+
   // Other operation
+  /** Right folding on types. This may change if the type system is changed. */
   def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (forAllFunc: A => A): A
 
   // Syntactic nice constructors
+  /** Create abstraction type from `hd` to `this` */
   def ->:(hd: Type) = Type.mkFunType(hd, this)
 }
 
@@ -76,8 +91,10 @@ object Type {
     case Nil => out
     case x::xs      => mkFunType(x, mkFunType(xs, out))
   }
-  /** Build `forall $1. $2` (i.e. a universally quantified type) */
+  /** Build `forall. ty` (i.e. a universally quantified type) */
   def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
+  /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */
+  def ∀(bodyType: Type): Type = ForallTypeNode(bodyType)
 
   /** The (bound) type a type variable represents. This should always be bound by a `mkPolyType`*/
   def mkVarType(scope: Int): Type = BoundTypeNode(scope)
