@@ -47,6 +47,7 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
           fS.formula = form1
         }
         workedFormulas += store
+        fS
       }
     }
     if(output != "") println(output)

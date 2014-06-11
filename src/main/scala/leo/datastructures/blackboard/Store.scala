@@ -22,9 +22,9 @@ sealed class Store[A <: Storable] extends Function0[Ref[A]] {
    * and writing the changes back to the blackboard.
    * @param f - Function applied to A's
    */
-  def action(f : A => Unit) : Unit = atomic {implicit txn =>
+  def action(f : A => A) : Unit = atomic {implicit txn =>
     Txn.beforeCommit(t => _internalObject.get(t).writeCommit(this))   // Tries to write changes back to the blackboard, after the changes are done
-    f(_internalObject())                                              // Performs an action on the stored data
+    _internalObject() = f(_internalObject())                                              // Performs an action on the stored data
   }
 
   /**
