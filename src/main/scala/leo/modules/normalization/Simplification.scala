@@ -81,7 +81,7 @@ object Simplification extends AbstractNormalize{
         if (t1.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).contains(1))
           Forall(mkTermAbs(ty, t1))
         else
-          t1
+          mkTermApp(mkTermAbs(ty,t1), mkBound(ty,-1)).betaNormalize       // Instatiation of term, to raise the DeBruijn Indizes refer to abstraction above this level
       case t1         => Forall(t1)
     }
     case Exists(t) => norm(t) match {
@@ -95,7 +95,7 @@ object Simplification extends AbstractNormalize{
         if (t1.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).contains(1))
           Exists(mkTermAbs(ty, t1))
         else
-          t1
+          mkTermApp(mkTermAbs(ty,t1), mkBound(ty,-1)).betaNormalize
       case t1         => Exists(t1)
     }
 
