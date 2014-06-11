@@ -25,6 +25,11 @@ object Simplification extends AbstractNormalize{
     //case Symbol(key) => formula
 
       // First normalize, then match
+    case s === t =>
+      (norm(s), norm(t)) match {
+        case (s1,t1) if s1 == t1 => LitTrue()
+        case (s1,t1)             => ===(s1,t1)
+      }
     case s & t =>
       (norm(s), norm(t)) match {
         case (s1, t1) if s1 == t1     => s1

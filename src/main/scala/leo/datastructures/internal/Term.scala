@@ -36,6 +36,7 @@ abstract class Term extends Pretty {
   // Queries on terms
   def ty: Type
   def freeVars: Set[Term]
+  def boundVars: Set[Term] = ??? // return the bound vars (that are copies, right?)
   def symbolsOfType(ty: Type) = freeVars.filter(_.ty == ty)
   def topLevelSymbol: Option[Term] = ???
   // Substitutions

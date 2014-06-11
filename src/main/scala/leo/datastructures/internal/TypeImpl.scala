@@ -17,11 +17,18 @@ protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
   def funDomainType   = None
   def funCodomainType = None
 
+  def occurs(ty: Type) = ty match {
+    case BaseTypeNode(key) if key == id => true
+    case _                              => false
+  }
+
   // Substitutions
   def substitute(what: Type, by: Type) = what match {
     case BaseTypeNode(key) if key == id => by
     case _ => this
   }
+
+  def instantiate(by: Type) = this
 
   // Other operations
   def foldRight[A](baseFunc: Signature#Key => A)
@@ -45,11 +52,15 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
   def funDomainType   = None
   def funCodomainType = None
 
+  def occurs(ty: Type) = false
+
   // Substitutions
   def substitute(what: Type, by: Type) = what match {
     case BoundTypeNode(i) if i == scope => by
     case _ => this
   }
+
+  def instantiate(by: Type) = this
 
   // Other operations
   def foldRight[A](baseFunc: Signature#Key => A)
@@ -76,8 +87,12 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
   def funDomainType   = Some(in)
   def funCodomainType = Some(out)
 
+  def occurs(ty: Type) = in.occurs(ty) || out.occurs(ty)
+
   // Substitutions
   def substitute(what: Type, by: Type) = AbstractionTypeNode(in.substitute(what,by), out.substitute(what,by))
+
+  def instantiate(by: Type) = this
 
   // Other operations
   def foldRight[A](baseFunc: Signature#Key => A)
@@ -93,7 +108,7 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
  */
 protected[internal] case class ForallTypeNode(body: Type) extends Type {
   // Pretty printing
-  def pretty = "forall. " + body.pretty
+  def pretty = "∀. " + body.pretty
 
   // Predicates on types
   override val isPolyType         = true
@@ -108,11 +123,15 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
   def funDomainType   = None
   def funCodomainType = None
 
+  def occurs(ty: Type) = body.occurs(ty)
+
   // Substitutions
   def substitute(what: Type, by: Type) = what match {
     case BoundTypeNode(i) => ForallTypeNode(body.substitute(BoundTypeNode(i+1), by))
     case _ => ForallTypeNode(body.substitute(what,by))
   }
+
+  def instantiate(by: Type) = body.substitute(BoundTypeNode(1), by)
 
   // Other operations
   def foldRight[A](baseFunc: Signature#Key => A)

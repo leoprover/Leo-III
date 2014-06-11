@@ -71,7 +71,15 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
     case _ => this
   }
 
-  def instantiate(scope: Int, by: Type) = BoundNode(t.substitute(BoundTypeNode(scope),by),scope)
+  def instantiate(sc: Int, by: Type) = {
+    t match {
+//      case ForallTypeNode(body) => BoundNode(body.substitute(BoundTypeNode(scope),by),scope)
+      case _ => BoundNode(t.substitute(BoundTypeNode(sc),by),scope)
+    }
+  }
+
+
+
 
   // Other operations
   def betaNormalize = this
@@ -101,7 +109,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
 
   def inc(scopeIndex: Int) = AbstractionNode(absType, term.inc(scopeIndex+1))
 
-  def instantiate(scope: Int, by: Type) = AbstractionNode(absType.substitute(BoundTypeNode(scope),by),term)
+  def instantiate(scope: Int, by: Type) = AbstractionNode(absType.substitute(BoundTypeNode(scope),by),term.instantiate(scope,by))
 
    // Other operations
   def betaNormalize = AbstractionNode(absType, term.betaNormalize)
@@ -113,7 +121,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = absFunc(absType, term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
   // Pretty printing
-  def pretty = "[\\." + term.pretty + "]"
+  def pretty = "[λ." + term.pretty + "]"
 }
 
 
@@ -143,7 +151,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
 
     leftNF match {
       case AbstractionNode(ty, body) => body.substitute(BoundNode(ty ,1), rightNF).betaNormalize
-      case _ => this
+      case _ => ApplicationNode(leftNF, rightNF)
     }
   }
 
@@ -172,7 +180,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeAbstractionNode(term.substitute(what,by))
-  def inc(scopeIndex: Int) = term.inc(scopeIndex)
+  def inc(scopeIndex: Int) = TypeAbstractionNode(term.inc(scopeIndex))
   def instantiate(scope: Int, by: Type) = TypeAbstractionNode(term.instantiate(scope+1,by))
   // Other operations
   def betaNormalize = TypeAbstractionNode(term.betaNormalize)
@@ -185,7 +193,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
                   (tAppFunc: (A, Type) => A) = tAbsFunc(term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
 
   // Pretty printing
-  def pretty = "[/\\." + term.pretty + "]"
+  def pretty = "[Λ." + term.pretty + "]"
 }
 
 protected[internal] case class TypeApplicationNode(left: Term, right: Type) extends NaiveTerm {
@@ -194,7 +202,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   // Queries on terms
   def ty = {
     require(left.ty.isPolyType, "Type Application node not well typed: "+this.pretty)
-    left.instantiateBy(right).ty
+    left.ty.instantiate(right)
   } // assume everything is well-typed
 
   def freeVars = left.freeVars
@@ -204,8 +212,6 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
   def inc(scopeIndex: Int) = TypeApplicationNode(left.inc(scopeIndex), right)
 
-  // TODO: instantiation needs to be fixed
-
   def instantiate(scope: Int, by: Type) = TypeApplicationNode(left.instantiate(scope,by), right.substitute(BoundTypeNode(scope),by))
   // Other operations
   def betaNormalize = {
@@ -213,7 +219,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
     leftNF match {
       case TypeAbstractionNode(term) => term.instantiateBy(right).betaNormalize
-      case _ => this
+      case _ => TypeApplicationNode(leftNF, right)
     }
   }
 
@@ -227,5 +233,6 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
+
 
 
