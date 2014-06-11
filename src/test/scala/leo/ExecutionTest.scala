@@ -1,34 +1,64 @@
 package leo
 
+import leo.datastructures.internal.Term
 import leo.datastructures.internal.Term.{mkTermApp => ap,mkAtom}
-import leo.datastructures.internal.{LitFalse, LitTrue, ===, Signature}
+import leo.datastructures.internal.{LitFalse, LitTrue, === => EQUALS, Signature}
 
 import leo.modules.churchNumerals.Numerals
 import leo.modules.churchNumerals.Numerals.fromInt
 
 import leo.modules.normalization.Simplification
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.FunSuite
 
 /**
  * Created by lex on 11.06.14.
  */
-object ExecutionTest {
-  def main(args: Array[String]) {
-    val sig = Signature.get
-    Signature.withHOL(sig) // include standard hol symbols
-    Numerals() // include numerals in signature
+@RunWith(classOf[JUnitRunner])
+class ExecutionTest extends FunSuite {
+  val sig = Signature.get
+  Signature.withHOL(sig) // include standard hol symbols
+  Numerals() // include numerals in signature
 
-    val add = mkAtom(sig.meta("add").key) // fetch addition from signature
 
-    val test = {
-      ===(ap(ap(add,2),3), ap(ap(add,3),2))  // theorem: 2+3 = 3+2
+  val theorems: Map[String, Term] = {
+    val add = mkAtom(sig.meta("add").key)
+    val mult = mkAtom(sig.meta("mult").key)
+    val power = mkAtom(sig.meta("power").key)
+
+    Map(("2+3=3+2", {
+      EQUALS(ap(ap(add,2),3), ap(ap(add,3),2))
+    }),
+      ("2*(1+2) = 6", {
+        EQUALS(ap(ap(mult,2),ap(ap(add,1),2)), 6)
+      }),
+      ("2^3 = 2*2*2",{
+        EQUALS(ap(ap(power,2),3), ap(ap(mult,ap(ap(mult,2),2)),2))
+      }))
+  }
+
+
+  for((s,t) <- theorems) {
+    test(s) {
+      val res = runExecutionOn(s,t)
+      res match {
+        case LitTrue() => {assert(true); println("THEOREM")}
+        case LitFalse() => {assert(false); println("COUNTER PROVABLE")}
+        case _ => {assert(false); println("UNKNOWN")}
+      }
+      println("############################################")
     }
 
-    println("To prove: 2+3 = 3+2")
+  }
+
+  def runExecutionOn(title: String, term: Term): Term = {
+    println("To prove: " + title)
     println()
-    println("As term: " + test.pretty)
+    println("As term: " + term.pretty)
     println()
     println("Definition expansion ...")
-    val test2 = test.expandAllDefinitions
+    val test2 = term.expandAllDefinitions
     //println(test2.pretty)
 
     println("Beta normalizing ...")
@@ -38,11 +68,7 @@ object ExecutionTest {
     println("Simplification ...")
     val test4 = Simplification(test3)
 
-    test4 match {
-      case LitTrue() => print("THEOREM")
-      case LitFalse() => print("COUNTER PROVABLE")
-      case _ => print("UNKNOWN")
-    }
     println(" (Resulting term: " + test4.pretty + " )")
+    test4
   }
 }
