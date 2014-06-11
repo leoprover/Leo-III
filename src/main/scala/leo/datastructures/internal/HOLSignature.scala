@@ -162,6 +162,8 @@ trait HOLSignature {
       case (Symbol(10) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
     }
+
+    def apply(t: Term, s: Term): Term = mkTermApp(mkTermApp(mkAtom(10),t),s)
   }
 
   object Not {
