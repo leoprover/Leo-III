@@ -32,7 +32,7 @@ object Numerals {
                             )
                           )
 
-  /** applies the successor function `succ` to the given church numeral */
+  /** applies (and normalizes) the successor function `succ` to the given church numeral */
   def succ(n: Church): Church = ap(succ, n).betaNormalize
 
   /** The add function for church numerals */
@@ -56,8 +56,39 @@ object Numerals {
                     )
                   )
 
-  /** applies the `àdd` function to the given arguments. */
+  /** applies (and normalizes) the `add` function to the given arguments. */
   def add(n: Church, m: Church): Church = ap(ap(add, n), m).betaNormalize
+
+  /** The multiplication function for church numerals */
+  def mult: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+    Λ(
+      λ(1 ->: 1)(
+          ap(
+            tyAp((3,∀((1 ->: 1) ->: 1 ->: 1)),1),
+            ap(
+              tyAp((2,∀((1 ->: 1) ->: 1 ->: 1)),1),
+              (1,1 ->: 1)
+            )
+          )
+      )
+    )
+  )
+
+  /** Applies (and normalizes) the `mult` function to the given arguments */
+  def mult(n: Church, m: Church): Church = ap(ap(mult,n),m).betaNormalize
+
+  /** The multiplication function for church numerals */
+  def power: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+    Λ(
+        ap(
+          tyAp((1,∀((1 ->: 1) ->: 1 ->: 1)),(1 ->: 1)),
+          tyAp((2,∀((1 ->: 1) ->: 1 ->: 1)),1)
+        )
+    )
+  )
+
+  /** Applies (and normalizes) the `power` function to the given arguments */
+  def power(n: Church, m: Church): Church = ap(ap(power,n),m).betaNormalize
 
   implicit def fromInt(n: Int): Church = {
     require(n >= 0, "Church numerals cannot be negative.")
@@ -67,5 +98,7 @@ object Numerals {
     }
   }
 }
+
+
 
 
