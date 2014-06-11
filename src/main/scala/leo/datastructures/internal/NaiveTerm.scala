@@ -71,10 +71,10 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
     case _ => this
   }
 
-  def instantiate(scope: Int, by: Type) = {
+  def instantiate(sc: Int, by: Type) = {
     t match {
 //      case ForallTypeNode(body) => BoundNode(body.substitute(BoundTypeNode(scope),by),scope)
-      case _ => BoundNode(t.substitute(BoundTypeNode(scope),by),scope)
+      case _ => BoundNode(t.substitute(BoundTypeNode(sc),by),scope)
     }
   }
 
@@ -109,7 +109,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
 
   def inc(scopeIndex: Int) = AbstractionNode(absType, term.inc(scopeIndex+1))
 
-  def instantiate(scope: Int, by: Type) = AbstractionNode(absType.substitute(BoundTypeNode(scope),by),term)
+  def instantiate(scope: Int, by: Type) = AbstractionNode(absType.substitute(BoundTypeNode(scope),by),term.instantiate(scope,by))
 
    // Other operations
   def betaNormalize = AbstractionNode(absType, term.betaNormalize)
