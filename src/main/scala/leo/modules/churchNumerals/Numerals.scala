@@ -1,7 +1,7 @@
 package leo.modules.churchNumerals
 
 import scala.language.implicitConversions
-import leo.datastructures.internal.Term
+import leo.datastructures.internal.{Signature, Term}
 import leo.datastructures.internal.Term.{mkTermApp => ap, mkTypeApp => tyAp, Λ, λ,intToBoundVar,intsToBoundVar}
 import leo.datastructures.internal.Type.{typeVarToType,∀}
 
@@ -97,7 +97,18 @@ object Numerals {
       case m => succ(m-1)
     }
   }
+
+  def apply(): Unit = {
+    val sig = Signature.get
+    sig.addDefined("zero", zero, zero.ty)
+    sig.addDefined("succ", succ, succ.ty)
+    sig.addDefined("add", add, add.ty)
+    sig.addDefined("mult", mult, mult.ty)
+    sig.addDefined("power", power, power.ty)
+  }
 }
+
+
 
 
 
