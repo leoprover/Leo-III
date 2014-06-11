@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard.impl
 
-import leo.datastructures.tptp.Commons.{ AnnotatedFormula => Formula }
+import leo.datastructures.internal.{ Term => Formula }
 import scala.collection.mutable._
 import java.util.concurrent.locks.ReentrantLock
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -42,9 +42,9 @@ object SimpleBlackboard extends Blackboard {
     formulas get name
   }
 
-  override def addFormula(formula: Formula) {
+  override def addFormula(name : String, formula: Formula) {
     //println("Form Name : "+formula.name+", formula : '"+formula.toString+"'")
-    addFormula(Store.apply(formula.name, formula, SimpleBlackboard))
+    addFormula(Store.apply(name, formula, SimpleBlackboard))
   }
 
   override def addFormula(formula : Store[FormulaStore]) {

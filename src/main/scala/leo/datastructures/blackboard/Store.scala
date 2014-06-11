@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard
 
 import scala.concurrent.stm._
-import leo.datastructures.tptp.Commons.{ AnnotatedFormula => Formula }
+import leo.datastructures.internal.{ Term => Formula }
 
 /**
  * <p>

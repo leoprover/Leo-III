@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard
 
-import leo.datastructures.tptp.Commons.{AnnotatedFormula => Formula}
+import leo.datastructures.internal.{Term => Formula}
 import leo.agents.Agent
 import leo.datastructures.blackboard.scheduler.Scheduler
 
@@ -33,7 +33,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * </p>
    * @param formula to be added.
    */
-  def addFormula(formula : Formula)
+  def addFormula(name : String, formula : Formula)
 
   /**
    * <p>
