@@ -2,6 +2,7 @@ package leo.datastructures.blackboard
 
 import scala.concurrent.stm._
 import leo.datastructures.internal.{ Term => Formula }
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * <p>
@@ -23,7 +24,7 @@ sealed class Store[A <: Storable] extends Function0[Ref[A]] {
    * @param f - Function applied to A's
    */
   def action(f : A => A) : Unit = atomic {implicit txn =>
-    Txn.beforeCommit(t => _internalObject.get(t).writeCommit(this))   // Tries to write changes back to the blackboard, after the changes are done
+    Txn.beforeCommit(t => _internalObject.get(t).writeCommit(this, _internalObject()))   // Tries to write changes back to the blackboard, after the changes are done
     _internalObject() = f(_internalObject())                                              // Performs an action on the stored data
   }
 
@@ -53,10 +54,12 @@ sealed trait Storable {
    * to guarantee rollback problems in the blackboard.
    * <p>
    */
-  def writeCommit[B <: Storable](r : Store[B]) : Unit
+  protected[blackboard] def writeCommit[B <: Storable](r : Store[B], diffStore : B) : Unit
 }
 
 object Store {
+  private var unnamedFormulas : AtomicInteger = new AtomicInteger(0)
+
   def apply(s : FormulaStore) : Store[FormulaStore] = {
     val s1 = new Store[FormulaStore]()
     s1._internalObject = Ref(s)
@@ -64,60 +67,37 @@ object Store {
   }
 
   def apply(name : String, initFormula : Formula,  blackboard : Blackboard) : Store[FormulaStore]
-    = {
-    var r = new FormulaStoreImpl(blackboard)
-    r._formula = initFormula
-    r._name = name
-    r._changedName = name
-    Store(r)
-  }
+    = Store(new FormulaStore(name, initFormula, blackboard))
+
   def apply(initFormula : Formula, blackboard : Blackboard) : Store[FormulaStore]
-    = {
-    var r = new FormulaStoreImpl(blackboard)
-    r._formula = initFormula
-    Store(r)
-  }
-}
-
-sealed trait FormulaStore extends Storable{
-  //Access to Formula
-  def formula : Formula
-  def formula_= (value : Formula) : Unit
-
-  def name : String
-  def name_= (value : String) : Unit
+    = Store(new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula,blackboard))
 }
 
 /**
  * Class to Store Formula Information.
  *
  */
-protected[blackboard] class FormulaStoreImpl(blackboard : Blackboard) extends FormulaStore{
+class FormulaStore(_name : String, _formula : Formula, blackboard : Blackboard) extends Storable{
 
-  // ATM senseless, but for later when we order by formula
-  protected[blackboard] var _formula : Formula = null
-  def formula = _formula
-  def formula_= (value : Formula) : Unit = _formula = value
+  def name : String = _name
+  def formula : Formula = _formula
 
-  // Introduce another variable for caching. If
-  // The name changed, we
-  protected[blackboard] var _changedName : String = ""
-  protected[blackboard] var _name : String = ""
-  def name = _name
-  def name_= (value : String) {
-    _changedName = value
-  }
+  def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, blackboard)
+  def newFormula(nformula : Formula) : FormulaStore = new FormulaStore(name, nformula, blackboard)
 
-  def writeCommit[B <: Storable](r : Store[B]) {
-    r match {
-      case r1 : Store[FormulaStore] =>
-        if (_changedName != _name) {
-          blackboard.rmFormulaByName(_name)
-          _name = _changedName
+  /**
+   * Can only be called with the FormulaStore, otherwise an error is thrown.
+   *
+   * @param r           - The store object this formula store is contained in
+   * @param diffStore   - The object from the start of the transaction
+   * @tparam B          - Should only be FomrulaStore
+   */
+  protected[blackboard] def writeCommit[B <: Storable](r : Store[B], diffStore : B) {
+    val d = r.asInstanceOf[FormulaStore]
+    val r1 = diffStore.asInstanceOf[Store[FormulaStore]]
+    if (name != d.name) {
+          blackboard.rmFormulaByName(d.name)
           blackboard.addFormula(r1)
-      }
-      case _ => throw new ClassCastException("Returned not the right class.")
     }
-
   }
 }

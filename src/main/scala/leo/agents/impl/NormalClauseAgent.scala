@@ -42,12 +42,13 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
         output = ""           // Reset at start of transaction, because it will not be reseted thorugh STM
         val form = fS.formula
         val form1 = form //norm.normalize(form)
+        var ret = fS
         if (form != form1) {
           if (SimpleBlackboard.DEBUG) output = "Simplified : '"+form+"' to '"+form1+"'."
-          fS.formula = form1
+          ret = fS.newFormula(form1)
         }
         workedFormulas += store
-        fS
+        ret
       }
     }
     if(output != "") println(output)
