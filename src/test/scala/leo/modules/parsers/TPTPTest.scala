@@ -1,6 +1,10 @@
 package leo.modules.parsers
 
-import leo.modules.parsers.syntactical.TPTPParsers
+
+import syntactical.TPTPParsers
+import java.io.File
+import scala.io.Source
+
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Reader
 
@@ -8,13 +12,13 @@ import scala.util.parsing.input.Reader
  * Created by lex on 3/25/14.
  */
 object TPTPTest {
+  private val parser = TPTPParsers
   def main(args: Array[String]) {
 //    testruns
     fileTests
   }
 
   def testruns {
-
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -39,17 +43,16 @@ object TPTPTest {
   }
 
   def fileTest(file: String) {
-    val source = scala.io.Source.fromFile(file, "utf-8")
+    val source = Source.fromFile(file, "utf-8")
     lazy val input = new CharArrayReader(source.toArray)
-    val parser = TPTPParsers
+
     println(parser.parse(input, parser.tptpFile))
   }
 
   def fileTests {
-    import java.nio.file.{Files, Path}
-    val files = new java.io.File("./tptp/syn").listFiles.filter(_.getName.endsWith(".p"))
+    val files = new File("./tptp/syn").listFiles.filter(_.getName.endsWith(".p"))
     for (f <- files) {
-      val source = scala.io.Source.fromFile(f, "utf-8")
+      val source = Source.fromFile(f, "utf-8")
       lazy val input = new CharArrayReader(source.toArray)
       val parsed = TPTP.parseFile(input)
       println("Result of " + f.getName + ": "+ parsed)
@@ -60,8 +63,6 @@ object TPTPTest {
     tokensOf(input.source.toString)
   }
   def tokensOf(input: String) {
-    val parser = TPTPParsers
-    println(input)
     var tokenstream = parser.tokens(input)
 
         while (!tokenstream.atEnd) {
@@ -333,3 +334,4 @@ object TPTPTest {
       |
     """.stripMargin
 }
+
