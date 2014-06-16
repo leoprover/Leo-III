@@ -77,30 +77,18 @@ object Simplification extends AbstractNormalize{
     }
     case Forall(t) => norm(t) match {
       case ty :::> t1 =>
-        def sigF(x:Signature#Key) : List[Int] = List()
-        def sigB(ty : Type, t : Int) : List[Int] = List(t)
-        def abs(ty : Type, t : List[Int]) : List[Int] = t.map(_-1).filter(_>0)
-        def app(t : List[Int], s : List[Int]) : List[Int] = t ++ s
-        def tabs(t : List[Int]) : List[Int] = t
-        def tapp(t : List[Int], ty : Type) : List[Int] = t
-        if (t1.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).contains(1))
+        if (isBound(t1))
           Forall(mkTermAbs(ty, t1))
         else
-          mkTermApp(mkTermAbs(ty,t1), mkBound(ty,-1)).betaNormalize       // Instatiation of term, to raise the DeBruijn Indizes refer to abstraction above this level
+          removeUnbound(mkTermAbs(ty,t1))
       case t1         => Forall(t1)
     }
     case Exists(t) => norm(t) match {
       case ty :::> t1 =>
-        def sigF(x:Signature#Key) : List[Int] = List()
-        def sigB(ty : Type, t : Int) : List[Int] = List(t)
-        def abs(ty : Type, t : List[Int]) : List[Int] = t.map(_-1).filter(_>0)
-        def app(t : List[Int], s : List[Int]) : List[Int] = t ++ s
-        def tabs(t : List[Int]) : List[Int] = t
-        def tapp(t : List[Int], ty : Type) : List[Int] = t
-        if (t1.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).contains(1))
+        if (isBound(t1))
           Exists(mkTermAbs(ty, t1))
         else
-          mkTermApp(mkTermAbs(ty,t1), mkBound(ty,-1)).betaNormalize
+          removeUnbound(mkTermAbs(ty,t1))
       case t1         => Exists(t1)
     }
 
@@ -110,6 +98,48 @@ object Simplification extends AbstractNormalize{
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))
     case _  => formula
+  }
+
+  /**
+   * Returns a List with deBrujin Indizes, that are free at this level.
+   * @param formula
+   * @return
+   */
+  protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = {
+    def sigF(x:Signature#Key) : List[(Int,Type)] = List()
+    def sigB(ty : Type, t : Int) : List[(Int,Type)] = List((t,ty))
+    def abs(ty : Type, t : List[(Int,Type)]) : List[(Int,Type)] = (t map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>1}
+    def app(t : List[(Int,Type)], s : List[(Int,Type)]) : List[(Int,Type)] = t ++ s
+    def tabs(t : List[(Int,Type)]) : List[(Int,Type)] = t
+    def tapp(t : List[(Int,Type)], ty : Type) : List[(Int,Type)] = t
+
+    formula.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp)
+  }
+
+  /**
+   * Gets the body of an abstraction and returns true, if the (deBrujin) variable
+   * occures in this context.
+   *
+   * TODO: Move to a package, where it is usefull
+   *
+   * @param formula - Body of an abstraction
+   * @return true, iff the deBrujin Index occurs in the body
+   */
+  protected[normalization] def isBound(formula : Term) : Boolean = {
+    freeVariables(formula).contains(1)
+  }
+
+
+  /**
+   * Removes the quantifier from a formula, that is free, by instantiating it
+   * and betanormalization.
+   *
+   * @param formula Abstraction with not bound variable.
+   * @return the term without the function.
+   */
+  protected[normalization] def removeUnbound(formula : Term) : Term = formula match {
+    case ty :::> t => mkTermApp(formula,mkBound(ty,-1)).betaNormalize
+    case _        => formula
   }
 
   /**
