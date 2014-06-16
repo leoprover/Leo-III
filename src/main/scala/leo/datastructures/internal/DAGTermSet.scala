@@ -74,19 +74,19 @@ class DAGTermSet {
 
   def mkAbstraction(ty: Type)(body: Node): Term = {
     abstractionTerms.get(body) match {
-      case None => {
-        val node = TermAbstractionNode(ty, body)
-        abstractionTerms += ((body, Map((ty, node))))
-        node
-      }
-      case Some(map2) => map2.get(ty) match {
         case None => {
-          val node = TermAbstractionNode(ty, body)
-          abstractionTerms(body) += ((ty, node))
-          node
+            val node = TermAbstractionNode(ty, body)
+            abstractionTerms += ((body, Map((ty, node))))
+            node
         }
-        case Some(node) => node
-      }
+        case Some(map2) => map2.get(ty) match {
+            case None => {
+              val node = TermAbstractionNode(ty, body)
+              abstractionTerms += ((body, map2.+((ty, node))))
+              node
+            }
+            case Some(node) => node
+        }
     }
   }
 
