@@ -211,6 +211,9 @@ object Signature {
   protected val globalSignature = createWithHOL
   def get = globalSignature
 
+  def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
+  def apply(symbol: String): Signature#Meta = get.meta(symbol)
+
   /** Enriches the given signature with predefined symbols as described by [[leo.datastructures.internal.HOLSignature]] */
   def withHOL(sig: Signature): Signature = {
     for ((name, k) <- sig.types) {
