@@ -158,20 +158,10 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
      }
   }
 
-  def exists(identifier: String): Boolean = {
-    keyMap.get(identifier) match {
-      case None => false
-      case _    => true
-    }
-  }
-
-
-  def symbolExists(identifier: String): Boolean = keyMap.contains(identifier)
+  def exists(identifier: String): Boolean = keyMap.contains(identifier)
 
   def symbolType(identifier: String): SymbolType = metaMap(keyMap(identifier)).symType
   def symbolType(identifier: Key): SymbolType = metaMap(identifier).symType
-
-  def getMeta(identifier: Key): Meta = meta(identifier)
 
   /** Adds a symbol to the signature that is then marked as `Fixed` symbol type */
   protected def addFixed(identifier: String, typ: Type): Unit = {
@@ -200,6 +190,13 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   def definedSymbols: Set[Key] = definedSet.toSet
   def uninterpretedSymbols: Set[Key] = uiSet.toSet
   def baseTypes: Set[Key] = typeSet.toSet
+
+
+  ////////////////////////////////
+  // Sugar methods
+  ////////////////////////////////
+  def apply(symbol: String) = meta(symbol)
+  def apply(key: Key) = meta(key)
 }
 
 

@@ -23,9 +23,9 @@ class ExecutionTest extends FunSuite {
 
 
   val theorems: Map[String, Term] = {
-    val add = mkAtom(sig.meta("add").key)
-    val mult = mkAtom(sig.meta("mult").key)
-    val power = mkAtom(sig.meta("power").key)
+    val add = mkAtom(sig("add").key)
+    val mult = mkAtom(sig("mult").key)
+    val power = mkAtom(sig("power").key)
 
     Map(("2+3=3+2", {
       EQUALS(ap(ap(add,2),3), ap(ap(add,3),2))
