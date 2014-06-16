@@ -9,19 +9,19 @@ import Term.{mkTermAbs, mkTermApp, mkBound}
 object TermTest {
   def main (args: Array[String]) {
     val sig = Signature.get
-    Signature.withHOL(sig)
+
 //    val B = sig.addUninterpreted("B", Type.i)
 //
-    val t1 = mkTermAbs(Type.i, mkTermApp((1,Type.i), (2, Type.i)))
+    val t1 = mkTermAbs(sig.i, mkTermApp((1,sig.i), (2, sig.i)))
 //
 //    val t2 = mkTermAbs(Type.i, mkTermApp(t1, mkAtom(B)))
 
 
-    val neuB = mkTermAbs(Type.i, mkTermApp((2,Type.i), (1, Type.i)))
-    val t3 = mkTermAbs(Type.i, mkTermApp(t1, neuB))
+    val neuB = mkTermAbs(sig.i, mkTermApp((2,sig.i), (1, sig.i)))
+    val t3 = mkTermAbs(sig.i, mkTermApp(t1, neuB))
 
-    val t1neu = mkTermAbs(Type.i, mkTermApp((2,Type.i), mkTermAbs(Type.i, (1,Type.i))))
-    val t4 = mkTermAbs(Type.i, mkTermApp(t1neu, neuB))
+    val t1neu = mkTermAbs(sig.i, mkTermApp((2,sig.i), mkTermAbs(sig.i, (1,sig.i))))
+    val t4 = mkTermAbs(sig.i, mkTermApp(t1neu, neuB))
 
     println(t4.pretty)
     println(t4.betaNormalize.pretty)

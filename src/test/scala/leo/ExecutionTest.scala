@@ -18,7 +18,7 @@ import org.scalatest.FunSuite
 @RunWith(classOf[JUnitRunner])
 class ExecutionTest extends FunSuite {
   val sig = Signature.get
-  Signature.withHOL(sig) // include standard hol symbols
+
   Numerals() // include numerals in signature
 
 

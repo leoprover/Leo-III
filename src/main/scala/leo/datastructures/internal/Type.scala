@@ -76,12 +76,6 @@ abstract class Type extends Pretty {
  * Constructor methods the `Type` class.
  */
 object Type {
-  import Signature.{get => signature}
-  /** The (fixed) type of individuals */
-  lazy val i: Type = BaseTypeNode(signature.iKey)
-  /** The (fixed) type of truth values. */
-  lazy val o: Type = BaseTypeNode(signature.oKey)
-
   /** Create type with name `identifier`. */
   def mkType(identifier: Signature#Key): Type = BaseTypeNode(identifier)
   /** Build type `in -> out`. */

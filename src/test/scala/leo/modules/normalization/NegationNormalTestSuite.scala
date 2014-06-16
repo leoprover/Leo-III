@@ -13,9 +13,9 @@ import org.scalatest.FunSuite
 @RunWith(classOf[JUnitRunner])
 class NegationNormalTestSuite extends FunSuite {
   val s = Signature.get
-  Signature.withHOL(s)
-  val p = mkAtom(s.addUninterpreted("p",Type.o))
-  val q = mkAtom(s.addUninterpreted("q", Type.o))
+
+  val p = mkAtom(s.addUninterpreted("p", s.o))
+  val q = mkAtom(s.addUninterpreted("q", s.o))
 
   val toNorm : Map[Term,Term] = Map[Term, Term](
     (Not(Not(p)), p),
@@ -24,8 +24,8 @@ class NegationNormalTestSuite extends FunSuite {
     (<=>(p,q), &(|||(Not(p),q),|||(Not(q),p))),
     (Not(&(p,q)), |||(Not(p),Not(q))),
     (Not(|||(p,q)), &(Not(p),Not(q))),
-    (Not(Forall(mkTermAbs(Type.o, p))), Exists(mkTermAbs(Type.o, Not(p)))),
-    (Not(Exists(mkTermAbs(Type.o, p))), Forall(mkTermAbs(Type.o, Not(p))))
+    (Not(Forall(mkTermAbs(s.o, p))), Exists(mkTermAbs(s.o, Not(p)))),
+    (Not(Exists(mkTermAbs(s.o, p))), Forall(mkTermAbs(s.o, Not(p))))
   )
 
   for ((t,t1) <- toNorm){

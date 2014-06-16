@@ -13,9 +13,9 @@ import org.scalatest.FunSuite
 @RunWith(classOf[JUnitRunner])
 class SimplificationTestSuite extends FunSuite {
   val s = Signature.get
-  Signature.withHOL(s)
-  val p = mkAtom(s.addUninterpreted("p",Type.o))
-  val q = mkAtom(s.addUninterpreted("q", Type.o))
+
+  val p = mkAtom(s.addUninterpreted("p",s.o))
+  val q = mkAtom(s.addUninterpreted("q", s.o))
 
   val toSimpl : Map[Term,Term] = Map[Term, Term](
     (Not(LitTrue()),LitFalse()),
@@ -36,9 +36,9 @@ class SimplificationTestSuite extends FunSuite {
     (|||(p,LitFalse()), p),
     (Impl(LitTrue(), p), p),
     (Impl(LitFalse(), p), LitTrue()),
-    (Forall(mkTermAbs(Type.o,p)),p),
-    (Exists(mkTermAbs(Type.o, p)),p),
-    (Forall(mkTermAbs(Type.o, <=>(mkTermApp(p, mkBound(Type.o,1)), mkTermApp(p, mkBound(Type.o,1))))), LitTrue())
+    (Forall(mkTermAbs(s.o,p)),p),
+    (Exists(mkTermAbs(s.o, p)),p),
+    (Forall(mkTermAbs(s.o, <=>(mkTermApp(p, mkBound(s.o,1)), mkTermApp(p, mkBound(s.o,1))))), LitTrue())
   )
 
   for ((t,t1) <- toSimpl){

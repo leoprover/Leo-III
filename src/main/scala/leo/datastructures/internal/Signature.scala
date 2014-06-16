@@ -200,12 +200,6 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   def definedSymbols: Set[Key] = definedSet.toSet
   def uninterpretedSymbols: Set[Key] = uiSet.toSet
   def baseTypes: Set[Key] = typeSet.toSet
-
-  ////////////////////////////////
-  // Hard wired fixed keys
-  ////////////////////////////////
-  lazy val oKey = 1
-  lazy val iKey = 2
 }
 
 
@@ -214,11 +208,14 @@ object Signature {
 
   /** Create an empty signature */
   def empty: Signature = Signature.Nil
-  protected val globalSignature = empty
+
+  def createWithHOL: Signature = withHOL(empty)
+
+  protected val globalSignature = createWithHOL
   def get = globalSignature
 
   /** Enriches the given signature with predefined symbols as described by [[leo.datastructures.internal.HOLSignature]] */
-  def withHOL(sig: Signature): Unit = {
+  def withHOL(sig: Signature): Signature = {
     for ((name, k) <- sig.types) {
       sig.addConstant0(name, Some(Right(k)), None)
     }
@@ -230,5 +227,6 @@ object Signature {
     for ((name, fed, ty) <- sig.definedConsts) {
       sig.addConstant0(name, Some(Left(ty)), Some(fed))
     }
+   sig
   }
 }

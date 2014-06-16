@@ -7,7 +7,6 @@ package leo.datastructures.internal
 object SignatureTest {
   def main(args: Array[String]) {
     val sig = Signature.get
-    Signature.withHOL(sig)
     val const = sig.allConstants
     println("Key \t\t|" + "Symbol" + "\t\t|" + "Type/Kind" +"\t\t\t\t|" + "Type vars" + "\t\t|" + "Applicable with $i" + "\t|" + "Applicable with $o")
     println("--------------------------------------------")
@@ -18,8 +17,8 @@ object SignatureTest {
             + typeOrKindToString(meta) + "\t\t\t|")
       meta.ty.foreach(x => print(x.typeVars.map(f => f.pretty)))
       print( "\t\t\t|")
-      meta.ty.foreach(x => print(x.isApplicableWith(Type.i) + "\t\t\t\t|"))
-      meta.ty.foreach(x => print(x.isApplicableWith(Type.o)))
+      meta.ty.foreach(x => print(x.isApplicableWith(sig.i) + "\t\t\t\t|"))
+      meta.ty.foreach(x => print(x.isApplicableWith(sig.o)))
       println()
 
     }
