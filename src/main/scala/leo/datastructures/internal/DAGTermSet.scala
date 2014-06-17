@@ -56,19 +56,22 @@ class DAGTermSet {
 
   type Node = DAGNode
 
+  private var terms: Set[Node] = Set.empty
   private var atomTerms: Map[Signature#Key, Node] = Map.empty
   private var abstractionTerms: Map[Node, Map[Type, Node]] = Map.empty
   private var applicationTerms: Map[Node, Map[Node, Node]] = Map.empty
   private var termTypes: Map[Node, Type] = Map.empty
 
   def mkAtom(key: Signature#Key): Term = {
-    atomTerms.contains(key) match {
-      case false => {
+    atomTerms.get(key) match {
+      case None => {
         val node = SymbolNode(key)
         atomTerms += ((key, node))
+        termTypes += ((node, Signature(key)._ty))
+        terms += node
         node
       }
-      case true => atomTerms(key)
+      case Some(node) => node
     }
   }
 
@@ -77,12 +80,16 @@ class DAGTermSet {
         case None => {
             val node = TermAbstractionNode(ty, body)
             abstractionTerms += ((body, Map((ty, node))))
+            termTypes += ((node, Type.mkFunType(ty, body.ty)))
+            terms += node
             node
         }
         case Some(map2) => map2.get(ty) match {
             case None => {
               val node = TermAbstractionNode(ty, body)
               abstractionTerms += ((body, map2.+((ty, node))))
+              termTypes += ((node, Type.mkFunType(ty, body.ty)))
+              terms += node
               node
             }
             case Some(node) => node
@@ -96,6 +103,7 @@ class DAGTermSet {
         // No Map exists for (left X)
         val node = TermApplicationNode(left,right)
         applicationTerms += ((left, Map((right,node))))
+        terms += node
         node
       }
       case Some(map2) => {
@@ -103,6 +111,7 @@ class DAGTermSet {
           case None => {
             val node = TermApplicationNode(left,right)
             applicationTerms += ((left, (map2.+((right,node)))))
+            terms += node
             node
           }
           case Some(node) => node

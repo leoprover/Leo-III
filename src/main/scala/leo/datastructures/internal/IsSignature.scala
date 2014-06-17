@@ -179,4 +179,14 @@ trait IsSignature {
   })
   /** Returns a set of all indexed base type constants keys */
   def baseTypes: Set[Key]
+
+
+  ///////////////////////////////
+  // Creating of fresh variables
+  ///////////////////////////////
+
+  /** Create fresh uninterpreted symbol of type `ty` */
+  def freshSkolemVar(ty: Type): Key
+  /** Create fresh base type symbol */
+  def freshTypeVar: Key
 }

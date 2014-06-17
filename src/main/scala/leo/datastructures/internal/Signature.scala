@@ -192,6 +192,34 @@ abstract sealed class Signature extends IsSignature with HOLSignature {
   def baseTypes: Set[Key] = typeSet.toSet
 
 
+  ///////////////////////////////
+  // Creating of fresh variables
+  ///////////////////////////////
+  // Skolem variables start with 'SK'
+  var skolemVarCounter = 0
+  val skolemVarPrefix = "SK"
+  /** Returns a fresh uninterpreted symbol of type `ty`. That symbol will be
+    * named `SKi` where i is some positive number. */
+  def freshSkolemVar(ty: Type): Key = {
+    while(exists(skolemVarPrefix + (skolemVarCounter +1).toString)) {
+      skolemVarCounter += 1
+    }
+    skolemVarCounter += 1
+    addUninterpreted(skolemVarPrefix + skolemVarCounter.toString, ty)
+  }
+  // Skolem variables start with 'TV'
+  var typeVarCounter = 0
+  val typeVarPrefix = "TV"
+  /** Returns a fresh base type symbol. That symbol will be
+    * named `TVi` where i is some positive number. */
+  def freshTypeVar: Key = {
+    while(exists(typeVarPrefix + (typeVarCounter + 1).toString)) {
+      typeVarCounter += 1
+    }
+    typeVarCounter += 1
+    addBaseType(typeVarPrefix + typeVarCounter.toString)
+  }
+
   ////////////////////////////////
   // Sugar methods
   ////////////////////////////////
