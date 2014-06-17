@@ -31,14 +31,14 @@ class SkolemizationTestSuite extends FunSuite {
 
   // Test 1
   val test1 = Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(mkTermApp(p,List(vari(1),vari(2),vari(3)))))))))
-  val test1Sk = Skolemization(test1)
+  val test1Sk = Skolemization(test1,3)
   val erg1 = Forall(\(s.o)(mkTermApp(p,List(mkTermApp(mkAtom(s("SK1").key), List(vari(1),mkAtom(s("SK2").key))),vari(1),mkAtom(s("SK2").key)))))
   addTest(test1, test1Sk, erg1)
 
 
   // Test 2
   val test2 = Forall(\(s.i)(Exists(\(s.i)(|||((mkTermApp(r,mkBound(s.i, 1))), (mkTermApp(t,List(mkBound(s.i,1), mkBound(s.i,2)))))))))
-  val test2Sk = Skolemization(test2)
+  val test2Sk = Skolemization(test2,3)
   val erg2 = ||| (mkTermApp(r, mkAtom(s("SK3").key)), Forall(\(s.i)(mkTermApp(t, List(mkTermApp(mkAtom(s("SK4").key), mkBound(s.i,1)), mkBound(s.i,1))))))
   addTest(test2, test2Sk, erg2)
 

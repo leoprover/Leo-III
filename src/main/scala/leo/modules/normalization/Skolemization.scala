@@ -143,10 +143,13 @@ object Skolemization extends AbstractNormalize{
   }
 
   /**
-   * Checks whether the given formula is normalizable.
-   *
+   * Checks if the last two statusbits are raised.
+   * (status & 7) = status & 0..0111  ~~ Selects the last 3 Bits
+   * equals 3 only if the last three bits are set and the 4th not
+
    * @param formula - Formula to be checked
+   * @param status - Status of the formula
    * @return True if a normaliziation is possible, false otherwise
    */
-  override def applicable(formula: Term): Boolean = true
+  override def applicable(formula: Term, status : Int): Boolean = (status & 7) == 3
 }

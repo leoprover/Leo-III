@@ -43,7 +43,7 @@ class SimplificationTestSuite extends FunSuite {
 
   println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
-    val st = Simplification(t)
+    val st = Simplification(t,0)
     println("'"+t.pretty+"' was simplified to '"+st.pretty)
     assert(st==t1, "\nThe simplified Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
   }

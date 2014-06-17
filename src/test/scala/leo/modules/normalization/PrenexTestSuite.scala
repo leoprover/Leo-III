@@ -27,7 +27,7 @@ class PrenexTestSuite extends FunSuite {
   println("\n----------------------\nPrenexNormalform Test.\n--------------------")
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
-    val st = PrenexNormal(t)
+    val st = PrenexNormal(t,7)
     println("The Term '"+t.pretty+"' was normalized to '"+st.pretty+"'.")
     assert(st==t1, "\nThe negation normalized Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
   }

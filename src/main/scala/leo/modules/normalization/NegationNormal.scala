@@ -63,10 +63,10 @@ object NegationNormal extends AbstractNormalize{
   }
 
   /**
-   * Checks whether the given formula is normalizable.
+   * Checks if the staus bit 1 is raised and the second is not
    *
    * @param formula - Formula to be checked
    * @return True if a normaliziation is possible, false otherwise
    */
-  override def applicable(formula: Term): Boolean = formula != normalize(formula)
+  override def applicable(formula: Term, status : Int): Boolean = (status & 3) == 1
 }

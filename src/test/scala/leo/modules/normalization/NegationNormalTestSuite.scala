@@ -31,7 +31,7 @@ class NegationNormalTestSuite extends FunSuite {
   println("\n------------------\nNegation Normalform Test.\n---------------------")
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
-    val st = NegationNormal(t)
+    val st = NegationNormal(t,1)
     println("'"+t.pretty+"' was normalized to '"+st.pretty+"'.")
     assert(st==t1, "\nThe negation normalized Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
   }

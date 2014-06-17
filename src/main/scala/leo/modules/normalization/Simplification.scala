@@ -113,7 +113,7 @@ object Simplification extends AbstractNormalize{
     def tabs(t : List[(Int,Type)]) : List[(Int,Type)] = t
     def tapp(t : List[(Int,Type)], ty : Type) : List[(Int,Type)] = t
 
-    formula.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp)
+    formula.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).distinct
   }
 
   /**
@@ -145,8 +145,7 @@ object Simplification extends AbstractNormalize{
   }
 
   /**
-   * Applies iff anything changes. Stupid, because we calculate the simplification very often
-   * until we apply it.
+   * If the status has the first Bit set, the term is simplified.
    */
-  override def applicable(formula: Term): Boolean = normalize(formula) != formula
+  override def applicable(formula: Term, status : Int): Boolean = (status | 1) > 0
 }
