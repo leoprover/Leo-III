@@ -108,7 +108,7 @@ object Simplification extends AbstractNormalize{
   protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = {
     def sigF(x:Signature#Key) : List[(Int,Type)] = List()
     def sigB(ty : Type, t : Int) : List[(Int,Type)] = List((t,ty))
-    def abs(ty : Type, t : List[(Int,Type)]) : List[(Int,Type)] = (t map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>1}
+    def abs(ty : Type, t : List[(Int,Type)]) : List[(Int,Type)] = (t map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>=1}
     def app(t : List[(Int,Type)], s : List[(Int,Type)]) : List[(Int,Type)] = t ++ s
     def tabs(t : List[(Int,Type)]) : List[(Int,Type)] = t
     def tapp(t : List[(Int,Type)], ty : Type) : List[(Int,Type)] = t
@@ -126,7 +126,7 @@ object Simplification extends AbstractNormalize{
    * @return true, iff the deBrujin Index occurs in the body
    */
   protected[normalization] def isBound(formula : Term) : Boolean = {
-    freeVariables(formula).contains(1)
+    freeVariables(formula).filter {case (a,b) => a == 1}.nonEmpty
   }
 
 
@@ -138,7 +138,9 @@ object Simplification extends AbstractNormalize{
    * @return the term without the function.
    */
   protected[normalization] def removeUnbound(formula : Term) : Term = formula match {
-    case ty :::> t => mkTermApp(formula,mkBound(ty,-1)).betaNormalize
+    case ty :::> t =>
+//      println("Removed the abstraction in '"+formula.pretty+"'.")
+      mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
     case _        => formula
   }
 

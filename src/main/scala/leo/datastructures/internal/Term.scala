@@ -114,7 +114,7 @@ object Term {
   def mkAtom = SymbolNode(_)
   def mkBound = BoundNode(_,_)
   def mkTermApp = ApplicationNode(_,_)
-  def mkTermApp(func: Term, args: List[Term]): Term = args.foldRight(func)((arg,f) => mkTermApp(f,arg))
+  def mkTermApp(func: Term, args: List[Term]): Term = args.foldLeft(func)((arg,f) => mkTermApp(arg,f))
   def mkTermAbs = AbstractionNode(_, _)
   def mkTypeApp = TypeApplicationNode(_,_)
   def mkTypeAbs = TypeAbstractionNode(_)

@@ -19,24 +19,26 @@ object PrenexNormal extends AbstractNormalize {
    * @return a normalized formula
    */
   override def normalize(formula: Term): Term = formula match {
+
+     // TODO : Trailing normalize should be replaced, by a lookup to move all other quantifiers out
     case &(Forall (ty :::> t), s)   =>
       val t1 = normalize(t)
       val s1 = normalize(s)
-      Forall(\(ty)(&(t1, incrementBound(s1,1))))
+      normalize(Forall(\(ty)(&(t1, incrementBound(s1,1)))))
     case &(t, Forall (ty :::> s))   =>
       val t1 = normalize(t)
       val s1 = normalize(s)
-      Forall(\(ty)(&(incrementBound(t1,1), s1)))
+      normalize(Forall(\(ty)(&(incrementBound(t1,1), s1))))
     case |||(Forall (ty :::> t), s)   =>
       val t1 = normalize(t)
       val s1 = normalize(s)
-      Forall(\(ty)(&(t1, incrementBound(s1,1))))
+      normalize(Forall(\(ty)(&(t1, incrementBound(s1,1)))))
     case |||(t, Forall (ty :::> s))   =>
       val t1 = normalize(t)
       val s1 = normalize(s)
-      Forall(\(ty)(&(incrementBound(t1,1), s1)))
+      normalize(Forall(\(ty)(&(incrementBound(t1,1), s1))))
 
-    // Missing rules for conjunctive normal form
+    // TODO : Missing rules for conjunctive normal form ?
 
       //Pass through
     case s ::: t                => mkTermApp(normalize(s),normalize(t))
@@ -53,7 +55,7 @@ object PrenexNormal extends AbstractNormalize {
     case s :::: ty              => mkTypeApp(incrementBound(s,i), ty)
     case ty :::> t              => \(ty)(incrementBound(t,i+1))
     case TypeLambda(t)          => mkTypeAbs(incrementBound(t,i))
-    case Bound(ty,n) if n <= i  => formula
+    case Bound(ty,n) if n < i  => formula
     case Bound(ty,n)            => mkBound(ty,n+1)
     case _                      => formula
   }
