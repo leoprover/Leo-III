@@ -23,7 +23,7 @@ class SkolemizationTestSuite extends FunSuite{
 
   val toNorm : Map[Term,Term] = Map[Term, Term](
     (Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(eqa(p,&(vari(3),&(vari(2),vari(1)))))))))),
-     Forall(\(s.o)(eqa(p,&(sko2,&(vari(1),mkTermApp(sko1,List(vari(1),sko2))))))))
+     Forall(\(s.o)(eqa(p,&(sko2,&(vari(1),mkTermApp(sko1,List(sko2,vari(1)))))))))
      )
 
   for ((t,t1) <- toNorm){
@@ -31,7 +31,7 @@ class SkolemizationTestSuite extends FunSuite{
     //Signature.get.allConstants foreach {println(_)}
 
     val st = Skolemization(t)
-
+    println("The Term '"+t.pretty+"' was skolemized to '"+st.pretty+"'.")
     assert(st==t1, "\nThe skolemized Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
   }
 }

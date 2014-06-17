@@ -39,7 +39,7 @@ object Skolemization extends AbstractNormalize{
       //Remove exist quantifier
     case Exists(ty :::> t)  =>
       val t1 = skolemize(t)
-      val free : List[(Int, Type)] = Simplification.freeVariables(t1).filter{case (a,b) => a > 1}
+      val free : List[(Int, Type)] = Simplification.freeVariables(t1).filter{case (a,b) => a > 1}.map{case (a,b) => (a-1,b)}
       // A skolemvariable takes all above instantiated variables and is a function from these to an
       // object of type ty.
       val types = free map (x => x._2)
@@ -47,10 +47,9 @@ object Skolemization extends AbstractNormalize{
 
       // Creating a fresh Variable of this type and applying it to all free variables
       val skoVar = mkTermApp(mkAtom(skolemName(skCounter.incrementAndGet(),skoType)),free map {case (a,b) => mkBound(b,a)})
-      println("New skoVar '"+skoVar.pretty+"' in term '"+(Exists(\(ty)(t1))).pretty+"'.")
+//      println("New skoVar '"+skoVar.pretty+"' in term '"+(Exists(\(ty)(t1))).pretty+"'.")
       //Lastly replacing the Skolem variable for the Quantifier (thereby raising the free variables)
-      mkTermApp(mkTermAbs(ty,t), skoVar).betaNormalize
-
+      mkTermApp(\(ty)(t1), skoVar).betaNormalize
       // Pass through
     case s ::: t    => mkTermApp(skolemize(s),skolemize(t))
     case s :::: ty  => mkTypeApp(skolemize(s),ty)
