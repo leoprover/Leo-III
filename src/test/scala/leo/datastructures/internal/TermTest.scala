@@ -1,7 +1,7 @@
 package leo.datastructures.internal
 
 import scala.language.implicitConversions
-import Term.{mkTermAbs, mkTermApp, mkBound}
+import Term.{mkTermAbs, mkTermApp, mkBound,λ, mkAtom}
 
 /**
  * Created by lex on 21.05.14.
@@ -23,10 +23,18 @@ object TermTest {
     val t1neu = mkTermAbs(sig.i, mkTermApp((2,sig.i), mkTermAbs(sig.i, (1,sig.i))))
     val t4 = mkTermAbs(sig.i, mkTermApp(t1neu, neuB))
 
-    println(t4.pretty)
-    println(t4.betaNormalize.pretty)
-    println(t4.betaNormalize.betaNormalize.pretty)
-    println(t4.betaNormalize.betaNormalize.betaNormalize.pretty)
+//    println(t4.pretty)
+//    println(t4.betaNormalize.pretty)
+//    println(t4.betaNormalize.betaNormalize.pretty)
+//    println(t4.betaNormalize.betaNormalize.betaNormalize.pretty)
+
+    sig.addUninterpreted("p", sig.o)
+    val p = mkAtom(sig("p").key)
+    val inner = λ(sig.o)(mkTermApp((2, sig.o),(1,sig.o)))
+    val outer = λ(sig.o)(mkTermApp(inner,p))
+    println(outer.pretty)
+    println(outer.betaNormalize.pretty)
+
 
   }
 

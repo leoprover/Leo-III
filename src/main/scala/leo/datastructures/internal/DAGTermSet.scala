@@ -90,5 +90,26 @@ class DAGTermSet {
     }
   }
 
+  def mkApplication(left: Node, right: Node): Term = {
+    applicationTerms.get(left) match {
+      case None => {
+        // No Map exists for (left X)
+        val node = TermApplicationNode(left,right)
+        applicationTerms += ((left, Map((right,node))))
+        node
+      }
+      case Some(map2) => {
+        map2.get(right) match {
+          case None => {
+            val node = TermApplicationNode(left,right)
+            applicationTerms += ((left, (map2.+((right,node)))))
+            node
+          }
+          case Some(node) => node
+        }
+      }
+    }
+  }
+
 
 }

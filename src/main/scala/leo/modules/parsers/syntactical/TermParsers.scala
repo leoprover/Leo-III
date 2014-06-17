@@ -16,7 +16,8 @@
 // * @author Alexander Steen
 // * @since 11.06.2014
 // */
-//object TermParser extends TokenParsers with PackratParsers {
+
+//object TermParsers extends TokenParsers with PackratParsers {
 //  type Tokens = TPTPTokens
 //  val lexical = new TPTPLexical
 //
@@ -94,6 +95,14 @@
 //
 //  def formulaRole: Parser[String] = elem("Lower word", _.isInstanceOf[LowerWord]) ^^ {_.chars}
 //
+
+//  // Formula sources and infos
+//  def source: Parser[Nothing] = generalTerm
+//
+//  def optionalInfo: Parser[Nothing] = opt(elem(Comma) ~> usefulInfo) ^^^ { }
+//
+//  def usefulInfo: Parser[Nothing] = generalList
+
 //
 //  // Include directives
 //  def include: Parser[List[Output]] = (
@@ -106,7 +115,15 @@
 //    )
 //
 //  def parseIncluded(pathToFile: String, selection: List[String]): List[Output] = parseIncluded(pathToFile) // TODO: Change to selective import
-//  def parseIncluded(pathToFile: String): List[Output] = parse()
+//  def parseIncluded(pathToFile: String): List[Output] = {
+//    import leo.modules.parsers.TermParser
+//    TermParser.parseFromFile(pathToFile)
+//  }
+//
+//  // Non-logical data (GeneralTerm, General data)
+//  def generalTerm: Parser[Nothing] = ???
+//
+//  def generalList: Parser[Nothing] = ???
 //
 //  // General purpose
 //  def name: Parser[String] = (
@@ -127,6 +144,9 @@
 //    )
 //
 //  def fileName: Parser[String] = elem("single quoted", _.isInstanceOf[SingleQuoted]) ^^ {_.chars}
+//
+//
+//  // Temporal
 //}
 //
 //

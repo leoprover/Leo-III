@@ -19,6 +19,7 @@ object LeoShell {
 
 //  For the time beeing, we have no parser.
 //  Comment in, iff it is written
+
 //  /**
 //   * List of currently loaded tptp files
 //   */
@@ -155,6 +156,7 @@ object LeoShell {
       println(s"There was no $s. Removed nothing.")
   }
 
+
 //  /**
 //   * Parse a TPTP Formula.
 //   */
@@ -171,4 +173,5 @@ object LeoShell {
 
   def negNormal(f : Term) : Term = NegationNormal(f)
 }
+
 
