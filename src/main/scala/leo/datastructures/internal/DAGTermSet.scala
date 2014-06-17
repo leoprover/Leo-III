@@ -67,7 +67,10 @@ class DAGTermSet {
       case None => {
         val node = SymbolNode(key)
         atomTerms += ((key, node))
-        termTypes += ((node, Signature(key)._ty))
+        Signature(key).ty match {
+          case Some(t) => termTypes += ((node, t))
+          case None => termTypes += ((node, Type.mkType(Signature.get.freshTypeVar)))
+        }
         terms += node
         node
       }
@@ -103,6 +106,10 @@ class DAGTermSet {
         // No Map exists for (left X)
         val node = TermApplicationNode(left,right)
         applicationTerms += ((left, Map((right,node))))
+        left.ty.funCodomainType match {
+          case None => throw new IllegalArgumentException("Left side of application not a function")
+          case Some(t) => termTypes += ((node, t))
+        }
         terms += node
         node
       }
@@ -111,6 +118,10 @@ class DAGTermSet {
           case None => {
             val node = TermApplicationNode(left,right)
             applicationTerms += ((left, (map2.+((right,node)))))
+            left.ty.funCodomainType match {
+              case None => throw new IllegalArgumentException("Left side of application not a function")
+              case Some(t) => termTypes += ((node, t))
+            }
             terms += node
             node
           }
