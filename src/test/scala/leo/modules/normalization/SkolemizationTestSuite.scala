@@ -18,20 +18,24 @@ class SkolemizationTestSuite extends FunSuite{
 
   def eqa(t : Term, s : Term) = mkTermApp(mkTermApp(mkAtom(10),t),s)
   def vari(i : Int) : Term= mkBound(s.o, i)
-  val sko1 = mkAtom(17)     // If they are not the Keys, updated xD
-  val sko2 = mkAtom(18)
 
-  val toNorm : Map[Term,Term] = Map[Term, Term](
-    (Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(eqa(p,&(vari(3),&(vari(2),vari(1)))))))))),
-     Forall(\(s.o)(eqa(p,&(sko2,&(vari(1),mkTermApp(sko1,List(sko2,vari(1)))))))))
-     )
+  var toNorm : Map[Term,(Term,Term)] = Map[Term, (Term,Term)]()
 
-  for ((t,t1) <- toNorm){
+  def addTest(what : Term, calc : Term, exp : Term) {
+    toNorm += ((what, (calc, exp)))
+  }
+
+  val test1 = Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(eqa(p,&(vari(3),&(vari(2),vari(1))))))))))
+  val test1Sk = Skolemization(Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(eqa(p,&(vari(3),&(vari(2),vari(1)))))))))))
+  val erg1 = Forall(\(s.o)(eqa(p,&(mkAtom(s("sk2").key),&(vari(1),mkTermApp(mkAtom(s("sk1").key),List(mkAtom(s("sk2").key),vari(1))))))))
+  addTest(test1, test1Sk, erg1)
+
+  for ((t,(t1,t2)) <- toNorm){
     //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     //Signature.get.allConstants foreach {println(_)}
 
-    val st = Skolemization(t)
+    val st = t1
     println("The Term '"+t.pretty+"' was skolemized to '"+st.pretty+"'.")
-    assert(st==t1, "\nThe skolemized Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
+    assert(st==t2, "\nThe skolemized Term '"+t.pretty+"' should be '"+t2.pretty+"', but was '"+st.pretty+"'.")
   }
 }
