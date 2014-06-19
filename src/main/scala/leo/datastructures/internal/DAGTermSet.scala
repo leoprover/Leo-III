@@ -33,7 +33,7 @@ class DAGTermSet {
     def pretty = Signature(key).name
     override val isAtom = true
   }
-  case class BoundNode(scope: Int) extends DAGNode {
+  case class BoundNode(boundType: Type, scope: Int) extends DAGNode {
     def pretty = scope.toString
     override val isAtom = true
   }
@@ -76,6 +76,12 @@ class DAGTermSet {
       }
       case Some(node) => node
     }
+  }
+
+  def mkBound(ty: Type, scope: Int): Term = {
+//    terms.contains(BoundNode(ty,scope))
+//    terms += ()
+    BoundNode(ty, scope) // TODO: share it
   }
 
   def mkAbstraction(ty: Type)(body: Node): Term = {
