@@ -18,13 +18,18 @@ object InputProcessing {
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, String)
 
-  def process(input: TPTPInput)(implicit sig: IsSignature): Result = {
+  def process(sig: IsSignature)(input: TPTPInput): Result = {
     val a = sig.allConstants
     for (i <- a) {
-      sig(i)
+      println(sig.meta(i).name)
     }
+    null
   }
+}
 
 
-  implicit def globalSignature: IsSignature = Signature.get
+object Test {
+  def main(args: Array[String]) {
+    InputProcessing.process(Signature.empty)(null)
+  }
 }
