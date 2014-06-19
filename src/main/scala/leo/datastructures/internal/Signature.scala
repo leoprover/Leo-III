@@ -11,7 +11,7 @@ import scala.collection.immutable.{HashSet, BitSet, IntMap, HashMap}
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-abstract sealed class Signature extends IsSignature with HOLSignature {
+abstract sealed class Signature extends IsSignature with HOLSignature with Function1[Int, IsSignature#Meta] {
   override type Key = Int
 
   protected var curConstKey = 1
@@ -232,11 +232,9 @@ object Signature {
   private case object Nil extends Signature
 
   /** Create an empty signature */
-  def empty: Signature = Signature.Nil
+  def empty: Signature = Nil
 
-  def createWithHOL: Signature = withHOL(empty)
-
-  protected val globalSignature = createWithHOL
+  protected val globalSignature = withHOL(empty)
   def get = globalSignature
 
   def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
