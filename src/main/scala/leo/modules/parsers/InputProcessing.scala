@@ -64,10 +64,12 @@ object InputProcessing {
   //////////////////////////
 
   def processTFF(sig: Signature)(input: TFFAnnotated): Option[Result] = {
-    import leo.datastructures.tptp.tff.{Logical, TypedAtom, Sequent}
+    import leo.datastructures.tptp.tff.{Logical, TypedAtom, Sequent, AtomicType}
 
     input.formula match {
+      case Logical(lf) if input.role == "definition" => ??? //sig.addDefined()
       case Logical(lf) => processTFF0(sig)(lf).map((input.name, _, input.role))
+      case TypedAtom(atom, ty) if ty == AtomicType("$tType", List()) => sig.addBaseType(atom); None
       case TypedAtom(atom, ty) => sig.addUninterpreted(atom, convertTFFType(sig)(ty,Seq.empty)); None
       case Sequent(_, _) => throw new IllegalArgumentException("Processing of TFF sequents not yet implemented")
     }
@@ -83,7 +85,7 @@ object InputProcessing {
   protected[parsers] def convertTFFType(sig: Signature)(tffType: TFFType, replace: TFFBoundReplaces): Type = {
     import leo.datastructures.tptp.tff.{AtomicType,->,*,QuantifiedType}
     tffType match {
-      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(replace.indexOf(ty))  // Type Variable
+      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(replace.length - replace.indexOf(ty))  // Type Variable
       case AtomicType(ty, List())  => mkType(sig.meta(ty).key)  // Atomic Type
       case AtomicType(_, _) => throw new IllegalArgumentException("Processing of applied types not implemented yet") // TODO
       case ->(tys) => mkFunType(tys.init.map(convertTFFType(sig)(_,replace)), convertTFFType(sig)(tys.last,replace))
