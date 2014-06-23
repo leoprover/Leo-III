@@ -1,10 +1,13 @@
 package leo.modules.parsers
 
+import scala.language.implicitConversions
+
 import leo.datastructures.tptp.Commons._
-import leo.datastructures.internal.{Signature, IsSignature, Term, Type}
+import leo.datastructures.internal.{Signature, IsSignature, Term, Type, Kind}
+import leo.datastructures.internal.===
 
 import Term.{mkAtom}
-import Type.{mkFunType,mkType,∀,mkVarType}
+import Type.{mkFunType,mkType,∀,mkVarType, typeKind}
 import leo.datastructures.tptp.Commons.THFAnnotated
 import leo.datastructures.tptp.Commons.TPIAnnotated
 import leo.datastructures.tptp.Commons.TFFAnnotated
@@ -67,10 +70,22 @@ object InputProcessing {
     import leo.datastructures.tptp.tff.{Logical, TypedAtom, Sequent, AtomicType}
 
     input.formula match {
-      case Logical(lf) if input.role == "definition" => ??? //sig.addDefined()
-      case Logical(lf) => processTFF0(sig)(lf).map((input.name, _, input.role))
-      case TypedAtom(atom, ty) if ty == AtomicType("$tType", List()) => sig.addBaseType(atom); None
-      case TypedAtom(atom, ty) => sig.addUninterpreted(atom, convertTFFType(sig)(ty,Seq.empty)); None
+      // Logical formulae can either be terms (axioms, conjecture, ...) or definitions.
+      case Logical(lf) if input.role == "definition" => {
+                                                          val (defName, defDef) = processTFFDef(sig)(lf)
+                                                          sig.addDefined(defName, defDef, defDef.ty)
+                                                          None
+                                                        }
+      case Logical(lf) => Some((input.name, processTFF0(sig)(lf), input.role))
+      // Typed Atoms are top-level declarations, put them into signature
+      case TypedAtom(atom, ty) => {
+        convertTFFType(sig)(ty, Seq.empty) match {
+          case Left(ty) => sig.addUninterpreted(atom, ty)
+          case Right(k) => sig.addUninterpreted(atom, k)
+        }
+        None
+      }
+      // Sequents
       case Sequent(_, _) => throw new IllegalArgumentException("Processing of TFF sequents not yet implemented")
     }
 
@@ -78,25 +93,52 @@ object InputProcessing {
   }
 
   import leo.datastructures.tptp.tff.{LogicFormula => TFFLogicFormula}
-  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula): Option[Term] = ???
+  // Formula definitions
+  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, Term) = {
+    import leo.datastructures.tptp.tff.Atomic
+    input match {
+      case Atomic(Equality(Func(name, Nil),right)) => (name, ???)  // TODO
+      case _ => throw new IllegalArgumentException("Malformed definition")
+    }
+  }
 
+  // Ordinary terms
+  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula): Term = ???
+
+  // Type processing
   import leo.datastructures.tptp.tff.{Type => TFFType}
   type TFFBoundReplaces = Seq[Variable]
-  protected[parsers] def convertTFFType(sig: Signature)(tffType: TFFType, replace: TFFBoundReplaces): Type = {
+  protected[parsers] def convertTFFType(sig: Signature)(tffType: TFFType, replace: TFFBoundReplaces): Either[Type,Kind] = {
     import leo.datastructures.tptp.tff.{AtomicType,->,*,QuantifiedType}
     tffType match {
+      // "AtomicType" constructs: Type variables, Base types, type kinds, or type/kind applications
       case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(replace.length - replace.indexOf(ty))  // Type Variable
-      case AtomicType(ty, List())  => mkType(sig.meta(ty).key)  // Atomic Type
+      case AtomicType(ty, List()) if ty == "$tType" => typeKind // kind *
+      case AtomicType(ty, List())  => mkType(sig.meta(ty).key)  // Base type
       case AtomicType(_, _) => throw new IllegalArgumentException("Processing of applied types not implemented yet") // TODO
-      case ->(tys) => mkFunType(tys.init.map(convertTFFType(sig)(_,replace)), convertTFFType(sig)(tys.last,replace))
+      // Function type / kind
+      case ->(tys) => { // Tricky here: It might be functions of "sort" * -> [], * -> *, [] -> [], [] -> *
+                        // We only plan to support variant 1 (polymorphism),2 (constructors), 3 (ordinary functions) in a medium time range (4 is dependent type)
+                        // Case 1 is captured by 'case QuantifiedType' due to TFF1's syntax
+                        // So, only consider case 3 for now, but keep case 2 in mind
+        val convertedTys = tys.map(convertTFFType(sig)(_, replace))
+        require(convertedTys.forall(_.isLeft), "Constructors are not yet supported, but kind found inside a function: " +tffType.toString) // TODO
+        mkFunType(convertedTys.map(_.left.get)) // since we only want case 3
+      }
+      // Product type / kind
       case *(_) => throw new IllegalArgumentException("Processing of product types not implemented yet") // TODO
+      // Quantified type
       case QuantifiedType(vars, body) => {
         val vars2 = vars.map(_._1)
-        vars2.foldRight(convertTFFType(sig)(body,vars2))({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
+        // In the following: body must be a type, otherwise we could not quantify over it
+        vars2.foldRight(convertTFFType(sig)(body,vars2).left.get)({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
         // thats why we ignore the previous vars
       }
     }
   }
+
+  implicit def kindToTypeOrKind(k: Kind): Either[Type, Kind] = Right(k)
+  implicit def typeToTypeOrKind(ty: Type): Either[Type, Kind] = Left(ty)
 
   //////////////////////////
   // FOF Formula processing
