@@ -3,8 +3,10 @@ package leo.modules.parsers
 import scala.language.implicitConversions
 
 import leo.datastructures.tptp.Commons._
+import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
 import leo.datastructures.internal.{Signature, IsSignature, Term, Type, Kind}
-import leo.datastructures.internal.===
+import leo.datastructures.internal.HOLBinaryConnective
+import leo.datastructures.internal.HOLUnaryConnective
 
 import Term.{mkAtom}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind}
@@ -103,7 +105,56 @@ object InputProcessing {
   }
 
   // Ordinary terms
-  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula): Term = ???
+  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula): Term = {
+    import leo.datastructures.tptp.tff.{Binary, Quantified, Unary, Inequality, Atomic, Cond, Let}
+    input match {
+      case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left),processTFF0(sig)(right))
+      case Quantified(q, vars, matrix) => ???
+      case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula))
+      case Inequality(left, right) => {
+        val (l,r) = (processTerm(sig)(left),processTerm(sig)(right))
+        import leo.datastructures.internal.{===, Not}
+        Not(===(l,r))
+      }
+      case Atomic(atomic) => processAtomicFormula(sig)(atomic)
+      case Cond(cond, thn, els) => ???
+      case Let(binding, in) => ???
+    }
+  }
+
+  import leo.datastructures.tptp.tff.{BinaryConnective => TFFBinaryConnective}
+  protected[parsers] def processTFFBinaryConn(conn: TFFBinaryConnective): HOLBinaryConnective = {
+    import leo.datastructures.tptp.tff.{<=> => TFFEquiv, Impl => TFFImpl, <= => TFFIf, | => TFFOr, & => TFFAnd}
+    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and}
+
+    conn match {
+      case TFFEquiv => equiv
+      case TFFImpl  => impl
+      case TFFIf    => i_f
+      case TFFOr    => or
+      case TFFAnd   => and
+      case _ => throw new IllegalArgumentException("Binary connective "+conn.toString +" not yet implemented") // TODO: Include TPTP connectives
+    }
+  }
+
+  import leo.datastructures.tptp.tff.{UnaryConnective => TFFUnaryConnective}
+  protected[parsers] def processTFFUnary(conn: TFFUnaryConnective): HOLUnaryConnective = {
+    import leo.datastructures.tptp.tff.{Not => TFFNot}
+    import leo.datastructures.internal.{Not => not}
+    conn match {
+      case TFFNot => not
+    }
+  }
+
+  import leo.datastructures.tptp.tff.{Quantifier => TFFQuantifier}
+  protected[parsers] def processTFFUnary(conn: TFFQuantifier): HOLUnaryConnective = {
+    import leo.datastructures.tptp.tff.{! => TFFAll, ? => TFFAny}
+    import leo.datastructures.internal.{Forall => forall, Exists => exists}
+    conn match {
+      case TFFAll => forall
+      case TFFAny => exists
+    }
+  }
 
   // Type processing
   import leo.datastructures.tptp.tff.{Type => TFFType}
@@ -151,4 +202,21 @@ object InputProcessing {
   //////////////////////////
 
   def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = ???
+
+
+  ////////////////////////////
+  // Common 'term' processing
+  ////////////////////////////
+  def processTerm(sig: Signature)(input: TPTPTerm): Term = ???
+
+  def processAtomicFormula(sig: Signature)(input: AtomicFormula): Term = input match {
+    case Plain(func) => processTerm(sig)(func)
+    case DefinedPlain(func) => processTerm(sig)(func)
+    case SystemPlain(func) => processTerm(sig)(func)
+    case Equality(left,right) => {
+      import leo.datastructures.internal.===
+      ===(processTerm(sig)(left),processTerm(sig)(right))
+    }
+  }
 }
+
