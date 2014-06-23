@@ -8,7 +8,7 @@ import leo.datastructures.internal.{Signature, IsSignature, Term, Type, Kind}
 import leo.datastructures.internal.HOLBinaryConnective
 import leo.datastructures.internal.HOLUnaryConnective
 
-import Term.{mkAtom}
+import Term.{mkAtom,λ}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind}
 import leo.datastructures.tptp.Commons.THFAnnotated
 import leo.datastructures.tptp.Commons.TPIAnnotated
@@ -78,7 +78,7 @@ object InputProcessing {
                                                           sig.addDefined(defName, defDef, defDef.ty)
                                                           None
                                                         }
-      case Logical(lf) => Some((input.name, processTFF0(sig)(lf), input.role))
+      case Logical(lf) => Some((input.name, processTFF0(sig)(lf, Seq.empty), input.role))
       // Typed Atoms are top-level declarations, put them into signature
       case TypedAtom(atom, ty) => {
         convertTFFType(sig)(ty, Seq.empty) match {
@@ -99,18 +99,32 @@ object InputProcessing {
   protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, Term) = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, ???)  // TODO
+      case Atomic(Equality(Func(name, Nil),right)) => (name, ???)  // TODO Is this the right term to construct equalities in tff?
       case _ => throw new IllegalArgumentException("Malformed definition")
     }
   }
 
   // Ordinary terms
-  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula): Term = {
-    import leo.datastructures.tptp.tff.{Binary, Quantified, Unary, Inequality, Atomic, Cond, Let}
+  import leo.datastructures.tptp.tff.{AtomicType => TFFAtomicType}
+  type TFFBoundReplaces = Seq[(Variable, Option[TFFAtomicType])]
+
+  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: TFFBoundReplaces): Term = {
+    import leo.datastructures.tptp.tff.{Binary, Quantified, Unary, Inequality, Atomic, Cond, Let,AtomicType}
     input match {
-      case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left),processTFF0(sig)(right))
-      case Quantified(q, vars, matrix) => ???
-      case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula))
+      case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left,replaces),processTFF0(sig)(right,replaces))
+      case Quantified(q, vars, matrix) => {
+        val quantifier = processTFFUnary(q)
+        val foldFunc: ((Variable, Option[TFFAtomicType]), Term) => Term = { case (v,t) =>
+          val processedTy = convertTFFType(sig)(v._2.getOrElse(AtomicType("$i", List())), Seq.empty) // for untyped variables assume "$i" as type
+          processedTy match { // variables
+            case Left(ty) => quantifier.apply(λ(ty)(t))
+            case Right(ty) => throw new IllegalArgumentException("Mixed quantification of type and term variables not yet implemented.")
+          }
+
+        }
+        vars.foldRight(processTFF0(sig)(matrix,replaces.++(vars)))(foldFunc)
+      }
+      case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
       case Inequality(left, right) => {
         val (l,r) = (processTerm(sig)(left),processTerm(sig)(right))
         import leo.datastructures.internal.{===, Not}
@@ -158,8 +172,8 @@ object InputProcessing {
 
   // Type processing
   import leo.datastructures.tptp.tff.{Type => TFFType}
-  type TFFBoundReplaces = Seq[Variable]
-  protected[parsers] def convertTFFType(sig: Signature)(tffType: TFFType, replace: TFFBoundReplaces): Either[Type,Kind] = {
+  type TFFBoundTyReplaces = Seq[Variable]
+  protected[parsers] def convertTFFType(sig: Signature)(tffType: TFFType, replace: TFFBoundTyReplaces): Either[Type,Kind] = {
     import leo.datastructures.tptp.tff.{AtomicType,->,*,QuantifiedType}
     tffType match {
       // "AtomicType" constructs: Type variables, Base types, type kinds, or type/kind applications
