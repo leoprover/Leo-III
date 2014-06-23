@@ -81,9 +81,13 @@ object Type {
   /** Build type `in -> out`. */
   def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
-  def mkFunType(in: List[Type], out: Type): Type = in match {
-    case Nil => out
-    case x::xs      => mkFunType(x, mkFunType(xs, out))
+  def mkFunType(in: Seq[Type], out: Type): Type = in match {
+    case Seq()           => out
+    case Seq(x, xs @ _*) => mkFunType(x, mkFunType(xs, out))
+  }
+  def mkFunType(in: Seq[Type]): Type = in match {
+    case Seq(ty)            => ty
+    case Seq(ty, tys @ _*)  => mkFunType(ty, mkFunType(tys))
   }
   /** Build `forall. ty` (i.e. a universally quantified type) */
   def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
