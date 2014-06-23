@@ -106,7 +106,10 @@ trait HOLSignature {
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2, in._1)
 }
 
-  object <=> {
+trait HOLBinaryConnective extends Function2[Term, Term, Term]
+trait HOLUnaryConnective extends Function1[Term, Term]
+
+  object <=> extends HOLBinaryConnective {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(15) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
@@ -115,14 +118,16 @@ trait HOLSignature {
     def apply(t : Term, s :  Term) : Term = mkTermApp(mkTermApp(mkAtom(15), t),s)
   }
 
-  object <= {
+  object <= extends HOLBinaryConnective {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(14) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
     }
+
+    def apply(t : Term, s :  Term) : Term = mkTermApp(mkTermApp(mkAtom(14), t),s)
   }
 
-  object Impl {
+  object Impl extends HOLBinaryConnective {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(13) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
@@ -131,7 +136,7 @@ trait HOLSignature {
     def apply(t : Term, s : Term) : Term = mkTermApp(mkTermApp(mkAtom(13), t),s)
   }
 
-  object & {
+  object & extends HOLBinaryConnective {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(12) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
@@ -140,7 +145,7 @@ trait HOLSignature {
     def apply(t : Term, s : Term) : Term = mkTermApp(mkTermApp(mkAtom(12), t), s)
   }
 
-  object ||| {
+  object ||| extends HOLBinaryConnective {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(9) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
@@ -149,7 +154,7 @@ trait HOLSignature {
     def apply(t : Term, s : Term) : Term  = mkTermApp(mkTermApp(mkAtom(9), t),s)
   }
 
-  object Forall {
+  object Forall extends HOLUnaryConnective {
     def unapply(t: Term): Option[Term] = t match {
       case (Symbol(8) ::: t1) => Some(t1)
       case _ => None
@@ -158,7 +163,7 @@ trait HOLSignature {
     def apply(t : Term) : Term = mkTermApp(mkAtom(8), t)
   }
 
-  object Exists {
+  object Exists extends HOLUnaryConnective {
     def unapply(t: Term): Option[Term] = t match {
       case (Symbol(11) ::: t1) => Some(t1)
       case _ => None
@@ -167,7 +172,7 @@ trait HOLSignature {
     def apply(t : Term) : Term = mkTermApp(mkAtom(11), t)
   }
 
-  object === {
+  object === extends HOLBinaryConnective {
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(10) ::: t1) ::: t2 => Some(t1,t2)
       case _ => None
@@ -176,7 +181,7 @@ trait HOLSignature {
     def apply(t: Term, s: Term): Term = mkTermApp(mkTermApp(mkAtom(10),t),s)
   }
 
-  object Not {
+  object Not extends HOLUnaryConnective {
     def unapply(t: Term): Option[(Term)] = t match {
       case (Symbol(7) ::: t1) => Some(t1)
       case _ => None
