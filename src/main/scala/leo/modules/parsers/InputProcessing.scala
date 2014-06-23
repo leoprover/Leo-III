@@ -235,7 +235,11 @@ object InputProcessing {
     input match {
       case Binary(left, conn, right) => processFOFBinaryConn(conn).apply(processFOF0(sig)(left, replaces),processFOF0(sig)(right, replaces))
       case Unary(conn, f) => processFOFUnary(conn).apply(processFOF0(sig)(f, replaces))
-      case Quantified(q, varList, matrix) => ???
+      case Quantified(q, varList, matrix) => {
+        val quantifier = processFOFUnary(q)
+        val processedVars = varList.map((_, mkType(2)))
+        processedVars.foldRight(processFOF0(sig)(matrix, replaces.++(processedVars)))({case (v,t) => quantifier.apply(λ(v._2)(t))})
+      }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Inequality(left,right) => {
         val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
