@@ -66,7 +66,7 @@ class ExecutionTest extends FunSuite {
     //println(test3.pretty)
 
     println("Simplification ...")
-    val test4 = Simplification(test3)
+    val test4 = Simplification(test3, 0)
 
     println(" (Resulting term: " + test4.pretty + " )")
     test4

@@ -169,9 +169,10 @@ object LeoShell {
 //    }
 //  }
 
-  def simplify(f : Term) : Term = Simplification(f)
+  // FIXME: I just wrote '0' as argument here to hotfix compiler error.
+  def simplify(f : Term) : Term = Simplification(f, 0)
 
-  def negNormal(f : Term) : Term = NegationNormal(f)
+  def negNormal(f : Term) : Term = NegationNormal(f, 0)
 }
 
 
