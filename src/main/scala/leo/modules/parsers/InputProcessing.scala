@@ -8,7 +8,7 @@ import leo.datastructures.internal.{Signature, IsSignature, Term, Type, Kind}
 import leo.datastructures.internal.HOLBinaryConnective
 import leo.datastructures.internal.HOLUnaryConnective
 
-import Term.{mkAtom,λ}
+import Term.{mkAtom,λ, mkBound,mkTermApp}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind}
 import leo.datastructures.tptp.Commons.THFAnnotated
 import leo.datastructures.tptp.Commons.TPIAnnotated
@@ -99,7 +99,7 @@ object InputProcessing {
   protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, Term) = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, ???)  // TODO Is this the right term to construct equalities in tff?
+      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, Seq.empty))  // TODO Is this the right term to construct equalities in tff?
       case _ => throw new IllegalArgumentException("Malformed definition")
     }
   }
@@ -220,7 +220,23 @@ object InputProcessing {
   ////////////////////////////
   // Common 'term' processing
   ////////////////////////////
-  def processTerm(sig: Signature)(input: TPTPTerm, replace: BoundReplaces): Term = ???
+  def processTerm(sig: Signature)(input: TPTPTerm, replace: BoundReplaces): Term = input match {
+    case Func(name, vars) => {
+      val converted = vars.map(processTerm(sig)(_, replace))
+      mkTermApp(mkAtom(sig(name).key), converted)
+    }
+    case DefinedFunc(name, vars) => ???
+    case SystemFunc(name, vars) => ???
+    case Var(name) => replace.indexWhere(_._1 == name) match {
+      case -1 => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
+      case n => mkBound(replace(n)._2, replace.length - n)
+    }
+
+    case Number(value) => ???
+    case Distinct(data) => ???
+    case Cond(cond, thn, els) => ???
+    case Let(binding, in) => ???
+  }
 
   def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: BoundReplaces): Term = input match {
     case Plain(func) => processTerm(sig)(func, replace)
