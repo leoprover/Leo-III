@@ -25,7 +25,7 @@ import leo.datastructures.tptp.Commons.TFFAnnotated
 object InputProcessing {
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, String)
-
+  type BoundReplaces = Seq[(Variable, Type)]
   /**
    * Assumptions:
    * - To guarantee coherence, the processing is invoked in the right order (i.e. included files are parsed an processed before all
@@ -105,32 +105,31 @@ object InputProcessing {
   }
 
   // Ordinary terms
-  import leo.datastructures.tptp.tff.{AtomicType => TFFAtomicType}
-  type TFFBoundReplaces = Seq[(Variable, Option[TFFAtomicType])]
-
-  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: TFFBoundReplaces): Term = {
+  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: BoundReplaces): Term = {
     import leo.datastructures.tptp.tff.{Binary, Quantified, Unary, Inequality, Atomic, Cond, Let,AtomicType}
     input match {
       case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left,replaces),processTFF0(sig)(right,replaces))
       case Quantified(q, vars, matrix) => {
         val quantifier = processTFFUnary(q)
-        val foldFunc: ((Variable, Option[TFFAtomicType]), Term) => Term = { case (v,t) =>
-          val processedTy = convertTFFType(sig)(v._2.getOrElse(AtomicType("$i", List())), Seq.empty) // for untyped variables assume "$i" as type
-          processedTy match { // variables
-            case Left(ty) => quantifier.apply(λ(ty)(t))
-            case Right(ty) => throw new IllegalArgumentException("Mixed quantification of type and term variables not yet implemented.")
+        val processedVars = vars.map(_ match {
+          case (name, None) => (name, mkType(2)) // $i is assumed when no type is given
+          case (name, Some(ty)) => {
+            val converted = convertTFFType(sig)(ty, Seq.empty)
+            converted match {
+              case Left(t) => (name, t)
+              case Right(k) => throw new IllegalArgumentException("mixed quantification of type vars and term vars not yet supported.") // TODO
+            }
           }
-
-        }
-        vars.foldRight(processTFF0(sig)(matrix,replaces.++(vars)))(foldFunc)
+        })
+        processedVars.foldRight(processTFF0(sig)(matrix,replaces.++(processedVars)))({case (v,t) => quantifier.apply(λ(v._2)(t))})
       }
       case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
       case Inequality(left, right) => {
-        val (l,r) = (processTerm(sig)(left),processTerm(sig)(right))
+        val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
         import leo.datastructures.internal.{===, Not}
         Not(===(l,r))
       }
-      case Atomic(atomic) => processAtomicFormula(sig)(atomic)
+      case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Cond(cond, thn, els) => ???
       case Let(binding, in) => ???
     }
@@ -221,15 +220,15 @@ object InputProcessing {
   ////////////////////////////
   // Common 'term' processing
   ////////////////////////////
-  def processTerm(sig: Signature)(input: TPTPTerm): Term = ???
+  def processTerm(sig: Signature)(input: TPTPTerm, replace: BoundReplaces): Term = ???
 
-  def processAtomicFormula(sig: Signature)(input: AtomicFormula): Term = input match {
-    case Plain(func) => processTerm(sig)(func)
-    case DefinedPlain(func) => processTerm(sig)(func)
-    case SystemPlain(func) => processTerm(sig)(func)
+  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: BoundReplaces): Term = input match {
+    case Plain(func) => processTerm(sig)(func, replace)
+    case DefinedPlain(func) => processTerm(sig)(func, replace)
+    case SystemPlain(func) => processTerm(sig)(func, replace)
     case Equality(left,right) => {
       import leo.datastructures.internal.===
-      ===(processTerm(sig)(left),processTerm(sig)(right))
+      ===(processTerm(sig)(left, replace),processTerm(sig)(right, replace))
     }
   }
 }
