@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 
 import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
-import leo.datastructures.internal.{Signature, IsSignature, Term, Type, Kind}
+import leo.datastructures.internal.{Signature, Term, Type, Kind}
 import leo.datastructures.internal.HOLBinaryConnective
 import leo.datastructures.internal.HOLUnaryConnective
 
@@ -208,7 +208,77 @@ object InputProcessing {
   // FOF Formula processing
   //////////////////////////
 
-  def processFOF(sig: Signature)(input: FOFAnnotated): Option[Result] = ???
+  def processFOF(sig: Signature)(input: FOFAnnotated): Option[Result] = {
+    import leo.datastructures.tptp.fof.{Logical, Sequent}
+    input.formula match {
+      case Logical(lf) if input.role == "definition" => {
+                                                          val (defName, defDef) = processFOFDef(sig)(lf)
+                                                          sig.addDefined(defName, defDef, defDef.ty)
+                                                          None
+                                                        }
+      case Logical(lf) => Some((input.name, processFOF0(sig)(lf, Seq.empty), input.role))
+      case Sequent(_,_) => throw new IllegalArgumentException("Processing of fof sequents not yet implemented.")
+    }
+  }
+
+  import leo.datastructures.tptp.fof.{LogicFormula => FOFLogicalFormula}
+  protected[parsers] def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, Term) = {
+    import leo.datastructures.tptp.fof.Atomic
+    input match {
+      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, Seq.empty))  // TODO Is this the right term to construct equalities in tff?
+      case _ => throw new IllegalArgumentException("Malformed definition")
+    }
+  }
+
+  protected[parsers] def processFOF0(sig: Signature)(input: FOFLogicalFormula, replaces: BoundReplaces): Term = {
+    import leo.datastructures.tptp.fof.{Binary, Unary, Quantified, Atomic, Inequality}
+    input match {
+      case Binary(left, conn, right) => processFOFBinaryConn(conn).apply(processFOF0(sig)(left, replaces),processFOF0(sig)(right, replaces))
+      case Unary(conn, f) => processFOFUnary(conn).apply(processFOF0(sig)(f, replaces))
+      case Quantified(q, varList, matrix) => ???
+      case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
+      case Inequality(left,right) => {
+        val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
+        import leo.datastructures.internal.{===, Not}
+        Not(===(l,r))
+      }
+    }
+  }
+
+  import leo.datastructures.tptp.fof.{BinaryConnective => FOFBinaryConnective}
+  protected[parsers] def processFOFBinaryConn(conn: FOFBinaryConnective): HOLBinaryConnective = {
+    import leo.datastructures.tptp.fof.{<=> => FOFEquiv, Impl => FOFImpl, <= => FOFIf, | => FOFOr, & => FOFAnd}
+    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and}
+
+    conn match {
+      case FOFEquiv => equiv
+      case FOFImpl  => impl
+      case FOFIf    => i_f
+      case FOFOr    => or
+      case FOFAnd   => and
+      case _ => throw new IllegalArgumentException("Binary connective "+conn.toString +" not yet implemented") // TODO: Include TPTP connectives
+    }
+  }
+
+  import leo.datastructures.tptp.fof.{UnaryConnective => FOFUnaryConnective}
+  protected[parsers] def processFOFUnary(conn: FOFUnaryConnective): HOLUnaryConnective = {
+    import leo.datastructures.tptp.fof.{Not => FOFNot}
+    import leo.datastructures.internal.{Not => not}
+    conn match {
+      case FOFNot => not
+    }
+  }
+
+  import leo.datastructures.tptp.fof.{Quantifier => FOFQuantifier}
+  protected[parsers] def processFOFUnary(conn: FOFQuantifier): HOLUnaryConnective = {
+    import leo.datastructures.tptp.fof.{! => FOFAll, ? => FOFAny}
+    import leo.datastructures.internal.{Forall => forall, Exists => exists}
+    conn match {
+      case FOFAll => forall
+      case FOFAny => exists
+    }
+  }
+
 
   //////////////////////////
   // CNF Formula processing
