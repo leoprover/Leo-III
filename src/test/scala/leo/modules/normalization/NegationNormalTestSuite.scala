@@ -14,8 +14,8 @@ import org.scalatest.FunSuite
 class NegationNormalTestSuite extends FunSuite {
   val s = Signature.get
 
-  val p = mkAtom(s.addUninterpreted("p", s.o))
-  val q = mkAtom(s.addUninterpreted("q", s.o))
+  val p = mkAtom(s.addUninterpreted("r", s.o))
+  val q = mkAtom(s.addUninterpreted("s", s.o))
 
   val toNorm : Map[Term,Term] = Map[Term, Term](
     (Not(Not(p)), p),
@@ -28,9 +28,11 @@ class NegationNormalTestSuite extends FunSuite {
     (Not(Exists(mkTermAbs(s.o, p))), Forall(mkTermAbs(s.o, Not(p))))
   )
 
+  println("\n------------------\nNegation Normalform Test.\n---------------------")
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
-    val st = NegationNormal(t)
+    val st = NegationNormal(t,1)
+    println("'"+t.pretty+"' was normalized to '"+st.pretty+"'.")
     assert(st==t1, "\nThe negation normalized Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
   }
 }

@@ -108,12 +108,12 @@ object Simplification extends AbstractNormalize{
   protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = {
     def sigF(x:Signature#Key) : List[(Int,Type)] = List()
     def sigB(ty : Type, t : Int) : List[(Int,Type)] = List((t,ty))
-    def abs(ty : Type, t : List[(Int,Type)]) : List[(Int,Type)] = (t map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>1}
+    def abs(ty : Type, t : List[(Int,Type)]) : List[(Int,Type)] = (t map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>=1}
     def app(t : List[(Int,Type)], s : List[(Int,Type)]) : List[(Int,Type)] = t ++ s
     def tabs(t : List[(Int,Type)]) : List[(Int,Type)] = t
     def tapp(t : List[(Int,Type)], ty : Type) : List[(Int,Type)] = t
 
-    formula.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp)
+    formula.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).distinct
   }
 
   /**
@@ -126,7 +126,7 @@ object Simplification extends AbstractNormalize{
    * @return true, iff the deBrujin Index occurs in the body
    */
   protected[normalization] def isBound(formula : Term) : Boolean = {
-    freeVariables(formula).contains(1)
+    freeVariables(formula).filter {case (a,b) => a == 1}.nonEmpty
   }
 
 
@@ -138,13 +138,14 @@ object Simplification extends AbstractNormalize{
    * @return the term without the function.
    */
   protected[normalization] def removeUnbound(formula : Term) : Term = formula match {
-    case ty :::> t => mkTermApp(formula,mkBound(ty,-1)).betaNormalize
+    case ty :::> t =>
+//      println("Removed the abstraction in '"+formula.pretty+"'.")
+      mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
     case _        => formula
   }
 
   /**
-   * Applies iff anything changes. Stupid, because we calculate the simplification very often
-   * until we apply it.
+   * If the status has the first Bit set, the term is simplified.
    */
-  override def applicable(formula: Term): Boolean = normalize(formula) != formula
+  override def applicable(formula: Term, status : Int): Boolean = (status | 1) > 0
 }

@@ -67,23 +67,44 @@ object Store {
   }
 
   def apply(name : String, initFormula : Formula,  blackboard : Blackboard) : Store[FormulaStore]
-    = Store(new FormulaStore(name, initFormula, blackboard))
+    = Store(new FormulaStore(name, initFormula, 0, blackboard))
 
   def apply(initFormula : Formula, blackboard : Blackboard) : Store[FormulaStore]
-    = Store(new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula,blackboard))
+    = Store(new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula,0,blackboard))
+
+  def apply(initFormula : Formula, status : Int, blackboard : Blackboard) : Store[FormulaStore]
+    = Store(new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula, status, blackboard))
+  def apply(name : String, initFormula : Formula, status : Int, blackboard : Blackboard) : Store[FormulaStore]
+    = Store(new FormulaStore(name,initFormula, status, blackboard))
 }
 
 /**
  * Class to Store Formula Information.
  *
+ * Table for status Int. Please extend as you like
+ * <table>
+ *   <thead>
+ *    <tr><th>Bit</th><th>Descritpion</th></tr>
+ *   </thead>
+ *   <tbody>
+ *     <tr><th>1.</th><th> Term is simplified </th></tr>
+ *     <tr><th>2.</th><th> Term is in Negation Normal Form </th></tr>
+ *     <tr><th>3.</th><th> Term is Skolemized </th></tr>
+ *     <tr><th>4.</th><th> Term is in PrenexNormalform </th></tr>
+ *   </tbody>
+ * </table>
+ *
  */
-class FormulaStore(_name : String, _formula : Formula, blackboard : Blackboard) extends Storable{
+class FormulaStore(_name : String, _formula : Formula, _status : Int, blackboard : Blackboard) extends Storable{
 
   def name : String = _name
   def formula : Formula = _formula
+  def status : Int = _status
 
-  def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, blackboard)
-  def newFormula(nformula : Formula) : FormulaStore = new FormulaStore(name, nformula, blackboard)
+
+  def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _status, blackboard)
+  def newFormula(nformula : Formula) : FormulaStore = new FormulaStore(name, nformula, _status, blackboard)
+  def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(_name, _formula, nstatus, blackboard)
 
   /**
    * Can only be called with the FormulaStore, otherwise an error is thrown.

@@ -41,7 +41,10 @@ class SimplificationTestSuite extends FunSuite {
     (Forall(mkTermAbs(s.o, <=>(mkTermApp(p, mkBound(s.o,1)), mkTermApp(p, mkBound(s.o,1))))), LitTrue())
   )
 
+  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
-    assert(Simplification(t)==t1, "\nThe simplified Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+Simplification(t).pretty+"'.")
+    val st = Simplification(t,0)
+    println("'"+t.pretty+"' was simplified to '"+st.pretty)
+    assert(st==t1, "\nThe simplified Term '"+t.pretty+"' should be '"+t1.pretty+"', but was '"+st.pretty+"'.")
   }
 }

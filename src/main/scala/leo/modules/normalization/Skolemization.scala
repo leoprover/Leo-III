@@ -15,17 +15,20 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 object Skolemization extends AbstractNormalize{
 
-  // Internal Counter to name new skolem Terms,
-  // ready to use parallel
-  private var skCounter : AtomicInteger = new AtomicInteger(0)
-
   /**
    * Normalizes a formula corresponding to the object.
    *
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = skolemize(miniscope(formula))
+  override def normalize(formula: Term): Term = {
+//    println("Skolemize '"+formula.pretty+"'.")
+    val mini = miniscope(formula)
+//    println("    Miniscope : '"+mini.pretty+"'.")
+    val r = skolemize(mini)
+//    println("    Skolemized : '"+r.pretty+"'.")
+    r
+  }
 
   /**
    *
@@ -46,7 +49,7 @@ object Skolemization extends AbstractNormalize{
       val skoType = Type.mkFunType(types, ty)
 
       // Creating a fresh Variable of this type and applying it to all free variables
-      val skoVar = mkTermApp(mkAtom(skolemName(skCounter.incrementAndGet(),skoType)),free map {case (a,b) => mkBound(b,a)})
+      val skoVar = mkTermApp(mkAtom(Signature.get.freshSkolemVar(skoType)),free map {case (a,b) => mkBound(b,a)})
 //      println("New skoVar '"+skoVar.pretty+"' in term '"+(Exists(\(ty)(t1))).pretty+"'.")
       //Lastly replacing the Skolem variable for the Quantifier (thereby raising the free variables)
       mkTermApp(\(ty)(t1), skoVar).betaNormalize
@@ -56,11 +59,6 @@ object Skolemization extends AbstractNormalize{
     case ty :::> s  => mkTermAbs(ty, skolemize(s))
     case TypeLambda(t) => mkTypeAbs(skolemize(t))
     case _  => formula
-  }
-
-  private def skolemName(count : Int, typ : Type) : Signature#Key = {
-    if (!Signature.get.exists("sk"+count)) return Signature.get.addUninterpreted("sk"+count, typ)
-    else skolemName(skCounter.incrementAndGet(), typ)
   }
 
   /**
@@ -73,53 +71,67 @@ object Skolemization extends AbstractNormalize{
    */
   private def miniscope(formula : Term) : Term = formula match {
       //First Case, one side is not bound, in AND
-    case Exists (ty :::> (t1 & t2)) if !Simplification.isBound(t2) =>
-      val left = miniscope(Exists(mkTermAbs(ty,t1)))
-      val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
-      &(left,right)
-    case Exists (ty :::> (t1 & t2)) if !Simplification.isBound(t1) =>
-      val right = miniscope(Exists(mkTermAbs(ty,t2)))
-      val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
-      &(left,right)
-      //Second Case, one side is not bound in OR
-    case Exists (ty :::> (t1 ||| t2)) if !Simplification.isBound(t2) =>
-      val left = miniscope(Exists(mkTermAbs(ty,t1)))
-      val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
-      |||(left,right)
-    case Exists (ty :::> (t1 ||| t2)) if !Simplification.isBound(t1) =>
-      val right = miniscope(Exists(mkTermAbs(ty,t2)))
-      val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
-      |||(left,right)
-      // Both are bound, and it is a OR
-    case Exists (ty :::> (t1 ||| t2)) =>
-      val left = miniscope(Exists(mkTermAbs(ty,t1)))
-      val right = miniscope(Exists(mkTermAbs(ty,t2)))
-      |||(left,right)
+    case Exists (ty :::> t) => miniscope(t) match {
+      case (t1 & t2) if !Simplification.isBound(t2) =>
+        val left = miniscope(Exists(mkTermAbs(ty,t1)))
+        val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
+        &(left,right)
+       case (t1 & t2) if !Simplification.isBound(t1) =>
+          val right = miniscope(Exists(mkTermAbs(ty,t2)))
+          val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
+          &(left,right)
+      case (t1 ||| t2) if !Simplification.isBound(t2) =>
+        val left = miniscope(Exists(mkTermAbs(ty,t1)))
+        val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
+        |||(left,right)
+      case (t1 ||| t2) if !Simplification.isBound(t1) =>
+        val right = miniscope(Exists(mkTermAbs(ty,t2)))
+        val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
+        |||(left,right)
+      case (t1 ||| t2) =>
+        val left = miniscope(Exists(mkTermAbs(ty,t1)))
+        val right = miniscope(Exists(mkTermAbs(ty,t2)))
+        |||(left,right)
+      // In neither of the above cases, move inwards
+      case s ::: t    => Exists(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
+      case s :::: ty  => Exists(\(ty)(mkTypeApp(miniscope(s),ty)))
+      case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
+      case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
+      case _  => formula
+    }
 
-      //Some for Forall
+      //Same for Forall
+    case Forall (ty :::> t) => miniscope(t) match {
       //First Case, one side is not bound, in AND
-    case Forall (ty :::> (t1 & t2)) if !Simplification.isBound(t2) =>
-      val left = miniscope(Forall(mkTermAbs(ty,t1)))
-      val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
-      &(left,right)
-    case Forall (ty :::> (t1 & t2)) if !Simplification.isBound(t1) =>
-      val right = miniscope(Forall(mkTermAbs(ty,t2)))
-      val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
-      &(left,right)
-    //Second Case, one side is not bound in OR
-    case Forall (ty :::> (t1 ||| t2)) if !Simplification.isBound(t2) =>
-      val left = miniscope(Forall(mkTermAbs(ty,t1)))
-      val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
-      |||(left,right)
-    case Forall (ty :::> (t1 ||| t2)) if !Simplification.isBound(t1) =>
-      val right = miniscope(Forall(mkTermAbs(ty,t2)))
-      val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
-      |||(left,right)
-    // Both are bound, and it is a OR
-    case Forall (ty :::> (t1 & t2)) =>
-      val left = miniscope(Forall(mkTermAbs(ty,t1)))
-      val right = miniscope(Forall(mkTermAbs(ty,t2)))
-      &(left,right)
+      case (t1 & t2) if !Simplification.isBound(t2) =>
+        val left = miniscope(Forall(mkTermAbs(ty,t1)))
+        val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
+        &(left,right)
+      case (t1 & t2) if !Simplification.isBound(t1) =>
+        val right = miniscope(Forall(mkTermAbs(ty,t2)))
+        val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
+        &(left,right)
+      //Second Case, one side is not bound in OR
+      case (t1 ||| t2) if !Simplification.isBound(t2) =>
+        val left = miniscope(Forall(mkTermAbs(ty,t1)))
+        val right = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t2)))
+        |||(left,right)
+      case (t1 ||| t2) if !Simplification.isBound(t1) =>
+        val right = miniscope(Forall(mkTermAbs(ty,t2)))
+        val left = miniscope(Simplification.removeUnbound(mkTermAbs(ty,t1)))
+        |||(left,right)
+      // Both are bound, and it is a OR
+      case (t1 & t2) =>
+        val left = miniscope(Forall(mkTermAbs(ty,t1)))
+        val right = miniscope(Forall(mkTermAbs(ty,t2)))
+        &(left,right)
+      // In neither of the above cases, move inwards
+      case s ::: t    => Forall(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
+      case s :::: ty  => Forall(\(ty)(mkTypeApp(miniscope(s),ty)))
+      case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
+      case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
+      case _  => formula
+    }
 
       // In neither of the above cases, move inwards
     case s ::: t    => mkTermApp(miniscope(s),miniscope(t))
@@ -131,10 +143,13 @@ object Skolemization extends AbstractNormalize{
   }
 
   /**
-   * Checks whether the given formula is normalizable.
-   *
+   * Checks if the last two statusbits are raised.
+   * (status & 7) = status & 0..0111  ~~ Selects the last 3 Bits
+   * equals 3 only if the last three bits are set and the 4th not
+
    * @param formula - Formula to be checked
+   * @param status - Status of the formula
    * @return True if a normaliziation is possible, false otherwise
    */
-  override def applicable(formula: Term): Boolean = true
+  override def applicable(formula: Term, status : Int): Boolean = (status & 7) == 3
 }
