@@ -153,6 +153,7 @@ protected[internal] case object TypeKind extends Kind {
 
   val isTypeKind = true
   val isSuperKind = false
+  val isFunKind = false
 }
 /** Artificial kind that models the type of `*` (i.e. []) */
 protected[internal] case object SuperKind extends Kind {
@@ -160,6 +161,7 @@ protected[internal] case object SuperKind extends Kind {
 
   val isTypeKind = false
   val isSuperKind = true
+  val isFunKind = false
 }
 
 

@@ -1,6 +1,6 @@
 package leo.datastructures.internal
 
-import Type.{typeKind, typeVarToType}
+import Type.{typeKind, typeVarToType,superKind}
 import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp,mkTypeAbs}
 import scala.language.implicitConversions
 
@@ -31,7 +31,8 @@ trait HOLSignature {
   // Don't change the order of the elements in this lists.
   // If you do so, you may need to update the Signature implementation.
 
-  val types = List(("$o", typeKind), // Key 1
+  val types = List(("$tType", superKind), // Key 0
+    ("$o", typeKind), // Key 1
     ("$i", typeKind)) // Key 2
 
 

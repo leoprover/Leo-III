@@ -14,7 +14,7 @@ import scala.collection.immutable.{HashSet, BitSet, IntMap, HashMap}
 abstract sealed class Signature extends IsSignature with HOLSignature with Function1[Int, IsSignature#Meta] {
   override type Key = Int
 
-  protected var curConstKey = 1
+  protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
   protected var metaMap: IntMap[Meta] = IntMap.empty

@@ -110,6 +110,7 @@ object Type {
 
 abstract class Kind extends Pretty {
   val isTypeKind: Boolean
+  val isFunKind: Boolean
   val isSuperKind: Boolean
 }
 
