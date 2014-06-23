@@ -124,6 +124,10 @@ trait IsSignature {
     * @return The key the symbol is indexed by
     */
   def addUninterpreted(identifier: String, typ: Type): Key       = addConstant0(identifier, Some(Left(typ)), None)
+  /** Adds an uninterpreted constant with kibd `k` to the signature.
+    * @return The key the symbol is indexed by
+    */
+  def addUninterpreted(identifier: String, k: Kind): Key         = addConstant0(identifier, Some(Right(k)), None)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */

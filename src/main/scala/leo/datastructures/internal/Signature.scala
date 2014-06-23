@@ -115,11 +115,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
                 val meta = TypeMeta(identifier, key, k, Some(Type.mkType(key)))
                 metaMap += (key, meta)
               }
-              /*case k.isFunKind => {
-                  throw new IllegalArgumentException("Constructor types not yet supported")
+              case k.isFunKind => {
+                  throw new IllegalArgumentException("General constructors not yet supported")
 //                val meta = TypeMeta(identifier, key, k, Type.mkConstructorType(identifier))
 //                metaMap += (key, meta)
-              }*/
+              }
               case _ => { // it is neither a base or funKind, then it's a super kind.
               val meta = TypeMeta(identifier, key, Type.superKind, None)
                 metaMap += (key, meta)
