@@ -8,6 +8,8 @@ autoScalaLibrary := true
 
 organization := "org.leo"
 
+fork := true
+
 // General compiler configuration
 scalaVersion := "2.10.4"
 
