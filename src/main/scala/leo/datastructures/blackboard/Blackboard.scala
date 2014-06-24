@@ -25,7 +25,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
+trait Blackboard extends FormulaAddTrigger {
 
   /**
    * <p>
@@ -167,7 +167,7 @@ trait FormulaAddObserver extends Observer {
    * Passes the added formula to the Handler.
    * @param f
    */
-  def addFormula(f : Store[FormulaStore])
+  def addFormula(f : Set[FormulaStore])
 
   /**
    * <p>
@@ -177,55 +177,5 @@ trait FormulaAddObserver extends Observer {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  def filterAdd(f : Store[FormulaStore]) : Boolean
-}
-
-/**
- * <p>
- * BlackboardTrait for registering Remove Handler.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaRemoveTrigger {
-
-  /**
-   * <p>
-   * Method to add an Handler for the removing of a Formula of the Blackboard.
-   * </p>
-   *
-   * @param o - The Handler that is registered.
-   */
-  def registerRemoveObserver(o : FormulaRemoveObserver)
-}
-
-/**
- * <p>
- * Handler for the event of removing a Formula from the Blackboard.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaRemoveObserver extends Observer {
-
-  /**
-   * <p>
-   * Passes the removed Formula to the Handler.
-   * </p>
-   *
-   * @param f - Removed Formula
-   */
-  def removeFormula(f : Store[FormulaStore])
-
-  /**
-   * <p>
-   * Destinguishes usefull from unusefull Formulas for the Handler.
-   * </p>
-   * @param f - Recently removed Formula
-   * @return true if the formula is relevant to the handler and false otherwise
-   */
-  def filterRemove(f : Store[FormulaStore]) : Boolean
-
+  def filterAdd(f : FormulaStore) : Set[FormulaStore]
 }
