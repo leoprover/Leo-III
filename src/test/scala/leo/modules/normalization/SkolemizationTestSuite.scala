@@ -29,7 +29,7 @@ class SkolemizationTestSuite extends FunSuite {
     toNorm += ((what, (calc, exp)))
   }
 
-  println("\n------------------\nSkolemization Test.\n---------------------")
+//  println("\n------------------\nSkolemization Test.\n---------------------")
 
   // Test 1
   val test1 = Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(mkTermApp(p,List(vari(1),vari(2),vari(3)))))))))
@@ -151,9 +151,10 @@ class SkolemizationTestSuite extends FunSuite {
   for ((t,(t1,t2)) <- toNorm){
     //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     //Signature.get.allConstants foreach {println(_)}
-
-    val st = t1
-    println("The Term '"+t.pretty+"' was skolemized to '"+st.pretty+"'.")
-    assert(st==t2, "\nThe skolemized Term '"+t.pretty+"' should be '"+t2.pretty+"', but was '"+st.pretty+"'.")
+    test("Skolemization Test:"+t.pretty) {
+      val st = t1
+      println("Skolem: The Term '" + t.pretty + "' was skolemized to '" + st.pretty + "'.")
+      assert(st == t2, "\nThe skolemized Term '" + t.pretty + "' should be '" + t2.pretty + "', but was '" + st.pretty + "'.")
+    }
   }
 }
