@@ -1,7 +1,7 @@
 package leo.datastructures.internal
 
 import Type.{typeKind, typeVarToType,superKind}
-import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp,mkTypeAbs}
+import Term.{mkAtom,mkTermApp,λ, Λ,intsToBoundVar,intToBoundVar}
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
@@ -59,76 +59,51 @@ trait HOLSignature {
     ("~|",  norDef,  o ->: o ->: o), // Key 17
     ("<~>",niffDef,  o ->: o ->: o)) // Key 18
 
-  // Shorthands for later definitions
-  private def not = mkAtom(7)
-  private def all = mkAtom(8)
-  private def disj = mkAtom(9)
-  private def conj = mkAtom(12)
-  private def impl = mkAtom(13)
-  private def lpmi = mkAtom(14)
-
   // Definitions for default symbols
-  protected def existsDef: Term = mkTypeAbs(
-    mkTermAbs(1 ->: o,
-      mkTermApp(not,
-        mkTermApp(all,
-          mkTermAbs(1,
-            mkTermApp(not,
-              mkTermApp((2, (1 ->: o)), (1, 1))))))))
+  protected def existsDef: Term = Λ(
+                                    λ(1 ->: o)(
+                                      Not(
+                                        Forall(
+                                          λ(1)(
+                                            Not(
+                                              mkTermApp((2, (1 ->: o)), (1, 1))))))))
 
-  protected def andDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-      mkTermApp(not,
-        mkTermApp(
-          mkTermApp(disj, mkTermApp(not, (2, o))),
-          mkTermApp(not, (1, o))))))
+  protected def andDef: Term = λ(o,o)(
+                                Not(
+                                  |||(
+                                    Not((2, o)),
+                                    Not((1, o)))))
 
-  protected def implDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-      mkTermApp(
-        mkTermApp(disj, mkTermApp(not, (2, o))),
-        (1, o))))
+  protected def implDef: Term = λ(o,o)(
+                                  |||(
+                                    Not((2, o)),
+                                    (1, o)
+                                  ))
 
-  protected def ifDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-      mkTermApp(
-        mkTermApp(disj, (2, o)),
-        mkTermApp(not, (1, o)))))
+  protected def ifDef: Term = λ(o,o)(
+                                |||(
+                                  (2, o),
+                                  Not((1, o))
+                                ))
 
-  protected def iffDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-      mkTermApp(
-        mkTermApp(conj, mkTermApp(
-          mkTermApp(impl, (2, o)), (1, o))),
-        mkTermApp(
-          mkTermApp(lpmi, (2, o)), (1, o)))))
+  protected def iffDef: Term = λ(o,o)(
+                                &(
+                                  Impl((2, o), (1, o)),
+                                  <=  ((2, o), (1, o))))
 
-  protected def nandDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-        mkTermApp(
-          mkTermApp(disj, mkTermApp(not, (2, o))),
-          mkTermApp(not, (1, o)))))
+  protected def nandDef: Term = λ(o,o)(
+                                  |||(
+                                    Not((2, o)),
+                                    Not((1, o))))
 
-  protected def norDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-      mkTermApp(not,
-        mkTermApp(
-          mkTermApp(disj, (2, o)),
-                          (1, o)))))
+  protected def norDef: Term = λ(o,o)(
+                                Not(|||((2, o), (1, o))))
 
-  protected def niffDef: Term = mkTermAbs(o,
-    mkTermAbs(o,
-      mkTermApp(not,
-        mkTermApp(
-          mkTermApp(conj, mkTermApp(
-            mkTermApp(impl, (2, o)), (1, o))),
-          mkTermApp(
-            mkTermApp(lpmi, (2, o)), (1, o))))))
-
-  // Implicits for better readability: Convert tuples of bound term variables and types / bound term and type variables
-  // to according terms.
-  implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2, in._1)
-  implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2, in._1)
+  protected def niffDef: Term = λ(o,o)(
+                                  Not(
+                                    &(
+                                      Impl((2, o), (1, o)),
+                                      <=  ((2, o), (1, o)))))
 }
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
