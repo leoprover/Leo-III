@@ -141,6 +141,7 @@ object Term {
 
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
+  implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
 }
 
 /**
