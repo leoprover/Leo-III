@@ -206,12 +206,12 @@ object ~||| extends HOLBinaryConnective { val key = 17 }
 /** HOL negated iff */
 object <~> extends HOLBinaryConnective  { val key = 18 }
 
+/** HOL negation */
+object Not extends HOLUnaryConnective    { val key = 7 }
 /** HOL forall */
 object Forall extends HOLUnaryConnective { val key = 8 }
 /** HOL exists */
 object Exists extends HOLUnaryConnective { val key = 11 }
-/** HOL negation */
-object Not extends HOLUnaryConnective    { val key = 7 }
 
 /** HOL frue constant */
 object LitTrue extends HOLConstant      { val key = 3 }
