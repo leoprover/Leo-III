@@ -1,7 +1,9 @@
 package leo.modules.normalization
 
+import scala.language.implicitConversions
 import leo.datastructures.internal._
 import leo.datastructures.internal.Term._
+import leo.datastructures.internal.HOLConstant.toTerm
 
 /**
  *
@@ -27,34 +29,34 @@ object Simplification extends AbstractNormalize{
       // First normalize, then match
     case s === t =>
       (norm(s), norm(t)) match {
-        case (s1,t1) if s1 == t1 => LitTrue()
+        case (s1,t1) if s1 == t1 => LitTrue
         case (s1,t1)             => ===(s1,t1)
       }
     case s & t =>
       (norm(s), norm(t)) match {
         case (s1, t1) if s1 == t1     => s1
-        case (s1, Not(t1)) if s1 == t1  => LitFalse()
-        case (Not(s1), t1) if s1 == t1  => LitFalse()
+        case (s1, Not(t1)) if s1 == t1  => LitFalse
+        case (Not(s1), t1) if s1 == t1  => LitFalse
         case (s1, LitTrue())            => s1
         case (LitTrue(), t1)            => t1
-        case (s1, LitFalse())           => LitFalse()
-        case (LitFalse(), t1)           => LitFalse()
+        case (s1, LitFalse())           => LitFalse
+        case (LitFalse(), t1)           => LitFalse
         case (s1, t1)                 => &(s1,t1)
       }
     case (s ||| t) =>
       (norm(s),norm(t)) match {
         case (s1,t1) if s1 == t1      => s1
-        case (s1, Not(t1)) if s1 == t1   => LitTrue()
-        case (Not(s1),t1) if s1 == t1   => LitTrue()
-        case (s1, LitTrue())            => LitTrue()
-        case (LitTrue(), t1)            => LitTrue()
+        case (s1, Not(t1)) if s1 == t1   => LitTrue
+        case (Not(s1),t1) if s1 == t1   => LitTrue
+        case (s1, LitTrue())            => LitTrue
+        case (LitTrue(), t1)            => LitTrue
         case (s1, LitFalse())           => s1
         case (LitFalse(), t1)           => t1
         case (s1, t1)                 => |||(s1,t1)
       }
     case s <=> t =>
       (norm(s), norm(t)) match {
-        case (s1, t1) if s1 == t1 => LitTrue()
+        case (s1, t1) if s1 == t1 => LitTrue
         case (s1, LitTrue())        => s1
         case (LitTrue(), t1)        => t1
         case (s1, LitFalse())       => norm(Not(s1))
@@ -63,16 +65,16 @@ object Simplification extends AbstractNormalize{
       }
     case s Impl t =>
       (norm(s), norm(t)) match {
-        case (s1, t1) if s1 == t1 => LitTrue()
-        case (s1, LitTrue())        => LitTrue()
+        case (s1, t1) if s1 == t1 => LitTrue
+        case (s1, LitTrue())        => LitTrue
         case (s1, LitFalse())       => norm(Not(s1))
         case (LitTrue(), t1)        => t1
-        case (LitFalse(), t1)       => LitTrue()
+        case (LitFalse(), t1)       => LitTrue
         case (s1,t1)                => Impl(s1,t1)
       }
     case Not(s) => norm(s) match {
-      case LitTrue()    => LitFalse()
-      case LitFalse()   => LitTrue()
+      case LitTrue()    => LitFalse
+      case LitFalse()   => LitTrue
       case s1           => Not(s1)
     }
     case Forall(t) => norm(t) match {
