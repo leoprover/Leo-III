@@ -66,16 +66,16 @@ object Store {
     return s1
   }
 
-  def apply(name : String, initFormula : Formula,  blackboard : Blackboard) : Store[FormulaStore]
-    = Store(new FormulaStore(name, initFormula, 0, blackboard))
+  def apply(name : String, initFormula : Formula,  blackboard : Blackboard) : FormulaStore
+    = new FormulaStore(name, initFormula, 0, blackboard)
 
-  def apply(initFormula : Formula, blackboard : Blackboard) : Store[FormulaStore]
-    = Store(new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula,0,blackboard))
+  def apply(initFormula : Formula, blackboard : Blackboard) : FormulaStore
+    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula,0,blackboard)
 
-  def apply(initFormula : Formula, status : Int, blackboard : Blackboard) : Store[FormulaStore]
-    = Store(new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula, status, blackboard))
-  def apply(name : String, initFormula : Formula, status : Int, blackboard : Blackboard) : Store[FormulaStore]
-    = Store(new FormulaStore(name,initFormula, status, blackboard))
+  def apply(initFormula : Formula, status : Int, blackboard : Blackboard) : FormulaStore
+    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(),initFormula, status, blackboard)
+  def apply(name : String, initFormula : Formula, status : Int, blackboard : Blackboard) : FormulaStore
+    = new FormulaStore(name,initFormula, status, blackboard)
 }
 
 /**
@@ -118,7 +118,7 @@ class FormulaStore(_name : String, _formula : Formula, _status : Int, blackboard
     val r1 = diffStore.asInstanceOf[Store[FormulaStore]]
     if (name != d.name) {
           blackboard.rmFormulaByName(d.name)
-          blackboard.addFormula(r1)
+          blackboard.addFormula(this)
     }
   }
 }

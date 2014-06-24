@@ -3,6 +3,7 @@ package leo.datastructures.blackboard
 import leo.datastructures.internal.{Term => Formula}
 import leo.agents.Agent
 import leo.datastructures.blackboard.scheduler.Scheduler
+import scala.collection.mutable
 
 
 /**
@@ -42,7 +43,7 @@ trait Blackboard extends FormulaAddTrigger {
    *
    * @param formula to be added.
    */
-  def addFormula(formula : Store[FormulaStore])
+  def addFormula(formula : FormulaStore)
 
   /**
    * <p>
@@ -50,7 +51,7 @@ trait Blackboard extends FormulaAddTrigger {
    * </p>
    * @return true if the formula was removed, false if the formula does not exist.
    */
-  def removeFormula(formula : Store[FormulaStore]) : Boolean
+  def removeFormula(formula : FormulaStore) : Boolean
 
   /**
    * <p>
@@ -60,7 +61,7 @@ trait Blackboard extends FormulaAddTrigger {
    * @param name - Name of the Formula
    * @return Some(x) if x.name = name exists otherwise None
    */
-  def getFormulaByName(name : String) : Option[Store[FormulaStore]]
+  def getFormulaByName(name : String) : Option[FormulaStore]
 
   /**
    * <p>
@@ -79,7 +80,7 @@ trait Blackboard extends FormulaAddTrigger {
    *
    * @return All formulas of the blackboard.
    */
-  def getFormulas : List[Store[FormulaStore]]
+  def getFormulas : List[FormulaStore]
 
   /**
    *
@@ -90,7 +91,7 @@ trait Blackboard extends FormulaAddTrigger {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : Formula => Boolean) : List[Store[FormulaStore]]
+  def getAll(p : Formula => Boolean) : List[FormulaStore]
 
   /**
    * <p>
@@ -106,7 +107,7 @@ trait Blackboard extends FormulaAddTrigger {
    * has to be updated. Handlers can register to these updates
    * @param f
    */
-  protected[blackboard] def emptyUpdate(f : Store[FormulaStore])
+  protected[blackboard] def emptyUpdate(f : FormulaStore)
 
   /**
    * Access to the Scheduler at a central level.
@@ -162,13 +163,6 @@ trait FormulaAddTrigger {
  * @since 5/14/14
  */
 trait FormulaAddObserver extends Observer {
-
-  /**
-   * Passes the added formula to the Handler.
-   * @param f
-   */
-  def addFormula(f : Set[FormulaStore])
-
   /**
    * <p>
    * A predicate that distinguishes interesting and uninteresing
@@ -177,5 +171,5 @@ trait FormulaAddObserver extends Observer {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  def filterAdd(f : FormulaStore) : Set[FormulaStore]
+  def filterAdd(f : FormulaStore) : mutable.Set[FormulaStore]
 }

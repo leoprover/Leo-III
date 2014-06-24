@@ -1,7 +1,7 @@
 package leo.agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaStore, FormulaRemoveObserver, Blackboard, FormulaAddObserver}
+import leo.datastructures.blackboard.{FormulaStore, Blackboard, FormulaAddObserver}
 import leo.datastructures.blackboard.{FormulaStore, Store}
 import leo.datastructures.tptp.Commons.{AnnotatedFormula => Formula}
 import leo.modules.normalization.Normalize
@@ -98,11 +98,7 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * </p>
    */
   override def wakeUp(): Unit = blackboard.scheduler.toWork(this)  // There should only be this thread waiting.
-  /**
-   * Passes the added formula to the Handler.
-   * @param f
-   */
-  override def addFormula(f: Store[FormulaStore]): Unit = newFormulas.add(f)
+
 
   /**
    * <p>
@@ -112,5 +108,5 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  override def filterAdd(f: Store[FormulaStore]): Boolean = false //f read {norm applicable _.formula}
+  override def filterAdd(f: FormulaStore): mutable.Set[FormulaStore] = mutable.Set.empty //f read {norm applicable _.formula}
 }

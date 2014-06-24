@@ -108,7 +108,7 @@ object LeoShell {
     getOrElse{
       println(s"There is no formula named '$s'.")
       null
-    }.read(_.formula)
+    }.formula
 
   def exit() = System.exit(0)
 
@@ -124,7 +124,7 @@ object LeoShell {
     println("Name" + " "*(maxNameSize-4) +  " | Formula")
     println("-"*maxSize)
     SimpleBlackboard.getFormulas().foreach {
-      _ read { x =>
+      x =>
         val name = x.name.toString.take(maxNameSize)
         //val role = x.role.toString.take(maxRoleSize)
         val form = x.formula.pretty
@@ -136,7 +136,6 @@ object LeoShell {
         println(name + " " * nameOffset + " | " +  form1)
         form2.foreach(x => println(" " * maxNameSize + " | "  + x))
       }
-    }
     println()
   }
 
