@@ -3,10 +3,12 @@ import java.io.FileNotFoundException
 import java.io.File
 
 import scala.util.parsing.input.CharArrayReader
-import leo.datastructures.internal._
 import leo.modules.normalization.{Simplification, NegationNormal}
 import leo.datastructures.blackboard
 import leo.datastructures.blackboard.impl.SimpleBlackboard
+import leo.datastructures.internal._
+import leo.datastructures.internal.Term._
+import LeoShell._
 
 /**
  * Addition commands for an interactive session with the sbt cosole.
@@ -119,20 +121,20 @@ object LeoShell {
     val maxRoleSize = 0 //15
     val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
 
-    println("Name" + " "*(maxNameSize-4) + " | Role" + " "*(maxRoleSize-4) + " | Formula")
+    println("Name" + " "*(maxNameSize-4) +  " | Formula")
     println("-"*maxSize)
     SimpleBlackboard.getFormulas().foreach {
       _ read { x =>
         val name = x.name.toString.take(maxNameSize)
         //val role = x.role.toString.take(maxRoleSize)
-        val form = x.formula.toString
+        val form = x.formula.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
         val nameOffset = maxNameSize - name.length
 //        val roleOffset = maxRoleSize - role.length
-        println(name + " " * nameOffset + " | " +  " | " + form1)
-        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | " + x))
+        println(name + " " * nameOffset + " | " +  form1)
+        form2.foreach(x => println(" " * maxNameSize + " | "  + x))
       }
     }
     println()
