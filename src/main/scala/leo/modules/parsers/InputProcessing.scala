@@ -137,8 +137,8 @@ object InputProcessing {
 
   import leo.datastructures.tptp.tff.{BinaryConnective => TFFBinaryConnective}
   protected[parsers] def processTFFBinaryConn(conn: TFFBinaryConnective): HOLBinaryConnective = {
-    import leo.datastructures.tptp.tff.{<=> => TFFEquiv, Impl => TFFImpl, <= => TFFIf, | => TFFOr, & => TFFAnd}
-    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and}
+    import leo.datastructures.tptp.tff.{<=> => TFFEquiv, Impl => TFFImpl, <= => TFFIf, | => TFFOr, & => TFFAnd, ~| => TFFNor, ~& => TFFNand, <~> => TFFNiff}
+    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
 
     conn match {
       case TFFEquiv => equiv
@@ -146,7 +146,9 @@ object InputProcessing {
       case TFFIf    => i_f
       case TFFOr    => or
       case TFFAnd   => and
-      case _ => throw new IllegalArgumentException("Binary connective "+conn.toString +" not yet implemented") // TODO: Include TPTP connectives
+      case TFFNor   => nor
+      case TFFNand  => nand
+      case TFFNiff  => niff
     }
   }
 
@@ -251,8 +253,8 @@ object InputProcessing {
 
   import leo.datastructures.tptp.fof.{BinaryConnective => FOFBinaryConnective}
   protected[parsers] def processFOFBinaryConn(conn: FOFBinaryConnective): HOLBinaryConnective = {
-    import leo.datastructures.tptp.fof.{<=> => FOFEquiv, Impl => FOFImpl, <= => FOFIf, | => FOFOr, & => FOFAnd}
-    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and}
+    import leo.datastructures.tptp.fof.{<=> => FOFEquiv, Impl => FOFImpl, <= => FOFIf, | => FOFOr, & => FOFAnd, ~| => FOFNor, ~& => FOFNand, <~> => FOFNiff}
+    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
 
     conn match {
       case FOFEquiv => equiv
@@ -260,7 +262,9 @@ object InputProcessing {
       case FOFIf    => i_f
       case FOFOr    => or
       case FOFAnd   => and
-      case _ => throw new IllegalArgumentException("Binary connective "+conn.toString +" not yet implemented") // TODO: Include TPTP connectives
+      case FOFNor   => nor
+      case FOFNand  => nand
+      case FOFNiff  => niff
     }
   }
 
