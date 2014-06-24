@@ -213,11 +213,11 @@ object InputProcessing {
   def processFOF(sig: Signature)(input: FOFAnnotated): Option[Result] = {
     import leo.datastructures.tptp.fof.{Logical, Sequent}
     input.formula match {
-      case Logical(lf) if input.role == "definition" => {
-                                                          val (defName, defDef) = processFOFDef(sig)(lf)
-                                                          sig.addDefined(defName, defDef, defDef.ty)
-                                                          None
-                                                        }
+//      case Logical(lf) if input.role == "definition" => {  // TODO: Commented out -- how do definitions look like in FOF? See COM021+1.p, RNG126+1.p
+//                                                          val (defName, defDef) = processFOFDef(sig)(lf)
+//                                                          sig.addDefined(defName, defDef, defDef.ty)
+//                                                          None
+//                                                        }
       case Logical(lf) => Some((input.name, processFOF0(sig)(lf, Seq.empty), input.role))
       case Sequent(_,_) => throw new IllegalArgumentException("Processing of fof sequents not yet implemented.")
     }
@@ -227,7 +227,7 @@ object InputProcessing {
   protected[parsers] def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, Term) = {
     import leo.datastructures.tptp.fof.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, Seq.empty))  // TODO Is this the right term to construct equalities in tff?
+      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, Seq.empty))  // TODO See above TODO
       case _ => throw new IllegalArgumentException("Malformed definition")
     }
   }
