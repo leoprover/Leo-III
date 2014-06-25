@@ -57,7 +57,8 @@ trait HOLSignature {
     ("<=>", iffDef,  o ->: o ->: o), // Key 15
     ("~&", nandDef,  o ->: o ->: o), // Key 16
     ("~|",  norDef,  o ->: o ->: o), // Key 17
-    ("<~>",niffDef,  o ->: o ->: o)) // Key 18
+    ("<~>",niffDef,  o ->: o ->: o), // Key 18
+    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 19
 
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
@@ -104,6 +105,13 @@ trait HOLSignature {
                                     &(
                                       Impl((2, o), (1, o)),
                                       <=  ((2, o), (1, o)))))
+
+  protected def neqDef: Term = Λ(
+                                λ(1,1)(
+                                  Not(
+                                    ===(
+                                      (2,1),
+                                      (1,1)))))
 }
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
@@ -180,6 +188,8 @@ object ~& extends HOLBinaryConnective   { val key = 16 }
 object ~||| extends HOLBinaryConnective { val key = 17 }
 /** HOL negated iff */
 object <~> extends HOLBinaryConnective  { val key = 18 }
+/** HOL negated equality */
+object !=== extends HOLBinaryConnective  { val key = 19 }
 
 /** HOL negation */
 object Not extends HOLUnaryConnective    { val key = 7 }
