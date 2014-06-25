@@ -62,7 +62,78 @@ object InputProcessing {
   // THF Formula processing
   //////////////////////////
 
-  def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = ???
+  def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = {
+    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed}
+
+    input.formula match {
+      case Logical(lf) if input.role == "definition" => {
+                                                          val (defName, defDef) = processTHFDef(sig)(lf)
+                                                          sig.addDefined(defName, defDef, defDef.ty)
+                                                          None
+                                                        }
+      case Logical(Typed(f,ty)) if input.role == "type" => ???
+      case Logical(lf)                               => Some((input.name, processTHF0(sig)(lf, Seq.empty), input.role))
+      case Sequent(_,_)                              => throw new IllegalArgumentException("Processing of THF sequents not implemented")
+    }
+  }
+
+  import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
+  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): (String, Term) = {
+    import leo.datastructures.tptp.thf.{Binary, Term, Eq}
+    input match {
+      case Binary(Term(Func(name, Seq())), Eq, right) => (name, processTHF0(sig)(input, Seq.empty))
+      case _                                        => throw new IllegalArgumentException("Malformed thf definition: "+input.toString)
+    }
+  }
+
+  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: BoundReplaces): Term = {
+    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let}
+
+    input match {
+      case Typed(f, ty) => processTHF0(sig)(f,replaces) // TODO: What to do with type information?
+      case Binary(left, conn, right) => processTHFBinaryConn(conn).apply(processTHF0(sig)(left, replaces),processTHF0(sig)(right, replaces))
+      case Unary(conn, f) => processTHFUnaryConn(conn).apply(processTHF0(sig)(f, replaces))
+      case Quantified(q, varList, matrix) => ???
+      case Connective(c) => c.fold(processTHFBinaryConn(_),processTHFUnaryConn(_))
+      case Term(t) => processTerm(sig)(t, replaces)
+      case BinType(binTy) => ???
+      case Subtype(left,right) => ???
+      case Cond(c, thn, els) => ???
+      case Let(binding, in) => ???
+    }
+  }
+
+  import leo.datastructures.tptp.thf.{BinaryConnective => THFBinaryConnective}
+  protected[parsers] def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
+    import leo.datastructures.tptp.thf.{Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
+    import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
+
+    conn match {
+      case THFEq => ===
+      case THFNeq => !===
+      case THFEquiv => equiv
+      case THFImpl  => impl
+      case THFIf    => i_f
+      case THFOr    => or
+      case THFAnd   => and
+      case THFNor   => nor
+      case THFNand  => nand
+      case THFNiff  => niff
+      case THFApp   => ???
+    }
+  }
+
+  import leo.datastructures.tptp.thf.{UnaryConnective => THFUnaryConnective}
+  protected[parsers] def processTHFUnaryConn(conn: THFUnaryConnective): HOLUnaryConnective = {
+    import leo.datastructures.tptp.thf.{~ => THFNot, !! => THFAllComb, ?? => THFExistsComb}
+    import leo.datastructures.internal.{Not => not}
+
+    conn match {
+      case THFNot => not
+      case THFAllComb => ???
+      case THFExistsComb => ???
+    }
+  }
 
   //////////////////////////
   // TFF Formula processing
