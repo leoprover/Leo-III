@@ -98,9 +98,9 @@ object Type {
   def mkVarType(scope: Int): Type = BoundTypeNode(scope)
 
   /** Represents the kind `*` or `type` (i.e. the type of types). */
-  def typeKind: Kind = TypeKind
+  val typeKind: Kind = TypeKind
   /** Represents the type of kinds. Only needed internally so that we can type kinds correctly */
-  def superKind: Kind = SuperKind
+  val superKind: Kind = SuperKind
 
 
   /** Build kind k1 -> k2
