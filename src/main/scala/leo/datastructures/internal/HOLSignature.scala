@@ -30,35 +30,49 @@ trait HOLSignature {
   val iKey = 2
   val i = Type.mkType(iKey)
 
+  val realKey = 3
+  val real = Type.mkType(realKey)
+
+  val ratKey = 4
+  val rat = Type.mkType(ratKey)
+
+  val intKey = 5
+  val int = Type.mkType(intKey)
+
   // Don't change the order of the elements in this lists.
   // If you do so, you may need to update the Signature implementation.
 
   // Built-in types
   val types = List(("$tType", superKind), // Key 0
     ("$o", typeKind), // Key 1
-    ("$i", typeKind)) // Key 2
+    ("$i", typeKind), // Key 2
+    ("$real", typeKind), // key 3
+    ("$rat", typeKind), // Key 4
+    ("$int", typeKind)) // Key 5
 
   // Fixed symbols
   import Type.{mkPolyType => forall}
-  lazy val fixedConsts = List(("$true", o), // Key 3
-    ("$false",                        o), // Key 4
-    ("#box",                    o ->: o), // Key 5
-    ("#diamond",                o ->: o), // Key 6
-    ("~",                       o ->: o), // Key 7
-    ("!",        forall((1 ->: o) ->: o)), // Key 8
-    ("|",                 o ->: o ->: o), // Key 9
-    ("=",        forall(1 ->: 1 ->: o))) // Key 10
+  lazy val fixedConsts = List(("$true", o), // Key 6
+    ("$false",                        o), // Key 7
+    ("#box",                    o ->: o), // Key 8
+    ("#diamond",                o ->: o), // Key 9
+    ("~",                       o ->: o), // Key 10
+    ("!",        forall((1 ->: o) ->: o)), // Key 11
+    ("|",                 o ->: o ->: o), // Key 12
+    ("=",        forall(1 ->: 1 ->: o)), // Key 13
+    ("$$let",    forall(forall(2 ->: 1 ->: 1))), // Key 14
+    ("$$ite",    forall(o ->: 1 ->: 1)))  // Key 15
 
   // Standard defined symbols
-  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 11
-    ("&",   andDef,  o ->: o ->: o), // Key 12
-    ("=>",  implDef, o ->: o ->: o), // Key 13
-    ("<=",  ifDef,   o ->: o ->: o), // Key 14
-    ("<=>", iffDef,  o ->: o ->: o), // Key 15
-    ("~&", nandDef,  o ->: o ->: o), // Key 16
-    ("~|",  norDef,  o ->: o ->: o), // Key 17
-    ("<~>",niffDef,  o ->: o ->: o), // Key 18
-    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 19
+  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 16
+    ("&",   andDef,  o ->: o ->: o), // Key 17
+    ("=>",  implDef, o ->: o ->: o), // Key 18
+    ("<=",  ifDef,   o ->: o ->: o), // Key 19
+    ("<=>", iffDef,  o ->: o ->: o), // Key 20
+    ("~&", nandDef,  o ->: o ->: o), // Key 21
+    ("~|",  norDef,  o ->: o ->: o), // Key 22
+    ("<~>",niffDef,  o ->: o ->: o), // Key 23
+    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 24
 
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
@@ -171,35 +185,35 @@ object HOLConstant {
 ////////////////////////////////////////
 
 /** HOL disjunction */
-object ||| extends HOLBinaryConnective  { val key = 9 }
+object ||| extends HOLBinaryConnective  { val key = 12 }
 /** HOL equality */
-object === extends HOLBinaryConnective  { val key = 10 }
+object === extends HOLBinaryConnective  { val key = 13 }
 /** HOL conjunction */
-object & extends HOLBinaryConnective    { val key = 12 }
+object & extends HOLBinaryConnective    { val key = 17 }
 /** HOL implication */
-object Impl extends HOLBinaryConnective { val key = 13 }
+object Impl extends HOLBinaryConnective { val key = 18 }
 /** HOL if (reverse implication) */
-object <= extends HOLBinaryConnective   { val key = 14 }
+object <= extends HOLBinaryConnective   { val key = 19 }
 /** HOL iff */
-object <=> extends HOLBinaryConnective  { val key = 15 }
+object <=> extends HOLBinaryConnective  { val key = 20 }
 /** HOL negated conjunction */
-object ~& extends HOLBinaryConnective   { val key = 16 }
+object ~& extends HOLBinaryConnective   { val key = 21 }
 /** HOL negated disjunction */
-object ~||| extends HOLBinaryConnective { val key = 17 }
+object ~||| extends HOLBinaryConnective { val key = 22 }
 /** HOL negated iff */
-object <~> extends HOLBinaryConnective  { val key = 18 }
+object <~> extends HOLBinaryConnective  { val key = 23 }
 /** HOL negated equality */
-object !=== extends HOLBinaryConnective  { val key = 19 }
+object !=== extends HOLBinaryConnective  { val key = 24 }
 
 /** HOL negation */
-object Not extends HOLUnaryConnective    { val key = 7 }
+object Not extends HOLUnaryConnective    { val key = 10 }
 /** HOL forall */
-object Forall extends HOLUnaryConnective { val key = 8 }
+object Forall extends HOLUnaryConnective { val key = 11 }
 /** HOL exists */
-object Exists extends HOLUnaryConnective { val key = 11 }
+object Exists extends HOLUnaryConnective { val key = 16 }
 
 /** HOL frue constant */
-object LitTrue extends HOLConstant      { val key = 3 }
+object LitTrue extends HOLConstant      { val key = 6 }
 /** HOL false constant */
-object LitFalse extends HOLConstant     { val key = 4 }
+object LitFalse extends HOLConstant     { val key = 7 }
 
