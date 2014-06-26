@@ -1,5 +1,6 @@
 package leo.datastructures.blackboard.impl
 
+import leo.agents.{Task, Agent}
 import leo.datastructures.internal.{ Term => Formula }
 import scala.collection.mutable
 import scala.collection.mutable._
@@ -17,17 +18,17 @@ import scala.Some
  * @author Daniel Jentsch <d.jentsch@fu-berlin.de>
  * @since 29.04.2014
  */
-object SimpleBlackboard extends Blackboard {
+class SimpleBlackboard extends Blackboard {
 
   import FormulaSet._
 
   var DEBUG : Boolean = true
 
   // For each agent a List of Tasks to execute
-  protected[blackboard] val agentWork = new HashMap[FormulaAddObserver, mutable.Set[Set[FormulaStore]]] with SynchronizedMap[FormulaAddObserver, mutable.Set[Set[FormulaStore]]]
+  protected[blackboard] val agentWork = new HashMap[Agent, mutable.Set[Task]] with SynchronizedMap[Agent, mutable.Set[Task]]
 
   // Scheduler ATM Here because accessibility in prototype version
-  protected[blackboard] val _scheduler = new Scheduler(5)
+  protected[blackboard] val _scheduler = Scheduler(5) // TODO somewhere else
   def scheduler = _scheduler
 
   override def getFormulas: List[FormulaStore] = getAll(_ => true)
@@ -43,14 +44,14 @@ object SimpleBlackboard extends Blackboard {
   }
 
   override def addFormula(name : String, formula: Formula) {
-    addFormula(Store.apply(name, formula, SimpleBlackboard))
+    addFormula(Store.apply(name, formula))
   }
 
   override def addFormula(formula : FormulaStore) {
     write { formulas =>
       formulas put (formula.name, formula)
     }
-    agentWork.foreach {case (agent, tasks) => val nt = agent.filterAdd(formula); if (nt.nonEmpty) tasks.add(nt)}
+    agentWork.foreach {case (agent, tasks) => val nt = agent.filter(formula); if (nt.nonEmpty) nt.foreach(tasks.add(_))}
 
   }
 
@@ -72,9 +73,9 @@ object SimpleBlackboard extends Blackboard {
 
   /**
    * Register a new Handler for Formula adding Handlers.
-   * @param o - The Handler that is to register
+   * @param a - The Handler that is to register
    */
-  override def registerAddObserver(o: FormulaAddObserver): Unit = agentWork.put(o, new mutable.HashSet[Set[FormulaStore]] with mutable.SynchronizedSet[Set[FormulaStore]])
+  override def registerAgent(a : Agent) : Unit = agentWork.put(a, new mutable.HashSet[Task] with mutable.SynchronizedSet[Task])
 
   /**
    * Used by Stores to mark a FormulaStore as Changed, if nothing
@@ -82,7 +83,7 @@ object SimpleBlackboard extends Blackboard {
    * @param f
    */
   override protected[blackboard] def emptyUpdate(f: FormulaStore) {
-    agentWork.foreach {case (agent, tasks) => val nt = agent.filterAdd(f); if (nt.nonEmpty) tasks.add(nt)}
+    agentWork.foreach {case (agent, tasks) => val nt = agent.filter(f); if (nt.nonEmpty) nt.foreach(tasks.add(_))}
   }
 }
 

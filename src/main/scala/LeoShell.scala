@@ -1,11 +1,11 @@
+// IMPORTANT : Keep the unused imports for loading in the Shell Project
 
 import java.io.FileNotFoundException
 import java.io.File
 
 import scala.util.parsing.input.CharArrayReader
 import leo.modules.normalization.{Simplification, NegationNormal}
-import leo.datastructures.blackboard
-import leo.datastructures.blackboard.impl.SimpleBlackboard
+import leo.datastructures.blackboard._
 import leo.datastructures.internal._
 import leo.datastructures.internal.Term._
 import LeoShell._
@@ -95,7 +95,7 @@ object LeoShell {
    * @param s
    */
   def add(name : String, s : Term): Unit = {
-    SimpleBlackboard.addFormula(name, s)
+    Blackboard().addFormula(name, s)
     println("Added "+name+"='$s' to the context.")
   }
 
@@ -104,7 +104,7 @@ object LeoShell {
    * The formula is not ready to manipulate in parallel with this access.
    */
   def get(s: String) : Term =
-    SimpleBlackboard.getFormulaByName(s).
+    Blackboard().getFormulaByName(s).
     getOrElse{
       println(s"There is no formula named '$s'.")
       null
@@ -123,7 +123,7 @@ object LeoShell {
 
     println("Name" + " "*(maxNameSize-4) +  " | Formula")
     println("-"*maxSize)
-    SimpleBlackboard.getFormulas().foreach {
+    Blackboard().getFormulas.foreach {
       x =>
         val name = x.name.toString.take(maxNameSize)
         //val role = x.role.toString.take(maxRoleSize)
@@ -143,7 +143,7 @@ object LeoShell {
    * Deletes all formulas from the current context.
    */
   def clear(): Unit = {
-    SimpleBlackboard.rmAll(_ => true)
+    Blackboard().rmAll(_ => true)
 //    loadedSet.clear()
   }
 
@@ -151,7 +151,7 @@ object LeoShell {
    * Deletes a formula by name from the context.
    */
   def rm(s: String) {
-    if (SimpleBlackboard.rmFormulaByName(s))
+    if (Blackboard().rmFormulaByName(s))
       println(s"Removed $s from the context.")
     else
       println(s"There was no $s. Removed nothing.")

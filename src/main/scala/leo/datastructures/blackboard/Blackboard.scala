@@ -5,6 +5,12 @@ import leo.agents.Agent
 import leo.datastructures.blackboard.scheduler.Scheduler
 import scala.collection.mutable
 
+// Singleton Blackboards
+object Blackboard extends Function0[Blackboard] {
+  private val single : Blackboard = new impl.SimpleBlackboard()
+
+  def apply() : Blackboard = single
+}
 
 /**
  *
@@ -26,7 +32,7 @@ import scala.collection.mutable
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends FormulaAddTrigger {
+trait Blackboard {
 
   /**
    * <p>
@@ -110,66 +116,10 @@ trait Blackboard extends FormulaAddTrigger {
   protected[blackboard] def emptyUpdate(f : FormulaStore)
 
   /**
-   * Access to the Scheduler at a central level.
+   * Registers an agent to the blackboard
    *
-   * @return the currently used scheduler
+   * @param a - the new agent
    */
-  def scheduler : Scheduler
+  def registerAgent(a : Agent) : Unit
 
-}
-
-/**
- * <p>
- * Common Trait for all Blackboard Observer,
- * ATM only a Marker Interface. Maybe more in the future
- * </p>
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait Observer extends Agent {
-
-
-}
-
-/**
- *<p>
- * BlackboardTrait for Registering AddHandler, that should be called
- * as soon as a Formula is added.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaAddTrigger {
-  /**
-   * Register a new Handler for Formula adding Handlers.
-   * @param o - The Handler that is to register
-   */
-  def registerAddObserver(o : FormulaAddObserver)
-}
-
-/**
- *
- * <p>
- * The Handler for the event of adding a Formula to the Blackboard.
- * </p>
- *
- * <p>
- * Note that an Agent, that implements this handler, should not
- * compute immediately, but only save the change for later computation.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaAddObserver extends Observer {
-  /**
-   * <p>
-   * A predicate that distinguishes interesting and uninteresing
-   * Formulas for the Handler.
-   * </p>
-   * @param f - Newly added formula
-   * @return true if the formula is relevant and false otherwise
-   */
-  def filterAdd(f : FormulaStore) : mutable.Set[FormulaStore]
 }

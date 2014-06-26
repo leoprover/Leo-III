@@ -1,13 +1,9 @@
 package leo.agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaStore, Blackboard, FormulaAddObserver}
-import leo.datastructures.blackboard.{FormulaStore, Store}
-import leo.datastructures.tptp.Commons.{AnnotatedFormula => Formula}
+import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
-import scala.collection.mutable
-import scala.concurrent.stm._
-import leo.datastructures.blackboard.impl.SimpleBlackboard
+
 
 /**
  *
@@ -17,43 +13,21 @@ import leo.datastructures.blackboard.impl.SimpleBlackboard
  *
  * <p>
  * This Agent should register for formula Adds/Changes and applies Clause Normalization
- * as long as its possible. (Predicate is fullfilled.
+ * as long as its possible. (Predicate is full filled.
  * </p>
  *
  * @author Max Wisniewski
  * @since 5/14/14
  */
-class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
+class NormalClauseAgent(norm : Normalize) extends Agent {
 
-  private val newFormulas : mutable.Set[Store[FormulaStore]] = new mutable.HashSet[Store[FormulaStore]]() with mutable.SynchronizedSet[Store[FormulaStore]]
-  private var blackboard : Blackboard = null  // Will be inserted by registering to a blackboard
+  private var _isActive : Boolean = false
 
-  /**
-   * This function applies the normalization provided by {@see norm}, it is assumed that the formulas added
-   * are already checked by {@see Normalize.applicable}.
-   */
-  override def apply() {
-    if (blackboard == null) throw new RuntimeException("An Apply was called for an Agent, that has no Blackboard assigned.")
-    // We cannot add the formulas in the synchronized block or we will knock ourselves out.
-    var workedFormulas = Set.empty[Store[FormulaStore]]
-    var output = ""
-    newFormulas foreach {store =>
-      store action { fS =>
-        output = ""           // Reset at start of transaction, because it will not be reseted thorugh STM
-        val form = fS.formula
-        val form1 = form //norm.normalize(form)
-        var ret = fS
-        if (form != form1) {
-          if (SimpleBlackboard.DEBUG) output = "Simplified : '"+form+"' to '"+form1+"'."
-          ret = fS.newFormula(form1)
-        }
-        workedFormulas += store
-        ret
-      }
-    }
-    if(output != "") println(output)
-    workedFormulas foreach (newFormulas remove _)
-  }
+  override def isActive : Boolean = _isActive
+
+  override def setActive(a : Boolean) = _isActive = a
+
+  override def run(t : Task) : Result = ???
 
   /**
    * <p>
@@ -61,44 +35,10 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * Registration for Triggers should be done in here.
    * </p>
    *
-   * @param blackboard - The Blackboard the Agent will work on
    */
-  override def register(blackboard: Blackboard) {
-    this.blackboard = blackboard
-    blackboard.registerAddObserver(this)
+  override def register() {
+    Blackboard().registerAgent(this)
   }
-
-  /**
-   * Takes the current state of the Blackboard or variables set by
-   * TriggerHandlers to check whether to execute the agent.
-   * @return true if the agent can be executed, otherwise false.
-   */
-  override def guard(): Boolean = synchronized(!this.newFormulas.isEmpty)
-
-  /**
-   * Method that cancels an execution and possibly reverts its changes.
-   */
-  override def cancel(): Unit = return
-
-  /**
-   * <p>
-   * If an Agent goes to sleep one execution should be done
-   * </p>
-   * @deprecated
-   */
-  override def goSleep(): Unit = return
-
-  /**
-   * <p>
-   * Wakes Up an Observer after a change.
-   * </p>
-   * <p>
-   * What happened during the change can be
-   * given to the observer in a specialization.
-   * </p>
-   */
-  override def wakeUp(): Unit = blackboard.scheduler.toWork(this)  // There should only be this thread waiting.
-
 
   /**
    * <p>
@@ -108,5 +48,14 @@ class NormalClauseAgent(norm : Normalize) extends FormulaAddObserver {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  override def filterAdd(f: FormulaStore): mutable.Set[FormulaStore] = mutable.Set.empty //f read {norm applicable _.formula}
+  override def filter(f: FormulaStore): Set[Task] = if (norm.applicable(f.formula,f.status)) Set(new NormalTask(f)) else Set.empty
+}
+
+/**
+ * Normalization applies to one Formula only and this one is read and written.
+ * @param f - Formula to be normalized
+ */
+class NormalTask(f : FormulaStore) extends Task {
+  override def readSet(): Set[FormulaStore] = Set(f)
+  override def writeSet(): Set[FormulaStore] = Set(f)
 }

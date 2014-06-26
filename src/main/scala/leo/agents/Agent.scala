@@ -1,6 +1,6 @@
 package leo.agents
 
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 
 /**
  * <p>
@@ -27,9 +27,22 @@ import leo.datastructures.blackboard.Blackboard
 trait Agent {
 
   /**
+   *
+   * @return true, if this Agent can execute at the moment
+   */
+  def isActive : Boolean
+
+  /**
+   * Sets isActive.
+   *
+   * @param bool
+   */
+  def setActive(bool : Boolean) : Unit
+
+  /**
    * This function runs the specific agent on the registered Blackboard.
    */
-  def apply() : Unit
+  def run(t : Task) : Result
 
   /**
    * <p>
@@ -37,38 +50,89 @@ trait Agent {
    * Registration for Triggers should be done in here.
    * </p>
    *
-   * @param blackboard - The Blackboard the Agent will work on
    */
-  def register(blackboard : Blackboard)
+  def register()
+
 
   /**
-   * Takes the current state of the Blackboard or variables set by
-   * TriggerHandlers to check whether to execute the agent.
-   * @return true if the agent can be executed, otherwise false.
+   * This method should be called, whenever a formula is added to the blackboard.
+   *
+   * The filter then checks the blackboard if it can generate a task from it.
+   *
+   * @param event - Newly added or updated formula
+   * @return - set of tasks, if empty the agent won't work on this event
    */
-  def guard() : Boolean
+  def filter(event : FormulaStore) : Set[Task]
+}
+
+/**
+ * Common trait for all Agent Task's. Each agent specifies the
+ * work it can do.
+ *
+ * The specific fields and accessors for the real task will be in
+ * the implementation.
+ *
+ * @author Max Wisniewski
+ * @since 6/26/14
+ */
+trait Task {
 
   /**
-   * Method that cancels an execution and possibly reverts its changes.
+   *
+   * Returns a set of all Formulas that are read for the task.
+   *
+   * @return Read set for the Task.
    */
-  def cancel() : Unit
+  def readSet() : Set[FormulaStore]
 
   /**
-   * <p>
-   * Wakes Up an Observer after a change.
-   * </p>
-   * <p>
-   * What happened during the change can be
-   * given to the observer in a specialization.
-   * </p>
+   *
+   * Returns a set of all Formulas, that will be written by the task.
+   *
+   * @return Write set for the task
    */
-  def wakeUp() : Unit
+  def writeSet() : Set[FormulaStore]
+}
+
+/**
+ * Common Trait, for the results of tasks.
+ *
+ * @author Max Wisniewski
+ * @since 6/26/12
+ */
+trait Result {
 
   /**
-   * <p>
-   * Testing method for an observer to sleep. (I.E. one run of its execution)
-   * </p>
-   * @deprecated
+   * A set of new formulas created by the task.
+   *
+   * @return New formulas to add
    */
-  def goSleep() : Unit
+  def newFormula() : Set[FormulaStore]
+
+  /**
+   * A mapping of formulas to be changed.
+   *
+   * @return Changed formulas
+   */
+  def updateFormula() : Map[FormulaStore, FormulaStore]
+
+  /**
+   * A set of formulas to be removed.
+   *
+   * @return Deleted formulas
+   */
+  def removeFormula() : Set[FormulaStore]
+}
+
+/**
+ * Simple container for the implementation of result.
+ *
+ * @param nf - New formulas
+ * @param uf - Update formulas
+ * @param rf - remove Formulas
+ */
+class StdResult(nf : Set[FormulaStore], uf : Map[FormulaStore,FormulaStore], rf : Set[FormulaStore]) extends Result{
+  override def newFormula() : Set[FormulaStore] = nf
+  override def updateFormula() : Map[FormulaStore,FormulaStore] = uf
+  override def removeFormula() : Set[FormulaStore] = rf
 }
