@@ -39,6 +39,9 @@ trait HOLSignature {
   val intKey = 5
   val int = Type.mkType(intKey)
 
+  val letKey = 14
+  val iteKey = 15
+
   // Don't change the order of the elements in this lists.
   // If you do so, you may need to update the Signature implementation.
 
@@ -61,7 +64,7 @@ trait HOLSignature {
     ("|",                 o ->: o ->: o), // Key 12
     ("=",        forall(1 ->: 1 ->: o)), // Key 13
     ("$$let",    forall(forall(2 ->: 1 ->: 1))), // Key 14
-    ("$$ite",    forall(o ->: 1 ->: 1)))  // Key 15
+    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1)))  // Key 15
 
   // Standard defined symbols
   lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 16
@@ -136,7 +139,7 @@ trait HOLBinaryConnective extends Function2[Term, Term, Term] {
   override def apply(left: Term, right: Term): Term = mkTermApp(mkTermApp(mkAtom(key), left), right)
 
   def unapply(t: Term): Option[(Term,Term)] = t match {
-    case (Symbol(`key`) ::: t1) ::: t2 => Some(t1,t2)
+    case (Symbol(`key`) @@@ t1) @@@ t2 => Some(t1,t2)
     case _ => None
   }
 }
@@ -153,7 +156,7 @@ trait HOLUnaryConnective extends Function1[Term, Term] {
   override def apply(arg: Term): Term = mkTermApp(mkAtom(key), arg)
 
   def unapply(t: Term): Option[Term] = t match {
-    case (Symbol(`key`) ::: t1) => Some(t1)
+    case (Symbol(`key`) @@@ t1) => Some(t1)
     case _ => None
   }
 }

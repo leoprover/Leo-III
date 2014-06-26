@@ -181,17 +181,19 @@ object Symbol {
  * Pattern for matching (term) applications in terms (i.e. terms of form `(s t)`). Usage:
  * {{{
  * t match {
- *  case s ::: t => println("Matched application. Left: " + s.pretty
+ *  case s @@@ t => println("Matched application. Left: " + s.pretty
  *                                            + " Right: " + t.pretty)
  *  case _       => println("something else")
  * }
  * }}}
  */
-object ::: {
-  def unapply(t: Term): Option[(Term,Term)] = t match {
+object @@@ extends HOLBinaryConnective {
+  val key = Integer.MIN_VALUE // just for fun!
+  override def unapply(t: Term): Option[(Term,Term)] = t match {
     case ApplicationNode(l,r) => Some(l,r)
     case _ => None
   }
+  override def apply(left: Term, right: Term): Term = ApplicationNode(left,right)
 }
 
 /**

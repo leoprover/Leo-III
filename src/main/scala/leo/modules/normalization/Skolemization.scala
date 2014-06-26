@@ -54,7 +54,7 @@ object Skolemization extends AbstractNormalize{
       //Lastly replacing the Skolem variable for the Quantifier (thereby raising the free variables)
       mkTermApp(\(ty)(t1), skoVar).betaNormalize
       // Pass through
-    case s ::: t    => mkTermApp(skolemize(s),skolemize(t))
+    case s @@@ t    => mkTermApp(skolemize(s),skolemize(t))
     case s :::: ty  => mkTypeApp(skolemize(s),ty)
     case ty :::> s  => mkTermAbs(ty, skolemize(s))
     case TypeLambda(t) => mkTypeAbs(skolemize(t))
@@ -93,7 +93,7 @@ object Skolemization extends AbstractNormalize{
         val right = miniscope(Exists(mkTermAbs(ty,t2)))
         |||(left,right)
       // In neither of the above cases, move inwards
-      case s ::: t    => Exists(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
+      case s @@@ t    => Exists(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
       case s :::: ty  => Exists(\(ty)(mkTypeApp(miniscope(s),ty)))
       case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
@@ -126,7 +126,7 @@ object Skolemization extends AbstractNormalize{
         val right = miniscope(Forall(mkTermAbs(ty,t2)))
         &(left,right)
       // In neither of the above cases, move inwards
-      case s ::: t    => Forall(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
+      case s @@@ t    => Forall(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
       case s :::: ty  => Forall(\(ty)(mkTypeApp(miniscope(s),ty)))
       case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
@@ -134,7 +134,7 @@ object Skolemization extends AbstractNormalize{
     }
 
       // In neither of the above cases, move inwards
-    case s ::: t    => mkTermApp(miniscope(s),miniscope(t))
+    case s @@@ t    => mkTermApp(miniscope(s),miniscope(t))
     case s :::: ty  => mkTypeApp(miniscope(s),ty)
     case ty :::> s  => mkTermAbs(ty, miniscope(s))
     case TypeLambda(t) => mkTypeAbs(miniscope(t))
