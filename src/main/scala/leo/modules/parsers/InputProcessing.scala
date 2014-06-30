@@ -4,11 +4,11 @@ import scala.language.implicitConversions
 
 import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
-import leo.datastructures.internal.{Signature, Term, Type, Kind}
+import leo.datastructures.internal.{Signature, Term, Type, Kind, LitTrue}
 import leo.datastructures.internal.HOLBinaryConnective
 import leo.datastructures.internal.HOLUnaryConnective
 
-import Term.{mkAtom,λ,Λ, mkBound,mkTermApp}
+import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkTypeApp}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind}
 import leo.datastructures.tptp.Commons.THFAnnotated
 import leo.datastructures.tptp.Commons.TPIAnnotated
@@ -43,7 +43,12 @@ object InputProcessing {
    * @param input The TPTP formula to process/translate
    * @return A List of tuples (name, term, role) of translated terms
    */
-  def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = ???
+  def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = {
+    input.map({case f => process(sig)(f) match {
+      case None      => (f.name, LitTrue(), f.role)
+      case Some(res) => res
+    }})
+  }
 
   def process(sig: Signature)(input: AnnotatedFormula): Option[Result] = {
     input match {
@@ -118,7 +123,7 @@ object InputProcessing {
       }
       case Connective(c) => c.fold(processTHFBinaryConn(_),processTHFUnaryConn(_))
       case Term(t) => processTerm(sig)(t, replaces)
-      case BinType(binTy) => ???
+      case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
       case Subtype(left,right) => ???
       case Cond(c, thn, els) => {
         import leo.datastructures.internal.IF_THEN_ELSE
@@ -173,7 +178,37 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def convertTHFType(sig: Signature)(ty: THFLogicFormula, replaces: Replaces): Either[Type, Kind] = ???
+  protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): Either[Type, Kind] = {
+    import leo.datastructures.tptp.thf.{Quantified, Term, BinType}
+
+    typ match {
+      case Quantified(q, vars, matrix) => ??? //polymorph/lambda term
+      case Term(t) => {
+        t match {
+          case Func(ty, List()) => mkType(sig(ty).key) // Base type
+//          case Func(ty, args)   => ???
+          case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type
+          case SystemFunc(ty, List()) =>  mkType(sig(ty).key) // system type
+          case Var(name) =>  mkVarType(replaces._2.size - replaces._2(name)._2)
+          case _ => throw new IllegalArgumentException("malformed/unsupported term type expression: "+typ.toString)
+        }
+      }
+      case BinType(binTy) => {
+        import leo.datastructures.tptp.thf.{->, *, +}
+        binTy match {
+          case ->(tys) => {
+            val converted = tys.map(convertTHFType(sig)(_, replaces))
+            // as for TFF, we consider only types here. this may change in future
+            require(converted.forall(_.isLeft), "Function constructor only applicable on types at the moment")
+            mkFunType(converted.map(_.left.get))
+          }
+          case *(tys) => ???
+          case +(tys) => ???
+        }
+      } //arrow type etc
+      case _ => throw new IllegalArgumentException("malformed type expression: "+typ.toString)
+    }
+  }
 
   //////////////////////////
   // TFF Formula processing
@@ -446,7 +481,10 @@ object InputProcessing {
                             } else {
                               mkAtom(sig.addUninterpreted("\""+data+"\"", sig.i))
                             }
-    case Cond(cond, thn, els) => ???
+    case Cond(cond, thn, els) => {
+      import leo.datastructures.internal.IF_THEN_ELSE
+      IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace),processTerm(sig)(els, replace))
+    }
     case Let(binding, in) => ???
   }
 
