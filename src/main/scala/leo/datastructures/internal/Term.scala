@@ -117,6 +117,7 @@ object Term {
   def mkTermApp(func: Term, args: List[Term]): Term = args.foldLeft(func)((arg,f) => mkTermApp(arg,f))
   def mkTermAbs = AbstractionNode(_, _)
   def mkTypeApp = TypeApplicationNode(_,_)
+  def mkTypeApp(func: Term, args: List[Type]): Term = args.foldLeft(func)((arg,f) => mkTypeApp(arg,f))
   def mkTypeAbs = TypeAbstractionNode(_)
 
   // Pretty operators
