@@ -1,7 +1,7 @@
 package leo.datastructures.internal
 
 import Type.{typeKind, typeVarToType,superKind}
-import Term.{mkAtom,mkTermApp,λ, Λ,intsToBoundVar,intToBoundVar}
+import Term.{mkAtom,mkTermApp,λ, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
@@ -190,7 +190,17 @@ object HOLConstant {
 /** HOL disjunction */
 object ||| extends HOLBinaryConnective  { val key = 12 }
 /** HOL equality */
-object === extends HOLBinaryConnective  { val key = 13 }
+object === extends HOLBinaryConnective  { val key = 13
+  override def apply(left:Term, right: Term) = {
+    val instantiated = mkTypeApp(mkAtom(key), left.ty)
+    mkTermApp(mkTermApp(instantiated, left), right)
+  }
+
+  override def unapply(t: Term): Option[(Term,Term)] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some(t1,t2)
+    case _ => None
+  }
+}
 /** HOL conjunction */
 object & extends HOLBinaryConnective    { val key = 17 }
 /** HOL implication */
@@ -206,17 +216,64 @@ object ~||| extends HOLBinaryConnective { val key = 22 }
 /** HOL negated iff */
 object <~> extends HOLBinaryConnective  { val key = 23 }
 /** HOL negated equality */
-object !=== extends HOLBinaryConnective  { val key = 24 }
+object !=== extends HOLBinaryConnective  { val key = 24
+  override def apply(left:Term, right: Term) = {
+    val instantiated = mkTypeApp(mkAtom(key), left.ty)
+    mkTermApp(mkTermApp(instantiated, left), right)
+  }
+
+  override def unapply(t: Term): Option[(Term,Term)] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some(t1,t2)
+    case _ => None
+  }
+}
 
 /** HOL negation */
 object Not extends HOLUnaryConnective    { val key = 10 }
 /** HOL forall */
-object Forall extends HOLUnaryConnective { val key = 11 }
+object Forall extends HOLUnaryConnective { val key = 11
+  override def apply(arg: Term): Term = {
+    val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    mkTermApp(instantiated, arg)
+  }
+
+  override def unapply(t: Term): Option[Term] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
+    case _ => None
+  }
+}
 /** HOL exists */
-object Exists extends HOLUnaryConnective { val key = 16 }
+object Exists extends HOLUnaryConnective { val key = 16
+  override def apply(arg: Term): Term = {
+    val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    mkTermApp(instantiated, arg)
+  }
+
+  override def unapply(t: Term): Option[Term] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
+    case _ => None
+  }
+}
 
 /** HOL frue constant */
 object LitTrue extends HOLConstant      { val key = 6 }
 /** HOL false constant */
 object LitFalse extends HOLConstant     { val key = 7 }
+
+// other HOL connectives
+/** If-Then-Else combinator */
+object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
+  protected[IF_THEN_ELSE] val key = 15
+
+  override def apply(cond: Term, thn: Term, els: Term): Term = {
+    val instantiated = mkTypeApp(mkAtom(key), thn.ty)
+
+    mkTermApp(mkTermApp(mkTermApp(instantiated, cond), thn), els)
+  }
+
+  def unapply(t: Term): Option[(Term,Term, Term)] = t match {
+    case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some(t1,t2,t3)
+    case _ => None
+  }
+}
 
