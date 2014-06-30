@@ -79,7 +79,7 @@ object InputProcessing {
       case Logical(Typed(Term(Func(atom, _)),ty)) if input.role == "type" => {
                                                         convertTHFType(sig)(ty, noRep) match {
                                                           case Left(ty) => sig.addUninterpreted(atom, ty)
-                                                          case Right(k) => sig.addUninterpreted(atom, k)
+                                                          case Right(k) => sig.addTypeConstructor(atom, k)
                                                         }
                                                         None
                                                       }
@@ -194,7 +194,7 @@ object InputProcessing {
       case TypedAtom(atom, ty) => {
         convertTFFType(sig)(ty, noRep) match {
           case Left(ty) => sig.addUninterpreted(atom, ty)
-          case Right(k) => sig.addUninterpreted(atom, k) // TODO: constructors get own method and symbol type!
+          case Right(k) => sig.addTypeConstructor(atom, k) // TODO: constructors get own method and symbol type!
         }
         None
       }
