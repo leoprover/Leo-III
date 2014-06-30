@@ -206,7 +206,7 @@ object @@@ extends HOLBinaryConnective {
  * }
  * }}}
  */
-object :::: {
+object @@@@ {
   def unapply(t: Term): Option[(Term,Type)] = t match {
     case TypeApplicationNode(l,r) => Some(l,r)
     case _ => None

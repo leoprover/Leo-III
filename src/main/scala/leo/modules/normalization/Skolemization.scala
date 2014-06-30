@@ -55,7 +55,7 @@ object Skolemization extends AbstractNormalize{
       mkTermApp(\(ty)(t1), skoVar).betaNormalize
       // Pass through
     case s @@@ t    => mkTermApp(skolemize(s),skolemize(t))
-    case s :::: ty  => mkTypeApp(skolemize(s),ty)
+    case s @@@@ ty  => mkTypeApp(skolemize(s),ty)
     case ty :::> s  => mkTermAbs(ty, skolemize(s))
     case TypeLambda(t) => mkTypeAbs(skolemize(t))
     case _  => formula
@@ -94,7 +94,7 @@ object Skolemization extends AbstractNormalize{
         |||(left,right)
       // In neither of the above cases, move inwards
       case s @@@ t    => Exists(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
-      case s :::: ty  => Exists(\(ty)(mkTypeApp(miniscope(s),ty)))
+      case s @@@@ ty  => Exists(\(ty)(mkTypeApp(miniscope(s),ty)))
       case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
       case _  => formula
@@ -127,7 +127,7 @@ object Skolemization extends AbstractNormalize{
         &(left,right)
       // In neither of the above cases, move inwards
       case s @@@ t    => Forall(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
-      case s :::: ty  => Forall(\(ty)(mkTypeApp(miniscope(s),ty)))
+      case s @@@@ ty  => Forall(\(ty)(mkTypeApp(miniscope(s),ty)))
       case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
       case _  => formula
@@ -135,7 +135,7 @@ object Skolemization extends AbstractNormalize{
 
       // In neither of the above cases, move inwards
     case s @@@ t    => mkTermApp(miniscope(s),miniscope(t))
-    case s :::: ty  => mkTypeApp(miniscope(s),ty)
+    case s @@@@ ty  => mkTypeApp(miniscope(s),ty)
     case ty :::> s  => mkTermAbs(ty, miniscope(s))
     case TypeLambda(t) => mkTypeAbs(miniscope(t))
     case _  => formula

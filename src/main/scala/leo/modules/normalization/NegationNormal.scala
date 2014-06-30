@@ -26,7 +26,7 @@ object NegationNormal extends AbstractNormalize{
     case Not(t)                  => Not(rmEq(t,(-1)*pol))
 
     case s @@@ t                => mkTermApp(rmEq(s,pol),rmEq(t,pol))
-    case s :::: ty              => mkTypeApp(rmEq(s,pol),ty)
+    case s @@@@ ty              => mkTypeApp(rmEq(s,pol),ty)
     case ty :::> t              => mkTermAbs(ty, rmEq(t,pol))
     case TypeLambda(t)          => mkTypeAbs(rmEq(t,pol))
     case _                      => formula
@@ -56,7 +56,7 @@ object NegationNormal extends AbstractNormalize{
     case Not(Not(t))            => nnf(t)
 
     case s @@@ t                => mkTermApp(nnf(s), nnf(t))
-    case s :::: ty              => mkTypeApp(nnf(s), ty)
+    case s @@@@ ty              => mkTypeApp(nnf(s), ty)
     case ty :::> t              => mkTermAbs(ty, nnf(t))
     case TypeLambda(t)          => mkTypeAbs(nnf(t))
     case x                      => x
