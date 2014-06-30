@@ -7,7 +7,7 @@ import leo.datastructures.Pretty
  * Abstract type for modeling types.
  * At the moment, types are constructed by:
  *
- * t1, t2 ::= a | t1 -> t2 | forall a. t1
+ * t1, t2 ::= a | t1 -> t2 | t1 * t2 | t1 + t2 | forall a. t1
  * with a = some set of base type symbols containing i (type of individuals)
  * and o (type of truth values).
  *
@@ -25,12 +25,16 @@ import leo.datastructures.Pretty
  * @note Updated 15.05.2014 (Re-Re-organized structure of classes for types: abstract type with
  *       companion object here [without explicit interfaces], implementation in extra file.
  *       Type language is now fixed: System F (omega).
+ * @note Updated 30.06.2014 Inserted type constructors for product types (*) and union types (+). These
+ *       will be removed from the type language as soon as it is expressive enough for general type constructors.
  */
 abstract class Type extends Pretty {
 
   // Predicates on types
   val isBaseType: Boolean = false
   val isFunType: Boolean = false
+  val isProdType: Boolean = false
+  val isUnionType: Boolean = false
   val isPolyType: Boolean = false
   val isBoundTypeVar: Boolean = false
   def isApplicableWith(arg: Type): Boolean
@@ -65,11 +69,18 @@ abstract class Type extends Pretty {
   def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
                   (forAllFunc: A => A): A
 
   // Syntactic nice constructors
   /** Create abstraction type from `hd` to `this` */
   def ->:(hd: Type) = Type.mkFunType(hd, this)
+
+  /** Create product type `this * ty` */
+  def *(ty: Type) = Type.mkProdType(this, ty)
+  /** Create union type `this + ty`*/
+  def +(ty: Type) = Type.mkUnionType(this, ty)
 }
 
 /**
@@ -89,6 +100,31 @@ object Type {
     case Seq(ty)            => ty
     case Seq(ty, tys @ _*)  => mkFunType(ty, mkFunType(tys))
   }
+
+  def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
+
+  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
+  def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
+    ti.foldLeft(ProductTypeNode(t1, t2))((arg,f) => ProductTypeNode(arg,f))
+  }
+
+  def mkProdType(ti: Seq[Type]): Type = ti match {
+    case Seq(ty)        => ty
+    case Seq(ty1, ty2, tys @ _*) => mkProdType(ty1, ty2, tys)
+  }
+
+  def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
+
+  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
+  def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
+    ti.foldLeft(UnionTypeNode(t1, t2))((arg,f) => UnionTypeNode(arg,f))
+  }
+
+  def mkUnionType(ti: Seq[Type]): Type = ti match {
+    case Seq(ty)        => ty
+    case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
+  }
+
   /** Build `forall. ty` (i.e. a universally quantified type) */
   def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
   /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */
