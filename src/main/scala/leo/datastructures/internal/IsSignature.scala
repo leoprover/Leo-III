@@ -32,6 +32,8 @@ trait IsSignature {
   case object Uninterpreted extends SymbolType
   /** `SymbolType` of a base type symbol, e.g. `$o: *` */
   case object BaseType extends SymbolType
+  /** `SymbolType` of a constructor symbol, e.g. 'map: * -> * -> * */
+  case object TypeConstructor extends SymbolType
 
   ///////////////////////////////
   // Meta information
@@ -79,6 +81,8 @@ trait IsSignature {
     def isUninterpreted: Boolean = symType == Uninterpreted
     /** Returns true iff the symbol is a type symbol */
     def isType: Boolean          = symType == BaseType
+    /** Returns true iff the symbol is a type symbol */
+    def isTypeConstructor: Boolean          = symType == TypeConstructor
   }
 
 
@@ -127,7 +131,7 @@ trait IsSignature {
   /** Adds an uninterpreted constant with kibd `k` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addUninterpreted(identifier: String, k: Kind): Key         = addConstant0(identifier, Some(Right(k)), None)
+  def addTypeConstructor(identifier: String, k: Kind): Key         = addConstant0(identifier, Some(Right(k)), None)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
@@ -147,6 +151,8 @@ trait IsSignature {
   def isUninterpreted(key: Key): Boolean = meta(key).isUninterpreted
   /** Returns true iff the symbol index by `key` is a base type symbol */
   def isBaseType(key: Key): Boolean      = meta(key).isType
+  /** Returns true iff the symbol index by `key` is a type operator (constructor) symbol */
+  def isTypeConstructor(key: Key): Boolean      = meta(key).isTypeConstructor
 
   ///////////////////////////////
   // Dumping of indexed symbols
