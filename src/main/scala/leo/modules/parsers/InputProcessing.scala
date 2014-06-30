@@ -9,7 +9,7 @@ import leo.datastructures.internal.HOLBinaryConnective
 import leo.datastructures.internal.HOLUnaryConnective
 
 import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkTypeApp}
-import Type.{mkFunType,mkType,∀,mkVarType, typeKind}
+import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
 import leo.datastructures.tptp.Commons.THFAnnotated
 import leo.datastructures.tptp.Commons.TPIAnnotated
 import leo.datastructures.tptp.Commons.TFFAnnotated
@@ -202,8 +202,18 @@ object InputProcessing {
             require(converted.forall(_.isLeft), "Function constructor only applicable on types at the moment")
             mkFunType(converted.map(_.left.get))
           }
-          case *(tys) => ???
-          case +(tys) => ???
+          case *(tys) => {
+            val converted = tys.map(convertTHFType(sig)(_, replaces))
+            // TODO: we consider only types here, is this correct?
+            require(converted.forall(_.isLeft), "Sum constructor only allowed on types")
+            mkProdType(converted.map(_.left.get))
+          }
+          case +(tys) => {
+            val converted = tys.map(convertTHFType(sig)(_, replaces))
+            // TODO: we consider only types here, is this correct?
+            require(converted.forall(_.isLeft), "Union constructor only allowed on types")
+            mkUnionType(converted.map(_.left.get))
+          }
         }
       } //arrow type etc
       case _ => throw new IllegalArgumentException("malformed type expression: "+typ.toString)
@@ -339,7 +349,12 @@ object InputProcessing {
         mkFunType(convertedTys.map(_.left.get)) // since we only want case 3
       }
       // Product type / kind
-      case *(_) => throw new IllegalArgumentException("Processing of product types not implemented yet") // TODO
+      case *(tys) => {
+        val converted = tys.map(convertTFFType(sig)(_, replace))
+        // TODO: we consider only types here, is this correct?
+        require(converted.forall(_.isLeft), "Sum constructor only allowed on types")
+        mkProdType(converted.map(_.left.get))
+      }
       // Quantified type
       case QuantifiedType(vars, body) => {
         val processedVars = vars.map(_ match {
