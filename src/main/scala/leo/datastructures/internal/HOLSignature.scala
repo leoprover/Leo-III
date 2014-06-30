@@ -1,7 +1,7 @@
 package leo.datastructures.internal
 
 import Type.{typeKind, typeVarToType,superKind}
-import Term.{mkAtom,mkTermApp,λ, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
+import Term.{mkAtom,mkTermApp,mkTermAbs, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
@@ -77,58 +77,81 @@ trait HOLSignature {
     ("<~>",niffDef,  o ->: o ->: o), // Key 23
     ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 24
 
+  // Shorthands for later definitions
+  private def not = mkAtom(7)
+  private def all = mkAtom(8)
+  private def disj = mkAtom(9)
+  private def conj = mkAtom(12)
+  private def impl = mkAtom(13)
+  private def lpmi = mkAtom(14)
+  private def eq = mkAtom(13)
+
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
-                                    λ(1 ->: o)(
-                                      Not(
-                                        Forall(
-                                          λ(1)(
-                                            Not(
-                                              mkTermApp((2, (1 ->: o)), (1, 1))))))))
+    mkTermAbs(1 ->: o,
+      mkTermApp(not,
+        mkTermApp(all,
+          mkTermAbs(1,
+            mkTermApp(not,
+              mkTermApp((2, (1 ->: o)), (1, 1))))))))
 
-  protected def andDef: Term = λ(o,o)(
-                                Not(
-                                  |||(
-                                    Not((2, o)),
-                                    Not((1, o)))))
+  protected def andDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(not,
+        mkTermApp(
+          mkTermApp(disj, mkTermApp(not, (2, o))),
+          mkTermApp(not, (1, o))))))
 
-  protected def implDef: Term = λ(o,o)(
-                                  |||(
-                                    Not((2, o)),
-                                    (1, o)
-                                  ))
+  protected def implDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(
+        mkTermApp(disj, mkTermApp(not, (2, o))),
+        (1, o))))
 
-  protected def ifDef: Term = λ(o,o)(
-                                |||(
-                                  (2, o),
-                                  Not((1, o))
-                                ))
+  protected def ifDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(
+        mkTermApp(disj, (2, o)),
+        mkTermApp(not, (1, o)))))
 
-  protected def iffDef: Term = λ(o,o)(
-                                &(
-                                  Impl((2, o), (1, o)),
-                                  <=  ((2, o), (1, o))))
+  protected def iffDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(
+        mkTermApp(conj, mkTermApp(
+          mkTermApp(impl, (2, o)), (1, o))),
+        mkTermApp(
+          mkTermApp(lpmi, (2, o)), (1, o)))))
 
-  protected def nandDef: Term = λ(o,o)(
-                                  |||(
-                                    Not((2, o)),
-                                    Not((1, o))))
+  protected def nandDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(
+        mkTermApp(disj, mkTermApp(not, (2, o))),
+        mkTermApp(not, (1, o)))))
 
-  protected def norDef: Term = λ(o,o)(
-                                Not(|||((2, o), (1, o))))
+  protected def norDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(not,
+        mkTermApp(
+          mkTermApp(disj, (2, o)),
+          (1, o)))))
 
-  protected def niffDef: Term = λ(o,o)(
-                                  Not(
-                                    &(
-                                      Impl((2, o), (1, o)),
-                                      <=  ((2, o), (1, o)))))
+  protected def niffDef: Term = mkTermAbs(o,
+    mkTermAbs(o,
+      mkTermApp(not,
+        mkTermApp(
+          mkTermApp(conj, mkTermApp(
+            mkTermApp(impl, (2, o)), (1, o))),
+          mkTermApp(
+            mkTermApp(lpmi, (2, o)), (1, o))))))
 
   protected def neqDef: Term = Λ(
-                                λ(1,1)(
-                                  Not(
-                                    ===(
-                                      (2,1),
-                                      (1,1)))))
+    mkTermAbs(1,
+      mkTermAbs(1,
+        mkTermApp(not,
+          mkTermApp(
+            mkTermApp(eq,
+              (2, 1)),
+              (1, 1))))))
 }
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
@@ -192,7 +215,7 @@ object ||| extends HOLBinaryConnective  { val key = 12 }
 /** HOL equality */
 object === extends HOLBinaryConnective  { val key = 13
   override def apply(left:Term, right: Term) = {
-    val instantiated = mkTypeApp(mkAtom(key), left.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
     mkTermApp(mkTermApp(instantiated, left), right)
   }
 
@@ -218,7 +241,7 @@ object <~> extends HOLBinaryConnective  { val key = 23 }
 /** HOL negated equality */
 object !=== extends HOLBinaryConnective  { val key = 24
   override def apply(left:Term, right: Term) = {
-    val instantiated = mkTypeApp(mkAtom(key), left.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
     mkTermApp(mkTermApp(instantiated, left), right)
   }
 
@@ -233,7 +256,7 @@ object Not extends HOLUnaryConnective    { val key = 10 }
 /** HOL forall */
 object Forall extends HOLUnaryConnective { val key = 11
   override def apply(arg: Term): Term = {
-    val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
     mkTermApp(instantiated, arg)
   }
 
@@ -245,7 +268,7 @@ object Forall extends HOLUnaryConnective { val key = 11
 /** HOL exists */
 object Exists extends HOLUnaryConnective { val key = 16
   override def apply(arg: Term): Term = {
-    val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
     mkTermApp(instantiated, arg)
   }
 
@@ -266,7 +289,7 @@ object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
   protected[IF_THEN_ELSE] val key = 15
 
   override def apply(cond: Term, thn: Term, els: Term): Term = {
-    val instantiated = mkTypeApp(mkAtom(key), thn.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), thn.ty)
 
     mkTermApp(mkTermApp(mkTermApp(instantiated, cond), thn), els)
   }
