@@ -68,7 +68,7 @@ object InputProcessing {
   //////////////////////////
 
   def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = {
-    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed}
+    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term}
 
     input.formula match {
       case Logical(lf) if input.role == "definition" => {
@@ -76,7 +76,13 @@ object InputProcessing {
                                                           sig.addDefined(defName, defDef, defDef.ty)
                                                           None
                                                         }
-      case Logical(Typed(f,ty)) if input.role == "type" => ???
+      case Logical(Typed(Term(Func(atom, _)),ty)) if input.role == "type" => {
+                                                        convertTHFType(sig)(ty, noRep) match {
+                                                          case Left(ty) => sig.addUninterpreted(atom, ty)
+                                                          case Right(k) => sig.addUninterpreted(atom, k)
+                                                        }
+                                                        None
+                                                      }
       case Logical(lf)                               => Some((input.name, processTHF0(sig)(lf, noRep), input.role))
       case Sequent(_,_)                              => throw new IllegalArgumentException("Processing of THF sequents not implemented")
     }
@@ -102,7 +108,7 @@ object InputProcessing {
         val quantifier = processTHFUnaryConn(q)
         val processedVars = vars.map(_ match {
           case (name, None) => (name, Left(sig.i)) // $i is assumed when no type is given
-          case (name, Some(ty)) => (name, convertTHFType(sig)(ty))
+          case (name, Some(ty)) => (name, convertTHFType(sig)(ty, replaces))
         })
         val newReplaces = processedVars.foldRight(replaces)({case (vari,repl) => vari match {
           case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
@@ -111,10 +117,13 @@ object InputProcessing {
         mkPolyQuantified(quantifier, processedVars, processTHF0(sig)(matrix, newReplaces))
       }
       case Connective(c) => c.fold(processTHFBinaryConn(_),processTHFUnaryConn(_))
-      case Term(t) => ??? //processTerm(sig)(t, replaces)
+      case Term(t) => processTerm(sig)(t, replaces)
       case BinType(binTy) => ???
       case Subtype(left,right) => ???
-      case Cond(c, thn, els) => ???
+      case Cond(c, thn, els) => {
+        import leo.datastructures.internal.IF_THEN_ELSE
+        IF_THEN_ELSE(processTHF0(sig)(c, replaces),processTHF0(sig)(thn, replaces),processTHF0(sig)(els, replaces))
+      }
       case Let(binding, in) => ???
     }
   }
@@ -164,7 +173,7 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def convertTHFType(sig: Signature)(ty: THFLogicFormula): Either[Type, Kind] = ???
+  protected[parsers] def convertTHFType(sig: Signature)(ty: THFLogicFormula, replaces: Replaces): Either[Type, Kind] = ???
 
   //////////////////////////
   // TFF Formula processing
@@ -230,7 +239,10 @@ object InputProcessing {
         Not(===(l,r))
       }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
-      case Cond(cond, thn, els) => ???
+      case Cond(cond, thn, els) => {
+        import leo.datastructures.internal.IF_THEN_ELSE
+        IF_THEN_ELSE(processTFF0(sig)(cond, replaces),processTFF0(sig)(thn, replaces),processTFF0(sig)(els, replaces))
+      }
       case Let(binding, in) => ???
     }
   }
