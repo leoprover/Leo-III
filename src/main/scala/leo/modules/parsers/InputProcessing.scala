@@ -157,24 +157,33 @@ object InputProcessing {
   import leo.datastructures.tptp.thf.{UnaryConnective => THFUnaryConnective}
   protected[parsers] def processTHFUnaryConn(conn: THFUnaryConnective): HOLUnaryConnective = {
     import leo.datastructures.tptp.thf.{~ => THFNot, !! => THFAllComb, ?? => THFExistsComb}
-    import leo.datastructures.internal.{Not => not}
+    import leo.datastructures.internal.{Not => not, Forall => forall, Exists => exists}
 
     conn match {
       case THFNot => not
-      case THFAllComb => ???
-      case THFExistsComb => ???
+      case THFAllComb => forall
+      case THFExistsComb => exists
     }
   }
 
   import leo.datastructures.tptp.thf.{Quantifier => THFQuantifier}
   protected[parsers] def processTHFUnaryConn(conn: THFQuantifier): HOLUnaryConnective = {
-    import leo.datastructures.tptp.thf.{? => THFAll, ! => THFExists}
+    import leo.datastructures.tptp.thf.{? => THFAll, ! => THFExists, ^ => THFLambda, @+ => THFChoice, @- => THFDesc}
     import leo.datastructures.internal.{Forall, Exists}
 
     conn match {
       case THFAll => Forall
       case THFExists => Exists
-      case _      => throw new IllegalArgumentException("quantifier not yet implemented for processing: "+conn.toString)
+      case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
+                                                 // this is because the mkPolyQuantified will apply a new abstraction
+        val key: Signature#Key = Integer.MIN_VALUE // just for fun!
+        override def apply(arg: Term) = arg
+      }
+
+      case THFChoice => ???
+      case THFDesc => ???
+
+      case _ => throw new IllegalArgumentException("Illegal quantifier symbol:" +conn.toString)
     }
   }
 
@@ -182,7 +191,28 @@ object InputProcessing {
     import leo.datastructures.tptp.thf.{Quantified, Term, BinType}
 
     typ match {
-      case Quantified(q, vars, matrix) => ??? //polymorph/lambda term
+      case Quantified(q, vars, matrix) => {
+        import leo.datastructures.tptp.thf.{!> => THFTyForAll, ?* => THFTyExists}
+
+        q match {
+          case THFTyForAll => {
+            val processedVars = vars.map(_ match {
+              case (name, None) => (name, Right(typeKind)) // * is assumed when no type is given
+              case (name, Some(ty)) => (name, convertTHFType(sig)(ty, replaces))
+            })
+            require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
+            val newReplaces = processedVars.foldRight(replaces)({case (vari,repl) => vari match {
+              case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
+              case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
+            }})
+            processedVars.foldRight(convertTHFType(sig)(matrix,newReplaces).left.get)({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
+            // the body of quantification must be a type.
+            // TODO: better error treating
+          }
+          case THFTyExists => ???
+          case _ => throw new IllegalArgumentException("Illegal quantifier on type level: " + typ.toString)
+        }
+      }
       case Term(t) => {
         t match {
           case Func(ty, List()) => mkType(sig(ty).key) // Base type
