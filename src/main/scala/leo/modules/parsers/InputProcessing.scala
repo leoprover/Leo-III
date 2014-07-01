@@ -504,7 +504,12 @@ object InputProcessing {
   def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces): Term = input match {
     case Func(name, vars) => {
       val converted = vars.map(processTerm(sig)(_, replace))
-      mkTermApp(mkAtom(sig(name).key), converted)
+      if (sig.exists(name)) {
+        mkTermApp(mkAtom(sig(name).key), converted)
+      } else {
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.o))), converted)
+      }
+
     }
     case DefinedFunc(name, vars) => {
       val converted = vars.map(processTerm(sig)(_, replace))
