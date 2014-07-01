@@ -194,7 +194,7 @@ object @@@ extends HOLBinaryConnective {
     case ApplicationNode(l,r) => Some(l,r)
     case _ => None
   }
-  override def apply(left: Term, right: Term): Term = ApplicationNode(left,right)
+  override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
 }
 
 /**
@@ -224,11 +224,14 @@ object @@@@ {
  * }
  * }}}
  */
-object :::> {
+object :::> extends Function2[Type, Term, Term] {
   def unapply(t: Term): Option[(Type,Term)] = t match {
     case AbstractionNode(ty,body) => Some(ty,body)
     case _ => None
   }
+
+  /** Construct abstraction λty.body */
+  override def apply(ty: Type, body: Term): Term = Term.mkTermAbs(ty, body)
 }
 
 /**
