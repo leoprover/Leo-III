@@ -1,9 +1,16 @@
 package leo.datastructures.blackboard
 
 import leo.datastructures.internal.{Term => Formula}
-import leo.agents.Agent
+import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.scheduler.Scheduler
+import scala.collection.mutable
 
+// Singleton Blackboards
+object Blackboard extends Function0[Blackboard] {
+  private val single : Blackboard = new impl.SimpleBlackboard()
+
+  def apply() : Blackboard = single
+}
 
 /**
  *
@@ -25,7 +32,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
+trait Blackboard {
 
   /**
    * <p>
@@ -42,7 +49,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    *
    * @param formula to be added.
    */
-  def addFormula(formula : Store[FormulaStore])
+  def addFormula(formula : FormulaStore)
 
   /**
    * <p>
@@ -50,7 +57,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * </p>
    * @return true if the formula was removed, false if the formula does not exist.
    */
-  def removeFormula(formula : Store[FormulaStore]) : Boolean
+  def removeFormula(formula : FormulaStore) : Boolean
 
   /**
    * <p>
@@ -60,7 +67,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * @param name - Name of the Formula
    * @return Some(x) if x.name = name exists otherwise None
    */
-  def getFormulaByName(name : String) : Option[Store[FormulaStore]]
+  def getFormulaByName(name : String) : Option[FormulaStore]
 
   /**
    * <p>
@@ -79,7 +86,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    *
    * @return All formulas of the blackboard.
    */
-  def getFormulas : List[Store[FormulaStore]]
+  def getFormulas : List[FormulaStore]
 
   /**
    *
@@ -90,7 +97,7 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : Formula => Boolean) : List[Store[FormulaStore]]
+  def getAll(p : Formula => Boolean) : List[FormulaStore]
 
   /**
    * <p>
@@ -106,126 +113,20 @@ trait Blackboard extends FormulaAddTrigger with FormulaRemoveTrigger{
    * has to be updated. Handlers can register to these updates
    * @param f
    */
-  protected[blackboard] def emptyUpdate(f : Store[FormulaStore])
+  protected[blackboard] def emptyUpdate(f : FormulaStore)
 
   /**
-   * Access to the Scheduler at a central level.
+   * Registers an agent to the blackboard
    *
-   * @return the currently used scheduler
+   * @param a - the new agent
    */
-  def scheduler : Scheduler
-
-}
-
-/**
- * <p>
- * Common Trait for all Blackboard Observer,
- * ATM only a Marker Interface. Maybe more in the future
- * </p>
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait Observer extends Agent {
-
-
-}
-
-/**
- *<p>
- * BlackboardTrait for Registering AddHandler, that should be called
- * as soon as a Formula is added.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaAddTrigger {
-  /**
-   * Register a new Handler for Formula adding Handlers.
-   * @param o - The Handler that is to register
-   */
-  def registerAddObserver(o : FormulaAddObserver)
-}
-
-/**
- *
- * <p>
- * The Handler for the event of adding a Formula to the Blackboard.
- * </p>
- *
- * <p>
- * Note that an Agent, that implements this handler, should not
- * compute immediately, but only save the change for later computation.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaAddObserver extends Observer {
+  def registerAgent(a : Agent) : Unit
 
   /**
-   * Passes the added formula to the Handler.
-   * @param f
-   */
-  def addFormula(f : Store[FormulaStore])
-
-  /**
-   * <p>
-   * A predicate that distinguishes interesting and uninteresing
-   * Formulas for the Handler.
-   * </p>
-   * @param f - Newly added formula
-   * @return true if the formula is relevant and false otherwise
-   */
-  def filterAdd(f : Store[FormulaStore]) : Boolean
-}
-
-/**
- * <p>
- * BlackboardTrait for registering Remove Handler.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaRemoveTrigger {
-
-  /**
-   * <p>
-   * Method to add an Handler for the removing of a Formula of the Blackboard.
-   * </p>
+   * Blocking Method to get a fresh Task.
    *
-   * @param o - The Handler that is registered.
+   * @return Not yet executed Task
    */
-  def registerRemoveObserver(o : FormulaRemoveObserver)
-}
-
-/**
- * <p>
- * Handler for the event of removing a Formula from the Blackboard.
- * </p>
- *
- * @author Max Wisniewski
- * @since 5/14/14
- */
-trait FormulaRemoveObserver extends Observer {
-
-  /**
-   * <p>
-   * Passes the removed Formula to the Handler.
-   * </p>
-   *
-   * @param f - Removed Formula
-   */
-  def removeFormula(f : Store[FormulaStore])
-
-  /**
-   * <p>
-   * Destinguishes usefull from unusefull Formulas for the Handler.
-   * </p>
-   * @param f - Recently removed Formula
-   * @return true if the formula is relevant to the handler and false otherwise
-   */
-  def filterRemove(f : Store[FormulaStore]) : Boolean
+  def getTask() : (Agent,Task)
 
 }

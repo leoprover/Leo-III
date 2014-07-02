@@ -1,13 +1,12 @@
 package leo.datastructures.blackboard.impl
 
+
+
+import leo.agents.{Task, Agent}
 import leo.datastructures.internal.{ Term => Formula }
-import scala.collection.mutable._
-import java.util.concurrent.locks.ReentrantLock
-import leo.datastructures.blackboard.scheduler.Scheduler
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
-import scala.concurrent.stm._
-import scala.Some
+import scala.collection.mutable.{Queue, Map => MMap}
 
 /**
  * Starting Blackboard. Just to replace @see{leoshell.FormulaHandle}
@@ -16,92 +15,74 @@ import scala.Some
  * @author Daniel Jentsch <d.jentsch@fu-berlin.de>
  * @since 29.04.2014
  */
-object SimpleBlackboard extends Blackboard {
+class SimpleBlackboard extends Blackboard {
 
   import FormulaSet._
 
   var DEBUG : Boolean = true
 
-  // Observer
-  protected[blackboard] val observeAddSet = new HashSet[FormulaAddObserver] with SynchronizedSet[FormulaAddObserver]
-  protected[blackboard] val observeRemoveSet = new HashSet[FormulaRemoveObserver] with SynchronizedSet[FormulaRemoveObserver]
+  // For each agent a List of Tasks to execute
 
-  // Scheduler ATM Here because accessibility in prototype version
-  protected[blackboard] val _scheduler = new Scheduler(5)
-  def scheduler = _scheduler
+  override def getFormulas: List[FormulaStore] = getAll(_ => true)
 
-  def getFormulas(): List[Store[FormulaStore]] = getAll(_ => true)
-
-  def getAll(p: (Formula) => Boolean): List[Store[FormulaStore]] = read { formulas =>
+  override def getAll(p: (Formula) => Boolean): List[FormulaStore] = read { formulas =>
     formulas.values.filter { store =>
-      store.read(fS => p(fS.formula) )
+      p(store.formula)
     }.toList
   }
 
-  def getFormulaByName(name: String): Option[Store[FormulaStore]] = read { formulas =>
+  override def getFormulaByName(name: String): Option[FormulaStore] = read { formulas =>
     formulas get name
   }
 
   override def addFormula(name : String, formula: Formula) {
-    //println("Form Name : "+formula.name+", formula : '"+formula.toString+"'")
-    addFormula(Store.apply(name, formula, SimpleBlackboard))
+    addFormula(Store.apply(name, formula))
   }
 
-  override def addFormula(formula : Store[FormulaStore]) {
+  override def addFormula(formula : FormulaStore) {
     write { formulas =>
-      formulas put (formula read {_.name}, formula)
+      formulas put (formula.name, formula)
     }
-    observeAddSet.filter(_.filterAdd(formula)).foreach{ o=> o.addFormula(formula); o.wakeUp() }
+    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
   }
 
-  def removeFormula(formula: Store[FormulaStore]): Boolean = rmFormulaByName(formula read {_.name})
+  override def removeFormula(formula: FormulaStore): Boolean = rmFormulaByName(formula .name)
 
-  def rmFormulaByName(name: String): Boolean = write { formulas =>
+  override def rmFormulaByName(name: String): Boolean = write { formulas =>
     formulas.remove(name) match {
       case Some(x) => {
-        observeRemoveSet.filter(_.filterRemove(x)).foreach {o => o.removeFormula(x); o.wakeUp()}
+//        observeRemoveSet.filter(_.filterRemove(x)).foreach {o => o.removeFormula(x); o.wakeUp()}
         true
       }
       case None => false
     }
   }
 
-  def rmAll(p: (Formula) => Boolean) = write { formulas =>
-    val toWakeUp : Set[FormulaRemoveObserver] = HashSet.empty[FormulaRemoveObserver]
-    formulas.values foreach { form =>
-          if(p(form read {_.formula})) {
-            formulas.remove(form read {_.name})
-            observeRemoveSet.filter(_.filterRemove(form)).foreach { o => o.removeFormula(form); toWakeUp += o}
-          }
-    }
-    toWakeUp.foreach(_.wakeUp())
+  override def rmAll(p: (Formula) => Boolean) = write { formulas =>
+      formulas.values foreach (form => if (p(form.formula)) formulas.remove(form.name) else formulas)
   }
 
   /**
    * Register a new Handler for Formula adding Handlers.
-   * @param o - The Handler that is to register
+   * @param a - The Handler that is to register
    */
-  override def registerAddObserver(o: FormulaAddObserver): Unit = observeAddSet.add(o)
-
-  /**
-   * <p>
-   * Method to add an Handler for the removing of a Formula of the Blackboard.
-   * </p>
-   *
-   * @param o - The Handler that is registered.
-   */
-  override def registerRemoveObserver(o: FormulaRemoveObserver): Unit = observeRemoveSet.add(o)
+  override def registerAgent(a : Agent) : Unit = TaskSet.addAgent(a)
 
   /**
    * Used by Stores to mark a FormulaStore as Changed, if nothing
    * has to be updated. Handlers can register to these updates
    * @param f
    */
-  override protected[blackboard] def emptyUpdate(f: Store[FormulaStore]) {
-    observeAddSet foreach {o =>
-      if (o.filterAdd(f)) o.addFormula(f); o.wakeUp()
-    }
+  override protected[blackboard] def emptyUpdate(f: FormulaStore) {
+    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(f))}
   }
+
+  /**
+   * Blocking Method to get a fresh Task.
+   *
+   * @return Not yet executed Task
+   */
+  override def getTask(): (Agent,Task) = TaskSet.getTask()
 }
 
 /**
@@ -110,7 +91,7 @@ object SimpleBlackboard extends Blackboard {
 private object FormulaSet {
   // Formulas
 
-  private val formulaMap = new TrieMap[String, Store[FormulaStore]]()
+  private val formulaMap = new TrieMap[String, FormulaStore]()
 
   /**
    * Per se se an action itself. Maybe try different syntax, s.t. we know this one locks,
@@ -120,7 +101,45 @@ private object FormulaSet {
    * distinct formula stores are used.
    */
 
-  def write[R](action: Map[String, Store[FormulaStore]] => R): R = action(formulaMap)
+  def write[R](action: MMap[String, FormulaStore] => R): R = action(formulaMap)
 
-  def read[R](action: Map[String, Store[FormulaStore]] => R): R = action(formulaMap)
-} 
+  def read[R](action: MMap[String, FormulaStore] => R): R = action(formulaMap)
+}
+
+private object TaskSet {
+  protected[blackboard] val agentWork = new Queue[(Agent,Task)]()
+  protected[blackboard] var regAgents = Set[Agent]()
+
+  private var work : Int = 0
+
+  def addAgent(a : Agent) {
+    this.synchronized(regAgents = regAgents + a)
+  }
+
+  def agents : List[Agent] = this.synchronized(regAgents.toList)
+
+  def addTasks(a : Agent, ts : Set[Task]) = this.synchronized {
+    try{
+      ts.foreach{t => agentWork.enqueue((a,t)); work += 1}
+      this.notifyAll()
+    } catch {
+      case e : InterruptedException => Thread.currentThread().interrupt()
+      case e : Exception => throw e
+    }
+  }
+
+  def getTask() : (Agent,Task) = this.synchronized{
+    while(true) {
+      try {
+        while (work == 0) this.wait()
+        // TODO Check collsion
+        work -= 1
+        return agentWork.dequeue()
+      } catch {
+        case e: InterruptedException => Thread.currentThread().interrupt()
+        case e: Exception => throw e
+      }
+    }
+    null
+  }
+}

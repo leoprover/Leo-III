@@ -8,7 +8,7 @@ import leo.datastructures.internal.Term
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function2[Term,Int,Term]{
+trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
 
   /**
    * Normalizes a formula corresponding to the object.
@@ -26,6 +26,14 @@ trait Normalize extends Function2[Term,Int,Term]{
    * @return True if a normaliziation is possible, false otherwise
    */
   def applicable (formula : Term, status : Int) : Boolean
+
+  /**
+   * Marks a status for a formula as already normalized.
+   *
+   * @param status - Status of a formula
+   * @return New Status with raised flag
+   */
+  def markStatus(status : Int) : Int
 }
 
 /**
@@ -45,4 +53,10 @@ abstract class AbstractNormalize extends Normalize {
    */
   override def apply(formula : Term, status : Int) : Term = if (applicable(formula, status)) normalize(formula) else formula
 
+  /**
+   * Like apply2, but assumes the normalization is applicable
+   * @param formula
+   * @return
+   */
+  override def apply(formula : Term) : Term = normalize(formula)
 }

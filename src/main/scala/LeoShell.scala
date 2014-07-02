@@ -1,13 +1,16 @@
+// IMPORTANT : Keep the unused imports for loading in the Shell Project
 
 import java.io.FileNotFoundException
 import java.io.File
 
 import leo.modules.normalization.{Simplification, NegationNormal}
-import leo.datastructures.blackboard
-import leo.datastructures.blackboard.impl.SimpleBlackboard
+import leo.datastructures.blackboard._
 import leo.datastructures.internal._
 import leo.datastructures.internal.Term._
 import LeoShell._
+import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.agents.impl._
+import leo.agents.impl.NormalClauseAgent._
 
 /**
  * Addition commands for an interactive session with the sbt cosole.
@@ -94,7 +97,7 @@ object LeoShell {
    * @param s
    */
   def add(name : String, s : Term): Unit = {
-    SimpleBlackboard.addFormula(name, s)
+    Blackboard().addFormula(name, s)
     println("Added "+name+"='$s' to the context.")
   }
 
@@ -102,12 +105,12 @@ object LeoShell {
    * Returns the formula with the given name in the context.
    * The formula is not ready to manipulate in parallel with this access.
    */
-  def get(s: String) : Term =
-    SimpleBlackboard.getFormulaByName(s).
+  def get(s: String) : FormulaStore =
+    Blackboard().getFormulaByName(s).
     getOrElse{
       println(s"There is no formula named '$s'.")
       null
-    }.read(_.formula)
+    }
 
   def exit() = System.exit(0)
 
@@ -122,8 +125,8 @@ object LeoShell {
 
     println("Name" + " "*(maxNameSize-4) +  " | Formula")
     println("-"*maxSize)
-    SimpleBlackboard.getFormulas().foreach {
-      _ read { x =>
+    Blackboard().getFormulas.foreach {
+      x =>
         val name = x.name.toString.take(maxNameSize)
         //val role = x.role.toString.take(maxRoleSize)
         val form = x.formula.pretty
@@ -135,7 +138,6 @@ object LeoShell {
         println(name + " " * nameOffset + " | " +  form1)
         form2.foreach(x => println(" " * maxNameSize + " | "  + x))
       }
-    }
     println()
   }
 
@@ -143,7 +145,7 @@ object LeoShell {
    * Deletes all formulas from the current context.
    */
   def clear(): Unit = {
-    SimpleBlackboard.rmAll(_ => true)
+    Blackboard().rmAll(_ => true)
 //    loadedSet.clear()
   }
 
@@ -151,7 +153,7 @@ object LeoShell {
    * Deletes a formula by name from the context.
    */
   def rm(s: String) {
-    if (SimpleBlackboard.rmFormulaByName(s))
+    if (Blackboard().rmFormulaByName(s))
       println(s"Removed $s from the context.")
     else
       println(s"There was no $s. Removed nothing.")
@@ -175,5 +177,7 @@ object LeoShell {
 
   def negNormal(f : Term) : Term = NegationNormal.normalize(f)
 }
+
+
 
 

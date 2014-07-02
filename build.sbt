@@ -27,3 +27,4 @@ libraryDependencies += "junit" % "junit" % "4.11" % "test"
 libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.0" % "test"
 
 libraryDependencies += ("org.scala-stm" %% "scala-stm" % "0.7")
+
