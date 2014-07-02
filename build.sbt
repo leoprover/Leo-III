@@ -27,5 +27,3 @@ initialCommands in console := "import leo.datastructures.internal; import leo.da
 libraryDependencies += "junit" % "junit" % "4.11" % "test"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.7" % "test"
-
-libraryDependencies += ("org.scala-stm" %% "scala-stm" % "0.7")

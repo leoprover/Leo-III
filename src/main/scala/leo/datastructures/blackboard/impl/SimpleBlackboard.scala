@@ -4,7 +4,6 @@ package leo.datastructures.blackboard.impl
 
 import leo.agents.{Task, Agent}
 import leo.datastructures.internal.{ Term => Formula }
-import leo.datastructures.blackboard.scheduler.Scheduler
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable.{Queue, Map => MMap}
@@ -23,11 +22,6 @@ class SimpleBlackboard extends Blackboard {
   var DEBUG : Boolean = true
 
   // For each agent a List of Tasks to execute
-
-
-  // Scheduler ATM Here because accessibility in prototype version
-  protected[blackboard] val _scheduler = Scheduler(5) // TODO somewhere else
-  def scheduler = _scheduler
 
   override def getFormulas: List[FormulaStore] = getAll(_ => true)
 
