@@ -137,6 +137,10 @@ trait IsSignature {
     */
   def addBaseType(identifier: String): Key                       = addConstant0(identifier, Some(Right(Type.typeKind)), None)
 
+  /** If the symbol indexed by `key` is a uninterpreted symbol, then `addDefinition(key, defn)` turns this symbol
+    * into a defined symbol with definition `defn`.*/
+  def addDefinition(key: Key, defn: Term): Key
+
   /** Returns the meta information stored under key `key`*/
   def meta(identifier: Key): Meta
   /** Returns the meta information stored with symbol with id `identifier`

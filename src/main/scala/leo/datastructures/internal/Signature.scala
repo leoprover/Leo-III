@@ -143,6 +143,19 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     key
   }
 
+  def addDefinition(key: Key, defn: Term) = {
+    metaMap.get(key) match {
+      case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty => {
+        val newMeta = DefinedMeta(meta.name, key, Some(meta._ty), defn)
+        metaMap += ((key, newMeta))
+        definedSet += key
+        uiSet -= key
+        key
+      }
+      case _ => key
+    }
+  }
+
   def remove(key: Key): Boolean = {
      metaMap.get(key) match {
        case None => false
