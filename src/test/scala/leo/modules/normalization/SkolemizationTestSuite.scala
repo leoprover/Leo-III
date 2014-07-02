@@ -20,7 +20,7 @@ class SkolemizationTestSuite extends FunSuite {
   val q = mkAtom(s.addUninterpreted("q1", s.i ->: s.i ->: s.o))
 
 
-  def eqa(t : Term, s : Term) = mkTermApp(mkTermApp(mkAtom(10),t),s)
+  def eqa(t : Term, s : Term) = ===(t,s)
   def vari(i : Int) : Term= mkBound(s.o, i)
 
   var toNorm : Map[Term,(Term,Term)] = Map[Term, (Term,Term)]()
