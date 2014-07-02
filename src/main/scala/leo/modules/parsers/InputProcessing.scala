@@ -524,7 +524,32 @@ object InputProcessing {
       case Some((ty, scope)) => mkBound(ty, replace._1.size - scope)
     }
 
-    case Number(value) => ???
+    case NumberTerm(value) => value match {
+      case IntegerNumber(value) => {
+        val constName = "$$int(" + value.toString + ")"
+        if (sig.exists(constName)) {
+          mkAtom(sig(constName).key)
+        } else {
+          mkAtom(sig.addUninterpreted(constName, sig.int))
+        }
+      }
+      case DoubleNumber(value) => {
+        val constName = "$$real(" + value.toString + ")"
+        if (sig.exists(constName)) {
+          mkAtom(sig(constName).key)
+        } else {
+          mkAtom(sig.addUninterpreted(constName, sig.real))
+        }
+      }
+      case RationalNumber(p,q) =>  {
+        val constName = "$$rational(" + p.toString + "%" + q.toString +")"
+        if (sig.exists(constName)) {
+          mkAtom(sig(constName).key)
+        } else {
+          mkAtom(sig.addUninterpreted(constName, sig.rat))
+        }
+      }
+    }
     case Distinct(data) => // NOTE: Side-effects may occur if this is the first occurence of '"data"'
                             if (sig.exists("\""+data+"\"")) {
                               mkAtom(sig.apply("\""+data+"\"").key)
