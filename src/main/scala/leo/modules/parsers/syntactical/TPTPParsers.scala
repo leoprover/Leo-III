@@ -191,7 +191,7 @@ object TPTPParsers extends TokenParsers with PackratParsers {
     plainTerm |
     definedPlainTerm |
     systemTerm |
-    number ^^ {Commons.Number(_)} |
+    number ^^ {Commons.NumberTerm(_)} |
     elem("Distinct object", _.isInstanceOf[DistinctObject]) ^^ {x => Commons.Distinct(x.chars)}
 
   def plainTerm: Parser[Commons.Func] =
@@ -301,10 +301,10 @@ object TPTPParsers extends TokenParsers with PackratParsers {
   )
   def atomicDefinedWord: Parser[String] = elem("Dollar word", _.isInstanceOf[DollarWord]) ^^ {_.chars}
   def atomicSystemWord: Parser[String] = elem("Dollar Dollar word", _.isInstanceOf[DollarDollarWord]) ^^ {_.chars}
-  def number: Parser[Double] = (
-      elem("Integer", _.isInstanceOf[Integer]) ^^ {_.asInstanceOf[Integer].value.toDouble}
-    | elem("Real", _.isInstanceOf[Real]) ^^ {x => (x.asInstanceOf[Real].coeff.toString + "E" + x.asInstanceOf[Real].exp.toString).toDouble}
-    | elem("Rational", _.isInstanceOf[Rational]) ^^ {x => (x.asInstanceOf[Rational]).p / (x.asInstanceOf[Rational]).q}
+  def number: Parser[Commons.Number] = (
+      elem("Integer", _.isInstanceOf[Integer]) ^^ {case i => Commons.IntegerNumber(i.asInstanceOf[Integer].value)}
+    | elem("Real", _.isInstanceOf[Real]) ^^ {x => Commons.DoubleNumber((x.asInstanceOf[Real].coeff.toString + "E" + x.asInstanceOf[Real].exp.toString).toDouble)}
+    | elem("Rational", _.isInstanceOf[Rational]) ^^ {case r => Commons.RationalNumber(r.asInstanceOf[Rational].p,r.asInstanceOf[Rational].q)}
   )
 
   def fileName: Parser[String] = elem("single quoted", _.isInstanceOf[SingleQuoted]) ^^ {_.chars}
