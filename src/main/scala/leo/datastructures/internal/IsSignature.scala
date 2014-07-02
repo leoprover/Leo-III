@@ -154,6 +154,9 @@ trait IsSignature {
   /** Returns true iff the symbol index by `key` is a type operator (constructor) symbol */
   def isTypeConstructor(key: Key): Boolean      = meta(key).isTypeConstructor
 
+  /** Empty the signature (deletes all symbols from signature and resets all indexing key counters. */
+  def empty: Unit
+
   ///////////////////////////////
   // Dumping of indexed symbols
   ///////////////////////////////

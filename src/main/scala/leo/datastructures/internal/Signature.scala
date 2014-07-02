@@ -175,8 +175,19 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   // Utility methods for constant symbols
   ///////////////////////////////
 
-  def meta(key: Key): Meta = metaMap(key)
+  def meta(key: Key): Meta = try {metaMap(key)} catch {case e => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
   def meta(identifier: String): Meta = meta(keyMap(identifier))
+
+  def empty = {
+    curConstKey = 0
+    keyMap = keyMap.empty
+    metaMap = metaMap.empty
+
+    typeSet = typeSet.empty
+    fixedSet = fixedSet.empty
+    definedSet = definedSet.empty
+    uiSet = uiSet.empty
+  }
 
   ///////////////////////////////
   // Dumping of indexed symbols
@@ -226,13 +237,18 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 
 
 object Signature {
-  private case object Nil extends Signature
+  private case class Nil() extends Signature
 
   /** Create an empty signature */
-  def empty: Signature = Nil
+  def empty: Signature = Nil()
 
   protected val globalSignature = withHOL(empty)
   def get = globalSignature
+
+  def resetWithHOL(sig: Signature): Signature = {
+    sig.empty
+    withHOL(sig)
+  }
 
   def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
   def apply(symbol: String): Signature#Meta = get.meta(symbol)
