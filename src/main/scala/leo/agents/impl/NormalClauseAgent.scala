@@ -6,19 +6,19 @@ import leo.modules.normalization.Normalize
 
 object NormalClauseAgent {
   import leo.modules.normalization._
-  def SimplificationAgent {
+  def SimplificationAgent () : Unit = {
     (new NormalClauseAgent(Simplification)).register()
   }
 
-  def NegationNormalAgent {
+  def NegationNormalAgent () : Unit = {
     (new NormalClauseAgent(NegationNormal)).register()
   }
 
-  def PrenexAgent {
+  def PrenexAgent () : Unit =  {
     (new NormalClauseAgent(PrenexNormal)).register()
   }
 
-  def SkolemAgent {
+  def SkolemAgent () : Unit =  {
     (new NormalClauseAgent(Skolemization)).register()
   }
 }
