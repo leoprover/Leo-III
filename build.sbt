@@ -4,14 +4,9 @@ version := "1.0"
 
 scalaVersion := "2.11.1"
 
-autoScalaLibrary := true
-
 organization := "org.leo"
 
 fork := true
-
-// General compiler configuration
-scalaVersion := "2.11.1"
 
 scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint")
 
@@ -20,8 +15,9 @@ initialCommands in console := "import leo.datastructures.internal; import leo.da
 
 // Compile
 
-//libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value "scala-tool"
-//libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value
+libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value
+
+libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.1"
 
