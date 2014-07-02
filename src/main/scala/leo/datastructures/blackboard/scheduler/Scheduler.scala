@@ -94,7 +94,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   var pauseFlag = true
   var endFlag = false
 
-  def pause() : Unit = s.synchronized(pauseFlag = true)
+  def pause() : Unit = s.synchronized(pauseFlag = true); println("Scheduler paused.")
 
   protected[scheduler] def start() {
     println("Scheduler started.")
@@ -131,7 +131,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class Writer extends Runnable{
     override def run(): Unit = while(true) {
       val result = ExecTask.get()
-      println("Writing result.")
       result.newFormula().foreach(Blackboard().addFormula(_))
       result.removeFormula().foreach(Blackboard().removeFormula(_))
       result.updateFormula().foreach{case (oldF,newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
@@ -145,9 +144,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
-      println("Agent is Executing.")
       ExecTask.put(a.run(t))
-      println("Agent put result into set.")
     }
   }
 
