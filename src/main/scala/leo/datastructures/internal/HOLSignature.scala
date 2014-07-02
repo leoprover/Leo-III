@@ -64,26 +64,30 @@ trait HOLSignature {
     ("|",                 o ->: o ->: o), // Key 12
     ("=",        forall(1 ->: 1 ->: o)), // Key 13
     ("$$let",    forall(forall(2 ->: 1 ->: 1))), // Key 14
-    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1)))  // Key 15
+    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1)),  // Key 15
+    ("$less",    forall(1 ->: 1 ->: o)), // Key 16
+    ("$lesseq",   forall(1 ->: 1 ->: o)), // Key 17
+    ("$greater",  forall(1 ->: 1 ->: o)), // Key 18
+    ("$greatereq",forall(1 ->: 1 ->: o))) // Key 19
 
   // Standard defined symbols
-  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 16
-    ("&",   andDef,  o ->: o ->: o), // Key 17
-    ("=>",  implDef, o ->: o ->: o), // Key 18
-    ("<=",  ifDef,   o ->: o ->: o), // Key 19
-    ("<=>", iffDef,  o ->: o ->: o), // Key 20
-    ("~&", nandDef,  o ->: o ->: o), // Key 21
-    ("~|",  norDef,  o ->: o ->: o), // Key 22
-    ("<~>",niffDef,  o ->: o ->: o), // Key 23
-    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 24
+  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 20
+    ("&",   andDef,  o ->: o ->: o), // Key 21
+    ("=>",  implDef, o ->: o ->: o), // Key 22
+    ("<=",  ifDef,   o ->: o ->: o), // Key 23
+    ("<=>", iffDef,  o ->: o ->: o), // Key 24
+    ("~&", nandDef,  o ->: o ->: o), // Key 25
+    ("~|",  norDef,  o ->: o ->: o), // Key 26
+    ("<~>",niffDef,  o ->: o ->: o), // Key 27
+    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 28
 
   // Shorthands for later definitions
-  private def not = mkAtom(7)
-  private def all = mkAtom(8)
-  private def disj = mkAtom(9)
-  private def conj = mkAtom(12)
-  private def impl = mkAtom(13)
-  private def lpmi = mkAtom(14)
+  private def not = mkAtom(10)
+  private def all = mkAtom(11)
+  private def disj = mkAtom(12)
+  private def conj = mkAtom(21)
+  private def impl = mkAtom(22)
+  private def lpmi = mkAtom(23)
   private def eq = mkAtom(13)
 
   // Definitions for default symbols
@@ -225,21 +229,21 @@ object === extends HOLBinaryConnective  { val key = 13
   }
 }
 /** HOL conjunction */
-object & extends HOLBinaryConnective    { val key = 17 }
+object & extends HOLBinaryConnective    { val key = 21 }
 /** HOL implication */
-object Impl extends HOLBinaryConnective { val key = 18 }
+object Impl extends HOLBinaryConnective { val key = 22 }
 /** HOL if (reverse implication) */
-object <= extends HOLBinaryConnective   { val key = 19 }
+object <= extends HOLBinaryConnective   { val key = 23 }
 /** HOL iff */
-object <=> extends HOLBinaryConnective  { val key = 20 }
+object <=> extends HOLBinaryConnective  { val key = 24 }
 /** HOL negated conjunction */
-object ~& extends HOLBinaryConnective   { val key = 21 }
+object ~& extends HOLBinaryConnective   { val key = 25 }
 /** HOL negated disjunction */
-object ~||| extends HOLBinaryConnective { val key = 22 }
+object ~||| extends HOLBinaryConnective { val key = 26 }
 /** HOL negated iff */
-object <~> extends HOLBinaryConnective  { val key = 23 }
+object <~> extends HOLBinaryConnective  { val key = 27 }
 /** HOL negated equality */
-object !=== extends HOLBinaryConnective  { val key = 24
+object !=== extends HOLBinaryConnective  { val key = 28
   override def apply(left:Term, right: Term) = {
     lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
     mkTermApp(mkTermApp(instantiated, left), right)
@@ -266,7 +270,7 @@ object Forall extends HOLUnaryConnective { val key = 11
   }
 }
 /** HOL exists */
-object Exists extends HOLUnaryConnective { val key = 16
+object Exists extends HOLUnaryConnective { val key = 20
   override def apply(arg: Term): Term = {
     lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
     mkTermApp(instantiated, arg)
