@@ -27,7 +27,19 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
 
   override def setActive(a : Boolean) = _isActive = a
 
-  override def run(t : Task) : Result = ???
+  override def run(t : Task) : Result = t match {
+    case  t1 : NormalTask =>
+      val fstore = t1.get()
+      val erg = norm.normalize(fstore.formula)
+      if(fstore.formula == erg){
+        println("No change in Normalization.")
+        return new StdResult(Set.empty, Map.empty, Set.empty)
+      } else {
+        println("Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
+        return new StdResult(Set.empty, Map((fstore, fstore.newFormula(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
+      }
+    case _  => throw new IllegalArgumentException("Executing wrong task.")
+  }
 
   /**
    * <p>
@@ -56,6 +68,9 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
  * @param f - Formula to be normalized
  */
 class NormalTask(f : FormulaStore) extends Task {
+
+  def get() = f
+
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 }

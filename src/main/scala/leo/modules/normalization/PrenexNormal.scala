@@ -69,4 +69,6 @@ object PrenexNormal extends AbstractNormalize {
    * @return True if a normaliziation is possible, false otherwise
    */
   override def applicable(formula: Term, status : Int): Boolean = (status & 15) == 7
+
+  override def markStatus(status : Int) : Int = status | 15
 }

@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard
 
 import leo.datastructures.internal.{Term => Formula}
-import leo.agents.Agent
+import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import scala.collection.mutable
 
@@ -121,5 +121,12 @@ trait Blackboard {
    * @param a - the new agent
    */
   def registerAgent(a : Agent) : Unit
+
+  /**
+   * Blocking Method to get a fresh Task.
+   *
+   * @return Not yet executed Task
+   */
+  def getTask() : (Agent,Task)
 
 }

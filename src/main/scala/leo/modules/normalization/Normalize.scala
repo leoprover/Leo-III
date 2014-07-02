@@ -26,6 +26,14 @@ trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
    * @return True if a normaliziation is possible, false otherwise
    */
   def applicable (formula : Term, status : Int) : Boolean
+
+  /**
+   * Marks a status for a formula as already normalized.
+   *
+   * @param status - Status of a formula
+   * @return New Status with raised flag
+   */
+  def markStatus(status : Int) : Int
 }
 
 /**

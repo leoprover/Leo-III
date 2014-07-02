@@ -1,15 +1,13 @@
 package leo.datastructures.blackboard.impl
 
+
+
 import leo.agents.{Task, Agent}
 import leo.datastructures.internal.{ Term => Formula }
-import scala.collection.mutable
-import scala.collection.mutable._
-import java.util.concurrent.locks.ReentrantLock
 import leo.datastructures.blackboard.scheduler.Scheduler
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
-import scala.concurrent.stm._
-import scala.Some
+import scala.collection.mutable.{Queue, Map => MMap}
 
 /**
  * Starting Blackboard. Just to replace @see{leoshell.FormulaHandle}
@@ -25,7 +23,7 @@ class SimpleBlackboard extends Blackboard {
   var DEBUG : Boolean = true
 
   // For each agent a List of Tasks to execute
-  protected[blackboard] val agentWork = new HashMap[Agent, mutable.Set[Task]] with SynchronizedMap[Agent, mutable.Set[Task]]
+
 
   // Scheduler ATM Here because accessibility in prototype version
   protected[blackboard] val _scheduler = Scheduler(5) // TODO somewhere else
@@ -51,8 +49,7 @@ class SimpleBlackboard extends Blackboard {
     write { formulas =>
       formulas put (formula.name, formula)
     }
-    agentWork.foreach {case (agent, tasks) => val nt = agent.filter(formula); if (nt.nonEmpty) nt.foreach(tasks.add(_))}
-
+    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
   }
 
   override def removeFormula(formula: FormulaStore): Boolean = rmFormulaByName(formula .name)
@@ -75,7 +72,7 @@ class SimpleBlackboard extends Blackboard {
    * Register a new Handler for Formula adding Handlers.
    * @param a - The Handler that is to register
    */
-  override def registerAgent(a : Agent) : Unit = agentWork.put(a, new mutable.HashSet[Task] with mutable.SynchronizedSet[Task])
+  override def registerAgent(a : Agent) : Unit = TaskSet.addAgent(a)
 
   /**
    * Used by Stores to mark a FormulaStore as Changed, if nothing
@@ -83,8 +80,15 @@ class SimpleBlackboard extends Blackboard {
    * @param f
    */
   override protected[blackboard] def emptyUpdate(f: FormulaStore) {
-    agentWork.foreach {case (agent, tasks) => val nt = agent.filter(f); if (nt.nonEmpty) nt.foreach(tasks.add(_))}
+    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(f))}
   }
+
+  /**
+   * Blocking Method to get a fresh Task.
+   *
+   * @return Not yet executed Task
+   */
+  override def getTask(): (Agent,Task) = TaskSet.getTask()
 }
 
 /**
@@ -103,7 +107,44 @@ private object FormulaSet {
    * distinct formula stores are used.
    */
 
-  def write[R](action: Map[String, FormulaStore] => R): R = action(formulaMap)
+  def write[R](action: MMap[String, FormulaStore] => R): R = action(formulaMap)
 
-  def read[R](action: Map[String, FormulaStore] => R): R = action(formulaMap)
-} 
+  def read[R](action: MMap[String, FormulaStore] => R): R = action(formulaMap)
+}
+
+private object TaskSet {
+  protected[blackboard] val agentWork = new Queue[(Agent,Task)]()
+  protected[blackboard] var regAgents = Set[Agent]()
+
+  private var work : Int = 0
+
+  def addAgent(a : Agent) {
+    this.synchronized(regAgents = regAgents + a)
+  }
+
+  def agents : List[Agent] = this.synchronized(regAgents.toList)
+
+  def addTasks(a : Agent, ts : Set[Task]) = this.synchronized {
+    try{
+      ts.foreach{t => agentWork.enqueue((a,t)); work += 1}
+      this.notifyAll()
+    } catch {
+      case e : InterruptedException => Thread.currentThread().interrupt()
+      case e : Exception => throw e
+    }
+  }
+
+  def getTask() : (Agent,Task) = this.synchronized{
+    while(true) {
+      try {
+        while (work == 0) this.wait()
+        work -= 1
+        return agentWork.dequeue()
+      } catch {
+        case e: InterruptedException => Thread.currentThread().interrupt()
+        case e: Exception => throw e
+      }
+    }
+    null
+  }
+}

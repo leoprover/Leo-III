@@ -9,6 +9,9 @@ import leo.datastructures.blackboard._
 import leo.datastructures.internal._
 import leo.datastructures.internal.Term._
 import LeoShell._
+import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.agents.impl._
+import leo.modules.normalization._
 
 /**
  * Addition commands for an interactive session with the sbt cosole.
@@ -103,12 +106,12 @@ object LeoShell {
    * Returns the formula with the given name in the context.
    * The formula is not ready to manipulate in parallel with this access.
    */
-  def get(s: String) : Term =
+  def get(s: String) : FormulaStore =
     Blackboard().getFormulaByName(s).
     getOrElse{
       println(s"There is no formula named '$s'.")
       null
-    }.formula
+    }
 
   def exit() = System.exit(0)
 
@@ -175,5 +178,7 @@ object LeoShell {
 
   def negNormal(f : Term) : Term = NegationNormal.normalize(f)
 }
+
+
 
 
