@@ -4,6 +4,24 @@ package impl
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
 
+object NormalClauseAgent {
+  import leo.modules.normalization._
+  def SimplificationAgent {
+    (new NormalClauseAgent(Simplification)).register()
+  }
+
+  def NegationNormalAgent {
+    (new NormalClauseAgent(NegationNormal)).register()
+  }
+
+  def PrenexAgent {
+    (new NormalClauseAgent(PrenexNormal)).register()
+  }
+
+  def SkolemAgent {
+    (new NormalClauseAgent(Skolemization)).register()
+  }
+}
 
 /**
  *

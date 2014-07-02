@@ -108,20 +108,25 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class SchedulerRun extends Runnable {
     override def run(): Unit = while (true) {
       // Check Status TODO Try catch
-      this.synchronized{
-        if(pauseFlag) {               // If is paused wait
+      this.synchronized {
+        if (pauseFlag) {
+          // If is paused wait
           println("Scheduler paused.")
           this.wait()
           println("Scheduler is commencing.")
         }
-        if(endFlag) return            // If is ended quit
+        if (endFlag) return // If is ended quit
       }
-      // Blocks until a task is available
-      val (a,t) = Blackboard().getTask()
-      if(pauseFlag) this.wait()   // Check again, if waiting took to long
 
-      // Execute task
-      exe.submit(new GenAgent(a,t))
+      // Blocks until a task is available
+      val (a, t) = Blackboard().getTask()
+
+      this.synchronized {
+        if (pauseFlag) this.wait() // Check again, if waiting took to long
+
+        // Execute task
+        exe.submit(new GenAgent(a, t))
+      }
     }
   }
 

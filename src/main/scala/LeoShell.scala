@@ -11,7 +11,7 @@ import leo.datastructures.internal.Term._
 import LeoShell._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl._
-import leo.modules.normalization._
+import leo.agents.impl.NormalClauseAgent._
 
 /**
  * Addition commands for an interactive session with the sbt cosole.
