@@ -115,18 +115,18 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
             true match {
               case k.isTypeKind | k.isFunKind => {
                 val meta = TypeMeta(identifier, key, k)
-                metaMap += (key, meta)
+                metaMap += ((key, meta))
               }
               case _ => { // it is neither a base or funKind, then it's a super kind.
               val meta = TypeMeta(identifier, key, Type.superKind)
-                metaMap += (key, meta)
+                metaMap += ((key, meta))
               }
             }
             typeSet += key
           }
           case Some(Left(t:Type)) => { // Uninterpreted symbol
           val meta = UninterpretedMeta(identifier, key, t)
-            metaMap += (key, meta)
+            metaMap += ((key, meta))
             uiSet += key
           }
         }
@@ -135,7 +135,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       case Some(fed) => { // Defined
         val Left(ty) = typ.get
         val meta = DefinedMeta(identifier, key, Some(ty), fed)
-          metaMap += (key, meta)
+          metaMap += ((key, meta))
           definedSet += key
         }
     }
@@ -167,7 +167,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     keyMap += ((identifier, key))
 
     val meta = FixedMeta(identifier, key, typ)
-    metaMap += (key, meta)
+    metaMap += ((key, meta))
     fixedSet += key
   }
 
