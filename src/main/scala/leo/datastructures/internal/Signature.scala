@@ -175,7 +175,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   // Utility methods for constant symbols
   ///////////////////////////////
 
-  def meta(key: Key): Meta = try {metaMap(key)} catch {case e => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
+  def meta(key: Key): Meta = try {metaMap(key)} catch {case e:Throwable => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
   def meta(identifier: String): Meta = meta(keyMap(identifier))
 
   def empty = {

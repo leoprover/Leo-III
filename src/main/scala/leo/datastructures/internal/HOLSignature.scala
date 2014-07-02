@@ -166,7 +166,7 @@ trait HOLBinaryConnective extends Function2[Term, Term, Term] {
   override def apply(left: Term, right: Term): Term = mkTermApp(mkTermApp(mkAtom(key), left), right)
 
   def unapply(t: Term): Option[(Term,Term)] = t match {
-    case (Symbol(`key`) @@@ t1) @@@ t2 => Some(t1,t2)
+    case (Symbol(`key`) @@@ t1) @@@ t2 => Some((t1,t2))
     case _ => None
   }
 }
@@ -224,7 +224,7 @@ object === extends HOLBinaryConnective  { val key = 13
   }
 
   override def unapply(t: Term): Option[(Term,Term)] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some(t1,t2)
+    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
     case _ => None
   }
 }
@@ -250,7 +250,7 @@ object !=== extends HOLBinaryConnective  { val key = 28
   }
 
   override def unapply(t: Term): Option[(Term,Term)] = t match {
-    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some(t1,t2)
+    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
     case _ => None
   }
 }
@@ -299,7 +299,7 @@ object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
   }
 
   def unapply(t: Term): Option[(Term,Term, Term)] = t match {
-    case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some(t1,t2,t3)
+    case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some((t1,t2,t3))
     case _ => None
   }
 }

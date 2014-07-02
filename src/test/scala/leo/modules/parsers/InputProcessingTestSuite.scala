@@ -35,7 +35,7 @@ class InputProcessingTestSuite extends FunSuite {
             // do sth here
             assert(processed.size == formulae.size)
           } catch {
-            case e => e.printStackTrace(); {for (s <- sig.allConstants) {
+            case e: Throwable => e.printStackTrace(); {for (s <- sig.allConstants) {
               print(sig(s).key.toString + "\t\t")
               print(sig(s).name + "\t\t:\t")
               sig(s).ty.foreach({ case ty => print(ty.pretty)})
