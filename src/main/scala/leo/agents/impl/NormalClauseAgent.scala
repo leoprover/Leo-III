@@ -35,7 +35,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
         println("No change in Normalization.")
         return new StdResult(Set.empty, Map.empty, Set.empty)
       } else {
-        println("Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
+        println(norm.getClass.getName()+": Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
         return new StdResult(Set.empty, Map((fstore, fstore.newFormula(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
       }
     case _  => throw new IllegalArgumentException("Executing wrong task.")

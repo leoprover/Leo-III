@@ -163,7 +163,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
            if(results.isEmpty) this.wait()
            val r = results.head
            results.remove(r)
-           println("Took Result from Set.")
            return r
         } catch {
           // If got interrupted exception, restore status and continue
@@ -177,7 +176,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
     def put(r : Result) {
       results.add(r)        // Must not be synchronized, but maybe it should
-      println("Result is in set.")
       this.synchronized(this.notifyAll())
     }
   }
