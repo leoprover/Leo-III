@@ -1,6 +1,6 @@
 package leo.datastructures.internal
 
-import scala.collection.immutable.{HashSet, BitSet, IntMap, HashMap}
+import scala.collection.immutable.{BitSet, IntMap, HashMap}
 
 /**
  * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
@@ -28,17 +28,19 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   /** Case class for meta information for base types that are indexed in the signature */
   protected[internal] case class TypeMeta(identifier: String,
                                           index: Key,
-                                          k:  Kind,
-                                          typeRep: Option[Type]) extends Meta {
+                                          k:  Kind) extends Meta {
     def name = identifier
     def key = index
-    def symType = BaseType
-    /** Return type representation of the symbol */
-    def ty: Option[Type] = typeRep
+    def symType = if (k == TypeKind) {
+      BaseType
+    } else {
+      TypeConstructor
+    }
+    def ty: Option[Type] = None
     def kind: Option[Kind] = Some(k)
     def defn: Option[Term] = None
 
-    def hasType = true // Since we provide type representation
+    def hasType = false
     def hasKind = true
     def hasDefn = false
   }
@@ -111,17 +113,12 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
           case None => throw new IllegalArgumentException("Neither definition nor type was passed to addConstant0.")
           case Some(Right(k:Kind)) => { // Type
             true match {
-              case k.isTypeKind => {
-                val meta = TypeMeta(identifier, key, k, Some(Type.mkType(key)))
+              case k.isTypeKind | k.isFunKind => {
+                val meta = TypeMeta(identifier, key, k)
                 metaMap += (key, meta)
               }
-              case k.isFunKind => {
-                  throw new IllegalArgumentException("General constructors not yet supported")
-//                val meta = TypeMeta(identifier, key, k, Type.mkConstructorType(identifier))
-//                metaMap += (key, meta)
-              }
               case _ => { // it is neither a base or funKind, then it's a super kind.
-              val meta = TypeMeta(identifier, key, Type.superKind, None)
+              val meta = TypeMeta(identifier, key, Type.superKind)
                 metaMap += (key, meta)
               }
             }
@@ -178,8 +175,19 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   // Utility methods for constant symbols
   ///////////////////////////////
 
-  def meta(key: Key): Meta = metaMap(key)
+  def meta(key: Key): Meta = try {metaMap(key)} catch {case e => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
   def meta(identifier: String): Meta = meta(keyMap(identifier))
+
+  def empty = {
+    curConstKey = 0
+    keyMap = keyMap.empty
+    metaMap = metaMap.empty
+
+    typeSet = typeSet.empty
+    fixedSet = fixedSet.empty
+    definedSet = definedSet.empty
+    uiSet = uiSet.empty
+  }
 
   ///////////////////////////////
   // Dumping of indexed symbols
@@ -229,13 +237,18 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 
 
 object Signature {
-  private case object Nil extends Signature
+  private case class Nil() extends Signature
 
   /** Create an empty signature */
-  def empty: Signature = Nil
+  def empty: Signature = Nil()
 
   protected val globalSignature = withHOL(empty)
   def get = globalSignature
+
+  def resetWithHOL(sig: Signature): Signature = {
+    sig.empty
+    withHOL(sig)
+  }
 
   def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
   def apply(symbol: String): Signature#Meta = get.meta(symbol)

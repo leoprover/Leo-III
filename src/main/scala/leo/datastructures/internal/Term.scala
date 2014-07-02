@@ -117,6 +117,7 @@ object Term {
   def mkTermApp(func: Term, args: List[Term]): Term = args.foldLeft(func)((arg,f) => mkTermApp(arg,f))
   def mkTermAbs = AbstractionNode(_, _)
   def mkTypeApp = TypeApplicationNode(_,_)
+  def mkTypeApp(func: Term, args: List[Type]): Term = args.foldLeft(func)((arg,f) => mkTypeApp(arg,f))
   def mkTypeAbs = TypeAbstractionNode(_)
 
   // Pretty operators
@@ -141,6 +142,7 @@ object Term {
 
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
+  implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
 }
 
 /**
@@ -180,17 +182,19 @@ object Symbol {
  * Pattern for matching (term) applications in terms (i.e. terms of form `(s t)`). Usage:
  * {{{
  * t match {
- *  case s ::: t => println("Matched application. Left: " + s.pretty
+ *  case s @@@ t => println("Matched application. Left: " + s.pretty
  *                                            + " Right: " + t.pretty)
  *  case _       => println("something else")
  * }
  * }}}
  */
-object ::: {
-  def unapply(t: Term): Option[(Term,Term)] = t match {
+object @@@ extends HOLBinaryConnective {
+  val key = Integer.MIN_VALUE // just for fun!
+  override def unapply(t: Term): Option[(Term,Term)] = t match {
     case ApplicationNode(l,r) => Some(l,r)
     case _ => None
   }
+  override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
 }
 
 /**
@@ -203,7 +207,7 @@ object ::: {
  * }
  * }}}
  */
-object :::: {
+object @@@@ {
   def unapply(t: Term): Option[(Term,Type)] = t match {
     case TypeApplicationNode(l,r) => Some(l,r)
     case _ => None
@@ -220,11 +224,14 @@ object :::: {
  * }
  * }}}
  */
-object :::> {
+object :::> extends Function2[Type, Term, Term] {
   def unapply(t: Term): Option[(Type,Term)] = t match {
     case AbstractionNode(ty,body) => Some(ty,body)
     case _ => None
   }
+
+  /** Construct abstraction λty.body */
+  override def apply(ty: Type, body: Term): Term = Term.mkTermAbs(ty, body)
 }
 
 /**

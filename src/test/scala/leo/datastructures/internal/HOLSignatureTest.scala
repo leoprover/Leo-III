@@ -13,12 +13,12 @@ import org.scalatest.FunSuite
 @RunWith(classOf[JUnitRunner])
 class HOLSignatureTest extends FunSuite with HOLSignature {
   test("cardinality of fixed symbols") {
-    assert(fixedConsts.length == 8)
+    assert(fixedConsts.length == 14)
   }
   test("cardinality of defined symbols") {
-    assert(definedConsts.length == 8)
+    assert(definedConsts.length == 9)
   }
   test("cardinality of type symbols") {
-    assert(types.length == 3)
+    assert(types.length == 6)
   }
 }

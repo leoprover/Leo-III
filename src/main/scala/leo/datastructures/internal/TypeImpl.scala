@@ -34,6 +34,8 @@ protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
   def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = baseFunc(id)
 }
 
@@ -66,6 +68,8 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
   def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = boundFunc(scope)
 }
 
@@ -98,9 +102,72 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
   def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
-                  (forAllFunc: A => A) = absFunc(in.foldRight(baseFunc)(boundFunc)(absFunc)(forAllFunc),out.foldRight(baseFunc)(boundFunc)(absFunc)(forAllFunc))
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
+                  (forAllFunc: A => A) = absFunc(in.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),out.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
 }
 
+/** Product type `l * r` */
+protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
+  // Pretty printing
+  def pretty = "(" + l.pretty + " * " + r.pretty + ")"
+
+  // Predicates on types
+  override val isProdType          = true
+  def isApplicableWith(arg: Type) = false
+
+  // Queries on types
+  def typeVars = l.typeVars ++ r.typeVars
+
+  def funDomainType   = None
+  def funCodomainType = None
+
+  def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
+
+  // Substitutions
+  def substitute(what: Type, by: Type) = ProductTypeNode(l.substitute(what,by), r.substitute(what,by))
+
+  def instantiate(by: Type) = this
+
+  // Other operations
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
+                  (forAllFunc: A => A) = prodFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
+}
+
+/** Product type `l + r` */
+protected[internal] case class UnionTypeNode(l: Type, r: Type) extends Type {
+  // Pretty printing
+  def pretty = "(" + l.pretty + " + " + r.pretty + ")"
+
+  // Predicates on types
+  override val isUnionType        = true
+  def isApplicableWith(arg: Type) = false
+
+  // Queries on types
+  def typeVars = l.typeVars ++ r.typeVars
+
+  def funDomainType   = None
+  def funCodomainType = None
+
+  def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
+
+  // Substitutions
+  def substitute(what: Type, by: Type) = UnionTypeNode(l.substitute(what,by), r.substitute(what,by))
+
+  def instantiate(by: Type) = this
+
+  // Other operations
+  def foldRight[A](baseFunc: Signature#Key => A)
+                  (boundFunc: Int => A)
+                  (absFunc: (A,A) => A)
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
+                  (forAllFunc: A => A) = unionFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
+}
 
 /**
  * Type of a polymorphic function
@@ -137,7 +204,9 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
   def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
-                  (forAllFunc: A => A) = forAllFunc(body.foldRight(baseFunc)(boundFunc)(absFunc)(forAllFunc))
+                  (prodFunc: (A,A) => A)
+                  (unionFunc: (A,A) => A)
+                  (forAllFunc: A => A) = forAllFunc(body.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
 }
 
 

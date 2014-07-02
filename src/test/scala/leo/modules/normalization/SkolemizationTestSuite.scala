@@ -17,7 +17,7 @@ class SkolemizationTestSuite extends FunSuite {
   val p = mkAtom(s.addUninterpreted("t", s.o ->: s.o ->: s.o ->: s.o))
   val r = mkAtom(s.addUninterpreted("u", s.i ->: s.o))
   val t = mkAtom(s.addUninterpreted("v", s.i ->: s.i ->: s.o))
-  val q = mkAtom(s.addUninterpreted("q1", (s.i ->: s.i) ->: s.o))
+  val q = mkAtom(s.addUninterpreted("q1", s.i ->: s.i ->: s.o))
 
 
   def eqa(t : Term, s : Term) = mkTermApp(mkTermApp(mkAtom(10),t),s)

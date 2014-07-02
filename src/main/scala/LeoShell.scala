@@ -3,7 +3,6 @@
 import java.io.FileNotFoundException
 import java.io.File
 
-import scala.util.parsing.input.CharArrayReader
 import leo.modules.normalization.{Simplification, NegationNormal}
 import leo.datastructures.blackboard._
 import leo.datastructures.internal._

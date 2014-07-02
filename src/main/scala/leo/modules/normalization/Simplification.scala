@@ -95,8 +95,8 @@ object Simplification extends AbstractNormalize{
     }
 
       // Pass through unimportant structures
-    case s ::: t    => Term.mkTermApp(norm(s),norm(t))  // Should not happen after beta normalize, unless s is irreduceable
-    case s :::: ty  => Term.mkTypeApp(norm(s), ty)
+    case s @@@ t    => Term.mkTermApp(norm(s),norm(t))  // Should not happen after beta normalize, unless s is irreduceable
+    case s @@@@ ty  => Term.mkTypeApp(norm(s), ty)
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))
     case _  => formula

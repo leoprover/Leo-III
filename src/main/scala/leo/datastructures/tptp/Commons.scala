@@ -80,7 +80,7 @@ object Commons {
   case class Var(name: Variable) extends Term {
     override def toString = name.toString
   }
-  case class Number(value: Double) extends Term {
+  case class NumberTerm(value: Number) extends Term {
     override def toString = value.toString
   }
   case class Distinct(data: String) extends Term {
@@ -93,6 +93,11 @@ object Commons {
   case class Let(let: tff.LetBinding, in: Term) extends Term // Let used by TFF only
 
   type Variable = String
+
+  sealed abstract class Number
+  case class IntegerNumber(value: Integer) extends Number
+  case class DoubleNumber(value: Double) extends Number
+  case class RationalNumber(p: Integer, q: Integer) extends Number
 
   // System terms
 
@@ -123,7 +128,7 @@ object Commons {
   case class GVar(gVar: Variable) extends GeneralData {
     override def toString = gVar.toString
   }
-  case class GNumber(gNumber: Double) extends GeneralData {
+  case class GNumber(gNumber: Number) extends GeneralData {
     override def toString = gNumber.toString
   }
   case class GDistinct(data: String) extends GeneralData {

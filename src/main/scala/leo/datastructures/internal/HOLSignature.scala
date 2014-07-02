@@ -1,7 +1,7 @@
 package leo.datastructures.internal
 
 import Type.{typeKind, typeVarToType,superKind}
-import Term.{mkAtom,mkBound,mkTermAbs,mkTermApp,mkTypeAbs}
+import Term.{mkAtom,mkTermApp,mkTermAbs, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
@@ -30,45 +30,68 @@ trait HOLSignature {
   val iKey = 2
   val i = Type.mkType(iKey)
 
+  val realKey = 3
+  val real = Type.mkType(realKey)
+
+  val ratKey = 4
+  val rat = Type.mkType(ratKey)
+
+  val intKey = 5
+  val int = Type.mkType(intKey)
+
+  val letKey = 14
+  val iteKey = 15
+
   // Don't change the order of the elements in this lists.
   // If you do so, you may need to update the Signature implementation.
 
   // Built-in types
   val types = List(("$tType", superKind), // Key 0
     ("$o", typeKind), // Key 1
-    ("$i", typeKind)) // Key 2
+    ("$i", typeKind), // Key 2
+    ("$real", typeKind), // key 3
+    ("$rat", typeKind), // Key 4
+    ("$int", typeKind)) // Key 5
 
   // Fixed symbols
   import Type.{mkPolyType => forall}
-  lazy val fixedConsts = List(("$true", o), // Key 3
-    ("$false",                        o), // Key 4
-    ("#box",                    o ->: o), // Key 5
-    ("#diamond",                o ->: o), // Key 6
-    ("~",                       o ->: o), // Key 7
-    ("!",        forall((1 ->: o) ->: o)), // Key 8
-    ("|",                 o ->: o ->: o), // Key 9
-    ("=",        forall(1 ->: 1 ->: o))) // Key 10
+  lazy val fixedConsts = List(("$true", o), // Key 6
+    ("$false",                        o), // Key 7
+    ("#box",                    o ->: o), // Key 8
+    ("#diamond",                o ->: o), // Key 9
+    ("~",                       o ->: o), // Key 10
+    ("!",        forall((1 ->: o) ->: o)), // Key 11
+    ("|",                 o ->: o ->: o), // Key 12
+    ("=",        forall(1 ->: 1 ->: o)), // Key 13
+    ("$$let",    forall(forall(2 ->: 1 ->: 1))), // Key 14
+    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1)),  // Key 15
+    ("$less",    forall(1 ->: 1 ->: o)), // Key 16
+    ("$lesseq",   forall(1 ->: 1 ->: o)), // Key 17
+    ("$greater",  forall(1 ->: 1 ->: o)), // Key 18
+    ("$greatereq",forall(1 ->: 1 ->: o))) // Key 19
 
   // Standard defined symbols
-  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 11
-    ("&",   andDef,  o ->: o ->: o), // Key 12
-    ("=>",  implDef, o ->: o ->: o), // Key 13
-    ("<=",  ifDef,   o ->: o ->: o), // Key 14
-    ("<=>", iffDef,  o ->: o ->: o), // Key 15
-    ("~&", nandDef,  o ->: o ->: o), // Key 16
-    ("~|",  norDef,  o ->: o ->: o), // Key 17
-    ("<~>",niffDef,  o ->: o ->: o)) // Key 18
+  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 20
+    ("&",   andDef,  o ->: o ->: o), // Key 21
+    ("=>",  implDef, o ->: o ->: o), // Key 22
+    ("<=",  ifDef,   o ->: o ->: o), // Key 23
+    ("<=>", iffDef,  o ->: o ->: o), // Key 24
+    ("~&", nandDef,  o ->: o ->: o), // Key 25
+    ("~|",  norDef,  o ->: o ->: o), // Key 26
+    ("<~>",niffDef,  o ->: o ->: o), // Key 27
+    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 28
 
   // Shorthands for later definitions
-  private def not = mkAtom(7)
-  private def all = mkAtom(8)
-  private def disj = mkAtom(9)
-  private def conj = mkAtom(12)
-  private def impl = mkAtom(13)
-  private def lpmi = mkAtom(14)
+  private def not = mkAtom(10)
+  private def all = mkAtom(11)
+  private def disj = mkAtom(12)
+  private def conj = mkAtom(21)
+  private def impl = mkAtom(22)
+  private def lpmi = mkAtom(23)
+  private def eq = mkAtom(13)
 
   // Definitions for default symbols
-  protected def existsDef: Term = mkTypeAbs(
+  protected def existsDef: Term = Λ(
     mkTermAbs(1 ->: o,
       mkTermApp(not,
         mkTermApp(all,
@@ -105,16 +128,16 @@ trait HOLSignature {
 
   protected def nandDef: Term = mkTermAbs(o,
     mkTermAbs(o,
-        mkTermApp(
-          mkTermApp(disj, mkTermApp(not, (2, o))),
-          mkTermApp(not, (1, o)))))
+      mkTermApp(
+        mkTermApp(disj, mkTermApp(not, (2, o))),
+        mkTermApp(not, (1, o)))))
 
   protected def norDef: Term = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(not,
         mkTermApp(
           mkTermApp(disj, (2, o)),
-                          (1, o)))))
+          (1, o)))))
 
   protected def niffDef: Term = mkTermAbs(o,
     mkTermAbs(o,
@@ -125,10 +148,14 @@ trait HOLSignature {
           mkTermApp(
             mkTermApp(lpmi, (2, o)), (1, o))))))
 
-  // Implicits for better readability: Convert tuples of bound term variables and types / bound term and type variables
-  // to according terms.
-  implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2, in._1)
-  implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2, in._1)
+  protected def neqDef: Term = Λ(
+    mkTermAbs(1,
+      mkTermAbs(1,
+        mkTermApp(not,
+          mkTermApp(
+            mkTermApp(eq,
+              (2, 1)),
+              (1, 1))))))
 }
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
@@ -139,7 +166,7 @@ trait HOLBinaryConnective extends Function2[Term, Term, Term] {
   override def apply(left: Term, right: Term): Term = mkTermApp(mkTermApp(mkAtom(key), left), right)
 
   def unapply(t: Term): Option[(Term,Term)] = t match {
-    case (Symbol(`key`) ::: t1) ::: t2 => Some(t1,t2)
+    case (Symbol(`key`) @@@ t1) @@@ t2 => Some(t1,t2)
     case _ => None
   }
 }
@@ -156,7 +183,7 @@ trait HOLUnaryConnective extends Function1[Term, Term] {
   override def apply(arg: Term): Term = mkTermApp(mkAtom(key), arg)
 
   def unapply(t: Term): Option[Term] = t match {
-    case (Symbol(`key`) ::: t1) => Some(t1)
+    case (Symbol(`key`) @@@ t1) => Some(t1)
     case _ => None
   }
 }
@@ -188,33 +215,92 @@ object HOLConstant {
 ////////////////////////////////////////
 
 /** HOL disjunction */
-object ||| extends HOLBinaryConnective  { val key = 9 }
+object ||| extends HOLBinaryConnective  { val key = 12 }
 /** HOL equality */
-object === extends HOLBinaryConnective  { val key = 10 }
-/** HOL conjunction */
-object & extends HOLBinaryConnective    { val key = 12 }
-/** HOL implication */
-object Impl extends HOLBinaryConnective { val key = 13 }
-/** HOL if (reverse implication) */
-object <= extends HOLBinaryConnective   { val key = 14 }
-/** HOL iff */
-object <=> extends HOLBinaryConnective  { val key = 15 }
-/** HOL negated conjunction */
-object ~& extends HOLBinaryConnective   { val key = 16 }
-/** HOL negated disjunction */
-object ~||| extends HOLBinaryConnective { val key = 17 }
-/** HOL negated iff */
-object <~> extends HOLBinaryConnective  { val key = 18 }
+object === extends HOLBinaryConnective  { val key = 13
+  override def apply(left:Term, right: Term) = {
+    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
+    mkTermApp(mkTermApp(instantiated, left), right)
+  }
 
-/** HOL forall */
-object Forall extends HOLUnaryConnective { val key = 8 }
-/** HOL exists */
-object Exists extends HOLUnaryConnective { val key = 11 }
+  override def unapply(t: Term): Option[(Term,Term)] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some(t1,t2)
+    case _ => None
+  }
+}
+/** HOL conjunction */
+object & extends HOLBinaryConnective    { val key = 21 }
+/** HOL implication */
+object Impl extends HOLBinaryConnective { val key = 22 }
+/** HOL if (reverse implication) */
+object <= extends HOLBinaryConnective   { val key = 23 }
+/** HOL iff */
+object <=> extends HOLBinaryConnective  { val key = 24 }
+/** HOL negated conjunction */
+object ~& extends HOLBinaryConnective   { val key = 25 }
+/** HOL negated disjunction */
+object ~||| extends HOLBinaryConnective { val key = 26 }
+/** HOL negated iff */
+object <~> extends HOLBinaryConnective  { val key = 27 }
+/** HOL negated equality */
+object !=== extends HOLBinaryConnective  { val key = 28
+  override def apply(left:Term, right: Term) = {
+    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
+    mkTermApp(mkTermApp(instantiated, left), right)
+  }
+
+  override def unapply(t: Term): Option[(Term,Term)] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some(t1,t2)
+    case _ => None
+  }
+}
+
 /** HOL negation */
-object Not extends HOLUnaryConnective    { val key = 7 }
+object Not extends HOLUnaryConnective    { val key = 10 }
+/** HOL forall */
+object Forall extends HOLUnaryConnective { val key = 11
+  override def apply(arg: Term): Term = {
+    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    mkTermApp(instantiated, arg)
+  }
+
+  override def unapply(t: Term): Option[Term] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
+    case _ => None
+  }
+}
+/** HOL exists */
+object Exists extends HOLUnaryConnective { val key = 20
+  override def apply(arg: Term): Term = {
+    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    mkTermApp(instantiated, arg)
+  }
+
+  override def unapply(t: Term): Option[Term] = t match {
+    case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
+    case _ => None
+  }
+}
 
 /** HOL frue constant */
-object LitTrue extends HOLConstant      { val key = 3 }
+object LitTrue extends HOLConstant      { val key = 6 }
 /** HOL false constant */
-object LitFalse extends HOLConstant     { val key = 4 }
+object LitFalse extends HOLConstant     { val key = 7 }
+
+// other HOL connectives
+/** If-Then-Else combinator */
+object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
+  protected[IF_THEN_ELSE] val key = 15
+
+  override def apply(cond: Term, thn: Term, els: Term): Term = {
+    lazy val instantiated = mkTypeApp(mkAtom(key), thn.ty)
+
+    mkTermApp(mkTermApp(mkTermApp(instantiated, cond), thn), els)
+  }
+
+  def unapply(t: Term): Option[(Term,Term, Term)] = t match {
+    case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some(t1,t2,t3)
+    case _ => None
+  }
+}
 
