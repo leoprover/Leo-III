@@ -138,6 +138,7 @@ private object TaskSet {
     while(true) {
       try {
         while (work == 0) this.wait()
+        // TODO Check collsion
         work -= 1
         return agentWork.dequeue()
       } catch {

@@ -118,7 +118,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
       // Blocks until a task is available
       val (a,t) = Blackboard().getTask()
-      // TODO Check for Collision
+      if(pauseFlag) this.wait()   // Check again, if waiting took to long
+
+      // Execute task
       exe.submit(new GenAgent(a,t))
     }
   }
