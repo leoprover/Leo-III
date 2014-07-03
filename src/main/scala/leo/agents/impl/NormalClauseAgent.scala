@@ -5,21 +5,43 @@ import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
 
 object NormalClauseAgent {
+
+  private var simp : Agent = null;
+  private var neg : Agent = null;
+  private var prenex : Agent = null;
+  private var skolem : Agent = null;
+
   import leo.modules.normalization._
-  def SimplificationAgent () : Unit = {
-    (new NormalClauseAgent(Simplification)).register()
+  def SimplificationAgent () : Agent = {
+    if(simp == null) {
+      simp = new NormalClauseAgent(Simplification)
+      simp.register()
+    }
+    simp
   }
 
-  def NegationNormalAgent () : Unit = {
-    (new NormalClauseAgent(NegationNormal)).register()
+  def NegationNormalAgent () : Agent = {
+    if(neg == null) {
+      neg = new NormalClauseAgent(NegationNormal)
+      neg.register()
+    }
+    neg
   }
 
-  def PrenexAgent () : Unit =  {
-    (new NormalClauseAgent(PrenexNormal)).register()
+  def PrenexAgent () : Agent =  {
+    if(prenex == null) {
+      prenex = new NormalClauseAgent(PrenexNormal)
+      prenex.register()
+    }
+    prenex
   }
 
-  def SkolemAgent () : Unit =  {
-    (new NormalClauseAgent(Skolemization)).register()
+  def SkolemAgent () : Agent =  {
+    if(skolem == null) {
+      skolem = new NormalClauseAgent(Skolemization)
+      skolem.register()
+    }
+    skolem
   }
 }
 

@@ -1,8 +1,24 @@
 #!/bin/sh
 
-# First compile the project
-sbt compile
+classpath="target/scala-2.10/classes"
+compile=true
 
-# Insert classpath here
-# May get through 'sbt "show fullClasspath"'
-scala -classpath "target/scala-2.10/classes:/home/ryu/.ivy2/cache/org.scala-stm/scala-stm_2.10/jars/scala-stm_2.10-0.7.jar" -i src/main/scala/LeoShell.scala 
+# Check for not compile option
+while getopts ":r" opt; do
+   case $opt in
+      r)
+         compile=false
+         ;;
+      \?)
+         echo "Invalid optioin: -$OPTARG" >&2
+         exit -1
+   esac
+done
+
+# First compile the project
+if [ "$compile" = true ]
+then
+   sbt compile
+fi
+
+scala -classpath "$classpath" -i src/main/scala/LeoShell.scala 

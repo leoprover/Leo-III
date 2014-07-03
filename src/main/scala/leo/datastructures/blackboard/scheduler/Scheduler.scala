@@ -94,7 +94,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   var pauseFlag = true
   var endFlag = false
 
-  def pause() : Unit = s.synchronized(pauseFlag = true); println("Scheduler paused.")
+  def pause() : Unit = {s.synchronized(pauseFlag = true); println("Scheduler paused.")}
 
   protected[scheduler] def start() {
     println("Scheduler started.")
