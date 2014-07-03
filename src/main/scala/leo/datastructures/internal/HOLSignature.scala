@@ -260,7 +260,7 @@ object Not extends HOLUnaryConnective    { val key = 10 }
 /** HOL forall */
 object Forall extends HOLUnaryConnective { val key = 11
   override def apply(arg: Term): Term = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
     mkTermApp(instantiated, arg)
   }
 
@@ -272,7 +272,7 @@ object Forall extends HOLUnaryConnective { val key = 11
 /** HOL exists */
 object Exists extends HOLUnaryConnective { val key = 20
   override def apply(arg: Term): Term = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty)
+    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
     mkTermApp(instantiated, arg)
   }
 
