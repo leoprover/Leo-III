@@ -10,9 +10,6 @@ organization := "org.leo"
 
 fork := true
 
-// General compiler configuration
-scalaVersion := "2.11.1"
-
 scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint")
 
 // Console

@@ -157,7 +157,7 @@ object Term {
  */
 object Bound {
   def unapply(t: Term): Option[(Type, Int)] = t match {
-    case BoundNode(ty,scope) => Some(ty,scope)
+    case BoundNode(ty,scope) => Some((ty,scope))
     case _ => None
   }
 }
@@ -191,7 +191,7 @@ object Symbol {
 object @@@ extends HOLBinaryConnective {
   val key = Integer.MIN_VALUE // just for fun!
   override def unapply(t: Term): Option[(Term,Term)] = t match {
-    case ApplicationNode(l,r) => Some(l,r)
+    case ApplicationNode(l,r) => Some((l,r))
     case _ => None
   }
   override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
@@ -209,7 +209,7 @@ object @@@ extends HOLBinaryConnective {
  */
 object @@@@ {
   def unapply(t: Term): Option[(Term,Type)] = t match {
-    case TypeApplicationNode(l,r) => Some(l,r)
+    case TypeApplicationNode(l,r) => Some((l,r))
     case _ => None
   }
 }
@@ -226,7 +226,7 @@ object @@@@ {
  */
 object :::> extends Function2[Type, Term, Term] {
   def unapply(t: Term): Option[(Type,Term)] = t match {
-    case AbstractionNode(ty,body) => Some(ty,body)
+    case AbstractionNode(ty,body) => Some((ty,body))
     case _ => None
   }
 

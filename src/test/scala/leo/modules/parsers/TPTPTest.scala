@@ -18,7 +18,7 @@ object TPTPTest {
     fileTests
   }
 
-  def testruns {
+  def testruns() {
     // CNF
     println("#### Test on includeTest ####")
     runTestOn(includeTest)
@@ -49,7 +49,7 @@ object TPTPTest {
     println(parser.parse(input, parser.tptpFile))
   }
 
-  def fileTests {
+  def fileTests() {
     val files = new File("./tptp/syn").listFiles.filter(_.getName.endsWith(".p"))
     for (f <- files) {
       val source = Source.fromFile(f, "utf-8")

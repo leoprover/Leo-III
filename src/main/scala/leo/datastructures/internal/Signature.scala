@@ -115,18 +115,18 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
             true match {
               case k.isTypeKind | k.isFunKind => {
                 val meta = TypeMeta(identifier, key, k)
-                metaMap += (key, meta)
+                metaMap += ((key, meta))
               }
               case _ => { // it is neither a base or funKind, then it's a super kind.
               val meta = TypeMeta(identifier, key, Type.superKind)
-                metaMap += (key, meta)
+                metaMap += ((key, meta))
               }
             }
             typeSet += key
           }
           case Some(Left(t:Type)) => { // Uninterpreted symbol
           val meta = UninterpretedMeta(identifier, key, t)
-            metaMap += (key, meta)
+            metaMap += ((key, meta))
             uiSet += key
           }
         }
@@ -135,12 +135,25 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       case Some(fed) => { // Defined
         val Left(ty) = typ.get
         val meta = DefinedMeta(identifier, key, Some(ty), fed)
-          metaMap += (key, meta)
+          metaMap += ((key, meta))
           definedSet += key
         }
     }
 
     key
+  }
+
+  def addDefinition(key: Key, defn: Term) = {
+    metaMap.get(key) match {
+      case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty => {
+        val newMeta = DefinedMeta(meta.name, key, Some(meta._ty), defn)
+        metaMap += ((key, newMeta))
+        definedSet += key
+        uiSet -= key
+        key
+      }
+      case _ => key
+    }
   }
 
   def remove(key: Key): Boolean = {
@@ -167,7 +180,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     keyMap += ((identifier, key))
 
     val meta = FixedMeta(identifier, key, typ)
-    metaMap += (key, meta)
+    metaMap += ((key, meta))
     fixedSet += key
   }
 
@@ -175,7 +188,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   // Utility methods for constant symbols
   ///////////////////////////////
 
-  def meta(key: Key): Meta = try {metaMap(key)} catch {case e => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
+  def meta(key: Key): Meta = try {metaMap(key)} catch {case e:Throwable => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
   def meta(identifier: String): Meta = meta(keyMap(identifier))
 
   def empty = {

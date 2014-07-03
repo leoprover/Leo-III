@@ -15,7 +15,7 @@ object Numerals {
   type Church = Term
 
   /** The zero in church numeral representation */
-  def zero: Church = Λ(λ(1 ->: 1,1)(1,1))
+  def zero: Church = Λ(λ(1 ->: 1,1)((1,1)))
 
   /** The successor function for church numerals */
   def succ: Term = λ(∀((1 ->: 1) ->: 1 ->: 1))(
