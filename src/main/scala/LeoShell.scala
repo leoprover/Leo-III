@@ -53,28 +53,51 @@ object LeoShell {
     }
   }
 
+  def cd() : Unit = pwd = new File(".").getCanonicalPath
+
   def cd(to : String) : Unit = {
     if(to.startsWith("/")){
-      pwd = to
-      return
+      val f = new File(to)
+      if(f != null || !f.isDirectory) {
+        pwd = to
+      } else {
+        println(s"'$to' is not a directory")
+      }
+    } else {
+     val toL = to.split("/")
+     cdRek(pwd, toL) match {
+       case Left(x) => pwd = x
+       case Right(err) => println(err)
+     }
     }
+  }
+
+  private def cdRek(from : String, to : Seq[String]) : Either[String, String] = {
+    if(to.isEmpty) Left(from)
+    else {
+      cdRekStep(from, to.head) match {
+        case Left(from1) => cdRek(from1, to.tail)
+        case Right(err) => Right(err)
+      }
+    }
+  }
+
+  private def cdRekStep(from : String, to : String) : Either[String, String] = {
     if (to == ".."){
-      pwd = pwd.split("/").init.mkString("/")
+      return Left(from.split("/").init.mkString("/"))
     } else {
       var to1 = to
       if (to.last == '/') to1.init
-      for (file <- (new File(pwd)).listFiles()) {
+      for (file <- (new File(from)).listFiles()) {
         if (file.getName == to1) {
           if (file.isDirectory) {
-            pwd = pwd + "/" + to1
-            return
+            return Left(from + "/" + to1)
           } else {
-            println("The file '" + to1 + "' is not a directory.")
-            return
+            return Right(s"The file '$to1' is not a directory.")
           }
         }
       }
-      println("No such directory '" + to1 + "'.")
+      return Right(s"No such directory '$to1'.")
     }
   }
 
@@ -158,7 +181,7 @@ object LeoShell {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed.foreach {case (name,form,role) => Blackboard().addFormula(name,form)}
+        processed.foreach {case (name,form,role) => if(role != "definition" && role != "type") Blackboard().addFormula(name,form)}
       case Left(err) =>
         println(s"'$s' is not a valid formula: $err")
     }
@@ -194,6 +217,17 @@ object LeoShell {
     val maxNameSize = 25
     val maxRoleSize = 0 //15
     val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
+
+    println("Signature:")
+    val s = Signature.get
+    for(c <- s.allConstants) {
+      val c1 = s(c)
+      print(c1.name+" | ")
+      print(c1.key+" | ")
+      c1.ty foreach {case ty => print(ty.pretty + " | ")}
+      c1.defn foreach {case defn => print(defn.pretty)}
+      println()
+    }
 
     println("Name" + " "*(maxNameSize-4) +  " | Formula")
     println("-"*maxSize)
