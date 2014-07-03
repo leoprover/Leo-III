@@ -78,7 +78,20 @@ object InputProcessing {
     input.formula match {
       case Logical(lf) if input.role == "definition" => {
                                                           val (defName, defDef) = processTHFDef(sig)(lf)
-                                                          sig.addDefined(defName, defDef, defDef.ty)
+                                                          if (sig.exists(defName)) {
+                                                            val meta = sig(defName)
+                                                            if (meta.isUninterpreted && meta._ty == defDef.ty) {
+                                                              sig.addDefinition(meta.key, defDef)
+                                                            } else {
+                                                              println("Old type: " + meta._ty.pretty)
+                                                              println("Symbol: " + defName)
+                                                              println("Def:" +defDef.pretty)
+                                                              println("Type of def: "+defDef.ty.pretty)
+                                                              throw new IllegalArgumentException("Symbol "+defName + " already defined; incompatible re-definition.")
+                                                            }
+                                                          } else {
+                                                            sig.addDefined(defName, defDef, defDef.ty)
+                                                          }
                                                           None
                                                         }
       case Logical(Typed(Term(Func(atom, _)),ty)) if input.role == "type" => {
@@ -97,7 +110,7 @@ object InputProcessing {
   protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): (String, Term) = {
     import leo.datastructures.tptp.thf.{Binary, Term, Eq}
     input match {
-      case Binary(Term(Func(name, Seq())), Eq, right) => (name, processTHF0(sig)(input, noRep))
+      case Binary(Term(Func(name, Seq())), Eq, right) => (name, processTHF0(sig)(right, noRep))
       case _                                        => throw new IllegalArgumentException("Malformed thf definition: "+input.toString)
     }
   }
