@@ -135,7 +135,7 @@ object InputProcessing {
         mkPolyQuantified(quantifier, processedVars, processTHF0(sig)(matrix, newReplaces))
       }
       case Connective(c) => c.fold(processTHFBinaryConn(_),processTHFUnaryConn(_))
-      case Term(t) => processTerm(sig)(t, replaces)
+      case Term(t) => processTerm(sig)(t, replaces, false)
       case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
       case Subtype(left,right) => ???
       case Cond(c, thn, els) => {
@@ -298,7 +298,7 @@ object InputProcessing {
   protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, Term) = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep))  // TODO Is this the right term to construct equalities in tff?
+      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
       case _ => throw new IllegalArgumentException("Malformed definition")
     }
   }
@@ -322,11 +322,11 @@ object InputProcessing {
       }
       case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
       case Inequality(left, right) => {
-        val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
+        val (l,r) = (processTerm(sig)(left, replaces, false),processTerm(sig)(right, replaces, false))
         import leo.datastructures.internal.{===, Not}
         Not(===(l,r))
       }
-      case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
+      case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces, false)
       case Cond(cond, thn, els) => {
         import leo.datastructures.internal.IF_THEN_ELSE
         IF_THEN_ELSE(processTFF0(sig)(cond, replaces),processTFF0(sig)(thn, replaces),processTFF0(sig)(els, replaces))
@@ -460,7 +460,7 @@ object InputProcessing {
       }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Inequality(left,right) => {
-        val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
+        val (l,r) = (processTermArgs(sig)(left, replaces),processTermArgs(sig)(right, replaces))
         import leo.datastructures.internal.{!===}
         !===(l,r)
       }
@@ -514,10 +514,23 @@ object InputProcessing {
   ////////////////////////////
   // Common 'term' processing
   ////////////////////////////
-  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces): Term = input match {
+
+  def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
     case Func(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace))
-      if (sig.exists(name)) {
+      val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
+      if (sig.exists(name) || !adHocDefs) {
+        mkTermApp(mkAtom(sig(name).key), converted)
+      } else {
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.i))), converted)
+      }
+    }
+    case other => processTerm(sig)(other, replace, adHocDefs)
+  }
+
+  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+    case Func(name, vars) => {
+      val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
+      if (sig.exists(name) || !adHocDefs) {
         mkTermApp(mkAtom(sig(name).key), converted)
       } else {
         mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.o))), converted)
@@ -525,11 +538,11 @@ object InputProcessing {
 
     }
     case DefinedFunc(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace))
+      val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key), converted)
     }
     case SystemFunc(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace))
+      val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key), converted)
     }
     case Var(name) => replace._1.get(name) match {
@@ -571,18 +584,18 @@ object InputProcessing {
                             }
     case Cond(cond, thn, els) => {
       import leo.datastructures.internal.IF_THEN_ELSE
-      IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace),processTerm(sig)(els, replace))
+      IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace, adHocDefs),processTerm(sig)(els, replace, adHocDefs))
     }
     case Let(binding, in) => ???
   }
 
-  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces): Term = input match {
-    case Plain(func) => processTerm(sig)(func, replace)
-    case DefinedPlain(func) => processTerm(sig)(func, replace)
-    case SystemPlain(func) => processTerm(sig)(func, replace)
+  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+    case Plain(func) => processTerm(sig)(func, replace,adHocDefs)
+    case DefinedPlain(func) => processTerm(sig)(func, replace, adHocDefs)
+    case SystemPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case Equality(left,right) => {
       import leo.datastructures.internal.===
-      ===(processTerm(sig)(left, replace),processTerm(sig)(right, replace))
+      ===(processTermArgs(sig)(left, replace, adHocDefs),processTermArgs(sig)(right, replace, adHocDefs))
     }
   }
 
