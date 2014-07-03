@@ -12,6 +12,8 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl._
 import leo.agents.impl.NormalClauseAgent._
 
+import scala.util.matching.Regex
+
 /**
  * Addition commands for an interactive session with the sbt cosole.
  *
@@ -20,6 +22,58 @@ import leo.agents.impl.NormalClauseAgent._
  * productive environment.
  */
 object LeoShell {
+
+  var pwd : String = new File(".").getCanonicalPath
+
+  def ls() : Unit = {
+    for (file <- new File(pwd).listFiles()) {
+      if(!file.getName.startsWith(".")) {
+        if(file.isDirectory){
+          println(file.getName+"/")
+        } else {
+          println(file.getName)
+        }
+      }
+    }
+  }
+
+  def ls(regex : String) : Unit = {
+    val reg = new Regex(regex)
+    for (file <- new File(pwd).listFiles()) {
+      if(!file.getName.startsWith(".") && reg.findFirstIn(file.getName).nonEmpty) {
+        if(file.isDirectory){
+          println(file.getName+"/")
+        } else {
+          println(file.getName)
+        }
+      }
+    }
+  }
+
+  def cd(to : String) : Unit = {
+    if(to.startsWith("/")){
+      pwd = to
+      return
+    }
+    if (to == ".."){
+      pwd = pwd.split("/").init.mkString("/")
+    } else {
+      var to1 = to
+      if (to.last == '/') to1.init
+      for (file <- (new File(pwd)).listFiles()) {
+        if (file.getName == to1) {
+          if (file.isDirectory) {
+            pwd = pwd + "/" + to1
+            return
+          } else {
+            println("The file '" + to1 + "' is not a directory.")
+            return
+          }
+        }
+      }
+      println("No such directory '" + to1 + "'.")
+    }
+  }
 
 //  For the time beeing, we have no parser.
 //  Comment in, iff it is written
