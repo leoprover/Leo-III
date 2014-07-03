@@ -1,7 +1,6 @@
 // IMPORTANT : Keep the unused imports for loading in the Shell Project
 
-import java.io.FileNotFoundException
-import java.io.File
+
 
 import leo.modules.normalization.{Simplification, NegationNormal}
 import leo.datastructures.blackboard._
@@ -12,7 +11,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl._
 import leo.agents.impl.NormalClauseAgent._
 
-import scala.util.matching.Regex
+
 
 /**
  * Addition commands for an interactive session with the sbt cosole.
@@ -22,6 +21,8 @@ import scala.util.matching.Regex
  * productive environment.
  */
 object LeoShell {
+  import java.io.FileNotFoundException
+  import java.io.File
 
   var pwd : String = new File(".").getCanonicalPath
 
@@ -38,6 +39,8 @@ object LeoShell {
   }
 
   def ls(regex : String) : Unit = {
+    import scala.util.matching.Regex
+
     val reg = new Regex(regex)
     for (file <- new File(pwd).listFiles()) {
       if(!file.getName.startsWith(".") && reg.findFirstIn(file.getName).nonEmpty) {
@@ -78,73 +81,88 @@ object LeoShell {
 //  For the time beeing, we have no parser.
 //  Comment in, iff it is written
 
-//  /**
-//   * List of currently loaded tptp files
-//   */
-//  private val loadedSet = collection.mutable.Set.empty[String]
-//
-//  /**
-//   * Loads a tptp file and saves the formulas in the context.
-//   */
-//  def load(file: String): Unit = {
-//    if (file.charAt(0) != '/') {
-//      val pwd = new File(".").getCanonicalPath
-//      loadRelative(file, pwd.split('/'))
-//    } else {
-//      val pwd = file.split('/')
-//      loadRelative(pwd.last, pwd.init)
-//    }
-//  }
-//
-//  private def loadRelative(file : String, rel : Array[String]): Unit = {
-//    val (fileAbs, path) = newPath(rel, file)
-//    if (!loadedSet(fileAbs)) {
-//      try {
-//        val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-//        val input = new CharArrayReader(source.toArray)
-//        val parsed = TPTP.parseFile(input)
-//
-//        parsed match {
-//          case Left(x) =>
-//            println("Parse error in file " + fileAbs + ": " + x)
-//          case Right(x) =>
-//            x.getFormulae foreach SimpleBlackboard.addFormula
-//            println("Loaded " + fileAbs)
-//            loadedSet += fileAbs
-//            x.getIncludes.foreach(x => loadRelative(x._1, path))
-//        }
-//        source.close()
-//      } catch {
-//        case ex : FileNotFoundException =>
-//          println(s"'$fileAbs' does not exist.")
-//      }
-//    }
-//  }
-//
-//  /**
-//   * Returns the new absolute Path and the absolute directory
-//   *
-//   * @param oldDir - Old absolute Path to directory
-//   * @param relPath - relative path to new file
-//   */
-//  private def newPath(oldDir : Array[String], relPath : String) : (String, Array[String]) = {
-//    val relSplit  = relPath.split('/')
-//    val path = oldDir.take(oldDir.length - relSplit.count(_ == ".."))
-//    val absPath = path ++ relSplit.dropWhile(x => x == "..")
-//    (absPath.mkString("/"), absPath.init)
-//  }
-//
-//  /**
-//   * Parses and adds a TPTP formula.
-//   */
-//  def add(s: String): Unit = {
-//    TPTP.parseFormula(s) match {
-//      case Right(a) =>
-//        add(a);
-//      case Left(err) =>
-//        println(s"'$s' is not a valid formula: $err")
-//    }
-//  }
+  /**
+   * List of currently loaded tptp files
+   */
+  private val loadedSet = collection.mutable.Set.empty[String]
+
+  /**
+   * Loads a tptp file and saves the formulas in the context.
+   */
+  def load(file: String): Unit = {
+    if (file.charAt(0) != '/') {
+      // Relative load
+      val pwd1 = pwd
+      loadRelative(file, pwd.split('/'))
+    } else {
+      // Absolute load
+      val pwd = file.split('/')
+      loadRelative(pwd.last, pwd.init)
+    }
+  }
+
+  private def loadRelative(file : String, rel : Array[String]): Unit = {
+    import scala.util.parsing.input.CharArrayReader
+    import leo.modules.parsers.TPTP
+    import leo.modules.parsers.InputProcessing
+
+
+    val (fileAbs, path) = newPath(rel, file)
+    if (!loadedSet(fileAbs)) {
+      try {
+        val source = scala.io.Source.fromFile(fileAbs, "utf-8")
+        val input = new CharArrayReader(source.toArray)
+        val parsed = TPTP.parseFile(input)
+        source.close()    // Close at this point. Otherwise we would have many files open with many includes.
+
+        parsed match {
+          case Left(x) =>
+            println("Parse error in file " + fileAbs + ": " + x)
+          case Right(x) =>
+            loadedSet += fileAbs
+            x.getIncludes.foreach(x => loadRelative(x._1, path))
+            println("Loaded " + fileAbs)
+            val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
+            processed foreach { case (name, form, role) =>
+              Blackboard().addFormula(name, form)
+            }
+        }
+
+      } catch {
+        case ex : FileNotFoundException =>
+          println(s"'$fileAbs' does not exist.")
+      }
+    }
+  }
+
+  /**
+   * Returns the new absolute Path and the absolute directory
+   *
+   * @param oldDir - Old absolute Path to directory
+   * @param relPath - relative path to new file
+   */
+  private def newPath(oldDir : Array[String], relPath : String) : (String, Array[String]) = {
+    val relSplit  = relPath.split('/')
+    val path = oldDir.take(oldDir.length - relSplit.count(_ == ".."))
+    val absPath = path ++ relSplit.dropWhile(x => x == "..")
+    (absPath.mkString("/"), absPath.init)
+  }
+
+  /**
+   * Parses and adds a TPTP formula.
+   */
+  def add(s: String): Unit = {
+    import leo.modules.parsers.TPTP
+    import leo.modules.parsers.InputProcessing
+
+    TPTP.parseFormula(s) match {
+      case Right(a) =>
+        val processed = InputProcessing.process(Signature.get)(a)
+        processed.foreach {case (name,form,role) => Blackboard().addFormula(name,form)}
+      case Left(err) =>
+        println(s"'$s' is not a valid formula: $err")
+    }
+  }
 
   /**
    * Adds a Formula to the Blackboard
@@ -200,7 +218,8 @@ object LeoShell {
    */
   def clear(): Unit = {
     Blackboard().rmAll(_ => true)
-//    loadedSet.clear()
+    loadedSet.clear()
+    Signature.resetWithHOL(Signature.get)
   }
 
   /**
