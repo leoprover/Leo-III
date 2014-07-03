@@ -49,6 +49,9 @@ abstract class Term extends Pretty {
   protected[internal] def instantiate(scope: Int, by: Type): Term
 
   // Other operations
+  /** Returns true iff the term is well-typed. */
+  def typeCheck: Boolean
+
   /** Return the β-nf of the term */
   def betaNormalize: Term
   /** Alias for `betaNormalize` */

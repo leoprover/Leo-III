@@ -28,6 +28,8 @@ class DAGTermSet {
     val isTermAbs: Boolean = false
     val isTermApp: Boolean = false
     val isAtom: Boolean = false
+
+    def typeCheck = true
   }
   case class SymbolNode(key: Signature#Key) extends DAGNode {
     def pretty = Signature(key).name
