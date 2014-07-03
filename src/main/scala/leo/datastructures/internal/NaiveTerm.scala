@@ -40,6 +40,8 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
   def instantiate(scope: Int, by: Type) = this
 
   // Other operations
+  def typeCheck = true
+
   def betaNormalize = this
 
   def foldRight[A](symFunc: Signature#Key => A)
@@ -82,6 +84,8 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
 
 
   // Other operations
+  def typeCheck = true
+
   def betaNormalize = this
 
   def foldRight[A](symFunc: Signature#Key => A)
@@ -112,6 +116,8 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   def instantiate(scope: Int, by: Type) = AbstractionNode(absType.substitute(BoundTypeNode(scope),by),term.instantiate(scope,by))
 
    // Other operations
+  def typeCheck = term.typeCheck
+
   def betaNormalize = AbstractionNode(absType, term.betaNormalize)
 
   def foldRight[A](symFunc: Signature#Key => A)
@@ -145,6 +151,8 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   def instantiate(scope: Int, by: Type) = ApplicationNode(left.instantiate(scope,by), right.instantiate(scope,by))
 
   // Other operations
+  def typeCheck = left.ty.isFunType && left.ty._funDomainType == right.ty
+
   def betaNormalize = {
     val leftNF = left.betaNormalize
     val rightNF = right.betaNormalize
@@ -183,6 +191,8 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
   def inc(scopeIndex: Int) = TypeAbstractionNode(term.inc(scopeIndex))
   def instantiate(scope: Int, by: Type) = TypeAbstractionNode(term.instantiate(scope+1,by))
   // Other operations
+  def typeCheck = term.typeCheck
+
   def betaNormalize = TypeAbstractionNode(term.betaNormalize)
 
   def foldRight[A](symFunc: Signature#Key => A)
@@ -214,6 +224,8 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
   def instantiate(scope: Int, by: Type) = TypeApplicationNode(left.instantiate(scope,by), right.substitute(BoundTypeNode(scope),by))
   // Other operations
+  def typeCheck = left.ty.isPolyType && left.typeCheck
+
   def betaNormalize = {
     val leftNF = left.betaNormalize
 

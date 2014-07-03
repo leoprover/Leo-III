@@ -9,6 +9,7 @@ import java.io.File
 import scala.util.parsing.input.CharArrayReader
 import scala.io.Source._
 import leo.datastructures.internal.Signature
+import org.scalatest.exceptions.TestFailedException
 
 @RunWith(classOf[JUnitRunner])
 class InputProcessingTestSuite extends FunSuite {
@@ -46,8 +47,24 @@ class InputProcessingTestSuite extends FunSuite {
           val formulae = res.getFormulae
           try {
             val processed = InputProcessing.processAll(sig)(formulae)
-            // do sth here
+
             assert(processed.size == formulae.size)
+            try {
+              assert(processed.forall(_._2.typeCheck))
+            } catch {
+              case e:TestFailedException => {
+                for (t <- processed) {
+                  if (!t._2.typeCheck) {
+                    println("Name: " + t._1)
+                    println("Term: " + t._2)
+                    println("Pretty: " + t._2.pretty)
+                    println("Type: " + t._2.ty)
+                    println("Pretty: " + t._2.ty.pretty)
+                  }
+                }
+                throw e
+              }
+            }
           } catch {
             case e: Throwable => e.printStackTrace(); {for (s <- sig.allConstants) {
               print(sig(s).key.toString + "\t\t")
