@@ -10,6 +10,7 @@ import LeoShell._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl._
 import leo.agents.impl.NormalClauseAgent._
+import leo.agents.impl.UtilAgents._
 
 
 
@@ -24,10 +25,12 @@ object LeoShell {
   import java.io.FileNotFoundException
   import java.io.File
 
-  var pwd : String = new File(".").getCanonicalPath
+  private var _pwd : String = new File(".").getCanonicalPath
+
+  def pwd() = _pwd
 
   def ls() : Unit = {
-    for (file <- new File(pwd).listFiles()) {
+    for (file <- new File(_pwd).listFiles()) {
       if(!file.getName.startsWith(".")) {
         if(file.isDirectory){
           println(file.getName+"/")
@@ -42,7 +45,7 @@ object LeoShell {
     import scala.util.matching.Regex
 
     val reg = new Regex(regex)
-    for (file <- new File(pwd).listFiles()) {
+    for (file <- new File(_pwd).listFiles()) {
       if(!file.getName.startsWith(".") && reg.findFirstIn(file.getName).nonEmpty) {
         if(file.isDirectory){
           println(file.getName+"/")
@@ -53,20 +56,20 @@ object LeoShell {
     }
   }
 
-  def cd() : Unit = pwd = new File(".").getCanonicalPath
+  def cd() : Unit = _pwd = new File(".").getCanonicalPath
 
   def cd(to : String) : Unit = {
     if(to.startsWith("/")){
       val f = new File(to)
-      if(f != null || !f.isDirectory) {
-        pwd = to
+      if(f != null && f.isDirectory) {
+        _pwd = to
       } else {
         println(s"'$to' is not a directory")
       }
     } else {
      val toL = to.split("/")
-     cdRek(pwd, toL) match {
-       case Left(x) => pwd = x
+     cdRek(_pwd, toL) match {
+       case Left(x) => _pwd = x
        case Right(err) => println(err)
      }
     }
@@ -86,7 +89,7 @@ object LeoShell {
     if (to == ".."){
       return Left(from.split("/").init.mkString("/"))
     } else {
-      var to1 = to
+      val to1 = to
       if (to.last == '/') to1.init
       for (file <- (new File(from)).listFiles()) {
         if (file.getName == to1) {
@@ -115,8 +118,7 @@ object LeoShell {
   def load(file: String): Unit = {
     if (file.charAt(0) != '/') {
       // Relative load
-      val pwd1 = pwd
-      loadRelative(file, pwd.split('/'))
+      loadRelative(file, _pwd.split('/'))
     } else {
       // Absolute load
       val pwd = file.split('/')
@@ -147,7 +149,7 @@ object LeoShell {
             println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) =>
-              Blackboard().addFormula(name, form)
+              Blackboard().addFormula(name, form, role)
             }
         }
 
@@ -181,7 +183,7 @@ object LeoShell {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed.foreach {case (name,form,role) => if(role != "definition" && role != "type") Blackboard().addFormula(name,form)}
+        processed.foreach {case (name,form,role) => if(role != "definition" && role != "type") Blackboard().addFormula(name,form,role)}
       case Left(err) =>
         println(s"'$s' is not a valid formula: $err")
     }
@@ -189,12 +191,15 @@ object LeoShell {
 
   /**
    * Adds a Formula to the Blackboard
-   * @param s
+   * @param name - Name of the formula
+   * @param s - The term
    */
-  def add(name : String, s : Term): Unit = {
-    Blackboard().addFormula(name, s)
+  def add(name : String, s : Term, role : String): Unit = {
+    Blackboard().addFormula(name, s, role)
     println("Added "+name+"='$s' to the context.")
   }
+
+  def add(name : String, s : Term) : Unit = add(name, s, "plain")
 
   /**
    * Returns the formula with the given name in the context.
@@ -213,9 +218,9 @@ object LeoShell {
    * Shows all formulas in the current context.
    */
   def context(): Unit = {
-    val maxSize = 80
+    val maxSize = 85
     val maxNameSize = 25
-    val maxRoleSize = 0 //15
+    val maxRoleSize = 19
     val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
 
     println("Signature:")
@@ -229,20 +234,20 @@ object LeoShell {
       println()
     }
 
-    println("Name" + " "*(maxNameSize-4) +  " | Formula")
+    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula")
     println("-"*maxSize)
     Blackboard().getFormulas.foreach {
       x =>
         val name = x.name.toString.take(maxNameSize)
-        //val role = x.role.toString.take(maxRoleSize)
+        val role = x.role.toString.take(maxRoleSize)
         val form = x.formula.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
         val nameOffset = maxNameSize - name.length
-//        val roleOffset = maxRoleSize - role.length
-        println(name + " " * nameOffset + " | " +  form1)
-        form2.foreach(x => println(" " * maxNameSize + " | "  + x))
+        val roleOffset = maxRoleSize - role.length
+        println(name + " " * nameOffset + " | " + role + " " * roleOffset + " | " +  form1)
+        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
       }
     println()
   }
@@ -267,22 +272,13 @@ object LeoShell {
   }
 
 
-//  /**
-//   * Parse a TPTP Formula.
-//   */
-//  def parse(s : String): AnnotatedFormula = {
-//    TPTP.parseFormula(s) match {
-//      case Right(x) => x
-//      case Left(err)   =>
-//        println(s"'$s' is not a valid formula: $err")
-//        null
-//    }
-//  }
-
-
   def simplify(f : Term) : Term = Simplification.normalize(f)
 
   def negNormal(f : Term) : Term = NegationNormal.normalize(f)
+
+  def run() : Unit = Scheduler().signal()
+
+  def pause() : Unit = Scheduler().pause()
 }
 
 
