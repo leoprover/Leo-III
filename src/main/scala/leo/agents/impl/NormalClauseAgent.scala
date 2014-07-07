@@ -10,6 +10,7 @@ object NormalClauseAgent {
   private var neg : Agent = null;
   private var prenex : Agent = null;
   private var skolem : Agent = null;
+  private var defExp : Agent = null;
 
   import leo.modules.normalization._
   def SimplificationAgent () : Agent = {
@@ -42,6 +43,14 @@ object NormalClauseAgent {
       skolem.register()
     }
     skolem
+  }
+
+  def DefExpansionAgent () : Agent =  {
+    if(defExp == null) {
+      defExp = new NormalClauseAgent(DefExpansion)
+      defExp.register()
+    }
+    defExp
   }
 }
 

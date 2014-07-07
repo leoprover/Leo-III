@@ -39,9 +39,10 @@ object Store {
  *   </thead>
  *   <tbody>
  *     <tr><th>1.</th><th> Term is simplified </th></tr>
- *     <tr><th>2.</th><th> Term is in Negation Normal Form </th></tr>
- *     <tr><th>3.</th><th> Term is Skolemized </th></tr>
- *     <tr><th>4.</th><th> Term is in PrenexNormalform </th></tr>
+ *     <tr><th>2.</th><th> Term is def expanded </th></tr>
+ *     <tr><th>3.</th><th> Term is in Negation Normal Form </th></tr>
+ *     <tr><th>4.</th><th> Term is Skolemized </th></tr>
+ *     <tr><th>5.</th><th> Term is in PrenexNormalform </th></tr>
  *   </tbody>
  * </table>
  *

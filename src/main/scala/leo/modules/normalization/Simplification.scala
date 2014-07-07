@@ -147,7 +147,7 @@ object Simplification extends AbstractNormalize{
   }
 
   /**
-   * If the status has the first Bit set, the term is simplified.
+   * If the status has the first Bit not set, the term is simplified.
    */
   override def applicable(formula: Term, status : Int): Boolean = (status & 1) == 0
 
