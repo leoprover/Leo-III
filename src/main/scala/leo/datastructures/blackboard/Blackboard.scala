@@ -135,4 +135,9 @@ trait Blackboard {
    * @param t - The task that was finished.
    */
   protected[blackboard] def finishTask(t : Task)
+
+  /**
+   * Clears the complete blackboard
+   */
+  def clear() : Unit
 }
