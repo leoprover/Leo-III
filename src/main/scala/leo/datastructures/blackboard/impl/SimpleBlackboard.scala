@@ -86,6 +86,11 @@ class SimpleBlackboard extends Blackboard {
   override def getTask(): (Agent,Task) = TaskSet.getTask()
 
   override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
+
+  override def clear() : Unit = {
+    rmAll(_ => true)
+    TaskSet.clear()
+  }
 }
 
 /**
@@ -117,6 +122,11 @@ private object TaskSet {
   protected[blackboard] val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
 
   private var work : Int = 0
+
+  def clear() : Unit = {
+    agentWork.clear()
+    work = 0
+  }
 
   def addAgent(a : Agent) {
     this.synchronized(regAgents = regAgents + a)

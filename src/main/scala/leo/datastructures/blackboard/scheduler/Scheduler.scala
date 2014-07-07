@@ -60,6 +60,8 @@ trait Scheduler {
    */
   def pause() : Unit
 
+  def clear() : Unit
+
   protected[scheduler] def start()
 }
 
@@ -83,6 +85,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private val s : SchedulerRun = new SchedulerRun()
   private val w : Writer = new Writer()
 
+  protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
+
   def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
 
 //  def toWork(a : Agent) : Unit = exe.submit(new Runnable {
@@ -95,6 +99,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   var endFlag = false
 
   def pause() : Unit = {s.synchronized(pauseFlag = true); println("Scheduler paused.")}
+
+  def clear() : Unit = {
+    pause()
+    exe.shutdownNow()
+    curExec.clear()
+  }
 
   protected[scheduler] def start() {
     println("Scheduler started.")
@@ -120,6 +130,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
       // Blocks until a task is available
       val (a, t) = Blackboard().getTask()
+      curExec.add(t)
 
       this.synchronized {
         if (pauseFlag) this.wait() // Check again, if waiting took to long
@@ -136,10 +147,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class Writer extends Runnable{
     override def run(): Unit = while(true) {
       val (result,task) = ExecTask.get()
-      Blackboard().finishTask(task)
-      result.newFormula().foreach(Blackboard().addFormula(_))
-      result.removeFormula().foreach(Blackboard().removeFormula(_))
-      result.updateFormula().foreach{case (oldF,newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
+      if(curExec.contains(task)) {
+        curExec.remove(task)
+        Blackboard().finishTask(task)
+        result.newFormula().foreach(Blackboard().addFormula(_))
+        result.removeFormula().foreach(Blackboard().removeFormula(_))
+        result.updateFormula().foreach { case (oldF, newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
+      }
     }
   }
 

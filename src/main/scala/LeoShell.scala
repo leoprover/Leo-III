@@ -256,7 +256,7 @@ object LeoShell {
    * Deletes all formulas from the current context.
    */
   def clear(): Unit = {
-    Blackboard().rmAll(_ => true)
+    Blackboard().clear()
     loadedSet.clear()
     Signature.resetWithHOL(Signature.get)
   }
