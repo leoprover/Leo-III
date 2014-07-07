@@ -26,6 +26,7 @@ object UtilAgents {
 
   def StdAgents() : Unit = {
     NormalClauseAgent.SimplificationAgent()
+    NormalClauseAgent.DefExpansionAgent()
     NormalClauseAgent.NegationNormalAgent()
 //    NormalClauseAgent.SkolemAgent()
 //    NormalClauseAgent.PrenexAgent()

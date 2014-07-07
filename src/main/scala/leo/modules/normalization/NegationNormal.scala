@@ -63,12 +63,12 @@ object NegationNormal extends AbstractNormalize{
   }
 
   /**
-   * Checks if the staus bit 1 is raised and the second is not
+   * Checks if status bits 1,2 are raised and the third is not
    *
    * @param formula - Formula to be checked
    * @return True if a normaliziation is possible, false otherwise
    */
-  override def applicable(formula: Term, status : Int): Boolean = (status & 3) == 1
+  override def applicable(formula: Term, status : Int): Boolean = (status & 7) == 3
 
-  override def markStatus(status : Int) : Int = status | 3
+  override def markStatus(status : Int) : Int = status | 7
 }

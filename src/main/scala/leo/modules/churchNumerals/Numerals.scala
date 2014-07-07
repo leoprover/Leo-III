@@ -105,6 +105,8 @@ object Numerals {
     sig.addDefined("add", add, add.ty)
     sig.addDefined("mult", mult, mult.ty)
     sig.addDefined("power", power, power.ty)
+    sig.addDefined("ten", fromInt(10), zero.ty)
+    sig.addDefined("hundred", fromInt(100), zero.ty)
   }
 }
 

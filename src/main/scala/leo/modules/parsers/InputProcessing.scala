@@ -31,6 +31,9 @@ object InputProcessing {
   type TypeVarReplaces = Map[Variable, (Kind, Int)]
   type Replaces = (TermVarReplaces, TypeVarReplaces)
   def noRep: Replaces = (Map.empty, Map.empty)
+
+  type TypeOrKind = Either[Type, Kind]
+  type ProcessedVar = (Variable, TypeOrKind)
   /**
    * Assumptions:
    * - To guarantee coherence, the processing is invoked in the right order (i.e. included files are parsed an processed before all
@@ -124,18 +127,32 @@ object InputProcessing {
       case Unary(conn, f) => processTHFUnaryConn(conn).apply(processTHF0(sig)(f, replaces))
       case Quantified(q, vars, matrix) => {
         val quantifier = processTHFUnaryConn(q)
+        var newReplaces = replaces
+
+        // Fold through the variables to propagate bindings trough variable list
+        // and save bindings to `newReplaces` for body conversion
         val processedVars = vars.map(_ match {
-          case (name, None) => (name, Left(sig.i)) // $i is assumed when no type is given
-          case (name, Some(ty)) => (name, convertTHFType(sig)(ty, replaces))
-        })
-        val newReplaces = processedVars.foldRight(replaces)({case (vari,repl) => vari match {
-          case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
-          case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
-        }})
+          case (name, None) => {
+            newReplaces = (newReplaces._1.+((name, (sig.i, newReplaces._1.size+1))), newReplaces._2)
+            (name, Left(sig.i))
+          }
+          case (name, Some(ty)) => convertTHFType(sig)(ty, newReplaces) match {
+            case Left(t) => {
+              newReplaces = (newReplaces._1.+((name, (t, newReplaces._1.size+1))), newReplaces._2)
+              (name, Left(t))
+            }
+            case Right(k) => {
+              newReplaces = (newReplaces._1, newReplaces._2.+((name, (k, newReplaces._2.size+1))))
+              (name, Right(k))
+            }
+          }
+
+          })
+
         mkPolyQuantified(quantifier, processedVars, processTHF0(sig)(matrix, newReplaces))
       }
       case Connective(c) => c.fold(processTHFBinaryConn(_),processTHFUnaryConn(_))
-      case Term(t) => processTerm(sig)(t, replaces)
+      case Term(t) => processTerm(sig)(t, replaces, false)
       case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
       case Subtype(left,right) => ???
       case Cond(c, thn, els) => {
@@ -200,7 +217,7 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): Either[Type, Kind] = {
+  protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
     import leo.datastructures.tptp.thf.{Quantified, Term, BinType}
 
     typ match {
@@ -214,7 +231,7 @@ object InputProcessing {
               case (name, Some(ty)) => (name, convertTHFType(sig)(ty, replaces))
             })
             require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
-            val newReplaces = processedVars.foldRight(replaces)({case (vari,repl) => vari match {
+            val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
               case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
               case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
             }})
@@ -230,9 +247,10 @@ object InputProcessing {
         t match {
           case Func(ty, List()) => mkType(sig(ty).key) // Base type
 //          case Func(ty, args)   => ???
+          case DefinedFunc(ty, List()) if ty == "$tType" =>  typeKind // kind *
           case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type
           case SystemFunc(ty, List()) =>  mkType(sig(ty).key) // system type
-          case Var(name) =>  mkVarType(replaces._2.size - replaces._2(name)._2)
+          case Var(name) =>  mkVarType(replaces._2.size - replaces._2(name)._2 + 1)
           case _ => throw new IllegalArgumentException("malformed/unsupported term type expression: "+typ.toString)
         }
       }
@@ -298,7 +316,7 @@ object InputProcessing {
   protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, Term) = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep))  // TODO Is this the right term to construct equalities in tff?
+      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
       case _ => throw new IllegalArgumentException("Malformed definition")
     }
   }
@@ -310,23 +328,36 @@ object InputProcessing {
       case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left,replaces),processTFF0(sig)(right,replaces))
       case Quantified(q, vars, matrix) => {
         val quantifier = processTFFUnary(q)
+        var newReplaces = replaces
+
+        // Fold through the variables to propagate bindings trough variable list
+        // and save bindings to `newReplaces` for body conversion
         val processedVars = vars.map(_ match {
-          case (name, None) => (name, Left(sig.i)) // $i is assumed when no type is given
-          case (name, Some(ty)) => (name, convertTFFType(sig)(ty, replaces))
+          case (name, None) => {
+            newReplaces = (newReplaces._1.+((name, (sig.i, newReplaces._1.size+1))), newReplaces._2)
+            (name, Left(sig.i))
+          }
+          case (name, Some(ty)) => convertTFFType(sig)(ty, newReplaces) match {
+            case Left(t) => {
+              newReplaces = (newReplaces._1.+((name, (t, newReplaces._1.size+1))), newReplaces._2)
+              (name, Left(t))
+            }
+            case Right(k) => {
+              newReplaces = (newReplaces._1, newReplaces._2.+((name, (k, newReplaces._2.size+1))))
+              (name, Right(k))
+            }
+          }
+
         })
-        val newReplaces = processedVars.foldRight(replaces)({case (vari,repl) => vari match {
-          case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
-          case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
-        }})
         mkPolyQuantified(quantifier, processedVars, processTFF0(sig)(matrix, newReplaces))
       }
       case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
       case Inequality(left, right) => {
-        val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
+        val (l,r) = (processTerm(sig)(left, replaces, false),processTerm(sig)(right, replaces, false))
         import leo.datastructures.internal.{===, Not}
         Not(===(l,r))
       }
-      case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
+      case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces, false)
       case Cond(cond, thn, els) => {
         import leo.datastructures.internal.IF_THEN_ELSE
         IF_THEN_ELSE(processTFF0(sig)(cond, replaces),processTFF0(sig)(thn, replaces),processTFF0(sig)(els, replaces))
@@ -378,7 +409,7 @@ object InputProcessing {
     import leo.datastructures.tptp.tff.{AtomicType,->,*,QuantifiedType}
     tffType match {
       // "AtomicType" constructs: Type variables, Base types, type kinds, or type/kind applications
-      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(replace._2.size - replace._2(ty)._2)  // Type Variable
+      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(replace._2.size - replace._2(ty)._2 + 1)  // Type Variable
       case AtomicType(ty, List()) if ty == "$tType" => typeKind // kind *
       case AtomicType(ty, List())  => mkType(sig.meta(ty).key)  // Base type
       case AtomicType(_, _) => throw new IllegalArgumentException("Processing of applied types not implemented yet") // TODO
@@ -405,7 +436,7 @@ object InputProcessing {
           case (name, Some(ty)) => (name, convertTFFType(sig)(ty, replace))
         })
         require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
-        val newReplaces = processedVars.foldRight(replace)({case (vari,repl) => vari match {
+        val newReplaces = processedVars.foldLeft(replace)({case (repl,vari) => vari match {
           case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
           case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
         }})
@@ -453,14 +484,14 @@ object InputProcessing {
       case Quantified(q, varList, matrix) => {
         val quantifier = processFOFUnary(q)
         val processedVars = varList.map((_, sig.i))
-        val newReplaces = processedVars.foldRight(replaces)({case (vari,repl) => vari match {
+        val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
           case (name, ty) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
         }})
         mkPolyQuantifiedFOF(quantifier, processedVars, processFOF0(sig)(matrix, newReplaces))
       }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Inequality(left,right) => {
-        val (l,r) = (processTerm(sig)(left, replaces),processTerm(sig)(right, replaces))
+        val (l,r) = (processTermArgs(sig)(left, replaces),processTermArgs(sig)(right, replaces))
         import leo.datastructures.internal.{!===}
         !===(l,r)
       }
@@ -514,10 +545,23 @@ object InputProcessing {
   ////////////////////////////
   // Common 'term' processing
   ////////////////////////////
-  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces): Term = input match {
+
+  def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
     case Func(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace))
-      if (sig.exists(name)) {
+      val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
+      if (sig.exists(name) || !adHocDefs) {
+        mkTermApp(mkAtom(sig(name).key), converted)
+      } else {
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.i))), converted)
+      }
+    }
+    case other => processTerm(sig)(other, replace, adHocDefs)
+  }
+
+  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+    case Func(name, vars) => {
+      val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
+      if (sig.exists(name) || !adHocDefs) {
         mkTermApp(mkAtom(sig(name).key), converted)
       } else {
         mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.o))), converted)
@@ -525,16 +569,16 @@ object InputProcessing {
 
     }
     case DefinedFunc(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace))
+      val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key), converted)
     }
     case SystemFunc(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace))
+      val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key), converted)
     }
     case Var(name) => replace._1.get(name) match {
       case None => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
-      case Some((ty, scope)) => mkBound(ty, replace._1.size - scope)
+      case Some((ty, scope)) => mkBound(ty, replace._1.size - scope +1)
     }
 
     case NumberTerm(value) => value match {
@@ -571,18 +615,18 @@ object InputProcessing {
                             }
     case Cond(cond, thn, els) => {
       import leo.datastructures.internal.IF_THEN_ELSE
-      IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace),processTerm(sig)(els, replace))
+      IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace, adHocDefs),processTerm(sig)(els, replace, adHocDefs))
     }
     case Let(binding, in) => ???
   }
 
-  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces): Term = input match {
-    case Plain(func) => processTerm(sig)(func, replace)
-    case DefinedPlain(func) => processTerm(sig)(func, replace)
-    case SystemPlain(func) => processTerm(sig)(func, replace)
+  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+    case Plain(func) => processTerm(sig)(func, replace,adHocDefs)
+    case DefinedPlain(func) => processTerm(sig)(func, replace, adHocDefs)
+    case SystemPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case Equality(left,right) => {
       import leo.datastructures.internal.===
-      ===(processTerm(sig)(left, replace),processTerm(sig)(right, replace))
+      ===(processTermArgs(sig)(left, replace, adHocDefs),processTermArgs(sig)(right, replace, adHocDefs))
     }
   }
 
@@ -590,8 +634,8 @@ object InputProcessing {
   // Utility
   ///////////
 
-  protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[(Variable, Either[Type, Kind])], body: Term): Term = {
-    def mkPolyHelper(a: (Variable, Either[Type, Kind]), b: Term): Term = a match {
+  protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[ProcessedVar], body: Term): Term = {
+    def mkPolyHelper(a: ProcessedVar, b: Term): Term = a match {
       case (_, Left(ty)) => q.apply(λ(ty)(b))
       case (_, Right(`typeKind`)) => Λ(b)
       case (_, Right(_))        => throw new IllegalArgumentException("Formalization of kinds other than * not yet implemented.")

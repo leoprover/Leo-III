@@ -125,12 +125,12 @@ object TPTPParsers extends TokenParsers with PackratParsers {
 
   // Connectives THF
   def thfQuantifier: Parser[Any] = (
-      folQuantifier
-    | elem(Lambda)
-    | elem(Exclamationmark) ~ elem(Arrow)
+      elem(Exclamationmark) ~ elem(Arrow)
     | elem(Questionmark) ~ elem(Star)
     | elem(Application) ~ elem(Plus)
     | elem(Application) ~ elem(Minus)
+    | elem(Lambda)
+    | folQuantifier
   )
 
   def thfPairConnective: Parser[Token] = (
@@ -356,13 +356,13 @@ object TPTPParsers extends TokenParsers with PackratParsers {
 
   def thfQuantifiedFormula: Parser[thf.Quantified] =
     thfQuantifier ~ elem(LeftBracket) ~ rep1sep(thfVariable, elem(Comma)) ~ elem(RightBracket) ~ elem(Colon) ~ thfUnitaryFormula ^^ {
-      case Exclamationmark           ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!,varList,matrix)
-      case Questionmark              ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?,varList,matrix)
-      case Lambda                    ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.^,varList,matrix)
       case (Exclamationmark ~ Arrow) ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!>,varList,matrix)
       case (Questionmark ~ Star)     ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?*,varList,matrix)
       case (Application ~ Plus)      ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.@+,varList,matrix)
       case (Application ~ Minus)     ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.@-,varList,matrix)
+      case Exclamationmark           ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.!,varList,matrix)
+      case Questionmark              ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.?,varList,matrix)
+      case Lambda                    ~ _ ~ varList ~ _ ~ _ ~ matrix => thf.Quantified(thf.^,varList,matrix)
     }
 
   def thfVariable: Parser[(Commons.Variable, Option[thf.LogicFormula])] =

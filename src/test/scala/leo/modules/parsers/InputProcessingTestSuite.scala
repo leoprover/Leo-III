@@ -17,7 +17,7 @@ class InputProcessingTestSuite extends FunSuite {
   val __TPTPPROBLEMPATH__ = "/home/lex/Downloads/TPTP-v6.0.0/Problems"
 
   val files = new File(__TPTPPROBLEMPATH__ +"/SYN").listFiles.filter(_.getName.endsWith(".p")).toSet
-  val blacklist: Set[File] = (files.filter(_.getName.contains("-")) ++
+  val blacklist: Set[File] = (files.filter(_.getName.contains("-")) ++ // exclude CNF at the moment
                               files.filter({
                                       case f =>
                                         Set("SYN000_2.p" // contains product types
@@ -31,6 +31,35 @@ class InputProcessingTestSuite extends FunSuite {
                                           , "SYN397^7.p" // contains imports
                                           , "SYN000=2.p" // we dont have all tptp defined symbols
                                           , "SYN000^2.p" // let not yet implemented
+                                          , "SYN045^7.p" // contains import BEGIN
+                                          , "SYN393^4.003.p"
+                                          , "SYN047^4.p"
+                                          , "SYN978^4.p"
+                                          , "SYN387^4.p"
+                                          , "SYN392^4.p"
+                                          , "SYN977^4.p"
+                                          , "SYN040^4.p"
+                                          , "SYN046^4.p"
+                                          , "SYN741^7.p"
+                                          , "SYN388^4.p"
+                                          , "SYN393^4.002.p"
+                                          , "SYN915^4.p"
+                                          , "SYN001^4.002.p"
+                                          , "SYN001^4.004.p"
+                                          , "SYN393^4.004.p"
+                                          , "SYN007^4.014.p"
+                                          , "SYN041^4.p"
+                                          , "SYN389^4.p"
+                                          , "SYN044^4.p"
+                                          , "SYN390^4.p"
+                                          , "SYN387^7.p"
+                                          , "SYN001^4.001.p"
+                                          , "SYN001^4.003.p"
+                                          , "SYN391^4.p"
+                                          , "SYN045^4.p"
+                                          , "SYN416^4.p"
+                                          , "SYN916^4.p"
+                                          , "SYN416^7.p" // contains import END
                                         ).contains(f.getName)}))
   val sig = Signature.get
 
