@@ -6,6 +6,7 @@ import leo.agents.{Task, Agent}
 import leo.datastructures.internal.{ Term => Formula }
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
+import scala.collection.mutable
 import scala.collection.mutable.{Queue, Map => MMap}
 
 /**
@@ -35,8 +36,8 @@ class SimpleBlackboard extends Blackboard {
     formulas get name
   }
 
-  override def addFormula(name : String, formula: Formula) {
-    addFormula(Store.apply(name, formula))
+  override def addFormula(name : String, formula: Formula, role : String) {
+    addFormula(Store.apply(name, formula, role))
   }
 
   override def addFormula(formula : FormulaStore) {
@@ -83,6 +84,8 @@ class SimpleBlackboard extends Blackboard {
    * @return Not yet executed Task
    */
   override def getTask(): (Agent,Task) = TaskSet.getTask()
+
+  override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
 }
 
 /**
@@ -107,8 +110,11 @@ private object FormulaSet {
 }
 
 private object TaskSet {
+  import scala.collection.mutable.HashSet
+
   protected[blackboard] val agentWork = new Queue[(Agent,Task)]()
   protected[blackboard] var regAgents = Set[Agent]()
+  protected[blackboard] val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
 
   private var work : Int = 0
 
@@ -134,12 +140,27 @@ private object TaskSet {
         while (work == 0) this.wait()
         // TODO Check collsion
         work -= 1
-        return agentWork.dequeue()
+        var w = agentWork.dequeue()
+        // As long as the task collide, we discard them (Updates will be written back and trigger the task anew)
+        while (collision(w._2)) {
+          while (work == 0) this.wait()
+          work -= 1
+          w = agentWork.dequeue()
+        }
+
+        execTasks.add(w._2)
+        return w
       } catch {
         case e: InterruptedException => Thread.currentThread().interrupt()
         case e: Exception => throw e
       }
     }
     null
+  }
+
+  private def collision(t : Task) : Boolean = execTasks.exists{e =>
+    !t.readSet().intersect(e.writeSet()).isEmpty ||
+    !e.readSet().intersect(t.writeSet()).isEmpty ||
+    !e.writeSet().intersect((t.writeSet())).isEmpty
   }
 }

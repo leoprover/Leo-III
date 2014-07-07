@@ -40,7 +40,7 @@ trait Blackboard {
    * </p>
    * @param formula to be added.
    */
-  def addFormula(name : String, formula : Formula)
+  def addFormula(name : String, formula : Formula, role : String)
 
   /**
    * <p>
@@ -129,4 +129,10 @@ trait Blackboard {
    */
   def getTask() : (Agent,Task)
 
+  /**
+   * Method to mark a Task as finished.
+   *
+   * @param t - The task that was finished.
+   */
+  protected[blackboard] def finishTask(t : Task)
 }

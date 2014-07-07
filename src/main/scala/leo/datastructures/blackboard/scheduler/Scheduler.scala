@@ -135,7 +135,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class Writer extends Runnable{
     override def run(): Unit = while(true) {
-      val result = ExecTask.get()
+      val (result,task) = ExecTask.get()
+      Blackboard().finishTask(task)
       result.newFormula().foreach(Blackboard().addFormula(_))
       result.removeFormula().foreach(Blackboard().removeFormula(_))
       result.updateFormula().foreach{case (oldF,newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
@@ -149,7 +150,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
-      ExecTask.put(a.run(t))
+      ExecTask.put(a.run(t),t)
     }
   }
 
@@ -160,9 +161,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private val results : mutable.Set[Result] = new mutable.HashSet[Result] with mutable.SynchronizedSet[Result]
+    private val results : mutable.Set[(Result,Task)] = new mutable.HashSet[(Result,Task)] with mutable.SynchronizedSet[(Result,Task)]
 
-    def get() : Result = this.synchronized {
+    def get() : (Result,Task) = this.synchronized {
       while (true) {
         try {
            if(results.isEmpty) this.wait()
@@ -179,8 +180,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       null  // Should never be reached
     }
 
-    def put(r : Result) {
-      results.add(r)        // Must not be synchronized, but maybe it should
+    def put(r : Result, t : Task) {
+      results.add((r,t))        // Must not be synchronized, but maybe it should
       this.synchronized(this.notifyAll())
     }
   }
