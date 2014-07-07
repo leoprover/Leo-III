@@ -3,7 +3,7 @@ package leo.datastructures.internal
 /**
  * Created by lex on 16.06.14.
  */
-class DAGTermSet {
+object DAGTermSet {
   abstract sealed class DAGNode extends Term {
     protected[internal] def inc(scopeIndex: Int): Term = ???
 
@@ -18,7 +18,7 @@ class DAGTermSet {
     // Substitutions
     def substitute(what: Term, by: Term): Term = ???
 
-    def freeVars: Set[Term] = ???
+    def freeVars: Set[Term] = Set.empty // TODO
 
     // Queries on terms
     def ty: Type = termTypes(this)
@@ -30,6 +30,8 @@ class DAGTermSet {
     val isAtom: Boolean = false
 
     def typeCheck = true
+
+    def expandDefinitions(rep: Int) = this
   }
   case class SymbolNode(key: Signature#Key) extends DAGNode {
     def pretty = Signature(key).name
@@ -42,18 +44,26 @@ class DAGTermSet {
   case class TermAbstractionNode(absTy: Type, body: DAGNode) extends DAGNode {
     def pretty = "[λ:"+ absTy.pretty +". " + body.pretty + "]"
     override val isTermAbs = true
+
+    override def typeCheck = body.typeCheck
   }
   case class TermApplicationNode(left: DAGNode, right: DAGNode) extends DAGNode {
     def pretty = "(" + left.pretty + " " + right.pretty + ")"
     override val isTermApp = true
+
+    override def typeCheck = left.ty.isFunType && left.ty._funDomainType == right.ty && right.typeCheck
   }
   case class TypeAbstractionNode(body: DAGNode) extends DAGNode {
     def pretty = "[Λ." + body.pretty + "]"
     override val isTypeAbs = true
+
+    override def typeCheck  = body.typeCheck
   }
   case class TypeApplicationNode(left: DAGNode, right: Type) extends DAGNode {
     def pretty = "(" + left.pretty + " " + right.pretty + ")"
     override val isTypeApp = true
+
+    override def typeCheck = left.typeCheck
   }
 
   type Node = DAGNode

@@ -14,6 +14,11 @@ sealed abstract class NaiveTerm extends Term {
   val isTermAbs = false
   val isTypeApp = false
   val isTypeAbs = false
+
+  protected[internal] def decrementByOne(n: Int): Int = n match {
+    case -1 => -1
+    case  n => n-1
+  }
 }
 
 ///////////////////
@@ -50,6 +55,15 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
                   (appFunc: (A,A) => A)
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = symFunc(id)
+
+  def expandDefinitions(rep: Int) = rep match {
+    case 0 => this
+    case n => sym.defn match {
+      case None => this
+      case Some(defn) => defn.expandDefinitions(decrementByOne(n))
+    }
+  }
+
   // Pretty printing
   def pretty = sym.name
 }
@@ -94,6 +108,9 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
                   (appFunc: (A,A) => A)
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = boundFunc(t,scope)
+
+  def expandDefinitions(rep: Int) = this
+
   // Pretty printing
   def pretty = scope.toString
 }
@@ -126,6 +143,9 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
                   (appFunc: (A,A) => A)
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = absFunc(absType, term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
+
+  def expandDefinitions(rep: Int) = AbstractionNode(absType, term.expandDefinitions(rep))
+
   // Pretty printing
   def pretty = "[λ." + term.pretty + "]"
 }
@@ -170,6 +190,9 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = appFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc),
                                                        right.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
+
+  def expandDefinitions(rep: Int) = ApplicationNode(left.expandDefinitions(rep), right.expandDefinitions(rep))
+
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
@@ -201,6 +224,8 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
                   (appFunc: (A,A) => A)
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = tAbsFunc(term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
+
+  def expandDefinitions(rep: Int) = TypeAbstractionNode(term.expandDefinitions(rep))
 
   // Pretty printing
   def pretty = "[Λ." + term.pretty + "]"
@@ -241,6 +266,8 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
                   (appFunc: (A,A) => A)
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = tAppFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc), right)
+
+  def expandDefinitions(rep: Int) = TypeApplicationNode(left.expandDefinitions(rep), right)
 
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"

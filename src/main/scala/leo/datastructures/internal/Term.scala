@@ -65,42 +65,7 @@ abstract class Term extends Pretty {
              (tAbsFunc: A => A)
              (tAppFunc: (A, Type) => A): A
 
-  def expandDefinitions(rep: Int): Term = {
-    import Term.{mkAtom, mkBound, mkTermAbs, mkTermApp, mkTypeAbs, mkTypeApp}
-    val sig = Signature.get
-    def minus = {in: Int => in match {case -1 => -1 case a => a-1}}
-    rep match {
-      case 0 => this
-      case n => {
-        val sym: Signature#Key => Term
-        = { key =>
-          sig.meta(key).defn match {
-            case None => mkAtom(key)
-            case Some(defn) => defn.expandDefinitions(minus(rep))
-          }
-        }
-        val bound = mkBound(_, _)
-        val abs: (Type, Term) => Term
-        = { (ty, term) =>
-          mkTermAbs(ty, term.expandDefinitions(rep))
-        }
-        val app: (Term, Term) => Term
-        = { (left, right) =>
-          mkTermApp(left.expandDefinitions(rep), right.expandDefinitions(rep))
-        }
-        val tAbs: Term => Term
-        = { body =>
-          mkTypeAbs(body.expandDefinitions(rep))
-        }
-        val tApp: (Term, Type) => Term
-        = { (body, ty) =>
-          mkTypeApp(body.expandDefinitions(rep), ty)
-        }
-        foldRight(sym)(bound)(abs)(app)(tAbs)(tApp)
-
-      }
-    }
-  }
+  def expandDefinitions(rep: Int): Term
   def expandAllDefinitions = expandDefinitions(-1)
 
   protected[internal] def inc(scopeIndex: Int): Term
