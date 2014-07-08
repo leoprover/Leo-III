@@ -3,6 +3,7 @@
 
 
 import leo.modules.normalization.{Simplification, NegationNormal}
+import leo.modules.churchNumerals.Numerals
 import leo.datastructures.blackboard._
 import leo.datastructures.internal._
 import leo.datastructures.internal.Term._
@@ -258,6 +259,10 @@ object LeoShell {
   def clear(): Unit = {
     Blackboard().clear()
     loadedSet.clear()
+  }
+
+  /** Reset the signature to standard hol connectives */
+  def clearSignature(): Unit = {
     Signature.resetWithHOL(Signature.get)
   }
 
