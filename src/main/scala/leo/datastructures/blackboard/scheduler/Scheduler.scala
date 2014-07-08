@@ -45,6 +45,8 @@ object Scheduler {
 
 trait Scheduler {
 
+  def isTerminated() : Boolean
+
   /**
    * Terminate all working processes.
    */
@@ -85,7 +87,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private val s : SchedulerRun = new SchedulerRun()
   private val w : Writer = new Writer()
 
+  private var sT : Thread = null
+  private var sW : Thread = null
+
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
+
+  override def isTerminated() : Boolean = endFlag
 
   def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
 
@@ -95,13 +102,19 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def killAll() : Unit = s.synchronized{
     endFlag = true
+    pauseFlag = false
     ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
-    s.notifyAll()}
+    exe.shutdownNow()
+    sT.interrupt()
+    s.notifyAll()
+  }
 
   var pauseFlag = true
   var endFlag = false
 
-  def pause() : Unit = {s.synchronized(pauseFlag = true); println("Scheduler paused.")}
+  def pause() : Unit = {s.synchronized(pauseFlag = true);
+//    println("Scheduler paused.")
+  }
 
   def clear() : Unit = {
     pause()
@@ -110,9 +123,11 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   }
 
   protected[scheduler] def start() {
-    println("Scheduler started.")
-    new Thread(s).start()      // Start Scheduler
-    new Thread(w).start()      // Start writer
+//    println("Scheduler started.")
+    sT = new Thread(s)
+    sT.start()      // Start Scheduler
+    sW = new Thread(w)
+    sW.start()      // Start writer
   }
 
   /**
@@ -124,21 +139,21 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       this.synchronized {
         if (pauseFlag) {
           // If is paused wait
-          println("Scheduler paused.")
+//          println("Scheduler paused.")
           this.wait()
-          println("Scheduler is commencing.")
+//          println("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
       }
 
       // Blocks until a task is available
       val (a, t) = Blackboard().getTask()
-      curExec.add(t)
 
       this.synchronized {
         if (endFlag) return         // Savely exit
         if (pauseFlag) this.wait() // Check again, if waiting took to long
 
+        curExec.add(t)
         // Execute task
         exe.submit(new GenAgent(a, t))
       }

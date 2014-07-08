@@ -2,6 +2,7 @@ package leo
 
 import java.io.{File, FileNotFoundException}
 
+import leo.agents.impl.FinishedAgent
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
@@ -31,26 +32,12 @@ object Main {
 
     // Initializing Blackboard
     StdAgents()
+    (new FinishedAgent(timeout)).register()
 
     load(path)
 
     Scheduler().signal()
-    delayKill(timeout)
   }
-
-  def delayKill(t : Int) : Unit  = new Thread(new Runnable {
-    override def run(): Unit = {
-      synchronized{
-        try {
-          wait(t * 1000)
-          Scheduler().killAll()
-        } catch {
-          case _ => Scheduler().killAll()
-        }
-      }
-    }
-  }).start()
-
 
   /**
    * List of currently loaded tptp files
@@ -89,11 +76,12 @@ object Main {
 
         parsed match {
           case Left(x) =>
-            println("Parse error in file " + fileAbs + ": " + x)
+//            println("Parse error in file " + fileAbs + ": " + x)
+              println("% SZS status SyntaxError")
           case Right(x) =>
             loadedSet += fileAbs
             x.getIncludes.foreach(x => loadRelative(x._1, path))
-            println("Loaded " + fileAbs)
+//            println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
               Blackboard().addFormula(name, form, role)
@@ -102,7 +90,8 @@ object Main {
 
       } catch {
         case ex : FileNotFoundException =>
-          println(s"'$fileAbs' does not exist.")
+//          println(s"'$fileAbs' does not exist.")
+            println("% SZS status InputError")
       }
     }
   }

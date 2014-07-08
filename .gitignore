@@ -16,3 +16,7 @@ project/plugins/project/
 *.iml
 /.project
 /.classpath
+
+# Compile specific
+out/*
+project/*

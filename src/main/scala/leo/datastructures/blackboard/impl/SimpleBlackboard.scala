@@ -3,6 +3,7 @@ package leo.datastructures.blackboard.impl
 
 
 import leo.agents.{Task, Agent}
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.internal.{ Term => Formula }
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
@@ -145,7 +146,7 @@ private object TaskSet {
   }
 
   def getTask() : (Agent,Task) = this.synchronized{
-    while(true) {
+    while(!Scheduler().isTerminated()) {
       try {
         while (work == 0) this.wait()
         // TODO Check collsion
@@ -165,7 +166,7 @@ private object TaskSet {
         case e: Exception => throw e
       }
     }
-    null
+    (null,null)
   }
 
   private def collision(t : Task) : Boolean = execTasks.exists{e =>
