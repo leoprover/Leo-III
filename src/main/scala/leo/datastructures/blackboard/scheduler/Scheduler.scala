@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard.scheduler
 
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 
 import scala.collection.mutable
 import scala.collection.mutable.HashSet
@@ -93,7 +93,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 //    override def run(): Unit = if (a.guard()) a.apply()
 //  })
 
-  def killAll() : Unit = s.synchronized{endFlag = true; s.notifyAll()}
+  def killAll() : Unit = s.synchronized{
+    endFlag = true
+    ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
+    s.notifyAll()}
 
   var pauseFlag = true
   var endFlag = false
@@ -102,8 +105,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def clear() : Unit = {
     pause()
-    exe.shutdownNow()
     curExec.clear()
+    exe.shutdownNow()
   }
 
   protected[scheduler] def start() {
@@ -133,6 +136,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       curExec.add(t)
 
       this.synchronized {
+        if (endFlag) return         // Savely exit
         if (pauseFlag) this.wait() // Check again, if waiting took to long
 
         // Execute task
@@ -145,8 +149,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Writes a result back to the blackboard
    */
   private class Writer extends Runnable{
-    override def run(): Unit = while(true) {
+    override def run(): Unit = while(!endFlag) {
       val (result,task) = ExecTask.get()
+      if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
         curExec.remove(task)
         Blackboard().finishTask(task)
@@ -198,6 +203,23 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       results.add((r,t))        // Must not be synchronized, but maybe it should
       this.synchronized(this.notifyAll())
     }
+  }
+
+  /**
+   * Marker for the writer to end itself
+   */
+  private object ExitResult extends Result {
+    override def newFormula(): Set[FormulaStore] = ???
+    override def updateFormula(): Map[FormulaStore, FormulaStore] = ???
+    override def removeFormula(): Set[FormulaStore] = ???
+  }
+
+  /**
+   * Empty marker for the Writer to end itself
+   */
+  private object ExitTask extends Task {
+    override def readSet(): Set[FormulaStore] = ???
+    override def writeSet(): Set[FormulaStore] = ???
   }
 }
 
