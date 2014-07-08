@@ -90,10 +90,42 @@ object Main {
 
       } catch {
         case ex : FileNotFoundException =>
-//          println(s"'$fileAbs' does not exist.")
-            println("% SZS status InputError")
+          // If not relative, then search in TPTP env variable
+          val tptpHome = System.getenv("TPTP").split("/")
+          val (fileAbs, path) = newPath(tptpHome, file)
+          if (!loadedSet(fileAbs)) {
+            try {
+              val source = scala.io.Source.fromFile(fileAbs, "utf-8")
+              val input = new CharArrayReader(source.toArray)
+              val parsed = TPTP.parseFile(input)
+              source.close()    // Close at this point. Otherwise we would have many files open with many includes.
+
+              parsed match {
+                case Left(x) =>
+                  //            println("Parse error in file " + fileAbs + ": " + x)
+                  println("% SZS status SyntaxError")
+                case Right(x) =>
+                  loadedSet += fileAbs
+                  x.getIncludes.foreach(x => loadRelative(x._1, path))
+                  //            println("Loaded " + fileAbs)
+                  val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
+                  processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
+                    Blackboard().addFormula(name, form, role)
+                  }
+              }
+
+            } catch {
+              case ex : FileNotFoundException =>
+                println("% SZS status InputError")
+              case _ : Throwable => println("% SZS status Inappropriate")
+            }
+          }
       }
     }
+  }
+
+  private def parseAbsolute(fileAbs : String, path : String) : Unit = {
+
   }
 
   /**
