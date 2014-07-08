@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard.scheduler
 
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 
 import scala.collection.mutable
 import scala.collection.mutable.HashSet
@@ -45,6 +45,8 @@ object Scheduler {
 
 trait Scheduler {
 
+  def isTerminated() : Boolean
+
   /**
    * Terminate all working processes.
    */
@@ -85,7 +87,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private val s : SchedulerRun = new SchedulerRun()
   private val w : Writer = new Writer()
 
+  private var sT : Thread = null
+  private var sW : Thread = null
+
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
+
+  override def isTerminated() : Boolean = endFlag
 
   def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
 
@@ -93,23 +100,34 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 //    override def run(): Unit = if (a.guard()) a.apply()
 //  })
 
-  def killAll() : Unit = s.synchronized{endFlag = true; s.notifyAll()}
+  def killAll() : Unit = s.synchronized{
+    endFlag = true
+    pauseFlag = false
+    ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
+    exe.shutdownNow()
+    sT.interrupt()
+    s.notifyAll()
+  }
 
   var pauseFlag = true
   var endFlag = false
 
-  def pause() : Unit = {s.synchronized(pauseFlag = true); println("Scheduler paused.")}
+  def pause() : Unit = {s.synchronized(pauseFlag = true);
+//    println("Scheduler paused.")
+  }
 
   def clear() : Unit = {
     pause()
-    exe.shutdownNow()
     curExec.clear()
+    exe.shutdownNow()
   }
 
   protected[scheduler] def start() {
-    println("Scheduler started.")
-    new Thread(s).start()      // Start Scheduler
-    new Thread(w).start()      // Start writer
+//    println("Scheduler started.")
+    sT = new Thread(s)
+    sT.start()      // Start Scheduler
+    sW = new Thread(w)
+    sW.start()      // Start writer
   }
 
   /**
@@ -121,20 +139,21 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       this.synchronized {
         if (pauseFlag) {
           // If is paused wait
-          println("Scheduler paused.")
+//          println("Scheduler paused.")
           this.wait()
-          println("Scheduler is commencing.")
+//          println("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
       }
 
       // Blocks until a task is available
       val (a, t) = Blackboard().getTask()
-      curExec.add(t)
 
       this.synchronized {
+        if (endFlag) return         // Savely exit
         if (pauseFlag) this.wait() // Check again, if waiting took to long
 
+        curExec.add(t)
         // Execute task
         exe.submit(new GenAgent(a, t))
       }
@@ -145,8 +164,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Writes a result back to the blackboard
    */
   private class Writer extends Runnable{
-    override def run(): Unit = while(true) {
+    override def run(): Unit = while(!endFlag) {
       val (result,task) = ExecTask.get()
+      if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
         curExec.remove(task)
         Blackboard().finishTask(task)
@@ -198,6 +218,23 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       results.add((r,t))        // Must not be synchronized, but maybe it should
       this.synchronized(this.notifyAll())
     }
+  }
+
+  /**
+   * Marker for the writer to end itself
+   */
+  private object ExitResult extends Result {
+    override def newFormula(): Set[FormulaStore] = ???
+    override def updateFormula(): Map[FormulaStore, FormulaStore] = ???
+    override def removeFormula(): Set[FormulaStore] = ???
+  }
+
+  /**
+   * Empty marker for the Writer to end itself
+   */
+  private object ExitTask extends Task {
+    override def readSet(): Set[FormulaStore] = ???
+    override def writeSet(): Set[FormulaStore] = ???
   }
 }
 

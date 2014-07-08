@@ -1,6 +1,7 @@
 package leo.agents
 package impl
 
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, FormulaStore}
 
 object UtilAgents {
@@ -18,7 +19,7 @@ object UtilAgents {
 
   def Finished() : FinishedAgent = {
     if (fin == null) {
-      fin = new FinishedAgent
+      fin = new FinishedAgent(-1)     // TODO : No idea, maybe delete
       fin.register()
     }
     fin
@@ -30,7 +31,7 @@ object UtilAgents {
     NormalClauseAgent.NegationNormalAgent()
 //    NormalClauseAgent.SkolemAgent()
 //    NormalClauseAgent.PrenexAgent()
-    Finished()
+//    Finished()
     Conjecture()
   }
 }
@@ -89,7 +90,7 @@ class ConjectureAgent extends Agent {
         val status = fS.status
         val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~3)
 
-        println("Negated Conjecture")
+//        println("Negated Conjecture")
 
         new StdResult(Set.empty,Map((fS,rS)),Set.empty)
       case _ => throw new IllegalArgumentException("Executing wrong task.")
@@ -105,10 +106,36 @@ class SingleFormTask(f : FormulaStore) extends Task {
 }
 
 
-class FinishedAgent extends Agent {
+
+
+
+class FinishedAgent(timeout : Int) extends Agent {
   private var _isActive = true
   override def isActive: Boolean = _isActive
   override def setActive(bool: Boolean): Unit = _isActive = bool
+
+  // Killing if not done in timeout
+  private val end : Thread = new Thread(new Runnable {
+    override def run(): Unit = {
+//      println("Init delay kill.")
+      if(timeout < 0) return
+      synchronized{
+        try {
+          wait(timeout * 1000)
+          println("% SZS status Timeout")
+//          println("Killing task.")
+          Scheduler().killAll()
+        } catch {
+          case e : InterruptedException => return
+          case _ : Throwable =>
+            println("% SZS status Timeout")
+            Scheduler().killAll()
+        }
+      }
+    }
+  })
+
+  end.start()
 
 
   /**
@@ -141,8 +168,9 @@ class FinishedAgent extends Agent {
    * TODO : Do we want the agent to stop the Scheduler ???
    */
   override def run(t: Task): Result = {
-    leo.datastructures.blackboard.scheduler.Scheduler().pause()
-    println("Derived '$false' from the context. Proof found.")
+    Scheduler().killAll()
+    end.interrupt()
+    println("% SZS status Success")
     new StdResult(Set.empty, Map.empty, Set.empty)
   }
 }

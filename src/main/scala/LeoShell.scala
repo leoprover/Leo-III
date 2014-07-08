@@ -149,7 +149,7 @@ object LeoShell {
             x.getIncludes.foreach(x => loadRelative(x._1, path))
             println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) =>
+            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
               Blackboard().addFormula(name, form, role)
             }
         }
