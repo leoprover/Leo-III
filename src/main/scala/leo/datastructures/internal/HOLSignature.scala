@@ -91,7 +91,7 @@ trait HOLSignature {
   private def eq = mkAtom(13)
 
   // Definitions for default symbols
-  protected def existsDef: Term = TypeAbstr(
+  protected def existsDef: Term = Λ(
     mkTermAbs(1 ->: o,
       mkTermApp(not,
         mkTermApp(all,
@@ -148,7 +148,7 @@ trait HOLSignature {
           mkTermApp(
             mkTermApp(lpmi, (2, o)), (1, o))))))
 
-  protected def neqDef: Term = TypeAbstr(
+  protected def neqDef: Term = Λ(
     mkTermAbs(1,
       mkTermAbs(1,
         mkTermApp(not,
