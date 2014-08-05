@@ -109,13 +109,6 @@ trait Blackboard {
   def rmAll(p : Formula => Boolean)
 
   /**
-   * Used by Stores to mark a FormulaStore as Changed, if nothing
-   * has to be updated. Handlers can register to these updates
-   * @param f
-   */
-  protected[blackboard] def emptyUpdate(f : FormulaStore)
-
-  /**
    * Registers an agent to the blackboard
    *
    * @param a - the new agent
@@ -123,18 +116,29 @@ trait Blackboard {
   def registerAgent(a : Agent) : Unit
 
   /**
+   * Gives all agents the chance to react to an event
+   * and adds the generated tasks.
+   *
+   * @param t - Function that generates for each agent a set of tasks.
+   */
+  def filterAll(t : Agent => Iterable[Task]) : Unit
+
+
+  /**
+   * Method that filters the whole Blackboard, if a new agent 'a' is added
+   * to the context.
+   *
+   * @param a - New Agent.
+   */
+  protected[blackboard] def freshAgent(a : Agent) : Unit
+
+
+  /**
    * Blocking Method to get a fresh Task.
    *
    * @return Not yet executed Task
    */
   def getTask() : (Agent,Task)
-
-  /**
-   * Method to mark a Task as finished.
-   *
-   * @param t - The task that was finished.
-   */
-  protected[blackboard] def finishTask(t : Task)
 
   /**
    * Clears the complete blackboard

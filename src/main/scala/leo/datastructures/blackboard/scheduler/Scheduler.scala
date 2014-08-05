@@ -113,7 +113,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   var endFlag = false
 
   def pause() : Unit = {s.synchronized(pauseFlag = true);
-//    println("Scheduler paused.")
+    println("Scheduler paused.")
   }
 
   def clear() : Unit = {
@@ -139,9 +139,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       this.synchronized {
         if (pauseFlag) {
           // If is paused wait
-//          println("Scheduler paused.")
+          println("Scheduler paused.")
           this.wait()
-//          println("Scheduler is commencing.")
+          println("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
       }
@@ -168,11 +168,23 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       val (result,task) = ExecTask.get()
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
-        curExec.remove(task)
-        Blackboard().finishTask(task)
+
+        // Update blackboard
         result.newFormula().foreach(Blackboard().addFormula(_))
         result.removeFormula().foreach(Blackboard().removeFormula(_))
         result.updateFormula().foreach { case (oldF, newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
+
+        // Removing Task from Taskset (Therefor remove locks)
+        curExec.remove(task)
+
+        // Notify changes
+        // ATM only New and Updated Formulas
+        Blackboard().filterAll({a =>
+          val newSet : Iterable[Task] = result.newFormula().map(a.filter(_)).flatten
+          val changeSet : Iterable[Task] = result.updateFormula().map{case (_,f) => a.filter(f)}.flatten
+
+          newSet++changeSet
+        })
       }
     }
   }

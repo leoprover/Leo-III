@@ -14,7 +14,7 @@ scalaVersion := "2.10.4"
 scalacOptions ++= Seq("-deprecation", "-feature", "-Xlint")
 
 // Console
-initialCommands in console := "import leo.datastructures.internal; import leo.datastructures.internal.Term._; import LeoShell._;"
+//initialCommands in console := "import leo.datastructures.internal; import leo.datastructures.internal.Term._; import LeoShell._;"
 
 // Compile
 

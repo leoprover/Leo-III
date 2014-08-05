@@ -81,10 +81,10 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
       val fstore = t1.get()
       val erg = norm.normalize(fstore.formula)
       if(fstore.formula == erg){
-//        println(norm.getClass.getName() + " : No change in Normalization.")
+        println(norm.getClass.getName() + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, fstore.newStatus(norm.markStatus(fstore.status)))), Set.empty)
       } else {
-//        println(norm.getClass.getName()+" : Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
+        println(norm.getClass.getName()+" : Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
         return new StdResult(Set.empty, Map((fstore, fstore.newFormula(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
       }
     case _  => throw new IllegalArgumentException("Executing wrong task.")

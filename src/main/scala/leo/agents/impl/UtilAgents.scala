@@ -90,7 +90,7 @@ class ConjectureAgent extends Agent {
         val status = fS.status
         val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~3)
 
-//        println("Negated Conjecture")
+        println("Negated Conjecture")
 
         new StdResult(Set.empty,Map((fS,rS)),Set.empty)
       case _ => throw new IllegalArgumentException("Executing wrong task.")

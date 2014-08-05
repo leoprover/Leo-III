@@ -38,14 +38,16 @@ class SimpleBlackboard extends Blackboard {
   }
 
   override def addFormula(name : String, formula: Formula, role : String) {
-    addFormula(Store.apply(name, formula, role))
+    val s = Store.apply(name, formula, role)
+    addFormula(s)
+    filterAll(_.filter(s))
   }
 
   override def addFormula(formula : FormulaStore) {
     write { formulas =>
       formulas put (formula.name, formula)
     }
-    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
+//    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
   }
 
   override def removeFormula(formula: FormulaStore): Boolean = rmFormulaByName(formula .name)
@@ -53,7 +55,6 @@ class SimpleBlackboard extends Blackboard {
   override def rmFormulaByName(name: String): Boolean = write { formulas =>
     formulas.remove(name) match {
       case Some(x) => {
-//        observeRemoveSet.filter(_.filterRemove(x)).foreach {o => o.removeFormula(x); o.wakeUp()}
         true
       }
       case None => false
@@ -68,16 +69,11 @@ class SimpleBlackboard extends Blackboard {
    * Register a new Handler for Formula adding Handlers.
    * @param a - The Handler that is to register
    */
-  override def registerAgent(a : Agent) : Unit = TaskSet.addAgent(a)
-
-  /**
-   * Used by Stores to mark a FormulaStore as Changed, if nothing
-   * has to be updated. Handlers can register to these updates
-   * @param f
-   */
-  override protected[blackboard] def emptyUpdate(f: FormulaStore) {
-    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(f))}
+  override def registerAgent(a : Agent) : Unit = {
+    TaskSet.addAgent(a)
+    freshAgent(a)
   }
+
 
   /**
    * Blocking Method to get a fresh Task.
@@ -86,11 +82,32 @@ class SimpleBlackboard extends Blackboard {
    */
   override def getTask(): (Agent,Task) = TaskSet.getTask()
 
-  override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
-
   override def clear() : Unit = {
     rmAll(_ => true)
     TaskSet.clear()
+  }
+
+  /**
+   * Gives all agents the chance to react to an event
+   * and adds the generated tasks.
+   *
+   * @param t - Function that generates for each agent a set of tasks.
+   */
+  override def filterAll(t: (Agent) => Iterable[Task]): Unit = {
+    TaskSet.agents.foreach{ a =>
+      TaskSet.addTasks(a,t(a))
+    }
+  }
+
+  /**
+   * Method that filters the whole Blackboard, if a new agent 'a' is added
+   * to the context.
+   *
+   * @param a - New Agent.
+   */
+  override protected[blackboard] def freshAgent(a: Agent): Unit = {
+    // ATM only formulas trigger events
+    getFormulas.foreach{fS => TaskSet.addTasks(a,a.filter(fS))}
   }
 }
 
@@ -135,7 +152,7 @@ private object TaskSet {
 
   def agents : List[Agent] = this.synchronized(regAgents.toList)
 
-  def addTasks(a : Agent, ts : Set[Task]) = this.synchronized {
+  def addTasks(a : Agent, ts : Iterable[Task]) = this.synchronized {
     try{
       ts.foreach{t => agentWork.enqueue((a,t)); work += 1}
       this.notifyAll()
@@ -149,7 +166,6 @@ private object TaskSet {
     while(!Scheduler().isTerminated()) {
       try {
         while (work == 0) this.wait()
-        // TODO Check collsion
         work -= 1
         var w = agentWork.dequeue()
         // As long as the task collide, we discard them (Updates will be written back and trigger the task anew)
