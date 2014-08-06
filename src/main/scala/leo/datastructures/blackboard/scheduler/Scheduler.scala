@@ -147,7 +147,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 
       // Blocks until a task is available
-      val tasks = Blackboard().getTask()
+      val tasks = Blackboard().getTask
 
       for ((a,t) <- tasks) {
         this.synchronized {

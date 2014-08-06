@@ -173,43 +173,54 @@ private object TaskSet {
    */
   def getTask : Iterable[(Agent,Task)] = this.synchronized{
 
-    //
-    // 1. Get all Tasks the Agents want to bid on during the auction with their current money
-    //
-    var r : List[(Double,Agent,Task)] = Nil
-    while(r.isEmpty) {
-      regAgents.foreach{case (a,budget) => if(a.isActive) a.getTasks(budget).foreach{t => r = (t.bid(budget), a,t) :: r}}
-      if(r.isEmpty) this.wait()
-    }
+    while(!Scheduler().isTerminated()) {
+      try {
 
-    //
-    // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
-    //
-    // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
-    // Value should be positive, s.t. we can square the values without changing order
-    //
-    val queue : List[(Double, Agent,Task)] = r.sortBy{case (b, a,t) => b*b / t.writeSet().size }
-
-    // 3. Take from beginning to front only the non colliding tasks
-    // The new tasks should be non-colliding with the existing ones, because they are always filtered.
-    var newTask : List[(Agent,Task)] = Nil
-    for((price, a, t) <- queue) {
-      if(!newTask.exists{e => t.collide(e._2)}) {
-        val budget = regAgents.apply(a)
-        if(budget >= price) {
-          // The task is not colliding with previous tasks and agent has enough money
-          newTask = (a, t) :: newTask
-          regAgents.put(a,budget - price)
+        //
+        // 1. Get all Tasks the Agents want to bid on during the auction with their current money
+        //
+        var r: List[(Double, Agent, Task)] = Nil
+        while (r.isEmpty) {
+          regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
+          if (r.isEmpty) this.wait()
         }
+
+        //
+        // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
+        //
+        // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
+        // Value should be positive, s.t. we can square the values without changing order
+        //
+        val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size}
+
+        // 3. Take from beginning to front only the non colliding tasks
+        // The new tasks should be non-colliding with the existing ones, because they are always filtered.
+        var newTask: List[(Agent, Task)] = Nil
+        for ((price, a, t) <- queue) {
+          if (!newTask.exists { e => t.collide(e._2)}) {
+            val budget = regAgents.apply(a)
+            if (budget >= price) {
+              // The task is not colliding with previous tasks and agent has enough money
+              newTask = (a, t) :: newTask
+              regAgents.put(a, budget - price)
+            }
+          }
+        }
+
+        //
+        // 4. After work pay salary and return the tasks
+        //
+        for ((a, b) <- regAgents) regAgents.put(a, b + AGENT_SALARY)
+
+        return newTask
+
+        //Lastly interrupt recovery
+      } catch {
+        case e : InterruptedException => Thread.currentThread().interrupt()
+        case e : Exception => throw e
       }
     }
-
-    //
-    // 4. After work pay salary and return the tasks
-    //
-    for((a,b) <- regAgents) regAgents.put(a,b+AGENT_SALARY)
-
-    newTask
+    Nil
   }
 
 
