@@ -124,6 +124,7 @@ abstract class AbstractAgent extends Agent {
    */
   override def register() {
     Blackboard().registerAgent(this)
+    setActive(true)
   }
 
   private val q : mutable.Queue[Task] = new mutable.SynchronizedQueue[Task]()
