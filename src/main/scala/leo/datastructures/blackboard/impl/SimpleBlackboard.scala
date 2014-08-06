@@ -80,7 +80,7 @@ class SimpleBlackboard extends Blackboard {
    *
    * @return Not yet executed Task
    */
-  override def getTask(): (Agent,Task) = TaskSet.getTask()
+  override def getTask(): Iterable[(Agent,Task)] = TaskSet.getTask()
 
   override def clear() : Unit = {
     rmAll(_ => true)
@@ -162,7 +162,7 @@ private object TaskSet {
     }
   }
 
-  def getTask() : (Agent,Task) = this.synchronized{
+  def getTask() : Iterable[(Agent,Task)] = this.synchronized{
     while(!Scheduler().isTerminated()) {
       try {
         while (work == 0) this.wait()
@@ -176,13 +176,13 @@ private object TaskSet {
         }
 
         execTasks.add(w._2)
-        return w
+        return Set(w)
       } catch {
         case e: InterruptedException => Thread.currentThread().interrupt()
         case e: Exception => throw e
       }
     }
-    (null,null)
+    Set.empty
   }
 
   private def collision(t : Task) : Boolean = execTasks.exists{e =>

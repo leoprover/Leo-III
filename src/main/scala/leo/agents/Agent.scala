@@ -92,6 +92,15 @@ trait Task {
    * @return Write set for the task
    */
   def writeSet() : Set[FormulaStore]
+
+  /**
+   *
+   * Defines the gain of a Task, defined for
+   * a specific agent.
+   *
+   * @return - Possible profit, if the task is executed
+   */
+  def gain : Double
 }
 
 /**

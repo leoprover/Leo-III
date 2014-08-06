@@ -134,11 +134,16 @@ trait Blackboard {
 
 
   /**
-   * Blocking Method to get a fresh Task.
    *
-   * @return Not yet executed Task
+   * Starts a new auction for agents to buy computation time
+   * for their tasks.
+   *
+   * The result is a set of tasks, that can be executed in parallel
+   * and approximate the optimal combinatorical auction.
+   *
+   * @return Not yet executed noncolliding set of tasks
    */
-  def getTask() : (Agent,Task)
+  def getTask() : Iterable[(Agent,Task)]
 
   /**
    * Clears the complete blackboard

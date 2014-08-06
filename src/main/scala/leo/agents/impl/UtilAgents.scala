@@ -103,6 +103,8 @@ class SingleFormTask(f : FormulaStore) extends Task {
   def getFormula() : FormulaStore = f
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
+
+  override def gain: Double = 1
 }
 
 

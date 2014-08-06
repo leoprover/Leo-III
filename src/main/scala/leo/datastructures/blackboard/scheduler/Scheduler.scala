@@ -147,15 +147,17 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 
       // Blocks until a task is available
-      val (a, t) = Blackboard().getTask()
+      val tasks = Blackboard().getTask()
 
-      this.synchronized {
-        if (endFlag) return         // Savely exit
-        if (pauseFlag) this.wait() // Check again, if waiting took to long
+      for ((a,t) <- tasks) {
+        this.synchronized {
+          if (endFlag) return         // Savely exit
+          if (pauseFlag) this.wait() // Check again, if waiting took to long
 
-        curExec.add(t)
-        // Execute task
-        exe.submit(new GenAgent(a, t))
+          curExec.add(t)
+          // Execute task
+          exe.submit(new GenAgent(a, t))
+        }
       }
     }
   }
@@ -245,8 +247,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
-    override def readSet(): Set[FormulaStore] = ???
-    override def writeSet(): Set[FormulaStore] = ???
+    override def readSet(): Set[FormulaStore] = Set.empty
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def gain: Double = 1
   }
 }
 

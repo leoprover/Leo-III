@@ -122,4 +122,6 @@ class NormalTask(f : FormulaStore) extends Task {
 
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
+
+  override def gain: Double = 1
 }
