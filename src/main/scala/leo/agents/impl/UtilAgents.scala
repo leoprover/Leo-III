@@ -41,15 +41,7 @@ object UtilAgents {
  * and inserts the negated conjecture.
  *
  */
-class ConjectureAgent extends Agent {
-
-  private var _isActive = true
-
-  /**
-   *
-   * @return true, if this Agent can execute at the moment
-   */
-  override def isActive: Boolean = _isActive
+class ConjectureAgent extends AbstractAgent {
 
   /**
    * This method should be called, whenever a formula is added to the blackboard.
@@ -59,23 +51,7 @@ class ConjectureAgent extends Agent {
    * @param event - Newly added or updated formula
    * @return - set of tasks, if empty the agent won't work on this event
    */
-  override def filter(event: FormulaStore): Set[Task] = if(event.role == "conjecture") Set(new SingleFormTask(event)) else Set.empty[Task]
-
-  /**
-   * <p>
-   * In this method the Agent gets the Blackboard it will work on.
-   * Registration for Triggers should be done in here.
-   * </p>
-   *
-   */
-  override def register(): Unit = Blackboard().registerAgent(this)
-
-  /**
-   * Sets isActive.
-   *
-   * @param bool
-   */
-  override def setActive(bool: Boolean): Unit = _isActive = bool
+  override def toFilter(event: FormulaStore): Iterable[Task] = if(event.role == "conjecture") List(new SingleFormTask(event)) else Nil
 
   /**
    * Negates the conjecture and renames the role
@@ -104,17 +80,14 @@ class SingleFormTask(f : FormulaStore) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 
-  override def gain: Double = 1
+  override def bid(budget : Double) : Double = 1
 }
 
 
 
 
 
-class FinishedAgent(timeout : Int) extends Agent {
-  private var _isActive = true
-  override def isActive: Boolean = _isActive
-  override def setActive(bool: Boolean): Unit = _isActive = bool
+class FinishedAgent(timeout : Int) extends AbstractAgent {
 
   // Killing if not done in timeout
   private val end : Thread = new Thread(new Runnable {
@@ -148,23 +121,13 @@ class FinishedAgent(timeout : Int) extends Agent {
    * @param event - Newly added or updated formula
    * @return - set of tasks, if empty the agent won't work on this event
    */
-  override def filter(event: FormulaStore): Set[Task] = {
+  override def toFilter(event: FormulaStore): Iterable[Task] = {
     import leo.datastructures.internal._
     event.formula match {
-      case LitFalse() => Set(new SingleFormTask(event))
-      case _ => Set.empty
+      case LitFalse() => List(new SingleFormTask(event))
+      case _ => Nil
     }
   }
-
-  /**
-   * <p>
-   * In this method the Agent gets the Blackboard it will work on.
-   * Registration for Triggers should be done in here.
-   * </p>
-   *
-   */
-  override def register(): Unit = Blackboard().registerAgent(this)
-
 
   /*
    * TODO : Do we want the agent to stop the Scheduler ???

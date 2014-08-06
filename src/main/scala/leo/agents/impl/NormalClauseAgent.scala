@@ -4,6 +4,8 @@ package impl
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
 
+import scala.collection.mutable
+
 object NormalClauseAgent {
 
   private var simp : Agent = null;
@@ -68,13 +70,7 @@ object NormalClauseAgent {
  * @author Max Wisniewski
  * @since 5/14/14
  */
-class NormalClauseAgent(norm : Normalize) extends Agent {
-
-  private var _isActive : Boolean = false
-
-  override def isActive : Boolean = _isActive
-
-  override def setActive(a : Boolean) = _isActive = a
+class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
 
   override def run(t : Task) : Result = t match {
     case  t1 : NormalTask =>
@@ -90,26 +86,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case _  => throw new IllegalArgumentException("Executing wrong task.")
   }
 
-  /**
-   * <p>
-   * In this method the Agent gets the Blackboard it will work on.
-   * Registration for Triggers should be done in here.
-   * </p>
-   *
-   */
-  override def register() {
-    Blackboard().registerAgent(this)
-  }
-
-  /**
-   * <p>
-   * A predicate that distinguishes interesting and uninteresing
-   * Formulas for the Handler.
-   * </p>
-   * @param f - Newly added formula
-   * @return true if the formula is relevant and false otherwise
-   */
-  override def filter(f: FormulaStore): Set[Task] = if (norm.applicable(f.formula,f.status)) Set(new NormalTask(f)) else Set.empty
+  override protected def toFilter(event: FormulaStore): Iterable[Task] = if (norm.applicable(event.formula,event.status)) List(new NormalTask(event)) else Nil
 }
 
 /**
@@ -123,5 +100,5 @@ class NormalTask(f : FormulaStore) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 
-  override def gain: Double = 1
+  override def bid(budget : Double) : Double = 1
 }

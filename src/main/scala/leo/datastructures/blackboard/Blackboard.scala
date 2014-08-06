@@ -121,7 +121,7 @@ trait Blackboard {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  def filterAll(t : Agent => Iterable[Task]) : Unit
+  def filterAll(t : Agent => Unit) : Unit
 
 
   /**
@@ -144,6 +144,19 @@ trait Blackboard {
    * @return Not yet executed noncolliding set of tasks
    */
   def getTask() : Iterable[(Agent,Task)]
+
+  /**
+   * Signal Task is called, when a new task is available.
+   */
+  def signalTask() : Unit
+
+  /**
+   * Checks through the current executing threads, if one is colliding
+   *
+   * @param t - Task that will be tested
+   * @return true, iff no currently executing task collides
+   */
+  def collision(t : Task) : Boolean
 
   /**
    * Clears the complete blackboard

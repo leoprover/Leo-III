@@ -93,9 +93,9 @@ class SimpleBlackboard extends Blackboard {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  override def filterAll(t: (Agent) => Iterable[Task]): Unit = {
+  override def filterAll(t: (Agent) => Unit): Unit = {
     TaskSet.agents.foreach{ a =>
-      TaskSet.addTasks(a,t(a))
+      t(a)
     }
   }
 
@@ -107,8 +107,12 @@ class SimpleBlackboard extends Blackboard {
    */
   override protected[blackboard] def freshAgent(a: Agent): Unit = {
     // ATM only formulas trigger events
-    getFormulas.foreach{fS => TaskSet.addTasks(a,a.filter(fS))}
+    getFormulas.foreach{fS => a.filter(fS)}
   }
+
+  override def signalTask() : Unit = TaskSet.signalTask()
+
+  override def collision(t : Task) : Boolean = TaskSet.collision(t)
 }
 
 /**
@@ -135,14 +139,18 @@ private object FormulaSet {
 private object TaskSet {
   import scala.collection.mutable.HashSet
 
-  protected[blackboard] val agentWork = new Queue[(Agent,Task)]()
   protected[blackboard] var regAgents = Set[Agent]()
   protected[blackboard] val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
 
   private var work : Int = 0
 
+  /**
+   * Notifies process waiting in 'getTask', that there is a new task available.
+   */
+  protected[blackboard] def signalTask() : Unit = this.synchronized(this.notifyAll())
+
   def clear() : Unit = {
-    agentWork.clear()
+    regAgents.foreach(_.clearTasks)
     work = 0
   }
 
@@ -152,42 +160,40 @@ private object TaskSet {
 
   def agents : List[Agent] = this.synchronized(regAgents.toList)
 
-  def addTasks(a : Agent, ts : Iterable[Task]) = this.synchronized {
-    try{
-      ts.foreach{t => agentWork.enqueue((a,t)); work += 1}
-      this.notifyAll()
-    } catch {
-      case e : InterruptedException => Thread.currentThread().interrupt()
-      case e : Exception => throw e
-    }
-  }
-
   def getTask() : Iterable[(Agent,Task)] = this.synchronized{
-    while(!Scheduler().isTerminated()) {
-      try {
-        while (work == 0) this.wait()
-        work -= 1
-        var w = agentWork.dequeue()
-        // As long as the task collide, we discard them (Updates will be written back and trigger the task anew)
-        while (collision(w._2)) {
-          while (work == 0) this.wait()
-          work -= 1
-          w = agentWork.dequeue()
-        }
-
-        execTasks.add(w._2)
-        return Set(w)
-      } catch {
-        case e: InterruptedException => Thread.currentThread().interrupt()
-        case e: Exception => throw e
-      }
-    }
+//    while(!Scheduler().isTerminated()) {
+//      try {
+//        while (work == 0) this.wait()
+//        work -= 1
+//        var w = agentWork.dequeue()
+//        // As long as the task collide, we discard them (Updates will be written back and trigger the task anew)
+//        while (collision(w._2)) {
+//          while (work == 0) this.wait()
+//          work -= 1
+//          w = agentWork.dequeue()
+//        }
+//
+//        execTasks.add(w._2)
+//        return Set(w)
+//      } catch {
+//        case e: InterruptedException => Thread.currentThread().interrupt()
+//        case e: Exception => throw e
+//      }
+//    }
     Set.empty
   }
 
-  private def collision(t : Task) : Boolean = execTasks.exists{e =>
-    !t.readSet().intersect(e.writeSet()).isEmpty ||
-    !e.readSet().intersect(t.writeSet()).isEmpty ||
-    !e.writeSet().intersect((t.writeSet())).isEmpty
-  }
+
+
+
+  /**
+   * Checks if a Task collides with the current executing ones.
+   *
+   * @param t - Task that could be executed
+   *
+   * @return true, iff the task collides
+   */
+  def collision(t : Task) : Boolean = execTasks.exists{e => t.collide(e)}
+
+
 }

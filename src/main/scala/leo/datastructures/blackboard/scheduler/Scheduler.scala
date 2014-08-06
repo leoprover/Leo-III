@@ -182,10 +182,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Notify changes
         // ATM only New and Updated Formulas
         Blackboard().filterAll({a =>
-          val newSet : Iterable[Task] = result.newFormula().map(a.filter(_)).flatten
-          val changeSet : Iterable[Task] = result.updateFormula().map{case (_,f) => a.filter(f)}.flatten
-
-          newSet++changeSet
+          result.newFormula().foreach(a.filter(_))
+          result.updateFormula().foreach{case (_,f) => a.filter(f)}
         })
       }
     }
@@ -249,7 +247,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private object ExitTask extends Task {
     override def readSet(): Set[FormulaStore] = Set.empty
     override def writeSet(): Set[FormulaStore] = Set.empty
-    override def gain: Double = 1
+    override def bid(budget : Double) : Double = 1
   }
 }
 
