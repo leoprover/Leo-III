@@ -143,7 +143,7 @@ trait Blackboard {
    *
    * @return Not yet executed noncolliding set of tasks
    */
-  def getTask() : Iterable[(Agent,Task)]
+  def getTask : Iterable[(Agent,Task)]
 
   /**
    * Signal Task is called, when a new task is available.

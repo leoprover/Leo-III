@@ -80,7 +80,7 @@ class SimpleBlackboard extends Blackboard {
    *
    * @return Not yet executed Task
    */
-  override def getTask(): Iterable[(Agent,Task)] = TaskSet.getTask()
+  override def getTask: Iterable[(Agent,Task)] = TaskSet.getTask
 
   override def clear() : Unit = {
     rmAll(_ => true)
@@ -139,10 +139,10 @@ private object FormulaSet {
 private object TaskSet {
   import scala.collection.mutable.HashSet
 
-  protected[blackboard] var regAgents = Set[Agent]()
-  protected[blackboard] val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
+  var regAgents = mutable.HashMap[Agent,Double]()
+  val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
 
-  private var work : Int = 0
+  private val AGENT_SALARY : Double = 5
 
   /**
    * Notifies process waiting in 'getTask', that there is a new task available.
@@ -150,37 +150,66 @@ private object TaskSet {
   protected[blackboard] def signalTask() : Unit = this.synchronized(this.notifyAll())
 
   def clear() : Unit = {
-    regAgents.foreach(_.clearTasks)
-    work = 0
+    regAgents.foreach(_._1.clearTasks())
+    execTasks.clear()
   }
 
   def addAgent(a : Agent) {
-    this.synchronized(regAgents = regAgents + a)
+    this.synchronized(regAgents.put(a,AGENT_SALARY))
   }
 
-  def agents : List[Agent] = this.synchronized(regAgents.toList)
+  def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
 
-  def getTask() : Iterable[(Agent,Task)] = this.synchronized{
-//    while(!Scheduler().isTerminated()) {
-//      try {
-//        while (work == 0) this.wait()
-//        work -= 1
-//        var w = agentWork.dequeue()
-//        // As long as the task collide, we discard them (Updates will be written back and trigger the task anew)
-//        while (collision(w._2)) {
-//          while (work == 0) this.wait()
-//          work -= 1
-//          w = agentWork.dequeue()
-//        }
-//
-//        execTasks.add(w._2)
-//        return Set(w)
-//      } catch {
-//        case e: InterruptedException => Thread.currentThread().interrupt()
-//        case e: Exception => throw e
-//      }
-//    }
-    Set.empty
+
+  /**
+   * Gets from any active agent the set of tasks, he wants to execute with his current budget.
+   *
+   * If the set of tasks is empty he waits until something is added
+   * (filter should call signalTask).
+   *
+   * Of this set we play
+   *
+   * @return
+   */
+  def getTask : Iterable[(Agent,Task)] = this.synchronized{
+
+    //
+    // 1. Get all Tasks the Agents want to bid on during the auction with their current money
+    //
+    var r : List[(Double,Agent,Task)] = Nil
+    while(r.isEmpty) {
+      regAgents.foreach{case (a,budget) => if(a.isActive) a.getTasks(budget).foreach{t => r = (t.bid(budget), a,t) :: r}}
+      if(r.isEmpty) this.wait()
+    }
+
+    //
+    // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
+    //
+    // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
+    // Value should be positive, s.t. we can square the values without changing order
+    //
+    val queue : List[(Double, Agent,Task)] = r.sortBy{case (b, a,t) => b*b / t.writeSet().size }
+
+    // 3. Take from beginning to front only the non colliding tasks
+    // The new tasks should be non-colliding with the existing ones, because they are always filtered.
+    var newTask : List[(Agent,Task)] = Nil
+    for((price, a, t) <- queue) {
+      if(!newTask.exists{e => t.collide(e._2)}) {
+        val budget = regAgents.apply(a)
+        if(budget >= price) {
+          // The task is not colliding with previous tasks and agent has enough money
+          newTask = (a, t) :: newTask
+          regAgents.put(a,budget - price)
+        }
+      }
+    }
+
+    //
+    // 4. After work pay salary and return the tasks
+    //
+    for((a,b) <- regAgents) regAgents.put(a,b+AGENT_SALARY)
+
+    newTask
   }
 
 
