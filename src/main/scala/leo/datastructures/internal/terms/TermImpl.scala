@@ -1,7 +1,8 @@
-package leo.datastructures.internal
+package leo.datastructures.internal.terms
 
 import scala.language.implicitConversions
 import leo.datastructures.Pretty
+import leo.datastructures.internal.{Type, Signature, Term}
 
 ///////////////////////////////////////////////
 // Shared-implementation based specialization
@@ -16,7 +17,7 @@ import leo.datastructures.Pretty
  * @since 04.08.2014
  */
 protected[internal] sealed abstract class TermImpl extends Term {
-  def headSym: Option[Head] // only on normal forms?
+  def headSym: Head // only on normal forms?
   // TODO: All :D
   //def δ_expand(count: Int): VAL
   def betaNormalize: TermImpl = normalize(Subst.id)
@@ -47,11 +48,11 @@ protected[internal] sealed abstract class TermImpl extends Term {
   // Queries on terms
   def ty: Type = ???
 
-  def isTypeAbs: Boolean = ???
-  def isTypeApp: Boolean = ???
-  def isTermAbs: Boolean = ???
-  def isTermApp: Boolean = ???
-  def isAtom: Boolean = ???
+  val isTypeAbs: Boolean = false
+  val isTypeApp: Boolean = false
+  val isTermAbs: Boolean = false
+  val isTermApp: Boolean = false
+  val isAtom: Boolean = false
 
 
 }
@@ -62,14 +63,14 @@ protected[internal] sealed abstract class TermImpl extends Term {
 
 /** Representation of terms that are in (weak) head normal form. */
 protected[internal] case class Root(hd: Head, args: Spine) extends TermImpl {
-  def headSym = Some(hd)
+  def headSym = hd
 
   def preNormalize(s: Subst) = (this, s)
 
   def normalize(subst: Subst) = hd match {
-    case b@BoundIndex(_) => b.substitute(subst) match {
-      case BoundFront(i) => Root(BoundIndex(i), args.normalize(subst))
-      case TermFront(t)  => Redex(t, args).normalize(subst)
+    case b@BoundIndex(typ,_) => b.substitute(subst) match {
+      case BoundFront(i) => Root(BoundIndex(typ,i), args.normalize(subst))
+      case TermFront(t)  => Redex(t, args.normalize(subst)).normalize(Subst.id)
     }
     case _             => Root(hd, args.normalize(subst))
   }
@@ -87,8 +88,18 @@ protected[internal] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
   /** Queries on terms */
+  override val isAtom = args == SNil
+  override val isTermApp = args != SNil
+
+  override def ty = ty0(hd.ty, args.length)
+
+  private def ty0(funty: Type, arglen: Int): Type = arglen match {
+    case 0 => funty
+    case k => ty0(funty._funCodomainType, arglen-1)
+  }
+
   def freeVars = hd match {
-    case BoundIndex(_) => args.freeVars
+    case BoundIndex(_,_) => args.freeVars
     case _             => args.freeVars + hd
   }
 
@@ -100,45 +111,34 @@ protected[internal] case class Root(hd: Head, args: Spine) extends TermImpl {
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
 protected[internal] case class Redex(body: TermImpl, args: Spine) extends TermImpl {
-  def headSym = None
+  def headSym = body.headSym
 
-  def preNormalize(s: Subst) = {
+  def preNormalize(s: Subst): TermClosure = {
     val (bodyPNF, t) = (body, s)//body.preNormalize(s)
 
     bodyPNF match {
       case r@Root(hd,sp) => args match {
         case SNil => (r,t)
-        case App(h, tail) => (Root(hd, SpineClos(sp ++ args,t)),Subst.id)
-        case SpineClos(sp,s2) => ???
+        case App(h, tail) => (Root(hd, sp ++ args),t)
+        case SpineClos(_,s2) => ???
       }
-      case TermAbstr(_,b) => args match {
-        case SNil => (bodyPNF,t)
-        case App(hd, SNil) => b.preNormalize(Cons(TermFront(hd),t))
+      case TermAbstr(_,b) => args  match {
+        case SNil => (bodyPNF,t)cd
+        case App(hd, SNil) => b.preNormalize(Cons(TermFront(hd),t)) // eta contract
         case App(hd, tail) => Redex(b,tail).preNormalize(Cons(TermFront(hd),t))
+        case SpineClos(_,_) => ???
       }
       case Redex(_,_) => ??? // Not possible if body is prenormalized
-      case TermClos(term,substi) => (term.preNormalize(substi o t))
+      case TermClos(term,substi) => term.preNormalize(substi o t)
     }
   }
 
   private def preNormalize0(s: Subst, spS: Subst): TermClosure = ???
 
   def normalize(subst: Subst) = {
-    val a = preNormalize(subst)
-    a._1.normalize(a._2)
-    
+    val (a,b) = preNormalize(subst)
+    a.normalize(b)
 
-//    nBody match {
-//      case TermAbstr(_, b) => nArgs match {
-//        case App(hd, SNil) => TermClos(b, Cons(TermFront(hd), subst))
-//        case App(hd, tail) => ???
-//        case SNil  => nBody
-//      }
-//      case Root(hd,args2) => nArgs match {
-//        case SNil => nBody
-//        case _    => ??? // append spine
-//      }
-//    }
   }
 
   /** Handling def. expansion */
@@ -148,6 +148,15 @@ protected[internal] case class Redex(body: TermImpl, args: Spine) extends TermIm
   def full_δ_expand = Redex(body.full_δ_expand, args.δ_expand)
 
   /** Queries on terms */
+  override def ty = ty0(body.ty, args.length)
+
+  private def ty0(funty: Type, arglen: Int): Type = arglen match {
+    case 0 => funty
+    case k => ty0(funty._funCodomainType, arglen-1)
+  }
+
+  override val isTermApp = true
+
   def freeVars = body.freeVars ++ args.freeVars
 
   /** Pretty */
@@ -170,10 +179,14 @@ protected[internal] case class TermAbstr(typ: Type, body: TermImpl) extends Term
   def full_δ_expand = TermAbstr(typ, body.full_δ_expand)
 
   /** Queries on terms */
+  override def ty = typ ->: body.ty
+
+  override val isTermAbs = true
+
   def freeVars = body.freeVars
 
   /** Pretty */
-  def pretty = s"λ. ${body.pretty}"
+  def pretty = s"λ. (${body.pretty})"
 }
 
 
@@ -198,7 +211,13 @@ protected[internal] case class TermAbstr(typ: Type, body: TermImpl) extends Term
 
 
 protected[internal] case class TermClos(term: TermImpl, σ: Subst) extends TermImpl {
-  def headSym = None
+  def headSym = term.headSym match {
+    case b@BoundIndex(typ, scope) => b.substitute(σ) match {
+      case BoundFront(k) => BoundIndex(typ,k)
+      case TermFront(t) => t.headSym
+    }
+    case other => other
+  }
 
   def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
@@ -211,6 +230,8 @@ protected[internal] case class TermClos(term: TermImpl, σ: Subst) extends TermI
   def full_δ_expand = ???
 
   /** Queries on terms */
+  override def ty = term.ty
+
   def freeVars = ???
 
   /** Pretty */
@@ -258,7 +279,7 @@ protected[internal] object Head {
 
 
 
-protected[internal] case class BoundIndex(scope: Int) extends Head {
+protected[internal] case class BoundIndex(typ: Type, scope: Int) extends Head {
   val δ_expandable = false
   def δ_expand = this
 
@@ -303,6 +324,8 @@ protected[internal] sealed abstract class Spine extends Pretty {
   def normalize(subst: Subst): Spine
 
   def ++(sp: Spine): Spine
+  def +(t: TermImpl): Spine = ++(App(t,SNil))
+  def length: Int
 
   /** Handling def. expansion */
   def δ_expandable: Boolean
@@ -316,6 +339,7 @@ protected[internal] case object SNil extends Spine {
   def normalize(subst: Subst) = SNil
 
   def ++(sp: Spine) = sp
+  val length = 0
 
   /** Handling def. expansion */
   val δ_expandable = false
@@ -332,6 +356,7 @@ protected[internal] case class App(hd: TermImpl, tail: Spine) extends Spine {
   def normalize(subst: Subst) = App(hd.normalize(subst), tail.normalize(subst))
 
   def ++(sp: Spine) = App(hd, tail ++ sp)
+  def length = 1 + tail.length
 
   /** Handling def. expansion */
   def δ_expandable = hd.δ_expandable || tail.δ_expandable
@@ -361,6 +386,7 @@ protected[internal] case class SpineClos(spine: Spine, subst: Subst) extends Spi
   def normalize(subst2: Subst) = spine.normalize(subst.comp(subst2))
 
   def ++(sp: Spine) = ???
+  def length = ???
 
   /** Handling def. expansion */
   def δ_expandable = ???
@@ -375,77 +401,49 @@ protected[internal] case class SpineClos(spine: Spine, subst: Subst) extends Spi
 
 
 
+object TermImpl {
 
+  def mkAtom(id: Signature#Key): TermImpl = Signature.get(id).isDefined match {
+    case true  => Root(DefAtom(id), SNil)
+    case false => Root(UiAtom(id), SNil)
+  }
 
+  def mkBound(typ: Type, scope: Int): TermImpl = Root(BoundIndex(typ, scope), SNil)
 
-/////////////////////////////////////////////////
-// Implementation of substitutions
-/////////////////////////////////////////////////
-// TODO: Normalisation on subst needed?
-sealed abstract class Subst extends Pretty {
-  /** s.comp(s') = t
-    * where t = s o s' */
-  def comp(other: Subst): Subst
-  def o = comp(_)
-  /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
-  def sink = Cons(BoundFront(1),this.comp(Shift(1)))
-}
-case class Shift(n: Int) extends Subst {
-  def comp(other: Subst) = n match {
-    case 0 => other
-    case _ => other match {
-      case Shift(0) => this
-      case Shift(m) => Shift(n+m)
-      case Cons(ft, s) => Shift(n-1).comp(s)
+  def mkTermApp(func: TermImpl, arg: TermImpl): TermImpl = func.isAtom match {
+    case true => Root(func.headSym, App(arg,SNil))
+    case false => func match {
+      case Root(h,sp) => Root(h,sp + arg)
+      case Redex(r,sp) => Redex(r, sp + arg)
+      case other => Redex(other, App(arg, SNil))
+    }
+  }
+  def mkTermApp(func: TermImpl, args: Seq[TermImpl]): TermImpl = func.isAtom match {
+    case true => Root(func.headSym, mkSpine(args))
+    case false => func match {
+      case Root(h,sp) => Root(h,sp ++ mkSpine(args))
+      case Redex(r,sp) => Redex(r, sp ++ mkSpine(args))
+      case other => Redex(other, mkSpine(args))
     }
   }
 
-  /** Pretty */
-  override def pretty = s"↑$n"
-}
-case class Cons(ft: Front, subst: Subst) extends Subst {
-  def comp(other: Subst) = other match {
-    case Shift(0) => this
-    case s => Cons(ft.substitute(s), subst.comp(s))
+  def mkTermAbs(typ: Type, body: TermImpl): TermImpl = TermAbstr(typ, body)
+  def λ(hd: Type)(body: TermImpl) = mkTermAbs(hd, body)
+  def λ(hd: Type, hds: Type*)(body: TermImpl): TermImpl = {
+    λ(hd)(hds.foldRight(body)(λ(_)(_)))
   }
 
-  /** Pretty */
-  override def pretty = s"${ft.pretty}•${subst.pretty}"
+
+
+  implicit def intToBoundVar(in: (Int, Type)) = mkBound(in._2,in._1)
+  implicit def intsToBoundVar(in: (Int, Int)) = mkBound(in._2,in._1)
+  implicit def keyToAtom(in: Signature#Key) = mkAtom(in)
+
+  private def mkSpine(args: Seq[TermImpl]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => App(t,sp)})
 }
 
 
-object Subst {
-  def id: Subst    = Shift(0)
-  def shift: Subst = shift(1)
-  def shift(n: Int): Subst = Shift(n)
-}
 
-
-sealed abstract class Front extends Pretty {
-  def substitute(subst: Subst): Front
-}
-case class BoundFront(n: Int) extends Front {
-  def substitute(subst: Subst) = subst match {
-    case Cons(ft, s) if n == 1 => ft
-    case Cons(_, s)           => BoundFront(n-1).substitute(s)
-    case Shift(k) => BoundFront(n+k)
-  }
-
-  /** Pretty */
-  override def pretty = s"$n"
-}
-case class TermFront(term: TermImpl) extends Front {
-  def substitute(subst: Subst) = TermFront(TermClos(term, subst))
-
-  /** Pretty */
-  override def pretty = term.pretty
-}
-
-/**
-case object UNBOUND extends Front {
-  def substitute(subst: Subst) = UNBOUND
-}
-*/
 
 
 

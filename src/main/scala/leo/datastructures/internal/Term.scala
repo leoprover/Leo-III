@@ -24,11 +24,11 @@ import scala.language.implicitConversions
  */
 abstract class Term extends Pretty {
   // Predicates on terms
-  val isAtom: Boolean
-  val isTermApp: Boolean
-  val isTermAbs: Boolean
-  val isTypeApp: Boolean
-  val isTypeAbs: Boolean
+  def isAtom: Boolean
+  def isTermApp: Boolean
+  def isTermAbs: Boolean
+  def isTypeApp: Boolean
+  def isTypeAbs: Boolean
 
   def is(term: Term): Boolean = term == this
   def is(symbol: Signature#Key): Boolean = false

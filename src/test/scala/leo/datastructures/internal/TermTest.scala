@@ -8,6 +8,8 @@ import Term.{mkTermAbs, mkTermApp, mkBound,λ, mkAtom}
  */
 object TermTest {
   def main (args: Array[String]) {
+
+
     val sig = Signature.get
 
 //    val B = sig.addUninterpreted("B", Type.i)
@@ -20,20 +22,20 @@ object TermTest {
     val neuB = mkTermAbs(sig.i, mkTermApp((2,sig.i), (1, sig.i)))
     val t3 = mkTermAbs(sig.i, mkTermApp(t1, neuB))
 
-    val t1neu = mkTermAbs(sig.i, mkTermApp((2,sig.i), mkTermAbs(sig.i, (1,sig.i))))
+    val t1neu = mkTermAbs(sig.i, mkTermApp((2,sig.i), mkTermAbs(sig.i, (2,sig.i))))
     val t4 = mkTermAbs(sig.i, mkTermApp(t1neu, neuB))
 
-//    println(t4.pretty)
-//    println(t4.betaNormalize.pretty)
-//    println(t4.betaNormalize.betaNormalize.pretty)
-//    println(t4.betaNormalize.betaNormalize.betaNormalize.pretty)
+    println(t4.pretty)
+    println(t4.betaNormalize.pretty)
+    println(t4.betaNormalize.betaNormalize.pretty)
+    println(t4.betaNormalize.betaNormalize.betaNormalize.pretty)
 
     sig.addUninterpreted("p", sig.o)
     val p = mkAtom(sig("p").key)
     val inner = λ(sig.o)(mkTermApp((2, sig.o),(1,sig.o)))
     val outer = λ(sig.o)(mkTermApp(inner,p))
-    println(outer.pretty)
-    println(outer.betaNormalize.pretty)
+//    println(outer.pretty)
+//    println(outer.betaNormalize.pretty)
 
 
   }
