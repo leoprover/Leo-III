@@ -2,21 +2,26 @@ package leo.datastructures.internal.terms
 
 import leo.datastructures.Pretty
 
-/**
- * Created by lex on 06.08.14.
- */
-/////////////////////////////////////////////////
-// Implementation of substitutions
-/////////////////////////////////////////////////
+
+
 // TODO: Normalisation on subst needed?
+/**
+ * // TODO Doc
+ */
 sealed abstract class Subst extends Pretty {
   /** s.comp(s') = t
     * where t = s o s' */
   def comp(other: Subst): Subst
   def o = comp(_)
+
   /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
-  def sink = Cons(BoundFront(1),this.comp(Shift(1)))
+  def sink = Cons(BoundFront(1),this o Shift(1))
 }
+
+/////////////////////////////////////////////////
+// Implementation of substitutions
+/////////////////////////////////////////////////
+
 case class Shift(n: Int) extends Subst {
   def comp(other: Subst) = n match {
     case 0 => other
