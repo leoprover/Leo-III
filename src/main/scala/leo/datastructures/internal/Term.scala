@@ -79,6 +79,8 @@ abstract class Term extends Pretty {
 
 
 object Term {
+  type Impl = Term
+
   def mkAtom = SymbolNode(_)
   def mkBound = BoundNode(_,_)
   def mkTermApp = ApplicationNode(_,_)

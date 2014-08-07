@@ -91,7 +91,7 @@ trait HOLSignature {
   private def eq = mkAtom(13)
 
   // Definitions for default symbols
-  protected def existsDef: Term = Λ(
+  protected def existsDef: Term.Impl = Λ(
     mkTermAbs(1 ->: o,
       mkTermApp(not,
         mkTermApp(all,
@@ -99,26 +99,26 @@ trait HOLSignature {
             mkTermApp(not,
               mkTermApp((2, (1 ->: o)), (1, 1))))))))
 
-  protected def andDef: Term = mkTermAbs(o,
+  protected def andDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(not,
         mkTermApp(
           mkTermApp(disj, mkTermApp(not, (2, o))),
           mkTermApp(not, (1, o))))))
 
-  protected def implDef: Term = mkTermAbs(o,
+  protected def implDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(
         mkTermApp(disj, mkTermApp(not, (2, o))),
         (1, o))))
 
-  protected def ifDef: Term = mkTermAbs(o,
+  protected def ifDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(
         mkTermApp(disj, (2, o)),
         mkTermApp(not, (1, o)))))
 
-  protected def iffDef: Term = mkTermAbs(o,
+  protected def iffDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(
         mkTermApp(conj, mkTermApp(
@@ -126,20 +126,20 @@ trait HOLSignature {
         mkTermApp(
           mkTermApp(lpmi, (2, o)), (1, o)))))
 
-  protected def nandDef: Term = mkTermAbs(o,
+  protected def nandDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(
         mkTermApp(disj, mkTermApp(not, (2, o))),
         mkTermApp(not, (1, o)))))
 
-  protected def norDef: Term = mkTermAbs(o,
+  protected def norDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(not,
         mkTermApp(
           mkTermApp(disj, (2, o)),
           (1, o)))))
 
-  protected def niffDef: Term = mkTermAbs(o,
+  protected def niffDef: Term.Impl = mkTermAbs(o,
     mkTermAbs(o,
       mkTermApp(not,
         mkTermApp(
@@ -148,7 +148,7 @@ trait HOLSignature {
           mkTermApp(
             mkTermApp(lpmi, (2, o)), (1, o))))))
 
-  protected def neqDef: Term = Λ(
+  protected def neqDef: Term.Impl = Λ(
     mkTermAbs(1,
       mkTermAbs(1,
         mkTermApp(not,
@@ -159,55 +159,55 @@ trait HOLSignature {
 }
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
-trait HOLBinaryConnective extends Function2[Term, Term, Term] {
+trait HOLBinaryConnective extends Function2[Term.Impl, Term.Impl, Term.Impl] {
   protected[HOLBinaryConnective] val key: Signature#Key
 
   /** Create the term that is constructed by applying two arguments to the binary connective. */
-  override def apply(left: Term, right: Term): Term = mkTermApp(mkTermApp(mkAtom(key), left), right)
+  override def apply(left: Term.Impl, right: Term.Impl): Term.Impl = mkTermApp(mkTermApp(mkAtom(key), left), right)
 
-  def unapply(t: Term): Option[(Term,Term)] = t match {
+  def unapply(t: Term.Impl): Option[(Term,Term)] = t match {
     case (Symbol(`key`) @@@ t1) @@@ t2 => Some((t1,t2))
     case _ => None
   }
 }
 object HOLBinaryConnective {
   /** Return the term corresponding to the connective the object represents */
-  implicit def toTerm(conn: HOLBinaryConnective): Term = mkAtom(conn.key)
+  implicit def toTerm(conn: HOLBinaryConnective): Term.Impl = mkAtom(conn.key)
 }
 
 /** Trait for unary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
-trait HOLUnaryConnective extends Function1[Term, Term] {
+trait HOLUnaryConnective extends Function1[Term.Impl, Term.Impl] {
   protected[HOLUnaryConnective] val key: Signature#Key
 
   /** Create the term that is constructed by applying an argument to the unary connective. */
-  override def apply(arg: Term): Term = mkTermApp(mkAtom(key), arg)
+  override def apply(arg: Term.Impl): Term.Impl = mkTermApp(mkAtom(key), arg)
 
-  def unapply(t: Term): Option[Term] = t match {
+  def unapply(t: Term.Impl): Option[Term] = t match {
     case (Symbol(`key`) @@@ t1) => Some(t1)
     case _ => None
   }
 }
 object HOLUnaryConnective {
   /** Return the term corresponding to the connective the object represents */
-  implicit def toTerm(conn: HOLUnaryConnective): Term = mkAtom(conn.key)
+  implicit def toTerm(conn: HOLUnaryConnective): Term.Impl = mkAtom(conn.key)
 }
 
 
 /** Trait for nullary symbols (constants) within HOL. */
-trait HOLConstant extends Function0[Term] {
+trait HOLConstant extends Function0[Term.Impl] {
   protected[HOLConstant] val key: Signature#Key
 
   /** Create the term that is represented by the object */
-  override def apply(): Term = mkAtom(key)
+  override def apply(): Term.Impl = mkAtom(key)
 
-  def unapply(t: Term): Boolean = t match {
+  def unapply(t: Term.Impl): Boolean = t match {
     case Symbol(`key`) => true
     case _             => false
   }
 }
 object HOLConstant {
   /** Return the term corresponding to the connective the object represents */
-  implicit def toTerm(c: HOLConstant): Term = mkAtom(c.key)
+  implicit def toTerm(c: HOLConstant): Term.Impl = mkAtom(c.key)
 }
 
 ////////////////////////////////////////
@@ -218,12 +218,12 @@ object HOLConstant {
 object ||| extends HOLBinaryConnective  { val key = 12 }
 /** HOL equality */
 object === extends HOLBinaryConnective  { val key = 13
-  override def apply(left:Term, right: Term) = {
+  override def apply(left: Term.Impl, right: Term.Impl) = {
     lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
     mkTermApp(mkTermApp(instantiated, left), right)
   }
 
-  override def unapply(t: Term): Option[(Term,Term)] = t match {
+  override def unapply(t: Term.Impl): Option[(Term.Impl, Term.Impl)] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
     case _ => None
   }
@@ -244,12 +244,12 @@ object ~||| extends HOLBinaryConnective { val key = 26 }
 object <~> extends HOLBinaryConnective  { val key = 27 }
 /** HOL negated equality */
 object !=== extends HOLBinaryConnective  { val key = 28
-  override def apply(left:Term, right: Term) = {
+  override def apply(left: Term.Impl, right: Term.Impl) = {
     lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
     mkTermApp(mkTermApp(instantiated, left), right)
   }
 
-  override def unapply(t: Term): Option[(Term,Term)] = t match {
+  override def unapply(t: Term.Impl): Option[(Term.Impl,Term.Impl)] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
     case _ => None
   }
@@ -259,24 +259,24 @@ object !=== extends HOLBinaryConnective  { val key = 28
 object Not extends HOLUnaryConnective    { val key = 10 }
 /** HOL forall */
 object Forall extends HOLUnaryConnective { val key = 11
-  override def apply(arg: Term): Term = {
+  override def apply(arg: Term.Impl): Term.Impl = {
     lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
     mkTermApp(instantiated, arg)
   }
 
-  override def unapply(t: Term): Option[Term] = t match {
+  override def unapply(t: Term.Impl): Option[Term.Impl] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
     case _ => None
   }
 }
 /** HOL exists */
 object Exists extends HOLUnaryConnective { val key = 20
-  override def apply(arg: Term): Term = {
+  override def apply(arg: Term.Impl): Term.Impl = {
     lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
     mkTermApp(instantiated, arg)
   }
 
-  override def unapply(t: Term): Option[Term] = t match {
+  override def unapply(t: Term.Impl): Option[Term.Impl] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
     case _ => None
   }
@@ -289,16 +289,16 @@ object LitFalse extends HOLConstant     { val key = 7 }
 
 // other HOL connectives
 /** If-Then-Else combinator */
-object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
+object IF_THEN_ELSE extends Function3[Term.Impl, Term.Impl, Term.Impl, Term.Impl] {
   protected[IF_THEN_ELSE] val key = 15
 
-  override def apply(cond: Term, thn: Term, els: Term): Term = {
+  override def apply(cond: Term.Impl, thn: Term.Impl, els: Term.Impl): Term.Impl = {
     lazy val instantiated = mkTypeApp(mkAtom(key), thn.ty)
 
     mkTermApp(mkTermApp(mkTermApp(instantiated, cond), thn), els)
   }
 
-  def unapply(t: Term): Option[(Term,Term, Term)] = t match {
+  def unapply(t: Term.Impl): Option[(Term.Impl,Term.Impl, Term.Impl)] = t match {
     case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some((t1,t2,t3))
     case _ => None
   }
