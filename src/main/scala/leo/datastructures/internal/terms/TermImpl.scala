@@ -16,7 +16,7 @@ import leo.datastructures.internal.{Type, Signature, Term}
  * @author Alexander Steen
  * @since 04.08.2014
  */
-protected[internal] sealed abstract class TermImpl extends Term {
+protected[terms] sealed abstract class TermImpl extends Term {
   def headSym: Head // only on normal forms?
   // TODO: All :D
   //def δ_expand(count: Int): VAL
@@ -61,7 +61,7 @@ protected[internal] sealed abstract class TermImpl extends Term {
 /////////////////////////////////////////////////
 
 /** Representation of terms that are in (weak) head normal form. */
-protected[internal] case class Root(hd: Head, args: Spine) extends TermImpl {
+protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   import TermImpl.{headToTerm}
 
   def headSym = hd
@@ -111,7 +111,7 @@ protected[internal] case class Root(hd: Head, args: Spine) extends TermImpl {
 
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
-protected[internal] case class Redex(body: TermImpl, args: Spine) extends TermImpl {
+protected[terms] case class Redex(body: TermImpl, args: Spine) extends TermImpl {
   def headSym = body.headSym
 
   def preNormalize(s: Subst): TermClosure = {
@@ -166,7 +166,7 @@ protected[internal] case class Redex(body: TermImpl, args: Spine) extends TermIm
 
 
 
-protected[internal] case class TermAbstr(typ: Type, body: TermImpl) extends TermImpl {
+protected[terms] case class TermAbstr(typ: Type, body: TermImpl) extends TermImpl {
   def headSym = body.headSym
 
   def preNormalize(s: Subst) = (this,s)
@@ -191,27 +191,33 @@ protected[internal] case class TermAbstr(typ: Type, body: TermImpl) extends Term
 }
 
 
+protected[terms] case class TypeAbstr(body: TermImpl) extends TermImpl {
+  import Type.∀
 
-//protected[internal] case class TypeAbstr(body: TermImpl) extends TermImpl {
-//  def headSym = body.headSym
-//
-//  def normalize(subst: Subst) = ???
-//
-//  /** Handling def. expansion */
-//  override lazy val δ_expandable = body.δ_expandable
-//
-//  def head_δ_expand = TypeAbstr(body.head_δ_expand)
-//  def full_δ_expand = TypeAbstr(body.full_δ_expand)
-//
-//  /** Queries on terms */
-//  def freeVars = body.freeVars
-//
-//  /** Pretty */
-//  def pretty = s"Λ. ${body.pretty}"
-//}
+  def headSym = body.headSym
+
+  def preNormalize(s: Subst) = (this,s)
+
+  def normalize(subst: Subst) = body.normalize(subst)
+
+  /** Handling def. expansion */
+  override lazy val δ_expandable = body.δ_expandable
+
+  def head_δ_expand = TypeAbstr(body.head_δ_expand)
+  def full_δ_expand = TypeAbstr(body.full_δ_expand)
+
+  /** Queries on terms */
+  lazy val ty = ∀(body.ty)
+
+  override val isTypeAbs = true
+  def freeVars = body.freeVars
+
+  /** Pretty */
+  def pretty = s"Λ. (${body.pretty})"
+}
 
 
-protected[internal] case class TermClos(term: TermImpl, σ: Subst) extends TermImpl {
+protected[terms] case class TermClos(term: TermImpl, σ: Subst) extends TermImpl {
   def headSym = term.headSym match {
     case b@BoundIndex(typ, scope) => b.substitute(σ) match {
       case BoundFront(k) => BoundIndex(typ,k)
@@ -244,7 +250,7 @@ protected[internal] case class TermClos(term: TermImpl, σ: Subst) extends TermI
 // Implementation of head symbols
 /////////////////////////////////////////////////
 
-protected[internal] sealed abstract class Head extends Pretty {
+protected[terms] sealed abstract class Head extends Pretty {
   // Handling def. expansion
   val δ_expandable: Boolean
   def δ_expand: TermImpl
@@ -254,7 +260,7 @@ protected[internal] sealed abstract class Head extends Pretty {
 }
 
 
-protected[internal] case class BoundIndex(typ: Type, scope: Int) extends Head {
+protected[terms] case class BoundIndex(typ: Type, scope: Int) extends Head {
   // Handling def. expansion
   val δ_expandable = false
   def δ_expand = this
@@ -271,7 +277,7 @@ protected[internal] case class BoundIndex(typ: Type, scope: Int) extends Head {
   // Pretty printing
   override val pretty = s"$scope"
 }
-protected[internal] case class UiAtom(id: Signature#Key) extends Head {
+protected[terms] case class UiAtom(id: Signature#Key) extends Head {
   private lazy val meta = Signature.get(id)
 
   // Handling def. expansion
@@ -284,7 +290,7 @@ protected[internal] case class UiAtom(id: Signature#Key) extends Head {
   // Pretty printing
   override def pretty = s"${meta.name}"
 }
-protected[internal] case class DefAtom(id: Signature#Key) extends Head {
+protected[terms] case class DefAtom(id: Signature#Key) extends Head {
   private lazy val meta = Signature.get(id)
 
   // Handling def. expansion
@@ -310,7 +316,7 @@ protected[internal] case class DefAtom(id: Signature#Key) extends Head {
 /**
  * // TODO Documentation
  */
-protected[internal] sealed abstract class Spine extends Pretty {
+protected[terms] sealed abstract class Spine extends Pretty {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(subst: Subst): Spine
@@ -322,14 +328,14 @@ protected[internal] sealed abstract class Spine extends Pretty {
   // Queries
   def length: Int
   def freeVars: Set[Term]
-  def asTerms: Seq[Term]
+  def asTerms: Seq[Either[Term, Type]]
 
   // Misc
   def ++(sp: Spine): Spine
-  def +(t: TermImpl): Spine = ++(cons(t,SNil))
+  def +(t: TermImpl): Spine = ++(cons(Left(t),SNil))
 }
 
-protected[internal] case object SNil extends Spine {
+protected[terms] case object SNil extends Spine {
   import TermImpl.{mkSpineNil => nil}
 
   def normalize(subst: Subst) = nil
@@ -350,39 +356,45 @@ protected[internal] case object SNil extends Spine {
   override val pretty = "⊥"
 }
 
-protected[internal] case class App(hd: TermImpl, tail: Spine) extends Spine {
+protected[terms] case class App(hd: TermImpl, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
-  def normalize(subst: Subst) = cons(hd.normalize(subst), tail.normalize(subst))
+  def normalize(subst: Subst) = cons(Left(hd.normalize(subst)), tail.normalize(subst))
 
   // Handling def. expansion
   def δ_expandable = hd.δ_expandable || tail.δ_expandable
-  def δ_expand = cons(hd.full_δ_expand, tail.δ_expand)
+  def δ_expand = cons(Left(hd.full_δ_expand), tail.δ_expand)
 
   // Queries
   def freeVars = hd.freeVars ++ tail.freeVars
   val length = 1 + tail.length
-  def asTerms = hd +: tail.asTerms
+  def asTerms = Left(hd) +: tail.asTerms
 
   // Misc
-  def ++(sp: Spine) = cons(hd, tail ++ sp)
+  def ++(sp: Spine) = cons(Left(hd), tail ++ sp)
 
   // Pretty printing
   override def pretty = s"${hd.pretty};${tail.pretty}"
 }
-//protected[internal] case class TyApp(hd: Type, tail: Spine) extends Spine {
-//  def normalize(subst: Subst) = TyApp(hd, tail.normalize(subst))
-//
-//  /** Handling def. expansion */
-//  def δ_expandable = tail.δ_expandable
-//  def δ_expand = TyApp(hd, tail.δ_expand)
-//
-//  /** Queries on terms */
-//  def freeVars = tail.freeVars
-//
-//  /** Pretty */
-//  override def pretty = s"${hd.pretty};${tail.pretty}"
-//}
+
+protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
+  def normalize(subst: Subst) = TyApp(hd, tail.normalize(subst))
+
+  // Handling def. expansion
+  def δ_expandable = tail.δ_expandable
+  def δ_expand = TyApp(hd, tail.δ_expand)
+
+  // Queries
+  def freeVars = tail.freeVars
+  val length = 1 + tail.length
+  def asTerms = Right(hd) +: tail.asTerms
+
+  // Misc
+  def ++(sp: Spine) = TyApp(hd, tail ++ sp)
+
+  // Pretty printing
+  override def pretty = s"${hd.pretty};${tail.pretty}"
+}
 
 //protected[internal] case class SpineClos(spine: Spine, subst: Subst) extends Spine {
 //
@@ -420,11 +432,12 @@ object TermImpl {
 
   // composite terms
   protected[TermImpl] var termAbstractions: Map[TermImpl, Map[Type, TermImpl]] = Map.empty
+  protected[TermImpl] var typeAbstractions: Map[TermImpl, TermImpl] = Map.empty
   protected[TermImpl] var roots: Map[Head, Map[Spine, TermImpl]] = Map.empty
   protected[TermImpl] var redexes: Map[TermImpl, Map[Spine, TermImpl]] = Map.empty
 
   // Spines
-  protected[TermImpl] var spines: Map[TermImpl, Map[Spine, Spine]] = Map.empty
+  protected[TermImpl] var spines: Map[Either[TermImpl, Type], Map[Spine, Spine]] = Map.empty
 
   /////////////////////////////////////////////
   // Implementation based constructor methods
@@ -489,22 +502,30 @@ object TermImpl {
                         termAbstractions += ((body, Map((t, abs))))
                         abs
   }
+  protected[terms] def mkTypeAbstr(body: TermImpl): TermImpl = typeAbstractions.get(body) match {
+    case Some(abs) => abs
+    case None      => val abs = TypeAbstr(body)
+                      typeAbstractions += ((body, abs))
+                      abs
+  }
 
   // Spines
   protected[terms] def mkSpineNil: Spine = SNil
-  protected[terms] def mkSpineCons(term: TermImpl, tail: Spine): Spine = spines.get(term) match {
+  protected[terms] def mkSpineCons(term: Either[TermImpl, Type], tail: Spine): Spine = spines.get(term) match {
     case Some(inner) => inner.get(tail) match {
       case Some(sp)   => sp
-      case None       => val sp = App(term, tail)
+      case None       => val sp = term.fold(App(_, tail),TyApp(_, tail))
                          spines += ((term,inner.+((tail, sp))))
                          sp
     }
-    case None       => val sp = App(term, tail)
+    case None       => val sp = term.fold(App(_, tail),TyApp(_, tail))
                        spines += ((term, Map((tail, sp))))
                        sp
   }
 
-  private def mkSpine(args: Seq[TermImpl]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(t,sp)})
+  private def mkSpine(args: Seq[TermImpl]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Left(t),sp)})
+  private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Right(t),sp)})
+  private def mkGenSpine(args: Seq[Either[TermImpl,Type]]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(t,sp)})
 
   /////////////////////////////////////////////
   // Public visible term constructors
@@ -517,11 +538,11 @@ object TermImpl {
   def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
   def mkTermApp(func: TermImpl, arg: TermImpl): TermImpl = func.isAtom match {
-    case true  => mkRoot(func.headSym, mkSpineCons(arg,SNil))
+    case true  => mkRoot(func.headSym, mkSpineCons(Left(arg),SNil))
     case false => func match {
       case Root(h,sp)  => mkRoot(h,sp + arg)
       case Redex(r,sp) => mkRedex(r, sp + arg)
-      case other       => mkRedex(other, mkSpineCons(arg, SNil))
+      case other       => mkRedex(other, mkSpineCons(Left(arg), SNil))
     }
   }
   def mkTermApp(func: TermImpl, args: Seq[TermImpl]): TermImpl = func.isAtom match {
@@ -532,11 +553,30 @@ object TermImpl {
       case other       => mkRedex(other, mkSpine(args))
     }
   }
-
   def mkTermAbs(typ: Type, body: TermImpl): TermImpl = mkTermAbstr(typ, body)
+
   def λ(hd: Type)(body: TermImpl) = mkTermAbs(hd, body)
   def λ(hd: Type, hds: Type*)(body: TermImpl): TermImpl = {
     λ(hd)(hds.foldRight(body)(λ(_)(_)))
+  }
+
+  def mkTypeAbs(body: TermImpl): TermImpl = mkTypeAbstr(body)
+  def mkTypeApp(func: TermImpl, args: Seq[Type]): TermImpl  = func.isAtom match {
+    case true  => mkRoot(func.headSym, mkTySpine(args))
+    case false => func match {
+      case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args))
+      case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args))
+      case other       => mkRedex(other, mkTySpine(args))
+    }
+  }
+
+  def mkApp(func: TermImpl, args: Seq[Either[TermImpl, Type]]): TermImpl  = func.isAtom match {
+    case true  => mkRoot(func.headSym, mkGenSpine(args))
+    case false => func match {
+      case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
+      case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))
+      case other       => mkRedex(other, mkGenSpine(args))
+    }
   }
 
   implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)

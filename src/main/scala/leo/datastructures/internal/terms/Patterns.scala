@@ -29,7 +29,7 @@ object @@@ extends HOLBinaryConnective {
 
   val key = Integer.MIN_VALUE
 
-  def unapply(t: TermImpl): Option[(Term, Seq[Term])] = t match {
+  def unapply(t: TermImpl): Option[(Term, Seq[Either[Term, Type]])] = t match {
     case Root(hd, args)    => Some((headToTerm(hd), args.asTerms))
     case Redex(left, args) => Some((left, args.asTerms))
     case _                 => None
