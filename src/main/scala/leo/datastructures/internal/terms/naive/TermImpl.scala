@@ -343,5 +343,7 @@ object TermImpl {
   def mkTypeApp = TypeApplicationNode(_,_)
   def mkTypeApp(func: Term, args: Seq[Type]): Term = args.foldLeft(func)((arg,f) => mkTypeApp(arg,f))
   def mkTypeAbs = TypeAbstractionNode(_)
+
+  def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = args.foldLeft(func)((arg,f) => f.fold(mkTermApp(arg,_),mkTypeApp(arg,_)))
 }
 
