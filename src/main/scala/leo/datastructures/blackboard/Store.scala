@@ -54,6 +54,13 @@ class FormulaStore(_name : String, _formula : Formula, _role : String, _status :
   def status : Int = _status
   def role : String = _role
 
+  /**
+   *
+   * This method returns the flag set for a fully normalized term
+   *
+   * @return 29, all normalize fields are set
+   */
+  def normalized : Int = 29
 
   def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _role, _status)
   def newFormula(nformula : Formula) : FormulaStore = new FormulaStore(name, nformula, _role, _status)

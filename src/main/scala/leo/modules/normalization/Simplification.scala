@@ -104,6 +104,7 @@ object Simplification extends AbstractNormalize{
 
   /**
    * Returns a List with deBrujin Indizes, that are free at this level.
+   *
    * @param formula
    * @return
    */
