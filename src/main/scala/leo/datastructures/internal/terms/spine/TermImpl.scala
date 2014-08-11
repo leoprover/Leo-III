@@ -75,11 +75,11 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case 0 => funty
     case k => ty0(funty._funCodomainType, arglen-1)
   }
-  val freeVars = hd match {
+  lazy val freeVars = hd match {
     case BoundIndex(_,_) => args.freeVars
     case _             => args.freeVars + hd
   }
-  val boundVars = hd match {
+  lazy val boundVars = hd match {
     case BoundIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
