@@ -91,13 +91,14 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case SNil => true
     case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest)
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
+    case _ => true // other cases should not appear
   }
 
 
   def normalize(subst: Subst) = hd match {
     case b@BoundIndex(typ,_) => b.substitute(subst) match {
       case BoundFront(i) => Root(BoundIndex(typ,i), args.normalize(subst))
-      case TermFront(t)  => Redex(t, args.normalize(subst)).normalize(Subst.id)
+      case TermFront(t)  => Redex(t, SpineClos(args,subst)).normalize(Subst.id)
     }
     case _             => Root(hd, args.normalize(subst))
   }
@@ -164,11 +165,16 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
 //      case TermClos(term,substi) => term.preNormalize(substi o t)
 //    }
 //  }
-
-  def normalize(subst: Subst) = {
-//    val (a,b) = preNormalize(subst)
-//    a.normalize(b)
-    ???
+  import leo.datastructures.internal.terms.{Cons, TermFront}
+  def normalize(subst: Subst) = body match {
+    case abs@TermAbstr(_, t) => args match {
+      case SNil => abs.normalize(subst)
+      case App(s0, SNil) => t.normalize(Cons(TermFront(s0),subst))
+      case App(s0, s) => mkRedex(t, s).normalize(Cons(TermFront(s0),subst))
+      case SpineClos(SNil, _) => abs.normalize(subst)
+      case SpineClos(App(s0, s), subst2) => mkRedex(t, SpineClos(s, subst2)).normalize(Cons(TermFront(TermClos(s0, subst2)),subst)) // TODO maybe not correct? see note sheet
+    }
+      // TODO: This is not correct i guess, split substitution for head/spine?
   }
 
 
@@ -240,7 +246,7 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
   // Other operations
   lazy val typeCheck = body.typeCheck
 
-  def preNormalize(s: Subst) = (this,s)
+  def preNormalize(s: Subst) = (this,s) // TODO::!!!
 
   def normalize(subst: Subst) = mkTypeAbstr(body.normalize(subst))
 
@@ -251,7 +257,7 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
 }
 
 
-protected[terms] case class TermClos(term: Term, σ: Subst) extends TermImpl {
+protected[spine] case class TermClos(term: Term, σ: Subst) extends TermImpl {
   // Closure should never be handed to the outside
 
   // Predicates on terms
@@ -458,6 +464,30 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
 }
 
 
+protected[spine] case class SpineClos(sp: Spine, s: Subst) extends Spine {
+  import TermImpl.{mkSpineCons => cons}
+
+  def normalize(subst: Subst) = sp.normalize(s o subst)
+
+  // Handling def. expansion
+  val δ_expandable = ???
+  def partial_δ_expand(rep: Int) = ???
+  lazy val full_δ_expand = ???
+
+  // Queries
+  val freeVars = ???
+  val boundVars = ???
+  val length = sp.length
+  lazy val asTerms = ???
+
+  // Misc
+  def ++(sp: Spine) = ???
+
+  // Pretty printing
+  override def pretty = s"(${sp.pretty}[${s.pretty}])"
+}
+
+
 /**
  * //TODO Documentation
  */
@@ -609,12 +639,6 @@ object TermImpl {
     }
 
   implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
-
-  // TODO: Remote this from here
-  implicit def intToBoundVar(in: (Int, Type)) = mkBound(in._2,in._1)
-  implicit def intsToBoundVar(in: (Int, Int)) = mkBound(in._2,in._1)
-  implicit def keyToAtom(in: Signature#Key) = mkAtom(in)
-
 
 }
 

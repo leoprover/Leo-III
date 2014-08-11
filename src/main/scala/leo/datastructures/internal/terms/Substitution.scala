@@ -15,6 +15,8 @@ sealed abstract class Subst extends Pretty {
 
   /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
   def sink: Subst = Cons(BoundFront(1),this o Shift(1))
+
+  def normalize: Subst
 }
 
 /////////////////////////////////////////////////
@@ -31,6 +33,8 @@ case class Shift(n: Int) extends Subst {
     }
   }
 
+  val normalize = this
+
   /** Pretty */
   override def pretty = n match {
     case 0 => "id"
@@ -41,6 +45,11 @@ case class Cons(ft: Front, subst: Subst) extends Subst {
   def comp(other: Subst) = other match {
     case Shift(0) => this
     case s => Cons(ft.substitute(s), subst.comp(s))
+  }
+
+  lazy val normalize = ft match {
+    case BoundFront(_) => Cons(ft, subst.normalize)
+    case TermFront(t)  => Cons(TermFront(t.normalize(Subst.id)), subst.normalize) //TODO: eta contract here
   }
 
   /** Pretty */
