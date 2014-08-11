@@ -1,6 +1,7 @@
 package leo.datastructures.internal.terms.naive
 
-import leo.datastructures.internal.{Type, Signature, Term}
+import leo.datastructures.internal.{Type, Signature}
+import leo.datastructures.internal.terms.Term
 
 /**
  * Created by lex on 16.06.14.

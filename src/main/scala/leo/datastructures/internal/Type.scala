@@ -87,6 +87,8 @@ abstract class Type extends Pretty {
  * Constructor methods the `Type` class.
  */
 object Type {
+  type Impl = Type // fix by introducing super-type on types TODO
+
   /** Create type with name `identifier`. */
   def mkType(identifier: Signature#Key): Type = BaseTypeNode(identifier)
   /** Build type `in -> out`. */

@@ -2,7 +2,8 @@ package leo.datastructures.internal.terms.spine
 
 import scala.language.implicitConversions
 import leo.datastructures.Pretty
-import leo.datastructures.internal.{Type, Signature, Term}
+import leo.datastructures.internal.{Type, Signature}
+import leo.datastructures.internal.terms.Term
 
 ///////////////////////////////////////////////
 // Shared-implementation based specialization

@@ -1,5 +1,7 @@
 package leo.datastructures.internal
 
+import leo.datastructures.internal.terms.Term
+
 /**
  * Interface for signature representations.
  * The signature table can contain types, variables, and constants (which may be uninterpreted symbols or defined symbols).
@@ -159,7 +161,7 @@ trait IsSignature {
   def isTypeConstructor(key: Key): Boolean      = meta(key).isTypeConstructor
 
   /** Empty the signature (deletes all symbols from signature and resets all indexing key counters. */
-  def empty: Unit
+  def empty(): Unit
 
   ///////////////////////////////
   // Dumping of indexed symbols

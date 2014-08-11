@@ -1,6 +1,7 @@
 package leo.datastructures.internal
 
 import scala.collection.immutable.{BitSet, IntMap, HashMap}
+import leo.datastructures.internal.terms.Term
 
 /**
  * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
@@ -191,7 +192,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   def meta(key: Key): Meta = try {metaMap(key)} catch {case e:Throwable => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
   def meta(identifier: String): Meta = meta(keyMap(identifier))
 
-  def empty = {
+  def empty() = {
     curConstKey = 0
     keyMap = keyMap.empty
     metaMap = metaMap.empty

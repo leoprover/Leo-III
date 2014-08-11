@@ -1,10 +1,11 @@
 package leo.datastructures.internal.terms
 
-import leo.datastructures.Pretty
-import scala.language.implicitConversions
 
+import scala.language.implicitConversions
 import scala.Some
-import leo.datastructures.internal.{Type, Signature}
+
+import leo.datastructures.Pretty
+import leo.datastructures.internal.{Type, Signature, HOLBinaryConnective}
 
 
 /**
@@ -83,18 +84,18 @@ abstract class Term extends Pretty {
 
 
 object Term {
-  import leo.datastructures.internal.terms.naive.NaiveTerm
+  import leo.datastructures.internal.terms.naive.TermImpl
 
-  def mkAtom(id: Signature#Key): Term = NaiveTerm.mkAtom(id)
-  def mkBound(t: Type, scope: Int): Term = NaiveTerm.mkBound(t,scope)
+  def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
+  def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
 
-  def mkTermApp(func: Term, arg: Term): Term = NaiveTerm.mkTermApp(func, arg)
-  def mkTermApp(func: Term, args: Seq[Term]): Term = NaiveTerm.mkTermApp(func, args)
-  def mkTermAbs(t: Type, body: Term): Term = NaiveTerm.mkTermAbs(t, body)
+  def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
+  def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
+  def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
 
-  def mkTypeApp(func: Term, arg: Type): Term = NaiveTerm.mkTypeApp(func, arg)
-  def mkTypeApp(func: Term, args: Seq[Type]): Term = NaiveTerm.mkTypeApp(func, args)
-  def mkTypeAbs(body: Term): Term = NaiveTerm.mkTypeAbs(body)
+  def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
+  def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
+  def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
 
   // Pretty operators
 
@@ -132,9 +133,10 @@ object Term {
  * }}}
  */
 object Bound {
+  import spine.{BoundIndex,SNil}
   def unapply(t: Term): Option[(Type, Int)] = t match {
     case naive.BoundNode(ty,scope) => Some((ty,scope))
-    case spine.Root(hd, )
+    case spine.Root(BoundIndex(ty, scope), SNil) => Some((ty, scope))
     case _ => None
   }
 }
@@ -149,10 +151,12 @@ object Bound {
  * }}}
  */
 object Symbol {
+  import spine.{UiAtom, DefAtom, SNil}
+
   def unapply(t: Term): Option[Signature#Key] = t match {
-    case naive.SymbolNode(k) => Some(k)
-    case spine.DefAtom(k)    => Some(k)
-    case spine.UiAtom(k)     => Some(k)
+    case naive.SymbolNode(k)         => Some(k)
+    case spine.Root(DefAtom(k),SNil) => Some(k)
+    case spine.Root(UiAtom(k),SNil)  => Some(k)
     case _ => None
   }
 }
@@ -168,13 +172,21 @@ object Symbol {
  * }}}
  */
 object @@@ extends HOLBinaryConnective {
-
   val key = Integer.MIN_VALUE // just for fun!
   override def unapply(t: Term): Option[(Term,Term)] = t match {
     case naive.ApplicationNode(l,r) => Some((l,r))
     case _ => None
   }
   override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
+}
+
+object ∙ {
+  import spine.{Root, Redex}
+  import spine.TermImpl.{headToTerm}
+  def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
+    case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
+    case Redex(expr, sp) => Some((expr, sp.asTerms))
+  }
 }
 
 /**
