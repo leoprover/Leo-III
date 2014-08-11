@@ -1,8 +1,8 @@
 package leo.datastructures.blackboard
 
-import leo.datastructures.internal.{Term => Formula}
 import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.internal.terms.Term
 import scala.collection.mutable
 
 // Singleton Blackboards
@@ -40,7 +40,7 @@ trait Blackboard {
    * </p>
    * @param formula to be added.
    */
-  def addFormula(name : String, formula : Formula, role : String)
+  def addFormula(name : String, formula : Term, role : String)
 
   /**
    * <p>
@@ -97,7 +97,7 @@ trait Blackboard {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : Formula => Boolean) : List[FormulaStore]
+  def getAll(p : Term => Boolean) : List[FormulaStore]
 
   /**
    * <p>
@@ -106,7 +106,7 @@ trait Blackboard {
    *
    * @param p - All x with p(x) will be removed.
    */
-  def rmAll(p : Formula => Boolean)
+  def rmAll(p : Term => Boolean)
 
   /**
    * Used by Stores to mark a FormulaStore as Changed, if nothing

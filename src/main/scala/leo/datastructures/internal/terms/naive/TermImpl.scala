@@ -1,4 +1,8 @@
-package leo.datastructures.internal
+package leo.datastructures.internal.terms.naive
+
+import leo.datastructures.internal.{Type, Signature}
+import leo.datastructures.internal.BoundTypeNode
+import leo.datastructures.internal.terms.Term
 
 /**
  * Naive implementation of nameless lambda terms.
@@ -7,13 +11,15 @@ package leo.datastructures.internal
  * @author Alexander Steen
  * @since 02.06.2014
  */
-sealed abstract class NaiveTerm extends Term {
+sealed abstract class TermImpl extends Term {
   // Predicates on terms
   val isAtom = false
   val isTermApp = false
   val isTermAbs = false
   val isTypeApp = false
   val isTypeAbs = false
+
+  def headSymbol = ???
 
   protected[internal] def decrementByOne(n: Int): Int = n match {
     case -1 => -1
@@ -25,7 +31,7 @@ sealed abstract class NaiveTerm extends Term {
 // Term symbols
 ///////////////////
 
-protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
+protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
 
   // Predicates on terms
   override val isAtom = true
@@ -68,7 +74,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends NaiveTerm {
   def pretty = sym.name
 }
 
-protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm {
+protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   override val isAtom = true
 
   // Queries on terms
@@ -115,7 +121,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends NaiveTerm 
   def pretty = scope.toString
 }
 
-protected[internal] case class AbstractionNode(absType: Type, term: Term) extends NaiveTerm {
+protected[internal] case class AbstractionNode(absType: Type, term: Term) extends TermImpl {
   override val isTermAbs = true
 
   // Queries on terms
@@ -152,7 +158,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
 
 
 
-protected[internal] case class ApplicationNode(left: Term, right: Term) extends NaiveTerm {
+protected[internal] case class ApplicationNode(left: Term, right: Term) extends TermImpl {
   override val isTermApp = true
 
   // Queries on terms
@@ -202,7 +208,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
 // Type symbols
 ///////////////////
 
-protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm {
+protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl {
   override val isTypeAbs = true
 
   // Queries on terms
@@ -231,7 +237,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends NaiveTerm
   def pretty = "[Λ." + term.pretty + "]"
 }
 
-protected[internal] case class TypeApplicationNode(left: Term, right: Type) extends NaiveTerm {
+protected[internal] case class TypeApplicationNode(left: Term, right: Type) extends TermImpl {
   override val isTypeApp = true
 
   // Queries on terms
@@ -274,4 +280,14 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 }
 
 
+object TermImpl {
+  def mkAtom = SymbolNode(_)
+  def mkBound = BoundNode(_,_)
+  def mkTermApp = ApplicationNode(_,_)
+  def mkTermApp(func: Term, args: Seq[Term]): Term = args.foldLeft(func)((arg,f) => mkTermApp(arg,f))
+  def mkTermAbs = AbstractionNode(_, _)
+  def mkTypeApp = TypeApplicationNode(_,_)
+  def mkTypeApp(func: Term, args: Seq[Type]): Term = args.foldLeft(func)((arg,f) => mkTypeApp(arg,f))
+  def mkTypeAbs = TypeAbstractionNode(_)
+}
 

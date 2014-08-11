@@ -1,4 +1,4 @@
-package leo.datastructures.internal.terms
+package leo.datastructures.internal.terms.spine
 
 import scala.language.implicitConversions
 import leo.datastructures.Pretty
@@ -17,7 +17,7 @@ import leo.datastructures.internal.{Type, Signature, Term}
  * @since 04.08.2014
  */
 protected[terms] sealed abstract class TermImpl extends Term {
-  def headSym: Head // only on normal forms?
+  def headSymbol: TermImpl // only on normal forms?
   // TODO: All :D
   //def δ_expand(count: Int): VAL
   def betaNormalize: TermImpl = normalize(Subst.id)
@@ -64,7 +64,7 @@ protected[terms] sealed abstract class TermImpl extends Term {
 protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   import TermImpl.{headToTerm}
 
-  def headSym = hd
+  def headSymbol = hd
 
   def preNormalize(s: Subst) = (this, s)
 
@@ -112,7 +112,7 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
 protected[terms] case class Redex(body: TermImpl, args: Spine) extends TermImpl {
-  def headSym = body.headSym
+  def headSymbol = body.headSymbol
 
   def preNormalize(s: Subst): TermClosure = {
     val (bodyPNF, t) = (body, s)//body.preNormalize(s)
@@ -167,7 +167,7 @@ protected[terms] case class Redex(body: TermImpl, args: Spine) extends TermImpl 
 
 
 protected[terms] case class TermAbstr(typ: Type, body: TermImpl) extends TermImpl {
-  def headSym = body.headSym
+  def headSymbol = body.headSymbol
 
   def preNormalize(s: Subst) = (this,s)
 
@@ -194,7 +194,7 @@ protected[terms] case class TermAbstr(typ: Type, body: TermImpl) extends TermImp
 protected[terms] case class TypeAbstr(body: TermImpl) extends TermImpl {
   import Type.∀
 
-  def headSym = body.headSym
+  def headSymbol = body.headSymbol
 
   def preNormalize(s: Subst) = (this,s)
 
@@ -218,12 +218,16 @@ protected[terms] case class TypeAbstr(body: TermImpl) extends TermImpl {
 
 
 protected[terms] case class TermClos(term: TermImpl, σ: Subst) extends TermImpl {
-  def headSym = term.headSym match {
-    case b@BoundIndex(typ, scope) => b.substitute(σ) match {
-      case BoundFront(k) => BoundIndex(typ,k)
-      case TermFront(t) => t.headSym
+  def headSymbol = term.headSymbol match {
+    case Root(head, SNil) => head match {
+      case b@BoundIndex(typ, scope) => b.substitute(σ) match {
+        case BoundFront(k) => BoundIndex(typ,k)
+        case TermFront(t) => t.headSymbol
+        // TODO this correct? reapply subst? dont think so
+      }
+      case other => other
     }
-    case other => other
+    case _ => throw new UnknownError("head symbol not a root")
   }
 
   def preNormalize(s: Subst) = term.preNormalize(σ o s)
@@ -537,22 +541,13 @@ object TermImpl {
 
   def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  def mkTermApp(func: TermImpl, arg: TermImpl): TermImpl = func.isAtom match {
-    case true  => mkRoot(func.headSym, mkSpineCons(Left(arg),SNil))
-    case false => func match {
-      case Root(h,sp)  => mkRoot(h,sp + arg)
-      case Redex(r,sp) => mkRedex(r, sp + arg)
-      case other       => mkRedex(other, mkSpineCons(Left(arg), SNil))
-    }
-  }
-  def mkTermApp(func: TermImpl, args: Seq[TermImpl]): TermImpl = func.isAtom match {
-    case true  => mkRoot(func.headSym, mkSpine(args))
-    case false => func match {
+  def mkTermApp(func: TermImpl, arg: TermImpl): TermImpl = mkTermApp(func, Seq(arg))
+  def mkTermApp(func: TermImpl, args: Seq[TermImpl]): TermImpl = func match {
+      case Root(h, SNil) => mkRoot(h, mkSpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args))
       case other       => mkRedex(other, mkSpine(args))
     }
-  }
   def mkTermAbs(typ: Type, body: TermImpl): TermImpl = mkTermAbstr(typ, body)
 
   def λ(hd: Type)(body: TermImpl) = mkTermAbs(hd, body)
@@ -560,24 +555,23 @@ object TermImpl {
     λ(hd)(hds.foldRight(body)(λ(_)(_)))
   }
 
-  def mkTypeAbs(body: TermImpl): TermImpl = mkTypeAbstr(body)
-  def mkTypeApp(func: TermImpl, args: Seq[Type]): TermImpl  = func.isAtom match {
-    case true  => mkRoot(func.headSym, mkTySpine(args))
-    case false => func match {
+  def mkTypeApp(func: TermImpl, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
+  def mkTypeApp(func: TermImpl, args: Seq[Type]): TermImpl  = func match {
+      case Root(h, SNil) => mkRoot(h, mkTySpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args))
       case other       => mkRedex(other, mkTySpine(args))
     }
-  }
 
-  def mkApp(func: TermImpl, args: Seq[Either[TermImpl, Type]]): TermImpl  = func.isAtom match {
-    case true  => mkRoot(func.headSym, mkGenSpine(args))
-    case false => func match {
+  def mkTypeAbs(body: TermImpl): TermImpl = mkTypeAbstr(body)
+  def Λ(body: TermImpl): TermImpl = mkTypeAbs(body)
+
+  def mkApp(func: TermImpl, args: Seq[Either[TermImpl, Type]]): TermImpl  = func match {
+      case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))
       case other       => mkRedex(other, mkGenSpine(args))
     }
-  }
 
   implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
 

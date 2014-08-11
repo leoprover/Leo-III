@@ -6,7 +6,8 @@ import org.scalatest.FunSuite
 import leo.datastructures.internal.Signature
 
 import leo.datastructures.internal._
-import leo.datastructures.internal.Term._
+import leo.datastructures.internal.terms.Term
+import Term._
 
 /**
  * Created by ryu on 6/17/14.

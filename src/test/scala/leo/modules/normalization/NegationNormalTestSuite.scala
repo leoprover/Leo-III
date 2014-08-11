@@ -4,7 +4,8 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import leo.datastructures.internal._
 import scala.collection.immutable.HashMap
-import leo.datastructures.internal.Term._
+import leo.datastructures.internal.terms.Term
+import Term._
 import org.scalatest.FunSuite
 
 /**

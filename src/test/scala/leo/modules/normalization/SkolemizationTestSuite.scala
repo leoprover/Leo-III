@@ -5,7 +5,8 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import leo.datastructures.internal._
 import leo.datastructures.internal.HOLSignature
-import leo.datastructures.internal.Term._
+import leo.datastructures.internal.terms.Term
+import Term._
 
 /**
  * Created by ryu on 6/16/14.

@@ -1,4 +1,4 @@
-package leo.datastructures.internal.terms
+package leo.datastructures.internal.terms.spine
 
 import leo.datastructures.Pretty
 

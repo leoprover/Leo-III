@@ -4,15 +4,456 @@ import scala.language.implicitConversions
 
 import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
-import leo.datastructures.internal.{Signature, Term, Type, Kind, LitTrue}
-import leo.datastructures.internal.HOLBinaryConnective
-import leo.datastructures.internal.HOLUnaryConnective
+import leo.datastructures.internal._
 
+import leo.datastructures.internal.terms.Term
+import leo.datastructures.tptp.Commons.Term
 import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkTypeApp}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
 import leo.datastructures.tptp.Commons.THFAnnotated
 import leo.datastructures.tptp.Commons.TPIAnnotated
 import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
+import leo.datastructures.tptp.Commons.Cond
+import leo.datastructures.tptp.Commons.SystemFunc
+import leo.datastructures.tptp.Commons.DefinedFunc
+import scala.Some
+import leo.datastructures.tptp.Commons.Plain
+import leo.datastructures.tptp.Commons.Equality
+import leo.datastructures.tptp.Commons.RationalNumber
+import leo.datastructures.tptp.Commons.Var
+import leo.datastructures.tptp.Commons.TPIAnnotated
+import leo.datastructures.tptp.Commons.NumberTerm
+import leo.datastructures.tptp.Commons.FOFAnnotated
+import leo.datastructures.tptp.Commons.DoubleNumber
+import leo.datastructures.tptp.Commons.CNFAnnotated
+import leo.datastructures.tptp.Commons.DefinedPlain
+import leo.datastructures.tptp.Commons.TFFAnnotated
+import leo.datastructures.tptp.Commons.THFAnnotated
+import leo.datastructures.tptp.Commons.Let
+import leo.datastructures.tptp.Commons.IntegerNumber
+import leo.datastructures.tptp.Commons.Distinct
+import leo.datastructures.tptp.Commons.SystemPlain
+import leo.datastructures.tptp.Commons.Func
 
 /**
  * Processing module from TPTP input.
@@ -24,7 +465,7 @@ import leo.datastructures.tptp.Commons.TFFAnnotated
  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
-  type Result = (String, Term, String)
+  type Result = (String, terms.Term, String)
 
   // Types for replacing bound variables by de bruijn indices
   type TermVarReplaces = Map[Variable, (Type, Int)] // varname -> (vartype, position in list)
@@ -110,7 +551,7 @@ object InputProcessing {
   }
 
   import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
-  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): (String, Term) = {
+  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): (String, terms.Term) = {
     import leo.datastructures.tptp.thf.{Binary, Term, Eq}
     input match {
       case Binary(Term(Func(name, Seq())), Eq, right) => (name, processTHF0(sig)(right, noRep))
@@ -118,7 +559,7 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): Term = {
+  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): terms.Term = {
     import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let}
 
     input match {
@@ -167,7 +608,7 @@ object InputProcessing {
   protected[parsers] def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
     import leo.datastructures.tptp.thf.{Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
     import leo.datastructures.internal.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
-    import leo.datastructures.internal.@@@
+    import leo.datastructures.internal.terms.@@@
 
     conn match {
       case THFEq => ===
@@ -207,7 +648,7 @@ object InputProcessing {
       case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
                                                  // this is because the mkPolyQuantified will apply a new abstraction
         val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-        override def apply(arg: Term) = arg
+        override def apply(arg: terms.Term) = arg
       }
 
       case THFChoice => ???
@@ -313,7 +754,7 @@ object InputProcessing {
 
   import leo.datastructures.tptp.tff.{LogicFormula => TFFLogicFormula}
   // Formula definitions
-  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, Term) = {
+  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, terms.Term) = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
       case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
@@ -322,7 +763,7 @@ object InputProcessing {
   }
 
   // Ordinary terms
-  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: Replaces): Term = {
+  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: Replaces): terms.Term = {
     import leo.datastructures.tptp.tff.{Binary, Quantified, Unary, Inequality, Atomic, Cond, Let}
     input match {
       case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left,replaces),processTFF0(sig)(right,replaces))
@@ -468,7 +909,7 @@ object InputProcessing {
   }
 
   import leo.datastructures.tptp.fof.{LogicFormula => FOFLogicalFormula}
-  protected[parsers] def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, Term) = {
+  protected[parsers] def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, terms.Term) = {
     import leo.datastructures.tptp.fof.Atomic
     input match {
       case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep))  // TODO See above TODO
@@ -476,7 +917,7 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def processFOF0(sig: Signature)(input: FOFLogicalFormula, replaces: Replaces): Term = {
+  protected[parsers] def processFOF0(sig: Signature)(input: FOFLogicalFormula, replaces: Replaces): terms.Term = {
     import leo.datastructures.tptp.fof.{Binary, Unary, Quantified, Atomic, Inequality}
     input match {
       case Binary(left, conn, right) => processFOFBinaryConn(conn).apply(processFOF0(sig)(left, replaces),processFOF0(sig)(right, replaces))
@@ -546,7 +987,7 @@ object InputProcessing {
   // Common 'term' processing
   ////////////////////////////
 
-  def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+  def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): terms.Term = input match {
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
@@ -558,7 +999,7 @@ object InputProcessing {
     case other => processTerm(sig)(other, replace, adHocDefs)
   }
 
-  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): terms.Term = input match {
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
@@ -620,7 +1061,7 @@ object InputProcessing {
     case Let(binding, in) => ???
   }
 
-  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): terms.Term = input match {
     case Plain(func) => processTerm(sig)(func, replace,adHocDefs)
     case DefinedPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case SystemPlain(func) => processTerm(sig)(func, replace, adHocDefs)
@@ -634,8 +1075,8 @@ object InputProcessing {
   // Utility
   ///////////
 
-  protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[ProcessedVar], body: Term): Term = {
-    def mkPolyHelper(a: ProcessedVar, b: Term): Term = a match {
+  protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[ProcessedVar], body: terms.Term): terms.Term = {
+    def mkPolyHelper(a: ProcessedVar, b: terms.Term): terms.Term = a match {
       case (_, Left(ty)) => q.apply(λ(ty)(b))
       case (_, Right(`typeKind`)) => Λ(b)
       case (_, Right(_))        => throw new IllegalArgumentException("Formalization of kinds other than * not yet implemented.")
@@ -644,11 +1085,11 @@ object InputProcessing {
     varList.foldRight(body)(mkPolyHelper(_,_))
   }
 
-  protected[parsers] def mkPolyQuantifiedFOF(q: HOLUnaryConnective, varList: Seq[(Variable, Type)], body: Term): Term = {
+  protected[parsers] def mkPolyQuantifiedFOF(q: HOLUnaryConnective, varList: Seq[(Variable, Type)], body: terms.Term): terms.Term = {
     varList.foldRight(body)({case ((_, ty), term) => q.apply(λ(ty)(term))})
   }
 
-  protected[parsers] def mkITE(sig: Signature)(cond: Term, thn: Term, els: Term): Term = {
+  protected[parsers] def mkITE(sig: Signature)(cond: terms.Term, thn: terms.Term, els: terms.Term): terms.Term = {
     mkTermApp( mkAtom(sig.iteKey), List(thn,els))
   }
 }

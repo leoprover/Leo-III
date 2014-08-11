@@ -1,4 +1,6 @@
-package leo.datastructures.internal
+package leo.datastructures.internal.terms.naive
+
+import leo.datastructures.internal.{Type, Signature, Term}
 
 /**
  * Created by lex on 16.06.14.
@@ -22,6 +24,8 @@ object DAGTermSet {
 
     // Queries on terms
     def ty: Type = termTypes(this)
+
+    def headSymbol = ???
 
     val isTypeAbs: Boolean = false
     val isTypeApp: Boolean = false

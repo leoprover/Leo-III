@@ -1,6 +1,6 @@
 package leo.modules.normalization
 
-import leo.datastructures.internal.Term
+import leo.datastructures.internal.terms.Term
 
 /**
  * This trait is shared by every Normalizing Object.

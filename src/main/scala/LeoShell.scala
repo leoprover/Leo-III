@@ -1,12 +1,12 @@
 // IMPORTANT : Keep the unused imports for loading in the Shell Project
 
 
-
+import leo.datastructures.internal.terms.Term
 import leo.modules.normalization.{Simplification, NegationNormal}
 import leo.modules.churchNumerals.Numerals
 import leo.datastructures.blackboard._
 import leo.datastructures.internal._
-import leo.datastructures.internal.Term._
+import Term._
 import LeoShell._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl._
