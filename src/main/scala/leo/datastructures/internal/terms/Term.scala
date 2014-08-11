@@ -53,12 +53,18 @@ abstract class Term extends Pretty {
   protected[internal] def instantiateBy(by: Type) = instantiate(1,by)
   protected[internal] def instantiate(scope: Int, by: Type): Term
 
+
+  def δ_expandable: Boolean
+  def head_δ_expand: Term
+  def full_δ_expand: Term
+
   // Other operations
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
 
   /** Return the β-nf of the term */
   def betaNormalize: Term
+  protected[terms] def normalize(subst: Subst): Term
   /** Alias for `betaNormalize` */
   def β_nf: Term = betaNormalize
 
@@ -75,6 +81,9 @@ abstract class Term extends Pretty {
 
   protected[internal] def inc(scopeIndex: Int): Term
 
+
+  protected[internal] def closure(subst: Subst): Term
+
   // Syntactic sugar operations
 //  /** Creates an (term) application term */
 //  def apply(arg: Term): Term = Term.mkTermApp(this,arg)
@@ -84,7 +93,7 @@ abstract class Term extends Pretty {
 
 
 object Term {
-  import leo.datastructures.internal.terms.naive.TermImpl
+  import leo.datastructures.internal.terms.spine.TermImpl
 
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
@@ -187,6 +196,8 @@ object ∙ {
     case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
     case Redex(expr, sp) => Some((expr, sp.asTerms))
   }
+
+  def apply(left: Term, right: Seq[Either[Term, Type]]): Term = spine.TermImpl.mkApp(left, right)
 }
 
 /**

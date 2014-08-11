@@ -1,7 +1,6 @@
-package leo.datastructures.internal.terms.spine
+package leo.datastructures.internal.terms
 
 import leo.datastructures.Pretty
-
 
 
 // TODO: Normalisation on subst needed?
@@ -15,7 +14,7 @@ sealed abstract class Subst extends Pretty {
   def o = comp(_)
 
   /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
-  def sink = Cons(BoundFront(1),this o Shift(1))
+  def sink: Subst = Cons(BoundFront(1),this o Shift(1))
 }
 
 /////////////////////////////////////////////////
@@ -69,8 +68,8 @@ case class BoundFront(n: Int) extends Front {
   /** Pretty */
   override def pretty = s"$n"
 }
-case class TermFront(term: TermImpl) extends Front {
-  def substitute(subst: Subst) = TermFront(TermClos(term, subst))
+case class TermFront(term: Term) extends Front {
+  def substitute(subst: Subst) = TermFront(term.closure((subst)))
 
   /** Pretty */
   override def pretty = term.pretty

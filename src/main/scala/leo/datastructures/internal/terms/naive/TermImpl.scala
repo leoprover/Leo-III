@@ -3,6 +3,7 @@ package leo.datastructures.internal.terms.naive
 import leo.datastructures.internal.{Type, Signature}
 import leo.datastructures.internal.BoundTypeNode
 import leo.datastructures.internal.terms.Term
+import leo.datastructures.internal.terms.Subst
 
 /**
  * Naive implementation of nameless lambda terms.
@@ -12,6 +13,7 @@ import leo.datastructures.internal.terms.Term
  * @since 02.06.2014
  */
 sealed abstract class TermImpl extends Term {
+
   // Predicates on terms
   val isAtom = false
   val isTermApp = false
@@ -19,12 +21,20 @@ sealed abstract class TermImpl extends Term {
   val isTypeApp = false
   val isTypeAbs = false
 
+  def normalize(subst: Subst) = ???
+
+  def δ_expandable = ???
+  def head_δ_expand = ???
+  def full_δ_expand = ???
+
   def headSymbol = ???
 
   protected[internal] def decrementByOne(n: Int): Int = n match {
     case -1 => -1
     case  n => n-1
   }
+
+  def closure(s: Subst) = ???
 }
 
 ///////////////////
