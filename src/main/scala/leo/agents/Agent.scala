@@ -157,13 +157,13 @@ abstract class AbstractAgent extends Agent {
   override def getTasks(budget: Double): Iterable[Task] = {
     var erg = List[Task]()
     var costs : Double = 0
-    while(costs < budget && q.nonEmpty) {
-      val next = q.head
-      costs += next.bid(budget)
-      erg = next :: erg
-      q.dequeue()
+    for(t <- q){
+      if(costs > budget) erg
+      else {
+        costs += t.bid(budget)
+        erg = t :: erg
+      }
     }
-
     erg
   }
 
@@ -227,9 +227,12 @@ abstract class Task {
    */
   def collide(t2 : Task) : Boolean = {
     val t1 = this
-    !t1.readSet().intersect(t2.writeSet()).isEmpty ||
-      !t2.readSet().intersect(t1.writeSet()).isEmpty ||
-      !t2.writeSet().intersect((t1.writeSet())).isEmpty
+    if(t1 eq t2) true
+    else {
+      !t1.readSet().intersect(t2.writeSet()).isEmpty ||
+        !t2.readSet().intersect(t1.writeSet()).isEmpty ||
+        !t2.writeSet().intersect((t1.writeSet())).isEmpty
+    }
   }
 
   /**

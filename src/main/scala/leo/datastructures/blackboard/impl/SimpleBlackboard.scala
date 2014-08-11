@@ -208,9 +208,12 @@ private object TaskSet {
         }
 
         //
-        // 4. After work pay salary and return the tasks
+        // 4. After work pay salary, tell colliding and return the tasks
         //
-        for ((a, b) <- regAgents) regAgents.put(a, b + AGENT_SALARY)
+        for ((a, b) <- regAgents) {
+          regAgents.put(a, b + AGENT_SALARY)
+          a.removeColliding(newTask.map(_._2))
+        }
 
         return newTask
 
