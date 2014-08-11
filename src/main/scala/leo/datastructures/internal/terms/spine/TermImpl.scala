@@ -42,7 +42,7 @@ protected[terms] sealed abstract class TermImpl extends Term {
 
 /** Representation of terms that are in (weak) head normal form. */
 protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
-  import TermImpl.{headToTerm}
+  import TermImpl.{headToTerm, mkRedex}
 
   // Predicates on terms
   val isAtom = args == SNil
@@ -52,20 +52,20 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
 
   // Handling def. expansion
   lazy val δ_expandable = hd.δ_expandable || args.δ_expandable
-  def partial_δ_expand(rep: Int) = Redex(hd.partial_δ_expand(rep), args.partial_δ_expand(rep))
+  def partial_δ_expand(rep: Int) = mkRedex(hd.partial_δ_expand(rep), args.partial_δ_expand(rep))
 //    hd.partial_δ_expand(rep) match {
 //    case Root(h, SNil) => Root(h, args.partial_δ_expand(rep))
 //    case Root(h, sp)   => Root(h, sp ++ args.partial_δ_expand(rep))
 //    case other         => Redex(other, args.partial_δ_expand(rep))
 //  }
   def full_δ_expand = δ_expandable match {
-    case true => Redex(hd.full_δ_expand, args.full_δ_expand)
+    case true => mkRedex(hd.full_δ_expand, args.full_δ_expand)
     case false => this
   }
 
   lazy val head_δ_expandable = hd.δ_expandable
   def head_δ_expand = hd.δ_expandable match {
-    case true => Redex(hd.partial_δ_expand(1), args)
+    case true => mkRedex(hd.partial_δ_expand(1), args)
     case false => this
   }
 
@@ -111,6 +111,8 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
 protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
+  import TermImpl.mkRedex
+
   // Predicates on terms
   val isAtom = false
   val isTermAbs = false
@@ -119,11 +121,11 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable || args.δ_expandable
-  def partial_δ_expand(rep: Int) = Redex(body.partial_δ_expand(rep), args.partial_δ_expand(rep))
-  def full_δ_expand = Redex(body.full_δ_expand, args.full_δ_expand)
+  def partial_δ_expand(rep: Int) = mkRedex(body.partial_δ_expand(rep), args.partial_δ_expand(rep))
+  def full_δ_expand = mkRedex(body.full_δ_expand, args.full_δ_expand)
 
   lazy val head_δ_expandable = headSymbol.δ_expandable
-  def head_δ_expand = Redex(body.head_δ_expand, args)
+  def head_δ_expand = mkRedex(body.head_δ_expand, args)
 
   // Queries on terms
   lazy val ty = ty0(body.ty, args.length)
@@ -178,6 +180,8 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
 
 
 protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
+  import TermImpl.mkTermAbstr
+
   // Predicates on terms
   val isAtom = false
   val isTermAbs = true
@@ -186,11 +190,11 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable
-  def partial_δ_expand(rep: Int) = TermAbstr(typ, body.partial_δ_expand(rep))
-  def full_δ_expand = TermAbstr(typ, body.full_δ_expand)
+  def partial_δ_expand(rep: Int) = mkTermAbstr(typ, body.partial_δ_expand(rep))
+  def full_δ_expand = mkTermAbstr(typ, body.full_δ_expand)
 
   lazy val head_δ_expandable = headSymbol.δ_expandable
-  def head_δ_expand = TermAbstr(typ, body.head_δ_expand)
+  def head_δ_expand = mkTermAbstr(typ, body.head_δ_expand)
 
   // Queries on terms
   lazy val ty = typ ->: body.ty
@@ -201,11 +205,7 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   // Other operations
   lazy val typeCheck = body.typeCheck
 
-
-  def preNormalize(s: Subst) = (this,s)
-
-  def normalize(subst: Subst) = TermAbstr(typ, body.normalize(subst.sink))
-
+  def normalize(subst: Subst) = mkTermAbstr(typ, body.normalize(subst.sink))
 
 
   /** Pretty */
@@ -215,6 +215,7 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
 
 protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
   import Type.∀
+  import TermImpl.mkTypeAbstr
 
   // Predicates on terms
   val isAtom = false
@@ -224,11 +225,11 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable
-  def partial_δ_expand(rep: Int) = TypeAbstr(body.partial_δ_expand(rep))
-  def full_δ_expand = TypeAbstr(body.full_δ_expand)
+  def partial_δ_expand(rep: Int) = mkTypeAbstr(body.partial_δ_expand(rep))
+  def full_δ_expand = mkTypeAbstr(body.full_δ_expand)
 
   lazy val head_δ_expandable = headSymbol.δ_expandable
-  def head_δ_expand = TypeAbstr(body.head_δ_expand)
+  def head_δ_expand = mkTypeAbstr(body.head_δ_expand)
 
   // Queries on terms
   lazy val ty = ∀(body.ty)
@@ -241,7 +242,7 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
 
   def preNormalize(s: Subst) = (this,s)
 
-  def normalize(subst: Subst) = body.normalize(subst)
+  def normalize(subst: Subst) = mkTypeAbstr(body.normalize(subst))
 
 
 
@@ -455,25 +456,6 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Pretty printing
   override def pretty = s"${hd.pretty};${tail.pretty}"
 }
-
-//protected[internal] case class SpineClos(spine: Spine, subst: Subst) extends Spine {
-//
-//  def normalize(subst2: Subst) = spine.normalize(subst.comp(subst2))
-//
-//  // Handling def. expansion
-//  def δ_expandable = ???
-//  def δ_expand = ???
-//
-//  // Queries
-//  def freeVars = ???
-//  val length = spine.length
-//
-//  // Misc
-//  def ++(sp: Spine) = ???
-//
-//  // Pretty printing
-//  override def pretty = s"(${spine.pretty}[${subst.pretty}])"
-//}
 
 
 /**
