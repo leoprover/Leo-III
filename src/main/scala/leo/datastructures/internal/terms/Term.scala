@@ -97,6 +97,8 @@ object Term {
   def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
   def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
 
+  def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
+
   // Pretty operators
 
   /** Creates a new term abstraction with parameter type `hd` and body `body` */

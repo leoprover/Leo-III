@@ -1,8 +1,8 @@
 package leo.datastructures.internal
 
 import Type.{typeKind, typeVarToType,superKind}
-import leo.datastructures.internal.terms.{@@@@, @@@, Symbol, Term}
-import Term.{mkAtom,mkTermApp,mkTermAbs, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
+import leo.datastructures.internal.terms.{@@@@, @@@,∙, Symbol, Term}
+import Term.{mkAtom,mkTermApp,mkApp, mkTermAbs, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
@@ -164,10 +164,11 @@ trait HOLBinaryConnective extends Function2[Term, Term, Term] {
   protected[HOLBinaryConnective] val key: Signature#Key
 
   /** Create the term that is constructed by applying two arguments to the binary connective. */
-  override def apply(left: Term, right: Term): Term = mkTermApp(mkTermApp(mkAtom(key), left), right)
+  override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key), Seq(left, right))
 
   def unapply(t: Term): Option[(Term,Term)] = t match {
     case (Symbol(`key`) @@@ t1) @@@ t2 => Some((t1,t2))
+    case Symbol(`key`) ∙ Seq(Left(t1), Left(t2)) => Some((t1,t2))
     case _ => None
   }
 }
@@ -185,6 +186,7 @@ trait HOLUnaryConnective extends Function1[Term, Term] {
 
   def unapply(t: Term): Option[Term] = t match {
     case (Symbol(`key`) @@@ t1) => Some(t1)
+    case Symbol(`key`) ∙ Seq(Left(t1)) => Some(t1)
     case _ => None
   }
 }
@@ -220,12 +222,15 @@ object ||| extends HOLBinaryConnective  { val key = 12 }
 /** HOL equality */
 object === extends HOLBinaryConnective  { val key = 13
   override def apply(left: Term, right: Term) = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
-    mkTermApp(mkTermApp(instantiated, left), right)
+
+    mkApp(mkAtom(key), Seq(Right(left.ty), Left(left), Left(right)))
+//    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
+//    mkTermApp(mkTermApp(instantiated, left), right)
   }
 
   override def unapply(t: Term): Option[(Term, Term)] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
+    case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2))) => Some((t1, t2))
     case _ => None
   }
 }
@@ -246,12 +251,14 @@ object <~> extends HOLBinaryConnective  { val key = 27 }
 /** HOL negated equality */
 object !=== extends HOLBinaryConnective  { val key = 28
   override def apply(left: Term, right: Term) = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
-    mkTermApp(mkTermApp(instantiated, left), right)
+    mkApp(mkAtom(key), Seq(Right(left.ty), Left(left), Left(right)))
+//    lazy val instantiated = mkTypeApp(mkAtom(key), left.ty)
+//    mkTermApp(mkTermApp(instantiated, left), right)
   }
 
   override def unapply(t: Term): Option[(Term,Term)] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2 => Some((t1,t2))
+    case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2))) => Some((t1, t2))
     case _ => None
   }
 }
@@ -261,24 +268,28 @@ object Not extends HOLUnaryConnective    { val key = 10 }
 /** HOL forall */
 object Forall extends HOLUnaryConnective { val key = 11
   override def apply(arg: Term): Term = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
-    mkTermApp(instantiated, arg)
+    mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
+//    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
+//    mkTermApp(instantiated, arg)
   }
 
   override def unapply(t: Term): Option[Term] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
+    case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
     case _ => None
   }
 }
 /** HOL exists */
 object Exists extends HOLUnaryConnective { val key = 20
   override def apply(arg: Term): Term = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
-    mkTermApp(instantiated, arg)
+    mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
+//    lazy val instantiated = mkTypeApp(mkAtom(key), arg.ty._funDomainType)
+//    mkTermApp(instantiated, arg)
   }
 
   override def unapply(t: Term): Option[Term] = t match {
     case ((Symbol(`key`) @@@@ _) @@@ t1) => Some(t1)
+    case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
     case _ => None
   }
 }
@@ -294,13 +305,16 @@ object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
   protected[IF_THEN_ELSE] val key = 15
 
   override def apply(cond: Term, thn: Term, els: Term): Term = {
-    lazy val instantiated = mkTypeApp(mkAtom(key), thn.ty)
+    mkApp(mkAtom(key), Seq(Right(thn.ty), Left(cond), Left(thn), Left(els)))
 
-    mkTermApp(mkTermApp(mkTermApp(instantiated, cond), thn), els)
+//    lazy val instantiated = mkTypeApp(mkAtom(key), thn.ty)
+//
+//    mkTermApp(mkTermApp(mkTermApp(instantiated, cond), thn), els)
   }
 
   def unapply(t: Term): Option[(Term,Term, Term)] = t match {
     case (((Symbol(`key`) @@@@ _) @@@ t1) @@@ t2) @@@ t3 => Some((t1,t2,t3))
+    case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2), Left(t3))) => Some((t1,t2,t3))
     case _ => None
   }
 }
