@@ -12,7 +12,7 @@ object DefExpansion extends AbstractNormalize {
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = formula.expandAllDefinitions
+  override def normalize(formula: Term): Term = formula.full_δ_expand
 
   /**
    * Checks if the staus bit 1 is raised and the second is not

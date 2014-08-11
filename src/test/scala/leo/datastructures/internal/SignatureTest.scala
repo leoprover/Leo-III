@@ -27,7 +27,7 @@ object SignatureTest {
     val meta = sig.meta("<=>")
     val term = meta._defn
     println("Definition of <=>: " + term.pretty)
-    println("Expanded \t\t : " + term.expandDefinitions(1).pretty)
+    println("Expanded \t\t : " + term.partial_δ_expand(1).pretty)
 
     println(sig.meta("?")._defn.pretty)
   }

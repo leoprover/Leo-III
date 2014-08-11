@@ -30,33 +30,34 @@ import leo.datastructures.internal.{Type, Signature, HOLBinaryConnective}
 abstract class Term extends Pretty {
   // Predicates on terms
   def isAtom: Boolean
-  def isTermApp: Boolean
   def isTermAbs: Boolean
-  def isTypeApp: Boolean
   def isTypeAbs: Boolean
+  def isApp: Boolean
 
-  def is(term: Term): Boolean = term == this
-  def is(symbol: Signature#Key): Boolean = false
+  // Handling def. expansion
+  def δ_expandable: Boolean
+  def partial_δ_expand(rep: Int): Term
+  def full_δ_expand: Term
+
+  def head_δ_expandable: Boolean
+  def head_δ_expand: Term
 
   // Queries on terms
   def ty: Type
   def freeVars: Set[Term]
-  def boundVars: Set[Term] = ??? // return the bound vars (that are copies, right?)
+  def boundVars: Set[Term]
   def symbolsOfType(ty: Type) = freeVars.filter(_.ty == ty)
   def headSymbol: Term
+
   // Substitutions
   def substitute(what: Term, by: Term): Term
   def substitute(what: List[Term], by: List[Term]): Term = {
     require(what.length == by.length, "Substitution list do not match in length.")
     what.zip(by).foldRight(this)({case ((w,b), t:Term) => t.substitute(w,b)})
   }
+
   protected[internal] def instantiateBy(by: Type) = instantiate(1,by)
   protected[internal] def instantiate(scope: Int, by: Type): Term
-
-
-  def δ_expandable: Boolean
-  def head_δ_expand: Term
-  def full_δ_expand: Term
 
   // Other operations
   /** Returns true iff the term is well-typed. */
@@ -65,8 +66,6 @@ abstract class Term extends Pretty {
   /** Return the β-nf of the term */
   def betaNormalize: Term
   protected[terms] def normalize(subst: Subst): Term
-  /** Alias for `betaNormalize` */
-  def β_nf: Term = betaNormalize
 
   /** Right-folding on terms. */
   def foldRight[A](symFunc: Signature#Key => A)
@@ -75,20 +74,12 @@ abstract class Term extends Pretty {
              (appFunc: (A,A) => A)
              (tAbsFunc: A => A)
              (tAppFunc: (A, Type) => A): A
-
-  def expandDefinitions(rep: Int): Term
-  def expandAllDefinitions = expandDefinitions(-1)
+//
+//  def expandDefinitions(rep: Int): Term
+//  def expandAllDefinitions = expandDefinitions(-1)
 
   protected[internal] def inc(scopeIndex: Int): Term
-
-
   protected[internal] def closure(subst: Subst): Term
-
-  // Syntactic sugar operations
-//  /** Creates an (term) application term */
-//  def apply(arg: Term): Term = Term.mkTermApp(this,arg)
-//  /** Creates an (type) application term */
-//  def apply(arg: Type): Term = Term.mkTypeApp(this,arg)
 }
 
 
@@ -160,12 +151,11 @@ object Bound {
  * }}}
  */
 object Symbol {
-  import spine.{UiAtom, DefAtom, SNil}
+  import spine.{Atom, SNil}
 
   def unapply(t: Term): Option[Signature#Key] = t match {
     case naive.SymbolNode(k)         => Some(k)
-    case spine.Root(DefAtom(k),SNil) => Some(k)
-    case spine.Root(UiAtom(k),SNil)  => Some(k)
+    case spine.Root(Atom(k),SNil) => Some(k)
     case _ => None
   }
 }

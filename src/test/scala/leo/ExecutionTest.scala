@@ -59,7 +59,7 @@ class ExecutionTest extends FunSuite {
     println("As term: " + term.pretty)
     println()
     println("Definition expansion ...")
-    val test2 = term.expandAllDefinitions
+    val test2 = term.full_δ_expand
     //println(test2.pretty)
 
     println("Beta normalizing ...")

@@ -22,10 +22,15 @@ object DAGTermSet {
     def substitute(what: Term, by: Term): Term = ???
 
     def freeVars: Set[Term] = Set.empty // TODO
+    def boundVars = ???
 
+    // Handling def. expansion
     def δ_expandable = ???
-    def head_δ_expand = ???
+    def partial_δ_expand(rep: Int) = ???
     def full_δ_expand = ???
+
+    def head_δ_expandable = ???
+    def head_δ_expand= ???
 
     // Queries on terms
     def ty: Type = termTypes(this)
@@ -33,14 +38,12 @@ object DAGTermSet {
     def headSymbol = ???
 
     val isTypeAbs: Boolean = false
-    val isTypeApp: Boolean = false
     val isTermAbs: Boolean = false
-    val isTermApp: Boolean = false
     val isAtom: Boolean = false
+    val isApp = false
 
     def typeCheck = true
 
-    def expandDefinitions(rep: Int) = this
 
     def closure(s: Subst) = ???
     def normalize(s: Subst) = ???
@@ -61,7 +64,7 @@ object DAGTermSet {
   }
   case class TermApplicationNode(left: DAGNode, right: DAGNode) extends DAGNode {
     def pretty = "(" + left.pretty + " " + right.pretty + ")"
-    override val isTermApp = true
+    override val isApp = true
 
     override def typeCheck = left.ty.isFunType && left.ty._funDomainType == right.ty && right.typeCheck
   }
@@ -73,7 +76,7 @@ object DAGTermSet {
   }
   case class TypeApplicationNode(left: DAGNode, right: Type) extends DAGNode {
     def pretty = "(" + left.pretty + " " + right.pretty + ")"
-    override val isTypeApp = true
+    override val isApp = true
 
     override def typeCheck = left.typeCheck
   }

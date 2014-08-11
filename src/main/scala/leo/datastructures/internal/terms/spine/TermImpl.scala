@@ -18,45 +18,22 @@ import leo.datastructures.internal.terms.{BoundFront, TermFront, Subst, Term}
  * @since 04.08.2014
  */
 protected[terms] sealed abstract class TermImpl extends Term {
-//  def headSymbol: TermImpl // only on normal forms?
-  // TODO: All :D
-  //def δ_expand(count: Int): VAL
+
   def betaNormalize: Term = normalize(Subst.id)
-//  def normalize(subst: Subst): TermImpl
+  def closure(subst: Subst) = TermClos(this, subst)
 
 //  type TermClosure = (TermImpl, Subst)
 //  protected[internal] def preNormalize(subst: Subst): TermClosure
 
-  def δ_expandable: Boolean // TODO: Implement efficiently
-  def head_δ_expand: TermImpl
-  def full_δ_expand: TermImpl
-
-  protected[internal] def inc(scopeIndex: Int): Term = ???
-
-  def expandDefinitions(rep: Int): Term = ???
-
   /** Right-folding on terms. */
   def foldRight[A](symFunc: (Signature#Key) => A)(boundFunc: (Type, Int) => A)(absFunc: (Type, A) => A)(appFunc: (A, A) => A)(tAbsFunc: (A) => A)(tAppFunc: (A, Type) => A): A = ???
 
-  /** Returns true iff the term is well-typed. */
-  def typeCheck: Boolean = ???
-
-  protected[internal] def instantiate(scope: Int, by: Type): Term = ???
-
   // Substitutions
   def substitute(what: Term, by: Term): Term = ???
+  protected[internal] def instantiate(scope: Int, by: Type): Term = ???
 
-
-  def closure(subst: Subst) = TermClos(this, subst)
-  // Queries on terms
-
-  val isTypeAbs: Boolean = false
-  val isTypeApp: Boolean = false
-  val isTermAbs: Boolean = false
-  val isTermApp: Boolean = false
-  val isAtom: Boolean = false
-
-
+  // Other
+  protected[internal] def inc(scopeIndex: Int): Term = ???
 }
 
 /////////////////////////////////////////////////
@@ -67,9 +44,55 @@ protected[terms] sealed abstract class TermImpl extends Term {
 protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   import TermImpl.{headToTerm}
 
-  def headSymbol = hd
+  // Predicates on terms
+  val isAtom = args == SNil
+  val isTermAbs = false
+  val isTypeAbs = false
+  val isApp = args != SNil
 
-//  def preNormalize(s: Subst) = (this, s)
+  // Handling def. expansion
+  lazy val δ_expandable = hd.δ_expandable || args.δ_expandable
+  def partial_δ_expand(rep: Int) = Redex(hd.partial_δ_expand(rep), args.partial_δ_expand(rep))
+//    hd.partial_δ_expand(rep) match {
+//    case Root(h, SNil) => Root(h, args.partial_δ_expand(rep))
+//    case Root(h, sp)   => Root(h, sp ++ args.partial_δ_expand(rep))
+//    case other         => Redex(other, args.partial_δ_expand(rep))
+//  }
+  def full_δ_expand = δ_expandable match {
+    case true => Redex(hd.full_δ_expand, args.full_δ_expand)
+    case false => this
+  }
+
+  lazy val head_δ_expandable = hd.δ_expandable
+  def head_δ_expand = hd.δ_expandable match {
+    case true => Redex(hd.partial_δ_expand(1), args)
+    case false => this
+  }
+
+  // Queries on terms
+  lazy val ty = ty0(hd.ty, args.length)
+  private def ty0(funty: Type, arglen: Int): Type = arglen match {
+    case 0 => funty
+    case k => ty0(funty._funCodomainType, arglen-1)
+  }
+  val freeVars = hd match {
+    case BoundIndex(_,_) => args.freeVars
+    case _             => args.freeVars + hd
+  }
+  val boundVars = hd match {
+    case BoundIndex(_,_) => args.freeVars + hd
+    case _             => args.freeVars
+  }
+  lazy val headSymbol = TermImpl.headToTerm(hd)
+
+  // Other operations
+  lazy val typeCheck = typeCheck0(hd.ty, args)
+  private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
+    case SNil => true
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest)
+    case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
+  }
+
 
   def normalize(subst: Subst) = hd match {
     case b@BoundIndex(typ,_) => b.substitute(subst) match {
@@ -79,33 +102,6 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case _             => Root(hd, args.normalize(subst))
   }
 
-  /** Handling def. expansion */
-  override lazy val δ_expandable = hd.δ_expandable || args.δ_expandable
-
-  def head_δ_expand = hd.δ_expandable match {
-    case true => Redex(hd.δ_expand, args)
-    case false => this
-  }
-  def full_δ_expand = δ_expandable match {
-    case true => Redex(hd.δ_expand, args.δ_expand)
-    case false => this
-  }
-
-  /** Queries on terms */
-  override val isAtom = args == SNil
-  override val isTermApp = args != SNil
-
-  lazy val ty = ty0(hd.ty, args.length)
-
-  private def ty0(funty: Type, arglen: Int): Type = arglen match {
-    case 0 => funty
-    case k => ty0(funty._funCodomainType, arglen-1)
-  }
-
-  def freeVars = hd match {
-    case BoundIndex(_,_) => args.freeVars
-    case _             => args.freeVars + hd
-  }
 
   /** Pretty */
   def pretty = s"${hd.pretty} ⋅ (${args.pretty})"
@@ -115,7 +111,37 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
 protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
-  def headSymbol = body.headSymbol
+  // Predicates on terms
+  val isAtom = false
+  val isTermAbs = false
+  val isTypeAbs = false
+  val isApp = true
+
+  // Handling def. expansion
+  lazy val δ_expandable = body.δ_expandable || args.δ_expandable
+  def partial_δ_expand(rep: Int) = Redex(body.partial_δ_expand(rep), args.partial_δ_expand(rep))
+  def full_δ_expand = Redex(body.full_δ_expand, args.full_δ_expand)
+
+  lazy val head_δ_expandable = headSymbol.δ_expandable
+  def head_δ_expand = Redex(body.head_δ_expand, args)
+
+  // Queries on terms
+  lazy val ty = ty0(body.ty, args.length)
+  private def ty0(funty: Type, arglen: Int): Type = arglen match {
+    case 0 => funty
+    case k => ty0(funty._funCodomainType, arglen-1)
+  }
+  val freeVars = body.freeVars ++ args.freeVars
+  val boundVars = body.boundVars ++ args.boundVars
+  lazy val headSymbol = body.headSymbol
+
+  // Other operations
+  lazy val typeCheck = typeCheck0(body.ty, args)
+  private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
+    case SNil => true
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest)
+    case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
+  }
 
 //  def preNormalize(s: Subst): TermClosure = {
 //    val (bodyPNF, t) = (body, s)//body.preNormalize(s)
@@ -143,23 +169,7 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     ???
   }
 
-  /** Handling def. expansion */
-  override lazy val δ_expandable = body.δ_expandable || args.δ_expandable
 
-  def head_δ_expand = Redex(body.head_δ_expand, args)
-  def full_δ_expand = Redex(body.full_δ_expand, args.δ_expand)
-
-  /** Queries on terms */
-  lazy val ty = ty0(body.ty, args.length)
-
-  private def ty0(funty: Type, arglen: Int): Type = arglen match {
-    case 0 => funty
-    case k => ty0(funty._funCodomainType, arglen-1)
-  }
-
-  override val isTermApp = true
-
-  def freeVars = body.freeVars ++ args.freeVars
 
   /** Pretty */
   def pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
@@ -168,24 +178,35 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
 
 
 protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
-  def headSymbol = body.headSymbol
+  // Predicates on terms
+  val isAtom = false
+  val isTermAbs = true
+  val isTypeAbs = false
+  val isApp = false
+
+  // Handling def. expansion
+  lazy val δ_expandable = body.δ_expandable
+  def partial_δ_expand(rep: Int) = TermAbstr(typ, body.partial_δ_expand(rep))
+  def full_δ_expand = TermAbstr(typ, body.full_δ_expand)
+
+  lazy val head_δ_expandable = headSymbol.δ_expandable
+  def head_δ_expand = TermAbstr(typ, body.head_δ_expand)
+
+  // Queries on terms
+  lazy val ty = typ ->: body.ty
+  val freeVars = body.freeVars
+  val boundVars = body.boundVars
+  lazy val headSymbol = body.headSymbol
+
+  // Other operations
+  lazy val typeCheck = body.typeCheck
+
 
   def preNormalize(s: Subst) = (this,s)
 
   def normalize(subst: Subst) = TermAbstr(typ, body.normalize(subst.sink))
 
-  /** Handling def. expansion */
-  override lazy val δ_expandable = body.δ_expandable
 
-  def head_δ_expand = TermAbstr(typ, body.head_δ_expand)
-  def full_δ_expand = TermAbstr(typ, body.full_δ_expand)
-
-  /** Queries on terms */
-  lazy val ty = typ ->: body.ty
-
-  override val isTermAbs = true
-
-  def freeVars = body.freeVars
 
   /** Pretty */
   def pretty = s"λ. (${body.pretty})"
@@ -195,23 +216,34 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
 protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
   import Type.∀
 
-  def headSymbol = body.headSymbol
+  // Predicates on terms
+  val isAtom = false
+  val isTermAbs = false
+  val isTypeAbs = true
+  val isApp = false
+
+  // Handling def. expansion
+  lazy val δ_expandable = body.δ_expandable
+  def partial_δ_expand(rep: Int) = TypeAbstr(body.partial_δ_expand(rep))
+  def full_δ_expand = TypeAbstr(body.full_δ_expand)
+
+  lazy val head_δ_expandable = headSymbol.δ_expandable
+  def head_δ_expand = TypeAbstr(body.head_δ_expand)
+
+  // Queries on terms
+  lazy val ty = ∀(body.ty)
+  val freeVars = body.freeVars
+  val boundVars = body.boundVars
+  lazy val headSymbol = body.headSymbol
+
+  // Other operations
+  lazy val typeCheck = body.typeCheck
 
   def preNormalize(s: Subst) = (this,s)
 
   def normalize(subst: Subst) = body.normalize(subst)
 
-  /** Handling def. expansion */
-  override lazy val δ_expandable = body.δ_expandable
 
-  def head_δ_expand = TypeAbstr(body.head_δ_expand)
-  def full_δ_expand = TypeAbstr(body.full_δ_expand)
-
-  /** Queries on terms */
-  lazy val ty = ∀(body.ty)
-
-  override val isTypeAbs = true
-  def freeVars = body.freeVars
 
   /** Pretty */
   def pretty = s"Λ. (${body.pretty})"
@@ -219,7 +251,27 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
 
 
 protected[terms] case class TermClos(term: Term, σ: Subst) extends TermImpl {
-  def headSymbol = term.headSymbol match {
+  // Closure should never be handed to the outside
+
+  // Predicates on terms
+  val isAtom = false
+  val isTermAbs = false
+  val isTypeAbs = false
+  val isApp = false
+
+  // Handling def. expansion
+  lazy val δ_expandable = ???
+  def partial_δ_expand(rep: Int) = ???
+  def full_δ_expand = ???
+
+  lazy val head_δ_expandable = ???
+  def head_δ_expand = ???
+
+  // Queries on terms
+  val ty = term.ty
+  val freeVars = ???
+  val boundVars = ???
+  lazy val headSymbol = term.headSymbol match {
     case Root(head, SNil) => head match {
       case b@BoundIndex(typ, scope) => b.substitute(σ) match {
         case BoundFront(k) => TermImpl.headToTerm(BoundIndex(typ,k))
@@ -231,20 +283,12 @@ protected[terms] case class TermClos(term: Term, σ: Subst) extends TermImpl {
     case _ => throw new UnknownError("head symbol not a root")
   }
 
+  // Other operations
+  lazy val typeCheck = ???
+
 //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(subst: Subst) = term.normalize(σ.comp(subst))
-
-  /** Handling def. expansion */
-  override lazy val δ_expandable = ???
-
-  def head_δ_expand = ???
-  def full_δ_expand = ???
-
-  /** Queries on terms */
-  lazy val ty = term.ty
-
-  def freeVars = term.freeVars
 
   /** Pretty */
   def pretty = s"${term.pretty}[${σ.pretty}]"
@@ -258,7 +302,8 @@ protected[terms] case class TermClos(term: Term, σ: Subst) extends TermImpl {
 protected[terms] sealed abstract class Head extends Pretty {
   // Handling def. expansion
   val δ_expandable: Boolean
-  def δ_expand: TermImpl
+  def partial_δ_expand(rep: Int): Term
+  def full_δ_expand: Term
 
   // Queries
   def ty: Type
@@ -270,7 +315,8 @@ protected[terms] case class BoundIndex(typ: Type, scope: Int) extends Head {
 
   // Handling def. expansion
   val δ_expandable = false
-  def δ_expand = this
+  def partial_δ_expand(rep: Int) = full_δ_expand
+  def full_δ_expand = TermImpl.headToTerm(this)
 
   // Queries
   val ty = typ
@@ -284,35 +330,31 @@ protected[terms] case class BoundIndex(typ: Type, scope: Int) extends Head {
   // Pretty printing
   override val pretty = s"$scope"
 }
-protected[terms] case class UiAtom(id: Signature#Key) extends Head {
+
+protected[terms] case class Atom(id: Signature#Key) extends Head {
   private lazy val meta = Signature.get(id)
 
   // Handling def. expansion
-  val δ_expandable = false
-  def δ_expand = this
+  lazy val δ_expandable = meta.hasDefn
+  def partial_δ_expand(rep: Int) = rep match {
+    case 0 => TermImpl.headToTerm(this)
+    case -1 => meta.hasDefn match {
+      case false => TermImpl.headToTerm(this)
+      case true => meta._defn.partial_δ_expand(rep)
+    }
+    case n => meta.hasDefn match {
+      case false => TermImpl.headToTerm(this)
+      case true => meta._defn.partial_δ_expand(rep-1)
+    }
+  }
+  def full_δ_expand = partial_δ_expand(-1)
 
   // Queries
-  val ty = meta._ty
+  lazy val ty = meta._ty
 
   // Pretty printing
   override def pretty = s"${meta.name}"
 }
-protected[terms] case class DefAtom(id: Signature#Key) extends Head {
-  private lazy val meta = Signature.get(id)
-
-  // Handling def. expansion
-  val δ_expandable = true
-  def δ_expand = ??? //Some(meta._defn) TODO: checkout types: term vs. termImpl
-
-  // Queries
-  val ty = meta._ty
-
-  // Pretty printing
-  override def pretty = s"${meta.name}"
-}
-
-
-
 
 
 
@@ -330,11 +372,13 @@ protected[terms] sealed abstract class Spine extends Pretty {
 
   // Handling def. expansion
   def δ_expandable: Boolean
-  def δ_expand: Spine
+  def partial_δ_expand(rep: Int): Spine
+  def full_δ_expand: Spine
 
   // Queries
   def length: Int
   def freeVars: Set[Term]
+  def boundVars: Set[Term]
   def asTerms: Seq[Either[Term, Type]]
 
   // Misc
@@ -349,10 +393,12 @@ protected[terms] case object SNil extends Spine {
 
   // Handling def. expansion
   val δ_expandable = false
-  val δ_expand = SNil
+  def partial_δ_expand(rep: Int) = SNil
+  val full_δ_expand = SNil
 
   // Queries
   val freeVars = Set[Term]()
+  val boundVars = Set[Term]()
   val length = 0
   val asTerms = Seq()
 
@@ -369,13 +415,16 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
   def normalize(subst: Subst) = cons(Left(hd.normalize(subst)), tail.normalize(subst))
 
   // Handling def. expansion
-  def δ_expandable = hd.δ_expandable || tail.δ_expandable
-  def δ_expand = cons(Left(hd.full_δ_expand), tail.δ_expand)
+  lazy val δ_expandable = hd.δ_expandable || tail.δ_expandable
+  def partial_δ_expand(rep: Int) = cons(Left(hd.partial_δ_expand(rep)), tail.partial_δ_expand(rep))
+  lazy val full_δ_expand = cons(Left(hd.full_δ_expand), tail.full_δ_expand)
+
 
   // Queries
-  def freeVars = hd.freeVars ++ tail.freeVars
+  val freeVars = hd.freeVars ++ tail.freeVars
+  val boundVars = hd.boundVars ++ tail.boundVars
   val length = 1 + tail.length
-  def asTerms = Left(hd) +: tail.asTerms
+  lazy val asTerms = Left(hd) +: tail.asTerms
 
   // Misc
   def ++(sp: Spine) = cons(Left(hd), tail ++ sp)
@@ -385,19 +434,23 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
 }
 
 protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
-  def normalize(subst: Subst) = TyApp(hd, tail.normalize(subst))
+  import TermImpl.{mkSpineCons => cons}
+
+  def normalize(subst: Subst) = cons(Right(hd), tail.normalize(subst))
 
   // Handling def. expansion
-  def δ_expandable = tail.δ_expandable
-  def δ_expand = TyApp(hd, tail.δ_expand)
+  val δ_expandable = tail.δ_expandable
+  def partial_δ_expand(rep: Int) = cons(Right(hd), tail.partial_δ_expand(rep))
+  lazy val full_δ_expand = cons(Right(hd), tail.full_δ_expand)
 
   // Queries
-  def freeVars = tail.freeVars
+  val freeVars = tail.freeVars
+  val boundVars = tail.boundVars
   val length = 1 + tail.length
-  def asTerms = Right(hd) +: tail.asTerms
+  lazy val asTerms = Right(hd) +: tail.asTerms
 
   // Misc
-  def ++(sp: Spine) = TyApp(hd, tail ++ sp)
+  def ++(sp: Spine) = cons(Right(hd), tail ++ sp)
 
   // Pretty printing
   override def pretty = s"${hd.pretty};${tail.pretty}"
@@ -451,18 +504,18 @@ object TermImpl {
   /////////////////////////////////////////////
 
   // primitive symbols (heads)
-  protected[terms] def mkDefAtom(id: Signature#Key): Head = symbolAtoms.get(id) match {
+  protected[terms] def mkAtom0(id: Signature#Key): Head = symbolAtoms.get(id) match {
       case Some(hd) => hd
-      case None     => val hd = DefAtom(id)
+      case None     => val hd = Atom(id)
                        symbolAtoms += ((id, hd))
                        hd
   }
-  protected[terms] def mkUiAtom(id: Signature#Key): Head = symbolAtoms.get(id) match {
-    case Some(hd) => hd
-    case None     => val hd =  UiAtom(id)
-                     symbolAtoms += ((id, hd))
-                     hd
-  }
+//  protected[terms] def mkUiAtom(id: Signature#Key): Head = symbolAtoms.get(id) match {
+//    case Some(hd) => hd
+//    case None     => val hd =  UiAtom(id)
+//                     symbolAtoms += ((id, hd))
+//                     hd
+//  }
   protected[terms] def mkBoundAtom(t: Type, scope: Int): Head = boundAtoms.get(t) match {
     case Some(inner) => inner.get(scope) match {
       case Some(hd)   => hd
@@ -480,11 +533,11 @@ object TermImpl {
     case Some(inner) => inner.get(args) match {
       case Some(root)  => root
       case None        => val root = Root(hd, args)
-                          redexes += ((hd,inner.+((args, root))))
+                          roots += ((hd,inner.+((args, root))))
                           root
     }
     case None        => val root = Root(hd, args)
-                        redexes += ((hd, Map((args, root))))
+                        roots += ((hd, Map((args, root))))
                         root
   }
   protected[terms] def mkRedex(left: Term, args: Spine): TermImpl = redexes.get(left) match {
@@ -537,10 +590,7 @@ object TermImpl {
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
-  def mkAtom(id: Signature#Key): TermImpl = Signature.get(id).isDefined match {
-    case true  => mkRoot(mkDefAtom(id), SNil)
-    case false => mkRoot(mkUiAtom(id), SNil)
-  }
+  def mkAtom(id: Signature#Key): TermImpl = mkRoot(mkAtom0(id), SNil)
 
   def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 

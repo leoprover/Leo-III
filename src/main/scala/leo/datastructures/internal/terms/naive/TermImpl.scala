@@ -16,18 +16,13 @@ sealed abstract class TermImpl extends Term {
 
   // Predicates on terms
   val isAtom = false
-  val isTermApp = false
   val isTermAbs = false
-  val isTypeApp = false
   val isTypeAbs = false
+  val isApp = false
+
+  def full_δ_expand = partial_δ_expand(-1)
 
   def normalize(subst: Subst) = ???
-
-  def δ_expandable = ???
-  def head_δ_expand = ???
-  def full_δ_expand = ???
-
-  def headSymbol = ???
 
   protected[internal] def decrementByOne(n: Int): Int = n match {
     case -1 => -1
@@ -42,15 +37,30 @@ sealed abstract class TermImpl extends Term {
 ///////////////////
 
 protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
+  private lazy val sym = Signature.get.meta(id)
 
   // Predicates on terms
   override val isAtom = true
-  override def is(symbol: Signature#Key) = id == symbol
 
-  private lazy val sym = Signature.get.meta(id)
+  // Handling def. expansion
+  lazy val δ_expandable = sym.hasDefn
+  def partial_δ_expand(rep: Int) = rep match {
+    case 0 => this
+    case n => sym.defn match {
+      case None => this
+      case Some(defn) => defn.partial_δ_expand(decrementByOne(n))
+    }
+  }
+
+  lazy val head_δ_expandable = sym.hasDefn
+  def head_δ_expand = partial_δ_expand(1)
+
+
   // Queries on terms
   def ty = sym._ty
   def freeVars = Set(this)
+  def boundVars = Set()
+  def headSymbol = this
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -72,14 +82,6 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = symFunc(id)
 
-  def expandDefinitions(rep: Int) = rep match {
-    case 0 => this
-    case n => sym.defn match {
-      case None => this
-      case Some(defn) => defn.expandDefinitions(decrementByOne(n))
-    }
-  }
-
   // Pretty printing
   def pretty = sym.name
 }
@@ -87,9 +89,18 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
 protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   override val isAtom = true
 
+  // Handling def. expansion
+  val δ_expandable = false
+  def partial_δ_expand(rep: Int) = this
+
+  val head_δ_expandable = false
+  val head_δ_expand = this
+
   // Queries on terms
   def ty = t
-  def freeVars = Set.empty
+  val freeVars = Set[Term]()
+  val boundVars = Set[Term](this)
+  def headSymbol = this
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -134,9 +145,20 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
 protected[internal] case class AbstractionNode(absType: Type, term: Term) extends TermImpl {
   override val isTermAbs = true
 
+
+  // Handling def. expansion
+  lazy val δ_expandable = term.δ_expandable
+  def partial_δ_expand(rep: Int) = AbstractionNode(absType, term.partial_δ_expand(rep))
+
+  lazy val head_δ_expandable = headSymbol.δ_expandable
+  def head_δ_expand = AbstractionNode(absType, term.head_δ_expand)
+
+
   // Queries on terms
   def ty = absType ->: term.ty
-  def freeVars = term.freeVars
+  val freeVars = term.freeVars
+  val boundVars = term.boundVars
+  def headSymbol = term.headSymbol
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -160,7 +182,6 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = absFunc(absType, term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
 
-  def expandDefinitions(rep: Int) = AbstractionNode(absType, term.expandDefinitions(rep))
 
   // Pretty printing
   def pretty = "[λ." + term.pretty + "]"
@@ -169,15 +190,25 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
 
 
 protected[internal] case class ApplicationNode(left: Term, right: Term) extends TermImpl {
-  override val isTermApp = true
+  override val isApp = true
+
+
+  // Handling def. expansion
+  lazy val δ_expandable = left.δ_expandable || right.δ_expandable
+  def partial_δ_expand(rep: Int) = ApplicationNode(left.partial_δ_expand(rep), right.partial_δ_expand(rep))
+
+  lazy val head_δ_expandable = headSymbol.δ_expandable
+  def head_δ_expand = ApplicationNode(left.head_δ_expand, right)
 
   // Queries on terms
-  def ty = {
+  lazy val ty = {
     require(left.ty.isFunType, "Application node not well typed: "+this.pretty)
     left.ty._funCodomainType
   } // assume everything is well-typed
 
-  def freeVars = left.freeVars ++ right.freeVars
+  val freeVars = left.freeVars ++ right.freeVars
+  val boundVars = left.boundVars ++ right.boundVars
+  lazy val headSymbol = left.headSymbol
 
   // Substitutions
   def substitute(what: Term, by: Term) = ApplicationNode(left.substitute(what,by), right.substitute(what,by))
@@ -207,8 +238,6 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
                   (tAppFunc: (A, Type) => A) = appFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc),
                                                        right.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
 
-  def expandDefinitions(rep: Int) = ApplicationNode(left.expandDefinitions(rep), right.expandDefinitions(rep))
-
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
@@ -221,9 +250,18 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
 protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl {
   override val isTypeAbs = true
 
+  // Handling def. expansion
+  lazy val δ_expandable = term.δ_expandable
+  def partial_δ_expand(rep: Int) = TypeAbstractionNode(term.partial_δ_expand(rep))
+
+  lazy val head_δ_expandable = term.head_δ_expandable
+  def head_δ_expand = TypeAbstractionNode(term.head_δ_expand)
+
   // Queries on terms
-  def ty = Type.mkPolyType(term.ty)
-  def freeVars = term.freeVars
+  lazy val ty = Type.mkPolyType(term.ty)
+  val freeVars = term.freeVars
+  val boundVars = term.boundVars
+  val headSymbol = term.headSymbol
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeAbstractionNode(term.substitute(what,by))
@@ -241,22 +279,30 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = tAbsFunc(term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
 
-  def expandDefinitions(rep: Int) = TypeAbstractionNode(term.expandDefinitions(rep))
 
   // Pretty printing
   def pretty = "[Λ." + term.pretty + "]"
 }
 
 protected[internal] case class TypeApplicationNode(left: Term, right: Type) extends TermImpl {
-  override val isTypeApp = true
+  override val isApp = true
+
+  // Handling def. expansion
+  lazy val δ_expandable = left.δ_expandable
+  def partial_δ_expand(rep: Int) = TypeApplicationNode(left.partial_δ_expand(rep), right)
+
+  lazy val head_δ_expandable = headSymbol.δ_expandable
+  def head_δ_expand = TypeApplicationNode(left.head_δ_expand, right)
 
   // Queries on terms
-  def ty = {
+  lazy val ty = {
     require(left.ty.isPolyType, "Type Application node not well typed: "+this.pretty)
     left.ty.instantiate(right)
   } // assume everything is well-typed
 
-  def freeVars = left.freeVars
+  val freeVars = left.freeVars
+  val boundVars = left.boundVars
+  def headSymbol = left.headSymbol
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeApplicationNode(left.substitute(what,by), right)
@@ -282,8 +328,6 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
                   (appFunc: (A,A) => A)
                   (tAbsFunc: A => A)
                   (tAppFunc: (A, Type) => A) = tAppFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc), right)
-
-  def expandDefinitions(rep: Int) = TypeApplicationNode(left.expandDefinitions(rep), right)
 
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
