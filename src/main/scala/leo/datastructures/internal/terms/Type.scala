@@ -2,7 +2,7 @@ package leo.datastructures.internal.terms
 
 import scala.language.implicitConversions
 import leo.datastructures.Pretty
-import leo.datastructures.internal._
+import leo.datastructures.internal.Signature
 
 /**
  * Abstract type for modeling types.

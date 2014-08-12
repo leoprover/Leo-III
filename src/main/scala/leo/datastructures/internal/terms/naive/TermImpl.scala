@@ -1,9 +1,7 @@
 package leo.datastructures.internal.terms.naive
 
-import leo.datastructures.internal.{Type, Signature}
-import leo.datastructures.internal.BoundTypeNode
-import leo.datastructures.internal.terms.Term
-import leo.datastructures.internal.terms.Subst
+import leo.datastructures.internal.Signature
+import leo.datastructures.internal.terms.{Type, BoundTypeNode, Term, Subst}
 
 /**
  * Naive implementation of nameless lambda terms.
@@ -22,7 +20,7 @@ sealed abstract class TermImpl extends Term {
 
   def full_δ_expand = partial_δ_expand(-1)
 
-  def normalize(subst: Subst) = ???
+  def normalize(subst: Substitution, subst2: Substitution) = ???
 
   protected[internal] def decrementByOne(n: Int): Int = n match {
     case -1 => -1

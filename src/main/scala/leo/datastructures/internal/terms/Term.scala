@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import scala.Some
 
 import leo.datastructures.Pretty
-import leo.datastructures.internal.{Type, Signature, HOLBinaryConnective}
+import leo.datastructures.internal.{Signature, HOLBinaryConnective}
 
 
 /**
@@ -65,7 +65,9 @@ abstract class Term extends Pretty {
 
   /** Return the β-nf of the term */
   def betaNormalize: Term
-  protected[terms] def normalize(subst: Subst): Term
+  type Substitution = (Subst, Subst)
+  val liftedId = (Subst.id, Subst.id)
+  protected[terms] def normalize(subst1: Substitution, subst2: Substitution): Term
 
   /** Right-folding on terms. */
   def foldRight[A](symFunc: Signature#Key => A)
@@ -84,7 +86,7 @@ abstract class Term extends Pretty {
 
 
 object Term {
-  import leo.datastructures.internal.terms.spine.TermImpl
+  import leo.datastructures.internal.terms.naive.TermImpl
 
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)

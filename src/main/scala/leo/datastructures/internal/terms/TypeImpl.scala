@@ -39,6 +39,8 @@ protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = baseFunc(id)
+
+  def closure(subst: Subst) = ???
 }
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
@@ -73,6 +75,8 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = boundFunc(scope)
+
+  def closure(subst: Subst) = ???
 }
 
 /** Function type `in -> out` */
@@ -107,6 +111,8 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = absFunc(in.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),out.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
+
+  def closure(subst: Subst) = ???
 }
 
 /** Product type `l * r` */
@@ -138,6 +144,8 @@ protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = prodFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
+
+  def closure(subst: Subst) = ???
 }
 
 /** Product type `l + r` */
@@ -169,6 +177,8 @@ protected[internal] case class UnionTypeNode(l: Type, r: Type) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = unionFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
+
+  def closure(subst: Subst) = ???
 }
 
 /**
@@ -209,6 +219,8 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = forAllFunc(body.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
+
+  def closure(subst: Subst) = ???
 }
 
 

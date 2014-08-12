@@ -1,7 +1,7 @@
 package leo.datastructures.internal.terms.naive
 
-import leo.datastructures.internal.{Type, Signature}
-import leo.datastructures.internal.terms.{Term, Subst}
+import leo.datastructures.internal.Signature
+import leo.datastructures.internal.terms.{Type, Term, Subst}
 
 /**
  * Created by lex on 16.06.14.
@@ -46,7 +46,7 @@ object DAGTermSet {
 
 
     def closure(s: Subst) = ???
-    def normalize(s: Subst) = ???
+    def normalize(s: Substitution, s2: Substitution) = ???
   }
   case class SymbolNode(key: Signature#Key) extends DAGNode {
     def pretty = Signature(key).name

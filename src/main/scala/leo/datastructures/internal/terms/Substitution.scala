@@ -3,6 +3,7 @@ package leo.datastructures.internal.terms
 import leo.datastructures.Pretty
 
 
+
 // TODO: Normalisation on subst needed?
 /**
  * // TODO Doc
@@ -18,6 +19,9 @@ sealed abstract class Subst extends Pretty {
 
   def normalize: Subst
 }
+
+
+
 
 /////////////////////////////////////////////////
 // Implementation of substitutions
@@ -49,7 +53,8 @@ case class Cons(ft: Front, subst: Subst) extends Subst {
 
   lazy val normalize = ft match {
     case BoundFront(_) => Cons(ft, subst.normalize)
-    case TermFront(t)  => Cons(TermFront(t.normalize(Subst.id)), subst.normalize) //TODO: eta contract here
+    case TermFront(t)  => Cons(TermFront(t.betaNormalize), subst.normalize) //TODO: eta contract here
+    case TypeFront(_) => Cons(ft, subst.normalize)
   }
 
   /** Pretty */
@@ -83,9 +88,9 @@ case class TermFront(term: Term) extends Front {
   /** Pretty */
   override def pretty = term.pretty
 }
+case class TypeFront(typ: Type) extends Front {
+  def substitute(subst: Subst) = TypeFront(typ.closure((subst)))
 
-/**
-case object UNBOUND extends Front {
-  def substitute(subst: Subst) = UNBOUND
+  /** Pretty */
+  override def pretty = typ.pretty
 }
-  */

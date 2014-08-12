@@ -1,7 +1,7 @@
 package leo.datastructures.internal
 
 import scala.collection.immutable.{BitSet, IntMap, HashMap}
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.internal.terms.{TypeKind, Kind, Type, Term}
 
 /**
  * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
