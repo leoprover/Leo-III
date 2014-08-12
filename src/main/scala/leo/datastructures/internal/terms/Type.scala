@@ -1,7 +1,8 @@
-package leo.datastructures.internal
+package leo.datastructures.internal.terms
 
 import scala.language.implicitConversions
 import leo.datastructures.Pretty
+import leo.datastructures.internal._
 
 /**
  * Abstract type for modeling types.
@@ -81,6 +82,9 @@ abstract class Type extends Pretty {
   def *(ty: Type) = Type.mkProdType(this, ty)
   /** Create union type `this + ty`*/
   def +(ty: Type) = Type.mkUnionType(this, ty)
+
+
+  protected[internal] def closure(subst: Subst): Type
 }
 
 /**

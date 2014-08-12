@@ -1,6 +1,6 @@
 package leo.datastructures.internal
 
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.internal.terms.{Kind, Type, Term}
 
 /**
  * Interface for signature representations.

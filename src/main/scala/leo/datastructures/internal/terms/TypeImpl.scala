@@ -1,5 +1,7 @@
-package leo.datastructures.internal
+package leo.datastructures.internal.terms
 
+import leo.datastructures.internal.Signature
+import scala.Some
 
 /** Literal type, i.e. `$o` */
 protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {

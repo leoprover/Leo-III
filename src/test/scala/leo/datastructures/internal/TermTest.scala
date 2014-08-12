@@ -2,7 +2,7 @@ package leo.datastructures.internal
 
 import scala.language.implicitConversions
 import terms.spine.TermImpl.{mkTermAbs, mkTermApp, mkBound,λ, mkAtom}
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.internal.terms.{Type, Term}
 
 /**
  * Created by lex on 21.05.14.

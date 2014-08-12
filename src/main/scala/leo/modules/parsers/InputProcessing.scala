@@ -6,7 +6,7 @@ import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
 import leo.datastructures.internal._
 
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.internal.terms.{Kind, Type, Term}
 import leo.datastructures.tptp.Commons.Term
 import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkTypeApp}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}

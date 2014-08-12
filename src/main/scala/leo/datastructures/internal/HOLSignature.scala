@@ -1,5 +1,7 @@
 package leo.datastructures.internal
 
+import leo.datastructures.internal.terms._
+import scala.Some
 import Type.{typeKind, typeVarToType,superKind}
 import leo.datastructures.internal.terms.{@@@@, @@@,∙, Symbol, Term}
 import Term.{mkAtom,mkTermApp,mkApp, mkTermAbs, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
