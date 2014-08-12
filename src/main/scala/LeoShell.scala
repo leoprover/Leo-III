@@ -240,7 +240,7 @@ object LeoShell {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.toString.take(maxRoleSize)
-        val form = x.formula.pretty
+        val form = x.formula.fold(_.pretty,{x => x.map(_.pretty).mkString(" , ")})
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 

@@ -51,7 +51,10 @@ class ConjectureAgent extends AbstractAgent {
    * @param event - Newly added or updated formula
    * @return - set of tasks, if empty the agent won't work on this event
    */
-  override def toFilter(event: FormulaStore): Iterable[Task] = if(event.role == "conjecture") List(new SingleFormTask(event)) else Nil
+  override def toFilter(event: FormulaStore): Iterable[Task] = event.formula match {
+    case Left(f) => if(event.role == "conjecture") List(new SingleFormTask(event)) else Nil
+    case Right(_) => Nil
+  }
 
   /**
    * Negates the conjecture and renames the role
@@ -62,7 +65,7 @@ class ConjectureAgent extends AbstractAgent {
     t match {
       case t1: SingleFormTask =>
         val fS = t1.getFormula()
-        val form = fS.formula
+        val form = fS.simpleFormula
         val status = fS.status
         val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~3)
 
@@ -124,7 +127,7 @@ class FinishedAgent(timeout : Int) extends AbstractAgent {
   override def toFilter(event: FormulaStore): Iterable[Task] = {
     import leo.datastructures.internal._
     event.formula match {
-      case LitFalse() => List(new SingleFormTask(event))
+      case Left(LitFalse()) => List(new SingleFormTask(event))
       case _ => Nil
     }
   }

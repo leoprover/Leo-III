@@ -72,21 +72,24 @@ object NormalClauseAgent {
  */
 class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
 
-  override def run(t : Task) : Result = t match {
-    case  t1 : NormalTask =>
+  override def run(t: Task): Result = t match {
+    case t1: NormalTask =>
       val fstore = t1.get()
-      val erg = norm.normalize(fstore.formula)
-      if(fstore.formula == erg){
+      val erg = norm.normalize(fstore.simpleFormula)
+      if (fstore.simpleFormula == erg) {
         println(norm.getClass.getName() + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, fstore.newStatus(norm.markStatus(fstore.status)))), Set.empty)
       } else {
-        println(norm.getClass.getName()+" : Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
+        println(norm.getClass.getName() + " : Updated '" + fstore.simpleFormula.pretty + "' to '" + erg.pretty + "'.")
         return new StdResult(Set.empty, Map((fstore, fstore.newFormula(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
       }
-    case _  => throw new IllegalArgumentException("Executing wrong task.")
+    case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
-  override protected def toFilter(event: FormulaStore): Iterable[Task] = if (norm.applicable(event.formula,event.status)) List(new NormalTask(event)) else Nil
+  override protected def toFilter(event: FormulaStore): Iterable[Task] = event.formula match {
+    case Left(f) => if (norm.applicable(event.simpleFormula, event.status)) List(new NormalTask(event)) else Nil
+    case Right(_) => Nil
+  }
 }
 
 /**

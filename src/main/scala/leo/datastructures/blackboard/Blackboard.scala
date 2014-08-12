@@ -97,7 +97,7 @@ trait Blackboard {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : Formula => Boolean) : List[FormulaStore]
+  def getAll(p : FormulaStore => Boolean) : List[FormulaStore]
 
   /**
    * <p>
@@ -106,7 +106,7 @@ trait Blackboard {
    *
    * @param p - All x with p(x) will be removed.
    */
-  def rmAll(p : Formula => Boolean)
+  def rmAll(p : FormulaStore => Boolean)
 
   /**
    * Registers an agent to the blackboard

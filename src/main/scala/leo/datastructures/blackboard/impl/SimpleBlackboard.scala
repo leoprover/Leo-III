@@ -27,9 +27,9 @@ class SimpleBlackboard extends Blackboard {
 
   override def getFormulas: List[FormulaStore] = getAll(_ => true)
 
-  override def getAll(p: (Formula) => Boolean): List[FormulaStore] = read { formulas =>
+  override def getAll(p: FormulaStore => Boolean): List[FormulaStore] = read { formulas =>
     formulas.values.filter { store =>
-      p(store.formula)
+      p(store)
     }.toList
   }
 
@@ -61,8 +61,8 @@ class SimpleBlackboard extends Blackboard {
     }
   }
 
-  override def rmAll(p: (Formula) => Boolean) = write { formulas =>
-      formulas.values foreach (form => if (p(form.formula)) formulas.remove(form.name) else formulas)
+  override def rmAll(p: FormulaStore => Boolean) = write { formulas =>
+      formulas.values foreach (form => if (p(form)) formulas.remove(form.name) else formulas)
   }
 
   /**
