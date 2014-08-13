@@ -174,12 +174,12 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     case r@Root(hd, s) => args match {
       case SNil => r.normalize(termSubst, typeSubst)
       case SpineClos(s2, spSubst) => mkRedex(r, s2).normalize((termSubst._1, spSubst._1 o termSubst._2),(typeSubst._1, spSubst._2 o typeSubst._2))
-      case other => mkRoot(hd, s ++ other).normalize(termSubst, typeSubst) // we dont need folding of substitutions, do we? //mkRoot(hd, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2))) // TODO normalize further
+      case other => mkRoot(hd, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2))).normalize((termSubst._1, Subst.id), (typeSubst._1, Subst.id))
     }
     case red@Redex(t2, s) => args match {
       case SNil => red.normalize(termSubst, typeSubst)
       case SpineClos(s2, spSubst) => mkRedex(red, s2).normalize((termSubst._1, spSubst._1 o termSubst._2),(typeSubst._1, spSubst._2 o typeSubst._2))
-      case other => mkRedex(t2, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2))) // TODO normalize further
+      case other => mkRedex(t2, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2))).normalize((termSubst._1, Subst.id), (typeSubst._1, Subst.id))
     }
     case tc@TermClos(t2, subst2) => mkRedex(t2, args).normalize((termSubst._1 o subst2._1, termSubst._2),(typeSubst._1 o subst2._2, typeSubst._2))
   }
