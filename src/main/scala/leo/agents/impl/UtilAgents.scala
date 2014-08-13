@@ -43,6 +43,8 @@ object UtilAgents {
  */
 class ConjectureAgent extends AbstractAgent {
 
+  override val name = "ConjectureAgent"
+
   /**
    * This method should be called, whenever a formula is added to the blackboard.
    *
@@ -69,7 +71,7 @@ class ConjectureAgent extends AbstractAgent {
         val status = fS.status
         val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~3)
 
-        println("Negated Conjecture")
+//        println("Negated Conjecture")
 
         new StdResult(Set.empty,Map((fS,rS)),Set.empty)
       case _ => throw new IllegalArgumentException("Executing wrong task.")
@@ -91,6 +93,8 @@ class SingleFormTask(f : FormulaStore) extends Task {
 
 
 class FinishedAgent(timeout : Int) extends AbstractAgent {
+
+  override val name = "FinishedAgent"
 
   // Killing if not done in timeout
   private val end : Thread = new Thread(new Runnable {

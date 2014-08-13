@@ -113,7 +113,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   var endFlag = false
 
   def pause() : Unit = {s.synchronized(pauseFlag = true);
-    println("Scheduler paused.")
+//    println("Scheduler paused.")
   }
 
   def clear() : Unit = {
@@ -148,11 +148,16 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
       // Blocks until a task is available
       val tasks = Blackboard().getTask
+//      println("Loaded "+tasks.size+" new tasks, ready to execute.")
 
       for ((a,t) <- tasks) {
         this.synchronized {
           if (endFlag) return         // Savely exit
-          if (pauseFlag) this.wait() // Check again, if waiting took to long
+          if (pauseFlag) {
+            println("Scheduler paused.")
+            this.wait()
+            println("Scheduler is commencing.")
+          } // Check again, if waiting took to long
 
           curExec.add(t)
           // Execute task

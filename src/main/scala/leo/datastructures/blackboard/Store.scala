@@ -70,9 +70,9 @@ class FormulaStore(_name : String, _formula : Either[Formula,Seq[Formula]], _rol
    *
    * (ATM only the first two, therefor 1 + 4 = 5)
    *
-   * @return 29, all normalize fields are set
+   * @return true, if normalized
    */
-  def normalized : Int = 5
+  def normalized : Boolean = (status & 5)== 5 & (status & 7) == 7
 
   def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _role, _status)
   def newFormula(nformula : Formula) : FormulaStore = new FormulaStore(_name, Left(nformula), _role, _status)
@@ -81,4 +81,8 @@ class FormulaStore(_name : String, _formula : Either[Formula,Seq[Formula]], _rol
   def newRole(nrole : String) : FormulaStore = new FormulaStore(_name, _formula, nrole, _status)
 
   def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), formula, _role, _status)
+
+  override lazy val toString : String = {
+    "leo("+name+","+role+",("+formula.fold({_.pretty}, {fs => fs.map(_.pretty).mkString(") & (")+")"})+"))"
+  }
 }

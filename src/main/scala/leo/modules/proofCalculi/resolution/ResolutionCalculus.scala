@@ -23,9 +23,22 @@ object ResolutionCalculus {
   def resoluteInfere(r1 : Seq[Term], r2 : Seq[Term]) : Option[Seq[Term]] = {
     (r1,r2) match {
       case (h1 :: Nil, h2 :: Nil) if isNegate(h1)(h2) => Some(LitFalse() :: Nil)
-      case (h1 :: l1, h2 :: l2) if isNegate(h1)(h2) => Some(l1++l2)
+      case (h1 :: l1, h2 :: l2) if isNegate(h1)(h2) => simplify(l1,l2)
       case _                                        => None
     }
+  }
+
+  private def simplify(r1 : Seq[Term], r2 : Seq[Term]) : Option[Seq[Term]] = {
+    var res : List[Term] = Nil
+    for(a <- r1){
+      if(!r2.exists(_ == a)){
+        if(r2.exists(isNegate(a))){
+          return None
+        }
+        res = a :: res
+      }
+    }
+    Some(res++r2)
   }
 
   /**
@@ -113,6 +126,13 @@ object ResolutionCalculus {
     }
     val tail = rekurse(r.toList)
 
-    next.fold(None : Option[List[Term]]){a => Some(a :: tail)}
+    next match{
+      case Some(a) => Some(a :: tail)
+      case None =>
+        println("Could not cnf : ["+r.map(_.pretty).mkString(" , ")+")")
+        None
+    }
+
+//    next.fold(None : Option[List[Term]]){a => Some(a :: tail)}
   }
 }

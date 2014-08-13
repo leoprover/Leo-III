@@ -30,6 +30,12 @@ trait Agent {
 
   /**
    *
+   * @return the name of the agent
+   */
+  def name : String
+
+  /**
+   *
    * @return true, if this Agent can execute at the moment
    */
   def isActive : Boolean
@@ -127,7 +133,7 @@ abstract class AbstractAgent extends Agent {
     setActive(true)
   }
 
-  private val q : mutable.Queue[Task] = new mutable.SynchronizedQueue[Task]()
+  protected val q : mutable.Queue[Task] = new mutable.SynchronizedQueue[Task]()
 
   /**
    * <p>
@@ -141,11 +147,15 @@ abstract class AbstractAgent extends Agent {
     var done = false
     for(t <- toFilter(f)) {
       if (!Blackboard().collision(t)) {
+//        println(name+" : Got a task.")
         q.enqueue(t)
         done = true
       }
     }
-    if(done) Blackboard().signalTask()
+    if(done) {
+//      println(name+" : Has now "+q.size+" task queued.")
+      Blackboard().signalTask()
+    }
   }
 
   /**
@@ -158,12 +168,13 @@ abstract class AbstractAgent extends Agent {
     var erg = List[Task]()
     var costs : Double = 0
     for(t <- q){
-      if(costs > budget) erg
+      if(costs > budget) return erg
       else {
         costs += t.bid(budget)
         erg = t :: erg
       }
     }
+//    println(name+ " : Send "+erg.size+" tasks to Auction.")
     erg
   }
 

@@ -4,7 +4,7 @@ package leo.datastructures.blackboard.impl
 
 import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.internal.{ Term => Formula }
+import leo.datastructures.internal.{Term => Formula, LitFalse}
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable
@@ -22,6 +22,26 @@ class SimpleBlackboard extends Blackboard {
   import FormulaSet._
 
   var DEBUG : Boolean = true
+
+  var isFinished = false
+
+  private def checkFinish(fS : FormulaStore) : Unit = {
+    fS.formula match{
+      case Left(form) if form == LitFalse=>
+        isFinished = true
+        Scheduler().pause()
+        println("Derived False.")
+      case Right(lForm) if lForm.isEmpty =>
+        isFinished = true
+        Scheduler().pause()
+        println("Derived False.")
+      case Right(lForm) if lForm.head == LitFalse=>
+        isFinished = true
+        Scheduler().pause()
+        println("Derived False.")
+      case _ => ()
+    }
+  }
 
   // For each agent a List of Tasks to execute
 
@@ -176,6 +196,8 @@ private object TaskSet {
     while(!Scheduler().isTerminated()) {
       try {
 
+//        println("Beginning to get items for the auction.")
+
         //
         // 1. Get all Tasks the Agents want to bid on during the auction with their current money
         //
@@ -185,6 +207,7 @@ private object TaskSet {
           if (r.isEmpty) this.wait()
         }
 
+//        println("Got tasks and ready to auction.")
         //
         // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
         //
@@ -192,6 +215,8 @@ private object TaskSet {
         // Value should be positive, s.t. we can square the values without changing order
         //
         val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size}
+
+//        println("Sorted tasks.")
 
         // 3. Take from beginning to front only the non colliding tasks
         // The new tasks should be non-colliding with the existing ones, because they are always filtered.
@@ -207,6 +232,8 @@ private object TaskSet {
           }
         }
 
+//        println("Choose optimal.")
+
         //
         // 4. After work pay salary, tell colliding and return the tasks
         //
@@ -214,6 +241,8 @@ private object TaskSet {
           regAgents.put(a, b + AGENT_SALARY)
           a.removeColliding(newTask.map(_._2))
         }
+
+//        println("Ready to return.")
 
         return newTask
 
