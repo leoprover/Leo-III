@@ -86,7 +86,7 @@ abstract class Term extends Pretty {
 
 
 object Term {
-  import leo.datastructures.internal.terms.naive.TermImpl
+  import leo.datastructures.internal.terms.spine.TermImpl
 
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
@@ -124,6 +124,8 @@ object Term {
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
   implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
+
+  protected[internal] def reset(): Unit = TermImpl.reset()
 }
 
 /**
@@ -189,6 +191,7 @@ object ∙ {
   def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
     case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
     case Redex(expr, sp) => Some((expr, sp.asTerms))
+    case _ => None
   }
 
   def apply(left: Term, right: Seq[Either[Term, Type]]): Term = spine.TermImpl.mkApp(left, right)

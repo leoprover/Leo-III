@@ -201,6 +201,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     fixedSet = fixedSet.empty
     definedSet = definedSet.empty
     uiSet = uiSet.empty
+
+    Term.reset()
   }
 
   ///////////////////////////////
