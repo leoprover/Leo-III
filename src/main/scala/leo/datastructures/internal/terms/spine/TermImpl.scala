@@ -105,10 +105,10 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     val spineTypeSUbst= typeSubst._2
     hd match {
       case b@BoundIndex(typ, _) => b.substitute(headTermSubst) match {
-        case BoundFront(i) => mkRoot(BoundIndex(typ, i), args.normalize(spineTermSubst, spineTypeSUbst))
-        case TermFront(t) => mkRedex(t, SpineClos(args, (spineTermSubst, spineTypeSUbst))).normalize(liftedId, liftedId)
+        case BoundFront(i) => mkRoot(BoundIndex(typ, i), args.normalize(headTermSubst, headTypeSubst))
+        case TermFront(t) => mkRedex(t, SpineClos(args, (headTermSubst, headTypeSubst))).normalize(liftedId, liftedId)
       }
-      case _ => Root(hd, args.normalize(spineTermSubst, spineTypeSUbst))
+      case _ => Root(hd, args.normalize(headTermSubst, headTypeSubst))
     }
   }
 
@@ -155,31 +155,12 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
   }
 
-//  def preNormalize(s: Subst): TermClosure = {
-//    val (bodyPNF, t) = (body, s)//body.preNormalize(s)
-//
-//    bodyPNF match {
-//      case r@Root(hd,sp) => args match {
-//        case SNil => (r,t)
-//        case App(h, tail) => (Root(hd, sp ++ args),t)
-////        case SpineClos(_,s2) => ???
-//      }
-//      case TermAbstr(_,b) => args  match {
-//        case SNil => (bodyPNF,t)
-//        case App(hd, SNil) => b.preNormalize(Cons(TermFront(hd),t)) // eta contract
-//        case App(hd, tail) => Redex(b,tail).preNormalize(Cons(TermFront(hd),t))
-////        case SpineClos(_,_) => ???
-//      }
-//      case Redex(_,_) => ??? // Not possible if body is prenormalized
-//      case TermClos(term,substi) => term.preNormalize(substi o t)
-//    }
-//  }
   import leo.datastructures.internal.terms.{Cons, TermFront}
   def normalize(termSubst: Substitution, typeSubst: Substitution) = body match {
     case abs@TermAbstr(_, t) => args match {
       case SNil => abs.normalize(termSubst, typeSubst)
-      case App(s0, SNil) => t.normalize((Cons(TermFront(s0),termSubst._1), termSubst._2), typeSubst)
-      case App(s0, s) => mkRedex(t, s).normalize((Cons(TermFront(s0),termSubst._1), termSubst._2), typeSubst)
+      case App(s0, SNil) => t.normalize((Cons(TermFront(s0).substitute(termSubst._2),termSubst._1), termSubst._2), typeSubst)
+      case App(s0, s) => mkRedex(t, s).normalize((Cons(TermFront(s0).substitute(termSubst._2),termSubst._1), termSubst._2), typeSubst)
       case SpineClos(s, spSubst) => mkRedex(abs, s).normalize((termSubst._1, spSubst._1 o termSubst._2),(typeSubst._1, spSubst._2 o typeSubst._2))
       case _ => throw new IllegalArgumentException("application not well typed")// case TyApp not allowed here
     }
@@ -193,13 +174,14 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     case r@Root(hd, s) => args match {
       case SNil => r.normalize(termSubst, typeSubst)
       case SpineClos(s2, spSubst) => mkRedex(r, s2).normalize((termSubst._1, spSubst._1 o termSubst._2),(typeSubst._1, spSubst._2 o typeSubst._2))
-      case other => mkRoot(hd, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2)))
+      case other => mkRoot(hd, s ++ other).normalize(termSubst, typeSubst) // we dont need folding of substitutions, do we? //mkRoot(hd, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2))) // TODO normalize further
     }
     case red@Redex(t2, s) => args match {
       case SNil => red.normalize(termSubst, typeSubst)
       case SpineClos(s2, spSubst) => mkRedex(red, s2).normalize((termSubst._1, spSubst._1 o termSubst._2),(typeSubst._1, spSubst._2 o typeSubst._2))
-      case other => mkRedex(t2, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2)))
+      case other => mkRedex(t2, s.merge((termSubst._1, typeSubst._1),other,(termSubst._2, typeSubst._2))) // TODO normalize further
     }
+    case tc@TermClos(t2, subst2) => mkRedex(t2, args).normalize((termSubst._1 o subst2._1, termSubst._2),(typeSubst._1 o subst2._2, typeSubst._2))
   }
 
 
@@ -296,9 +278,9 @@ protected[spine] case class TermClos(term: Term, σ: (Subst, Subst)) extends Ter
   def head_δ_expand = ???
 
   // Queries on terms
-  val ty = term.ty
-  val freeVars = ???
-  val boundVars = ???
+  lazy val ty = term.ty
+  lazy val freeVars = Set[Term]()
+  lazy val boundVars = Set[Term]()
   lazy val headSymbol = ???
 //    term.headSymbol match {
 //    case Root(head, SNil) => head match {
@@ -497,14 +479,14 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   def normalize(termSubst: Subst, typeSubst: Subst) = sp.normalize(s._1 o termSubst, s._2 o typeSubst)
 
   // Handling def. expansion
-  val δ_expandable = ???
+  lazy val δ_expandable = ???
   def partial_δ_expand(rep: Int) = ???
   lazy val full_δ_expand = ???
 
   // Queries
-  val freeVars = ???
-  val boundVars = ???
-  val length = sp.length
+  val freeVars = Set[Term]()
+  val boundVars= Set[Term]() // TODO: implement
+  lazy val length = sp.length
   lazy val asTerms = ???
 
   // Misc
@@ -550,12 +532,7 @@ object TermImpl {
                        symbolAtoms += ((id, hd))
                        hd
   }
-//  protected[terms] def mkUiAtom(id: Signature#Key): Head = symbolAtoms.get(id) match {
-//    case Some(hd) => hd
-//    case None     => val hd =  UiAtom(id)
-//                     symbolAtoms += ((id, hd))
-//                     hd
-//  }
+
   protected[terms] def mkBoundAtom(t: Type, scope: Int): Head = boundAtoms.get(t) match {
     case Some(inner) => inner.get(scope) match {
       case Some(hd)   => hd
