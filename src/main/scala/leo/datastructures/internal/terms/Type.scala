@@ -60,6 +60,7 @@ abstract class Type extends Pretty {
    * yields {{{(Type.i ->: Type.i) ->: Type.i}}}
    */
   def substitute(what: Type, by: Type): Type
+  def substitute(subst: Subst): Type
 
   /** if `this` is a polymorphic type (i.e. a forall type), the method returns the abstracted type where all type parameters bound
     * by the head quantifier are replaced by `by`. In any other case, it does nothing */

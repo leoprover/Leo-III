@@ -29,7 +29,7 @@ protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
     case BaseTypeNode(key) if key == id => by
     case _ => this
   }
-
+  def substitute(subst: Subst) = this
   def instantiate(by: Type) = this
 
   // Other operations
@@ -65,6 +65,18 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
     case BoundTypeNode(i) if i == scope => by
     case _ => this
   }
+  def substitute(subst: Subst) = subst0(subst, scope)
+  private def subst0(subst: Subst, index: Int): Type = subst match {
+    case Shift(0) => this
+    case Shift(k) => BoundTypeNode(index+k)
+    case Cons(ft,s) if index == 1 => ft match {
+      case BoundFront(j) => BoundTypeNode(j)
+      case TypeFront(t)  => t
+      case _ => throw new IllegalArgumentException("type substitution contains terms")// this should never happen
+    }
+    case Cons(_, s) => subst0(s, index-1)
+  }
+
 
   def instantiate(by: Type) = this
 
@@ -101,7 +113,7 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
 
   // Substitutions
   def substitute(what: Type, by: Type) = AbstractionTypeNode(in.substitute(what,by), out.substitute(what,by))
-
+  def substitute(subst: Subst) = AbstractionTypeNode(in.substitute(subst), out.substitute(subst))
   def instantiate(by: Type) = this
 
   // Other operations
@@ -134,7 +146,7 @@ protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
 
   // Substitutions
   def substitute(what: Type, by: Type) = ProductTypeNode(l.substitute(what,by), r.substitute(what,by))
-
+  def substitute(subst: Subst) = ProductTypeNode(l.substitute(subst), r.substitute(subst))
   def instantiate(by: Type) = this
 
   // Other operations
@@ -167,6 +179,7 @@ protected[internal] case class UnionTypeNode(l: Type, r: Type) extends Type {
 
   // Substitutions
   def substitute(what: Type, by: Type) = UnionTypeNode(l.substitute(what,by), r.substitute(what,by))
+  def substitute(subst: Subst) = UnionTypeNode(l.substitute(subst), r.substitute(subst))
 
   def instantiate(by: Type) = this
 
@@ -209,6 +222,7 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
     case BoundTypeNode(i) => ForallTypeNode(body.substitute(BoundTypeNode(i+1), by))
     case _ => ForallTypeNode(body.substitute(what,by))
   }
+  def substitute(subst: Subst) = ForallTypeNode(body.substitute(subst))
 
   def instantiate(by: Type) = body.substitute(BoundTypeNode(1), by)
 
