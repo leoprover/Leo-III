@@ -73,10 +73,18 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
   // Queries on terms
-  lazy val ty = ty0(hd.ty, args.length)
-  private def ty0(funty: Type, arglen: Int): Type = arglen match {
-    case 0 => funty
-    case k => ty0(funty._funCodomainType, arglen-1)
+  lazy val ty = ty0(hd.ty, args)
+  private def ty0(funty: Type, s: Spine): Type = s match {
+    case SNil => funty
+    case App(s0,tail) => funty match {
+      case AbstractionTypeNode(_, out) => ty0(out, tail)
+      case _ => throw new IllegalArgumentException(s"${this.pretty}: expression not well typed")// this should not happen if well-typed
+    }
+    case TyApp(s0,tail) => funty match {
+      case tt@ForallTypeNode(body) => ty0(tt.instantiate(s0), tail)
+      case _ => throw new IllegalArgumentException(s"${this.pretty}: expression not well typed")// this should not happen if well-typed
+    }
+    case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
   lazy val freeVars = hd match {
     case BoundIndex(_,_) => args.freeVars
@@ -92,7 +100,7 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   lazy val typeCheck = typeCheck0(hd.ty, args)
   private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
     case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest)
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case _ => true // other cases should not appear
   }
@@ -105,8 +113,8 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     val spineTypeSUbst= typeSubst._2
     hd match {
       case b@BoundIndex(typ, _) => b.substitute(headTermSubst) match {
-        case BoundFront(i) => mkRoot(BoundIndex(typ, i), args.normalize(headTermSubst, headTypeSubst))
-        case TermFront(t) => mkRedex(t, SpineClos(args, (headTermSubst, headTypeSubst))).normalize(liftedId, liftedId)
+        case BoundFront(i) => mkRoot(BoundIndex(typ.substitute(headTypeSubst), i), args.normalize(headTermSubst, headTypeSubst))
+        case TermFront(t) => mkRedex(t, args).normalize((Subst.id, headTermSubst), (headTypeSubst, headTypeSubst)) // Closure kann nach hinten gezogen werden
       }
       case _ => Root(hd, args.normalize(headTermSubst, headTypeSubst))
     }
@@ -137,10 +145,18 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
   def head_δ_expand = mkRedex(body.head_δ_expand, args)
 
   // Queries on terms
-  lazy val ty = ty0(body.ty, args.length)
-  private def ty0(funty: Type, arglen: Int): Type = arglen match {
-    case 0 => funty
-    case k => ty0(funty._funCodomainType, arglen-1)
+  lazy val ty = ty0(body.ty, args)
+  private def ty0(funty: Type, s: Spine): Type = s match {
+    case SNil => funty
+    case App(s0,tail) => funty match {
+      case AbstractionTypeNode(_, out) => ty0(out, tail)
+      case _ => throw new IllegalArgumentException(s"${this.pretty}: expression not well typed")// this should not happen if well-typed
+    }
+    case TyApp(s0,tail) => funty match {
+      case tt@ForallTypeNode(body) => ty0(tt.instantiate(s0), tail)
+      case _ => throw new IllegalArgumentException(s"${this.pretty}: expression not well typed")// this should not happen if well-typed
+    }
+    case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
   val freeVars = body.freeVars ++ args.freeVars
   val boundVars = body.boundVars ++ args.boundVars
@@ -150,7 +166,7 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
   lazy val typeCheck = typeCheck0(body.ty, args)
   private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
     case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest)
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
   }
@@ -166,8 +182,8 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     }
     case abs@TypeAbstr(t) => args match {
       case SNil => abs.normalize(termSubst, typeSubst)
-      case TyApp(s0, SNil) => t.normalize(termSubst, ((Cons(TypeFront(s0),termSubst._1)),termSubst._2))
-      case TyApp(s0, s) => mkRedex(t, s).normalize(termSubst, ((Cons(TypeFront(s0),termSubst._1)),termSubst._2))
+      case TyApp(s0, SNil) => t.normalize(termSubst, ((Cons(TypeFront(s0),typeSubst._1)),typeSubst._2))
+      case TyApp(s0, s) => mkRedex(t, s).normalize(termSubst, ((Cons(TypeFront(s0),typeSubst._1)),typeSubst._2))
       case SpineClos(s, spSubst) => mkRedex(abs, s).normalize((termSubst._1, spSubst._1 o termSubst._2),(typeSubst._1, spSubst._2 o typeSubst._2))
       case _ => throw new IllegalArgumentException("application not well typed")// case App not allowed here
     }
@@ -218,7 +234,7 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   // Other operations
   lazy val typeCheck = body.typeCheck
 
-  def normalize(termSubst: Substitution, typeSubst: Substitution) = mkTermAbstr(typ, body.normalize((termSubst._1.sink, termSubst._2.sink), typeSubst))
+  def normalize(termSubst: Substitution, typeSubst: Substitution) = mkTermAbstr(typ.substitute(typeSubst._1), body.normalize((termSubst._1.sink, termSubst._2.sink), typeSubst))
 
 
   /** Pretty */
@@ -397,6 +413,8 @@ protected[terms] sealed abstract class Spine extends Pretty {
 
   def ++(sp: Spine): Spine
   def +(t: TermImpl): Spine = ++(cons(Left(t),SNil))
+
+
 }
 
 protected[terms] case object SNil extends Spine {
@@ -644,6 +662,21 @@ object TermImpl {
     }
 
   implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
+
+
+  def reset() = {
+    boundAtoms = Map.empty
+    symbolAtoms = Map.empty
+
+    // composite terms
+    termAbstractions = Map.empty
+    typeAbstractions = Map.empty
+    roots = Map.empty
+    redexes = Map.empty
+
+    // Spines
+   spines = Map.empty
+  }
 
 }
 
