@@ -86,6 +86,7 @@ class InputProcessingTestSuite extends FunSuite {
                   if (!t._2.typeCheck) {
                     println("Name: " + t._1)
                     println("Term: " + t._2)
+                    println("Term typecheck: " + t._2.typeCheck)
                     println("Pretty: " + t._2.pretty)
                     println("Type: " + t._2.ty)
                     println("Pretty: " + t._2.ty.pretty)
@@ -95,13 +96,19 @@ class InputProcessingTestSuite extends FunSuite {
               }
             }
           } catch {
-            case e: Throwable => e.printStackTrace(); {for (s <- sig.allConstants) {
-              print(sig(s).key.toString + "\t\t")
-              print(sig(s).name + "\t\t:\t")
-              sig(s).ty.foreach({ case ty => print(ty.pretty)})
-              sig(s).kind.foreach({ case ty => print(ty.pretty)})
+            case e: Throwable => {
+              println("CAUGHT EXCEPTION:" + e.getMessage)
               println()
-            }}; fail("Processing error")
+              for (s <- sig.allConstants) {
+                print(sig(s).key.toString + "\t\t")
+                print(sig(s).name + "\t\t:\t")
+                sig(s).ty.foreach({ case ty => print(ty.pretty)})
+                sig(s).kind.foreach({ case ty => print(ty.pretty)})
+                println()
+              }
+              println()
+              e.printStackTrace()
+              fail(e)}
           }
 
         }
