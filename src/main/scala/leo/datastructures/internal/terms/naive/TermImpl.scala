@@ -20,7 +20,7 @@ sealed abstract class TermImpl extends Term {
 
   def full_δ_expand = partial_δ_expand(-1)
 
-  def normalize(subst: Substitution, subst2: Substitution) = ???
+  def normalize(subst: Subst, subst2: Subst) = ???
 
   protected[internal] def decrementByOne(n: Int): Int = n match {
     case -1 => -1

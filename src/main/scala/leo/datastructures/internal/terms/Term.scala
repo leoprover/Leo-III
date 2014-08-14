@@ -65,9 +65,7 @@ abstract class Term extends Pretty {
 
   /** Return the β-nf of the term */
   def betaNormalize: Term
-  type Substitution = (Subst, Subst)
-  val liftedId = (Subst.id, Subst.id)
-  protected[terms] def normalize(subst1: Substitution, subst2: Substitution): Term
+  protected[terms] def normalize(termSubst: Subst, typeSubst: Subst): Term
 
   /** Right-folding on terms. */
   def foldRight[A](symFunc: Signature#Key => A)
