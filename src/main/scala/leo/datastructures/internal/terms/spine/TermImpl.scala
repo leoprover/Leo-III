@@ -544,65 +544,71 @@ object TermImpl {
   /////////////////////////////////////////////
 
   // primitive symbols (heads)
-  protected[terms] def mkAtom0(id: Signature#Key): Head = symbolAtoms.get(id) match {
-      case Some(hd) => hd
-      case None     => val hd = Atom(id)
-                       symbolAtoms += ((id, hd))
-                       hd
-  }
+  protected[terms] def mkAtom0(id: Signature#Key): Head = Atom(id)
+//    symbolAtoms.get(id) match {
+//      case Some(hd) => hd
+//      case None     => val hd = Atom(id)
+//                       symbolAtoms += ((id, hd))
+//                       hd
+//  }
 
-  protected[terms] def mkBoundAtom(t: Type, scope: Int): Head = boundAtoms.get(t) match {
-    case Some(inner) => inner.get(scope) match {
-      case Some(hd)   => hd
-      case None       => val hd = BoundIndex(t, scope)
-                         boundAtoms += ((t,inner.+((scope, hd))))
-                         hd
-    }
-    case None        => val hd = BoundIndex(t, scope)
-                        boundAtoms += ((t, Map((scope, hd))))
-                        hd
-  }
+  protected[terms] def mkBoundAtom(t: Type, scope: Int): Head = BoundIndex(t,scope)
+//    boundAtoms.get(t) match {
+//    case Some(inner) => inner.get(scope) match {
+//      case Some(hd)   => hd
+//      case None       => val hd = BoundIndex(t, scope)
+//                         boundAtoms += ((t,inner.+((scope, hd))))
+//                         hd
+//    }
+//    case None        => val hd = BoundIndex(t, scope)
+//                        boundAtoms += ((t, Map((scope, hd))))
+//                        hd
+//  }
 
   // composite terms
-  protected[terms] def mkRoot(hd: Head, args: Spine): TermImpl = roots.get(hd) match {
-    case Some(inner) => inner.get(args) match {
-      case Some(root)  => root
-      case None        => val root = Root(hd, args)
-                          roots += ((hd,inner.+((args, root))))
-                          root
-    }
-    case None        => val root = Root(hd, args)
-                        roots += ((hd, Map((args, root))))
-                        root
-  }
-  protected[terms] def mkRedex(left: Term, args: Spine): TermImpl = redexes.get(left) match {
-    case Some(inner) => inner.get(args) match {
-      case Some(redex) => redex
-      case None        => val redex = Redex(left, args)
-                          redexes += ((left,inner.+((args, redex))))
-                          redex
-    }
-    case None        => val redex = Redex(left, args)
-                        redexes += ((left, Map((args, redex))))
-                        redex
-  }
-  protected[terms] def mkTermAbstr(t: Type, body: Term): TermImpl = termAbstractions.get(body) match {
-    case Some(inner) => inner.get(t) match {
-      case Some(abs)   => abs
-      case None        => val abs = TermAbstr(t, body)
-                          termAbstractions += ((body,inner.+((t, abs))))
-                          abs
-    }
-    case None        => val abs = TermAbstr(t, body)
-                        termAbstractions += ((body, Map((t, abs))))
-                        abs
-  }
-  protected[terms] def mkTypeAbstr(body: Term): TermImpl = typeAbstractions.get(body) match {
-    case Some(abs) => abs
-    case None      => val abs = TypeAbstr(body)
-                      typeAbstractions += ((body, abs))
-                      abs
-  }
+  protected[terms] def mkRoot(hd: Head, args: Spine): TermImpl = Root(hd, args)
+//    roots.get(hd) match {
+//    case Some(inner) => inner.get(args) match {
+//      case Some(root)  => root
+//      case None        => val root = Root(hd, args)
+//                          roots += ((hd,inner.+((args, root))))
+//                          root
+//    }
+//    case None        => val root = Root(hd, args)
+//                        roots += ((hd, Map((args, root))))
+//                        root
+//  }
+  protected[terms] def mkRedex(left: Term, args: Spine): TermImpl = Redex(left, args)
+//  redexes.get(left) match {
+//    case Some(inner) => inner.get(args) match {
+//      case Some(redex) => redex
+//      case None        => val redex = Redex(left, args)
+//                          redexes += ((left,inner.+((args, redex))))
+//                          redex
+//    }
+//    case None        => val redex = Redex(left, args)
+//                        redexes += ((left, Map((args, redex))))
+//                        redex
+//  }
+  protected[terms] def mkTermAbstr(t: Type, body: Term): TermImpl = TermAbstr(t, body)
+//  termAbstractions.get(body) match {
+//    case Some(inner) => inner.get(t) match {
+//      case Some(abs)   => abs
+//      case None        => val abs = TermAbstr(t, body)
+//                          termAbstractions += ((body,inner.+((t, abs))))
+//                          abs
+//    }
+//    case None        => val abs = TermAbstr(t, body)
+//                        termAbstractions += ((body, Map((t, abs))))
+//                        abs
+//  }
+  protected[terms] def mkTypeAbstr(body: Term): TermImpl = TypeAbstr(body)
+//  typeAbstractions.get(body) match {
+//    case Some(abs) => abs
+//    case None      => val abs = TypeAbstr(body)
+//                      typeAbstractions += ((body, abs))
+//                      abs
+//  }
 
   // Spines
   protected[terms] def mkSpineNil: Spine = SNil
