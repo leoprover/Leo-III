@@ -109,8 +109,8 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   def normalize(termSubst: Subst, typeSubst: Subst) = hd match {
     case h@Atom(id) => mkRoot(h, args.normalize(termSubst, typeSubst))
     case b@BoundIndex(t, scope) => b.substitute(termSubst) match {
-      case BoundFront(j) => mkRoot(BoundIndex(t, j), args.normalize(termSubst, typeSubst))
-      case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
+      case BoundFront(j) => mkRoot(BoundIndex(t.substitute(typeSubst), j), args.normalize(termSubst, typeSubst))
+      case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, typeSubst, termSubst, typeSubst)
       case _ => throw new IllegalArgumentException("type front found where it was not expected")
     }
     case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
@@ -125,7 +125,7 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
   /** Pretty */
-  def pretty = s"${hd.pretty} ⋅ (${args.pretty})"
+  lazy val pretty = s"${hd.pretty} ⋅ (${args.pretty})"
 }
 
 
@@ -181,19 +181,24 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
   protected[spine] def normalize0(headTermSubst: Subst, headTypeSubst: Subst, spineTermSubst: Subst, spineTypeSubst: Subst): Term = args match {
     case SNil => body.normalize(headTermSubst, headTypeSubst)
     case SpineClos(sp2, (spTermSubst, spTypeSubst)) => mkRedex(body, sp2).normalize0(headTermSubst, headTypeSubst, spTermSubst o spineTermSubst, spTypeSubst o spineTypeSubst)
-    case ap@App(s0, tail) => body match {
-      case TermAbstr(t, b) => mkRedex(b, tail).normalize0(Cons(TermFront(s0).substitute(spineTermSubst),headTermSubst), headTypeSubst, spineTermSubst, spineTypeSubst)
-      case TypeAbstr(b) => ???
-      case Root(h,s) => mkRoot(HeadClosure(h, (headTermSubst, headTypeSubst)), s.merge((headTermSubst, headTypeSubst),ap,(spineTermSubst, spineTypeSubst))).normalize(Subst.id, Subst.id)
-      case Redex(b,args2) => mkRedex(b, args2.merge((headTermSubst, headTypeSubst),ap,(spineTermSubst, spineTypeSubst))).normalize0(headTermSubst, headTypeSubst, Subst.id, Subst.id)
+    case other => body match {
+      case TermAbstr(t,b) => other match {
+        case App(s0, tail) => mkRedex(b, tail).normalize0(Cons(TermFront(s0).substitute(spineTermSubst),headTermSubst), headTypeSubst, spineTermSubst, spineTypeSubst)
+        case _ => throw new IllegalArgumentException("malformed expression")
+      }
+      case TypeAbstr(b)   => other match {
+        case TyApp(t, tail) => mkRedex(b, tail).normalize0(headTermSubst, Cons(TypeFront(t.substitute(spineTypeSubst)),headTypeSubst), spineTermSubst, spineTypeSubst)
+        case _ => throw new IllegalArgumentException("malformed expression")
+      }
+      case Root(h,s) => mkRoot(HeadClosure(h, (headTermSubst, headTypeSubst)), s.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize(Subst.id, Subst.id)
+      case Redex(b,args2) => mkRedex(b, args2.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize0(headTermSubst, headTypeSubst, Subst.id, Subst.id)
       case TermClos(t, (termSubst2, typeSubst2)) => mkRedex(t, args).normalize0(termSubst2 o headTermSubst, typeSubst2 o headTypeSubst, spineTermSubst, spineTypeSubst)
     }
-    case TyApp(t, tail) => ???
   }
 
 
   /** Pretty */
-  def pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
+  lazy val pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
 }
 
 
@@ -228,7 +233,7 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
 
 
   /** Pretty */
-  def pretty = s"λ. (${body.pretty})"
+  lazy val pretty = s"λ. (${body.pretty})"
 }
 
 
@@ -259,10 +264,10 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
   // Other operations
   lazy val typeCheck = body.typeCheck
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = ??? //mkTypeAbstr(body.normalize(termSubst, (typeSubst._1.sink, typeSubst._2.sink)))
+  def normalize(termSubst: Subst, typeSubst: Subst) = mkTypeAbstr(body.normalize(termSubst, typeSubst.sink))
 
   /** Pretty */
-  def pretty = s"Λ. (${body.pretty})"
+  lazy val pretty = s"Λ. (${body.pretty})"
 }
 
 
@@ -276,7 +281,7 @@ protected[spine] case class TermClos(term: Term, σ: (Subst, Subst)) extends Ter
   val isApp = false
 
   // Handling def. expansion
-  lazy val δ_expandable = ???
+  lazy val δ_expandable = false // TODO
   def partial_δ_expand(rep: Int) = ???
   def full_δ_expand = ???
 
@@ -370,7 +375,7 @@ protected[terms] case class Atom(id: Signature#Key) extends Head {
   lazy val ty = meta._ty
 
   // Pretty printing
-  override def pretty = s"${meta.name}"
+  override lazy val pretty = s"${meta.name}"
 }
 
 
@@ -466,7 +471,7 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
   def ++(sp: Spine) = cons(Left(hd), tail ++ sp)
 
   // Pretty printing
-  override def pretty = s"${hd.pretty};${tail.pretty}"
+  override lazy val pretty = s"${hd.pretty};${tail.pretty}"
 }
 
 protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
@@ -490,7 +495,7 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
   def ++(sp: Spine) = cons(Right(hd), tail ++ sp)
 
   // Pretty printing
-  override def pretty = s"${hd.pretty};${tail.pretty}"
+  override lazy val pretty = s"${hd.pretty};${tail.pretty}"
 }
 
 
@@ -500,7 +505,7 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   def normalize(termSubst: Subst, typeSubst: Subst) = sp.normalize(s._1 o termSubst, s._2 o typeSubst)
 
   // Handling def. expansion
-  lazy val δ_expandable = ???
+  lazy val δ_expandable = false // TODO
   def partial_δ_expand(rep: Int) = ???
   lazy val full_δ_expand = ???
 
