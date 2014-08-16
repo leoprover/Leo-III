@@ -16,10 +16,10 @@ object Numerals {
   type Church = Term
 
   /** The zero in church numeral representation */
-  def zero: Church = Λ(λ(1 ->: 1,1)((1,1)))
+  val zero: Church = Λ(λ(1 ->: 1,1)((1,1)))
 
   /** The successor function for church numerals */
-  def succ: Term = λ(∀((1 ->: 1) ->: 1 ->: 1))(
+  val succ: Term = λ(∀((1 ->: 1) ->: 1 ->: 1))(
                           Λ(
                             λ(1 ->:1, 1)(
                               ap(
@@ -37,7 +37,7 @@ object Numerals {
   def succ(n: Church): Church = ap(succ, n).betaNormalize
 
   /** The add function for church numerals */
-  def add: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+  val add: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
                     Λ(
                       λ(1 ->: 1, 1)(
                         ap(
@@ -61,7 +61,7 @@ object Numerals {
   def add(n: Church, m: Church): Church = ap(ap(add, n), m).betaNormalize
 
   /** The multiplication function for church numerals */
-  def mult: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+  val mult: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
     Λ(
       λ(1 ->: 1)(
           ap(
@@ -79,7 +79,7 @@ object Numerals {
   def mult(n: Church, m: Church): Church = ap(ap(mult,n),m).betaNormalize
 
   /** The multiplication function for church numerals */
-  def power: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
+  val power: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
     Λ(
         ap(
           tyAp((1,∀((1 ->: 1) ->: 1 ->: 1)),(1 ->: 1)),
@@ -95,7 +95,7 @@ object Numerals {
     require(n >= 0, "Church numerals cannot be negative.")
     n match {
       case 0 => zero
-      case m => succ(m-1)
+      case m => succ(fromInt(n-1))
     }
   }
 
