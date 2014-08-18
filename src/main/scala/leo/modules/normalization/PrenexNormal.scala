@@ -42,23 +42,29 @@ object PrenexNormal extends AbstractNormalize {
     // TODO : Missing rules for conjunctive normal form ?
 
       //Pass through
+    case s@Symbol(_)            => s
+    case s@Bound(_,_)           => s
     case s @@@ t                => mkTermApp(normalize(s),normalize(t))
     case s @@@@ ty              => mkTypeApp(normalize(s),ty)
+    case f ∙ args               => Term.mkApp(normalize(f), args.map(_.fold({t => Left(normalize(t))},(Right(_)))))
     case ty :::> t              => \(ty)(normalize(t))
     case TypeLambda(t)          => mkTypeAbs(normalize(t))
-    case _                      => formula
+//    case _                      => formula
 
   }
 
 
   private def incrementBound(formula : Term, i : Int) : Term = formula match {
-    case s @@@ t                => mkTermApp(incrementBound(s,i), incrementBound(t,i))
-    case s @@@@ ty              => mkTypeApp(incrementBound(s,i), ty)
-    case ty :::> t              => \(ty)(incrementBound(t,i+1))
-    case TypeLambda(t)          => mkTypeAbs(incrementBound(t,i))
+    case s@Symbol(_)           => s
     case Bound(ty,n) if n < i  => formula
     case Bound(ty,n)            => mkBound(ty,n+1)
-    case _                      => formula
+    case s @@@ t                => mkTermApp(incrementBound(s,i), incrementBound(t,i))
+    case s @@@@ ty              => mkTypeApp(incrementBound(s,i), ty)
+    case f ∙ args               => Term.mkApp(incrementBound(f,i), args.map(_.fold({t => Left(incrementBound(t,i))},(Right(_)))))
+    case ty :::> t              => \(ty)(incrementBound(t,i+1))
+    case TypeLambda(t)          => mkTypeAbs(incrementBound(t,i))
+
+//    case _                      => formula
   }
 
   /**

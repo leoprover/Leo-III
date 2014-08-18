@@ -26,11 +26,14 @@ object NegationNormal extends AbstractNormalize{
     case Impl(s,t)               => Impl(rmEq(s,(-1)*pol),rmEq(t,pol))
     case Not(t)                  => Not(rmEq(t,(-1)*pol))
 
+    case s@Symbol(_)            => s
+    case s@Bound(_,_)           => s
     case s @@@ t                => mkTermApp(rmEq(s,pol),rmEq(t,pol))
     case s @@@@ ty              => mkTypeApp(rmEq(s,pol),ty)
+    case f ∙ args               => Term.mkApp(rmEq(f,pol), args.map(_.fold({t => Left(rmEq(t,pol))},(Right(_)))))
     case ty :::> t              => mkTermAbs(ty, rmEq(t,pol))
     case TypeLambda(t)          => mkTypeAbs(rmEq(t,pol))
-    case _                      => formula
+//    case _                      => formula
   }
 
   private def nnf(formula : Term) : Term = formula match {
@@ -56,11 +59,14 @@ object NegationNormal extends AbstractNormalize{
       |||(nnf(Not(s1)),t1)
     case Not(Not(t))            => nnf(t)
 
+    case s@Symbol(_)            => s
+    case s@Bound(_,_)           => s
     case s @@@ t                => mkTermApp(nnf(s), nnf(t))
     case s @@@@ ty              => mkTypeApp(nnf(s), ty)
+    case f ∙ args               => Term.mkApp(nnf(f), args.map(_.fold({t => Left(nnf(t))},(Right(_)))))
     case ty :::> t              => mkTermAbs(ty, nnf(t))
     case TypeLambda(t)          => mkTypeAbs(nnf(t))
-    case x                      => x
+//    case x                      => x
   }
 
   /**

@@ -96,11 +96,14 @@ object Simplification extends AbstractNormalize{
     }
 
       // Pass through unimportant structures
+    case s@Symbol(_)            => s
+    case s@Bound(_,_)           => s
     case s @@@ t    => Term.mkTermApp(norm(s),norm(t))  // Should not happen after beta normalize, unless s is irreduceable
+    case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
     case s @@@@ ty  => Term.mkTypeApp(norm(s), ty)
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))
-    case _  => formula
+//    case _  => formula
   }
 
   /**
@@ -108,15 +111,14 @@ object Simplification extends AbstractNormalize{
    * @param formula
    * @return
    */
-  protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = {
-    def sigF(x:Signature#Key) : List[(Int,Type)] = List()
-    def sigB(ty : Type, t : Int) : List[(Int,Type)] = List((t,ty))
-    def abs(ty : Type, t : List[(Int,Type)]) : List[(Int,Type)] = (t map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>=1}
-    def app(t : List[(Int,Type)], s : List[(Int,Type)]) : List[(Int,Type)] = t ++ s
-    def tabs(t : List[(Int,Type)]) : List[(Int,Type)] = t
-    def tapp(t : List[(Int,Type)], ty : Type) : List[(Int,Type)] = t
-
-    formula.foldRight(sigF)(sigB)(abs)(app)(tabs)(tapp).distinct
+  protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
+    case Bound(t,scope) => List((scope,t))
+    case Symbol(id)     => List()
+    case s @@@ t        => freeVariables(s) ++ freeVariables(t)
+    case f ∙ args       => freeVariables(f) ++ args.flatMap(_.fold(freeVariables(_), _ => List()))
+    case s @@@@ ty      => freeVariables(s)
+    case ty :::> s      => (freeVariables(s) map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>=1}
+    case TypeLambda(t)  => freeVariables(t)
   }
 
   /**
