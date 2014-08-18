@@ -6,6 +6,9 @@ import leo.datastructures.internal.Term
  * Created by lex on 07.07.14.
  */
 object DefExpansion extends AbstractNormalize {
+
+  override val name : String = "DefinitionExpansion"
+
   /**
    * Normalizes a formula corresponding to the object.
    *

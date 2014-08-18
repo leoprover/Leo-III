@@ -116,6 +116,12 @@ trait Blackboard {
   def registerAgent(a : Agent) : Unit
 
   /**
+   *
+   * @return all registered agents and their budget
+   */
+  def getAgents() : Iterable[(Agent,Double)]
+
+  /**
    * Gives all agents the chance to react to an event
    * and adds the generated tasks.
    *
@@ -144,6 +150,21 @@ trait Blackboard {
    * @return Not yet executed noncolliding set of tasks
    */
   def getTask : Iterable[(Agent,Task)]
+
+  /**
+   * Returns a collection of tasks that are currently executed
+   * in the system. Debugging reasons only!!!
+   *
+   * @return Collection of tasks that are executed.
+   */
+  def getRunningTasks() : Iterable[Task]
+
+  /**
+   * Tells the tassk set, that one task has finished computing.
+   *
+   * @param t - The finished task.
+   */
+  def finishTask(t : Task) : Unit
 
   /**
    * Signal Task is called, when a new task is available.

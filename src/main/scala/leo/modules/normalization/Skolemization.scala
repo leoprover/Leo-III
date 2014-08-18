@@ -15,6 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 object Skolemization extends AbstractNormalize{
 
+  override val name : String = "Skolemization"
+
   /**
    * Normalizes a formula corresponding to the object.
    *

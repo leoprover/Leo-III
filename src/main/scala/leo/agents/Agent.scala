@@ -36,6 +36,12 @@ trait Agent {
 
   /**
    *
+   * @return number of tasks, the agent can currently work on
+   */
+  def openTasks : Int
+
+  /**
+   *
    * @return true, if this Agent can execute at the moment
    */
   def isActive : Boolean
@@ -89,6 +95,17 @@ trait Agent {
   def getTasks(budget : Double) : Iterable[Task]
 
   /**
+   * Each task can define a maximum amount of money, they
+   * want to posses.
+   *
+   * A process has to be carefull with this barrier, for he
+   * may never be doing anything if he has to low money.
+   *
+   * @return maxMoney
+   */
+  def maxMoney : Double
+
+  /**
    * As getTasks with an infinite budget.
    *
    * @return - All Tasks that the current agent wants to execute.
@@ -120,6 +137,7 @@ abstract class AbstractAgent extends Agent {
 
   override def setActive(a : Boolean) = _isActive = a
 
+  override def openTasks : Int = q.size
 
   /**
    * <p>
@@ -157,6 +175,8 @@ abstract class AbstractAgent extends Agent {
       Blackboard().signalTask()
     }
   }
+
+  override val maxMoney : Double = 2000
 
   /**
    *
@@ -238,7 +258,7 @@ abstract class Task {
    */
   def collide(t2 : Task) : Boolean = {
     val t1 = this
-    if(t1 eq t2) true
+    if(t1 equals t2) true
     else {
       !t1.readSet().intersect(t2.writeSet()).isEmpty ||
         !t2.readSet().intersect(t1.writeSet()).isEmpty ||

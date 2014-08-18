@@ -119,6 +119,10 @@ class SimpleBlackboard extends Blackboard {
     }
   }
 
+  override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
+
+  override def getRunningTasks() : Iterable[Task] = TaskSet.execTasks.toList
+
   /**
    * Method that filters the whole Blackboard, if a new agent 'a' is added
    * to the context.
@@ -133,6 +137,12 @@ class SimpleBlackboard extends Blackboard {
   override def signalTask() : Unit = TaskSet.signalTask()
 
   override def collision(t : Task) : Boolean = TaskSet.collision(t)
+
+  /**
+   *
+   * @return all registered agents
+   */
+  override def getAgents(): Iterable[(Agent,Double)] = TaskSet.regAgents.toSeq
 }
 
 /**
@@ -238,11 +248,13 @@ private object TaskSet {
         // 4. After work pay salary, tell colliding and return the tasks
         //
         for ((a, b) <- regAgents) {
-          regAgents.put(a, b + AGENT_SALARY)
+          if(a.maxMoney - b > AGENT_SALARY) {
+            regAgents.put(a, b + AGENT_SALARY)
+          }
           a.removeColliding(newTask.map(_._2))
         }
 
-//        println("Ready to return.")
+//        println("Sending "+newTask.size+" tasks to scheduler.")
 
         return newTask
 

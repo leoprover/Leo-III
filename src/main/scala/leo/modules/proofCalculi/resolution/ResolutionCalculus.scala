@@ -127,10 +127,10 @@ object ResolutionCalculus {
     val tail = rekurse(r.toList)
 
     next match{
-      case Some(a) => Some(a :: tail)
+      case Some(a) => return Some(a :: tail)
       case None =>
-        println("Could not cnf : ["+r.map(_.pretty).mkString(" , ")+")")
-        None
+//        println("Could not cnf : [ "+r.map(_.pretty).mkString(" , ")+" ]")
+        return None
     }
 
 //    next.fold(None : Option[List[Term]]){a => Some(a :: tail)}

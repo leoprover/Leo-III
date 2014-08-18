@@ -12,6 +12,8 @@ import Simplification.isBound
  */
 object PrenexNormal extends AbstractNormalize {
 
+  override val name : String = "PrenexNormal"
+
   /**
    * Normalizes a formula corresponding to the object.
    *

@@ -69,7 +69,7 @@ class ConjectureAgent extends AbstractAgent {
         val fS = t1.getFormula()
         val form = fS.simpleFormula
         val status = fS.status
-        val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~3)
+        val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~7)
 
 //        println("Negated Conjecture")
 
@@ -86,6 +86,13 @@ class SingleFormTask(f : FormulaStore) extends Task {
   override def writeSet(): Set[FormulaStore] = Set(f)
 
   override def bid(budget : Double) : Double = 1
+
+  override val toString : String = "SingleFormulaTask on "+f.toString
+
+  override def equals(other : Any) = other match {
+    case o : SingleFormTask => o.getFormula() == f
+    case _                  => false
+  }
 }
 
 

@@ -271,6 +271,12 @@ object LeoShell {
       println(s"There was no $s. Removed nothing.")
   }
 
+  def agentStatus() : Unit = {
+    println("Agents: ")
+    for((a,b) <- Blackboard().getAgents()) {
+      println(a.name + " , "+ (if(a.isActive) "active" else "inactive") + " , "+ b +" budget , "+a.openTasks+" tasks")
+    }
+  }
 
   def simplify(f : Term) : Term = Simplification.normalize(f)
 

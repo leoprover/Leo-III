@@ -72,7 +72,7 @@ object NormalClauseAgent {
  */
 class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
 
-  override val name = norm.getClass().getName()
+  override val name = norm.name + "Agent"
 
   override def run(t: Task): Result = t match {
     case t1: NormalTask =>
@@ -106,4 +106,11 @@ class NormalTask(f : FormulaStore) extends Task {
   override def writeSet(): Set[FormulaStore] = Set(f)
 
   override def bid(budget : Double) : Double = 1
+
+  override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
+
+  override def equals(other : Any) = other match {
+    case o : NormalTask => o.get() == f
+    case _              => false
+  }
 }

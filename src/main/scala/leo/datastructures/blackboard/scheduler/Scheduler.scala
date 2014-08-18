@@ -183,12 +183,14 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
         // Removing Task from Taskset (Therefor remove locks)
         curExec.remove(task)
+        Blackboard().finishTask(task)
 
         // Notify changes
         // ATM only New and Updated Formulas
         Blackboard().filterAll({a =>
           result.newFormula().foreach(a.filter(_))
           result.updateFormula().foreach{case (_,f) => a.filter(f)}
+          task.readSet().foreach(a.filter(_))
         })
       }
     }
@@ -202,6 +204,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
       ExecTask.put(a.run(t),t)
+//      println("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
@@ -217,7 +220,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     def get() : (Result,Task) = this.synchronized {
       while (true) {
         try {
-           if(results.isEmpty) this.wait()
+           while(results.isEmpty) this.wait()
            val r = results.head
            results.remove(r)
            return r
@@ -232,8 +235,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
 
     def put(r : Result, t : Task) {
-      results.add((r,t))        // Must not be synchronized, but maybe it should
-      this.synchronized(this.notifyAll())
+      this.synchronized{
+        results.add((r,t))        // Must not be synchronized, but maybe it should
+        this.notifyAll()
+      }
     }
   }
 

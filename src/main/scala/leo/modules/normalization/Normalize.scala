@@ -11,6 +11,12 @@ import leo.datastructures.internal.Term
 trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
 
   /**
+   *
+   * @return name of the normalization
+   */
+  def name : String
+
+  /**
    * Normalizes a formula corresponding to the object.
    *
    * @param formula - A annotated formula
