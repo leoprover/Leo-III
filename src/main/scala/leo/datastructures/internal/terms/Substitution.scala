@@ -1,7 +1,7 @@
 package leo.datastructures.internal.terms
 
 import leo.datastructures.Pretty
-
+import scala.annotation.tailrec
 
 
 // TODO: Normalisation on subst needed?
@@ -73,10 +73,13 @@ sealed abstract class Front extends Pretty {
   def substitute(subst: Subst): Front
 }
 case class BoundFront(n: Int) extends Front {
-  def substitute(subst: Subst) = subst match {
-    case Cons(ft, s) if n == 1 => ft
-    case Cons(_, s)           => BoundFront(n-1).substitute(s)
-    case Shift(k) => BoundFront(n+k)
+  def substitute(subst: Subst) = substitute0(n, subst)
+
+  @tailrec
+  private def substitute0(scope: Int, subst: Subst): Front = subst match {
+    case Cons(ft, s) if scope == 1 => ft
+    case Cons(_, s) => substitute0(scope-1, s)
+    case Shift(k) => BoundFront(scope+k)
   }
 
   /** Pretty */
