@@ -4,6 +4,8 @@ package impl
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
 
+import scala.collection.mutable
+
 object NormalClauseAgent {
 
   private var simp : Agent = null;
@@ -68,48 +70,28 @@ object NormalClauseAgent {
  * @author Max Wisniewski
  * @since 5/14/14
  */
-class NormalClauseAgent(norm : Normalize) extends Agent {
+class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
 
-  private var _isActive : Boolean = false
+  override val name = norm.name + "Agent"
 
-  override def isActive : Boolean = _isActive
-
-  override def setActive(a : Boolean) = _isActive = a
-
-  override def run(t : Task) : Result = t match {
-    case  t1 : NormalTask =>
+  override def run(t: Task): Result = t match {
+    case t1: NormalTask =>
       val fstore = t1.get()
-      val erg = norm.normalize(fstore.formula)
-      if(fstore.formula == erg){
-//        println(norm.getClass.getName() + " : No change in Normalization.")
+      val erg = norm.normalize(fstore.simpleFormula)
+      if (fstore.simpleFormula == erg) {
+//        println(name + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, fstore.newStatus(norm.markStatus(fstore.status)))), Set.empty)
       } else {
-//        println(norm.getClass.getName()+" : Updated '"+fstore.formula.pretty+"' to '"+erg.pretty+"'.")
+//        println(name + " : Updated '" + fstore.simpleFormula.pretty + "' to '" + erg.pretty + "'.")
         return new StdResult(Set.empty, Map((fstore, fstore.newFormula(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
       }
-    case _  => throw new IllegalArgumentException("Executing wrong task.")
+    case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
-  /**
-   * <p>
-   * In this method the Agent gets the Blackboard it will work on.
-   * Registration for Triggers should be done in here.
-   * </p>
-   *
-   */
-  override def register() {
-    Blackboard().registerAgent(this)
+  override protected def toFilter(event: FormulaStore): Iterable[Task] = event.formula match {
+    case Left(f) => if (norm.applicable(event.simpleFormula, event.status)) List(new NormalTask(event)) else Nil
+    case Right(_) => Nil
   }
-
-  /**
-   * <p>
-   * A predicate that distinguishes interesting and uninteresing
-   * Formulas for the Handler.
-   * </p>
-   * @param f - Newly added formula
-   * @return true if the formula is relevant and false otherwise
-   */
-  override def filter(f: FormulaStore): Set[Task] = if (norm.applicable(f.formula,f.status)) Set(new NormalTask(f)) else Set.empty
 }
 
 /**
@@ -122,4 +104,13 @@ class NormalTask(f : FormulaStore) extends Task {
 
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
+
+  override def bid(budget : Double) : Double = 1
+
+  override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
+
+  override def equals(other : Any) = other match {
+    case o : NormalTask => o.get() == f
+    case _              => false
+  }
 }

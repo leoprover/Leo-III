@@ -139,23 +139,30 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       this.synchronized {
         if (pauseFlag) {
           // If is paused wait
-//          println("Scheduler paused.")
+          println("Scheduler paused.")
           this.wait()
-//          println("Scheduler is commencing.")
+          println("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
       }
 
       // Blocks until a task is available
-      val (a, t) = Blackboard().getTask()
+      val tasks = Blackboard().getTask
+//      println("Loaded "+tasks.size+" new tasks, ready to execute.")
 
-      this.synchronized {
-        if (endFlag) return         // Savely exit
-        if (pauseFlag) this.wait() // Check again, if waiting took to long
+      for ((a,t) <- tasks) {
+        this.synchronized {
+          if (endFlag) return         // Savely exit
+          if (pauseFlag) {
+            println("Scheduler paused.")
+            this.wait()
+            println("Scheduler is commencing.")
+          } // Check again, if waiting took to long
 
-        curExec.add(t)
-        // Execute task
-        exe.submit(new GenAgent(a, t))
+          curExec.add(t)
+          // Execute task
+          exe.submit(new GenAgent(a, t))
+        }
       }
     }
   }
@@ -168,11 +175,23 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       val (result,task) = ExecTask.get()
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
-        curExec.remove(task)
-        Blackboard().finishTask(task)
+
+        // Update blackboard
         result.newFormula().foreach(Blackboard().addFormula(_))
         result.removeFormula().foreach(Blackboard().removeFormula(_))
         result.updateFormula().foreach { case (oldF, newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
+
+        // Removing Task from Taskset (Therefor remove locks)
+        curExec.remove(task)
+        Blackboard().finishTask(task)
+
+        // Notify changes
+        // ATM only New and Updated Formulas
+        Blackboard().filterAll({a =>
+          result.newFormula().foreach(a.filter(_))
+          result.updateFormula().foreach{case (_,f) => a.filter(f)}
+          task.readSet().foreach(a.filter(_))
+        })
       }
     }
   }
@@ -185,6 +204,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
       ExecTask.put(a.run(t),t)
+//      println("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
@@ -200,7 +220,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     def get() : (Result,Task) = this.synchronized {
       while (true) {
         try {
-           if(results.isEmpty) this.wait()
+           while(results.isEmpty) this.wait()
            val r = results.head
            results.remove(r)
            return r
@@ -215,8 +235,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
 
     def put(r : Result, t : Task) {
-      results.add((r,t))        // Must not be synchronized, but maybe it should
-      this.synchronized(this.notifyAll())
+      this.synchronized{
+        results.add((r,t))        // Must not be synchronized, but maybe it should
+        this.notifyAll()
+      }
     }
   }
 
@@ -233,8 +255,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
-    override def readSet(): Set[FormulaStore] = ???
-    override def writeSet(): Set[FormulaStore] = ???
+    override def readSet(): Set[FormulaStore] = Set.empty
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def bid(budget : Double) : Double = 1
   }
 }
 

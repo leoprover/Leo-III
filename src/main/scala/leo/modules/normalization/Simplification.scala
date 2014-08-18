@@ -15,6 +15,9 @@ import leo.datastructures.internal.HOLConstant.toTerm
  * Created by Max Wisniewski on 4/7/14.
  */
 object Simplification extends AbstractNormalize{
+
+  override val name : String = "Simplification"
+
   /**
    * Normalizes a formula corresponding to the object.
    *
@@ -108,6 +111,7 @@ object Simplification extends AbstractNormalize{
 
   /**
    * Returns a List with deBrujin Indizes, that are free at this level.
+   *
    * @param formula
    * @return
    */

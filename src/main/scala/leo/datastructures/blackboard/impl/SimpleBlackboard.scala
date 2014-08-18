@@ -4,6 +4,7 @@ package leo.datastructures.blackboard.impl
 
 import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.internal.{LitFalse}
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import leo.datastructures.internal.terms.Term
@@ -23,13 +24,33 @@ class SimpleBlackboard extends Blackboard {
 
   var DEBUG : Boolean = true
 
+  var isFinished = false
+
+  private def checkFinish(fS : FormulaStore) : Unit = {
+    fS.formula match{
+      case Left(form) if form == LitFalse=>
+        isFinished = true
+        Scheduler().pause()
+        println("Derived False.")
+      case Right(lForm) if lForm.isEmpty =>
+        isFinished = true
+        Scheduler().pause()
+        println("Derived False.")
+      case Right(lForm) if lForm.head == LitFalse=>
+        isFinished = true
+        Scheduler().pause()
+        println("Derived False.")
+      case _ => ()
+    }
+  }
+
   // For each agent a List of Tasks to execute
 
   override def getFormulas: List[FormulaStore] = getAll(_ => true)
 
-  override def getAll(p: (Term) => Boolean): List[FormulaStore] = read { formulas =>
+  override def getAll(p: FormulaStore => Boolean): List[FormulaStore] = read { formulas =>
     formulas.values.filter { store =>
-      p(store.formula)
+      p(store)
     }.toList
   }
 
@@ -38,14 +59,16 @@ class SimpleBlackboard extends Blackboard {
   }
 
   override def addFormula(name : String, formula: Term, role : String) {
-    addFormula(Store.apply(name, formula, role))
+    val s = Store.apply(name, formula, role)
+    addFormula(s)
+    filterAll(_.filter(s))
   }
 
   override def addFormula(formula : FormulaStore) {
     write { formulas =>
       formulas put (formula.name, formula)
     }
-    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
+//    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
   }
 
   override def removeFormula(formula: FormulaStore): Boolean = rmFormulaByName(formula .name)
@@ -53,45 +76,74 @@ class SimpleBlackboard extends Blackboard {
   override def rmFormulaByName(name: String): Boolean = write { formulas =>
     formulas.remove(name) match {
       case Some(x) => {
-//        observeRemoveSet.filter(_.filterRemove(x)).foreach {o => o.removeFormula(x); o.wakeUp()}
         true
       }
       case None => false
     }
   }
 
-  override def rmAll(p: (Term) => Boolean) = write { formulas =>
-      formulas.values foreach (form => if (p(form.formula)) formulas.remove(form.name) else formulas)
+  override def rmAll(p: FormulaStore => Boolean) = write { formulas =>
+      formulas.values foreach (form => if (p(form)) formulas.remove(form.name) else formulas)
   }
 
   /**
    * Register a new Handler for Formula adding Handlers.
    * @param a - The Handler that is to register
    */
-  override def registerAgent(a : Agent) : Unit = TaskSet.addAgent(a)
-
-  /**
-   * Used by Stores to mark a FormulaStore as Changed, if nothing
-   * has to be updated. Handlers can register to these updates
-   * @param f
-   */
-  override protected[blackboard] def emptyUpdate(f: FormulaStore) {
-    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(f))}
+  override def registerAgent(a : Agent) : Unit = {
+    TaskSet.addAgent(a)
+    freshAgent(a)
   }
+
 
   /**
    * Blocking Method to get a fresh Task.
    *
    * @return Not yet executed Task
    */
-  override def getTask(): (Agent,Task) = TaskSet.getTask()
-
-  override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
+  override def getTask: Iterable[(Agent,Task)] = TaskSet.getTask
 
   override def clear() : Unit = {
     rmAll(_ => true)
     TaskSet.clear()
   }
+
+  /**
+   * Gives all agents the chance to react to an event
+   * and adds the generated tasks.
+   *
+   * @param t - Function that generates for each agent a set of tasks.
+   */
+  override def filterAll(t: (Agent) => Unit): Unit = {
+    TaskSet.agents.foreach{ a =>
+      t(a)
+    }
+  }
+
+  override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
+
+  override def getRunningTasks() : Iterable[Task] = TaskSet.execTasks.toList
+
+  /**
+   * Method that filters the whole Blackboard, if a new agent 'a' is added
+   * to the context.
+   *
+   * @param a - New Agent.
+   */
+  override protected[blackboard] def freshAgent(a: Agent): Unit = {
+    // ATM only formulas trigger events
+    getFormulas.foreach{fS => a.filter(fS)}
+  }
+
+  override def signalTask() : Unit = TaskSet.signalTask()
+
+  override def collision(t : Task) : Boolean = TaskSet.collision(t)
+
+  /**
+   *
+   * @return all registered agents
+   */
+  override def getAgents(): Iterable[(Agent,Double)] = TaskSet.regAgents.toSeq
 }
 
 /**
@@ -118,60 +170,115 @@ private object FormulaSet {
 private object TaskSet {
   import scala.collection.mutable.HashSet
 
-  protected[blackboard] val agentWork = new Queue[(Agent,Task)]()
-  protected[blackboard] var regAgents = Set[Agent]()
-  protected[blackboard] val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
+  var regAgents = mutable.HashMap[Agent,Double]()
+  val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
 
-  private var work : Int = 0
+  private val AGENT_SALARY : Double = 5
+
+  /**
+   * Notifies process waiting in 'getTask', that there is a new task available.
+   */
+  protected[blackboard] def signalTask() : Unit = this.synchronized(this.notifyAll())
 
   def clear() : Unit = {
-    agentWork.clear()
-    work = 0
+    regAgents.foreach(_._1.clearTasks())
+    execTasks.clear()
   }
 
   def addAgent(a : Agent) {
-    this.synchronized(regAgents = regAgents + a)
+    this.synchronized(regAgents.put(a,AGENT_SALARY))
   }
 
-  def agents : List[Agent] = this.synchronized(regAgents.toList)
+  def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
 
-  def addTasks(a : Agent, ts : Set[Task]) = this.synchronized {
-    try{
-      ts.foreach{t => agentWork.enqueue((a,t)); work += 1}
-      this.notifyAll()
-    } catch {
-      case e : InterruptedException => Thread.currentThread().interrupt()
-      case e : Exception => throw e
-    }
-  }
 
-  def getTask() : (Agent,Task) = this.synchronized{
+  /**
+   * Gets from any active agent the set of tasks, he wants to execute with his current budget.
+   *
+   * If the set of tasks is empty he waits until something is added
+   * (filter should call signalTask).
+   *
+   * Of this set we play
+   *
+   * @return
+   */
+  def getTask : Iterable[(Agent,Task)] = this.synchronized{
+
     while(!Scheduler().isTerminated()) {
       try {
-        while (work == 0) this.wait()
-        // TODO Check collsion
-        work -= 1
-        var w = agentWork.dequeue()
-        // As long as the task collide, we discard them (Updates will be written back and trigger the task anew)
-        while (collision(w._2)) {
-          while (work == 0) this.wait()
-          work -= 1
-          w = agentWork.dequeue()
+
+//        println("Beginning to get items for the auction.")
+
+        //
+        // 1. Get all Tasks the Agents want to bid on during the auction with their current money
+        //
+        var r: List[(Double, Agent, Task)] = Nil
+        while (r.isEmpty) {
+          regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
+          if (r.isEmpty) this.wait()
         }
 
-        execTasks.add(w._2)
-        return w
+//        println("Got tasks and ready to auction.")
+        //
+        // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
+        //
+        // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
+        // Value should be positive, s.t. we can square the values without changing order
+        //
+        val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size}
+
+//        println("Sorted tasks.")
+
+        // 3. Take from beginning to front only the non colliding tasks
+        // The new tasks should be non-colliding with the existing ones, because they are always filtered.
+        var newTask: List[(Agent, Task)] = Nil
+        for ((price, a, t) <- queue) {
+          if (!newTask.exists { e => t.collide(e._2)}) {
+            val budget = regAgents.apply(a)
+            if (budget >= price) {
+              // The task is not colliding with previous tasks and agent has enough money
+              newTask = (a, t) :: newTask
+              regAgents.put(a, budget - price)
+            }
+          }
+        }
+
+//        println("Choose optimal.")
+
+        //
+        // 4. After work pay salary, tell colliding and return the tasks
+        //
+        for ((a, b) <- regAgents) {
+          if(a.maxMoney - b > AGENT_SALARY) {
+            regAgents.put(a, b + AGENT_SALARY)
+          }
+          a.removeColliding(newTask.map(_._2))
+        }
+
+//        println("Sending "+newTask.size+" tasks to scheduler.")
+
+        return newTask
+
+        //Lastly interrupt recovery
       } catch {
-        case e: InterruptedException => Thread.currentThread().interrupt()
-        case e: Exception => throw e
+        case e : InterruptedException => Thread.currentThread().interrupt()
+        case e : Exception => throw e
       }
     }
-    (null,null)
+    Nil
   }
 
-  private def collision(t : Task) : Boolean = execTasks.exists{e =>
-    !t.readSet().intersect(e.writeSet()).isEmpty ||
-    !e.readSet().intersect(t.writeSet()).isEmpty ||
-    !e.writeSet().intersect((t.writeSet())).isEmpty
-  }
+
+
+
+  /**
+   * Checks if a Task collides with the current executing ones.
+   *
+   * @param t - Task that could be executed
+   *
+   * @return true, iff the task collides
+   */
+  def collision(t : Task) : Boolean = execTasks.exists{e => t.collide(e)}
+
+
 }

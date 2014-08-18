@@ -11,6 +11,9 @@ import Term._
  * @since 6/12/14
  */
 object NegationNormal extends AbstractNormalize{
+
+  override val name : String = "NegationNormal"
+
   /**
    * Normalizes a formula corresponding to the object.
    *

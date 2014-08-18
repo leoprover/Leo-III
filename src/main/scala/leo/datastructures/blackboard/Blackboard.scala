@@ -97,7 +97,7 @@ trait Blackboard {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : Term => Boolean) : List[FormulaStore]
+  def getAll(p : FormulaStore => Boolean) : List[FormulaStore]
 
   /**
    * <p>
@@ -106,14 +106,7 @@ trait Blackboard {
    *
    * @param p - All x with p(x) will be removed.
    */
-  def rmAll(p : Term => Boolean)
-
-  /**
-   * Used by Stores to mark a FormulaStore as Changed, if nothing
-   * has to be updated. Handlers can register to these updates
-   * @param f
-   */
-  protected[blackboard] def emptyUpdate(f : FormulaStore)
+  def rmAll(p : FormulaStore => Boolean)
 
   /**
    * Registers an agent to the blackboard
@@ -123,18 +116,68 @@ trait Blackboard {
   def registerAgent(a : Agent) : Unit
 
   /**
-   * Blocking Method to get a fresh Task.
    *
-   * @return Not yet executed Task
+   * @return all registered agents and their budget
    */
-  def getTask() : (Agent,Task)
+  def getAgents() : Iterable[(Agent,Double)]
 
   /**
-   * Method to mark a Task as finished.
+   * Gives all agents the chance to react to an event
+   * and adds the generated tasks.
    *
-   * @param t - The task that was finished.
+   * @param t - Function that generates for each agent a set of tasks.
    */
-  protected[blackboard] def finishTask(t : Task)
+  def filterAll(t : Agent => Unit) : Unit
+
+
+  /**
+   * Method that filters the whole Blackboard, if a new agent 'a' is added
+   * to the context.
+   *
+   * @param a - New Agent.
+   */
+  protected[blackboard] def freshAgent(a : Agent) : Unit
+
+
+  /**
+   *
+   * Starts a new auction for agents to buy computation time
+   * for their tasks.
+   *
+   * The result is a set of tasks, that can be executed in parallel
+   * and approximate the optimal combinatorical auction.
+   *
+   * @return Not yet executed noncolliding set of tasks
+   */
+  def getTask : Iterable[(Agent,Task)]
+
+  /**
+   * Returns a collection of tasks that are currently executed
+   * in the system. Debugging reasons only!!!
+   *
+   * @return Collection of tasks that are executed.
+   */
+  def getRunningTasks() : Iterable[Task]
+
+  /**
+   * Tells the tassk set, that one task has finished computing.
+   *
+   * @param t - The finished task.
+   */
+  def finishTask(t : Task) : Unit
+
+  /**
+   * Signal Task is called, when a new task is available.
+   */
+  def signalTask() : Unit
+
+  /**
+   * Checks through the current executing threads, if one is colliding
+   *
+   * @param t - Task that will be tested
+   * @return true, iff no currently executing task collides
+   */
+  def collision(t : Task) : Boolean
 
   /**
    * Clears the complete blackboard
