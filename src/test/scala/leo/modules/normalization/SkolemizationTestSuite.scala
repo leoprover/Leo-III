@@ -34,14 +34,14 @@ class SkolemizationTestSuite extends FunSuite {
 
   // Test 1
   val test1 = Exists(\(s.o)(Forall(\(s.o)(Exists(\(s.o)(mkTermApp(p,List(vari(1),vari(2),vari(3)))))))))
-  val test1Sk = Skolemization(test1,3)
+  val test1Sk = Skolemization(test1)
   val erg1 = Forall(\(s.o)(mkTermApp(p,List(mkTermApp(mkAtom(s("SK1").key), List(vari(1),mkAtom(s("SK2").key))),vari(1),mkAtom(s("SK2").key)))))
   addTest(test1, test1Sk, erg1)
 
 
   // Test 2
   val test2 = Forall(\(s.i)(Exists(\(s.i)(|||((mkTermApp(r,mkBound(s.i, 1))), (mkTermApp(t,List(mkBound(s.i,1), mkBound(s.i,2)))))))))
-  val test2Sk = Skolemization(test2,3)
+  val test2Sk = Skolemization(test2)
   val erg2 = ||| (mkTermApp(r, mkAtom(s("SK3").key)), Forall(\(s.i)(mkTermApp(t, List(mkTermApp(mkAtom(s("SK4").key), mkBound(s.i,1)), mkBound(s.i,1))))))
   addTest(test2, test2Sk, erg2)
 
@@ -51,7 +51,7 @@ class SkolemizationTestSuite extends FunSuite {
     Exists(\(s.i)(Forall(\(s.i)(mkTermApp(q, List(mkBound(s.i,2),mkBound(s.i,1))))))),
     Exists(\(s.i)(Forall(\(s.i)(Not(mkTermApp(q, List(mkBound(s.i,1),mkBound(s.i,2))))))))
   )
-  val test3Sk = Skolemization(test3,3)
+  val test3Sk = Skolemization(test3)
   val erg3 = |||(
     Forall(\(s.i)(mkTermApp(q, List(mkAtom(s("SK5").key), mkBound(s.i,1))))),
     Forall(\(s.i)(Not(mkTermApp(q, List(mkBound(s.i,1),mkAtom(s("SK6").key))))))
@@ -70,7 +70,7 @@ class SkolemizationTestSuite extends FunSuite {
     ))
   ))
 
-  val test4Sk = Skolemization(test4,3)
+  val test4Sk = Skolemization(test4)
   val erg4 = Forall(\(s.i)(
     |||(
       Forall(\(s.i)(

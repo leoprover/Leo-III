@@ -29,7 +29,7 @@ class PrenexTestSuite extends FunSuite {
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     test("Prenex Test:"+t.pretty) {
-      val st = PrenexNormal(t, 7)
+      val st = PrenexNormal(t)
       println("Prenex: The Term '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
       assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }
