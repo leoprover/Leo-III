@@ -7,6 +7,7 @@ import leo.datastructures.internal.Signature
 import leo.datastructures.internal.terms._
 import leo.datastructures.internal.terms.BoundFront
 import leo.datastructures.internal.terms.TermFront
+import scala.annotation.tailrec
 
 ///////////////////////////////////////////////
 // Shared-implementation based specialization
@@ -22,8 +23,9 @@ import leo.datastructures.internal.terms.TermFront
  */
 protected[terms] sealed abstract class TermImpl extends Term {
 
-  def betaNormalize: Term = normalize(Subst.id, Subst.id)
-  def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
+  lazy val betaNormalize: Term = normalize(Subst.id, Subst.id)
+  def closure(subst: Subst) = //TermClos(this, (subst, Subst.id))
+    this.normalize(subst, Subst.id)
 
 //  type TermClosure = (TermImpl, Subst)
 //  protected[internal] def preNormalize(subst: Subst): TermClosure
@@ -94,7 +96,7 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case BoundIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
-  lazy val headSymbol = TermImpl.headToTerm(hd)
+  lazy val headSymbol = Root(hd, SNil)
 
   // Other operations
   lazy val typeCheck = typeCheck0(hd.ty, args)
@@ -106,21 +108,25 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   }
 
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = hd match {
-    case h@Atom(id) => mkRoot(h, args.normalize(termSubst, typeSubst))
-    case b@BoundIndex(t, scope) => b.substitute(termSubst) match {
-      case BoundFront(j) => mkRoot(BoundIndex(t.substitute(typeSubst), j), args.normalize(termSubst, typeSubst))
-      case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, typeSubst, termSubst, typeSubst)
-      case _ => throw new IllegalArgumentException("type front found where it was not expected")
-    }
-    case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
-      case h@Atom(id) => mkRoot(h, args.normalize(termSubst, typeSubst))
-      case b@BoundIndex(t, scope) => b.substitute(termSubst2.comp(termSubst)) match {
-        case BoundFront(j) => mkRoot(BoundIndex(t, j), args.normalize(termSubst, typeSubst))
-        case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    val termSubstNF = termSubst //.normalize
+    val typeSubstNF = typeSubst //.normalize
+    hd match {
+      case h@Atom(id) => mkRoot(h, args.normalize(termSubstNF, typeSubstNF))
+      case b@BoundIndex(t, scope) => b.substitute(termSubstNF) match {
+        case BoundFront(j) => mkRoot(BoundIndex(t.substitute(typeSubstNF), j), args.normalize(termSubstNF, typeSubstNF))
+        case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, Subst.id, termSubstNF, typeSubstNF)
         case _ => throw new IllegalArgumentException("type front found where it was not expected")
       }
-      case HeadClosure(h3, (termSubst3, typeSubst3)) => mkRoot(HeadClosure(h3, (termSubst3 o termSubst2,typeSubst3 o typeSubst2)), args).normalize(termSubst, typeSubst)
+      case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
+        case h@Atom(id) => mkRoot(h, args.normalize(termSubst, typeSubst))
+        case b@BoundIndex(t, scope) => b.substitute(termSubst2.comp(termSubst)) match {
+          case BoundFront(j) => mkRoot(BoundIndex(t, j), args.normalize(termSubst, typeSubst))
+          case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
+          case _ => throw new IllegalArgumentException("type front found where it was not expected")
+        }
+        case HeadClosure(h3, (termSubst3, typeSubst3)) => mkRoot(HeadClosure(h3, (termSubst3 o termSubst2, typeSubst3 o typeSubst2)), args).normalize(termSubst, typeSubst)
+      }
     }
   }
 
@@ -178,7 +184,8 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
   import leo.datastructures.internal.terms.{Cons, TermFront}
   def normalize(termSubst: Subst, typeSubst: Subst) = normalize0(termSubst, typeSubst, termSubst, typeSubst)
 
-  protected[spine] def normalize0(headTermSubst: Subst, headTypeSubst: Subst, spineTermSubst: Subst, spineTypeSubst: Subst): Term = args match {
+  @tailrec
+  protected[spine] final def normalize0(headTermSubst: Subst, headTypeSubst: Subst, spineTermSubst: Subst, spineTypeSubst: Subst): Term = args match {
     case SNil => body.normalize(headTermSubst, headTypeSubst)
     case SpineClos(sp2, (spTermSubst, spTypeSubst)) => mkRedex(body, sp2).normalize0(headTermSubst, headTypeSubst, spTermSubst o spineTermSubst, spTypeSubst o spineTypeSubst)
     case other => body match {
@@ -542,7 +549,7 @@ object TermImpl {
   protected[TermImpl] var termAbstractions: Map[Term, Map[Type, TermImpl]] = Map.empty
   protected[TermImpl] var typeAbstractions: Map[Term, TermImpl] = Map.empty
   protected[TermImpl] var roots: Map[Head, Map[Spine, TermImpl]] = Map.empty
-  protected[TermImpl] var redexes: Map[Term, Map[Spine, TermImpl]] = Map.empty
+  protected[TermImpl] var redexes: Map[Term, Map[Spine, Redex]] = Map.empty
 
   // Spines
   protected[TermImpl] var spines: Map[Either[Term, Type], Map[Spine, Spine]] = Map.empty
@@ -620,7 +627,8 @@ object TermImpl {
 
   // Spines
   protected[terms] def mkSpineNil: Spine = SNil
-  protected[terms] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine = spines.get(term) match {
+  protected[terms] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine = //term.fold(App(_, tail),TyApp(_, tail))
+    spines.get(term) match {
     case Some(inner) => inner.get(tail) match {
       case Some(sp)   => sp
       case None       => val sp = term.fold(App(_, tail),TyApp(_, tail))

@@ -58,7 +58,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   def ty = sym._ty
   def freeVars = Set(this)
   def boundVars = Set()
-  def headSymbol = this
+  val headSymbol = this
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -71,7 +71,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   // Other operations
   def typeCheck = true
 
-  def betaNormalize = this
+  val betaNormalize = this
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -98,7 +98,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   def ty = t
   val freeVars = Set[Term]()
   val boundVars = Set[Term](this)
-  def headSymbol = this
+  val headSymbol = this
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -125,7 +125,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   // Other operations
   def typeCheck = true
 
-  def betaNormalize = this
+  val betaNormalize = this
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -156,7 +156,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   def ty = absType ->: term.ty
   val freeVars = term.freeVars
   val boundVars = term.boundVars
-  def headSymbol = term.headSymbol
+  lazy val headSymbol = term.headSymbol
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -171,7 +171,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
    // Other operations
   def typeCheck = term.typeCheck
 
-  def betaNormalize = AbstractionNode(absType, term.betaNormalize)
+  lazy val betaNormalize = AbstractionNode(absType, term.betaNormalize)
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -218,7 +218,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   // Other operations
   def typeCheck = left.ty.isFunType && left.ty._funDomainType == right.ty
 
-  def betaNormalize = {
+  lazy val betaNormalize = {
     val leftNF = left.betaNormalize
     val rightNF = right.betaNormalize
 
@@ -268,7 +268,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
   // Other operations
   def typeCheck = term.typeCheck
 
-  def betaNormalize = TypeAbstractionNode(term.betaNormalize)
+  lazy val betaNormalize = TypeAbstractionNode(term.betaNormalize)
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -300,7 +300,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
 
   val freeVars = left.freeVars
   val boundVars = left.boundVars
-  def headSymbol = left.headSymbol
+  lazy val headSymbol = left.headSymbol
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeApplicationNode(left.substitute(what,by), right)
@@ -311,7 +311,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   // Other operations
   def typeCheck = left.ty.isPolyType && left.typeCheck
 
-  def betaNormalize = {
+  lazy val betaNormalize = {
     val leftNF = left.betaNormalize
 
     leftNF match {
