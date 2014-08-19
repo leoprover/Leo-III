@@ -72,7 +72,7 @@ class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : St
    *
    * @return true, if normalized
    */
-  def normalized : Boolean = (status & 5)== 5 & (status & 7) == 7
+  def normalized : Boolean = (status & 5)== 5 || (status & 7) == 7
 
   def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _role, _status)
   def newFormula(nformula : Term) : FormulaStore = new FormulaStore(_name, Left(nformula), _role, _status)

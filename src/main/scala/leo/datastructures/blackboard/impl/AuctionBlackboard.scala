@@ -12,20 +12,25 @@ import scala.collection.mutable
 import scala.collection.mutable.{Queue, Map => MMap}
 
 /**
- * Starting Blackboard. Just to replace @see{leoshell.FormulaHandle}
+ * This blackboard is a first reference implementation for the @see{Blackboard} interface.
+ *
+ * It utilizes no doubly added formulas and an auction implementation to access and organize tasks.
  *
  * @author Max Wisniewski <max.wisniewski@fu-berlin.de>
- * @author Daniel Jentsch <d.jentsch@fu-berlin.de>
- * @since 29.04.2014
+ * @since 19.08.2015
  */
-class SimpleBlackboard extends Blackboard {
-
-  import FormulaSet._
-
-  var DEBUG : Boolean = true
+protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   var isFinished = false
 
+  /**
+   * Not working....
+   *
+   * Should watch if $false is added and then signal, that a proof was found, i.e. not to compute
+   * further (maybe start a proof reconstruction or clean up of the formulas)
+   *
+   * @param fS - New added formula
+   */
   private def checkFinish(fS : FormulaStore) : Unit = {
     fS.formula match{
       case Left(form) if form == LitFalse=>
@@ -45,46 +50,36 @@ class SimpleBlackboard extends Blackboard {
   }
 
   // For each agent a List of Tasks to execute
+  // If FormulaSet is optimized we can optimize internal
 
-  override def getFormulas: List[FormulaStore] = getAll(_ => true)
+  override def getFormulas: Iterable[FormulaStore] = FormulaSet.getAll()
 
-  override def getAll(p: FormulaStore => Boolean): List[FormulaStore] = read { formulas =>
-    formulas.values.filter { store =>
-      p(store)
-    }.toList
-  }
+  override def getAll(p: FormulaStore => Boolean): Iterable[FormulaStore] = FormulaSet.getAll().filter(p)
 
-  override def getFormulaByName(name: String): Option[FormulaStore] = read { formulas =>
-    formulas get name
-  }
+  override def getFormulaByName(name: String): Option[FormulaStore] = FormulaSet.getName(name)
 
-  override def addFormula(name : String, formula: Term, role : String) {
-    val s = Store.apply(name, formula, role)
-    addFormula(s)
-    filterAll(_.filter(s))
-  }
-
-  override def addFormula(formula : FormulaStore) {
-    write { formulas =>
-      formulas put (formula.name, formula)
-    }
-//    TaskSet.agents.foreach{a => TaskSet.addTasks(a,a.filter(formula))}
-  }
-
-  override def removeFormula(formula: FormulaStore): Boolean = rmFormulaByName(formula .name)
-
-  override def rmFormulaByName(name: String): Boolean = write { formulas =>
-    formulas.remove(name) match {
-      case Some(x) => {
-        true
-      }
-      case None => false
+  // Called from outside, therefor we will fitler explicitly
+  override def addFormula(name : String, formula: Term, role : String) : FormulaStore = {
+    val s = Store(name, formula, role)
+    val f = addFormula(s)
+    f match {
+      case Left(s1) =>
+        filterAll(_.filter(s1))
+        s1
+      case Right(s2) =>
+        s2
     }
   }
 
-  override def rmAll(p: FormulaStore => Boolean) = write { formulas =>
-      formulas.values foreach (form => if (p(form)) formulas.remove(form.name) else formulas)
+  override def addFormula(formula : FormulaStore) : Either[FormulaStore, FormulaStore] = {
+    FormulaSet.add(formula)
   }
+
+  override def removeFormula(formula: FormulaStore): Boolean = FormulaSet.rm(formula)
+
+  override def rmFormulaByName(name: String): Boolean = FormulaSet.rmName(name)
+
+  override def rmAll(p: FormulaStore => Boolean) = FormulaSet.getAll().foreach{f => if(p(f)) FormulaSet.rm(f)}
 
   /**
    * Register a new Handler for Formula adding Handlers.
@@ -106,6 +101,7 @@ class SimpleBlackboard extends Blackboard {
   override def clear() : Unit = {
     rmAll(_ => true)
     TaskSet.clear()
+    isFinished = false
   }
 
   /**
@@ -147,24 +143,56 @@ class SimpleBlackboard extends Blackboard {
 }
 
 /**
- * Handles multi threaded access to a mutable map.
+ * Stores the formulas in first in a map from name to the @see{FormulaStore}
+ * and secondly a map from @see{Term} to FormulaStore, to see, if a formula has already bee added.
+ *
  */
 private object FormulaSet {
-  // Formulas
 
+  //TODO better representation, but no idea where to map from...
   private val formulaMap = new TrieMap[String, FormulaStore]()
 
+  private val termMap = new TrieMap[Either[Term,Seq[Term]], FormulaStore]
+
   /**
-   * Per se se an action itself. Maybe try different syntax, s.t. we know this one locks,
-   * the other one not.
+   * Looks up the termMap, for an already existing store and returns this or the given store
+   * after adding it.
    *
-   * Not a Problem ATM: writing the same Key twice may introduce inconsitencies, if two
-   * distinct formula stores are used.
+   * @return the exsiting store or the new one
    */
+  def add(f : FormulaStore) : Either[FormulaStore, FormulaStore] = {
+    termMap.get(f.formula) match {
+      case Some(fS) =>
+        Right(fS)
+      case None =>
+        termMap put (f.formula,f)
+        formulaMap put (f.name,f)
+        Left(f)
+    }
+  }
 
-  def write[R](action: MMap[String, FormulaStore] => R): R = action(formulaMap)
+  /**
+   * ATM no filter support added (no optimization).
+   * Therefor we can savely return everything and filter later.
+   *
+   * @return All stored formulas
+   */
+  def getAll() : Iterable[FormulaStore] = formulaMap.values
 
-  def read[R](action: MMap[String, FormulaStore] => R): R = action(formulaMap)
+  def rm(f : FormulaStore) : Boolean = {
+    rmName(f.name)
+  }
+
+  def rmName(n : String) : Boolean = {
+    formulaMap remove n match{
+      case None => false
+      case Some(f) =>
+        termMap.remove(f.formula)
+        true
+    }
+  }
+
+  def getName(n : String) : Option[FormulaStore] = formulaMap get n
 }
 
 private object TaskSet {

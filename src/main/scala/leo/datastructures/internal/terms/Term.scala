@@ -84,7 +84,7 @@ abstract class Term extends Pretty {
 
 
 object Term {
-  import leo.datastructures.internal.terms.spine.TermImpl
+  import leo.datastructures.internal.terms.naive.TermImpl
 
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)

@@ -170,7 +170,7 @@ class ResolutionAgent extends Agent {
         // If so get all tasks for resolute
         else {
           //          println("ResolutionAgent: Try to resolute.")
-          cutMaybes(resT.map { case (t, Some((l, r))) =>
+          cutMaybes(resT.toList.map { case (t, Some((l, r))) =>
             resoluteInfere(l, r) match {
               case None =>
                 //            println("ResolutionAgent: Error! Nothing to update.")
