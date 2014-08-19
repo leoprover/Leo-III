@@ -289,6 +289,8 @@ object LeoShell {
 
   def run() : Unit = Scheduler().signal()
 
+  def step() : Unit = Scheduler().step()
+
   def pause() : Unit = Scheduler().pause()
 }
 

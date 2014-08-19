@@ -77,11 +77,13 @@ class ResolutionAgent extends Agent {
     var done = false
     for(t <- toFilter(f)) {
       if (!Blackboard().collision(t)) {
-//        println(name + " : Got a task.")
+//        println(name + " : Got a task.\n "+t.toString)
         synchronized {
           q.enqueue(t)
         }
         done = true
+      } else {
+//        println(name + " : Got a but collided.\n "+t.toString)
       }
     }
     if(done) Blackboard().signalTask()
@@ -135,7 +137,7 @@ class ResolutionAgent extends Agent {
     synchronized {
       q = q.filterNot { tbe =>
         if(nExec.exists(_.collide(tbe))){
-//          println("Collision detected:\n "+tbe.toString+"\n collided with "+nExec.find(_.collide(tbe)).fold("nothing")(_.toString))
+          nExec.find(e => e.collide(tbe) && !(e.equals(tbe))).fold{()}{e => println("Collision detected:\n "+tbe.toString+"\n collided with "+e.toString)}
           true
         }else {
           false
@@ -147,52 +149,50 @@ class ResolutionAgent extends Agent {
 
   protected def toFilter(event: FormulaStore): Iterable[Task] = {
     // Necessary for all running tasks.
-    if(event.role != "conjecture" && event.normalized) event.formula match {
-      // If the formula is not a CNF until now, we make a PreCNF of it and look, if toStringit is normalizable
-      case Left(f) =>
-        //        println("ResolutionAgent: Got formula, prepare to PreCNF.")
-        return prepareNormalize(f :: Nil).fold {
-          new CNFTask(event.newCNF(f :: Nil))
-        } { p => new CNFTask(event.newCNF(p))} :: Nil
-      // Otherwise we first check for possible resolution partners, and if no exists we try to normalize one step
-      case Right(f) =>
-        // Check all CNFs in the Blackboard, if they can be resolved with the current one.
-        val resT =
-          Blackboard().getAll(_.formula.isRight).map { t => (t, prepareResolute(f)(t.cnfFormula))}.filterNot(_._2.isEmpty)
-        // If not, try to Normalize
-        if (resT.isEmpty) {
-          //          println("ResolutionAgent: No resolution partner found. Ready to PreCNF.")
-          prepareNormalize(f) match {
-            case Some(fs) => return (new CNFTask(event.newCNF(fs))) :: Nil
-            case None => return Nil
-          }
-        }
-        // If so get all tasks for resolute
-        else {
-          //          println("ResolutionAgent: Try to resolute.")
-          cutMaybes(resT.toList.map { case (t, Some((l, r))) =>
-            resoluteInfere(l, r) match {
-              case None =>
-                //            println("ResolutionAgent: Error! Nothing to update.")
-                return None
-              case Some(nf) =>
-                //            println("ResolutionAgent: Resoluted '"+lStore.cnfFormula.map(_.pretty).mkString(" , ")+"' and '"+rStore.cnfFormula.map(_.pretty).mkString(" , ")+"' to\n" +
-                //              "     '"+nf.map(_.pretty).mkString(" , ")+"'.")
-                if (Blackboard().getFormulas.forall { f => f.formula != Right(nf)}) {
-                  val resovle = event.newCNF(nf).randomName().newRole("plain")
-                  if(checkExists(resovle)) {
-                    Some(new ResoluteTask(event.newCNF(l), t.newCNF(r), resovle))
+    if(event.role != "conjecture" && event.normalized) {
+//      println("Filter : "+event.toString)
+      event.formula match {
+        // If the formula is not a CNF until now, we make a PreCNF of it and look, if toStringit is normalizable
+        case Left(f) =>
+//                  println("ResolutionAgent: Got formula, prepare to PreCNF.")
+          return prepareNormalize(f :: Nil).fold {
+            new CNFTask(event.newCNF(f :: Nil))
+          } { p => new CNFTask(event.newCNF(p))} :: Nil
+        // Otherwise we first check for possible resolution partners, and if no exists we try to normalize one step
+        case Right(f) =>
+          // Check all CNFs in the Blackboard, if they can be resolved with the current one.
+          val resT =
+            Blackboard().getAll(_.formula.isRight).map { t => (t, prepareResolute(f)(t.cnfFormula))}.filterNot(_._2.isEmpty)
+          // If not, try to Normalize
+            val norm = prepareNormalize(f) match {
+              case Some(fs) => (new CNFTask(event.newCNF(fs))) :: Nil
+              case None => Nil
+            }
+          // If so get all tasks for resolute
+//                      println("ResolutionAgent: Try to resolute.")
+            return norm ++ cutMaybes(resT.toList.map { case (t, Some((l, r))) =>
+              resoluteInfere(l, r) match {
+                case None =>
+//                              println("ResolutionAgent: Error! Nothing to update.")
+                  return None
+                case Some(nf) =>
+//                              println("ResolutionAgent: Resoluted '"+t.cnfFormula.map(_.pretty).mkString(" , ")+"' and '"+r.cnfFormula.map(_.pretty).mkString(" , ")+"' to\n" +
+//                                "     '"+nf.map(_.pretty).mkString(" , ")+"'.")
+                  if (Blackboard().getFormulas.forall { f => f.formula != Right(nf)}) {
+                    val resovle = event.newCNF(nf).randomName().newRole("plain")
+                    if(checkExists(resovle)) {
+                      Some(new ResoluteTask(event.newCNF(l), t.newCNF(r), resovle))
+                    } else {
+                      None
+                    }
                   } else {
+//                    println("Infered already existing formula " + event.newCNF(nf).newRole("plain").toString + "from "+ event.newCNF(l).toString + " and "+ event.newCNF(r))
                     None
                   }
-                } else {
-                  //              println("Infered already existing formula " + lStore.newCNF(nf).newRole("plain").toString)
-                  return None
-                }
-            }
+              }
 
-          })
-        }
+            })
+      }
     }
     else {
 //      println("ResolutionAgent: Got formula with status : " + event.status + ". Will not be considered.")

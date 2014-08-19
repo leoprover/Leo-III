@@ -83,6 +83,6 @@ class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : St
   def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), formula, _role, _status)
 
   override lazy val toString : String = {
-    "leo("+name+","+role+",("+formula.fold({_.pretty}, {fs => fs.map(_.pretty).mkString(") & (")+")"})+"))"
+    "leo("+name+","+role+",("+formula.fold({_.pretty}, {fs => "["+fs.map(_.pretty).mkString(") , (")+")]"})+"))"
   }
 }

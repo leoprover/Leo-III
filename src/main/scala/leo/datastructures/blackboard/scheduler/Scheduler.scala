@@ -62,6 +62,11 @@ trait Scheduler {
    */
   def pause() : Unit
 
+  /**
+   * Performs one round of auction
+   */
+  def step() : Unit
+
   def clear() : Unit
 
   protected[scheduler] def start()
@@ -95,6 +100,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   override def isTerminated() : Boolean = endFlag
 
   def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
+
+  def step() : Unit = s.synchronized{s.notifyAll()}
 
 //  def toWork(a : Agent) : Unit = exe.submit(new Runnable {
 //    override def run(): Unit = if (a.guard()) a.apply()
@@ -193,6 +200,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
             case Right(_) => ()         // If the result was right, the formula already existed
           }}
           result.updateFormula().foreach{case (_,f) => a.filter(f)}
+          //TODO Enforce that the two sets are disjoined
           task.readSet().foreach{f => if(!task.writeSet().contains(f)) a.filter(_)}   // Filtes not written elements again.
         })
       }

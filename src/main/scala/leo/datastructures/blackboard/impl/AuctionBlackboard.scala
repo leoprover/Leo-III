@@ -64,6 +64,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     val f = addFormula(s)
     f match {
       case Left(s1) =>
+        checkFinish(s1)
         filterAll(_.filter(s1))
         s1
       case Right(s2) =>
@@ -72,7 +73,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   }
 
   override def addFormula(formula : FormulaStore) : Either[FormulaStore, FormulaStore] = {
-    FormulaSet.add(formula)
+    val f = FormulaSet.add(formula)
+    f match {
+      case Left(s1) => checkFinish(s1)
+      case Right(_) => ()
+    }
+    f
   }
 
   override def removeFormula(formula: FormulaStore): Boolean = FormulaSet.rm(formula)
