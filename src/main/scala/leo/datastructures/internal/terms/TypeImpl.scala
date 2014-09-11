@@ -19,6 +19,8 @@ protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
   def funDomainType   = None
   def funCodomainType = None
 
+  val scopeNumber = 0
+
   def occurs(ty: Type) = ty match {
     case BaseTypeNode(key) if key == id => true
     case _                              => false
@@ -57,6 +59,8 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
 
   def funDomainType   = None
   def funCodomainType = None
+
+  val scopeNumber = -scope
 
   def occurs(ty: Type) = false
 
@@ -109,6 +113,8 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
   def funDomainType   = Some(in)
   def funCodomainType = Some(out)
 
+  val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
+
   def occurs(ty: Type) = in.occurs(ty) || out.occurs(ty)
 
   // Substitutions
@@ -142,6 +148,8 @@ protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
   def funDomainType   = None
   def funCodomainType = None
 
+  val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
+
   def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
   // Substitutions
@@ -174,6 +182,8 @@ protected[internal] case class UnionTypeNode(l: Type, r: Type) extends Type {
 
   def funDomainType   = None
   def funCodomainType = None
+
+  val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
 
   def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
@@ -215,6 +225,8 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
   def funDomainType   = None
   def funCodomainType = None
 
+  val scopeNumber = body.scopeNumber + 1
+
   def occurs(ty: Type) = body.occurs(ty)
 
   // Substitutions
@@ -222,7 +234,7 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
     case BoundTypeNode(i) => ForallTypeNode(body.substitute(BoundTypeNode(i+1), by))
     case _ => ForallTypeNode(body.substitute(what,by))
   }
-  def substitute(subst: Subst) = ForallTypeNode(body.substitute(subst))
+  def substitute(subst: Subst) = ForallTypeNode(body.substitute(subst.sink))
 
   def instantiate(by: Type) = body.substitute(BoundTypeNode(1), by)
 

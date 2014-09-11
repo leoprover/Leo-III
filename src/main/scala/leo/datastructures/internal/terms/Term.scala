@@ -27,7 +27,18 @@ import leo.datastructures.internal.{Signature, HOLBinaryConnective}
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-abstract class Term extends Pretty {
+abstract class Term extends Ordered[Term] with Pretty {
+
+  protected var _locality: Locality = LOCAL
+  protected[terms] var _indexing: Indexing = PLAIN  // INDEXED implies GLOBAL
+
+  def locality = _locality
+  def indexing = _indexing
+  def makeGlobal(): Unit = ???
+  def makeLocal(): Unit = ???
+
+  def compare(that: Term): Int = SimpleOrdering.compare(this, that)
+
   // Predicates on terms
   def isAtom: Boolean
   def isTermAbs: Boolean
@@ -48,6 +59,7 @@ abstract class Term extends Pretty {
   def boundVars: Set[Term]
   def symbolsOfType(ty: Type) = freeVars.filter(_.ty == ty)
   def headSymbol: Term
+  def scopeNumber: (Int,Int)
 
   // Substitutions
   def substitute(what: Term, by: Term): Term
@@ -58,6 +70,7 @@ abstract class Term extends Pretty {
 
   protected[internal] def instantiateBy(by: Type) = instantiate(1,by)
   protected[internal] def instantiate(scope: Int, by: Type): Term
+//  protected[internal] def instantiateWith(subst: Subst): Term
 
   // Other operations
   /** Returns true iff the term is well-typed. */
@@ -80,10 +93,18 @@ abstract class Term extends Pretty {
 
   protected[internal] def inc(scopeIndex: Int): Term
   protected[internal] def closure(subst: Subst): Term
+//  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
 
+abstract sealed class Locality
+case object GLOBAL extends Locality
+case object LOCAL extends Locality
 
-object Term {
+abstract sealed class Indexing
+case object INDEXED extends Indexing
+case object PLAIN extends Indexing
+
+object Term extends TermBank {
   import leo.datastructures.internal.terms.spine.TermImpl
 
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
@@ -123,8 +144,12 @@ object Term {
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
   implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
 
-  protected[internal] def reset(): Unit = TermImpl.reset()
+  def insert0(localTerm: Term): Term = ???
+
+  def reset(): Unit = TermImpl.reset()
 }
+
+
 
 /**
  * Pattern for matching bound symbols in terms (i.e. De-Bruijn-Indices). Usage:

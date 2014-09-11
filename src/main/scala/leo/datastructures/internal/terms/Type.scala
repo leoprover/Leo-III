@@ -48,6 +48,8 @@ abstract class Type extends Pretty {
   def funCodomainType: Option[Type]
   def _funCodomainType: Type = funCodomainType.get
 
+  def scopeNumber: Int
+
   /** Returns true iff `ty` appears somewhere as subtype (e.g. as part of an abstraction type). */
   def occurs(ty: Type): Boolean
 

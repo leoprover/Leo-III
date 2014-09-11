@@ -18,6 +18,7 @@ sealed abstract class TermImpl extends Term {
   val isTypeAbs = false
   val isApp = false
 
+  def instantiateWith(subst: Subst) = ???
   def full_δ_expand = partial_δ_expand(-1)
 
   def normalize(subst: Subst, subst2: Subst) = ???
@@ -28,6 +29,8 @@ sealed abstract class TermImpl extends Term {
   }
 
   def closure(s: Subst) = ???
+
+  def scopeNumber = ???
 }
 
 ///////////////////
@@ -71,7 +74,11 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   // Other operations
   def typeCheck = true
 
-  val betaNormalize = this
+  val betaNormalize = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    this
+  }
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -125,7 +132,11 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   // Other operations
   def typeCheck = true
 
-  val betaNormalize = this
+  val betaNormalize = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    this
+  }
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -171,7 +182,11 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
    // Other operations
   def typeCheck = term.typeCheck
 
-  lazy val betaNormalize = AbstractionNode(absType, term.betaNormalize)
+  lazy val betaNormalize = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    AbstractionNode(absType, term.betaNormalize)
+  }
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -219,6 +234,9 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   def typeCheck = left.ty.isFunType && left.ty._funDomainType == right.ty
 
   lazy val betaNormalize = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+
     val leftNF = left.betaNormalize
     val rightNF = right.betaNormalize
 
@@ -268,7 +286,11 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
   // Other operations
   def typeCheck = term.typeCheck
 
-  lazy val betaNormalize = TypeAbstractionNode(term.betaNormalize)
+  lazy val betaNormalize = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    TypeAbstractionNode(term.betaNormalize)
+  }
 
   def foldRight[A](symFunc: Signature#Key => A)
                   (boundFunc: (Type, Int) => A)
@@ -312,6 +334,9 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   def typeCheck = left.ty.isPolyType && left.typeCheck
 
   lazy val betaNormalize = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+
     val leftNF = left.betaNormalize
 
     leftNF match {

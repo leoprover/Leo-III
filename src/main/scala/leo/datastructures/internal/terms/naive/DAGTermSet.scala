@@ -42,8 +42,10 @@ object DAGTermSet {
     val isAtom: Boolean = false
     val isApp = false
 
-    def typeCheck = true
+    def scopeNumber = ???
 
+    def typeCheck = true
+    def instantiateWith(subst: Subst) = ???
 
     def closure(s: Subst) = ???
     def normalize(s: Subst, s2: Subst) = ???

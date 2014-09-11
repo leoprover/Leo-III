@@ -21,7 +21,28 @@ sealed abstract class Subst extends Pretty {
 }
 
 
+/////////////////////////test
 
+//class MySubst(shift: Int) extends Subst with Vector[Front] {
+//
+//  def pretty = this.isEmpty match {
+//    case true => shift match {
+//      case 0 => "id"
+//      case k => s"↑$k"
+//    }
+//    case false => this.map(_.pretty).mkString("•") ++ s"↑$shift"
+//  }
+//
+//  def comp(other: Subst) = this.isEmpty match {
+//    case true => ??? // shift
+//    case false => ???  // cons
+//  }
+//
+//  lazy val normalize = this.map({_ match {
+//    case TermFront(t) => TermFront(t.betaNormalize)
+//    case a => a
+//  }})
+//}
 
 /////////////////////////////////////////////////
 // Implementation of substitutions
@@ -45,6 +66,7 @@ case class Shift(n: Int) extends Subst {
     case k => s"↑$k"
   }
 }
+
 case class Cons(ft: Front, subst: Subst) extends Subst {
   def comp(other: Subst) = other match {
     case Shift(0) => this
@@ -66,6 +88,11 @@ object Subst {
   def id: Subst    = Shift(0)
   def shift: Subst = shift(1)
   def shift(n: Int): Subst = Shift(n)
+//
+//  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
+//    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)
+//    case a => Cons(a, onto)
+//  }
 }
 
 
