@@ -27,8 +27,8 @@ protected[terms] sealed abstract class TermImpl extends Term {
 //                                  o._indexing = INDEXED
                                   o
                                  }
-  def closure(subst: Subst) = //TermClos(this, (subst, Subst.id))
-    this.normalize(subst, Subst.id)
+  def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
+//    this.normalize(subst, Subst.id)
 
 //  type TermClosure = (TermImpl, Subst)
 //  protected[internal] def preNormalize(subst: Subst): TermClosure
@@ -99,8 +99,13 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case BoundIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
-  lazy val headSymbol = Root(hd, SNil)
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    Root(hd, SNil)
+  }
   val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
+  lazy val size = 1 + args.size
 
   // Other operations
   lazy val typeCheck = typeCheck0(hd.ty, args)
@@ -191,8 +196,13 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
   }
   val freeVars = body.freeVars ++ args.freeVars
   val boundVars = body.boundVars ++ args.boundVars
-  lazy val headSymbol = body.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    body.headSymbol
+  }
   val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
+  lazy val size = body.size + args.size
 
   // Other operations
   lazy val typeCheck = typeCheck0(body.ty, args)
@@ -259,8 +269,13 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   lazy val ty = typ ->: body.ty
   val freeVars = body.freeVars
   val boundVars = body.boundVars
-  lazy val headSymbol = body.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    body.headSymbol
+  }
   val scopeNumber = (body.scopeNumber._1 + 1,Math.min(typ.scopeNumber,body.scopeNumber._2))
+  lazy val size = 1 + body.size
 
   // Other operations
   lazy val typeCheck = body.typeCheck
@@ -308,8 +323,13 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
   lazy val ty = ∀(body.ty)
   val freeVars = body.freeVars
   val boundVars = body.boundVars
-  lazy val headSymbol = body.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    body.headSymbol
+  }
   val scopeNumber = body.scopeNumber
+  lazy val size = 1 + body.size
 
   // Other operations
   lazy val typeCheck = body.typeCheck
@@ -367,6 +387,7 @@ protected[spine] case class TermClos(term: Term, σ: (Subst, Subst)) extends Ter
 //    }
 //    case _ => throw new UnknownError("head symbol not a root")
 //  }
+  lazy val size = term.size // this might not be senseful, but will never occur when used properly
 
   // Other operations
   lazy val typeCheck = ???
@@ -487,6 +508,7 @@ protected[terms] sealed abstract class Spine extends Pretty {
   def boundVars: Set[Term]
   def asTerms: Seq[Either[Term, Type]]
   def scopeNumber: (Int, Int)
+  def size: Int
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)): Spine
@@ -517,6 +539,7 @@ protected[terms] case object SNil extends Spine {
   val length = 0
   val asTerms = Seq()
   val scopeNumber = (0, 0)
+  val size = 0
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = SpineClos(sp, spSubst)
@@ -553,6 +576,8 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
   val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
   lazy val scopeNumber = (Math.min(hd.scopeNumber._1, tail.scopeNumber._1),Math.min(hd.scopeNumber._2, tail.scopeNumber._2))
+  lazy val size = hd.size + tail.size
+
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = App(TermClos(hd, subst), tail.merge(subst, sp, spSubst))
@@ -582,7 +607,7 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
   val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
   lazy val scopeNumber = (tail.scopeNumber._1,Math.min(hd.scopeNumber, tail.scopeNumber._2))
-
+  lazy val size = 1 + tail.size
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = TyApp(hd.substitute(subst._2), tail.merge(subst, sp, spSubst))
   def ++(sp: Spine) = cons(Right(hd), tail ++ sp)
@@ -612,6 +637,7 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   lazy val length = sp.length
   lazy val asTerms = ???
   lazy val scopeNumber = sp.scopeNumber
+  lazy val size = sp.size // todo: properly implement
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = sp.merge((s._1 o subst._1,s._2 o subst._2),sp, spSubst)
@@ -631,6 +657,7 @@ object TermImpl {
   // Hash tables for DAG representation of perfectly
   // shared terms
   /////////////////////////////////////////////
+  protected[TermImpl] var terms: Set[TermImpl] = Set.empty
 
   // primitive symbols (heads)
   protected[TermImpl] var boundAtoms: Map[Type, Map[Int, Head]] = Map.empty
@@ -774,8 +801,43 @@ object TermImpl {
       case other       => mkRedex(other, mkGenSpine(args))
     }
 
-  implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
+  def insert0(localTerm: Term): TermImpl = {
+    val shared = localTerm match {
+      case Root(h, sp) => val sp2 = insertSpine0(sp)
+                          val h2 = h match {
+                            case BoundIndex(ty, scope) => mkBoundAtom(ty, scope)
+                            case Atom(id)              => mkAtom0(id)
+                            case hc@HeadClosure(chd, s)   => hc // TODO: do we need closures in bank?
+                          }
+                          mkRoot(h2, sp2)
 
+      case Redex(rx, sp) => val sp2 = insertSpine0(sp)
+                            val rx2 = insert0(rx)
+                            mkRedex(rx2, sp2)
+
+      case TermAbstr(ty, body) => val body2 = insert0(body)
+                                  mkTermAbstr(ty, body2)
+
+      case TypeAbstr(body) => val body2 = insert0(body)
+                              mkTypeAbstr(body2)
+      case tc@TermClos(ct, s) => tc
+      case _                  => throw new IllegalArgumentException("trying to insert a non-spine term to spine termbank")
+    }
+    terms = terms + shared
+    shared
+  }
+
+  protected def insertSpine0(sp: Spine): Spine = {
+    sp match {
+      case SNil => mkSpineNil
+      case App(hd, tail) => val hd2 = insert0(hd)
+                            val tail2 = insertSpine0(tail)
+                            mkSpineCons(Left(hd2), tail2)
+      case TyApp(ty, tail) => val tail2 = insertSpine0(tail)
+                              mkSpineCons(Right(ty), tail2)
+      case sc@SpineClos(csp, s) => sc
+    }
+  }
 
   def reset() = {
     boundAtoms = Map.empty
@@ -789,6 +851,46 @@ object TermImpl {
 
     // Spines
    spines = Map.empty
+  }
+
+  ///////////////
+  // Utility  ///
+  ///////////////
+  implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
+
+  /**
+   * Statistics type. Components and meanings:
+   * comp 1: number of terms, Int
+   * comp 2: avg. size of terms, Int
+   * comp 3: min. size of terms, Int
+   * comp 4: max. size of terms, Int
+   * comp 5: number of nodes, Int
+   * comp 6: # of parents to count map, Map[Int, Int]
+   */
+  type TermBankStatistics = (Int, Int, Int, Int, Int, Map[Int, Int])
+
+  def statistics: TermBankStatistics = {
+    val numberOfTerms = terms.size
+
+    var parentNodeCountMap: Map[Int, Int] = Map.empty
+
+    // Term sizes
+    // start element (min, max, X)
+    val intermediate = terms.foldRight((-1,-1,-1))((t,acc) => {val s = t.size
+                                            val min = Math.min(acc._1, s)
+                                            val max = Math.max(acc._2, s)
+                                            (min, max, acc._3  + s)
+                                           })
+    val minSizeOfTerms = intermediate._1
+    val maxSizeOfTerms = intermediate._2
+    val avgSizeOfTerms = intermediate._3 / numberOfTerms
+
+    val numberOfNodes =   boundAtoms.size + symbolAtoms.size
+                        + termAbstractions.size + typeAbstractions.size
+                        + roots.size + redexes.size
+                        + spines.size
+
+    (numberOfTerms,avgSizeOfTerms,minSizeOfTerms,maxSizeOfTerms,numberOfNodes,parentNodeCountMap)
   }
 
 }
