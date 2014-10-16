@@ -97,10 +97,10 @@ object BenchmarkBetaNF {
 //  val FILE = __TPTPPROBLEMPATH__ + "NUM/NUM542+2.p"
   val FILE = "benchmark/s4-cumul-GSE014+4.p.syn"
 
-  val FILES = {new File("benchmark").listFiles.filter(_.getName.endsWith(".p.sem")).toSet ++
-               new File("benchmark").listFiles.filter(_.getName.endsWith(".p.syn")).toSet }
+//  val FILES = {new File("benchmark").listFiles.filter(_.getName.endsWith(".p.sem")).toSet ++
+//               new File("benchmark").listFiles.filter(_.getName.endsWith(".p.syn")).toSet }
 
-
+  val FILES = {new File(__TPTPPROBLEMPATH__ + "QUA").listFiles.filter(x => !(x.getName.contains("-")) && x.getName.endsWith(".p")).toSet}
 
   private def benchmark(name: String, term: Term, role: String): Long = {
 //    print(s"Benchmarking $name: \t")
@@ -178,25 +178,25 @@ object BenchmarkBetaNF {
     var all: Long = 0
     val sig = Signature.get
     // Files
-//    for(f <- FILES) {
-//      Signature.resetWithHOL(sig)
-//      loadedSet.clear()
-//      all += doit(f)
-//    }
-    // Numerals
-    Numerals()
-    val mult = sig("mult").key
-    val power = sig.apply("power").key
-    for (i <- 5 to 100) {
-//      print(s"$i : ")
-      val a = mkTermApp(mkAtom(mult), Seq(fromInt(i), fromInt(i)))
-      val b = a.betaNormalize
-      val c = b.full_δ_expand
-      val localTime = time(c.betaNormalize)._2
-//      val localTime = benchmark("", c, "")
-      print(s"$localTime,")
-      all += localTime
+    for(f <- FILES) {
+      Signature.resetWithHOL(sig)
+      loadedSet.clear()
+      all += doit(f)
     }
+    // Numerals
+//    Numerals()
+//    val mult = sig("mult").key
+//    val power = sig.apply("power").key
+//    for (i <- 5 to 100) {
+////      print(s"$i : ")
+//      val a = mkTermApp(mkAtom(mult), Seq(fromInt(i), fromInt(i)))
+//      val b = a.betaNormalize
+//      val c = b.full_δ_expand
+////      val localTime = time(c.betaNormalize)._2
+//      val localTime = benchmark("", c, "")
+//      print(s"$localTime,")
+//      all += localTime
+//    }
     println(s"Overall time: $all")
   }
 
