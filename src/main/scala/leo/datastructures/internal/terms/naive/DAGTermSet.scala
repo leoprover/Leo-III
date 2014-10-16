@@ -49,6 +49,7 @@ object DAGTermSet {
 
     def closure(s: Subst) = ???
     def normalize(s: Subst, s2: Subst) = ???
+    def size = 0
   }
   case class SymbolNode(key: Signature#Key) extends DAGNode {
     def pretty = Signature(key).name

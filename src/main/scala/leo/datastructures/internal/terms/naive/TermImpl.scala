@@ -2,7 +2,7 @@ package leo.datastructures.internal.terms.naive
 
 import leo.datastructures.internal.Signature
 import leo.datastructures.internal.terms.{Type, BoundTypeNode, Term, Subst}
-
+import leo.datastructures.internal.Position
 /**
  * Naive implementation of nameless lambda terms.
  * Uses inefficient reduction und substitution methods
@@ -29,8 +29,9 @@ sealed abstract class TermImpl extends Term {
   }
 
   def closure(s: Subst) = ???
-
+  def occurrences: Map[Term, Set[Position]] = ???
   def scopeNumber = ???
+  def size = 0
 }
 
 ///////////////////
@@ -60,8 +61,13 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   // Queries on terms
   def ty = sym._ty
   def freeVars = Set(this)
+  val symbols = Set(id)
   def boundVars = Set()
-  val headSymbol = this
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    this
+  }
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -104,8 +110,13 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   // Queries on terms
   def ty = t
   val freeVars = Set[Term]()
+  val symbols = Set()
   val boundVars = Set[Term](this)
-  val headSymbol = this
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    this
+  }
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -166,8 +177,13 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   // Queries on terms
   def ty = absType ->: term.ty
   val freeVars = term.freeVars
+  val symbols = term.symbols
   val boundVars = term.boundVars
-  lazy val headSymbol = term.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    term.headSymbol
+  }
 
   // Substitutions
   def substitute(what: Term, by: Term) = what match {
@@ -220,8 +236,13 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   } // assume everything is well-typed
 
   val freeVars = left.freeVars ++ right.freeVars
+  val symbols = left.symbols ++ right.symbols
   val boundVars = left.boundVars ++ right.boundVars
-  lazy val headSymbol = left.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    left.headSymbol
+  }
 
   // Substitutions
   def substitute(what: Term, by: Term) = ApplicationNode(left.substitute(what,by), right.substitute(what,by))
@@ -276,8 +297,13 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
   // Queries on terms
   lazy val ty = Type.mkPolyType(term.ty)
   val freeVars = term.freeVars
+  val symbols = term.symbols
   val boundVars = term.boundVars
-  val headSymbol = term.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    term.headSymbol
+  }
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeAbstractionNode(term.substitute(what,by))
@@ -321,8 +347,13 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   } // assume everything is well-typed
 
   val freeVars = left.freeVars
+  val symbols = left.symbols
   val boundVars = left.boundVars
-  lazy val headSymbol = left.headSymbol
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    left.headSymbol
+  }
 
   // Substitutions
   def substitute(what: Term, by: Term) = TypeApplicationNode(left.substitute(what,by), right)

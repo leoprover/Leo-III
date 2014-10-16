@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import scala.Some
 
 import leo.datastructures.Pretty
-import leo.datastructures.internal.{Signature, HOLBinaryConnective}
+import leo.datastructures.internal.{Position, Signature, HOLBinaryConnective}
 
 
 /**
@@ -34,8 +34,8 @@ abstract class Term extends Ordered[Term] with Pretty {
 
   def locality = _locality
   def indexing = _indexing
-  def makeGlobal(): Unit = ???
-  def makeLocal(): Unit = ???
+  def makeGlobal: Term = ???
+  def makeLocal: Term = ???
 
   def compare(that: Term): Int = SimpleOrdering.compare(this, that)
 
@@ -57,9 +57,15 @@ abstract class Term extends Ordered[Term] with Pretty {
   def ty: Type
   def freeVars: Set[Term]
   def boundVars: Set[Term]
-  def symbolsOfType(ty: Type) = freeVars.filter(_.ty == ty)
+  def occurrences: Map[Term, Set[Position]]
+  def symbols: Set[Signature#Key]
+  def symbolsOfType(ty: Type) = {
+    val sig = Signature.get
+    symbols.filter({i => sig(i)._ty == ty})
+  }
   def headSymbol: Term
   def scopeNumber: (Int,Int)
+  def size: Int
 
   // Substitutions
   def substitute(what: Term, by: Term): Term
@@ -147,6 +153,9 @@ object Term extends TermBank {
   def insert0(localTerm: Term): Term = ???
 
   def reset(): Unit = TermImpl.reset()
+
+  type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
+  def statistics: TermBankStatistics = TermImpl.statistics
 }
 
 
