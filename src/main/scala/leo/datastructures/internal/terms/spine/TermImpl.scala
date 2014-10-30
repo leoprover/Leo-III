@@ -108,7 +108,7 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     Reductions.tick()
     Root(hd, SNil)
   }
-  lazy val occurrences = Map(hd, Set(Position.root.headPos)) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
+  lazy val occurrences = Map((headToTerm(hd), Set(Position.root.headPos))) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
   val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 2 + args.size
 
@@ -388,7 +388,7 @@ protected[spine] case class TermClos(term: Term, σ: (Subst, Subst)) extends Ter
   lazy val symbols = Set[Signature#Key]()
   lazy val headSymbol = ???
   val scopeNumber = term.scopeNumber
-  val occurrences = Map.empty
+  val occurrences = Map[Term, Set[Position]]()
 //    term.headSymbol match {
 //    case Root(head, SNil) => head match {
 //      case b@BoundIndex(typ, scope) => b.substitute(σ) match {
@@ -676,7 +676,7 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
 /**
  * //TODO Documentation
  */
-object TermImpl {
+object TermImpl extends TermBank {
 
   /////////////////////////////////////////////
   // Hash tables for DAG representation of perfectly
@@ -790,6 +790,19 @@ object TermImpl {
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
+  val local = new Factory {
+    def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
+    def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    def mkAtom(id: Signature#Key): Term = Root(Atom(id), SNil)
+    def mkTypeApp(func: Term, args: Seq[Type]): Term = Redex(func, args.foldRight(mkSpineNil)((ty,sp) => TyApp(ty,sp)))
+    def mkTypeApp(func: Term, arg: Type): Term =  Redex(func, TyApp(arg, SNil))
+    def mkTypeAbs(body: Term): Term = TypeAbstr(body)
+    def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+    def mkTermApp(func: Term, args: Seq[Term]): Term = Redex(func, args.foldRight(mkSpineNil)((t,sp) => App(t,sp)))
+    def mkTermApp(func: Term, arg: Term): Term = Redex(func, App(arg, SNil))
+  }
+
+
   def mkAtom(id: Signature#Key): TermImpl = mkRoot(mkAtom0(id), SNil)
 
   def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
@@ -803,11 +816,6 @@ object TermImpl {
     }
   def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
-  def λ(hd: Type)(body: Term) = mkTermAbs(hd, body)
-  def λ(hd: Type, hds: Type*)(body: Term): TermImpl = {
-    λ(hd)(hds.foldRight(body)(λ(_)(_)))
-  }
-
   def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
   def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = func match {
       case Root(h, SNil) => mkRoot(h, mkTySpine(args))
@@ -817,7 +825,6 @@ object TermImpl {
     }
 
   def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
-  def Λ(body: Term): TermImpl = mkTypeAbs(body)
 
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): TermImpl  = func match {
       case Root(h, SNil) => mkRoot(h, mkGenSpine(args))

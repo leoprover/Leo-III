@@ -110,7 +110,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   // Queries on terms
   def ty = t
   val freeVars = Set[Term]()
-  val symbols = Set()
+  val symbols = Set[Int]()
   val boundVars = Set[Term](this)
   lazy val headSymbol = {
     import leo.datastructures.internal.terms.Reductions
