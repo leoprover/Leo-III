@@ -60,7 +60,7 @@ object TermIndex {
     }
 
     occurs_at.get(subterm) match {
-      case None => occurs_at += ((subterm, Map((position, term))))
+      case None => occurs_at += ((subterm, Map((position, Set(term)))))
       case Some(inner) => inner.get(position) match {
         case None => occurs_at += ((subterm, inner + ((position, Set(term)))))
         case Some(set) => occurs_at += ((subterm, inner + ((position, set + term))))
