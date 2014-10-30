@@ -1,41 +1,29 @@
 package leo.datastructures.internal.terms
 
+
 /**
- * Created by lex on 20.08.14.
+ * A `TermBank` is a special term `Factory` that caches previously
+ * created terms. Each term is only created once and reused for each
+ * invocation of factory methods.
+ * Unshared (local) terms can be created using the `local` factory.
+ *
+ * @author Alexander Steen
+ * @since 20.08.2014
  */
-
-object TermBank extends Function0[TermBank] {
-  private val _termbank: TermBank = ???
-
-  def apply(): TermBank = _termbank
-}
-
-
-trait TermBank {
-  import leo.datastructures.internal.Signature
+trait TermBank extends Factory {
   import leo.datastructures.internal.terms.{LOCAL, GLOBAL}
 
-//  def local: TermBank
+  /** Return the factory for local terms, that is, terms that are not globally shared */
+  def local: Factory
 
-  def mkAtom(id: Signature#Key): Term
-  def mkBound(t: Type, scope: Int): Term
-
-  def mkTermApp(func: Term, arg: Term): Term
-  def mkTermApp(func: Term, args: Seq[Term]): Term
-  def mkTermAbs(t: Type, body: Term): Term
-
-  def mkTypeApp(func: Term, arg: Type): Term
-  def mkTypeApp(func: Term, args: Seq[Type]): Term
-  def mkTypeAbs(body: Term): Term
-
-  def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term
-
-
+  /** Insert (unshared) terms to the term bank. Has no effect on already shared terms.
+    * Returns the syntactically equal but now shared term. */
   def insert(term: Term): Term = term.locality match {
     case LOCAL => insert0(term)
     case GLOBAL => term
   }
   protected[terms] def insert0(localTerm: Term): Term
 
+  /** Clear the term bank, i.e. delete all cached terms */
   def reset(): Unit
 }

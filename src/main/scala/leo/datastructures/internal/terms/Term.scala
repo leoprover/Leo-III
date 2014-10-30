@@ -113,6 +113,8 @@ case object PLAIN extends Indexing
 object Term extends TermBank {
   import leo.datastructures.internal.terms.spine.TermImpl
 
+  val local = TermImpl.local
+
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
 
@@ -125,26 +127,6 @@ object Term extends TermBank {
   def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
 
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
-
-  // Pretty operators
-
-  /** Creates a new term abstraction with parameter type `hd` and body `body` */
-  def \(hd: Type)(body: Term): Term = mkTermAbs(hd, body)
-  /** Creates a new term abstraction with parameter type `hd` and body `body`. Pretty variant of `\` */
-  def λ(hd: Type)(body: Term): Term = mkTermAbs(hd, body)
-  /** Creates a nested term abstraction of the form λ:hd.(λ:h1.(λ:h2.(...(λ:hn,body)..))) for hi ∈ hds */
-  def \(hd: Type, hds: Type*)(body: Term): Term = {
-    \(hd)(hds.foldRight(body)(\(_)(_)))
-  }
-  /** Creates a nested term abstraction of the form λ:hd.(λ:h1.(λ:h2.(...(λ:hn,body)..))) for hi ∈ hds */
-  def λ(hd: Type, hds: Type*)(body: Term): Term = {
-    \(hd)(hds.foldRight(body)(\(_)(_)))
-  }
-
-  /** Creates a new type abstracted term  */
-  def /\(body: Term): Term = mkTypeAbs(body)
-  /** Creates a new type abstracted term. Pretty variant of `/\` */
-  def Λ(body: Term): Term = mkTypeAbs(body)
 
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
