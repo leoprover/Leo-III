@@ -7,7 +7,10 @@ import scala.Some
 import scala.Some
 
 /**
- * Created by lex on 16.10.14.
+ * Term index data structure
+ *
+ * @author Alexander Steen
+ * @since 16.10.2014
  */
 object TermIndex {
 
@@ -84,3 +87,8 @@ object TermIndex {
     }
   }
 }
+
+
+abstract sealed class Indexing
+case object INDEXED extends Indexing
+case object PLAIN extends Indexing

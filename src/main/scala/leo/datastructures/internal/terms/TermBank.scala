@@ -11,8 +11,6 @@ package leo.datastructures.internal.terms
  * @since 20.08.2014
  */
 trait TermBank extends Factory {
-  import leo.datastructures.internal.terms.{LOCAL, GLOBAL}
-
   /** Return the factory for local terms, that is, terms that are not globally shared */
   def local: Factory
 
@@ -27,3 +25,7 @@ trait TermBank extends Factory {
   /** Clear the term bank, i.e. delete all cached terms */
   def reset(): Unit
 }
+
+abstract sealed class Locality
+case object GLOBAL extends Locality
+case object LOCAL extends Locality
