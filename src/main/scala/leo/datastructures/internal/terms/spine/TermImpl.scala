@@ -3,7 +3,7 @@ package leo.datastructures.internal.terms.spine
 import scala.language.implicitConversions
 
 import leo.datastructures.Pretty
-import leo.datastructures.internal.{Position, Signature}
+import leo.datastructures.internal.{Position, Signature, Indexing, INDEXED}
 import leo.datastructures.internal.terms._
 import leo.datastructures.internal.terms.BoundFront
 import leo.datastructures.internal.terms.TermFront
@@ -30,8 +30,6 @@ protected[terms] sealed abstract class TermImpl extends Term {
   def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
 //    this.normalize(subst, Subst.id)
 
-//  type TermClosure = (TermImpl, Subst)
-//  protected[internal] def preNormalize(subst: Subst): TermClosure
 
   /** Right-folding on terms. */
   def foldRight[A](symFunc: (Signature#Key) => A)(boundFunc: (Type, Int) => A)(absFunc: (Type, A) => A)(appFunc: (A, A) => A)(tAbsFunc: (A) => A)(tAppFunc: (A, Type) => A): A = ???
