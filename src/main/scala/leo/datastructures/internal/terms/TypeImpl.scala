@@ -69,16 +69,10 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
     case BoundTypeNode(i) if i == scope => by
     case _ => this
   }
-  def substitute(subst: Subst) = subst0(subst, scope)
-  private def subst0(subst: Subst, index: Int): Type = subst match {
-    case Shift(0) => this
-    case Shift(k) => BoundTypeNode(index+k)
-    case Cons(ft,s) if index == 1 => ft match {
-      case BoundFront(j) => BoundTypeNode(j)
-      case TypeFront(t)  => t
-      case _ => throw new IllegalArgumentException("type substitution contains terms")// this should never happen
-    }
-    case Cons(_, s) => subst0(s, index-1)
+  def substitute(subst: Subst) = subst.substBndIdx(scope) match {
+    case BoundFront(j) => BoundTypeNode(j)
+    case TypeFront(t)  => t
+    case _ => throw new IllegalArgumentException("type substitution contains terms")
   }
 
 

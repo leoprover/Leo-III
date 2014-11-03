@@ -233,11 +233,11 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     case SpineClos(sp2, (spTermSubst, spTypeSubst)) => Redex(body, sp2).normalize0(headTermSubst, headTypeSubst, spTermSubst o spineTermSubst, spTypeSubst o spineTypeSubst)
     case other => body match {
       case TermAbstr(t,b) => other match {
-        case App(s0, tail) => Redex(b, tail).normalize0(Cons(TermFront(TermClos(s0, (spineTermSubst, spineTypeSubst))),headTermSubst), headTypeSubst, spineTermSubst, spineTypeSubst)
+        case App(s0, tail) => Redex(b, tail).normalize0((TermFront(TermClos(s0, (spineTermSubst, spineTypeSubst))) +: headTermSubst), headTypeSubst, spineTermSubst, spineTypeSubst)
         case _ => throw new IllegalArgumentException("malformed expression")
       }
       case TypeAbstr(b)   => other match {
-        case TyApp(t, tail) => Redex(b, tail).normalize0(headTermSubst, Cons(TypeFront(t.substitute(spineTypeSubst)),headTypeSubst), spineTermSubst, spineTypeSubst)
+        case TyApp(t, tail) => Redex(b, tail).normalize0(headTermSubst, (TypeFront(t.substitute(spineTypeSubst)) +: headTypeSubst), spineTermSubst, spineTypeSubst)
         case _ => throw new IllegalArgumentException("malformed expression")
       }
       case Root(h,s) => Root(HeadClosure(h, (headTermSubst, headTypeSubst)), s.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize(Subst.id, Subst.id)
@@ -444,11 +444,7 @@ protected[terms] case class BoundIndex(typ: Type, scope: Int) extends Head {
   val ty = typ
   val scopeNumber = (-scope, typ.scopeNumber)
 
-  def substitute(s: Subst) = s match {
-    case Cons(ft, s) if scope == 1 => ft
-    case Cons(_, s)           => BoundFront(scope-1).substitute(s)
-    case Shift(k) => BoundFront(scope+k)
-  }
+  def substitute(s: Subst) = s.substBndIdx(scope)
 
   // Pretty printing
   override val pretty = s"$scope"
