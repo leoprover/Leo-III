@@ -1,12 +1,16 @@
 package leo.datastructures.internal.terms
 
 import leo.datastructures.Pretty
-import scala.annotation.tailrec
 
-
-// TODO: Normalisation on subst needed?
 /**
- * // TODO Doc
+ * Representation of substitution `s` that are basically
+ * linear lists of terms or types or shifts.
+ *
+ * @author Alexander Steen
+ * @since 06.08.2014
+ *
+ * @note Updated 03.11.2014: Implemented random-access substitutions, added documentation,
+ *                           added factory-like pattern for different substitution implementations.
  */
 sealed abstract class Subst extends Pretty {
   /** s.comp(s') = t
@@ -14,32 +18,60 @@ sealed abstract class Subst extends Pretty {
   def comp(other: Subst): Subst
   def o = comp(_)
 
+  /** Prepend `ft` to this substitution */
   def cons(ft: Front): Subst
+  /** Prepend `ft` to this substitution */
   def +:(ft: Front): Subst = this.cons(ft)
 
   /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
   def sink: Subst
 
+  /** Beta-normalize every term in this substitution */
   def normalize: Subst
 
+  /** Returns true iff the substitution is of the form ↑^k^ for some k*/
   def isShift: Boolean
+  /** Returns true iff the substitution is of form `a.s` for some front `a` and some substitution `s`*/
   def isConsd: Boolean = !isShift
 
-  // last shift
+  /** Returns value k for this substitution `this = a_1.a_2....a_n.↑^k`*/
   def shiftedBy: Int
 
+  /** Returns the length of the cons'd fronts, i.e. value `n` for `this = a_1.a_2...a_n.↑^k` */
   def length: Int
+  /** Drops the first n fronts of this substitution */
   def drop(n: Int): Subst
 
+  /** Returns the front that results from substitution de-Bruijn index `i` with the underlying substitution */
   def substBndIdx(i: Int): Front
+  /** Return all fronts as linear list */
   def fronts: Seq[Front]
 }
 
+/** Generic factory methods for substitutions. Current default implementation are
+  * `RASubst` substitutions which allow constant time access to fronts. */
+object Subst {
+  import leo.datastructures.internal.terms.{RASubst => SubstImpl}
 
-/////////////////////////test
+  val id: Subst    = SubstImpl.id
+  val shift: Subst = SubstImpl.shift
+  def shift(n: Int): Subst = SubstImpl.shift(n)
 
+  // legacy
+  //  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
+  //    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)
+  //    case a => Cons(a, onto)
+  //  }
+}
 
-class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
+/////////////////////////////////////////////////
+// Substitutions as random-access lists (vectors)
+// Are more involved than algebraic representations
+// but allow constant time access to fronts
+/////////////////////////////////////////////////
+
+/** Substitutions as constant-time accessible vectors */
+protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
   def normalize: Subst = new RASubst(shift, fts.map({_ match {
     case TermFront(t) => TermFront(t.betaNormalize)
@@ -81,34 +113,34 @@ class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 }
 
 
-//class MySubst(shift: Int) extends Subst with Vector[Front] {
-//
-//  def pretty = this.isEmpty match {
-//    case true => shift match {
-//      case 0 => "id"
-//      case k => s"↑$k"
-//    }
-//    case false => this.map(_.pretty).mkString("•") ++ s"↑$shift"
-//  }
-//
-//  def comp(other: Subst) = this.isEmpty match {
-//    case true => ??? // shift
-//    case false => ???  // cons
-//  }
-//
-//  lazy val normalize = this.map({_ match {
-//    case TermFront(t) => TermFront(t.betaNormalize)
-//    case a => a
-//  }})
-//}
+/** Factory methods for `RASubst`. */
+object RASubst {
+  val id: Subst    = new RASubst(0)
+  val shift: Subst = new RASubst(1)
+  def shift(n: Int): Subst = new RASubst(n)
+}
+
+
 
 /////////////////////////////////////////////////
-// Implementation of substitutions
+// Substitutions as lists
+// Are more straight-forward but suffer from
+// linear traversal of fronts
 /////////////////////////////////////////////////
 
+/** Substitutions as algebraic data types (lists). */
 abstract class AlgebraicSubst extends Subst {
   def sink: Subst = (this o Shift(1)).cons(BoundFront(1))
 }
+
+/** Factory methods for `AlgebraicSubst` */
+object AlgebraicSubst {
+  def id: Subst    = Shift(0)
+  def shift: Subst = shift(1)
+  def shift(n: Int): Subst = Shift(n)
+}
+
+// Implementation of substitutions as lists
 
 case class Shift(n: Int) extends AlgebraicSubst {
   def comp(other: Subst) = n match {
@@ -138,6 +170,7 @@ case class Shift(n: Int) extends AlgebraicSubst {
     case k => s"↑$k"
   }
 }
+
 
 case class Cons(ft: Front, subst: Subst) extends AlgebraicSubst {
   def comp(other: Subst) = other match {
@@ -172,23 +205,13 @@ case class Cons(ft: Front, subst: Subst) extends AlgebraicSubst {
 }
 
 
-object Subst {
-//  def id: Subst    = Shift(0)
-//  def shift: Subst = shift(1)
-//  def shift(n: Int): Subst = Shift(n)
 
-  val id: Subst    = new RASubst(0)
-  val shift: Subst = new RASubst(1)
-  def shift(n: Int): Subst = new RASubst(n)
+///////////////////////////////////////
+// Fronts
+////////////////////////////////////////
 
-//
-//  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
-//    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)
-//    case a => Cons(a, onto)
-//  }
-}
-
-
+/** Fronts are the elements of substitutions that can be cons'd to them.
+  * They may be either terms, types or bound variables (de-Bruijn indices). */
 sealed abstract class Front extends Pretty {
   def substitute(subst: Subst): Front
 }
