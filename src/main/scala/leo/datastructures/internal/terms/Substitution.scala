@@ -15,6 +15,7 @@ sealed abstract class Subst extends Pretty {
   def o = comp(_)
 
   def cons(ft: Front): Subst
+  def +:(ft: Front): Subst = this.cons(ft)
 
   /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
   def sink: Subst
@@ -30,54 +31,53 @@ sealed abstract class Subst extends Pretty {
   def length: Int
   def drop(n: Int): Subst
 
-  def frontAt(i: Int): Front
+  def substBndIdx(i: Int): Front
+  def fronts: Seq[Front]
 }
 
 
 /////////////////////////test
 
 
-class RASubst(shift: Int, fronts: Vector[Front] = Vector.empty) extends Subst {
+class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
-  def normalize: Subst = new RASubst(shift, fronts.map({_ match {
+  def normalize: Subst = new RASubst(shift, fts.map({_ match {
     case TermFront(t) => TermFront(t.betaNormalize)
     case a => a
   } }))
 
-  def comp(other: Subst): Subst = fronts.isEmpty match {
-    case true => shift match {
-      case 0 => other
-      case _ => other.isShift match {
-        case true => new RASubst(shift+other.shiftedBy)
-        case false => (shift - other.length) match {
-          case n if n >= 0 => new RASubst(shift-other.length+other.shiftedBy) // its a new shift
-          case n if n < 0 => other.drop(shift) // its a Cons with n dropped fronts
-        }
-      }
-    }
-    case false => other.isShift match {
-      case true if other.shiftedBy == 0 => this
-      case _ => new RASubst(shift, fronts.map(_.substitute(other))); ??? // TODO adjust front and merge subst, maybe merge with above code to a simpler block
+  def comp(other: Subst): Subst = other.isShift match {
+    case true if other.shiftedBy == 0 => this
+    case true if this.isShift => new RASubst(shift + other.shiftedBy)
+    case true => new RASubst(shift + other.shiftedBy, fts.map(_.substitute(other)))
+    case _ if this.isShift && this.shiftedBy == 0 => other
+    case _ => (shift - other.length) match {
+      case n if n >= 0 => new RASubst(n+other.shiftedBy, fts.map(_.substitute(other)))
+      case _ => new RASubst(other.shiftedBy, fts.map(_.substitute(other)) ++ other.fronts.drop(shift))
     }
   }
 
-  def cons(ft: Front): Subst = new RASubst(shift, ft +: fronts)
-  lazy val sink: Subst = (this o new RASubst(1)).cons(BoundFront(1))
+  def cons(ft: Front): Subst = new RASubst(shift, ft +: fts)
+  lazy val sink: Subst = BoundFront(1) +: (this o new RASubst(1))
 
-  lazy val pretty: String = fronts.isEmpty match {
+  lazy val pretty: String = fts.isEmpty match {
     case true => shift match {
       case 0 => "id"
       case k => s"↑$k"
     }
-    case false => fronts.map(_.pretty).mkString("•") ++ s"↑$shift"
+    case false => fts.map(_.pretty).mkString("•") ++ s"↑$shift"
   }
 
-  lazy val isShift = fronts.isEmpty
+  lazy val isShift = fts.isEmpty
   lazy val shiftedBy = shift
-  lazy val length = fronts.length
-  def drop(n: Int): Subst = new RASubst(shift, fronts.drop(n))
+  lazy val length = fts.length
+  def drop(n: Int): Subst = new RASubst(shift, fts.drop(n))
 
-  def frontAt(i: Int) = fronts(i)
+  def substBndIdx(i: Int) = fts.length >= i match {
+    case true => fts(i-1)
+    case false => BoundFront(i+shift)
+  }
+  lazy val fronts = fts
 }
 
 
@@ -124,6 +124,14 @@ case class Shift(n: Int) extends AlgebraicSubst {
 
   val normalize = this
 
+  val fronts = Seq.empty
+  def substBndIdx(i: Int) = BoundFront(i + n)
+  def drop(n: Int) = throw new IllegalArgumentException("Shift substitution does not contain any fronts to drop")
+  val length = 0
+
+  val shiftedBy = n
+  val isShift = true
+
   /** Pretty */
   override def pretty = n match {
     case 0 => "id"
@@ -145,15 +153,34 @@ case class Cons(ft: Front, subst: Subst) extends AlgebraicSubst {
     case TypeFront(_) => Cons(ft, subst.normalize)
   }
 
+  lazy val fronts = ft +: subst.fronts
+  def substBndIdx(i: Int) = i match {
+    case 1 => ft
+    case _ => subst.substBndIdx(i-1)
+  }
+  def drop(n: Int) = n match {
+    case 0 => this
+    case _ => subst.drop(n-1)
+  }
+  lazy val length = 1 + subst.length
+
+  lazy val shiftedBy = subst.shiftedBy
+  val isShift = false
+
   /** Pretty */
   override def pretty = s"${ft.pretty}•${subst.pretty}"
 }
 
 
 object Subst {
-  def id: Subst    = Shift(0)
-  def shift: Subst = shift(1)
-  def shift(n: Int): Subst = Shift(n)
+//  def id: Subst    = Shift(0)
+//  def shift: Subst = shift(1)
+//  def shift(n: Int): Subst = Shift(n)
+
+  val id: Subst    = new RASubst(0)
+  val shift: Subst = new RASubst(1)
+  def shift(n: Int): Subst = new RASubst(n)
+
 //
 //  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
 //    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)
@@ -166,14 +193,7 @@ sealed abstract class Front extends Pretty {
   def substitute(subst: Subst): Front
 }
 case class BoundFront(n: Int) extends Front {
-  def substitute(subst: Subst) = substitute0(n, subst)
-
-  @tailrec
-  private def substitute0(scope: Int, subst: Subst): Front = subst match {
-    case Cons(ft, s) if scope == 1 => ft
-    case Cons(_, s) => substitute0(scope-1, s)
-    case Shift(k) => BoundFront(scope+k)
-  }
+  def substitute(subst: Subst) = subst.substBndIdx(n)
 
   /** Pretty */
   override def pretty = s"$n"
