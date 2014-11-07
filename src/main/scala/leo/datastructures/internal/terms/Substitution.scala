@@ -73,7 +73,7 @@ object Subst {
 /** Substitutions as constant-time accessible vectors */
 protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
-  def normalize: Subst = new RASubst(shift, fts.map({_ match {
+  lazy val normalize: Subst = new RASubst(shift, fts.map({_ match {
     case TermFront(t) => TermFront(t.betaNormalize)
     case a => a
   } }))
