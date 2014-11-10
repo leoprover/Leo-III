@@ -1,12 +1,16 @@
 package leo.datastructures.internal.terms
 
 import leo.datastructures.Pretty
-import scala.annotation.tailrec
 
-
-// TODO: Normalisation on subst needed?
 /**
- * // TODO Doc
+ * Representation of substitution `s` that are basically
+ * linear lists of terms or types or shifts.
+ *
+ * @author Alexander Steen
+ * @since 06.08.2014
+ *
+ * @note Updated 03.11.2014: Implemented random-access substitutions, added documentation,
+ *                           added factory-like pattern for different substitution implementations.
  */
 sealed abstract class Subst extends Pretty {
   /** s.comp(s') = t
@@ -14,20 +18,131 @@ sealed abstract class Subst extends Pretty {
   def comp(other: Subst): Subst
   def o = comp(_)
 
-  /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
-  def sink: Subst = Cons(BoundFront(1),this o Shift(1))
+  /** Prepend `ft` to this substitution */
+  def cons(ft: Front): Subst
+  /** Prepend `ft` to this substitution */
+  def +:(ft: Front): Subst = this.cons(ft)
 
+  /** Sink substitution inside lambda abstraction, i.e. create 1.s o ↑*/
+  def sink: Subst
+
+  /** Beta-normalize every term in this substitution */
   def normalize: Subst
+
+  /** Returns true iff the substitution is of the form ↑^k^ for some k*/
+  def isShift: Boolean
+  /** Returns true iff the substitution is of form `a.s` for some front `a` and some substitution `s`*/
+  def isConsd: Boolean = !isShift
+
+  /** Returns value k for this substitution `this = a_1.a_2....a_n.↑^k`*/
+  def shiftedBy: Int
+
+  /** Returns the length of the cons'd fronts, i.e. value `n` for `this = a_1.a_2...a_n.↑^k` */
+  def length: Int
+  /** Drops the first n fronts of this substitution */
+  def drop(n: Int): Subst
+
+  /** Returns the front that results from substitution de-Bruijn index `i` with the underlying substitution */
+  def substBndIdx(i: Int): Front
+  /** Return all fronts as linear list */
+  def fronts: Seq[Front]
+}
+
+/** Generic factory methods for substitutions. Current default implementation are
+  * `RASubst` substitutions which allow constant time access to fronts. */
+object Subst {
+  import leo.datastructures.internal.terms.{RASubst => SubstImpl}
+
+  val id: Subst    = SubstImpl.id
+  val shift: Subst = SubstImpl.shift
+  def shift(n: Int): Subst = SubstImpl.shift(n)
+
+  // legacy
+  //  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
+  //    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)
+  //    case a => Cons(a, onto)
+  //  }
+}
+
+/////////////////////////////////////////////////
+// Substitutions as random-access lists (vectors)
+// Are more involved than algebraic representations
+// but allow constant time access to fronts
+/////////////////////////////////////////////////
+
+/** Substitutions as constant-time accessible vectors */
+protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
+
+  lazy val normalize: Subst = new RASubst(shift, fts.map({_ match {
+    case TermFront(t) => TermFront(t.betaNormalize)
+    case a => a
+  } }))
+
+  def comp(other: Subst): Subst = other.isShift match {
+    case true if other.shiftedBy == 0 => this
+    case true if this.isShift => new RASubst(shift + other.shiftedBy)
+    case true => new RASubst(shift + other.shiftedBy, fts.map(_.substitute(other)))
+    case _ if this.isShift && this.shiftedBy == 0 => other
+    case _ => (shift - other.length) match {
+      case n if n >= 0 => new RASubst(n+other.shiftedBy, fts.map(_.substitute(other)))
+      case _ => new RASubst(other.shiftedBy, fts.map(_.substitute(other)) ++ other.fronts.drop(shift))
+    }
+  }
+
+  def cons(ft: Front): Subst = new RASubst(shift, ft +: fts)
+  lazy val sink: Subst = BoundFront(1) +: (this o new RASubst(1))
+
+  lazy val pretty: String = fts.isEmpty match {
+    case true => shift match {
+      case 0 => "id"
+      case k => s"↑$k"
+    }
+    case false => fts.map(_.pretty).mkString("•") ++ s"↑$shift"
+  }
+
+  lazy val isShift = fts.isEmpty
+  lazy val shiftedBy = shift
+  lazy val length = fts.length
+  def drop(n: Int): Subst = new RASubst(shift, fts.drop(n))
+
+  def substBndIdx(i: Int) = fts.length >= i match {
+    case true => fts(i-1)
+    case false => BoundFront(i+shift)
+  }
+  lazy val fronts = fts
+}
+
+
+/** Factory methods for `RASubst`. */
+object RASubst {
+  val id: Subst    = new RASubst(0)
+  val shift: Subst = new RASubst(1)
+  def shift(n: Int): Subst = new RASubst(n)
 }
 
 
 
-
 /////////////////////////////////////////////////
-// Implementation of substitutions
+// Substitutions as lists
+// Are more straight-forward but suffer from
+// linear traversal of fronts
 /////////////////////////////////////////////////
 
-case class Shift(n: Int) extends Subst {
+/** Substitutions as algebraic data types (lists). */
+abstract class AlgebraicSubst extends Subst {
+  def sink: Subst = (this o Shift(1)).cons(BoundFront(1))
+}
+
+/** Factory methods for `AlgebraicSubst` */
+object AlgebraicSubst {
+  def id: Subst    = Shift(0)
+  def shift: Subst = shift(1)
+  def shift(n: Int): Subst = Shift(n)
+}
+
+// Implementation of substitutions as lists
+
+case class Shift(n: Int) extends AlgebraicSubst {
   def comp(other: Subst) = n match {
     case 0 => other
     case _ => other match {
@@ -37,7 +152,17 @@ case class Shift(n: Int) extends Subst {
     }
   }
 
+  def cons(ft: Front) = Cons(ft, this)
+
   val normalize = this
+
+  val fronts = Seq.empty
+  def substBndIdx(i: Int) = BoundFront(i + n)
+  def drop(n: Int) = throw new IllegalArgumentException("Shift substitution does not contain any fronts to drop")
+  val length = 0
+
+  val shiftedBy = n
+  val isShift = true
 
   /** Pretty */
   override def pretty = n match {
@@ -45,11 +170,15 @@ case class Shift(n: Int) extends Subst {
     case k => s"↑$k"
   }
 }
-case class Cons(ft: Front, subst: Subst) extends Subst {
+
+
+case class Cons(ft: Front, subst: Subst) extends AlgebraicSubst {
   def comp(other: Subst) = other match {
     case Shift(0) => this
     case s => Cons(ft.substitute(s), subst.comp(s))
   }
+
+  def cons(ft: Front) = Cons(ft, this)
 
   lazy val normalize = ft match {
     case BoundFront(_) => Cons(ft, subst.normalize)
@@ -57,30 +186,37 @@ case class Cons(ft: Front, subst: Subst) extends Subst {
     case TypeFront(_) => Cons(ft, subst.normalize)
   }
 
+  lazy val fronts = ft +: subst.fronts
+  def substBndIdx(i: Int) = i match {
+    case 1 => ft
+    case _ => subst.substBndIdx(i-1)
+  }
+  def drop(n: Int) = n match {
+    case 0 => this
+    case _ => subst.drop(n-1)
+  }
+  lazy val length = 1 + subst.length
+
+  lazy val shiftedBy = subst.shiftedBy
+  val isShift = false
+
   /** Pretty */
   override def pretty = s"${ft.pretty}•${subst.pretty}"
 }
 
 
-object Subst {
-  def id: Subst    = Shift(0)
-  def shift: Subst = shift(1)
-  def shift(n: Int): Subst = Shift(n)
-}
 
+///////////////////////////////////////
+// Fronts
+////////////////////////////////////////
 
+/** Fronts are the elements of substitutions that can be cons'd to them.
+  * They may be either terms, types or bound variables (de-Bruijn indices). */
 sealed abstract class Front extends Pretty {
   def substitute(subst: Subst): Front
 }
 case class BoundFront(n: Int) extends Front {
-  def substitute(subst: Subst) = substitute0(n, subst)
-
-  @tailrec
-  private def substitute0(scope: Int, subst: Subst): Front = subst match {
-    case Cons(ft, s) if scope == 1 => ft
-    case Cons(_, s) => substitute0(scope-1, s)
-    case Shift(k) => BoundFront(scope+k)
-  }
+  def substitute(subst: Subst) = subst.substBndIdx(n)
 
   /** Pretty */
   override def pretty = s"$n"

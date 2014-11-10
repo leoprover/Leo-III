@@ -3,7 +3,7 @@ package leo.datastructures.internal.terms.spine
 import scala.language.implicitConversions
 
 import leo.datastructures.Pretty
-import leo.datastructures.internal.Signature
+import leo.datastructures.internal.{Position, Signature, Indexing, INDEXED}
 import leo.datastructures.internal.terms._
 import leo.datastructures.internal.terms.BoundFront
 import leo.datastructures.internal.terms.TermFront
@@ -23,12 +23,13 @@ import scala.annotation.tailrec
  */
 protected[terms] sealed abstract class TermImpl extends Term {
 
-  lazy val betaNormalize: Term = normalize(Subst.id, Subst.id)
-  def closure(subst: Subst) = //TermClos(this, (subst, Subst.id))
-    this.normalize(subst, Subst.id)
+  lazy val betaNormalize: Term = {val o = normalize(Subst.id, Subst.id)
+//                                  o._indexing = INDEXED
+                                  o
+                                 }
+  def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
+//    this.normalize(subst, Subst.id)
 
-//  type TermClosure = (TermImpl, Subst)
-//  protected[internal] def preNormalize(subst: Subst): TermClosure
 
   /** Right-folding on terms. */
   def foldRight[A](symFunc: (Signature#Key) => A)(boundFunc: (Type, Int) => A)(absFunc: (Type, A) => A)(appFunc: (A, A) => A)(tAbsFunc: (A) => A)(tAppFunc: (A, Type) => A): A = ???
@@ -92,11 +93,22 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case BoundIndex(_,_) => args.freeVars
     case _             => args.freeVars + hd
   }
+  lazy val symbols=  hd match {
+    case BoundIndex(_,_) => args.symbols
+    case Atom(key)             => args.symbols + key
+  }
   lazy val boundVars = hd match {
     case BoundIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
-  lazy val headSymbol = Root(hd, SNil)
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    Root(hd, SNil)
+  }
+  lazy val occurrences = Map((headToTerm(hd), Set(Position.root.headPos))) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
+  val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
+  lazy val size = 2 + args.size
 
   // Other operations
   lazy val typeCheck = typeCheck0(hd.ty, args)
@@ -107,28 +119,45 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
     case _ => true // other cases should not appear
   }
 
+  def instantiateWith(subst: Subst) = ???
+
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
     val termSubstNF = termSubst //.normalize
     val typeSubstNF = typeSubst //.normalize
-    hd match {
-      case h@Atom(id) => mkRoot(h, args.normalize(termSubstNF, typeSubstNF))
+
+    val erg = hd match {
+      case h@Atom(id) => Root(h, normalizeSpine(args,termSubstNF, typeSubstNF))
       case b@BoundIndex(t, scope) => b.substitute(termSubstNF) match {
-        case BoundFront(j) => mkRoot(BoundIndex(t.substitute(typeSubstNF), j), args.normalize(termSubstNF, typeSubstNF))
-        case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, Subst.id, termSubstNF, typeSubstNF)
+        case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubstNF), j), normalizeSpine(args,termSubstNF, typeSubstNF))
+        case TermFront(t) => Redex(t, args).normalize0(Subst.id,Subst.id, termSubstNF, typeSubstNF)
         case _ => throw new IllegalArgumentException("type front found where it was not expected")
       }
       case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
-        case h@Atom(id) => mkRoot(h, args.normalize(termSubst, typeSubst))
+        case h@Atom(id) => Root(h, normalizeSpine(args,termSubst, typeSubst))
         case b@BoundIndex(t, scope) => b.substitute(termSubst2.comp(termSubst)) match {
-          case BoundFront(j) => mkRoot(BoundIndex(t, j), args.normalize(termSubst, typeSubst))
-          case TermFront(t) => mkRedex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
+          case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubst2 o typeSubst), j), args.normalize(termSubst, typeSubst))
+          case TermFront(t) => Redex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
           case _ => throw new IllegalArgumentException("type front found where it was not expected")
         }
-        case HeadClosure(h3, (termSubst3, typeSubst3)) => mkRoot(HeadClosure(h3, (termSubst3 o termSubst2, typeSubst3 o typeSubst2)), args).normalize(termSubst, typeSubst)
+        case HeadClosure(h3, (termSubst3, typeSubst3)) => Root(HeadClosure(h3, (termSubst3 o termSubst2, typeSubst3 o typeSubst2)), args).normalize(termSubst, typeSubst)
       }
     }
+    erg._indexing = INDEXED
+    erg
   }
+
+//  private def normalizeSpine(sp: Spine, termSubst: Subst, typeSubst: Subst): Spine = _indexing match {
+//    case PLAIN => sp.normalize(termSubst, typeSubst)
+//    case INDEXED => sp.scopeNumber match {
+//      case (a,b) if a >= 0 && b >= 0 => sp
+//      case _ => sp.normalize(termSubst, typeSubst)
+//    }
+//  }
+
+  private def normalizeSpine(sp: Spine, termSubst: Subst, typeSubst: Subst): Spine = sp.normalize(termSubst, typeSubst)
 
   /** Pretty */
   lazy val pretty = s"${hd.pretty} ⋅ (${args.pretty})"
@@ -168,9 +197,17 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
-  val freeVars = body.freeVars ++ args.freeVars
-  val boundVars = body.boundVars ++ args.boundVars
-  lazy val headSymbol = body.headSymbol
+  lazy val freeVars = body.freeVars ++ args.freeVars
+  lazy val boundVars = body.boundVars ++ args.boundVars
+  lazy val symbols = body.symbols ++ args.symbols
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    body.headSymbol
+  }
+  val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
+  lazy val size = 1 + body.size + args.size
+  lazy val occurrences = body.occurrences.mapValues(_.map(_.prependHeadPos)) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
 
   // Other operations
   lazy val typeCheck = typeCheck0(body.ty, args)
@@ -182,24 +219,30 @@ protected[terms] case class Redex(body: Term, args: Spine) extends TermImpl {
   }
 
   import leo.datastructures.internal.terms.{Cons, TermFront}
-  def normalize(termSubst: Subst, typeSubst: Subst) = normalize0(termSubst, typeSubst, termSubst, typeSubst)
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    val erg = normalize0(termSubst, typeSubst, termSubst, typeSubst)
+    erg._indexing = INDEXED
+    erg
+  }
 
   @tailrec
   protected[spine] final def normalize0(headTermSubst: Subst, headTypeSubst: Subst, spineTermSubst: Subst, spineTypeSubst: Subst): Term = args match {
     case SNil => body.normalize(headTermSubst, headTypeSubst)
-    case SpineClos(sp2, (spTermSubst, spTypeSubst)) => mkRedex(body, sp2).normalize0(headTermSubst, headTypeSubst, spTermSubst o spineTermSubst, spTypeSubst o spineTypeSubst)
+    case SpineClos(sp2, (spTermSubst, spTypeSubst)) => Redex(body, sp2).normalize0(headTermSubst, headTypeSubst, spTermSubst o spineTermSubst, spTypeSubst o spineTypeSubst)
     case other => body match {
       case TermAbstr(t,b) => other match {
-        case App(s0, tail) => mkRedex(b, tail).normalize0(Cons(TermFront(s0).substitute(spineTermSubst),headTermSubst), headTypeSubst, spineTermSubst, spineTypeSubst)
+        case App(s0, tail) => Redex(b, tail).normalize0((TermFront(TermClos(s0, (spineTermSubst, spineTypeSubst))) +: headTermSubst), headTypeSubst, spineTermSubst, spineTypeSubst)
         case _ => throw new IllegalArgumentException("malformed expression")
       }
       case TypeAbstr(b)   => other match {
-        case TyApp(t, tail) => mkRedex(b, tail).normalize0(headTermSubst, Cons(TypeFront(t.substitute(spineTypeSubst)),headTypeSubst), spineTermSubst, spineTypeSubst)
+        case TyApp(t, tail) => Redex(b, tail).normalize0(headTermSubst, (TypeFront(t.substitute(spineTypeSubst)) +: headTypeSubst), spineTermSubst, spineTypeSubst)
         case _ => throw new IllegalArgumentException("malformed expression")
       }
-      case Root(h,s) => mkRoot(HeadClosure(h, (headTermSubst, headTypeSubst)), s.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize(Subst.id, Subst.id)
-      case Redex(b,args2) => mkRedex(b, args2.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize0(headTermSubst, headTypeSubst, Subst.id, Subst.id)
-      case TermClos(t, (termSubst2, typeSubst2)) => mkRedex(t, args).normalize0(termSubst2 o headTermSubst, typeSubst2 o headTypeSubst, spineTermSubst, spineTypeSubst)
+      case Root(h,s) => Root(HeadClosure(h, (headTermSubst, headTypeSubst)), s.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize(Subst.id, Subst.id)
+      case Redex(b,args2) => Redex(b, args2.merge((headTermSubst, headTypeSubst),args,(spineTermSubst, spineTypeSubst))).normalize0(headTermSubst, headTypeSubst, Subst.id, Subst.id)
+      case TermClos(t, (termSubst2, typeSubst2)) => Redex(t, args).normalize0(termSubst2 o headTermSubst, typeSubst2 o headTypeSubst, spineTermSubst, spineTypeSubst)
     }
   }
 
@@ -231,12 +274,33 @@ protected[terms] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   lazy val ty = typ ->: body.ty
   val freeVars = body.freeVars
   val boundVars = body.boundVars
-  lazy val headSymbol = body.headSymbol
+  lazy val symbols = body.symbols
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    body.headSymbol
+  }
+  val scopeNumber = (body.scopeNumber._1 + 1,Math.min(typ.scopeNumber,body.scopeNumber._2))
+  lazy val size = 1 + body.size
+  lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
 
   // Other operations
   lazy val typeCheck = body.typeCheck
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = mkTermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    val erg = _indexing match {
+      case _ => TermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
+//      case INDEXED => scopeNumber match {
+//        case (a,b) if a >= 0 && b >= 0 =>  TermAbstr(typ, body)
+//        case (a,b) if a >= 0 && body.scopeNumber._2 >= 0 =>  TermAbstr(typ.substitute(typeSubst), body) // own type has loose binders
+//        case _ =>  TermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
+//      }
+    }
+    erg._indexing = INDEXED
+    erg
+  }
 
 
   /** Pretty */
@@ -266,12 +330,32 @@ protected[terms] case class TypeAbstr(body: Term) extends TermImpl {
   lazy val ty = ∀(body.ty)
   val freeVars = body.freeVars
   val boundVars = body.boundVars
-  lazy val headSymbol = body.headSymbol
+  lazy val symbols = body.symbols
+  lazy val headSymbol = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    body.headSymbol
+  }
+  val scopeNumber = (body.scopeNumber._1, body.scopeNumber._2+1)
+  lazy val size = 1 + body.size
+  lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
 
   // Other operations
   lazy val typeCheck = body.typeCheck
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = mkTypeAbstr(body.normalize(termSubst, typeSubst.sink))
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    val erg = _indexing match {
+      case _ => TypeAbstr(body.normalize(termSubst, typeSubst.sink))
+//      case INDEXED => scopeNumber match {
+//        case (a,b) if a >= 0 && b >= 0 => this
+//        case _ => TypeAbstr(body.normalize(termSubst, typeSubst.sink))
+//      }
+    }
+    erg._indexing = INDEXED
+    erg
+  }
 
   /** Pretty */
   lazy val pretty = s"Λ. (${body.pretty})"
@@ -299,7 +383,10 @@ protected[spine] case class TermClos(term: Term, σ: (Subst, Subst)) extends Ter
   lazy val ty = term.ty
   lazy val freeVars = Set[Term]()
   lazy val boundVars = Set[Term]()
+  lazy val symbols = Set[Signature#Key]()
   lazy val headSymbol = ???
+  val scopeNumber = term.scopeNumber
+  val occurrences = Map[Term, Set[Position]]()
 //    term.headSymbol match {
 //    case Root(head, SNil) => head match {
 //      case b@BoundIndex(typ, scope) => b.substitute(σ) match {
@@ -311,13 +398,18 @@ protected[spine] case class TermClos(term: Term, σ: (Subst, Subst)) extends Ter
 //    }
 //    case _ => throw new UnknownError("head symbol not a root")
 //  }
+  lazy val size = term.size // this might not be senseful, but will never occur when used properly
 
   // Other operations
   lazy val typeCheck = ???
 
 //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = term.normalize(σ._1 o termSubst, σ._2 o typeSubst)
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    term.normalize(σ._1 o termSubst, σ._2 o typeSubst)
+  }
 
   /** Pretty */
   def pretty = s"${term.pretty}[${σ._1.pretty}/${σ._2.pretty}]"
@@ -336,6 +428,7 @@ protected[terms] sealed abstract class Head extends Pretty {
 
   // Queries
   def ty: Type
+  def scopeNumber: (Int, Int)
 }
 
 
@@ -349,12 +442,9 @@ protected[terms] case class BoundIndex(typ: Type, scope: Int) extends Head {
 
   // Queries
   val ty = typ
+  val scopeNumber = (-scope, typ.scopeNumber)
 
-  def substitute(s: Subst) = s match {
-    case Cons(ft, s) if scope == 1 => ft
-    case Cons(_, s)           => BoundFront(scope-1).substitute(s)
-    case Shift(k) => BoundFront(scope+k)
-  }
+  def substitute(s: Subst) = s.substBndIdx(scope)
 
   // Pretty printing
   override val pretty = s"$scope"
@@ -380,6 +470,7 @@ protected[terms] case class Atom(id: Signature#Key) extends Head {
 
   // Queries
   lazy val ty = meta._ty
+  val scopeNumber = (0,0)
 
   // Pretty printing
   override lazy val pretty = s"${meta.name}"
@@ -394,6 +485,7 @@ protected[terms] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends
 
   // Queries
   lazy val ty = ???
+  lazy val scopeNumber = hd.scopeNumber
 
   // Pretty printing
   override def pretty = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
@@ -421,7 +513,12 @@ protected[terms] sealed abstract class Spine extends Pretty {
   def length: Int
   def freeVars: Set[Term]
   def boundVars: Set[Term]
+  def symbols: Set[Signature#Key]
   def asTerms: Seq[Either[Term, Type]]
+  def scopeNumber: (Int, Int)
+  def size: Int
+  lazy val occurrences: Map[Term, Set[Position]] = occurrences0(1)
+  def occurrences0(pos: Int): Map[Term, Set[Position]]
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)): Spine
@@ -435,7 +532,11 @@ protected[terms] sealed abstract class Spine extends Pretty {
 protected[terms] case object SNil extends Spine {
   import TermImpl.{mkSpineNil => nil}
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = nil
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    nil
+  }
 
   // Handling def. expansion
   val δ_expandable = false
@@ -445,8 +546,12 @@ protected[terms] case object SNil extends Spine {
   // Queries
   val freeVars = Set[Term]()
   val boundVars = Set[Term]()
+  val symbols = Set[Signature#Key]()
   val length = 0
   val asTerms = Seq()
+  val scopeNumber = (0, 0)
+  val size = 1
+  def occurrences0(pos: Int) = Map()
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = SpineClos(sp, spSubst)
@@ -459,7 +564,17 @@ protected[terms] case object SNil extends Spine {
 protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = cons(Left(hd.normalize((termSubst),(typeSubst))), tail.normalize(termSubst, typeSubst))
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    hd.indexing match {
+      case _ => cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
+//      case INDEXED => hd.scopeNumber match {
+//        case (a, b) if a >= 0 && b >= 0 => cons(Left(hd), tail.normalize(termSubst, typeSubst))
+//        case _ => cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
+//      }
+    }
+  }
 
   // Handling def. expansion
   lazy val δ_expandable = hd.δ_expandable || tail.δ_expandable
@@ -470,8 +585,13 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
   // Queries
   val freeVars = hd.freeVars ++ tail.freeVars
   val boundVars = hd.boundVars ++ tail.boundVars
+  val symbols = hd.symbols ++ tail.symbols
   val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
+  lazy val scopeNumber = (Math.min(hd.scopeNumber._1, tail.scopeNumber._1),Math.min(hd.scopeNumber._2, tail.scopeNumber._2))
+  lazy val size = 1+ hd.size + tail.size
+  def occurrences0(pos: Int) = hd.occurrences.mapValues(_.map(_.preprendArgPos(pos))) ++ tail.occurrences0(pos+1)
+
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = App(TermClos(hd, subst), tail.merge(subst, sp, spSubst))
@@ -484,7 +604,11 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
 protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = cons(Right(hd), tail.normalize(termSubst, typeSubst))
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    cons(Right(hd), tail.normalize(termSubst, typeSubst))
+  }
 
   // Handling def. expansion
   val δ_expandable = tail.δ_expandable
@@ -494,11 +618,15 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Queries
   val freeVars = tail.freeVars
   val boundVars = tail.boundVars
+  val symbols = tail.symbols
   val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
+  lazy val scopeNumber = (tail.scopeNumber._1,Math.min(hd.scopeNumber, tail.scopeNumber._2))
+  lazy val size = 1 + tail.size
+  def occurrences0(pos: Int) = tail.occurrences0(pos+1)
 
   // Misc
-  def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = TyApp(hd.closure(subst._2), tail.merge(subst, sp, spSubst))
+  def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = TyApp(hd.substitute(subst._2), tail.merge(subst, sp, spSubst))
   def ++(sp: Spine) = cons(Right(hd), tail ++ sp)
 
   // Pretty printing
@@ -509,7 +637,11 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
 protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = sp.normalize(s._1 o termSubst, s._2 o typeSubst)
+  def normalize(termSubst: Subst, typeSubst: Subst) = {
+    import leo.datastructures.internal.terms.Reductions
+    Reductions.tick()
+    sp.normalize(s._1 o termSubst, s._2 o typeSubst)
+  }
 
   // Handling def. expansion
   lazy val δ_expandable = false // TODO
@@ -518,9 +650,13 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
 
   // Queries
   val freeVars = Set[Term]()
+  val symbols = Set[Signature#Key]()
   val boundVars= Set[Term]() // TODO: implement
   lazy val length = sp.length
   lazy val asTerms = ???
+  lazy val scopeNumber = sp.scopeNumber
+  lazy val size = sp.size // todo: properly implement
+  def occurrences0(pos: Int) = Map.empty
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = sp.merge((s._1 o subst._1,s._2 o subst._2),sp, spSubst)
@@ -534,12 +670,13 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
 /**
  * //TODO Documentation
  */
-object TermImpl {
+object TermImpl extends TermBank {
 
   /////////////////////////////////////////////
   // Hash tables for DAG representation of perfectly
   // shared terms
   /////////////////////////////////////////////
+  protected[TermImpl] var terms: Set[TermImpl] = Set.empty
 
   // primitive symbols (heads)
   protected[TermImpl] var boundAtoms: Map[Type, Map[Int, Head]] = Map.empty
@@ -559,71 +696,71 @@ object TermImpl {
   /////////////////////////////////////////////
 
   // primitive symbols (heads)
-  protected[terms] def mkAtom0(id: Signature#Key): Head = Atom(id)
-//    symbolAtoms.get(id) match {
-//      case Some(hd) => hd
-//      case None     => val hd = Atom(id)
-//                       symbolAtoms += ((id, hd))
-//                       hd
-//  }
+  protected[terms] def mkAtom0(id: Signature#Key): Head = // Atom(id)
+    symbolAtoms.get(id) match {
+      case Some(hd) => hd
+      case None     => val hd = Atom(id)
+                       symbolAtoms += ((id, hd))
+                       hd
+  }
 
-  protected[terms] def mkBoundAtom(t: Type, scope: Int): Head = BoundIndex(t,scope)
-//    boundAtoms.get(t) match {
-//    case Some(inner) => inner.get(scope) match {
-//      case Some(hd)   => hd
-//      case None       => val hd = BoundIndex(t, scope)
-//                         boundAtoms += ((t,inner.+((scope, hd))))
-//                         hd
-//    }
-//    case None        => val hd = BoundIndex(t, scope)
-//                        boundAtoms += ((t, Map((scope, hd))))
-//                        hd
-//  }
+  protected[terms] def mkBoundAtom(t: Type, scope: Int): Head = //BoundIndex(t,scope)
+    boundAtoms.get(t) match {
+    case Some(inner) => inner.get(scope) match {
+      case Some(hd)   => hd
+      case None       => val hd = BoundIndex(t, scope)
+                         boundAtoms += ((t,inner.+((scope, hd))))
+                         hd
+    }
+    case None        => val hd = BoundIndex(t, scope)
+                        boundAtoms += ((t, Map((scope, hd))))
+                        hd
+  }
 
   // composite terms
-  protected[terms] def mkRoot(hd: Head, args: Spine): TermImpl = Root(hd, args)
-//    roots.get(hd) match {
-//    case Some(inner) => inner.get(args) match {
-//      case Some(root)  => root
-//      case None        => val root = Root(hd, args)
-//                          roots += ((hd,inner.+((args, root))))
-//                          root
-//    }
-//    case None        => val root = Root(hd, args)
-//                        roots += ((hd, Map((args, root))))
-//                        root
-//  }
-  protected[terms] def mkRedex(left: Term, args: Spine): Redex = Redex(left, args)
-//  redexes.get(left) match {
-//    case Some(inner) => inner.get(args) match {
-//      case Some(redex) => redex
-//      case None        => val redex = Redex(left, args)
-//                          redexes += ((left,inner.+((args, redex))))
-//                          redex
-//    }
-//    case None        => val redex = Redex(left, args)
-//                        redexes += ((left, Map((args, redex))))
-//                        redex
-//  }
-  protected[terms] def mkTermAbstr(t: Type, body: Term): TermImpl = TermAbstr(t, body)
-//  termAbstractions.get(body) match {
-//    case Some(inner) => inner.get(t) match {
-//      case Some(abs)   => abs
-//      case None        => val abs = TermAbstr(t, body)
-//                          termAbstractions += ((body,inner.+((t, abs))))
-//                          abs
-//    }
-//    case None        => val abs = TermAbstr(t, body)
-//                        termAbstractions += ((body, Map((t, abs))))
-//                        abs
-//  }
-  protected[terms] def mkTypeAbstr(body: Term): TermImpl = TypeAbstr(body)
-//  typeAbstractions.get(body) match {
-//    case Some(abs) => abs
-//    case None      => val abs = TypeAbstr(body)
-//                      typeAbstractions += ((body, abs))
-//                      abs
-//  }
+  protected[terms] def mkRoot(hd: Head, args: Spine): TermImpl = //Root(hd, args)
+    roots.get(hd) match {
+    case Some(inner) => inner.get(args) match {
+      case Some(root)  => root
+      case None        => val root = Root(hd, args)
+                          roots += ((hd,inner.+((args, root))))
+                          root
+    }
+    case None        => val root = Root(hd, args)
+                        roots += ((hd, Map((args, root))))
+                        root
+  }
+  protected[terms] def mkRedex(left: Term, args: Spine): Redex = //Redex(left, args)
+  redexes.get(left) match {
+    case Some(inner) => inner.get(args) match {
+      case Some(redex) => redex
+      case None        => val redex = Redex(left, args)
+                          redexes += ((left,inner.+((args, redex))))
+                          redex
+    }
+    case None        => val redex = Redex(left, args)
+                        redexes += ((left, Map((args, redex))))
+                        redex
+  }
+  protected[terms] def mkTermAbstr(t: Type, body: Term): TermImpl = //TermAbstr(t, body)
+  termAbstractions.get(body) match {
+    case Some(inner) => inner.get(t) match {
+      case Some(abs)   => abs
+      case None        => val abs = TermAbstr(t, body)
+                          termAbstractions += ((body,inner.+((t, abs))))
+                          abs
+    }
+    case None        => val abs = TermAbstr(t, body)
+                        termAbstractions += ((body, Map((t, abs))))
+                        abs
+  }
+  protected[terms] def mkTypeAbstr(body: Term): TermImpl = //TypeAbstr(body)
+  typeAbstractions.get(body) match {
+    case Some(abs) => abs
+    case None      => val abs = TypeAbstr(body)
+                      typeAbstractions += ((body, abs))
+                      abs
+  }
 
   // Spines
   protected[terms] def mkSpineNil: Spine = SNil
@@ -647,6 +784,19 @@ object TermImpl {
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
+  val local = new Factory {
+    def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
+    def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    def mkAtom(id: Signature#Key): Term = Root(Atom(id), SNil)
+    def mkTypeApp(func: Term, args: Seq[Type]): Term = Redex(func, args.foldRight(mkSpineNil)((ty,sp) => TyApp(ty,sp)))
+    def mkTypeApp(func: Term, arg: Type): Term =  Redex(func, TyApp(arg, SNil))
+    def mkTypeAbs(body: Term): Term = TypeAbstr(body)
+    def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+    def mkTermApp(func: Term, args: Seq[Term]): Term = Redex(func, args.foldRight(mkSpineNil)((t,sp) => App(t,sp)))
+    def mkTermApp(func: Term, arg: Term): Term = Redex(func, App(arg, SNil))
+  }
+
+
   def mkAtom(id: Signature#Key): TermImpl = mkRoot(mkAtom0(id), SNil)
 
   def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
@@ -660,11 +810,6 @@ object TermImpl {
     }
   def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
-  def λ(hd: Type)(body: Term) = mkTermAbs(hd, body)
-  def λ(hd: Type, hds: Type*)(body: Term): TermImpl = {
-    λ(hd)(hds.foldRight(body)(λ(_)(_)))
-  }
-
   def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
   def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = func match {
       case Root(h, SNil) => mkRoot(h, mkTySpine(args))
@@ -674,7 +819,6 @@ object TermImpl {
     }
 
   def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
-  def Λ(body: Term): TermImpl = mkTypeAbs(body)
 
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): TermImpl  = func match {
       case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
@@ -683,8 +827,43 @@ object TermImpl {
       case other       => mkRedex(other, mkGenSpine(args))
     }
 
-  implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
+  def insert0(localTerm: Term): TermImpl = {
+    val shared = localTerm match {
+      case Root(h, sp) => val sp2 = insertSpine0(sp)
+                          val h2 = h match {
+                            case BoundIndex(ty, scope) => mkBoundAtom(ty, scope)
+                            case Atom(id)              => mkAtom0(id)
+                            case hc@HeadClosure(chd, s)   => hc // TODO: do we need closures in bank?
+                          }
+                          mkRoot(h2, sp2)
 
+      case Redex(rx, sp) => val sp2 = insertSpine0(sp)
+                            val rx2 = insert0(rx)
+                            mkRedex(rx2, sp2)
+
+      case TermAbstr(ty, body) => val body2 = insert0(body)
+                                  mkTermAbstr(ty, body2)
+
+      case TypeAbstr(body) => val body2 = insert0(body)
+                              mkTypeAbstr(body2)
+      case tc@TermClos(ct, s) => tc
+      case _                  => throw new IllegalArgumentException("trying to insert a non-spine term to spine termbank")
+    }
+    terms = terms + shared
+    shared
+  }
+
+  protected def insertSpine0(sp: Spine): Spine = {
+    sp match {
+      case SNil => mkSpineNil
+      case App(hd, tail) => val hd2 = insert0(hd)
+                            val tail2 = insertSpine0(tail)
+                            mkSpineCons(Left(hd2), tail2)
+      case TyApp(ty, tail) => val tail2 = insertSpine0(tail)
+                              mkSpineCons(Right(ty), tail2)
+      case sc@SpineClos(csp, s) => sc
+    }
+  }
 
   def reset() = {
     boundAtoms = Map.empty
@@ -698,6 +877,81 @@ object TermImpl {
 
     // Spines
    spines = Map.empty
+  }
+
+  ///////////////
+  // Utility  ///
+  ///////////////
+  implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
+
+  /**
+   * Statistics type. Components and meanings:
+   * comp 1: number of terms, Int
+   * comp 2: avg. size of terms, Int
+   * comp 3: min. size of terms, Int
+   * comp 4: max. size of terms, Int
+   * comp 5: number of nodes, Int
+   * comp 6: number of edges, Int
+   * comp 6: # of parents to count map, Map[Int, Int]
+   */
+  type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
+
+  def statistics: TermBankStatistics = {
+    val numberOfTerms = terms.size +1
+
+    val parentNodeCountMap: Map[Int, Int] = Map.empty
+
+    // Term sizes
+    // start element (min, max, X)
+    val intermediate = terms.foldRight((-1,-1,-1))((t,acc) => {val s = t.size
+                                            val min = Math.min(acc._1, s)
+                                            val max = Math.max(acc._2, s)
+                                            (min, max, acc._3  + s)
+                                           })
+    val minSizeOfTerms = intermediate._1
+    val maxSizeOfTerms = intermediate._2
+    val avgSizeOfTerms = intermediate._3 / numberOfTerms
+
+    var termAbstractionsSize = 0
+    termAbstractions.foreach({ case (term, map) =>
+      termAbstractionsSize += map.size
+    })
+    var rootsSize = 0
+    roots.foreach({ case (term, map) =>
+      rootsSize += map.size
+    })
+    var redexesSize = 0
+    redexes.foreach({ case (term, map) =>
+      redexesSize += map.size
+    })
+    var spinesSize = 0
+    spines.foreach({ case (_, map) =>
+      spinesSize += map.size
+    })
+
+    val numberOfNodes = { boundAtoms.size + symbolAtoms.size
+                        + termAbstractionsSize + typeAbstractions.size
+                        + rootsSize + redexesSize
+                        + spinesSize }
+
+    // edges:
+    // for each Root(h,sp) we have 2 edges
+    // for each Redex(rx, sp) we have 2 edges
+    // for each TermAbstr(ty, body) we have one edge (types are not counted)
+    // for each TypeAbstr(body) we have one edge
+    // for each TermCons(t, tail) we have two edges
+    // for each TypeCons(ty,tail) we have two edges
+    val numberOfEdges = {
+      termAbstractionsSize
+      +typeAbstractions.size
+      +2 * (
+        rootsSize
+          + redexesSize
+          + spinesSize
+        )
+    }
+
+    (numberOfTerms,avgSizeOfTerms,minSizeOfTerms,maxSizeOfTerms,numberOfNodes,numberOfEdges,parentNodeCountMap)
   }
 
 }

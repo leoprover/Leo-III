@@ -48,6 +48,8 @@ abstract class Type extends Pretty {
   def funCodomainType: Option[Type]
   def _funCodomainType: Type = funCodomainType.get
 
+  def scopeNumber: Int
+
   /** Returns true iff `ty` appears somewhere as subtype (e.g. as part of an abstraction type). */
   def occurs(ty: Type): Boolean
 
@@ -160,4 +162,51 @@ abstract class Kind extends Pretty {
   val isFunKind: Boolean
   val isSuperKind: Boolean
 }
+
+///////////////////////////////
+// Pattern matchers for types
+///////////////////////////////
+
+object BaseType {
+  def unapply(ty: Type): Option[Signature#Key] = ty match {
+    case BaseTypeNode(id) => Some(id)
+    case _ => None
+  }
+}
+
+object BoundType {
+  def unapply(ty: Type): Option[Int] = ty match {
+    case BoundTypeNode(scope) => Some(scope)
+    case _ => None
+  }
+}
+
+object -> {
+  def unapply(ty: Type): Option[(Type, Type)] = ty match {
+    case AbstractionTypeNode(l, r) => Some((l,r))
+    case _ => None
+  }
+}
+
+object * {
+  def unapply(ty: Type): Option[(Type, Type)] = ty match {
+    case ProductTypeNode(l, r) => Some((l,r))
+    case _ => None
+  }
+}
+
+object + {
+  def unapply(ty: Type): Option[(Type, Type)] = ty match {
+    case UnionTypeNode(l, r) => Some((l,r))
+    case _ => None
+  }
+}
+
+object ∀ {
+  def unapply(ty: Type): Option[Type] = ty match {
+    case ForallTypeNode(t) => Some(t)
+    case _ => None
+  }
+}
+
 
