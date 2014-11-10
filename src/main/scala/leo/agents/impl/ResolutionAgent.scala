@@ -244,7 +244,7 @@ class ResolutionAgent extends Agent {
  */
 class CNFTask(f : FormulaStore) extends Task {
 
-  override def readSet(): Set[FormulaStore] = Set(f)
+  override def readSet(): Set[FormulaStore] = Set.empty
   override def writeSet(): Set[FormulaStore] = Set(f)
 
   override def bid(budget : Double) : Double = budget / 5
