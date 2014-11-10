@@ -197,7 +197,7 @@ object InputProcessing {
 
   import leo.datastructures.tptp.thf.{Quantifier => THFQuantifier}
   protected[parsers] def processTHFUnaryConn(conn: THFQuantifier): HOLUnaryConnective = {
-    import leo.datastructures.tptp.thf.{? => THFAll, ! => THFExists, ^ => THFLambda, @+ => THFChoice, @- => THFDesc}
+    import leo.datastructures.tptp.thf.{! => THFAll, ? => THFExists, ^ => THFLambda, @+ => THFChoice, @- => THFDesc}
     import leo.datastructures.internal.{Forall, Exists}
 
     conn match {
