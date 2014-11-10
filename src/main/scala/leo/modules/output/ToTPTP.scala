@@ -28,21 +28,21 @@ object ToTPTP extends Function1[FormulaStore, Output] {
   // Translation of THF formula
   ///////////////////////////////
 
-  private def toTPTP(name: String, t: Term, role: String): String = s"thf(X, Y, (${toTPTP0(t, Seq.empty)}))."
+  private def toTPTP(name: String, t: Term, role: String): String = s"thf($name, $role, (${toTPTP0(t, Seq.empty)}))."
   private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = {
     val sig = Signature.get
     t match {
       // Constant symbols
       case Symbol(id) => sig(id).name
       // Give Bound variables names
-      case Bound(ty, scope) => bVars(scope)._1
+      case Bound(ty, scope) => bVars(scope-1)._1
       // Unary connectives
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"
       case Forall(_) => val (bVarTys, body) = collectForall(t)
-                        val newBVars = makeBVarList(bVarTys)
+                        val newBVars = makeBVarList(bVarTys, bVars.length)
                         s"${sig(Forall.key).name} [${newBVars.map({case (s,t) => s"$s:${t.pretty}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
       case Exists(_) => val (bVarTys, body) = collectExists(t)
-                        val newBVars = makeBVarList(bVarTys)
+                        val newBVars = makeBVarList(bVarTys, bVars.length)
                         s"${sig(Exists.key).name} [${newBVars.map({case (s,t) => s"$s:${t.pretty}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
       // Binary connectives
       case t1 ||| t2 => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
@@ -57,10 +57,10 @@ object ToTPTP extends Function1[FormulaStore, Output] {
       case t1 !=== t2 => s"${toTPTP0(t1, bVars)} ${sig(!===.key).name} ${toTPTP0(t2, bVars)}"
       // General structure
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
-                       val newBVars = makeBVarList(bVarTys)
+                       val newBVars = makeBVarList(bVarTys, bVars.length)
                        s"^ [${newBVars.map({case (s,t) => s"$s:${t.pretty}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
       case t1 @@@ t2 => s"${toTPTP0(t1, bVars)} @ ${toTPTP0(t2, bVars)}"
-      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, ???), bVars)})"})
+      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
     }
@@ -106,6 +106,28 @@ object ToTPTP extends Function1[FormulaStore, Output] {
     }
   }
 
-  private def makeBVarList(tys: Seq[Type]): Seq[(String, Type)] = ???
+  private def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = Stream.from(offset).zip(tys).map({case (i,t) => (intToName(i), t)})
+
+
+  // Convert i-th variable to a variable name corresponding to ASCII transformation `intToName`
+  // 0 ---> "A"
+  // 1 ---> "B"
+  // 25 ---> "Z"
+  // 26 ---> "ZA"
+  // etc.
+
+  private val asciiA = 65
+  private val asciiZ = 90
+  private val range = asciiZ - asciiA // range 0,1,....
+
+  private def intToName(i: Int): String = i match {
+    case n if n <= range => s"${intToChar(i)}"
+    case n if n > range => s"Z${intToName(i-range-1)}"
+  }
+
+  private def intToChar(i: Int): Char = i match {
+    case n if n <= range => (n + asciiA).toChar
+    case _ => throw new IllegalArgumentException
+  }
 
 }
