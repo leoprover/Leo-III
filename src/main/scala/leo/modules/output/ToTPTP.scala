@@ -3,26 +3,47 @@ package leo.modules.output
 import leo.datastructures.internal.terms.Term
 import leo.datastructures.internal.terms.Type
 import leo.datastructures.internal.terms.{:::>, @@@, ∙, Bound, Symbol}
+import leo.datastructures.internal.terms.{BaseType, BoundType, ->, *, +, ∀}
 import leo.datastructures.internal._
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
 /**
+ * Translation module that takes internal terms or types and translates them
+ * to a TPTP representation (in THF format).
+ * Translation can be done directly into a string by method `output`
+ * or indirect into a `Output` object by the apply method.
+ *
+ * @see [[leo.datastructures.internal.terms.Term]], [[leo.datastructures.blackboard.FormulaStore]]
+ *
  * @author Alexander Steen
  * @since 07.11.2014
  */
-object ToTPTP extends Function1[FormulaStore, Output] {
+object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Term, String, Output] {
 
+  /** Return an `Output` object that contains the TPTP representation of the given
+    * `FormulaStore`.*/
   def apply(f: FormulaStore): Output = new Output {
     def output = toTPTP(f.name, f.simpleFormula, f.role)
   }
-
+  /** Return an `Output` object that contains the TPTP representation of the given
+    * information triple.*/
   def apply(name: String, t: Term, role: String): Output = new Output {
     def output = toTPTP(name, t, role)
   }
 
+  /** Translate the `FormulaStore` into a TPTP String in THF format. */
   def output(f: FormulaStore) = toTPTP(f.name, f.simpleFormula, f.role)
+  /** Translate the term information triple into a TPTP String. */
   def output(name: String, t: Term, role: String) = toTPTP(name, t, role)
+
+  // Extra output function for types only (not sure if needed somewhere)
+  /** Return an `Output` object that contains the TPTP representation of the given type.*/
+  def apply(ty: Type): Output = new Output {
+    def output = toTPTP(ty)
+  }
+  /** Translate the type to a TPTP String in THF format. */
+  def output(ty: Type) = toTPTP(ty)
 
   ///////////////////////////////
   // Translation of THF formula
@@ -40,10 +61,10 @@ object ToTPTP extends Function1[FormulaStore, Output] {
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"
       case Forall(_) => val (bVarTys, body) = collectForall(t)
                         val newBVars = makeBVarList(bVarTys, bVars.length)
-                        s"${sig(Forall.key).name} [${newBVars.map({case (s,t) => s"$s:${t.pretty}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
+                        s"${sig(Forall.key).name} [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
       case Exists(_) => val (bVarTys, body) = collectExists(t)
                         val newBVars = makeBVarList(bVarTys, bVars.length)
-                        s"${sig(Exists.key).name} [${newBVars.map({case (s,t) => s"$s:${t.pretty}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
+                        s"${sig(Exists.key).name} [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
       // Binary connectives
       case t1 ||| t2 => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
       case t1 === t2 => s"${toTPTP0(t1, bVars)} ${sig(===.key).name} ${toTPTP0(t2, bVars)}"
@@ -58,7 +79,7 @@ object ToTPTP extends Function1[FormulaStore, Output] {
       // General structure
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
                        val newBVars = makeBVarList(bVarTys, bVars.length)
-                       s"^ [${newBVars.map({case (s,t) => s"$s:${t.pretty}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
+                       s"^ [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
       case t1 @@@ t2 => s"${toTPTP0(t1, bVars)} @ ${toTPTP0(t2, bVars)}"
       case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
       // Others should be invalid
@@ -66,8 +87,25 @@ object ToTPTP extends Function1[FormulaStore, Output] {
     }
   }
 
+  ///////////////////////////////
+  // Translation of THF types
+  ///////////////////////////////
 
+
+  private def toTPTP(ty: Type): String = ty match {
+    case BaseType(id) => Signature.get(id).name
+    case BoundType(scope) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
+    case t1 -> t2 => s"${toTPTP(t1)} > ${toTPTP(t2)}"
+    case t1 * t2 => s"${toTPTP(t1)} * ${toTPTP(t2)}"
+    case t1 + t2 => s"${toTPTP(t1)} + ${toTPTP(t2)}"
+    case ∀(t) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
+    /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
+  }
+
+
+  ///////////////////////////////
   // Utility methods
+  ///////////////////////////////
 
   /** Gather consecutive all-quantifications (nameless). */
   private def collectForall(t: Term): (Seq[Type], Term) = {
