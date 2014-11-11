@@ -2,19 +2,24 @@ package leo.agents
 package impl
 
 import leo.datastructures.blackboard.FormulaStore
+import java.io.{PrintWriter, File}
+import leo.modules.output.ToTPTP
+import leo.modules.output.logger._
+
 import scala.sys.process._
 
 object ScriptAgent {
   /**
    * Performs an initial check, whether the script is existing
-   * and then starts the script.
+   * and then starts the ScriptAgent.
    *
    * @param path - Path to the script
    * @return ScriptAgent with that script
    */
   def apply(path : String) : Option[Agent] = {
     if(new java.io.File(path).exists())
-      Some(new ScriptAgent(path))
+      if(path.charAt(0)!='/') Some(new ScriptAgent("./"++path))
+      else Some(new ScriptAgent(path))
     else
       None
   }
@@ -49,12 +54,32 @@ class ScriptAgent(path : String) extends AbstractAgent{
   override def run(t: Task): Result = t match {
     case t1 : ScriptTask =>
 
+      // Writing the context into a temporary file
+      val file = File.createTempFile("remoteInvoke",".p")
+      //file.deleteOnExit()
+      val writer = new PrintWriter(file)
+      try{
+        Console.output("Writing to temporary file:")
+        t1.readSet() foreach {formula =>
+          Console.output(ToTPTP(formula))
+          writer.println(ToTPTP(formula).output)}
+      } finally writer.close()
 
+      //Executing the prover
+      try {
+        Console.output(s"Executing $path on file ${file.getAbsolutePath}")
+        val res = Seq(path, file.getAbsolutePath).!!
+        Console.output("Got result from external prover:")
+        Console.output(res.toString)
 
+      } catch {
+        case _ => Console.trace("External prover "+path+" terminated unsuccessfull.")
+          return EmptyResult
+      }
       // Only execution at this point. No interpretation of the result.
-      return new StdResult(Set.empty, Map.empty, Set.empty)
-    case _ => println("Wrong task for execution received.")
-      return new StdResult(Set.empty, Map.empty, Set.empty)
+      return EmptyResult
+    case _ => Console.info(s"$name recevied a wrong task $t.")
+      return EmptyResult
   }
 }
 

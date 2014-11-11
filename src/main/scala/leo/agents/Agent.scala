@@ -318,3 +318,9 @@ class StdResult(nf : Set[FormulaStore], uf : Map[FormulaStore,FormulaStore], rf 
   override def updateFormula() : Map[FormulaStore,FormulaStore] = uf
   override def removeFormula() : Set[FormulaStore] = rf
 }
+
+object EmptyResult extends Result{
+  override def newFormula() : Set[FormulaStore] = Set.empty
+  override def updateFormula() : Map[FormulaStore,FormulaStore] = Map.empty
+  override def removeFormula() : Set[FormulaStore] = Set.empty
+}
