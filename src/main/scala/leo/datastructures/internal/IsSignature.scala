@@ -169,6 +169,8 @@ trait IsSignature {
 
   /** Returns a set of all indexed constants keys */
   def allConstants: Set[Key]
+  /** Returns a set of all indexed constants that are supplied by the user/problem. */
+  def allUserConstants: Set[Key]
   /** Returns a set of all indexed constants with given type*/
   def constantsOfType(ty: Type): Set[Key] = allConstants.filter(meta(_).ty match {
     case None => false

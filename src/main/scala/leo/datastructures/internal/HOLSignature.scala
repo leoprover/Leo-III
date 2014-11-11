@@ -84,6 +84,9 @@ trait HOLSignature {
     ("<~>",niffDef,  o ->: o ->: o), // Key 27
     ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 28
 
+  /** The last id that was used by predefined HOL symbols. Keep up to date!*/
+  val lastId = 28
+
   // Shorthands for later definitions
   private def not = mkAtom(10)
   private def all = mkAtom(11)
