@@ -205,7 +205,7 @@ case object SZS_Inappropriate extends NoSuccessSZS {
 ///////////////////////////////
 
 /** SZS Output factory methods. */
-object StatusSZS extends Function3[StatusSZS, String, Output, Output] {
+object StatusSZS extends Function2[StatusSZS, String, Output] with Function3[StatusSZS, String, Output, Output] {
 
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   def apply(szsStatus: StatusSZS, problemName: String, comment: String): Output =
@@ -213,15 +213,19 @@ object StatusSZS extends Function3[StatusSZS, String, Output, Output] {
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   def apply(szsStatus: StatusSZS, problemName: String, comment: Output): Output =
       mkOutput(szsStatus,problemName,comment)
+  /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
+  def apply(szsStatus: StatusSZS, problemName: String): Output =
+    mkOutput(szsStatus,problemName,"")
+
 
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
-  def mkOutput(szsStatus: StatusSZS, problemName: String, comment: String): Output = new Output {
+  private def mkOutput(szsStatus: StatusSZS, problemName: String, comment: String): Output = new Output {
     final val output = comment match {
       case null | "" => s"% SZS status ${szsStatus.output} for $problemName"
       case _ => s"% SZS status ${szsStatus.output} for $problemName : $comment"
     }
   }
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
-  def mkOutput(szsStatus: StatusSZS, problemName: String, comment: Output): Output =
+  private def mkOutput(szsStatus: StatusSZS, problemName: String, comment: Output): Output =
       mkOutput(szsStatus,problemName, comment.output)
 }
