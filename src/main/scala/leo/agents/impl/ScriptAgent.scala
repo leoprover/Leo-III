@@ -2,8 +2,11 @@ package leo.agents
 package impl
 
 import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.internal._
+import leo.datastructures.internal.terms.Term._
 import java.io.{PrintWriter, File}
-import leo.modules.output.ToTPTP
+import leo.datastructures.internal.Signature
+import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
 
 import scala.sys.process._
@@ -56,13 +59,13 @@ class ScriptAgent(path : String) extends AbstractAgent{
 
       // Writing the context into a temporary file
       val file = File.createTempFile("remoteInvoke",".p")
-      //file.deleteOnExit()
+      file.deleteOnExit()
       val writer = new PrintWriter(file)
       try{
         Console.output("Writing to temporary file:")
-        t1.readSet() foreach {formula =>
-          Console.output(ToTPTP(formula))
-          writer.println(ToTPTP(formula).output)}
+        contextToTPTP(t1.readSet()) foreach {out =>
+          Console.output(out)
+          writer.println(out.output)}
       } finally writer.close()
 
       //Executing the prover
@@ -81,6 +84,27 @@ class ScriptAgent(path : String) extends AbstractAgent{
     case _ => Console.info(s"$name recevied a wrong task $t.")
       return EmptyResult
   }
+
+
+
+  private def contextToTPTP(fS : Set[FormulaStore]) : Seq[Output] = {
+    var out: List[Output] = List.empty[Output]
+    Signature.get.allUserConstants foreach {
+      constantToTPTP(_) foreach {t => out = t :: out}
+    }
+    fS foreach {formula =>
+      out = ToTPTP(formula) :: out}
+    out.reverse
+  }
+
+
+  private def constantToTPTP(k : Signature#Key) : Seq[Output] = {
+    val constant = Signature.get.apply(k)
+    (constant.defn) match {
+      case Some(defn) => Seq(ToTPTP(s"${constant.name}_type", k), ToTPTP(s"${constant.name}_def", ===(mkAtom(k),defn), Role_Definition.pretty))
+      case (None) => Seq(ToTPTP(s"${constant.name}_type", k))
+    }
+  }
 }
 
 class ScriptTask(fs : Set[FormulaStore]) extends Task {
@@ -88,4 +112,6 @@ class ScriptTask(fs : Set[FormulaStore]) extends Task {
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget
 }
+
+
 

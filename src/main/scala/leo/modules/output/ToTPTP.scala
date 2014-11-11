@@ -32,6 +32,18 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Ter
     def output = toTPTP(name, t, role)
   }
 
+  /**
+   * Returns an Output suitable in a type definition.
+   */
+  def apply(name : String, key : Signature#Key) : Output = new Output {
+    def output : String = {
+      val constant = Signature.get.apply(key)
+      if(constant.ty.isEmpty) return ""
+      else
+        return s"(${name}, ${Role_Type.pretty}, ${constant.name}: ${toTPTP(constant._ty)})."
+    }
+  }
+
   /** Translate the `FormulaStore` into a TPTP String in THF format. */
   def output(f: FormulaStore) = toTPTP(f.name, f.simpleFormula, f.role)
   /** Translate the term information triple into a TPTP String. */
