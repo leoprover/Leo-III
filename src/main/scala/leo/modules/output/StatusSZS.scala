@@ -205,7 +205,7 @@ case object SZS_Inappropriate extends NoSuccessSZS {
 ///////////////////////////////
 
 /** SZS Output factory methods. */
-object StatusSZS extends Function2[StatusSZS, String, Output] with Function3[StatusSZS, String, Output, Output] {
+object StatusSZS  {
 
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   def apply(szsStatus: StatusSZS, problemName: String, comment: String): Output =
