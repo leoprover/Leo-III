@@ -64,35 +64,35 @@ class ScriptAgent(path : String) extends AbstractAgent{
       file.deleteOnExit()
       val writer = new PrintWriter(file)
       try{
-        Console.info("Writing to temporary file:")
+        Out.info("Writing to temporary file:")
         contextToTPTP(t1.readSet()) foreach {out =>
-          Console.info(out)
+          Out.info(out)
           writer.println(out.output)}
       } finally writer.close()
 
       //Executing the prover
       var success = true
       try {
-        Console.info(s"Executing $path on file ${file.getAbsolutePath}")
+        Out.info(s"Executing $path on file ${file.getAbsolutePath}")
 
         // -------------------------------------------------------------
         //   Execution
         // -------------------------------------------------------------
         val res = Seq(path, file.getAbsolutePath).lines
-        Console.info("Got result from external prover:")
-        res foreach {x => Console.info(x)}
+        Out.info("Got result from external prover:")
+        res foreach {x => Out.info(x)}
 
       } catch {
-        case _ : Throwable => Console.info(s"External prover $path terminated unsuccessfull.")
+        case _ : Throwable => Out.info(s"External prover $path terminated unsuccessfull.")
           success = false
       }
       if(success)
-        Console.info(s"The external prover $path found a proof.")
+        Out.info(s"The external prover $path found a proof.")
       else
-        Console.info(s"The external prover $path did not found a proof.")
+        Out.info(s"The external prover $path did not found a proof.")
       // Only execution at this point. No interpretation of the result.
       return EmptyResult
-    case _ : Throwable => Console.info(s"$name recevied a wrong task $t.")
+    case _ : Throwable => Out.info(s"$name recevied a wrong task $t.")
       return EmptyResult
   }
 
