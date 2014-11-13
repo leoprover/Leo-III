@@ -33,7 +33,9 @@ class CLParameterParser(protected val args: Array[String]) {
   def ARG0Name: String = "ARG"
 
   protected def parse(argList: List[String]): ParameterMap = argList match {
-    case Nil => Map.empty
+    case Nil => {
+      Map.empty
+    }
     case arg0 :: tail => parse0(tail, Map((ARG0Name, Seq(arg0))))
   }
   protected def parse0(argList: List[String], map: ParameterMap): ParameterMap = {
@@ -42,7 +44,7 @@ class CLParameterParser(protected val args: Array[String]) {
       case arg :: value :: tail if isLong(arg) && isArg(value) => val cArg = arg.drop(2); map.get(cArg) match {
         case None => parse0(tail, map + ((cArg, Seq(value))))
         case Some("" :: Nil) => {
-          Out.warn(s"Command-line argument $cArg occurred with and without parameter. First argument occurrence is used.")
+          Out.warn(s"Command-line argument '$cArg' occurred with and without parameter. First argument occurrence is used.")
           parse0(tail, map)
         }
         case Some(list) => parse0(tail, map + ((cArg, list :+ value)))
@@ -50,21 +52,32 @@ class CLParameterParser(protected val args: Array[String]) {
       case arg :: tail if isLong(arg) => val cArg = arg.drop(2); map.get(cArg) match {
         case None => parse0(tail, map + ((cArg, Seq(""))))
         case Some("" :: Nil) => {
-          Out.trace(s"Reuse of command-line argument $cArg.")
+          Out.trace(s"Reuse of command-line argument '$cArg'. Skipped.")
           parse0(tail, map)
         }
         case Some(_) => {
-          Out.warn(s"Command-line argument $cArg occurred with and without parameter. Using first argument occurrence(s) with values.")
+          Out.warn(s"Command-line argument '$cArg' occurred with and without parameter. Using first argument occurrence(s) with values.")
           parse0(tail, map)
         }
       }
       case arg :: value :: tail if isShort(arg) && isArg(value) => val cArg = arg.drop(1); map.get(cArg) match {
         case None => parse0(tail, map + ((cArg, Seq(value))))
         case Some("" :: Nil) => {
-          Out.warn(s"Command-line argument $cArg occurred with and without parameter. First argument occurrence is used.")
+          Out.warn(s"Command-line argument '$cArg' occurred with and without parameter. First argument occurrence is used.")
           parse0(tail, map)
         }
         case Some(list) => parse0(tail, map + ((cArg, list :+ value)))
+      }
+      case arg :: tail if isShort(arg) && arg.length == 2 => val cArg = arg.drop(1); map.get(cArg) match {
+        case None => parse0(tail, map + ((cArg, Seq(""))))
+        case Some("" :: Nil) => {
+          Out.trace(s"Reuse of command-line argument '$cArg'. Skipped.")
+          parse0(tail, map)
+        }
+        case Some(_) => {
+          Out.warn(s"Command-line argument '$cArg' occurred with and without parameter. Using first argument occurrence(s) with values.")
+          parse0(tail, map)
+        }
       }
       case arg :: tail if isShort(arg) => {
         parse0(splitShort(arg.drop(1)) ++ tail, map)
