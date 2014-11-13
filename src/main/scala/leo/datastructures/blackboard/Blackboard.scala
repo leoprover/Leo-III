@@ -7,7 +7,7 @@ import scala.collection.mutable
 
 // Singleton Blackboards
 object Blackboard extends Function0[Blackboard] {
-  private val single : Blackboard = new impl.SimpleBlackboard()
+  private val single : Blackboard = new impl.AuctionBlackboard()
 
   def apply() : Blackboard = single
 }
@@ -32,24 +32,118 @@ object Blackboard extends Function0[Blackboard] {
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard {
+trait Blackboard extends TaskOrganize with FormulaBlackboard{
+
+}
+
+
+
+/**
+ * Subtrait of the Blackboard, responsible for the
+ * organization of tasks and agents. Not visible outside the
+ * blackboard package except the agentRegistering.
+ */
+trait TaskOrganize {
+
 
   /**
-   * <p>
-   * Adds a formula to the Set of formulas of the Blackboard.
-   * </p>
-   * @param formula to be added.
+   * Gives all agents the chance to react to an event
+   * and adds the generated tasks.
+   *
+   * @param t - Function that generates for each agent a set of tasks.
    */
-  def addFormula(name : String, formula : Term, role : String)
+  protected[blackboard] def filterAll(t : Agent => Unit) : Unit
+
+
+  /**
+   * Method that filters the whole Blackboard, if a new agent 'a' is added
+   * to the context.
+   *
+   * @param a - New Agent.
+   */
+  protected[blackboard] def freshAgent(a : Agent) : Unit
+
+
+  /**
+   *
+   * Starts a new auction for agents to buy computation time
+   * for their tasks.
+   *
+   * The result is a set of tasks, that can be executed in parallel
+   * and approximate the optimal combinatorical auction.
+   *
+   * @return Not yet executed noncolliding set of tasks
+   */
+  protected[blackboard] def getTask : Iterable[(Agent,Task)]
+
+
+
+  /**
+   * Tells the tassk set, that one task has finished computing.
+   *
+   * @param t - The finished task.
+   */
+  protected[blackboard] def finishTask(t : Task) : Unit
+
+  /**
+   * Signal Task is called, when a new task is available.
+   */
+  def signalTask() : Unit
+
+  /**
+   * Checks through the current executing threads, if one is colliding
+   *
+   * @param t - Task that will be tested
+   * @return true, iff no currently executing task collides
+   */
+  def collision(t : Task) : Boolean
+
+  /**
+   * Registers an agent to the blackboard
+   *
+   * @param a - the new agent
+   */
+  def registerAgent(a : Agent) : Unit
+
+  /**
+   *
+   * Returns for debugging and interactive use the agent work
+   *
+   * @return all registered agents and their budget
+   */
+  def getAgents() : Iterable[(Agent,Double)]
+
+  /**
+   * Returns a collection of tasks that are currently executed
+   * in the system. Debugging reasons only!!!
+   *
+   * @return Collection of tasks that are executed.
+   */
+  def getRunningTasks() : Iterable[Task]
+}
+
+/**
+ * This trait capsules the formulas responsible for the formula manipulation of the
+ * blackboard.
+ */
+trait FormulaBlackboard {
+
+  /**
+   * For interactive use. Creates a formula store and adds it to the blackboard (or retuns the
+   * existing one)
+   */
+  def addFormula(name : String, formula : Term, role : String) : FormulaStore
 
   /**
    * <p>
-   * Adds or readds a formula if taken from the blackboard.
+   * Adds a formula to the blackboard, if it does not exist. If it exists
+   * the old formula is returned.
    * </p>
    *
    * @param formula to be added.
+   * @return Left the newly added formula or Right the already existing formula.
    */
-  def addFormula(formula : FormulaStore)
+  def addFormula(formula : FormulaStore) : Either[FormulaStore, FormulaStore]
 
   /**
    * <p>
@@ -86,7 +180,7 @@ trait Blackboard {
    *
    * @return All formulas of the blackboard.
    */
-  def getFormulas : List[FormulaStore]
+  def getFormulas : Iterable[FormulaStore]
 
   /**
    *
@@ -97,7 +191,7 @@ trait Blackboard {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p : FormulaStore => Boolean) : List[FormulaStore]
+  def getAll(p : FormulaStore => Boolean) : Iterable[FormulaStore]
 
   /**
    * <p>
@@ -108,76 +202,6 @@ trait Blackboard {
    */
   def rmAll(p : FormulaStore => Boolean)
 
-  /**
-   * Registers an agent to the blackboard
-   *
-   * @param a - the new agent
-   */
-  def registerAgent(a : Agent) : Unit
-
-  /**
-   *
-   * @return all registered agents and their budget
-   */
-  def getAgents() : Iterable[(Agent,Double)]
-
-  /**
-   * Gives all agents the chance to react to an event
-   * and adds the generated tasks.
-   *
-   * @param t - Function that generates for each agent a set of tasks.
-   */
-  def filterAll(t : Agent => Unit) : Unit
-
-
-  /**
-   * Method that filters the whole Blackboard, if a new agent 'a' is added
-   * to the context.
-   *
-   * @param a - New Agent.
-   */
-  protected[blackboard] def freshAgent(a : Agent) : Unit
-
-
-  /**
-   *
-   * Starts a new auction for agents to buy computation time
-   * for their tasks.
-   *
-   * The result is a set of tasks, that can be executed in parallel
-   * and approximate the optimal combinatorical auction.
-   *
-   * @return Not yet executed noncolliding set of tasks
-   */
-  def getTask : Iterable[(Agent,Task)]
-
-  /**
-   * Returns a collection of tasks that are currently executed
-   * in the system. Debugging reasons only!!!
-   *
-   * @return Collection of tasks that are executed.
-   */
-  def getRunningTasks() : Iterable[Task]
-
-  /**
-   * Tells the tassk set, that one task has finished computing.
-   *
-   * @param t - The finished task.
-   */
-  def finishTask(t : Task) : Unit
-
-  /**
-   * Signal Task is called, when a new task is available.
-   */
-  def signalTask() : Unit
-
-  /**
-   * Checks through the current executing threads, if one is colliding
-   *
-   * @param t - Task that will be tested
-   * @return true, iff no currently executing task collides
-   */
-  def collision(t : Task) : Boolean
 
   /**
    * Clears the complete blackboard

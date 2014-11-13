@@ -62,6 +62,11 @@ trait Scheduler {
    */
   def pause() : Unit
 
+  /**
+   * Performs one round of auction
+   */
+  def step() : Unit
+
   def clear() : Unit
 
   protected[scheduler] def start()
@@ -95,6 +100,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   override def isTerminated() : Boolean = endFlag
 
   def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
+
+  def step() : Unit = s.synchronized{s.notifyAll()}
 
 //  def toWork(a : Agent) : Unit = exe.submit(new Runnable {
 //    override def run(): Unit = if (a.guard()) a.apply()
@@ -177,7 +184,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
 
         // Update blackboard
-        result.newFormula().foreach(Blackboard().addFormula(_))
+        val newF = result.newFormula().map(Blackboard().addFormula(_))
         result.removeFormula().foreach(Blackboard().removeFormula(_))
         result.updateFormula().foreach { case (oldF, newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
 
@@ -188,9 +195,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Notify changes
         // ATM only New and Updated Formulas
         Blackboard().filterAll({a =>
-          result.newFormula().foreach(a.filter(_))
+          newF.foreach{ ef => ef match {
+            case Left(f) => a.filter(f) // If the result is left, then the formula was new
+            case Right(_) => ()         // If the result was right, the formula already existed
+          }}
           result.updateFormula().foreach{case (_,f) => a.filter(f)}
-          task.readSet().foreach(a.filter(_))
+          //TODO Enforce that the two sets are disjoined
+          task.readSet().foreach{f => if(!task.writeSet().contains(f)) a.filter(_)}   // Filtes not written elements again.
         })
       }
     }

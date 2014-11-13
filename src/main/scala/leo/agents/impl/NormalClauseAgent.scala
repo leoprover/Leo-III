@@ -88,10 +88,16 @@ class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
+
+
+
   override protected def toFilter(event: FormulaStore): Iterable[Task] = event.formula match {
     case Left(f) => if (norm.applicable(event.simpleFormula, event.status)) List(new NormalTask(event)) else Nil
     case Right(_) => Nil
   }
+
+
+
 }
 
 /**
