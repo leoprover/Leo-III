@@ -30,13 +30,13 @@ class CLParameterParser(protected val args: Array[String]) {
   def isSet(param: String): Boolean = paraMap.get(param).isDefined
   def getParameters: Iterator[(String, Seq[String])] = paraMap.iterator
   def getParameter(param: String): Option[Seq[String]] = paraMap.get(param)
-  def ARG0Name: String = "ARG"
+
 
   protected def parse(argList: List[String]): ParameterMap = argList match {
     case Nil => {
       Map.empty
     }
-    case arg0 :: tail => parse0(tail, Map((ARG0Name, Seq(arg0))))
+    case arg0 :: tail => parse0(tail, Map((CLParameterParser.ARG0Name, Seq(arg0))))
   }
   protected def parse0(argList: List[String], map: ParameterMap): ParameterMap = {
     argList match {
@@ -104,4 +104,8 @@ class CLParameterParser(protected val args: Array[String]) {
   protected def splitShort(arg: String): List[String] = {
     arg.toCharArray.toList.map(a => s"-$a")
   }
+}
+
+object CLParameterParser {
+  def ARG0Name: String = "ARG"
 }
