@@ -49,7 +49,7 @@ object Main {
   /**
    * Loads a tptp file and saves the formulas in the context.
    */
-  private def load(file: String): Unit = {
+  def load(file: String): Unit = {
     if (file.charAt(0) != '/') {
       // Relative load
       loadRelative(file, _pwd.split('/'))

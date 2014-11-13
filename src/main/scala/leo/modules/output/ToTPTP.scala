@@ -40,7 +40,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Ter
       val constant = Signature.get.apply(key)
       if(constant.ty.isEmpty) return ""
       else
-        return s"(${name}, ${Role_Type.pretty}, ${constant.name}: ${toTPTP(constant._ty)})."
+        return s"thf(${name}, ${Role_Type.pretty}, ${constant.name}: ${toTPTP(constant._ty)})."
     }
   }
 

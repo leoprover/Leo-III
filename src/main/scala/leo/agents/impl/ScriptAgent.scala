@@ -21,7 +21,7 @@ object ScriptAgent {
    */
   def apply(path : String) : Option[Agent] = {
     if(new java.io.File(path).exists())
-      if(path.charAt(0)!='/') Some(new ScriptAgent("./"++path))
+      if(path.charAt(0)!='/' && path.charAt(0) != '.') Some(new ScriptAgent("./"++path))
       else Some(new ScriptAgent(path))
     else
       None
@@ -30,7 +30,9 @@ object ScriptAgent {
 
 /**
  * <p>
- * Agent to execute a given script.
+ * Agent to execute a given script. By passing a formula context in thf syntax through a temporary file
+ * to the script as its first parameter.
+ *
  * The existance of the script is not checked.
  * </p>
  *
@@ -62,26 +64,35 @@ class ScriptAgent(path : String) extends AbstractAgent{
       file.deleteOnExit()
       val writer = new PrintWriter(file)
       try{
-        Console.output("Writing to temporary file:")
+        Console.info("Writing to temporary file:")
         contextToTPTP(t1.readSet()) foreach {out =>
-          Console.output(out)
+          Console.info(out)
           writer.println(out.output)}
       } finally writer.close()
 
       //Executing the prover
+      var success = true
       try {
-        Console.output(s"Executing $path on file ${file.getAbsolutePath}")
-        val res = Seq(path, file.getAbsolutePath).!!
-        Console.output("Got result from external prover:")
-        Console.output(res.toString)
+        Console.info(s"Executing $path on file ${file.getAbsolutePath}")
+
+        // -------------------------------------------------------------
+        //   Execution
+        // -------------------------------------------------------------
+        val res = Seq(path, file.getAbsolutePath).lines
+        Console.info("Got result from external prover:")
+        res foreach {x => Console.info(x)}
 
       } catch {
-        case _ => Console.trace("External prover "+path+" terminated unsuccessfull.")
-          return EmptyResult
+        case _ : Throwable => Console.info(s"External prover $path terminated unsuccessfull.")
+          success = false
       }
+      if(success)
+        Console.info(s"The external prover $path found a proof.")
+      else
+        Console.info(s"The external prover $path did not found a proof.")
       // Only execution at this point. No interpretation of the result.
       return EmptyResult
-    case _ => Console.info(s"$name recevied a wrong task $t.")
+    case _ : Throwable => Console.info(s"$name recevied a wrong task $t.")
       return EmptyResult
   }
 
