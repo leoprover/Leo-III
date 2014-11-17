@@ -56,6 +56,13 @@ object Configuration extends DefaultConfiguration {
     case Some(arg :: _) => Out.warn(multiDefOutput(PARAM_VERBOSITY)); processLevel(arg)
   }
 
+  lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+
+  // more to come ...
+
+  ////////////
+  // Utility
+  ////////////
   protected def processLevel(actual: String): Level = safeStrToInt(actual) match {
     case None => DEFAULT_VERBOSITY
     case Some(0) => Level.OFF
@@ -68,11 +75,6 @@ object Configuration extends DefaultConfiguration {
       Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 5 (including).");
       DEFAULT_VERBOSITY}
   }
-
-  lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
-
-
-  // Utility
 
   protected def uniqueIntFor(param: String, default: Int): Int = configMap.get(param) match {
     case None => default
@@ -87,8 +89,6 @@ object Configuration extends DefaultConfiguration {
       Out.warn(intExpectedOutput(param, actual))
       default})
   }
-
-  // more to come ...
 
   protected def multiDefOutput(paramName: String): Output = new Output {
     val output = s"Parameter $paramName was defined multiple times. First occurrence is used, the rest is ignored."
@@ -108,10 +108,8 @@ object Configuration extends DefaultConfiguration {
 
   def isSet(param: String): Boolean = configMap.get(param).isDefined
   def valueOf(param: String): Option[Seq[String]] = configMap.get(param)
-  def isSetTo(param: String, arg: String): Boolean =  configMap.get(param) match {
-    case None => false
-    case Some(args) => args.length == 1 && args(0) == arg
-  }
+  def isSetTo(param: String, arg: String): Boolean =
+    configMap.get(param).fold(false)(args => args.length == 1 && args(0) == arg)
 
 }
 
