@@ -3,22 +3,25 @@ package leo.datastructures.internal
 /**
  * Created by lex on 16.10.14.
  */
-class Position {
-  val seq: List[Int] = List()
+abstract class Position(protected val seq: Seq[Int]) {
+  import Position.DerivedPos
 
-  def abstrPos: Position = ???
-  def headPos: Position = ???
-  def spinePos: Position = ???
-  def argPos(i: Int): Position = ???
+  def abstrPos: Position = new DerivedPos(seq :+ 1)
+  def headPos: Position = new DerivedPos(seq :+ 1)
+  def spinePos: Position = new DerivedPos(seq :+ 2)
+  def argPos(i: Int): Position = new DerivedPos(seq :+ i)
 
 
-  def prependAbstrPos: Position = ???
-  def prependHeadPos: Position = ???
-  def prependSpinePos: Position = ???
-  def preprendArgPos(i: Int): Position = ???
+  def prependAbstrPos: Position = new DerivedPos(1 +: seq)
+  def prependHeadPos: Position = new DerivedPos(1 +: seq)
+  def prependSpinePos: Position = new DerivedPos(2 +: seq)
+  def preprendArgPos(i: Int): Position = new DerivedPos(i +: seq)
 }
 
 
 object Position {
-  def root: Position = ???
+  def root: Position = RootPos
+
+  protected case class DerivedPos(pos: Seq[Int]) extends Position(pos)
+  protected case object RootPos extends Position(Seq.empty)
 }
