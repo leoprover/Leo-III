@@ -32,6 +32,7 @@ sealed abstract class TermImpl extends Term {
   def occurrences: Map[Term, Set[Position]] = ???
   def scopeNumber = ???
   def size = 0
+  def langOrder = ???
 }
 
 ///////////////////

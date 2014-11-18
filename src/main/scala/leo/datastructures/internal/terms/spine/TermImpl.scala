@@ -40,6 +40,7 @@ protected[terms] sealed abstract class TermImpl extends Term {
 
   // Other
   protected[internal] def inc(scopeIndex: Int): Term = ???
+  def langOrder = ???
 }
 
 /////////////////////////////////////////////////

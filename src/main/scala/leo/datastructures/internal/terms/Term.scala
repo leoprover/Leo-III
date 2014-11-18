@@ -2,10 +2,9 @@ package leo.datastructures.internal.terms
 
 
 import scala.language.implicitConversions
-import scala.Some
 
 import leo.datastructures.Pretty
-import leo.datastructures.internal.{Position, Signature, HOLBinaryConnective, Indexing, PLAIN}
+import leo.datastructures.internal.{Position, Signature, HOLBinaryConnective, Indexing, PLAIN, LangOrder}
 
 
 /**
@@ -66,6 +65,7 @@ abstract class Term extends Ordered[Term] with Pretty {
   def headSymbol: Term
   def scopeNumber: (Int,Int)
   def size: Int
+  def langOrder: LangOrder
 
   // Substitutions
   def substitute(what: Term, by: Term): Term
