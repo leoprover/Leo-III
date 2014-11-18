@@ -100,7 +100,7 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
         // TODO: Insert error stream
 //        res foreach {l => Console.info(l)}
         return handle(res.init, Stream.empty, res.last.toInt)
-    case _ : Throwable => Out.info(s"[$name]: Recevied a wrong task $t.")
+    case _  => Out.info(s"[$name]: Recevied a wrong task $t.")
       return EmptyResult
   }
 

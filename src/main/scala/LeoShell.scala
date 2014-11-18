@@ -202,6 +202,33 @@ object LeoShell {
 
   def add(name : String, s : Term) : Unit = add(name, s, "plain")
 
+  private def update(name : String, fS : FormulaStore) = {
+    Blackboard().rmFormulaByName(name)
+    val added = Blackboard().addFormula(fS)
+    Blackboard().filterAll{a => a.filter(fS)}
+  }
+
+  def update(name : String, status : Int) : Unit = {
+    Blackboard().getFormulaByName(name) match {
+      case Some(fS) => update(name, fS.newStatus(status))
+      case None => ()
+    }
+  }
+
+  def update(name : String, r : Role) : Unit = {
+    Blackboard().getFormulaByName(name) match {
+      case Some(fS) => update(name, fS.newRole(r.pretty))
+      case None => ()
+    }
+  }
+
+  def update(name : String, s : Term): Unit = {
+    Blackboard().getFormulaByName(name) match {
+      case Some(fS) => update(name, fS.newFormula(s))
+      case None => ()
+    }
+  }
+
   /**
    * Returns the formula with the given name in the context.
    * The formula is not ready to manipulate in parallel with this access.

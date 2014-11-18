@@ -52,7 +52,7 @@ trait TaskOrganize {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  protected[blackboard] def filterAll(t : Agent => Unit) : Unit
+  def filterAll(t : Agent => Unit) : Unit
 
 
   /**
