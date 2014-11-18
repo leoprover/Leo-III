@@ -82,7 +82,7 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
       try{
         Out.trace(s"[$name]: Writing to temporary file:")
         contextToTPTP(t1.readSet()) foreach {out =>
-          Out.info(out)
+          Out.trace(out)
           writer.println(out.output)}
       } finally writer.close()
 

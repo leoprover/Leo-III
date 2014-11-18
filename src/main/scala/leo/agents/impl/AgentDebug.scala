@@ -1,7 +1,9 @@
 package leo.agents.impl
 
+import leo.Configuration
 import leo.agents.{EmptyResult, Result, Task}
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
+import leo.modules.CLParameterParser
 import leo.modules.output.logger.Out
 
 /**
@@ -13,6 +15,7 @@ import leo.modules.output.logger.Out
 object AgentDebug {
   import leo.Main._
   def main(args : Array [String]) {
+    Configuration.init(new CLParameterParser(Array("arg0", "-v", "3")))
 
     load("tptp/ex2.p")
 //    val script = new LeoAgent("scripts/leoexec.sh")
