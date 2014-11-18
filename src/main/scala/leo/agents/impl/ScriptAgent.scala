@@ -80,27 +80,27 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
       file.deleteOnExit()
       val writer = new PrintWriter(file)
       try{
-        Console.trace(s"[$name]: Writing to temporary file:")
+        Out.trace(s"[$name]: Writing to temporary file:")
         contextToTPTP(t1.readSet()) foreach {out =>
-          Console.info(out)
+          Out.info(out)
           writer.println(out.output)}
       } finally writer.close()
 
       //Executing the prover
       var success = true
-        Console.info(s"[$name]: Executing $path on file ${file.getAbsolutePath}")
+        Out.info(s"[$name]: Executing $path on file ${file.getAbsolutePath}")
 
         // -------------------------------------------------------------
         //   Execution
         // -------------------------------------------------------------
         val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
-        Console.trace("[$name]: Got result from external prover:")
+        Out.trace("[$name]: Got result from external prover:")
 
         // Filter for exit code
         // TODO: Insert error stream
 //        res foreach {l => Console.info(l)}
         return handle(res.init, Stream.empty, res.last.toInt)
-    case _ : Throwable => Console.info(s"[$name]: Recevied a wrong task $t.")
+    case _ : Throwable => Out.info(s"[$name]: Recevied a wrong task $t.")
       return EmptyResult
   }
 

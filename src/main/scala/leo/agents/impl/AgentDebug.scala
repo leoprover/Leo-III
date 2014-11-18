@@ -2,7 +2,7 @@ package leo.agents.impl
 
 import leo.agents.{EmptyResult, Result, Task}
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
-import leo.modules.output.logger.Console
+import leo.modules.output.logger.Out
 
 /**
  * Debugging and Live Testing of Agents
@@ -28,8 +28,8 @@ object AgentDebug {
  */
 class LeoAgent(path : String) extends ScriptAgent(path) {
   override def handle(input: Stream[String], err: Stream[String], exit: Int): Result = {
-    input foreach {l => Console.output(l)}
-    Console.output(s"The exit code is $exit")
+    input foreach {l => Out.output(l)}
+    Out.output(s"The exit code is $exit")
     EmptyResult
   }
 
