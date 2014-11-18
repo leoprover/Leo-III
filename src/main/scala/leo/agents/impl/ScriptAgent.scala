@@ -11,22 +11,22 @@ import leo.modules.output.logger._
 
 import scala.sys.process._
 
-object ScriptAgent {
-  /**
-   * Performs an initial check, whether the script is existing
-   * and then starts the ScriptAgent.
-   *
-   * @param path - Path to the script
-   * @return ScriptAgent with that script
-   */
-  def apply(path : String) : Option[Agent] = {
-    if(new java.io.File(path).exists())
-      if(path.charAt(0)!='/' && path.charAt(0) != '.') Some(new ScriptAgent("./"++path))
-      else Some(new ScriptAgent(path))
-    else
-      None
-  }
-}
+//object ScriptAgent {
+//  /**
+//   * Performs an initial check, whether the script is existing
+//   * and then starts the ScriptAgent.
+//   *
+//   * @param path - Path to the script
+//   * @return ScriptAgent with that script
+//   */
+//  def apply(path : String) : Option[Agent] = {
+//    if(new java.io.File(path).exists())
+//      if(path.charAt(0)!='/' && path.charAt(0) != '.') Some(new ScriptAgent("./"++path))
+//      else Some(new ScriptAgent(path))
+//    else
+//      None
+//  }
+//}
 
 /**
  * <p>
@@ -37,21 +37,37 @@ object ScriptAgent {
  * </p>
  *
  * <p>
- * Change later to an abstract class to
- * allow a more specific filter.
+ * IMPORTANT :  The script will delete the exit value and append it to the output stream.
  * </p>
  *
  * @author Max Wisniewski
  * @since 11/10/14
  */
-class ScriptAgent(path : String) extends AbstractAgent{
-  override protected def toFilter(event: FormulaStore): Iterable[Task] = ???
+abstract class ScriptAgent(path : String) extends AbstractAgent {
+
+  def handle(input : Stream[String], err : Stream[String], errno : Int) : Result
 
   /**
    *
    * @return the name of the agent
    */
-  override def name: String = "ScriptAgent"
+  override def name: String = s"ScriptAgent {$path}"
+
+
+
+  private val exec : File = {
+    val f = File.createTempFile(path,".sh")
+    f.deleteOnExit()
+    val writer = new PrintWriter(f)
+    try{
+      writer.println("#!/bin/sh")
+      writer.println(path+" $1")
+      writer.println("echo $?")
+      writer.println("exit 0")
+    } finally writer.close()
+    Process(s"chmod u+x ${f.getAbsolutePath}").!
+    f
+  }
 
   /**
    * This function runs the specific agent on the registered Blackboard.
@@ -64,7 +80,7 @@ class ScriptAgent(path : String) extends AbstractAgent{
       file.deleteOnExit()
       val writer = new PrintWriter(file)
       try{
-        Console.info("Writing to temporary file:")
+        Console.trace(s"[$name]: Writing to temporary file:")
         contextToTPTP(t1.readSet()) foreach {out =>
           Console.info(out)
           writer.println(out.output)}
@@ -72,27 +88,19 @@ class ScriptAgent(path : String) extends AbstractAgent{
 
       //Executing the prover
       var success = true
-      try {
-        Console.info(s"Executing $path on file ${file.getAbsolutePath}")
+        Console.info(s"[$name]: Executing $path on file ${file.getAbsolutePath}")
 
         // -------------------------------------------------------------
         //   Execution
         // -------------------------------------------------------------
-        val res = Seq(path, file.getAbsolutePath).lines
-        Console.info("Got result from external prover:")
-        res foreach {x => Console.info(x)}
+        val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
+        Console.trace("[$name]: Got result from external prover:")
 
-      } catch {
-        case _ : Throwable => Console.info(s"External prover $path terminated unsuccessfull.")
-          success = false
-      }
-      if(success)
-        Console.info(s"The external prover $path found a proof.")
-      else
-        Console.info(s"The external prover $path did not found a proof.")
-      // Only execution at this point. No interpretation of the result.
-      return EmptyResult
-    case _ : Throwable => Console.info(s"$name recevied a wrong task $t.")
+        // Filter for exit code
+        // TODO: Insert error stream
+//        res foreach {l => Console.info(l)}
+        return handle(res.init, Stream.empty, res.last.toInt)
+    case _ : Throwable => Console.info(s"[$name]: Recevied a wrong task $t.")
       return EmptyResult
   }
 
@@ -123,6 +131,4 @@ class ScriptTask(fs : Set[FormulaStore]) extends Task {
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget
 }
-
-
 
