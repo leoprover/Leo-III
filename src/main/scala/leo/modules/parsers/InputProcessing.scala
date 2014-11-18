@@ -26,10 +26,14 @@ object InputProcessing {
   type Result = (String, Term, String)
 
   // Types for replacing bound variables by de bruijn indices
-  type TermVarReplaces = Map[Variable, (Type, Int)] // varname -> (vartype, position in list)
-  type TypeVarReplaces = Map[Variable, (Kind, Int)]
+  type TermVarReplaces = (Map[Variable, (Type, Int)], Int) // (varname -> (vartype, position in list), index offset)
+  type TypeVarReplaces = (Map[Variable, (Kind, Int)], Int)
   type Replaces = (TermVarReplaces, TypeVarReplaces)
-  def noRep: Replaces = (Map.empty, Map.empty)
+  def termMapping(r: Replaces) = (r._1)._1
+  def typeMapping(r: Replaces) = (r._2)._1
+  def termOffset(r: Replaces) = (r._1)._2
+  def typeOffset(r: Replaces) = (r._2)._2
+  def noRep: Replaces = ((Map.empty, 0), (Map.empty, 0))
 
   type TypeOrKind = Either[Type, Kind]
   type ProcessedVar = (Variable, TypeOrKind)
@@ -132,16 +136,25 @@ object InputProcessing {
         // and save bindings to `newReplaces` for body conversion
         val processedVars = vars.map(_ match {
           case (name, None) => {
-            newReplaces = (newReplaces._1.+((name, (sig.i, newReplaces._1.size+1))), newReplaces._2)
+            termMapping(newReplaces).get(name) match {
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+            }
             (name, Left(sig.i))
           }
           case (name, Some(ty)) => convertTHFType(sig)(ty, newReplaces) match {
             case Left(t) => {
-              newReplaces = (newReplaces._1.+((name, (t, newReplaces._1.size+1))), newReplaces._2)
+              termMapping(newReplaces).get(name) match {
+                case None => newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+                case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              }
               (name, Left(t))
             }
             case Right(k) => {
-              newReplaces = (newReplaces._1, newReplaces._2.+((name, (k, newReplaces._2.size+1))))
+              typeMapping(newReplaces).get(name) match {
+                case None => newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces)))
+                case _ =>  newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces) +1))
+              }
               (name, Right(k))
             }
           }
@@ -231,8 +244,18 @@ object InputProcessing {
             })
             require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
             val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
-              case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
-              case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
+              case (name, Left(ty)) => {
+                termMapping(repl).get(name) match {
+                  case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
+                  case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)+1),repl._2)
+                }
+              }
+              case (name, Right(k)) => {
+                typeMapping(repl).get(name) match {
+                  case None => (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)))
+                  case _ =>  (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)+1))
+                }
+              }
             }})
             processedVars.foldRight(convertTHFType(sig)(matrix,newReplaces).left.get)({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
             // the body of quantification must be a type.
@@ -249,7 +272,7 @@ object InputProcessing {
           case DefinedFunc(ty, List()) if ty == "$tType" =>  typeKind // kind *
           case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type
           case SystemFunc(ty, List()) =>  mkType(sig(ty).key) // system type
-          case Var(name) =>  mkVarType(replaces._2.size - replaces._2(name)._2 + 1)
+          case Var(name) =>  mkVarType(typeMapping(replaces).size + typeOffset(replaces) - typeMapping(replaces)(name)._2 + 1)
           case _ => throw new IllegalArgumentException("malformed/unsupported term type expression: "+typ.toString)
         }
       }
@@ -333,16 +356,25 @@ object InputProcessing {
         // and save bindings to `newReplaces` for body conversion
         val processedVars = vars.map(_ match {
           case (name, None) => {
-            newReplaces = (newReplaces._1.+((name, (sig.i, newReplaces._1.size+1))), newReplaces._2)
+            termMapping(newReplaces).get(name) match {
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+            }
             (name, Left(sig.i))
           }
           case (name, Some(ty)) => convertTFFType(sig)(ty, newReplaces) match {
             case Left(t) => {
-              newReplaces = (newReplaces._1.+((name, (t, newReplaces._1.size+1))), newReplaces._2)
+              termMapping(newReplaces).get(name) match {
+                case None => newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+                case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              }
               (name, Left(t))
             }
             case Right(k) => {
-              newReplaces = (newReplaces._1, newReplaces._2.+((name, (k, newReplaces._2.size+1))))
+              typeMapping(newReplaces).get(name) match {
+                case None => newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces)))
+                case _ =>  newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces) +1))
+              }
               (name, Right(k))
             }
           }
@@ -408,7 +440,7 @@ object InputProcessing {
     import leo.datastructures.tptp.tff.{AtomicType,->,*,QuantifiedType}
     tffType match {
       // "AtomicType" constructs: Type variables, Base types, type kinds, or type/kind applications
-      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(replace._2.size - replace._2(ty)._2 + 1)  // Type Variable
+      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(typeMapping(replace).size + typeOffset(replace) - typeMapping(replace)(ty)._2 + 1)  // Type Variable
       case AtomicType(ty, List()) if ty == "$tType" => typeKind // kind *
       case AtomicType(ty, List())  => mkType(sig.meta(ty).key)  // Base type
       case AtomicType(_, _) => throw new IllegalArgumentException("Processing of applied types not implemented yet") // TODO
@@ -436,8 +468,14 @@ object InputProcessing {
         })
         require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
         val newReplaces = processedVars.foldLeft(replace)({case (repl,vari) => vari match {
-          case (name, Left(ty)) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
-          case (name, Right(k)) => (repl._1, repl._2.+((name,(k, repl._2.size+1))))
+          case (name, Left(ty)) => termMapping(repl).get(name) match {
+            case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
+            case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)+1),repl._2)
+          }
+          case (name, Right(k)) => typeMapping(repl).get(name) match {
+            case None => (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)))
+            case _ =>  (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)+1))
+          }
         }})
         processedVars.foldRight(convertTFFType(sig)(body,newReplaces).left.get)({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
         // the body of quantification must be a type.
@@ -484,7 +522,10 @@ object InputProcessing {
         val quantifier = processFOFUnary(q)
         val processedVars = varList.map((_, sig.i))
         val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
-          case (name, ty) => (repl._1.+((name,(ty, repl._1.size+1))), repl._2)
+          case (name, ty) => termMapping(repl).get(name) match {
+            case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
+            case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)+1),repl._2)
+          }
         }})
         mkPolyQuantifiedFOF(quantifier, processedVars, processFOF0(sig)(matrix, newReplaces))
       }
@@ -575,9 +616,9 @@ object InputProcessing {
       val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key), converted)
     }
-    case Var(name) => replace._1.get(name) match {
+    case Var(name) => termMapping(replace).get(name) match {
       case None => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
-      case Some((ty, scope)) => mkBound(ty, replace._1.size - scope +1)
+      case Some((ty, scope)) => mkBound(ty, termMapping(replace).size + termOffset(replace) - scope +1)
     }
 
     case NumberTerm(value) => value match {

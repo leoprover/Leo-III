@@ -1,12 +1,16 @@
 package leo.modules.output.logger
 
+import leo.Configuration
+import leo.modules.CLParameterParser
+
 /**
  * Created by lex on 10.11.14.
  */
 object LoggerTest {
   def main(args: Array[String]) {
-    Console.output("Test1 Test2 test3")
-    Console.severe("help! fatal error!")
-    Console.trace("does correctly not show up (log level too low)")
+    Configuration.init(new CLParameterParser(Array("arg0", "-v", "3")))
+    Out.output("Test1 Test2 test3")
+    Out.severe("help! fatal error!")
+    Out.trace("does correctly not show up (log level too low)")
   }
 }

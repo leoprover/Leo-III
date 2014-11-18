@@ -1,11 +1,12 @@
 package leo.modules.output.logger
 
+import leo.Configuration
 import leo.modules.output.Output
 
 
 object Out extends Logging {
   override protected val loggerName = "Console"
-  override protected val defaultLogLevel = java.util.logging.Level.CONFIG
+  override protected lazy val defaultLogLevel = Configuration.VERBOSITY
   override protected val useParentLoggers = false
 
   import java.util.logging.{ConsoleHandler, LogRecord, Formatter}
