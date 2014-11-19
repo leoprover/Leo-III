@@ -7,6 +7,7 @@ import leo.datastructures.internal.{Position, Signature, Indexing, INDEXED}
 import leo.datastructures.internal.terms._
 import leo.datastructures.internal.terms.BoundFront
 import leo.datastructures.internal.terms.TermFront
+import leo.datastructures.internal.terms.{->}
 import scala.annotation.tailrec
 
 ///////////////////////////////////////////////
@@ -81,7 +82,8 @@ protected[terms] case class Root(hd: Head, args: Spine) extends TermImpl {
   private def ty0(funty: Type, s: Spine): Type = s match {
     case SNil => funty
     case App(s0,tail) => funty match {
-      case AbstractionTypeNode(_, out) => ty0(out, tail)
+      case (t -> out) if t.isProdType => ty0(out, s.drop(t.numberOfComponents))
+      case (_ -> out) => ty0(out, tail)
       case _ => throw new IllegalArgumentException(s"${this.pretty}: expression not well typed")// this should not happen if well-typed
     }
     case TyApp(s0,tail) => funty match {
@@ -527,7 +529,8 @@ protected[terms] sealed abstract class Spine extends Pretty {
   def ++(sp: Spine): Spine
   def +(t: TermImpl): Spine = ++(cons(Left(t),SNil))
 
-
+  /** Drop n arguments from spine, fails with IllegalArgumentException if n > length */
+  def drop(n: Int): Spine
 }
 
 protected[terms] case object SNil extends Spine {
@@ -557,6 +560,11 @@ protected[terms] case object SNil extends Spine {
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = SpineClos(sp, spSubst)
   def ++(sp: Spine) = sp
+
+  def drop(n: Int) = n match {
+    case 0 => SNil
+    case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
+  }
 
   // Pretty printing
   override val pretty = "⊥"
@@ -598,6 +606,11 @@ protected[terms] case class App(hd: Term, tail: Spine) extends Spine {
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = App(TermClos(hd, subst), tail.merge(subst, sp, spSubst))
   def ++(sp: Spine) = cons(Left(hd), tail ++ sp)
 
+  def drop(n: Int) = n match {
+    case 0 => this
+    case _ => tail.drop(n-1)
+  }
+
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
 }
@@ -629,6 +642,11 @@ protected[terms] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = TyApp(hd.substitute(subst._2), tail.merge(subst, sp, spSubst))
   def ++(sp: Spine) = cons(Right(hd), tail ++ sp)
+
+  def drop(n: Int) = n match {
+    case 0 => this
+    case _ => tail.drop(n-1)
+  }
 
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
@@ -662,6 +680,8 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = sp.merge((s._1 o subst._1,s._2 o subst._2),sp, spSubst)
   def ++(sp: Spine) = ???
+
+  def drop(n: Int) = ???
 
   // Pretty printing
   override def pretty = s"(${sp.pretty}[${s._1.pretty}/${s._2.pretty}])"
