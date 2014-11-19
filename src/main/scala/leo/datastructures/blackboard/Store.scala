@@ -43,6 +43,7 @@ object Store {
  *     <tr><th>3.</th><th> Term is in Negation Normal Form </th></tr>
  *     <tr><th>4.</th><th> Term is Skolemized </th></tr>
  *     <tr><th>5.</th><th> Term is in PrenexNormalform </th></tr>
+ *     <tr><th>6.</th><th> Term should be proven as a conjecture in an external prover</th></tr>
  *   </tbody>
  * </table>
  *
