@@ -86,6 +86,8 @@ abstract class Type extends Pretty {
   /** Create union type `this + ty`*/
   def +(ty: Type) = Type.mkUnionType(this, ty)
 
+  val numberOfComponents: Int = 1
+
 
   protected[internal] def closure(subst: Subst): Type
 }

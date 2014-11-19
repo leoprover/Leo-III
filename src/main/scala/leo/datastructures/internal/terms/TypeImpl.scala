@@ -160,6 +160,8 @@ protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
                   (forAllFunc: A => A) = prodFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
 
   def closure(subst: Subst) = substitute(subst)
+
+  override val numberOfComponents: Int = 1 + l.numberOfComponents
 }
 
 /** Product type `l + r` */
