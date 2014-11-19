@@ -2,7 +2,7 @@ package leo.agents.impl
 
 import leo.Configuration
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{Blackboard}
+import leo.datastructures.blackboard.{FormulaEvent, Blackboard}
 import leo.modules.CLParameterParser
 import leo.modules.output.logger.Out
 
@@ -20,19 +20,19 @@ object AgentDebug {
     Blackboard()
     UtilAgents.Conjecture()
 
-    (new LeoAgent("/home/ryu/prover/leo2/bin/leo")).register()
+    val leo = (new LeoAgent("/home/ryu/prover/leo2/bin/leo"))
+    leo.register()
     load("tptp/ex1.p")
     Scheduler().signal()
 
-    Thread.sleep(500)
+    Thread.sleep(100)
 
 
     Blackboard().getFormulas foreach {f => Out.output(f.toString)}
     val f = Blackboard().getFormulaByName("test").get
-    Blackboard().rmFormulaByName("test")
-    val nf = f.newStatus(32 & f.status)
-    Blackboard().addFormula(nf)
-    Blackboard().filterAll(a => a.filter(nf))
+    Blackboard().send(RemoteInvoke(f),leo)
 
+    Thread.sleep(500)
+    Scheduler().killAll()
   }
 }

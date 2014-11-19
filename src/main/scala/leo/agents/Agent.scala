@@ -1,6 +1,6 @@
 package leo.agents
 
-import leo.datastructures.blackboard.{FormulaStore, Blackboard}
+import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
 
 import scala.collection.mutable
 
@@ -83,7 +83,7 @@ trait Agent {
    *
    * @param event - Newly added or updated formula
    */
-  def filter(event : FormulaStore) : Unit
+  def filter(event : Event) : Unit
 
 
   /**
@@ -129,7 +129,7 @@ trait Agent {
 
 abstract class AbstractAgent extends Agent {
 
-  protected def toFilter(event : FormulaStore) : Iterable[Task]
+  protected def toFilter(event : Event) : Iterable[Task]
 
   private var _isActive : Boolean = false
 
@@ -161,7 +161,7 @@ abstract class AbstractAgent extends Agent {
    * @param f - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  override def filter(f: FormulaStore) : Unit = {
+  override def filter(f: Event) : Unit = {
     var done = false
     for(t <- toFilter(f)) {
       if (!Blackboard().collision(t)) {

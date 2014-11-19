@@ -205,7 +205,7 @@ object LeoShell {
   private def update(name : String, fS : FormulaStore) = {
     Blackboard().rmFormulaByName(name)
     val added = Blackboard().addFormula(fS)
-    Blackboard().filterAll{a => a.filter(fS)}
+    Blackboard().filterAll{a => a.filter(FormulaEvent(fS))}
   }
 
   def update(name : String, status : Int) : Unit = {

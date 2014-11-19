@@ -3,7 +3,7 @@ package impl
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import leo.datastructures.blackboard.{Blackboard, FormulaStore}
+import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore}
 import leo.datastructures.internal._
 import leo.modules.proofCalculi.resolution.ResolutionCalculus._
 
@@ -70,23 +70,27 @@ class ResolutionAgent extends Agent {
    * A predicate that distinguishes interesting and uninteresing
    * Formulas for the Handler.
    * </p>
-   * @param f - Newly added formula
+   * @param e - Newly added formula
    * @return true if the formula is relevant and false otherwise
    */
-  override def filter(f: FormulaStore) : Unit = {
-    var done = false
-    for(t <- toFilter(f)) {
-      if (!Blackboard().collision(t)) {
-//        println(name + " : Got a task.\n "+t.toString)
+  override def filter(e: Event) : Unit = {
+    e match {
+      case FormulaEvent(f) =>
+        var done = false
+        for (t <- toFilter (f) ) {
+        if (! Blackboard ().collision (t) ) {
+          //        println(name + " : Got a task.\n "+t.toString)
         synchronized {
-          q.enqueue(t)
+        q.enqueue (t)
         }
         done = true
-      } else {
-//        println(name + " : Got a but collided.\n "+t.toString)
-      }
+        } else {
+          //        println(name + " : Got a but collided.\n "+t.toString)
+        }
+        }
+        if (done) Blackboard ().signalTask ()
+      case _ => ()
     }
-    if(done) Blackboard().signalTask()
   }
 
   override val maxMoney : Double = 3000

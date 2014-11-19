@@ -94,7 +94,7 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
         //   Execution
         // -------------------------------------------------------------
         val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
-        Out.trace("[$name]: Got result from external prover:")
+        Out.trace(s"[$name]: Got result from external prover:")
 
         // Filter for exit code
         // TODO: Insert error stream

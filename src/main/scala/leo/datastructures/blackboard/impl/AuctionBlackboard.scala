@@ -65,7 +65,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     f match {
       case Left(s1) =>
         checkFinish(s1)
-        filterAll(_.filter(s1))
+        filterAll(_.filter(FormulaEvent(s1)))
         s1
       case Right(s2) =>
         s2
@@ -122,6 +122,8 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     }
   }
 
+
+
   override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
 
   override def getRunningTasks() : Iterable[Task] = TaskSet.execTasks.toList
@@ -134,7 +136,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    */
   override protected[blackboard] def freshAgent(a: Agent): Unit = {
     // ATM only formulas trigger events
-    getFormulas.foreach{fS => a.filter(fS)}
+    getFormulas.foreach{fS => a.filter(FormulaEvent(fS))}
   }
 
   override def signalTask() : Unit = TaskSet.signalTask()
@@ -146,6 +148,16 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @return all registered agents
    */
   override def getAgents(): Iterable[(Agent,Double)] = TaskSet.regAgents.toSeq
+
+  /**
+   * Sends a message to an agent.
+   *
+   * TODO: Implement without loss of tasks through messages
+   *
+   * @param m    - The message to send
+   * @param to   - The recipient
+   */
+  override def send(m: Message, to: Agent): Unit = to.filter(m)
 }
 
 /**

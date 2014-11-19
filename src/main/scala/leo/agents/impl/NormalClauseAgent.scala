@@ -1,7 +1,7 @@
 package leo.agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaStore, Blackboard}
+import leo.datastructures.blackboard.{FormulaEvent, Event, FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
 
 import scala.collection.mutable
@@ -91,9 +91,12 @@ class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
 
 
 
-  override protected def toFilter(event: FormulaStore): Iterable[Task] = event.formula match {
-    case Left(f) => if (norm.applicable(event.simpleFormula, event.status)) List(new NormalTask(event)) else Nil
-    case Right(_) => Nil
+  override protected def toFilter(e: Event): Iterable[Task] = e match {
+    case FormulaEvent(event) => event.formula match {
+      case Left (f) => if (norm.applicable (event.simpleFormula, event.status) ) List (new NormalTask (event) ) else Nil
+      case Right (_) => Nil
+    }
+    case _ => Nil
   }
 
 

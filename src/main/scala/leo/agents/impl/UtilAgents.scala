@@ -2,7 +2,7 @@ package leo.agents
 package impl
 
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{Blackboard, FormulaStore}
+import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore}
 
 object UtilAgents {
 
@@ -50,12 +50,15 @@ class ConjectureAgent extends AbstractAgent {
    *
    * The filter then checks the blackboard if it can generate a task from it.
    *
-   * @param event - Newly added or updated formula
+   * @param e - Newly added or updated formula
    * @return - set of tasks, if empty the agent won't work on this event
    */
-  override def toFilter(event: FormulaStore): Iterable[Task] = event.formula match {
-    case Left(f) => if(event.role == "conjecture") List(new SingleFormTask(event)) else Nil
-    case Right(_) => Nil
+  override def toFilter(e: Event): Iterable[Task] = e match {
+    case FormulaEvent(event) => event.formula match {
+      case Left(f) => if (event.role == "conjecture") List(new SingleFormTask(event)) else Nil
+      case Right(_) => Nil
+    }
+    case _ => Nil
   }
 
   /**
@@ -132,14 +135,16 @@ class FinishedAgent(timeout : Int) extends AbstractAgent {
    *
    * The filter then checks the blackboard if it can generate a task from it.
    *
-   * @param event - Newly added or updated formula
+   * @param e - Newly added or updated formula
    * @return - set of tasks, if empty the agent won't work on this event
    */
-  override def toFilter(event: FormulaStore): Iterable[Task] = {
+  override def toFilter(e: Event): Iterable[Task] = {
     import leo.datastructures.internal._
-    event.formula match {
-      case Left(LitFalse()) => List(new SingleFormTask(event))
-      case _ => Nil
+    e match {
+      case FormulaEvent(event) => event.formula match {
+        case Left (LitFalse () ) => List (new SingleFormTask (event) )
+        case _ => Nil
+      }
     }
   }
 

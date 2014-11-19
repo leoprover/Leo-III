@@ -32,7 +32,7 @@ object Blackboard extends Function0[Blackboard] {
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends TaskOrganize with FormulaBlackboard{
+trait Blackboard extends TaskOrganize with FormulaBlackboard with MessageBlackboard{
 
 }
 
@@ -207,4 +207,17 @@ trait FormulaBlackboard {
    * Clears the complete blackboard
    */
   def clear() : Unit
+}
+
+/**
+ * This trait capsules the message handling for the blackboard
+ */
+trait MessageBlackboard {
+  /**
+   * Sends a message to an agent.
+   *
+   * @param m    - The message to send
+   * @param to   - The recipient
+   */
+  def send(m : Message, to : Agent)
 }
