@@ -100,6 +100,12 @@ trait ContextSet[A] {
   def inContext(a : A) : Seq[Context]
 
   /**
+   * Clears a context and all its sub contexts of all elements.
+   * @param c
+   */
+  def clear(c : Context) : Unit
+
+  /**
    * Resets the data structure to an initial state
    */
   def clear() : Unit
@@ -124,6 +130,8 @@ trait ContextMap[K,V] {
   def valueSet(c : Context) : Set[V]
 
   def remove(k : K, c : Context) : Boolean
+
+  def clear(c : Context)
 
   def clear() : Unit
 }
