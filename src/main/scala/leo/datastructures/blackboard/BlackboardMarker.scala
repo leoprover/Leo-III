@@ -21,7 +21,7 @@ trait Message extends Event {
  * Capsules a Formula that was recently added or modified in the blackboard.
  * @param f - Modified formula
  */
-private class FormulaEventC(f : FormulaStore) extends Event {
+private class FormulaEvent(f : FormulaStore) extends Event {
   def getF : FormulaStore = f
 }
 
@@ -30,10 +30,10 @@ private class FormulaEventC(f : FormulaStore) extends Event {
  */
 object FormulaEvent{
 
-  def apply(f : FormulaStore) : Event = new FormulaEventC(f)
+  def apply(f : FormulaStore) : Event = new FormulaEvent(f)
 
   def unapply(e : Event) : Option[FormulaStore] = e match {
-    case f : FormulaEventC => Some(f.getF)
+    case f : FormulaEvent  => Some(f.getF)
     case _                => None
   }
 }
