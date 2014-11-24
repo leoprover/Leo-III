@@ -30,19 +30,6 @@ protected object SimpleLiteral {
       NegativeLiteral(t, litCounter)
   }
 
-
-  // Convenience methods
-  def apply(t: Term, pol: Boolean): Literal = mkLit(t, pol)
-  /** Create a literal of the term `t` and positive polarity. */
-  def mkPosLit(t: Term): Literal = mkLit(t, true)
-  /** Create a literal of the term `t` and negative polarity. */
-  def mkNegLit(t: Term): Literal = mkLit(t, false)
-  /** Create a literal of the form `left == right` (i.e. equality with positive polarity). */
-  def mkEqLit(left: Term, right: Term): Literal = mkLit(EQ(left, right), true)
-  /** Create a literal of the form `left != right` (i.e. equality with negative polarity). */
-  def mkUniLit(left: Term, right: Term): Literal = mkLit(EQ(left, right), false)
-
-
   private case class PositiveLiteral(term: Term, litId: Int) extends SimpleLiteral {
     val polarity = true
     val isUni = false
@@ -55,7 +42,10 @@ protected object SimpleLiteral {
       case _ === _ => true
       case _ => false
     }
-    lazy val isFlexFlex = ???
+    lazy val isFlexFlex = term match {
+      case EQ(l, r) => (l.isApp || l.isAtom) && (r.isApp || r.isAtom) && l.headSymbol.symbols.isEmpty && r.headSymbol.symbols.isEmpty
+      case _ => false
+    }
     lazy val pretty = s"[${term.pretty}] = F"
   }
 }
