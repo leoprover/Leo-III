@@ -197,7 +197,7 @@ object LeoShell {
    */
   def add(name : String, s : Term, role : String): Unit = {
     Blackboard().addFormula(name, s, role)
-    println("Added "+name+"='$s' to the context.")
+    println(s"Added $name='$s' to the context.")
   }
 
   def add(name : String, s : Term) : Unit = add(name, s, "plain")
