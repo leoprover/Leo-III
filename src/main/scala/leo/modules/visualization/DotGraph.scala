@@ -3,6 +3,7 @@ package leo.modules.visualization
 import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.datastructures.term._
+import leo.datastructures.term.Term._
 
 /**
  *

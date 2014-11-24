@@ -66,7 +66,7 @@ object TermIndex {
         case Some(set) => occurs_at += ((subterm, inner + ((position, set + term))))
       }
     }
-
+    import Term.{Bound, Symbol, @@@, ∙, @@@@, :::>, TypeLambda}
     subterm match {
       case Bound(t,scope) => ()
       case Symbol(id)     => ()

@@ -2,6 +2,7 @@ package leo.datastructures
 
 import leo.datastructures.term._
 import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ}
+import Term.{@@@, Symbol, ∙, @@@@}
 import Type.{superKind, typeKind, typeVarToType}
 import leo.datastructures.impl.Signature
 

@@ -143,146 +143,145 @@ object Term extends TermBank {
 
   type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
   def statistics: TermBankStatistics = TermImpl.statistics
-}
 
+  //////////////////////////////////////////
+  // Patterns for term structural matching
+  //////////////////////////////////////////
 
-//////////////////////////////////////////
-// Patterns for term structural matching
-//////////////////////////////////////////
+  import leo.datastructures.term.spine.Spine.{nil => SNil}
+  import leo.datastructures.term.spine.{Atom, BoundIndex, Redex, Root}
 
-import leo.datastructures.term.spine.Spine.{nil => SNil}
-import leo.datastructures.term.spine.{Atom, BoundIndex, Redex, Root}
-
-/**
- * Pattern for matching bound symbols in terms (i.e. De-Bruijn-Indices). Usage:
- * {{{
- * t match {
- *  case Bound(ty,scope) => println("Matched bound symbol of lambda-scope "
- *                                  + scope.toString + " with type "+ ty.pretty)
- *  case _               => println("something else")
- * }
- * }}}
- */
-object Bound {
-  def unapply(t: Term): Option[(Type, Int)] = t match {
-    case naive.BoundNode(ty,scope) => Some((ty,scope))
-    case spine.Root(BoundIndex(ty, scope), SNil) => Some((ty, scope))
-    case _ => None
-  }
-}
-
-/**
- * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:
- * {{{
- * t match {
- *  case Symbol(constantKey) => println("Matched constant symbol "+ constantKey.toString)
- *  case _                   => println("something else")
- * }
- * }}}
- */
-object Symbol {
-
-  def unapply(t: Term): Option[Signature#Key] = t match {
-    case naive.SymbolNode(k)         => Some(k)
-    case spine.Root(Atom(k),SNil) => Some(k)
-    case _ => None
-  }
-}
-
-/**
- * Pattern for matching (term) applications in terms (i.e. terms of form `(s t)`). Usage:
- * {{{
- * t match {
- *  case s @@@ t => println("Matched application. Left: " + s.pretty
- *                                            + " Right: " + t.pretty)
- *  case _       => println("something else")
- * }
- * }}}
- */
-object @@@ extends HOLBinaryConnective {
-  val key = Integer.MIN_VALUE // just for fun!
-  override def unapply(t: Term): Option[(Term,Term)] = t match {
-    case naive.ApplicationNode(l,r) => Some((l,r))
-    case _ => None
-  }
-  override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
-}
-
-/**
- * Pattern for matching a root/redex term (i.e. terms of form `(f ∙ S)`). Usage:
- * {{{
- * t match {
- *  case s ∙ args => println("Matched application. Head: " + s.pretty
- *                                            + " Args: " + args.map.fold(_.pretty,_.pretty)).toString
- *  case _       => println("something else")
- * }
- * }}}
- */
-object ∙ {
-  def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
-    case Root(h, sp) => Some((spine.TermImpl.headToTerm(h), sp.asTerms))
-    case Redex(expr, sp) => Some((expr, sp.asTerms))
-    case _ => None
+  /**
+   * Pattern for matching bound symbols in terms (i.e. De-Bruijn-Indices). Usage:
+   * {{{
+   * t match {
+   *  case Bound(ty,scope) => println("Matched bound symbol of lambda-scope "
+   *                                  + scope.toString + " with type "+ ty.pretty)
+   *  case _               => println("something else")
+   * }
+   * }}}
+   */
+  object Bound {
+    def unapply(t: Term): Option[(Type, Int)] = t match {
+      case naive.BoundNode(ty,scope) => Some((ty,scope))
+      case spine.Root(BoundIndex(ty, scope), SNil) => Some((ty, scope))
+      case _ => None
+    }
   }
 
-  def apply(left: Term, right: Seq[Either[Term, Type]]): Term = spine.TermImpl.mkApp(left, right)
-}
+  /**
+   * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:
+   * {{{
+   * t match {
+   *  case Symbol(constantKey) => println("Matched constant symbol "+ constantKey.toString)
+   *  case _                   => println("something else")
+   * }
+   * }}}
+   */
+  object Symbol {
 
-/**
- * Pattern for matching type applications in terms (i.e. terms of form `(s ty)` where `ty` is a type). Usage:
- * {{{
- * t match {
- *  case s :::: ty => println("Matched type application. Left: " + s.pretty
- *                                                  + " Right: " + ty.pretty)
- *  case _         => println("something else")
- * }
- * }}}
- */
-object @@@@ {
-
-  def unapply(t: Term): Option[(Term,Type)] = t match {
-    case naive.TypeApplicationNode(l,r) => Some((l,r))
-    case _ => None
-  }
-}
-
-/**
- * Pattern for matching (term) abstractions in terms (i.e. terms of form `(\(ty)(s))` where `ty` is a type). Usage:
- * {{{
- * t match {
- *  case ty :::> s => println("Matched abstraction. Type of parameter: " + ty.pretty
- *                                                           + " Body: " + s.pretty)
- *  case _         => println("something else")
- * }
- * }}}
- */
-object :::> extends Function2[Type, Term, Term] {
-
-  def unapply(t: Term): Option[(Type,Term)] = t match {
-    case naive.AbstractionNode(ty,body) => Some((ty,body))
-    case spine.TermAbstr(ty, body)      => Some((ty, body))
-    case _ => None
+    def unapply(t: Term): Option[Signature#Key] = t match {
+      case naive.SymbolNode(k)         => Some(k)
+      case spine.Root(Atom(k),SNil) => Some(k)
+      case _ => None
+    }
   }
 
-  /** Construct abstraction λty.body */
-  override def apply(ty: Type, body: Term): Term = Term.mkTermAbs(ty, body)
-}
+  /**
+   * Pattern for matching (term) applications in terms (i.e. terms of form `(s t)`). Usage:
+   * {{{
+   * t match {
+   *  case s @@@ t => println("Matched application. Left: " + s.pretty
+   *                                            + " Right: " + t.pretty)
+   *  case _       => println("something else")
+   * }
+   * }}}
+   */
+  object @@@ extends HOLBinaryConnective {
+    val key = Integer.MIN_VALUE // just for fun!
+    override def unapply(t: Term): Option[(Term,Term)] = t match {
+        case naive.ApplicationNode(l,r) => Some((l,r))
+        case _ => None
+      }
+    override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
+  }
 
-/**
- * Pattern for matching (type) abstractions in terms (i.e. terms of form `/\(s)`). Usage:
- * {{{
- * t match {
- *  case TypeLambda(s) => println("Matched type abstraction. Body: " + s.pretty)
- *  case _             => println("something else")
- * }
- * }}}
- */
-object TypeLambda {
+  /**
+   * Pattern for matching a root/redex term (i.e. terms of form `(f ∙ S)`). Usage:
+   * {{{
+   * t match {
+   *  case s ∙ args => println("Matched application. Head: " + s.pretty
+   *                                            + " Args: " + args.map.fold(_.pretty,_.pretty)).toString
+   *  case _       => println("something else")
+   * }
+   * }}}
+   */
+  object ∙ {
+    def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
+      case Root(h, sp) => Some((spine.TermImpl.headToTerm(h), sp.asTerms))
+      case Redex(expr, sp) => Some((expr, sp.asTerms))
+      case _ => None
+    }
 
-  def unapply(t: Term): Option[Term] = t match {
-    case naive.TypeAbstractionNode(body) => Some(body)
-    case spine.TypeAbstr(body)           => Some(body)
-    case _ => None
+    def apply(left: Term, right: Seq[Either[Term, Type]]): Term = spine.TermImpl.mkApp(left, right)
+  }
+
+  /**
+   * Pattern for matching type applications in terms (i.e. terms of form `(s ty)` where `ty` is a type). Usage:
+   * {{{
+   * t match {
+   *  case s :::: ty => println("Matched type application. Left: " + s.pretty
+   *                                                  + " Right: " + ty.pretty)
+   *  case _         => println("something else")
+   * }
+   * }}}
+   */
+  object @@@@ {
+
+    def unapply(t: Term): Option[(Term,Type)] = t match {
+      case naive.TypeApplicationNode(l,r) => Some((l,r))
+      case _ => None
+    }
+  }
+
+  /**
+   * Pattern for matching (term) abstractions in terms (i.e. terms of form `(\(ty)(s))` where `ty` is a type). Usage:
+   * {{{
+   * t match {
+   *  case ty :::> s => println("Matched abstraction. Type of parameter: " + ty.pretty
+   *                                                           + " Body: " + s.pretty)
+   *  case _         => println("something else")
+   * }
+   * }}}
+   */
+  object :::> extends Function2[Type, Term, Term] {
+
+    def unapply(t: Term): Option[(Type,Term)] = t match {
+      case naive.AbstractionNode(ty,body) => Some((ty,body))
+      case spine.TermAbstr(ty, body)      => Some((ty, body))
+      case _ => None
+    }
+
+    /** Construct abstraction λty.body */
+    override def apply(ty: Type, body: Term): Term = Term.mkTermAbs(ty, body)
+  }
+
+  /**
+   * Pattern for matching (type) abstractions in terms (i.e. terms of form `/\(s)`). Usage:
+   * {{{
+   * t match {
+   *  case TypeLambda(s) => println("Matched type abstraction. Body: " + s.pretty)
+   *  case _             => println("something else")
+   * }
+   * }}}
+   */
+  object TypeLambda {
+
+    def unapply(t: Term): Option[Term] = t match {
+      case naive.TypeAbstractionNode(body) => Some(body)
+      case spine.TypeAbstr(body)           => Some(body)
+      case _ => None
+    }
   }
 }
 

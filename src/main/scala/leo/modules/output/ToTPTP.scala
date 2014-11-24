@@ -1,7 +1,7 @@
 package leo.modules.output
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.:::>
+import leo.datastructures.term.Term.{:::>, Symbol, Bound, @@@, ∙}
 import leo.datastructures.Type._
 import leo.datastructures._
 import leo.datastructures.term._
