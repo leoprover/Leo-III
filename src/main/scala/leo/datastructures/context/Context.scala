@@ -119,19 +119,77 @@ trait ContextSet[A] {
  */
 trait ContextMap[K,V] {
 
+  /**
+   *
+   * Obtains the value of a key k in the context c, if one exists.
+   * An error will be raised otherwise
+   *
+   * @param k - The key to look up
+   * @param c - The context in which to look up
+   * @return the value if it exists and an error otherwise
+   */
   def get(k : K, c : Context) : V
 
+  /**
+   *
+   * Looks up the value for a key.
+   *
+   * @param k - The key to look up
+   * @param c - THe context in which to look
+   * @return some value if it exists and non otherwise
+   */
   def lookup(k : K, c : Context) : Option[V]
 
+  /**
+   *
+   * Inserts an new key value
+   *
+   * @param k - The new key
+   * @param v - The new value
+   * @param c - The context c, in which it is to be inserted
+   * @return true, iff the insertion was successful
+   */
   def put(k : K, v : V, c : Context) : Boolean
 
+  /**
+   *
+   * Returns all keys in a specific context
+   *
+   * @param c - The context to look at
+   * @return All keys in c
+   */
   def keySet(c : Context) : Set[K]
 
+  /**
+   *
+   * Returns all values in a specific context
+   *
+   * @param c - The context to look at
+   * @return All values in c
+   */
   def valueSet(c : Context) : Set[V]
 
+  /**
+   *
+   * Removes a key k and its value from a context.
+   *
+   * @param k - The key to remove
+   * @param c - The context in which to remove
+   * @return true, iff the key was removed successful
+   */
   def remove(k : K, c : Context) : Boolean
 
+  /**
+   *
+   * Removes all key - value pairs from the context c and
+   * all its subcontexts
+   *
+   * @param c - The context to be cleared
+   */
   def clear(c : Context)
 
+  /**
+   * Convert the datastrucutre into an initial state.
+   */
   def clear() : Unit
 }
