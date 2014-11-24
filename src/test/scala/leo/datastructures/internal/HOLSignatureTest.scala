@@ -1,11 +1,12 @@
 package leo.datastructures.internal
 
+import leo.datastructures.HOLSignature
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 /**
  * This test checks if the number of predefined symbols is coherent with the
- * description in [[leo.datastructures.internal.HOLSignature]].
+ * description in [[HOLSignature]].
  *
  * @author Alexander Steen
  * @since 05.05.2014

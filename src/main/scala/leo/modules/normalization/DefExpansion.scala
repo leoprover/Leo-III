@@ -1,6 +1,6 @@
 package leo.modules.normalization
 
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.term.Term
 
 /**
  * Created by lex on 07.07.14.

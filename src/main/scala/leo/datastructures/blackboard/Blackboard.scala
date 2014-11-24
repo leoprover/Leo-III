@@ -2,7 +2,7 @@ package leo.datastructures.blackboard
 
 import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.term.Term
 import scala.collection.mutable
 
 // Singleton Blackboards

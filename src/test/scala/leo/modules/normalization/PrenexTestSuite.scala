@@ -1,12 +1,13 @@
 package leo.modules.normalization
 
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.Term
+import leo.datastructures.{Forall, &}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
-import leo.datastructures.internal.Signature
 
 import leo.datastructures.internal._
-import leo.datastructures.internal.terms.Term
 import Term._
 
 /**

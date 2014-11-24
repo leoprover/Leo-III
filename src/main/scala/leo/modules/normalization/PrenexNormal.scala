@@ -1,9 +1,8 @@
 package leo.modules.normalization
 
-import leo.datastructures.internal._
-import leo.datastructures.internal.terms._
+import leo.datastructures.term._
 import Term._
-import Simplification.isBound
+import leo.datastructures.{Forall, &, |||}
 
 /**
  * Computes for a Skolemized Term the Prenex Normal Form

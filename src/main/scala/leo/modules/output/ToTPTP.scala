@@ -1,10 +1,10 @@
 package leo.modules.output
 
-import leo.datastructures.internal.terms.Term
-import leo.datastructures.internal.terms.Type
-import leo.datastructures.internal.terms.{:::>, @@@, ∙, Bound, Symbol}
-import leo.datastructures.internal.terms.{BaseType, BoundType, ->, *, +, ∀}
-import leo.datastructures.internal._
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.:::>
+import leo.datastructures.Type._
+import leo.datastructures._
+import leo.datastructures.term._
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
@@ -14,7 +14,7 @@ import leo.datastructures.blackboard.FormulaStore
  * Translation can be done directly into a string by method `output`
  * or indirect into a `Output` object by the apply method.
  *
- * @see [[leo.datastructures.internal.terms.Term]], [[leo.datastructures.blackboard.FormulaStore]]
+ * @see [[Term]], [[leo.datastructures.blackboard.FormulaStore]]
  *
  * @author Alexander Steen
  * @since 07.11.2014

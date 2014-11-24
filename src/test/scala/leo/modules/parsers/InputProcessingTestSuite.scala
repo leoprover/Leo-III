@@ -1,5 +1,6 @@
 package leo.modules.parsers
 
+import leo.datastructures.impl.Signature
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -8,7 +9,6 @@ import java.io.File
 
 import scala.util.parsing.input.CharArrayReader
 import scala.io.Source._
-import leo.datastructures.internal.Signature
 import org.scalatest.exceptions.TestFailedException
 
 @RunWith(classOf[JUnitRunner])

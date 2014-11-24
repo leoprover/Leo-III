@@ -1,8 +1,9 @@
 package leo
 
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.Term
+import leo.datastructures.{LitFalse, LitTrue, === => EQUALS}
 import Term.{mkTermApp => ap,mkAtom}
-import leo.datastructures.internal.{LitFalse, LitTrue, === => EQUALS, Signature}
 
 import leo.modules.churchNumerals.Numerals
 import leo.modules.churchNumerals.Numerals.fromInt
@@ -11,7 +12,7 @@ import leo.modules.normalization.Simplification
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
-import leo.datastructures.internal.terms.Term
+
 
 /**
  * Created by lex on 11.06.14.

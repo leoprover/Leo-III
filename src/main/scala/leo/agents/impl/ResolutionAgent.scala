@@ -4,7 +4,6 @@ package impl
 import java.util.concurrent.atomic.AtomicInteger
 
 import leo.datastructures.blackboard.{Blackboard, FormulaStore}
-import leo.datastructures.internal._
 import leo.modules.proofCalculi.resolution.ResolutionCalculus._
 
 import scala.collection.mutable

@@ -1,10 +1,12 @@
 package leo.modules.normalization
 
+import leo.datastructures._
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.Term
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import leo.datastructures.internal._
 import scala.collection.immutable.HashMap
-import leo.datastructures.internal.terms.Term
 import Term._
 import org.scalatest.FunSuite
 

@@ -1,10 +1,7 @@
-package leo.datastructures.internal
+package leo.datastructures
 
-import leo.datastructures.internal.terms._
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
+import leo.datastructures.impl.Signature
+import leo.datastructures.term._
 
 /**
  * Term index data structure
@@ -88,7 +85,3 @@ object TermIndex {
   }
 }
 
-
-abstract sealed class Indexing
-case object INDEXED extends Indexing
-case object PLAIN extends Indexing

@@ -1,5 +1,8 @@
 package leo.datastructures.internal
 
+import leo.datastructures.IsSignature
+import leo.datastructures.impl.Signature
+
 /**
  * Just a little test with signature and types
  * Created by lex on 05.05.14.

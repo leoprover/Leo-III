@@ -6,7 +6,7 @@ import leo.agents.impl.FinishedAgent
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
-import leo.datastructures.internal.Signature
+import leo.datastructures.impl.Signature
 
 /**
  * Entry Point for Leo-III as an executable to

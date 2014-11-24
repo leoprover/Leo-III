@@ -1,10 +1,11 @@
 package leo.modules.normalization
 
+import leo.datastructures._
+import leo.datastructures.term._
+
 import scala.language.implicitConversions
-import leo.datastructures.internal._
-import leo.datastructures.internal.terms._
 import Term._
-import leo.datastructures.internal.HOLConstant.toTerm
+import HOLConstant.toTerm
 
 /**
  *

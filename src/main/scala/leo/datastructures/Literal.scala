@@ -1,9 +1,6 @@
-package leo.datastructures.internal
+package leo.datastructures
 
-
-import leo.datastructures.Pretty
-import leo.datastructures.internal.terms.Term
-import leo.datastructures.internal.{=== => EQ}
+import leo.datastructures.term.Term
 
 /**
  * Interface for literals, companion object `Literal` provides constructor methods.
@@ -35,7 +32,8 @@ trait Literal extends Pretty with Ordered[Literal] {
 }
 
 object Literal extends Function2[Term, Boolean, Literal]{
-  import leo.datastructures.internal.{SimpleLiteral => LitImpl}
+  import leo.datastructures.impl.{SimpleLiteral => LitImpl}
+  import leo.datastructures.{=== => EQ}
 
   /** Create a literal of the term `t` and polarity `pol`. */
   def mkLit(t: Term, pol: Boolean): Literal = LitImpl.mkLit(t, pol)

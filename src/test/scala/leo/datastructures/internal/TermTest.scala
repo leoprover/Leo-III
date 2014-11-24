@@ -1,8 +1,11 @@
 package leo.datastructures.internal
 
+import leo.datastructures.impl.Signature
+import leo.datastructures.Type
+import leo.datastructures.term.Term
+
 import scala.language.implicitConversions
-import terms.spine.TermImpl.{mkTermAbs, mkTermApp, mkBound,λ, mkAtom}
-import leo.datastructures.internal.terms.{Type, Term}
+import leo.datastructures.term.spine.TermImpl.{mkTermAbs, mkTermApp, mkBound,λ, mkAtom}
 
 /**
  * Created by lex on 21.05.14.

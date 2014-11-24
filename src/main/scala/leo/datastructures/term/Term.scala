@@ -1,10 +1,9 @@
-package leo.datastructures.internal.terms
+package leo.datastructures.term
 
+import leo.datastructures._
+import leo.datastructures.impl.Signature
 
 import scala.language.implicitConversions
-
-import leo.datastructures.Pretty
-import leo.datastructures.internal.{Position, Signature, HOLBinaryConnective, Indexing, PLAIN, LangOrder}
 
 
 /**
@@ -29,7 +28,7 @@ import leo.datastructures.internal.{Position, Signature, HOLBinaryConnective, In
 abstract class Term extends Ordered[Term] with Pretty {
 
   protected var _locality: Locality = LOCAL
-  protected[terms] var _indexing: Indexing = PLAIN  // INDEXED implies GLOBAL
+  protected[term] var _indexing: Indexing = PLAIN  // INDEXED implies GLOBAL
 
   def locality = _locality
   def indexing = _indexing
@@ -74,8 +73,8 @@ abstract class Term extends Ordered[Term] with Pretty {
     what.zip(by).foldRight(this)({case ((w,b), t:Term) => t.substitute(w,b)})
   }
 
-  protected[internal] def instantiateBy(by: Type) = instantiate(1,by)
-  protected[internal] def instantiate(scope: Int, by: Type): Term
+  protected[datastructures] def instantiateBy(by: Type) = instantiate(1,by)
+  protected[datastructures] def instantiate(scope: Int, by: Type): Term
 //  protected[internal] def instantiateWith(subst: Subst): Term
 
   // Other operations
@@ -84,7 +83,7 @@ abstract class Term extends Ordered[Term] with Pretty {
 
   /** Return the β-nf of the term */
   def betaNormalize: Term
-  protected[terms] def normalize(termSubst: Subst, typeSubst: Subst): Term
+  protected[term] def normalize(termSubst: Subst, typeSubst: Subst): Term
 
   /** Right-folding on terms. */
   def foldRight[A](symFunc: Signature#Key => A)
@@ -97,8 +96,8 @@ abstract class Term extends Ordered[Term] with Pretty {
 //  def expandDefinitions(rep: Int): Term
 //  def expandAllDefinitions = expandDefinitions(-1)
 
-  protected[internal] def inc(scopeIndex: Int): Term
-  protected[internal] def closure(subst: Subst): Term
+  protected[datastructures] def inc(scopeIndex: Int): Term
+  protected[datastructures] def closure(subst: Subst): Term
 //  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
 
@@ -112,10 +111,10 @@ abstract class Term extends Ordered[Term] with Pretty {
 /**
  * Term Factory object. Only this class is used to create new terms.
  *
- * Current default term implementation: [[leo.datastructures.internal.terms.spine.TermImpl]]
+ * Current default term implementation: [[leo.datastructures.term.spine.TermImpl]]
  */
 object Term extends TermBank {
-  import leo.datastructures.internal.terms.spine.TermImpl
+  import leo.datastructures.term.spine.TermImpl
 
   // Factory method delegation
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
@@ -151,6 +150,9 @@ object Term extends TermBank {
 // Patterns for term structural matching
 //////////////////////////////////////////
 
+import leo.datastructures.term.spine.Spine.{nil => SNil}
+import leo.datastructures.term.spine.{Atom, BoundIndex, Redex, Root}
+
 /**
  * Pattern for matching bound symbols in terms (i.e. De-Bruijn-Indices). Usage:
  * {{{
@@ -162,7 +164,6 @@ object Term extends TermBank {
  * }}}
  */
 object Bound {
-  import spine.{BoundIndex,SNil}
   def unapply(t: Term): Option[(Type, Int)] = t match {
     case naive.BoundNode(ty,scope) => Some((ty,scope))
     case spine.Root(BoundIndex(ty, scope), SNil) => Some((ty, scope))
@@ -180,7 +181,6 @@ object Bound {
  * }}}
  */
 object Symbol {
-  import spine.{Atom, SNil}
 
   def unapply(t: Term): Option[Signature#Key] = t match {
     case naive.SymbolNode(k)         => Some(k)
@@ -219,10 +219,8 @@ object @@@ extends HOLBinaryConnective {
  * }}}
  */
 object ∙ {
-  import spine.{Root, Redex}
-  import spine.TermImpl.{headToTerm}
   def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
-    case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
+    case Root(h, sp) => Some((spine.TermImpl.headToTerm(h), sp.asTerms))
     case Redex(expr, sp) => Some((expr, sp.asTerms))
     case _ => None
   }

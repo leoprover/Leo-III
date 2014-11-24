@@ -1,4 +1,6 @@
-package leo.datastructures.internal.terms
+package leo.datastructures
+
+import leo.datastructures.term.Term
 
 /**
  * Created by lex on 20.08.14.

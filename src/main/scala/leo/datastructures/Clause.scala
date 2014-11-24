@@ -1,4 +1,4 @@
-package leo.datastructures.internal
+package leo.datastructures
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -25,7 +25,3 @@ object Clause {
   def lastClauseId: Int = ???
 }
 
-abstract sealed class ClauseOrigin
-case object FromAxiom extends ClauseOrigin
-case object FromConjecture extends ClauseOrigin
-case object Derived extends ClauseOrigin

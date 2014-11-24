@@ -1,9 +1,11 @@
 package leo.datastructures.internal.terms
 
-import leo.datastructures.internal.terms.Term._
-import leo.datastructures.internal.terms.Term.{mkTermApp => ap, mkTypeApp => tyAp}
-import leo.datastructures.internal.terms.Type._
-import leo.datastructures.internal.Signature
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.{Term, Reductions}
+import leo.datastructures.Type
+import Term._
+import Term.{mkTermApp => ap, mkTypeApp => tyAp}
+import Type._
 import leo.modules.churchNumerals.Numerals
 import Numerals._
 import java.io.{FileNotFoundException, File}

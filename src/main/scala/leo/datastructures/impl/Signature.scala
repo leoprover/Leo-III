@@ -1,12 +1,14 @@
-package leo.datastructures.internal
+package leo.datastructures.impl
 
-import scala.collection.immutable.{BitSet, IntMap, HashMap}
-import leo.datastructures.internal.terms.{TypeKind, Kind, Type, Term}
+import leo.datastructures._
+import leo.datastructures.term.Term
+
+import scala.collection.immutable.{BitSet, HashMap, IntMap}
 
 /**
  * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
  * it contains some predefined symbols (including types, fixed symbols and defined symbols).
- * For details on that predefined symbols, check [[leo.datastructures.internal.HOLSignature]].
+ * For details on that predefined symbols, check [[HOLSignature]].
  *
  * @author Alexander Steen
  * @since 02.05.2014
@@ -27,7 +29,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   ///////////////////////////////
 
   /** Case class for meta information for base types that are indexed in the signature */
-  protected[internal] case class TypeMeta(identifier: String,
+  protected[impl] case class TypeMeta(identifier: String,
                                           index: Key,
                                           k:  Kind) extends Meta {
     def name = identifier
@@ -47,7 +49,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   }
 
   /** Case class for meta information for uninterpreted symbols */
-  protected[internal] case class UninterpretedMeta(identifier: String,
+  protected[impl] case class UninterpretedMeta(identifier: String,
                                                    index: Key,
                                                    typ: Type) extends Meta {
     def name = identifier
@@ -63,7 +65,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   }
 
   /** Case class for meta information for defined symbols */
-  protected[internal] case class DefinedMeta(identifier: String,
+  protected[impl] case class DefinedMeta(identifier: String,
                                              index: Key,
                                              typ: Option[Type],
                                              definition: Term) extends Meta {
@@ -80,7 +82,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   }
 
   /** Case class for meta information for fixed (interpreted) symbols */
-  protected[internal] case class FixedMeta(identifier: String,
+  protected[impl] case class FixedMeta(identifier: String,
                                            index: Key,
                                            typ: Type) extends Meta {
     def name = identifier
@@ -270,7 +272,7 @@ object Signature {
   def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
   def apply(symbol: String): Signature#Meta = get.meta(symbol)
 
-  /** Enriches the given signature with predefined symbols as described by [[leo.datastructures.internal.HOLSignature]] */
+  /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
   def withHOL(sig: Signature): Signature = {
     for ((name, k) <- sig.types) {
       sig.addConstant0(name, Some(Right(k)), None)

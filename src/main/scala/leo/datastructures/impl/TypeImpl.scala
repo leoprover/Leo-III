@@ -1,10 +1,9 @@
-package leo.datastructures.internal.terms
+package leo.datastructures.impl
 
-import leo.datastructures.internal.Signature
-import scala.Some
+import leo.datastructures.{Kind, Subst, Type}
 
 /** Literal type, i.e. `$o` */
-protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
+protected[datastructures] case class BaseTypeNode(id: Signature#Key) extends Type {
   // Pretty printing
   import Signature.{get => signature}
   def pretty = signature.meta(id).name
@@ -46,7 +45,7 @@ protected[internal] case class BaseTypeNode(id: Signature#Key) extends Type {
 }
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
-protected[internal] case class BoundTypeNode(scope: Int) extends Type {
+protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
   // Pretty printing
   def pretty = scope.toString
 
@@ -69,6 +68,7 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
     case BoundTypeNode(i) if i == scope => by
     case _ => this
   }
+  import leo.datastructures.{BoundFront, TypeFront}
   def substitute(subst: Subst) = subst.substBndIdx(scope) match {
     case BoundFront(j) => BoundTypeNode(j)
     case TypeFront(t)  => t
@@ -90,7 +90,7 @@ protected[internal] case class BoundTypeNode(scope: Int) extends Type {
 }
 
 /** Function type `in -> out` */
-protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends Type {
+protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) extends Type {
   // Pretty printing
   def pretty = in match {
     case funTy:AbstractionTypeNode => "(" + funTy.pretty + ") -> " + out.pretty
@@ -128,7 +128,7 @@ protected[internal] case class AbstractionTypeNode(in: Type, out: Type) extends 
 }
 
 /** Product type `l * r` */
-protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
+protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends Type {
   // Pretty printing
   def pretty = "(" + l.pretty + " * " + r.pretty + ")"
 
@@ -165,7 +165,7 @@ protected[internal] case class ProductTypeNode(l: Type, r: Type) extends Type {
 }
 
 /** Product type `l + r` */
-protected[internal] case class UnionTypeNode(l: Type, r: Type) extends Type {
+protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Type {
   // Pretty printing
   def pretty = "(" + l.pretty + " + " + r.pretty + ")"
 
@@ -204,7 +204,7 @@ protected[internal] case class UnionTypeNode(l: Type, r: Type) extends Type {
  * Type of a polymorphic function
  * @param body The type in which a type variable is now bound to this binder
  */
-protected[internal] case class ForallTypeNode(body: Type) extends Type {
+protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
   // Pretty printing
   def pretty = "∀. " + body.pretty
 
@@ -253,7 +253,7 @@ protected[internal] case class ForallTypeNode(body: Type) extends Type {
 //////////////////////////////////
 
 /** Represents the kind `*` (i.e. the type of a type) */
-protected[internal] case object TypeKind extends Kind {
+protected[datastructures] case object TypeKind extends Kind {
   def pretty = "*"
 
   val isTypeKind = true
@@ -261,7 +261,7 @@ protected[internal] case object TypeKind extends Kind {
   val isFunKind = false
 }
 /** Artificial kind that models the type of `*` (i.e. []) */
-protected[internal] case object SuperKind extends Kind {
+protected[datastructures] case object SuperKind extends Kind {
   def pretty = "#"
 
   val isTypeKind = false

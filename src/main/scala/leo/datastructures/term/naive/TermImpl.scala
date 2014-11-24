@@ -1,8 +1,9 @@
-package leo.datastructures.internal.terms.naive
+package leo.datastructures.term.naive
 
-import leo.datastructures.internal.Signature
-import leo.datastructures.internal.terms.{Type, BoundTypeNode, Term, Subst}
-import leo.datastructures.internal.Position
+import leo.datastructures._
+import leo.datastructures.impl.{Signature, BoundTypeNode}
+import leo.datastructures.term.Term
+
 /**
  * Naive implementation of nameless lambda terms.
  * Uses inefficient reduction und substitution methods
@@ -23,7 +24,7 @@ sealed abstract class TermImpl extends Term {
 
   def normalize(subst: Subst, subst2: Subst) = ???
 
-  protected[internal] def decrementByOne(n: Int): Int = n match {
+  protected[naive] def decrementByOne(n: Int): Int = n match {
     case -1 => -1
     case  n => n-1
   }
@@ -39,7 +40,7 @@ sealed abstract class TermImpl extends Term {
 // Term symbols
 ///////////////////
 
-protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
+protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
   private lazy val sym = Signature.get.meta(id)
 
   // Predicates on terms
@@ -65,7 +66,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   val symbols = Set(id)
   def boundVars = Set()
   lazy val headSymbol = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     this
   }
@@ -82,7 +83,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   def typeCheck = true
 
   val betaNormalize = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     this
   }
@@ -98,7 +99,7 @@ protected[internal] case class SymbolNode(id: Signature#Key) extends TermImpl {
   def pretty = sym.name
 }
 
-protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
+protected[term] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   override val isAtom = true
 
   // Handling def. expansion
@@ -114,7 +115,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   val symbols = Set[Int]()
   val boundVars = Set[Term](this)
   lazy val headSymbol = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     this
   }
@@ -145,7 +146,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   def typeCheck = true
 
   val betaNormalize = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     this
   }
@@ -163,7 +164,7 @@ protected[internal] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   def pretty = scope.toString
 }
 
-protected[internal] case class AbstractionNode(absType: Type, term: Term) extends TermImpl {
+protected[term] case class AbstractionNode(absType: Type, term: Term) extends TermImpl {
   override val isTermAbs = true
 
 
@@ -181,7 +182,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   val symbols = term.symbols
   val boundVars = term.boundVars
   lazy val headSymbol = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     term.headSymbol
   }
@@ -200,7 +201,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
   def typeCheck = term.typeCheck
 
   lazy val betaNormalize = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     AbstractionNode(absType, term.betaNormalize)
   }
@@ -219,7 +220,7 @@ protected[internal] case class AbstractionNode(absType: Type, term: Term) extend
 
 
 
-protected[internal] case class ApplicationNode(left: Term, right: Term) extends TermImpl {
+protected[term] case class ApplicationNode(left: Term, right: Term) extends TermImpl {
   override val isApp = true
 
 
@@ -240,7 +241,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   val symbols = left.symbols ++ right.symbols
   val boundVars = left.boundVars ++ right.boundVars
   lazy val headSymbol = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     left.headSymbol
   }
@@ -256,7 +257,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
   def typeCheck = left.ty.isFunType && left.ty._funDomainType == right.ty
 
   lazy val betaNormalize = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
 
     val leftNF = left.betaNormalize
@@ -285,7 +286,7 @@ protected[internal] case class ApplicationNode(left: Term, right: Term) extends 
 // Type symbols
 ///////////////////
 
-protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl {
+protected[term] case class TypeAbstractionNode(term: Term) extends TermImpl {
   override val isTypeAbs = true
 
   // Handling def. expansion
@@ -301,7 +302,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
   val symbols = term.symbols
   val boundVars = term.boundVars
   lazy val headSymbol = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     term.headSymbol
   }
@@ -314,7 +315,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
   def typeCheck = term.typeCheck
 
   lazy val betaNormalize = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     TypeAbstractionNode(term.betaNormalize)
   }
@@ -331,7 +332,7 @@ protected[internal] case class TypeAbstractionNode(term: Term) extends TermImpl 
   def pretty = "[Λ." + term.pretty + "]"
 }
 
-protected[internal] case class TypeApplicationNode(left: Term, right: Type) extends TermImpl {
+protected[term] case class TypeApplicationNode(left: Term, right: Type) extends TermImpl {
   override val isApp = true
 
   // Handling def. expansion
@@ -351,7 +352,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   val symbols = left.symbols
   val boundVars = left.boundVars
   lazy val headSymbol = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
     left.headSymbol
   }
@@ -366,7 +367,7 @@ protected[internal] case class TypeApplicationNode(left: Term, right: Type) exte
   def typeCheck = left.ty.isPolyType && left.typeCheck
 
   lazy val betaNormalize = {
-    import leo.datastructures.internal.terms.Reductions
+    import leo.datastructures.term.Reductions
     Reductions.tick()
 
     val leftNF = left.betaNormalize

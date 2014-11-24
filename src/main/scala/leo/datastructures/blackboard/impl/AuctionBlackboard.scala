@@ -3,11 +3,11 @@ package leo.datastructures.blackboard.impl
 
 
 import leo.agents.{Task, Agent}
+import leo.datastructures.LitFalse
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.internal.{LitFalse}
+import leo.datastructures.term.Term
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
-import leo.datastructures.internal.terms.Term
 import scala.collection.mutable
 import scala.collection.mutable.{Queue, Map => MMap}
 

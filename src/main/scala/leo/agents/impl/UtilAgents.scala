@@ -1,6 +1,7 @@
 package leo.agents
 package impl
 
+import leo.datastructures.{LitFalse, Not}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, FormulaStore}
 
@@ -62,8 +63,6 @@ class ConjectureAgent extends AbstractAgent {
    * Negates the conjecture and renames the role
    */
   override def run(t: Task) : Result = {
-    import leo.datastructures.internal._
-
     t match {
       case t1: SingleFormTask =>
         val fS = t1.getFormula()
@@ -136,7 +135,6 @@ class FinishedAgent(timeout : Int) extends AbstractAgent {
    * @return - set of tasks, if empty the agent won't work on this event
    */
   override def toFilter(event: FormulaStore): Iterable[Task] = {
-    import leo.datastructures.internal._
     event.formula match {
       case Left(LitFalse()) => List(new SingleFormTask(event))
       case _ => Nil

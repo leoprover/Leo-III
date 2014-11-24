@@ -1,9 +1,10 @@
 package leo.modules.normalization
 
-import leo.datastructures.internal.terms._
+import leo.datastructures.impl.Signature
+import leo.datastructures.term._
 import Term._
-import leo.datastructures.internal._
-import java.util.concurrent.atomic.AtomicInteger
+
+import leo.datastructures._
 
 /**
  *

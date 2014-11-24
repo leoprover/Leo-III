@@ -1,7 +1,7 @@
-package leo.datastructures.internal
+package leo.datastructures.impl
 
-import leo.datastructures.internal.{=== => EQ}
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.term.Term
+import leo.datastructures.{Literal, ===}
 
 /**
  * Implementation of the `Literal` type.
@@ -17,7 +17,7 @@ abstract class SimpleLiteral extends Literal {
 }
 
 
-protected object SimpleLiteral {
+object SimpleLiteral {
   private var litCounter : Int = 0
 
   /** Create a literal of the term `t` and polarity `pol`. */
@@ -39,11 +39,11 @@ protected object SimpleLiteral {
   private case class NegativeLiteral(term: Term, litId: Int) extends SimpleLiteral {
     val polarity = false
     lazy val isUni = term match {
-      case _ === _ => true
+      case (_ === _) => true
       case _ => false
     }
     lazy val isFlexFlex = term match {
-      case EQ(l, r) => (l.isApp || l.isAtom) && (r.isApp || r.isAtom) && l.headSymbol.symbols.isEmpty && r.headSymbol.symbols.isEmpty
+      case (l === r) => (l.isApp || l.isAtom) && (r.isApp || r.isAtom) && l.headSymbol.symbols.isEmpty && r.headSymbol.symbols.isEmpty
       case _ => false
     }
     lazy val pretty = s"[${term.pretty}] = F"
