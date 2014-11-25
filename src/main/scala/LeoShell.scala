@@ -1,11 +1,11 @@
 // IMPORTANT : Keep the unused imports for loading in the Shell Project
 
-
-import leo.datastructures.internal.terms.Term
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.Term
+import leo.datastructures.Role
 import leo.modules.normalization.{Simplification, NegationNormal}
 import leo.modules.churchNumerals.Numerals
 import leo.datastructures.blackboard._
-import leo.datastructures.internal._
 import Term._
 import LeoShell._
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -197,7 +197,7 @@ object LeoShell {
    */
   def add(name : String, s : Term, role : String): Unit = {
     Blackboard().addFormula(name, s, role)
-    println("Added "+name+"='$s' to the context.")
+    println(s"Added $name='$s' to the context.")
   }
 
   def add(name : String, s : Term) : Unit = add(name, s, "plain")

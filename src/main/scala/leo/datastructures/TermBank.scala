@@ -1,5 +1,6 @@
-package leo.datastructures.internal.terms
+package leo.datastructures
 
+import leo.datastructures.term.Term
 
 /**
  * A `TermBank` is a special term `Factory` that caches previously
@@ -10,9 +11,9 @@ package leo.datastructures.internal.terms
  * @author Alexander Steen
  * @since 20.08.2014
  */
-trait TermBank extends Factory {
+trait TermBank extends TermFactory {
   /** Return the factory for local terms, that is, terms that are not globally shared */
-  def local: Factory
+  def local: TermFactory
 
   /** Insert (unshared) terms to the term bank. Has no effect on already shared terms.
     * Returns the syntactically equal but now shared term. */
@@ -20,12 +21,9 @@ trait TermBank extends Factory {
     case LOCAL => insert0(term)
     case GLOBAL => term
   }
-  protected[terms] def insert0(localTerm: Term): Term
+  protected[datastructures] def insert0(localTerm: Term): Term
 
   /** Clear the term bank, i.e. delete all cached terms */
   def reset(): Unit
 }
 
-abstract sealed class Locality
-case object GLOBAL extends Locality
-case object LOCAL extends Locality

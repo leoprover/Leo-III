@@ -1,11 +1,13 @@
 package leo.agents
 package impl
 
+import leo.datastructures.impl.Signature
+import leo.datastructures.===
 import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.internal._
-import leo.datastructures.internal.terms.Term._
+import leo.datastructures.term.Term
+import leo.datastructures.Role_Definition
+import Term._
 import java.io.{PrintWriter, File}
-import leo.datastructures.internal.Signature
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
 

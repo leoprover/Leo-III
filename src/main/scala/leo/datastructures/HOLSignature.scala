@@ -1,10 +1,11 @@
-package leo.datastructures.internal
+package leo.datastructures
 
-import leo.datastructures.internal.terms._
-import scala.Some
-import Type.{typeKind, typeVarToType,superKind}
-import leo.datastructures.internal.terms.{@@@@, @@@,∙, Symbol, Term}
-import Term.{mkAtom,mkTermApp,mkApp, mkTermAbs, Λ,intsToBoundVar,intToBoundVar, mkTypeApp}
+import leo.datastructures.term._
+import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ}
+import Term.{@@@, Symbol, ∙, @@@@}
+import Type.{superKind, typeKind, typeVarToType}
+import leo.datastructures.impl.Signature
+
 import scala.language.implicitConversions
 
 /** This type can be mixed-in to supply standard higher-order logic symbol definitions, including

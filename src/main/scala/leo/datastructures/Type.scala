@@ -1,8 +1,8 @@
-package leo.datastructures.internal.terms
+package leo.datastructures
+
+import leo.datastructures.impl._
 
 import scala.language.implicitConversions
-import leo.datastructures.Pretty
-import leo.datastructures.internal.Signature
 
 /**
  * Abstract type for modeling types.
@@ -86,8 +86,10 @@ abstract class Type extends Pretty {
   /** Create union type `this + ty`*/
   def +(ty: Type) = Type.mkUnionType(this, ty)
 
+  val numberOfComponents: Int = 1
 
-  protected[internal] def closure(subst: Subst): Type
+
+  protected[datastructures] def closure(subst: Subst): Type
 }
 
 /**
@@ -154,6 +156,54 @@ object Type {
   def mkFunKind(in: Kind, out: Kind): Kind = ???
 
   implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
+
+
+  ///////////////////////////////
+  // Pattern matchers for types
+  ///////////////////////////////
+
+  object BaseType {
+    def unapply(ty: Type): Option[Signature#Key] = ty match {
+      case BaseTypeNode(id) => Some(id)
+      case _ => None
+    }
+  }
+
+  object BoundType {
+    def unapply(ty: Type): Option[Int] = ty match {
+      case BoundTypeNode(scope) => Some(scope)
+      case _ => None
+    }
+  }
+
+  object -> {
+    def unapply(ty: Type): Option[(Type, Type)] = ty match {
+      case AbstractionTypeNode(l, r) => Some((l,r))
+      case _ => None
+    }
+  }
+
+  object * {
+    def unapply(ty: Type): Option[(Type, Type)] = ty match {
+      case ProductTypeNode(l, r) => Some((l,r))
+      case _ => None
+    }
+  }
+
+  object + {
+    def unapply(ty: Type): Option[(Type, Type)] = ty match {
+      case UnionTypeNode(l, r) => Some((l,r))
+      case _ => None
+    }
+  }
+
+  object ∀ {
+    def unapply(ty: Type): Option[Type] = ty match {
+      case ForallTypeNode(t) => Some(t)
+      case _ => None
+    }
+  }
+
 }
 
 
@@ -162,51 +212,3 @@ abstract class Kind extends Pretty {
   val isFunKind: Boolean
   val isSuperKind: Boolean
 }
-
-///////////////////////////////
-// Pattern matchers for types
-///////////////////////////////
-
-object BaseType {
-  def unapply(ty: Type): Option[Signature#Key] = ty match {
-    case BaseTypeNode(id) => Some(id)
-    case _ => None
-  }
-}
-
-object BoundType {
-  def unapply(ty: Type): Option[Int] = ty match {
-    case BoundTypeNode(scope) => Some(scope)
-    case _ => None
-  }
-}
-
-object -> {
-  def unapply(ty: Type): Option[(Type, Type)] = ty match {
-    case AbstractionTypeNode(l, r) => Some((l,r))
-    case _ => None
-  }
-}
-
-object * {
-  def unapply(ty: Type): Option[(Type, Type)] = ty match {
-    case ProductTypeNode(l, r) => Some((l,r))
-    case _ => None
-  }
-}
-
-object + {
-  def unapply(ty: Type): Option[(Type, Type)] = ty match {
-    case UnionTypeNode(l, r) => Some((l,r))
-    case _ => None
-  }
-}
-
-object ∀ {
-  def unapply(ty: Type): Option[Type] = ty match {
-    case ForallTypeNode(t) => Some(t)
-    case _ => None
-  }
-}
-
-

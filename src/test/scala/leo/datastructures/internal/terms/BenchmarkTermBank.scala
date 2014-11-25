@@ -1,7 +1,8 @@
 package leo.datastructures.internal.terms
 
 import java.io.{FileNotFoundException, File}
-import leo.datastructures.internal.Signature
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.Term
 
 /**
  * Created by lex on 19.09.14.

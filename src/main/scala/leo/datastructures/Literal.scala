@@ -1,9 +1,6 @@
-package leo.datastructures.internal
+package leo.datastructures
 
-
-import leo.datastructures.Pretty
-import leo.datastructures.internal.terms.Term
-import leo.datastructures.internal.{=== => EQ}
+import leo.datastructures.term.Term
 
 /**
  * Interface for literals, companion object `Literal` provides constructor methods.
@@ -11,7 +8,7 @@ import leo.datastructures.internal.{=== => EQ}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Literal extends Pretty {
+trait Literal extends Pretty with Ordered[Literal] {
 
   /** Returns the literal's underlying term. */
   def term: Term
@@ -21,16 +18,25 @@ trait Literal extends Pretty {
   /** The weight of the literal. */
   def weight: Int
 
-  /** Returns true iff the literal is a flex-flex-literal. */
+  /** Returns true iff the literal is a flex-flex unification literal. */
   def isFlexFlex: Boolean
   /** Returns true iff the literal is an unification constraint. */
   def isUni: Boolean
+
+  def compare(that: Literal): Int = this.weight - that.weight // TODO: This is a preliminary implementation
+
+  lazy val toTerm: Term = if (polarity)
+                            ===(term, LitTrue())
+                          else
+                            ===(term, LitFalse())
 }
 
 object Literal extends Function2[Term, Boolean, Literal]{
+  import leo.datastructures.impl.{SimpleLiteral => LitImpl}
+  import leo.datastructures.{=== => EQ}
 
   /** Create a literal of the term `t` and polarity `pol`. */
-  def mkLit(t: Term, pol: Boolean): Literal = ???
+  def mkLit(t: Term, pol: Boolean): Literal = LitImpl.mkLit(t, pol)
 
   // Convenience methods
   def apply(t: Term, pol: Boolean): Literal = mkLit(t, pol)

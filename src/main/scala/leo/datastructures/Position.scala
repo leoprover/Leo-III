@@ -1,10 +1,10 @@
-package leo.datastructures.internal
+package leo.datastructures
 
 /**
  * Created by lex on 16.10.14.
  */
 abstract class Position(protected val seq: Seq[Int]) {
-  import Position.DerivedPos
+  import leo.datastructures.Position.DerivedPos
 
   def abstrPos: Position = new DerivedPos(seq :+ 1)
   def headPos: Position = new DerivedPos(seq :+ 1)

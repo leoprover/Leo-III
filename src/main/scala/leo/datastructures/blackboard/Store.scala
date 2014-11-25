@@ -1,7 +1,8 @@
 package leo.datastructures.blackboard
 
 import java.util.concurrent.atomic.AtomicInteger
-import leo.datastructures.internal.terms.Term
+
+import leo.datastructures.term.Term
 
 
 object Store {

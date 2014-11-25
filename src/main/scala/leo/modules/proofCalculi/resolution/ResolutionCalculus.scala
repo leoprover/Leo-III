@@ -1,7 +1,7 @@
 package leo.modules.proofCalculi.resolution
 
-import leo.datastructures.internal._
-import leo.datastructures.internal.terms._
+import leo.datastructures._
+import leo.datastructures.term.Term
 
 /**
  * This Class supports methods for the resolution calculus.

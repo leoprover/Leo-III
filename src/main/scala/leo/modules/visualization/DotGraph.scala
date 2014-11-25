@@ -1,8 +1,9 @@
 package leo.modules.visualization
 
-import leo.datastructures.internal.terms.{Term, Type}
-import leo.datastructures.internal.terms.{Bound, Symbol, @@@, ∙, @@@@, :::>, TypeLambda}
-import leo.datastructures.internal.Signature
+import leo.datastructures._
+import leo.datastructures.impl.Signature
+import leo.datastructures.term._
+import leo.datastructures.term.Term._
 
 /**
  *

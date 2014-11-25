@@ -1,6 +1,6 @@
-package leo.datastructures.internal.terms
+package leo.datastructures
 
-import leo.datastructures.Pretty
+import leo.datastructures.term.Term
 
 /**
  * Representation of substitution `s` that are basically
@@ -51,7 +51,7 @@ sealed abstract class Subst extends Pretty {
 /** Generic factory methods for substitutions. Current default implementation are
   * `RASubst` substitutions which allow constant time access to fronts. */
 object Subst {
-  import leo.datastructures.internal.terms.{RASubst => SubstImpl}
+  import leo.datastructures.{RASubst => SubstImpl}
 
   val id: Subst    = SubstImpl.id
   val shift: Subst = SubstImpl.shift

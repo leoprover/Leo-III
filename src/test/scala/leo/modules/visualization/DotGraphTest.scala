@@ -1,8 +1,9 @@
 package leo.modules.visualization
 
-import leo.datastructures.internal.Signature
+import leo.datastructures.impl.Signature
+import leo.datastructures.term.Term
 import leo.modules.churchNumerals.Numerals
-import leo.datastructures.internal.terms.Term._
+import Term._
 import leo.modules.churchNumerals.Numerals._
 
 /**

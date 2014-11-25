@@ -1,10 +1,10 @@
 package leo.agents.impl
 
 import leo.agents.{EmptyResult, Result, Task}
+import leo.datastructures.Not
 import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore, Message}
-import leo.datastructures.internal.Role_Conjecture
+import leo.datastructures.Role_Conjecture
 import leo.modules.output.logger.Out
-import leo.datastructures.internal._
 
 /**
  *

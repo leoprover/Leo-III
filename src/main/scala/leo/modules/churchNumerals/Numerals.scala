@@ -1,8 +1,10 @@
 package leo.modules.churchNumerals
 
+import leo.datastructures.impl.Signature
+import leo.datastructures.Type
+import leo.datastructures.term.Term
+
 import scala.language.implicitConversions
-import leo.datastructures.internal.Signature
-import leo.datastructures.internal.terms.{Type, Term}
 import Term.{mkTermApp => ap, mkTypeApp => tyAp, Λ, λ,intToBoundVar,intsToBoundVar}
 import Type.{typeVarToType,∀}
 

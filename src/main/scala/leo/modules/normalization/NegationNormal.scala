@@ -1,8 +1,8 @@
 package leo.modules.normalization
 
-import leo.datastructures.internal._
-import leo.datastructures.internal.terms._
+import leo.datastructures.term._
 import Term._
+import leo.datastructures._
 
 /**
  * Calculates the Negation Normal Form (NNF) of a term.
