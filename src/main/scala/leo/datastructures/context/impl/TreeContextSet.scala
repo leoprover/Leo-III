@@ -1,7 +1,7 @@
-package leo.datastructures.context
+package leo
+package datastructures.context
 package impl
 
-import leo.modules.output.logger.Out
 import scala.collection._
 
 /**

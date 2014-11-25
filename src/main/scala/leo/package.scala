@@ -8,4 +8,6 @@ package object leo {
 
   type ClauseWeight = Weight[Clause]
   type LiteralWeight = Weight[Literal]
+
+  def Out = leo.modules.output.logger.Out
 }
