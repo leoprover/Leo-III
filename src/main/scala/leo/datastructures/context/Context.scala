@@ -8,7 +8,7 @@ object Context {
    *
    * @return Main context
    */
-  def apply() : Context = ???
+  def apply() : Context = new impl.TreeContext
 }
 
 /**
@@ -51,12 +51,62 @@ trait Context {
    * @return
    */
   def splitKind : SplitKind
+
+  /**
+   *
+   * Splits the context with a given kind into `children` subcontexts.
+   *
+   * If splitkind is already set, this action does nothing.
+   *
+   * The result is true, if a split happend and false, if the node was
+   * already splitted or marked for UnSplittable
+   *
+   * @param split - SplitKind
+   * @param children - Amount of children
+   * @return true, if the operation was performed successful
+   */
+  def split(split : SplitKind, children : Int) : Boolean
+
+  /**
+   * Closes a context.
+   *
+   * Thereby all subcontexts are deattached from the tree
+   * and the splitkind is set to UnSplittable
+   */
+  def close() : Unit
+
+  /**
+   *
+   * Removes all children from the context.
+   * If the flag is true, the splitkind is set to UnSplittable.
+   * Otherwise the context is fresh set to NoSplit.
+   *
+   * @param finished - true => UnSplittable, false => NoSplit
+   */
+  def close(finished : Boolean) : Unit
 }
 
 
 abstract sealed class SplitKind
+
+/**
+ * The child contexts are conjunctively connected
+ */
 case object AlphaSplit extends SplitKind
+
+/**
+ * The Childcontexts are disjunctively connected
+ */
 case object BetaSplit extends SplitKind
+
+/**
+ * The Context is marked to allow no further split
+ */
+case object UnSplittable extends SplitKind
+
+/**
+ * The context is not yet splitted.
+ */
 case object NoSplit extends SplitKind
 
 /**
