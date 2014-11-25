@@ -1,5 +1,7 @@
 package leo.datastructures.context
 
+import scala.collection._
+
 object Context {
   /**
    * Accesspoint and maincontext of leo.

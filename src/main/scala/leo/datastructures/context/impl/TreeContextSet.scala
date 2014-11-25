@@ -121,5 +121,5 @@ class TreeContextSet[A] extends ContextSet[A] {
    * @param c - The context of the elements
    * @return All elements in c
    */
-  override def getAll(c: Context): Set[A] = contextSets.filter{case (c1,_) => getPath(c).contains(c1)}.values.toSet.flatten
+  override def getAll(c: Context): Set[A] = ??? //(Set[A](contextSets.filter{case (c1,_) => getPath(c).contains(c1)}.values)).flatten
 }
