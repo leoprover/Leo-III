@@ -10,10 +10,12 @@ abstract sealed class VectorClause extends Clause
 object VectorClause {
   private var clauseCounter : Int = 0
 
-  def mkClause(lits: Seq[Literal], origin: ClauseOrigin): Clause = {
+  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = {
     clauseCounter += 1
-    SetClause0(lits, origin, clauseCounter)
+    new VectorClause0(lits, origin, clauseCounter)
   }
 
-  private case class SetClause0(lits: Seq[Literal], origin: ClauseOrigin, id: Int) extends VectorClause
+  private class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin, val id: Int) extends VectorClause {
+    def lits = literals.toVector.sorted
+  }
 }

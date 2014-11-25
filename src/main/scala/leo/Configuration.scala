@@ -3,7 +3,6 @@ package leo
 import java.util.logging.Level
 
 import leo.modules.CLParameterParser
-import leo.modules.output.logger.Out
 import leo.modules.output.Output
 
 /**
@@ -57,6 +56,13 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+
+  import leo.datastructures.{LitWeight_Constant, CLWeight_FIFO}
+  lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_FIFO
+  lazy val CLAUSE_ORDERING: ClauseOrdering = ???
+
+  lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_Constant
+  lazy val LITERAL_ORDERING: LiteralOrdering = ???
 
   // more to come ...
 

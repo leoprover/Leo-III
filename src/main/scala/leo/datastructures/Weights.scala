@@ -1,20 +1,22 @@
 package leo.datastructures
 
-import leo.ClauseWeight
+import leo.{LiteralWeight, ClauseWeight}
 
 ///////////////////////////////
 // Literal weights
 ///////////////////////////////
 
 
-// to come ...
+object LitWeight_Constant extends LiteralWeight {
+  def weightOf[A <: Literal](lit: A) = 1
+}
 
 
 /////////////////////////////////
 // Clause weights
 /////////////////////////////////
 
-object FIFOWeight extends ClauseWeight {
+object CLWeight_FIFO extends ClauseWeight {
   def weightOf[A <: Clause](cl: A) = cl.id
 }
 
