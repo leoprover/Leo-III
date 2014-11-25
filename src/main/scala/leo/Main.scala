@@ -7,6 +7,7 @@ import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
 import leo.datastructures.impl.Signature
+import leo.modules.CLParameterParser
 
 /**
  * Entry Point for Leo-III as an executable to
@@ -22,13 +23,12 @@ object Main {
    * Tries to proof a Given TPTP file in
    * a given Time.
    *
-   * @param args - 1. Argument : TIMEOUT in
-   *               2. Argument : absolute Path to TPTP-File
+   * @param args - See [[Configuration]] for argument treatment
    */
   def main(args : Array[String]){
-
-    val timeout = args(0).toInt
-    val path = args(1)
+    Configuration.init(new CLParameterParser(args))
+    val timeout = Configuration.TIMEOUT
+    val path = Configuration.PROBLEMFILE
 
     // Initializing Blackboard
     StdAgents()
