@@ -17,7 +17,7 @@ import leo.datastructures.term.Term
 /////////////////////
 
 /** Lexicographic clause ordering on the 3-tuple (clause weight, clause age, clause origin). */
-class CLOrdering_Lex_Weight_Age_Origin extends ClauseOrdering {
+object CLOrdering_Lex_Weight_Age_Origin extends ClauseOrdering {
   import scala.math.Ordered.orderingToOrdered
   def compare(a: Clause, b: Clause) = ((a.weight, a.id, a.origin)) compare ((b.weight, b.id, b.origin))
 }
