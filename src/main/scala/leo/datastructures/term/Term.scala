@@ -35,7 +35,7 @@ abstract class Term extends Ordered[Term] with Pretty {
   def makeGlobal: Term = ???
   def makeLocal: Term = ???
 
-  def compare(that: Term): Int = SimpleOrdering.compare(this, that)
+  def compare(that: Term): Int = SenselessOrdering.compare(this, that)
 
   // Predicates on terms
   def isAtom: Boolean

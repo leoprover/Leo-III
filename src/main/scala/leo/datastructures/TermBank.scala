@@ -11,9 +11,9 @@ import leo.datastructures.term.Term
  * @author Alexander Steen
  * @since 20.08.2014
  */
-trait TermBank extends Factory {
+trait TermBank extends TermFactory {
   /** Return the factory for local terms, that is, terms that are not globally shared */
-  def local: Factory
+  def local: TermFactory
 
   /** Insert (unshared) terms to the term bank. Has no effect on already shared terms.
     * Returns the syntactically equal but now shared term. */

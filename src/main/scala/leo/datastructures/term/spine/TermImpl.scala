@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 import scala.annotation.tailrec
 
 import leo.datastructures.Pretty
-import leo.datastructures.{Type, TermBank, Position, Factory}
+import leo.datastructures.{Type, TermBank, Position, TermFactory}
 import leo.datastructures.{Subst, TermFront, TypeFront, BoundFront}
 import leo.datastructures.Type._
 import leo.datastructures.{Indexing, INDEXED, PLAIN}
@@ -808,7 +808,7 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
-  val local = new Factory {
+  val local = new TermFactory {
     def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
     def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
     def mkAtom(id: Signature#Key): Term = Root(Atom(id), SNil)
