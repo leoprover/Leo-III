@@ -1,5 +1,6 @@
 package leo.datastructures
 
+import leo.Configuration
 import leo.datastructures.term.Term
 
 /**
@@ -16,14 +17,14 @@ trait Literal extends Pretty with Ordered[Literal] {
     * negative polarity by Boolean value `false`. */
   def polarity: Boolean
   /** The weight of the literal. */
-  def weight: Int
+  def weight: Int = Configuration.LITERAL_WEIGHTING.weightOf(this)
 
   /** Returns true iff the literal is a flex-flex unification literal. */
   def isFlexFlex: Boolean
   /** Returns true iff the literal is an unification constraint. */
   def isUni: Boolean
 
-  def compare(that: Literal): Int = this.weight - that.weight // TODO: This is a preliminary implementation
+  def compare(that: Literal): Int = Configuration.LITERAL_ORDERING.compare(this, that)
 
   lazy val toTerm: Term = if (polarity)
                             ===(term, LitTrue())
