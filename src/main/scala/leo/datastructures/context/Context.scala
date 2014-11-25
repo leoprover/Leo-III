@@ -1,5 +1,14 @@
 package leo.datastructures.context
 
+object Context {
+  /**
+   * Accesspoint and maincontext of leo.
+   *
+   * @return Main context
+   */
+  def apply() : Context = ???
+}
+
 /**
  *
  * Context Identifier to retrieve a specific context
@@ -33,7 +42,7 @@ trait Context {
 
   /**
    *
-   * Stores wether the children are
+   * Stores whether the children are
    * basically OR (Beta) or AND (Alpha)
    * connected.
    *
@@ -97,7 +106,7 @@ trait ContextSet[A] {
    * @param a - Element to be searched
    * @return All containing contexts
    */
-  def inContext(a : A) : Seq[Context]
+  def inContext(a : A) : Iterable[Context]
 
   /**
    * Clears a context and all its sub contexts of all elements.
