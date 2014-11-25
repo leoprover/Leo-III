@@ -23,9 +23,12 @@ trait Clause extends Ordered[Clause] {
 }
 
 object Clause {
-  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ???
+  import impl.{VectorClause => ClauseImpl}
+
+  /** Create a clause containing the set of literals `lits` with origin `origin`. */
+  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, origin)
   def mkDerivedClause(lits: Iterable[Literal]): Clause = mkClause(lits, Derived)
 
-  def lastClauseId: Int = ???
+  def lastClauseId: Int = ClauseImpl.lastClauseId
 }
 
