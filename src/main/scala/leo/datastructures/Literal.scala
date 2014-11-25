@@ -10,7 +10,8 @@ import leo.datastructures.term.Term
  * @since 07.11.2014
  */
 trait Literal extends Pretty with Ordered[Literal] {
-
+  /** The unique, increasing literal number. */
+  def id: Int
   /** Returns the literal's underlying term. */
   def term: Term
   /** The polarity of the literal, where positive polarity is encoded by the Boolean value `true`,
