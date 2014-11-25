@@ -2,7 +2,7 @@ package leo
 
 import java.util.logging.Level
 
-import leo.datastructures.{Literal, Clause}
+import leo.datastructures.{Literal}
 import leo.modules.CLParameterParser
 import leo.modules.output.Output
 
@@ -58,12 +58,12 @@ object Configuration extends DefaultConfiguration {
 
   lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
 
-  import leo.datastructures.{LitWeight_Constant, CLWeight_FIFO, SimpleOrdering}
-  lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_FIFO
-  lazy val CLAUSE_ORDERING: ClauseOrdering = new SimpleOrdering[Clause](CLWeight_FIFO)
+  import leo.datastructures.{LitWeight_TermSize, CLWeight_LitWeightSum, SimpleOrdering, CLOrdering_Lex_Weight_Age_Origin}
+  lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_LitWeightSum
+  lazy val CLAUSE_ORDERING: ClauseOrdering = CLOrdering_Lex_Weight_Age_Origin
 
-  lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_Constant
-  lazy val LITERAL_ORDERING: LiteralOrdering = new SimpleOrdering[Literal](LitWeight_Constant)
+  lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
+  lazy val LITERAL_ORDERING: LiteralOrdering = new SimpleOrdering[Literal](LitWeight_TermSize)
 
   // more to come ...
 
