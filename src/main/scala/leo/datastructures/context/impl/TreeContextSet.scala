@@ -35,18 +35,19 @@ class TreeContextSet[A] extends ContextSet[A] {
    * @return Path from the root context to c, in this direction.
    */
   protected def getPath(c : Context) : Seq[Context] = {
-    var res = List.empty[Context]
+    var res = List(c)
     var akk : Context = c
-    while(akk.parentContext != null){
+    while(akk.parentContext != null) {
       res = akk.parentContext :: res
       akk = akk.parentContext
     }
-    if(akk != Context()) {
-      Out.severe(s"Deattached head context found contextID=${akk.contextID} reached from contextID=${c.contextID}")
+    if(res.head.contextID != Context().contextID) {
+      Out.severe(s"Deattached head context found contextID=${akk.contextID} reached from contextID=${c.contextID}. (Path = ${pathToString(res)}) (Root =${Context().contextID})")
     }
     res
   }
 
+  private def pathToString(c : List[Context]) : String = c.map(_.contextID).mkString(" , ")
 
   /**
    * Checks if an element `a` is contained in a given context.

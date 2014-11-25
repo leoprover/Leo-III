@@ -3,12 +3,15 @@ package leo.datastructures.context
 import scala.collection._
 
 object Context {
+
+  private val root : Context = new impl.TreeContext
+
   /**
    * Accesspoint and maincontext of leo.
    *
    * @return Main context
    */
-  def apply() : Context = new impl.TreeContext
+  def apply() : Context = root
 }
 
 /**
