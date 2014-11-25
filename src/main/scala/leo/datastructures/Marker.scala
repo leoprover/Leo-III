@@ -67,10 +67,14 @@ case object Role_Plain extends Role {
 //////////////////////////////////////////////
 
 
-abstract sealed class ClauseOrigin
-case object FromAxiom extends ClauseOrigin
-case object FromConjecture extends ClauseOrigin
-case object Derived extends ClauseOrigin
+abstract sealed class ClauseOrigin extends Ordered[ClauseOrigin] {
+  protected[ClauseOrigin] def priority: Int
+
+  def compare(that: ClauseOrigin) = this.priority - that.priority
+}
+case object FromAxiom extends ClauseOrigin { val priority = 3 }
+case object FromConjecture extends ClauseOrigin { val priority = 2 }
+case object Derived extends ClauseOrigin { val priority = 1 }
 
 
 //////////////////////////////////////////////
