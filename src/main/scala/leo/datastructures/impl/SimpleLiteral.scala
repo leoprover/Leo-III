@@ -10,8 +10,6 @@ import leo.datastructures.{Literal, ===}
  * @since 19.11.2014
  */
 abstract class SimpleLiteral extends Literal {
-  /** Weight of the `simpleLiteral` is for now fixed by its id number.
-    * THIS WILL CHANGE IN THE FUTURE! */
   protected def litId: Int
 }
 
