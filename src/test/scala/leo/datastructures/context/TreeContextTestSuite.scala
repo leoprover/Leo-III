@@ -6,7 +6,6 @@ import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 import org.junit.runner.RunWith
 
-import leo.datastructures.context.Context
 import leo.datastructures.context.impl.TreeContext
 
 /**

@@ -1,4 +1,6 @@
-package leo.datastructures.context
+package leo
+package datastructures.context
+
 
 import scala.collection._
 
@@ -12,6 +14,52 @@ object Context {
    * @return Main context
    */
   def apply() : Context = root
+
+  /**
+   * Parses from a context the complete sequence of contexts
+   * from the root context to the given one, if one exists.
+   *
+   * @param c - The node we want to reach
+   * @return Path from the root context to c, in this direction.
+   */
+  protected[context] def getPath(c : Context) : Seq[Context] = {
+    var res = List(c)
+    var akk : Context = c
+    while(akk.parentContext != null) {
+      res = akk.parentContext :: res
+      akk = akk.parentContext
+    }
+    if(res.head.contextID != Context().contextID) {
+      Out.severe(s"Deattached head context found contextID=${akk.contextID} reached from contextID=${c.contextID}. (Path = ${pathToString(res)}) (Root =${Context().contextID})")
+    }
+    res
+  }
+
+  private def pathToString(c : List[Context]) : String = c.map(_.contextID).mkString(" , ")
+
+
+  /**
+   * Computes the lca of a context.
+   *
+   * TODO: ATM only paths are recognized. All others will produce unintended behaviour.
+   *
+   * @param c
+   * @return
+   */
+  def lca (c : Iterable[Context]) : Context = {
+    var maxDepth : Int = 1
+    var res : Context = Context()
+    val it = c.iterator
+    while(it.hasNext) {
+      val c = it.next()
+      val l = getPath(c).length
+      if(l > maxDepth) {
+        maxDepth = l
+        res = c
+      }
+    }
+    res
+  }
 }
 
 /**

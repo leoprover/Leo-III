@@ -28,35 +28,13 @@ class TreeContextSet[A] extends ContextSet[A] {
   private val contextSets : mutable.Map[Context,mutable.Set[A]] = new mutable.HashMap[Context,mutable.Set[A]] with mutable.SynchronizedMap[Context,mutable.Set[A]]
 
   /**
-   * Parses from a context the complete sequence of contexts
-   * from the root context to the given one, if one exists.
-   *
-   * @param c - The node we want to reach
-   * @return Path from the root context to c, in this direction.
-   */
-  protected def getPath(c : Context) : Seq[Context] = {
-    var res = List(c)
-    var akk : Context = c
-    while(akk.parentContext != null) {
-      res = akk.parentContext :: res
-      akk = akk.parentContext
-    }
-    if(res.head.contextID != Context().contextID) {
-      Out.severe(s"Deattached head context found contextID=${akk.contextID} reached from contextID=${c.contextID}. (Path = ${pathToString(res)}) (Root =${Context().contextID})")
-    }
-    res
-  }
-
-  private def pathToString(c : List[Context]) : String = c.map(_.contextID).mkString(" , ")
-
-  /**
    * Checks if an element `a` is contained in a given context.
    *
    * @param a - The element to check
    * @param c - The context to check
    * @return true, iff a is contained in c
    */
-  override def contains(a: A, c: Context): Boolean = getPath(c) exists {c1 => contextSets.get(c1).fold(false)(_.contains(a))}
+  override def contains(a: A, c: Context): Boolean = Context.getPath(c) exists {c1 => contextSets.get(c1).fold(false)(_.contains(a))}
 
   /**
    * Clears a context and all its sub contexts of all elements.
@@ -80,7 +58,7 @@ class TreeContextSet[A] extends ContextSet[A] {
    * @return true, iff deletion was successful
    */
   override def remove(a: A, c: Context): Boolean = {
-    val p = getPath(c).iterator
+    val p = Context.getPath(c).iterator
 
     while(p.hasNext) {
       val n = p.next()
@@ -124,5 +102,5 @@ class TreeContextSet[A] extends ContextSet[A] {
    * @param c - The context of the elements
    * @return All elements in c
    */
-  override def getAll(c: Context): Set[A] = contextSets.filter{case (c1,_) => getPath(c).contains(c1)}.values.toSet.flatten
+  override def getAll(c: Context): Set[A] = contextSets.filter{case (c1,_) => Context.getPath(c).contains(c1)}.values.toSet.flatten
 }

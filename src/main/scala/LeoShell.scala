@@ -9,6 +9,7 @@ import leo.datastructures.blackboard._
 import Term._
 import LeoShell._
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.context.Context
 import leo.agents.impl._
 import leo.agents.impl.NormalClauseAgent._
 import leo.agents.impl.UtilAgents._
@@ -150,7 +151,7 @@ object LeoShell {
             println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
-              Blackboard().addFormula(name, form, role)
+              Blackboard().addFormula(name, form, role, Context())
             }
         }
 
@@ -184,7 +185,7 @@ object LeoShell {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed.foreach {case (name,form,role) => if(role != "definition" && role != "type") Blackboard().addFormula(name,form,role)}
+        processed.foreach {case (name,form,role) => if(role != "definition" && role != "type") Blackboard().addFormula(name,form,role, Context())}
       case Left(err) =>
         println(s"'$s' is not a valid formula: $err")
     }
@@ -196,7 +197,7 @@ object LeoShell {
    * @param s - The term
    */
   def add(name : String, s : Term, role : String): Unit = {
-    Blackboard().addFormula(name, s, role)
+    Blackboard().addFormula(name, s, role, Context())
     println(s"Added $name='$s' to the context.")
   }
 

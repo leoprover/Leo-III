@@ -10,6 +10,7 @@ import leo.modules.proofCalculi.resolution.ResolutionCalculus._
 
 import scala.collection.mutable
 
+@deprecated
 object ResolutionAgent {
   private var rA : Agent = null
 
@@ -28,9 +29,12 @@ object ResolutionAgent {
  *
  * This agent performs the two tasks to resolute on the blackboard
  *
+ * DEPRECATED: Context is not set correctly
+ *
  * @author Max Wisniewski
  * @since 8/12/14
  */
+@deprecated
 class ResolutionAgent extends Agent {
 
   override val name = "ResolutionAgent"
