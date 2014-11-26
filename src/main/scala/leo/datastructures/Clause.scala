@@ -1,6 +1,7 @@
 package leo.datastructures
 
 import leo.Configuration
+import leo.datastructures.Type
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -18,6 +19,8 @@ trait Clause extends Ordered[Clause] {
   def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
+  /** The types of the implicitly universally quantified variables. */
+  def implicitBindings: Seq[Type]
 
   def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 }
@@ -26,8 +29,9 @@ object Clause {
   import impl.{VectorClause => ClauseImpl}
 
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
-  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, origin)
-  def mkDerivedClause(lits: Iterable[Literal]): Clause = mkClause(lits, Derived)
+  def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, implicitBindings, origin)
+  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, Seq(), origin)
+  def mkDerivedClause(lits: Iterable[Literal], implicitBindings: Seq[Type]): Clause = mkClause(lits, implicitBindings, Derived)
 
   def lastClauseId: Int = ClauseImpl.lastClauseId
 }

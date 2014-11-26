@@ -1,6 +1,6 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{Literal, Clause, ClauseOrigin}
+import leo.datastructures.{Literal, Clause, ClauseOrigin, Type}
 
 /**
  * Preliminary implementation of clauses using indexed linear sequences (vectors).
@@ -13,14 +13,14 @@ abstract sealed class VectorClause extends Clause
 object VectorClause {
   private var clauseCounter : Int = 0
 
-  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = {
+  def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin): Clause = {
     clauseCounter += 1
-    new VectorClause0(lits, origin, clauseCounter)
+    new VectorClause0(lits, origin, implicitBindings, clauseCounter)
   }
 
   def lastClauseId = clauseCounter
 
-  private class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin, val id: Int) extends VectorClause {
+  private class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin, val implicitBindings: Seq[Type], val id: Int) extends VectorClause {
     def lits = literals.toVector.sorted
   }
 }
