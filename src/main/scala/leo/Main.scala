@@ -8,6 +8,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
 import leo.datastructures.impl.Signature
 import leo.modules.CLParameterParser
+import leo.datastructures.context.Context
 
 /**
  * Entry Point for Leo-III as an executable to
@@ -84,7 +85,7 @@ object Main {
 //            println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
-              Blackboard().addFormula(name, form, role)
+              Blackboard().addFormula(name, form, role, Context())
             }
         }
 
@@ -110,7 +111,7 @@ object Main {
                   //            println("Loaded " + fileAbs)
                   val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
                   processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
-                    Blackboard().addFormula(name, form, role)
+                    Blackboard().addFormula(name, form, role, Context())
                   }
               }
 

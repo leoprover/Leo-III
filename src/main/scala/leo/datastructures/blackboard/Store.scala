@@ -3,31 +3,32 @@ package leo.datastructures.blackboard
 import java.util.concurrent.atomic.AtomicInteger
 
 import leo.datastructures.term.Term
+import leo.datastructures.context.Context
 
 
 object Store {
   protected[blackboard] var unnamedFormulas : AtomicInteger = new AtomicInteger(0)
 
-  def apply(name : String, initFormula : Term) : FormulaStore
-    = new FormulaStore(name, Left(initFormula), "plain", 0)
+  def apply(name : String, initFormula : Term, context : Context) : FormulaStore
+    = new FormulaStore(name, Left(initFormula), "plain", 0, context)
 
-  def apply(initFormula : Term, role : String, status : Int) : FormulaStore
-    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), Left(initFormula), role, status)
+  def apply(initFormula : Term, role : String, status : Int, context : Context) : FormulaStore
+    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), Left(initFormula), role, status, context : Context)
 
-  def apply(initFormula : Term) : FormulaStore
-  = Store(initFormula,"plain", 0)
+  def apply(initFormula : Term, context : Context) : FormulaStore
+  = Store(initFormula,"plain", 0, context)
 
-  def apply(initFormula : Term, status : Int) : FormulaStore
-    = Store(initFormula, "plain" ,status)
+  def apply(initFormula : Term, status : Int, context : Context) : FormulaStore
+    = Store(initFormula, "plain" ,status, context)
 
-  def apply(initFormula : Term, role : String) : FormulaStore
-    = Store(initFormula, role, 0)
+  def apply(initFormula : Term, role : String, context : Context) : FormulaStore
+    = Store(initFormula, role, 0, context)
 
-  def apply(name : String, initFormula : Term, role : String) : FormulaStore
-    = Store(name, initFormula, role, 0)
+  def apply(name : String, initFormula : Term, role : String, context : Context) : FormulaStore
+    = Store(name, initFormula, role, 0, context)
 
-  def apply(name : String, initFormula : Term, role : String, status : Int) : FormulaStore
-    = new FormulaStore(name,Left(initFormula), role, status)
+  def apply(name : String, initFormula : Term, role : String, status : Int, context : Context) : FormulaStore
+    = new FormulaStore(name,Left(initFormula), role, status, context)
 }
 
 /**
@@ -49,12 +50,13 @@ object Store {
  * </table>
  *
  */
-class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : String, _status : Int){
+class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : String, _status : Int, _context : Context){
 
   def name : String = _name
   def formula : Either[Term,Seq[Term]] = _formula
   def status : Int = _status
   def role : String = _role
+  def context : Context = _context
 
   def simpleFormula : Term = formula match {
     case Left(f) => f
@@ -76,13 +78,13 @@ class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : St
    */
   def normalized : Boolean = (status & 5)== 5 || (status & 7) == 7
 
-  def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _role, _status)
-  def newFormula(nformula : Term) : FormulaStore = new FormulaStore(_name, Left(nformula), _role, _status)
-  def newCNF(cformula : Seq[Term]) : FormulaStore = new FormulaStore(_name, Right(cformula), _role, _status)
-  def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(_name, _formula, _role, nstatus)
-  def newRole(nrole : String) : FormulaStore = new FormulaStore(_name, _formula, nrole, _status)
+  def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _role, _status, _context)
+  def newFormula(nformula : Term) : FormulaStore = new FormulaStore(_name, Left(nformula), _role, _status, _context)
+  def newCNF(cformula : Seq[Term]) : FormulaStore = new FormulaStore(_name, Right(cformula), _role, _status, _context)
+  def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(_name, _formula, _role, nstatus,_context)
+  def newRole(nrole : String) : FormulaStore = new FormulaStore(_name, _formula, nrole, _status,_context)
 
-  def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), formula, _role, _status)
+  def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), formula, _role, _status,_context)
 
   override lazy val toString : String = {
     "leo("+name+","+role+",("+formula.fold({_.pretty}, {fs => "["+fs.map(_.pretty).mkString(") , (")+")]"})+"))"

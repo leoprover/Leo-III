@@ -1,6 +1,7 @@
 package leo.agents
 
 import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
+import leo.datastructures.context.Context
 
 import scala.collection.mutable
 
@@ -251,6 +252,14 @@ abstract class Task {
   def writeSet() : Set[FormulaStore]
 
   /**
+   * Defines a set of Contexts on which the task will
+   * write.
+   *
+   * @return set of all contexts the task will manipulate
+   */
+  def contextWriteSet() : Set[Context] = Set.empty
+
+  /**
    * Checks for two tasks, if they are in conflict with each other.
    *
    * @param t2 - Second Task
@@ -304,6 +313,12 @@ trait Result {
    * @return Deleted formulas
    */
   def removeFormula() : Set[FormulaStore]
+
+  /**
+   * Set of all new or updated Contexts
+   * @return
+   */
+  def updatedContext() : Set[Context]
 }
 
 /**
@@ -317,10 +332,12 @@ class StdResult(nf : Set[FormulaStore], uf : Map[FormulaStore,FormulaStore], rf 
   override def newFormula() : Set[FormulaStore] = nf
   override def updateFormula() : Map[FormulaStore,FormulaStore] = uf
   override def removeFormula() : Set[FormulaStore] = rf
+  override def updatedContext() : Set[Context] = Set.empty
 }
 
 object EmptyResult extends Result{
   override def newFormula() : Set[FormulaStore] = Set.empty
   override def updateFormula() : Map[FormulaStore,FormulaStore] = Map.empty
   override def removeFormula() : Set[FormulaStore] = Set.empty
+  override def updatedContext(): Set[Context] = Set.empty
 }

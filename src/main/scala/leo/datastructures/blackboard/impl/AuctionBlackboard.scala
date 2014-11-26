@@ -10,6 +10,7 @@ import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable
 import scala.collection.mutable.{Queue, Map => MMap}
+import leo.datastructures.context.Context
 
 /**
  * This blackboard is a first reference implementation for the @see{Blackboard} interface.
@@ -59,8 +60,8 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override def getFormulaByName(name: String): Option[FormulaStore] = FormulaSet.getName(name)
 
   // Called from outside, therefor we will fitler explicitly
-  override def addFormula(name : String, formula: Term, role : String) : FormulaStore = {
-    val s = Store(name, formula, role)
+  override def addFormula(name : String, formula: Term, role : String, context : Context) : FormulaStore = {
+    val s = Store(name, formula, role, context)
     val f = addFormula(s)
     f match {
       case Left(s1) =>
