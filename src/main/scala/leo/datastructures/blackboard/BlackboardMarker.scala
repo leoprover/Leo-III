@@ -1,5 +1,7 @@
 package leo.datastructures.blackboard
 
+import leo.datastructures.context.Context
+
 /**
  * Marker Interface for any Event for the Agents
  */
@@ -26,7 +28,7 @@ private class FormulaEvent(f : FormulaStore) extends Event {
 }
 
 /**
- * Matching Object for the {@see FormulaEvent}.
+ * Creates and deconstructs an Event containing a single formula
  */
 object FormulaEvent{
 
@@ -35,5 +37,18 @@ object FormulaEvent{
   def unapply(e : Event) : Option[FormulaStore] = e match {
     case f : FormulaEvent  => Some(f.getF)
     case _                => None
+  }
+}
+
+private class ContextEvent(c : Context) extends Event {
+  def getC : Context = c
+}
+
+object ContextEvent {
+  def apply(c : Context) : Event = new ContextEvent(c)
+
+  def unapply(e : Event) : Option[Context] = e match {
+    case c : ContextEvent => Some(c.getC)
+    case _    => None
   }
 }

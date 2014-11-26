@@ -1,6 +1,8 @@
-package leo.datastructures.blackboard.scheduler
+package leo
+package datastructures.blackboard.scheduler
 
-import leo.datastructures.blackboard.{FormulaEvent, FormulaStore, Blackboard}
+import leo.datastructures.blackboard.{ContextEvent, FormulaEvent, FormulaStore, Blackboard}
+import leo.datastructures.context.Context
 
 import scala.collection.mutable
 import scala.collection.mutable.HashSet
@@ -146,9 +148,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       this.synchronized {
         if (pauseFlag) {
           // If is paused wait
-          println("Scheduler paused.")
+          Out.info("Scheduler paused.")
           this.wait()
-          println("Scheduler is commencing.")
+          Out.info("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
       }
@@ -161,9 +163,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         this.synchronized {
           if (endFlag) return         // Savely exit
           if (pauseFlag) {
-            println("Scheduler paused.")
+            Out.info("Scheduler paused.")
             this.wait()
-            println("Scheduler is commencing.")
+            Out.info("Scheduler is commencing.")
           } // Check again, if waiting took to long
 
           curExec.add(t)
@@ -201,7 +203,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           }}
           result.updateFormula().foreach{case (_,f) => a.filter(FormulaEvent(f))}
           //TODO Enforce that the two sets are disjoined
-          task.readSet().foreach{f => if(!task.writeSet().contains(f)) a.filter(_)}   // Filtes not written elements again.
+          task.readSet().foreach{f => if(!task.writeSet().contains(f)) a.filter(FormulaEvent(f))}   // Filtes not written elements again.
+          (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })
       }
     }
@@ -215,7 +218,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
       ExecTask.put(a.run(t),t)
-//      println("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
+        Out.trace("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
@@ -260,6 +263,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     override def newFormula(): Set[FormulaStore] = ???
     override def updateFormula(): Map[FormulaStore, FormulaStore] = ???
     override def removeFormula(): Set[FormulaStore] = ???
+    override def updatedContext(): Set[Context] = ???
   }
 
   /**
