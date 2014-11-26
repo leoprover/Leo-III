@@ -23,6 +23,7 @@ import leo.datastructures.tptp.Commons.TFFAnnotated
  *
  * @author Alexander Steen
  * @since 18.06.2014
+ * @todo use new role objects rather than strings
  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
@@ -585,7 +586,27 @@ object InputProcessing {
   // CNF Formula processing
   //////////////////////////
 
-  def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = ???
+  import leo.datastructures.tptp.cnf.{ Formula => CNFLogicalFormula}
+  import leo.datastructures.{FromAxiom, FromConjecture, ClauseOrigin}  // TODO: Check role to FromX derivation
+  def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = input.role match {
+    case "axiom" | "hypothesis" => Some((input.name, processCNF0(sig)(input.formula, FromAxiom), input.role))
+    case _ => Some((input.name, processCNF0(sig)(input.formula, FromConjecture), input.role))
+  }
+
+  protected[parsers] def processCNF0(sig: Signature)(input: CNFLogicalFormula, origin: ClauseOrigin): term.Term = {
+    import leo.datastructures.tptp.cnf.{Positive, Negative, Inequality}
+    import leo.datastructures.Literal.{mkNegLit, mkPosLit, mkUniLit}
+    val lits = input.literals.map { _ match {
+      case Positive(f) => mkPosLit(processAtomicFormula(sig)(f, ???))
+      case Negative(f) => mkNegLit(processAtomicFormula(sig)(f, ???))
+      case Inequality(l, r) => mkUniLit(processTerm(sig)(l, ???), processTerm(sig)(r, ???))
+    }
+    }
+    import leo.datastructures.Clause.{mkClause}
+    val cl = mkClause(lits, origin)
+    ???
+  }
+  // TODO: Change return type of InputProcessing to Clause to allow this?
 
 
   ////////////////////////////
