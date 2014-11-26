@@ -2,33 +2,33 @@ package leo.datastructures.blackboard
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import leo.datastructures.term.Term
+import leo.datastructures.{Role_Plain, Role, Clause, Pretty}
 import leo.datastructures.context.Context
 
 
 object Store {
   protected[blackboard] var unnamedFormulas : AtomicInteger = new AtomicInteger(0)
 
-  def apply(name : String, initFormula : Term, context : Context) : FormulaStore
-    = new FormulaStore(name, Left(initFormula), "plain", 0, context)
+  def apply(name : String, initClause : Clause, context : Context) : FormulaStore
+    = new FormulaStore(name, initClause, Role_Plain, 0, context)
 
-  def apply(initFormula : Term, role : String, status : Int, context : Context) : FormulaStore
-    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), Left(initFormula), role, status, context : Context)
+  def apply(initClause : Clause, role : Role, status : Int, context : Context) : FormulaStore
+    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), initClause, role, status, context : Context)
 
-  def apply(initFormula : Term, context : Context) : FormulaStore
-  = Store(initFormula,"plain", 0, context)
+  def apply(initClause : Clause, context : Context) : FormulaStore
+  = Store(initClause,Role_Plain, 0, context)
 
-  def apply(initFormula : Term, status : Int, context : Context) : FormulaStore
-    = Store(initFormula, "plain" ,status, context)
+  def apply(initClause : Clause, status : Int, context : Context) : FormulaStore
+    = Store(initClause, Role_Plain ,status, context)
 
-  def apply(initFormula : Term, role : String, context : Context) : FormulaStore
-    = Store(initFormula, role, 0, context)
+  def apply(initClause : Clause, role : Role, context : Context) : FormulaStore
+    = Store(initClause, role, 0, context)
 
-  def apply(name : String, initFormula : Term, role : String, context : Context) : FormulaStore
-    = Store(name, initFormula, role, 0, context)
+  def apply(name : String, initClause : Clause, role : Role, context : Context) : FormulaStore
+    = Store(name, initClause, role, 0, context)
 
-  def apply(name : String, initFormula : Term, role : String, status : Int, context : Context) : FormulaStore
-    = new FormulaStore(name,Left(initFormula), role, status, context)
+  def apply(name : String, initClause : Clause, role : Role, status : Int, context : Context) : FormulaStore
+    = new FormulaStore(name, initClause, role, status, context)
 }
 
 /**
@@ -50,23 +50,8 @@ object Store {
  * </table>
  *
  */
-class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : String, _status : Int, _context : Context){
-
-  def name : String = _name
-  def formula : Either[Term,Seq[Term]] = _formula
-  def status : Int = _status
-  def role : String = _role
-  def context : Context = _context
-
-  def simpleFormula : Term = formula match {
-    case Left(f) => f
-    case Right(_) => throw new IllegalArgumentException("Expected Simple Formula, but got CNF")
-  }
-
-  def cnfFormula : Seq[Term] = formula match {
-    case Left(f)  => List(f)
-    case Right(fs)=> fs
-  }
+class FormulaStore(val name : String, val clause : Clause, val role : Role, val status : Int, val context : Context)
+  extends Pretty with Ordered[FormulaStore] {
 
   /**
    *
@@ -78,15 +63,14 @@ class FormulaStore(_name : String, _formula : Either[Term,Seq[Term]], _role : St
    */
   def normalized : Boolean = (status & 5)== 5 || (status & 7) == 7
 
-  def newName(nname : String) : FormulaStore = new FormulaStore(nname, formula, _role, _status, _context)
-  def newFormula(nformula : Term) : FormulaStore = new FormulaStore(_name, Left(nformula), _role, _status, _context)
-  def newCNF(cformula : Seq[Term]) : FormulaStore = new FormulaStore(_name, Right(cformula), _role, _status, _context)
-  def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(_name, _formula, _role, nstatus,_context)
-  def newRole(nrole : String) : FormulaStore = new FormulaStore(_name, _formula, nrole, _status,_context)
+  def newName(nname : String) : FormulaStore = new FormulaStore(nname, clause, role, status, context)
+  def newClause(nclause : Clause) : FormulaStore = new FormulaStore(name,nclause, role, status, context)
+  def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(name, clause, role, nstatus,context)
+  def newRole(nrole : Role) : FormulaStore = new FormulaStore(name, clause, nrole, status,context)
 
-  def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), formula, _role, _status,_context)
+  def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), clause, role, status, context)
 
-  override lazy val toString : String = {
-    "leo("+name+","+role+",("+formula.fold({_.pretty}, {fs => "["+fs.map(_.pretty).mkString(") , (")+")]"})+"))"
-  }
+  lazy val pretty : String = "leo("+name+","+role+",("+clause+"))."
+
+  def compare(that: FormulaStore): Int = this.clause compare that.clause
 }

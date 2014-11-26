@@ -27,11 +27,10 @@ trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
   /**
    * Checks whether the given formula is normalizable.
    *
-   * @param formula - Formula to be checked
    * @param status - Bitarray stored in Int, Explaination see {@see leo.datastructures.blackboard.FormulaStore}
    * @return True if a normaliziation is possible, false otherwise
    */
-  def applicable (formula : Term, status : Int) : Boolean
+  def applicable (status : Int) : Boolean
 
   /**
    * Marks a status for a formula as already normalized.
@@ -57,7 +56,7 @@ abstract class AbstractNormalize extends Normalize {
    * @param status - Status of the forula
    * @return The possibly normalized formula.
    */
-  override def apply(formula : Term, status : Int) : Term = if (applicable(formula, status)) normalize(formula) else formula
+  override def apply(formula : Term, status : Int) : Term = if (applicable(status)) normalize(formula) else formula
 
   /**
    * Like apply2, but assumes the normalization is applicable

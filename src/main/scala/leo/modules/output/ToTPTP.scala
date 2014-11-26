@@ -19,16 +19,19 @@ import leo.datastructures.blackboard.FormulaStore
  * @author Alexander Steen
  * @since 07.11.2014
  */
-object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Term, String, Output] {
+object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Clause, Role, Output] {
 
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
   def apply(f: FormulaStore): Output = new Output {
-    def output = toTPTP(f.name, f.simpleFormula, f.role)
+    def output = toTPTP(f.name, f.clause.toTerm, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/
-  def apply(name: String, t: Term, role: String): Output = new Output {
+  def apply(name: String, t: Clause, role: Role): Output = new Output {
+    def output = toTPTP(name, t.toTerm, role)
+  }
+  def apply(name: String, t: Term, role: Role): Output = new Output {
     def output = toTPTP(name, t, role)
   }
 
@@ -45,9 +48,9 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Ter
   }
 
   /** Translate the `FormulaStore` into a TPTP String in THF format. */
-  def output(f: FormulaStore) = toTPTP(f.name, f.simpleFormula, f.role)
+  def output(f: FormulaStore) = toTPTP(f.name, f.clause.toTerm, f.role)
   /** Translate the term information triple into a TPTP String. */
-  def output(name: String, t: Term, role: String) = toTPTP(name, t, role)
+  def output(name: String, t: Clause, role: Role) = toTPTP(name, t.toTerm, role)
 
   // Extra output function for types only (not sure if needed somewhere)
   /** Return an `Output` object that contains the TPTP representation of the given type.*/
@@ -60,8 +63,9 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Ter
   ///////////////////////////////
   // Translation of THF formula
   ///////////////////////////////
+  // TODO: Fixme write translation from clause
+  private def toTPTP(name: String, t: Term, role: Role): String = s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
 
-  private def toTPTP(name: String, t: Term, role: String): String = s"thf($name, $role, (${toTPTP0(t, Seq.empty)}))."
   private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = {
     val sig = Signature.get
     t match {

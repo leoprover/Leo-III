@@ -48,14 +48,15 @@ class LeoAgent(path : String) extends ScriptAgent(path){
   }
 
 
-  private def createTask(event : FormulaStore) : Iterable[Task] = event.formula match {
-    case Left(form) =>
-      Out.info(s"[$name] got a task.")
-      val conj = event.newRole(Role_Conjecture.pretty).newFormula(Not(form))
-      val context : Set[FormulaStore] = Blackboard().getAll{f => f.name != event.name}.toSet[FormulaStore]
-      return Iterable(new ScriptTask(context + conj))
-    case Right(forms) => return Iterable.empty
-  }
+  private def createTask(event : FormulaStore) : Iterable[Task] = ???
+//    event.clause match {
+//    case Left(form) =>
+//      Out.info(s"[$name] got a task.")
+//      val conj = event.newRole(Role_Conjecture.pretty).newFormula(Not(form))
+//      val context : Set[FormulaStore] = Blackboard().getAll{f => f.name != event.name}.toSet[FormulaStore]
+//      return Iterable(new ScriptTask(context + conj))
+//    case Right(forms) => return Iterable.empty
+//  }
 
 }
 

@@ -3,6 +3,7 @@ package leo
 import java.io.{File, FileNotFoundException}
 
 import leo.agents.impl.FinishedAgent
+import leo.datastructures.{Role_Unknown, Role_Type, Role_Definition}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
@@ -84,7 +85,7 @@ object Main {
             x.getIncludes.foreach(x => loadRelative(x._1, path))
 //            println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
+            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
               Blackboard().addFormula(name, form, role, Context())
             }
         }
@@ -110,7 +111,7 @@ object Main {
                   x.getIncludes.foreach(x => loadRelative(x._1, path))
                   //            println("Loaded " + fileAbs)
                   val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                  processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
+                  processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
                     Blackboard().addFormula(name, form, role, Context())
                   }
               }

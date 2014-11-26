@@ -1,7 +1,7 @@
 package leo.datastructures
 
 import leo.Configuration
-import leo.datastructures.Type
+import leo.datastructures.term.Term
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -10,7 +10,7 @@ import leo.datastructures.Type
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Ordered[Clause] {
+trait Clause extends Ordered[Clause] with Pretty {
   /** The unique, increasing clause number. */
   def id: Int
   /** The underlying sequence of literals. */
@@ -22,7 +22,16 @@ trait Clause extends Ordered[Clause] {
   /** The types of the implicitly universally quantified variables. */
   def implicitBindings: Seq[Type]
 
+  def isEmpty: Boolean = lits.isEmpty
+
   def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
+
+  def map[A](f: Literal => A): Seq[A] = lits.map(f)
+  def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
+
+  lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
+
+  lazy val toTerm: Term = ???
 }
 
 object Clause {

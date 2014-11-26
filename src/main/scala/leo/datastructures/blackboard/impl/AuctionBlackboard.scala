@@ -1,11 +1,11 @@
 package leo.datastructures.blackboard.impl
 
 
-
 import leo.agents.{Task, Agent}
 import leo.datastructures.LitFalse
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.term.Term
+import leo.datastructures.{Role, Clause}
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable
@@ -24,32 +24,6 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   var isFinished = false
 
-  /**
-   * Not working....
-   *
-   * Should watch if $false is added and then signal, that a proof was found, i.e. not to compute
-   * further (maybe start a proof reconstruction or clean up of the formulas)
-   *
-   * @param fS - New added formula
-   */
-  private def checkFinish(fS : FormulaStore) : Unit = {
-    fS.formula match{
-      case Left(form) if form == LitFalse=>
-        isFinished = true
-        Scheduler().pause()
-        println("Derived False.")
-      case Right(lForm) if lForm.isEmpty =>
-        isFinished = true
-        Scheduler().pause()
-        println("Derived False.")
-      case Right(lForm) if lForm.head == LitFalse=>
-        isFinished = true
-        Scheduler().pause()
-        println("Derived False.")
-      case _ => ()
-    }
-  }
-
   // For each agent a List of Tasks to execute
   // If FormulaSet is optimized we can optimize internal
 
@@ -60,12 +34,11 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override def getFormulaByName(name: String): Option[FormulaStore] = FormulaSet.getName(name)
 
   // Called from outside, therefor we will fitler explicitly
-  override def addFormula(name : String, formula: Term, role : String, context : Context) : FormulaStore = {
+  override def addFormula(name : String, formula: Clause, role : Role, context : Context) : FormulaStore = {
     val s = Store(name, formula, role, context)
     val f = addFormula(s)
     f match {
       case Left(s1) =>
-        checkFinish(s1)
         filterAll(_.filter(FormulaEvent(s1)))
         s1
       case Right(s2) =>
@@ -75,10 +48,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   override def addFormula(formula : FormulaStore) : Either[FormulaStore, FormulaStore] = {
     val f = FormulaSet.add(formula)
-    f match {
-      case Left(s1) => checkFinish(s1)
-      case Right(_) => ()
-    }
+    // TODO: handle merge
     f
   }
 
@@ -171,7 +141,7 @@ private object FormulaSet {
   //TODO better representation, but no idea where to map from...
   private val formulaMap = new TrieMap[String, FormulaStore]()
 
-  private val termMap = new TrieMap[Either[Term,Seq[Term]], FormulaStore]
+  private val termMap = new TrieMap[Clause, FormulaStore]
 
   /**
    * Looks up the termMap, for an already existing store and returns this or the given store
@@ -180,11 +150,11 @@ private object FormulaSet {
    * @return the exsiting store or the new one
    */
   def add(f : FormulaStore) : Either[FormulaStore, FormulaStore] = {
-    termMap.get(f.formula) match {
+    termMap.get(f.clause) match {
       case Some(fS) =>
         Right(fS)
       case None =>
-        termMap put (f.formula,f)
+        termMap put (f.clause ,f)
         formulaMap put (f.name,f)
         Left(f)
     }
@@ -206,7 +176,7 @@ private object FormulaSet {
     formulaMap remove n match{
       case None => false
       case Some(f) =>
-        termMap.remove(f.formula)
+        termMap.remove(f.clause)
         true
     }
   }

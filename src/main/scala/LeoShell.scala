@@ -2,7 +2,7 @@
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
-import leo.datastructures.Role
+import leo.datastructures.{Role, Clause, Role_Definition, Role_Type, Role_Unknown}
 import leo.modules.normalization.{Simplification, NegationNormal}
 import leo.modules.churchNumerals.Numerals
 import leo.datastructures.blackboard._
@@ -150,7 +150,7 @@ object LeoShell {
             x.getIncludes.foreach(x => loadRelative(x._1, path))
             println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
+            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
               Blackboard().addFormula(name, form, role, Context())
             }
         }
@@ -185,7 +185,7 @@ object LeoShell {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed.foreach {case (name,form,role) => if(role != "definition" && role != "type") Blackboard().addFormula(name,form,role, Context())}
+        processed.foreach {case (name,form,role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) Blackboard().addFormula(name,form,role, Context())}
       case Left(err) =>
         println(s"'$s' is not a valid formula: $err")
     }
@@ -194,14 +194,14 @@ object LeoShell {
   /**
    * Adds a Formula to the Blackboard
    * @param name - Name of the formula
-   * @param s - The term
+   * @param cl - The clause
    */
-  def add(name : String, s : Term, role : String): Unit = {
-    Blackboard().addFormula(name, s, role, Context())
-    println(s"Added $name='$s' to the context.")
+  def add(name : String, cl : Clause, role : String): Unit = {
+    Blackboard().addFormula(name, cl, Role(role), Context())
+    println(s"Added $name='$cl' to the context.")
   }
 
-  def add(name : String, s : Term) : Unit = add(name, s, "plain")
+  def add(name : String, cl : Clause) : Unit = add(name, cl, "plain")
 
   private def update(name : String, fS : FormulaStore) = {
     Blackboard().rmFormulaByName(name)
@@ -218,14 +218,14 @@ object LeoShell {
 
   def update(name : String, r : Role) : Unit = {
     Blackboard().getFormulaByName(name) match {
-      case Some(fS) => update(name, fS.newRole(r.pretty))
+      case Some(fS) => update(name, fS.newRole(r))
       case None => ()
     }
   }
 
-  def update(name : String, s : Term): Unit = {
+  def update(name : String, s : Clause): Unit = {
     Blackboard().getFormulaByName(name) match {
-      case Some(fS) => update(name, fS.newFormula(s))
+      case Some(fS) => update(name, fS.newClause(s))
       case None => ()
     }
   }
@@ -269,7 +269,7 @@ object LeoShell {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.toString.take(maxRoleSize)
-        val form = x.formula.fold(_.pretty,{x => x.map(_.pretty).mkString(" , ")})
+        val form = x.clause.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 

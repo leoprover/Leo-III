@@ -9,7 +9,7 @@ import scala.language.implicitConversions
 
 import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
-import leo.datastructures.Kind
+import leo.datastructures.{Kind, Clause, Literal, Role}
 import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkTypeApp}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
 
@@ -27,7 +27,7 @@ import leo.datastructures.tptp.Commons.TFFAnnotated
  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
-  type Result = (String, term.Term, String)
+  type Result = (String, Clause, Role)
 
   // Types for replacing bound variables by de bruijn indices
   type TermVarReplaces = (Map[Variable, (Type, Int)], Int) // (varname -> (vartype, position in list), index offset)
@@ -55,10 +55,21 @@ object InputProcessing {
    */
   def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = {
     input.map({case f => process(sig)(f) match {
-      case None      => (f.name, LitTrue(), f.role)
+      case None      => {
+        val role = processRole(f.role)
+        (f.name, singleTermToClause(LitTrue(), role), role)
+      }
       case Some(res) => res
     }})
   }
+
+  private def processRole(role: String): Role = Role(role)
+  private def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
+    case Role_Conjecture => FromConjecture
+    case Role_NegConjecture => FromConjecture
+    case _ => FromAxiom
+  }
+  private def singleTermToClause(t: term.Term, role: Role): Clause = Clause.mkClause(Seq(Literal.mkPosLit(t)), roleToClauseOrigin(role))
 
   def process(sig: Signature)(input: AnnotatedFormula): Option[Result] = {
     input match {
@@ -111,7 +122,7 @@ object InputProcessing {
                                                         }
                                                         None
                                                       }
-      case Logical(lf)                               => Some((input.name, processTHF0(sig)(lf, noRep), input.role))
+      case Logical(lf)                               => val role = processRole(input.role); Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
       case Sequent(_,_)                              => throw new IllegalArgumentException("Processing of THF sequents not implemented")
     }
   }
@@ -321,7 +332,7 @@ object InputProcessing {
                                                           sig.addDefined(defName, defDef, defDef.ty)
                                                           None
                                                         }
-      case Logical(lf) => Some((input.name, processTFF0(sig)(lf, noRep), input.role))
+      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
       // Typed Atoms are top-level declarations, put them into signature
       case TypedAtom(atom, ty) => {
         convertTFFType(sig)(ty, noRep) match {
@@ -505,7 +516,7 @@ object InputProcessing {
 //                                                          sig.addDefined(defName, defDef, defDef.ty)
 //                                                          None
 //                                                        }
-      case Logical(lf) => Some((input.name, processFOF0(sig)(lf, noRep), input.role))
+      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processFOF0(sig)(lf, noRep), role), role))
       case Sequent(_,_) => throw new IllegalArgumentException("Processing of fof sequents not yet implemented.")
     }
   }
@@ -587,13 +598,12 @@ object InputProcessing {
   //////////////////////////
 
   import leo.datastructures.tptp.cnf.{ Formula => CNFLogicalFormula}
-  import leo.datastructures.{FromAxiom, FromConjecture, ClauseOrigin}  // TODO: Check role to FromX derivation
-  def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = input.role match {
-    case "axiom" | "hypothesis" => Some((input.name, processCNF0(sig)(input.formula, FromAxiom), input.role))
-    case _ => Some((input.name, processCNF0(sig)(input.formula, FromConjecture), input.role))
+  def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = {
+    val role = processRole(input.role)
+    Some((input.name, processCNF0(sig)(input.formula, roleToClauseOrigin(role)), role))
   }
 
-  protected[parsers] def processCNF0(sig: Signature)(input: CNFLogicalFormula, origin: ClauseOrigin): term.Term = {
+  protected[parsers] def processCNF0(sig: Signature)(input: CNFLogicalFormula, origin: ClauseOrigin): Clause = {
     import leo.datastructures.tptp.cnf.{Positive, Negative, Inequality}
     import leo.datastructures.Literal.{mkNegLit, mkPosLit, mkUniLit}
     val lits = input.literals.map { _ match {
@@ -603,10 +613,8 @@ object InputProcessing {
     }
     }
     import leo.datastructures.Clause.{mkClause}
-    val cl = mkClause(lits, origin)
-    ???
+    mkClause(lits, origin)
   }
-  // TODO: Change return type of InputProcessing to Clause to allow this?
 
 
   ////////////////////////////

@@ -122,7 +122,7 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
   private def constantToTPTP(k : Signature#Key) : Seq[Output] = {
     val constant = Signature.get.apply(k)
     (constant.defn) match {
-      case Some(defn) => Seq(ToTPTP(s"${constant.name}_type", k), ToTPTP(s"${constant.name}_def", ===(mkAtom(k),defn), Role_Definition.pretty))
+      case Some(defn) => Seq(ToTPTP(s"${constant.name}_type", k), ToTPTP(s"${constant.name}_def", ===(mkAtom(k),defn), Role_Definition))
       case (None) => Seq(ToTPTP(s"${constant.name}_type", k))
     }
   }

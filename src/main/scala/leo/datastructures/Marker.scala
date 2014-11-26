@@ -62,6 +62,17 @@ case object Role_Plain extends Role {
   final val pretty = "plain"
 }
 
+/**
+ * `Role_Unknown`s are considered an error.
+ */
+case object Role_Unknown extends Role {
+  final val pretty = "unknown"
+}
+
+object Role {
+  def apply(role: String): Role = ???
+}
+
 
 //////////////////////////////////////////////
 //////////////////////////////////////////////

@@ -3,6 +3,7 @@ package impl
 
 import leo.datastructures.blackboard.{FormulaEvent, Event, FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
+import leo.datastructures.Literal
 
 import scala.collection.mutable
 
@@ -77,13 +78,13 @@ class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
   override def run(t: Task): Result = t match {
     case t1: NormalTask =>
       val fstore = t1.get()
-      val erg = norm.normalize(fstore.simpleFormula)
-      if (fstore.simpleFormula == erg) {
+      val erg = fstore.clause.mapLit(l => Literal.mkLit(norm.normalize(l.term), l.polarity))  //norm.normalize(fstore.clause.)
+      if (fstore.clause == erg) {
 //        println(name + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, fstore.newStatus(norm.markStatus(fstore.status)))), Set.empty)
       } else {
 //        println(name + " : Updated '" + fstore.simpleFormula.pretty + "' to '" + erg.pretty + "'.")
-        return new StdResult(Set.empty, Map((fstore, fstore.newFormula(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
+        return new StdResult(Set.empty, Map((fstore, fstore.newClause(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
       }
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
@@ -92,10 +93,7 @@ class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
 
 
   override protected def toFilter(e: Event): Iterable[Task] = e match {
-    case FormulaEvent(event) => event.formula match {
-      case Left (f) => if (norm.applicable (event.simpleFormula, event.status) ) List (new NormalTask (event) ) else Nil
-      case Right (_) => Nil
-    }
+    case FormulaEvent(event) => if (norm.applicable ( event.status) ) List (new NormalTask (event) ) else Nil
     case _ => Nil
   }
 

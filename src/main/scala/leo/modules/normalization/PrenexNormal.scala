@@ -73,10 +73,9 @@ object PrenexNormal extends AbstractNormalize {
    * (status & 15) = status & 0..01111  ~~ Selects the last 4 Bits
    * equals 7 only if the last three bits are set and the 4th not
    *
-   * @param formula - Formula to be checked
    * @return True if a normaliziation is possible, false otherwise
    */
-  override def applicable(formula: Term, status : Int): Boolean = (status & 31) == 15
+  override def applicable(status : Int): Boolean = (status & 31) == 15
 
   override def markStatus(status : Int) : Int = status | 31
 }

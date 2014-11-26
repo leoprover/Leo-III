@@ -1,9 +1,8 @@
 package leo.datastructures.blackboard
 
 import leo.agents.{Task, Agent}
-import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.term.Term
 import leo.datastructures.context.Context
+import leo.datastructures.{Clause, Role}
 import scala.collection.mutable
 
 // Singleton Blackboards
@@ -133,7 +132,7 @@ trait FormulaBlackboard {
    * For interactive use. Creates a formula store and adds it to the blackboard (or retuns the
    * existing one)
    */
-  def addFormula(name : String, formula : Term, role : String, context : Context) : FormulaStore
+  def addFormula(name : String, clause : Clause, role : Role, context : Context) : FormulaStore
 
   /**
    * <p>

@@ -20,10 +20,9 @@ object DefExpansion extends AbstractNormalize {
   /**
    * Checks if the staus bit 1 is raised and the second is not
    *
-   * @param formula - Formula to be checked
    * @return True if a normaliziation is possible, false otherwise
    */
-  override def applicable(formula: Term, status : Int): Boolean = (status & 3) == 1
+  override def applicable(status : Int): Boolean = (status & 3) == 1
 
   override def markStatus(status : Int) : Int = (status | 2) & ~1
 }

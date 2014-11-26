@@ -1,7 +1,7 @@
 package leo.agents
 package impl
 
-import leo.datastructures.{LitFalse, Not}
+import leo.datastructures.{Role_NegConjecture, Role_Conjecture, LitFalse, Not}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore}
 import leo.modules.output.logger.Out
@@ -56,10 +56,7 @@ class ConjectureAgent extends AbstractAgent {
    * @return - set of tasks, if empty the agent won't work on this event
    */
   override def toFilter(e: Event): Iterable[Task] = e match {
-    case FormulaEvent(event) => event.formula match {
-      case Left(f) => if (event.role == "conjecture") List(new SingleFormTask(event)) else Nil
-      case Right(_) => Nil
-    }
+    case FormulaEvent(event) => if (event.role == Role_Conjecture) List(new SingleFormTask(event)) else Nil
     case _ => Nil
   }
 
@@ -70,9 +67,9 @@ class ConjectureAgent extends AbstractAgent {
     t match {
       case t1: SingleFormTask =>
         val fS = t1.getFormula()
-        val form = fS.simpleFormula
+        val form = fS.clause
         val status = fS.status
-        val rS = fS.newFormula(Not(form)).newRole("negated_conjecture").newStatus(status & ~7)
+        val rS = fS.newClause(form.mapLit(l => l.flipPolarity)).newRole(Role_NegConjecture).newStatus(status & ~7) // TODO: This is not generally not valid, fix me
 
 //        println("Negated Conjecture")
 
@@ -140,10 +137,10 @@ class FinishedAgent(timeout : Int) extends AbstractAgent {
    */
   override def toFilter(e: Event): Iterable[Task] = {
     e match {
-      case FormulaEvent(event) => event.formula match {
-        case Left (LitFalse () ) => List (new SingleFormTask (event) )
-        case _ => Nil
-      }
+      case FormulaEvent(event) => if (event.clause.isEmpty)
+                                    List (new SingleFormTask (event) )
+                                  else
+                                    Nil
       case _  => Out.warn(s"[$name]: Received unkown event $e"); Nil
     }
   }
