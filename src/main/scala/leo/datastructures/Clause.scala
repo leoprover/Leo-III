@@ -31,7 +31,13 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
-  lazy val toTerm: Term = ???
+  lazy val toTerm: Term = mkPolyUnivQuant(implicitBindings, mkDisjunction(lits.map(_.toTerm)))
+
+  private def mkDisjunction(terms: Seq[Term]): Term = terms match {
+    case Seq() => LitFalse()
+    case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
+  }
+  private def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = ???
 }
 
 object Clause {
