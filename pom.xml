@@ -1,0 +1,121 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.leo</groupId>
+  <artifactId>Leo-III</artifactId>
+  <version>1.0</version>
+  <name>leo-iii</name>
+  <description>LEO - III Prover</description>
+  <inceptionYear>2014</inceptionYear>
+
+  <properties>
+    <maven.compiler.source>1.5</maven.compiler.source>
+    <maven.compiler.target>1.5</maven.compiler.target>
+    <encoding>UTF-8</encoding>
+    <scala.version>2.11.4</scala.version>
+  </properties>
+
+  <dependencies>
+   <dependency>
+	   <groupId>org.scala-lang</groupId>
+	   <artifactId>scala-library</artifactId>
+	   <version>2.11.4</version>
+	</dependency>
+   <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-reflect</artifactId>
+      <version>2.11.4</version>
+   </dependency>
+   <dependency>
+      <groupId>org.scala-lang.modules</groupId>
+      <artifactId>scala-xml_2.11</artifactId>
+      <version>1.0.2</version>
+   </dependency>
+   <dependency>
+      <groupId>org.scala-lang.modules</groupId>
+      <artifactId>scala-parser-combinators_2.11</artifactId>
+      <version>1.0.2</version>
+   </dependency>
+
+    <!-- Test -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-tools.testing</groupId>
+      <artifactId>specs_${scala.version}</artifactId>
+      <version>1.6.5</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+  <groupId>org.scalatest</groupId>
+  <artifactId>scalatest_2.11</artifactId>
+  <version>2.2.1</version>
+  <scope>test</scope>
+	</dependency>
+
+	<dependency>
+	<groupId>org.scala-tools</groupId>
+	<artifactId>maven-scala-plugin</artifactId>
+	<version>2.15.2</version>
+</dependency>
+
+  </dependencies>
+
+  <build>
+    <sourceDirectory>src/main/scala</sourceDirectory>
+    <testSourceDirectory>src/test/scala</testSourceDirectory>
+    <plugins>
+     <plugin>
+        <groupId>org.scala-tools</groupId>
+        <artifactId>maven-scala-plugin</artifactId>
+	<version>2.15.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+            </goals>
+            <configuration>
+              <scalaVersion>${scala.version}</scalaVersion>
+              <args>
+                <arg>-dependencyfile</arg>
+                <arg>${project.build.directory}/.scala_dependencies</arg>
+              </args>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.6</version>
+        <configuration>
+          <useFile>false</useFile>
+          <disableXmlReport>true</disableXmlReport>
+          <!-- If you have classpath issue like NoDefClassError,... -->
+          <!-- useManifestOnlyJar>false</useManifestOnlyJar -->
+          <includes>
+            <include>**/*Test.*</include>
+            <include>**/*Suite.*</include>
+          </includes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+<configuration>
+  <launchers>
+    <launcher>
+      <id>sample</id>
+      <mainClass>leo.Main</mainClass>
+      <args>
+        <arg>${basedir}</arg>
+      </args>
+    </launcher>
+  </launchers>
+</configuration>
