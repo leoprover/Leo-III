@@ -36,6 +36,9 @@ trait Literal extends Pretty with Ordered[Literal] {
                             ===(term, LitTrue())
                           else
                             ===(term, LitFalse())
+
+  def fold[A](f: (Term, Boolean) => A): A = f(term, polarity)
+  def termMap[A](f: Term => Term): Literal = Literal.mkLit(f(term), polarity)
 }
 
 object Literal extends Function2[Term, Boolean, Literal]{
