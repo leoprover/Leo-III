@@ -33,6 +33,14 @@ case object Role_Definition extends Role {
 }
 
 /**
+ * `Role_Assumption`s can be used like axioms, but must be discharged before a
+ * derivation is complete.
+ */
+case object Role_Assumption extends Role {
+  final val pretty = "assumption"
+}
+
+/**
  * `Role_Conjecture`s are to be proven from the "axiom"(-like) formulae. A problem
  * is solved only when all "conjecture"s are proven.
  */
@@ -70,7 +78,20 @@ case object Role_Unknown extends Role {
 }
 
 object Role {
-  def apply(role: String): Role = ???
+  def apply(role: String): Role = role.trim match {
+    case "axiom" => Role_Axiom
+    case "hypothesis" => Role_Axiom // Note: Implicit mapping to axiom
+    case "definition" => Role_Definition
+    case "assumption" => Role_Assumption
+    case "lemma" => Role_Axiom // Note: Implicit mapping to axiom
+    case "theorem" => Role_Axiom // Note: Implicit mapping to axiom
+    case "conjecture" => Role_Conjecture
+    case "negated_conjecture" => Role_NegConjecture
+    case "plain" => Role_Plain
+    case "type" => Role_Type
+    case "unknown" => Role_Unknown
+    case _ => Role_Unknown // Note: fi_* roles are not handled at the moment
+  }
 }
 
 
