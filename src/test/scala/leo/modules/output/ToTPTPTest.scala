@@ -3,6 +3,7 @@ package leo.modules.output
 import java.io.{FileNotFoundException, File}
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
+import leo.datastructures.{Clause, Role, Role_Type, Role_Definition, Role_Unknown}
 
 /**
  * Created by lex on 10.11.14.
@@ -18,7 +19,7 @@ object ToTPTPTest {
   /**
    * Loads a tptp file and saves the formulas in the context.
    */
-  def load(file: String): Seq[(String, Term, String)] = {
+  def load(file: String): Seq[(String, Clause, Role)] = {
     if (file.charAt(0) != '/') {
       // Relative load
       loadRelative(file, _pwd.split('/'))
@@ -29,7 +30,7 @@ object ToTPTPTest {
     }
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Term, String)] = {
+  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Clause, Role)] = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
@@ -55,7 +56,7 @@ object ToTPTPTest {
             //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
             //              benchmark(name, form, role)
             //            }
-            processed.filter({case (_, _, role) => role != "definition" && role != "type"})
+            processed.filter({case (_, _, role) => role != Role_Definition && role != Role_Type && role != Role_Unknown})
         }
 
       } catch {

@@ -2,7 +2,7 @@ package leo.datastructures.internal.terms
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.{Term, Reductions}
-import leo.datastructures.Type
+import leo.datastructures.{Type, Clause, Role, Role_Type, Role_Definition, Role_Unknown}
 import Term._
 import Term.{mkTermApp => ap, mkTypeApp => tyAp}
 import Type._
@@ -25,7 +25,7 @@ object BenchmarkHeadSymbol {
   /**
    * Loads a tptp file and saves the formulas in the context.
    */
-  def load(file: String): Seq[(String, Term, String)] = {
+  def load(file: String): Seq[(String, Clause, Role)] = {
     if (file.charAt(0) != '/') {
       // Relative load
       loadRelative(file, _pwd.split('/'))
@@ -36,7 +36,7 @@ object BenchmarkHeadSymbol {
     }
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Term, String)] = {
+  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Clause, Role)] = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
@@ -62,7 +62,7 @@ object BenchmarkHeadSymbol {
             //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
             //              benchmark(name, form, role)
             //            }
-            processed.filter({case (_, _, role) => role != "definition" && role != "type"})
+            processed.filter({case (_, _, role) => role != Role_Definition && role != Role_Type && role != Role_Unknown})
         }
 
       } catch {
@@ -106,7 +106,7 @@ object BenchmarkHeadSymbol {
 
 
 
-  private def benchmark(name: String, term: Term, role: String): Long = {
+  private def benchmark(name: String, term: Term, role: Role): Long = {
     //    print(s"Benchmarking $name: \t")
     Reductions.reset()
     term.headSymbol
@@ -148,7 +148,7 @@ object BenchmarkHeadSymbol {
 
     // Expand definitions
     //    println("Normalize parsed formulae:")
-    val fs2 = fs.map({case (name, term, role) => (name, term.betaNormalize ,role)})
+    val fs2 = fs.map({case (name, clause, role) => (name, clause.mapLit(_.termMap(_.betaNormalize)) ,role)})
     //    fs2.foreach({case (name, term, role) =>
     //      println(s"$name \t $role \t\t ${term.pretty}")
     //    })
@@ -167,7 +167,9 @@ object BenchmarkHeadSymbol {
     //    var localTimes: Seq[Long] = Seq()
     var time: Long = 0
     fs2.foreach({case (n, t, r) => {
-      val erg = benchmark(n,t,r)
+      assert(t.lits.size == 1) // freshly parsed
+
+      val erg = benchmark(n,t.lits.head.term,r)
       //      localTimes.+:(erg)
       time += erg
     }})

@@ -79,17 +79,16 @@ class InputProcessingTestSuite extends FunSuite {
 
             assert(processed.size == formulae.size)
             try {
-              assert(processed.forall(_._2.typeCheck))
+              assert(processed.forall(_._2.lits.forall(_.term.typeCheck)))
             } catch {
               case e:TestFailedException => {
                 for (t <- processed) {
-                  if (!t._2.typeCheck) {
+                  if (!t._2.lits.forall(_.term.typeCheck)) {
                     println("Name: " + t._1)
-                    println("Term: " + t._2)
-                    println("Term typecheck: " + t._2.typeCheck)
+                    println("Clause: " + t._2)
                     println("Pretty: " + t._2.pretty)
-                    println("Type: " + t._2.ty)
-                    println("Pretty: " + t._2.ty.pretty)
+                    println("Types: " + t._2.map(_.term.ty).mkString(" , "))
+                    println("Pretty: " + t._2.map(_.term.ty.pretty).mkString(" , "))
                   }
                 }
                 throw e

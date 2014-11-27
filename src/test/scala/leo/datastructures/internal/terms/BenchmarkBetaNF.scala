@@ -2,7 +2,7 @@ package leo.datastructures.internal.terms
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.{Term, Reductions}
-import leo.datastructures.Type
+import leo.datastructures._
 import Term._
 import Term.{mkTermApp => ap, mkTypeApp => tyAp}
 import Type._
@@ -25,7 +25,7 @@ object BenchmarkBetaNF {
   /**
    * Loads a tptp file and saves the formulas in the context.
    */
-  def load(file: String): Seq[(String, Term, String)] = {
+  def load(file: String): Seq[(String, Clause, Role)] = {
     if (file.charAt(0) != '/') {
       // Relative load
       loadRelative(file, _pwd.split('/'))
@@ -36,7 +36,7 @@ object BenchmarkBetaNF {
     }
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Term, String)] = {
+  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Clause, Role)] = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
@@ -62,7 +62,7 @@ object BenchmarkBetaNF {
 //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
 //              benchmark(name, form, role)
 //            }
-            processed.filter({case (_, _, role) => role != "definition" && role != "type"})
+            processed.filter({case (_, _, role) => role != Role_Definition && role != Role_Type && role != Role_Unknown})
         }
 
       } catch {
@@ -104,7 +104,7 @@ object BenchmarkBetaNF {
 
   val FILES = {new File(__TPTPPROBLEMPATH__ + "QUA").listFiles.filter(x => !(x.getName.contains("-")) && x.getName.endsWith(".p")).toSet}
 
-  private def benchmark(name: String, term: Term, role: String): Long = {
+  private def benchmark(name: String, term: Term, role: Role): Long = {
 //    print(s"Benchmarking $name: \t")
     Reductions.reset()
     term.betaNormalize
@@ -146,7 +146,7 @@ object BenchmarkBetaNF {
 
     // Expand definitions
 //    println("Normalize parsed formulae:")
-    val fs2 = fs.map({case (name, term, role) => (name, term.betaNormalize ,role)})
+    val fs2 = fs.map({case (name, clause, role) => (name, clause.mapLit(_.termMap(_.betaNormalize)) ,role)})
     //    fs2.foreach({case (name, term, role) =>
     //      println(s"$name \t $role \t\t ${term.pretty}")
     //    })
@@ -154,7 +154,7 @@ object BenchmarkBetaNF {
 
     // Expand definitions
 //    println("Expand definitions:")
-    val fs3 = fs2.map({case (name, term, role) => (name, term.full_δ_expand ,role)})
+    val fs3 = fs2.map({case (name, clause, role) => (name, clause.mapLit(_.termMap(_.full_δ_expand)), role)})
 //    fs3.foreach({case (name, term, role) =>
 //      println(s"$name \t $role \t\t ${term.pretty}")
 //    })
@@ -165,7 +165,9 @@ object BenchmarkBetaNF {
     //    var localTimes: Seq[Long] = Seq()
     var time: Long = 0
     fs3.foreach({case (n, t, r) => {
-      val erg = benchmark(n,t,r)
+      assert(t.lits.size == 1) // Freshly parsed term
+      val term = t.lits.head.term
+      val erg = benchmark(n,term,r)
       //      localTimes.+:(erg)
       time += erg
     }})

@@ -3,6 +3,7 @@ package leo.datastructures.internal.terms
 import java.io.{FileNotFoundException, File}
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
+import leo.datastructures.{Role, Clause,  Role_Type, Role_Definition, Role_Unknown}
 
 /**
  * Created by lex on 19.09.14.
@@ -18,7 +19,7 @@ object BenchmarkTermBank {
   /**
    * Loads a tptp file and saves the formulas in the context.
    */
-  def load(file: String): Seq[(String, Term, String)] = {
+  def load(file: String): Seq[(String, Clause, Role)] = {
     if (file.charAt(0) != '/') {
       // Relative load
       loadRelative(file, _pwd.split('/'))
@@ -29,7 +30,7 @@ object BenchmarkTermBank {
     }
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Term, String)] = {
+  private def loadRelative(file : String, rel : Array[String]): Seq[(String, Clause, Role)] = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
@@ -42,7 +43,7 @@ object BenchmarkTermBank {
         val input = new CharArrayReader(source.toArray)
         val parsed = TPTP.parseFile(input)
         source.close()    // Close at this point. Otherwise we would have many files open with many includes.
-        var formulae: Seq[(String, Term, String)] = Seq()
+        var formulae: Seq[(String, Clause, Role)] = Seq()
         parsed match {
           case Left(x) =>
             println("Parse error in file " + fileAbs + ": " + x)
@@ -55,7 +56,7 @@ object BenchmarkTermBank {
             //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
             //              benchmark(name, form, role)
             //            }
-            formulae ++ (processed.filter({case (_, _, role) => role != "definition" && role != "type"}))
+            formulae ++  processed.filter({case (_, _, role) => role != Role_Definition && role != Role_Type && role != Role_Unknown})
         }
 
       } catch {
@@ -122,9 +123,11 @@ object BenchmarkTermBank {
     var maxSize = 0
     var terms = fs.size
     for(f <- fs) {
-      localSize += f._2.size
-      minSize = Math.min(minSize, f._2.size)
-      maxSize = Math.max(maxSize, f._2.size)
+      assert(f._2.lits.size == 1) // freshly parsed
+      val t = f._2.lits.head.term
+      localSize += t.size
+      minSize = Math.min(minSize, t.size)
+      maxSize = Math.max(maxSize, t.size)
     }
 
 
