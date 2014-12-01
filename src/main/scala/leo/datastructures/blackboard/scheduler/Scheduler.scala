@@ -197,10 +197,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Notify changes
         // ATM only New and Updated Formulas
         Blackboard().filterAll({a =>
-          newF.foreach{ ef => ef match {
-            case Left(f) => a.filter(FormulaEvent(f)) // If the result is left, then the formula was new
-            case Right(_) => ()         // If the result was right, the formula already existed
-          }}
+          newF.foreach{ f => a.filter(FormulaEvent(f))// If the result was right, the formula already existed
+          }
           result.updateFormula().foreach{case (_,f) => a.filter(FormulaEvent(f))}
           //TODO Enforce that the two sets are disjoined
           task.readSet().foreach{f => if(!task.writeSet().contains(f)) a.filter(FormulaEvent(f))}   // Filtes not written elements again.

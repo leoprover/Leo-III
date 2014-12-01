@@ -38,16 +38,11 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override def addFormula(name : String, formula: Clause, role : Role, context : Context) : FormulaStore = {
     val s = Store(name, formula, role, context)
     val f = addFormula(s)
-    f match {
-      case Left(s1) =>
-        filterAll(_.filter(FormulaEvent(s1)))
-        s1
-      case Right(s2) =>
-        s2
-    }
+    filterAll(_.filter(FormulaEvent(f)))
+    return f
   }
 
-  override def addFormula(formula : FormulaStore) : Either[FormulaStore, FormulaStore] = {
+  override def addFormula(formula : FormulaStore) : FormulaStore = {
     val f = FormulaSet.add(formula)
     // TODO: handle merge
     f
@@ -171,27 +166,21 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
  */
 private object FormulaSet {
 
-  //TODO better representation, but no idea where to map from...
-  private val formulaMap = new TrieMap[String, FormulaStore]()
-
-  private val termMap = new TrieMap[Clause, FormulaStore]
-
   private val formulaSet : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
 
   /**
    * Looks up the termMap, for an already existing store and returns this or the given store
    * after adding it.
    *
-   * @return the exsiting store or the new one
+   * @return the existing store or the new one
    */
-  def add(f : FormulaStore) : Either[FormulaStore, FormulaStore] = {
-    termMap.get(f.clause) match {
-      case Some(fS) =>
-        Right(fS)
+  def add(f : FormulaStore) : FormulaStore = {
+    (formulaSet get (f,f.context)) match {
+      case Some(f1) =>
+        return f1
       case None =>
-        termMap put (f.clause ,f)
-        formulaMap put (f.name,f)
-        Left(f)
+        formulaSet.add(f, f.context)
+        return f
     }
   }
 
@@ -201,22 +190,22 @@ private object FormulaSet {
    *
    * @return All stored formulas
    */
-  def getAll() : Iterable[FormulaStore] = formulaMap.values
+  def getAll() : Iterable[FormulaStore] = formulaSet.getAll
+
+  def getAll(c : Context) : Iterable[FormulaStore] = formulaSet.getAll(c)
 
   def rm(f : FormulaStore) : Boolean = {
-    rmName(f.name)
+    formulaSet.remove(f, f.context)
   }
 
   def rmName(n : String) : Boolean = {
-    formulaMap remove n match{
+    formulaSet.getAll.find {f => f.name == n} match {
       case None => false
-      case Some(f) =>
-        termMap.remove(f.clause)
-        true
+      case Some(f) => formulaSet.remove(f, f.context)
     }
   }
 
-  def getName(n : String) : Option[FormulaStore] = formulaMap get n
+  def getName(n : String) : Option[FormulaStore] = formulaSet.getAll.find {f => f.name == n}
 }
 
 private object TaskSet {

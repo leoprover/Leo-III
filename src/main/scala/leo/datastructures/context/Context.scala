@@ -176,6 +176,16 @@ trait ContextSet[A] {
   def contains(a : A, c : Context) : Boolean
 
   /**
+   * Returns an element in context `c`
+   * that is equal to `a`.
+   *
+   * @param a - Element to search
+   * @param c - The context
+   * @return THe element in the context, matching A
+   */
+  def get(a : A, c : Context) : Option[A]
+
+  /**
    *
    * Inserts an element `a` into the context c.
    *
@@ -202,6 +212,14 @@ trait ContextSet[A] {
    * @return All elements in c
    */
   def getAll(c : Context) : Set[A]
+
+  /**
+   * Returns a set of all elements. Independent of
+   * their context.
+   *
+   * @return ALl element in the data structure
+   */
+  def getAll : Set[A]
 
   /**
    * Returns a sequence of all context c, in which a is contained

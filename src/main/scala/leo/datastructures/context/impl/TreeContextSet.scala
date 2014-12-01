@@ -37,6 +37,21 @@ class TreeContextSet[A] extends ContextSet[A] {
   override def contains(a: A, c: Context): Boolean = Context.getPath(c) exists {c1 => contextSets.get(c1).fold(false)(_.contains(a))}
 
   /**
+   * Returns an element in context `c`
+   * that is equal to `a`.
+   *
+   * @param a - Element to search
+   * @param c - The context
+   * @return THe element in the context, matching A
+   */
+  override def get(a: A, c: Context): Option[A] =  {
+    if (contains(a, c))
+      Some(a)
+    else
+      None
+  }
+
+  /**
    * Clears a context and all its sub contexts of all elements.
    * @param c
    */
@@ -103,4 +118,14 @@ class TreeContextSet[A] extends ContextSet[A] {
    * @return All elements in c
    */
   override def getAll(c: Context): Set[A] = contextSets.filter{case (c1,_) => Context.getPath(c).contains(c1)}.values.toSet.flatten
+
+  /**
+   * Returns a set of all elements. Independent of
+   * their context.
+   *
+   * @return ALl element in the data structure
+   */
+  override def getAll: Set[A] = contextSets.values.toSet.flatten
+
+
 }

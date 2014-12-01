@@ -141,9 +141,9 @@ trait FormulaBlackboard {
    * </p>
    *
    * @param formula to be added.
-   * @return Left the newly added formula or Right the already existing formula.
+   * @return The inserted Formula, or the already existing one.
    */
-  def addFormula(formula : FormulaStore) : Either[FormulaStore, FormulaStore]
+  def addFormula(formula : FormulaStore) : FormulaStore
 
   /**
    * <p>
