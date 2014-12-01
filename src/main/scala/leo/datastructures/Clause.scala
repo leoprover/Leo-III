@@ -29,11 +29,11 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   def map[A](f: Literal => A): Seq[A] = lits.map(f)
   def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
+//  def replace(t: Term, by: Term): Clause
 
   lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
   lazy val toTerm: Term = mkPolyUnivQuant(implicitBindings, mkDisjunction(lits.map(_.toTerm)))
-
 
   // TODO: Maybe move this to "utilities"?
   private def mkDisjunction(terms: Seq[Term]): Term = terms match {
