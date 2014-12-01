@@ -1,4 +1,5 @@
-package leo.agents
+package leo
+package agents
 package impl
 
 import leo.datastructures.blackboard.{FormulaEvent, Event, FormulaStore, Blackboard}
@@ -80,10 +81,10 @@ class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
       val fstore = t1.get()
       val erg = fstore.clause.mapLit(l => Literal.mkLit(norm.normalize(l.term), l.polarity))  //norm.normalize(fstore.clause.)
       if (fstore.clause == erg) {
-//        println(name + " : No change in Normalization.")
+        Out.trace(name + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, fstore.newStatus(norm.markStatus(fstore.status)))), Set.empty)
       } else {
-//        println(name + " : Updated '" + fstore.simpleFormula.pretty + "' to '" + erg.pretty + "'.")
+        Out.trace(name + " : Updated '" + fstore.pretty + "' to '" + erg.pretty + "'.")
         return new StdResult(Set.empty, Map((fstore, fstore.newClause(erg).newStatus(norm.markStatus(fstore.status)))), Set.empty)
       }
     case _ => throw new IllegalArgumentException("Executing wrong task.")

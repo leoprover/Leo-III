@@ -9,7 +9,6 @@ import leo.modules.output.logger.Out
 object UtilAgents {
 
   private var con : ConjectureAgent = null
-  private var fin : FinishedAgent = null
 
   def Conjecture() : ConjectureAgent = {
     if (con == null) {
@@ -17,14 +16,6 @@ object UtilAgents {
       con.register()
     }
     con
-  }
-
-  def Finished() : FinishedAgent = {
-    if (fin == null) {
-      fin = new FinishedAgent(-1)     // TODO : No idea, maybe delete
-      fin.register()
-    }
-    fin
   }
 
   def StdAgents() : Unit = {
@@ -92,66 +83,5 @@ class SingleFormTask(f : FormulaStore) extends Task {
   override def equals(other : Any) = other match {
     case o : SingleFormTask => o.getFormula() == f
     case _                  => false
-  }
-}
-
-
-
-
-
-class FinishedAgent(timeout : Int) extends AbstractAgent {
-
-  override val name = "FinishedAgent"
-
-  // Killing if not done in timeout
-  private val end : Thread = new Thread(new Runnable {
-    override def run(): Unit = {
-//      println("Init delay kill.")
-      if(timeout < 0) return
-      synchronized{
-        try {
-          wait(timeout * 1000)
-          println("% SZS status Timeout")
-//          println("Killing task.")
-          Scheduler().killAll()
-        } catch {
-          case e : InterruptedException => return
-          case _ : Throwable =>
-            println("% SZS status Timeout")
-            Scheduler().killAll()
-        }
-      }
-    }
-  })
-
-  end.start()
-
-
-  /**
-   * This method should be called, whenever a formula is added to the blackboard.
-   *
-   * The filter then checks the blackboard if it can generate a task from it.
-   *
-   * @param e - Newly added or updated formula
-   * @return - set of tasks, if empty the agent won't work on this event
-   */
-  override def toFilter(e: Event): Iterable[Task] = {
-    e match {
-      case FormulaEvent(event) => if (event.clause.isEmpty)
-                                    List (new SingleFormTask (event) )
-                                  else
-                                    Nil
-      case _  => Out.warn(s"[$name]: Received unkown event $e"); Nil
-    }
-  }
-
-  /*
-   * TODO : Do we want the agent to stop the Scheduler ???
-   */
-  override def run(t: Task): Result = {
-    Scheduler().killAll()
-    end.interrupt()
-    println("% SZS status Success")
-    new StdResult(Set.empty, Map.empty, Set.empty)
   }
 }

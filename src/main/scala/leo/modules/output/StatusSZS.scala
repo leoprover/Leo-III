@@ -152,6 +152,11 @@ case object SZS_Error extends NoSuccessSZS {
   val pretty = "ERR"
 }
 
+case object SZS_InputError extends NoSuccessSZS {
+  val output = "InputError"
+  val pretty = "INE"
+}
+
 /** Software stopped due to an input syntax error. */
 case object SZS_SyntaxError extends NoSuccessSZS {
   val output = "SyntaxError"

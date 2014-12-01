@@ -4,13 +4,14 @@ package leo.datastructures.blackboard.impl
 import leo.agents.{Task, Agent}
 import leo.datastructures.LitFalse
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.context.impl.TreeContextSet
 import leo.datastructures.term.Term
 import leo.datastructures.{Role, Clause}
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable
 import scala.collection.mutable.{Queue, Map => MMap}
-import leo.datastructures.context.Context
+import leo.datastructures.context.{ContextSet, Context}
 
 /**
  * This blackboard is a first reference implementation for the @see{Blackboard} interface.
@@ -129,6 +130,38 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param to   - The recipient
    */
   override def send(m: Message, to: Agent): Unit = to.filter(m)
+
+  /**
+   *
+   * <p>
+   * Retrieves all formulas in a given context.
+   * </p>
+   *
+   * @param c - A given Context
+   * @return All formulas in the context `c`
+   */
+  override def getFormulas(c: Context): Iterable[FormulaStore] = ???
+
+  /**
+   * <p>
+   * Removes all formulas in the context `c` satisfiying `p`.
+   * </p>
+   * @param c - A given Context
+   * @param p - Predicate the formulas have to satisfy
+   * @return Removes all formulas in `c` satisfying `p`
+   */
+  override def rmAll(c: Context)(p: FormulaStore): Unit = ???
+
+  /**
+   * <p>
+   * Filters the formulas of a given context.
+   * </p>
+   *
+   * @param c - A given Context
+   * @param p Predicate the formulas have to satisfy
+   * @return All formulas in `c` satisfying `p`
+   */
+  override def getAll(c: Context)(p: (FormulaStore) => Boolean): Iterable[FormulaStore] = ???
 }
 
 /**
@@ -142,6 +175,8 @@ private object FormulaSet {
   private val formulaMap = new TrieMap[String, FormulaStore]()
 
   private val termMap = new TrieMap[Clause, FormulaStore]
+
+  private val formulaSet : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
 
   /**
    * Looks up the termMap, for an already existing store and returns this or the given store

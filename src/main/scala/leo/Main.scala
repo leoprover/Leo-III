@@ -1,15 +1,13 @@
 package leo
 
-import java.io.{File, FileNotFoundException}
 
-import leo.agents.impl.FinishedAgent
-import leo.datastructures.{Role_Unknown, Role_Type, Role_Definition}
-import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
-import leo.datastructures.impl.Signature
-import leo.modules.CLParameterParser
-import leo.datastructures.context.Context
+import leo.modules.{SZSOutput, CLParameterParser}
+import leo.modules.Utility._
+import leo.modules.output.SZS_Timeout
+import leo.modules.Phase._
+
 
 /**
  * Entry Point for Leo-III as an executable to
@@ -30,118 +28,70 @@ object Main {
   def main(args : Array[String]){
     Configuration.init(new CLParameterParser(args))
     val timeout = Configuration.TIMEOUT
-    val path = Configuration.PROBLEMFILE
+    val interval = 10
 
-    // Initializing Blackboard
-    StdAgents()
-    (new FinishedAgent(timeout)).register()
 
-    load(path)
+    val deferredKill : DeferredKill = (new DeferredKill(interval, Double.PositiveInfinity))
+    deferredKill.start()
 
+    // Start scheduler
     Scheduler().signal()
-  }
 
-  /**
-   * List of currently loaded tptp files
-   */
-  private val loadedSet = collection.mutable.Set.empty[String]
-
-  private val _pwd = (new File(".")).getCanonicalPath
-
-  /**
-   * Loads a tptp file and saves the formulas in the context.
-   */
-  def load(file: String): Unit = {
-    if (file.charAt(0) != '/') {
-      // Relative load
-      loadRelative(file, _pwd.split('/'))
-    } else {
-      // Absolute load
-      val pwd = file.split('/')
-      loadRelative(pwd.last, pwd.init)
+    val it = getStdPhases.iterator
+    var r = true
+    while(it.hasNext && r) {
+      r = it.next().execute()
     }
+
+
+//    deferredKill.kill()
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Unit = {
-    import scala.util.parsing.input.CharArrayReader
-    import leo.modules.parsers.TPTP
-    import leo.modules.parsers.InputProcessing
 
 
-    val (fileAbs, path) = newPath(rel, file)
-    if (!loadedSet(fileAbs)) {
-      try {
-        val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-        val input = new CharArrayReader(source.toArray)
-        val parsed = TPTP.parseFile(input)
-        source.close()    // Close at this point. Otherwise we would have many files open with many includes.
+  /**
+   * Thread to kill leo.
+   *
+   * TODO: Hook to let the kill Thread die.
+   *
+   * @param interval
+   * @param timeout
+   */
+  private class DeferredKill(interval : Double, timeout : Double) extends Thread {
 
-        parsed match {
-          case Left(x) =>
-//            println("Parse error in file " + fileAbs + ": " + x)
-              println("% SZS status SyntaxError")
-          case Right(x) =>
-            loadedSet += fileAbs
-            x.getIncludes.foreach(x => loadRelative(x._1, path))
-//            println("Loaded " + fileAbs)
-            val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-              Blackboard().addFormula(name, form, role, Context())
-            }
-        }
+    var remain : Double = timeout
+    var exit : Boolean = false
 
-      } catch {
-        case ex : FileNotFoundException =>
-          // If not relative, then search in TPTP env variable
-          val tptpHome = System.getenv("TPTP").split("/")
-          val (fileAbs, path) = newPath(tptpHome, file)
-          if (!loadedSet(fileAbs)) {
-            try {
-              val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-              val input = new CharArrayReader(source.toArray)
-              val parsed = TPTP.parseFile(input)
-              source.close()    // Close at this point. Otherwise we would have many files open with many includes.
+    def kill() : Unit = {
+      synchronized{
+        exit = true
+        this.interrupt()
+        Scheduler().killAll()
+        Out.info("Scheduler killed before timeout.")
+      }
+    }
 
-              parsed match {
-                case Left(x) =>
-                  //            println("Parse error in file " + fileAbs + ": " + x)
-                  println("% SZS status SyntaxError")
-                case Right(x) =>
-                  loadedSet += fileAbs
-                  x.getIncludes.foreach(x => loadRelative(x._1, path))
-                  //            println("Loaded " + fileAbs)
-                  val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                  processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-                    Blackboard().addFormula(name, form, role, Context())
-                  }
-              }
-
-            } catch {
-              case ex : FileNotFoundException =>
-                println("% SZS status InputError")
-              case _ : Throwable => println("% SZS status Inappropriate")
+    override def run(): Unit = {
+      //      println("Init delay kill.")
+      synchronized{
+        while(remain > 0 && !exit) {
+          try {
+            val w : Double = if (remain > interval) interval else remain
+            wait((w * 1000).toInt)
+          } catch {
+            case e: InterruptedException => if(exit) return else Thread.interrupted()
+            case _: Throwable => ()
+          } finally {
+            if(!exit) {
+              Out.info("Leo is still alive.")
+              remain -= interval
             }
           }
+        }
+        Out.output(SZSOutput(SZS_Timeout))
+        Scheduler().killAll()
       }
     }
   }
-
-  private def parseAbsolute(fileAbs : String, path : String) : Unit = {
-
-  }
-
-  /**
-   * Returns the new absolute Path and the absolute directory
-   *
-   * @param oldDir - Old absolute Path to directory
-   * @param relPath - relative path to new file
-   */
-  private def newPath(oldDir : Array[String], relPath : String) : (String, Array[String]) = {
-    val relSplit  = relPath.split('/')
-    val path = oldDir.take(oldDir.length - relSplit.count(_ == ".."))
-    val absPath = path ++ relSplit.dropWhile(x => x == "..")
-    (absPath.mkString("/"), absPath.init)
-  }
-
 }
 

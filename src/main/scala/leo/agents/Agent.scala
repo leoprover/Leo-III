@@ -271,7 +271,8 @@ abstract class Task {
     else {
       !t1.readSet().intersect(t2.writeSet()).isEmpty ||
         !t2.readSet().intersect(t1.writeSet()).isEmpty ||
-        !t2.writeSet().intersect((t1.writeSet())).isEmpty
+        !t2.writeSet().intersect((t1.writeSet())).isEmpty ||
+        !t2.contextWriteSet().intersect((t1.contextWriteSet())).isEmpty
     }
   }
 

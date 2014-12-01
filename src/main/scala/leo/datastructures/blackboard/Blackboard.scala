@@ -182,6 +182,18 @@ trait FormulaBlackboard {
    */
   def getFormulas : Iterable[FormulaStore]
 
+
+  /**
+   *
+   * <p>
+   * Retrieves all formulas in a given context.
+   * </p>
+   *
+   * @param c - A given Context
+   * @return All formulas in the context `c`
+   */
+  def getFormulas(c : Context) : Iterable[FormulaStore]
+
   /**
    *
    * <p>
@@ -195,6 +207,17 @@ trait FormulaBlackboard {
 
   /**
    * <p>
+   *   Filters the formulas of a given context.
+   * </p>
+   *
+   * @param c - A given Context
+   * @param p Predicate the formulas have to satisfy
+   * @return All formulas in `c` satisfying `p`
+   */
+  def getAll(c : Context)(p : FormulaStore => Boolean) : Iterable[FormulaStore]
+
+  /**
+   * <p>
    * Remove all Formulas from the Blackboard satisfying a Predicate.
    * </p>
    *
@@ -202,6 +225,15 @@ trait FormulaBlackboard {
    */
   def rmAll(p : FormulaStore => Boolean)
 
+  /**
+   * <p>
+   *    Removes all formulas in the context `c` satisfiying `p`.
+   * </p>
+   * @param c - A given Context
+   * @param p - Predicate the formulas have to satisfy
+   * @return Removes all formulas in `c` satisfying `p`
+   */
+  def rmAll(c : Context)(p : FormulaStore)
 
   /**
    * Clears the complete blackboard
