@@ -1,5 +1,7 @@
 package leo.datastructures.term.spine
 
+import leo.datastructures.Position.{SpinePos, ArgsPos, HeadPos}
+
 import scala.language.implicitConversions
 import scala.annotation.tailrec
 
@@ -124,6 +126,21 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
     case _ => true // other cases should not appear
   }
 
+  def replace(what: Term, by: Term): Term = if (this == what)
+                                              by
+                                            else
+                                              hd.replace(what, by) match {
+                                                case Some(repl) => Redex(repl, args.replace(what, by))
+                                                case None => Root(hd, args.replace(what, by))
+                                              }
+  def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
+                                                  by
+                                                else
+                                                  at match {
+                                                    case HeadPos() => Redex(by, args)
+                                                    case SpinePos() => Root(hd, args.replaceAt(at.tail, by))
+                                                  }
+
   def instantiateWith(subst: Subst) = ???
 
 
@@ -223,6 +240,18 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
     case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
   }
 
+  def replace(what: Term, by: Term): Term = if (this == what)
+                                              by
+                                            else
+                                              Redex(body.replace(what, by), args.replace(what, by))
+  def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
+                                                  by
+                                                else
+                                                  at match {
+                                                    case HeadPos() => Redex(by, args)
+                                                    case SpinePos() => Redex(body, args.replaceAt(at.tail, by))
+                                                  }
+
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -291,6 +320,15 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   // Other operations
   lazy val typeCheck = body.typeCheck
 
+  def replace(what: Term, by: Term): Term = if (this == what)
+                                              by
+                                            else
+                                              TermAbstr(typ, body.replace(what, by))
+  def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
+                                                  by
+                                                else
+                                                  TermAbstr(typ, body.replaceAt(at.tail, by))
+
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -346,6 +384,15 @@ protected[term] case class TypeAbstr(body: Term) extends TermImpl {
 
   // Other operations
   lazy val typeCheck = body.typeCheck
+
+  def replace(what: Term, by: Term): Term = if (this == what)
+                                              by
+                                            else
+                                              TypeAbstr(body.replace(what, by))
+  def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
+                                                  by
+                                                else
+                                                  TypeAbstr(body.replaceAt(at.tail, by))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
@@ -407,6 +454,9 @@ protected[term] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   // Other operations
   lazy val typeCheck = ???
 
+  def replace(what: Term, by: Term): Term = ???
+  def replaceAt(at: Position, by: Term): Term = ???
+
 //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -433,6 +483,11 @@ protected[term] sealed abstract class Head extends Pretty {
   // Queries
   def ty: Type
   def scopeNumber: (Int, Int)
+
+  def replace(what: Term, by: Term): Option[Term] = if (TermImpl.headToTerm(this) == what)
+                                              Some(by)
+                                            else
+                                              None
 }
 
 
@@ -530,6 +585,11 @@ protected[spine] sealed abstract class Spine extends Pretty {
 
   /** Drop n arguments from spine, fails with IllegalArgumentException if n > length */
   def drop(n: Int): Spine
+
+  def replace(what: Term, by: Term): Spine
+  def replaceAt(at: Position, by: Term): Spine = replaceAt0(at.posHead, at.tail, by)
+
+  protected[spine] def replaceAt0(pos: Int, tail: Position, by: Term): Spine
 }
 
 protected[spine] case object SNil extends Spine {
@@ -564,6 +624,9 @@ protected[spine] case object SNil extends Spine {
     case 0 => SNil
     case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
   }
+
+  def replace(what: Term, by: Term): Spine = SNil
+  def replaceAt0(pos: Int, tail: Position, by: Term): Spine = SNil
 
   // Pretty printing
   override val pretty = "⊥"
@@ -610,6 +673,19 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
     case _ => tail.drop(n-1)
   }
 
+  def replace(what: Term, by: Term): Spine = if (hd == what)
+                                              App(by, tail.replace(what,by))
+                                             else
+                                              App(by.replace(what,by), tail.replace(what,by))
+
+  def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
+    case 1 if posTail == Position.root => App(by, tail)
+    case 1 => App(hd.replaceAt(posTail, by), tail)
+    case _ => App(hd, tail.replaceAt0(pos-1, posTail, by))
+  }
+
+
+
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
 }
@@ -647,6 +723,12 @@ protected[spine] case class TyApp(hd: Type, tail: Spine) extends Spine {
     case _ => tail.drop(n-1)
   }
 
+  def replace(what: Term, by: Term): Spine = TyApp(hd, tail.replace(what,by))
+  def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
+    case 1 => throw new IllegalArgumentException("Trying to replace term inside of type.")
+    case _ => TyApp(hd, tail.replaceAt0(pos-1, posTail, by))
+  }
+
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
 }
@@ -681,6 +763,10 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   def ++(sp: Spine) = ???
 
   def drop(n: Int) = ???
+
+  def replace(what: Term, by: Term): Spine = ???
+  def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = ???
+
 
   // Pretty printing
   override def pretty = s"(${sp.pretty}[${s._1.pretty}/${s._2.pretty}])"

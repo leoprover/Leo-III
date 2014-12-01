@@ -23,7 +23,6 @@ import leo.datastructures.tptp.Commons.TFFAnnotated
  *
  * @author Alexander Steen
  * @since 18.06.2014
- * @todo use new role objects rather than strings
  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
@@ -55,7 +54,7 @@ object InputProcessing {
    */
   def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = {
     input.map({case f => process(sig)(f) match {
-      case None      => {
+      case None      => {  // TODO: Why not just drop it?
         val role = processRole(f.role)
         (f.name, singleTermToClause(LitTrue(), role), role)
       }

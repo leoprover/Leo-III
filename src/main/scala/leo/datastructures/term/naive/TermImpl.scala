@@ -34,6 +34,9 @@ sealed abstract class TermImpl extends Term {
   def scopeNumber = ???
   def size = 0
   def langOrder = ???
+
+  def replace(what: Term, by: Term): Term = ???
+  def replaceAt(at: Position, by: Term): Term = ???
 }
 
 ///////////////////

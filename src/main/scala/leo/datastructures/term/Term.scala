@@ -67,6 +67,10 @@ abstract class Term extends Ordered[Term] with Pretty {
   def langOrder: LangOrder
 
   // Substitutions
+  /** Replace every occurrence of `what` in `this` by `by`. */
+  def replace(what: Term, by: Term): Term
+  def replaceAt(at: Position, by: Term): Term
+
   def substitute(what: Term, by: Term): Term
   def substitute(what: List[Term], by: List[Term]): Term = {
     require(what.length == by.length, "Substitution list do not match in length.")

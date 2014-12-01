@@ -2,6 +2,7 @@ package leo.datastructures
 
 import leo.Configuration
 import leo.datastructures.term.Term
+import leo.datastructures.term.Term.{λ}
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -28,16 +29,18 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   def map[A](f: Literal => A): Seq[A] = lits.map(f)
   def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
+//  def replace(t: Term, by: Term): Clause
 
   lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
   lazy val toTerm: Term = mkPolyUnivQuant(implicitBindings, mkDisjunction(lits.map(_.toTerm)))
 
+  // TODO: Maybe move this to "utilities"?
   private def mkDisjunction(terms: Seq[Term]): Term = terms match {
     case Seq() => LitFalse()
     case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
   }
-  private def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = ???
+  private def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
 }
 
 object Clause {
