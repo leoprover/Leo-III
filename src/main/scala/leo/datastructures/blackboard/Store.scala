@@ -70,7 +70,9 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
 
   def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), clause, role, status, context)
 
-  lazy val pretty : String = "leo("+name+","+role+",("+clause+"))."
+  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"))."
+
+  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"))."
 
   def compare(that: FormulaStore): Int = this.clause compare that.clause
 }

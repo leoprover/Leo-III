@@ -48,7 +48,7 @@ object AgentDebug {
     Thread.sleep(500)
 
 
-    Blackboard().getFormulas foreach {f => Out.output(f.toString)}
+    Out.trace("Blackboard contains:\n"+Blackboard().getFormulas.mkString("\n"))
     Blackboard().send(RemoteInvoke(lF),leo)
     Blackboard().send(RemoteInvoke(rF), leo)
 
@@ -61,8 +61,8 @@ object AgentDebug {
     return Store(name, c, r, context)
   }
 
-  def mkAtom(s : String) : Term = {
+  def mkAtom(st : String) : Term = {
     val s = Signature.get
-    Term.mkAtom(s("p").key)
+    Term.mkAtom(s(st).key)
   }
 }

@@ -81,22 +81,22 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
       val file = File.createTempFile("remoteInvoke",".p")
       file.deleteOnExit()
       val writer = new PrintWriter(file)
+      val b = new StringBuilder
       try{
-        Out.trace(s"[$name]: Writing to temporary file:")
         contextToTPTP(t1.readSet()) foreach {out =>
-          Out.trace(out)
+          b.append(out.output+"\n")
           writer.println(out.output)}
       } finally writer.close()
-
+      Out.trace(s"[$name]: Writing to temporary file:\n"+b.toString())
       //Executing the prover
       var success = true
-        Out.info(s"[$name]: Executing $path on file ${file.getAbsolutePath}")
+        Out.trace(s"[$name]: Executing $path on file ${file.getAbsolutePath}")
 
         // -------------------------------------------------------------
         //   Execution
         // -------------------------------------------------------------
         val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
-        Out.trace(s"[$name]: Got result from external prover:")
+        Out.trace(s"[$name]: Got result from external prover.")
 
         // Filter for exit code
         // TODO: Insert error stream
