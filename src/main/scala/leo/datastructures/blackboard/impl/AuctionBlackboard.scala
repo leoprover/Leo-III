@@ -135,7 +135,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param c - A given Context
    * @return All formulas in the context `c`
    */
-  override def getFormulas(c: Context): Iterable[FormulaStore] = ???
+  override def getFormulas(c: Context): Iterable[FormulaStore] = FormulaSet.getAll(c)
 
   /**
    * <p>
@@ -145,7 +145,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param p - Predicate the formulas have to satisfy
    * @return Removes all formulas in `c` satisfying `p`
    */
-  override def rmAll(c: Context)(p: FormulaStore): Unit = ???
+  override def rmAll(c: Context)(p: FormulaStore): Unit = FormulaSet.getAll(c) foreach (FormulaSet.rm(_))
 
   /**
    * <p>
@@ -156,7 +156,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param p Predicate the formulas have to satisfy
    * @return All formulas in `c` satisfying `p`
    */
-  override def getAll(c: Context)(p: (FormulaStore) => Boolean): Iterable[FormulaStore] = ???
+  override def getAll(c: Context)(p: (FormulaStore) => Boolean): Iterable[FormulaStore] = FormulaSet.getAll(c).filter(p)
 }
 
 /**

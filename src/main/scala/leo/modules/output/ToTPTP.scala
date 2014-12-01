@@ -66,7 +66,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   // TODO: Fixme write translation from clause
   private def toTPTP(name: String, t: Term, role: Role): String = s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
 
-  private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = {
+  private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = "("+{
     val sig = Signature.get
     t match {
       // Constant symbols
@@ -101,7 +101,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
     }
-  }
+  }+")"
 
   ///////////////////////////////
   // Translation of THF types

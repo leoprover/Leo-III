@@ -1,4 +1,5 @@
-package leo.modules
+package leo
+package modules
 
 import java.io.{FileNotFoundException, File}
 
@@ -114,6 +115,22 @@ object Utility {
     val path = oldDir.take(oldDir.length - relSplit.count(_ == ".."))
     val absPath = path ++ relSplit.dropWhile(x => x == "..")
     (absPath.mkString("/"), absPath.init)
+  }
+
+  /**
+   * Parses and adds a TPTP formula.
+   */
+  def add(s: String): Unit = {
+    import leo.modules.parsers.TPTP
+    import leo.modules.parsers.InputProcessing
+
+    TPTP.parseFormula(s) match {
+      case Right(a) =>
+        val processed = InputProcessing.process(Signature.get)(a)
+        processed.foreach {case (name,form,role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) Blackboard().addFormula(name,form,role, Context())}
+      case Left(err) =>
+        Out.severe(s"'$s' is not a valid formula: $err")
+    }
   }
 }
 

@@ -1,10 +1,10 @@
 package leo.agents.impl
 
 import leo.agents.{EmptyResult, Result, Task}
-import leo.datastructures.Not
+import leo.datastructures._
 import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore, Message}
-import leo.datastructures.Role_Conjecture
 import leo.modules.output.logger.Out
+import leo.datastructures.term.Term
 
 /**
  *
@@ -48,15 +48,23 @@ class LeoAgent(path : String) extends ScriptAgent(path){
   }
 
 
-  private def createTask(event : FormulaStore) : Iterable[Task] = ???
-//    event.clause match {
-//    case Left(form) =>
-//      Out.info(s"[$name] got a task.")
-//      val conj = event.newRole(Role_Conjecture.pretty).newFormula(Not(form))
-//      val context : Set[FormulaStore] = Blackboard().getAll{f => f.name != event.name}.toSet[FormulaStore]
-//      return Iterable(new ScriptTask(context + conj))
-//    case Right(forms) => return Iterable.empty
-//  }
+  private def createTask(event : FormulaStore) : Iterable[Task] = {
+    Out.trace(s"[$name]: Got a task.")
+    val conj = event.newRole(Role_Conjecture).newClause(negateClause(event.clause))
+    val context : Set[FormulaStore] = Blackboard().getAll(event.context){f => f.name != event.name}.toSet[FormulaStore]
+    return Iterable(new ScriptTask(context + conj))
+  }
+
+  private def negateClause(c : Clause) : Clause = {
+    val lit : Literal = Literal(orLit(c.lits),false)
+    return Clause.mkClause(List(lit), Derived)
+  }
+
+  private def orLit(l : Seq[Literal]) : Term = l match {
+    case Seq()        => LitTrue
+    case l1 +: Seq()  => if(l1.polarity) l1.term else Not(l1.term)
+    case l1 +: ls   => if(l1.polarity) |||(l1.term, orLit(ls)) else |||(Not(l1.term), orLit(ls))
+  }
 
 }
 

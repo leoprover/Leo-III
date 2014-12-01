@@ -1,14 +1,20 @@
 package leo.agents.impl
 
 import leo.Configuration
+import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{FormulaEvent, Blackboard}
-import leo.modules.CLParameterParser
+import leo.datastructures.blackboard.{Store, FormulaStore, FormulaEvent, Blackboard}
+import leo.datastructures.impl.Signature
+import leo.modules.{Utility, CLParameterParser}
 import leo.modules.output.logger.Out
-import leo.modules.Utility._
+import leo.datastructures.context.{AlphaSplit, Context}
+import leo.datastructures.term.Term
 
 /**
  * Debugging and Live Testing of Agents
+ *
+ *
+ * Testing Remote Theorem Prover different contexts.
  *
  * @author Max Wisniewski
  * @since 11/12/14
@@ -23,17 +29,40 @@ object AgentDebug {
 
     val leo = (new LeoAgent("/home/ryu/prover/leo2/bin/leo"))
     leo.register()
-    load("tptp/ex1.p")
+
+
+    //Problem and split
+    val c = Context()
+    c.split(AlphaSplit, 2)
+    val child = c.childContext.toList
+    val l = child(0)
+    val r = child(1)
+
+    Utility.add("fof(a,axiom,p&q).")
+    val lF = Blackboard().addFormula(mkFormulaStoreFromTerm("b", mkAtom("p"), Role_Conjecture, l))
+    val rF = Blackboard().addFormula(mkFormulaStoreFromTerm("c", mkAtom("q"), Role_Conjecture, r))
+
+
     Scheduler().signal()
 
-    Thread.sleep(100)
+    Thread.sleep(500)
 
 
     Blackboard().getFormulas foreach {f => Out.output(f.toString)}
-    val f = Blackboard().getFormulaByName("test").get
-    Blackboard().send(RemoteInvoke(f),leo)
+    Blackboard().send(RemoteInvoke(lF),leo)
+    Blackboard().send(RemoteInvoke(rF), leo)
 
     Thread.sleep(500)
     Scheduler().killAll()
+  }
+
+  def mkFormulaStoreFromTerm(name : String, t : Term, r : Role, context : Context) : FormulaStore = {
+    val c = Clause.mkClause(List(Literal(t, true)), FromConjecture)
+    return Store(name, c, r, context)
+  }
+
+  def mkAtom(s : String) : Term = {
+    val s = Signature.get
+    Term.mkAtom(s("p").key)
   }
 }
