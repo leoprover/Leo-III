@@ -1,6 +1,6 @@
 #!/bin/sh
 
-classpath="target/scala-2.10/classes"
+classpath="target/classes"
 compile=true
 
 # Check for not compile option
@@ -18,7 +18,7 @@ done
 # First compile the project
 if [ "$compile" = true ]
 then
-   sbt compile
+   mvn compile
 fi
 
 scala -classpath "$classpath" -i src/main/scala/LeoShell.scala 
