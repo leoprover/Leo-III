@@ -137,8 +137,8 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
                                                   by
                                                 else
                                                   at match {
-                                                    case HeadPos => Redex(by, args)
-                                                    case SpinePos => Root(hd, args.replaceAt(at.tail, by))
+                                                    case HeadPos() => Redex(by, args)
+                                                    case SpinePos() => Root(hd, args.replaceAt(at.tail, by))
                                                   }
 
   def instantiateWith(subst: Subst) = ???
@@ -248,8 +248,8 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
                                                   by
                                                 else
                                                   at match {
-                                                    case HeadPos => Redex(by, args)
-                                                    case SpinePos => Redex(body, args.replaceAt(at.tail, by))
+                                                    case HeadPos() => Redex(by, args)
+                                                    case SpinePos() => Redex(body, args.replaceAt(at.tail, by))
                                                   }
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -589,7 +589,7 @@ protected[spine] sealed abstract class Spine extends Pretty {
   def replace(what: Term, by: Term): Spine
   def replaceAt(at: Position, by: Term): Spine = replaceAt0(at.posHead, at.tail, by)
 
-  protected def replaceAt0(pos: Int, tail: Position, by: Term): Spine
+  protected[spine] def replaceAt0(pos: Int, tail: Position, by: Term): Spine
 }
 
 protected[spine] case object SNil extends Spine {
