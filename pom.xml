@@ -58,6 +58,7 @@
          <artifactId>maven-surefire-plugin</artifactId>
          <version>2.7</version>
          <configuration>
+            <testFailureIgnore>true</testFailureIgnore>
             <skipTests>true</skipTests>
          </configuration>
       </plugin>
@@ -71,6 +72,7 @@
             <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory> <!-- So Maven can Display it good -->
             <junitxml>.</junitxml>
             <filereports>WDF TestSuite.txt</filereports>
+
          </configuration>
          <executions>
             <execution>
@@ -113,7 +115,7 @@
             </descriptorRefs>
             <archive>
                <manifest>
-                  <mainClass>LeoIII</mainClass>
+                  <mainClass>leo.Main</mainClass>
                </manifest>
             </archive>
          </configuration>
