@@ -29,7 +29,17 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   def map[A](f: Literal => A): Seq[A] = lits.map(f)
   def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
-//  def replace(t: Term, by: Term): Clause
+  def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replace(what, by)), implicitBindings, Derived)
+
+  // TODO: Not right! Substitute has to mention newly introduced implicit bindings
+  def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)), implicitBindings, Derived)
+
+  def merge(that : Clause) = {
+    val newBindings = implicitBindings ++ that.implicitBindings
+    val liftedThis = lits.map(_.termMap(_.closure(Subst.shift(that.implicitBindings.length))))
+    val newLits = liftedThis ++ that.lits
+    Clause.mkClause(newLits, newBindings, Derived)
+  }
 
   lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 

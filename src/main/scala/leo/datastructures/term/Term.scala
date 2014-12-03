@@ -101,7 +101,7 @@ abstract class Term extends Ordered[Term] with Pretty {
 //  def expandAllDefinitions = expandDefinitions(-1)
 
   protected[datastructures] def inc(scopeIndex: Int): Term
-  protected[datastructures] def closure(subst: Subst): Term
+  def closure(subst: Subst): Term
 //  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
 

@@ -27,6 +27,11 @@ trait Literal extends Pretty with Ordered[Literal] {
 
   def compare(that: Literal): Int = Configuration.LITERAL_ORDERING.compare(this, that)
 
+
+  def replace(what : Term, by : Term) : Literal = Literal.mkLit(term.replace(what,by), polarity)
+
+  def substitute(s : Subst) : Literal = termMap {_.closure(s)}
+
   lazy val flipPolarity: Literal =  if (polarity)
                                       Literal.mkNegLit(term)
                                     else
