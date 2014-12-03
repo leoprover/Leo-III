@@ -20,7 +20,8 @@ object TermIndex {
 
   def insert(term: Term): Term = {
     val t = term.betaNormalize
-    val t2 = t.makeGlobal
+//    val t2 = t.makeGlobal
+    val t2 = t
     // Force computation of lazy values
     t2.headSymbol
     t2.freeVars

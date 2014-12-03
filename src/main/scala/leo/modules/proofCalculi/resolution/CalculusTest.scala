@@ -36,7 +36,7 @@ object PropResolution {
    * @param c - First Clause
    * @param d - Second Clause
    * @param lc - Term to be replaced in first clause
-   * @param ld  - Literal of form [l] = \alpha
+   * @param ld  - Literal of form [l] = \alpha, NOT CONTAINED IN d
    * @param s - s(lc) = s(ld.term) according to comparrison
    * @return
    */
@@ -45,26 +45,30 @@ object PropResolution {
     val alpha : Term = if (ld.polarity) LitTrue else LitFalse
     val cSub = c.replace(lc, alpha)
     val merged = cSub.merge(d)
+//    leo.Out.severe("What: "+lc.pretty)
+//    leo.Out.severe("By: "+alpha.pretty)
     val res = Clause.mkClause(merged.substitute(s._1).lits,s._2++merged.implicitBindings, Derived)
     return res
   }
 
-
+  /**
+   * TODO: Use Term comparison. Currently simple equality is used.
+   *
+   * @param c1 - First clause
+   * @param c2 - Second clause
+   * @param comp - comparison object, if two terms are unifiable
+   * @return (t,l,s), where t is the selected first term, l is the literal and s is a substitiontion, that makes both equal.
+   */
   def find(c1 : Clause, c2 : Clause, comp : TermComparison) : Option[(Term, Literal, TermComparison#Substitute)] = {
 
-    
+    val lits = c2.lits.iterator
+    while(lits.hasNext) {
+      val lit = lits.next()
+      val t = lit.term
+      if (c1.lits.exists{l => (l.term.occurrences.keys.toSet).contains(t)})
+        return Some(t, lit, (Subst.id, Nil))
+    }
 
     return None
   }
-}
-
-/**
- *
- * Test implementation for Superposition.
- *
- * @author Max Wisniewski
- * @since 12/3/14
- */
-class CalculusTest {
-
 }

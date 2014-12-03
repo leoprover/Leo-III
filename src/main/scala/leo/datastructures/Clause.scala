@@ -61,6 +61,8 @@ object Clause {
   def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, Seq(), origin)
   def mkDerivedClause(lits: Iterable[Literal], implicitBindings: Seq[Type]): Clause = mkClause(lits, implicitBindings, Derived)
 
+  def empty() = mkClause(Nil, Nil, Derived)
+
   def lastClauseId: Int = ClauseImpl.lastClauseId
 }
 
