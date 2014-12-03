@@ -40,13 +40,14 @@ class CalculusTestTestSuite extends FunSuite{
 
     val a = get("a")
     val b = get("b")
-    val res = PropResolution.find(b.clause,a.clause, IdComparison).get
+    val res = PropParamodulation.find(b.clause,a.clause, IdComparison).get
     Out.output("Term: "+res._1.pretty)
     Out.output("Literal: "+res._2.pretty)
 
   }
 
-  test("Exec") {
+  test("Exec Prop") {
+    Out.output("\nExec Prop:\n\n")
     clear()
     clearSignature()
     add("fof(a,conjecture,p).")
@@ -56,7 +57,7 @@ class CalculusTestTestSuite extends FunSuite{
     val b = get("b")
     Out.output("Formula a: "+a.pretty)
     Out.output("Formula b: "+b.pretty)
-    val sub = PropResolution.find(b.clause,a.clause, IdComparison).get
+    val sub = PropParamodulation.find(b.clause,a.clause, IdComparison).get
 
     val t = sub._1
     val l = sub._2
@@ -64,7 +65,31 @@ class CalculusTestTestSuite extends FunSuite{
 
     val arm = a.clause
 
-    val res = PropResolution.exec(b.clause, Clause.empty, t, l, s).mapLit(_.termMap(_.betaNormalize))
+    val res = PropParamodulation.exec(b.clause, Clause.empty, t, l, s).mapLit(_.termMap(_.betaNormalize))
+
+    Out.output("Result Clause: "+res.pretty)
+  }
+
+  test("Exec Eq") {
+    Out.output("\nExec Eq:\n\n")
+    clear()
+    clearSignature()
+    add("fof(a,conjecture,(p=q)).")
+    add("fof(b,axiom,(p&q)).")
+
+    val a = get("a")
+    val b = get("b")
+    Out.output("Formula a: "+a.pretty)
+    Out.output("Formula b: "+b.pretty)
+    val sub = Paramodulation.find(b.clause,a.clause, IdComparison).get
+
+    val t = sub._1
+    val l = sub._2
+    val s = sub._3
+
+    val arm = a.clause
+
+    val res = Paramodulation.exec(b.clause, Clause.empty, t, l, s).mapLit(_.termMap(_.betaNormalize))
 
     Out.output("Result Clause: "+res.pretty)
   }
