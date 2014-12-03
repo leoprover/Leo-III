@@ -3,8 +3,8 @@ package modules
 
 import java.io.{FileNotFoundException, File}
 
-import leo.datastructures.{Role_Definition, Role_Unknown, Role_Type}
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
+import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.modules.output.{Output, SZS_SyntaxError, SZS_InputError, StatusSZS}
@@ -61,7 +61,7 @@ object Utility {
             //            println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-              Blackboard().addFormula(name, form, role, Context())
+              Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
             }
         }
 
@@ -87,7 +87,7 @@ object Utility {
                   //            println("Loaded " + fileAbs)
                   val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
                   processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-                    Blackboard().addFormula(name, form, role, Context())
+                    Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
                   }
               }
 
@@ -127,10 +127,73 @@ object Utility {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed.foreach {case (name,form,role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) Blackboard().addFormula(name,form,role, Context())}
+        processed.foreach {case (name,form,role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
+          Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+        }
       case Left(err) =>
         Out.severe(s"'$s' is not a valid formula: $err")
     }
+  }
+
+  /**
+   * Shows all formulas in the current context.
+   */
+  def context(): Unit = {
+    val maxSize = 85
+    val maxNameSize = 25
+    val maxRoleSize = 19
+    val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
+
+    println("Signature:")
+    val s = Signature.get
+    for(c <- s.allConstants) {
+      val c1 = s(c)
+      print(c1.name+" | ")
+      print(c1.key+" | ")
+      c1.ty foreach {case ty => print(ty.pretty + " | ")}
+      c1.defn foreach {case defn => print(defn.pretty)}
+      println()
+    }
+
+    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula")
+    println("-"*maxSize)
+    Blackboard().getFormulas.foreach {
+      x =>
+        val name = x.name.toString.take(maxNameSize)
+        val role = x.role.toString.take(maxRoleSize)
+        val form = x.clause.pretty
+        val form1 = form.take(maxFormulaSize)
+        val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
+
+        val nameOffset = maxNameSize - name.length
+        val roleOffset = maxRoleSize - role.length
+        println(name + " " * nameOffset + " | " + role + " " * roleOffset + " | " +  form1)
+        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
+    }
+    println()
+  }
+
+  /**
+   * Returns the formula with the given name in the context.
+   * The formula is not ready to manipulate in parallel with this access.
+   */
+  def get(s: String) : FormulaStore =
+    Blackboard().getFormulaByName(s).
+      getOrElse{
+      println(s"There is no formula named '$s'.")
+      null
+    }
+  /**
+   * Deletes all formulas from the current context.
+   */
+  def clear(): Unit = {
+    Blackboard().clear()
+    loadedSet.clear()
+  }
+
+  /** Reset the signature to standard hol connectives */
+  def clearSignature(): Unit = {
+    Signature.resetWithHOL(Signature.get)
   }
 }
 

@@ -113,7 +113,7 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
     Reductions.tick()
     Root(hd, SNil)
   }
-  lazy val occurrences = Map((headToTerm(hd), Set(Position.root.headPos))) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
+  lazy val occurrences = Map((headToTerm(hd), Set(Position.root.headPos)), (this,Set(Position.root))) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
   val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 2 + args.size
 
@@ -229,7 +229,7 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
   }
   val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 1 + body.size + args.size
-  lazy val occurrences = body.occurrences.mapValues(_.map(_.prependHeadPos)) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
+  lazy val occurrences = Map((this, Set(Position.root))) ++ body.occurrences.mapValues(_.map(_.prependHeadPos)) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
 
   // Other operations
   lazy val typeCheck = typeCheck0(body.ty, args)
@@ -676,7 +676,7 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
   def replace(what: Term, by: Term): Spine = if (hd == what)
                                               App(by, tail.replace(what,by))
                                              else
-                                              App(by.replace(what,by), tail.replace(what,by))
+                                              App(hd.replace(what,by), tail.replace(what,by))
 
   def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
     case 1 if posTail == Position.root => App(by, tail)
