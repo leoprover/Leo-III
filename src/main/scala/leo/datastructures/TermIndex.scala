@@ -53,9 +53,6 @@ object TermIndex {
     case Some(inner) => inner.getOrElse(pos, Set())
   }
 
-  // Strongly preliminary version of this!
-  def subtermsOf(term: Term): Set[Term] = occurs_in.getOrElse(term, Set()).map(_._1)
-
   protected def insertSubterms(term: Term, subterm: Term, position: Position): Unit = {
     occurs_in.get(subterm) match {
       case None => occurs_in += ((subterm, Set((term, position))))
