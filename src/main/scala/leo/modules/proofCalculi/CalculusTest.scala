@@ -1,7 +1,7 @@
 package leo.modules.proofCalculi
 
-import leo.datastructures.term.Term
 import leo.datastructures._
+import leo.datastructures.term.Term
 
 trait TermComparison {
   type Substitute = (Subst,Seq[Type])
@@ -48,7 +48,7 @@ object PropParamodulation {
     //    leo.Out.severe("What: "+lc.pretty)
     //    leo.Out.severe("By: "+alpha.pretty)
     val res = Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)
-    return res
+    return Simp(res)
   }
 
   /**
@@ -105,7 +105,7 @@ object PropParamodulation {
       //    leo.Out.severe("What: "+lc.pretty)
       //    leo.Out.severe("By: "+alpha.pretty)
       val res = Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)
-      return res
+      return Simp(res)
     }
 
     /**
@@ -130,5 +130,50 @@ object PropParamodulation {
       }
 
       return None
+    }
+  }
+
+  // TODO: Optimize
+  object Simp {
+    def apply (c : Clause) : Clause = {
+      import leo.modules.normalization.Simplification
+
+      val litNorm = c.mapLit(_.termMap(Simplification(_))).mapLit(flipNeg)
+
+      // Remove unnused Quantifiers.
+
+      val looseBounds : Set[Int] = litNorm.map(_.term.looseBounds).toSet.flatten
+      val implicitQuan : Seq[Type] = c.implicitBindings
+
+      val misBound = looseBounds.diff(Range.apply(1,implicitQuan.size).toSet)
+
+      val liftLits = litNorm.map(_.termMap(_.closure(liftMissingBound(misBound, implicitQuan.size)).betaNormalize))
+
+      return Clause.mkClause(liftLits, removeBounds(implicitQuan, misBound, implicitQuan.length), Derived)
+    }
+
+    private def flipNeg(l : Literal) : Literal = l.term match {
+      case Not(f) => l.flipPolarity.termMap(_ => f)
+      case _ => l
+    }
+
+    /*
+     * Returns subsitution and positions of implicitQuan to delete
+     */
+    private def liftMissingBound(m : Set[Int], maxBind : Int) : Subst = {
+      var pos : Int = 1
+      var free : Int = 1
+      var s = Subst.id
+      while(pos <= maxBind) {
+        s = s.cons(BoundFront(free))    // If it is not contained, it will never substitute this value
+        if(m.contains(pos)) free += 1
+      }
+      s
+    }
+
+    private def removeBounds(b : Seq[Type], m : Set[Int], pos : Int) : Seq[Type] = b match {
+      case Seq() => Seq()
+      case x +: xs if m.contains(pos) => removeBounds(xs, m, pos-1)
+      case x +: xs => x +: removeBounds(xs, m, pos-1)
     }
   }
