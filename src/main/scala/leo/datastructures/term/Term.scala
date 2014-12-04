@@ -55,6 +55,7 @@ abstract class Term extends Ordered[Term] with Pretty {
   def ty: Type
   def freeVars: Set[Term]
   def boundVars: Set[Term]
+  def looseBounds: Set[Int]
   def occurrences: Map[Term, Set[Position]]
   def symbols: Set[Signature#Key]
   def symbolsOfType(ty: Type) = {

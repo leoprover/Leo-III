@@ -68,6 +68,7 @@ protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
   def freeVars = Set(this)
   val symbols = Set(id)
   def boundVars = Set()
+  val looseBounds = Set[Int]()
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -117,6 +118,7 @@ protected[term] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   val freeVars = Set[Term]()
   val symbols = Set[Int]()
   val boundVars = Set[Term](this)
+  val looseBounds = Set(scope)
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -184,6 +186,7 @@ protected[term] case class AbstractionNode(absType: Type, term: Term) extends Te
   val freeVars = term.freeVars
   val symbols = term.symbols
   val boundVars = term.boundVars
+  lazy val looseBounds = term.looseBounds.map(_ - 1).filter(_ > 0)
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -243,6 +246,7 @@ protected[term] case class ApplicationNode(left: Term, right: Term) extends Term
   val freeVars = left.freeVars ++ right.freeVars
   val symbols = left.symbols ++ right.symbols
   val boundVars = left.boundVars ++ right.boundVars
+  lazy val looseBounds = left.looseBounds ++ right.looseBounds
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -304,6 +308,7 @@ protected[term] case class TypeAbstractionNode(term: Term) extends TermImpl {
   val freeVars = term.freeVars
   val symbols = term.symbols
   val boundVars = term.boundVars
+  lazy val looseBounds = term.looseBounds
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -354,6 +359,7 @@ protected[term] case class TypeApplicationNode(left: Term, right: Type) extends 
   val freeVars = left.freeVars
   val symbols = left.symbols
   val boundVars = left.boundVars
+  lazy val looseBounds = left.looseBounds
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()

@@ -108,6 +108,10 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
     case BoundIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
+  lazy val looseBounds = hd match {
+    case BoundIndex(_,i) => args.looseBounds + i
+    case _ => args.looseBounds
+  }
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
@@ -221,6 +225,7 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
   }
   lazy val freeVars = body.freeVars ++ args.freeVars
   lazy val boundVars = body.boundVars ++ args.boundVars
+  lazy val looseBounds = body.looseBounds ++ args.looseBounds
   lazy val symbols = body.symbols ++ args.symbols
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
@@ -307,6 +312,7 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   lazy val ty = typ ->: body.ty
   val freeVars = body.freeVars
   val boundVars = body.boundVars
+  lazy val looseBounds = body.looseBounds.map(_ - 1).filter(_ > 0)
   lazy val symbols = body.symbols
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
@@ -372,6 +378,7 @@ protected[term] case class TypeAbstr(body: Term) extends TermImpl {
   lazy val ty = ∀(body.ty)
   val freeVars = body.freeVars
   val boundVars = body.boundVars
+  lazy val looseBounds = body.looseBounds
   lazy val symbols = body.symbols
   lazy val headSymbol = {
     import leo.datastructures.term.Reductions
@@ -434,6 +441,7 @@ protected[term] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val ty = term.ty
   lazy val freeVars = Set[Term]()
   lazy val boundVars = Set[Term]()
+  lazy val looseBounds = ???
   lazy val symbols = Set[Signature#Key]()
   lazy val headSymbol = ???
   val scopeNumber = term.scopeNumber
@@ -570,6 +578,7 @@ protected[spine] sealed abstract class Spine extends Pretty {
   def length: Int
   def freeVars: Set[Term]
   def boundVars: Set[Term]
+  def looseBounds: Set[Int]
   def symbols: Set[Signature#Key]
   def asTerms: Seq[Either[Term, Type]]
   def scopeNumber: (Int, Int)
@@ -609,6 +618,7 @@ protected[spine] case object SNil extends Spine {
   // Queries
   val freeVars = Set[Term]()
   val boundVars = Set[Term]()
+  val looseBounds = Set[Int]()
   val symbols = Set[Signature#Key]()
   val length = 0
   val asTerms = Seq()
@@ -656,6 +666,7 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
   // Queries
   val freeVars = hd.freeVars ++ tail.freeVars
   val boundVars = hd.boundVars ++ tail.boundVars
+  lazy val looseBounds = hd.looseBounds ++ tail.looseBounds
   val symbols = hd.symbols ++ tail.symbols
   val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
@@ -707,6 +718,7 @@ protected[spine] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Queries
   val freeVars = tail.freeVars
   val boundVars = tail.boundVars
+  lazy val looseBounds = tail.looseBounds
   val symbols = tail.symbols
   val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
@@ -751,6 +763,7 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   // Queries
   val freeVars = Set[Term]()
   val symbols = Set[Signature#Key]()
+  lazy val looseBounds = ???
   val boundVars= Set[Term]() // TODO: implement
   lazy val length = sp.length
   lazy val asTerms = ???
