@@ -1,4 +1,5 @@
-package leo.agents
+package leo
+package agents
 
 import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
 import leo.datastructures.context.Context
@@ -27,7 +28,7 @@ import scala.collection.mutable
  * @author Max Wisniewski
  * @since 5/14/14
  */
-trait Agent {
+abstract class Agent {
 
   /**
    *
@@ -41,18 +42,23 @@ trait Agent {
    */
   def openTasks : Int
 
-  /**
-   *
-   * @return true, if this Agent can execute at the moment
-   */
-  def isActive : Boolean
+  private var _isActive : Boolean = false
 
   /**
-   * Sets isActive.
+   * Returns the agents active status.
+   * If true, he is considered in the task auction.
    *
-   * @param bool
+   * @return the activity status of the agent
    */
-  def setActive(bool : Boolean) : Unit
+  def isActive : Boolean = _isActive
+
+  /**
+   * Sets the agent to a new status, thus (un-)considered by the scheduler
+   * @param a - The new activity status
+   */
+  def setActive(a : Boolean) = {
+    _isActive = a
+  }
 
   /**
    * This function runs the specific agent on the registered Blackboard.
@@ -66,7 +72,10 @@ trait Agent {
    * </p>
    *
    */
-  def register()
+  def register() {
+    Blackboard().registerAgent(this)
+    setActive(true)
+  }
 
 
   /*
@@ -99,7 +108,7 @@ trait Agent {
    * Each task can define a maximum amount of money, they
    * want to posses.
    *
-   * A process has to be carefull with this barrier, for he
+   * A process has to be careful with this barrier, for he
    * may never be doing anything if he has to low money.
    *
    * @return maxMoney
@@ -128,15 +137,14 @@ trait Agent {
 }
 
 
-abstract class AbstractAgent extends Agent {
+abstract class FifoAgent extends Agent {
 
   protected def toFilter(event : Event) : Iterable[Task]
 
-  private var _isActive : Boolean = false
-
-  override def isActive : Boolean = _isActive
-
-  override def setActive(a : Boolean) = _isActive = a
+  override def setActive(a : Boolean) = {
+    super.setActive(a)
+    if(a && q.nonEmpty) Blackboard().signalTask()
+   }
 
   override def openTasks : Int = q.size
 
@@ -152,7 +160,7 @@ abstract class AbstractAgent extends Agent {
     setActive(true)
   }
 
-  protected val q : mutable.Queue[Task] = new mutable.SynchronizedQueue[Task]()
+  protected val q : mutable.Queue[Task] = new mutable.Queue[Task]()
 
   /**
    * <p>
@@ -167,7 +175,9 @@ abstract class AbstractAgent extends Agent {
     for(t <- toFilter(f)) {
       if (!Blackboard().collision(t)) {
 //        println(name+" : Got a task.")
-        q.enqueue(t)
+        q.synchronized {
+          q.enqueue(t)
+        }
         done = true
       }
     }
@@ -188,11 +198,13 @@ abstract class AbstractAgent extends Agent {
   override def getTasks(budget: Double): Iterable[Task] = {
     var erg = List[Task]()
     var costs : Double = 0
-    for(t <- q){
-      if(costs > budget) return erg
-      else {
-        costs += t.bid(budget)
-        erg = t :: erg
+    q.synchronized {
+      for (t <- q) {
+        if (costs > budget) return erg
+        else {
+          costs += t.bid(budget)
+          erg = t :: erg
+        }
       }
     }
 //    println(name+ " : Send "+erg.size+" tasks to Auction.")
@@ -202,14 +214,14 @@ abstract class AbstractAgent extends Agent {
   /**
    * Removes all Tasks
    */
-  override def clearTasks(): Unit = q.clear()
+  override def clearTasks(): Unit = q.synchronized(q.clear())
 
   /**
    * As getTasks with an infinite budget.
    *
    * @return - All Tasks that the current agent wants to execute.
    */
-  override def getAllTasks: Iterable[Task] = q.iterator.toIterable
+  override def getAllTasks: Iterable[Task] = q.synchronized(q.iterator.toIterable)
 
   /**
    *
@@ -217,7 +229,109 @@ abstract class AbstractAgent extends Agent {
    *
    * @param nExec - The newly executing tasks
    */
-  override def removeColliding(nExec: Iterable[Task]): Unit = q.dequeueAll{tbe => nExec.exists(_.collide(tbe))}
+  override def removeColliding(nExec: Iterable[Task]): Unit = q.synchronized(q.dequeueAll{tbe => nExec.exists(_.collide(tbe))})
+}
+
+abstract class PriorityAgent extends Agent {
+
+  private var _isActive : Boolean = false
+
+  override def isActive : Boolean = _isActive
+
+  override def setActive(a : Boolean) = {
+    super.setActive(a)
+    if(a && q.nonEmpty) Blackboard().signalTask()
+  }
+
+  // Sort by a fixed amount of money
+  protected var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid(100)})
+
+
+  override def openTasks : Int = synchronized(q.size)
+
+  /**
+   * Internal method called from the filter method. Specific to the agent.
+   *
+   * @param event - The event that triggered the filter
+   * @return A sequence of new tasks, to be added to the internal priority queue.
+   */
+  protected def toFilter(event : Event) : Iterable[Task]
+
+  /**
+   * Calls the internal toFilter method and inserts all generated tasks to the priority queue.
+   *
+   * @param f - Raised Event.
+   */
+  override def filter(f: Event) : Unit = {
+    var done = false
+    val it = toFilter(f).iterator
+    while(it.hasNext) {
+      val t = it.next()
+      if (!Blackboard().collision(t)) {
+        q.synchronized {
+          q.enqueue (t)
+        }
+        done = true
+      }
+    }
+    if(done) {
+      Blackboard().signalTask()
+    }
+  }
+
+    /**
+     *
+     * Returns a a list of Tasks, the Agent can afford with the given budget.
+     *
+     * @param budget - Budget that is granted to the agent.
+     */
+  override def getTasks(budget: Double): Iterable[Task] = {
+    var erg = List[Task]()
+    var costs : Double = 0
+    q.synchronized {
+      for (t <- q) {
+        // TODO Change to iterator since for is inefficient
+        if (costs > budget) return erg
+        else {
+          costs += t.bid(budget)
+          erg = t :: erg
+        }
+      }
+    }
+    erg
+  }
+
+  /**
+   * Removes all Tasks
+   */
+  override def clearTasks(): Unit = q.synchronized {q.clear()}
+
+  /**
+   * As getTasks with an infinite budget.
+   *
+   * @return - All Tasks that the current agent wants to execute.
+   */
+  override def getAllTasks: Iterable[Task] = synchronized(q.iterator.toIterable)
+
+  /**
+   *
+   * Given a set of (newly) executing tasks, remove all colliding tasks.
+   *
+   * @param nExec - The newly executing tasks
+   */
+  override def removeColliding(nExec: Iterable[Task]): Unit = {
+    synchronized {
+      q = q.filterNot { tbe =>
+        if(nExec.exists(_.collide(tbe))){
+          nExec.find(e => e.collide(tbe) && !(e.equals(tbe))).fold{()}{e => Out.trace("Collision detected:\n "+tbe.toString+"\n collided with "+e.toString)}
+          true
+        }else {
+          false
+        }
+      }
+    }
+  }
+
 }
 
 

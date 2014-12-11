@@ -5,6 +5,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Store, FormulaStore, FormulaEvent, Blackboard}
 import leo.datastructures.impl.Signature
+import leo.modules.proofCalculi.{IdComparison, Paramodulation, PropParamodulation}
 import leo.modules.{Utility, CLParameterParser}
 import leo.modules.output.logger.Out
 import leo.datastructures.context.{AlphaSplit, Context}
@@ -25,35 +26,40 @@ object AgentDebug {
     Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
     Scheduler()
     Blackboard()
+
+    Utility.load("tptp/ex1.p")
+
+
+    // Init - Preprocess
+
     UtilAgents.Conjecture()
 
-    val leo = (new LeoAgent("/home/ryu/prover/leo2/bin/leo"))
-    leo.register()
-
-
-    //Problem and split
-    val c = Context()
-    c.split(AlphaSplit, 2)
-    val child = c.childContext.toList
-    val l = child(0)
-    val r = child(1)
-
-    Utility.add("fof(a,axiom,p&q).")
-    val lF = Blackboard().addFormula(mkFormulaStoreFromTerm("b", mkAtom("p"), Role_Conjecture, l))
-    val rF = Blackboard().addFormula(mkFormulaStoreFromTerm("c", mkAtom("q"), Role_Conjecture, r))
-
+    Out.output("Loaded File")
+    Utility.formulaContext()
 
     Scheduler().signal()
 
     Thread.sleep(500)
 
+    UtilAgents.Conjecture().setActive(false)
+    Out.output("After Conjecture")
+    Utility.formulaContext
 
-    Out.trace("Blackboard contains:\n"+Blackboard().getFormulas.mkString("\n"))
-    Blackboard().send(RemoteInvoke(lF),leo)
-    Blackboard().send(RemoteInvoke(rF), leo)
+    // Run
 
-    Thread.sleep(500)
+    val p1 = new ParamodulationAgent(Paramodulation, IdComparison)
+    val p2 = new ParamodulationAgent(PropParamodulation, IdComparison)
+    p1.register()
+    p2.register()
+    NormalClauseAgent.DefExpansionAgent()
+    NormalClauseAgent.NegationNormalAgent()
+    NormalClauseAgent.SimplificationAgent()
+
+    Thread.sleep(1500)
     Scheduler().killAll()
+
+    Out.output("After 1.5s of calculus.")
+    Utility.formulaContext
   }
 
   def mkFormulaStoreFromTerm(name : String, t : Term, r : Role, context : Context) : FormulaStore = {

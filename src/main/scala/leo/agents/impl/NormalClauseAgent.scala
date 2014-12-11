@@ -72,7 +72,7 @@ object NormalClauseAgent {
  * @author Max Wisniewski
  * @since 5/14/14
  */
-class NormalClauseAgent(norm : Normalize) extends AbstractAgent {
+class NormalClauseAgent(norm : Normalize) extends FifoAgent {
 
   override val name = norm.name + "Agent"
 
@@ -113,7 +113,7 @@ class NormalTask(f : FormulaStore) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 
-  override def bid(budget : Double) : Double = 1
+  override def bid(budget : Double) : Double = budget / 5
 
   override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
 

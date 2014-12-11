@@ -2,6 +2,7 @@ package leo.modules.proofCalculi
 
 import leo.datastructures._
 import leo.datastructures.term.Term
+import leo.modules.output.Output
 
 trait TermComparison {
   type Substitute = (Subst,Seq[Type])
@@ -23,7 +24,24 @@ object IdComparison extends TermComparison{
   override def equals(t : Term, s : Term, n : Int) : Option[Substitute] = if (s == t) Some((Subst.id, Nil)) else None
 }
 
-object PropParamodulation {
+
+trait ParamodStep extends Output{
+  /**
+   * Executes a step of the Paramodulation.
+   *
+   * @param c - First clause
+   * @param d - Second clause
+   * @param lc - Term in first clause
+   * @param ld - Literal in second clause (not contained)
+   * @param s - Substitution of the paramodulation
+   * @return new generated clause
+   */
+  def exec(c : Clause, d : Clause, lc : Term, ld : Literal, s :TermComparison#Substitute) : Clause
+
+  def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)]
+}
+
+object PropParamodulation extends ParamodStep{
   /**
    *
    * Executes Propositional Resolution in Superposition
@@ -40,7 +58,7 @@ object PropParamodulation {
    * @param s - s(lc) = s(ld.term) according to comparrison
    * @return
    */
-  def exec(c: Clause, d: Clause, lc: Term, ld: Literal, s: TermComparison#Substitute): Clause = {
+  override def exec(c: Clause, d: Clause, lc: Term, ld: Literal, s: TermComparison#Substitute): Clause = {
 
     val alpha: Term = if (ld.polarity) LitTrue else LitFalse
     val cSub = c.replace(lc, alpha)
@@ -59,7 +77,7 @@ object PropParamodulation {
    * @param comp - comparison object, if two terms are unifiable
    * @return (t,l,s), where t is the selected first term, l is the literal and s is a substitiontion, that makes both equal.
    */
-  def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)] = {
+  override def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)] = {
 
     val lits = c2.lits.iterator
     while (lits.hasNext) {
@@ -71,9 +89,11 @@ object PropParamodulation {
 
     return None
   }
+
+  override def output: String = "Paramod-Propositional"
 }
 
-  object Paramodulation {
+  object Paramodulation extends ParamodStep{
 
     private def decomp(l: Literal): Option[(Term, Term)] = l.term match {
       case ===(t1,t2) => Some(t1,t2)
@@ -96,7 +116,7 @@ object PropParamodulation {
      * @param s - s(lc) = s(ld.term) according to comparrison
      * @return
      */
-    def exec(c: Clause, d: Clause, lc: Term, ld: Literal, s: TermComparison#Substitute): Clause = {
+    override def exec(c: Clause, d: Clause, lc: Term, ld: Literal, s: TermComparison#Substitute): Clause = {
       val (l,r) = decomp(ld).get
 
 
@@ -116,7 +136,7 @@ object PropParamodulation {
      * @param comp - comparison object, if two terms are unifiable
      * @return (t,l,s), where t is the selected first term, l is the literal and s is a substitiontion, that makes both equal.
      */
-    def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)] = {
+    override def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)] = {
 
       val lits = c2.lits.iterator
       while (lits.hasNext) {
@@ -131,6 +151,8 @@ object PropParamodulation {
 
       return None
     }
+
+    override def output: String = "Paramod-Full"
   }
 
   // TODO: Optimize

@@ -34,7 +34,7 @@ object UtilAgents {
  * and inserts the negated conjecture.
  *
  */
-class ConjectureAgent extends AbstractAgent {
+class ConjectureAgent extends FifoAgent {
 
   override val name = "ConjectureAgent"
 

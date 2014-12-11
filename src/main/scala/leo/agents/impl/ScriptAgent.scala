@@ -45,7 +45,7 @@ import scala.sys.process._
  * @author Max Wisniewski
  * @since 11/10/14
  */
-abstract class ScriptAgent(path : String) extends AbstractAgent {
+abstract class ScriptAgent(path : String) extends FifoAgent {
 
   def handle(input : Stream[String], err : Stream[String], errno : Int) : Result
 

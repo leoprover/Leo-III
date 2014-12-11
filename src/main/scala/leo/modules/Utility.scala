@@ -160,7 +160,31 @@ object Utility {
     Blackboard().getFormulas.foreach {
       x =>
         val name = x.name.toString.take(maxNameSize)
-        val role = x.role.toString.take(maxRoleSize)
+        val role = x.role.pretty.take(maxRoleSize)
+        val form = x.clause.pretty
+        val form1 = form.take(maxFormulaSize)
+        val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
+
+        val nameOffset = maxNameSize - name.length
+        val roleOffset = maxRoleSize - role.length
+        println(name + " " * nameOffset + " | " + role + " " * roleOffset + " | " +  form1)
+        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
+    }
+    println()
+  }
+
+  def formulaContext() : Unit = {
+    val maxSize = 85
+    val maxNameSize = 25
+    val maxRoleSize = 19
+    val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
+
+    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula")
+    println("-"*maxSize)
+    Blackboard().getFormulas.foreach {
+      x =>
+        val name = x.name.toString.take(maxNameSize)
+        val role = x.role.pretty.take(maxRoleSize)
         val form = x.clause.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
