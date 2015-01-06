@@ -1,15 +1,12 @@
-package leo.datastructures.term.spine
+package leo.datastructures
+package term.spine
 
-import leo.datastructures.Position.{SpinePos, ArgsPos, HeadPos}
+import leo.datastructures.Position.{HeadPos}
 
 import scala.language.implicitConversions
 import scala.annotation.tailrec
 
-import leo.datastructures.Pretty
-import leo.datastructures.{Type, TermBank, Position, TermFactory}
-import leo.datastructures.{Subst, TermFront, TypeFront, BoundFront}
 import leo.datastructures.Type._
-import leo.datastructures.{Indexing, INDEXED, PLAIN}
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
 
@@ -117,7 +114,10 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
     Reductions.tick()
     Root(hd, SNil)
   }
-  lazy val occurrences = Map((headToTerm(hd), Set(Position.root.headPos)), (this,Set(Position.root))) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
+  lazy val occurrences = if (args.length == 0)
+                           Map(this.asInstanceOf[Term] -> Set(Position.root))
+                         else
+                           fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root), headToTerm(hd) -> Set(Position.root.headPos)), args.occurrences)
   val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 2 + args.size
 
@@ -142,7 +142,7 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
                                                 else
                                                   at match {
                                                     case HeadPos() => Redex(by, args)
-                                                    case SpinePos() => Root(hd, args.replaceAt(at.tail, by))
+                                                    case _ => Root(hd, args.replaceAt(at, by))
                                                   }
 
   def instantiateWith(subst: Subst) = ???
@@ -234,7 +234,7 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
   }
   val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 1 + body.size + args.size
-  lazy val occurrences = Map((this, Set(Position.root))) ++ body.occurrences.mapValues(_.map(_.prependHeadPos)) ++ args.occurrences.mapValues(_.map(_.prependSpinePos))
+  lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
 
   // Other operations
   lazy val typeCheck = typeCheck0(body.ty, args)
@@ -254,7 +254,7 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
                                                 else
                                                   at match {
                                                     case HeadPos() => Redex(by, args)
-                                                    case SpinePos() => Redex(body, args.replaceAt(at.tail, by))
+                                                    case _ => Redex(body, args.replaceAt(at, by))
                                                   }
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -672,7 +672,7 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
   lazy val asTerms = Left(hd) +: tail.asTerms
   lazy val scopeNumber = (Math.min(hd.scopeNumber._1, tail.scopeNumber._1),Math.min(hd.scopeNumber._2, tail.scopeNumber._2))
   lazy val size = 1+ hd.size + tail.size
-  def occurrences0(pos: Int) = hd.occurrences.mapValues(_.map(_.preprendArgPos(pos))) ++ tail.occurrences0(pos+1)
+  def occurrences0(pos: Int) = fuseMaps(hd.occurrences.mapValues(_.map(_.preprendArgPos(pos))), tail.occurrences0(pos+1))
 
 
   // Misc

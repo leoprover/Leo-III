@@ -75,7 +75,7 @@ object TermIndex {
       case f ∙ args       => insertSubterms(term, f, position.headPos); var i = 1
                               for(arg <- args) {
                                 arg match {
-                                  case Left(t) => insertSubterms(term, t, position.spinePos.argPos(i)); i = i+1
+                                  case Left(t) => insertSubterms(term, t, position.argPos(i)); i = i+1
                                   case Right(_) => ()
                                 }
                               }
