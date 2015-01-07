@@ -10,13 +10,15 @@ import leo.datastructures.term._
  * @since 16.10.2014
  */
 object TermIndex {
+  protected[TermIndex] var termset: Set[Term] = Set.empty
+  protected[TermIndex] var symbol_of: Map[Signature#Key, Set[Term]] = Map.empty
+  protected[TermIndex] var headsymbol_of: Map[Term, Set[Term]] = Map.empty
+  protected[TermIndex] var occurs_in: Map[Term, Set[(Term, Position)]] = Map.empty
+  protected[TermIndex] var occurs_at: Map[Term, Map[Position, Set[Term]]] = Map.empty
 
 
-  var terms: Set[Term] = Set.empty
-  var symbol_of: Map[Signature#Key, Set[Term]] = Map.empty
-  var headsymbol_of: Map[Term, Set[Term]] = Map.empty
-  var occurs_in: Map[Term, Set[(Term, Position)]] = Map.empty
-  var occurs_at: Map[Term, Map[Position, Set[Term]]] = Map.empty
+  def terms: Set[Term] = termset
+  def contains(t: Term): Boolean = termset.contains(t)
 
   def insert(term: Term): Term = {
     val t = term.betaNormalize
@@ -40,7 +42,7 @@ object TermIndex {
       case Some(set) => headsymbol_of += ((hs, set + t2))
     }
     insertSubterms(t2, t2, Position.root)
-    terms += t2
+    termset += t2
 
     t2
   }
