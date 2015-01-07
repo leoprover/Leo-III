@@ -27,13 +27,11 @@ import scala.language.implicitConversions
  */
 abstract class Term extends Ordered[Term] with Pretty {
 
-  protected var _locality: Locality = LOCAL
-  protected[term] var _indexing: Indexing = PLAIN  // INDEXED implies GLOBAL
+  private var _locality: Locality = LOCAL
 
   def locality = _locality
-  def indexing = _indexing
-  def makeGlobal: Term = ???
-  def makeLocal: Term = ???
+
+  protected[datastructures] def makeGlobal: Term = Term.insert(this)
 
   def compare(that: Term): Int = SenselessOrdering.compare(this, that)
 
@@ -42,6 +40,11 @@ abstract class Term extends Ordered[Term] with Pretty {
   def isTermAbs: Boolean
   def isTypeAbs: Boolean
   def isApp: Boolean
+
+  def isIndexed: Boolean = TermIndex.contains(this)
+  def isLocal: Boolean = ???
+  def isGlobal: Boolean = !isLocal
+
 
   // Handling def. expansion
   def δ_expandable: Boolean
@@ -132,7 +135,7 @@ object Term extends TermBank {
   def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
 
-  // Term index method delegation
+  // Term bank method delegation
   val local = TermImpl.local
   def insert0(localTerm: Term): Term = TermImpl.insert0(localTerm)
   def reset(): Unit = TermImpl.reset()

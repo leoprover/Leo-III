@@ -154,7 +154,7 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
     val termSubstNF = termSubst //.normalize
     val typeSubstNF = typeSubst //.normalize
 
-    val erg = hd match {
+    hd match {
       case h@Atom(id) => Root(h, normalizeSpine(args,termSubstNF, typeSubstNF))
       case b@BoundIndex(t, scope) => b.substitute(termSubstNF) match {
         case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubstNF), j), normalizeSpine(args,termSubstNF, typeSubstNF))
@@ -171,8 +171,6 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl {
         case HeadClosure(h3, (termSubst3, typeSubst3)) => Root(HeadClosure(h3, (termSubst3 o termSubst2, typeSubst3 o typeSubst2)), args).normalize(termSubst, typeSubst)
       }
     }
-    erg._indexing = INDEXED
-    erg
   }
 
 //  private def normalizeSpine(sp: Spine, termSubst: Subst, typeSubst: Subst): Spine = _indexing match {
@@ -260,9 +258,7 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl {
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
-    val erg = normalize0(termSubst, typeSubst, termSubst, typeSubst)
-    erg._indexing = INDEXED
-    erg
+    normalize0(termSubst, typeSubst, termSubst, typeSubst)
   }
 
   @tailrec
@@ -338,16 +334,12 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
-    val erg = _indexing match {
-      case _ => TermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
-//      case INDEXED => scopeNumber match {
-//        case (a,b) if a >= 0 && b >= 0 =>  TermAbstr(typ, body)
-//        case (a,b) if a >= 0 && body.scopeNumber._2 >= 0 =>  TermAbstr(typ.substitute(typeSubst), body) // own type has loose binders
-//        case _ =>  TermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
-//      }
-    }
-    erg._indexing = INDEXED
-    erg
+//    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
+//      ???
+//    } else {
+      TermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
+//    }
+
   }
 
 
@@ -404,15 +396,11 @@ protected[term] case class TypeAbstr(body: Term) extends TermImpl {
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
-    val erg = _indexing match {
-      case _ => TypeAbstr(body.normalize(termSubst, typeSubst.sink))
-//      case INDEXED => scopeNumber match {
-//        case (a,b) if a >= 0 && b >= 0 => this
-//        case _ => TypeAbstr(body.normalize(termSubst, typeSubst.sink))
-//      }
-    }
-    erg._indexing = INDEXED
-    erg
+//    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
+//      ???
+//    } else {
+      TypeAbstr(body.normalize(termSubst, typeSubst.sink))
+//    }
   }
 
   /** Pretty */
@@ -648,13 +636,11 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     import leo.datastructures.term.Reductions
     Reductions.tick()
-    hd.indexing match {
-      case _ => cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
-//      case INDEXED => hd.scopeNumber match {
-//        case (a, b) if a >= 0 && b >= 0 => cons(Left(hd), tail.normalize(termSubst, typeSubst))
-//        case _ => cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
-//      }
-    }
+//    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
+//      ???
+//    } else {
+    cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
+//    }
   }
 
   // Handling def. expansion
