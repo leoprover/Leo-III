@@ -443,7 +443,7 @@ protected[term] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val ty = term.ty
   lazy val freeVars = Set[Term]()
   lazy val boundVars = Set[Term]()
-  lazy val looseBounds = ???
+  lazy val looseBounds = Set.empty[Int]
   lazy val symbols = Set[Signature#Key]()
   lazy val headSymbol = ???
   val scopeNumber = term.scopeNumber
