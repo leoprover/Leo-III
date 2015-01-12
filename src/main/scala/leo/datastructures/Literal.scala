@@ -9,7 +9,7 @@ import leo.datastructures.term.Term
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Literal extends Pretty with Ordered[Literal] {
+trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
   /** The unique, increasing literal number. */
   def id: Int
   /** Returns the literal's underlying term. */
@@ -26,7 +26,7 @@ trait Literal extends Pretty with Ordered[Literal] {
   def isUni: Boolean
 
   def compare(that: Literal): Int = Configuration.LITERAL_ORDERING.compare(this, that)
-
+  def cong(that: Literal): Boolean = (this.polarity == that.polarity) && (this.term == that.term)
 
   def replace(what : Term, by : Term) : Literal = Literal.mkLit(term.replace(what,by), polarity)
 

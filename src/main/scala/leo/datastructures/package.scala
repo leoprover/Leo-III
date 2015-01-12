@@ -14,4 +14,10 @@ package object datastructures {
     })
   }
 
+  /** Class for objects that have a congruence defined on them (that is probably different from equality). */
+  trait HasCongruence[A] {
+    /** Returns `true` iff `this` is congruent to `that`. */
+    def cong(that: A): Boolean
+  }
+
 }
