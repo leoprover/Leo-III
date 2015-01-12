@@ -104,7 +104,7 @@ protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
 
 protected[term] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   override val isAtom = true
-  override val isVariable = true  
+  override val isVariable = true
 
   // Handling def. expansion
   val δ_expandable = false

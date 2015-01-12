@@ -2,7 +2,7 @@ package leo.datastructures
 
 import leo.{ClauseOrdering, TermOrdering}
 import leo.datastructures.term.Term
-import leo.datastructures.term.Term.{:::>, TypeLambda}
+import leo.datastructures.term.Term.{:::>, TypeLambda,∙,Symbol}
 
 /**
  * Collection of Ordering relations of terms, clauses, etc.
@@ -49,11 +49,12 @@ object PolyHORecPathOrdering extends TermOrdering {
   private def compare0(a: Term, b: Term): Option[Int] = {
     assert(a.ty == b.ty)
 
-    if (a.isVariable || b.isVariable) {
+    if (a == b) {
+      Some(0)
+    } else if (a.isVariable || b.isVariable) {
       // Variables cannot be compared since orderings are only defined on ground terms.
       None
-    }
-    if (a.isTypeAbs && !b.isTypeAbs || !a.isTypeAbs && b.isTypeAbs) {
+    } else if (a.isTypeAbs && !b.isTypeAbs || !a.isTypeAbs && b.isTypeAbs) {
       // adapted: If only one term is a type abstraction but the other is not,
       // the terms are not comparable
       None
@@ -71,9 +72,98 @@ object PolyHORecPathOrdering extends TermOrdering {
       val (_, body1) = :::>.unapply(a).get
       val (_, body2) = :::>.unapply(b).get
       compare0(body1, body2)
-    } else
-      ???
+    } else {
+      lazy val (head1, spine1) = ∙.unapply(a).get
+      lazy val (head2, spine2) = ∙.unapply(b).get
+
+      lazy val argList1 = filterTermArgs(spine1)
+      lazy val argList2 = filterTermArgs(spine2)
+      head1 match {
+        case Symbol(k1) => {
+          // Case (1), > direction
+          val it = argList1.iterator
+          var stop = false
+          while (it.hasNext && !stop) {
+            compare0(it.next(), b) match {
+              case Some(res) if res >= 0 => {stop = true}
+              case _ => ;
+            }
+          }
+          if (stop) { // subterm greater than b was found, return result > 0
+            Some(1)
+          } else { // continue serach
+            head2 match {
+              case Symbol(k2) => {
+                // Cases 2,3,4, both directions
+
+                if (k1 > k2) {
+                  // Case 2, > direction
+                  if ((argList2).forall(arg =>
+                    compare0(a, arg).getOrElse(Int.MinValue) > 0 || argList1.exists(compare0(_,arg).getOrElse(Int.MinValue) >= 0))) {
+                    Some(1)
+                  } else {
+                    None
+                  }
+                } else if (k2 < k1) {
+                  // Case 2, < direction
+                  if ((argList1).forall(arg =>
+                    compare0(a, arg).getOrElse(Int.MaxValue) < 0 || argList2.exists(compare0(_,arg).getOrElse(Int.MaxValue) <= 0))) {
+                    Some(1)
+                  } else {
+                    None
+                  }
+                } else {
+                  // Case 3,4
+                  ???
+                }
+              }
+              case _ => { // Case 5, > direction
+                if ((head2 +: argList2).forall(arg =>
+                  compare0(a, arg).getOrElse(Int.MinValue) > 0 || argList1.exists(compare0(_,arg).getOrElse(Int.MinValue) >= 0))) {
+                  Some(1)
+                } else {
+                  None
+                }
+              }
+            }
+          }
+        }
+        case _ => {
+          //head2 could be signature constant
+          //some application (either i.S or t'.S)
+          head2 match {
+            case Symbol(k2) => {
+              // Case 1, < direction
+              val it = argList2.iterator
+              var stop = false
+              while (it.hasNext && !stop) {
+                compare0(it.next(), a) match {
+                  case Some(res) if res <= 0 => {
+                    stop = true
+                  }
+                  case _ => ;
+                }
+              }
+              if (stop) {
+                Some(-1)
+              } else {
+                // case 5, < direction
+                if ((head1 +: argList1).forall(arg =>
+                  compare0(a, arg).getOrElse(Int.MaxValue) < 0 || argList2.exists(compare0(_,arg).getOrElse(Int.MaxValue) <= 0))) {
+                  Some(1)
+                } else {
+                  None
+                }
+              }
+            }
+            case _ => ??? // case 6 both directions
+          }
+        }
+      }
+    }
   }
+
+  private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = ???
 }
 
 ///////////////////////
