@@ -1,5 +1,6 @@
 package leo.datastructures
 
+import leo.datastructures.impl.Signature
 import leo.{ClauseOrdering, TermOrdering}
 import leo.datastructures.term.Term
 import leo.datastructures.term.Term.{:::>, TypeLambda,∙,Symbol}
@@ -108,13 +109,38 @@ object PolyHORecPathOrdering extends TermOrdering {
                   // Case 2, < direction
                   if ((argList1).forall(arg =>
                     compare0(a, arg).getOrElse(Int.MaxValue) < 0 || argList2.exists(compare0(_,arg).getOrElse(Int.MaxValue) <= 0))) {
-                    Some(1)
+                    Some(-1)
                   } else {
                     None
                   }
                 } else {
                   // Case 3,4
-                  ???
+                  val sig = Signature.get
+                  val status = sig(k1).status
+
+                  if (status == 0) { // Multiset
+                    mult(argList1, argList2)
+                  } else if (status == 1) { // Lexicographic
+                    lex(argList1, argList2) match {
+                      case None => None
+                      case Some(r) if r == 0 => None
+                      case Some(r) if r > 0 => if ((argList2).forall(arg =>
+                        compare0(a, arg).getOrElse(Int.MinValue) > 0 || argList1.exists(compare0(_,arg).getOrElse(Int.MinValue) >= 0))) {
+                        Some(1)
+                      } else {
+                        None
+                      }
+                      case Some(r) if r < 0 => if ((argList1).forall(arg =>
+                        compare0(a, arg).getOrElse(Int.MaxValue) < 0 || argList2.exists(compare0(_,arg).getOrElse(Int.MaxValue) <= 0))) {
+                        Some(-1)
+                      } else {
+                        None
+                      }
+                    }
+                  } else {
+                    assert(false)
+                    throw new IllegalArgumentException("this should not happen")
+                  }
                 }
               }
               case _ => { // Case 5, > direction
@@ -150,20 +176,68 @@ object PolyHORecPathOrdering extends TermOrdering {
                 // case 5, < direction
                 if ((head1 +: argList1).forall(arg =>
                   compare0(a, arg).getOrElse(Int.MaxValue) < 0 || argList2.exists(compare0(_,arg).getOrElse(Int.MaxValue) <= 0))) {
-                  Some(1)
+                  Some(-1)
                 } else {
                   None
                 }
               }
             }
-            case _ => ??? // case 6 both directions
+            case _ => mult((head1 +: argList1),(head2 +: argList2)) // case 6 both directions, adopted
           }
         }
       }
     }
   }
 
-  private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = ???
+  private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
+    case Seq() => Seq()
+    case Seq(h, rest@_*) => h match {
+      case Left(term) => term +: filterTermArgs(rest)
+      case Right(_) => filterTermArgs(rest)
+    }
+  }
+
+  private def lex(a: Seq[Term], b: Seq[Term]): Option[Int] = a match {
+    case Seq() if b.isEmpty => Some(0)
+    case Seq() => Some(-1)
+    case Seq(_, rest@_*) if b.isEmpty => Some(1)
+    case Seq(t1, tn@_*) => compare0(t1, b.head) match {
+      case None => None
+      case Some(r) if r == 0 => lex(tn, b.tail)
+      case r => r
+    }
+  }
+
+  private def mult(a: Seq[Term], b: Seq[Term]): Option[Int] = {
+    a match {
+      case Seq() if b.isEmpty => Some(0)
+      case Seq() => Some(-1)
+      case _ if b.isEmpty => Some(1)
+      case _ => {
+        val aMax = maximalElement(a)
+        val bMax = maximalElement(b)
+
+        compare(aMax, bMax)match {
+          case None => None
+          case Some(r) if r == 0 => mult(a.diff(Seq(aMax)), b.diff(Seq(bMax)))
+          case r => r
+        }
+      }
+    }
+  }
+
+  private def maximalElement(a: Seq[Term]): Term = {
+    val it = a.iterator
+    var curMax = a.head
+    while(it.hasNext) {
+      val cur = it.next()
+      compare(curMax, cur) match {
+        case None => ;
+        case Some(r) if r < 0 => curMax = cur
+      }
+    }
+    curMax
+  }
 }
 
 ///////////////////////
