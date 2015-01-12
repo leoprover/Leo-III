@@ -59,6 +59,8 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 
   // Predicates on terms
   val isAtom = args == SNil
+  val isConstant = isAtom && hd.isConstant
+  val isVariable = isAtom && hd.isBound
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = args != SNil
@@ -199,6 +201,8 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 
   // Predicates on terms
   val isAtom = false
+  val isConstant = false
+  val isVariable = false
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = true
@@ -296,6 +300,8 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
   // Predicates on terms
   val isAtom = false
+  val isConstant = false
+  val isVariable = false
   val isTermAbs = true
   val isTypeAbs = false
   val isApp = false
@@ -358,6 +364,8 @@ protected[term] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
 
   // Predicates on terms
   val isAtom = false
+  val isConstant = false
+  val isVariable = false
   val isTermAbs = false
   val isTypeAbs = true
   val isApp = false
@@ -417,6 +425,8 @@ protected[term] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 
   // Predicates on terms
   val isAtom = false
+  val isConstant = false
+  val isVariable = false
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = false
@@ -480,6 +490,9 @@ protected[term] sealed abstract class Head extends Pretty {
   def partial_δ_expand(rep: Int): Term
   def full_δ_expand: Term
 
+  def isBound: Boolean
+  def isConstant: Boolean
+
   // Queries
   def ty: Type
   def scopeNumber: (Int, Int)
@@ -492,6 +505,9 @@ protected[term] sealed abstract class Head extends Pretty {
 
 
 protected[term] case class BoundIndex(typ: Type, scope: Int) extends Head {
+  val isBound = true
+  val isConstant = false
+
   // Handling def. expansion
   val δ_expandable = false
   def partial_δ_expand(rep: Int) = full_δ_expand
@@ -509,6 +525,9 @@ protected[term] case class BoundIndex(typ: Type, scope: Int) extends Head {
 
 protected[term] case class Atom(id: Signature#Key) extends Head {
   private lazy val meta = Signature.get(id)
+
+  val isBound = false
+  val isConstant = true
 
   // Handling def. expansion
   lazy val δ_expandable = meta.hasDefn
@@ -535,6 +554,9 @@ protected[term] case class Atom(id: Signature#Key) extends Head {
 
 
 protected[term] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
+  val isBound = false
+  val isConstant = false
+
   // Handling def. expansion
   lazy val δ_expandable = ???
   def partial_δ_expand(rep: Int) = ???

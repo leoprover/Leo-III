@@ -15,6 +15,8 @@ sealed abstract class TermImpl extends Term {
 
   // Predicates on terms
   val isAtom = false
+  val isConstant = false
+  val isVariable = false
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = false
@@ -51,6 +53,7 @@ protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
 
   // Predicates on terms
   override val isAtom = true
+  override val isConstant = true
 
   // Handling def. expansion
   lazy val δ_expandable = sym.hasDefn
@@ -101,6 +104,7 @@ protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
 
 protected[term] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   override val isAtom = true
+  override val isVariable = true  
 
   // Handling def. expansion
   val δ_expandable = false

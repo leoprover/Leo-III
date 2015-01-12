@@ -4,6 +4,7 @@ import leo.datastructures._
 import leo.datastructures.impl.Signature
 
 import scala.language.implicitConversions
+import scala.math
 
 
 /**
@@ -25,10 +26,13 @@ import scala.language.implicitConversions
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-abstract class Term extends Ordered[Term] with Pretty {
+abstract class Term extends QuasiOrdered[Term] with Pretty {
 
   // Predicates on terms
+  /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
   def isAtom: Boolean
+  def isConstant: Boolean
+  def isVariable: Boolean
   def isTermAbs: Boolean
   def isTypeAbs: Boolean
   def isApp: Boolean
@@ -82,7 +86,7 @@ abstract class Term extends Ordered[Term] with Pretty {
 //  protected[internal] def instantiateWith(subst: Subst): Term
 
   // Other operations
-  def compare(that: Term): Int = SenselessOrdering.compare(this, that)
+  def compareTo(that: Term): Option[Int] = SenselessOrdering.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
   /** Return the β-nf of the term */
