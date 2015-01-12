@@ -66,6 +66,8 @@ trait IsSignature {
      * @throws NoSuchElementException if no definition is available
      */
     def _defn: Term = defn.get
+    /** Returns the status of the symbol, where 0 = mult, 1 = lex.*/
+    def status: Int
 
     /** Returns true iff the symbol has a type associated with it */
     def hasType: Boolean
@@ -73,6 +75,10 @@ trait IsSignature {
     def hasKind: Boolean
     /** Returns true iff the constant has a definition term associated with it */
     def hasDefn: Boolean
+    /** Returns true iff the symbol has lex status. */
+    def hasLexStatus: Boolean = status == 1
+    /** Returns true iff the symbol has mult status. */
+    def hasMultStatus: Boolean = status == 0
 
 
     /** Returns true iff the symbol is a fixed (interpreted) symbol */
@@ -96,12 +102,14 @@ trait IsSignature {
     * The actual symbol type is determined by the typ and whether a definition is supplied.
     * If some definition is passed, the constant is a `Defined`, otherwise it is a `Basetype` or a `Uninterpreted`
     * (depending on the type supplied).
+    * `status` represents the status of the constant symbol, where 0 stands for multiset status and 1 for lexicographic
+    * status.
     *
     * @return the generated key that the freshly added symbol is indexed by
     * @throws IllegalArgumentException if the symbol described by `identifier` already exists or a
     *                                  illegal typ/definition combination is supplied
     */
-  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term]): Key
+  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term], status: Int): Key
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
@@ -121,23 +129,24 @@ trait IsSignature {
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term, typ: Type): Key = addConstant0(identifier, Some(Left(typ)), Some(defn))
+  def addDefined(identifier: String, defn: Term, typ: Type): Key = addConstant0(identifier, Some(Left(typ)), Some(defn), 0)
   /** Adds a term variable without type to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term): Key            = addConstant0(identifier, None, Some(defn))
-  /** Adds an uninterpreted constant with type `typ` to the signature.
+  def addDefined(identifier: String, defn: Term): Key            = addConstant0(identifier, None, Some(defn), 0)
+  /** Adds an uninterpreted constant with type `typ` to the signature,
+    * multiset status is default, but can be overridden by `status` parameter.
     * @return The key the symbol is indexed by
     */
-  def addUninterpreted(identifier: String, typ: Type): Key       = addConstant0(identifier, Some(Left(typ)), None)
-  /** Adds an uninterpreted constant with kibd `k` to the signature.
+  def addUninterpreted(identifier: String, typ: Type, status: Int = 0): Key       = addConstant0(identifier, Some(Left(typ)), None, status)
+  /** Adds an uninterpreted constant with kind `k` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addTypeConstructor(identifier: String, k: Kind): Key         = addConstant0(identifier, Some(Right(k)), None)
+  def addTypeConstructor(identifier: String, k: Kind): Key         = addConstant0(identifier, Some(Right(k)), None, -1)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
-  def addBaseType(identifier: String): Key                       = addConstant0(identifier, Some(Right(Type.typeKind)), None)
+  def addBaseType(identifier: String): Key                       = addConstant0(identifier, Some(Right(Type.typeKind)), None, -1)
 
   /** If the symbol indexed by `key` is a uninterpreted symbol, then `addDefinition(key, defn)` turns this symbol
     * into a defined symbol with definition `defn`.*/
