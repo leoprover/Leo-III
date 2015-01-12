@@ -234,7 +234,7 @@ abstract class FifoAgent extends Agent {
 
 abstract class PriorityAgent extends Agent {
 
-  private var _isActive : Boolean = false
+  private var _isActive : Boolean = true
 
   override def isActive : Boolean = _isActive
 

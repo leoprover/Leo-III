@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.blackboard.{FormulaEvent, Event, FormulaStore, Blackboard}
 import leo.modules.normalization.Normalize
-import leo.datastructures.Literal
+import leo.datastructures.{Clause, Literal}
 
 import scala.collection.mutable
 
@@ -80,7 +80,7 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
     case t1: NormalTask =>
       val fstore = t1.get()
       val erg = fstore.clause.mapLit(l => Literal.mkLit(norm.normalize(l.term), l.polarity))  //norm.normalize(fstore.clause.)
-      if (fstore.clause == erg) {
+      if (eqClause(fstore.clause,erg)) {
         Out.trace(name + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, fstore.newStatus(norm.markStatus(fstore.status)))), Set.empty)
       } else {
@@ -90,7 +90,14 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
-
+  private def eqClause(c1 : Clause, c2 : Clause) : Boolean = {
+    // TODO: Move to clause for comparisson
+    c1.lits forall { l1 =>
+      c2.lits exists { l2 =>
+        l1.polarity == l2.polarity && l1.term == l2.term
+      }
+    }
+  }
 
 
   override protected def toFilter(e: Event): Iterable[Task] = e match {

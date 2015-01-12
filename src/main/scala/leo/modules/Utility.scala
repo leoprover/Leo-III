@@ -219,6 +219,13 @@ object Utility {
   def clearSignature(): Unit = {
     Signature.resetWithHOL(Signature.get)
   }
+
+  def agentStatus() : Unit = {
+    println("Agents: ")
+    for((a,b) <- Blackboard().getAgents()) {
+      println(a.name + " , "+ (if(a.isActive) "active" else "inactive") + " , "+ b +" budget , "+a.openTasks+" tasks")
+    }
+  }
 }
 
 class SZSException(val status : StatusSZS) extends RuntimeException("SZS status "+status.output)

@@ -69,7 +69,9 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
       val nf = Store(nc, f1.status & f2.status, f1.context)
       Out.trace(s"[$name]: Paramdoulation step (${f1.pretty}, ${f2.pretty}}) => ${nf.pretty}")
       new StdResult(Set(nf), Map.empty, Set.empty)
-    case _ : Task => EmptyResult
+    case _ : Task =>
+      Out.warn(s"$name: Got a wrong task to execute.")
+      EmptyResult
   }
 }
 
@@ -79,6 +81,8 @@ private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : 
   override def readSet(): Set[FormulaStore] = Set(f1, f2)
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / 10
+
+  override def toString() : String = s"Paramod: ${f1.pretty} with ${f2.pretty} over ${t.pretty}=${l.pretty}}]"
 }
 
 object ParamodTask {
