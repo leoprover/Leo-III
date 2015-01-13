@@ -23,7 +23,7 @@ import leo.datastructures.term.Term
 object AgentDebug {
   import leo.Main._
   def main(args : Array [String]) {
-    Configuration.init(new CLParameterParser(Array("arg0", "-v", "1")))
+    Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
     Scheduler()
     Blackboard()
 
@@ -62,7 +62,7 @@ object AgentDebug {
     Scheduler().killAll()
 
     Out.output("After 5s of calculus.")
-    //Utility.formulaContext
+    Utility.formulaContext
   }
 
   def mkFormulaStoreFromTerm(name : String, t : Term, r : Role, context : Context) : FormulaStore = {

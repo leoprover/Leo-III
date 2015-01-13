@@ -66,7 +66,7 @@ object PropParamodulation extends ParamodStep{
     //    leo.Out.severe("What: "+lc.pretty)
     //    leo.Out.severe("By: "+alpha.pretty)
     val res = Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)
-    return Simp(res)
+    return TrivRule.triv(TrivRule.teqf(Simp(res)))
   }
 
   /**
@@ -78,6 +78,7 @@ object PropParamodulation extends ParamodStep{
    * @return (t,l,s), where t is the selected first term, l is the literal and s is a substitiontion, that makes both equal.
    */
   override def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)] = {
+    if(c1.lits.isEmpty || c2.lits.isEmpty) return None
 
     val lits = c2.lits.iterator
     while (lits.hasNext) {
@@ -125,7 +126,7 @@ object PropParamodulation extends ParamodStep{
       //    leo.Out.severe("What: "+lc.pretty)
       //    leo.Out.severe("By: "+alpha.pretty)
       val res = Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)
-      return Simp(res)
+      return TrivRule.triv(TrivRule.teqf(Simp(res)))
     }
 
     /**
@@ -137,6 +138,8 @@ object PropParamodulation extends ParamodStep{
      * @return (t,l,s), where t is the selected first term, l is the literal and s is a substitiontion, that makes both equal.
      */
     override def find(c1: Clause, c2: Clause, comp: TermComparison): Option[(Term, Literal, TermComparison#Substitute)] = {
+
+      if(c1.lits.isEmpty || c2.lits.isEmpty) return None
 
       val lits = c2.lits.iterator
       while (lits.hasNext) {
