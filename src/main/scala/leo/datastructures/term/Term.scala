@@ -4,6 +4,7 @@ import leo.datastructures._
 import leo.datastructures.impl.Signature
 
 import scala.language.implicitConversions
+import scala.math
 
 
 /**
@@ -25,23 +26,23 @@ import scala.language.implicitConversions
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-abstract class Term extends Ordered[Term] with Pretty {
-
-  protected var _locality: Locality = LOCAL
-  protected[term] var _indexing: Indexing = PLAIN  // INDEXED implies GLOBAL
-
-  def locality = _locality
-  def indexing = _indexing
-  def makeGlobal: Term = ???
-  def makeLocal: Term = ???
-
-  def compare(that: Term): Int = SenselessOrdering.compare(this, that)
+abstract class Term extends QuasiOrdered[Term] with Pretty {
 
   // Predicates on terms
+  /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
   def isAtom: Boolean
+  def isConstant: Boolean
+  def isVariable: Boolean
   def isTermAbs: Boolean
   def isTypeAbs: Boolean
   def isApp: Boolean
+
+  // Locality/Indexing properties of terms
+  def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
+  def isIndexed: Boolean = TermIndex.contains(this)
+  def locality: Locality
+  def isLocal: Boolean
+  def isGlobal: Boolean = !isLocal
 
   // Handling def. expansion
   def δ_expandable: Boolean
@@ -78,31 +79,22 @@ abstract class Term extends Ordered[Term] with Pretty {
     what.zip(by).foldRight(this)({case ((w,b), t:Term) => t.substitute(w,b)})
   }
 
+  def closure(subst: Subst): Term
+
   protected[datastructures] def instantiateBy(by: Type) = instantiate(1,by)
   protected[datastructures] def instantiate(scope: Int, by: Type): Term
 //  protected[internal] def instantiateWith(subst: Subst): Term
 
   // Other operations
+  def compareTo(that: Term): Option[Int] = SenselessOrdering.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
-
   /** Return the β-nf of the term */
   def betaNormalize: Term
+
   protected[term] def normalize(termSubst: Subst, typeSubst: Subst): Term
-
-  /** Right-folding on terms. */
-  def foldRight[A](symFunc: Signature#Key => A)
-             (boundFunc: (Type, Int) => A)
-             (absFunc: (Type, A) => A)
-             (appFunc: (A,A) => A)
-             (tAbsFunc: A => A)
-             (tAppFunc: (A, Type) => A): A
-//
-//  def expandDefinitions(rep: Int): Term
-//  def expandAllDefinitions = expandDefinitions(-1)
-
   protected[datastructures] def inc(scopeIndex: Int): Term
-  def closure(subst: Subst): Term
+
 //  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
 
@@ -132,9 +124,10 @@ object Term extends TermBank {
   def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
 
-  // Term index method delegation
+  // Term bank method delegation
   val local = TermImpl.local
-  def insert0(localTerm: Term): Term = TermImpl.insert0(localTerm)
+  def insert(term: Term): Term = TermImpl.insert(term)
+  def contains(term: Term): Boolean = TermImpl.contains(term)
   def reset(): Unit = TermImpl.reset()
 
   // Further utility functions

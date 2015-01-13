@@ -42,6 +42,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     def ty: Option[Type] = None
     def kind: Option[Kind] = Some(k)
     def defn: Option[Term] = None
+    def status = -1
 
     def hasType = false
     def hasKind = true
@@ -51,7 +52,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   /** Case class for meta information for uninterpreted symbols */
   protected[impl] case class UninterpretedMeta(identifier: String,
                                                    index: Key,
-                                                   typ: Type) extends Meta {
+                                                   typ: Type,
+                                                   status: Int) extends Meta {
     def name = identifier
     def key = index
     def symType = Uninterpreted
@@ -75,6 +77,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     def ty: Option[Type] = typ
     def kind: Option[Kind] = None
     def defn: Option[Term] = Some(definition)
+    def status = 0
 
     def hasType = typ.isDefined
     def hasKind = false
@@ -84,7 +87,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   /** Case class for meta information for fixed (interpreted) symbols */
   protected[impl] case class FixedMeta(identifier: String,
                                            index: Key,
-                                           typ: Type) extends Meta {
+                                           typ: Type,
+                                           status: Int) extends Meta {
     def name = identifier
     def key = index
     def symType = Fixed
@@ -101,7 +105,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   // Maintenance methods for the signature
   ///////////////////////////////
 
-  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term]): Key = {
+  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term], status: Int): Key = {
     if (keyMap.contains(identifier)) {
       throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
@@ -128,7 +132,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
             typeSet += key
           }
           case Some(Left(t:Type)) => { // Uninterpreted symbol
-          val meta = UninterpretedMeta(identifier, key, t)
+          val meta = UninterpretedMeta(identifier, key, t, status)
             metaMap += ((key, meta))
             uiSet += key
           }
@@ -177,12 +181,12 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   def symbolType(identifier: Key): SymbolType = metaMap(identifier).symType
 
   /** Adds a symbol to the signature that is then marked as `Fixed` symbol type */
-  protected def addFixed(identifier: String, typ: Type): Unit = {
+  protected def addFixed(identifier: String, typ: Type, status: Int): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
 
-    val meta = FixedMeta(identifier, key, typ)
+    val meta = FixedMeta(identifier, key, typ, status)
     metaMap += ((key, meta))
     fixedSet += key
   }
@@ -275,15 +279,15 @@ object Signature {
   /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
   def withHOL(sig: Signature): Signature = {
     for ((name, k) <- sig.types) {
-      sig.addConstant0(name, Some(Right(k)), None)
+      sig.addBaseType(name)
     }
 
     for ((name, ty) <- sig.fixedConsts) {
-      sig.addFixed(name, ty)
+      sig.addFixed(name, ty, 1)
     }
 
     for ((name, fed, ty) <- sig.definedConsts) {
-      sig.addConstant0(name, Some(Left(ty)), Some(fed))
+      sig.addDefined(name, fed, ty)
     }
    sig
   }

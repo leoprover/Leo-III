@@ -15,13 +15,12 @@ trait TermBank extends TermFactory {
   /** Return the factory for local terms, that is, terms that are not globally shared */
   def local: TermFactory
 
-  /** Insert (unshared) terms to the term bank. Has no effect on already shared terms.
-    * Returns the syntactically equal but now shared term. */
-  def insert(term: Term): Term = term.locality match {
-    case LOCAL => insert0(term)
-    case GLOBAL => term
-  }
-  protected[datastructures] def insert0(localTerm: Term): Term
+  /** Insert (possibly unshared) terms to the term bank. Has no effect on already inserted terms.
+    * Returns the syntactically equal -- but now shared -- term, or the argument `term` if
+    * it is shared already. */
+  def insert(term: Term): Term
+
+  def contains(term: Term): Boolean
 
   /** Clear the term bank, i.e. delete all cached terms */
   def reset(): Unit

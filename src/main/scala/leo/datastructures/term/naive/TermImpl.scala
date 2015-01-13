@@ -15,6 +15,8 @@ sealed abstract class TermImpl extends Term {
 
   // Predicates on terms
   val isAtom = false
+  val isConstant = false
+  val isVariable = false
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = false
@@ -23,6 +25,9 @@ sealed abstract class TermImpl extends Term {
   def full_δ_expand = partial_δ_expand(-1)
 
   def normalize(subst: Subst, subst2: Subst) = ???
+
+  val locality = LOCAL
+  val isLocal = true
 
   protected[naive] def decrementByOne(n: Int): Int = n match {
     case -1 => -1
@@ -48,6 +53,7 @@ protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
 
   // Predicates on terms
   override val isAtom = true
+  override val isConstant = true
 
   // Handling def. expansion
   lazy val δ_expandable = sym.hasDefn
@@ -92,19 +98,13 @@ protected[term] case class SymbolNode(id: Signature#Key) extends TermImpl {
     this
   }
 
-  def foldRight[A](symFunc: Signature#Key => A)
-                  (boundFunc: (Type, Int) => A)
-                  (absFunc: (Type, A) => A)
-                  (appFunc: (A,A) => A)
-                  (tAbsFunc: A => A)
-                  (tAppFunc: (A, Type) => A) = symFunc(id)
-
   // Pretty printing
   def pretty = sym.name
 }
 
 protected[term] case class BoundNode(t: Type, scope: Int) extends TermImpl {
   override val isAtom = true
+  override val isVariable = true
 
   // Handling def. expansion
   val δ_expandable = false
@@ -156,13 +156,6 @@ protected[term] case class BoundNode(t: Type, scope: Int) extends TermImpl {
     this
   }
 
-  def foldRight[A](symFunc: Signature#Key => A)
-                  (boundFunc: (Type, Int) => A)
-                  (absFunc: (Type, A) => A)
-                  (appFunc: (A,A) => A)
-                  (tAbsFunc: A => A)
-                  (tAppFunc: (A, Type) => A) = boundFunc(t,scope)
-
   def expandDefinitions(rep: Int) = this
 
   // Pretty printing
@@ -211,14 +204,6 @@ protected[term] case class AbstractionNode(absType: Type, term: Term) extends Te
     Reductions.tick()
     AbstractionNode(absType, term.betaNormalize)
   }
-
-  def foldRight[A](symFunc: Signature#Key => A)
-                  (boundFunc: (Type, Int) => A)
-                  (absFunc: (Type, A) => A)
-                  (appFunc: (A,A) => A)
-                  (tAbsFunc: A => A)
-                  (tAppFunc: (A, Type) => A) = absFunc(absType, term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
-
 
   // Pretty printing
   def pretty = "[λ." + term.pretty + "]"
@@ -276,14 +261,6 @@ protected[term] case class ApplicationNode(left: Term, right: Term) extends Term
     }
   }
 
-  def foldRight[A](symFunc: Signature#Key => A)
-                  (boundFunc: (Type, Int) => A)
-                  (absFunc: (Type, A) => A)
-                  (appFunc: (A,A) => A)
-                  (tAbsFunc: A => A)
-                  (tAppFunc: (A, Type) => A) = appFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc),
-                                                       right.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
-
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"
 }
@@ -327,14 +304,6 @@ protected[term] case class TypeAbstractionNode(term: Term) extends TermImpl {
     Reductions.tick()
     TypeAbstractionNode(term.betaNormalize)
   }
-
-  def foldRight[A](symFunc: Signature#Key => A)
-                  (boundFunc: (Type, Int) => A)
-                  (absFunc: (Type, A) => A)
-                  (appFunc: (A,A) => A)
-                  (tAbsFunc: A => A)
-                  (tAppFunc: (A, Type) => A) = tAbsFunc(term.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc))
-
 
   // Pretty printing
   def pretty = "[Λ." + term.pretty + "]"
@@ -386,13 +355,6 @@ protected[term] case class TypeApplicationNode(left: Term, right: Type) extends 
       case _ => TypeApplicationNode(leftNF, right)
     }
   }
-
-  def foldRight[A](symFunc: Signature#Key => A)
-                  (boundFunc: (Type, Int) => A)
-                  (absFunc: (Type, A) => A)
-                  (appFunc: (A,A) => A)
-                  (tAbsFunc: A => A)
-                  (tAppFunc: (A, Type) => A) = tAppFunc(left.foldRight(symFunc)(boundFunc)(absFunc)(appFunc)(tAbsFunc)(tAppFunc), right)
 
   // Pretty printing
   def pretty = "(" + left.pretty + " " + right.pretty + ")"

@@ -1,8 +1,8 @@
 import leo.datastructures.term.Term
-import leo.datastructures.{Clause, Literal, Weight}
+import leo.datastructures.{QuasiOrdering, Clause, Literal, Weight}
 
 package object leo {
-  type TermOrdering = Ordering[Term]
+  type TermOrdering = QuasiOrdering[Term]
   type ClauseOrdering = Ordering[Clause]
   type LiteralOrdering = Ordering[Literal]
 
