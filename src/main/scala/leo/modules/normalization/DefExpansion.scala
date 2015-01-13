@@ -1,5 +1,7 @@
 package leo.modules.normalization
 
+import leo.datastructures.Clause
+import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.term.Term
 
 /**
@@ -15,7 +17,9 @@ object DefExpansion extends AbstractNormalize {
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = formula.full_δ_expand
+  override def normalize(formula: Clause): Clause = {
+    formula.mapLit(_.termMap(_.full_δ_expand))
+  }
 
   /**
    * Checks if the staus bit 1 is raised and the second is not
@@ -24,5 +28,5 @@ object DefExpansion extends AbstractNormalize {
    */
   override def applicable(status : Int): Boolean = (status & 3) == 1
 
-  override def markStatus(status : Int) : Int = (status | 2) & ~1
+  def markStatus(fS : FormulaStore) : FormulaStore = fS.newStatus((fS.status | 2) & ~1)
 }

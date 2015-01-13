@@ -169,10 +169,6 @@ object LeoShell {
     }
   }
 
-  def simplify(f : Term) : Term = Simplification.normalize(f)
-
-  def negNormal(f : Term) : Term = NegationNormal.normalize(f)
-
   def run() : Unit = Scheduler().signal()
 
   def step() : Unit = Scheduler().step()

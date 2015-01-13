@@ -1,8 +1,9 @@
 package leo.modules.normalization
 
+import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.term._
 import Term._
-import leo.datastructures.{Forall, &, |||}
+import leo.datastructures.{Clause, Forall, &, |||}
 
 /**
  * Computes for a Skolemized Term the Prenex Normal Form
@@ -20,36 +21,41 @@ object PrenexNormal extends AbstractNormalize {
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = formula match {
+  override def normalize(formula : Clause) : Clause = {
+    formula.mapLit(_.termMap(internalNormalize(_)))
+  }
+
+
+  private def internalNormalize(formula: Term): Term = formula match {
 
      // TODO : Trailing normalize should be replaced, by a lookup to move all other quantifiers out
     case &(Forall (ty :::> t), s)   =>
-      val t1 = normalize(t)
-      val s1 = normalize(s)
-      normalize(Forall(\(ty)(&(t1, incrementBound(s1,1)))))
+      val t1 = internalNormalize(t)
+      val s1 = internalNormalize(s)
+      internalNormalize(Forall(\(ty)(&(t1, incrementBound(s1,1)))))
     case &(t, Forall (ty :::> s))   =>
-      val t1 = normalize(t)
-      val s1 = normalize(s)
-      normalize(Forall(\(ty)(&(incrementBound(t1,1), s1))))
+      val t1 = internalNormalize(t)
+      val s1 = internalNormalize(s)
+      internalNormalize(Forall(\(ty)(&(incrementBound(t1,1), s1))))
     case |||(Forall (ty :::> t), s)   =>
-      val t1 = normalize(t)
-      val s1 = normalize(s)
-      normalize(Forall(\(ty)(&(t1, incrementBound(s1,1)))))
+      val t1 = internalNormalize(t)
+      val s1 = internalNormalize(s)
+      internalNormalize(Forall(\(ty)(&(t1, incrementBound(s1,1)))))
     case |||(t, Forall (ty :::> s))   =>
-      val t1 = normalize(t)
-      val s1 = normalize(s)
-      normalize(Forall(\(ty)(&(incrementBound(t1,1), s1))))
+      val t1 = internalNormalize(t)
+      val s1 = internalNormalize(s)
+      internalNormalize(Forall(\(ty)(&(incrementBound(t1,1), s1))))
 
     // TODO : Missing rules for conjunctive normal form ?
 
       //Pass through
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t                => mkTermApp(normalize(s),normalize(t))
-    case s @@@@ ty              => mkTypeApp(normalize(s),ty)
-    case f ∙ args               => Term.mkApp(normalize(f), args.map(_.fold({t => Left(normalize(t))},(Right(_)))))
-    case ty :::> t              => \(ty)(normalize(t))
-    case TypeLambda(t)          => mkTypeAbs(normalize(t))
+    case s @@@ t                => mkTermApp(internalNormalize(s),internalNormalize(t))
+    case s @@@@ ty              => mkTypeApp(internalNormalize(s),ty)
+    case f ∙ args               => Term.mkApp(internalNormalize(f), args.map(_.fold({t => Left(internalNormalize(t))},(Right(_)))))
+    case ty :::> t              => \(ty)(internalNormalize(t))
+    case TypeLambda(t)          => mkTypeAbs(internalNormalize(t))
 //    case _                      => formula
 
   }
@@ -77,5 +83,5 @@ object PrenexNormal extends AbstractNormalize {
    */
   override def applicable(status : Int): Boolean = (status & 31) == 15
 
-  override def markStatus(status : Int) : Int = status | 31
+  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 31)
 }

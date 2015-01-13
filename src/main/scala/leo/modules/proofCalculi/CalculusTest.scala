@@ -160,7 +160,7 @@ object PropParamodulation extends ParamodStep{
     def apply (c : Clause) : Clause = {
       import leo.modules.normalization.Simplification
 
-      val litNorm = c.mapLit(_.termMap(Simplification(_))).mapLit(flipNeg)
+      val litNorm = Simplification.normalize(c).mapLit(flipNeg)
 
       // Remove unnused Quantifiers.
 

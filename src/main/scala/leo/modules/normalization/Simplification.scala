@@ -1,7 +1,9 @@
 package leo.modules.normalization
 
 import leo.datastructures._
+import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.term._
+import leo.datastructures.tptp.cnf.Formula
 
 import scala.language.implicitConversions
 import Term._
@@ -25,7 +27,12 @@ object Simplification extends AbstractNormalize{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = norm(formula.betaNormalize)
+  override def normalize(formula : Clause) : Clause = {
+    formula.mapLit(_.termMap(internalNormalize(_)))
+  }
+
+
+  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize)
 
   private def norm(formula : Term) : Term = formula match {
     //case Bound(ty)   => formula // Sollte egal sein
@@ -159,11 +166,6 @@ object Simplification extends AbstractNormalize{
    */
   override def applicable(status : Int): Boolean = (status & 1) == 0
 
-  /**
-   * Marks a status for a formula as already normalized.
-   *
-   * @param status - Status of a formula
-   * @return New Status with raised flag
-   */
-  override def markStatus(status: Int): Int = status | 1
+
+  def markStatus(fs: FormulaStore): FormulaStore = fs.newStatus(fs.status | 1)
 }

@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.{Role_Plain, Clause}
 import leo.datastructures.blackboard.{Store, FormulaEvent, FormulaStore, Event}
-import leo.modules.proofCalculi.resolution.Clausification
+import leo.modules.proofCalculi.Clausification
 
 object ClausificationAgent {
   def apply() : Unit = (new ClausificationAgent()).register()

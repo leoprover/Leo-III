@@ -1,4 +1,4 @@
-package leo.modules.proofCalculi.resolution
+package leo.modules.proofCalculi
 
 import leo.datastructures._
 import leo.datastructures.term.Term

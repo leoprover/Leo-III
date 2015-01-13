@@ -1,5 +1,6 @@
 package leo.modules.normalization
 
+import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.impl.Signature
 import leo.datastructures.term._
 import Term._
@@ -25,16 +26,18 @@ object Skolemization extends AbstractNormalize{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = {
-//    println("Skolemize '"+formula.pretty+"'.")
+  override def normalize(formula : Clause) : Clause = {
+    formula.mapLit(_.termMap(internalNormalize(_)))
+  }
+
+  private def internalNormalize(formula: Term): Term = {
     val mini = miniscope(formula)
-//    println("    Miniscope : '"+mini.pretty+"'.")
     val r = skolemize(mini)
-//    println("    Skolemized : '"+r.pretty+"'.")
     r
   }
 
   /**
+   *
    *
    * For each exists quantified Term
    * (Exists(\x. t)) we replace x by a quantifier
@@ -44,6 +47,7 @@ object Skolemization extends AbstractNormalize{
    */
   private def skolemize(formula : Term) : Term = formula match {
       //Remove exist quantifier
+      // TODO: Raising Bound variables is borken. Fix it.
     case Exists(ty :::> t)  =>
       val t1 = skolemize(t)
       val free : List[(Int, Type)] = Simplification.freeVariables(t1).filter{case (a,b) => a > 1}.map{case (a,b) => (a-1,b)}
@@ -159,15 +163,7 @@ object Skolemization extends AbstractNormalize{
 
   }
 
-  /**
-   * Checks if the last two statusbits are raised.
-   * (status & 7) = status & 0..0111  ~~ Selects the last 3 Bits
-   * equals 3 only if the last three bits are set and the 4th not
-   *
-   * @param status - Status of the formula
-   * @return True if a normaliziation is possible, false otherwise
-   */
   override def applicable(status : Int): Boolean = (status & 15) == 7
 
-  override def markStatus(status : Int) : Int = status | 15
+  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 15)
 }

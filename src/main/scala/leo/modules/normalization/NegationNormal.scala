@@ -1,5 +1,6 @@
 package leo.modules.normalization
 
+import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.term._
 import Term._
 import leo.datastructures._
@@ -20,7 +21,11 @@ object NegationNormal extends AbstractNormalize{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula: Term): Term = nnf(rmEq(formula, 1))
+  override def normalize(formula: Clause): Clause = {
+    formula.mapLit{l => l.termMap{t => nnf(rmEq(t, pol(l.polarity)))}}
+  }
+
+  private def pol(b : Boolean) : Int = if(b) 1 else -1
 
   private def rmEq(formula : Term, pol : Int) : Term = formula match {
     case (s <=> t) if pol == 1  => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
@@ -79,5 +84,5 @@ object NegationNormal extends AbstractNormalize{
    */
   override def applicable(status : Int): Boolean = (status & 7) == 3
 
-  override def markStatus(status : Int) : Int = status | 7
+  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 7)
 }

@@ -1,5 +1,7 @@
 package leo.modules.normalization
 
+import leo.datastructures.Clause
+import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.term.Term
 
 /**
@@ -8,7 +10,7 @@ import leo.datastructures.term.Term
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
+trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] {
 
   /**
    *
@@ -22,7 +24,7 @@ trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  def normalize (formula : Term) : Term
+  def normalize (formula : Clause) : Clause
 
   /**
    * Checks whether the given formula is normalizable.
@@ -32,13 +34,6 @@ trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
    */
   def applicable (status : Int) : Boolean
 
-  /**
-   * Marks a status for a formula as already normalized.
-   *
-   * @param status - Status of a formula
-   * @return New Status with raised flag
-   */
-  def markStatus(status : Int) : Int
 }
 
 /**
@@ -49,19 +44,25 @@ trait Normalize extends Function2[Term,Int,Term] with Function1[Term, Term] {
 abstract class AbstractNormalize extends Normalize {
 
   /**
-   * Checks whether the normalization is possible. If it is,
-   * the normalization is applied.
+   * If check is true, then
    *
    * @param formula - Formula that should be normalized.
-   * @param status - Status of the forula
+   * @param check - Status of the forula
    * @return The possibly normalized formula.
    */
-  override def apply(formula : Term, status : Int) : Term = if (applicable(status)) normalize(formula) else formula
+  override def apply(formula : FormulaStore, check : Boolean) : FormulaStore = {
+    if (check) {
+      if (applicable(formula.status)) markStatus(formula.newClause(normalize(formula.clause))) else formula
+    } else
+      markStatus(formula.newClause(normalize(formula.clause)))
+  }
 
   /**
    * Like apply2, but assumes the normalization is applicable
    * @param formula
    * @return
    */
-  override def apply(formula : Term) : Term = normalize(formula)
+  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(formula.newClause(normalize(formula.clause)))
+
+  def markStatus(fs : FormulaStore) : FormulaStore
 }
