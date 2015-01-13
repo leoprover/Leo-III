@@ -47,9 +47,11 @@ class SimplificationTestSuite extends FunSuite {
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
     test("Simplification Test: "+t.pretty) {
-      val st = Simplification(t)
+      val st = Simplification.normalize(termToClause(t)).lits.head.term
       println("Simplicifcation: '" + t.pretty + "' was simplified to '" + st.pretty)
       assert(st == t1, "\nThe simplified Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }
   }
+
+  def termToClause(t : Term) : Clause = Clause.mkClause(List(Literal(t, true)),Derived)
 }

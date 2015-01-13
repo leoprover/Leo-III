@@ -2,7 +2,7 @@ package leo
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
-import leo.datastructures.{LitFalse, LitTrue, === => EQUALS}
+import leo.datastructures.{=== => EQUALS, _}
 import Term.{mkTermApp => ap,mkAtom}
 
 import leo.modules.churchNumerals.Numerals
@@ -68,9 +68,9 @@ class ExecutionTest extends FunSuite {
     //println(test3.pretty)
 
     println("Simplification ...")
-    val test4 = Simplification(test3, 0)
+    val test4 = Simplification.normalize(Clause.mkClause(List(Literal(test3,true)),Derived))
 
     println(" (Resulting term: " + test4.pretty + " )")
-    test4
+    test4.lits.head.term
   }
 }

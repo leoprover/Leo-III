@@ -2,7 +2,7 @@ package leo.modules.normalization
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
-import leo.datastructures.{Forall, &}
+import leo.datastructures._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
@@ -30,10 +30,11 @@ class PrenexTestSuite extends FunSuite {
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     test("Prenex Test:"+t.pretty) {
-      val st = PrenexNormal(t)
+      val st = PrenexNormal.normalize(termToClause(t)).lits.head.term
       println("Prenex: The Term '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
       assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }
   }
 
+  def termToClause(t : Term) : Clause = Clause.mkClause(List(Literal(t, true)),Derived)
 }

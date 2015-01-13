@@ -6,7 +6,6 @@ import org.scalatest.FunSuite
 import leo.modules.CLParameterParser
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import leo.modules.proofCalculi.resolution.Clausification
 import leo.datastructures.{Derived, Clause}
 
 /**
