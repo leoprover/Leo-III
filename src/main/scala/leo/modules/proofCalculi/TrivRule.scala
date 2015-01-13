@@ -9,7 +9,6 @@ import leo.datastructures._
  * @since 1/13/15
  */
 object TrivRule {
-  def apply(c : Clause) : Clause = ???
 
   /**
    * Removes all Literals of the form [ T = F ] or [ F = T ]
@@ -19,8 +18,8 @@ object TrivRule {
    * @return the sequence of literals without trivial contradictions
    */
   def teqf(c : Seq[Literal]) : Seq[Literal] = c filter {l => l.term match{
-    case LitTrue if !l.polarity => false
-    case LitFalse if l.polarity => false
+    case LitTrue() if !l.polarity => false
+    case LitFalse() if l.polarity => false
     case _                      => true
   }}
 
@@ -40,14 +39,19 @@ object TrivRule {
    * @param c - The clause
    * @return true, iff [T = T] or [F = F] is contained.
    */
-  def teqt(c : Clause) : Boolean = c.lits exists  {l => l.term match {
-    case LitTrue if l.polarity => true
-    case LitFalse if !l.polarity => true
-    case _                    => false
-  }}
+  def teqt(c : Clause) : Boolean = if(!c.lits.isEmpty) {
+    c.lits exists  {l => l.term match {
+      case LitTrue() if l.polarity => true
+      case LitFalse() if !l.polarity => true
+      case _                    => false
+    }}
+  }
+  else false
 
   def triv(c : Seq[Literal]) : Seq[Literal] = c match {
     case x +: Seq() => Seq(x)
-    case x +: xs => x +: xs.filter(_ != x)
+    case x +: xs => x +: xs.filter(_.cong(x))
   }
+
+  def triv(c : Clause) : Clause = Clause.mkClause(triv(c.lits),c.implicitBindings, Derived)
 }

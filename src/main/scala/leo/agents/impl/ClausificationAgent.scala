@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.{Role_Plain, Clause}
 import leo.datastructures.blackboard.{Store, FormulaEvent, FormulaStore, Event}
-import leo.modules.proofCalculi.Clausification
+import leo.modules.proofCalculi.{TrivRule, Clausification}
 
 object ClausificationAgent {
   def apply() : Unit = (new ClausificationAgent()).register()
@@ -25,8 +25,13 @@ class ClausificationAgent extends PriorityAgent{
    */
   override protected def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) =>
-      val nc = Clausification.clausify(f.clause)
-      return List(ClausificationTask(f,nc))
+      val nc : Seq[Clause] = Clausification.clausify(f.clause)
+      val fc = nc.filter(!TrivRule.teqt(_))        // Optimized clauses (no [ T = T] or [ T = F]) containing clauses.
+      if(fc.isEmpty)
+        return Nil
+      else
+        Out.trace(s"$name:\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
+        return List(ClausificationTask(f,fc))
     case _ => return Nil
   }
 
@@ -52,7 +57,9 @@ class ClausificationAgent extends PriorityAgent{
    */
   override def run(t: Task): Result = t match {
     case ClausificationTask(dc, nc) =>
-      val nf = nc map {c => dc.randomName().newClause(c).newRole(Role_Plain)}
+      val of = nc map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
+      val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain)}
+      Out.trace(s"$name: Clausify `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
       return new StdResult(nf.toSet, Map.empty, Set(dc))
     case _ =>
       Out.warn(s"$name: Got a wrong task to execute")

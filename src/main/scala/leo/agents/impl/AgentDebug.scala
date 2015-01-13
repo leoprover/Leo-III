@@ -62,7 +62,7 @@ object AgentDebug {
     Scheduler().killAll()
 
     Out.output("After 5s of calculus.")
-    Utility.formulaContext
+    //Utility.formulaContext
   }
 
   def mkFormulaStoreFromTerm(name : String, t : Term, r : Role, context : Context) : FormulaStore = {

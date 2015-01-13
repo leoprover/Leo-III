@@ -4,8 +4,8 @@ package impl
 
 import leo.datastructures.blackboard._
 import leo.datastructures.term.Term
-import leo.modules.proofCalculi.{IdComparison, TermComparison, ParamodStep, PropParamodulation, Paramodulation}
-import leo.datastructures.{Clause, Literal}
+import leo.modules.proofCalculi._
+import leo.datastructures.{Derived, Clause, Literal}
 
 
 object ParamodulationAgent {
@@ -37,7 +37,11 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
       Blackboard().getFormulas(f.context) foreach  {
         bf => para.find(f.clause,bf.clause, comp).fold(()){
           t : (Term, Literal, TermComparison#Substitute) =>
-            q = ParamodTask(f,bf, t._1, t._2, t._3) :: q}
+            val removeLit = bf.newClause(Clause.mkClause(bf.clause.lits.filter{l => ! l.cong(t._2)}, bf.clause.implicitBindings, Derived))
+            val task = ParamodTask(f,removeLit, t._1, t._2, t._3)
+            Out.output(s"[$name]:\n New Task\n  $task")
+            q = task :: q
+        }
       }
       q
     case _ : Event => Nil
@@ -63,15 +67,21 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
-  override def run(t: Task): Result = t match {
-    case ParamodTask(f1, f2, t, l, s) =>
-      val nc = para.exec(f1.clause, f2.clause, t, l , s)
-      val nf = Store(nc, f1.status & f2.status, f1.context)
-      Out.trace(s"[$name]: Paramdoulation step (${f1.pretty}, ${f2.pretty}}) => ${nf.pretty}")
-      new StdResult(Set(nf), Map.empty, Set.empty)
-    case _ : Task =>
-      Out.warn(s"$name: Got a wrong task to execute.")
-      EmptyResult
+  override def run(t: Task): Result = {
+    t match {
+      case ParamodTask(f1, f2, t, l, s) =>
+        val nc = para.exec(f1.clause, f2.clause, t, l, s) // The paramodulation result
+        val tc = TrivRule.triv(TrivRule.teqf(nc)) // The result minus trivial literals
+        if (!TrivRule.teqt(tc)) {
+          // Only add, if the it is not trivially given.TODO: Move te filter to not lock the clauses
+          val nf = Store(tc, f1.status & f2.status, f1.context)
+          Out.output(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}})\n =>\n   ${nc.pretty}\n Optimized\n   ${tc.pretty}")
+          return new StdResult(Set(nf), Map.empty, Set.empty)
+        }
+      case _: Task =>
+        Out.warn(s"$name: Got a wrong task to execute.")
+    }
+    EmptyResult
   }
 }
 
