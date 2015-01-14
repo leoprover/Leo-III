@@ -11,7 +11,7 @@ import leo.datastructures.term.Term.{λ}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Ordered[Clause] with Pretty {
+trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The unique, increasing clause number. */
   def id: Int
   /** The underlying sequence of literals. */
@@ -44,6 +44,19 @@ trait Clause extends Ordered[Clause] with Pretty {
   lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
   lazy val toTerm: Term = mkPolyUnivQuant(implicitBindings, mkDisjunction(lits.map(_.toTerm)))
+
+  // TODO: Optimized on sorted Literals.
+  def cong(that : Clause) : Boolean =
+    (lits forall { l1 =>
+      that.lits exists { l2 =>
+        l1.polarity == l2.polarity && l1.term == l2.term
+      }
+    })||(
+      that.lits forall { l1 =>
+        lits exists { l2 =>
+          l1.polarity == l2.polarity && l1.term == l2.term
+        }
+      })
 
   // TODO: Maybe move this to "utilities"?
   private def mkDisjunction(terms: Seq[Term]): Term = terms match {

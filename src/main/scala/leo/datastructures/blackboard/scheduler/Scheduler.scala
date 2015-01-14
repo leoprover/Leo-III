@@ -1,5 +1,6 @@
 package leo
-package datastructures.blackboard.scheduler
+package datastructures
+package blackboard.scheduler
 
 import leo.datastructures.blackboard.{ContextEvent, FormulaEvent, FormulaStore, Blackboard}
 import leo.datastructures.context.Context
@@ -186,9 +187,19 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
 
         // Update blackboard
-        val newF = result.newFormula().map(Blackboard().addFormula(_))
+        var newF : Set[FormulaStore] = Set()
+        result.newFormula().foreach { f =>
+          Out.output(s"Füge Forme $f ein.")
+          val ins = Blackboard().addNewFormula(f)
+          if (ins)       // Keep track of new Formulas
+            newF = newF+f
+        }
         result.removeFormula().foreach(Blackboard().removeFormula(_))
-        result.updateFormula().foreach { case (oldF, newF) => Blackboard().removeFormula(oldF); Blackboard().addFormula(newF)}
+        result.updateFormula().foreach { case (oF, nF) =>
+          Blackboard().removeFormula(oF)
+          val ins = Blackboard().addNewFormula(nF)
+          if (ins) newF = newF+nF    // Keep track of new formulas
+        }
 
         // Removing Task from Taskset (Therefor remove locks)
         curExec.remove(task)
@@ -197,11 +208,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Notify changes
         // ATM only New and Updated Formulas
         Blackboard().filterAll({a =>
-          newF.foreach{ f => a.filter(FormulaEvent(f))// If the result was right, the formula already existed
+          newF.foreach{ f => a.filter(FormulaEvent(f))  // If the result was new, everyone has to be informed
           }
-          result.updateFormula().foreach{case (_,f) => a.filter(FormulaEvent(f))}
           //TODO Enforce that the two sets are disjoined
-          task.readSet().foreach{f => if(!task.writeSet().contains(f)) a.filter(FormulaEvent(f))}   // Filtes not written elements again.
+          task.writeSet().foreach{f => if(!task.readSet().contains(f)) a.filter(FormulaEvent(f))}   // Filters not written elements again.
           (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })
       }
@@ -216,7 +226,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
       ExecTask.put(a.run(t),t)
-        Out.trace("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
+        //Out.trace("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 

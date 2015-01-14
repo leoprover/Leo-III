@@ -67,10 +67,11 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
-  override def run(t: Task): Result = {
-    t match {
+  override def run(task: Task): Result = {
+    task match {
       case ParamodTask(f1, f2, t, l, s) =>
         val nc = para.exec(f1.clause, f2.clause, t, l, s) // The paramodulation result
+        //Out.output(s"[$name]:\n Claculated\n   ${nc.pretty}\n from\n   $task")
         if (!TrivRule.teqt(nc)) {
           // Only add, if the it is not trivially given.TODO: Move te filter to not lock the clauses
           val nf = Store(nc, f1.status & f2.status, f1.context)
@@ -78,7 +79,7 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
           return new StdResult(Set(nf), Map.empty, Set.empty)
         }
       case _: Task =>
-        Out.warn(s"$name: Got a wrong task to execute.")
+        Out.warn(s"[$name]: Got a wrong task to execute.")
     }
     EmptyResult
   }
@@ -91,7 +92,7 @@ private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : 
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / 10
 
-  override def toString() : String = s"Paramod: ${f1.pretty} with ${f2.pretty} over ${t.pretty}=${l.pretty}}]"
+  override def toString() : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
 }
 
 object ParamodTask {

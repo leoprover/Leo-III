@@ -1,4 +1,6 @@
-package leo.datastructures.blackboard
+package leo
+package datastructures
+package blackboard
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -51,7 +53,7 @@ object Store {
  *
  */
 class FormulaStore(val name : String, val clause : Clause, val role : Role, val status : Int, val context : Context)
-  extends Pretty with Ordered[FormulaStore] {
+  extends Pretty with Ordered[FormulaStore] with HasCongruence[FormulaStore] {
 
   /**
    *
@@ -75,4 +77,7 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
   override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"))."
 
   def compare(that: FormulaStore): Int = this.clause compare that.clause
+
+  /** Returns `true` iff `this` is congruent to `that`. */
+  override def cong(that: FormulaStore): Boolean = clause.cong(that.clause)
 }

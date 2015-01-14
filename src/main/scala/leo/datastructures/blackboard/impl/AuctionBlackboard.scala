@@ -48,6 +48,16 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     f
   }
 
+  override def addNewFormula(formula : FormulaStore) : Boolean = {
+    // TODO: Implement Sets to check containment of Clauses.
+    if (FormulaSet.getAll(formula.context).exists(_.cong(formula)))
+      return false
+    else {
+      FormulaSet.add(formula)
+      return true
+    }
+  }
+
   override def removeFormula(formula: FormulaStore): Boolean = FormulaSet.rm(formula)
 
   override def rmFormulaByName(name: String): Boolean = FormulaSet.rmName(name)

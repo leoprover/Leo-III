@@ -87,7 +87,7 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
       if(TrivRule.teqt(erg.clause)) return new StdResult(Set(), Map(), Set(fstore))
 
       // Else check if something happend and update the formula
-      if (eqClause(fstore.clause,erg.clause)) {
+      if (fstore.clause.cong(erg.clause)) {
         Out.trace(name + " : No change in Normalization.")
         return new StdResult(Set.empty, Map((fstore, erg)), Set.empty)
       } else {
@@ -96,20 +96,6 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
       }
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
-
-  private def eqClause(c1 : Clause, c2 : Clause) : Boolean =
-    (c1.lits forall { l1 =>
-      c2.lits exists { l2 =>
-        l1.polarity == l2.polarity && l1.term == l2.term
-      }
-    })||(
-    c2.lits forall { l1 =>
-      c1.lits exists { l2 =>
-        l1.polarity == l2.polarity && l1.term == l2.term
-      }
-      })
-
-
 
   override protected def toFilter(e: Event): Iterable[Task] = e match {
     case FormulaEvent(event) => if (norm.applicable ( event.status ) ) List (new NormalTask (event) ) else Nil

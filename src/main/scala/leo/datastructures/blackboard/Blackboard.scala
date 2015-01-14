@@ -146,6 +146,16 @@ trait FormulaBlackboard {
   def addFormula(formula : FormulaStore) : FormulaStore
 
   /**
+   * Adds a formula to the Blackboard.
+   * Returns true, if the adding was successful
+   * and false, if the formula already existed.
+   *
+   * @param formula - New to add formula
+   * @return true if the formula was not contained in the blackboard previously
+   */
+  def addNewFormula(formula : FormulaStore) : Boolean
+
+  /**
    * <p>
    * Removes a formula from the Set fo formulas of the Blackboard.
    * </p>
