@@ -18,7 +18,7 @@ object DefExpansion extends AbstractNormalize {
    * @return a normalized formula
    */
   override def normalize(formula: Clause): Clause = {
-    formula.mapLit(_.termMap(_.full_δ_expand))
+    formula.mapLit(_.termMap(_.full_δ_expand).termMap(_.betaNormalize))
   }
 
   /**
@@ -28,5 +28,5 @@ object DefExpansion extends AbstractNormalize {
    */
   override def applicable(status : Int): Boolean = (status & 3) == 1
 
-  def markStatus(fS : FormulaStore) : FormulaStore = fS.newStatus(fS.status | 3)
+  def markStatus(fS : FormulaStore) : FormulaStore = fS.newStatus(fS.status | 2)
 }

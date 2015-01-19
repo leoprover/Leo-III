@@ -23,7 +23,7 @@ import leo.datastructures.term.Term
 object AgentDebug {
   import leo.Main._
   def main(args : Array [String]) {
-    Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
+    Configuration.init(new CLParameterParser(Array("arg0", "-v", "1")))
     Scheduler()
     Blackboard()
 

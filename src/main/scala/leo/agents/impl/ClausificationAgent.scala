@@ -27,11 +27,13 @@ class ClausificationAgent extends PriorityAgent{
     case FormulaEvent(f) =>
       val nc : Seq[Clause] = Clausification.clausify(f.clause)
       val fc = nc.filter(!TrivRule.teqt(_))        // Optimized clauses (no [ T = T] or [ T = F]) containing clauses.
-      if(fc.isEmpty)
+      if(fc.isEmpty) {
         return Nil
-      else
-        Out.trace(s"$name:\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
-        return List(ClausificationTask(f,fc))
+      }
+      else {
+        Out.trace(s"[$name:]\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
+        return List(ClausificationTask(f, fc))
+      }
     case _ => return Nil
   }
 
