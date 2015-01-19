@@ -1,6 +1,7 @@
 package leo
 package agents
 
+import leo.datastructures.Pretty
 import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
 import leo.datastructures.context.Context
 
@@ -352,7 +353,13 @@ abstract class PriorityAgent extends Agent {
  * @author Max Wisniewski
  * @since 6/26/14
  */
-abstract class Task {
+abstract class Task extends Pretty {
+
+  /**
+   * Prints a short name of the task
+   * @return
+   */
+  def name : String
 
   /**
    *

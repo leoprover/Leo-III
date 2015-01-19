@@ -79,6 +79,8 @@ class SingleFormTask(f : FormulaStore) extends Task {
   override def bid(budget : Double) : Double = 1
 
   override val toString : String = "SingleFormulaTask on "+f.toString
+  override val pretty : String = "SingleFormulaTask on "+f.toString
+  override val name : String = "Read-/Write Transformation"
 
   override def equals(other : Any) = other match {
     case o : SingleFormTask => o.getFormula() == f

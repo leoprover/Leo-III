@@ -132,5 +132,8 @@ class ScriptTask(fs : Set[FormulaStore]) extends Task {
   override def readSet(): Set[FormulaStore] = fs
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget
+
+  override val pretty : String = "ScriptTask (BIG)"
+  override val name : String = "Script Call"
 }
 

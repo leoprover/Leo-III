@@ -33,14 +33,15 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
   override protected def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) =>
       if(!f.normalized){
-        Out.output(s"[$name]:\n Got non normalized formula\n  ${f.pretty}.")
+        Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
         return Nil
       }
       // If blocked => Nil
       var q : List[Task] = Nil
       Blackboard().getFormulas(f.context) foreach  {
-        bf => para.find(f.clause,bf.clause, comp).fold(()){
+        bf => para.find(f.clause,bf.clause, comp).fold(()) {
           t : (Term, Literal, TermComparison#Substitute) =>
+            //Out.output(s"[$name]:\n Tested\n   $f\n Got\n  Partner: ${bf}\n  Literal: ${t._2.pretty}\n  Term: ${t._1.pretty}")
             val removeLit = bf.newClause(Clause.mkClause(bf.clause.lits.filter{l => ! l.cong(t._2)}, bf.clause.implicitBindings, Derived))
             val task = ParamodTask(f,removeLit, t._1, t._2, t._3)
             //Out.output(s"[$name]:\n New Task\n  $task")
@@ -94,7 +95,9 @@ private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : 
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / 10
 
-  override def toString() : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
+  override val toString : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
+  override val pretty : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
+  override val name : String = "Paramodulation"
 }
 
 object ParamodTask {

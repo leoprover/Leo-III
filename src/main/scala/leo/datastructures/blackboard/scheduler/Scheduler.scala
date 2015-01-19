@@ -189,20 +189,22 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Update blackboard
         var newF : Set[FormulaStore] = Set()
         result.newFormula().foreach { f =>
-          val ins = Blackboard().addNewFormula(f)
+          val up = f.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
+          val ins = Blackboard().addNewFormula(up)
           if (ins) {
             // Keep track of new Formulas
-            newF = newF + f
-            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $f ein.")
+            newF = newF + up
+            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
           }
         }
         result.removeFormula().foreach(Blackboard().removeFormula(_))
         result.updateFormula().foreach { case (oF, nF) =>
           Blackboard().removeFormula(oF)
-          val ins = Blackboard().addNewFormula(nF)
+          val up = nF.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
+          val ins = Blackboard().addNewFormula(up)
           if (ins) {
-            newF = newF + nF // Keep track of new formulas
-            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $nF  ein.")
+            newF = newF + up // Keep track of new formulas
+            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
           }
         }
 
@@ -285,6 +287,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     override def readSet(): Set[FormulaStore] = Set.empty
     override def writeSet(): Set[FormulaStore] = Set.empty
     override def bid(budget : Double) : Double = 1
+    override def name: String = ???
+
+    override def pretty: String = ???
   }
 }
 

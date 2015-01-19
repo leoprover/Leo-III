@@ -16,7 +16,7 @@ object ClausificationAgent {
  * @author Max Wisniewski
  * @since 12/1/15
  */
-class ClausificationAgent extends PriorityAgent{
+class ClausificationAgent extends PriorityAgent {
   /**
    * Internal method called from the filter method. Specific to the agent.
    *
@@ -31,7 +31,7 @@ class ClausificationAgent extends PriorityAgent{
         return Nil
       }
       else {
-        Out.trace(s"[$name:]\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
+        Out.output(s"[$name:]\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
         return List(ClausificationTask(f, fc))
       }
     case _ => return Nil
@@ -61,8 +61,8 @@ class ClausificationAgent extends PriorityAgent{
     case ClausificationTask(dc, nc) =>
       val of = nc map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
       val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain)}
-      Out.trace(s"$name: Clausify `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
-      return new StdResult(nf.toSet, Map.empty, Set(dc))
+      Out.output(s"$name: Clausify `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
+      return new StdResult(nf.toSet, Map.empty, Set())
     case _ =>
       Out.warn(s"$name: Got a wrong task to execute")
       return EmptyResult
@@ -71,11 +71,15 @@ class ClausificationAgent extends PriorityAgent{
 
 
 private class ClausificationTask(val dc : FormulaStore, val nc : Seq[Clause]) extends Task{
-  override def readSet(): Set[FormulaStore] = Set.empty
-  override def writeSet(): Set[FormulaStore] = Set(dc)
+  override def readSet(): Set[FormulaStore] = Set(dc)
+  override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / 20
 
-  override def toString() : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
+  override val toString : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
+
+  override val pretty : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
+
+  override val name : String = "Clausification"
 }
 
 object ClausificationTask {

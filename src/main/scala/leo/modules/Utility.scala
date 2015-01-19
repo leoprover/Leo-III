@@ -185,7 +185,7 @@ object Utility {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty
+        val form = x.clause.pretty + " ("+x.status+")"
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -225,6 +225,12 @@ object Utility {
     for((a,b) <- Blackboard().getAgents()) {
       println(a.name + " , "+ (if(a.isActive) "active" else "inactive") + " , "+ b +" budget , "+a.openTasks+" tasks")
     }
+  }
+
+  def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(0, f, new StringBuilder()).toString())
+
+  private def derivationString(indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
+    f.origin.foldRight(sb.append("  "*indent).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(indent+1,fs,sbu)}
   }
 }
 

@@ -48,7 +48,7 @@ object AgentDebug {
     NormalClauseAgent.DefExpansionAgent()
     NormalClauseAgent.SimplificationAgent()
 
-    Thread.sleep(1000)
+    Thread.sleep(2000)
     NormalClauseAgent.DefExpansionAgent().setActive(false)
     NormalClauseAgent.SimplificationAgent().setActive(false)
     Out.output("After initial simplification")
@@ -73,6 +73,7 @@ object AgentDebug {
     Out.output("After 10s of calculus.")
     Utility.formulaContext
     Utility.agentStatus()
+    Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
   }
 
   def mkFormulaStoreFromTerm(name : String, t : Term, r : Role, context : Context) : FormulaStore = {

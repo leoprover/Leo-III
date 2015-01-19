@@ -121,6 +121,10 @@ class NormalTask(f : FormulaStore) extends Task {
 
   override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
 
+  override val pretty : String =  "NormalizationTask: Normalize " + f.toString + "."
+
+  override val name : String = "Normalization"
+
   override def equals(other : Any) = other match {
     case o : NormalTask => o.get() == f
     case _              => false
