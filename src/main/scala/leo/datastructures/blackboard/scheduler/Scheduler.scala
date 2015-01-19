@@ -189,16 +189,21 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Update blackboard
         var newF : Set[FormulaStore] = Set()
         result.newFormula().foreach { f =>
-          Out.output(s"Füge Forme $f ein.")
           val ins = Blackboard().addNewFormula(f)
-          if (ins)       // Keep track of new Formulas
-            newF = newF+f
+          if (ins) {
+            // Keep track of new Formulas
+            newF = newF + f
+            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $f ein.")
+          }
         }
         result.removeFormula().foreach(Blackboard().removeFormula(_))
         result.updateFormula().foreach { case (oF, nF) =>
           Blackboard().removeFormula(oF)
           val ins = Blackboard().addNewFormula(nF)
-          if (ins) newF = newF+nF    // Keep track of new formulas
+          if (ins) {
+            newF = newF + nF // Keep track of new formulas
+            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $nF  ein.")
+          }
         }
 
         // Removing Task from Taskset (Therefor remove locks)
@@ -210,8 +215,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         Blackboard().filterAll({a =>
           newF.foreach{ f => a.filter(FormulaEvent(f))  // If the result was new, everyone has to be informed
           }
-          //TODO Enforce that the two sets are disjoined
-          task.writeSet().foreach{f => if(!task.readSet().contains(f)) a.filter(FormulaEvent(f))}   // Filters not written elements again.
+          //task.writeSet().filter{t => !newF.exists(_.cong(t))}.foreach{f => a.filter(FormulaEvent(f))}
           (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })
       }

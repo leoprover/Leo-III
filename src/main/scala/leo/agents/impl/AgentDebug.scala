@@ -23,7 +23,7 @@ import leo.datastructures.term.Term
 object AgentDebug {
   import leo.Main._
   def main(args : Array [String]) {
-    Configuration.init(new CLParameterParser(Array("arg0", "-v", "1")))
+    Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
     Scheduler()
     Blackboard()
 
@@ -45,6 +45,15 @@ object AgentDebug {
     Out.output("After Conjecture")
     Utility.formulaContext
 
+    NormalClauseAgent.DefExpansionAgent()
+    NormalClauseAgent.SimplificationAgent()
+
+    Thread.sleep(1000)
+    NormalClauseAgent.DefExpansionAgent().setActive(false)
+    NormalClauseAgent.SimplificationAgent().setActive(false)
+    Out.output("After initial simplification")
+    Utility.formulaContext()
+
     // Run
 
     val p1 = new ParamodulationAgent(Paramodulation, IdComparison)
@@ -52,9 +61,9 @@ object AgentDebug {
     p1.register()
     p2.register()
     ClausificationAgent()
-    NormalClauseAgent.DefExpansionAgent()
+
     //NormalClauseAgent.NegationNormalAgent()
-    NormalClauseAgent.SimplificationAgent()
+
 
     Utility.agentStatus()
 

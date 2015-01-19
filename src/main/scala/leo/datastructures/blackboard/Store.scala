@@ -63,7 +63,7 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
    *
    * @return true, if normalized
    */
-  def normalized : Boolean = (status & 5)== 5 || (status & 7) == 7
+  def normalized : Boolean = (status & 3)== 3
 
   def newName(nname : String) : FormulaStore = new FormulaStore(nname, clause, role, status, context)
   def newClause(nclause : Clause) : FormulaStore = new FormulaStore(name,nclause, role, status, context)

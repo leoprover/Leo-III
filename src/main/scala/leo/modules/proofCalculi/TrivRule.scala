@@ -48,9 +48,11 @@ object TrivRule {
   }
   else false
 
-  def triv(c : Seq[Literal]) : Seq[Literal] = c match {
-    case x +: Seq() => Seq(x)
-    case x +: xs => x +: xs.filter(_.cong(x))
+  def triv(c : Seq[Literal]) : Seq[Literal] = ltriv(c.toList)
+
+  private def ltriv(c : List[Literal]) : List[Literal] = c match {
+    case Nil => Nil
+    case x :: xs => x :: ltriv(xs.filter(_.cong(x)))
   }
 
   def triv(c : Clause) : Clause = Clause.mkClause(triv(c.lits),c.implicitBindings, Derived)

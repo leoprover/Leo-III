@@ -51,7 +51,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
       that.lits exists { l2 =>
         l1.polarity == l2.polarity && l1.term == l2.term
       }
-    })||(
+    })&&(
       that.lits forall { l1 =>
         lits exists { l2 =>
           l1.polarity == l2.polarity && l1.term == l2.term

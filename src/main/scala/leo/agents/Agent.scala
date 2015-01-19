@@ -229,7 +229,13 @@ abstract class FifoAgent extends Agent {
    *
    * @param nExec - The newly executing tasks
    */
-  override def removeColliding(nExec: Iterable[Task]): Unit = q.synchronized(q.dequeueAll{tbe => nExec.exists(_.collide(tbe))})
+  override def removeColliding(nExec: Iterable[Task]): Unit = q.synchronized(q.dequeueAll{tbe =>
+    nExec.exists{e =>
+      val rem = e.writeSet().intersect(tbe.writeSet()).nonEmpty || e.writeSet().intersect(tbe.writeSet()).nonEmpty || e == tbe // Remove only tasks depending on written (changed) data.
+      if(rem && e != tbe) Out.output(s"The task\n  $tbe\n collided with\n  $e\n and was removed.")
+      rem
+    }
+  })
 }
 
 abstract class PriorityAgent extends Agent {
@@ -321,12 +327,11 @@ abstract class PriorityAgent extends Agent {
    */
   override def removeColliding(nExec: Iterable[Task]): Unit = {
     synchronized {
-      q = q.filterNot { tbe =>
-        if(nExec.exists(_.collide(tbe))){
-          nExec.find(e => e.collide(tbe) && !(e.equals(tbe))).fold{()}{e => Out.trace("Collision detected:\n "+tbe.toString+"\n collided with "+e.toString)}
-          true
-        }else {
-          false
+      q = q.filter { tbe =>
+        nExec.forall{e =>
+          val take = e.writeSet().intersect(tbe.writeSet()).isEmpty && e.writeSet().intersect(tbe.writeSet()).isEmpty && e != tbe
+          if(!take && e != tbe) Out.output(s"The task\n  $tbe\n collided with\n  $e\n and was therefore removed.")
+          take
         }
       }
     }

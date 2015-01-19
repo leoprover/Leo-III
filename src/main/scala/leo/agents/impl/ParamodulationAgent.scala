@@ -32,6 +32,10 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
    */
   override protected def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) =>
+      if(!f.normalized){
+        Out.output(s"[$name]:\n Got non normalized formula\n  ${f.pretty}.")
+        return Nil
+      }
       // If blocked => Nil
       var q : List[Task] = Nil
       Blackboard().getFormulas(f.context) foreach  {
@@ -72,12 +76,10 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
       case ParamodTask(f1, f2, t, l, s) =>
         val nc = para.exec(f1.clause, f2.clause, t, l, s) // The paramodulation result
         //Out.output(s"[$name]:\n Claculated\n   ${nc.pretty}\n from\n   $task")
-        if (!TrivRule.teqt(nc)) {
           // Only add, if the it is not trivially given.TODO: Move te filter to not lock the clauses
           val nf = Store(nc, f1.status & f2.status, f1.context)
-          Out.trace(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}})\n =>\n   ${nc.pretty}")
+          Out.trace(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}[,${l.pretty}]})\n =>\n   ${nc.pretty}")
           return new StdResult(Set(nf), Map.empty, Set.empty)
-        }
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.")
     }

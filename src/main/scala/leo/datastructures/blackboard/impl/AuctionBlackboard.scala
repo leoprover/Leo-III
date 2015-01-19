@@ -7,6 +7,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.impl.TreeContextSet
 import leo.datastructures.term.Term
 import leo.datastructures.{Role, Clause}
+import leo.modules.proofCalculi.TrivRule
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable
@@ -50,6 +51,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   override def addNewFormula(formula : FormulaStore) : Boolean = {
     // TODO: Implement Sets to check containment of Clauses.
+    if(TrivRule.teqt(formula.clause)) return false
     if (FormulaSet.getAll(formula.context).exists(_.cong(formula)))
       return false
     else {
@@ -100,8 +102,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   }
 
 
-
-  override def finishTask(t : Task) : Unit = TaskSet.execTasks.remove(t)
+  /**
+   * Removes a task from the list of currently executed tasks.
+   *
+   * @param t - The finished task.
+   */
+  override def finishTask(t : Task) : Unit = TaskSet.finishTask(t)
 
   override def getRunningTasks() : Iterable[Task] = TaskSet.execTasks.toList
 
@@ -222,7 +228,7 @@ private object TaskSet {
   import scala.collection.mutable.HashSet
 
   var regAgents = mutable.HashMap[Agent,Double]()
-  val execTasks = new HashSet[Task] with mutable.SynchronizedSet[Task]
+  protected[impl] val execTasks = new mutable.HashSet[Task]
 
   private val AGENT_SALARY : Double = 5
 
@@ -239,6 +245,8 @@ private object TaskSet {
   def addAgent(a : Agent) {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
   }
+
+  private[impl] def finishTask(t : Task) = synchronized(execTasks.remove(t))
 
   def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
 
@@ -281,14 +289,15 @@ private object TaskSet {
 //        println("Sorted tasks.")
 
         // 3. Take from beginning to front only the non colliding tasks
-        // The new tasks should be non-colliding with the existing ones, because they are always filtered.
+        // Check the currenlty executing tasks too.
         var newTask: List[(Agent, Task)] = Nil
         for ((price, a, t) <- queue) {
-          if (!newTask.exists { e => t.collide(e._2)}) {
+          if (!newTask.exists { e => t.collide(e._2)} && !collision(t)) {
             val budget = regAgents.apply(a)
             if (budget >= price) {
               // The task is not colliding with previous tasks and agent has enough money
               newTask = (a, t) :: newTask
+              execTasks.add(t)
               regAgents.put(a, budget - price)
             }
           }

@@ -88,17 +88,17 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
 
       // Else check if something happend and update the formula
       if (fstore.clause.cong(erg.clause)) {
-        Out.trace(name + " : No change in Normalization.")
+        Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
         return new StdResult(Set.empty, Map((fstore, erg)), Set.empty)
       } else {
-        Out.trace(name + " : Updated '" + fstore.pretty + "' to '" + erg.pretty + "'.")
+        Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
         return new StdResult(Set.empty, Map((fstore, erg)), Set.empty)
       }
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
   override protected def toFilter(e: Event): Iterable[Task] = e match {
-    case FormulaEvent(event) => if (norm.applicable ( event.status ) ) List (new NormalTask (event) ) else Nil
+    case FormulaEvent(event) => if (norm.applicable ( event.status ) && !event.clause.isEmpty) List (new NormalTask (event) ) else Nil
     case _ => Nil
   }
 
