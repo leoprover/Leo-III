@@ -4,6 +4,7 @@ package agents
 import leo.datastructures.Pretty
 import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
 import leo.datastructures.context.Context
+import leo.modules.output.StatusSZS
 
 import scala.collection.mutable
 
@@ -446,6 +447,13 @@ trait Result {
    * @return
    */
   def updatedContext() : Set[Context]
+
+  /**
+   * List of stati to update
+   *
+   * @return updated stati
+   */
+  def updateStatus() : List[(Context,StatusSZS)]
 }
 
 /**
@@ -460,6 +468,7 @@ class StdResult(nf : Set[FormulaStore], uf : Map[FormulaStore,FormulaStore], rf 
   override def updateFormula() : Map[FormulaStore,FormulaStore] = uf
   override def removeFormula() : Set[FormulaStore] = rf
   override def updatedContext() : Set[Context] = Set.empty
+  override def updateStatus() : List[(Context,StatusSZS)] = List()
 }
 
 object EmptyResult extends Result{
@@ -467,4 +476,5 @@ object EmptyResult extends Result{
   override def updateFormula() : Map[FormulaStore,FormulaStore] = Map.empty
   override def removeFormula() : Set[FormulaStore] = Set.empty
   override def updatedContext(): Set[Context] = Set.empty
+  override def updateStatus(): List[(Context, StatusSZS)] = List()
 }

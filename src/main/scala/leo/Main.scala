@@ -1,9 +1,12 @@
 package leo
 
 
+import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
-import leo.modules.{SZSOutput, CLParameterParser}
+import leo.datastructures.context.Context
+import leo.modules.output.logger.Out
+import leo.modules.{Utility, SZSOutput, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.SZS_Timeout
 import leo.modules.Phase._
@@ -42,9 +45,10 @@ object Main {
     while(it.hasNext && r) {
       r = it.next().execute()
     }
+    deferredKill.kill()
 
-
-//    deferredKill.kill()
+    Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${Configuration.PROBLEMFILE}")
+    if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
   }
 
 

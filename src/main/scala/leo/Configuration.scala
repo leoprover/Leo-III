@@ -21,6 +21,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_THREADCOUNT = "n"
   private val PARAM_VERBOSITY = "v"
   private val PARAM_TIMEOUT = "t"
+  private val PARAM_PROOFOBJECT = "p"
 
   def init(parameterParser: CLParameterParser): Unit = configMap match {
     case null => {
@@ -57,6 +58,8 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+
+  lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
 
   import leo.datastructures.{LitWeight_TermSize, CLWeight_LitWeightSum, SimpleOrdering, CLOrdering_Lex_Weight_Age_Origin}
   lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_LitWeightSum

@@ -1,6 +1,7 @@
 package leo.datastructures.blackboard
 
 import leo.datastructures.context.Context
+import leo.modules.output.StatusSZS
 
 /**
  * Marker Interface for any Event for the Agents
@@ -50,5 +51,16 @@ object ContextEvent {
   def unapply(e : Event) : Option[Context] = e match {
     case c : ContextEvent => Some(c.getC)
     case _    => None
+  }
+}
+
+private class StatusEvent(val c : Context, val s : StatusSZS) extends Event {}
+
+object StatusEvent {
+  def apply(c : Context, s : StatusSZS) : Event = new StatusEvent(c,s)
+
+  def unapply(e : Event) : Option[(Context, StatusSZS)] = e match {
+    case c : StatusEvent => Some(c.c, c.s)
+    case _  => None
   }
 }

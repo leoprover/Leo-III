@@ -2,8 +2,9 @@ package leo
 package datastructures
 package blackboard.scheduler
 
-import leo.datastructures.blackboard.{ContextEvent, FormulaEvent, FormulaStore, Blackboard}
+import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
+import leo.modules.output.{SZS_Theorem, StatusSZS}
 
 import scala.collection.mutable
 import scala.collection.mutable.HashSet
@@ -188,11 +189,17 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
         // Update blackboard
         var newF : Set[FormulaStore] = Set()
+        var closed : List[(Context,StatusSZS)] = List()
+
         result.newFormula().foreach { f =>
           val up = f.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
             // Keep track of new Formulas
+            if (up.clause.isEmpty){
+              closed = (up.context,SZS_Theorem) :: closed
+              Blackboard().forceStatus(up.context)(SZS_Theorem)
+            }
             newF = newF + up
             Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
           }
@@ -203,6 +210,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           val up = nF.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
+            if (up.clause.isEmpty){
+              closed = (up.context,SZS_Theorem) :: closed
+              Blackboard().forceStatus(up.context)(SZS_Theorem)
+            }
             newF = newF + up // Keep track of new formulas
             Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
           }
@@ -217,6 +228,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         Blackboard().filterAll({a =>
           newF.foreach{ f => a.filter(FormulaEvent(f))  // If the result was new, everyone has to be informed
           }
+          closed.foreach{f => a.filter(StatusEvent(f._1,f._2))}
           //task.writeSet().filter{t => !newF.exists(_.cong(t))}.foreach{f => a.filter(FormulaEvent(f))}
           (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })
@@ -278,6 +290,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     override def updateFormula(): Map[FormulaStore, FormulaStore] = ???
     override def removeFormula(): Set[FormulaStore] = ???
     override def updatedContext(): Set[Context] = ???
+    override def updateStatus(): List[(Context, StatusSZS)] = ???
   }
 
   /**

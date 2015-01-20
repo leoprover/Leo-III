@@ -3,6 +3,7 @@ package leo.datastructures.blackboard
 import leo.agents.{Task, Agent}
 import leo.datastructures.context.Context
 import leo.datastructures.{Clause, Role}
+import leo.modules.output.StatusSZS
 import scala.collection.mutable
 
 // Singleton Blackboards
@@ -32,7 +33,7 @@ object Blackboard extends Function0[Blackboard] {
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends TaskOrganize with FormulaBlackboard with MessageBlackboard{
+trait Blackboard extends TaskOrganize with FormulaBlackboard with MessageBlackboard with StatusBlackboard {
 
 }
 
@@ -249,6 +250,40 @@ trait FormulaBlackboard {
    * Clears the complete blackboard
    */
   def clear() : Unit
+}
+
+/**
+ * Blackboard to manage SZS stati in different contexts.
+ */
+trait StatusBlackboard {
+
+  /**
+   * Updates the SZS-Status in a given context, if it is
+   * not yet known.
+   *
+   * @param c - The context to update
+   * @param s - The new status
+   * @return true, if the status was defined yet.
+   */
+  def updateStatus(c : Context)(s : StatusSZS) : Boolean
+
+  /**
+   * Forces the SZS Status in a context to a new one.
+   * Does not fail, if a status is already set.
+   *
+   * @param c - The context to update
+   * @param s - The status to set
+   */
+  def forceStatus(c : Context)(s : StatusSZS)
+
+  /**
+   * Returns to a given context the set status.
+   * None if no status was previously set.
+   *
+   * @param c - The searched context
+   * @return Some(status) if set, else None.
+   */
+  def getStatus(c : Context) : Option[StatusSZS]
 }
 
 /**

@@ -7,6 +7,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.impl.TreeContextSet
 import leo.datastructures.term.Term
 import leo.datastructures.{Role, Clause}
+import leo.modules.output.StatusSZS
 import leo.modules.proofCalculi.TrivRule
 import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
@@ -173,7 +174,41 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @return All formulas in `c` satisfying `p`
    */
   override def getAll(c: Context)(p: (FormulaStore) => Boolean): Iterable[FormulaStore] = FormulaSet.getAll(c).filter(p)
+
+  private val szsSet : mutable.Map[Context, StatusSZS] = new mutable.HashMap[Context, StatusSZS]()
+
+  /**
+   * Updates the SZS-Status in a given context, if it is
+   * not yet known.
+   *
+   * @param c - The context to update
+   * @param s - The new status
+   * @return true, if the status was defined yet.
+   */
+  override def updateStatus(c: Context)(s: StatusSZS): Boolean = szsSet.synchronized{szsSet.get(c) match {
+    case Some(a) => return false
+    case None => szsSet.put(c,s); return true
+  }}
+
+  /**
+   * Forces the SZS Status in a context to a new one.
+   * Does not fail, if a status is already set.
+   *
+   * @param c - The context to update
+   * @param s - The status to set
+   */
+  override def forceStatus(c: Context)(s: StatusSZS): Unit = szsSet.synchronized(szsSet.put(c,s))
+
+  /**
+   * Returns to a given context the set status.
+   * None if no status was previously set.
+   *
+   * @param c - The searched context
+   * @return Some(status) if set, else None.
+   */
+  override def getStatus(c: Context): Option[StatusSZS] = szsSet.synchronized(szsSet.get(c))
 }
+
 
 /**
  * Stores the formulas in first in a map from name to the @see{FormulaStore}
