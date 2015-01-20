@@ -9,6 +9,8 @@ import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.modules.output.{Output, SZS_SyntaxError, SZS_InputError, StatusSZS}
 
+import scala.collection.immutable.HashSet
+
 /**
  * Stuff to do smth.
  *
@@ -227,11 +229,22 @@ object Utility {
     }
   }
 
-  def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(0, 0, f, new StringBuilder()).toString())
+  def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
 
-  private def derivationString(origin: Int, indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append("  "*indent).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin, indent+1,fs,sbu)}
+  private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
+    f.origin.foldRight(sb.append(downList(origin, indent)).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
   }
+
+  private def downList(origin: Set[Int], indent : Int) : String = {
+    val m = if(origin.isEmpty) 0 else origin.max
+    List.range(0, indent).map { x => origin.contains(x) match {
+      case true if x < m => " | "
+      case true => " |-"
+      case false if m < x => "---"
+      case false => "   "
+    }}.foldRight(""){(a,b) => a+b}
+  }
+
 }
 
 class SZSException(val status : StatusSZS) extends RuntimeException("SZS status "+status.output)
