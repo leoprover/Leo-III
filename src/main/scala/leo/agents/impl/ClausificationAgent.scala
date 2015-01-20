@@ -31,7 +31,7 @@ class ClausificationAgent extends PriorityAgent {
         return Nil
       }
       else {
-        Out.output(s"[$name:]\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
+        Out.trace(s"[$name:]\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
         return List(ClausificationTask(f, fc))
       }
     case _ => return Nil
@@ -61,7 +61,7 @@ class ClausificationAgent extends PriorityAgent {
     case ClausificationTask(dc, nc) =>
       val of = nc map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
       val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain)}
-      Out.output(s"$name: Clausify `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
+      Out.trace(s"$name: Clausify `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
       return new StdResult(nf.toSet, Map.empty, Set())
     case _ =>
       Out.warn(s"$name: Got a wrong task to execute")

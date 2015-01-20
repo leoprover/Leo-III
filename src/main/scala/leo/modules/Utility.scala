@@ -227,10 +227,10 @@ object Utility {
     }
   }
 
-  def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(0, f, new StringBuilder()).toString())
+  def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(0, 0, f, new StringBuilder()).toString())
 
-  private def derivationString(indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append("  "*indent).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(indent+1,fs,sbu)}
+  private def derivationString(origin: Int, indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
+    f.origin.foldRight(sb.append("  "*indent).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin, indent+1,fs,sbu)}
   }
 }
 

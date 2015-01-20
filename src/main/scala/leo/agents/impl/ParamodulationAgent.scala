@@ -41,9 +41,8 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
       Blackboard().getFormulas(f.context) foreach  {
         bf => para.find(f.clause,bf.clause, comp).fold(()) {
           t : (Term, Literal, TermComparison#Substitute) =>
-            //Out.output(s"[$name]:\n Tested\n   $f\n Got\n  Partner: ${bf}\n  Literal: ${t._2.pretty}\n  Term: ${t._1.pretty}")
-            val removeLit = bf.newClause(Clause.mkClause(bf.clause.lits.filter{l => ! l.cong(t._2)}, bf.clause.implicitBindings, Derived))
-            val task = ParamodTask(f,removeLit, t._1, t._2, t._3)
+            //Out.output(s"[$name]:\n Tested\n   $f\n Got\n  Partner: ${bf}\n  Literal: ${t._2.pretty}\n  Term: ${t._1.pretty}"
+            val task = ParamodTask(f,bf, t._1, t._2, t._3)
             //Out.output(s"[$name]:\n New Task\n  $task")
             q = task :: q
         }
@@ -75,7 +74,8 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
   override def run(task: Task): Result = {
     task match {
       case ParamodTask(f1, f2, t, l, s) =>
-        val nc = para.exec(f1.clause, f2.clause, t, l, s) // The paramodulation result
+        val removeLit = Clause.mkClause(f2.clause.lits.filter{l1 => ! l1.cong(l)}, f2.clause.implicitBindings, Derived)
+        val nc = para.exec(f1.clause, removeLit, t, l, s) // The paramodulation result
         //Out.output(s"[$name]:\n Claculated\n   ${nc.pretty}\n from\n   $task")
           // Only add, if the it is not trivially given.TODO: Move te filter to not lock the clauses
           val nf = Store(nc, f1.status & f2.status, f1.context)
