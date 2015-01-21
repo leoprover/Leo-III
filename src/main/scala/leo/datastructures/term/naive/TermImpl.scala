@@ -42,6 +42,9 @@ sealed abstract class TermImpl extends Term {
 
   def replace(what: Term, by: Term): Term = ???
   def replaceAt(at: Position, by: Term): Term = ???
+
+  /** Eta-contract term on root level if possible */
+  def topEtaContract = ???
 }
 
 ///////////////////

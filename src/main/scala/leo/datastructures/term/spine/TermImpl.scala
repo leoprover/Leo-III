@@ -36,6 +36,7 @@ protected[term] sealed abstract class TermImpl(private var _locality: Locality) 
     else
      erg
   }
+  lazy val topEtaContract: Term = this
 
   def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
 //    this.normalize(subst, Subst.id)
@@ -351,6 +352,25 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 //    }
 
   }
+  override lazy val topEtaContract: Term = {
+    body match {
+      case Root(h,sp) if sp != SNil => sp.last match {
+        case Left(t) if t.isVariable => t match {
+          case Root(BoundIndex(_,sc),SNil) if sc == 1 && !Root(h,sp.init).looseBounds.contains(1) => Root(h,sp.init)
+          case _ => this
+        }
+        case _ => this
+      }
+      case Redex(rx,sp) if sp != SNil => sp.last match {
+        case Left(t) if t.isVariable => t match {
+          case Root(BoundIndex(_,sc),SNil) if sc == 1 && !Redex(rx,sp.init).looseBounds.contains(1) => Redex(rx,sp.init)
+          case _ => this
+        }
+        case _ => this
+      }
+      case _ => this
+    }
+  }
 
 
   /** Pretty */
@@ -609,6 +629,9 @@ protected[spine] sealed abstract class Spine extends Pretty {
   /** Drop n arguments from spine, fails with IllegalArgumentException if n > length */
   def drop(n: Int): Spine
 
+  def last: Either[Term, Type]
+  def init: Spine
+
   def replace(what: Term, by: Term): Spine
   def replaceAt(at: Position, by: Term): Spine = replaceAt0(at.posHead, at.tail, by)
 
@@ -649,6 +672,8 @@ protected[spine] case object SNil extends Spine {
     case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
   }
 
+  val last = throw new IllegalArgumentException("Trying to access last element of Nil")
+  val init = throw new IllegalArgumentException("Trying to access init of Nil")
   def replace(what: Term, by: Term): Spine = SNil
   def replaceAt0(pos: Int, tail: Position, by: Term): Spine = SNil
 
@@ -694,6 +719,15 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
   def drop(n: Int) = n match {
     case 0 => this
     case _ => tail.drop(n-1)
+  }
+  lazy val last = tail match {
+    case SNil => Left(hd)
+    case _ => tail.last
+  }
+  lazy val init = tail match {
+    case App(_,SNil) => App(hd, SNil)
+    case TyApp(_,SNil) => App(hd, SNil)
+    case _ => App(hd, tail.init)
   }
 
   def replace(what: Term, by: Term): Spine = if (hd == what)
@@ -746,7 +780,16 @@ protected[spine] case class TyApp(hd: Type, tail: Spine) extends Spine {
     case 0 => this
     case _ => tail.drop(n-1)
   }
+  lazy val last = tail match {
+    case SNil => Right(hd)
+    case _ => tail.last
+  }
 
+  lazy val init = tail match {
+    case App(_,SNil) => TyApp(hd, SNil)
+    case TyApp(_,SNil) => TyApp(hd, SNil)
+    case _ => TyApp(hd, tail.init)
+  }
   def replace(what: Term, by: Term): Spine = TyApp(hd, tail.replace(what,by))
   def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
     case 1 => throw new IllegalArgumentException("Trying to replace term inside of type.")
@@ -788,6 +831,8 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
   def ++(sp: Spine) = ???
 
   def drop(n: Int) = ???
+  def last = ???
+  def init = ???
 
   def replace(what: Term, by: Term): Spine = ???
   def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = ???
