@@ -130,8 +130,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     pauseFlag = false
     ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
     exe.shutdownNow()
+    curExec.clear()
+    AgentWork.executingAgents() foreach(_.kill())
+    AgentWork.clear()
     sT.interrupt()
     s.notifyAll()
+    curExec.clear()
   }
 
   var pauseFlag = true
@@ -145,6 +149,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     pause()
     curExec.clear()
     exe.shutdownNow()
+    AgentWork.executingAgents() foreach(_.kill())
+    AgentWork.clear()
   }
 
   protected[scheduler] def start() {
@@ -261,7 +267,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
+      AgentWork.inc(a)
       ExecTask.put(a.run(t),t)
+      AgentWork.dec(a)
         //Out.trace("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
@@ -298,6 +306,31 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         this.notifyAll()
       }
     }
+  }
+
+  private object AgentWork {
+    protected val agentWork : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
+
+    /**
+     * Increases the amount of work of an agent by 1.
+     *
+     * @param a - Agent that executes a task
+     * @return the updated number of task of the agent.
+     */
+    def inc(a : Agent) : Int = synchronized(agentWork.get(a) match {
+      case Some(v)  => agentWork.update(a,v+1); return v+1
+      case None     => agentWork.put(a,1); return 1
+    })
+
+    def dec(a : Agent) : Int = synchronized(agentWork.get(a) match {
+      case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
+      case Some(v)  if v == 1 => agentWork.remove(a); return 0
+      case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
+    })
+
+    def executingAgents() : Iterable[Agent] = synchronized(agentWork.keys)
+
+    def clear() = synchronized(agentWork.clear())
   }
 
   /**

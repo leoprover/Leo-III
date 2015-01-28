@@ -79,6 +79,14 @@ abstract class Agent {
     setActive(true)
   }
 
+  /**
+   * This method is called when an agent is killed by the scheduler
+   * during execution. This method does standardized nothing.
+   *
+   * In the case an external Process / Thread is created during the
+   * execution of the agent, this method can clean up the processes.
+   */
+  def kill(): Unit = {}
 
   /*
 --------------------------------------------------------------------------------------------
