@@ -40,6 +40,12 @@ object Scheduler {
    * @return
    */
   def apply() : Scheduler = apply(5)
+
+  def working() : Boolean = {
+    if (s == null) return false
+    // s exists
+    s.working()
+  }
 }
 
 
@@ -74,6 +80,8 @@ trait Scheduler {
   def clear() : Unit
 
   protected[scheduler] def start()
+
+  def working() : Boolean
 }
 
 
@@ -100,6 +108,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private var sW : Thread = null
 
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
+
+  def working() : Boolean = {
+    this.synchronized(
+      return w.work || curExec.nonEmpty
+    )
+  }
 
   override def isTerminated() : Boolean = endFlag
 
@@ -182,11 +196,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Writes a result back to the blackboard
    */
   private class Writer extends Runnable{
+    var work : Boolean = false
+
     override def run(): Unit = while(!endFlag) {
       val (result,task) = ExecTask.get()
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
-
+        work = true
         // Update blackboard
         var newF : Set[FormulaStore] = Set()
         var closed : List[(Context,StatusSZS)] = List()
@@ -233,6 +249,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })
       }
+      work = false
+      Blackboard().forceCheck()
     }
   }
 

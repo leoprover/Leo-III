@@ -76,6 +76,9 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     freshAgent(a)
   }
 
+  override def unregisterAgent(a: Agent): Unit = {
+    TaskSet.removeAgent(a)
+  }
 
   /**
    * Blocking Method to get a fresh Task.
@@ -207,6 +210,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @return Some(status) if set, else None.
    */
   override def getStatus(c: Context): Option[StatusSZS] = szsSet.synchronized(szsSet.get(c))
+
+  /**
+   * Allows a force check for new Tasks. Necessary for the DoneEvent to be
+   * thrown correctly.
+   */
+  override protected[blackboard] def forceCheck(): Unit = TaskSet.synchronized(TaskSet.notifyAll())
 }
 
 
@@ -281,6 +290,10 @@ private object TaskSet {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
   }
 
+  def removeAgent(a : Agent): Unit = {
+    this.synchronized(regAgents.remove(a))
+  }
+
   private[impl] def finishTask(t : Task) = synchronized(execTasks.remove(t))
 
   def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
@@ -309,7 +322,10 @@ private object TaskSet {
         var r: List[(Double, Agent, Task)] = Nil
         while (r.isEmpty) {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
-          if (r.isEmpty) this.wait()
+          if (r.isEmpty) {
+            if(!Scheduler.working()) Blackboard().filterAll{a => a.filter(DoneEvent())}
+            this.wait()
+          }
         }
 
 //        println("Got tasks and ready to auction.")

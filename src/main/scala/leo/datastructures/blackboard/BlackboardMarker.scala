@@ -64,3 +64,9 @@ object StatusEvent {
     case _  => None
   }
 }
+
+class DoneEvent() extends Event {}
+
+object DoneEvent {
+  def apply() = new DoneEvent()
+}

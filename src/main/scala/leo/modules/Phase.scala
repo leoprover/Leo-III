@@ -3,7 +3,7 @@ package modules
 
 import leo.agents.{EmptyResult, Result, Task, FifoAgent}
 import leo.agents.impl.{UtilAgents, ClausificationAgent, ParamodulationAgent, NormalClauseAgent}
-import leo.datastructures.blackboard.{StatusEvent, Event}
+import leo.datastructures.blackboard.{Blackboard, DoneEvent, StatusEvent, Event}
 import leo.modules.output.{SZS_Theorem, SZS_Error}
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
 
@@ -52,15 +52,28 @@ object LoadPhase extends Phase{
 }
 
 object PreprocessPhase extends Phase {
+  var finish : Boolean = false
+
   override def execute(): Boolean = {
     NormalClauseAgent.DefExpansionAgent()
     NormalClauseAgent.SimplificationAgent()
 
-    Thread.sleep(2000)
+    Wait.register()
+    synchronized(while(!finish) wait())
 
     NormalClauseAgent.DefExpansionAgent().setActive(false)
     NormalClauseAgent.DefExpansionAgent().setActive(false)
+    Blackboard().unregisterAgent(Wait)
     return true
+  }
+
+  private object Wait extends FifoAgent{
+    override protected def toFilter(event: Event): Iterable[Task] = event match {
+      case d : DoneEvent => finish = true; PreprocessPhase.synchronized(PreprocessPhase.notifyAll());List()
+      case _ => List()
+    }
+    override def name: String = "PreprocessPhaseTerminator"
+    override def run(t: Task): Result = EmptyResult
   }
 }
 
@@ -75,6 +88,7 @@ object ParamodPhase extends Phase {
     WaitForProof.register()
     ClausificationAgent()
     synchronized(while(!finish)wait())
+    Blackboard().unregisterAgent(WaitForProof)
     return true
   }
 
@@ -83,12 +97,13 @@ object ParamodPhase extends Phase {
       case StatusEvent(c,s) =>
         if (c.parentContext == null && s == SZS_Theorem) {
           finish = true
-          ParamodPhase.synchronized(ParamodPhase.notify())
+          ParamodPhase.synchronized(ParamodPhase.notifyAll())
           List()
         } else List()
+      case d : DoneEvent => finish = true; ParamodPhase.synchronized(ParamodPhase.notifyAll()); List()
       case _ => List()
     }
-    override def name: String = "DebugControlAgent"
+    override def name: String = "ParamodPhaseTerminator"
     override def run(t: Task): Result = EmptyResult
   }
 }
