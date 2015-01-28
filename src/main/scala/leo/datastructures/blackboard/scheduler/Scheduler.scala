@@ -7,7 +7,6 @@ import leo.datastructures.context.Context
 import leo.modules.output.{SZS_Theorem, StatusSZS}
 
 import scala.collection.mutable
-import scala.collection.mutable.HashSet
 import java.util.concurrent.Executors
 
 
