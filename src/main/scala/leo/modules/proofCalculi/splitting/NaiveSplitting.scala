@@ -93,7 +93,18 @@ object NaiveSplitting extends Split {
   protected[splitting] def createClause(l : Literal, cl : Seq[Literal], imp : Seq[Type]) : Clause = Clause.mkDerivedClause(l +: cl, imp)
 }
 
-
+/**
+ * Tries to split a Clause s.t. it is more Horn Afterwards.
+ *
+ *      A,B  --->  C,D
+ *  --------------------------
+ *    A -> C     |   B ---> D
+ *
+ *    Where all 4 should be strictly decreasing.
+ *
+ *
+ * @param f - Weight to split the literals.
+ */
 class HornSplit(f : Literal => Int) extends Split {
 
   val name = "GenericHornSplit"
