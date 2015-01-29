@@ -24,11 +24,11 @@ class SplittingAgent (s : Split) extends PriorityAgent{
   private var remainingSplits : Int = 1     // In the first test we limit the number of splits
 
   override protected def toFilter(event: Event): Iterable[Task] = {
-    synchronized(if(remainingSplits == 0) return List())
+    synchronized(if(remainingSplits == 0) return Nil)
     event match {
       case FormulaEvent(f)  => s.split(f.clause) match {
         case Some((cs, k))  => return List(SplitTask(f,cs,k))
-        case None           => Nil
+        case None           => return Nil
       }
       case _  => Nil
     }
@@ -56,7 +56,8 @@ private class SplitTask(val o : FormulaStore, val cs : Seq[Clause], val k : Spli
   override def name: String = "Split"
   override def writeSet(): Set[FormulaStore] = Set()
   override def readSet(): Set[FormulaStore] = Set(o)
-  override def bid(budget: Double): Double = budget / 2
+  private val factor : Double = {val f = cs.maxBy(_.weight).weight / o.clause.weight; if(f > 1 || f<0) 0 else 1-f}
+  override def bid(budget: Double): Double = budget * factor                                                  // Der Split mit der kleinsten größten Klausel wird bevorhzugt
 
   override def contextWriteSet() : Set[Context] = Set(o.context)    // TODO: Look for on filtering
 

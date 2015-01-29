@@ -192,7 +192,6 @@ abstract class FifoAgent extends Agent {
       }
     }
     if(done) {
-//      println(name+" : Has now "+q.size+" task queued.")
       Blackboard().signalTask()
     }
   }

@@ -147,7 +147,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def clear() : Unit = {
     pause()
     curExec.clear()
-    exe.shutdownNow()
     AgentWork.executingAgents() foreach(_.kill())
     AgentWork.clear()
   }

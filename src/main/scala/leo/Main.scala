@@ -1,6 +1,7 @@
 package leo
 
 
+import leo.agents.impl.ContextControlAgent
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.agents.impl.UtilAgents._
@@ -37,19 +38,24 @@ object Main {
     val deferredKill : DeferredKill = (new DeferredKill(interval, Double.PositiveInfinity))
     deferredKill.start()
 
-    // Start scheduler
-    Scheduler().signal()
+    ContextControlAgent.register()
 
-    val it = getStdPhases.iterator
+    // Create Scheduler
+    Scheduler()
+
+    val it = getSplitFirst.iterator
     var r = true
     while(it.hasNext && r) {
-      r = it.next().execute()
+      val phase = it.next()
+      Out.info(s"[Phase]:\n  Starting ${phase.name}")
+      r = phase.execute()
+      Out.info(s"[Phase]:\n  Ended ${phase.name}")
     }
     deferredKill.kill()
 
     Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
-    formulaContext()
+    //formulaContext()
   }
 
 
@@ -89,6 +95,7 @@ object Main {
           } finally {
             if(!exit) {
               Out.info("Leo is still alive.")
+              agentStatus()
               remain -= interval
             }
           }

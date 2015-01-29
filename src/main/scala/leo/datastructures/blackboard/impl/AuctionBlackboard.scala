@@ -124,6 +124,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override protected[blackboard] def freshAgent(a: Agent): Unit = {
     // ATM only formulas trigger events
     getFormulas.foreach{fS => a.filter(FormulaEvent(fS))}
+    forceCheck()
   }
 
   override def signalTask() : Unit = TaskSet.signalTask()
@@ -324,7 +325,7 @@ private object TaskSet {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
           if (r.isEmpty) {
             if(!Scheduler.working()) Blackboard().filterAll{a => a.filter(DoneEvent())}
-            this.wait()
+            TaskSet.wait()
           }
         }
 
