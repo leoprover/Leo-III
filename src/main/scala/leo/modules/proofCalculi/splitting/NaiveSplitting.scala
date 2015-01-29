@@ -103,7 +103,7 @@ class HornSplit(f : Literal => Int) extends Split {
     if(neg.size != 1) return None
     val antecedent = neg.head
     val (l,r) = halfWeight(pos,f)
-
+    if (l.isEmpty || r.isEmpty) return None   // No split available
     // TODO : Check for independency
     val leftClause = Clause.mkClause(antecedent +: l, c.implicitBindings, Derived)
     val rightClause = Clause.mkClause(antecedent +: r, c.implicitBindings, Derived)
@@ -125,7 +125,7 @@ class HornSplit(f : Literal => Int) extends Split {
   protected[splitting] def halfWeight[A](s : Seq[A], f : A => Int) : (Seq[A],Seq[A])= {
     val goal = s.foldLeft(0){(a,x) => a+f(x)} / 2
     // TODO: Sorting for good approximation
-    s.foldRight((0,(List.empty[A],List.empty[A]))){case (e,(size,(a,b))) => if (size > goal) (size,(a, e+: b)) else (size+f(e),(e +: a,b))}._2
+    s.foldRight((0,(List.empty[A],List.empty[A]))){case (e,(size,(a,b))) => if (size >= goal) (size,(a, e+: b)) else (size+f(e),(e +: a,b))}._2
   }
 }
 

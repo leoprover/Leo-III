@@ -21,12 +21,17 @@ class SplittingAgent (s : Split) extends PriorityAgent{
   override def name: String = s"${s.name}-Agent"
 
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
-    case FormulaEvent(f)  => s.split(f.clause) match {
-      case Some((cs, k))  => return List(SplitTask(f,cs,k))
-      case None           => Nil
+  private var remainingSplits : Int = 1     // In the first test we limit the number of splits
+
+  override protected def toFilter(event: Event): Iterable[Task] = {
+    synchronized(if(remainingSplits == 0) return List())
+    event match {
+      case FormulaEvent(f)  => s.split(f.clause) match {
+        case Some((cs, k))  => return List(SplitTask(f,cs,k))
+        case None           => Nil
+      }
+      case _  => Nil
     }
-    case _  => Nil
   }
 
 
@@ -40,7 +45,9 @@ class SplittingAgent (s : Split) extends PriorityAgent{
       // The split was successful
       val children = c.childContext.toList
       val res = cs.zip(children) map {case (clau, con) => o.randomName().newClause(clau).newContext(con).newRole(Role_Plain)}
-      new StdResult(res.toSet, Map(), Set())
+      synchronized(remainingSplits = remainingSplits - 1)
+      Out.output(s"[$name]:\n Splitted the context ${c.contextID} over formula\n   ${o.pretty}\n into\n    ${res.map(_.pretty).mkString("\n    ")}")
+      return new StdResult(res.toSet, Map(), Set())
     case _                 => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); EmptyResult
   }
 }

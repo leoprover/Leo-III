@@ -5,6 +5,7 @@ import leo.agents.{EmptyResult, Result, Task, FifoAgent}
 import leo.agents.impl._
 import leo.datastructures.blackboard.{Blackboard, DoneEvent, StatusEvent, Event}
 import leo.modules.output.{SZS_Theorem, SZS_Error}
+import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
 
 
@@ -84,8 +85,11 @@ object ParamodPhase extends Phase {
   override def execute(): Boolean = {
     val p1 = new ParamodulationAgent(Paramodulation, IdComparison)
     val p2 = new ParamodulationAgent(PropParamodulation, IdComparison)
+    val sp = new SplittingAgent(ClauseHornSplit)
+
     p1.register()
     p2.register()
+    sp.register()
     WaitForProof.register()
     ClausificationAgent()
     synchronized(while(!finish)wait())
