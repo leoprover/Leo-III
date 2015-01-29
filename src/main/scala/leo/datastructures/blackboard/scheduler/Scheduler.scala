@@ -217,10 +217,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
             // Keep track of new Formulas
-            if (up.clause.isEmpty){
-              closed = (up.context,SZS_Theorem) :: closed
-              Blackboard().forceStatus(up.context)(SZS_Theorem)
-            }
             newF = newF + up
             Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
           }
@@ -231,13 +227,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           val up = nF.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
-            if (up.clause.isEmpty){
-              closed = (up.context,SZS_Theorem) :: closed
-              Blackboard().forceStatus(up.context)(SZS_Theorem)
-            }
             newF = newF + up // Keep track of new formulas
             Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
           }
+        }
+
+        result.updateStatus().foreach{ case (c,s) =>
+          Blackboard().forceStatus(c)(s)
         }
 
         // Removing Task from Taskset (Therefor remove locks)
@@ -249,7 +245,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         Blackboard().filterAll({a =>
           newF.foreach{ f => a.filter(FormulaEvent(f))  // If the result was new, everyone has to be informed
           }
-          closed.foreach{f => a.filter(StatusEvent(f._1,f._2))}
+          result.updateStatus.foreach{case (c,s) => a.filter(StatusEvent(c,s))}
+          result.updatedContext().foreach{c => a.filter(ContextEvent(c))}
           //task.writeSet().filter{t => !newF.exists(_.cong(t))}.foreach{f => a.filter(FormulaEvent(f))}
           (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })

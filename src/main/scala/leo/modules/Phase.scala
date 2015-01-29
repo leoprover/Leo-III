@@ -2,7 +2,7 @@ package leo
 package modules
 
 import leo.agents.{EmptyResult, Result, Task, FifoAgent}
-import leo.agents.impl.{UtilAgents, ClausificationAgent, ParamodulationAgent, NormalClauseAgent}
+import leo.agents.impl._
 import leo.datastructures.blackboard.{Blackboard, DoneEvent, StatusEvent, Event}
 import leo.modules.output.{SZS_Theorem, SZS_Error}
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
@@ -33,6 +33,7 @@ object LoadPhase extends Phase{
 
     val file = Configuration.PROBLEMFILE
     UtilAgents.Conjecture()
+    ContextControlAgent.register()
 
     try {
       Utility.load(file)

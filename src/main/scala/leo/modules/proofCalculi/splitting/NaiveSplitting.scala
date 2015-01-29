@@ -94,7 +94,7 @@ object NaiveSplitting extends Split {
 }
 
 
-class HornSplit(f : Clause => Int) extends Split {
+class HornSplit(f : Literal => Int) extends Split {
 
   val name = "GenericHornSplit"
 
@@ -129,10 +129,10 @@ class HornSplit(f : Clause => Int) extends Split {
   }
 }
 
-object ClauseHornSplit extends HornSplit((c : Clause) => 1) {
+object ClauseHornSplit extends HornSplit((l : Literal) => 1) {
   override val name = "UnitWeightHornSplit"
 }
 
-object LiteralHornSplit extends HornSplit((c : Clause) => c.weight) {
+object LiteralHornSplit extends HornSplit((l : Literal) => l.weight) {
   override val name : String = "ClauseWeightHornSplit"
 }

@@ -135,6 +135,13 @@ trait Context {
    * @param finished - true => UnSplittable, false => NoSplit
    */
   def close(finished : Boolean) : Unit
+
+  /**
+   * Returns if the context is closed.
+   *
+   * @return true if the context is closed, i.e. a solution was found
+   */
+  def isClosed : Boolean
 }
 
 
