@@ -27,8 +27,8 @@ class SplittingAgent (s : Split) extends PriorityAgent{
     synchronized(if(remainingSplits == 0) return Nil)
     event match {
       case FormulaEvent(f)  => s.split(f.clause) match {
-        case Some((cs, k))  => return List(SplitTask(f,cs,k))
-        case None           => return Nil
+        case Some((cs, k))  => Out.output(s"[$name]: \n Tested ${f.pretty} -- Splitable."); return List(SplitTask(f,cs,k))
+        case None           => Out.output(s"[$name]:\n Tested ${f.pretty} -- Not splitable.");return Nil
       }
       case _  => Nil
     }
@@ -36,7 +36,7 @@ class SplittingAgent (s : Split) extends PriorityAgent{
 
 
   override def run(t: Task): Result = t match {
-    case SplitTask(o,cs,k) =>
+    case SplitTask(o,cs,k) if synchronized(remainingSplits > 0) =>
       val c = o.context
       if (!c.split(k,cs.size)){
         Out.warn(s"[$name]:\n Splitted already splitted Context.")
@@ -48,6 +48,7 @@ class SplittingAgent (s : Split) extends PriorityAgent{
       synchronized(remainingSplits = remainingSplits - 1)
       Out.output(s"[$name]:\n Splitted the context ${c.contextID} over formula\n   ${o.pretty}\n into\n    ${res.map(_.pretty).mkString("\n    ")}")
       return new StdResult(res.toSet, Map(), Set())
+    case SplitTask(o,cs,k)  => EmptyResult
     case _                 => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); EmptyResult
   }
 }

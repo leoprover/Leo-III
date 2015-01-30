@@ -123,7 +123,7 @@ class HornSplit(f : Literal => Int) extends Split {
     // TODO : Check for independency
     val leftClause = Clause.mkClause(neg ++ l, c.implicitBindings, Derived)
     val rightClause = Clause.mkClause(neg ++ r, c.implicitBindings, Derived)
-    return Some((List(List(leftClause),List(rightClause))), BetaSplit)
+    return Some((List(List(leftClause),List(rightClause))), AlphaSplit)
   }
 
   /**

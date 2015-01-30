@@ -112,9 +112,10 @@ object ExhaustiveClausificationPhase extends Phase {
 
   override def execute(): Boolean = {
     Scheduler().signal()
-    Wait.register()
     val c = new ClausificationAgent
     c.register()
+    Wait.register()
+    
     synchronized(while(!finish) wait())
 
     Blackboard().unregisterAgent(c)
@@ -139,9 +140,10 @@ object SplitPhase extends Phase {
 
   override def execute(): Boolean = {
     Scheduler().signal()
-    Wait.register()
     val c = new SplittingAgent(ClauseHornSplit)
     c.register()
+
+    Wait.register()
     synchronized(while(!finish) wait())
 
     Blackboard().unregisterAgent(c)
