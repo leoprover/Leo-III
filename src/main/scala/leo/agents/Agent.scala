@@ -146,7 +146,14 @@ abstract class Agent {
   def clearTasks() : Unit
 }
 
-
+/**
+ * Implements the sorting, selection and saving of tasks of the agent interface.
+ *
+ * Only the explicit filtering, own tasks and the execution have to be implemeted.
+ *
+ *
+ * The tasks are executed in the order they are generated.
+ */
 abstract class FifoAgent extends Agent {
 
   protected def toFilter(event : Event) : Iterable[Task]
@@ -247,6 +254,15 @@ abstract class FifoAgent extends Agent {
   })
 }
 
+/**
+ *
+ * Implements the selection and storing of the generated Tasks.
+ *
+ * Only the explicit fitler and the run method have to be implemented.
+ *
+ *
+ * The tasks are executed sorted by their bid starting with the highest bid.
+ */
 abstract class PriorityAgent extends Agent {
 
   private var _isActive : Boolean = true
