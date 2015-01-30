@@ -44,7 +44,7 @@ class SplittingAgent (s : Split) extends PriorityAgent{
       }
       // The split was successful
       val children = c.childContext.toList
-      val res = cs.zip(children) map {case (clau, con) => o.randomName().newClause(clau).newContext(con).newRole(Role_Plain)}
+      val res = (cs.zip(children) map {case (cs1, con) => cs1 map { clau => o.randomName().newClause(clau).newContext(con).newRole(Role_Plain)}}).flatten
       synchronized(remainingSplits = remainingSplits - 1)
       Out.output(s"[$name]:\n Splitted the context ${c.contextID} over formula\n   ${o.pretty}\n into\n    ${res.map(_.pretty).mkString("\n    ")}")
       return new StdResult(res.toSet, Map(), Set())
@@ -52,16 +52,16 @@ class SplittingAgent (s : Split) extends PriorityAgent{
   }
 }
 
-private class SplitTask(val o : FormulaStore, val cs : Seq[Clause], val k : SplitKind) extends Task {
+private class SplitTask(val o : FormulaStore, val cs : Seq[Seq[Clause]], val k : SplitKind) extends Task {
   override def name: String = "Split"
   override def writeSet(): Set[FormulaStore] = Set()
   override def readSet(): Set[FormulaStore] = Set(o)
-  private val factor : Double = {val f = cs.maxBy(_.weight).weight / o.clause.weight; if(f > 1 || f<0) 0 else 1-f}
+  private val factor : Double = {val f = cs.map(_.foldLeft(0){(a,x) => a+x.weight}).max / o.clause.weight; if(f > 1 || f<0) 0 else 1-f}
   override def bid(budget: Double): Double = budget * factor                                                  // Der Split mit der kleinsten größten Klausel wird bevorhzugt
 
   override def contextWriteSet() : Set[Context] = Set(o.context)    // TODO: Look for on filtering
 
-  override def pretty: String = s"SplitTask:\n On\n  ${o.pretty}\n To\n   ${cs.map(_.pretty).mkString("\n   ")}."
+  override def pretty: String = s"SplitTask:\n On\n  ${o.pretty}\n To\n   ${cs.map(_.map(_.pretty).mkString(", ")).mkString("\n   ")}."
 }
 
 /**
@@ -69,8 +69,8 @@ private class SplitTask(val o : FormulaStore, val cs : Seq[Clause], val k : Spli
  * Generator and Descrutor for this kind of objects.
  */
 object SplitTask {
-  def apply(o : FormulaStore, cs : Seq[Clause], k : SplitKind) : Task = new SplitTask(o,cs,k)
-  def unapply(t : Task) : Option[(FormulaStore,Seq[Clause], SplitKind)] = t match {
+  def apply(o : FormulaStore, cs : Seq[Seq[Clause]], k : SplitKind) : Task = new SplitTask(o,cs,k)
+  def unapply(t : Task) : Option[(FormulaStore,Seq[Seq[Clause]], SplitKind)] = t match {
     case s : SplitTask  => Some((s.o,s.cs,s.k))
     case _              => None
   }
