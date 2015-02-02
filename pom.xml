@@ -109,40 +109,14 @@
 	<groupId>org.apache.maven.plugins</groupId>
 	<artifactId>maven-jar-plugin</artifactId>
 	 <configuration>
-           <archive>
 	   <finalName>leo-iii</finalName>
+           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
               <mainClass>leo.Main</mainClass>
             </manifest>
           </archive>
         </configuration>
-      </plugin>
-
-      <plugin>
-         <artifactId>maven-assembly-plugin</artifactId>
-         <!-- <version>2.4</version>-->
-         <configuration>
-            <finalName>leo-iii</finalName>
-            <archive>
-               <manifest>
-                  <mainClass>leo.Main</mainClass>
-               </manifest>
-            </archive>
-            <descriptorRefs>
-               <descriptorRefs>jar-with-dependencies</descriptorRefs>
-            </descriptorRefs>
-
-         </configuration>
-         <executions>
-            <execution>
-               <id>make-assembly</id> <!-- ineritance -->
-               <phase>deploy</phase> <!-- packing phase -->
-               <goals>
-                  <goal>single</goal>
-               </goals> 
-            </execution>
-         </executions>
       </plugin>
     </plugins>
   </build>
