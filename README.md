@@ -35,7 +35,15 @@ Building the project
 
 The project is compiled and built into an executable `.jar` file usng
 
+    > mvn compile
     > mvn assembly:single
+
+
+For an easier access the makefile can be used. Invoking
+
+    > make
+
+will result in the same `.jar`
     
 All test suits are ran by
     
@@ -48,6 +56,7 @@ The sole compilation process can be started by typing
     > mvn compile
 
 The compiled files (class files) will be placed at `./target/classes/`.
+
 
 Project's current structure
 --------------
