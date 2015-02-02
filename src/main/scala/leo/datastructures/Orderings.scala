@@ -1,7 +1,7 @@
 package leo.datastructures
 
 import leo.datastructures.impl.Signature
-import leo.{ClauseOrdering, TermOrdering}
+import leo.{ClauseOrdering, TermOrdering, TypeOrdering}
 import leo.datastructures.term.Term
 import leo.datastructures.term.Term.{:::>, TypeLambda,∙,Symbol}
 
@@ -240,6 +240,201 @@ object PolyHORecPathOrdering extends TermOrdering {
   }
 }
 
+/**
+ * `HORPO` as given by "Polymorphic higher-order recursive path ordering" by Jouannaud and Rubio in
+ * Journal of the ACM, Vol 54. No 1. Article 2, March 2007.
+ *
+ * Since we only work on beta-normalized terms, we remove the functionality
+ * property requirement from the ordering, i.e. we do not follow/track possible beta-
+ * and eta-normalization steps during the comparison. More concretely, we drop cases (11) and (12) of
+ * the original definition.
+ */
+object RPO extends TermOrdering {
+  val GT = Some(1)
+  val LT = Some(-1)
+  val tyO: TypeOrdering = ???
+  val prec: QuasiOrdering[Signature#Key] = ???
+
+  def compare(a: Term, b: Term) = {
+    if (a == b)
+      Some(0)
+    else
+      tyO.compare(a.ty, b.ty).flatMap(doCompare(a,b,_))
+  }
+
+  private def compare0(a: Term, b: Term, cmpTo: Int): Option[Int] = {
+    val tyCmp = tyO.compare(a.ty, b.ty)
+
+    // Either the type order is still compatible, or the terms cannot be ordered
+    // (i.e. type incomparable or ordering not compatible to root type ordering result).
+    if (tyCmp.isDefined && Math.abs(tyCmp.get - cmpTo) <= 1) {
+      doCompare(a,b,cmpTo)
+    } else {
+      None
+    }
+
+  }
+
+  private def doCompare(a: Term, b: Term, cmp: Int): Option[Int] = {
+    var res: Option[Int] = None
+
+
+    if (res.isEmpty && isFuncSymbApp(a) && cmp >= 0) {
+      val (_, spineA) = ∙.unapply(a).get
+
+      // Case (1) >-Direction
+      if (spineA.exists(_ match {
+        case Left(t) => gteq(t, b)
+        case Right(_) => false
+      })) {
+        res = GT
+      }
+
+      // Case (7) >-Direction
+      if (res.isEmpty && isAppWithoutFuncSymb(b)) {
+        val (headB, spineB) = ∙.unapply(b).get
+        
+        if ( A(a, spineA, Left(headB) +: spineB, cmp)) {
+          res = GT
+        }
+      }
+
+      // Case (8) >-Direction
+      if (res.isEmpty && b.isTermAbs) {
+        val (_, bodyB) = :::>.unapply(b).get
+
+        if (!bodyB.looseBounds.contains(1)) {
+          res = compare0(a, bodyB, cmp)
+        }
+      }
+    }
+
+
+    if (res.isEmpty && isFuncSymbApp(b) && cmp <= 0) {
+      val (_, spineB) = ∙.unapply(b).get
+
+      // Case (1) <-Direction
+      if (spineB.exists(_ match {
+        case Left(t) => lteq(a, t)
+        case Right(_) => false
+      })) {
+        res = LT
+      }
+
+      // Case (7) <-Direction
+      if (res.isEmpty && isAppWithoutFuncSymb(a)) {
+        val (headA, spineA) = ∙.unapply(a).get
+
+        if (A(b,spineB, (Left(headA) +: spineA), cmp)) {
+          res = LT
+        }
+      }
+
+      // Case (8) <-Direction
+      if (res.isEmpty && a.isTermAbs) {
+        val (_, bodyA) = :::>.unapply(a).get
+
+        if (!bodyA.looseBounds.contains(1)) {
+          res = compare0(bodyA, b, cmp)
+        }
+      }
+    }
+
+    // Cases (2),(3),(4)
+    if (res.isEmpty && isFuncSymbApp(a) && isFuncSymbApp(b)) {
+      lazy val (headA, spineA) = ∙.unapply(a).get
+      lazy val (headB, spineB) = ∙.unapply(b).get
+
+
+
+    }
+
+    /** Implements case (10) */
+    if (res.isEmpty && a.isTermAbs && b.isTermAbs) {
+      val (varTyA, bodyA) = :::>.unapply(a).get
+      val (varTyB, bodyB) = :::>.unapply(b).get
+
+      if (tyO.eq(varTyA, varTyB)) {
+        res = compare0(bodyA, bodyB, cmp)
+      }
+    }
+
+    if (res.isEmpty && a.isTermAbs) {
+      val (_, bodyA) = :::>.unapply(a).get
+      if (cmp >= 0) {
+        /** Implements case (6), >=-direction */
+        res = compare0(bodyA, b, cmp)
+      }
+      if (cmp <= 0) {
+        /** Implements case (12), <=-direction */
+        // eta contract a to `a2`
+        val a2 = a.topEtaContract
+        if (a != a2)
+          res = join(res,compare0(a2, b, cmp))
+      }
+    }
+
+    if (res.isEmpty && b.isTermAbs) {
+      if (cmp >= 0) {
+        /** Implements case (12), >-direction */
+        // eta contract b to `b2`
+        val b2 = b.topEtaContract
+        if (b != b2)
+          res = compare0(a, b2, cmp)
+      }
+      if (cmp <= 0) {
+        /** Implements case (6), <-direction */
+        val (_, bodyB) = :::>.unapply(b).get
+        res = join(res,compare0(a, bodyB, cmp))
+      }
+    }
+
+
+
+    // if a is type abstraction and b is type abstraction
+    // if a
+
+    res
+  }
+  // wenn cmp < 0, dann a < b, sonst wenn cmp > 0 dann a > b
+  private def nextCase(res: Option[Int]): Boolean = res.isEmpty
+
+  private def join(a: Option[Int], b: => Option[Int]): Option[Int] = if (a.isDefined) a else b
+//  s (6),(8) and
+
+  private def isFuncSymbApp(a: Term): Boolean = {
+    if (!a.isApp) false
+    else {
+      val (head1, _) = ∙.unapply(a).get
+      head1.isConstant
+    }
+  }
+
+  private def isAppWithoutFuncSymb(a: Term): Boolean = {
+    if (!a.isApp) false
+    else {
+      val (head1, _) = ∙.unapply(a).get
+      !head1.isConstant
+    }
+  }
+
+  def A(a: Term, argsA: Seq[Either[Term,Type]], argsB: Seq[Either[Term,Type]], cmp: Int): Boolean = {
+    (argsB).forall(_ match {
+      case Left(t) => (compare0(a, t,cmp).getOrElse(-4711) > 0 || argsB.exists(_.fold(compare0(_,t,cmp).getOrElse(-4711) > 0, _ => false)))
+      case _ => false
+    })
+  }
+
+
+
+}
+
+///////////////////////
+/// Type Orderings
+///////////////////////
+
+
+
 ///////////////////////
 /// Generic Orderings
 ///////////////////////
@@ -289,6 +484,8 @@ trait QuasiOrdering[A] {
   def gt (x: A, y: A): Boolean = compare(x,y).getOrElse(Int.MinValue) > 0
   /** Comparison `x >= y` w.r.t. the underlying ordering. */
   def gteq (x: A, y: A): Boolean = compare(x,y).getOrElse(Int.MinValue) >= 0
+  /** Comparison `x = y` w.r.t. the underlying ordering .*/
+  def eq (x: A, y: A): Boolean = compare(x,y).getOrElse(-4711) == 0
 }
 
 /** Trait for quasi-ordered data.

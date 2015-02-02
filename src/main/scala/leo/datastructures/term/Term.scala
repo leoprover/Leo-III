@@ -91,6 +91,8 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
   def typeCheck: Boolean
   /** Return the β-nf of the term */
   def betaNormalize: Term
+  /** Eta-contract term on root level if possible */
+  def topEtaContract: Term
 
   protected[term] def normalize(termSubst: Subst, typeSubst: Subst): Term
   protected[datastructures] def inc(scopeIndex: Int): Term
