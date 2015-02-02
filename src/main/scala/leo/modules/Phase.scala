@@ -53,7 +53,8 @@ object LoadPhase extends Phase{
         Out.output(SZSOutput(e.status))
         return false
       case e : Throwable =>
-        Out.severe("Unexpected Exception: "+e.getMessage)
+        Out.severe("Unexpected Exception")
+        e.printStackTrace()
         Out.output((SZSOutput(SZS_Error)))
         return false
     }
