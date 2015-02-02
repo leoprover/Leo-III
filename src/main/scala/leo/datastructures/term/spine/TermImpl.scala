@@ -672,8 +672,8 @@ protected[spine] case object SNil extends Spine {
     case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
   }
 
-  val last = throw new IllegalArgumentException("Trying to access last element of Nil")
-  val init = throw new IllegalArgumentException("Trying to access init of Nil")
+  def last = throw new IllegalArgumentException("Trying to access last element of Nil")
+  def init = throw new IllegalArgumentException("Trying to access init of Nil")
   def replace(what: Term, by: Term): Spine = SNil
   def replaceAt0(pos: Int, tail: Position, by: Term): Spine = SNil
 
