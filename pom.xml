@@ -106,17 +106,32 @@
          Executable jar
       -->
       <plugin>
+   	   <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <plugin>
 	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-jar-plugin</artifactId>
-	 <configuration>
-	   <finalName>leo-iii</finalName>
-           <archive>
+	<artifactId>maven-assembly-plugin</artifactId>
+	<!--<version>2.2-beta-4</version>-->
+	<configuration>
+	  <finalName>leo-iii</finalName>
+	  <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+	  </descriptorRefs>
+	  <archive>
             <manifest>
-              <addClasspath>true</addClasspath>
               <mainClass>leo.Main</mainClass>
             </manifest>
-          </archive>
-        </configuration>
+	  </archive>
+	</configuration>
+	<executions>
+	  <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+	  </execution>
+	</executions>
       </plugin>
      </plugins>
   </build>

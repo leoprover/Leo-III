@@ -1,6 +1,5 @@
 all:
-	mvn compile
-	mvn assembly::single
+	mvn compile assembly::single
 
 clean:
 	mvn clean

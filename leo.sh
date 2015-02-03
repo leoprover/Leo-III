@@ -21,4 +21,4 @@ then
    make
 fi
 
-java -jar target/leo-iii-jar-with-dependencies.jar $1 
+java -jar target/leo-iii-jar-with-dependencies.jar "$@"
