@@ -28,6 +28,15 @@ a semantic embedding [[1](dx.doi.org/10.5220/0004324803460351)] approach.
 
 Further information can be found at the [Leo-III Website](http://page.mi.fu-berlin.de/lex/leo3/).
 
+
+Required Dependencies
+----------------
+
+Leo III needs Java >= 1.7 to run.
+Scala 2.11.X is required to build and run the project. Maven will automatically download scala and further dependencies.
+Alternative, Scala can be downloaded at [Scala-lang.org](http://scala-lang.org/download/).
+
+
 Building the project
 ----------------
 
@@ -35,11 +44,9 @@ Building the project
 
 The project is compiled and built into an executable `.jar` file usng
 
-    > mvn compile
-    > mvn assembly:single
+    > mvn compile assembly::single
 
-
-For an easier access the makefile can be used. Invoking
+Or, alternatively, the makefile can be used. Invoking
 
     > make
 
@@ -64,33 +71,20 @@ Project's current structure
 This section is a stub. It will be expanded in the future.
 
 ```
-└── leo                 -- Where the Main executable is located
-    ├── agents          -- Specification of agents
-    │   └── impl        -- Implementation of agents
-    ├── datastructures  -- root packagef or various data structures
-    │   ├── blackboard
-    │   │   ├── impl
-    │   │   └── scheduler
-    │   ├── context
-    │   │   └── impl
-    │   ├── impl        -- Here are most of the implementations located
-    │   ├── term
-    │   │   ├── naive
-    │   │   └── spine
-    │   └── tptp        -- Internal syntax representation of TPTP
-    │       ├── cnf
-    │       ├── fof
-    │       ├── tff
-    │       └── thf
-    └── modules          -- All sorts of functionality modules
-        ├── churchNumerals
-        ├── normalization
-        ├── output
-        │   └── logger
-        ├── parsers
-        │   ├── lexical
-        │   └── syntactical
-        ├── proofCalculi
-        │   └── resolution
-        └── visualization
+└──leo                     -- Where the Main executable is located, root package
+    ├── agents             -- Specification of agents
+    │   └── impl           -- Implementation of agents
+    ├── datastructures     -- root package for all base data structures
+    │   ├── blackboard
+    │   ├── context
+    │   ├── impl           -- Most of the implementations are located here
+    │   ├── term
+    │   └── tptp           -- Internal syntax representation of TPTP
+    └── modules            -- All sorts of functionality modules
+        ├── churchNumerals -- old package, most likely to be removed soon
+        ├── normalization
+        ├── output         -- Output and logging functionality
+        ├── parsers        -- Input parsing
+        ├── proofCalculi
+        └── visualization
 ```
