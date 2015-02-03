@@ -24,8 +24,8 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PROOFOBJECT = "p"
   private val PARAM_HELP = "h"
 
-  // Collect standard options for nice output
-  private var optionsMap : Map[Char, (String, String, String)] = {
+  // Collect standard options for nice output: short-option -> (long option, argname, description)
+  private val optionsMap : Map[Char, (String, String, String)] = {
     Map(
       'h' -> ("", "", "Display this help message"),
       'n' -> ("", "N", "Maximum number of threads"),
@@ -104,7 +104,10 @@ object Configuration extends DefaultConfiguration {
     val it = optionsMap.iterator
     while (it.hasNext) {
       val entry = it.next()
-      sb.append(s"-${entry._1} ${entry._2._2}")
+      sb.append(s"-${entry._1}")
+      if (!entry._2._2.isEmpty) {
+        sb.append(s" ${entry._2._2}")
+      }
       if (!entry._2._1.isEmpty) {
         sb.append(s", --${entry._2._1} ${entry._2._2}")
       }
