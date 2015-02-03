@@ -20,3 +20,7 @@ project/plugins/project/
 # Compile specific
 out/*
 project/*
+
+# Save Formats
+*.swp
+*~

@@ -27,7 +27,7 @@ class LeoAgent(path : String) extends ScriptAgent(path){
    */
   override def handle(input: Stream[String], err: Stream[String], exit: Int): Result = {
     Out.trace(s"[$name]: Got result from external prover: \n"+input.mkString("\n")+"\n")
-    Out.output(s"The exit code is $exit")
+    Out.output(s"[$name]:The exit code is $exit")
     EmptyResult
   }
 

@@ -70,12 +70,13 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
   def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(name, clause, role, nstatus,context,origin, reason)
   def newRole(nrole : Role) : FormulaStore = new FormulaStore(name, clause, nrole, status,context,origin, reason)
   def newOrigin(norigin : List[FormulaStore], nreason : String) = new FormulaStore(name, clause, role, status, context, norigin, nreason)
+  def newContext(ncontext : Context) : FormulaStore = new FormulaStore(name, clause, role, status, ncontext, origin, reason)
 
   def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), clause, role, status, context, origin, reason)
 
-  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"))."
+  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), contextID="+context.contextID+")."
 
-  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"))."
+  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), contextID="+context.contextID+")."
 
   def compare(that: FormulaStore): Int = this.clause compare that.clause
 

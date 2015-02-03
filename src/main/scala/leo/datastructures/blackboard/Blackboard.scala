@@ -87,6 +87,12 @@ trait TaskOrganize {
   protected[blackboard] def finishTask(t : Task) : Unit
 
   /**
+   * Allows a force check for new Tasks. Necessary for the DoneEvent to be
+   * thrown correctly.
+   */
+  protected[blackboard] def forceCheck() : Unit
+
+  /**
    * Signal Task is called, when a new task is available.
    */
   def signalTask() : Unit
@@ -105,6 +111,16 @@ trait TaskOrganize {
    * @param a - the new agent
    */
   def registerAgent(a : Agent) : Unit
+
+  /**
+   * Removes an agent from the notification lists.
+   *
+   * Recomended if the agent will be used nevermore. Otherwise
+   * a.setActive(false) should be used.
+   *
+   * @param a
+   */
+  def unregisterAgent(a : Agent) : Unit
 
   /**
    *

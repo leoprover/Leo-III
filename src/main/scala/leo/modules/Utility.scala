@@ -187,7 +187,7 @@ object Utility {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+")"
+        val form = x.clause.pretty + " ("+x.status+") (context="+x.context.contextID+")"
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 

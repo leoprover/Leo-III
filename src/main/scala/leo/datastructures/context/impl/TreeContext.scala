@@ -111,4 +111,11 @@ class TreeContext extends Context{
     _children = Nil
     if(finished) _split = UnSplittable else _split = NoSplit
   })
+
+  /**
+   * Returns if the context is closed.
+   *
+   * @return true if the context is closed, i.e. a solution was found
+   */
+  override def isClosed: Boolean = synchronized(_split == UnSplittable)
 }

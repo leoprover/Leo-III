@@ -7,7 +7,6 @@ import leo.datastructures.context.Context
 import leo.modules.output.{SZS_Theorem, StatusSZS}
 
 import scala.collection.mutable
-import scala.collection.mutable.HashSet
 import java.util.concurrent.Executors
 
 
@@ -40,6 +39,12 @@ object Scheduler {
    * @return
    */
   def apply() : Scheduler = apply(5)
+
+  def working() : Boolean = {
+    if (s == null) return false
+    // s exists
+    s.working()
+  }
 }
 
 
@@ -74,6 +79,8 @@ trait Scheduler {
   def clear() : Unit
 
   protected[scheduler] def start()
+
+  def working() : Boolean
 }
 
 
@@ -101,6 +108,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
 
+  def working() : Boolean = {
+    this.synchronized(
+      return w.work || curExec.nonEmpty
+    )
+  }
+
   override def isTerminated() : Boolean = endFlag
 
   def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
@@ -116,8 +129,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     pauseFlag = false
     ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
     exe.shutdownNow()
+    curExec.clear()
+    AgentWork.executingAgents() foreach(_.kill())
+    AgentWork.clear()
     sT.interrupt()
     s.notifyAll()
+    curExec.clear()
   }
 
   var pauseFlag = true
@@ -130,7 +147,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def clear() : Unit = {
     pause()
     curExec.clear()
-    exe.shutdownNow()
+    AgentWork.executingAgents() foreach(_.kill())
+    AgentWork.clear()
   }
 
   protected[scheduler] def start() {
@@ -182,11 +200,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Writes a result back to the blackboard
    */
   private class Writer extends Runnable{
+    var work : Boolean = false
+
     override def run(): Unit = while(!endFlag) {
       val (result,task) = ExecTask.get()
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
-
+        work = true
         // Update blackboard
         var newF : Set[FormulaStore] = Set()
         var closed : List[(Context,StatusSZS)] = List()
@@ -196,10 +216,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
             // Keep track of new Formulas
-            if (up.clause.isEmpty){
-              closed = (up.context,SZS_Theorem) :: closed
-              Blackboard().forceStatus(up.context)(SZS_Theorem)
-            }
             newF = newF + up
             Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
           }
@@ -210,13 +226,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           val up = nF.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
-            if (up.clause.isEmpty){
-              closed = (up.context,SZS_Theorem) :: closed
-              Blackboard().forceStatus(up.context)(SZS_Theorem)
-            }
             newF = newF + up // Keep track of new formulas
             Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
           }
+        }
+
+        result.updateStatus().foreach{ case (c,s) =>
+          Blackboard().forceStatus(c)(s)
         }
 
         // Removing Task from Taskset (Therefor remove locks)
@@ -228,11 +244,14 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         Blackboard().filterAll({a =>
           newF.foreach{ f => a.filter(FormulaEvent(f))  // If the result was new, everyone has to be informed
           }
-          closed.foreach{f => a.filter(StatusEvent(f._1,f._2))}
+          result.updateStatus.foreach{case (c,s) => a.filter(StatusEvent(c,s))}
+          result.updatedContext().foreach{c => a.filter(ContextEvent(c))}
           //task.writeSet().filter{t => !newF.exists(_.cong(t))}.foreach{f => a.filter(FormulaEvent(f))}
           (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
         })
       }
+      work = false
+      Blackboard().forceCheck()
     }
   }
 
@@ -243,7 +262,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  {
+      AgentWork.inc(a)
       ExecTask.put(a.run(t),t)
+      AgentWork.dec(a)
         //Out.trace("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
@@ -280,6 +301,31 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         this.notifyAll()
       }
     }
+  }
+
+  private object AgentWork {
+    protected val agentWork : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
+
+    /**
+     * Increases the amount of work of an agent by 1.
+     *
+     * @param a - Agent that executes a task
+     * @return the updated number of task of the agent.
+     */
+    def inc(a : Agent) : Int = synchronized(agentWork.get(a) match {
+      case Some(v)  => agentWork.update(a,v+1); return v+1
+      case None     => agentWork.put(a,1); return 1
+    })
+
+    def dec(a : Agent) : Int = synchronized(agentWork.get(a) match {
+      case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
+      case Some(v)  if v == 1 => agentWork.remove(a); return 0
+      case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
+    })
+
+    def executingAgents() : Iterable[Agent] = synchronized(agentWork.keys)
+
+    def clear() = synchronized(agentWork.clear())
   }
 
   /**

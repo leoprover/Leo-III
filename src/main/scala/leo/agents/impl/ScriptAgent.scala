@@ -10,6 +10,7 @@ import Term._
 import java.io.{PrintWriter, File}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
+import scala.collection.mutable
 
 import scala.sys.process._
 
@@ -55,6 +56,7 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
    */
   override def name: String = s"ScriptAgent {$path}"
 
+  private val extSet : mutable.Set[Process] = new mutable.HashSet[Process]()
 
 
   private val exec : File = {
@@ -95,13 +97,25 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
         // -------------------------------------------------------------
         //   Execution
         // -------------------------------------------------------------
-        val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
+        //val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
+        val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath)
+        var str : Iterator[String] = null
+        val process = res.run(new ProcessIO(in => in.close(), // Input not used
+                                            stdout => {str = scala.io.Source.fromInputStream(stdout).getLines(); stdout.close()},
+                                            err => err.close())
+                              )
+        extSet.synchronized(extSet.add(process))
         Out.trace(s"[$name]: Got result from external prover.")
-
+        val erg = str.toStream
         // Filter for exit code
         // TODO: Insert error stream
 //        res foreach {l => Console.info(l)}
-        return handle(res.init, Stream.empty, res.last.toInt)
+        val h = handle(erg.init, Stream.empty, erg.last.toInt)
+
+        // CLean up! I.e. process
+        extSet.synchronized(extSet.remove(process))
+        process.destroy()                     // In case we finished early and did not read till the end.
+        return h
     case _  => Out.info(s"[$name]: Recevied a wrong task $t.")
       return EmptyResult
   }
@@ -126,6 +140,14 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
       case (None) => Seq(ToTPTP(s"${constant.name}_type", k))
     }
   }
+
+  /**
+   * The script agent terminates all external processes if the kill command occures.
+   */
+  override def kill() = extSet.synchronized{
+    extSet foreach {p => p.destroy()}
+    extSet.clear()
+  }; super.kill()
 }
 
 class ScriptTask(fs : Set[FormulaStore]) extends Task {

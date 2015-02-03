@@ -1,13 +1,13 @@
 #!/bin/sh
 
 classpath="target/classes"
-compile=true
+compile=false
 
 # Check for not compile option
 while getopts ":r" opt; do
    case $opt in
-      r)
-         compile=false
+      c)
+         compile=true
          ;;
       \?)
          echo "Invalid optioin: -$OPTARG" >&2
@@ -18,7 +18,7 @@ done
 # First compile the project
 if [ "$compile" = true ]
 then
-   mvn compile
+   make
 fi
 
-scala -classpath "$classpath" -i src/main/scala/LeoShell.scala 
+java -jar target/leo-iii-jar-with-dependencies.jar "$@"
