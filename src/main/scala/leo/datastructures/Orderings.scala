@@ -253,7 +253,9 @@ object RPO extends TermOrdering {
   val GT = Some(1)
   val LT = Some(-1)
   val tyO: TypeOrdering = ???
-  val prec: QuasiOrdering[Signature#Key] = ???
+  val prec: Ordering[Signature#Key] = new Ordering[Signature#Key] {
+    def compare(x: Signature#Key, y: Signature#Key) = x - y
+  }
 
   def compare(a: Term, b: Term) = {
     if (a == b)
@@ -263,14 +265,19 @@ object RPO extends TermOrdering {
   }
 
   private def compare0(a: Term, b: Term, cmpTo: Int): Option[Int] = {
-    val tyCmp = tyO.compare(a.ty, b.ty)
-
-    // Either the type order is still compatible, or the terms cannot be ordered
-    // (i.e. type incomparable or ordering not compatible to root type ordering result).
-    if (tyCmp.isDefined && Math.abs(tyCmp.get - cmpTo) <= 1) {
-      doCompare(a,b,cmpTo)
+    if (a == b) {
+      if (cmpTo == 0) Some(0)
+      else None
     } else {
-      None
+      val tyCmp = tyO.compare(a.ty, b.ty)
+
+      // Either the type order is still compatible, or the terms cannot be ordered
+      // (i.e. type incomparable or ordering not compatible to root type ordering result).
+      if (tyCmp.isDefined && compatible(cmpTo, tyCmp.get)) {
+        doCompare(a, b, cmpTo)
+      } else {
+        None
+      }
     }
 
   }
@@ -281,20 +288,18 @@ object RPO extends TermOrdering {
 
     if (res.isEmpty && isFuncSymbApp(a) && cmp >= 0) {
       val (_, spineA) = ∙.unapply(a).get
+      val argsA = filterTermArgs(spineA) // TODO: ???
 
       // Case (1) >-Direction
-      if (spineA.exists(_ match {
-        case Left(t) => gteq(t, b)
-        case Right(_) => false
-      })) {
+      if (argsA.exists(gteq(_, b))) {
         res = GT
       }
 
       // Case (7) >-Direction
       if (res.isEmpty && isAppWithoutFuncSymb(b)) {
         val (headB, spineB) = ∙.unapply(b).get
-        
-        if ( A(a, spineA, Left(headB) +: spineB, cmp)) {
+        val argsB = filterTermArgs(spineB)
+        if ( A2(a, argsA, headB +: argsB, cmp)) {
           res = GT
         }
       }
@@ -312,20 +317,19 @@ object RPO extends TermOrdering {
 
     if (res.isEmpty && isFuncSymbApp(b) && cmp <= 0) {
       val (_, spineB) = ∙.unapply(b).get
+      val argsB = filterTermArgs(spineB)
 
       // Case (1) <-Direction
-      if (spineB.exists(_ match {
-        case Left(t) => lteq(a, t)
-        case Right(_) => false
-      })) {
+      if (argsB.exists(lteq(a, _))) {
         res = LT
       }
 
       // Case (7) <-Direction
       if (res.isEmpty && isAppWithoutFuncSymb(a)) {
         val (headA, spineA) = ∙.unapply(a).get
+        val argsA = filterTermArgs(spineA)
 
-        if (A(b,spineB, (Left(headA) +: spineA), cmp)) {
+        if (A2(b,argsB, headA +: argsA, -cmp)) {  // TODO: Swapping of cmp is not intuitive??
           res = LT
         }
       }
@@ -342,10 +346,64 @@ object RPO extends TermOrdering {
 
     // Cases (2),(3),(4)
     if (res.isEmpty && isFuncSymbApp(a) && isFuncSymbApp(b)) {
-      lazy val (headA, spineA) = ∙.unapply(a).get
-      lazy val (headB, spineB) = ∙.unapply(b).get
+      val (headA, spineA) = ∙.unapply(a).get
+      val (headB, spineB) = ∙.unapply(b).get
 
+      val funcA = Symbol.unapply(headA).get
+      val funcB = Symbol.unapply(headB).get
 
+      val headPrec = prec.compare(funcA, funcB)
+      if (compatible(cmp, headPrec)) {
+        val (argsA, argsB) = (filterTermArgs(spineA), filterTermArgs(spineB))
+        if (headPrec > 0) {
+          // Case (2), >-direction
+          if (A2(a, argsA, argsB, cmp))
+            res = GT
+        } else if (headPrec < 0) {
+          // Case (2), <-direction
+          if (A2(b, argsB, argsA, -cmp)) // TODO: Swapping of cmp is not intuitive??
+            res = LT
+        } else {
+          // Case (3) and (4)
+          if (Signature.get.apply(funcA).hasMultStatus) {
+            // Mult comparison
+            val multCmp = mult(argsA, argsB)
+            if (multCmp.isDefined) {
+              val multCmpValue = multCmp.get
+
+              if (multCmpValue > 0) {
+                if (compatible(cmp, multCmpValue)) {
+                  res = GT
+                }
+              } else if (multCmpValue < 0) {
+                if (compatible(cmp, multCmpValue)) {
+                  res = LT
+                }
+              } else {
+                // TODO: ???
+              }
+            }
+          } else {
+            // Lex comparison
+            val lexCmp = lex(argsA, argsB)
+            if (lexCmp.isDefined) {
+              val lexCmpVal = lexCmp.get
+              // compatible check not needed since given to lex method. will return none if incompatible
+              if (lexCmpVal > 0) {
+                if (compatible(cmp, lexCmpVal) && A2(a, argsA, argsB, cmp)) {
+                  res = GT
+                }
+              } else if (lexCmpVal < 0) {
+                if (compatible(cmp, lexCmpVal) && A2(b, argsB, argsA, -cmp)) { // TODO: Swapping of cmp is not intuitive??
+                  res = LT
+                }
+              } else {
+                // TODO: What to do here? can this happen?
+              }
+            }
+          }
+        }
+      }
 
     }
 
@@ -389,7 +447,12 @@ object RPO extends TermOrdering {
       }
     }
 
+    if (res.isEmpty && a.isTypeAbs && b.isTypeAbs) {
+      val bodyA = TypeLambda.unapply(a).get
+      val bodyB = TypeLambda.unapply(b).get
 
+      res = compare0(bodyA, bodyB, cmp)
+    }
 
     // if a is type abstraction and b is type abstraction
     // if a
@@ -399,8 +462,16 @@ object RPO extends TermOrdering {
   // wenn cmp < 0, dann a < b, sonst wenn cmp > 0 dann a > b
   private def nextCase(res: Option[Int]): Boolean = res.isEmpty
 
+  private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
+    case Seq() => Seq()
+    case Seq(h, rest@_*) => h match {
+      case Left(term) => term +: filterTermArgs(rest)
+      case Right(_) => filterTermArgs(rest)
+    }
+  }
+
+
   private def join(a: Option[Int], b: => Option[Int]): Option[Int] = if (a.isDefined) a else b
-//  s (6),(8) and
 
   private def isFuncSymbApp(a: Term): Boolean = {
     if (!a.isApp) false
@@ -419,13 +490,59 @@ object RPO extends TermOrdering {
   }
 
   def A(a: Term, argsA: Seq[Either[Term,Type]], argsB: Seq[Either[Term,Type]], cmp: Int): Boolean = {
-    (argsB).forall(_ match {
-      case Left(t) => (compare0(a, t,cmp).getOrElse(-4711) > 0 || argsB.exists(_.fold(compare0(_,t,cmp).getOrElse(-4711) > 0, _ => false)))
-      case _ => false
+    argsB.forall(_ match {
+      case Left(t) => compare0(a, t,cmp).getOrElse(-4711) > 0 || argsB.exists(_.fold(compare0(_,t,cmp).getOrElse(-4711) > 0, _ => false))
+      case _ => true
     })
   }
 
+  def A2(a: Term, argsA: Seq[Term], argsB: Seq[Term], cmp: Int): Boolean = {
+    argsB.forall(t => compare0(a, t,cmp).getOrElse(-4711) > 0 || argsB.exists(compare0(_,t,cmp).getOrElse(-4711) > 0))
+  }
 
+  def compatible(cmp1: Int, cmp2: Int):Boolean = Math.abs(cmp1.signum - cmp2.signum) <= 1
+
+  private def lex(a: Seq[Term], b: Seq[Term]): Option[Int] = a match {
+    case Seq() if b.isEmpty => Some(0)
+    case Seq() => Some(-1)
+    case Seq(_, rest@_*) if b.isEmpty => Some(1)
+    case Seq(t1, tn@_*) => compare(t1, b.head) match {
+      case None => None
+      case Some(r) if r == 0 => lex(tn, b.tail)
+      case r => r
+    }
+  }
+
+  private def mult(a: Seq[Term], b: Seq[Term]): Option[Int] = {
+    a match {
+      case Seq() if b.isEmpty => Some(0)
+      case Seq() => Some(-1)
+      case _ if b.isEmpty => Some(1)
+      case _ => {
+        val aMax = maximalElement(a)
+        val bMax = maximalElement(b)
+
+        compare(aMax, bMax)match {
+          case None => None
+          case Some(r) if r == 0 => mult(a.diff(Seq(aMax)), b.diff(Seq(bMax)))
+          case r => r
+        }
+      }
+    }
+  }
+
+  private def maximalElement(a: Seq[Term]): Term = {
+    val it = a.iterator
+    var curMax = a.head
+    while(it.hasNext) {
+      val cur = it.next()
+      compare(curMax, cur) match {
+        case None => ;
+        case Some(r) if r < 0 => curMax = cur
+      }
+    }
+    curMax
+  }
 
 }
 
