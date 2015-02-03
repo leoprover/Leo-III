@@ -22,6 +22,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_VERBOSITY = "v"
   private val PARAM_TIMEOUT = "t"
   private val PARAM_PROOFOBJECT = "p"
+  private val PARAM_HELP = "h"
 
   def init(parameterParser: CLParameterParser): Unit = configMap match {
     case null => {
@@ -29,11 +30,12 @@ object Configuration extends DefaultConfiguration {
       for(param <- parameterParser.getParameters) {
         configMap += (param)
       }
-      // Force values of lazy vals s.t. potential errors are reported as early as possible
+      // Force computation of lazy values for early error output
       PROBLEMFILE
       THREADCOUNT
-      VERBOSITY
       TIMEOUT
+      PROOF_OBJECT
+      VERBOSITY
       ()
     }
     case _ => ()
@@ -43,18 +45,25 @@ object Configuration extends DefaultConfiguration {
   // Predefined parameters
   //////////////////////////
 
+  lazy val HELP: Boolean = isSet(PARAM_HELP)
+
   lazy val PROBLEMFILE: String = configMap.get(CLParameterParser.ARG0Name) match {
-    case None => ""
+    case None => throw new IllegalArgumentException("Missing problem file.")
     case Some(str :: Nil) => str
-    case Some(_) => ???
+    case Some(_) => throw new IllegalArgumentException("This should not happen. Please call support hotline.")
   }
 
   lazy val THREADCOUNT: Int = uniqueIntFor(PARAM_THREADCOUNT, DEFAULT_THREADCOUNT)
 
-  lazy val VERBOSITY: java.util.logging.Level = configMap.get(PARAM_VERBOSITY) match {
-    case None => DEFAULT_VERBOSITY
-    case Some(arg :: Nil) => processLevel(arg)
-    case Some(arg :: _) => Out.warn(multiDefOutput(PARAM_VERBOSITY)); processLevel(arg)
+  lazy val VERBOSITY: java.util.logging.Level = {
+    val v = configMap.get(PARAM_VERBOSITY) match {
+      case None => DEFAULT_VERBOSITY
+      case Some(arg :: Nil) => processLevel(arg)
+      case Some(arg :: _) => Out.warn(multiDefOutput(PARAM_VERBOSITY));
+                             processLevel(arg)
+    }
+    Out.setLogLevel(v)
+    v
   }
 
   lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
@@ -70,19 +79,27 @@ object Configuration extends DefaultConfiguration {
 
   // more to come ...
 
+  ///////////////
+  // Help output
+  ///////////////
+  def help(): Unit = {
+    Out.output("HELP TEXT")
+  }
+
   ////////////
   // Utility
   ////////////
   protected def processLevel(actual: String): Level = safeStrToInt(actual) match {
     case None => DEFAULT_VERBOSITY
     case Some(0) => Level.OFF
-    case Some(1) => Level.INFO
-    case Some(2) => Level.CONFIG
-    case Some(3) => Level.FINE
-    case Some(4) => Level.FINER
-    case Some(5) => Level.FINEST
+    case Some(1) => Level.WARNING
+    case Some(2) => Level.INFO
+    case Some(3) => Level.CONFIG
+    case Some(4) => Level.FINE
+    case Some(5) => Level.FINER
+    case Some(6) => Level.FINEST
     case _ => {
-      Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 5 (including).");
+      Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 6 (including).");
       DEFAULT_VERBOSITY}
   }
 
@@ -125,6 +142,6 @@ object Configuration extends DefaultConfiguration {
 
 trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
-  val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
+  val DEFAULT_VERBOSITY = java.util.logging.Level.WARNING
   val DEFAULT_TIMEOUT = 60
 }

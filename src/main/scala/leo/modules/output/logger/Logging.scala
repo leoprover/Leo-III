@@ -3,6 +3,7 @@ package leo.modules.output.logger
 import java.util.logging.Logger
 import java.util.logging.Level
 
+import leo.Configuration
 import leo.modules.output.Output
 
 /**
@@ -12,12 +13,12 @@ import leo.modules.output.Output
  * @note  Replaces obsolete trait formerly located at leo.modules.logger.Logging.
  */
 trait Logging {
-  private lazy val log = {val l = Logger.getLogger(loggerName)
+  protected lazy val log = {val l = Logger.getLogger(loggerName)
     l.setLevel(defaultLogLevel)
     l.setUseParentHandlers(useParentLoggers); l}
 
   protected def loggerName: String = getClass.getName
-  protected def defaultLogLevel: Level = Level.INFO
+  protected def defaultLogLevel: Level = Configuration.DEFAULT_VERBOSITY
   protected def useParentLoggers: Boolean = true
 
   import java.util.logging.Level._
@@ -41,4 +42,10 @@ trait Logging {
 
   final def addLogHandler(h: Handler): Unit = log.addHandler(h)
   final def removeLogHandler(h: Handler): Unit = log.removeHandler(h)
+
+
+  def setLogLevel(level: Level): Unit = {
+    log.setLevel(level)
+    log.getHandlers.toSeq.foreach(_.setLevel(level))
+  }
 }

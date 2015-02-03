@@ -28,18 +28,31 @@ object Main {
    * @param args - See [[Configuration]] for argument treatment
    */
   def main(args : Array[String]){
-    Configuration.init(new CLParameterParser(args))
-    val timeout = Configuration.TIMEOUT
+    try {
+      Configuration.init(new CLParameterParser(args))
+    } catch {
+      case e:IllegalArgumentException => {
+        Out.severe(e.getMessage)
+        Configuration.help()
+        return
+      }
+    }
+    if (Configuration.HELP) {
+      Configuration.help()
+      return
+    }
+
+    val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
     val interval = 10
 
 
-    val deferredKill : DeferredKill = (new DeferredKill(interval, Double.PositiveInfinity))
+    val deferredKill : DeferredKill = new DeferredKill(interval, timeout)
     deferredKill.start()
 
     ContextControlAgent.register()
 
     // Create Scheduler
-    Scheduler()
+    Scheduler(Configuration.THREADCOUNT)
 
     val it = getSplitFirst.iterator
     var r = true
