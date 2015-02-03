@@ -24,6 +24,19 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PROOFOBJECT = "p"
   private val PARAM_HELP = "h"
 
+  // Collect standard options for nice output
+  private var optionsMap : Map[Char, (String, String, String)] = {
+    Map(
+      'h' -> ("", "", "Display this help message"),
+      'n' -> ("", "N", "Maximum number of threads"),
+      'p' -> ("", "", "Display proof output"),
+      't' -> ("", "N", "Timeout in seconds"),
+      'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)")
+    )
+  }
+
+  /////////////////////////
+
   def init(parameterParser: CLParameterParser): Unit = configMap match {
     case null => {
       configMap = Map()
@@ -48,7 +61,7 @@ object Configuration extends DefaultConfiguration {
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
   lazy val PROBLEMFILE: String = configMap.get(CLParameterParser.ARG0Name) match {
-    case None => throw new IllegalArgumentException("Missing problem file.")
+    case None => throw new IllegalArgumentException("No problem file given. Aborting.")
     case Some(str :: Nil) => str
     case Some(_) => throw new IllegalArgumentException("This should not happen. Please call support hotline.")
   }
@@ -82,9 +95,25 @@ object Configuration extends DefaultConfiguration {
   ///////////////
   // Help output
   ///////////////
-  def help(): Unit = {
-    Out.output("HELP TEXT")
+  lazy val helptext = {
+    val sb = StringBuilder.newBuilder
+    sb.append("Leo III -- A Higher-Order Theorem Prover.\n")
+    sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
+    sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
+    sb.append("Options:\n")
+    val it = optionsMap.iterator
+    while (it.hasNext) {
+      val entry = it.next()
+      sb.append(s"-${entry._1} ${entry._2._2}")
+      if (!entry._2._1.isEmpty) {
+        sb.append(s", --${entry._2._1} ${entry._2._2}")
+      }
+      sb.append(s"\t\t${entry._2._3}\n")
+    }
+    sb.append("\n")
+    sb.toString
   }
+  def help(): Unit = Out.output(helptext)
 
   ////////////
   // Utility
