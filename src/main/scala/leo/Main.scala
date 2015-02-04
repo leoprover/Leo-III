@@ -59,8 +59,10 @@ object Main {
     while(it.hasNext && r) {
       val phase = it.next()
       Out.info(s"\n [Phase]:\n  Starting ${phase.name}\n${phase.description}")
+      val start = System.currentTimeMillis()
       r = phase.execute()
-      Out.info(s"\n [Phase]:\n  Ended ${phase.name}")
+      val end = System.currentTimeMillis()
+      Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end-start}ms")
     }
     deferredKill.kill()
 
