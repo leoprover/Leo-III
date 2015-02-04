@@ -7,7 +7,7 @@ import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
-import leo.modules.output.{Output, SZS_SyntaxError, SZS_InputError, StatusSZS}
+import leo.modules.output._
 
 import scala.collection.immutable.HashSet
 
@@ -231,7 +231,7 @@ object Utility {
   def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
 
   private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append(downList(origin, indent)).append(f.pretty).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+    f.origin.foldRight(sb.append(downList(origin, indent)).append(ToTPTP(f).output).append(" "*10+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
   }
 
   private def downList(origin: Set[Int], indent : Int) : String = {
