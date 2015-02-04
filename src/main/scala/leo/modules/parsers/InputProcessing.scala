@@ -1,5 +1,7 @@
 package leo.modules.parsers
 
+import leo.Out
+
 import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
@@ -97,22 +99,30 @@ object InputProcessing {
 
     input.formula match {
       case Logical(lf) if input.role == "definition" => {
-                                                          val (defName, defDef) = processTHFDef(sig)(lf)
-                                                          if (sig.exists(defName)) {
-                                                            val meta = sig(defName)
-                                                            if (meta.isUninterpreted && meta._ty == defDef.ty) {
-                                                              sig.addDefinition(meta.key, defDef)
-                                                            } else {
-                                                              println("Old type: " + meta._ty.pretty)
-                                                              println("Symbol: " + defName)
-                                                              println("Def:" +defDef.pretty)
-                                                              println("Type of def: "+defDef.ty.pretty)
-                                                              throw new IllegalArgumentException("Symbol "+defName + " already defined; incompatible re-definition.")
-                                                            }
-                                                          } else {
-                                                            sig.addDefined(defName, defDef, defDef.ty)
-                                                          }
-                                                          None
+        processTHFDef(sig)(lf) match {
+          case None => {
+            Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.")
+            val role = processRole("axiom");
+            Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
+          }
+          case Some((defName, defDef)) => {
+            if (sig.exists(defName)) {
+              val meta = sig(defName)
+              if (meta.isUninterpreted && meta._ty == defDef.ty) {
+                sig.addDefinition(meta.key, defDef)
+              } else {
+                Out.debug("Old type: " + meta._ty.pretty)
+                Out.debug("Symbol: " + defName)
+                Out.debug("Def:" +defDef.pretty)
+                Out.debug("Type of def: "+defDef.ty.pretty)
+                Out.warn("Symbol "+defName + " already defined. Redefinition ignored.")
+              }
+            } else {
+              sig.addDefined(defName, defDef, defDef.ty)
+            }
+            None
+          }
+        }
                                                         }
       case Logical(Typed(Term(Func(atom, _)),ty)) if input.role == "type" => {
                                                         convertTHFType(sig)(ty, noRep) match {
@@ -127,11 +137,11 @@ object InputProcessing {
   }
 
   import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
-  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): (String, term.Term) = {
+  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, term.Term)] = {
     import leo.datastructures.tptp.thf.{Binary, Term, Eq}
     input match {
-      case Binary(Term(Func(name, Seq())), Eq, right) => (name, processTHF0(sig)(right, noRep))
-      case _                                        => throw new IllegalArgumentException("Malformed thf definition: "+input.toString)
+      case Binary(Term(Func(name, Seq())), Eq, right) => Some(name, processTHF0(sig)(right, noRep))
+      case _                                        => None
     }
   }
 
@@ -185,7 +195,7 @@ object InputProcessing {
         import leo.datastructures.IF_THEN_ELSE
         IF_THEN_ELSE(processTHF0(sig)(c, replaces),processTHF0(sig)(thn, replaces),processTHF0(sig)(els, replaces))
       }
-      case Let(binding, in) => ???
+      case Let(binding, in) => Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
     }
   }
 
@@ -225,7 +235,7 @@ object InputProcessing {
   import leo.datastructures.tptp.thf.{Quantifier => THFQuantifier}
   protected[parsers] def processTHFUnaryConn(conn: THFQuantifier): HOLUnaryConnective = {
     import leo.datastructures.tptp.thf.{! => THFAll, ? => THFExists, ^ => THFLambda, @+ => THFChoice, @- => THFDesc}
-    import leo.datastructures.{Forall, Exists}
+    import leo.datastructures.{Forall, Exists, Choice, Description}
 
     conn match {
       case THFAll => Forall
@@ -236,8 +246,8 @@ object InputProcessing {
         override def apply(arg: term.Term) = arg
       }
 
-      case THFChoice => ???
-      case THFDesc => ???
+      case THFChoice => Choice
+      case THFDesc => Description
 
       case _ => throw new IllegalArgumentException("Illegal quantifier symbol:" +conn.toString)
     }
@@ -326,11 +336,12 @@ object InputProcessing {
 
     input.formula match {
       // Logical formulae can either be terms (axioms, conjecture, ...) or definitions.
-      case Logical(lf) if input.role == "definition" => {
-                                                          val (defName, defDef) = processTFFDef(sig)(lf)
-                                                          sig.addDefined(defName, defDef, defDef.ty)
-                                                          None
-                                                        }
+      case Logical(lf) if input.role == "definition" => processTFFDef(sig)(lf) match {
+        case None => Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.");
+                     val role = processRole("axiom"); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
+        case Some((defName, defDef)) => sig.addDefined(defName, defDef, defDef.ty)
+                                        None
+      }
       case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
       // Typed Atoms are top-level declarations, put them into signature
       case TypedAtom(atom, ty) => {
@@ -349,11 +360,11 @@ object InputProcessing {
 
   import leo.datastructures.tptp.tff.{LogicFormula => TFFLogicFormula}
   // Formula definitions
-  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): (String, term.Term) = {
+  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): Option[(String, term.Term)] = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
-      case _ => throw new IllegalArgumentException("Malformed definition")
+      case Atomic(Equality(Func(name, Nil),right)) => Some(name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
+      case _ => None
     }
   }
 
@@ -407,7 +418,7 @@ object InputProcessing {
         import leo.datastructures.IF_THEN_ELSE
         IF_THEN_ELSE(processTFF0(sig)(cond, replaces),processTFF0(sig)(thn, replaces),processTFF0(sig)(els, replaces))
       }
-      case Let(binding, in) => ???
+      case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
     }
   }
 
@@ -709,7 +720,7 @@ object InputProcessing {
       import leo.datastructures.IF_THEN_ELSE
       IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace, adHocDefs),processTerm(sig)(els, replace, adHocDefs))
     }
-    case Let(binding, in) => ???
+    case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
   }
 
   def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): term.Term = input match {
