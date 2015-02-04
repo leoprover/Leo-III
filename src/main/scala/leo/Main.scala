@@ -54,7 +54,7 @@ object Main {
     // Create Scheduler
     Scheduler(Configuration.THREADCOUNT)
 
-    val it = getSplitFirst.iterator
+    val it = getStdPhases.iterator
     var r = true
     while(it.hasNext && r) {
       val phase = it.next()
