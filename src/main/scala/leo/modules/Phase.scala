@@ -1,10 +1,11 @@
 package leo
 package modules
 
-import leo.agents.{EmptyResult, Result, Task, FifoAgent}
+import leo.agents.{EmptyResult, Result, Task, FifoAgent, Agent}
 import leo.agents.impl._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, DoneEvent, StatusEvent, Event}
+import leo.datastructures.context.Context
 import leo.modules.output.{SZS_Theorem, SZS_Error}
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
@@ -13,6 +14,18 @@ import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulatio
 object Phase {
   def getStdPhases : Seq[Phase] = List(LoadPhase, PreprocessPhase, ParamodPhase)
   def getSplitFirst : Seq[Phase] = List(LoadPhase, PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
+
+  /**
+   * Creates a complete phase from a List of Agents.
+   *
+   * @param dname - Name of the Phase
+   * @param dagents - Agents to be used in this phase.
+   * @return - A phase executing all agents until nothing is left to do.
+   */
+  def apply(dname : String, dagents : Seq[Agent]) : Phase = new CompletePhase {
+    override protected def agents: Seq[Agent] = dagents
+    override def name: String = dname
+  }
 }
 
 /**
@@ -34,16 +47,96 @@ trait Phase {
    * @return
    */
   def name : String
+
+  /**
+   * Returns a short description and
+   * all agents, that were started, for this phase.
+   *
+   * @return
+   */
+  lazy val description : String = s"  Agents used:\n    ${agents.map(_.name).mkString("\n    ")}"
+
+  /**
+   * A list of all agents to be started.
+   * @return
+   */
+  protected def agents : Seq[Agent]
+
+  /**
+   * Method to start the agents, defined in `agents`
+   */
+  protected def start() : Unit = {
+    agents.foreach(_.register())
+    Scheduler().signal()
+  }
+
+  /**
+   * Method to finish the agents.
+   */
+  protected def end() : Unit = {
+    Scheduler().pause()
+    agents.foreach{a => Blackboard().unregisterAgent(a)}
+    Scheduler().clear()
+  }
+}
+
+/**
+ * Abstract Phase, that implements
+ * the execute to start the agents and wait for all to finish.
+ */
+trait CompletePhase extends Phase {
+  private var finish = false
+
+  override def start() : Unit = {
+    super.start()
+    Wait.register()
+    Scheduler().signal()
+  }
+
+  override def end() : Unit = {
+    super.end()
+    Blackboard().unregisterAgent(Wait)
+  }
+  /**
+   * Executes all defined agents and waits till no work is left.
+   */
+  override def execute() : Boolean = {
+    // Starting all agents and signal scheduler
+    start()
+
+    // Wait until nothing is left to do
+    Wait.synchronized(while(!Wait.finish) Wait.wait())
+
+    // Ending all agents and clear the scheduler
+    end()
+
+    // If executing till the end, we will always return true, if other behaviour is wished, it has to be implemented
+    return true
+  }
+
+  private object Wait extends FifoAgent{
+    var finish = false
+    override protected def toFilter(event: Event): Iterable[Task] = event match {
+      case d : DoneEvent => finish = true; synchronized(notifyAll());List()
+      case _ => List()
+    }
+    override def name: String = "PreprocessPhaseTerminator"
+    override def run(t: Task): Result = EmptyResult
+  }
 }
 
 
 object LoadPhase extends Phase{
   override val name = "LoadPhase"
+
+  override val agents : Seq[Agent] = List(new ConjectureAgent)
+
   var finish : Boolean = false
 
   override def execute(): Boolean = {
     val file = Configuration.PROBLEMFILE
-    UtilAgents.Conjecture()
+
+    start()
     Wait.register()
 
     try {
@@ -55,15 +148,15 @@ object LoadPhase extends Phase{
       case e : Throwable =>
         Out.severe("Unexpected Exception")
         e.printStackTrace()
-        Out.output((SZSOutput(SZS_Error)))
+        Blackboard().forceStatus(Context())(SZS_Error)
+        //Out.output((SZSOutput(SZS_Error)))
         return false
     }
     Scheduler().signal()
     synchronized{while(!finish) this.wait()}
 
-    Scheduler().pause()
 
-    Blackboard().unregisterAgent(UtilAgents.Conjecture())
+    end()
     Blackboard().unregisterAgent(Wait)
     return true
   }
@@ -78,124 +171,22 @@ object LoadPhase extends Phase{
   }
 }
 
-object PreprocessPhase extends Phase {
+object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  var finish : Boolean = false
-
-  override def execute(): Boolean = {
-    Scheduler().signal()
-    NormalClauseAgent.DefExpansionAgent()
-    NormalClauseAgent.SimplificationAgent()
-
-    Wait.register()
-    synchronized(while(!finish) wait())
-
-    NormalClauseAgent.DefExpansionAgent().setActive(false)
-    NormalClauseAgent.DefExpansionAgent().setActive(false)
-    Blackboard().unregisterAgent(Wait)
-    Scheduler().clear()
-    return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; PreprocessPhase.synchronized(PreprocessPhase.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "PreprocessPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
-  }
+  override protected def agents: Seq[Agent] = List(NormalClauseAgent.DefExpansionAgent(),NormalClauseAgent.SimplificationAgent())
 }
 
-object ExhaustiveClausificationPhase extends Phase {
+object ExhaustiveClausificationPhase extends CompletePhase {
   override val name = "ClausificationPhase"
-  var finish : Boolean = false
-
-  override def execute(): Boolean = {
-    Scheduler().signal()
-    val c = new ClausificationAgent
-    c.register()
-    Wait.register()
-    
-    synchronized(while(!finish) wait())
-
-    Blackboard().unregisterAgent(c)
-    Blackboard().unregisterAgent(Wait)
-    Scheduler().clear()
-    return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; ExhaustiveClausificationPhase.synchronized(ExhaustiveClausificationPhase.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "ExhaustiveClausificationPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
-  }
+  override protected def agents : Seq[Agent] = List(new ClausificationAgent())
 }
 
-object SplitPhase extends Phase {
+object SplitPhase extends CompletePhase {
   override val name = "SplitPhase"
-  var finish : Boolean = false
-
-  override def execute(): Boolean = {
-    Scheduler().signal()
-    val c = new SplittingAgent(ClauseHornSplit)
-    c.register()
-
-    Wait.register()
-    synchronized(while(!finish) wait())
-
-    Blackboard().unregisterAgent(c)
-    Blackboard().unregisterAgent(Wait)
-    Scheduler().clear()
-    return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; SplitPhase.synchronized(SplitPhase.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "SplitPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
-  }
+  override protected def agents: Seq[Agent] = List(new SplittingAgent(ClauseHornSplit))
 }
 
-object ParamodPhase extends Phase {
+object ParamodPhase extends CompletePhase {
   override val name : String = "ParamodPhase"
-  var finish : Boolean = false
-
-  override def execute(): Boolean = {
-    Scheduler().signal()
-    val p1 = new ParamodulationAgent(Paramodulation, IdComparison)
-    val p2 = new ParamodulationAgent(PropParamodulation, IdComparison)
-    // val sp = new SplittingAgent(ClauseHornSplit)
-
-    p1.register()
-    p2.register()
-    //sp.register()
-    WaitForProof.register()
-    ClausificationAgent()
-    synchronized(while(!finish)wait())
-    Blackboard().unregisterAgent(WaitForProof)
-    Scheduler().clear()
-    return true
-  }
-
-  private object WaitForProof extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case StatusEvent(c,s) =>
-        if (c.parentContext == null && s == SZS_Theorem) {
-          finish = true
-          ParamodPhase.synchronized(ParamodPhase.notifyAll())
-          List()
-        } else List()
-      case d : DoneEvent => finish = true; ParamodPhase.synchronized(ParamodPhase.notifyAll()); List()
-      case _ => List()
-    }
-    override def name: String = "ParamodPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
-  }
+  override protected def agents: Seq[Agent] = List(new ParamodulationAgent(Paramodulation, IdComparison), new ParamodulationAgent(PropParamodulation, IdComparison), new ClausificationAgent())
 }

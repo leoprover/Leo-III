@@ -168,9 +168,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       this.synchronized {
         if (pauseFlag) {
           // If is paused wait
-          Out.info("Scheduler paused.")
+          Out.trace("Scheduler paused.")
           this.wait()
-          Out.info("Scheduler is commencing.")
+          Out.trace("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
       }
@@ -183,9 +183,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         this.synchronized {
           if (endFlag) return         // Savely exit
           if (pauseFlag) {
-            Out.info("Scheduler paused.")
+            Out.trace("Scheduler paused.")
             this.wait()
-            Out.info("Scheduler is commencing.")
+            Out.trace("Scheduler is commencing.")
           } // Check again, if waiting took to long
 
           curExec.add(t)
@@ -217,7 +217,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           if (ins) {
             // Keep track of new Formulas
             newF = newF + up
-            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
+            //Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
           }
         }
         result.removeFormula().foreach(Blackboard().removeFormula(_))
@@ -227,7 +227,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           val ins = Blackboard().addNewFormula(up)
           if (ins) {
             newF = newF + up // Keep track of new formulas
-            Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
+            //Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
           }
         }
 
