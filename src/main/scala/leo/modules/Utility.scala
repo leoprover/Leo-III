@@ -137,42 +137,41 @@ object Utility {
     }
   }
 
+  def printSignature(): Unit = {
+    val s = Signature.get
+    println("Name | Id | (Type) | (Def)")
+    (s.allConstants).foreach { case c => {
+      val c1 = s(c)
+      print(c1.name + " | ")
+      print(c1.key + " |")
+      c1.ty foreach { case ty => print(ty.pretty + " | ")}
+      c1.defn foreach { case defn => print(defn.pretty)}
+      println()
+    }
+    }
+  }
+
+  def printUserDefinedSignature(): Unit = {
+    val s = Signature.get
+    (s.allUserConstants).foreach { case c => {
+      val c1 = s(c)
+      print(c1.name + " | ")
+      print(c1.key + " | ")
+      c1.ty foreach { case ty => print(ty.pretty + " | ")}
+      c1.defn foreach { case defn => print(defn.pretty)}
+      println()
+    }
+    }
+  }
+
   /**
    * Shows all formulas in the current context.
    */
   def context(): Unit = {
-    val maxSize = 85
-    val maxNameSize = 25
-    val maxRoleSize = 19
-    val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
-
     println("Signature:")
-    val s = Signature.get
-    for(c <- s.allConstants) {
-      val c1 = s(c)
-      print(c1.name+" | ")
-      print(c1.key+" | ")
-      c1.ty foreach {case ty => print(ty.pretty + " | ")}
-      c1.defn foreach {case defn => print(defn.pretty)}
-      println()
-    }
-
-    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula")
-    println("-"*maxSize)
-    Blackboard().getFormulas.foreach {
-      x =>
-        val name = x.name.toString.take(maxNameSize)
-        val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty
-        val form1 = form.take(maxFormulaSize)
-        val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
-
-        val nameOffset = maxNameSize - name.length
-        val roleOffset = maxRoleSize - role.length
-        println(name + " " * nameOffset + " | " + role + " " * roleOffset + " | " +  form1)
-        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
-    }
-    println()
+    printSignature()
+    println("Blackboard context:")
+    formulaContext()
   }
 
   def formulaContext() : Unit = {
