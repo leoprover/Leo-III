@@ -25,7 +25,9 @@ class InputTestSuite extends FunSuite {
 //                      "SYN000^1" -> "TPTP THF basic syntax features",
 //                      "SYN000^2" -> "TPTP THF advanced syntax features",
 //                      "SYN000+2" -> "TPTP FOF advanced syntax features",
-                      "SYN000_2" -> "TPTP TF0 advanced syntax features"
+//                      "SYN000_2" -> "TPTP TF0 advanced syntax features",
+    "SYN000=2" -> "TPTP TF0 with arithmetic advanced syntax features"
+
   )
 
   val sig = Signature.get
