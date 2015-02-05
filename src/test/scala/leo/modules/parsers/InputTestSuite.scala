@@ -20,14 +20,13 @@ class InputTestSuite extends FunSuite {
   val problem_suffix = ".p"
 
   val problems = Seq( //"SYN000-1" -> "TPTP CNF basic syntax features",
-//                      "SYN000+1" -> "TPTP FOF basic syntax features",
-//                      "SYN000_1" -> "TPTP TF0 basic syntax features",
-//                      "SYN000^1" -> "TPTP THF basic syntax features",
-//                      "SYN000^2" -> "TPTP THF advanced syntax features",
-//                      "SYN000+2" -> "TPTP FOF advanced syntax features",
-//                      "SYN000_2" -> "TPTP TF0 advanced syntax features",
-    "SYN000=2" -> "TPTP TF0 with arithmetic advanced syntax features"
-
+                      "SYN000+1" -> "TPTP FOF basic syntax features",
+                      "SYN000_1" -> "TPTP TF0 basic syntax features",
+                      "SYN000^1" -> "TPTP THF basic syntax features",
+                      "SYN000^2" -> "TPTP THF advanced syntax features",
+                      "SYN000+2" -> "TPTP FOF advanced syntax features",
+                      "SYN000_2" -> "TPTP TF0 advanced syntax features"
+//    "SYN000=2" -> "TPTP TF0 with arithmetic advanced syntax features"
   )
 
   val sig = Signature.get
