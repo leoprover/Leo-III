@@ -229,7 +229,7 @@ object HOLSignature {
   private[datastructures] val toIntKey = roundKey + 1
   private[datastructures] val toRatKey = toIntKey +1
   private[datastructures] val toRealKey = toRatKey + 1
-  private[datastructures] val isRatKey = toRatKey + 1
+  private[datastructures] val isRatKey = toRealKey + 1
   private[datastructures] val isIntKey = isRatKey + 1
 
   private[datastructures] val existsKey = isIntKey + 1
