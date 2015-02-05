@@ -98,7 +98,13 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
   }
 
   override protected def toFilter(e: Event): Iterable[Task] = e match {
-    case FormulaEvent(event) => if (norm.applicable ( event.status ) && !event.clause.isEmpty) List (new NormalTask (event) ) else Nil
+    case FormulaEvent(event) =>
+      if (norm.applicable ( event.status ) && !event.clause.isEmpty) {
+        List(new NormalTask(event))
+      }
+      else {
+        Nil
+      }
     case _ => Nil
   }
 

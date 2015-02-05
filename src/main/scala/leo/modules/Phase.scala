@@ -4,8 +4,9 @@ package modules
 import leo.agents.{EmptyResult, Result, Task, FifoAgent, Agent}
 import leo.agents.impl._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{Blackboard, DoneEvent, StatusEvent, Event}
+import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
+import leo.modules.normalization.{Simplification, DefExpansion}
 import leo.modules.output.{SZS_Theorem, SZS_Error}
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
@@ -75,7 +76,7 @@ trait Phase {
    */
   protected def end() : Unit = {
     Scheduler().pause()
-    agents.foreach{a => Blackboard().unregisterAgent(a)}
+    agents.foreach(_.unregister())
     Scheduler().clear()
   }
 }
@@ -87,15 +88,18 @@ trait Phase {
 trait CompletePhase extends Phase {
   private var finish = false
 
+  private val waitAgent = new Wait
+
   override def start() : Unit = {
     super.start()
-    Wait.register()
+    waitAgent.finish = false
+    waitAgent.register()
     Scheduler().signal()
   }
 
   override def end() : Unit = {
     super.end()
-    Blackboard().unregisterAgent(Wait)
+    waitAgent.unregister()
   }
   /**
    * Executes all defined agents and waits till no work is left.
@@ -105,7 +109,7 @@ trait CompletePhase extends Phase {
     start()
 
     // Wait until nothing is left to do
-    Wait.synchronized(while(!Wait.finish) Wait.wait())
+    waitAgent.synchronized(while(!waitAgent.finish) waitAgent.wait())
 
     // Ending all agents and clear the scheduler
     end()
@@ -114,10 +118,15 @@ trait CompletePhase extends Phase {
     return true
   }
 
-  private object Wait extends FifoAgent{
+  private class Wait extends FifoAgent{
     var finish = false
     override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; synchronized(notifyAll());List()
+      case d : DoneEvent =>
+        Out.output("Got Done Event.")
+        synchronized{finish = true; notifyAll()};List()
+      case StatusEvent(c,s) if c.parentContext == null && c.isClosed => // The root context was closed
+        Out.output("Rootcontext Closed.")
+        synchronized{finish = true; notifyAll()};List()
       case _ => List()
     }
     override def name: String = "PreprocessPhaseTerminator"
@@ -157,7 +166,7 @@ object LoadPhase extends Phase{
 
 
     end()
-    Blackboard().unregisterAgent(Wait)
+    Wait.unregister()
     return true
   }
 
@@ -173,20 +182,20 @@ object LoadPhase extends Phase{
 
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  override protected def agents: Seq[Agent] = List(NormalClauseAgent.DefExpansionAgent(),NormalClauseAgent.SimplificationAgent())
+  override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification))
 }
 
 object ExhaustiveClausificationPhase extends CompletePhase {
   override val name = "ClausificationPhase"
-  override protected def agents : Seq[Agent] = List(new ClausificationAgent())
+  override protected val agents : Seq[Agent] = List(new ClausificationAgent())
 }
 
 object SplitPhase extends CompletePhase {
   override val name = "SplitPhase"
-  override protected def agents: Seq[Agent] = List(new SplittingAgent(ClauseHornSplit))
+  override protected val agents: Seq[Agent] = List(new SplittingAgent(ClauseHornSplit))
 }
 
 object ParamodPhase extends CompletePhase {
   override val name : String = "ParamodPhase"
-  override protected def agents: Seq[Agent] = List(new ParamodulationAgent(Paramodulation, IdComparison), new ParamodulationAgent(PropParamodulation, IdComparison), new ClausificationAgent())
+  override protected val agents: Seq[Agent] = List(new ParamodulationAgent(Paramodulation, IdComparison), new ParamodulationAgent(PropParamodulation, IdComparison), new ClausificationAgent())
 }
