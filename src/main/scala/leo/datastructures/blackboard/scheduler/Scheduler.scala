@@ -15,7 +15,8 @@ import java.util.concurrent.Executors
  */
 object Scheduler {
 
-  private var s : Scheduler = null
+  private[scheduler] var s : Scheduler = null
+  private var n : Int = 5
 
   /**
    * Defines a scheduler with numberOfThreads Threads or
@@ -25,6 +26,7 @@ object Scheduler {
    * @return Singleton Scheduler
    */
   def apply(numberOfThreads : Int) : Scheduler = {
+    n = numberOfThreads
     if (s == null) {
       s = new SchedulerImpl(numberOfThreads)
       s.start()
@@ -38,7 +40,9 @@ object Scheduler {
    * if the scheduler already exists.
    * @return
    */
-  def apply() : Scheduler = apply(5)
+  def apply() : Scheduler = {
+    apply(n)
+  }
 
   def working() : Boolean = {
     if (s == null) return false
@@ -99,7 +103,7 @@ trait Scheduler {
 protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Scheduler {
   import leo.agents._
 
-  protected val exe = Executors.newFixedThreadPool(numberOfThreads)
+  private var exe = Executors.newFixedThreadPool(numberOfThreads)
   private val s : SchedulerRun = new SchedulerRun()
   private val w : Writer = new Writer()
 
@@ -116,7 +120,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   override def isTerminated() : Boolean = endFlag
 
-  def signal() : Unit = s.synchronized{pauseFlag = false; s.notifyAll()}
+  def signal() : Unit = s.synchronized{
+    pauseFlag = false
+    s.notifyAll()
+  }
 
   def step() : Unit = s.synchronized{s.notifyAll()}
 
@@ -135,6 +142,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     sT.interrupt()
     s.notifyAll()
     curExec.clear()
+    Scheduler.s = null
   }
 
   var pauseFlag = true
@@ -174,13 +182,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         }
         if (endFlag) return // If is ended quit
       }
-
       // Blocks until a task is available
       val tasks = Blackboard().getTask
-//      println("Loaded "+tasks.size+" new tasks, ready to execute.")
+
 
       for ((a,t) <- tasks) {
         this.synchronized {
+          curExec.add(t)
           if (endFlag) return         // Savely exit
           if (pauseFlag) {
             Out.trace("Scheduler paused.")
@@ -188,7 +196,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
             Out.trace("Scheduler is commencing.")
           } // Check again, if waiting took to long
 
-          curExec.add(t)
+
           // Execute task
           exe.submit(new GenAgent(a, t))
         }

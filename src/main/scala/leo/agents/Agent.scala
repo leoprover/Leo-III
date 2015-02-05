@@ -79,6 +79,11 @@ abstract class Agent {
     setActive(true)
   }
 
+  def unregister(): Unit = {
+    Blackboard().unregisterAgent(this)
+    setActive(false)
+  }
+
   /**
    * This method is called when an agent is killed by the scheduler
    * during execution. This method does standardized nothing.
@@ -165,16 +170,9 @@ abstract class FifoAgent extends Agent {
 
   override def openTasks : Int = q.size
 
-  /**
-   * <p>
-   * In this method the Agent gets the Blackboard it will work on.
-   * Registration for Triggers should be done in here.
-   * </p>
-   *
-   */
-  override def register() {
-    Blackboard().registerAgent(this)
-    setActive(true)
+  override def unregister(): Unit ={
+    super.unregister()
+    q.synchronized(q.clear())
   }
 
   protected val q : mutable.Queue[Task] = new mutable.Queue[Task]()
@@ -191,7 +189,6 @@ abstract class FifoAgent extends Agent {
     var done = false
     for(t <- toFilter(f)) {
       if (!Blackboard().collision(t)) {
-//        println(name+" : Got a task.")
         q.synchronized {
           q.enqueue(t)
         }
@@ -223,7 +220,6 @@ abstract class FifoAgent extends Agent {
         }
       }
     }
-//    println(name+ " : Send "+erg.size+" tasks to Auction.")
     erg
   }
 
@@ -248,7 +244,7 @@ abstract class FifoAgent extends Agent {
   override def removeColliding(nExec: Iterable[Task]): Unit = q.synchronized(q.dequeueAll{tbe =>
     nExec.exists{e =>
       val rem = e.writeSet().intersect(tbe.writeSet()).nonEmpty || e.writeSet().intersect(tbe.writeSet()).nonEmpty || e == tbe // Remove only tasks depending on written (changed) data.
-      if(rem && e != tbe) Out.output(s"The task\n  $tbe\n collided with\n  $e\n and was removed.")
+      if(rem && e != tbe) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was removed.")
       rem
     }
   })
@@ -272,6 +268,11 @@ abstract class PriorityAgent extends Agent {
   override def setActive(a : Boolean) = {
     super.setActive(a)
     if(a && q.nonEmpty) Blackboard().signalTask()
+  }
+
+  override def unregister(): Unit = {
+    super.unregister()
+    synchronized{q.clear()}
   }
 
   // Sort by a fixed amount of money
@@ -299,7 +300,7 @@ abstract class PriorityAgent extends Agent {
     while(it.hasNext) {
       val t = it.next()
       if (!Blackboard().collision(t)) {
-        q.synchronized {
+        synchronized {
           q.enqueue (t)
         }
         done = true
@@ -355,7 +356,7 @@ abstract class PriorityAgent extends Agent {
       q = q.filter { tbe =>
         nExec.forall{e =>
           val take = e.writeSet().intersect(tbe.writeSet()).isEmpty && e.writeSet().intersect(tbe.writeSet()).isEmpty && e != tbe
-          if(!take && e != tbe) Out.output(s"The task\n  $tbe\n collided with\n  $e\n and was therefore removed.")
+          if(!take && e != tbe) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was therefore removed.")
           take
         }
       }

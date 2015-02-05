@@ -24,9 +24,6 @@ import leo.datastructures.context.{ContextSet, Context}
  * @since 19.08.2015
  */
 protected[blackboard] class AuctionBlackboard extends Blackboard {
-
-  var isFinished = false
-
   // For each agent a List of Tasks to execute
   // If FormulaSet is optimized we can optimize internal
 
@@ -90,7 +87,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override def clear() : Unit = {
     rmAll(_ => true)
     TaskSet.clear()
-    isFinished = false
+    szsSet.clear()
   }
 
   /**
@@ -272,7 +269,7 @@ private object FormulaSet {
 private object TaskSet {
   import scala.collection.mutable.HashSet
 
-  var regAgents = mutable.HashMap[Agent,Double]()
+  val regAgents = mutable.HashMap[Agent,Double]()
   protected[impl] val execTasks = new mutable.HashSet[Task]
 
   private val AGENT_SALARY : Double = 5
@@ -283,16 +280,21 @@ private object TaskSet {
   protected[blackboard] def signalTask() : Unit = this.synchronized(this.notifyAll())
 
   def clear() : Unit = {
-    regAgents.foreach(_._1.clearTasks())
-    execTasks.clear()
+    this.synchronized {
+      regAgents.foreach(_._1.clearTasks())
+      regAgents.clear()
+      execTasks.clear()
+    }
   }
 
   def addAgent(a : Agent) {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
   }
 
-  def removeAgent(a : Agent): Unit = {
-    this.synchronized(regAgents.remove(a))
+  def removeAgent(a : Agent): Unit = this.synchronized{
+    //leo.Out.output(s"Called remove ${a.name}(${a.hashCode()}})\n on\n   ${regAgents.map{case (a,d) => a.name +"("+a.hashCode()+")"}.mkString("\n   ")}")
+    regAgents.remove(a)
+    //leo.Out.output(s"After remove :\n   ${regAgents.map{case (a,d) => a.name +"("+a.hashCode()+")"}.mkString("\n   ")}")
   }
 
   private[impl] def finishTask(t : Task) = synchronized(execTasks.remove(t))
@@ -324,7 +326,7 @@ private object TaskSet {
         while (r.isEmpty) {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
           if (r.isEmpty) {
-            if(!Scheduler.working()) Blackboard().filterAll{a => a.filter(DoneEvent())}
+            if(!Scheduler.working() && execTasks.isEmpty) Blackboard().filterAll{a => a.filter(DoneEvent())}
             TaskSet.wait()
           }
         }
@@ -377,7 +379,7 @@ private object TaskSet {
         case e : Exception => throw e
       }
     }
-    Nil
+    return Nil
   }
 
 
@@ -390,7 +392,7 @@ private object TaskSet {
    *
    * @return true, iff the task collides
    */
-  def collision(t : Task) : Boolean = execTasks.exists{e => t.collide(e)}
+  def collision(t : Task) : Boolean = this.synchronized(execTasks.exists{e => val erg = t.collide(e); if(erg) leo.Out.output(s"Collision:\n  ${t.pretty}\n with\n  ${e.pretty}"); erg})
 
 
 }

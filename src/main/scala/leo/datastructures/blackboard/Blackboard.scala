@@ -106,7 +106,7 @@ trait TaskOrganize {
   def collision(t : Task) : Boolean
 
   /**
-   * Registers an agent to the blackboard
+   * Registers an agent to the blackboard, should only be called by the agent itself
    *
    * @param a - the new agent
    */
@@ -117,6 +117,8 @@ trait TaskOrganize {
    *
    * Recomended if the agent will be used nevermore. Otherwise
    * a.setActive(false) should be used.
+   *
+   * This method should be called solely from the agent.
    *
    * @param a
    */
