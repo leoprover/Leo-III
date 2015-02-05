@@ -216,7 +216,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   ///////////////////////////////
 
   def allConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
-  def allUserConstants = (uiSet | definedSet | typeSet).filter(_ > lastId)
+  def allUserConstants = (uiSet | definedSet | typeSet).filter(_ > HOLSignature.lastId)
   def fixedSymbols: Set[Key] = fixedSet.toSet
   def definedSymbols: Set[Key] = definedSet.toSet
   def uninterpretedSymbols: Set[Key] = uiSet.toSet
