@@ -122,10 +122,8 @@ trait CompletePhase extends Phase {
     var finish = false
     override protected def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
-        Out.output("Got Done Event.")
         synchronized{finish = true; notifyAll()};List()
       case StatusEvent(c,s) if c.parentContext == null && c.isClosed => // The root context was closed
-        Out.output("Rootcontext Closed.")
         synchronized{finish = true; notifyAll()};List()
       case _ => List()
     }
