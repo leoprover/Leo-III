@@ -6,13 +6,15 @@ import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
 import leo.datastructures.tptp.Commons.Term
+import leo.modules.SZSException
+import leo.modules.output.SZS_InputError
 
 import scala.language.implicitConversions
 
 import leo.datastructures.tptp.Commons._
 import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
 import leo.datastructures.{Kind, Clause, Literal, Role}
-import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkTypeApp}
+import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkApp}
 import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
 
 import leo.datastructures.tptp.Commons.THFAnnotated
@@ -654,8 +656,56 @@ object InputProcessing {
 
     }
     case DefinedFunc(name, vars) => {
-      val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
-      mkTermApp(mkAtom(sig(name).key), converted)
+      if (sig(name)._ty.isPolyType) {
+        val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
+        // converted only contains terms
+        // currently, there are only unary and binary TPTP defined functions (Dollarwords) that are polymorphic (all arithmetic related)
+        if (converted.size == 1) {
+          val func = name match {
+            case "$uminus" => HOLUnaryMinus
+            case "$floor" => HOLFloor
+            case "$ceiling" => HOLCeiling
+            case "$truncate" => HOLTruncate
+            case "$round" => HOLRound
+            case "$to_int" => HOLToInt
+            case "$to_rat" => HOLToRat
+            case "$to_real" => HOLToReal
+            case "$is_rat" => HOLIsRat
+            case "$is_int" => HOLIsInt
+            case _ => Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity = 1");
+              throw new SZSException(SZS_InputError)
+          }
+          func.apply(converted(0))
+        } else if (converted.size == 2) {
+          val func = name match {
+            case "$less" => HOLLess
+            case "$lesseq" => HOLLessEq
+            case "$greater" => HOLGreater
+            case "$greatereq" => HOLGreaterEq
+            case "$sum" => HOLSum
+            case "$difference" => HOLDifference
+            case "$product" => HOLProduct
+            case "$quotient" => HOLQuotient
+            case "$quotient_e" => HOLQuotientE
+            case "$quotient_t" => HOLQuotientT
+            case "$quotient_f" => HOLQuotientF
+            case "$remainder_e" => HOLRemainderE
+            case "$remainder_t" => HOLRemainderT
+            case "$remainder_f" => HOLRemainderF
+            case _ => Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity = 2");
+              throw new SZSException(SZS_InputError)
+          }
+          func.apply(converted(0), converted(1))
+        } else {
+          // This should not happen
+          Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity > 2")
+          throw new SZSException(SZS_InputError)
+        }
+
+      } else {
+        val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
+        mkTermApp(mkAtom(sig(name).key), converted)
+      }
     }
     case SystemFunc(name, vars) => {
       val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
@@ -752,7 +802,7 @@ object InputProcessing {
   }
 
   protected[parsers] def mkITE(sig: Signature)(cond: term.Term, thn: term.Term, els: term.Term): term.Term = {
-    mkTermApp( mkAtom(sig.iteKey), List(thn,els))
+      mkTermApp( mkAtom(sig.iteKey), List(thn,els))
   }
 }
 
