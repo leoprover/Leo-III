@@ -114,13 +114,13 @@ trait HOLSignature {
   //////////////////////
 
   // Shorthands for later definitions
-  private def not = mkAtom(10)
-  private def all = mkAtom(11)
-  private def disj = mkAtom(12)
-  private def conj = mkAtom(23)
-  private def impl = mkAtom(24)
-  private def lpmi = mkAtom(25)
-  private def eq = mkAtom(13)
+  private def not = mkAtom(HOLSignature.notKey)
+  private def all = mkAtom(HOLSignature.forallKey)
+  private def disj = mkAtom(HOLSignature.orKey)
+  private def conj = mkAtom(HOLSignature.andKey)
+  private def impl = mkAtom(HOLSignature.implKey)
+  private def lpmi = mkAtom(HOLSignature.ifKey)
+  private def eq = mkAtom(HOLSignature.eqKey)
 
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
@@ -421,6 +421,8 @@ object HOLRound extends PolyUnaryConnective { val key = roundKey}
 object HOLToInt extends PolyUnaryConnective { val key = toIntKey}
 object HOLToRat extends PolyUnaryConnective { val key = toRatKey}
 object HOLToReal extends PolyUnaryConnective { val key = toRealKey}
+object HOLIsRat extends PolyUnaryConnective { val key = isRatKey}
+object HOLIsInt extends PolyUnaryConnective { val key = isIntKey}
 object HOLSum extends PolyBinaryConnective { val key = sumKey}
 object HOLDifference extends PolyBinaryConnective { val key = diffKey}
 object HOLProduct extends PolyBinaryConnective { val key = prodKey}
