@@ -180,7 +180,7 @@ object Utility {
     val maxRoleSize = 19
     val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
 
-    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula")
+    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula (in nameless spine representation)")
     println("-"*maxSize)
     Blackboard().getFormulas.foreach {
       x =>
