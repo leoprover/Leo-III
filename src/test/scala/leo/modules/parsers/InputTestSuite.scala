@@ -3,16 +3,14 @@ package leo.modules.parsers
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
 
-import scala.io.Source
-
 import leo.modules.Utility
-import leo.modules.parsers.TPTP._
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
 /**
- * Created by lex on 04.02.15.
+ * @author Alexander Steen
+ * @since 09.02.2015
  */
 @RunWith(classOf[JUnitRunner])
 class InputTestSuite extends FunSuite {
@@ -25,8 +23,8 @@ class InputTestSuite extends FunSuite {
                       "SYN000^1" -> "TPTP THF basic syntax features",
                       "SYN000^2" -> "TPTP THF advanced syntax features",
                       "SYN000+2" -> "TPTP FOF advanced syntax features",
-                      "SYN000_2" -> "TPTP TF0 advanced syntax features"
-//    "SYN000=2" -> "TPTP TF0 with arithmetic advanced syntax features"
+                      "SYN000_2" -> "TPTP TF0 advanced syntax features",
+                      "SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
   )
 
   val sig = Signature.get
@@ -43,23 +41,15 @@ class InputTestSuite extends FunSuite {
       Utility.load(source + "/" +  p._1 + ".p")
       println("Success!")
       println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${Blackboard().getFormulas.size} formulae added to blackboard.")
-      println
+      println()
       println("## Problem signature:")
       println("#####################")
       Utility.printSignature()
-      println
+      println()
       println("## Formulae converted to internal representation:")
       println("#################################################")
       Utility.formulaContext()
-      println
-
-//      Signature.get.
-
-      val parsed = Blackboard().getFormulas
-//      parsed.foreach(x => println(x.pretty))
-
-
-
+      println()
     }
   }
 }
