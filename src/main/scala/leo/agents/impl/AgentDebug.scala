@@ -62,8 +62,10 @@ object AgentDebug {
     Thread.sleep(2000)
 
     Out.output("\n\nOutput:\n\n")
-    Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for $file")
+    Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unknown")(_.output)} for $file")
     Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+
+    Scheduler().killAll()
   }
 
   def mkFormulaStoreFromTerm(name : String, t : Term, r : Role, context : Context) : FormulaStore = {
@@ -76,17 +78,17 @@ object AgentDebug {
     Term.mkAtom(s(st).key)
   }
 
-  private object WaitForProof extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case StatusEvent(c,s) =>
-        if (c.parentContext == null && s == SZS_Theorem) {
-          finish = true
-          AgentDebug.synchronized(AgentDebug.notify())
-          List()
-        } else List()
-      case _ => List()
-    }
-    override def name: String = "DebugControlAgent"
-    override def run(t: Task): Result = EmptyResult
-  }
+//  private object WaitForProof extends FifoAgent{
+//    override protected def toFilter(event: Event): Iterable[Task] = event match {
+//      case StatusEvent(c,s) =>
+//        if (c.parentContext == null && s == SZS_Theorem) {
+//          finish = true
+//          AgentDebug.synchronized(AgentDebug.notify())
+//          List()
+//        } else List()
+//      case _ => List()
+//    }
+//    override def name: String = "DebugControlAgent"
+//    override def run(t: Task): Result = EmptyResult
+//  }
 }

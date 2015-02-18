@@ -142,7 +142,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     sT.interrupt()
     s.notifyAll()
     curExec.clear()
-    Scheduler.s = null
+//    Scheduler.s = null
   }
 
   var pauseFlag = true

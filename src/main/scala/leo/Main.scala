@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules.{Utility, SZSOutput, CLParameterParser}
 import leo.modules.Utility._
-import leo.modules.output.SZS_Timeout
+import leo.modules.output.{SZS_GaveUp, SZS_Unsatisfiable, SZS_Timeout}
 import leo.modules.Phase._
 
 
@@ -66,7 +66,7 @@ object Main {
     }
     deferredKill.kill()
 
-    Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${Configuration.PROBLEMFILE}")
+    Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
     //formulaContext()
   }
@@ -113,7 +113,7 @@ object Main {
             }
           }
         }
-        Out.output(SZSOutput(SZS_Timeout))
+        Out.output(SZSOutput(SZS_Timeout))    // TODO Interference with other SZS status
         Scheduler().killAll()
       }
     }
