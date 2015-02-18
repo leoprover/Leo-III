@@ -28,7 +28,7 @@ object AgentDebug {
   var finish = false
 
   def main(args : Array [String]) {
-    Configuration.init(new CLParameterParser(Array("arg0", "-v", "1")))
+    Configuration.init(new CLParameterParser(Array("arg0", "-v", "5")))
     Scheduler()
     Blackboard()
 
@@ -52,36 +52,15 @@ object AgentDebug {
     Out.output("After Conjecture")
     Utility.formulaContext
 
-    NormalClauseAgent.DefExpansionAgent()
-    NormalClauseAgent.SimplificationAgent()
+    val scriptAgent = new SZSScriptAgent("scripts/leoexec.sh")
+    scriptAgent.register()
+
+    val f = Blackboard().getAll(_.role == Role_NegConjecture).head
+
+    Blackboard().send(SZSScriptMessage(f),scriptAgent)
 
     Thread.sleep(2000)
-    NormalClauseAgent.DefExpansionAgent().setActive(false)
-    NormalClauseAgent.SimplificationAgent().setActive(false)
-    Out.output("After initial simplification")
-    Utility.formulaContext()
 
-    // Run
-
-    val p1 = new ParamodulationAgent(Paramodulation, IdComparison)
-    val p2 = new ParamodulationAgent(PropParamodulation, IdComparison)
-    p1.register()
-    p2.register()
-    WaitForProof.register()
-    ClausificationAgent()
-
-    //NormalClauseAgent.NegationNormalAgent()
-
-
-    Utility.agentStatus()
-
-    synchronized(if(!finish) wait(10000))
-    //Thread.sleep(10000)
-    Scheduler().killAll()
-
-    Out.output("After 10s of calculus.")
-    Utility.formulaContext
-    Utility.agentStatus()
     Out.output("\n\nOutput:\n\n")
     Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for $file")
     Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))

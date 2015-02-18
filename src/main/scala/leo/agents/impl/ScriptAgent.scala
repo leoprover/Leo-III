@@ -11,6 +11,7 @@ import java.io.{PrintWriter, File}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 import scala.sys.process._
 
@@ -48,7 +49,7 @@ import scala.sys.process._
  */
 abstract class ScriptAgent(path : String) extends FifoAgent {
 
-  def handle(input : Stream[String], err : Stream[String], errno : Int) : Result
+  def handle(fs : Set[FormulaStore], input : Iterator[String], err : Iterator[String], errno : Int) : Result
 
   /**
    *
@@ -58,20 +59,21 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
 
   private val extSet : mutable.Set[Process] = new mutable.HashSet[Process]()
 
+  private val exec : File = new File(path)
 
-  private val exec : File = {
-    val f = File.createTempFile(path,".sh")
-    f.deleteOnExit()
-    val writer = new PrintWriter(f)
-    try{
-      writer.println("#!/bin/sh")
-      writer.println(path+" $1")
-      writer.println("echo $?")
-      writer.println("exit 0")
-    } finally writer.close()
-    Process(s"chmod u+x ${f.getAbsolutePath}").!
-    f
-  }
+//  private val exec : File = {
+//    val f = File.createTempFile(path,".sh")
+//    f.deleteOnExit()
+//    val writer = new PrintWriter(f)
+//    try{
+//      writer.println("#!/bin/sh")
+//      writer.println(path+" $1")
+//      writer.println("echo $?")
+//      writer.println("exit 0")
+//    } finally writer.close()
+//    Process(s"chmod u+x ${f.getAbsolutePath}").!
+//    f
+//  }
 
   /**
    * This function runs the specific agent on the registered Blackboard.
@@ -99,18 +101,16 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
         // -------------------------------------------------------------
         //val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
         val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath)
-        var str : Iterator[String] = null
+        val str : mutable.ListBuffer[String] = new ListBuffer[String]
         val process = res.run(new ProcessIO(in => in.close(), // Input not used
-                                            stdout => {str = scala.io.Source.fromInputStream(stdout).getLines(); stdout.close()},
+                                            stdout => {scala.io.Source.fromInputStream(stdout).getLines().foreach(str.append(_)); stdout.close()},
                                             err => err.close())
                               )
         extSet.synchronized(extSet.add(process))
+        val exit = process.exitValue()
         Out.trace(s"[$name]: Got result from external prover.")
-        val erg = str.toStream
-        // Filter for exit code
-        // TODO: Insert error stream
-//        res foreach {l => Console.info(l)}
-        val h = handle(erg.init, Stream.empty, erg.last.toInt)
+
+        val h = handle(t1.fs, str.toIterator, List.empty.toIterator, exit)
 
         // CLean up! I.e. process
         extSet.synchronized(extSet.remove(process))
@@ -150,7 +150,7 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
   }; super.kill()
 }
 
-class ScriptTask(fs : Set[FormulaStore]) extends Task {
+class ScriptTask(val fs : Set[FormulaStore]) extends Task {
   override def readSet(): Set[FormulaStore] = fs
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget

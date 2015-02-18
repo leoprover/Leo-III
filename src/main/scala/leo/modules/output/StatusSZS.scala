@@ -1,4 +1,5 @@
-package leo.modules.output
+package leo
+package modules.output
 
 import leo.datastructures.Pretty
 
@@ -211,6 +212,31 @@ case object SZS_Inappropriate extends NoSuccessSZS {
 
 /** SZS Output factory methods. */
 object StatusSZS  {
+
+  def answerLine(name : String) : Option[StatusSZS] = {
+    if(name.startsWith("% SZS status")){
+      apply(name.substring(13).takeWhile( _ != ' ').toString)
+    } else None
+  }
+
+  def apply(name : String) : Option[StatusSZS] = name match {
+    case SZS_Theorem.output => Some(SZS_Theorem)
+    case SZS_Satisfiable.output => Some(SZS_Satisfiable)
+    case SZS_CounterSatisfiable.output => Some(SZS_CounterSatisfiable)
+    case SZS_Unsatisfiable.output => Some(SZS_Unsatisfiable)
+    case SZS_ContradictoryAxioms.output => Some(SZS_ContradictoryAxioms)
+    case SZS_Error.output => Some(SZS_Error)
+    case SZS_InputError.output => Some(SZS_InputError)
+    case SZS_SyntaxError.output => Some(SZS_SyntaxError)
+    case SZS_TypeError.output => Some(SZS_TypeError)
+    case SZS_Forced.output => Some(SZS_Forced)
+    case SZS_User.output => Some(SZS_User)
+    case SZS_Timeout.output => Some(SZS_Timeout)
+    case SZS_MemoryOut.output => Some(SZS_MemoryOut)
+    case SZS_GaveUp.output => Some(SZS_GaveUp)
+    case SZS_Inappropriate.output => Some(SZS_Inappropriate)
+    case _ => None
+  }
 
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   def apply(szsStatus: StatusSZS, problemName: String, comment: String): Output =

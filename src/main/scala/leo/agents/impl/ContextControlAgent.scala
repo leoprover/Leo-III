@@ -60,7 +60,7 @@ object SetContextTask {
   }
 }
 
-private class ContextResult(c : Context, s : StatusSZS) extends Result {
+class ContextResult(c : Context, s : StatusSZS) extends Result {
   override def newFormula(): Set[FormulaStore] = Set()
   override def updateFormula(): Map[FormulaStore, FormulaStore] = Map()
   override def updateStatus(): List[(Context, StatusSZS)] = List((c,s))
