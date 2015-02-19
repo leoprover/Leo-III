@@ -25,7 +25,7 @@ class PhaseTest extends FunSuite {
 
   // Used Phases for the test
   val tphases = List(PreprocessPhase, ParamodPhase)
-  
+
   // Used Problems for the test
   val problems = Seq(
     "ex1" -> "Problem 1",
