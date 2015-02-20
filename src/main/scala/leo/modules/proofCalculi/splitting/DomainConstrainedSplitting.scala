@@ -45,7 +45,7 @@ object DomainConstrainedSplitting {
 
     def equalToFirst(m : Int) : Term = m match {
       case 1 => ===(mkBound(t,1),mkBound(t,2))
-      case _ => |||(===(mkBound(t,1),mkBound(t,m)),equalToFirst(m-1))
+      case _ => |||(===(mkBound(t,1),mkBound(t,m+1)),equalToFirst(m-1))
     }
 
     /*
@@ -80,6 +80,7 @@ object DomainConstrainedSplitting {
     case _  => Out.warn("Tried to create a exist on a number of variables, but the number was negative. Creating no quantifier instead."); term
   }
 
+  //TODO namensgebung fixen
   def cardinalityAxioms(n : Int)(t : Type) : Seq[FormulaStore] = {
     cardinalityTerms(n)(t).map{t => Store(name + numb.getAndIncrement, Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, Context())}
   }

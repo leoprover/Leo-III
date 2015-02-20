@@ -10,14 +10,14 @@ import leo.modules.output.StatusSZS
 import leo.modules.output.logger.Out
 
 object SZSScriptAgent {
-  def apply(cmd : String) : Agent = new SZSScriptAgent(cmd)
+  def apply(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(reinterpreteResult)
 }
 
 /**
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String) extends ScriptAgent(cmd) {
+class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
   override val name = s"SZSScriptAgent ($cmd)"
 
   /**
@@ -36,7 +36,7 @@ class SZSScriptAgent(cmd : String) extends ScriptAgent(cmd) {
       getSZS(line) match {
         case Some(status) =>
           context.close()
-          return new ContextResult(context, status)
+          return new ContextResult(context, reinterpreteResult(status))
         case None         => ()
       }
 

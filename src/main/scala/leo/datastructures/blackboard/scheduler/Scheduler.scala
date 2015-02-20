@@ -185,21 +185,24 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       // Blocks until a task is available
       val tasks = Blackboard().getTask
 
+      try {
+        for ((a, t) <- tasks) {
+          this.synchronized {
+            curExec.add(t)
+            if (endFlag) return // Savely exit
+            if (pauseFlag) {
+              Out.trace("Scheduler paused.")
+              this.wait()
+              Out.trace("Scheduler is commencing.")
+            } // Check again, if waiting took to long
 
-      for ((a,t) <- tasks) {
-        this.synchronized {
-          curExec.add(t)
-          if (endFlag) return         // Savely exit
-          if (pauseFlag) {
-            Out.trace("Scheduler paused.")
-            this.wait()
-            Out.trace("Scheduler is commencing.")
-          } // Check again, if waiting took to long
 
-
-          // Execute task
-          exe.submit(new GenAgent(a, t))
+            // Execute task
+            if (!exe.isShutdown) exe.submit(new GenAgent(a, t))
+          }
         }
+      } catch {
+        case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now"); return
       }
     }
   }

@@ -6,7 +6,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
 import leo.datastructures.impl.Signature
-import leo.modules.output.SZS_Theorem
+import leo.modules.output.{ToTPTP, SZS_Theorem}
 import leo.modules.proofCalculi.{IdComparison, Paramodulation, PropParamodulation}
 import leo.modules.{Utility, CLParameterParser}
 import leo.modules.output.logger.Out
@@ -39,25 +39,41 @@ object AgentDebug {
 
     // Init - Preprocess
 
-    UtilAgents.Conjecture()
+    // UtilAgents.Conjecture()
 
     Out.output("Loaded File")
     Utility.formulaContext()
 
+    //Scheduler().signal()
+
+    val a = new DomainConstrainedSplitAgent
+    a.register()
+
+    val maxCard = 4
+
+    Blackboard().send(DomainConstrainedMessage(maxCard),a)
+
     Scheduler().signal()
 
-    Thread.sleep(500)
+    Thread.sleep(1000)
 
-    UtilAgents.Conjecture().setActive(false)
-    Out.output("After Conjecture")
-    Utility.formulaContext
+    val it = Context().childContext.iterator
+    for(i <- 1 to maxCard){
+      Out.output(s"\n\nContext for cardinality $i");
+      val fs = Blackboard().getAll(it.next()){x => true}
+      fs.foreach{f => Out.output(ToTPTP(f))}
+    }
 
-    val scriptAgent = new SZSScriptAgent("scripts/leoexec.sh")
-    scriptAgent.register()
+    //UtilAgents.Conjecture().setActive(false)
+    // Out.output("After Conjecture")
+    // Utility.formulaContext
 
-    val f = Blackboard().getAll(_.role == Role_NegConjecture).head
+    // val scriptAgent = new SZSScriptAgent("scripts/leoexec.sh")
+    // scriptAgent.register()
 
-    Blackboard().send(SZSScriptMessage(f),scriptAgent)
+    // val f = Blackboard().getAll(_.role == Role_NegConjecture).head
+
+    // Blackboard().send(SZSScriptMessage(f),scriptAgent)
 
     Thread.sleep(2000)
 

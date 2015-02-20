@@ -54,7 +54,7 @@ object Main {
     // Create Scheduler
     Scheduler(Configuration.THREADCOUNT)
 
-    val it = getStdPhases.iterator
+    val it = getCounterSat.iterator
     var r = true
     while(it.hasNext && r) {
       val phase = it.next()
@@ -68,7 +68,7 @@ object Main {
 
     Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
-    //formulaContext()
+    formulaContext()
   }
 
 

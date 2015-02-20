@@ -3,18 +3,20 @@ package modules
 
 import leo.agents.{EmptyResult, Result, Task, FifoAgent, Agent}
 import leo.agents.impl._
+import leo.datastructures.Role_Conjecture
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.modules.normalization.{Simplification, DefExpansion}
-import leo.modules.output.{SZS_Theorem, SZS_Error}
+import leo.modules.output.{SZS_CounterSatisfiable, StatusSZS, SZS_Theorem, SZS_Error}
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
 
 
 object Phase {
-  def getStdPhases : Seq[Phase] = List(LoadPhase, PreprocessPhase, ParamodPhase)
-  def getSplitFirst : Seq[Phase] = List(LoadPhase, PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
+  def getStdPhases : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
+  def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
+  def getCounterSat : Seq[Phase] = List(new LoadPhase(false), DomainConstrainedPhase, RemoteCounterSatPhase)
 
   /**
    * Creates a complete phase from a List of Agents.
@@ -133,19 +135,21 @@ trait CompletePhase extends Phase {
 }
 
 
-object LoadPhase extends Phase{
+class LoadPhase(negateConjecture : Boolean) extends Phase{
   override val name = "LoadPhase"
 
-  override val agents : Seq[Agent] = List(new ConjectureAgent)
+  override val agents : Seq[Agent] = if(negateConjecture) List(new ConjectureAgent) else Nil
 
   var finish : Boolean = false
 
   override def execute(): Boolean = {
     val file = Configuration.PROBLEMFILE
+    val wait = new Wait(this)
 
-    start()
-    Wait.register()
-
+    if(negateConjecture) {
+      start()
+      wait.register()
+    }
     try {
       Utility.load(file)
     } catch {
@@ -159,6 +163,49 @@ object LoadPhase extends Phase{
         //Out.output((SZSOutput(SZS_Error)))
         return false
     }
+    if(negateConjecture) {
+      Scheduler().signal()
+      synchronized {
+        while (!finish) this.wait()
+      }
+
+
+      end()
+      wait.unregister()
+    }
+    return true
+  }
+
+  private class Wait(lock : AnyRef) extends FifoAgent{
+    override protected def toFilter(event: Event): Iterable[Task] = event match {
+      case d : DoneEvent => finish = true; lock.synchronized(lock.notifyAll());List()
+      case _ => List()
+    }
+    override def name: String = "PreprocessPhaseTerminator"
+    override def run(t: Task): Result = EmptyResult
+  }
+}
+
+
+object DomainConstrainedPhase extends Phase{
+  override val name = "DomainConstrainedPhase"
+
+  val da = new DomainConstrainedSplitAgent
+
+  override val agents : Seq[Agent] = List(da)
+
+  var finish : Boolean = false
+
+  override def execute(): Boolean = {
+    start()
+
+
+    val maxCard = Configuration.valueOf("maxCard").fold(3){s => try{s.head.toInt} catch {case _ => 3}}
+
+    Blackboard().send(DomainConstrainedMessage(maxCard),da)
+
+    Wait.register()
+
     Scheduler().signal()
     synchronized{while(!finish) this.wait()}
 
@@ -170,7 +217,61 @@ object LoadPhase extends Phase{
 
   private object Wait extends FifoAgent{
     override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; LoadPhase.synchronized(LoadPhase.notifyAll());List()
+      case d : DoneEvent => finish = true; DomainConstrainedPhase.synchronized(DomainConstrainedPhase.notifyAll());List()
+      case _ => List()
+    }
+    override def name: String = "PreprocessPhaseTerminator"
+    override def run(t: Task): Result = EmptyResult
+  }
+}
+
+/**
+ * Invokes external scripts if the context was split previoulsy.
+ */
+object RemoteCounterSatPhase extends CompletePhase {
+  override def name: String = "RemoteCounterSatPhase"
+
+  val da : Agent = SZSScriptAgent("scripts/leoexec.sh")(reInt)
+
+  override protected def agents: Seq[Agent] = List(da)
+
+  private def reInt(in : StatusSZS) : StatusSZS = in match {
+    case SZS_Theorem => SZS_CounterSatisfiable    // TODO Sat -> Countersat
+    case e => e
+  }
+  var finish : Boolean = false
+
+  override def execute(): Boolean = {
+    start()
+
+
+    //val maxCard = Configuration.valueOf("maxCard").fold(3){s => try{s.head.toInt} catch {case _ => 3}}
+
+    // Send all messages
+    val it = Context().childContext.iterator
+    var con : FormulaStore = null
+    try {
+      con = Blackboard().getAll(_.role == Role_Conjecture).head
+    } catch {
+      case _ => end(); return false
+    }
+    while(it.hasNext) {
+      Blackboard().send(SZSScriptMessage(con.newContext(it.next())), da)
+    }
+    Wait.register()
+
+    Scheduler().signal()
+    synchronized{while(!finish) this.wait()}
+
+
+    end()
+    Wait.unregister()
+    return true
+  }
+
+  private object Wait extends FifoAgent{
+    override protected def toFilter(event: Event): Iterable[Task] = event match {
+      case d : DoneEvent => finish = true; DomainConstrainedPhase.synchronized(DomainConstrainedPhase.notifyAll());List()
       case _ => List()
     }
     override def name: String = "PreprocessPhaseTerminator"
