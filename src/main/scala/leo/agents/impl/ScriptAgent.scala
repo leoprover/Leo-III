@@ -1,6 +1,7 @@
 package leo.agents
 package impl
 
+import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures.===
 import leo.datastructures.blackboard.FormulaStore
@@ -14,6 +15,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 import scala.sys.process._
+import java.io.IOException
 
 //object ScriptAgent {
 //  /**
@@ -49,7 +51,7 @@ import scala.sys.process._
  */
 abstract class ScriptAgent(path : String) extends FifoAgent {
 
-  def handle(fs : Set[FormulaStore], input : Iterator[String], err : Iterator[String], errno : Int) : Result
+  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : Result
 
   /**
    *
@@ -103,14 +105,18 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
         val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath)
         val str : mutable.ListBuffer[String] = new ListBuffer[String]
         val process = res.run(new ProcessIO(in => in.close(), // Input not used
-                                            stdout => {scala.io.Source.fromInputStream(stdout).getLines().foreach(str.append(_)); stdout.close()},
+                                            stdout => try{
+                                              {scala.io.Source.fromInputStream(stdout).getLines().foreach(str.append(_)); stdout.close()}
+                                            } catch {
+                                              case e : IOException => stdout.close()
+                                            },
                                             err => err.close())
                               )
         extSet.synchronized(extSet.add(process))
         val exit = process.exitValue()
         Out.trace(s"[$name]: Got result from external prover.")
 
-        val h = handle(t1.fs, str.toIterator, List.empty.toIterator, exit)
+        val h = handle(t1.c, str.toIterator, List.empty.toIterator, exit)
 
         // CLean up! I.e. process
         extSet.synchronized(extSet.remove(process))
@@ -150,7 +156,7 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
   }; super.kill()
 }
 
-class ScriptTask(val fs : Set[FormulaStore]) extends Task {
+class ScriptTask(val fs : Set[FormulaStore], val c : Context) extends Task {
   override def readSet(): Set[FormulaStore] = fs
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget

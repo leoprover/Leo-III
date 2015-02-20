@@ -36,7 +36,6 @@ class DomainConstrainedSplitAgent extends FifoAgent{
         // Utility.printSignature()
         val s1 : Set[Signature#Key] = Signature.get.baseTypes - 0 - 1 - 3 - 4 - 5// Without kind
         val s : Set[Type]= s1.map {k => Type.mkType(k)}
-        Out.output(s"[$name]: Get types. ${s.map(_.pretty).mkString(", ")}")
         // TODO: Give the combination of domain constraints to the agent. At the moment same size
         val b = Context().split(AlphaSplit, t1.maxCard)
         if(!b) {return EmptyResult}

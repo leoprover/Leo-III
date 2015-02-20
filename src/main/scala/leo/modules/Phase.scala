@@ -256,13 +256,13 @@ object RemoteCounterSatPhase extends CompletePhase {
       case _ => end(); return false
     }
     while(it.hasNext) {
-      Blackboard().send(SZSScriptMessage(con.newContext(it.next())), da)
+      val c = it.next()
+      Blackboard().send(SZSScriptMessage(con.newContext(c))(c), da)
     }
     Wait.register()
 
     Scheduler().signal()
     synchronized{while(!finish) this.wait()}
-
 
     end()
     Wait.unregister()
@@ -271,10 +271,10 @@ object RemoteCounterSatPhase extends CompletePhase {
 
   private object Wait extends FifoAgent{
     override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; DomainConstrainedPhase.synchronized(DomainConstrainedPhase.notifyAll());List()
+      case d : DoneEvent => finish = true; RemoteCounterSatPhase.synchronized(RemoteCounterSatPhase.notifyAll());List()
       case _ => List()
     }
-    override def name: String = "PreprocessPhaseTerminator"
+    override def name: String = "RemoteCounterSatPhaseTerminator"
     override def run(t: Task): Result = EmptyResult
   }
 }

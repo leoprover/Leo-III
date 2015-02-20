@@ -28,11 +28,12 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
    * @param errno - The return value.
    * @return
    */
-  override def handle(fs : Set[FormulaStore], input: Iterator[String], err: Iterator[String], errno: Int): Result = {
-    val context = fs.head.context
+  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int): Result = {
+    val context = c   // TODO Fix
     val it = input
     while(it.hasNext){
       val line = it.next()
+      Out.output(s"[$name:] $line")
       getSZS(line) match {
         case Some(status) =>
           context.close()
@@ -53,15 +54,15 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
   override protected def toFilter(event: Event): Iterable[Task] = event match {
-    case SZSScriptMessage(f) => Out.output("Will create task."); createTask(f)
+    case SZSScriptMessage(f,c) => Out.output("Will create task."); createTask(f,c)
     case _                   => List()
   }
 
-  private def createTask(f : FormulaStore) : Iterable[Task] = {
+  private def createTask(f : FormulaStore, c : Context) : Iterable[Task] = {
     Out.trace(s"[$name]: Got a task.")
     val conj = f.newRole(Role_Conjecture).newClause(negateClause(f.clause))
     val context : Set[FormulaStore] = Blackboard().getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
-    return List(new ScriptTask(context + conj))
+    return List(new ScriptTask(context + conj, c))
   }
 
   private def negateClause(c : Clause) : Clause = {
@@ -86,7 +87,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
  * A message with f (the to be conjecture)
  * @param f
  */
-private class SZSScriptMessage(val f : FormulaStore) extends Message {}
+private class SZSScriptMessage(val f : FormulaStore, val c : Context) extends Message {}
 
 /**
  * Object to create and deconstruct messages to the SZSScriptAgent.
@@ -99,7 +100,7 @@ object SZSScriptMessage {
    * @param f - The conjecture
    * @return Message for the SZSScriptAgent.
    */
-  def apply(f : FormulaStore) : Message = new SZSScriptMessage(f)
+  def apply(f : FormulaStore)(c : Context) : Message = new SZSScriptMessage(f,c)
 
   /**
    * Deconstructs an Event, if it is a Message to the SZSScriptAgent.
@@ -107,8 +108,8 @@ object SZSScriptMessage {
    * @param m
    * @return
    */
-  def unapply(m : Event) : Option[FormulaStore] = m match {
-    case m : SZSScriptMessage => Some(m.f)
+  def unapply(m : Event) : Option[(FormulaStore, Context)] = m match {
+    case m : SZSScriptMessage => Some((m.f,m.c))
     case _                    => None
   }
 }

@@ -49,7 +49,7 @@ object Main {
     val deferredKill : DeferredKill = new DeferredKill(interval, timeout)
     deferredKill.start()
 
-    ContextControlAgent.register()
+    //ContextControlAgent.register()
 
     // Create Scheduler
     Scheduler(Configuration.THREADCOUNT)
@@ -68,7 +68,12 @@ object Main {
 
     Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
-    formulaContext()
+    //formulaContext()
+    Out.output(s"% Root Context: ${Blackboard().getStatus(Context()).fold("No Status"){x => x.output}}")
+    val cs = Context().childContext
+    for(c <- cs) {
+      Out.output(s"% Child Context: ${Blackboard().getStatus(c).fold("No Status"){x => x.output}}")
+    }
   }
 
 
