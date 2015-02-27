@@ -1,10 +1,12 @@
 package leo.modules.output
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term.{:::>, Symbol, Bound, @@@, ∙}
+import leo.datastructures.term.Term._
 import leo.datastructures.Type._
 import leo.datastructures._
 import leo.datastructures.term._
+import leo.modules.output.ToTPTP
+import leo.modules.output.logger.Out
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
@@ -35,13 +37,43 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     def output = toTPTP(name, t, role)
   }
 
+  def apply(formulas : Set[FormulaStore]) : Seq[Output] = {
+    var out: List[Output] = List.empty[Output]
+    var defn : List[Output] = List.empty[Output]
+    Signature.get.allUserConstants foreach { k =>
+      val (t,d) = constantToTPTP(k)
+      out = t :: out
+      d.fold(()){d1 => defn = d1 :: defn}
+    }
+    out = defn ++ out           // Important, since the definition has to be made after the type declaration
+    formulas foreach {formula =>
+      out = ToTPTP(formula) :: out}
+    out.reverse
+  }
+
+  /**
+   * Returns a TPTP conform definition of a constant. The type is always
+   * returned and, if existant, also the definition.
+   *
+   * @param k is the Key of the constant
+   * @return A definition for the constant.
+   */
+  private def constantToTPTP(k : Signature#Key) : (Output, Option[Output]) = {
+    val constant = Signature.get.apply(k)
+    (constant.defn) match {
+      case Some(defn) => (ToTPTP(s"${constant.name}_type", k), Some(ToTPTP(s"${constant.name}_def", ===(mkAtom(k),defn), Role_Definition)))
+      case (None) => (ToTPTP(s"${constant.name}_type", k), None)
+    }
+  }
+
   /**
    * Returns an Output suitable in a type definition.
    */
   def apply(name : String, key : Signature#Key) : Output = new Output {
     def output : String = {
       val constant = Signature.get.apply(key)
-      if(constant.ty.isEmpty) return ""
+      if(constant.ty.isEmpty) // Ask Alex, tType is throwen away, such that no type becomes kind.
+        return (s"thf($name, ${Role_Type.pretty}, ${constant.name}: "+"$tType).")
       else
         return s"thf(${name}, ${Role_Type.pretty}, ${constant.name}: ${toTPTP(constant._ty)})."
     }
@@ -111,9 +143,9 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   private def toTPTP(ty: Type): String = ty match {
     case BaseType(id) => Signature.get(id).name
     case BoundType(scope) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
-    case t1 -> t2 => s"${toTPTP(t1)} > ${toTPTP(t2)}"
-    case t1 * t2 => s"${toTPTP(t1)} * ${toTPTP(t2)}"
-    case t1 + t2 => s"${toTPTP(t1)} + ${toTPTP(t2)}"
+    case t1 -> t2 => s"(${toTPTP(t1)} > ${toTPTP(t2)})"
+    case t1 * t2 => s"(${toTPTP(t1)} * ${toTPTP(t2)})"
+    case t1 + t2 => s"(${toTPTP(t1)} + ${toTPTP(t2)})"
     case ∀(t) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
   }
