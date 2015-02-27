@@ -132,6 +132,23 @@ object Term extends TermBank {
   def contains(term: Term): Boolean = TermImpl.contains(term)
   def reset(): Unit = TermImpl.reset()
 
+
+  // Determine order-subsets of terms
+
+  def firstOrder(t: Term): Boolean = {
+    val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
+
+    t match {
+    case Forall(ty :::> body) => ty.isBaseType && firstOrder(body)
+    case Exists(ty :::> body) => ty.isBaseType && firstOrder(body)
+    case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get.isBaseType && sp.tail.forall(_.fold(t => t.ty.isBaseType && firstOrder(t),_ => false))
+    case h ∙ sp  => sp.forall(_.fold(t => t.ty.isBaseType && firstOrder(t),_ => false))
+    case ty :::> body => false
+    case TypeLambda(_) => false
+    case Bound(ty, sc) => ty.isBaseType
+    case Symbol(key) => Signature.get(key)._ty.isBaseType
+  }}
+
   // Further utility functions
   /** Convert tuple (i,ty) to according de-Bruijn index */
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
@@ -140,7 +157,7 @@ object Term extends TermBank {
   /** Convert a signature key to its corresponding atomic term representation */
   implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
 
-
+  // Legacy functions type types for statistics, like to be reused sometime
   type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
   def statistics: TermBankStatistics = TermImpl.statistics
 
