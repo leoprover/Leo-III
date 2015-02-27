@@ -49,7 +49,7 @@ object AgentDebug {
     val a = new DomainConstrainedSplitAgent
     a.register()
 
-    val maxCard = 4
+    val maxCard = List(1,2,3,4)
 
     Blackboard().send(DomainConstrainedMessage(maxCard),a)
 
@@ -58,7 +58,7 @@ object AgentDebug {
     Thread.sleep(1000)
 
     val it = Context().childContext.iterator
-    for(i <- 1 to maxCard){
+    for(i <- 1 to maxCard.size){
       Out.output(s"\n\nContext for cardinality $i");
       val fs = Blackboard().getAll(it.next()){x => true}
       fs.foreach{f => Out.output(ToTPTP(f))}

@@ -206,6 +206,11 @@ case object SZS_Inappropriate extends NoSuccessSZS {
   val pretty = "IAP"
 }
 
+case object SZS_Unknown extends NoSuccessSZS {
+  val output = "Unknown"
+  val pretty = "UNK"
+}
+
 ///////////////////////////////
 // SZS Output factory methods
 ///////////////////////////////
@@ -235,6 +240,7 @@ object StatusSZS  {
     case SZS_MemoryOut.output => Some(SZS_MemoryOut)
     case SZS_GaveUp.output => Some(SZS_GaveUp)
     case SZS_Inappropriate.output => Some(SZS_Inappropriate)
+    case SZS_Unknown.output => Some(SZS_Unknown)
     case _ => None
   }
 

@@ -3,7 +3,7 @@ package agents.impl
 
 import leo.agents._
 import leo.datastructures.blackboard.{FormulaStore, Event, Message}
-import leo.datastructures.context.{AlphaSplit, NoSplit, Context}
+import leo.datastructures.context.{BetaSplit, AlphaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
 import leo.datastructures.{HOLSignature, Type}
 import leo.modules.Utility
@@ -34,20 +34,20 @@ class DomainConstrainedSplitAgent extends FifoAgent{
     t match {
       case t1 : DomainConstrainedTask =>
         // Utility.printSignature()
-        val s1 : Set[Signature#Key] = Signature.get.baseTypes - 0 - 1 - 3 - 4 - 5// Without kind
+        val s1 : Set[Signature#Key] = Signature.get.baseTypes - 0 - 1 - 3 - 4 - 5// Without kind, numbers and boolean
         val s : Set[Type]= s1.map {k => Type.mkType(k)}
         // TODO: Give the combination of domain constraints to the agent. At the moment same size
-        val b = Context().split(AlphaSplit, t1.maxCard)
+        val b = Context().split(BetaSplit, t1.card.size)
         if(!b) {return EmptyResult}
-
 
         val children = Context().childContext
         var cardAx : Set[FormulaStore] = Set.empty
         val it = children.iterator
         var i : Int = 1
-        while(it.hasNext && i <= t1.maxCard) {
+        while(i <= t1.card.size) {
           val c = it.next()
-          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(i)(_)).flatten.toList.map(_.newContext(c))
+          val cardi = t1.card(i-1)
+          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c))
           cardAx = cardAx ++ ax
           i = i+1
         }
@@ -58,23 +58,23 @@ class DomainConstrainedSplitAgent extends FifoAgent{
   }
 }
 
-private class DomainConstrainedMessage(val maxCard : Int) extends Message {}
+private class DomainConstrainedMessage(val card : Seq[Int]) extends Message {}
 
 object DomainConstrainedMessage {
-  def apply(maxCard : Int) : Message = new DomainConstrainedMessage(maxCard)
+  def apply(card : Seq[Int]) : Message = new DomainConstrainedMessage(card)
 
-  def unapply(e : Event) : Option[Int] = e match {
-    case d : DomainConstrainedMessage => Some(d.maxCard)
+  def unapply(e : Event) : Option[Seq[Int]] = e match {
+    case d : DomainConstrainedMessage => Some(d.card)
     case _  => None
   }
 }
 
-private class DomainConstrainedTask(val maxCard : Int) extends Task {
+private class DomainConstrainedTask(val card : Seq[Int]) extends Task {
   override def name: String = "DomainConstrainedTask"
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def readSet(): Set[FormulaStore] = Set.empty
 
   override def bid(budget: Double): Double = budget / 10
 
-  override def pretty: String = "Context Split: Domain cardinality set to a maximum of "+maxCard
+  override def pretty: String = "Context Split: Domain cardinality set to a maximum of "+card
 }

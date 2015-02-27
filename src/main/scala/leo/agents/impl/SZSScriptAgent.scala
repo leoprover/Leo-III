@@ -6,7 +6,7 @@ import leo.datastructures.context.Context
 import leo.datastructures.term.Term
 import leo.datastructures._
 import leo.datastructures.blackboard.{Blackboard, FormulaStore, Event, Message}
-import leo.modules.output.StatusSZS
+import leo.modules.output.{SZS_GaveUp, StatusSZS}
 import leo.modules.output.logger.Out
 
 object SZSScriptAgent {
@@ -31,18 +31,22 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
   override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int): Result = {
     val context = c   // TODO Fix
     val it = input
+    val b = new StringBuilder
     while(it.hasNext){
       val line = it.next()
-      Out.output(s"[$name:] $line")
+      b.append("  "+line+"\n")
+      //Out.output(s"[$name:] $line")
       getSZS(line) match {
         case Some(status) =>
           context.close()
+          Out.info(s"[$name]: Got ${status.output} from the external prover.")
           return new ContextResult(context, reinterpreteResult(status))
         case None         => ()
       }
-
     }
-    return EmptyResult
+    Out.info(s"[$name]: No SZS status returned in\n${b.toString}")
+    context.close()
+    return new ContextResult(context, SZS_GaveUp)
   }
 
   /**
@@ -54,7 +58,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
   override protected def toFilter(event: Event): Iterable[Task] = event match {
-    case SZSScriptMessage(f,c) => Out.output("Will create task."); createTask(f,c)
+    case SZSScriptMessage(f,c) => createTask(f,c)
     case _                   => List()
   }
 

@@ -128,24 +128,9 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
 
 
 
-  private def contextToTPTP(fS : Set[FormulaStore]) : Seq[Output] = {
-    var out: List[Output] = List.empty[Output]
-    Signature.get.allUserConstants foreach {
-      constantToTPTP(_) foreach {t => out = t :: out}
-    }
-    fS foreach {formula =>
-      out = ToTPTP(formula) :: out}
-    out.reverse
-  }
+  private def contextToTPTP(fS : Set[FormulaStore]) : Seq[Output] = ToTPTP(fS)
 
 
-  private def constantToTPTP(k : Signature#Key) : Seq[Output] = {
-    val constant = Signature.get.apply(k)
-    (constant.defn) match {
-      case Some(defn) => Seq(ToTPTP(s"${constant.name}_type", k), ToTPTP(s"${constant.name}_def", ===(mkAtom(k),defn), Role_Definition))
-      case (None) => Seq(ToTPTP(s"${constant.name}_type", k))
-    }
-  }
 
   /**
    * The script agent terminates all external processes if the kill command occures.

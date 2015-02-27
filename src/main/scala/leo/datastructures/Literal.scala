@@ -36,11 +36,16 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
                                       Literal.mkNegLit(term)
                                     else
                                       Literal.mkPosLit(term)
-
-  lazy val toTerm: Term = if (polarity)
-                            ===(term, LitTrue())
+//  TODO : Build switch to change the toTerm function.
+//  lazy val toTerm: Term = if (polarity)
+//                            ===(term, LitTrue())
+//                          else
+//                            ===(term, LitFalse())
+//
+  lazy val toTerm: Term = if(polarity)
+                            term
                           else
-                            ===(term, LitFalse())
+                            Not(term)
 
   def fold[A](f: (Term, Boolean) => A): A = f(term, polarity)
   def termMap[A](f: Term => Term): Literal = Literal.mkLit(f(term), polarity)

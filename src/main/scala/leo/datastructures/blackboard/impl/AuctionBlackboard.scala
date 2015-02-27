@@ -392,7 +392,7 @@ private object TaskSet {
    *
    * @return true, iff the task collides
    */
-  def collision(t : Task) : Boolean = this.synchronized(execTasks.exists{e => val erg = t.collide(e); if(erg) leo.Out.output(s"Collision:\n  ${t.pretty}\n with\n  ${e.pretty}"); erg})
+  def collision(t : Task) : Boolean = this.synchronized(execTasks.exists{e => t.collide(e)})
 
 
 }
