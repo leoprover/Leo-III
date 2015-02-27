@@ -154,7 +154,8 @@ class LoadPhase(negateConjecture : Boolean) extends Phase{
       Utility.load(file)
     } catch {
       case e : SZSException =>
-        Out.output(SZSOutput(e.status))
+        // Out.output(SZSOutput(e.status))
+        Blackboard().forceStatus(Context())(e.status)
         return false
       case e : Throwable =>
         Out.severe("Unexpected Exception")
@@ -200,9 +201,11 @@ object DomainConstrainedPhase extends Phase{
     start()
 
 
-    val maxCard = Configuration.valueOf("maxCard").fold(3){s => try{s.head.toInt} catch {case _ => 3}}
+    val card : Seq[Int] = Configuration.valueOf("card").fold(List(1,2,3)){s => try{s map {c => c.toInt} toList} catch {case _ => List(1,2,3)}}
 
-    Blackboard().send(DomainConstrainedMessage(maxCard),da)
+
+
+    Blackboard().send(DomainConstrainedMessage(card),da)
 
     Wait.register()
 
@@ -272,6 +275,7 @@ object RemoteCounterSatPhase extends CompletePhase {
   private object Wait extends FifoAgent{
     override protected def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent => finish = true; RemoteCounterSatPhase.synchronized(RemoteCounterSatPhase.notifyAll());List()
+      case StatusEvent(c,s) if c.parentContext == null => finish = true; RemoteCounterSatPhase.synchronized(RemoteCounterSatPhase.notifyAll()); List()
       case _ => List()
     }
     override def name: String = "RemoteCounterSatPhaseTerminator"

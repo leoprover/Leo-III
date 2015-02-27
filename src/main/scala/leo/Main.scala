@@ -1,7 +1,7 @@
 package leo
 
 
-import leo.agents.impl.ContextControlAgent
+import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
@@ -9,6 +9,7 @@ import leo.modules.{Utility, SZSOutput, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.{SZS_GaveUp, SZS_Unsatisfiable, SZS_Timeout}
 import leo.modules.Phase._
+import leo.modules.Phase
 
 
 /**
@@ -28,6 +29,7 @@ object Main {
    * @param args - See [[Configuration]] for argument treatment
    */
   def main(args : Array[String]){
+    val beginTime = System.currentTimeMillis()
     try {
       Configuration.init(new CLParameterParser(args))
     } catch {
@@ -49,12 +51,17 @@ object Main {
     val deferredKill : DeferredKill = new DeferredKill(interval, timeout)
     deferredKill.start()
 
-    //ContextControlAgent.register()
-
     // Create Scheduler
     Scheduler(Configuration.THREADCOUNT)
 
-    val it = getCounterSat.iterator
+    var it : Iterator[Phase] = null
+    if(Configuration.COUNTER_SAT){
+      CounterContextControlAgent.register()
+      it = getCounterSat.iterator
+    }else{
+      ContextControlAgent.register()
+      it = getStdPhases.iterator
+    }
     var r = true
     while(it.hasNext && r) {
       val phase = it.next()
@@ -66,14 +73,13 @@ object Main {
     }
     deferredKill.kill()
 
-    Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
+    Out.output(s"% SZS status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+    val endTime = System.currentTimeMillis();
     //formulaContext()
-    Out.output(s"% Root Context: ${Blackboard().getStatus(Context()).fold("No Status"){x => x.output}}")
-    val cs = Context().childContext
-    for(c <- cs) {
-      Out.output(s"% Child Context: ${Blackboard().getStatus(c).fold("No Status"){x => x.output}}")
-    }
+    Out.output("% Time: "+(endTime - beginTime)+"ms")
+    Scheduler().killAll()
+    System.exit(0);
   }
 
 
@@ -95,7 +101,6 @@ object Main {
       synchronized{
         exit = true
         this.interrupt()
-        Scheduler().killAll()
         Out.info("Scheduler killed before timeout.")
       }
     }
@@ -113,7 +118,7 @@ object Main {
           } finally {
             if(!exit) {
               Out.info("Leo is still alive.")
-              agentStatus()
+              //agentStatus()
               remain -= interval
             }
           }
