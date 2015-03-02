@@ -31,6 +31,15 @@ object FiniteHerbrandEnumeration {
    */
   def replaceQuant(c : Clause, domain : Map[Type, Seq[Term]]) : Clause = c.mapLit(_.termMap(replaceQuant(_, generateReplace(domain)).betaNormalize))
 
+  /**
+   * Same as replaceQuant, but the domain is already been run through generateReplace.
+   *
+   * @param c
+   * @param domain
+   * @return
+   */
+  def replaceQuantOpt(c : Clause, domain : Map[Type, (Term, Term)]) : Clause = c.mapLit(_.termMap(replaceQuant(_, domain).betaNormalize))
+
   private def replaceQuant(t : Term, domain : Map[Type, (Term,Term)]) : Term = t match {
     case Exists(p) if domain.contains(p.ty._funDomainType) => mkTermApp(domain(p.ty._funDomainType)._1, replaceQuant(p, domain))
     case Forall(p) if domain.contains(p.ty._funDomainType) => mkTermApp(domain(p.ty._funDomainType)._2, replaceQuant(p,domain))
@@ -52,7 +61,7 @@ object FiniteHerbrandEnumeration {
    * @param domain
    * @return
    */
-  private def generateReplace(domain : Map[Type, Seq[Term]]) : Map[Type, (Term,Term)] = {
+  def generateReplace(domain : Map[Type, Seq[Term]]) : Map[Type, (Term,Term)] = {
     domain.toList.map{x => (x._1, replace(x._1, x._2))}.toMap
   }
 
