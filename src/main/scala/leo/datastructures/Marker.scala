@@ -140,24 +140,32 @@ case object LOCAL extends Locality
  */
 sealed abstract class LangOrder extends Ordered[LangOrder]
 
-case object PROPOSITIONAL extends LangOrder {
+case object Lang_Prop extends LangOrder {
   def compare(that: LangOrder) = that match {
-    case PROPOSITIONAL => 0
+    case Lang_Prop => 0
     case _ => -1
   }
 }
 
-case object FIRSTORDER extends LangOrder {
+case object Lang_FO extends LangOrder {
   def compare(that: LangOrder) = that match {
-    case PROPOSITIONAL => 1
-    case FIRSTORDER => 0
-    case HIGHERORDER => -1
+    case Lang_Prop => 1
+    case Lang_FO => 0
+    case Lang_ManySortedFO | Lang_HO => -1
   }
 }
 
-case object HIGHERORDER extends LangOrder {
+case object Lang_ManySortedFO extends LangOrder {
   def compare(that: LangOrder) = that match {
-    case HIGHERORDER => 0
+    case Lang_Prop | Lang_FO => 1
+    case Lang_ManySortedFO => 0
+    case Lang_HO => -1
+  }
+}
+
+case object Lang_HO extends LangOrder {
+  def compare(that: LangOrder) = that match {
+    case Lang_HO => 0
     case _ => 1
   }
 }
