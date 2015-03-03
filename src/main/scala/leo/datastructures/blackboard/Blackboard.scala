@@ -262,7 +262,7 @@ trait FormulaBlackboard {
    * @param p - Predicate the formulas have to satisfy
    * @return Removes all formulas in `c` satisfying `p`
    */
-  def rmAll(c : Context)(p : FormulaStore)
+  def rmAll(c : Context)(p : FormulaStore => Boolean)
 
   /**
    * Clears the complete blackboard

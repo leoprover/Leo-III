@@ -163,7 +163,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param p - Predicate the formulas have to satisfy
    * @return Removes all formulas in `c` satisfying `p`
    */
-  override def rmAll(c: Context)(p: FormulaStore): Unit = FormulaSet.getAll(c) foreach (FormulaSet.rm(_))
+  override def rmAll(c: Context)(p: FormulaStore => Boolean): Unit = FormulaSet.getAll(c) foreach {f => if(p(f)) FormulaSet.rm(f)}
 
   /**
    * <p>

@@ -174,6 +174,31 @@ object Utility {
     formulaContext()
   }
 
+  def formulaContext(c : Context): Unit ={
+    val maxSize = 85
+    val maxNameSize = 25
+    val maxRoleSize = 19
+    val maxFormulaSize = maxSize -(maxNameSize + maxRoleSize + 6)
+
+    println(s"Formulas in Context(id=${c.contextID})")
+    println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula (in nameless spine representation)")
+    println("-"*maxSize)
+    Blackboard().getFormulas(c).foreach {
+      x =>
+        val name = x.name.toString.take(maxNameSize)
+        val role = x.role.pretty.take(maxRoleSize)
+        val form = x.clause.pretty + " ("+x.status+") (context="+x.context.contextID+")"
+        val form1 = form.take(maxFormulaSize)
+        val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
+
+        val nameOffset = maxNameSize - name.length
+        val roleOffset = maxRoleSize - role.length
+        println(name + " " * nameOffset + " | " + role + " " * roleOffset + " | " +  form1)
+        form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
+    }
+    println()
+  }
+
   def formulaContext() : Unit = {
     val maxSize = 85
     val maxNameSize = 25

@@ -75,8 +75,12 @@ object Main {
 
     Out.output(s"% SZS status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
-    val endTime = System.currentTimeMillis();
-    formulaContext()
+    val endTime = System.currentTimeMillis()
+//    Out.output("Main context "+Context().contextID)
+//    formulaContext(Context())
+//    for(c <- Context().childContext){
+//      formulaContext(c)
+//    }
     Out.output("% Time: "+(endTime - beginTime)+"ms")
     Scheduler().killAll()
     System.exit(0);

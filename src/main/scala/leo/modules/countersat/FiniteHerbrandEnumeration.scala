@@ -40,7 +40,7 @@ object FiniteHerbrandEnumeration {
    */
   def replaceQuantOpt(c : Clause, domain : Map[Type, (Term, Term)]) : Clause = c.mapLit(_.termMap(replaceQuant(_, domain).betaNormalize))
 
-  private def replaceQuant(t : Term, domain : Map[Type, (Term,Term)]) : Term = t match {
+  def replaceQuant(t : Term, domain : Map[Type, (Term,Term)]) : Term = t match {
     case Exists(p) if domain.contains(p.ty._funDomainType) => mkTermApp(domain(p.ty._funDomainType)._1, replaceQuant(p, domain))
     case Forall(p) if domain.contains(p.ty._funDomainType) => mkTermApp(domain(p.ty._funDomainType)._2, replaceQuant(p,domain))
 

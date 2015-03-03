@@ -12,13 +12,14 @@ import leo.modules.normalization.{Simplification, DefExpansion}
 import leo.modules.output.{SZS_CounterSatisfiable, StatusSZS, SZS_Theorem, SZS_Error}
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
+import leo.agents.impl.FiniteHerbrandEnumerateAgent
 import leo.datastructures.term.Term
 
 
 object Phase {
   def getStdPhases : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
   def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
-  def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), DomainConstrainedPhase, PreprocessPhase, ParamodPhase)
+  def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
   def getCounterSatRemote : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
 
   /**
@@ -270,7 +271,9 @@ object FiniteHerbrandEnumeratePhase extends Phase {
     (1 to size).zip(cs).foreach { case (i,c1) =>
       // Generate and insert new constants
       val cons : Map[Type, Seq[Clause]] = s.map{ty => (ty, (1 to i).map{_ => newConstant(ty)}.toList)}.toMap
-      cons.values.map(_.foreach{c => Blackboard().addFormula(s"domainConstrain_${c1.contextID}_${val s = it; it+=1; s}",c,Role_Axiom, c1)})
+
+      //TODO Add some constraints?
+      //cons.values.map(_.foreach{c => Blackboard().addFormula(s"domainConstrain_${c1.contextID}_${val s = it; it+=1; s}",c,Role_Axiom, c1)})
 
       // Generate an agent for this setting of domains
       val agent = new FiniteHerbrandEnumerateAgent(c1, cons.mapValues(_.map(_.lits.head.term)))
@@ -286,7 +289,13 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 
     agents.map(_.unregister())
     Wait.unregister()
-    return false
+
+    // Remove all formulas containing one of the domains. (Hacky. Move the Test Function to the module package.
+    val  a : FiniteHerbrandEnumerateAgent = agents.head.asInstanceOf[FiniteHerbrandEnumerateAgent]
+
+    Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => a.containsDomain(l.term)}}
+
+    return true
   }
 
   private def newConstant(ty : Type) : Clause = {
