@@ -1,5 +1,6 @@
 package leo.datastructures.term
 
+import leo.Configuration
 import leo.datastructures._
 import leo.datastructures.impl.Signature
 
@@ -64,9 +65,10 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
     symbols.filter({i => sig(i)._ty == ty})
   }
   def headSymbol: Term
+  def headSymbolDepth: Int
   def scopeNumber: (Int,Int)
   def size: Int
-  def langOrder: LangOrder
+  def order: LangOrder
 
   // Substitutions
   /** Replace every occurrence of `what` in `this` by `by`. */
@@ -86,7 +88,7 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
 //  protected[internal] def instantiateWith(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): Option[Int] = SenselessOrdering.compare(this, that)
+  def compareTo(that: Term): Option[Int] = Configuration.TERM_ORDERING.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
   /** Return the β-nf of the term */
@@ -135,14 +137,31 @@ object Term extends TermBank {
 
   // Determine order-subsets of terms
 
+  /** FOF-compatible (unsorted) first order logic subset. */
   def firstOrder(t: Term): Boolean = {
+    val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
+    val tys = Set(Signature.get.i, Signature.get.o)
+
+    t match {
+      case Forall(ty :::> body) => ty == Signature.get.i && firstOrder(body)
+      case Exists(ty :::> body) => ty == Signature.get.i && firstOrder(body)
+      case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get == Signature.get.i && sp.tail.forall(_.fold(t => t.ty == Signature.get.i && firstOrder(t),_ => false))
+      case h ∙ sp  => sp.forall(_.fold(t => tys.contains(t.ty) && firstOrder(t),_ => false))
+      case ty :::> body => false
+      case TypeLambda(_) => false
+      case Bound(ty, sc) => ty == Signature.get.i
+      case Symbol(key) => tys.contains(Signature.get(key)._ty)
+    }}
+
+  /** Many sorted-first order logic subset. */
+  def manySortedFirstOrder(t: Term): Boolean = {
     val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
 
     t match {
-    case Forall(ty :::> body) => ty.isBaseType && firstOrder(body)
-    case Exists(ty :::> body) => ty.isBaseType && firstOrder(body)
-    case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get.isBaseType && sp.tail.forall(_.fold(t => t.ty.isBaseType && firstOrder(t),_ => false))
-    case h ∙ sp  => sp.forall(_.fold(t => t.ty.isBaseType && firstOrder(t),_ => false))
+    case Forall(ty :::> body) => ty.isBaseType && manySortedFirstOrder(body)
+    case Exists(ty :::> body) => ty.isBaseType && manySortedFirstOrder(body)
+    case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get.isBaseType && sp.tail.forall(_.fold(t => t.ty.isBaseType && manySortedFirstOrder(t),_ => false))
+    case h ∙ sp  => sp.forall(_.fold(t => t.ty.isBaseType && manySortedFirstOrder(t),_ => false))
     case ty :::> body => false
     case TypeLambda(_) => false
     case Bound(ty, sc) => ty.isBaseType
