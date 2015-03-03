@@ -83,12 +83,14 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
 
-  import leo.datastructures.{LitWeight_TermSize, CLWeight_LitWeightSum, SimpleOrdering, CLOrdering_Lex_Weight_Age_Origin}
+  import leo.datastructures.{SizeBasedOrdering,LitWeight_TermSize, CLWeight_LitWeightSum, Orderings, CLOrdering_Lex_Weight_Age_Origin}
   lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_LitWeightSum
   lazy val CLAUSE_ORDERING: ClauseOrdering = CLOrdering_Lex_Weight_Age_Origin
 
   lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
-  lazy val LITERAL_ORDERING: LiteralOrdering = new SimpleOrdering[Literal](LitWeight_TermSize)
+  lazy val LITERAL_ORDERING: LiteralOrdering = Orderings.simple[Literal](LitWeight_TermSize)
+
+  lazy val TERM_ORDERING: TermOrdering = SizeBasedOrdering
 
   // more to come ...
 
