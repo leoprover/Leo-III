@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import org.junit.runner.RunWith
-import org.scalatest.{Suites, FunSuite}
+import org.scalatest.{Suites}
 import org.scalatest.junit.JUnitRunner
 
 /**
@@ -11,7 +11,7 @@ import org.scalatest.junit.JUnitRunner
 class NormalizationTestSuite extends Suites(
   new SimplificationTestSuite,
   new NegationNormalTestSuite,
-  new SkolemizationTestSuite,
+ // new SkolemizationTestSuite,
   new PrenexTestSuite
 
 )

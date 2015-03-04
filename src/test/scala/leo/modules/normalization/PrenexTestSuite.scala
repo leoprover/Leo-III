@@ -1,5 +1,6 @@
 package leo.modules.normalization
 
+import leo.LeoTestSuite
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
 import leo.datastructures._
@@ -7,16 +8,15 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
 
-import leo.datastructures.internal._
 import Term._
 
 /**
  * Created by ryu on 6/17/14.
  */
 @RunWith(classOf[JUnitRunner])
-class PrenexTestSuite extends FunSuite {
+class PrenexTestSuite extends LeoTestSuite {
 
-  val s = Signature.get
+  val s = getFreshSignature
 
   val skVar = mkAtom(s.freshSkolemVar(s.o))
 
