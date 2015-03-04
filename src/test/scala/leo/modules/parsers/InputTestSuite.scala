@@ -9,6 +9,9 @@ import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
 /**
+ * This suite tests the parsing and input processing of all the TPTP dialects except for CNF.
+ * The suite is based on the SYN000-files that cover basic and advanced syntax features for all
+ * dialects.
  * @author Alexander Steen
  * @since 09.02.2015
  */
