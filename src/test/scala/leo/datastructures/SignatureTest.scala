@@ -1,48 +1,26 @@
-package leo.datastructures
+package leo
+package datastructures
 
-import leo.datastructures.impl.Signature
+import impl.Signature
+import leo.modules.Utility
 
 /**
- * Just a little test with signature and types
+ * Just a little test with signature and types.
+ * Succeeds if the creation of the global signature was successful.
+ *
  * Created by lex on 05.05.14.
+ * @note Updated 04.03.15 - Refactor to a proper test in the course of test clean-ups
  */
-object SignatureTest {
-  def main(args: Array[String]) {
-    val sig = Signature.get
-    val const = sig.allConstants
-    println("Key \t\t|" + "Symbol" + "\t\t|" + "Type/Kind" +"\t\t\t\t|" + "Type vars" + "\t\t|" + "Applicable with $i" + "\t|" + "Applicable with $o")
-    println("--------------------------------------------")
-    for (c <- const) {
-      val meta = sig.meta(c)
-      print(meta.key.toString + "\t\t\t|")
-      print(meta.name + "\t\t\t|"
-            + typeOrKindToString(meta) + "\t\t\t|")
-      meta.ty.foreach(x => print(x.typeVars.map(f => f.pretty)))
-      print( "\t\t\t|")
-      meta.ty.foreach(x => print(x.isApplicableWith(sig.i) + "\t\t\t\t|"))
-      meta.ty.foreach(x => print(x.isApplicableWith(sig.o)))
-      println()
+class SignatureTest extends LeoTestSuite {
 
-    }
-    println("####################################################################")
+  test("HOL signature creation") {
 
-    val meta = sig.meta("<=>")
-    val term = meta._defn
-    println("Definition of <=>: " + term.pretty)
-    println("Expanded \t\t : " + term.partial_δ_expand(1).pretty)
-
-    println(sig.meta("?")._defn.pretty)
+    printHeading("HOL Signature creation")
+    Utility.printSignature()
+    printHLine()
+    Out.output("Signature creation successful.")
+    printLongHLine()
   }
 
-  def typeOrKindToString(meta: IsSignature#Meta): String = {
-    meta.ty match {
-      case Some(ty) => ty.pretty
-      case None => {
-        meta.kind match {
-          case Some(k) => k.pretty
-          case None => "NONE"
-        }
-      }
-    }
-  }
+
 }
