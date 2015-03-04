@@ -63,55 +63,55 @@ class InputProcessingTestSuite extends FunSuite {
                                         ).contains(f.getName)}))
   val sig = Signature.get
 
-  for (f <- files -- blacklist) {
-    test(f.getName) {
-      Signature.resetWithHOL(sig)
-      val source = fromFile(f, "utf-8")
-      val input = new CharArrayReader(source.toArray)
-      val parsed = TPTP.parseFile(input)
-
-      parsed match {
-        case Left(err) => println(err); fail("Parsing error")
-        case Right(res) => {
-          val formulae = res.getFormulae
-          try {
-            val processed = InputProcessing.processAll(sig)(formulae)
-
-            assert(processed.size == formulae.size)
-            try {
-              assert(processed.forall(_._2.lits.forall(_.term.typeCheck)))
-            } catch {
-              case e:TestFailedException => {
-                for (t <- processed) {
-                  if (!t._2.lits.forall(_.term.typeCheck)) {
-                    println("Name: " + t._1)
-                    println("Clause: " + t._2)
-                    println("Pretty: " + t._2.pretty)
-                    println("Types: " + t._2.map(_.term.ty).mkString(" , "))
-                    println("Pretty: " + t._2.map(_.term.ty.pretty).mkString(" , "))
-                  }
-                }
-                throw e
-              }
-            }
-          } catch {
-            case e: Throwable => {
-              println("CAUGHT EXCEPTION:" + e.getMessage)
-              println()
-              for (s <- sig.allConstants) {
-                print(sig(s).key.toString + "\t\t")
-                print(sig(s).name + "\t\t:\t")
-                sig(s).ty.foreach({ case ty => print(ty.pretty)})
-                sig(s).kind.foreach({ case ty => print(ty.pretty)})
-                println()
-              }
-              println()
-              e.printStackTrace()
-              fail(e)}
-          }
-
-        }
-      }
-    }
-  }
+//  for (f <- files -- blacklist) {
+//    test(f.getName) {
+//      Signature.resetWithHOL(sig)
+//      val source = fromFile(f, "utf-8")
+//      val input = new CharArrayReader(source.toArray)
+//      val parsed = TPTP.parseFile(input)
+//
+//      parsed match {
+//        case Left(err) => println(err); fail("Parsing error")
+//        case Right(res) => {
+//          val formulae = res.getFormulae
+//          try {
+//            val processed = InputProcessing.processAll(sig)(formulae)
+//
+//            assert(processed.size == formulae.size)
+//            try {
+//              assert(processed.forall(_._2.lits.forall(_.term.typeCheck)))
+//            } catch {
+//              case e:TestFailedException => {
+//                for (t <- processed) {
+//                  if (!t._2.lits.forall(_.term.typeCheck)) {
+//                    println("Name: " + t._1)
+//                    println("Clause: " + t._2)
+//                    println("Pretty: " + t._2.pretty)
+//                    println("Types: " + t._2.map(_.term.ty).mkString(" , "))
+//                    println("Pretty: " + t._2.map(_.term.ty.pretty).mkString(" , "))
+//                  }
+//                }
+//                throw e
+//              }
+//            }
+//          } catch {
+//            case e: Throwable => {
+//              println("CAUGHT EXCEPTION:" + e.getMessage)
+//              println()
+//              for (s <- sig.allConstants) {
+//                print(sig(s).key.toString + "\t\t")
+//                print(sig(s).name + "\t\t:\t")
+//                sig(s).ty.foreach({ case ty => print(ty.pretty)})
+//                sig(s).kind.foreach({ case ty => print(ty.pretty)})
+//                println()
+//              }
+//              println()
+//              e.printStackTrace()
+//              fail(e)}
+//          }
+//
+//        }
+//      }
+//    }
+//  }
 }

@@ -22,12 +22,12 @@ import scala.io.Source._
 class ParserTestSuite extends FunSuite {
   val files = new File("./tptp/syn").listFiles.filter(_.getName.endsWith(".p"))
 
-  for (f <- files) {
-    test(f.getName) {
-      val source = fromFile(f, "utf-8")
-      val input = new CharArrayReader(source.toArray)
-      val parsed = TPTP.parseFile(input)
-      assert(parsed.isRight)
-    }
-  }
+//  for (f <- files) {
+//    test(f.getName) {
+//      val source = fromFile(f, "utf-8")
+//      val input = new CharArrayReader(source.toArray)
+//      val parsed = TPTP.parseFile(input)
+//      assert(parsed.isRight)
+//    }
+//  }
 }
