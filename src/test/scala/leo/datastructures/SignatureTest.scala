@@ -1,7 +1,6 @@
 package leo
 package datastructures
 
-import impl.Signature
 import leo.modules.Utility
 
 /**

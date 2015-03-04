@@ -1,5 +1,7 @@
 package leo
 
+import leo.datastructures.impl.Signature
+
 /**
  * Collection of functions and values for testing related purposes.
  *
@@ -14,6 +16,12 @@ trait TestUtility {
     val now = System.nanoTime
     val result = a
     ((System.nanoTime - now) / 1000, result)
+  }
+
+  def getFreshSignature: Signature = {
+    val sig = Signature.get
+    Signature.resetWithHOL(sig)
+    sig
   }
 
   val hLine: String = "#" * 30

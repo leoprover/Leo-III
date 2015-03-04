@@ -1,8 +1,6 @@
 package leo.datastructures
 
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
+import leo.LeoTestSuite
 /**
  * This test checks if the number of predefined symbols is coherent with the
  * description in [[HOLSignature]].
@@ -10,15 +8,14 @@ import org.scalatest.junit.JUnitRunner
  * @author Alexander Steen
  * @since 05.05.2014
  */
-@RunWith(classOf[JUnitRunner])
-class HOLSignatureTest extends FunSuite with HOLSignature {
-  test("cardinality of fixed symbols") {
-    assert(fixedConsts.length == 14)
+class HOLSignatureTest extends LeoTestSuite with HOLSignature {
+  test("Cardinality of fixed symbols") {
+    assertResult(36)(fixedConsts.length)
   }
   test("cardinality of defined symbols") {
-    assert(definedConsts.length == 9)
+    assertResult(9)(definedConsts.length)
   }
   test("cardinality of type symbols") {
-    assert(types.length == 6)
+    assertResult(6)(types.length)
   }
 }
