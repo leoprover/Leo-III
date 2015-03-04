@@ -1,9 +1,8 @@
-package leo.datastructures.internal
+package leo.datastructures
 
-import leo.datastructures.HOLSignature
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.FunSuite
+import org.scalatest.junit.JUnitRunner
 /**
  * This test checks if the number of predefined symbols is coherent with the
  * description in [[HOLSignature]].

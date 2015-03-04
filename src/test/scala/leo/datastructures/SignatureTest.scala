@@ -1,6 +1,5 @@
-package leo.datastructures.internal
+package leo.datastructures
 
-import leo.datastructures.IsSignature
 import leo.datastructures.impl.Signature
 
 /**
