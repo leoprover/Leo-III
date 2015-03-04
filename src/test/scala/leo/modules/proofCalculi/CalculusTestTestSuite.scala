@@ -5,16 +5,12 @@ import leo.Configuration
 import leo.datastructures.{Clause, TermIndex}
 import leo.datastructures.blackboard.Blackboard
 import leo.modules.CLParameterParser
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
 import leo.modules.Utility._
 
 /**
  * Created by ryu on 12/3/14.
  */
-@RunWith(classOf[JUnitRunner])
-class CalculusTestTestSuite extends FunSuite{
+class CalculusTestTestSuite extends LeoTestSuite {
   Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
   test("Term Index") {

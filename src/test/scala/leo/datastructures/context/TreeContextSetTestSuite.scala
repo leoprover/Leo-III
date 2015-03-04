@@ -1,11 +1,8 @@
 package leo.datastructures.context
 
-import leo.Configuration
+import leo.{LeoTestSuite, Configuration}
 import leo.datastructures.blackboard.FormulaStore
 import leo.modules.CLParameterParser
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
 import leo.datastructures.blackboard.Blackboard
 
 import leo.datastructures.context.impl._
@@ -13,8 +10,7 @@ import leo.datastructures.context.impl._
 /**
  * Created by ryu on 11/25/14.
  */
-@RunWith(classOf[JUnitRunner])
-class TreeContextSetTestSuite extends FunSuite {
+class TreeContextSetTestSuite extends LeoTestSuite {
 
   Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 

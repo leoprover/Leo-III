@@ -7,15 +7,12 @@ import leo.datastructures.{Role_NegConjecture, Role_Conjecture}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
 import leo.modules.{ParamodPhase, PreprocessPhase, Utility}
-import org.junit.runner.RunWith
 import org.scalatest._
-import org.scalatest.junit.JUnitRunner
 
 /**
  * Tests a typical Main of a LeoPARD application.
  *
  */
-@RunWith(classOf[JUnitRunner])
 class PhaseTest extends FunSuite {
   val source = getClass.getResource("/problems").getPath
   val problem_suffix = ".p"

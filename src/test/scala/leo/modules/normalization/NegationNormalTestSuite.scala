@@ -4,8 +4,7 @@ import leo.LeoTestSuite
 import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
+
 
 import scala.collection.immutable.HashMap
 import Term._
@@ -14,7 +13,6 @@ import org.scalatest.FunSuite
 /**
  * Created by ryu on 6/12/14.
  */
-@RunWith(classOf[JUnitRunner])
 class NegationNormalTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 

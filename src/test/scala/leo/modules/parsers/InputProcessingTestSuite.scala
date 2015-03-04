@@ -1,9 +1,7 @@
 package leo.modules.parsers
 
+import leo.LeoTestSuite
 import leo.datastructures.impl.Signature
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.FunSuite
 
 import java.io.File
 
@@ -11,8 +9,7 @@ import scala.util.parsing.input.CharArrayReader
 import scala.io.Source._
 import org.scalatest.exceptions.TestFailedException
 
-@RunWith(classOf[JUnitRunner])
-class InputProcessingTestSuite extends FunSuite {
+class InputProcessingTestSuite extends LeoTestSuite {
   // Path to the problem library
   val __TPTPPROBLEMPATH__ = "/home/lex/Downloads/TPTP-v6.0.0/Problems"
 

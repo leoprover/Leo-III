@@ -1,11 +1,7 @@
 package leo.datastructures.context
 
-import leo.Configuration
+import leo.{LeoTestSuite, Configuration}
 import leo.modules.CLParameterParser
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
-
 import leo.datastructures.context.impl.TreeContext
 
 /**
@@ -15,8 +11,7 @@ import leo.datastructures.context.impl.TreeContext
  * @author Max Wisniewski
  * @since 11/25/14
  */
-@RunWith(classOf[JUnitRunner])
-class TreeContextTestSuite extends FunSuite{
+class TreeContextTestSuite extends LeoTestSuite {
 
   test("BaseContext empty"){
     val b : Context = new TreeContext // Creates an empty BaseContext
