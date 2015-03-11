@@ -21,7 +21,7 @@ object Clausification {
         case (a & b) if pol => return List(updateLits(c, appendLit(rLits, a,pol)), updateLits(c, appendLit(rLits, b, pol)))
         case (a & b) => return List(updateLits(c, appendLit(appendLit(rLits, a, pol), b, pol)))
         case (a ||| b) if !pol => return List(updateLits(c, appendLit(rLits, a,pol)), updateLits(c, appendLit(rLits, b, pol)))
-        case (a ||| b) => return List(updateLits(c, appendLit(appendLit(rLits, a, pol), b, pol)))
+        case (a ||| b) if pol => return List(updateLits(c, appendLit(appendLit(rLits, a, pol), b, pol)))
         case Not(a) => return List(updateLits(c, appendLit(rLits, a, !pol)))
         case _ => return Nil
       }
