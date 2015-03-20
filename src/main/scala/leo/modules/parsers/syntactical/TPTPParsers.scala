@@ -346,12 +346,13 @@ object TPTPParsers extends TokenParsers with PackratParsers {
   )
 
   def thfUnitaryFormula: Parser[thf.LogicFormula] = (
-      thfQuantifiedFormula
+    elem(LeftParenthesis) ~> thfLogicFormula <~ elem(RightParenthesis)
+    | thfQuantifiedFormula
     | thfUnaryFormula
     | thfLet
     | thfConditional
     | thfAtom
-    | elem(LeftParenthesis) ~> thfLogicFormula <~ elem(RightParenthesis)
+
   )
 
   def thfQuantifiedFormula: Parser[thf.Quantified] =
