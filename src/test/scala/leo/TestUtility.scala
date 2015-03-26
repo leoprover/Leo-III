@@ -18,11 +18,16 @@ trait TestUtility {
     ((System.nanoTime - now) / 1000, result)
   }
 
+
   def getFreshSignature: Signature = {
     val sig = Signature.get
     Signature.resetWithHOL(sig)
     sig
   }
+
+  def resetTermBank: Unit = {leo.datastructures.term.Term.reset()}
+
+  def resetBlackBoard: Unit = {leo.datastructures.blackboard.Blackboard().clear()}
 
   val hLine: String = "#" * 30
   def printHLine(): Unit = println(hLine)
