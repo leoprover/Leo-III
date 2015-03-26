@@ -70,7 +70,14 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     val sig = Signature.get
     t match {
       // Constant symbols
-      case Symbol(id) => sig(id).name
+      case Symbol(id) => {
+        val name = sig(id).name
+        if (name.startsWith("'") && name.endsWith("'")) {
+          "'" + name.substring(1, name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+        } else {
+          name
+        }
+      }
       // Give Bound variables names
       case Bound(ty, scope) => bVars(scope-1)._1
       // Unary connectives
