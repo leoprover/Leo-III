@@ -63,7 +63,7 @@ object Utility {
             //            println("Loaded " + fileAbs)
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-              Blackboard().addFormula(name, form/*.mapLit(_.termMap(TermIndex.insert(_)))*/, role, Context())
+              Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
             }
         }
 
