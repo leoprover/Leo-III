@@ -270,6 +270,8 @@ object Signature {
 
   def resetWithHOL(sig: Signature): Signature = {
     sig.empty
+    sig.skolemVarCounter=0
+    sig.typeVarCounter=0
     withHOL(sig)
   }
 
