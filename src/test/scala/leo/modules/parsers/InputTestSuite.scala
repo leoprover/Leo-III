@@ -27,13 +27,9 @@ class InputTestSuite extends LeoTestSuite {
                       "SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
   )
 
-  val sig = Signature.get
-
   for (p <- problems) {
     test(p._2) {
-      Signature.resetWithHOL(sig)
-      Blackboard().clear()
-
+      val sig = Signature.get
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
