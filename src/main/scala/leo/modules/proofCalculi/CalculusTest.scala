@@ -148,7 +148,7 @@ object PropParamodulation extends ParamodStep{
           case Some((l,r)) if lit.polarity =>
             if (c1.lits.exists { lt => (lt.term.occurrences.keys.toSet).contains(l)})
               return Some(l, lit, (Subst.id, Nil))
-          case None =>
+          case _ =>
         }
       }
 
