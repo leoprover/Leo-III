@@ -50,12 +50,12 @@ object NegationNormal extends AbstractNormalize{
 
   private def nnf(formula : Term) : Term = formula match {
     case Not(s & t)             =>
-      val s1 = nnf(Not(nnf(s)))
-      val t1 = nnf(Not(nnf(t)))
+      val s1 = nnf(Not(s))
+      val t1 = nnf(Not(t))
       |||(s1, t1)
     case Not(s ||| t)           =>
-      val s1 = nnf(Not(nnf(s)))
-      val t1 = nnf(Not(nnf(t)))
+      val s1 = nnf(Not(s))
+      val t1 = nnf(Not(t))
       &(s1,t1)
     case Not(Forall(ty :::> t)) =>
       val t1 = nnf(t)

@@ -63,7 +63,7 @@ object Main {
       it = getHOStdPhase.iterator
     }
     var r = true
-    while(it.hasNext && r) {
+    while(it.hasNext && r && !deferredKill.finished) {
       val phase = it.next()
       Out.info(s"\n [Phase]:\n  Starting ${phase.name}\n${phase.description}")
       val start = System.currentTimeMillis()
@@ -102,6 +102,8 @@ object Main {
     var remain : Double = timeout
     var exit : Boolean = false
 
+    var finished = false
+
     def kill() : Unit = {
       synchronized{
         exit = true
@@ -128,7 +130,9 @@ object Main {
             }
           }
         }
-        Out.output(SZSOutput(SZS_Timeout))    // TODO Interference with other SZS status
+        Blackboard().forceStatus(Context())(SZS_Timeout)
+        //Out.output(SZSOutput(SZS_Timeout))    // TODO Interference with other SZS status
+        finished = true
         Scheduler().killAll()
       }
     }

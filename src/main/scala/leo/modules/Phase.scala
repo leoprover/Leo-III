@@ -94,8 +94,6 @@ trait Phase {
  * the execute to start the agents and wait for all to finish.
  */
 trait CompletePhase extends Phase {
-  private var finish = false
-
   private val waitAgent = new Wait
 
   override def start() : Unit = {
@@ -118,7 +116,7 @@ trait CompletePhase extends Phase {
 
     // Wait until nothing is left to do
     waitAgent.synchronized(while(!waitAgent.finish) waitAgent.wait())
-
+    if(waitAgent.scedKill) return false
     // Ending all agents and clear the scheduler
     end()
 
@@ -128,6 +126,7 @@ trait CompletePhase extends Phase {
 
   private class Wait extends FifoAgent{
     var finish = false
+    var scedKill = false
     override protected def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
@@ -137,6 +136,11 @@ trait CompletePhase extends Phase {
     }
     override def name: String = "PreprocessPhaseTerminator"
     override def run(t: Task): Result = EmptyResult
+    override def kill(): Unit = synchronized{
+      scedKill = true
+      finish = true
+      notifyAll()
+    }
   }
 }
 
@@ -237,7 +241,7 @@ object DomainConstrainedPhase extends Phase{
 object SimpleEnumerationPhase extends Phase {
   override val name = "SimpleEnumerationPhase"
   var finish = false
-
+  var scKilled = false
   override lazy val description = "Agents used:\n    FiniteHerbrandEnumerationAgent"
 
   protected var agents: Seq[Agent] = List(new FiniteHerbrandEnumerateAgent(Context(), Map.empty))
@@ -274,6 +278,11 @@ object SimpleEnumerationPhase extends Phase {
     }
     override def name: String = "SimpleEnumeratePhaseTerminator"
     override def run(t: Task): Result = EmptyResult
+    override def kill(): Unit = SimpleEnumerationPhase.synchronized{
+      scKilled = true
+      finish = true
+      SimpleEnumerationPhase.notifyAll()
+    }
   }
 }
 
@@ -282,7 +291,7 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 
   val size : Int = 3
   var finish : Boolean = false
-
+  var scKilled = false
   override lazy val description = "Agents used:\n    FiniteHerbrandEnumerationAgent"
 
   /**
@@ -355,6 +364,11 @@ object FiniteHerbrandEnumeratePhase extends Phase {
     }
     override def name: String = "PreprocessPhaseTerminator"
     override def run(t: Task): Result = EmptyResult
+    override def kill(): Unit = FiniteHerbrandEnumeratePhase.synchronized{
+      scKilled = true
+      finish = true
+      FiniteHerbrandEnumeratePhase.notifyAll()
+    }
   }
 }
 
