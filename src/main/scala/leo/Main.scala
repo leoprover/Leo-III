@@ -31,7 +31,6 @@ object Main {
    * @param args - See [[Configuration]] for argument treatment
    */
   def main(args : Array[String]){
-    println(new File(".").getAbsolutePath.toString)
     val beginTime = System.currentTimeMillis()
     try {
       Configuration.init(new CLParameterParser(args))
@@ -62,11 +61,9 @@ object Main {
       CounterContextControlAgent.register()
       it = getCounterSat.iterator
     } else if (Configuration.isSet("with-prover")) {
-      println("withprover!!!")
       ContextControlAgent.register()
       it = getExternalPhases.iterator
     } else {
-      println("normal!!!")
       ContextControlAgent.register()
       it = getHOStdPhase.iterator
     }
@@ -78,7 +75,6 @@ object Main {
       r = phase.execute()
       val end = System.currentTimeMillis()
       Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end-start}ms")
-      formulaContext()
     }
     deferredKill.kill()
 
