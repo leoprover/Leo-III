@@ -1,6 +1,8 @@
 package leo
 
 
+import java.io.File
+
 import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -58,7 +60,10 @@ object Main {
     if(Configuration.COUNTER_SAT){
       CounterContextControlAgent.register()
       it = getCounterSat.iterator
-    }else{
+    } else if (Configuration.isSet("with-prover")) {
+      ContextControlAgent.register()
+      it = getExternalPhases.iterator
+    } else {
       ContextControlAgent.register()
       it = getHOStdPhase.iterator
     }
@@ -70,7 +75,6 @@ object Main {
       r = phase.execute()
       val end = System.currentTimeMillis()
       Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end-start}ms")
-      formulaContext()
     }
     deferredKill.kill()
 
