@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules.{Utility, SZSOutput, CLParameterParser}
 import leo.modules.Utility._
-import leo.modules.output.{SZS_GaveUp, SZS_Unsatisfiable, SZS_Timeout}
+import leo.modules.output.{SZS_Unknown, SZS_GaveUp, SZS_Unsatisfiable, SZS_Timeout}
 import leo.modules.Phase._
 import leo.modules.Phase
 
@@ -73,7 +73,7 @@ object Main {
     }
     deferredKill.kill()
 
-    Out.output(s"% SZS status ${Blackboard().getStatus(Context()).fold(SZS_GaveUp.output)(_.output)} for ${Configuration.PROBLEMFILE}")
+    Out.output(s"% SZS status ${Blackboard().getStatus(Context()).fold(SZS_Unknown.output)(_.output)} for ${Configuration.PROBLEMFILE}")
     if(Configuration.PROOF_OBJECT) Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
     val endTime = System.currentTimeMillis()
 //    Out.output("Main context "+Context().contextID)
