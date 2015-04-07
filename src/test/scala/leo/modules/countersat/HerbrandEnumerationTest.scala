@@ -6,7 +6,6 @@ import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.modules.CLParameterParser
 import leo.modules.output.ToTPTP
-import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
@@ -15,7 +14,6 @@ import leo.datastructures.term.Term._
 /**
  * Created by ryu on 2/26/15.
  */
-@RunWith(classOf[JUnitRunner])
 class HerbrandEnumerationTest extends FunSuite {
   Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 

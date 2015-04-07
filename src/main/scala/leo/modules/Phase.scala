@@ -8,8 +8,9 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.modules.normalization.{Simplification, DefExpansion}
+import leo.modules.normalization.{NegationNormal, Skolemization, Simplification, DefExpansion}
 import leo.modules.output.{SZS_CounterSatisfiable, StatusSZS, SZS_Theorem, SZS_Error}
+import leo.modules.proofCalculi.enumeration.SimpleEnum
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
 import leo.agents.impl.FiniteHerbrandEnumerateAgent
@@ -18,6 +19,7 @@ import leo.datastructures.term.Term
 
 object Phase {
   def getStdPhases : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
+  def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, SimpleEnumerationPhase, ParamodPhase)
   def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
   def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
   def getCounterSatRemote : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
@@ -234,14 +236,44 @@ object DomainConstrainedPhase extends Phase{
 
 object SimpleEnumerationPhase extends Phase {
   override val name = "SimpleEnumerationPhase"
+  var finish = false
 
   override lazy val description = "Agents used:\n    FiniteHerbrandEnumerationAgent"
 
   protected var agents: Seq[Agent] = List(new FiniteHerbrandEnumerateAgent(Context(), Map.empty))
 
   override def execute(): Boolean = {
-    
+    val s1 : Set[Type] = (Signature.get.baseTypes - 0 - 1 - 3 - 4 - 5).map(Type.mkType(_))
+    val enumse : Map[Type, Seq[Term]] = s1.map{ty => (ty, SimpleEnum.enum(ty).toSeq)}.toMap
+    Out.output(enumse.toString())
+    agents = List(new FiniteHerbrandEnumerateAgent(Context(), enumse))
+
+    agents.map(_.register())
+
+    Wait.register()
+
+    Scheduler().signal()
+    synchronized{while(!finish) this.wait()}
+
+    agents.map(_.unregister())
+    Wait.unregister()
+
+    // Remove all formulas containing one of the domains. (Hacky. Move the Test Function to the module package.
+    val  a : FiniteHerbrandEnumerateAgent = agents.head.asInstanceOf[FiniteHerbrandEnumerateAgent]
+
+    Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => a.containsDomain(l.term)}}
+
+
     return true
+  }
+
+  private object Wait extends FifoAgent{
+    override protected def toFilter(event: Event): Iterable[Task] = event match {
+      case d : DoneEvent => finish = true; SimpleEnumerationPhase.synchronized(SimpleEnumerationPhase.notifyAll());List()
+      case _ => List()
+    }
+    override def name: String = "SimpleEnumeratePhaseTerminator"
+    override def run(t: Task): Result = EmptyResult
   }
 }
 
@@ -383,7 +415,7 @@ object RemoteCounterSatPhase extends CompletePhase {
 
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification))
+  override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification), new NormalClauseAgent(NegationNormal),new NormalClauseAgent(Skolemization))
 }
 
 object ExhaustiveClausificationPhase extends CompletePhase {

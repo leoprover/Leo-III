@@ -60,7 +60,7 @@ object Main {
       it = getCounterSat.iterator
     }else{
       ContextControlAgent.register()
-      it = getStdPhases.iterator
+      it = getHOStdPhase.iterator
     }
     var r = true
     while(it.hasNext && r) {
@@ -70,6 +70,7 @@ object Main {
       r = phase.execute()
       val end = System.currentTimeMillis()
       Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end-start}ms")
+      formulaContext()
     }
     deferredKill.kill()
 
