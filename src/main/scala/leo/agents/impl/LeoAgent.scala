@@ -2,6 +2,7 @@ package leo.agents.impl
 
 import leo.agents.{EmptyResult, Result, Task}
 import leo.datastructures._
+import leo.datastructures.context.Context
 import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore, Message}
 import leo.modules.output.logger.Out
 import leo.datastructures.term.Term
@@ -25,7 +26,7 @@ class LeoAgent(path : String) extends ScriptAgent(path){
    * @param exit Exit value of leo2
    * @return
    */
-  override def handle(fs : Set[FormulaStore], input: Iterator[String], err: Iterator[String], exit: Int): Result = {
+  override def handle(c : Context, input: Iterator[String], err: Iterator[String], exit: Int): Result = {
     Out.trace(s"[$name]: Got result from external prover: \n"+input.mkString("\n")+"\n")
     Out.output(s"[$name]:The exit code is $exit")
     EmptyResult
@@ -52,7 +53,7 @@ class LeoAgent(path : String) extends ScriptAgent(path){
     Out.trace(s"[$name]: Got a task.")
     val conj = event.newRole(Role_Conjecture).newClause(negateClause(event.clause))
     val context : Set[FormulaStore] = Blackboard().getAll(event.context){f => f.name != event.name}.toSet[FormulaStore]
-    return Iterable(new ScriptTask(context + conj))
+    return Iterable(new ScriptTask(context + conj, event.context))
   }
 
   private def negateClause(c : Clause) : Clause = {

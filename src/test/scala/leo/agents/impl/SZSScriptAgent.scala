@@ -9,7 +9,7 @@ import leo.modules.CLParameterParser
 class SZSScriptAgentTest extends LeoTestSuite {
   Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
-  val a : SZSScriptAgent = new SZSScriptAgent("scripts/echo.sh")
+  val a : SZSScriptAgent = new SZSScriptAgent("scripts/echo.sh")({x => x})
 
   test("Scan line") {
     val erg1 = a.getSZS("% SZS status Theorem")

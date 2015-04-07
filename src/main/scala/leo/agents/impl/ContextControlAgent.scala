@@ -4,7 +4,7 @@ package agents.impl
 import leo.agents.{EmptyResult, Result, Task, FifoAgent}
 import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, AlphaSplit, SplitKind, Context}
-import leo.modules.output.{SZS_Theorem, StatusSZS}
+import leo.modules.output.{SZS_GaveUp, SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
 
 /**
  *
@@ -66,5 +66,46 @@ class ContextResult(c : Context, s : StatusSZS) extends Result {
   override def updateStatus(): List[(Context, StatusSZS)] = List((c,s))
   override def removeFormula(): Set[FormulaStore] = Set()
   override def updatedContext(): Set[Context] = Set(c)
+}
+
+/**
+ *
+ * Reacts to Context Change events, adding of empty clauses et cetera.
+ *
+ * Main purpos is to pass the information of closed contexts to the top.
+ *
+ * Works on proofs of counter satisfiability and its Beta Split.
+ *
+ * @author Max Wisniewski
+ * @since 23/2/15
+ */
+object CounterContextControlAgent extends FifoAgent {
+  override val maxMoney : Double = 50000
+  override def name: String = "CounterContextControlAgent"
+
+  override protected def toFilter(event: Event): Iterable[Task] = {
+    event match {
+      case StatusEvent(c,s) if c.parentContext != null => //&& c.splitKind == BetaSplit =>
+        //Out.output(s"[$name]: StatusEvent($c,${s.output})")
+        val p = c.parentContext
+        if(s == SZS_CounterSatisfiable) return List(SetContextTask(p,SZS_CounterSatisfiable))
+        List()      // If neither is true, nothing can be done
+      case ContextEvent(c) if c.isClosed && c.parentContext != null => //&& c.splitKind == BetaSplit =>
+        //Out.output(s"[$name]: ContextEvent($c)")
+        val p = c.parentContext
+        if(Blackboard().getStatus(c) == SZS_CounterSatisfiable) return List(SetContextTask(p, SZS_CounterSatisfiable))
+        if(p.childContext.forall(_.isClosed)) return List(SetContextTask(p, SZS_GaveUp))
+        List()      // If neither is true, nothing can be done
+      case _                => List()
+    }
+  }
+
+  override def run(t: Task): Result = t match {
+    case SetContextTask(con,status) =>
+      con.close()
+      new ContextResult(con, status)
+
+    case _  => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); EmptyResult
+  }
 }
 

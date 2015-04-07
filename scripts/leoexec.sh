@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/home/ryu/prover/leo2/bin/leo $1
+/home/ryu/prover/leo2/bin/leo -t 30 $1

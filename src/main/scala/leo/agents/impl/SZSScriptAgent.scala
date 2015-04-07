@@ -6,18 +6,18 @@ import leo.datastructures.context.Context
 import leo.datastructures.term.Term
 import leo.datastructures._
 import leo.datastructures.blackboard.{Blackboard, FormulaStore, Event, Message}
-import leo.modules.output.StatusSZS
+import leo.modules.output.{SZS_GaveUp, StatusSZS}
 import leo.modules.output.logger.Out
 
 object SZSScriptAgent {
-  def apply(cmd : String) : Agent = new SZSScriptAgent(cmd)
+  def apply(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(reinterpreteResult)
 }
 
 /**
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String) extends ScriptAgent(cmd) {
+class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
   override val name = s"SZSScriptAgent ($cmd)"
 
   /**
@@ -28,20 +28,25 @@ class SZSScriptAgent(cmd : String) extends ScriptAgent(cmd) {
    * @param errno - The return value.
    * @return
    */
-  override def handle(fs : Set[FormulaStore], input: Iterator[String], err: Iterator[String], errno: Int): Result = {
-    val context = fs.head.context
+  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int): Result = {
+    val context = c   // TODO Fix
     val it = input
+    val b = new StringBuilder
     while(it.hasNext){
       val line = it.next()
+      b.append("  "+line+"\n")
+      //Out.output(s"[$name:] $line")
       getSZS(line) match {
         case Some(status) =>
           context.close()
-          return new ContextResult(context, status)
+          Out.info(s"[$name]: Got ${status.output} from the external prover.")
+          return new ContextResult(context, reinterpreteResult(status))
         case None         => ()
       }
-
     }
-    return EmptyResult
+    Out.info(s"[$name]: No SZS status returned in\n${b.toString}")
+    context.close()
+    return new ContextResult(context, SZS_GaveUp)
   }
 
   /**
@@ -53,15 +58,15 @@ class SZSScriptAgent(cmd : String) extends ScriptAgent(cmd) {
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
   override protected def toFilter(event: Event): Iterable[Task] = event match {
-    case SZSScriptMessage(f) => Out.output("Will create task."); createTask(f)
+    case SZSScriptMessage(f,c) => createTask(f,c)
     case _                   => List()
   }
 
-  private def createTask(f : FormulaStore) : Iterable[Task] = {
+  private def createTask(f : FormulaStore, c : Context) : Iterable[Task] = {
     Out.trace(s"[$name]: Got a task.")
     val conj = f.newRole(Role_Conjecture).newClause(negateClause(f.clause))
     val context : Set[FormulaStore] = Blackboard().getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
-    return List(new ScriptTask(context + conj))
+    return List(new ScriptTask(context + conj, c))
   }
 
   private def negateClause(c : Clause) : Clause = {
@@ -86,7 +91,7 @@ class SZSScriptAgent(cmd : String) extends ScriptAgent(cmd) {
  * A message with f (the to be conjecture)
  * @param f
  */
-private class SZSScriptMessage(val f : FormulaStore) extends Message {}
+private class SZSScriptMessage(val f : FormulaStore, val c : Context) extends Message {}
 
 /**
  * Object to create and deconstruct messages to the SZSScriptAgent.
@@ -99,7 +104,7 @@ object SZSScriptMessage {
    * @param f - The conjecture
    * @return Message for the SZSScriptAgent.
    */
-  def apply(f : FormulaStore) : Message = new SZSScriptMessage(f)
+  def apply(f : FormulaStore)(c : Context) : Message = new SZSScriptMessage(f,c)
 
   /**
    * Deconstructs an Event, if it is a Message to the SZSScriptAgent.
@@ -107,8 +112,8 @@ object SZSScriptMessage {
    * @param m
    * @return
    */
-  def unapply(m : Event) : Option[FormulaStore] = m match {
-    case m : SZSScriptMessage => Some(m.f)
+  def unapply(m : Event) : Option[(FormulaStore, Context)] = m match {
+    case m : SZSScriptMessage => Some((m.f,m.c))
     case _                    => None
   }
 }

@@ -81,9 +81,9 @@ class TreeContext extends Context{
         newContext._parent = this
         _children = newContext :: _children
       }
-      true
+      return true
     case _ =>
-      false
+      return false
   })
 
   /**

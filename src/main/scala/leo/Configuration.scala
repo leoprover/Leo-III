@@ -23,6 +23,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_TIMEOUT = "t"
   private val PARAM_PROOFOBJECT = "p"
   private val PARAM_HELP = "h"
+  private val PARAM_COUNTERSAT = "c"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -31,7 +32,8 @@ object Configuration extends DefaultConfiguration {
       'n' -> ("", "N", "Maximum number of threads"),
       'p' -> ("", "", "Display proof output"),
       't' -> ("", "N", "Timeout in seconds"),
-      'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)")
+      'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
+      'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof")
     )
   }
 
@@ -49,6 +51,7 @@ object Configuration extends DefaultConfiguration {
       TIMEOUT
       PROOF_OBJECT
       VERBOSITY
+      COUNTER_SAT
       ()
     }
     case _ => ()
@@ -83,7 +86,10 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
 
+
+  lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   import leo.datastructures.{SizeBasedOrdering,LitWeight_TermSize, CLWeight_LitWeightSum, Orderings, CLOrdering_Lex_Weight_Age_Origin}
+
   lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_LitWeightSum
   lazy val CLAUSE_ORDERING: ClauseOrdering = CLOrdering_Lex_Weight_Age_Origin
 
