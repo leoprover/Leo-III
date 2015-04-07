@@ -232,6 +232,19 @@ object DomainConstrainedPhase extends Phase{
   }
 }
 
+object SimpleEnumerationPhase extends Phase {
+  override val name = "SimpleEnumerationPhase"
+
+  override lazy val description = "Agents used:\n    FiniteHerbrandEnumerationAgent"
+
+  protected var agents: Seq[Agent] = List(new FiniteHerbrandEnumerateAgent(Context(), Map.empty))
+
+  override def execute(): Boolean = {
+    
+    return true
+  }
+}
+
 object FiniteHerbrandEnumeratePhase extends Phase {
   override val name = "FiniteHerbrandEnumeratePhase"
 
