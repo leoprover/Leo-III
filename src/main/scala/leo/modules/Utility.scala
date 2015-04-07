@@ -55,12 +55,12 @@ object Utility {
 
         parsed match {
           case Left(x) =>
-            //            println("Parse error in file " + fileAbs + ": " + x)
+            Out.severe("Parse error in file " + fileAbs + ": " + x)
             throw new SZSException(SZS_SyntaxError)
           case Right(x) =>
             loadedSet += fileAbs
             x.getIncludes.foreach(x => loadRelative(x._1, path))
-            //            println("Loaded " + fileAbs)
+
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
               Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
@@ -70,34 +70,41 @@ object Utility {
       } catch {
         case ex : FileNotFoundException =>
           // If not relative, then search in TPTP env variable
-          val tptpHome = System.getenv("TPTP").split("/")
-          val (fileAbs, path) = newPath(tptpHome, file)
-          if (!loadedSet(fileAbs)) {
-            try {
-              val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-              val input = new CharArrayReader(source.toArray)
-              val parsed = TPTP.parseFile(input)
-              source.close()    // Close at this point. Otherwise we would have many files open with many includes.
+          val tptp = System.getenv("TPTP")
+          if (tptp != null) {
+            val tptpHome = tptp.split("/")
+            val (fileAbs, path) = newPath(tptpHome, file)
+            if (!loadedSet(fileAbs)) {
+              try {
+                val source = scala.io.Source.fromFile(fileAbs, "utf-8")
+                val input = new CharArrayReader(source.toArray)
+                val parsed = TPTP.parseFile(input)
+                source.close() // Close at this point. Otherwise we would have many files open with many includes.
 
-              parsed match {
-                case Left(x) =>
-                  //            println("Parse error in file " + fileAbs + ": " + x)
-                  throw new SZSException(SZS_SyntaxError)
-                case Right(x) =>
-                  loadedSet += fileAbs
-                  x.getIncludes.foreach(x => loadRelative(x._1, path))
-                  //            println("Loaded " + fileAbs)
-                  val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                  processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown)
-                    Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
-                  }
+                parsed match {
+                  case Left(x) =>
+                    Out.severe("Parse error in file " + fileAbs + ": " + x)
+                    throw new SZSException(SZS_SyntaxError)
+                  case Right(x) =>
+                    loadedSet += fileAbs
+                    x.getIncludes.foreach(x => loadRelative(x._1, path))
+
+                    val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
+                    processed foreach { case (name, form, role) => if (role != Role_Definition && role != Role_Type && role != Role_Unknown)
+                      Blackboard().addFormula(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+                    }
+                }
+
+
+              } catch {
+                case ex: FileNotFoundException => Out.severe("Problem file not found."); throw new SZSException(SZS_InputError)
+                case _: Throwable => throw new SZSException(SZS_InputError)
               }
-
-            } catch {
-              case ex : FileNotFoundException => throw new SZSException(SZS_InputError)
-              case _ : Throwable => throw new SZSException(SZS_InputError)
             }
+          } else {
+            Out.severe("Problem file not found."); throw new SZSException(SZS_InputError)
           }
+        case _ : Throwable => throw new SZSException(SZS_InputError)
       }
     }
   }

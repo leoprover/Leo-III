@@ -20,7 +20,10 @@ object Out extends Logging {
       setLevel(defaultLogLevel)
       setFormatter(new Formatter {
         def format(record: LogRecord) = {
-          s"[${record.getLevel.getLocalizedName}] \t ${record.getMessage} \n"
+          val lines = record.getMessage.linesWithSeparators
+          val msg = lines.next() + lines.map(str => "% " + str).mkString("")
+
+          s"% [${record.getLevel.getLocalizedName}] \t $msg \n"
         }
       })
     }
@@ -28,5 +31,6 @@ object Out extends Logging {
 
   def output(msg: Output): Unit = { println(msg.output) }
   def output(msg: String): Unit = { println(msg) }
+  def comment(msg: String): Unit = {println(msg.linesWithSeparators.map(str => "% "+str).mkString(""))}
 
 }
