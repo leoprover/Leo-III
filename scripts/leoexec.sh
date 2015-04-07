@@ -1,3 +1,4 @@
 #!/bin/sh
 
-/opt/leo2/bin/leo -t 30 $1
+$LEO2_PATH -t 30 $1
+wait
