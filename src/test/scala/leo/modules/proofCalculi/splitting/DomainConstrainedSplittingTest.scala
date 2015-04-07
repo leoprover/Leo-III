@@ -5,14 +5,12 @@ import leo.Configuration
 import leo.datastructures.impl.Signature
 import leo.modules.CLParameterParser
 import leo.modules.output.ToTPTP
-import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
 /**
  * Created by max on 19.02.2015.
  */
-@RunWith(classOf[JUnitRunner])
 class DomainConstrainedSplittingTest extends FunSuite{
   Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 

@@ -28,5 +28,5 @@ object DefExpansion extends AbstractNormalize {
    */
   override def applicable(status : Int): Boolean = (status & 3) == 1
 
-  def markStatus(fS : FormulaStore) : FormulaStore = fS.newStatus(fS.status | 2)
+  def markStatus(fS : FormulaStore) : FormulaStore = fS.newStatus((fS.status | 2) -1)
 }

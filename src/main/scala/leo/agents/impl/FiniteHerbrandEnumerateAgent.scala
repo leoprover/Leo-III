@@ -62,8 +62,10 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
    */
   override def run(t: Task): Result = t match {
     case FiniteHerbrandEnumerateTask(f) =>
+      leo.Out.output(s"Got ${f.pretty}")
       val nc = FiniteHerbrandEnumeration.replaceQuantOpt(f.clause, replace)
       val f1 = f.newClause(nc).newContext(c).newName(f.name + "_"+size)
+      leo.Out.output(s"Calc ${f1.pretty}")
       return new StdResult(Set(f1), Map.empty, Set.empty)
     case _ => EmptyResult
   }
