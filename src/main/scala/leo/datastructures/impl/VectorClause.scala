@@ -21,6 +21,6 @@ object VectorClause {
   def lastClauseId = clauseCounter
 
   private class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin, val implicitBindings: Seq[Type], val id: Int) extends VectorClause {
-    def lits = literals.toVector.sorted
+    lazy val lits = literals.toVector.sorted
   }
 }

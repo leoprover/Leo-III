@@ -21,6 +21,7 @@ object Phase {
   def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
   def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
   def getCounterSatRemote : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
+  def getExternalPhases : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExternalProverPhase)
 
   /**
    * Creates a complete phase from a List of Agents.
@@ -309,6 +310,53 @@ object FiniteHerbrandEnumeratePhase extends Phase {
       case _ => List()
     }
     override def name: String = "PreprocessPhaseTerminator"
+    override def run(t: Task): Result = EmptyResult
+  }
+}
+
+object ExternalProverPhase extends CompletePhase {
+  override def name: String = "ExternalProverPhase"
+  var finish : Boolean = false
+  val prover = if (Configuration.isSet("with-prover")) {
+    Configuration.valueOf("with-prover") match {
+      case None => throw new IllegalArgumentException("adsasda")
+      case Some(str) => str.head match {
+        case "leo2" => "scripts/leoexec.sh"
+        case "satallax" => "scripts/satallaxexec.sh"
+        case "remote-leo2" => "scripts/remote-leoexec.sh"
+        case _ => throw new IllegalArgumentException("asdasd")
+      }
+    }
+  } else {
+    throw new IllegalArgumentException("no external prover given")
+  }
+  val extProver : Agent = SZSScriptAgent(prover)(x => x)
+
+  override protected def agents: Seq[Agent] = List(extProver)
+
+  override def execute(): Boolean = {
+    start()
+
+
+    val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
+    Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
+    Wait.register()
+
+    Scheduler().signal()
+    synchronized{while(!finish) this.wait()}
+
+    end()
+    Wait.unregister()
+    return true
+  }
+
+  private object Wait extends FifoAgent{
+    override protected def toFilter(event: Event): Iterable[Task] = event match {
+      case d : DoneEvent => finish = true; ExternalProverPhase.synchronized(ExternalProverPhase.notifyAll());List()
+      case StatusEvent(c,s) if c.parentContext == null => finish = true; ExternalProverPhase.synchronized(ExternalProverPhase.notifyAll()); List()
+      case _ => List()
+    }
+    override def name: String = "ExternalProverPhaseTerminator"
     override def run(t: Task): Result = EmptyResult
   }
 }

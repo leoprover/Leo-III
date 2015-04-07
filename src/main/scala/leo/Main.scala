@@ -1,6 +1,8 @@
 package leo
 
 
+import java.io.File
+
 import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -29,6 +31,7 @@ object Main {
    * @param args - See [[Configuration]] for argument treatment
    */
   def main(args : Array[String]){
+    println(new File(".").getAbsolutePath.toString)
     val beginTime = System.currentTimeMillis()
     try {
       Configuration.init(new CLParameterParser(args))
@@ -58,7 +61,12 @@ object Main {
     if(Configuration.COUNTER_SAT){
       CounterContextControlAgent.register()
       it = getCounterSat.iterator
-    }else{
+    } else if (Configuration.isSet("with-prover")) {
+      println("withprover!!!")
+      ContextControlAgent.register()
+      it = getExternalPhases.iterator
+    } else {
+      println("normal!!!")
       ContextControlAgent.register()
       it = getStdPhases.iterator
     }
