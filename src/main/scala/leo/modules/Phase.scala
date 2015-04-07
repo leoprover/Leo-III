@@ -246,7 +246,7 @@ object SimpleEnumerationPhase extends Phase {
   override def execute(): Boolean = {
     val s1 : Set[Type] = (Signature.get.baseTypes - 0 - 1 - 3 - 4 - 5).map(Type.mkType(_))
     val enumse : Map[Type, Seq[Term]] = s1.map{ty => (ty, SimpleEnum.enum(ty).toSeq)}.toMap
-    Out.output(enumse.toString())
+    Out.finest(enumse.toString())
     agents = List(new FiniteHerbrandEnumerateAgent(Context(), enumse))
 
     agents.map(_.register())
