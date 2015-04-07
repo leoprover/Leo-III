@@ -57,7 +57,7 @@ object FiniteHerbrandEnumeration {
   /**
    * Generates suitable lambda expressions for the replacement.
    * t -> \z. z a ? z b ? z c ...
-   * where the first element of the tupel has AND as ? and the second one has OR.
+   * where the first element of the tupel has OR as ? and the second one has AND.
    * @param domain
    * @return
    */
@@ -68,13 +68,17 @@ object FiniteHerbrandEnumeration {
   private def replace(t : Type, iterable: Seq[Term]) : (Term,Term) = {
     val p = mkBound(t ->: Signature.get.o, 1)
     val applied = iterable.map{c => mkTermApp(p, c)}.toList
-    (mkTermAbs(t, foldBy(|||, applied)), mkTermAbs(t, foldBy(&, applied)))
+    (mkTermAbs(t, foldBy(true, applied)), mkTermAbs(t, foldBy(false, applied)))
   }
 
-  private def foldBy(t : Term, l : List[Term]) : Term = l match {
+  private def foldBy(or : Boolean, l : List[Term]) : Term = l match {
     case h :: Nil => h
-    case h :: hs => mkTermApp(t, List(h, foldBy(t, hs)))
-    case Nil => if(t == |||) LitFalse else LitTrue     // Should never occur
+    case h :: hs =>
+      if (or)
+        |||(h, foldBy(or, hs))
+      else
+        &(h, foldBy(or, hs))//mkTermApp(if(or)||| else &, List(h, foldBy(or, hs)))
+    case Nil => if(or) LitFalse else LitTrue     // Should never occur
   }
 
 }

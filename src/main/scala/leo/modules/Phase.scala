@@ -95,7 +95,7 @@ trait Phase {
  * the execute to start the agents and wait for all to finish.
  */
 trait CompletePhase extends Phase {
-  private val waitAgent = new Wait
+  protected val waitAgent = new Wait
 
   override def start() : Unit = {
     super.start()
@@ -125,7 +125,7 @@ trait CompletePhase extends Phase {
     return true
   }
 
-  private class Wait extends FifoAgent{
+  protected class Wait extends FifoAgent{
     var finish = false
     var scedKill = false
     override protected def toFilter(event: Event): Iterable[Task] = event match {
@@ -259,6 +259,7 @@ object SimpleEnumerationPhase extends Phase {
 
     Scheduler().signal()
     synchronized{while(!finish) this.wait()}
+    if(scKilled) return false
 
     agents.map(_.unregister())
     Wait.unregister()
@@ -341,6 +342,7 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 
     Scheduler().signal()
     synchronized{while(!finish) this.wait()}
+    if(scKilled) return false
 
     agents.map(_.unregister())
     Wait.unregister()
@@ -375,7 +377,7 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 
 object ExternalProverPhase extends CompletePhase {
   override def name: String = "ExternalProverPhase"
-  var finish : Boolean = false
+
   val prover = if (Configuration.isSet("with-prover")) {
     Configuration.valueOf("with-prover") match {
       case None => throw new IllegalArgumentException("adsasda")
@@ -399,24 +401,14 @@ object ExternalProverPhase extends CompletePhase {
 
     val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
     Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
-    Wait.register()
+
 
     Scheduler().signal()
-    synchronized{while(!finish) this.wait()}
+    synchronized{while(!waitAgent.finish) this.wait()}
+    if(waitAgent.scedKill) return false
 
     end()
-    Wait.unregister()
     return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; ExternalProverPhase.synchronized(ExternalProverPhase.notifyAll());List()
-      case StatusEvent(c,s) if c.parentContext == null => finish = true; ExternalProverPhase.synchronized(ExternalProverPhase.notifyAll()); List()
-      case _ => List()
-    }
-    override def name: String = "ExternalProverPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
   }
 }
 
