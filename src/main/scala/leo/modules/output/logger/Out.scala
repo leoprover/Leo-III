@@ -2,6 +2,14 @@ package leo.modules.output.logger
 
 import leo.modules.output.Output
 
+/**
+ * Simple implementation of the [[Logging]] trait
+ * with message logging to System.err (FD 1).
+ *
+ * The verbosity (logging level threshold) is set
+ * by the `v` flag from the command-line arguments.
+ * @see [[leo.Configuration]]
+ */
 object Out extends Logging {
   override protected val loggerName = "Console"
   override protected val useParentLoggers = false

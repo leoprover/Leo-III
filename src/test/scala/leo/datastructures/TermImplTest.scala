@@ -1,10 +1,10 @@
-package leo.datastructures.internal
+package leo.datastructures
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
+import leo.datastructures.term.Term.{mkAtom, mkTermApp => ap}
 import leo.modules.churchNumerals.Numerals
 import leo.modules.churchNumerals.Numerals.fromInt
-import Term.{mkTermApp => ap,mkAtom}
 //import leo.datastructures.internal.{LitFalse, LitTrue, === => EQUALS, Signature}
 
 /**

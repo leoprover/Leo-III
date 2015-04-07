@@ -1,9 +1,9 @@
-package leo.datastructures.internal.terms
+package leo.datastructures.term
 
-import java.io.{FileNotFoundException, File}
+import java.io.{File, FileNotFoundException}
+
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
-import leo.datastructures.{Role, Clause,  Role_Type, Role_Definition, Role_Unknown}
+import leo.datastructures.{Clause, Role, Role_Definition, Role_Type, Role_Unknown}
 
 /**
  * Created by lex on 19.09.14.
@@ -31,9 +31,9 @@ object BenchmarkTermBank {
   }
 
   private def loadRelative(file : String, rel : Array[String]): Seq[(String, Clause, Role)] = {
+    import leo.modules.parsers.{InputProcessing, TPTP}
+
     import scala.util.parsing.input.CharArrayReader
-    import leo.modules.parsers.TPTP
-    import leo.modules.parsers.InputProcessing
 
 
     val (fileAbs, path) = newPath(rel, file)

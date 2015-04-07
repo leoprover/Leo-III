@@ -2,17 +2,13 @@ package leo
 package modules.proofCalculi
 
 import leo.modules.Utility._
-import org.scalatest.FunSuite
 import leo.modules.CLParameterParser
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import leo.datastructures.{Derived, Clause}
 
 /**
  * Created by max on 12.01.2015.
  */
-@RunWith(classOf[JUnitRunner])
-class ClausificationTestSuiteextends extends FunSuite{
+class ClausificationTestSuiteextends extends LeoTestSuite {
   Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
   test("And Positive") {

@@ -47,7 +47,7 @@ protected[term] sealed abstract class TermImpl(private var _locality: Locality) 
 
   // Other
   protected[datastructures] def inc(scopeIndex: Int): Term = ???
-  def langOrder = ???
+  def order = ???
 }
 
 /////////////////////////////////////////////////
@@ -121,6 +121,7 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     Reductions.tick()
     Root(hd, SNil)
   }
+  val headSymbolDepth = 0
   lazy val occurrences = if (args.length == 0)
                            Map(this.asInstanceOf[Term] -> Set(Position.root))
                          else
@@ -239,6 +240,7 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
     Reductions.tick()
     body.headSymbol
   }
+  lazy val headSymbolDepth = 1 + body.headSymbolDepth
   val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 1 + body.size + args.size
   lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
@@ -326,6 +328,7 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
     Reductions.tick()
     body.headSymbol
   }
+  lazy val headSymbolDepth = 1 + body.headSymbolDepth
   val scopeNumber = (body.scopeNumber._1 + 1,Math.min(typ.scopeNumber,body.scopeNumber._2))
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
@@ -409,6 +412,8 @@ protected[term] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
     Reductions.tick()
     body.headSymbol
   }
+  lazy val headSymbolDepth = 1 + body.headSymbolDepth
+
   val scopeNumber = (body.scopeNumber._1, body.scopeNumber._2+1)
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
@@ -466,6 +471,7 @@ protected[term] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val looseBounds = Set.empty[Int]
   lazy val symbols = Set[Signature#Key]()
   lazy val headSymbol = ???
+  lazy val headSymbolDepth = 1 + term.headSymbolDepth
   val scopeNumber = term.scopeNumber
   val occurrences = Map[Term, Set[Position]]()
 //    term.headSymbol match {

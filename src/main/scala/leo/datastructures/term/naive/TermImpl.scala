@@ -38,7 +38,8 @@ sealed abstract class TermImpl extends Term {
   def occurrences: Map[Term, Set[Position]] = ???
   def scopeNumber = ???
   def size = 0
-  def langOrder = ???
+  def order = ???
+  def headSymbolDepth = ???
 
   def replace(what: Term, by: Term): Term = ???
   def replaceAt(at: Position, by: Term): Term = ???

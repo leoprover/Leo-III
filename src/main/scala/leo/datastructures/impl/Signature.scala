@@ -226,9 +226,9 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   ///////////////////////////////
   // Creating of fresh variables
   ///////////////////////////////
-  // Skolem variables start with 'SK'
+  // Skolem variables start with 'sk'
   var skolemVarCounter = 0
-  val skolemVarPrefix = "SK"
+  val skolemVarPrefix = "sk"
   /** Returns a fresh uninterpreted symbol of type `ty`. That symbol will be
     * named `SKi` where i is some positive number. */
   def freshSkolemVar(ty: Type): Key = {
@@ -238,9 +238,9 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     skolemVarCounter += 1
     addUninterpreted(skolemVarPrefix + skolemVarCounter.toString, ty)
   }
-  // Skolem variables start with 'TV'
+  // Skolem variables start with 'tv'
   var typeVarCounter = 0
-  val typeVarPrefix = "TV"
+  val typeVarPrefix = "tv"
   /** Returns a fresh base type symbol. That symbol will be
     * named `TVi` where i is some positive number. */
   def freshTypeVar: Key = {
@@ -270,6 +270,8 @@ object Signature {
 
   def resetWithHOL(sig: Signature): Signature = {
     sig.empty
+    sig.skolemVarCounter=0
+    sig.typeVarCounter=0
     withHOL(sig)
   }
 

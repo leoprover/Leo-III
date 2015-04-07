@@ -72,10 +72,15 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   def apply(name : String, key : Signature#Key) : Output = new Output {
     def output : String = {
       val constant = Signature.get.apply(key)
-      if(constant.ty.isEmpty) // Ask Alex, tType is throwen away, such that no type becomes kind.
-        return (s"thf($name, ${Role_Type.pretty}, ${constant.name}: "+"$tType).")
+      val cname = {if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
+        "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+      } else {
+        constant.name
+      }}
+      if(constant.ty.isEmpty)
+        return (s"thf($name, ${Role_Type.pretty}, ${cname}: "+"$tType).")
       else
-        return s"thf(${name}, ${Role_Type.pretty}, ${constant.name}: ${toTPTP(constant._ty)})."
+        return s"thf(${name}, ${Role_Type.pretty}, ${cname}: ${toTPTP(constant._ty)})."
     }
   }
 
@@ -102,7 +107,14 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     val sig = Signature.get
     t match {
       // Constant symbols
-      case Symbol(id) => sig(id).name
+      case Symbol(id) => {
+        val name = sig(id).name
+        if (name.startsWith("'") && name.endsWith("'")) {
+          "'" + name.substring(1, name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+        } else {
+          name
+        }
+      }
       // Give Bound variables names
       case Bound(ty, scope) => bVars(scope-1)._1
       // Unary connectives

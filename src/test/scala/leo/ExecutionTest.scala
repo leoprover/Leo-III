@@ -9,16 +9,11 @@ import leo.modules.churchNumerals.Numerals
 import leo.modules.churchNumerals.Numerals.fromInt
 
 import leo.modules.normalization.Simplification
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.FunSuite
-
 
 /**
  * Created by lex on 11.06.14.
  */
-@RunWith(classOf[JUnitRunner])
-class ExecutionTest extends FunSuite {
+class ExecutionTest extends LeoTestSuite {
   val sig = Signature.get
 
   Numerals() // include numerals in signature

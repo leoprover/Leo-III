@@ -1,19 +1,19 @@
 package leo.modules.parsers
 
+import leo.LeoTestSuite
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
 
 import leo.modules.Utility
-import org.junit.runner.RunWith
-import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
 
 /**
+ * This suite tests the parsing and input processing of all the TPTP dialects except for CNF.
+ * The suite is based on the SYN000-files that cover basic and advanced syntax features for all
+ * dialects.
  * @author Alexander Steen
  * @since 09.02.2015
  */
-@RunWith(classOf[JUnitRunner])
-class InputTestSuite extends FunSuite {
+class InputTestSuite extends LeoTestSuite {
   val source = getClass.getResource("/problems").getPath
   val problem_suffix = ".p"
 
@@ -27,15 +27,10 @@ class InputTestSuite extends FunSuite {
                       "SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
   )
 
-  val sig = Signature.get
-
   for (p <- problems) {
     test(p._2) {
-      Signature.resetWithHOL(sig)
-      Blackboard().clear()
-      println("##################################")
-      println("########## Parsing Test ##########")
-      println(s"##### ${p._2}")
+      val sig = Signature.get
+      printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
       Utility.load(source + "/" +  p._1 + ".p")
@@ -43,11 +38,11 @@ class InputTestSuite extends FunSuite {
       println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${Blackboard().getFormulas.size} formulae added to blackboard.")
       println()
       println("## Problem signature:")
-      println("#####################")
+      printLongHLine()
       Utility.printSignature()
       println()
       println("## Formulae converted to internal representation:")
-      println("#################################################")
+      printLongHLine()
       Utility.formulaContext()
       println()
     }
