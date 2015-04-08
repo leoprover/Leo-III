@@ -75,9 +75,8 @@ trait Phase {
   /**
    * Method to start the agents, defined in `agents`
    */
-  protected def start() : Unit = {
+  protected def init() : Unit = {
     agents.foreach(_.register())
-    Scheduler().signal()
   }
 
   /**
@@ -95,26 +94,28 @@ trait Phase {
  * the execute to start the agents and wait for all to finish.
  */
 trait CompletePhase extends Phase {
-  protected val waitAgent = new Wait
+  private def getName = name
+  protected var waitAgent : CompleteWait = null
 
-  override def start() : Unit = {
-    super.start()
-    waitAgent.finish = false
+
+  def initWait() : Unit = {
+    waitAgent = new CompleteWait
     waitAgent.register()
-    Scheduler().signal()
   }
 
   override def end() : Unit = {
     super.end()
     waitAgent.unregister()
+    waitAgent = null
   }
   /**
    * Executes all defined agents and waits till no work is left.
    */
   override def execute() : Boolean = {
     // Starting all agents and signal scheduler
-    start()
-
+    init()
+    initWait()
+    Scheduler().signal()
     // Wait until nothing is left to do
     waitAgent.synchronized(while(!waitAgent.finish) waitAgent.wait())
     if(waitAgent.scedKill) return false
@@ -125,7 +126,7 @@ trait CompletePhase extends Phase {
     return true
   }
 
-  protected class Wait extends FifoAgent{
+  protected class CompleteWait extends FifoAgent{
     var finish = false
     var scedKill = false
     override protected def toFilter(event: Event): Iterable[Task] = event match {
@@ -135,7 +136,7 @@ trait CompletePhase extends Phase {
         synchronized{finish = true; notifyAll()};List()
       case _ => List()
     }
-    override def name: String = "PreprocessPhaseTerminator"
+    override def name: String = s"${getName}Terminator"
     override def run(t: Task): Result = EmptyResult
     override def kill(): Unit = synchronized{
       scedKill = true
@@ -158,8 +159,9 @@ class LoadPhase(negateConjecture : Boolean) extends Phase{
     val wait = new Wait(this)
 
     if(negateConjecture) {
-      start()
+      init()
       wait.register()
+      Scheduler().signal()
     }
     try {
       Utility.load(file)
@@ -209,7 +211,7 @@ object DomainConstrainedPhase extends Phase{
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    start()
+    init()
 
 
     val card : Seq[Int] = Configuration.valueOf("card").fold(List(1,2,3)){s => try{s map {c => c.toInt} toList} catch {case _ => List(1,2,3)}}
@@ -396,15 +398,17 @@ object ExternalProverPhase extends CompletePhase {
   override protected def agents: Seq[Agent] = List(extProver)
 
   override def execute(): Boolean = {
-    start()
+    init()
 
 
     val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
     Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
 
+    initWait()
 
     Scheduler().signal()
-    synchronized{while(!waitAgent.finish) this.wait()}
+
+    waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
     if(waitAgent.scedKill) return false
 
     end()
@@ -429,7 +433,7 @@ object RemoteCounterSatPhase extends CompletePhase {
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    start()
+    init()
 
 
     //val maxCard = Configuration.valueOf("maxCard").fold(3){s => try{s.head.toInt} catch {case _ => 3}}
