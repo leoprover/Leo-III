@@ -1,7 +1,7 @@
 package leo
 package modules
 
-import java.io.{FileNotFoundException, File}
+import java.io.{PrintWriter, StringWriter, FileNotFoundException, File}
 
 import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
 import leo.datastructures.blackboard.{FormulaStore, Blackboard}
@@ -276,10 +276,23 @@ object Utility {
     }}.foldRight(""){(a,b) => a+b}
   }
 
+
+  def stackTraceAsString(e: Throwable): String = {
+    val sw = new StringWriter()
+    e.printStackTrace(new PrintWriter(sw))
+    sw.toString
+  }
+
 }
 
-class SZSException(val status : StatusSZS) extends RuntimeException("SZS status "+status.output)
+class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
-case class SZSOutput(status : StatusSZS) extends Output {
-  override def output: String = "% SZS status "+status.output
+case class SZSOutput(status : StatusSZS, problem: String = "") extends Output {
+  override def output: String = problem match {
+    case "" => s"% SZS status ${status.output}"
+    case prob => s"% SZS status ${status.output} for $problem"
+  }
 }
+
+
+

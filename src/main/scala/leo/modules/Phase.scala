@@ -9,7 +9,7 @@ import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.impl.Signature
 import leo.modules.normalization.{NegationNormal, Skolemization, Simplification, DefExpansion}
-import leo.modules.output.{SZS_CounterSatisfiable, StatusSZS, SZS_Theorem, SZS_Error}
+import leo.modules.output._
 import leo.modules.proofCalculi.enumeration.SimpleEnum
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
@@ -380,20 +380,34 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 object ExternalProverPhase extends CompletePhase {
   override def name: String = "ExternalProverPhase"
 
-  val prover = if (Configuration.isSet("with-prover")) {
+  lazy val prover = if (Configuration.isSet("with-prover")) {
     Configuration.valueOf("with-prover") match {
-      case None => throw new IllegalArgumentException("adsasda")
+      case None => throw new SZSException(SZS_UsageError, "--with-prover parameter used without <prover> argument.")
       case Some(str) => str.head match {
-        case "leo2" => "scripts/leoexec.sh"
-        case "satallax" => "scripts/satallaxexec.sh"
+        case "leo2" => {
+          val path = System.getenv("LEO2_PATH")
+          if (path != null) {
+            "scripts/leoexec.sh"
+          } else {
+            throw new SZSException(SZS_UsageError, "--with-prover used with LEO2 prover, but $LEO2_PATH is not set.")
+          }
+        }
+        case "satallax" => {
+          val path = System.getenv("SATALLAX_PATH")
+          if (path != null) {
+            "scripts/satallaxexec.sh"
+          } else {
+            throw new SZSException(SZS_UsageError, "--with-prover used with satallax prover, but $SATALLAX_PATH is not set.")
+          }
+        }
         case "remote-leo2" => "scripts/remote-leoexec.sh"
-        case _ => throw new IllegalArgumentException("asdasd")
+        case _ => throw new SZSException(SZS_UsageError, "--with-prover parameter used with unrecognized <prover> argument.")
       }
     }
   } else {
-    throw new IllegalArgumentException("no external prover given")
+    throw new SZSException(SZS_Error, "This is considered an system error, please report this problem.", "CL parameter with-prover lost")
   }
-  val extProver : Agent = SZSScriptAgent(prover)(x => x)
+  lazy val extProver : Agent = SZSScriptAgent(prover)(x => x)
 
   override protected def agents: Seq[Agent] = List(extProver)
 

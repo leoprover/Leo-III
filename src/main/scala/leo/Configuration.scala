@@ -174,7 +174,11 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////////
 
   def isSet(param: String): Boolean = configMap.get(param).isDefined
-  def valueOf(param: String): Option[Seq[String]] = configMap.get(param)
+  def valueOf(param: String): Option[Seq[String]] = configMap.get(param) match {
+    case None => None
+    case Some(Seq()) => None
+    case rest => rest
+  }
   def isSetTo(param: String, arg: String): Boolean =
     configMap.get(param).fold(false)(args => args.length == 1 && args(0) == arg)
 
