@@ -11,7 +11,7 @@ import leo.modules.Utility._
  * Created by ryu on 12/3/14.
  */
 class CalculusTestTestSuite extends LeoTestSuite {
-  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
+//  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
   test("Term Index") {
     clear()

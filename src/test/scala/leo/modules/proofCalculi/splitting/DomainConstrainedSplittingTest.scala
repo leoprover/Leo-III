@@ -12,7 +12,7 @@ import org.scalatest.junit.JUnitRunner
  * Created by max on 19.02.2015.
  */
 class DomainConstrainedSplittingTest extends FunSuite{
-  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
+//  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
   test("Cardinality 1"){
     val ax = DomainConstrainedSplitting.cardinalityTerms(1)(Signature.get.o)

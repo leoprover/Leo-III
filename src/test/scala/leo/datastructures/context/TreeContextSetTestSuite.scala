@@ -12,7 +12,7 @@ import leo.datastructures.context.impl._
  */
 class TreeContextSetTestSuite extends LeoTestSuite {
 
-  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
+//  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
   val b : Context = Context()
   // b is root,

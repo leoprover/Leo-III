@@ -7,7 +7,7 @@ import leo.modules.CLParameterParser
  * Created by ryu on 2/18/15.
  */
 class SZSScriptAgentTest extends LeoTestSuite {
-  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
+//  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
   val a : SZSScriptAgent = new SZSScriptAgent("scripts/echo.sh")({x => x})
 

@@ -38,20 +38,26 @@ class ExtProverTest extends LeoTestSuite {
   val satallaxpath = System.getenv("SATALLAX_PATH")
 
   if (leopath != null) {
-    Out.output("%%% Found LEO-II path in environment, using LEO-II for ext. prover tests.")
     Configuration.init(new CLParameterParser(Array("dummy", "--with-prover", "leo2", "-v", "2")))
   } else if (satallaxpath != null) {
-    Out.output("%%% Found Satallax path in environment, using Satallax for ext. prover tests.")
     Configuration.init(new CLParameterParser(Array("dummy", "--with-prover", "satallax", "-v", "2")))
   } else {
-    Out.output("%%% Found neither LEO-II nor Satallax path in environment, using remote call to LEO-II (via System-On-TPTP) for ext. prover tests.")
-    Out.output("%%% This requires, of course, a running internet connection. ")
     Configuration.init(new CLParameterParser(Array("dummy", "--with-prover", "remote-leo2", "-v", "2")))
   }
   ///
 
   for (p <- problems) {
     test(p._2) {
+      printHeading(s"External prover tests")
+      if (leopath != null) {
+        Out.output("%%% Found LEO-II path in environment, using LEO-II for ext. prover tests.")
+      } else if (satallaxpath != null) {
+        Out.output("%%% Found Satallax path in environment, using Satallax for ext. prover tests.")
+      } else {
+        Out.output("%%% Found neither LEO-II nor Satallax path in environment, using remote call to LEO-II (via System-On-TPTP) for ext. prover tests.")
+        Out.output("%%% This requires, of course, a running internet connection. ")
+      }
+
       val deferredKill: DeferredKill = new DeferredKill(10, 15)
       deferredKill.start()
 
