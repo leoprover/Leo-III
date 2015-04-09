@@ -153,6 +153,12 @@ case object SZS_Error extends NoSuccessSZS {
   val pretty = "ERR"
 }
 
+/** Software stopped due to an ATP system usage error. **/
+case object SZS_UsageError extends NoSuccessSZS {
+  val output = "UsageError"
+  val pretty = "USE"
+}
+
 case object SZS_InputError extends NoSuccessSZS {
   val output = "InputError"
   val pretty = "INE"
