@@ -6,7 +6,7 @@ import leo.datastructures.context.Context
 import leo.datastructures.{Role_NegConjecture, Role_Conjecture}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
-import leo.modules.{ParamodPhase, PreprocessPhase, Utility}
+import leo.modules.{SimpleEnumerationPhase, ParamodPhase, PreprocessPhase, Utility}
 import org.scalatest._
 
 /**
@@ -22,20 +22,21 @@ class PhaseTest extends FunSuite {
 
   // Used Phases for the test
   val tphases = List(PreprocessPhase, ParamodPhase)
+  val hophases = List(PreprocessPhase, SimpleEnumerationPhase, ParamodPhase)
 
   // Used Problems for the test
   val problems = Seq(
-    "ex1" -> "Problem 1",
-    "ex2" -> "Problem 2",
-    "ex3" -> "Problem 3"
+    "ex1" -> ("Problem 1", tphases),
+    "ex2" -> ("Problem 2", tphases),
+    "ex3" -> ("Problem 3", tphases),
+    "SET014^4" -> ("HO-Problem 1", hophases)
   )
 
-  test("Execution Tests") {
-    for(p <- problems){
-
+  for(p <- problems){
+    test(s"Execution Tests ${p._2._1}") {
       println("##################################")
       println("######### Execution Test #########")
-      println(s"##### ${p._2}")
+      println(s"##### ${p._2._1}")
       println(s"## Parsing ${p._1}$problem_suffix ...")
 
 
@@ -48,7 +49,7 @@ class PhaseTest extends FunSuite {
         b.addFormula(nf)
       }
       ContextControlAgent.register()
-      val it = tphases.iterator
+      val it = p._2._2.iterator
       var r = true
       while(it.hasNext && r) {
         val phase = it.next()
