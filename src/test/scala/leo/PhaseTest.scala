@@ -31,7 +31,7 @@ class PhaseTest extends FunSuite {
   // Used Problems for the test
   val problems = Seq(
     "ex1" -> ("Prop-Problem 1", tphases),
-    "ex2" -> ("Prop-Problem 2", tphases),
+    //"ex2" -> ("Prop-Problem 2", tphases),
     "ex3" -> ("Prop-Problem 3", tphases),
     "SET014^4" -> ("HO-Problem 1", hophases),
     "SET014^5" -> ("HO-Problem 2", hophases),
@@ -40,19 +40,26 @@ class PhaseTest extends FunSuite {
     "SYN973+1" -> ("FOF-Problem 1", hophases),
     "SYN974+1" -> ("FOF-Probelm 2", hophases),
     "SYN978+1" -> ("FOF-Problem 3", hophases),
-    //"COM001_1" -> ("TFF-Problem 1", hophases),
-    "COM003_1" -> ("TFF-Problem 2", hophases),
-    "KRS003_1" -> ("TFF-Problem 3", hophases)
+    //"COM001_1" -> ("TFF-Problem 1", hophases)
+    //"COM003_1" -> ("TFF-Problem 2", hophases),
+    //"KRS003_1" -> ("TFF-Problem 3", hophases)
   )
 
-  test(s"Execution Tests") {
+  test(s"Phase Test") {
     for(p <- problems){
       println("##################################")
       println("######### Execution Test #########")
       println(s"##### ${p._2._1}")
       println(s"## Parsing ${p._1}$problem_suffix ...")
 
-      Utility.load(source + "/" +  p._1 + ".p")
+      try{
+        Utility.load(source + "/" +  p._1 + ".p")
+      } catch {
+        case e : SZSException =>
+          Out.output(s"Execution Test ${p._2._1} failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
+          fail()
+      }
+
       //Negate the conjecture by ourselves, since the load phase uses Configurations (not present here)
       Blackboard().getAll(_.role == Role_Conjecture) foreach { f =>
         assert(f.clause.lits.size == 1, "Found a conjecture with more than one literal.")
@@ -74,10 +81,12 @@ class PhaseTest extends FunSuite {
 
       Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${p._1}")
       Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+
       ContextControlAgent.unregister()
 
+
       Scheduler().clear()
-      b.clear()
+      Utility.clear()
       Signature.resetWithHOL(sig)
     }
   }
