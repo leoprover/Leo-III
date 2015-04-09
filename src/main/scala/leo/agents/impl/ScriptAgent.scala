@@ -104,19 +104,24 @@ abstract class ScriptAgent(path : String) extends FifoAgent {
         //val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
         val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath)
         val str : mutable.ListBuffer[String] = new ListBuffer[String]
+        val errstr : mutable.ListBuffer[String] = new ListBuffer[String]
         val process = res.run(new ProcessIO(in => in.close(), // Input not used
                                             stdout => try{
                                               {scala.io.Source.fromInputStream(stdout).getLines().foreach(str.append(_)); stdout.close()}
                                             } catch {
                                               case e : IOException => stdout.close()
                                             },
-                                            err => err.close())
-                              )
+                                            err => try {
+                                              {scala.io.Source.fromInputStream(err).getLines().foreach(errstr.append(_)); err.close()}
+                                            } catch {
+                                              case e : IOException => err.close()
+                                            }
+                              ))
         extSet.synchronized(extSet.add(process))
         val exit = process.exitValue()
         Out.trace(s"[$name]: Got result from external prover.")
 
-        val h = handle(t1.c, str.toIterator, List.empty.toIterator, exit)
+        val h = handle(t1.c, str.toIterator, errstr.toIterator, exit)
 
         // CLean up! I.e. process
         extSet.synchronized(extSet.remove(process))

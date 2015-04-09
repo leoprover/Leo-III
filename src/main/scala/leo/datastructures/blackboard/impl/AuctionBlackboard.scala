@@ -326,7 +326,9 @@ private object TaskSet {
         while (r.isEmpty) {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
           if (r.isEmpty) {
-            if(!Scheduler.working() && execTasks.isEmpty) Blackboard().filterAll{a => a.filter(DoneEvent())}
+            if(!Scheduler.working() && execTasks.isEmpty) {
+              Blackboard().filterAll{a => a.filter(DoneEvent())}
+            }
             TaskSet.wait()
           }
         }

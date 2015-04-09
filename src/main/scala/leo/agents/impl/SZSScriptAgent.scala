@@ -34,8 +34,18 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
     val b = new StringBuilder
     while(it.hasNext){
       val line = it.next()
-      b.append("  "+line+"\n")
-      //Out.output(s"[$name:] $line")
+      b.append("  Out: "+line+"\n")
+      getSZS(line) match {
+        case Some(status) =>
+          context.close()
+          Out.info(s"[$name]: Got ${status.output} from the external prover.")
+          return new ContextResult(context, reinterpreteResult(status))
+        case None         => ()
+      }
+    }
+    while(err.hasNext){
+      val line = err.next()
+      b.append("  Err: "+line+"\n")
       getSZS(line) match {
         case Some(status) =>
           context.close()

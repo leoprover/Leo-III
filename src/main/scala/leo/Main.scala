@@ -157,7 +157,7 @@ object Main {
             case _: Throwable => ()
           } finally {
             if(!exit) {
-              Out.info("Leo is still alive.")
+              Scheduler().signal()
               //agentStatus()
               remain -= interval
             }
