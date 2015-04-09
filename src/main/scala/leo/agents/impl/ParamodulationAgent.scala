@@ -79,8 +79,12 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
         //Out.output(s"[$name]:\n Claculated\n   ${nc.pretty}\n from\n   $task")
           // Only add, if the it is not trivially given.TODO: Move te filter to not lock the clauses
           val nf = Store(nc, f1.status & f2.status, f1.context)
-          Out.trace(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}[,${l.pretty}]})\n =>\n   ${nc.pretty}")
-          return new StdResult(Set(nf), Map.empty, Set.empty)
+//          if (TrivRule.teqt(nc))
+//            return EmptyResult      TODO: Never insert. Move to test, because the task is created anew every time.
+//          else {
+            Out.trace(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}[,${l.pretty}]})\n =>\n   ${nc.pretty}")
+            return new StdResult(Set(nf), Map.empty, Set.empty)
+//          }
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.")
     }
