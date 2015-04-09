@@ -50,7 +50,7 @@ class CLParameterParser(protected val args: Array[String]) {
         case Some(list) => parse0(tail, map + ((cArg, list :+ value)))
       }
       case arg :: tail if isLong(arg) => val cArg = arg.drop(2); map.get(cArg) match {
-        case None => parse0(tail, map + ((cArg, Seq(""))))
+        case None => parse0(tail, map + ((cArg, Seq())))
         case Some("" :: Nil) => {
           Out.trace(s"Reuse of command-line argument '$cArg'. Skipped.")
           parse0(tail, map)
@@ -69,7 +69,7 @@ class CLParameterParser(protected val args: Array[String]) {
         case Some(list) => parse0(tail, map + ((cArg, list :+ value)))
       }
       case arg :: tail if isShort(arg) && arg.length == 2 => val cArg = arg.drop(1); map.get(cArg) match {
-        case None => parse0(tail, map + ((cArg, Seq(""))))
+        case None => parse0(tail, map + ((cArg, Seq())))
         case Some("" :: Nil) => {
           Out.trace(s"Reuse of command-line argument '$cArg'. Skipped.")
           parse0(tail, map)
