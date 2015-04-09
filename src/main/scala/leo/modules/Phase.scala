@@ -147,7 +147,7 @@ trait CompletePhase extends Phase {
 }
 
 
-class LoadPhase(negateConjecture : Boolean) extends Phase{
+class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   override val name = "LoadPhase"
 
   override val agents : Seq[Agent] = if(negateConjecture) List(new ConjectureAgent) else Nil
@@ -155,7 +155,7 @@ class LoadPhase(negateConjecture : Boolean) extends Phase{
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    val file = Configuration.PROBLEMFILE
+    val file = problemfile
     val wait = new Wait(this)
 
     if(negateConjecture) {
@@ -415,18 +415,20 @@ object ExternalProverPhase extends CompletePhase {
     init()
 
 
-    val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
-    Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
+  val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
+  Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
 
-    initWait()
+  initWait()
 
-    Scheduler().signal()
+  Scheduler().signal()
 
-    waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
-    if(waitAgent.scedKill) return false
+  waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
+  if(waitAgent.scedKill) return false
 
-    end()
-    return true
+  end()
+  return true
+
+
   }
 }
 
