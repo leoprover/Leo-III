@@ -97,14 +97,14 @@ object Utility {
 
 
               } catch {
-                case ex: FileNotFoundException => Out.severe("Problem file not found."); throw new SZSException(SZS_InputError)
-                case _: Throwable => throw new SZSException(SZS_InputError)
+                case ex: FileNotFoundException => Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
+                case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
               }
             }
           } else {
-            Out.severe("Problem file not found."); throw new SZSException(SZS_InputError)
+            Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
           }
-        case _ : Throwable => throw new SZSException(SZS_InputError)
+        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
       }
     }
   }
