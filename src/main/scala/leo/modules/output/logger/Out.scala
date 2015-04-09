@@ -21,9 +21,12 @@ object Out extends Logging {
       setFormatter(new Formatter {
         def format(record: LogRecord) = {
           val lines = record.getMessage.linesWithSeparators
-          val msg = lines.next() + lines.map(str => "% " + str).mkString("")
-
-          s"% [${record.getLevel.getLocalizedName}] \t $msg \n"
+          if (lines.hasNext) {
+            val msg = lines.next() + lines.map(str => "% " + str).mkString("")
+            s"% [${record.getLevel.getLocalizedName}] \t $msg \n"
+          } else {
+            ""
+          }
         }
       })
     }
