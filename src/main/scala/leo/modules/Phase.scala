@@ -380,7 +380,7 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 object ExternalProverPhase extends CompletePhase {
   override def name: String = "ExternalProverPhase"
 
-  def prover = if (Configuration.isSet("with-prover")) {
+  lazy val prover = if (Configuration.isSet("with-prover")) {
     Configuration.valueOf("with-prover") match {
       case None => throw new SZSException(SZS_UsageError, "--with-prover parameter used without <prover> argument.")
       case Some(str) => str.head match {
@@ -407,7 +407,7 @@ object ExternalProverPhase extends CompletePhase {
   } else {
     throw new SZSException(SZS_Error, "This is considered an system error, please report this problem.", "CL parameter with-prover lost")
   }
-  def extProver : Agent = SZSScriptAgent(prover)(x => x)
+  lazy val extProver : Agent = SZSScriptAgent(prover)(x => x)
 
   override protected def agents: Seq[Agent] = List(extProver)
 
