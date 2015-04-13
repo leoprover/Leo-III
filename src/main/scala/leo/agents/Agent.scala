@@ -10,88 +10,35 @@ import scala.collection.mutable
 
 /**
  * <p>
- * Interface for all Agent Implementations.
+ * Controlling Entity for an Agent.
  * </p>
  *
  * <p>
- * The Agent itself is not a Thread, but a function to be called, at any
- * time its guard is satisfied.
+ * The AgentController stores all generated Tasks
+ * and passes them to the auction scheduler.
+ * The publishing order is determined by the implementation.
  * </p>
- *
- * <p>
- * To be considered to the change of an guard an implementing class
- * must register to at least on of the blackboard triggers. Copies
- * of pointers to objects in the blackboard will not be considered
- * for a change of the guard.
- *
- * This holds unless the guard is simply true, then the agent can be executed
- * at any time.
- * </p>
- * @author Max Wisniewski
- * @since 5/14/14
+ * @param a is the Agent to be controlled.
  */
-abstract class Agent {
+abstract class AgentController(a : Agent) {
+  val name : String = a.name
 
-  /**
-   *
-   * @return the name of the agent
-   */
-  def name : String
-
-  /**
-   *
-   * @return number of tasks, the agent can currently work on
-   */
   def openTasks : Int
 
-  private var _isActive : Boolean = false
+  private var _isActive : Boolean = true
 
-  /**
-   * Returns the agents active status.
-   * If true, he is considered in the task auction.
-   *
-   * @return the activity status of the agent
-   */
   def isActive : Boolean = _isActive
 
-  /**
-   * Sets the agent to a new status, thus (un-)considered by the scheduler
-   * @param a - The new activity status
-   */
-  def setActive(a : Boolean) = {
-    _isActive = a
+  def setActive(a : Boolean) = _isActive = a
+
+  def run(t : Task) = {
+    a.run(t)
   }
 
-  /**
-   * This function runs the specific agent on the registered Blackboard.
-   */
-  def run(t : Task) : Result
+  def register() = Blackboard().registerAgent(this)
+  def unregister() = Blackboard().unregisterAgent(this)
 
-  /**
-   * <p>
-   * In this method the Agent gets the Blackboard it will work on.
-   * Registration for Triggers should be done in here.
-   * </p>
-   *
-   */
-  def register() {
-    Blackboard().registerAgent(this)
-    setActive(true)
-  }
-
-  def unregister(): Unit = {
-    Blackboard().unregisterAgent(this)
-    setActive(false)
-  }
-
-  /**
-   * This method is called when an agent is killed by the scheduler
-   * during execution. This method does standardized nothing.
-   *
-   * In the case an external Process / Thread is created during the
-   * execution of the agent, this method can clean up the processes.
-   */
-  def kill(): Unit = {}
+  def kill() = a.kill()
 
   /*
 --------------------------------------------------------------------------------------------
@@ -128,7 +75,7 @@ abstract class Agent {
    *
    * @return maxMoney
    */
-  def maxMoney : Double
+  var maxMoney : Double = 100000
 
   /**
    * As getTasks with an infinite budget.
@@ -152,6 +99,55 @@ abstract class Agent {
 }
 
 /**
+ * <p>
+ * Interface for all Agent Implementations.
+ * </p>
+ *
+ * <p>
+ * The Agent itself is not a Thread, but a function to be called, at any
+ * time its guard is satisfied.
+ * </p>
+ *
+ * <p>
+ * To register an Agent, it has to be passed to an AgentController.
+ * (Runnable vs. Thread)
+ * </p>
+ * @author Max Wisniewski
+ * @since 5/14/14
+ */
+abstract class Agent {
+
+  /**
+   *
+   * @return the name of the agent
+   */
+  def name : String
+
+  /**
+   * This function runs the specific agent on the registered Blackboard.
+   */
+  def run(t : Task) : Result
+
+  /**
+   * This method is called when an agent is killed by the scheduler
+   * during execution. This method does standardized nothing.
+   *
+   * In the case an external Process / Thread is created during the
+   * execution of the agent, this method can clean up the processes.
+   */
+  def kill(): Unit = {}
+
+  /**
+   * Triggers the filtering of the Agent.
+   *
+   * Upon an Event the Agent can generate Tasks, he wants to execute.
+   * @param event on the blackboard concerning change of data.
+   * @return a List of Tasks the Agent wants to execute.
+   */
+  def toFilter(event : Event) : Iterable[Task]
+}
+
+/**
  * Implements the sorting, selection and saving of tasks of the agent interface.
  *
  * Only the explicit filtering, own tasks and the execution have to be implemeted.
@@ -159,9 +155,7 @@ abstract class Agent {
  *
  * The tasks are executed in the order they are generated.
  */
-abstract class FifoAgent extends Agent {
-
-  protected def toFilter(event : Event) : Iterable[Task]
+class FifoController(a : Agent) extends AgentController(a) {
 
   override def setActive(a : Boolean) = {
     super.setActive(a)
@@ -187,7 +181,7 @@ abstract class FifoAgent extends Agent {
    */
   override def filter(f: Event) : Unit = {
     var done = false
-    for(t <- toFilter(f)) {
+    for(t <- a.toFilter(f)) {
       if (!Blackboard().collision(t)) {
         q.synchronized {
           q.enqueue(t)
@@ -199,8 +193,6 @@ abstract class FifoAgent extends Agent {
       Blackboard().signalTask()
     }
   }
-
-  override val maxMoney : Double = 2000
 
   /**
    *
@@ -259,11 +251,7 @@ abstract class FifoAgent extends Agent {
  *
  * The tasks are executed sorted by their bid starting with the highest bid.
  */
-abstract class PriorityAgent extends Agent {
-
-  private var _isActive : Boolean = true
-
-  override def isActive : Boolean = _isActive
+class PriorityController(a : Agent) extends AgentController(a) {
 
   override def setActive(a : Boolean) = {
     super.setActive(a)
@@ -282,21 +270,13 @@ abstract class PriorityAgent extends Agent {
   override def openTasks : Int = synchronized(q.size)
 
   /**
-   * Internal method called from the filter method. Specific to the agent.
-   *
-   * @param event - The event that triggered the filter
-   * @return A sequence of new tasks, to be added to the internal priority queue.
-   */
-  protected def toFilter(event : Event) : Iterable[Task]
-
-  /**
    * Calls the internal toFilter method and inserts all generated tasks to the priority queue.
    *
    * @param f - Raised Event.
    */
   override def filter(f: Event) : Unit = {
     var done = false
-    val it = toFilter(f).iterator
+    val it = a.toFilter(f).iterator
     while(it.hasNext) {
       val t = it.next()
       if (!Blackboard().collision(t)) {
@@ -420,10 +400,10 @@ abstract class Task extends Pretty {
     val t1 = this
     if(t1 equals t2) true
     else {
-      !t1.readSet().intersect(t2.writeSet()).isEmpty ||
-        !t2.readSet().intersect(t1.writeSet()).isEmpty ||
-        !t2.writeSet().intersect((t1.writeSet())).isEmpty ||
-        !t2.contextWriteSet().intersect((t1.contextWriteSet())).isEmpty
+      t1.readSet().intersect(t2.writeSet()).nonEmpty ||
+        t2.readSet().intersect(t1.writeSet()).nonEmpty ||
+        t2.writeSet().intersect((t1.writeSet())).nonEmpty ||
+        t2.contextWriteSet().intersect((t1.contextWriteSet())).nonEmpty
     }
   }
 

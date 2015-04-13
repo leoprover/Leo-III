@@ -7,21 +7,13 @@ import leo.datastructures.term.Term
 import leo.modules.proofCalculi._
 import leo.datastructures.{Derived, Clause, Literal}
 
-
-object ParamodulationAgent {
-  def apply() : Unit = {
-    (new ParamodulationAgent(PropParamodulation, IdComparison)).register()
-    (new ParamodulationAgent(Paramodulation, IdComparison)).register()
-  }
-}
-
 /**
  * Class to execute a calculus step from the paramodulation.
  *
  * @author Max Wisniewski
  * @since 12/11/14
  */
-class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends PriorityAgent{
+class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Agent {
 
   /**
    * Considers only FormulaEvents. If there is a partner for paramodulation in the blackboard
@@ -30,7 +22,7 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
    * @param event - The event that triggered the filter
    * @return A sequence of new tasks, to be added to the internal priority queue.
    */
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) =>
       if(!f.normalized){
         Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
@@ -50,17 +42,6 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Pri
       q
     case _ : Event => Nil
   }
-
-  /**
-   * Each task can define a maximum amount of money, they
-   * want to posses.
-   *
-   * A process has to be careful with this barrier, for he
-   * may never be doing anything if he has to low money.
-   *
-   * @return maxMoney
-   */
-  override def maxMoney: Double = 6800
 
   /**
    *

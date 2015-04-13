@@ -9,56 +9,6 @@ import leo.modules.proofCalculi.TrivRule
 
 import scala.collection.mutable
 
-object NormalClauseAgent {
-
-  private var simp : Agent = null;
-  private var neg : Agent = null;
-  private var prenex : Agent = null;
-  private var skolem : Agent = null;
-  private var defExp : Agent = null;
-
-  import leo.modules.normalization._
-  def SimplificationAgent () : Agent = {
-    if(simp == null) {
-      simp = new NormalClauseAgent(Simplification)
-      simp.register()
-    }
-    simp
-  }
-
-  def NegationNormalAgent () : Agent = {
-    if(neg == null) {
-      neg = new NormalClauseAgent(NegationNormal)
-      neg.register()
-    }
-    neg
-  }
-
-  def PrenexAgent () : Agent =  {
-    if(prenex == null) {
-      prenex = new NormalClauseAgent(PrenexNormal)
-      prenex.register()
-    }
-    prenex
-  }
-
-  def SkolemAgent () : Agent =  {
-    if(skolem == null) {
-      skolem = new NormalClauseAgent(Skolemization)
-      skolem.register()
-    }
-    skolem
-  }
-
-  def DefExpansionAgent () : Agent =  {
-    if(defExp == null) {
-      defExp = new NormalClauseAgent(DefExpansion)
-      defExp.register()
-    }
-    defExp
-  }
-}
-
 /**
  *
  * <p>
@@ -73,7 +23,7 @@ object NormalClauseAgent {
  * @author Max Wisniewski
  * @since 5/14/14
  */
-class NormalClauseAgent(norm : Normalize) extends FifoAgent {
+class NormalClauseAgent(norm : Normalize) extends Agent {
 
   override val name = norm.name + "Agent"
 
@@ -97,7 +47,7 @@ class NormalClauseAgent(norm : Normalize) extends FifoAgent {
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
-  override protected def toFilter(e: Event): Iterable[Task] = e match {
+  override def toFilter(e: Event): Iterable[Task] = e match {
     case FormulaEvent(event) =>
       if (norm.applicable ( event.status ) && !event.clause.isEmpty) {
         List(new NormalTask(event))

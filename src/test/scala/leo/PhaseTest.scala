@@ -1,5 +1,6 @@
 package leo
 
+import leo.agents.FifoController
 import leo.agents.impl.ContextControlAgent
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
@@ -67,7 +68,8 @@ class PhaseTest extends FunSuite {
         b.removeFormula(f)
         b.addFormula(nf)
       }
-      ContextControlAgent.register()
+      val cont = new FifoController(ContextControlAgent)
+      cont.register()
       val it = p._2._2.iterator
       var r = true
       while(it.hasNext && r) {
@@ -82,7 +84,7 @@ class PhaseTest extends FunSuite {
       Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${p._1}")
       Blackboard().getAll{p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
 
-      ContextControlAgent.unregister()
+      cont.unregister()
 
 
       Scheduler().clear()

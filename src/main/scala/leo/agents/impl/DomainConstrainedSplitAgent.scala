@@ -3,10 +3,9 @@ package agents.impl
 
 import leo.agents._
 import leo.datastructures.blackboard.{FormulaStore, Event, Message}
-import leo.datastructures.context.{BetaSplit, AlphaSplit, NoSplit, Context}
+import leo.datastructures.context.{BetaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.datastructures.{HOLSignature, Type}
-import leo.modules.Utility
+import leo.datastructures.{Type}
 import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
 
 /**
@@ -20,10 +19,10 @@ import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
  * @author Max Wisniewski
  * @since 2/19/2015
  */
-class DomainConstrainedSplitAgent extends FifoAgent{
+class DomainConstrainedSplitAgent extends Agent {
   override def name: String = "DomainConstrainedAgent"
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case DomainConstrainedMessage(n) if Context().splitKind == NoSplit => List(new DomainConstrainedTask(n))
     case _ => Nil
   }

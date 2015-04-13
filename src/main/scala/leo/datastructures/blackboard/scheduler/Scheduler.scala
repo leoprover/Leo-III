@@ -177,7 +177,11 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         if (pauseFlag) {
           // If is paused wait
           Out.trace("Scheduler paused.")
-          this.wait()
+          try {
+            this.wait()
+          } catch {
+            case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now."); return
+          }
           Out.trace("Scheduler is commencing.")
         }
         if (endFlag) return // If is ended quit
@@ -202,7 +206,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           }
         }
       } catch {
-        case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now"); return
+        case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now."); return
       }
     }
   }
@@ -271,7 +275,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * @param a - Agent that will be executed
    * @param t - Task on which the agent runs.
    */
-  private class GenAgent(a : Agent, t : Task) extends Runnable{
+  private class GenAgent(a : AgentController, t : Task) extends Runnable{
     override def run()  {
       AgentWork.inc(a)
       ExecTask.put(a.run(t),t)
@@ -315,7 +319,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   }
 
   private object AgentWork {
-    protected val agentWork : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
+    protected val agentWork : mutable.Map[AgentController, Int] = new mutable.HashMap[AgentController, Int]()
 
     /**
      * Increases the amount of work of an agent by 1.
@@ -323,18 +327,18 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
      * @param a - Agent that executes a task
      * @return the updated number of task of the agent.
      */
-    def inc(a : Agent) : Int = synchronized(agentWork.get(a) match {
+    def inc(a : AgentController) : Int = synchronized(agentWork.get(a) match {
       case Some(v)  => agentWork.update(a,v+1); return v+1
       case None     => agentWork.put(a,1); return 1
     })
 
-    def dec(a : Agent) : Int = synchronized(agentWork.get(a) match {
+    def dec(a : AgentController) : Int = synchronized(agentWork.get(a) match {
       case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
       case Some(v)  if v == 1 => agentWork.remove(a); return 0
       case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
     })
 
-    def executingAgents() : Iterable[Agent] = synchronized(agentWork.keys)
+    def executingAgents() : Iterable[AgentController] = synchronized(agentWork.keys)
 
     def clear() = synchronized(agentWork.clear())
   }

@@ -6,35 +6,13 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore}
 import leo.modules.output.logger.Out
 
-object UtilAgents {
-
-  private var con : ConjectureAgent = null
-
-  def Conjecture() : ConjectureAgent = {
-    if (con == null) {
-      con = new ConjectureAgent()
-      con.register()
-    }
-    con
-  }
-
-  def StdAgents() : Unit = {
-    NormalClauseAgent.SimplificationAgent()
-    NormalClauseAgent.DefExpansionAgent()
-    NormalClauseAgent.NegationNormalAgent()
-//    NormalClauseAgent.SkolemAgent()
-//    NormalClauseAgent.PrenexAgent()
-//    Finished()
-    Conjecture()
-  }
-}
 
 /**
  * This agents runs on a Formula if it is a conjecture
  * and inserts the negated conjecture.
  *
  */
-class ConjectureAgent extends FifoAgent {
+class ConjectureAgent extends Agent {
 
   override val name = "ConjectureAgent"
 

@@ -39,7 +39,7 @@ class LeoAgent(path : String) extends ScriptAgent(path){
    * @param e
    * @return
    */
-  override protected def toFilter(e: Event): Iterable[Task] = e match {
+  override def toFilter(e: Event): Iterable[Task] = e match {
     case FormulaEvent(event) => if((event.status & (32)) != 0){
         return createTask(event)
       }

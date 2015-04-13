@@ -1,8 +1,6 @@
 package leo
 
-
-import java.io.File
-
+import leo.agents.{FifoController}
 import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -58,13 +56,13 @@ object Main {
 
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {
-        CounterContextControlAgent.register()
+        new FifoController(CounterContextControlAgent).register()
         it = getCounterSat.iterator
       } else if (Configuration.isSet("with-prover")) {
-        ContextControlAgent.register()
+        new FifoController(ContextControlAgent).register()
         it = getExternalPhases.iterator
       } else {
-        ContextControlAgent.register()
+        new FifoController(ContextControlAgent).register()
         it = getHOStdPhase.iterator
       }
       var r = true

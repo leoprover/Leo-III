@@ -15,15 +15,14 @@ import leo.datastructures.{Role_Plain, Clause}
  * @author Max Wisniewski
  * @since 29/1/15
  */
-class SplittingAgent (s : Split) extends PriorityAgent{
+class SplittingAgent (s : Split) extends Agent {
 
-  override def maxMoney: Double = 9000
   override def name: String = s"${s.name}-Agent"
 
 
   private var remainingSplits : Int = 1     // In the first test we limit the number of splits
 
-  override protected def toFilter(event: Event): Iterable[Task] = {
+  override def toFilter(event: Event): Iterable[Task] = {
     synchronized(if(remainingSplits == 0) return Nil)
     event match {
       case FormulaEvent(f)  => s.split(f.clause) match {
