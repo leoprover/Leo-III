@@ -111,6 +111,20 @@ trait CompletePhase extends Phase {
     wController = null
     waitAgent = null
   }
+
+  /**
+   * Waits until the Wait Agent signals
+   * the end of the execution
+   *
+   * @return true, if the execution was sucessfull, false otherwise
+   */
+  def waitTillEnd() : Boolean = {
+    Scheduler().signal()
+    waitAgent.synchronized{while(!waitAgent.finish) waitAgent.wait()}
+    if(waitAgent.scedKill) return false
+    return true
+  }
+
   /**
    * Executes all defined agents and waits till no work is left.
    */
@@ -118,10 +132,8 @@ trait CompletePhase extends Phase {
     // Starting all agents and signal scheduler
     init()
     initWait()
-    Scheduler().signal()
-    // Wait until nothing is left to do
-    waitAgent.synchronized(while(!waitAgent.finish) waitAgent.wait())
-    if(waitAgent.scedKill) return false
+
+    if(!waitTillEnd()) return false
     // Ending all agents and clear the scheduler
     end()
 
@@ -225,9 +237,7 @@ object DomainConstrainedPhase extends CompletePhase{
 
     initWait()
 
-    Scheduler().signal()
-    synchronized{while(!finish) this.wait()}
-
+    if(!waitTillEnd()) return false
 
     end()
     return true
@@ -250,9 +260,7 @@ object SimpleEnumerationPhase extends CompletePhase {
     init()
     initWait()
 
-    Scheduler().signal()
-    waitAgent.synchronized{while(!waitAgent.finish) waitAgent.wait()}
-    if(waitAgent.scedKill) return false
+    if(!waitTillEnd()) return false
 
     Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => fhb.containsDomain(l.term)}}
 
@@ -313,10 +321,7 @@ object FiniteHerbrandEnumeratePhase extends CompletePhase {
 
     initWait()
 
-    Scheduler().signal()
-    waitAgent.synchronized{while(!waitAgent.finish) this.wait()}
-    if(waitAgent.scedKill) return false
-
+    if(!waitTillEnd()) return false
     // Remove all formulas containing one of the domains. (Hacky. Move the Test Function to the module package.
     val  a : FiniteHerbrandEnumerateAgent = agents1.head
 
@@ -376,10 +381,7 @@ object ExternalProverPhase extends CompletePhase {
 
   initWait()
 
-  Scheduler().signal()
-
-  waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
-  if(waitAgent.scedKill) return false
+  if(!waitTillEnd()) return false
 
   end()
   return true
