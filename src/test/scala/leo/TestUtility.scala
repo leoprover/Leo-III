@@ -1,6 +1,7 @@
 package leo
 
 import leo.datastructures.impl.Signature
+import org.scalatest.Tag
 
 /**
  * Collection of functions and values for testing related purposes.
@@ -41,3 +42,7 @@ trait TestUtility {
 }
 
 object TestUtility extends TestUtility
+
+object Benchmark extends Tag("Benchmark")
+object Checked extends Tag("Checked")
+object Ignored extends Tag("Ignored")
