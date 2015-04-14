@@ -46,7 +46,7 @@ class PhaseTest extends FunSuite {
     //"KRS003_1" -> ("TFF-Problem 3", hophases)
   )
 
-  test(s"Phase Test") {
+  test(s"Phase Test", Checked) {
     for(p <- problems){
       println("##################################")
       println("######### Execution Test #########")

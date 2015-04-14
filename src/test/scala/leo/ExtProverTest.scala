@@ -48,7 +48,7 @@ class ExtProverTest extends LeoTestSuite {
   ///
 
   for (p <- problems) {
-    test(p._2) {
+    test(p._2, Benchmark) {
       printHeading(s"External prover tests")
       if (leopath != null) {
         Out.output("%%% Found LEO-II path in environment, using LEO-II for ext. prover tests.")

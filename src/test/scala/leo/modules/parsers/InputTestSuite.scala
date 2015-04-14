@@ -1,6 +1,6 @@
 package leo.modules.parsers
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
 
@@ -28,7 +28,7 @@ class InputTestSuite extends LeoTestSuite {
   )
 
   for (p <- problems) {
-    test(p._2) {
+    test(p._2, Checked) {
       val sig = Signature.get
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")

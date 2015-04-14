@@ -1,6 +1,6 @@
 package leo.agents.impl
 
-import leo.{LeoTestSuite, Configuration}
+import leo.{Ignored, LeoTestSuite, Configuration}
 import leo.modules.CLParameterParser
 
 /**
@@ -11,7 +11,7 @@ class SZSScriptAgentTest extends LeoTestSuite {
 
   val a : SZSScriptAgent = new SZSScriptAgent("scripts/echo.sh")({x => x})
 
-  test("Scan line") {
+  test("Scan line", Ignored) {
     val erg1 = a.getSZS("% SZS status Theorem")
     val erg2 = a.getSZS("performance 0.01s")
 

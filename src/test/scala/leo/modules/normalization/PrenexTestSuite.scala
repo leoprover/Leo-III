@@ -1,6 +1,6 @@
 package leo.modules.normalization
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
 import leo.datastructures._
@@ -25,7 +25,7 @@ class PrenexTestSuite extends LeoTestSuite {
 //  println("\n----------------------\nPrenexNormalform Test.\n--------------------")
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
-    test("Prenex Test:"+t.pretty) {
+    test("Prenex Test:"+t.pretty, Checked) {
       val st = PrenexNormal.normalize(termToClause(t)).lits.head.term
       println("Prenex: The Term '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
       assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")

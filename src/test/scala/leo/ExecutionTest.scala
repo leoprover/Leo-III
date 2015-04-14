@@ -37,7 +37,7 @@ class ExecutionTest extends LeoTestSuite {
 
 
   for((s,t) <- theorems) {
-    test(s) {
+    test(s, Checked) {
       val res = runExecutionOn(s,t)
       res match {
         case LitTrue() => {assert(true); println("THEOREM")}

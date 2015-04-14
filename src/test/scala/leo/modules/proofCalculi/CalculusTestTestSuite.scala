@@ -13,14 +13,14 @@ import leo.modules.Utility._
 class CalculusTestTestSuite extends LeoTestSuite {
 //  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
-  test("Term Index") {
+  test("Term Index",Checked) {
     clear()
     clearSignature()
     add("fof(a,conjecture,(p&q)).")
 //    context()
   }
 
-  test("Get subterms") {
+  test("Get subterms",Checked) {
     clear()
     clearSignature()
     add("fof(a,conjecture,r&(p&q)).")
@@ -28,7 +28,7 @@ class CalculusTestTestSuite extends LeoTestSuite {
 //    (f.clause.lits.head.term.occurrences) foreach {case (t,_) => Out.output(t.pretty)}
   }
 
-  test("Obtain Partner") {
+  test("Obtain Partner",Checked) {
     clear()
     clearSignature()
     add("fof(a,conjecture,p).")
@@ -42,7 +42,7 @@ class CalculusTestTestSuite extends LeoTestSuite {
 
   }
 
-  test("Exec Prop") {
+  test("Exec Prop",Checked) {
     Out.output("\nExec Prop:\n\n")
     clear()
     clearSignature()
@@ -66,7 +66,7 @@ class CalculusTestTestSuite extends LeoTestSuite {
     Out.output("Result Clause: "+res.pretty)
   }
 
-  test("Exec Eq") {
+  test("Exec Eq",Checked) {
     Out.output("\nExec Eq:\n\n")
     clear()
     clearSignature()
@@ -90,7 +90,7 @@ class CalculusTestTestSuite extends LeoTestSuite {
     Out.output("Result Clause: "+res.pretty)
   }
 
-  test("Negeted Test") {
+  test("Negeted Test",Checked) {
     Out.output("\nNegated Prop:\n\n")
     clear()
     clearSignature()

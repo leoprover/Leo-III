@@ -1,6 +1,6 @@
 package leo.modules.normalization
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.datastructures.term.Term
@@ -42,7 +42,7 @@ class SimplificationTestSuite extends LeoTestSuite {
 
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
-    test("Simplification Test: "+t.pretty) {
+    test("Simplification Test: "+t.pretty, Checked) {
       val st = Simplification.normalize(termToClause(t)).lits.head.term
       println("Simplicifcation: '" + t.pretty + "' was simplified to '" + st.pretty)
       assert(st == t1, "\nThe simplified Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")

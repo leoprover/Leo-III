@@ -1,6 +1,6 @@
 package leo.datastructures.context
 
-import leo.{LeoTestSuite, Configuration}
+import leo.{Checked, LeoTestSuite, Configuration}
 import leo.datastructures.blackboard.FormulaStore
 import leo.modules.CLParameterParser
 import leo.datastructures.blackboard.Blackboard
@@ -17,7 +17,7 @@ class TreeContextSetTestSuite extends LeoTestSuite {
   val b : Context = Context()
   // b is root,
 
-  test("One context"){
+  test("One context",Checked){
 
 
     b.split(BetaSplit, 2)
@@ -41,7 +41,7 @@ class TreeContextSetTestSuite extends LeoTestSuite {
     assert(s.getAll(l).contains(3), "The first context should contain the 3")
   }
 
-  test("Insertion Before Split") {
+  test("Insertion Before Split",Checked) {
     val s : ContextSet[Int] = new TreeContextSet[Int]()
     s.add(3,b)
 
@@ -55,13 +55,13 @@ class TreeContextSetTestSuite extends LeoTestSuite {
     assert(s.getAll(l).contains(3), "The first context should contain the 3")
   }
 
-  test("Empty get all") {
+  test("Empty get all",Checked) {
     val s : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
 
     assert(s.getAll.isEmpty, "Initial the context set is empty.")
   }
 
-  test("Get All") {
+  test("Get All",Checked) {
     val s : ContextSet[Int] = new TreeContextSet[Int]()
     s.add(3,b)
 
@@ -79,7 +79,7 @@ class TreeContextSetTestSuite extends LeoTestSuite {
     assert(a.contains(5), "All should contain 5.")
   }
 
-  test("Empty Blackboard Get All") {
+  test("Empty Blackboard Get All",Checked) {
     val b = Blackboard()
     val a = b.getFormulas
 

@@ -12,7 +12,7 @@ import leo.modules.Utility
  */
 class SignatureTest extends LeoTestSuite {
 
-  test("HOL signature creation") {
+  test("HOL signature creation", Checked) {
 
     printHeading("HOL Signature creation")
     Utility.printSignature()

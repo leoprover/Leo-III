@@ -1,6 +1,6 @@
 package leo.datastructures.context
 
-import leo.{LeoTestSuite, Configuration}
+import leo.{Checked, LeoTestSuite, Configuration}
 import leo.modules.CLParameterParser
 import leo.datastructures.context.impl.TreeContext
 
@@ -13,14 +13,14 @@ import leo.datastructures.context.impl.TreeContext
  */
 class TreeContextTestSuite extends LeoTestSuite {
 
-  test("BaseContext empty"){
+  test("BaseContext empty",Checked){
     val b : Context = new TreeContext // Creates an empty BaseContext
     assert(b.parentContext == null, "Parent Context is not empty")
     assert(b.childContext.isEmpty, "There are children in initial state.")
     assert(b.splitKind == NoSplit, "The initial context is already splitted.")
   }
 
-  test("Creating children") {
+  test("Creating children",Checked) {
     val b : Context = new TreeContext
     b.split(AlphaSplit, 3)
     assert(b.splitKind == AlphaSplit, "The parent is not Alpha splitted.")
@@ -32,7 +32,7 @@ class TreeContextTestSuite extends LeoTestSuite {
     }
   }
 
-  test("Closing context") {
+  test("Closing context",Checked) {
     val b : Context = new TreeContext
     b.split(AlphaSplit, 3)
     assert(b.childContext.size == 3, "The root context should have 3 children")
