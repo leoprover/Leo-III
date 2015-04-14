@@ -1,5 +1,6 @@
 package leo
 
+import leo.agents.FifoController
 import leo.agents.impl.ContextControlAgent
 import leo.datastructures.{Role_Conjecture, Role_NegConjecture}
 import leo.datastructures.blackboard.Blackboard
@@ -76,7 +77,8 @@ class ExtProverTest extends LeoTestSuite {
         b.addFormula(nf)
       }
 
-      ContextControlAgent.register()
+      val cont = new FifoController(ContextControlAgent)
+      cont.register()
       var it: Iterator[Phase] = extPhases.iterator
       var r = true
       while (it.hasNext && r) {
@@ -89,7 +91,7 @@ class ExtProverTest extends LeoTestSuite {
       }
       deferredKill.kill()
       Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${p._1}")
-      ContextControlAgent.unregister()
+      cont.unregister()
 
       Scheduler().clear()
       Utility.clear()

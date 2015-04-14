@@ -1,7 +1,7 @@
 package leo
 package modules
 
-import leo.agents.{EmptyResult, Result, Task, FifoAgent, Agent}
+import leo.agents._
 import leo.agents.impl._
 import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -32,8 +32,8 @@ object Phase {
    * @param dagents - Agents to be used in this phase.
    * @return - A phase executing all agents until nothing is left to do.
    */
-  def apply(dname : String, dagents : Seq[Agent]) : Phase = new CompletePhase {
-    override protected def agents: Seq[Agent] = dagents
+  def apply(dname : String, dagents : Seq[AgentController]) : Phase = new CompletePhase {
+    override protected def agents: Seq[AgentController] = dagents
     override def name: String = dname
   }
 }
@@ -70,7 +70,7 @@ trait Phase {
    * A list of all agents to be started.
    * @return
    */
-  protected def agents : Seq[Agent]
+  protected def agents : Seq[AgentController]
 
   /**
    * Method to start the agents, defined in `agents`
@@ -96,18 +96,35 @@ trait Phase {
 trait CompletePhase extends Phase {
   private def getName = name
   protected var waitAgent : CompleteWait = null
+  private var wController : AgentController = null
 
 
   def initWait() : Unit = {
     waitAgent = new CompleteWait
-    waitAgent.register()
+    wController = new FifoController(waitAgent)
+    wController.register()
   }
 
   override def end() : Unit = {
     super.end()
-    waitAgent.unregister()
+    wController.unregister()
+    wController = null
     waitAgent = null
   }
+
+  /**
+   * Waits until the Wait Agent signals
+   * the end of the execution
+   *
+   * @return true, if the execution was sucessfull, false otherwise
+   */
+  def waitTillEnd() : Boolean = {
+    Scheduler().signal()
+    waitAgent.synchronized{while(!waitAgent.finish) waitAgent.wait()}
+    if(waitAgent.scedKill) return false
+    return true
+  }
+
   /**
    * Executes all defined agents and waits till no work is left.
    */
@@ -115,10 +132,8 @@ trait CompletePhase extends Phase {
     // Starting all agents and signal scheduler
     init()
     initWait()
-    Scheduler().signal()
-    // Wait until nothing is left to do
-    waitAgent.synchronized(while(!waitAgent.finish) waitAgent.wait())
-    if(waitAgent.scedKill) return false
+
+    if(!waitTillEnd()) return false
     // Ending all agents and clear the scheduler
     end()
 
@@ -126,10 +141,10 @@ trait CompletePhase extends Phase {
     return true
   }
 
-  protected class CompleteWait extends FifoAgent{
+  protected class CompleteWait extends Agent {
     var finish = false
     var scedKill = false
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
+    override def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
       case StatusEvent(c,s) if c.parentContext == null && c.isClosed => // The root context was closed
@@ -150,13 +165,13 @@ trait CompletePhase extends Phase {
 class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   override val name = "LoadPhase"
 
-  override val agents : Seq[Agent] = if(negateConjecture) List(new ConjectureAgent) else Nil
+  override val agents : Seq[AgentController] = if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 
   override def execute(): Boolean = {
     val file = problemfile
-    val wait = new Wait(this)
+    val wait = new FifoController(new Wait(this))
 
     if(negateConjecture) {
       init()
@@ -190,8 +205,8 @@ class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.
     return true
   }
 
-  private class Wait(lock : AnyRef) extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
+  private class Wait(lock : AnyRef) extends Agent{
+    override def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent => finish = true; lock.synchronized(lock.notifyAll());List()
       case _ => List()
     }
@@ -201,12 +216,12 @@ class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.
 }
 
 
-object DomainConstrainedPhase extends Phase{
+object DomainConstrainedPhase extends CompletePhase{
   override val name = "DomainConstrainedPhase"
 
-  val da = new DomainConstrainedSplitAgent
+  val da = new FifoController(new DomainConstrainedSplitAgent)
 
-  override val agents : Seq[Agent] = List(da)
+  override val agents : Seq[AgentController] = List(da)
 
   var finish : Boolean = false
 
@@ -220,89 +235,51 @@ object DomainConstrainedPhase extends Phase{
 
     Blackboard().send(DomainConstrainedMessage(card),da)
 
-    Wait.register()
+    initWait()
 
-    Scheduler().signal()
-    synchronized{while(!finish) this.wait()}
-
+    if(!waitTillEnd()) return false
 
     end()
-    Wait.unregister()
     return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; DomainConstrainedPhase.synchronized(DomainConstrainedPhase.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "PreprocessPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
   }
 }
 
-object SimpleEnumerationPhase extends Phase {
+object SimpleEnumerationPhase extends CompletePhase {
   override val name = "SimpleEnumerationPhase"
-  var finish = false
-  var scKilled = false
   override lazy val description = "Agents used:\n    FiniteHerbrandEnumerationAgent"
 
-  protected var agents: Seq[Agent] = List(new FiniteHerbrandEnumerateAgent(Context(), Map.empty))
+  protected var agents: Seq[AgentController] = List(new FifoController(new FiniteHerbrandEnumerateAgent(Context(), Map.empty)))
 
   override def execute(): Boolean = {
     val s1 : Set[Type] = (Signature.get.baseTypes - 0 - 1 - 3 - 4 - 5).map(Type.mkType(_))
     val enumse : Map[Type, Seq[Term]] = s1.map{ty => (ty, SimpleEnum.enum(ty).toSeq)}.toMap
+    val fhb = new FiniteHerbrandEnumerateAgent(Context(), enumse)
     Out.finest(enumse.toString())
-    agents = List(new FiniteHerbrandEnumerateAgent(Context(), enumse))
+    agents = List(new FifoController(fhb))
 
-    agents.map(_.register())
+    init()
+    initWait()
 
-    Wait.register()
+    if(!waitTillEnd()) return false
 
-    Scheduler().signal()
-    synchronized{while(!finish) this.wait()}
-    if(scKilled) return false
+    Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => fhb.containsDomain(l.term)}}
 
-    agents.map(_.unregister())
-    Wait.unregister()
-
-    // Remove all formulas containing one of the domains. (Hacky. Move the Test Function to the module package.
-    val  a : FiniteHerbrandEnumerateAgent = agents.head.asInstanceOf[FiniteHerbrandEnumerateAgent]
-
-    Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => a.containsDomain(l.term)}}
-
-
+    end()
     return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; SimpleEnumerationPhase.synchronized(SimpleEnumerationPhase.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "SimpleEnumeratePhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
-    override def kill(): Unit = SimpleEnumerationPhase.synchronized{
-      scKilled = true
-      finish = true
-      SimpleEnumerationPhase.notifyAll()
-    }
   }
 }
 
-object FiniteHerbrandEnumeratePhase extends Phase {
+object FiniteHerbrandEnumeratePhase extends CompletePhase {
   override val name = "FiniteHerbrandEnumeratePhase"
 
   val size : Int = 3
-  var finish : Boolean = false
-  var scKilled = false
   override lazy val description = "Agents used:\n    FiniteHerbrandEnumerationAgent"
 
   /**
    * A list of all agents to be started.
    * @return
    */
-  protected var agents: Seq[Agent] = List(new FiniteHerbrandEnumerateAgent(Context(), Map.empty)) // A bit of schmu, but I do not want to list the agents here
+  protected var agents: Seq[AgentController] = List(new FifoController(new FiniteHerbrandEnumerateAgent(Context(), Map.empty))) // A bit of schmu, but I do not want to list the agents here
 
   /**
    * Executes the Phase.
@@ -321,6 +298,7 @@ object FiniteHerbrandEnumeratePhase extends Phase {
     val s : Set[Type]= s1.map {k => Type.mkType(k)}
 
     var it : Int = 0
+    var agents1 : Seq[FiniteHerbrandEnumerateAgent] = Nil
 
     val cs : Seq[Context] = Context().childContext.toList
     // Each context, assign the maximal number of elements per domain
@@ -335,24 +313,21 @@ object FiniteHerbrandEnumeratePhase extends Phase {
 
       // Generate an agent for this setting of domains
       val agent = new FiniteHerbrandEnumerateAgent(c1, cons.mapValues(_.map(_.lits.head.term)))
-      agents = agent +: agents
+      agents1 = agent +: agents1
+      agents = new FifoController(agent) +: agents
     }
 
-    agents.map(_.register())
+    init()
 
-    Wait.register()
+    initWait()
 
-    Scheduler().signal()
-    synchronized{while(!finish) this.wait()}
-    if(scKilled) return false
-
-    agents.map(_.unregister())
-    Wait.unregister()
-
+    if(!waitTillEnd()) return false
     // Remove all formulas containing one of the domains. (Hacky. Move the Test Function to the module package.
-    val  a : FiniteHerbrandEnumerateAgent = agents.head.asInstanceOf[FiniteHerbrandEnumerateAgent]
+    val  a : FiniteHerbrandEnumerateAgent = agents1.head
 
     Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => a.containsDomain(l.term)}}
+
+    end()
 
     return true
   }
@@ -360,20 +335,6 @@ object FiniteHerbrandEnumeratePhase extends Phase {
   private def newConstant(ty : Type) : Clause = {
     val s = Signature.get
     return Clause.mkClause(List(Literal(s.freshSkolemVar(ty), true)), Derived)
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; FiniteHerbrandEnumeratePhase.synchronized(FiniteHerbrandEnumeratePhase.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "PreprocessPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
-    override def kill(): Unit = FiniteHerbrandEnumeratePhase.synchronized{
-      scKilled = true
-      finish = true
-      FiniteHerbrandEnumeratePhase.notifyAll()
-    }
   }
 }
 
@@ -407,9 +368,11 @@ object ExternalProverPhase extends CompletePhase {
   } else {
     throw new SZSException(SZS_Error, "This is considered an system error, please report this problem.", "CL parameter with-prover lost")
   }
-  lazy val extProver : Agent = SZSScriptAgent(prover)(x => x)
 
-  override protected def agents: Seq[Agent] = List(extProver)
+  lazy val extProver : AgentController = new FifoController(SZSScriptAgent(prover)(x => x))
+
+
+  override protected def agents: Seq[AgentController] = List(extProver)
 
   override def execute(): Boolean = {
     init()
@@ -420,10 +383,7 @@ object ExternalProverPhase extends CompletePhase {
 
   initWait()
 
-  Scheduler().signal()
-
-  waitAgent.synchronized{while(!waitAgent.finish) {waitAgent.wait()}}
-  if(waitAgent.scedKill) return false
+  if(!waitTillEnd()) return false
 
   end()
   return true
@@ -438,9 +398,9 @@ object ExternalProverPhase extends CompletePhase {
 object RemoteCounterSatPhase extends CompletePhase {
   override def name: String = "RemoteCounterSatPhase"
 
-  val da : Agent = SZSScriptAgent("scripts/leoexec.sh")(reInt)
+  val da : AgentController = new FifoController(SZSScriptAgent("scripts/leoexec.sh")(reInt))
 
-  override protected def agents: Seq[Agent] = List(da)
+  override protected def agents: Seq[AgentController] = List(da)
 
   private def reInt(in : StatusSZS) : StatusSZS = in match {
     case SZS_Theorem => SZS_CounterSatisfiable    // TODO Sat -> Countersat
@@ -466,48 +426,38 @@ object RemoteCounterSatPhase extends CompletePhase {
       val c = it.next()
       Blackboard().send(SZSScriptMessage(con.newContext(c))(c), da)
     }
-    Wait.register()
+
+    initWait()
 
     Scheduler().signal()
     synchronized{while(!finish) this.wait()}
 
     end()
-    Wait.unregister()
     return true
-  }
-
-  private object Wait extends FifoAgent{
-    override protected def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; RemoteCounterSatPhase.synchronized(RemoteCounterSatPhase.notifyAll());List()
-      case StatusEvent(c,s) if c.parentContext == null => finish = true; RemoteCounterSatPhase.synchronized(RemoteCounterSatPhase.notifyAll()); List()
-      case _ => List()
-    }
-    override def name: String = "RemoteCounterSatPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
   }
 }
 
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification), new NormalClauseAgent(NegationNormal),new NormalClauseAgent(Skolemization))
+  override protected val agents: Seq[AgentController] = List(new FifoController(new NormalClauseAgent(DefExpansion)), new FifoController(new NormalClauseAgent(Simplification)), new FifoController(new NormalClauseAgent(NegationNormal)),new FifoController(new NormalClauseAgent(Skolemization)))
 }
 
 object SimplificationPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  override protected val agents: Seq[Agent] = List(new NormalClauseAgent(DefExpansion), new NormalClauseAgent(Simplification))
+  override protected val agents: Seq[AgentController] = List(new FifoController(new NormalClauseAgent(DefExpansion)), new FifoController(new NormalClauseAgent(Simplification)))
 }
 
 object ExhaustiveClausificationPhase extends CompletePhase {
   override val name = "ClausificationPhase"
-  override protected val agents : Seq[Agent] = List(new ClausificationAgent())
+  override protected val agents : Seq[AgentController] = List(new FifoController(new ClausificationAgent()))
 }
 
 object SplitPhase extends CompletePhase {
   override val name = "SplitPhase"
-  override protected val agents: Seq[Agent] = List(new SplittingAgent(ClauseHornSplit))
+  override protected val agents: Seq[AgentController] = List(new FifoController(new SplittingAgent(ClauseHornSplit)))
 }
 
 object ParamodPhase extends CompletePhase {
   override val name : String = "ParamodPhase"
-  override protected val agents: Seq[Agent] = List(new ParamodulationAgent(Paramodulation, IdComparison), new ParamodulationAgent(PropParamodulation, IdComparison), new ClausificationAgent())
+  override protected val agents: Seq[AgentController] = List(new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison)), new PriorityController(new ClausificationAgent()))
 }

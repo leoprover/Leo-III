@@ -67,7 +67,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
    */
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case SZSScriptMessage(f,c) => createTask(f,c)
     case _                   => List()
   }

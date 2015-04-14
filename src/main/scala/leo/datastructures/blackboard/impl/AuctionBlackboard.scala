@@ -1,18 +1,14 @@
 package leo.datastructures.blackboard.impl
 
 
-import leo.agents.{Task, Agent}
-import leo.datastructures.LitFalse
+import leo.agents.{AgentController, Task}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.impl.TreeContextSet
-import leo.datastructures.term.Term
 import leo.datastructures.{Role, Clause}
 import leo.modules.output.StatusSZS
 import leo.modules.proofCalculi.TrivRule
-import scala.collection.concurrent.TrieMap
 import leo.datastructures.blackboard._
 import scala.collection.mutable
-import scala.collection.mutable.{Queue, Map => MMap}
 import leo.datastructures.context.{ContextSet, Context}
 
 /**
@@ -68,12 +64,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * Register a new Handler for Formula adding Handlers.
    * @param a - The Handler that is to register
    */
-  override def registerAgent(a : Agent) : Unit = {
+  override def registerAgent(a : AgentController) : Unit = {
     TaskSet.addAgent(a)
     freshAgent(a)
   }
 
-  override def unregisterAgent(a: Agent): Unit = {
+  override def unregisterAgent(a: AgentController): Unit = {
     TaskSet.removeAgent(a)
   }
 
@@ -82,7 +78,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @return Not yet executed Task
    */
-  override def getTask: Iterable[(Agent,Task)] = TaskSet.getTask
+  override def getTask: Iterable[(AgentController,Task)] = TaskSet.getTask
 
   override def clear() : Unit = {
     rmAll(_ => true)
@@ -96,7 +92,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  override def filterAll(t: (Agent) => Unit): Unit = {
+  override def filterAll(t: (AgentController) => Unit): Unit = {
     TaskSet.agents.foreach{ a =>
       t(a)
     }
@@ -118,7 +114,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @param a - New Agent.
    */
-  override protected[blackboard] def freshAgent(a: Agent): Unit = {
+  override protected[blackboard] def freshAgent(a: AgentController): Unit = {
     // ATM only formulas trigger events
     getFormulas.foreach{fS => a.filter(FormulaEvent(fS))}
     forceCheck()
@@ -132,7 +128,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @return all registered agents
    */
-  override def getAgents(): Iterable[(Agent,Double)] = TaskSet.regAgents.toSeq
+  override def getAgents(): Iterable[(AgentController,Double)] = TaskSet.regAgents.toSeq
 
   /**
    * Sends a message to an agent.
@@ -142,7 +138,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  override def send(m: Message, to: Agent): Unit = to.filter(m)
+  override def send(m: Message, to: AgentController): Unit = to.filter(m)
 
   /**
    *
@@ -233,7 +229,7 @@ private object FormulaSet {
    * @return the existing store or the new one
    */
   def add(f : FormulaStore) : FormulaStore = {
-    (formulaSet get (f,f.context)) match {
+    formulaSet get (f,f.context) match {
       case Some(f1) =>
         return f1
       case None =>
@@ -267,9 +263,8 @@ private object FormulaSet {
 }
 
 private object TaskSet {
-  import scala.collection.mutable.HashSet
 
-  val regAgents = mutable.HashMap[Agent,Double]()
+  val regAgents = mutable.HashMap[AgentController,Double]()
   protected[impl] val execTasks = new mutable.HashSet[Task]
 
   private val AGENT_SALARY : Double = 5
@@ -287,19 +282,17 @@ private object TaskSet {
     }
   }
 
-  def addAgent(a : Agent) {
+  def addAgent(a : AgentController) {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
   }
 
-  def removeAgent(a : Agent): Unit = this.synchronized{
-    //leo.Out.output(s"Called remove ${a.name}(${a.hashCode()}})\n on\n   ${regAgents.map{case (a,d) => a.name +"("+a.hashCode()+")"}.mkString("\n   ")}")
+  def removeAgent(a : AgentController): Unit = this.synchronized{
     regAgents.remove(a)
-    //leo.Out.output(s"After remove :\n   ${regAgents.map{case (a,d) => a.name +"("+a.hashCode()+")"}.mkString("\n   ")}")
   }
 
   private[impl] def finishTask(t : Task) = synchronized(execTasks.remove(t))
 
-  def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
+  def agents : List[AgentController] = this.synchronized(regAgents.toList.map(_._1))
 
 
   /**
@@ -312,7 +305,7 @@ private object TaskSet {
    *
    * @return
    */
-  def getTask : Iterable[(Agent,Task)] = this.synchronized{
+  def getTask : Iterable[(AgentController,Task)] = this.synchronized{
 
     while(!Scheduler().isTerminated()) {
       try {
@@ -322,7 +315,7 @@ private object TaskSet {
         //
         // 1. Get all Tasks the Agents want to bid on during the auction with their current money
         //
-        var r: List[(Double, Agent, Task)] = Nil
+        var r: List[(Double, AgentController, Task)] = Nil
         while (r.isEmpty) {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
           if (r.isEmpty) {
@@ -340,13 +333,13 @@ private object TaskSet {
         // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
         // Value should be positive, s.t. we can square the values without changing order
         //
-        val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size}
+        val queue: List[(Double, AgentController, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size}
 
 //        println("Sorted tasks.")
 
         // 3. Take from beginning to front only the non colliding tasks
         // Check the currenlty executing tasks too.
-        var newTask: List[(Agent, Task)] = Nil
+        var newTask: List[(AgentController, Task)] = Nil
         for ((price, a, t) <- queue) {
           if (!newTask.exists { e => t.collide(e._2)} && !collision(t)) {
             val budget = regAgents.apply(a)

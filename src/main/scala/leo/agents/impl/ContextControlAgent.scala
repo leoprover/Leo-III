@@ -1,7 +1,7 @@
 package leo
 package agents.impl
 
-import leo.agents.{EmptyResult, Result, Task, FifoAgent}
+import leo.agents.{EmptyResult, Result, Task, Agent}
 import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, AlphaSplit, SplitKind, Context}
 import leo.modules.output.{SZS_GaveUp, SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
@@ -15,11 +15,10 @@ import leo.modules.output.{SZS_GaveUp, SZS_CounterSatisfiable, SZS_Theorem, Stat
  * @author Max Wisniewski
  * @since 29/1/15
  */
-object ContextControlAgent extends FifoAgent {
-  override val maxMoney : Double = 50000
+object ContextControlAgent extends Agent {
   override def name: String = "ContextControlAgent"
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) if f.clause.isEmpty => List(SetContextTask(f.context, SZS_Theorem))
     case StatusEvent(c,s) if c.parentContext != null =>
       val p = c.parentContext
@@ -79,11 +78,10 @@ class ContextResult(c : Context, s : StatusSZS) extends Result {
  * @author Max Wisniewski
  * @since 23/2/15
  */
-object CounterContextControlAgent extends FifoAgent {
-  override val maxMoney : Double = 50000
+object CounterContextControlAgent extends Agent {
   override def name: String = "CounterContextControlAgent"
 
-  override protected def toFilter(event: Event): Iterable[Task] = {
+  override def toFilter(event: Event): Iterable[Task] = {
     event match {
       case StatusEvent(c,s) if c.parentContext != null => //&& c.splitKind == BetaSplit =>
         //Out.output(s"[$name]: StatusEvent($c,${s.output})")

@@ -19,18 +19,19 @@ import leo.modules.countersat.FiniteHerbrandEnumeration
  * @author Max Wisniewski
  * @since 3/2/15
  */
-class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) extends FifoAgent {
+class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) extends Agent {
 
   private val replace : Map[Type, (Term, Term)] = FiniteHerbrandEnumeration.generateReplace(domain)
   private val size = if(domain.isEmpty) 0 else domain.values.head.length
   private val usedDomains : Set[Type] = domain.keySet
 
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) if f.context.parentContext == null =>
-      if(f.clause.lits.exists{l => containsDomain(l.term)})
+      if(f.clause.lits.exists{l => containsDomain(l.term)}) {
         List(FiniteHerbrandEnumerateTask(f))
-      else
+      } else {
         Nil
+      }
     case _  => Nil
   }
 

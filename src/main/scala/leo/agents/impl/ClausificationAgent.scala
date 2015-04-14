@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.{Store, FormulaEvent, FormulaStore, Event}
 import leo.modules.proofCalculi.{TrivRule, Clausification}
 
 object ClausificationAgent {
-  def apply() : Unit = (new ClausificationAgent()).register()
+  def apply() : Unit = new PriorityController(new ClausificationAgent()).register()
 }
 
 /**
@@ -16,14 +16,14 @@ object ClausificationAgent {
  * @author Max Wisniewski
  * @since 12/1/15
  */
-class ClausificationAgent extends PriorityAgent {
+class ClausificationAgent extends Agent {
   /**
    * Internal method called from the filter method. Specific to the agent.
    *
    * @param event - The event that triggered the filter
    * @return A sequence of new tasks, to be added to the internal priority queue.
    */
-  override protected def toFilter(event: Event): Iterable[Task] = event match {
+  override def toFilter(event: Event): Iterable[Task] = event match {
     case FormulaEvent(f) =>
       val nc : Seq[Clause] = Clausification.clausify(f.clause)
       val fc = nc.filter(!TrivRule.teqt(_))        // Optimized clauses (no [ T = T] or [ T = F]) containing clauses.
@@ -36,18 +36,6 @@ class ClausificationAgent extends PriorityAgent {
       }
     case _ => return Nil
   }
-
-  /**
-   * Each task can define a maximum amount of money, they
-   * want to posses.
-   *
-   * A process has to be careful with this barrier, for he
-   * may never be doing anything if he has to low money.
-   *
-   * @return maxMoney
-   */
-  override def maxMoney: Double = 7000
-
   /**
    *
    * @return the name of the agent

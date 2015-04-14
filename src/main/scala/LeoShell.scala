@@ -11,9 +11,6 @@ import LeoShell._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.agents.impl._
-import leo.agents.impl.NormalClauseAgent._
-import leo.agents.impl.UtilAgents._
-
 
 
 /**
