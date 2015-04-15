@@ -229,7 +229,7 @@ object DomainConstrainedPhase extends CompletePhase{
     init()
 
 
-    val card : Seq[Int] = Configuration.valueOf("card").fold(List(1,2,3)){s => try{s map {c => c.toInt} toList} catch {case _ => List(1,2,3)}}
+    val card : Seq[Int] = Configuration.valueOf("card").fold(List(1,2,3)){s => try{(s map {c => c.toInt}).toList} catch {case _:Throwable => List(1,2,3)}}
 
 
 
@@ -420,7 +420,7 @@ object RemoteCounterSatPhase extends CompletePhase {
     try {
       con = Blackboard().getAll(_.role == Role_Conjecture).head
     } catch {
-      case _ => end(); return false
+      case _: Throwable => end(); return false
     }
     while(it.hasNext) {
       val c = it.next()

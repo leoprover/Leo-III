@@ -5,8 +5,6 @@ import leo.datastructures.term.Term._
 import leo.datastructures.Type._
 import leo.datastructures._
 import leo.datastructures.term._
-import leo.modules.output.ToTPTP
-import leo.modules.output.logger.Out
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 

@@ -71,7 +71,7 @@ object Subst {
 /////////////////////////////////////////////////
 
 /** Substitutions as constant-time accessible vectors */
-protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
+sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
   lazy val normalize: Subst = new RASubst(shift, fts.map({_ match {
     case TermFront(t) => TermFront(t.betaNormalize)
@@ -129,7 +129,7 @@ object RASubst {
 /////////////////////////////////////////////////
 
 /** Substitutions as algebraic data types (lists). */
-abstract class AlgebraicSubst extends Subst {
+sealed abstract class AlgebraicSubst extends Subst {
   def sink: Subst = (this o Shift(1)).cons(BoundFront(1))
 }
 
