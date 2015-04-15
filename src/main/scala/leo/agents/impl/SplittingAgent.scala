@@ -2,7 +2,7 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaStore, FormulaEvent, Event}
+import leo.datastructures.blackboard.{Result, FormulaStore, FormulaEvent, Event}
 import leo.datastructures.context.SplitKind
 import leo.modules.proofCalculi.splitting.Split
 import leo.datastructures.context.Context

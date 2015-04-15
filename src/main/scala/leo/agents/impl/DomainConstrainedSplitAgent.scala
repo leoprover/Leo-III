@@ -5,7 +5,7 @@ import leo.agents._
 import leo.datastructures.blackboard.{FormulaStore, Event, Message}
 import leo.datastructures.context.{BetaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Type}
+import leo.datastructures.{blackboard, Type}
 import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
 
 /**
@@ -28,7 +28,7 @@ class DomainConstrainedSplitAgent extends Agent {
   }
 
 
-  override def run(t: Task): Result = {
+  override def run(t: Task): blackboard.Result = {
     if(Context().splitKind != NoSplit) return EmptyResult
     t match {
       case t1 : DomainConstrainedTask =>

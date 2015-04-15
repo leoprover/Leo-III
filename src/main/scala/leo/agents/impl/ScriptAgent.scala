@@ -1,6 +1,7 @@
 package leo.agents
 package impl
 
+import leo.datastructures.blackboard
 import leo.datastructures.context.Context
 import leo.datastructures.blackboard.FormulaStore
 import java.io.{PrintWriter, File}
@@ -29,7 +30,7 @@ import java.io.IOException
  */
 abstract class ScriptAgent(path : String) extends Agent {
 
-  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : Result
+  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : blackboard.Result
 
   /**
    *
@@ -44,7 +45,7 @@ abstract class ScriptAgent(path : String) extends Agent {
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
-  override def run(t: Task): Result = t match {
+  override def run(t: Task): blackboard.Result = t match {
     case t1 : ScriptTask =>
 
       // Writing the context into a temporary file

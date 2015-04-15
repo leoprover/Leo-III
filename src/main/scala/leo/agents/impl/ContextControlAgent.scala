@@ -2,6 +2,7 @@ package leo
 package agents.impl
 
 import leo.agents.{EmptyResult, Result, Task, Agent}
+import leo.datastructures.blackboard
 import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, AlphaSplit, SplitKind, Context}
 import leo.modules.output.{SZS_GaveUp, SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
@@ -33,7 +34,7 @@ object ContextControlAgent extends Agent {
     case _                => List()
   }
 
-  override def run(t: Task): Result = t match {
+  override def run(t: Task): blackboard.Result = t match {
     case SetContextTask(con,status) =>
       con.close()
       new ContextResult(con, status)
@@ -59,7 +60,7 @@ object SetContextTask {
   }
 }
 
-class ContextResult(c : Context, s : StatusSZS) extends Result {
+class ContextResult(c : Context, s : StatusSZS) extends blackboard.Result {
   override def newFormula(): Set[FormulaStore] = Set()
   override def updateFormula(): Map[FormulaStore, FormulaStore] = Map()
   override def updateStatus(): List[(Context, StatusSZS)] = List((c,s))
@@ -98,7 +99,7 @@ object CounterContextControlAgent extends Agent {
     }
   }
 
-  override def run(t: Task): Result = t match {
+  override def run(t: Task): blackboard.Result = t match {
     case SetContextTask(con,status) =>
       con.close()
       new ContextResult(con, status)

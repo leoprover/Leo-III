@@ -28,7 +28,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
    * @param errno - The return value.
    * @return
    */
-  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int): Result = {
+  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int): blackboard.Result = {
     val context = c   // TODO Fix
     val it = input
     val b = new StringBuilder

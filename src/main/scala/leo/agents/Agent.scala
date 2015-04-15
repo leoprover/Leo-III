@@ -2,7 +2,7 @@ package leo
 package agents
 
 import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
+import leo.datastructures.blackboard.{DataType, Event, FormulaStore, Blackboard}
 import leo.datastructures.context.Context
 import leo.modules.output.StatusSZS
 
@@ -39,6 +39,15 @@ abstract class AgentController(a : Agent) {
   def unregister() = Blackboard().unregisterAgent(this)
 
   def kill() = a.kill()
+
+  /**
+   * Declares the agents interest in specific data.
+   *
+   * @return None -> The Agent does not register for any data changes. <br />
+   *         Some(Nil) -> The agent registers for all data changes. <br />
+   *         Some(xs) -> The agent registers only for data changes for any type in xs.
+   */
+  lazy val interest : Option[Seq[DataType]] = a.interest
 
   /*
 --------------------------------------------------------------------------------------------
@@ -145,6 +154,15 @@ abstract class Agent {
    * @return a List of Tasks the Agent wants to execute.
    */
   def toFilter(event : Event) : Iterable[Task]
+
+  /**
+   * Declares the agents interest in specific data.
+   *
+   * @return None -> The Agent does not register for any data changes. <br />
+   *         Some(Nil) -> The agent registers for all data changes. <br />
+   *         Some(xs) -> The agent registers only for data changes for any type in xs.
+   */
+  def interest : Option[Seq[DataType]] = Some(Nil)
 }
 
 /**

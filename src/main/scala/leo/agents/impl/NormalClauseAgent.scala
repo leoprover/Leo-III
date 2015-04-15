@@ -2,7 +2,7 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaEvent, Event, FormulaStore, Blackboard}
+import leo.datastructures.blackboard._
 import leo.modules.normalization.Normalize
 import leo.datastructures.{Clause, Literal}
 import leo.modules.proofCalculi.TrivRule

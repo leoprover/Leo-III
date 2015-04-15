@@ -61,7 +61,7 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
-  override def run(t: Task): Result = t match {
+  override def run(t: Task): blackboard.Result = t match {
     case FiniteHerbrandEnumerateTask(f) =>
       val nc = FiniteHerbrandEnumeration.replaceQuantOpt(f.clause, replace)
       val f1 = f.newClause(nc).newContext(c).newName(f.name + "_"+size)

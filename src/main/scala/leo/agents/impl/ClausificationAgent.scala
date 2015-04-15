@@ -3,7 +3,7 @@ package agents
 package impl
 
 import leo.datastructures.{Role_Plain, Clause}
-import leo.datastructures.blackboard.{Store, FormulaEvent, FormulaStore, Event}
+import leo.datastructures.blackboard._
 import leo.modules.proofCalculi.{TrivRule, Clausification}
 
 object ClausificationAgent {

@@ -2,12 +2,10 @@ package leo.datastructures.blackboard
 
 import leo.agents.{AgentController, Task, Agent}
 import leo.datastructures.context.Context
-import leo.datastructures.{Clause, Role}
 import leo.modules.output.StatusSZS
-import scala.collection.mutable
 
 // Singleton Blackboards
-object Blackboard extends Function0[Blackboard] {
+object Blackboard {
   private val single : Blackboard = new impl.AuctionBlackboard()
 
   def apply() : Blackboard = single
@@ -33,7 +31,7 @@ object Blackboard extends Function0[Blackboard] {
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends TaskOrganize with FormulaBlackboard with MessageBlackboard with StatusBlackboard {
+trait Blackboard extends TaskOrganize with DataBlackboard with MessageBlackboard with StatusBlackboard {
 
 }
 
@@ -64,6 +62,16 @@ trait TaskOrganize {
    */
   protected[blackboard] def freshAgent(a : AgentController) : Unit
 
+
+  /**
+   * For the execution service.
+   *
+   * Returns a List of all agents, interested in a specific data type.
+   *
+   * @param d is the type that we are interested.
+   * @return a list of all agents that are interested in this type.
+   */
+  protected[blackboard] def getAgents(d : DataType) : Seq[Agent]
 
   /**
    *
@@ -120,7 +128,7 @@ trait TaskOrganize {
    *
    * This method should be called solely from the agent.
    *
-   * @param a
+   * @param a the agent to be unregistered.
    */
   def unregisterAgent(a : AgentController) : Unit
 
@@ -130,7 +138,7 @@ trait TaskOrganize {
    *
    * @return all registered agents and their budget
    */
-  def getAgents() : Iterable[(AgentController, Double)]
+  def getAgents : Iterable[(AgentController, Double)]
 
   /**
    * Returns a collection of tasks that are currently executed
@@ -138,136 +146,43 @@ trait TaskOrganize {
    *
    * @return Collection of tasks that are executed.
    */
-  def getRunningTasks() : Iterable[Task]
+  def getRunningTasks : Iterable[Task]
 }
 
 /**
- * This trait capsules the formulas responsible for the formula manipulation of the
- * blackboard.
+ * The DataBlackboard handels publishing of data structures
+ * through the blackboard and the execution interface.
  */
-trait FormulaBlackboard {
+trait DataBlackboard {
 
   /**
-   * For interactive use. Creates a formula store and adds it to the blackboard (or retuns the
-   * existing one)
-   */
-  def addFormula(name : String, clause : Clause, role : Role, context : Context) : FormulaStore
-
-  /**
-   * <p>
-   * Adds a formula to the blackboard, if it does not exist. If it exists
-   * the old formula is returned.
-   * </p>
+   * Adds a data structure to the blackboard.
+   * After this method the data structure will be
+   * manipulated by the action of the agents.
    *
-   * @param formula to be added.
-   * @return The inserted Formula, or the already existing one.
+   * @param ds is the data structure to be added.
    */
-  def addFormula(formula : FormulaStore) : FormulaStore
+  def addDS(ds : DataStore)
 
   /**
-   * Adds a formula to the Blackboard.
-   * Returns true, if the adding was successful
-   * and false, if the formula already existed.
+   * Adds a data structure to the blackboard.
+   * After this method the data structure will
+   * no longer be manipulated by the action of the agent.
    *
-   * @param formula - New to add formula
-   * @return true if the formula was not contained in the blackboard previously
+   * @param ds is the data structure to be added.
    */
-  def addNewFormula(formula : FormulaStore) : Boolean
+  def rmDS(ds : DataStore)
 
   /**
-   * <p>
-   * Removes a formula from the Set fo formulas of the Blackboard.
-   * </p>
-   * @return true if the formula was removed, false if the formula does not exist.
-   */
-  def removeFormula(formula : FormulaStore) : Boolean
-
-  /**
-   * <p>
-   * Returns possibly a formula with a given name.
-   * </p>
+   * For the update phase in the executor.
+   * Returns a list of all data structures to
+   * insert a given type.
    *
-   * @param name - Name of the Formula
-   * @return Some(x) if x.name = name exists otherwise None
+   * @param d is the type that we are interested in.
+   * @return a list of all data structures, which store this type.
    */
-  def getFormulaByName(name : String) : Option[FormulaStore]
+  protected[blackboard] def getDS(d : DataType) : Seq[DataStore]
 
-  /**
-   * <p>
-   * Removes a Formula by its name.
-   * </p>
-   *
-   * @param name - Name of the Formula to be removed
-   * @return true, iff the element existed.
-   */
-  def rmFormulaByName(name : String) : Boolean
-
-  /**
-   * <p>
-   * Returns a List of all Formulas of the Blackboard.
-   * </p>
-   *
-   * @return All formulas of the blackboard.
-   */
-  def getFormulas : Iterable[FormulaStore]
-
-
-  /**
-   *
-   * <p>
-   * Retrieves all formulas in a given context.
-   * </p>
-   *
-   * @param c - A given Context
-   * @return All formulas in the context `c`
-   */
-  def getFormulas(c : Context) : Iterable[FormulaStore]
-
-  /**
-   *
-   * <p>
-   * Filters Set of Formulas according to a predicate.
-   * </p>
-   *
-   * @param p Predicate to select formulas
-   * @return Set of Formulas satisfying the Predicate
-   */
-  def getAll(p : FormulaStore => Boolean) : Iterable[FormulaStore]
-
-  /**
-   * <p>
-   *   Filters the formulas of a given context.
-   * </p>
-   *
-   * @param c - A given Context
-   * @param p Predicate the formulas have to satisfy
-   * @return All formulas in `c` satisfying `p`
-   */
-  def getAll(c : Context)(p : FormulaStore => Boolean) : Iterable[FormulaStore]
-
-  /**
-   * <p>
-   * Remove all Formulas from the Blackboard satisfying a Predicate.
-   * </p>
-   *
-   * @param p - All x with p(x) will be removed.
-   */
-  def rmAll(p : FormulaStore => Boolean)
-
-  /**
-   * <p>
-   *    Removes all formulas in the context `c` satisfiying `p`.
-   * </p>
-   * @param c - A given Context
-   * @param p - Predicate the formulas have to satisfy
-   * @return Removes all formulas in `c` satisfying `p`
-   */
-  def rmAll(c : Context)(p : FormulaStore => Boolean)
-
-  /**
-   * Clears the complete blackboard
-   */
-  def clear() : Unit
 }
 
 /**
