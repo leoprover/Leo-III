@@ -77,6 +77,8 @@ object Configuration extends DefaultConfiguration {
       case Some(arg :: Nil) => processLevel(arg)
       case Some(arg :: _) => Out.warn(multiDefOutput(PARAM_VERBOSITY));
                              processLevel(arg)
+      case Some(_) => Out.warn(intExpectedOutput(PARAM_VERBOSITY,"None"));
+                      DEFAULT_VERBOSITY
     }
     Out.setLogLevel(v)
     v
@@ -150,6 +152,8 @@ object Configuration extends DefaultConfiguration {
       Out.warn(multiDefOutput(param))
       processIntFor(param, arg, default)
     }
+    case Some(_) => Out.warn(intExpectedOutput(param, "None"));
+      default
   }
   protected def processIntFor(param: String, actual: String, default: Int): Int = {
     safeStrToInt(actual).getOrElse({

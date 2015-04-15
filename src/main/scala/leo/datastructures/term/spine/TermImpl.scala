@@ -107,6 +107,13 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   lazy val symbols=  hd match {
     case BoundIndex(_,_) => args.symbols
     case Atom(key)             => args.symbols + key
+    case HeadClosure(Atom(key), _) => args.symbols + key
+    case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
+      case BoundFront(_) => args.symbols
+      case TermFront(t) => t.symbols ++ args.symbols
+      case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
+    }
+    case HeadClosure(HeadClosure(h, s2), s1) => HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbols ++ args.symbols
   }
   lazy val boundVars = hd match {
     case BoundIndex(_,_) => args.freeVars + hd
