@@ -3,7 +3,7 @@ package impl
 
 import leo.datastructures.blackboard
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.{FormulaStore, Result}
 import java.io.{PrintWriter, File}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
@@ -45,7 +45,7 @@ abstract class ScriptAgent(path : String) extends Agent {
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
-  override def run(t: Task): blackboard.Result = t match {
+  override def run(t: Task): Result = t match {
     case t1 : ScriptTask =>
 
       // Writing the context into a temporary file
@@ -93,7 +93,7 @@ abstract class ScriptAgent(path : String) extends Agent {
         process.destroy()                     // In case we finished early and did not read till the end.
         return h
     case _  => Out.info(s"[$name]: Recevied a wrong task $t.")
-      return EmptyResult
+      return Result()
   }
 
 

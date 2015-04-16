@@ -31,8 +31,11 @@ object Blackboard {
  * @author Max Wisniewski
  * @since 29.04.2014
  */
-trait Blackboard extends TaskOrganize with DataBlackboard with MessageBlackboard with StatusBlackboard {
-
+trait Blackboard extends TaskOrganize with DataBlackboard with MessageBlackboard {
+  /**
+   * Resets the blackboard to an initial state.
+   */
+  def clear()
 }
 
 
@@ -61,17 +64,6 @@ trait TaskOrganize {
    * @param a - New Agent.
    */
   protected[blackboard] def freshAgent(a : AgentController) : Unit
-
-
-  /**
-   * For the execution service.
-   *
-   * Returns a List of all agents, interested in a specific data type.
-   *
-   * @param d is the type that we are interested.
-   * @return a list of all agents that are interested in this type.
-   */
-  protected[blackboard] def getAgents(d : DataType) : Seq[Agent]
 
   /**
    *
@@ -183,40 +175,6 @@ trait DataBlackboard {
    */
   protected[blackboard] def getDS(d : DataType) : Seq[DataStore]
 
-}
-
-/**
- * Blackboard to manage SZS stati in different contexts.
- */
-trait StatusBlackboard {
-
-  /**
-   * Updates the SZS-Status in a given context, if it is
-   * not yet known.
-   *
-   * @param c - The context to update
-   * @param s - The new status
-   * @return true, if the status was defined yet.
-   */
-  def updateStatus(c : Context)(s : StatusSZS) : Boolean
-
-  /**
-   * Forces the SZS Status in a context to a new one.
-   * Does not fail, if a status is already set.
-   *
-   * @param c - The context to update
-   * @param s - The status to set
-   */
-  def forceStatus(c : Context)(s : StatusSZS)
-
-  /**
-   * Returns to a given context the set status.
-   * None if no status was previously set.
-   *
-   * @param c - The searched context
-   * @return Some(status) if set, else None.
-   */
-  def getStatus(c : Context) : Option[StatusSZS]
 }
 
 /**

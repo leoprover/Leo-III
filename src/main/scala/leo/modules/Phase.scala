@@ -4,6 +4,7 @@ package modules
 import leo.agents._
 import leo.agents.impl._
 import leo.datastructures._
+import leo.datastructures.blackboard.impl.{SZSDataStore, FormulaDataStore, SZSStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, Context}
@@ -147,12 +148,12 @@ trait CompletePhase extends Phase {
     override def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
-      case StatusEvent(c,s) if c.parentContext == null && c.isClosed => // The root context was closed
+      case DataEvent(SZSStore(s,c), StatusType) if c.parentContext == null && c.isClosed => // The root context was closed
         synchronized{finish = true; notifyAll()};List()
       case _ => List()
     }
     override def name: String = s"${getName}Terminator"
-    override def run(t: Task): Result = EmptyResult
+    override def run(t: Task): Result = Result()
     override def kill(): Unit = synchronized{
       scedKill = true
       finish = true
@@ -183,12 +184,12 @@ class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.
     } catch {
       case e : SZSException =>
         // Out.output(SZSOutput(e.status))
-        Blackboard().forceStatus(Context())(e.status)
+        SZSDataStore.forceStatus(Context())(e.status)
         return false
       case e : Throwable =>
         Out.severe("Unexpected Exception")
         e.printStackTrace()
-        Blackboard().forceStatus(Context())(SZS_Error)
+        SZSDataStore.forceStatus(Context())(SZS_Error)
         //Out.output((SZSOutput(SZS_Error)))
         return false
     }
@@ -211,7 +212,7 @@ class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.
       case _ => List()
     }
     override def name: String = "PreprocessPhaseTerminator"
-    override def run(t: Task): Result = EmptyResult
+    override def run(t: Task): Result = Result()
   }
 }
 
@@ -262,7 +263,7 @@ object SimpleEnumerationPhase extends CompletePhase {
 
     if(!waitTillEnd()) return false
 
-    Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => fhb.containsDomain(l.term)}}
+    FormulaDataStore.rmAll(Context()){f => f.clause.lits.exists{l => fhb.containsDomain(l.term)}}
 
     end()
     return true
@@ -325,7 +326,7 @@ object FiniteHerbrandEnumeratePhase extends CompletePhase {
     // Remove all formulas containing one of the domains. (Hacky. Move the Test Function to the module package.
     val  a : FiniteHerbrandEnumerateAgent = agents1.head
 
-    Blackboard().rmAll(Context()){f => f.clause.lits.exists{l => a.containsDomain(l.term)}}
+    FormulaDataStore.rmAll(Context()){f => f.clause.lits.exists{l => a.containsDomain(l.term)}}
 
     end()
 
@@ -378,7 +379,7 @@ object ExternalProverPhase extends CompletePhase {
     init()
 
 
-  val conj = Blackboard().getAll(_.role == Role_NegConjecture).head
+  val conj = FormulaDataStore.getAll(_.role == Role_NegConjecture).head
   Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
 
   initWait()
@@ -418,9 +419,9 @@ object RemoteCounterSatPhase extends CompletePhase {
     val it = Context().childContext.iterator
     var con : FormulaStore = null
     try {
-      con = Blackboard().getAll(_.role == Role_Conjecture).head
+      con = FormulaDataStore.getAll(_.role == Role_Conjecture).head
     } catch {
-      case _ => end(); return false
+      case _: Throwable => end(); return false
     }
     while(it.hasNext) {
       val c = it.next()

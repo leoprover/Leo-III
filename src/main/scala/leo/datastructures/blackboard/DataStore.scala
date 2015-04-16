@@ -53,4 +53,18 @@ trait DataStore {
    * @param d the data to be deleted.
    */
   def delete(d : Any)
+
+  /**
+   * Removes everything from the data structure.
+   * After this call the ds should behave as if it was newly created.
+   */
+  def clear()
+
+  /**
+   * Returns a list of all stored data.
+   *
+   * @param t
+   * @return
+   */
+  protected[blackboard] def all(t : DataType) : Set[Any]
 }

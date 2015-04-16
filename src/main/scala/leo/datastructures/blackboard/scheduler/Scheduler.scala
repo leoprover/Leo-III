@@ -3,8 +3,6 @@ package datastructures
 package blackboard.scheduler
 
 import leo.datastructures.blackboard._
-import leo.datastructures.context.Context
-import leo.modules.output.{SZS_Theorem, StatusSZS}
 
 import scala.collection.mutable
 import java.util.concurrent.Executors
@@ -32,7 +30,7 @@ object Scheduler {
       s.start()
 
     }
-    return s
+    s
   }
 
   /**
@@ -41,7 +39,7 @@ object Scheduler {
    * @return
    */
   def apply() : Scheduler = {
-    apply(n)
+    apply(n)  // TODO config presettings
   }
 
   def working() : Boolean = {
@@ -58,7 +56,7 @@ object Scheduler {
 
 trait Scheduler {
 
-  def isTerminated() : Boolean
+  def isTerminated : Boolean
 
   /**
    * Terminate all working processes.
@@ -118,7 +116,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     )
   }
 
-  override def isTerminated() : Boolean = endFlag
+  override def isTerminated : Boolean = endFlag
 
   def signal() : Unit = s.synchronized{
     pauseFlag = false
@@ -148,7 +146,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   var pauseFlag = true
   var endFlag = false
 
-  def pause() : Unit = {s.synchronized(pauseFlag = true);
+  def pause() : Unit = {s.synchronized(pauseFlag = true)
 //    println("Scheduler paused.")
   }
 
@@ -223,47 +221,40 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
         work = true
         // Update blackboard
-        var newF : Set[FormulaStore] = Set()
-        var closed : List[(Context,StatusSZS)] = List()
+        val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
+          (t,result.inserts(t).filter{d =>            //TODO should not be lazy, Otherwise it could generate problems
+            var add : Boolean = false
+            Blackboard().getDS(t).foreach{ds => add |= ds.insert(d)}  // More elegant without risk of lazy skipping of updating ds?
+            add
+          })
+        }.toMap
 
-        result.newFormula().foreach { f =>
-          val up = f.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
-          val ins = Blackboard().addNewFormula(up)
-          if (ins) {
-            // Keep track of new Formulas
-            newF = newF + up
-            //Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up ein.")
-          }
-        }
-        result.removeFormula().foreach(Blackboard().removeFormula(_))
-        result.updateFormula().foreach { case (oF, nF) =>
-          Blackboard().removeFormula(oF)
-          val up = nF.newOrigin(task.writeSet().union(task.readSet()).toList, task.name)
-          val ins = Blackboard().addNewFormula(up)
-          if (ins) {
-            newF = newF + up // Keep track of new formulas
-            //Out.trace(s"[Writer]:\n [$task =>]:\n   Füge Formel $up  ein.")
-          }
-        }
+        val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
+          (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
+            var add : Boolean = false
+            Blackboard().getDS(t).foreach{ds => ds.delete(d1); add |= ds.insert(d2)}  // More elegant without risk of lazy skipping of updating ds?
+            add
+          })
+        }.toMap
 
-        result.updateStatus().foreach{ case (c,s) =>
-          Blackboard().forceStatus(c)(s)
+        result.keys.foreach {t =>
+          (t,result.removes(t).foreach{d =>
+            Blackboard().getDS(t).foreach{ds =>ds.delete(d)}  // TODO save deletion?
+          })
         }
 
-        // Removing Task from Taskset (Therefor remove locks)
-        curExec.remove(task)
-        Blackboard().finishTask(task)
-
-        // Notify changes
-        // ATM only New and Updated Formulas
-        Blackboard().filterAll({a =>
-          newF.foreach{ f => a.filter(FormulaEvent(f))  // If the result was new, everyone has to be informed
+        Blackboard().filterAll {a =>    // Informing agents of the changes
+          a.interest match {
+            case None => ()
+            case Some(xs) =>
+              val ts = if(xs.isEmpty) result.keys else xs
+              ts.foreach{t =>
+                newD.getOrElse(t, Nil).foreach{d => a.filter(DataEvent(d,t))}
+                updateD.getOrElse(t, Nil).foreach{d => a.filter(DataEvent(d,t))}
+                // TODO look at not written data,,,
+              }
           }
-          result.updateStatus.foreach{case (c,s) => a.filter(StatusEvent(c,s))}
-          result.updatedContext().foreach{c => a.filter(ContextEvent(c))}
-          //task.writeSet().filter{t => !newF.exists(_.cong(t))}.foreach{f => a.filter(FormulaEvent(f))}
-          (task.contextWriteSet() ++ result.updatedContext()).foreach{c => a.filter(ContextEvent(c))}
-        })
+        }
       }
       work = false
       Blackboard().forceCheck()
@@ -291,7 +282,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private val results : mutable.Set[(Result,Task)] = new mutable.HashSet[(Result,Task)] with mutable.SynchronizedSet[(Result,Task)]
+    private val results : mutable.Set[(Result,Task)] = new mutable.HashSet[(Result,Task)]
 
     def get() : (Result,Task) = this.synchronized {
       while (true) {
@@ -346,13 +337,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   /**
    * Marker for the writer to end itself
    */
-  private object ExitResult extends Result {
-    override def newFormula(): Set[FormulaStore] = ???
-    override def updateFormula(): Map[FormulaStore, FormulaStore] = ???
-    override def removeFormula(): Set[FormulaStore] = ???
-    override def updatedContext(): Set[Context] = ???
-    override def updateStatus(): List[(Context, StatusSZS)] = ???
-  }
+  private object ExitResult extends Result {}
 
   /**
    * Empty marker for the Writer to end itself
@@ -361,9 +346,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     override def readSet(): Set[FormulaStore] = Set.empty
     override def writeSet(): Set[FormulaStore] = Set.empty
     override def bid(budget : Double) : Double = 1
-    override def name: String = ???
+    override def name: String = "ExitTask"
 
-    override def pretty: String = ???
+    override def pretty: String = "Exit Task"
   }
 }
 

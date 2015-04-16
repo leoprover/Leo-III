@@ -17,6 +17,9 @@ object ClausificationAgent {
  * @since 12/1/15
  */
 class ClausificationAgent extends Agent {
+  override def name: String = "ClausificationAgent"
+  override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
+
   /**
    * Internal method called from the filter method. Specific to the agent.
    *
@@ -24,7 +27,7 @@ class ClausificationAgent extends Agent {
    * @return A sequence of new tasks, to be added to the internal priority queue.
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
-    case FormulaEvent(f) =>
+    case DataEvent(f : FormulaStore, FormulaType) =>
       val nc : Seq[Clause] = Clausification.clausify(f.clause)
       val fc = nc.filter(!TrivRule.teqt(_))        // Optimized clauses (no [ T = T] or [ T = F]) containing clauses.
       if(fc.isEmpty) {
@@ -36,24 +39,21 @@ class ClausificationAgent extends Agent {
       }
     case _ => return Nil
   }
-  /**
-   *
-   * @return the name of the agent
-   */
-  override def name: String = "ClausificationAgent"
 
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(t: Task): Result = t match {
     case ClausificationTask(dc, nc) =>
+      val r : Result = Result()
       val of = nc map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
       val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain)}
       Out.trace(s"$name: Clausify ${dc.name} `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
-      return new StdResult(nf.toSet, Map.empty, Set())
+      nf.foreach{f => r.insert(FormulaType)(f)}
+      return r
     case _ =>
       Out.warn(s"$name: Got a wrong task to execute")
-      return EmptyResult
+      return Result()
   }
 }
 

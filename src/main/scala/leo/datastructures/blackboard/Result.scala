@@ -21,6 +21,9 @@ object Result {
  * as an action on the data structures in the blackboard.
  *
  * The class allows adding of various types and a retrieval per type.
+ *
+ * This is a <b>mutable</b> class. The manipulating operations return
+ * the changed object for conviniece.
  */
 class Result {
 
@@ -32,11 +35,13 @@ class Result {
    * Inserts given data d of type t into
    * the registered data structures.
    *
+   *
    * @param t is the type of the data.
    * @param d is the data itself
    */
-  def insert (t : DataType)(d : Any): Unit = {
+  def insert (t : DataType)(d : Any): Result = {
     insertM.put(t, d +: insertM.getOrElse(t, Nil))
+    this
   }
 
   /**
@@ -47,8 +52,9 @@ class Result {
    * @param d1 is the old data
    * @param d2 is the new data
    */
-  def update (t : DataType)(d1 : Any)(d2 : Any): Unit = {
+  def update (t : DataType)(d1 : Any)(d2 : Any): Result = {
     updateM.put(t, (d1,d2) +: updateM.getOrElse(t, Nil))
+    this
   }
 
   /**
@@ -57,8 +63,9 @@ class Result {
    * @param t is the type of data.
    * @param d is the data itself.
    */
-  def remove (t : DataType)(d : Any): Unit = {
+  def remove (t : DataType)(d : Any): Result = {
     removeM.put(t, d +: removeM.getOrElse(t, Nil))
+    this
   }
 
 
@@ -87,4 +94,11 @@ class Result {
    * @return all inserted data of type t.
    */
   protected[blackboard] def removes(t : DataType) : Seq[Any] = removeM.getOrElse(t,Nil)
+
+  /**
+   * Returns a sequence of all stored datatypes by this result.
+   *
+   * @return all stored datatypes
+   */
+  protected[blackboard] def keys : Seq[DataType] = ((removeM.keySet union insertM.keySet) union updateM.keySet).toList
 }

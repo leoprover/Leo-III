@@ -3,6 +3,7 @@ package agents
 package impl
 
 import leo.datastructures.blackboard._
+import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.term.Term
 import leo.modules.proofCalculi._
 import leo.datastructures.{Derived, Clause, Literal}
@@ -23,14 +24,14 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
    * @return A sequence of new tasks, to be added to the internal priority queue.
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
-    case FormulaEvent(f) =>
+    case DataEvent(FormulaType, f : FormulaStore) =>
       if(!f.normalized){
         Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
         return Nil
       }
       // If blocked => Nil
       var q : List[Task] = Nil
-      Blackboard().getFormulas(f.context) foreach  {
+      FormulaDataStore.getFormulas(f.context) foreach  {
         bf => para.find(f.clause,bf.clause, comp).fold(()) {
           t : (Term, Literal, TermComparison#Substitute) =>
             //Out.output(s"[$name]:\n Tested\n   $f\n Got\n  Partner: ${bf}\n  Literal: ${t._2.pretty}\n  Term: ${t._1.pretty}"
@@ -64,12 +65,12 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
 //            return EmptyResult      TODO: Never insert. Move to test, because the task is created anew every time.
 //          else {
             Out.trace(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}[,${l.pretty}]})\n =>\n   ${nc.pretty}")
-            return new StdResult(Set(nf), Map.empty, Set.empty)
+            return Result().insert(FormulaType)(nf)
 //          }
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.")
     }
-    EmptyResult
+    Result()
   }
 }
 

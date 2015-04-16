@@ -2,9 +2,9 @@ package leo
 package agents
 
 import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{DataType, Event, FormulaStore, Blackboard}
+import leo.datastructures.blackboard.{DataType, Event, FormulaStore, Blackboard, Result}
 import leo.datastructures.context.Context
-import leo.modules.output.StatusSZS
+
 
 import scala.collection.mutable
 
@@ -31,7 +31,7 @@ abstract class AgentController(a : Agent) {
 
   def setActive(a : Boolean) = _isActive = a
 
-  def run(t : Task) = {
+  def run(t : Task) : Result = {
     a.run(t)
   }
 
@@ -433,70 +433,4 @@ abstract class Task extends Pretty {
    * @return - Possible profit, if the task is executed
    */
   def bid(budget : Double) : Double
-}
-
-/**
- * Common Trait, for the results of tasks.
- *
- * @author Max Wisniewski
- * @since 6/26/12
- */
-trait Result {
-
-  /**
-   * A set of new formulas created by the task.
-   *
-   * @return New formulas to add
-   */
-  def newFormula() : Set[FormulaStore]
-
-  /**
-   * A mapping of formulas to be changed.
-   *
-   * @return Changed formulas
-   */
-  def updateFormula() : Map[FormulaStore, FormulaStore]
-
-  /**
-   * A set of formulas to be removed.
-   *
-   * @return Deleted formulas
-   */
-  def removeFormula() : Set[FormulaStore]
-
-  /**
-   * Set of all new or updated Contexts
-   * @return
-   */
-  def updatedContext() : Set[Context]
-
-  /**
-   * List of stati to update
-   *
-   * @return updated stati
-   */
-  def updateStatus() : List[(Context,StatusSZS)]
-}
-
-/**
- * Simple container for the implementation of result.
- *
- * @param nf - New formulas
- * @param uf - Update formulas
- * @param rf - remove Formulas
- */
-class StdResult(nf : Set[FormulaStore], uf : Map[FormulaStore,FormulaStore], rf : Set[FormulaStore]) extends Result{
-  override def newFormula() : Set[FormulaStore] = nf
-  override def updateFormula() : Map[FormulaStore,FormulaStore] = uf
-  override def removeFormula() : Set[FormulaStore] = rf
-  override def updatedContext() : Set[Context] = Set.empty
-  override def updateStatus() : List[(Context,StatusSZS)] = List()
-}
-
-object EmptyResult extends Result{
-  override def newFormula() : Set[FormulaStore] = Set.empty
-  override def updateFormula() : Map[FormulaStore,FormulaStore] = Map.empty
-  override def removeFormula() : Set[FormulaStore] = Set.empty
-  override def updatedContext(): Set[Context] = Set.empty
-  override def updateStatus(): List[(Context, StatusSZS)] = List()
 }

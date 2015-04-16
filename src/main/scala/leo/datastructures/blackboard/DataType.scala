@@ -25,3 +25,8 @@ case object FormulaType extends DataType {}
  * The FormulaType marks any context data for the blackboard.
  */
 case object ContextType extends DataType {}
+
+/**
+ * SZS status Type information.
+ */
+case object StatusType extends DataType {}

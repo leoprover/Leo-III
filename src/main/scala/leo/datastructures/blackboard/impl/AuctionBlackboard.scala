@@ -3,13 +3,8 @@ package leo.datastructures.blackboard.impl
 
 import leo.agents.{AgentController, Task}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.context.impl.TreeContextSet
-import leo.datastructures.{Role, Clause}
-import leo.modules.output.StatusSZS
-import leo.modules.proofCalculi.TrivRule
 import leo.datastructures.blackboard._
 import scala.collection.mutable
-import leo.datastructures.context.{ContextSet, Context}
 
 /**
  * This blackboard is a first reference implementation for the @see{Blackboard} interface.
@@ -20,45 +15,6 @@ import leo.datastructures.context.{ContextSet, Context}
  * @since 19.08.2015
  */
 protected[blackboard] class AuctionBlackboard extends Blackboard {
-  // For each agent a List of Tasks to execute
-  // If FormulaSet is optimized we can optimize internal
-
-  override def getFormulas: Iterable[FormulaStore] = FormulaSet.getAll()
-
-  override def getAll(p: FormulaStore => Boolean): Iterable[FormulaStore] = FormulaSet.getAll().filter(p)
-
-  override def getFormulaByName(name: String): Option[FormulaStore] = FormulaSet.getName(name)
-
-  // Called from outside, therefor we will fitler explicitly
-  override def addFormula(name : String, formula: Clause, role : Role, context : Context) : FormulaStore = {
-    val s = Store(name, formula, role, context)
-    val f = addFormula(s)
-    filterAll(_.filter(FormulaEvent(f)))
-    return f
-  }
-
-  override def addFormula(formula : FormulaStore) : FormulaStore = {
-    val f = FormulaSet.add(formula)
-    // TODO: handle merge
-    f
-  }
-
-  override def addNewFormula(formula : FormulaStore) : Boolean = {
-    // TODO: Implement Sets to check containment of Clauses.
-    if(TrivRule.teqt(formula.clause)) return false
-    if (FormulaSet.getAll(formula.context).exists(_.cong(formula)))
-      return false
-    else {
-      FormulaSet.add(formula)
-      return true
-    }
-  }
-
-  override def removeFormula(formula: FormulaStore): Boolean = FormulaSet.rm(formula)
-
-  override def rmFormulaByName(name: String): Boolean = FormulaSet.rmName(name)
-
-  override def rmAll(p: FormulaStore => Boolean) = FormulaSet.getAll().foreach{f => if(p(f)) FormulaSet.rm(f)}
 
   /**
    * Register a new Handler for Formula adding Handlers.
@@ -81,9 +37,8 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override def getTask: Iterable[(AgentController,Task)] = TaskSet.getTask
 
   override def clear() : Unit = {
-    rmAll(_ => true)
+    dsset.foreach(_.clear())
     TaskSet.clear()
-    szsSet.clear()
   }
 
   /**
@@ -115,9 +70,18 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param a - New Agent.
    */
   override protected[blackboard] def freshAgent(a: AgentController): Unit = {
-    // ATM only formulas trigger events
-    getFormulas.foreach{fS => a.filter(FormulaEvent(fS))}
-    forceCheck()
+    a.interest match {
+      case None => ()
+      case Some(xs) =>
+        val ts = if(xs.nonEmpty) xs else dsmap.keys.toList
+        ts.foreach{t =>
+          dsmap.getOrElse(t, Set.empty).foreach{ds =>
+            ds.all(t).foreach{d =>
+              a.filter(DataEvent(d,t))
+            }
+        }}
+        forceCheck()
+    }
   }
 
   override def signalTask() : Unit = TaskSet.signalTask()
@@ -141,126 +105,47 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   override def send(m: Message, to: AgentController): Unit = to.filter(m)
 
   /**
-   *
-   * <p>
-   * Retrieves all formulas in a given context.
-   * </p>
-   *
-   * @param c - A given Context
-   * @return All formulas in the context `c`
-   */
-  override def getFormulas(c: Context): Iterable[FormulaStore] = FormulaSet.getAll(c)
-
-  /**
-   * <p>
-   * Removes all formulas in the context `c` satisfiying `p`.
-   * </p>
-   * @param c - A given Context
-   * @param p - Predicate the formulas have to satisfy
-   * @return Removes all formulas in `c` satisfying `p`
-   */
-  override def rmAll(c: Context)(p: FormulaStore => Boolean): Unit = FormulaSet.getAll(c) foreach {f => if(p(f)) FormulaSet.rm(f)}
-
-  /**
-   * <p>
-   * Filters the formulas of a given context.
-   * </p>
-   *
-   * @param c - A given Context
-   * @param p Predicate the formulas have to satisfy
-   * @return All formulas in `c` satisfying `p`
-   */
-  override def getAll(c: Context)(p: (FormulaStore) => Boolean): Iterable[FormulaStore] = FormulaSet.getAll(c).filter(p)
-
-  private val szsSet : mutable.Map[Context, StatusSZS] = new mutable.HashMap[Context, StatusSZS]()
-
-  /**
-   * Updates the SZS-Status in a given context, if it is
-   * not yet known.
-   *
-   * @param c - The context to update
-   * @param s - The new status
-   * @return true, if the status was defined yet.
-   */
-  override def updateStatus(c: Context)(s: StatusSZS): Boolean = szsSet.synchronized{szsSet.get(c) match {
-    case Some(a) => return false
-    case None => szsSet.put(c,s); return true
-  }}
-
-  /**
-   * Forces the SZS Status in a context to a new one.
-   * Does not fail, if a status is already set.
-   *
-   * @param c - The context to update
-   * @param s - The status to set
-   */
-  override def forceStatus(c: Context)(s: StatusSZS): Unit = szsSet.synchronized(szsSet.put(c,s))
-
-  /**
-   * Returns to a given context the set status.
-   * None if no status was previously set.
-   *
-   * @param c - The searched context
-   * @return Some(status) if set, else None.
-   */
-  override def getStatus(c: Context): Option[StatusSZS] = szsSet.synchronized(szsSet.get(c))
-
-  /**
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be
    * thrown correctly.
    */
   override protected[blackboard] def forceCheck(): Unit = TaskSet.synchronized(TaskSet.notifyAll())
+
+
+  private val dsset : mutable.Set[DataStore] = new mutable.HashSet[DataStore]
+  private val dsmap : mutable.Map[DataType, Set[DataStore]] = new mutable.HashMap[DataType, Set[DataStore]]
+
+  /**
+   * Adds a data structure to the blackboard.
+   * After this method the data structure will be
+   * manipulated by the action of the agents.
+   *
+   * @param ds is the data structure to be added.
+   */
+  override def addDS(ds: DataStore): Unit = if(dsset.add(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) + ds)}
+
+  /**
+   * Adds a data structure to the blackboard.
+   * After this method the data structure will
+   * no longer be manipulated by the action of the agent.
+   *
+   * @param ds is the data structure to be added.
+   */
+  override def rmDS(ds: DataStore): Unit = if (dsset.remove(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) - ds)}
+
+  /**
+   * For the update phase in the executor.
+   * Returns a list of all data structures to
+   * insert a given type.
+   *
+   * @param d is the type that we are interested in.
+   * @return a list of all data structures, which store this type.
+   */
+  override protected[blackboard] def getDS(d: DataType): Seq[DataStore] = dsmap.getOrElse(d, Set.empty).toSeq
 }
 
 
-/**
- * Stores the formulas in first in a map from name to the @see{FormulaStore}
- * and secondly a map from @see{Term} to FormulaStore, to see, if a formula has already bee added.
- *
- */
-private object FormulaSet {
 
-  private val formulaSet : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
 
-  /**
-   * Looks up the termMap, for an already existing store and returns this or the given store
-   * after adding it.
-   *
-   * @return the existing store or the new one
-   */
-  def add(f : FormulaStore) : FormulaStore = {
-    formulaSet get (f,f.context) match {
-      case Some(f1) =>
-        return f1
-      case None =>
-        formulaSet.add(f, f.context)
-        return f
-    }
-  }
-
-  /**
-   * ATM no filter support added (no optimization).
-   * Therefor we can savely return everything and filter later.
-   *
-   * @return All stored formulas
-   */
-  def getAll() : Iterable[FormulaStore] = formulaSet.getAll
-
-  def getAll(c : Context) : Iterable[FormulaStore] = formulaSet.getAll(c)
-
-  def rm(f : FormulaStore) : Boolean = {
-    formulaSet.remove(f, f.context)
-  }
-
-  def rmName(n : String) : Boolean = {
-    formulaSet.getAll.find {f => f.name == n} match {
-      case None => false
-      case Some(f) => formulaSet.remove(f, f.context)
-    }
-  }
-
-  def getName(n : String) : Option[FormulaStore] = formulaSet.getAll.find {f => f.name == n}
-}
 
 private object TaskSet {
 
@@ -307,7 +192,7 @@ private object TaskSet {
    */
   def getTask : Iterable[(AgentController,Task)] = this.synchronized{
 
-    while(!Scheduler().isTerminated()) {
+    while(!Scheduler().isTerminated) {
       try {
 
 //        println("Beginning to get items for the auction.")
