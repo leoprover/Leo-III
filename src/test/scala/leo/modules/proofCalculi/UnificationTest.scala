@@ -11,7 +11,8 @@ import Term._
  * Created by Max Wisniewski on 6/10/14.
  */
 class UnificationTestSuite extends LeoTestSuite {
-  test("First test", Checked){
+  // x(a) = f(a,a)
+  test("x(a) = f(a,a)", Checked){
   val s = getFreshSignature
 
   val a = mkAtom(s.addUninterpreted("a",s.i))
