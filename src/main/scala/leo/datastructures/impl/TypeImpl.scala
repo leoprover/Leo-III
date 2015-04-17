@@ -15,8 +15,10 @@ protected[datastructures] case class BaseTypeNode(id: Signature#Key) extends Typ
   // Queries on types
   def typeVars = Set.empty
 
-  def funDomainType   = None
-  def funCodomainType = None
+  val funDomainType   = None
+  val funCodomainType = None
+  val funArity = None
+  val funParamTypesWithResultType = None
 
   val scopeNumber = 0
 
@@ -56,8 +58,10 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
   // Queries on types
   def typeVars: Set[Type] = Set(this)
 
-  def funDomainType   = None
-  def funCodomainType = None
+  val funDomainType   = None
+  val funCodomainType = None
+  val funArity = None
+  val funParamTypesWithResultType = None
 
   val scopeNumber = -scope
 
@@ -99,13 +103,15 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
 
   // Predicates on types
   override val isFunType          = true
-  def isApplicableWith(arg: Type) = (arg == in)
+  def isApplicableWith(arg: Type) = arg == in
 
   // Queries on types
   def typeVars = in.typeVars ++ out.typeVars
 
-  def funDomainType   = Some(in)
-  def funCodomainType = Some(out)
+  lazy val funDomainType   = Some(in)
+  lazy val funCodomainType = Some(out)
+  lazy val funArity = Some(1 + out.funArity.getOrElse(0))
+  lazy val funParamTypesWithResultType = Some(Seq(in) ++ out.funParamTypesWithResultType.getOrElse(Seq(out)))
 
   val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
 
@@ -139,8 +145,10 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   // Queries on types
   def typeVars = l.typeVars ++ r.typeVars
 
-  def funDomainType   = None
-  def funCodomainType = None
+  val funDomainType   = None
+  val funCodomainType = None
+  val funArity = None
+  val funParamTypesWithResultType = None
 
   val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
 
@@ -176,8 +184,10 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   // Queries on types
   def typeVars = l.typeVars ++ r.typeVars
 
-  def funDomainType   = None
-  def funCodomainType = None
+  val funDomainType   = None
+  val funCodomainType = None
+  val funArity = None
+  val funParamTypesWithResultType = None
 
   val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
 
@@ -218,8 +228,10 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
   // Queries on types
   def typeVars = body.typeVars
 
-  def funDomainType   = None
-  def funCodomainType = None
+  val funDomainType   = None
+  val funCodomainType = None
+  val funArity = None
+  val funParamTypesWithResultType = None
 
   val scopeNumber = body.scopeNumber + 1
 

@@ -36,9 +36,17 @@ protected[term] sealed abstract class TermImpl(private var _locality: Locality) 
     else
      erg
   }
+
+  lazy val etaExpand: Term = {
+    val betanf = this.betaNormalize.asInstanceOf[TermImpl]
+    betanf.etaExpand0
+  }
+  def etaExpand0: Term
+
   lazy val topEtaContract: Term = this
 
   def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
+  def tyClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
 //    this.normalize(subst, Subst.id)
 
   // Substitutions
@@ -143,6 +151,27 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case _ => true // other cases should not appear
+  }
+
+  lazy val etaExpand0: Term = {
+    if (!hd.ty.isFunType) {
+      this
+    } else {
+      val hdFunParamTypes = hd.ty._funParamTypes
+      val args0:Spine = args.etaExpand
+      if (args.length < hdFunParamTypes.length) {
+        // Introduce new lambda binders
+        var missing = hdFunParamTypes.length - args.length
+        println(s"missing $missing")
+        val newTypes = hdFunParamTypes.drop(args.length)
+        val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
+        val newSpine = args0 ++ newSpineSuffix
+        newTypes.foldRight(Root(hd, newSpine):Term){case (ty, t) => TermAbstr(ty, t)}
+      } else {
+        Root(hd, args0)
+      }
+
+    }
   }
 
   def replace(what: Term, by: Term): Term = if (this == what)
@@ -261,6 +290,8 @@ protected[term] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
     case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
   }
 
+  def etaExpand0: Term = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
+
   def replace(what: Term, by: Term): Term = if (this == what)
                                               by
                                             else
@@ -343,6 +374,10 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   // Other operations
   lazy val typeCheck = body.typeCheck
 
+  lazy val etaExpand0: Term = {
+    TermAbstr(typ, body.asInstanceOf[TermImpl].etaExpand0)
+  }
+
   def replace(what: Term, by: Term): Term = if (this == what)
                                               by
                                             else
@@ -384,7 +419,7 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
 
   /** Pretty */
-  lazy val pretty = s"λ. (${body.pretty})"
+  lazy val pretty = s"λ[${typ.pretty}}]. (${body.pretty})"
 }
 
 
@@ -427,6 +462,10 @@ protected[term] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
 
   // Other operations
   lazy val typeCheck = body.typeCheck
+
+  lazy val etaExpand0: Term = {
+    TypeAbstr(body.asInstanceOf[TermImpl].etaExpand0)
+  }
 
   def replace(what: Term, by: Term): Term = if (this == what)
                                               by
@@ -496,6 +535,8 @@ protected[term] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 
   // Other operations
   lazy val typeCheck = ???
+
+  def etaExpand0: Term = ???
 
   def replace(what: Term, by: Term): Term = ???
   def replaceAt(at: Position, by: Term): Term = ???
@@ -615,6 +656,7 @@ protected[spine] sealed abstract class Spine extends Pretty {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst): Spine
+  def etaExpand: Spine
 
   // Handling def. expansion
   def δ_expandable: Boolean
@@ -638,6 +680,7 @@ protected[spine] sealed abstract class Spine extends Pretty {
 
   def ++(sp: Spine): Spine
   def +(t: TermImpl): Spine = ++(cons(Left(t),SNil))
+  def +(t: Type): Spine = ++(cons(Right(t),SNil))
 
   /** Drop n arguments from spine, fails with IllegalArgumentException if n > length */
   def drop(n: Int): Spine
@@ -659,6 +702,7 @@ protected[spine] case object SNil extends Spine {
     Reductions.tick()
     nil
   }
+  val etaExpand: Spine = this
 
   // Handling def. expansion
   val δ_expandable = false
@@ -706,6 +750,8 @@ protected[spine] case class App(hd: Term, tail: Spine) extends Spine {
     cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
 //    }
   }
+
+  lazy val etaExpand: Spine = App(hd.etaExpand,  tail.etaExpand)
 
   // Handling def. expansion
   lazy val δ_expandable = hd.δ_expandable || tail.δ_expandable
@@ -768,6 +814,7 @@ protected[spine] case class TyApp(hd: Type, tail: Spine) extends Spine {
     Reductions.tick()
     cons(Right(hd), tail.normalize(termSubst, typeSubst))
   }
+  lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
 
   // Handling def. expansion
   val δ_expandable = tail.δ_expandable
@@ -822,6 +869,7 @@ protected[spine] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spin
     Reductions.tick()
     sp.normalize(s._1 o termSubst, s._2 o typeSubst)
   }
+  lazy val etaExpand: Spine = ???
 
   // Handling def. expansion
   lazy val δ_expandable = false // TODO

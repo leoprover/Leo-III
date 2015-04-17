@@ -47,6 +47,12 @@ abstract class Type extends Pretty {
   def _funDomainType: Type = funDomainType.get
   def funCodomainType: Option[Type]
   def _funCodomainType: Type = funCodomainType.get
+  def funArity: Option[Int]
+  def _funArity: Int = funArity.get
+  def funParamTypesWithResultType: Option[Seq[Type]]
+  def _funParamTypesWithResultType = funParamTypesWithResultType.get
+  def funParamTypes: Option[Seq[Type]] = funParamTypesWithResultType.map(_.init)
+  def _funParamTypes: Seq[Type] = funParamTypes.get
 
   def scopeNumber: Int
 
