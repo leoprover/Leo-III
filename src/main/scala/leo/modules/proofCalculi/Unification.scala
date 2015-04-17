@@ -33,13 +33,17 @@ object IdComparison extends Unification{
 object HuetsPreUnification extends Unification {
 
   import leo.datastructures.term.Term._
+  import leo.datastructures.TermFront
+  import leo.datastructures.BoundFront
   import leo.modules.proofCalculi.util.executionModels._
   import annotation.tailrec
 
   type UEq = Tuple2[Term,Term]
 
-  def unify (t : Term, s : Term, n : Int) : Iterable[Subst] = {
-    // TOFIX: t and s must be in eta long form
+  def unify (t1 : Term, s1 : Term, n : Int) : Iterable[Subst] = {
+
+    val t = t1.etaExpand
+    val s = s1.etaExpand
 
     // returns a stream whose head is a pre-unifier and whose body computes the next unifiers
     new NDStream[Subst](new MyConfiguration(List(Tuple2(t,s)), List()), MyFun) with BFSAlgorithm
@@ -64,14 +68,23 @@ object HuetsPreUnification extends Unification {
     (isFlexible(e2._1) && isFlexible(e2._2))
 
   // computes the substitution from the solved problems
-  protected def computeSubst(sproblems: List[UEq]): Subst = ???
+  protected def computeSubst(sproblems: Seq[UEq]): Subst = {
+    val maxIdx: Int = Bound.unapply(sproblems.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
+    var sub = Subst.id
+    for (i <- 1 to maxIdx)
+      sproblems.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
+        case Some((_,t)) => sub = sub.cons(TermFront(t))
+        case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
+    }
+    sub
+  }
 
-  private def applySubstToList(s: Subst, l: List[UEq]): List[UEq] =
+  private def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
     l.map(e => (e._1.closure(s).betaNormalize,e._2.closure(s).betaNormalize))
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
-  protected def detExhaust(uproblems: List[UEq], sproblems: List[UEq]): Tuple2[List[UEq], List[UEq]]  = {
+  protected def detExhaust(uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
     // apply delete
     val ind1 = uproblems.indexWhere(DeleteRule.canApply)
     if (ind1 > -1)
@@ -85,14 +98,51 @@ object HuetsPreUnification extends Unification {
       else {
         val ind3 = uproblems.indexWhere(BindRule.canApply)
         if (ind3 > -1) {
-          val be = uproblems(ind3)
+          val be = BindRule(uproblems(ind3))
           val sb = computeSubst(List(be))
-          detExhaust(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3+1)), be::applySubstToList(sb,sproblems))
+          detExhaust(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3+1)), applySubstToList(sb,sproblems):+ be)
         } else
     // none is applicable, do nothing
         (uproblems,sproblems)
       }
     }
+  }
+
+  /**
+   *  all terms are flex variables
+   */
+  private def computeDefaultSub(ls: List[Term]): Subst = {
+    //val maxIdx: Int = Bound.unapply(ls.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
+    var sub = Subst.id
+    /*for (i <- 1 to maxIdx)
+      ls.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
+        case Some((typ,t)) => {
+          sub = sub.cons()
+        }
+        case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
+    }*/
+    sub
+  }
+
+  // n is arity of variable
+  // m is arity of head
+  // hdSymb is head
+  // y1,..,yn are new bound variable
+  // x1,..,xm are new free variables
+  private def partialBinding(typ: Type, hdSymb: Term) = {
+    val ys = typ.funParamTypes.zip(List.range(1,typ.funArity)).map(p => Term.mkBound(p._1,p._2))
+    val xs =
+      if (ys.isEmpty)
+        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshVar(p), ys))
+      else {
+        val ysTyp = Type.mkFunType(ys.map(_.ty))
+        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshVar(Type.mkFunType(ysTyp,p)), ys))
+      }
+    val t = Term.mkTermApp(hdSymb,xs)
+
+    val ret = Term.λ(xs.map(_.ty))(t)
+    System.out.println("ret: " + ret)
+    ret
   }
 
   // Huets rules
@@ -101,45 +151,77 @@ object HuetsPreUnification extends Unification {
     def canApply(e: UEq): Boolean // returns true if we can apply the rule
   }
 
+  // not to forget that the approximations must be in eta-long-form
   /**
+   * 4a
    * equation is not oriented
    */
   object ImitateRule extends HuetsRule[UEq] {
-    def apply(e: UEq) = e
-    def canApply(e: UEq) = ???
+
+    def apply(e: UEq): UEq = {
+      // orienting the equation
+    System.out.println("imit: " + e)
+      val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      (t.headSymbol,partialBinding(t.ty,  s.headSymbol))
+    }
+      // must make sure s doesnt have as head a bound variable
+    def canApply(e: UEq) = {
+      // orienting the equation
+      val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      s.headSymbol match {
+        // cannot be flexible and fail on bound variable
+        case Bound(_,_) => false
+        case _ => true
+      }
+    }
   }
 
   /**
+   * 4b
    * equation is not oriented
    */
-  object ProjectRule extends HuetsRule[List[UEq]] {
-    def apply(e: UEq) = List(e)
-    def canApply(e: UEq) = ???
+  object ProjectRule extends HuetsRule[Seq[UEq]] {
+    def apply(e: UEq): Seq[UEq] = {
+    System.out.println("project: " + e)
+      // orienting the equation
+      val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.funArity)).map(p => Term.mkBound(p._1,p._2))
+      bvars.map(e => (t.headSymbol,partialBinding(t.ty, e)))
+    }
+    def canApply(e: UEq) = ??? // always applicable on flex-rigid equations not under application of Bind
   }
 
   /**
+   * 3
    * BindRule tells if Bind is applicable
    * equation is not oriented
-   * 1) compute a substitution from this equation
-   * 2) apply this substitution on all equations in uproblems and sproblems
-   * 3) insert the equation into sproblems
+   * return an equation (x,s) substitution is computed from this equation later
    */
-  object BindRule extends HuetsRule[Unit] {
-    def apply(e: UEq) = ()
+  object BindRule extends HuetsRule[UEq] {
+    def apply(e: UEq) = {
+      // orienting the equation
+      val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      // getting flexible head
+      (t.headSymbol,s)
+    }
     def canApply(e: UEq) = {
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
       // check head is flexible
       if (!isFlexible(t)) false
       // getting flexible head
-      val (_,x) = Bound.unapply(t.headSymbol).get
+      else {
+        val (_,x) = Bound.unapply(t.headSymbol).get
       // check t is eta equal to x
+        if (!t.headSymbol.etaExpand.equals(t)) false
       // check it doesnt occur in s
-      ???
+        else !s.looseBounds.contains(x)
+      }
     }
   }
 
   /**
+   * 1
    * returns true if the equation can be deleted
    */
   object DeleteRule extends HuetsRule[Unit] {
@@ -151,59 +233,74 @@ object HuetsPreUnification extends Unification {
   }
 
   /**
+   * 2
    * returns the list of equations if the head symbols are the same function symbol.
    */
-  object DecompRule extends HuetsRule[List[UEq]] {
+  object DecompRule extends HuetsRule[Seq[UEq]] {
     def apply(e: UEq) = e match {
-      case (_ ∙ sq1, _ ∙ sq2) => ??? //TODO
+      case (_ ∙ sq1, _ ∙ sq2) => (simplifyArguments(sq1)).zip(simplifyArguments(sq2))
       case _ => throw new IllegalArgumentException("impossible")
     }
     def canApply(e: UEq) = e match {
-      case (hd1 ∙ _, hd2 ∙ _) if (hd1.equals(hd2)) => true
+      case (hd1 ∙ _, hd2 ∙ _) if (hd1.equals(hd2)) && !isFlexible(hd1) => true
       case _ => false
     }
   }
 
+  /**
+   * Alex advices we can ignore all types in the list (for now)
+   */
   private def simplifyArguments(l: Seq[Either[Term,Type]]): Seq[Term] = l.filter(_.isLeft).map(_.left.get)
 
   // the state of the search space
-  protected class MyConfiguration(val uproblems: List[UEq], val sproblems: List[UEq], val result: Option[Subst], val isTerminal: Boolean)
+  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[Subst], val isTerminal: Boolean)
     extends Configuration[Subst] {
     def this(result: Option[Subst]) = this(List(), List(), result, true) // for success
-    def this(l: List[UEq], s: List[UEq]) = this(l, s, None, false) // for in node
+    def this(l: Seq[UEq], s: Seq[UEq]) = this(l, s, None, false) // for in node
     def toStr  = uproblems.map(x => ("<"+x._1.pretty+", "+ x._2.pretty+">"))
   }
 
   // the transition function in the search space (returned list containing more than one element -> ND step, no element -> failed branch)
-  protected object MyFun extends Function1[Configuration[Subst], List[Configuration[Subst]]] {
+  protected object MyFun extends Function1[Configuration[Subst], Seq[Configuration[Subst]]] {
 
     import  scala.collection.mutable.ListBuffer
 
     // Huets procedure is defined here
-    def apply(conf2: Configuration[Subst]): List[Configuration[Subst]] = {
+    def apply(conf2: Configuration[Subst]): Seq[Configuration[Subst]] = {
       val conf = conf2.asInstanceOf[MyConfiguration]
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (uproblems, sproblems) = detExhaust(conf.uproblems,conf.sproblems)
 
       // if uproblems is empty, then succeeds
-      if (uproblems.isEmpty) List(new MyConfiguration(Some(computeSubst(sproblems))))
+      if (uproblems.isEmpty) {
+        List(new MyConfiguration(Some(computeSubst(sproblems))))
+      }
       // else consider top equation
-      val (t,s) = uproblems.head
-      // if it is rigid-rigid -> fail
-      if (!isFlexible(t) && !isFlexible(s)) List()
-      // if it is flex-flex -> succeeds and compute sub from the solved set
-      if (isFlexible(t) && isFlexible(s)) List(new MyConfiguration(Some(computeSubst(sproblems))))
+      else {
+        val (t,s) = uproblems.head
+        // if it is rigid-rigid -> fail
+        if (!isFlexible(t) && !isFlexible(s)) List()
+        else {
+          // if it is flex-flex -> all equations are flex-flex -> succeeds and compute sub from the solved set
+          val defSub = computeDefaultSub(uproblems.foldLeft(List[Term]())((ls,e) => e._1.headSymbol::e._2.headSymbol::ls))
+          // TOFIX compute a substitution for all types that maps all variables in the uproblems set to the same term
+          // and then compose this subtitution to the one generated by computeSubst
+          if (isFlexible(t) && isFlexible(s)) List(new MyConfiguration(Some(defSub.comp(computeSubst(sproblems)))))
+          else {
 
-      // else we have a flex-rigid and we cannot apply bind
+            // else we have a flex-rigid and we cannot apply bind
 
-      val lb = new ListBuffer[MyConfiguration]
-      // compute the imitate partial binding and add the new configuration
-      lb.append(new MyConfiguration(ImitateRule(t,s)::uproblems, sproblems))
+            val lb = new ListBuffer[MyConfiguration]
+            // compute the imitate partial binding and add the new configuration
+            if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(t,s)+:uproblems, sproblems))
 
-      // compute all the project partial bindings and add them to the return list
-      ProjectRule(t,s).foreach (e => lb.append(new MyConfiguration(e::uproblems, sproblems)))
+            // compute all the project partial bindings and add them to the return list
+            ProjectRule(t,s).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems)))
 
-      lb.toList
+            lb.toList
+          }
+        }
+      }
     }
   }
 }
