@@ -64,7 +64,7 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
   override def run(t: Task): Result = t match {
     case FiniteHerbrandEnumerateTask(f) =>
       val nc = FiniteHerbrandEnumeration.replaceQuantOpt(f.clause, replace)
-      val f1 : FormulaStore = f.newClause(nc).newContext(c).newName(f.name + "_"+size)
+      val f1 : FormulaStore = f.newClause(nc).newContext(c).newName(f.name + "_"+size).newOrigin(List(f),"finite Herbrand enumeration")
       val r = Result()
       r.insert(FormulaType)(f1)
       return r

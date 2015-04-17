@@ -77,6 +77,11 @@ abstract class AgentController(a : Agent) {
   def getTasks(budget : Double) : Iterable[Task]
 
   /**
+   * @return true if the agent has tasks, false otherwise
+   */
+  def hasTasks : Boolean
+
+  /**
    * Each task can define a maximum amount of money, they
    * want to posses.
    *
@@ -190,6 +195,8 @@ class FifoController(a : Agent) extends AgentController(a) {
 
   protected val q : mutable.Queue[Task] = new mutable.Queue[Task]()
 
+  override def hasTasks : Boolean = q.synchronized(q.nonEmpty)
+
   /**
    * <p>
    * A predicate that distinguishes interesting and uninteresing
@@ -285,6 +292,7 @@ class PriorityController(a : Agent) extends AgentController(a) {
   // Sort by a fixed amount of money
   protected var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid(100)})
 
+  override def hasTasks : Boolean = q.synchronized(q.nonEmpty)
 
   override def openTasks : Int = synchronized(q.size)
 

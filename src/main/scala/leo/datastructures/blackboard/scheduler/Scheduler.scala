@@ -220,6 +220,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
         work = true
+        Blackboard().finishTask(task)
+
 //        Out.comment("[Writer] : Got task and begin to work.")
         // Update blackboard
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
@@ -233,7 +235,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
-            //Out.comment(s"[Writer]: Got update of ${d1.asInstanceOf[FormulaStore].pretty} to ${d2.asInstanceOf[FormulaStore].pretty}")
             Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
             add
           }.map(_._2))    // Only catch the new ones
@@ -260,7 +261,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 //      Out.comment(s"[Writer]: Gone through all.")
       curExec.remove(task)
-      Blackboard().finishTask(task)
       work = false
       Blackboard().forceCheck()
     }

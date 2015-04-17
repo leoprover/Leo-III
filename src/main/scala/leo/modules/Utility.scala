@@ -76,6 +76,7 @@ object Utility {
           // If not relative, then search in TPTP env variable
           val tptp = System.getenv("TPTP")
           if (tptp != null) {
+            Out.debug(s"Loading ${tptp}/${file}.")
             val tptpHome = tptp.split("/")
             val (fileAbs, path) = newPath(tptpHome, file)
             if (!loadedSet(fileAbs)) {
@@ -204,7 +205,7 @@ object Utility {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+") (context="+x.context.contextID+")"
+        val form = x.clause.pretty + " ("+x.status+") (status="+x.status+")"
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -228,7 +229,7 @@ object Utility {
       x =>
         val name = x.name.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+") (context="+x.context.contextID+")"
+        val form = x.clause.pretty + " ("+x.status+") (status="+x.status+")"
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 

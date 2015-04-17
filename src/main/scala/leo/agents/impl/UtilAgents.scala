@@ -41,7 +41,7 @@ class ConjectureAgent extends Agent {
         val rS = fS.newClause(form.mapLit(l => l.flipPolarity)).newRole(Role_NegConjecture).newStatus(status & ~7) // TODO: This is not generally not valid, fix me
 
 
-        return Result().update(FormulaType)(fS)(rS)
+        return Result().update(FormulaType)(fS)(rS.newOrigin(List(fS), "negate conjecture"))
       case _ => throw new IllegalArgumentException("Executing wrong task.")
     }
   }

@@ -16,9 +16,16 @@ import leo.datastructures.{Derived, Clause, Literal}
  */
 class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Agent {
 
+
+  override def name: String = s"Agent ${para.output}"
+  override val interest = Some(List(FormulaType))
+
   /**
    * Considers only FormulaEvents. If there is a partner for paramodulation in the blackboard
    * return the tasks.
+   *
+   * Since the order has to be decreasing and no unecessary formulas are added the filter will
+   * compute the result. Execute will simply insert it into the Blackboard.
    *
    * @param event - The event that triggered the filter
    * @return A sequence of new tasks, to be added to the internal priority queue.
@@ -34,10 +41,13 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
       FormulaDataStore.getFormulas(f.context) foreach  {
         bf => para.find(f.clause,bf.clause, comp).fold(()) {
           t : (Term, Literal, TermComparison#Substitute) =>
-            //Out.output(s"[$name]:\n Tested\n   $f\n Got\n  Partner: ${bf}\n  Literal: ${t._2.pretty}\n  Term: ${t._1.pretty}"
-            val task = ParamodTask(f,bf, t._1, t._2, t._3)
-            //Out.output(s"[$name]:\n New Task\n  $task")
-            q = task :: q
+            val removeLit = Clause.mkClause(bf.clause.lits.filter{l1 => ! l1.cong(t._2)}, bf.clause.implicitBindings, Derived)
+            val nc = para.exec(f.clause, removeLit, t._1, t._2, t._3)
+            val nf = Store(nc, f.status & bf.status, f.context)
+            if (!TrivRule.teqt(nc)){
+              val task = ParamodTask(f,bf, nf, t._1, t._2, t._3)
+              q = task :: q
+            }
         }
       }
       q
@@ -45,28 +55,12 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
   }
 
   /**
-   *
-   * @return the name of the agent
-   */
-  override def name: String = s"Agent ${para.output}"
-
-  /**
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(task: Task): Result = {
     task match {
-      case ParamodTask(f1, f2, t, l, s) =>
-        val removeLit = Clause.mkClause(f2.clause.lits.filter{l1 => ! l1.cong(l)}, f2.clause.implicitBindings, Derived)
-        val nc = para.exec(f1.clause, removeLit, t, l, s) // The paramodulation result
-        //Out.output(s"[$name]:\n Claculated\n   ${nc.pretty}\n from\n   $task")
-          // Only add, if the it is not trivially given.TODO: Move te filter to not lock the clauses
-          val nf = Store(nc, f1.status & f2.status, f1.context)
-//          if (TrivRule.teqt(nc))
-//            return EmptyResult      TODO: Never insert. Move to test, because the task is created anew every time.
-//          else {
-            Out.trace(s"[$name]:\n Paramdoulation step\n   (${f1.clause.pretty},\n   ${f2.clause.pretty}[,${l.pretty}]})\n =>\n   ${nc.pretty}")
-            return Result().insert(FormulaType)(nf)
-//          }
+      case ParamodTask(f1, f2, r, t, l, s) =>
+        return Result().insert(FormulaType)(r.newOrigin(List(f1,f2), "paramodulation"))
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.")
     }
@@ -76,7 +70,7 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
 
 
 
-private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : Term, val l : Literal, val s : TermComparison#Substitute) extends Task {
+private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val r : FormulaStore, val t : Term, val l : Literal, val s : TermComparison#Substitute) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f1, f2)
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / 10
@@ -87,9 +81,9 @@ private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : 
 }
 
 object ParamodTask {
-  def apply(f1 : FormulaStore, f2 : FormulaStore, t : Term, l : Literal, s : TermComparison#Substitute) : Task = new ParamodTask(f1, f2, t, l ,s)
-  def unapply (t : Task) : Option[(FormulaStore, FormulaStore, Term, Literal, TermComparison#Substitute)] = t match {
-    case t1 : ParamodTask => Some((t1.f1, t1.f2, t1.t, t1.l, t1.s))
+  def apply(f1 : FormulaStore, f2 : FormulaStore, r: FormulaStore, t : Term, l : Literal, s : TermComparison#Substitute) : Task = new ParamodTask(f1, f2, r, t, l ,s)
+  def unapply (t : Task) : Option[(FormulaStore, FormulaStore, FormulaStore, Term, Literal, TermComparison#Substitute)] = t match {
+    case t1 : ParamodTask => Some((t1.f1, t1.f2, t1.r, t1.t, t1.l, t1.s))
     case _ : Task => None
   }
 }

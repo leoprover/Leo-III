@@ -192,6 +192,8 @@ object FormulaDataStore extends DataStore {
     }
 
     def getName(n : String) : Option[FormulaStore] = formulaSet.getAll.find {f => f.name == n}
+
+    def contains(f : FormulaStore) : Boolean = formulaSet.contains(f, f.context)
   }
 
 
@@ -207,13 +209,25 @@ object FormulaDataStore extends DataStore {
   override def update(o: Any, n: Any): Boolean = (o,n) match {
     case (fo : FormulaStore,fn : FormulaStore)  =>
       removeFormula(fo)
+      if(FormulaSet.contains(fn)){
+//        leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
+        return false
+      }
+//      leo.Out.comment(s"[FormulaStore]: \n    ${fo.pretty} \n  is updated to \n    ${fn.pretty}.")
       addFormula(fn)
+      return true
     case _ => false
   }
 
   override def insert(n: Any): Boolean = n match {
     case fn : FormulaStore =>
+      if(FormulaSet.contains(fn)){
+//        leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
+        return false
+      }
+//      leo.Out.comment(s"[FormulaStore]: ${fn.pretty} is added.")
       addFormula(fn)
+      return true
     case _ => false
   }
 

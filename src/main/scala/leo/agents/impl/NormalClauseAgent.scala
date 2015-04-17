@@ -30,19 +30,20 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case t1: NormalTask =>
       val fstore = t1.get()
       val calc = norm(fstore)
-      val erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause)))
+      val erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause))).newOrigin(List(t1.get()), norm.name)
 
       // If the Result is trivial true, delete the initial clause
-      if(TrivRule.teqt(erg.clause)) return Result().insert(FormulaType)(fstore)
+      if(TrivRule.teqt(erg.clause)) return Result().remove(FormulaType)(fstore)
 
       // Else check if something happend and update the formula
-      if (fstore.clause.cong(erg.clause)) {
+      val r= if (fstore.clause.cong(erg.clause)) {
         Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
-        return Result().update(FormulaType)(fstore)(erg)
+        Result().update(FormulaType)(fstore)(erg)
       } else {
         Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
-        return Result().update(FormulaType)(fstore)(erg)
+        Result().update(FormulaType)(fstore)(erg)
       }
+      return r
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
@@ -73,7 +74,7 @@ class NormalTask(f : FormulaStore) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 
-  override def bid(budget : Double) : Double = budget / 5
+  override def bid(budget : Double) : Double = math.min(budget / 5,1)
 
   override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
 

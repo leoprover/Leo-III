@@ -81,18 +81,14 @@ object Main {
         r = phase.execute()
         val end = System.currentTimeMillis()
         Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
-        formulaContext()
       }
       deferredKill.kill()
 
       Out.output(s"% SZS status ${SZSDataStore.getStatus(Context()).fold(SZS_Unknown.output)(_.output)} for ${Configuration.PROBLEMFILE}")
-      if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+      // TODO build switch for mulitple contexts
+      // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+      if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printDerivation(_))
       val endTime = System.currentTimeMillis()
-      //    Out.output("Main context "+Context().contextID)
-      //    formulaContext(Context())
-      //    for(c <- Context().childContext){
-      //      formulaContext(c)
-      //    }
       Out.output("% Time: " + (endTime - beginTime) + "ms")
 
     } catch {

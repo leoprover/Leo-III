@@ -46,7 +46,7 @@ class SplittingAgent (s : Split) extends Agent {
       val res = (cs.zip(children) map {case (cs1, con) => cs1 map { clau => o.randomName().newClause(clau).newContext(con).newRole(Role_Plain)}}).flatten
       synchronized(remainingSplits = remainingSplits - 1)
       Out.info(s"[$name]:\n Splitted the context ${c.contextID} over formula\n   ${o.pretty}\n into\n    ${res.map(_.pretty).mkString("\n    ")}")
-      return res.foldLeft(Result()){(r,f) => r.insert(FormulaType)(f)}//new StdResult(res.toSet, Map(), Set())
+      return res.foldLeft(Result()){(r,f) => r.insert(FormulaType)(f.newOrigin(List(o), "split"))}//new StdResult(res.toSet, Map(), Set())
     case SplitTask(o,cs,k)  => Result()
     case _                 => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); Result()
   }

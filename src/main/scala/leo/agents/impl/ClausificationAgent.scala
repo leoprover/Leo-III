@@ -47,7 +47,7 @@ class ClausificationAgent extends Agent {
     case ClausificationTask(dc, nc) =>
       val r : Result = Result()
       val of = nc map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
-      val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain)}
+      val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain).newOrigin(List(dc), "clausification")}
       Out.trace(s"$name: Clausify ${dc.name} `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
       nf.foreach{f => r.insert(FormulaType)(f)}
       return r

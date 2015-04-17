@@ -204,12 +204,11 @@ private object TaskSet {
         while (r.isEmpty) {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
           if (r.isEmpty) {
-//            leo.Out.comment("[Auction]: Got no new task to execute.")
-            if(!Scheduler.working() && execTasks.isEmpty) {
+            if(!Scheduler.working() && execTasks.isEmpty && regAgents.forall{case (a,_) => !a.hasTasks}) {
+            //if(!Scheduler.working() && execTasks.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
               Blackboard().filterAll{a => a.filter(DoneEvent())}
-            } else {
-//              leo.Out.comment(s"[Auction]: But\n   Scheduler working : ${Scheduler.working}\n   Execution set empty: ${!execTasks.isEmpty}")
             }
+            // TODO increase budget or we will run into a endless loop
             TaskSet.wait()
           }
         }

@@ -46,7 +46,7 @@ class DomainConstrainedSplitAgent extends Agent {
         while(i <= t1.card.size) {
           val c = it.next()
           val cardi = t1.card(i-1)
-          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c)).foreach{f => r.insert(FormulaType)(f)}
+          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c).newOrigin(Nil,"CardAxiom")).foreach{f => r.insert(FormulaType)(f)}
           i = i+1
         }
 
