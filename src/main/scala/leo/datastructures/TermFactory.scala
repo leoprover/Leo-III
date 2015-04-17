@@ -52,6 +52,10 @@ trait TermFactory {
   def λ(hd: Type, hds: Type*)(body: Term): Term = {
     \(hd)(hds.foldRight(body)(\(_)(_)))
   }
+  /** Creates a nested term abstraction of the form `λ:hd.(λ:h1.(λ:h2.(...(λ:hn,body)..)))` for hi ∈ hds */
+  def λ(hds: Seq[Type])(body: Term): Term = {
+    hds.foldRight(body)(\(_)(_))
+  }
 
   /** Shorthand for `mkTypeAbs` */
   def /\(body: Term): Term = mkTypeAbs(body)
