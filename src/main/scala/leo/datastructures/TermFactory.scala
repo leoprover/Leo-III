@@ -38,6 +38,11 @@ trait TermFactory {
     * where `args = Seq(arg_1, ..., arg_n)` and `arg_i` is either a term or a type */
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term
 
+  private var varCounter = 0
+  def mkFreshVar(ty: Type): Term = {
+    varCounter = varCounter - 1
+    Term.mkBound(ty, varCounter)
+  }
   // Pretty operators
 
   /** Creates a new term abstraction with parameter type `hd` and body `body`. Pretty variant of `mkTermAbs` */
