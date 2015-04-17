@@ -3,7 +3,7 @@ package impl
 
 import leo.datastructures.{Role_NegConjecture, Role_Conjecture, LitFalse, Not}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{FormulaEvent, Event, Blackboard, FormulaStore}
+import leo.datastructures.blackboard._
 import leo.modules.output.logger.Out
 
 
@@ -25,7 +25,7 @@ class ConjectureAgent extends Agent {
    * @return - set of tasks, if empty the agent won't work on this event
    */
   override def toFilter(e: Event): Iterable[Task] = e match {
-    case FormulaEvent(event) => if (event.role == Role_Conjecture) List(new SingleFormTask(event)) else Nil
+    case DataEvent( event : FormulaStore, FormulaType) => if (event.role == Role_Conjecture) List(new SingleFormTask(event)) else Nil
     case _ => Nil
   }
 
@@ -40,9 +40,8 @@ class ConjectureAgent extends Agent {
         val status = fS.status
         val rS = fS.newClause(form.mapLit(l => l.flipPolarity)).newRole(Role_NegConjecture).newStatus(status & ~7) // TODO: This is not generally not valid, fix me
 
-//        println("Negated Conjecture")
 
-        new StdResult(Set.empty,Map((fS,rS)),Set.empty)
+        return Result().update(FormulaType)(fS)(rS.newOrigin(List(fS), "negate conjecture"))
       case _ => throw new IllegalArgumentException("Executing wrong task.")
     }
   }

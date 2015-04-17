@@ -8,6 +8,7 @@ import leo.modules.output.Output
 
 
 trait ParamodStep extends Output{
+
   /**
    * Executes a step of the Paramodulation.
    *

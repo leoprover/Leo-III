@@ -1,7 +1,7 @@
 package leo.agents.impl
 
 import leo.agents._
-import leo.datastructures.blackboard.{FormulaStore, FormulaEvent, Event}
+import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.datastructures.term.Term
 import leo.datastructures.term.Term._
@@ -26,7 +26,7 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
   private val usedDomains : Set[Type] = domain.keySet
 
   override def toFilter(event: Event): Iterable[Task] = event match {
-    case FormulaEvent(f) if f.context.parentContext == null =>
+    case DataEvent(f : FormulaStore, FormulaType) if f.context.parentContext == null =>
       if(f.clause.lits.exists{l => containsDomain(l.term)}) {
         List(FiniteHerbrandEnumerateTask(f))
       } else {
@@ -64,9 +64,11 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
   override def run(t: Task): Result = t match {
     case FiniteHerbrandEnumerateTask(f) =>
       val nc = FiniteHerbrandEnumeration.replaceQuantOpt(f.clause, replace)
-      val f1 = f.newClause(nc).newContext(c).newName(f.name + "_"+size)
-      return new StdResult(Set(f1), Map.empty, Set.empty)
-    case _ => EmptyResult
+      val f1 : FormulaStore = f.newClause(nc).newContext(c).newName(f.name + "_"+size).newOrigin(List(f),"finite Herbrand enumeration")
+      val r = Result()
+      r.insert(FormulaType)(f1)
+      return r
+    case _ => Result()
   }
 }
 

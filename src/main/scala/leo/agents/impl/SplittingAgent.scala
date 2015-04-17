@@ -2,7 +2,7 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaStore, FormulaEvent, Event}
+import leo.datastructures.blackboard._
 import leo.datastructures.context.SplitKind
 import leo.modules.proofCalculi.splitting.Split
 import leo.datastructures.context.Context
@@ -25,7 +25,7 @@ class SplittingAgent (s : Split) extends Agent {
   override def toFilter(event: Event): Iterable[Task] = {
     synchronized(if(remainingSplits == 0) return Nil)
     event match {
-      case FormulaEvent(f)  => s.split(f.clause) match {
+      case DataEvent(FormulaType, f : FormulaStore)  => s.split(f.clause) match {
         case Some((cs, k))  => return List(SplitTask(f,cs,k))
         case None           => return Nil
       }
@@ -39,16 +39,16 @@ class SplittingAgent (s : Split) extends Agent {
       val c = o.context
       if (!c.split(k,cs.size)){
         Out.warn(s"[$name]:\n Splitted already splitted Context.")
-        return EmptyResult
+        return Result()
       }
       // The split was successful
       val children = c.childContext.toList
       val res = (cs.zip(children) map {case (cs1, con) => cs1 map { clau => o.randomName().newClause(clau).newContext(con).newRole(Role_Plain)}}).flatten
       synchronized(remainingSplits = remainingSplits - 1)
       Out.info(s"[$name]:\n Splitted the context ${c.contextID} over formula\n   ${o.pretty}\n into\n    ${res.map(_.pretty).mkString("\n    ")}")
-      return new StdResult(res.toSet, Map(), Set())
-    case SplitTask(o,cs,k)  => EmptyResult
-    case _                 => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); EmptyResult
+      return res.foldLeft(Result()){(r,f) => r.insert(FormulaType)(f.newOrigin(List(o), "split"))}//new StdResult(res.toSet, Map(), Set())
+    case SplitTask(o,cs,k)  => Result()
+    case _                 => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); Result()
   }
 }
 

@@ -74,12 +74,20 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
 
   def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), clause, role, status, context, origin, reason)
 
-  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), contextID="+context.contextID+")."
+  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
 
-  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), contextID="+context.contextID+")."
+  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
 
   def compare(that: FormulaStore): Int = this.clause compare that.clause
 
   /** Returns `true` iff `this` is congruent to `that`. */
   override def cong(that: FormulaStore): Boolean = clause.cong(that.clause)
+
+  override def equals(o : Any) : Boolean = o match {
+    case fo : FormulaStore =>
+      return (this.clause cong fo.clause) && (this.role == fo.role)
+    case _ => return false
+  }
+
+  override def hashCode() : Int = this.clause.hashCode() ^ this.role.hashCode()
 }

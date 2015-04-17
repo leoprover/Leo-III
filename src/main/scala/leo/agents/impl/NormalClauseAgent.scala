@@ -2,9 +2,8 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.blackboard.{FormulaEvent, Event, FormulaStore, Blackboard}
+import leo.datastructures.blackboard._
 import leo.modules.normalization.Normalize
-import leo.datastructures.{Clause, Literal}
 import leo.modules.proofCalculi.TrivRule
 
 import scala.collection.mutable
@@ -31,24 +30,26 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case t1: NormalTask =>
       val fstore = t1.get()
       val calc = norm(fstore)
-      val erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause)))
+      val erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause))).newOrigin(List(t1.get()), norm.name)
 
       // If the Result is trivial true, delete the initial clause
-      if(TrivRule.teqt(erg.clause)) return new StdResult(Set(), Map(), Set(fstore))
+      if(TrivRule.teqt(erg.clause)) return Result().remove(FormulaType)(fstore)
 
       // Else check if something happend and update the formula
-      if (fstore.clause.cong(erg.clause)) {
+      val r= if (fstore.clause.cong(erg.clause)) {
         Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
-        return new StdResult(Set.empty, Map((fstore, erg)), Set.empty)
+        Result().update(FormulaType)(fstore)(erg)
       } else {
         Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
-        return new StdResult(Set.empty, Map((fstore, erg)), Set.empty)
+        Result().update(FormulaType)(fstore)(erg)
       }
+      return r
     case _ => throw new IllegalArgumentException("Executing wrong task.")
   }
 
+
   override def toFilter(e: Event): Iterable[Task] = e match {
-    case FormulaEvent(event) =>
+    case DataEvent(event : FormulaStore, FormulaType) =>
       if (norm.applicable ( event.status ) && !event.clause.isEmpty) {
         List(new NormalTask(event))
       }
@@ -73,7 +74,7 @@ class NormalTask(f : FormulaStore) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 
-  override def bid(budget : Double) : Double = budget / 5
+  override def bid(budget : Double) : Double = math.min(budget / 5,1)
 
   override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
 

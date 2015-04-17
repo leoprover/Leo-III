@@ -36,7 +36,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
 
   def merge(that : Clause) = {
     val newBindings = implicitBindings ++ that.implicitBindings
-    val liftedThis = lits.map(_.termMap(_.closure(Subst.shift(that.implicitBindings.length))))
+    val liftedThis = lits.map(_.termMap(_.closure(Subst.shift(that.implicitBindings.length)))) // TODO betanormalize
     val newLits = liftedThis ++ that.lits
     Clause.mkClause(newLits, newBindings, Derived)
   }

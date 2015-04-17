@@ -3,6 +3,7 @@ package leo
 import leo.agents.{FifoController}
 import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
@@ -54,6 +55,13 @@ object Main {
       // Create Scheduler
       Scheduler(Configuration.THREADCOUNT)
 
+      //==========================================
+      //
+      // Initialize Phases and data strucutres for the blackboard.
+      //
+      //==========================================
+      Blackboard().addDS(FormulaDataStore)
+      Blackboard().addDS(SZSDataStore)
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {
         new FifoController(CounterContextControlAgent).register()
@@ -76,14 +84,11 @@ object Main {
       }
       deferredKill.kill()
 
-      Out.output(s"% SZS status ${Blackboard().getStatus(Context()).fold(SZS_Unknown.output)(_.output)} for ${Configuration.PROBLEMFILE}")
-      if (Configuration.PROOF_OBJECT) Blackboard().getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+      Out.output(s"% SZS status ${SZSDataStore.getStatus(Context()).fold(SZS_Unknown.output)(_.output)} for ${Configuration.PROBLEMFILE}")
+      // TODO build switch for mulitple contexts
+      // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+      if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printDerivation(_))
       val endTime = System.currentTimeMillis()
-      //    Out.output("Main context "+Context().contextID)
-      //    formulaContext(Context())
-      //    for(c <- Context().childContext){
-      //      formulaContext(c)
-      //    }
       Out.output("% Time: " + (endTime - beginTime) + "ms")
 
     } catch {
@@ -161,7 +166,7 @@ object Main {
             }
           }
         }
-        Blackboard().forceStatus(Context())(SZS_Timeout)
+        SZSDataStore.forceStatus(Context())(SZS_Timeout)
         //Out.output(SZSOutput(SZS_Timeout))    // TODO Interference with other SZS status
         finished = true
         Scheduler().killAll()
