@@ -157,7 +157,7 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     if (!hd.ty.isFunType) {
       this
     } else {
-      val hdFunParamTypes = hd.ty._funParamTypes
+      val hdFunParamTypes = hd.ty.funParamTypes
       val args0:Spine = args.etaExpand
       if (args.length < hdFunParamTypes.length) {
         // Introduce new lambda binders

@@ -2,10 +2,10 @@ package leo
 package agents.impl
 
 import leo.agents._
-import leo.datastructures.blackboard.{FormulaStore, Event, Message}
+import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Type}
+import leo.datastructures.{blackboard, Type}
 import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
 
 /**
@@ -29,7 +29,7 @@ class DomainConstrainedSplitAgent extends Agent {
 
 
   override def run(t: Task): Result = {
-    if(Context().splitKind != NoSplit) return EmptyResult
+    if(Context().splitKind != NoSplit) return Result()
     t match {
       case t1 : DomainConstrainedTask =>
         // Utility.printSignature()
@@ -37,22 +37,22 @@ class DomainConstrainedSplitAgent extends Agent {
         val s : Set[Type]= s1.map {k => Type.mkType(k)}
         // TODO: Give the combination of domain constraints to the agent. At the moment same size
         val b = Context().split(BetaSplit, t1.card.size)
-        if(!b) {return EmptyResult}
+        if(!b) {return Result()}
 
         val children = Context().childContext
-        var cardAx : Set[FormulaStore] = Set.empty
         val it = children.iterator
         var i : Int = 1
+        val r = Result()
         while(i <= t1.card.size) {
           val c = it.next()
           val cardi = t1.card(i-1)
-          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c))
-          cardAx = cardAx ++ ax
+          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c).newOrigin(Nil,"CardAxiom")).foreach{f => r.insert(FormulaType)(f)}
           i = i+1
         }
 
-        return new StdResult(cardAx, Map.empty, Set.empty)
-      case _ => EmptyResult
+
+        return r
+      case _ => Result()
     }
   }
 }

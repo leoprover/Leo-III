@@ -2,9 +2,9 @@ package leo
 package agents
 
 import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{Event, FormulaStore, Blackboard}
+import leo.datastructures.blackboard.{DataType, Event, FormulaStore, Blackboard, Result}
 import leo.datastructures.context.Context
-import leo.modules.output.StatusSZS
+
 
 import scala.collection.mutable
 
@@ -31,7 +31,8 @@ abstract class AgentController(a : Agent) {
 
   def setActive(a : Boolean) = _isActive = a
 
-  def run(t : Task) = {
+  def run(t : Task) : Result = {
+//    Out.comment(s"[$name]: Executing task\n    ${t.pretty}.")
     a.run(t)
   }
 
@@ -39,6 +40,15 @@ abstract class AgentController(a : Agent) {
   def unregister() = Blackboard().unregisterAgent(this)
 
   def kill() = a.kill()
+
+  /**
+   * Declares the agents interest in specific data.
+   *
+   * @return None -> The Agent does not register for any data changes. <br />
+   *         Some(Nil) -> The agent registers for all data changes. <br />
+   *         Some(xs) -> The agent registers only for data changes for any type in xs.
+   */
+  lazy val interest : Option[Seq[DataType]] = a.interest
 
   /*
 --------------------------------------------------------------------------------------------
@@ -65,6 +75,11 @@ abstract class AgentController(a : Agent) {
    * @param budget - Budget that is granted to the agent.
    */
   def getTasks(budget : Double) : Iterable[Task]
+
+  /**
+   * @return true if the agent has tasks, false otherwise
+   */
+  def hasTasks : Boolean
 
   /**
    * Each task can define a maximum amount of money, they
@@ -145,6 +160,15 @@ abstract class Agent {
    * @return a List of Tasks the Agent wants to execute.
    */
   def toFilter(event : Event) : Iterable[Task]
+
+  /**
+   * Declares the agents interest in specific data.
+   *
+   * @return None -> The Agent does not register for any data changes. <br />
+   *         Some(Nil) -> The agent registers for all data changes. <br />
+   *         Some(xs) -> The agent registers only for data changes for any type in xs.
+   */
+  def interest : Option[Seq[DataType]] = Some(Nil)
 }
 
 /**
@@ -170,6 +194,8 @@ class FifoController(a : Agent) extends AgentController(a) {
   }
 
   protected val q : mutable.Queue[Task] = new mutable.Queue[Task]()
+
+  override def hasTasks : Boolean = q.synchronized(q.nonEmpty)
 
   /**
    * <p>
@@ -266,6 +292,7 @@ class PriorityController(a : Agent) extends AgentController(a) {
   // Sort by a fixed amount of money
   protected var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid(100)})
 
+  override def hasTasks : Boolean = q.synchronized(q.nonEmpty)
 
   override def openTasks : Int = synchronized(q.size)
 
@@ -415,70 +442,4 @@ abstract class Task extends Pretty {
    * @return - Possible profit, if the task is executed
    */
   def bid(budget : Double) : Double
-}
-
-/**
- * Common Trait, for the results of tasks.
- *
- * @author Max Wisniewski
- * @since 6/26/12
- */
-trait Result {
-
-  /**
-   * A set of new formulas created by the task.
-   *
-   * @return New formulas to add
-   */
-  def newFormula() : Set[FormulaStore]
-
-  /**
-   * A mapping of formulas to be changed.
-   *
-   * @return Changed formulas
-   */
-  def updateFormula() : Map[FormulaStore, FormulaStore]
-
-  /**
-   * A set of formulas to be removed.
-   *
-   * @return Deleted formulas
-   */
-  def removeFormula() : Set[FormulaStore]
-
-  /**
-   * Set of all new or updated Contexts
-   * @return
-   */
-  def updatedContext() : Set[Context]
-
-  /**
-   * List of stati to update
-   *
-   * @return updated stati
-   */
-  def updateStatus() : List[(Context,StatusSZS)]
-}
-
-/**
- * Simple container for the implementation of result.
- *
- * @param nf - New formulas
- * @param uf - Update formulas
- * @param rf - remove Formulas
- */
-class StdResult(nf : Set[FormulaStore], uf : Map[FormulaStore,FormulaStore], rf : Set[FormulaStore]) extends Result{
-  override def newFormula() : Set[FormulaStore] = nf
-  override def updateFormula() : Map[FormulaStore,FormulaStore] = uf
-  override def removeFormula() : Set[FormulaStore] = rf
-  override def updatedContext() : Set[Context] = Set.empty
-  override def updateStatus() : List[(Context,StatusSZS)] = List()
-}
-
-object EmptyResult extends Result{
-  override def newFormula() : Set[FormulaStore] = Set.empty
-  override def updateFormula() : Map[FormulaStore,FormulaStore] = Map.empty
-  override def removeFormula() : Set[FormulaStore] = Set.empty
-  override def updatedContext(): Set[Context] = Set.empty
-  override def updateStatus(): List[(Context, StatusSZS)] = List()
 }
