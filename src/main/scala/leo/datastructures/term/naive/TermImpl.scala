@@ -46,6 +46,12 @@ sealed abstract class TermImpl extends Term {
 
   /** Eta-contract term on root level if possible */
   def topEtaContract = ???
+
+  /** Explicitly create a term closure with underlying type substitution `tySubst`. */
+  def tyClosure(subst: Subst) = ???
+
+  /** Return the eta-long-nf of the term */
+  def etaExpand = ???
 }
 
 ///////////////////

@@ -75,13 +75,26 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
   def replace(what: Term, by: Term): Term
   def replaceAt(at: Position, by: Term): Term
 
+
+  @deprecated("Use substitute(Subst) instead")
   def substitute(what: Term, by: Term): Term
+  @deprecated("Use substitute(Subst) instead")
   def substitute(what: List[Term], by: List[Term]): Term = {
     require(what.length == by.length, "Substitution list do not match in length.")
     what.zip(by).foldRight(this)({case ((w,b), t:Term) => t.substitute(w,b)})
   }
 
+  /** Apply substitution `subst` to underlying term. */
+  def substitute(subst: Subst): Term = this.closure(subst).betaNormalize
+  /** Apply type substitution `tySubst` to underlying term. */
+  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
+
+  /** Explicitly create a term closure, i.e. a postponed substitution */
   def closure(subst: Subst): Term
+  /** Explicitly create a term closure with underlying type substitution `tySubst`. */
+  def tyClosure(subst: Subst): Term
+
+
 
   protected[datastructures] def instantiateBy(by: Type) = instantiate(1,by)
   protected[datastructures] def instantiate(scope: Int, by: Type): Term
@@ -93,10 +106,16 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
   def typeCheck: Boolean
   /** Return the β-nf of the term */
   def betaNormalize: Term
+  /** Return the eta-long-nf of the term */
+  def etaExpand: Term
   /** Eta-contract term on root level if possible */
   def topEtaContract: Term
 
+
+
+  /// Hidden definitions
   protected[term] def normalize(termSubst: Subst, typeSubst: Subst): Term
+  @deprecated
   protected[datastructures] def inc(scopeIndex: Int): Term
 
 //  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
