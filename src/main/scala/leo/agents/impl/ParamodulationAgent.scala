@@ -13,7 +13,7 @@ import leo.datastructures.{Derived, Clause, Literal}
  * @author Max Wisniewski
  * @since 12/11/14
  */
-class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Agent {
+class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent {
 
   /**
    * Considers only FormulaEvents. If there is a partner for paramodulation in the blackboard
@@ -32,7 +32,7 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
       var q : List[Task] = Nil
       Blackboard().getFormulas(f.context) foreach  {
         bf => para.find(f.clause,bf.clause, comp).fold(()) {
-          t : (Term, Literal, TermComparison#Substitute) =>
+          t : (Term, Literal, Unification#Substitute) =>
             //Out.output(s"[$name]:\n Tested\n   $f\n Got\n  Partner: ${bf}\n  Literal: ${t._2.pretty}\n  Term: ${t._1.pretty}"
             val task = ParamodTask(f,bf, t._1, t._2, t._3)
             //Out.output(s"[$name]:\n New Task\n  $task")
@@ -75,7 +75,7 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
 
 
 
-private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : Term, val l : Literal, val s : TermComparison#Substitute) extends Task {
+private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : Term, val l : Literal, val s : Unification#Substitute) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f1, f2)
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / 10
@@ -86,8 +86,8 @@ private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val t : 
 }
 
 object ParamodTask {
-  def apply(f1 : FormulaStore, f2 : FormulaStore, t : Term, l : Literal, s : TermComparison#Substitute) : Task = new ParamodTask(f1, f2, t, l ,s)
-  def unapply (t : Task) : Option[(FormulaStore, FormulaStore, Term, Literal, TermComparison#Substitute)] = t match {
+  def apply(f1 : FormulaStore, f2 : FormulaStore, t : Term, l : Literal, s : Unification#Substitute) : Task = new ParamodTask(f1, f2, t, l ,s)
+  def unapply (t : Task) : Option[(FormulaStore, FormulaStore, Term, Literal, Unification#Substitute)] = t match {
     case t1 : ParamodTask => Some((t1.f1, t1.f2, t1.t, t1.l, t1.s))
     case _ : Task => None
   }
