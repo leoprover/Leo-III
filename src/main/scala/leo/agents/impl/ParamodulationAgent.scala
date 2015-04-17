@@ -24,7 +24,7 @@ class ParamodulationAgent(para : ParamodStep, comp : TermComparison) extends Age
    * @return A sequence of new tasks, to be added to the internal priority queue.
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
-    case DataEvent(FormulaType, f : FormulaStore) =>
+    case DataEvent(f : FormulaStore, FormulaType) =>
       if(!f.normalized){
         Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
         return Nil

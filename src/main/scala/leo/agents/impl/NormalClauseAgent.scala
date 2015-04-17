@@ -48,7 +48,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
 
 
   override def toFilter(e: Event): Iterable[Task] = e match {
-    case DataEvent(FormulaType, event : FormulaStore) =>
+    case DataEvent(event : FormulaStore, FormulaType) =>
       if (norm.applicable ( event.status ) && !event.clause.isEmpty) {
         List(new NormalTask(event))
       }

@@ -26,7 +26,7 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
   private val usedDomains : Set[Type] = domain.keySet
 
   override def toFilter(event: Event): Iterable[Task] = event match {
-    case DataEvent(FormulaType, f : FormulaStore) if f.context.parentContext == null =>
+    case DataEvent(f : FormulaStore, FormulaType) if f.context.parentContext == null =>
       if(f.clause.lits.exists{l => containsDomain(l.term)}) {
         List(FiniteHerbrandEnumerateTask(f))
       } else {

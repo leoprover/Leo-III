@@ -45,7 +45,7 @@ object Utility {
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
 
-
+    Out.debug(s"Loading ${rel.mkString("/")}/${file}.")
     val (fileAbs, path) = newPath(rel, file)
     if (!loadedSet(fileAbs)) {
       try {

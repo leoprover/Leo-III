@@ -32,6 +32,7 @@ abstract class AgentController(a : Agent) {
   def setActive(a : Boolean) = _isActive = a
 
   def run(t : Task) : Result = {
+//    Out.comment(s"[$name]: Executing task\n    ${t.pretty}.")
     a.run(t)
   }
 

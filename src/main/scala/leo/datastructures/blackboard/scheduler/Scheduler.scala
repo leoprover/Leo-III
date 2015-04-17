@@ -220,6 +220,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
         work = true
+//        Out.comment("[Writer] : Got task and begin to work.")
         // Update blackboard
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.inserts(t).filter{d =>            //TODO should not be lazy, Otherwise it could generate problems
@@ -232,9 +233,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
-            Blackboard().getDS(t).foreach{ds => ds.delete(d1); add |= ds.insert(d2)}  // More elegant without risk of lazy skipping of updating ds?
+            //Out.comment(s"[Writer]: Got update of ${d1.asInstanceOf[FormulaStore].pretty} to ${d2.asInstanceOf[FormulaStore].pretty}")
+            Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
             add
-          })
+          }.map(_._2))    // Only catch the new ones
         }.toMap
 
         result.keys.foreach {t =>
@@ -256,6 +258,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           }
         }
       }
+//      Out.comment(s"[Writer]: Gone through all.")
+      curExec.remove(task)
+      Blackboard().finishTask(task)
       work = false
       Blackboard().forceCheck()
     }
@@ -271,7 +276,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       AgentWork.inc(a)
       ExecTask.put(a.run(t),t)
       AgentWork.dec(a)
-        //Out.trace("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
+//      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 

@@ -55,6 +55,13 @@ object Main {
       // Create Scheduler
       Scheduler(Configuration.THREADCOUNT)
 
+      //==========================================
+      //
+      // Initialize Phases and data strucutres for the blackboard.
+      //
+      //==========================================
+      Blackboard().addDS(FormulaDataStore)
+      Blackboard().addDS(SZSDataStore)
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {
         new FifoController(CounterContextControlAgent).register()
@@ -74,6 +81,7 @@ object Main {
         r = phase.execute()
         val end = System.currentTimeMillis()
         Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
+        formulaContext()
       }
       deferredKill.kill()
 

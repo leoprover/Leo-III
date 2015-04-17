@@ -25,7 +25,7 @@ class ConjectureAgent extends Agent {
    * @return - set of tasks, if empty the agent won't work on this event
    */
   override def toFilter(e: Event): Iterable[Task] = e match {
-    case DataEvent(FormulaType, event : FormulaStore) => if (event.role == Role_Conjecture) List(new SingleFormTask(event)) else Nil
+    case DataEvent( event : FormulaStore, FormulaType) => if (event.role == Role_Conjecture) List(new SingleFormTask(event)) else Nil
     case _ => Nil
   }
 
@@ -40,9 +40,8 @@ class ConjectureAgent extends Agent {
         val status = fS.status
         val rS = fS.newClause(form.mapLit(l => l.flipPolarity)).newRole(Role_NegConjecture).newStatus(status & ~7) // TODO: This is not generally not valid, fix me
 
-//        println("Negated Conjecture")
 
-        Result().update(FormulaType)(fS)(rS)//new StdResult(Set.empty,Map((fS,rS)),Set.empty)
+        return Result().update(FormulaType)(fS)(rS)
       case _ => throw new IllegalArgumentException("Executing wrong task.")
     }
   }

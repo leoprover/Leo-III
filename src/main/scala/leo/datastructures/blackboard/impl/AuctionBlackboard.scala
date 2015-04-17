@@ -204,8 +204,11 @@ private object TaskSet {
         while (r.isEmpty) {
           regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
           if (r.isEmpty) {
+//            leo.Out.comment("[Auction]: Got no new task to execute.")
             if(!Scheduler.working() && execTasks.isEmpty) {
               Blackboard().filterAll{a => a.filter(DoneEvent())}
+            } else {
+//              leo.Out.comment(s"[Auction]: But\n   Scheduler working : ${Scheduler.working}\n   Execution set empty: ${!execTasks.isEmpty}")
             }
             TaskSet.wait()
           }
