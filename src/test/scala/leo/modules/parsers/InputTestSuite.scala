@@ -1,5 +1,6 @@
 package leo.modules.parsers
 
+import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
@@ -35,7 +36,7 @@ class InputTestSuite extends LeoTestSuite {
 
       Utility.load(source + "/" +  p._1 + ".p")
       println("Success!")
-      println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${Blackboard().getFormulas.size} formulae added to blackboard.")
+      println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${FormulaDataStore.getFormulas.size} formulae added to blackboard.")
       println()
       println("## Problem signature:")
       printLongHLine()

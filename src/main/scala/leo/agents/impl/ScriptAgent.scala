@@ -1,8 +1,9 @@
 package leo.agents
 package impl
 
+import leo.datastructures.blackboard
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.{FormulaStore, Result}
 import java.io.{PrintWriter, File}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
@@ -29,7 +30,7 @@ import java.io.IOException
  */
 abstract class ScriptAgent(path : String) extends Agent {
 
-  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : Result
+  def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : blackboard.Result
 
   /**
    *
@@ -92,7 +93,7 @@ abstract class ScriptAgent(path : String) extends Agent {
         process.destroy()                     // In case we finished early and did not read till the end.
         return h
     case _  => Out.info(s"[$name]: Recevied a wrong task $t.")
-      return EmptyResult
+      return Result()
   }
 
 

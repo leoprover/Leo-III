@@ -2,6 +2,7 @@ package leo
 
 import leo.agents.FifoController
 import leo.agents.impl.ContextControlAgent
+import leo.datastructures.blackboard.impl.{SZSDataStore, FormulaDataStore}
 import leo.datastructures.{Role_Conjecture, Role_NegConjecture}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -70,11 +71,11 @@ class ExtProverTest extends LeoTestSuite {
 
       Utility.load(source + "/" +  p._1 + ".p")
       //Negate the conjecture by ourselves, since the load phase uses Configurations (not present here)
-      Blackboard().getAll(_.role == Role_Conjecture) foreach { f =>
+      FormulaDataStore.getAll(_.role == Role_Conjecture) foreach { f =>
         assert(f.clause.lits.size == 1, "Found a conjecture with more than one literal.")
         val nf = f.newClause(f.clause.mapLit(_.flipPolarity)).newRole(Role_NegConjecture).newOrigin(List(f),"Negate-Conjecture")
-        b.removeFormula(f)
-        b.addFormula(nf)
+        FormulaDataStore.removeFormula(f)
+        FormulaDataStore.addFormula(nf)
       }
 
       val cont = new FifoController(ContextControlAgent)
@@ -90,7 +91,7 @@ class ExtProverTest extends LeoTestSuite {
         Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
       }
       deferredKill.kill()
-      Out.output(s"%SZS Status ${Blackboard().getStatus(Context()).fold("Unkown")(_.output)} for ${p._1}")
+      Out.output(s"%SZS Status ${SZSDataStore.getStatus(Context()).fold("Unkown")(_.output)} for ${p._1}")
       cont.unregister()
 
       Scheduler().clear()
@@ -143,7 +144,7 @@ class ExtProverTest extends LeoTestSuite {
             }
           }
         }
-        Blackboard().forceStatus(Context())(SZS_Timeout)
+        SZSDataStore.forceStatus(Context())(SZS_Timeout)
         //Out.output(SZSOutput(SZS_Timeout))    // TODO Interference with other SZS status
         finished = true
         Scheduler().killAll()

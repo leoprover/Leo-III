@@ -1,5 +1,6 @@
 package leo.datastructures.context
 
+import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite, Configuration}
 import leo.datastructures.blackboard.FormulaStore
 import leo.modules.CLParameterParser
@@ -80,8 +81,7 @@ class TreeContextSetTestSuite extends LeoTestSuite {
   }
 
   test("Empty Blackboard Get All",Checked) {
-    val b = Blackboard()
-    val a = b.getFormulas
+    val a = FormulaDataStore.getFormulas
 
     assert(a.isEmpty, "All should be empty initial.")
   }
