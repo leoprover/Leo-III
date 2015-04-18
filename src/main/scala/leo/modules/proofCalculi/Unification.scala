@@ -130,17 +130,20 @@ object HuetsPreUnification extends Unification {
   // y1,..,yn are new bound variable
   // x1,..,xm are new free variables
   private def partialBinding(typ: Type, hdSymb: Term) = {
-    val ys = typ.funParamTypes.zip(List.range(1,typ.funArity)).map(p => Term.mkBound(p._1,p._2))
+    System.out.println("Compute partial binding for type: " + typ + " and head: " + hdSymb + " with arity: " + hdSymb.ty.funArity)
+    val ys = typ.funParamTypes.zip(List.range(1,typ.funArity+1)).map(p => Term.mkBound(p._1,p._2))
     val xs =
       if (ys.isEmpty)
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshVar(p), ys))
+        hdSymb.ty.funParamTypes.map(p => Term.mkFreshVar(p))
       else {
         val ysTyp = Type.mkFunType(ys.map(_.ty))
         hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshVar(Type.mkFunType(ysTyp,p)), ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
 
-    val ret = Term.λ(xs.map(_.ty))(t)
+    System.out.println("t: " +  t)
+
+    val ret = Term.λ(xs.map(_.ty))(t).etaExpand
     System.out.println("ret: " + ret)
     ret
   }
@@ -162,7 +165,7 @@ object HuetsPreUnification extends Unification {
       // orienting the equation
     System.out.println("imit: " + e)
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      (t.headSymbol,partialBinding(t.ty,  s.headSymbol))
+      (t.headSymbol,partialBinding(t.headSymbol.ty,  s.headSymbol))
     }
       // must make sure s doesnt have as head a bound variable
     def canApply(e: UEq) = {
@@ -185,8 +188,8 @@ object HuetsPreUnification extends Unification {
     System.out.println("project: " + e)
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.funArity)).map(p => Term.mkBound(p._1,p._2))
-      bvars.map(e => (t.headSymbol,partialBinding(t.ty, e)))
+      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.funArity+1)).map(p => Term.mkBound(p._1,p._2))
+      bvars.map(e => (t.headSymbol,partialBinding(t.headSymbol.ty, e)))
     }
     def canApply(e: UEq) = ??? // always applicable on flex-rigid equations not under application of Bind
   }

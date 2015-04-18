@@ -37,7 +37,7 @@ class UnificationTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 
   val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
 
 
     val t1 : Term = mkTermApp(mkBound(s.i ->: s.i, 1),a)
