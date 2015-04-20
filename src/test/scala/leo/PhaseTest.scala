@@ -10,6 +10,7 @@ import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
 import leo.modules._
 import leo.modules.output.SZS_Timeout
+import leo.modules.phase.{ParamodPhase, PreprocessPhase, SimpleEnumerationPhase}
 import org.scalatest._
 import java.util.logging.Level._
 

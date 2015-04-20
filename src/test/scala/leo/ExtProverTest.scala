@@ -10,6 +10,7 @@ import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.modules._
 import leo.modules.output.SZS_Timeout
+import leo.modules.phase.{PreprocessPhase, ExternalProverPhase, Phase}
 
 /**
  * Created by lex on 09.04.15.
