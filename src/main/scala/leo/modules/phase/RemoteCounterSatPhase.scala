@@ -2,6 +2,7 @@ package leo.modules.phase
 
 import leo.agents.impl.{SZSScriptMessage, SZSScriptAgent}
 import leo.agents.{FifoController, AgentController}
+import leo.datastructures.Role_Conjecture
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, FormulaStore}
 import leo.datastructures.blackboard.impl.FormulaDataStore
