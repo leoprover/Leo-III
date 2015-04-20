@@ -46,6 +46,15 @@ sealed abstract class Subst extends Pretty {
   def substBndIdx(i: Int): Front
   /** Return all fronts as linear list */
   def fronts: Seq[Front]
+
+//  /** Convecience method: Convert all fronts in substitution to terms (if not a type substitution) */
+//  def terms: Seq[Term] = {
+//    fronts.map {
+//      case BoundFront(i) => Term.mkBound(???, i)
+//      case TermFront(t) => t
+//      case _ => throw new IllegalArgumentException("#terms called on type substitution.")
+//    }
+//  }
 }
 
 /** Generic factory methods for substitutions. Current default implementation are
