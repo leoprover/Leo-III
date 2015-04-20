@@ -9,7 +9,8 @@ import leo.datastructures.context.Context
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
-import leo.modules.Phase._
+import leo.modules.phase.Phase
+import Phase._
 
 
 /**
