@@ -1,21 +1,19 @@
-package leo
-package modules
+package leo.modules.phase
 
 import leo.agents._
-import leo.agents.impl._
+import leo.agents.impl.{FiniteHerbrandEnumerateAgent, _}
 import leo.datastructures._
-import leo.datastructures.blackboard.impl.{SZSDataStore, FormulaDataStore, SZSStore}
-import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
+import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore, SZSStore}
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.modules.normalization.{NegationNormal, Skolemization, Simplification, DefExpansion}
+import leo.datastructures.term.Term
+import leo.modules.normalization.{DefExpansion, NegationNormal, Simplification, Skolemization}
 import leo.modules.output._
 import leo.modules.proofCalculi.enumeration.SimpleEnum
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
-import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
-import leo.agents.impl.FiniteHerbrandEnumerateAgent
-import leo.datastructures.term.Term
+import leo.modules.proofCalculi.{IdComparison, Paramodulation, PropParamodulation}
 
 
 object Phase {
