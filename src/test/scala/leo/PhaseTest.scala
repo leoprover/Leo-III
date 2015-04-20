@@ -26,21 +26,24 @@ class PhaseTest extends FunSuite {
   val b = Blackboard()
   val sig = Signature.get
 
+  b.addDS(FormulaDataStore)
+  b.addDS(SZSDataStore)
+
   // Used Phases for the test
-  val tphases = List(SimplificationPhase, ParamodPhase)
+ // val tphases = List(SimplificationPhase, ParamodPhase)
   val hophases = List(PreprocessPhase, SimpleEnumerationPhase, ParamodPhase)
 
   // Used Problems for the test
   val problems = Seq(
-    "ex1" -> ("Prop-Problem 1", tphases),
+    "ex1" -> ("Prop-Problem 1", hophases),
     //"ex2" -> ("Prop-Problem 2", tphases),
-    "ex3" -> ("Prop-Problem 3", tphases),
+    "ex3" -> ("Prop-Problem 3", hophases),
     "SET014^4" -> ("HO-Problem 1", hophases),
     "SET014^5" -> ("HO-Problem 2", hophases),
     "SET027^5" -> ("HO-Problem 3", hophases),
     "SET067^1" -> ("HO-Problem 4", hophases),
     "SYN973+1" -> ("FOF-Problem 1", hophases),
-    "SYN974+1" -> ("FOF-Probelm 2", hophases),
+    //"SYN974+1" -> ("FOF-Probelm 2", hophases),
     "SYN978+1" -> ("FOF-Problem 3", hophases)
     //"COM001_1" -> ("TFF-Problem 1", hophases)
     //"COM003_1" -> ("TFF-Problem 2", hophases),
