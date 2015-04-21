@@ -2,8 +2,7 @@ package leo.datastructures
 
 import leo.datastructures.impl.Signature
 import leo.{ClauseOrdering, TermOrdering, TypeOrdering}
-import leo.datastructures.term.Term
-import leo.datastructures.term.Term.{:::>, TypeLambda,∙,Symbol, Bound}
+import Term.{:::>, TypeLambda,∙,Symbol, Bound}
 
 import scala.annotation.tailrec
 

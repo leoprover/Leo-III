@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.term.Term
-
 /**
  * Representation of substitution `s` that are basically
  * linear lists of terms or types or shifts.

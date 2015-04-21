@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.term.Term
-
 /**
  * Interface for signature representations.
  * The signature table can contain types, variables, and constants (which may be uninterpreted symbols or defined symbols).

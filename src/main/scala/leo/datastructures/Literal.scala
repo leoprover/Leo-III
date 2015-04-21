@@ -1,7 +1,6 @@
 package leo.datastructures
 
 import leo.Configuration
-import leo.datastructures.term.Term
 
 /**
  * Interface for literals, companion object `Literal` provides constructor methods.
