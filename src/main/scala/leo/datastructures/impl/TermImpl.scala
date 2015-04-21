@@ -1,14 +1,11 @@
-package leo.datastructures
-package term.spine
+package leo.datastructures.impl
 
-import leo.datastructures.Position.{HeadPos}
-
-import scala.language.implicitConversions
-import scala.annotation.tailrec
-
+import leo.datastructures.Position.HeadPos
 import leo.datastructures.Type._
-import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
+import leo.datastructures._
+
+import scala.annotation.tailrec
+import scala.language.implicitConversions
 
 
 ///////////////////////////////////////////////
@@ -64,7 +61,7 @@ protected[term] sealed abstract class TermImpl(private var _locality: Locality) 
 
 /** Representation of terms that are in (weak) head normal form. */
 protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
-  import TermImpl.{headToTerm, mkRedex, mkRoot}
+  import TermImpl.{headToTerm, mkRedex}
 
   // Predicates on terms
   val isAtom = args == SNil
@@ -234,7 +231,7 @@ protected[term] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
 protected[term] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL) {
-  import TermImpl.{mkRedex, mkRoot}
+  import TermImpl.mkRedex
 
   // Predicates on terms
   val isAtom = false
@@ -423,8 +420,8 @@ protected[term] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
 
 protected[term] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
-  import Type.∀
   import TermImpl.mkTypeAbstr
+  import Type.∀
 
   // Predicates on terms
   val isAtom = false

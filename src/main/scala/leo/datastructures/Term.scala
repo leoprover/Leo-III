@@ -1,11 +1,10 @@
-package leo.datastructures.term
+package leo.datastructures
 
 import leo.Configuration
-import leo.datastructures._
 import leo.datastructures.impl.Signature
+import leo.datastructures.term.{naive, spine}
 
 import scala.language.implicitConversions
-import scala.math
 
 
 /**

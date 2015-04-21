@@ -1,4 +1,4 @@
-package leo.datastructures.term
+package leo.datastructures.impl
 
 /**
  * Created by lex on 04.09.14.
