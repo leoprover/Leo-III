@@ -1,8 +1,6 @@
 package leo.datastructures
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
-
 
 /**
  * Term creation factory.

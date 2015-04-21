@@ -1,8 +1,8 @@
 package leo.datastructures
 
 import leo.Configuration
-import leo.datastructures.impl.Signature
-import leo.datastructures.term.{naive, spine}
+import leo.datastructures.impl.{TermImpl, Signature}
+
 
 import scala.language.implicitConversions
 
@@ -26,7 +26,7 @@ import scala.language.implicitConversions
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-abstract class Term extends QuasiOrdered[Term] with Pretty {
+trait Term extends QuasiOrdered[Term] with Pretty {
 
   // Predicates on terms
   /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
@@ -74,15 +74,6 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
   def replace(what: Term, by: Term): Term
   def replaceAt(at: Position, by: Term): Term
 
-
-  @deprecated("Use substitute(Subst) instead")
-  def substitute(what: Term, by: Term): Term
-  @deprecated("Use substitute(Subst) instead")
-  def substitute(what: List[Term], by: List[Term]): Term = {
-    require(what.length == by.length, "Substitution list do not match in length.")
-    what.zip(by).foldRight(this)({case ((w,b), t:Term) => t.substitute(w,b)})
-  }
-
   /** Apply substitution `subst` to underlying term. */
   def substitute(subst: Subst): Term = this.closure(subst).betaNormalize
   /** Apply type substitution `tySubst` to underlying term. */
@@ -93,11 +84,8 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
   /** Explicitly create a term closure with underlying type substitution `tySubst`. */
   def tyClosure(subst: Subst): Term
 
-
-
   protected[datastructures] def instantiateBy(by: Type) = instantiate(1,by)
   protected[datastructures] def instantiate(scope: Int, by: Type): Term
-//  protected[internal] def instantiateWith(subst: Subst): Term
 
   // Other operations
   def compareTo(that: Term): Option[Int] = Configuration.TERM_ORDERING.compare(this, that)
@@ -114,8 +102,6 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
 
   /// Hidden definitions
   protected[term] def normalize(termSubst: Subst, typeSubst: Subst): Term
-  @deprecated
-  protected[datastructures] def inc(scopeIndex: Int): Term
 
 //  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
@@ -130,10 +116,10 @@ abstract class Term extends QuasiOrdered[Term] with Pretty {
 /**
  * Term Factory object. Only this class is used to create new terms.
  *
- * Current default term implementation: [[leo.datastructures.term.spine.TermImpl]]
+ * Current default term implementation: [[TermImpl]]
  */
 object Term extends TermBank {
-  import leo.datastructures.term.spine.TermImpl
+  import impl.TermImpl
 
   // Factory method delegation
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
@@ -198,13 +184,10 @@ object Term extends TermBank {
   type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
   def statistics: TermBankStatistics = TermImpl.statistics
 
+
   //////////////////////////////////////////
   // Patterns for term structural matching
   //////////////////////////////////////////
-
-  import leo.datastructures.term.spine.Spine.{nil => SNil}
-  import leo.datastructures.term.spine.{Atom, BoundIndex, Redex, Root}
-
   /**
    * Pattern for matching bound symbols in terms (i.e. De-Bruijn-Indices). Usage:
    * {{{
@@ -215,13 +198,19 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Bound {
-    def unapply(t: Term): Option[(Type, Int)] = t match {
-      case naive.BoundNode(ty,scope) => Some((ty,scope))
-      case spine.Root(BoundIndex(ty, scope), SNil) => Some((ty, scope))
-      case _ => None
-    }
-  }
+  object Bound { def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
+
+  /**
+   * Pattern for matching meta variable symbols in terms. Usage:
+   * {{{
+   * t match {
+   *  case MetaVar(ty,id) => println("Matched meta var symbol with id "
+   *                                  + id.toString + " with type "+ ty.pretty)
+   *  case _               => println("something else")
+   * }
+   * }}}
+   */
+  object MetaVar { def unapply(t: Term): Option[(Type, Int)] = TermImpl.metaVariableMatcher(t) }
 
   /**
    * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:
@@ -232,36 +221,12 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Symbol {
-
-    def unapply(t: Term): Option[Signature#Key] = t match {
-      case naive.SymbolNode(k)         => Some(k)
-      case spine.Root(Atom(k),SNil) => Some(k)
-      case _ => None
-    }
-  }
+  object Symbol { def unapply(t: Term): Option[Signature#Key] = TermImpl.symbolMatcher(t) }
 
   /**
-   * Pattern for matching (term) applications in terms (i.e. terms of form `(s t)`). Usage:
-   * {{{
-   * t match {
-   *  case s @@@ t => println("Matched application. Left: " + s.pretty
-   *                                            + " Right: " + t.pretty)
-   *  case _       => println("something else")
-   * }
-   * }}}
-   */
-  object @@@ extends HOLBinaryConnective {
-    val key = Integer.MIN_VALUE // just for fun!
-    override def unapply(t: Term): Option[(Term,Term)] = t match {
-        case naive.ApplicationNode(l,r) => Some((l,r))
-        case _ => None
-      }
-    override def apply(left: Term, right: Term): Term = Term.mkTermApp(left,right)
-  }
-
-  /**
-   * Pattern for matching a root/redex term (i.e. terms of form `(f ∙ S)`). Usage:
+   * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
+   * `h` is the function term and `S` is a sequence of terms/types (arguments).
+   * Usage:
    * {{{
    * t match {
    *  case s ∙ args => println("Matched application. Head: " + s.pretty
@@ -270,30 +235,50 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object ∙ {
-    def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
-      case Root(h, sp) => Some((spine.TermImpl.headToTerm(h), sp.asTerms))
-      case Redex(expr, sp) => Some((expr, sp.asTerms))
-      case _ => None
-    }
-
-    def apply(left: Term, right: Seq[Either[Term, Type]]): Term = spine.TermImpl.mkApp(left, right)
-  }
+  object ∙ { def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
 
   /**
-   * Pattern for matching type applications in terms (i.e. terms of form `(s ty)` where `ty` is a type). Usage:
+   * Pattern for matching a term application (i.e. terms of form `(h ∙ S)`), where
+   * `h` is the function term and `S` is a sequence of terms only (arguments).
+   * Usage:
    * {{{
    * t match {
-   *  case s :::: ty => println("Matched type application. Left: " + s.pretty
-   *                                                  + " Right: " + ty.pretty)
-   *  case _         => println("something else")
+   *  case s ∙ args => println("Matched application. Head: " + s.pretty
+   *                                            + " Args: " + args.map.fold(_.pretty,_.pretty)).toString
+   *  case _       => println("something else")
    * }
    * }}}
    */
-  object @@@@ {
+  object TermApp {
+    def unapply(t: Term): Option[(Term, Seq[Term])] = t match {
+      case h ∙ sp => if (sp.forall(_.isLeft)) {
+                        Some(h, sp.map(_.left.get))
+                      } else {
+                        None
+                      }
+      case _ => None
+    }
+  }
 
-    def unapply(t: Term): Option[(Term,Type)] = t match {
-      case naive.TypeApplicationNode(l,r) => Some((l,r))
+  /**
+   * Pattern for matching a type application (i.e. terms of form `(h ∙ S)`), where
+   * `h` is the function term and `S` is a sequence of types only (arguments).
+   * Usage:
+   * {{{
+   * t match {
+   *  case s ∙ args => println("Matched application. Head: " + s.pretty
+   *                                            + " Args: " + args.map.fold(_.pretty,_.pretty)).toString
+   *  case _       => println("something else")
+   * }
+   * }}}
+   */
+  object TypeApp {
+    def unapply(t: Term): Option[(Term, Seq[Type])] = t match {
+      case h ∙ sp => if (sp.forall(_.isRight)) {
+        Some(h, sp.map(_.right.get))
+      } else {
+        None
+      }
       case _ => None
     }
   }
@@ -308,17 +293,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object :::> extends Function2[Type, Term, Term] {
-
-    def unapply(t: Term): Option[(Type,Term)] = t match {
-      case naive.AbstractionNode(ty,body) => Some((ty,body))
-      case spine.TermAbstr(ty, body)      => Some((ty, body))
-      case _ => None
-    }
-
-    /** Construct abstraction λty.body */
-    override def apply(ty: Type, body: Term): Term = Term.mkTermAbs(ty, body)
-  }
+  object :::> { def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
 
   /**
    * Pattern for matching (type) abstractions in terms (i.e. terms of form `/\(s)`). Usage:
@@ -329,13 +304,5 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object TypeLambda {
-
-    def unapply(t: Term): Option[Term] = t match {
-      case naive.TypeAbstractionNode(body) => Some(body)
-      case spine.TypeAbstr(body)           => Some(body)
-      case _ => None
-    }
-  }
+  object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
 }
-
