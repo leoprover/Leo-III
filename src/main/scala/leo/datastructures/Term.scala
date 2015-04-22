@@ -69,7 +69,7 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   def size: Int
   def order: LangOrder
 
-  // Substitutions
+  // Substitutions and replacements
   /** Replace every occurrence of `what` in `this` by `by`. */
   def replace(what: Term, by: Term): Term
   def replaceAt(at: Position, by: Term): Term
@@ -83,9 +83,6 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   def closure(subst: Subst): Term
   /** Explicitly create a term closure with underlying type substitution `tySubst`. */
   def tyClosure(subst: Subst): Term
-
-  protected[datastructures] def instantiateBy(by: Type) = instantiate(1,by)
-  protected[datastructures] def instantiate(scope: Int, by: Type): Term
 
   // Other operations
   def compareTo(that: Term): Option[Int] = Configuration.TERM_ORDERING.compare(this, that)
@@ -101,7 +98,7 @@ trait Term extends QuasiOrdered[Term] with Pretty {
 
 
   /// Hidden definitions
-  protected[term] def normalize(termSubst: Subst, typeSubst: Subst): Term
+  protected[datastructures] def normalize(termSubst: Subst, typeSubst: Subst): Term
 
 //  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
@@ -124,6 +121,7 @@ object Term extends TermBank {
   // Factory method delegation
   def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
+  def mkMetaVar(t: Type, id: Int): Term = TermImpl.mkMetaVar(t, id)
   def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
   def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
   def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)

@@ -1,10 +1,8 @@
 package leo.agents
 package impl
 
-import leo.datastructures.{Role_NegConjecture, Role_Conjecture, LitFalse, Not}
-import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.{Role_NegConjecture, Role_Conjecture}
 import leo.datastructures.blackboard._
-import leo.modules.output.logger.Out
 
 
 /**

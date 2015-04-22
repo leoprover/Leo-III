@@ -3,11 +3,10 @@ package leo.modules.phase
 import leo._
 import leo.agents.impl.FiniteHerbrandEnumerateAgent
 import leo.agents.{FifoController, AgentController}
-import leo.datastructures.Type
+import leo.datastructures.{Term, Type}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
 import leo.modules.proofCalculi.enumeration.SimpleEnum
 
 object SimpleEnumerationPhase extends CompletePhase {

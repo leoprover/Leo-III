@@ -1,25 +1,20 @@
 package leo.modules.parsers
 
-import leo.Out
+import scala.language.implicitConversions
 
+import leo.Out
+import leo.datastructures.tptp.Commons.{AnnotatedFormula, Term => TPTPTerm, Variable}
+import leo.datastructures.tptp.Commons.{THFAnnotated, TPIAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated}
+import leo.datastructures.tptp.Commons.{Var, Func, DefinedFunc, SystemFunc, Equality}
 import leo.datastructures._
+import Term.{mkAtom,λ,Λ, mkBound,mkTermApp}
+import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
-import leo.datastructures.tptp.Commons.Term
+
 import leo.modules.SZSException
 import leo.modules.output.SZS_InputError
 
-import scala.language.implicitConversions
 
-import leo.datastructures.tptp.Commons._
-import leo.datastructures.tptp.Commons.{Term => TPTPTerm}
-import leo.datastructures.{Kind, Clause, Literal, Role}
-import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkApp}
-import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
-
-import leo.datastructures.tptp.Commons.THFAnnotated
-import leo.datastructures.tptp.Commons.TPIAnnotated
-import leo.datastructures.tptp.Commons.TFFAnnotated
 /**
  * Processing module from TPTP input.
  * Declarations are inserted into the given Signature,
@@ -72,7 +67,7 @@ object InputProcessing {
     case Role_NegConjecture => FromConjecture
     case _ => FromAxiom
   }
-  private def singleTermToClause(t: term.Term, role: Role): Clause = Clause.mkClause(Seq(Literal.mkPosLit(t)), roleToClauseOrigin(role))
+  private def singleTermToClause(t: Term, role: Role): Clause = Clause.mkClause(Seq(Literal.mkPosLit(t)), roleToClauseOrigin(role))
 
   def process(sig: Signature)(input: AnnotatedFormula): Option[Result] = {
     input match {
@@ -139,7 +134,7 @@ object InputProcessing {
   }
 
   import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
-  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, term.Term)] = {
+  protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, Term)] = {
     import leo.datastructures.tptp.thf.{Binary, Term, Eq}
     input match {
       case Binary(Term(Func(name, Seq())), Eq, right) => Some(name, processTHF0(sig)(right, noRep))
@@ -147,7 +142,7 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): term.Term = {
+  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): Term = {
     import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let}
 
     input match {
@@ -201,11 +196,17 @@ object InputProcessing {
     }
   }
 
+  ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
+  final object @@@ extends HOLBinaryConnective {
+    val key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
+    override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
+  }
+  //////
+
   import leo.datastructures.tptp.thf.{BinaryConnective => THFBinaryConnective}
   protected[parsers] def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
     import leo.datastructures.tptp.thf.{Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
     import leo.datastructures.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
-    import leo.datastructures.term.Term.@@@
 
     conn match {
       case THFEq => ===
@@ -245,7 +246,7 @@ object InputProcessing {
       case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
                                                  // this is because the mkPolyQuantified will apply a new abstraction
         val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-        override def apply(arg: term.Term) = arg
+        override def apply(arg: Term) = arg
       }
 
       case THFChoice => Choice
@@ -362,7 +363,7 @@ object InputProcessing {
 
   import leo.datastructures.tptp.tff.{LogicFormula => TFFLogicFormula}
   // Formula definitions
-  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): Option[(String, term.Term)] = {
+  protected[parsers] def processTFFDef(sig: Signature)(input: TFFLogicFormula): Option[(String, Term)] = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
       case Atomic(Equality(Func(name, Nil),right)) => Some(name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
@@ -371,7 +372,7 @@ object InputProcessing {
   }
 
   // Ordinary terms
-  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: Replaces): term.Term = {
+  protected[parsers] def processTFF0(sig: Signature)(input: TFFLogicFormula, replaces: Replaces): Term = {
     import leo.datastructures.tptp.tff.{Binary, Quantified, Unary, Inequality, Atomic, Cond, Let}
     input match {
       case Binary(left, conn, right) => processTFFBinaryConn(conn).apply(processTFF0(sig)(left,replaces),processTFF0(sig)(right,replaces))
@@ -534,7 +535,7 @@ object InputProcessing {
   }
 
   import leo.datastructures.tptp.fof.{LogicFormula => FOFLogicalFormula}
-  protected[parsers] def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, term.Term) = {
+  protected[parsers] def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, Term) = {
     import leo.datastructures.tptp.fof.Atomic
     input match {
       case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep))  // TODO See above TODO
@@ -542,7 +543,7 @@ object InputProcessing {
     }
   }
 
-  protected[parsers] def processFOF0(sig: Signature)(input: FOFLogicalFormula, replaces: Replaces): term.Term = {
+  protected[parsers] def processFOF0(sig: Signature)(input: FOFLogicalFormula, replaces: Replaces): Term = {
     import leo.datastructures.tptp.fof.{Binary, Unary, Quantified, Atomic, Inequality}
     input match {
       case Binary(left, conn, right) => processFOFBinaryConn(conn).apply(processFOF0(sig)(left, replaces),processFOF0(sig)(right, replaces))
@@ -632,8 +633,10 @@ object InputProcessing {
   ////////////////////////////
   // Common 'term' processing
   ////////////////////////////
+  import leo.datastructures.tptp.Commons.{NumberTerm, RationalNumber, IntegerNumber, DoubleNumber}
+  import leo.datastructures.tptp.Commons.{Distinct, Cond, Let, Plain, DefinedPlain, SystemPlain, AtomicFormula}
 
-  def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): term.Term = input match {
+  def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
@@ -645,7 +648,7 @@ object InputProcessing {
     case other => processTerm(sig)(other, replace, adHocDefs)
   }
 
-  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): term.Term = input match {
+  def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
@@ -773,7 +776,7 @@ object InputProcessing {
     case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
   }
 
-  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): term.Term = input match {
+  def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
     case Plain(func) => processTerm(sig)(func, replace,adHocDefs)
     case DefinedPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case SystemPlain(func) => processTerm(sig)(func, replace, adHocDefs)
@@ -787,8 +790,8 @@ object InputProcessing {
   // Utility
   ///////////
 
-  protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[ProcessedVar], body: term.Term): term.Term = {
-    def mkPolyHelper(a: ProcessedVar, b: term.Term): term.Term = a match {
+  protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[ProcessedVar], body: Term): Term = {
+    def mkPolyHelper(a: ProcessedVar, b: Term): Term = a match {
       case (_, Left(ty)) => q.apply(λ(ty)(b))
       case (_, Right(`typeKind`)) => Λ(b)
       case (_, Right(_))        => throw new IllegalArgumentException("Formalization of kinds other than * not yet implemented.")
@@ -797,11 +800,11 @@ object InputProcessing {
     varList.foldRight(body)(mkPolyHelper(_,_))
   }
 
-  protected[parsers] def mkPolyQuantifiedFOF(q: HOLUnaryConnective, varList: Seq[(Variable, Type)], body: term.Term): term.Term = {
+  protected[parsers] def mkPolyQuantifiedFOF(q: HOLUnaryConnective, varList: Seq[(Variable, Type)], body: Term): Term = {
     varList.foldRight(body)({case ((_, ty), term) => q.apply(λ(ty)(term))})
   }
 
-  protected[parsers] def mkITE(sig: Signature)(cond: term.Term, thn: term.Term, els: term.Term): term.Term = {
+  protected[parsers] def mkITE(sig: Signature)(cond: Term, thn: Term, els: Term): Term = {
       mkTermApp( mkAtom(sig.iteKey), List(thn,els))
   }
 }

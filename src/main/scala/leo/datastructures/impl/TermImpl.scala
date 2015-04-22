@@ -47,8 +47,6 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
 //    this.normalize(subst, Subst.id)
 
   // Substitutions
-  def substitute(what: Term, by: Term): Term = ???
-  protected[datastructures] def instantiate(scope: Int, by: Type): Term = ???
 
   // Other
   def order = ???
@@ -109,7 +107,6 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case _             => args.freeVars + hd
   }
   lazy val symbols=  hd match {
-    case BoundIndex(_,_) => args.symbols
     case Atom(key)             => args.symbols + key
     case HeadClosure(Atom(key), _) => args.symbols + key
     case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
@@ -118,6 +115,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
       case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
     }
     case HeadClosure(HeadClosure(h, s2), s1) => HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbols ++ args.symbols
+    case _ => args.symbols
   }
   lazy val boundVars = hd match {
     case BoundIndex(_,_) => args.freeVars + hd
@@ -128,7 +126,6 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case _ => args.looseBounds
   }
   lazy val headSymbol = {
-    import Reductions
     Reductions.tick()
     Root(hd, SNil)
   }
@@ -188,13 +185,12 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
     val termSubstNF = termSubst //.normalize
     val typeSubstNF = typeSubst //.normalize
 
     hd match {
-      case h@Atom(id) => Root(h, normalizeSpine(args,termSubstNF, typeSubstNF))
+      case Atom(_) | MetaIndex(_,_) => Root(hd, normalizeSpine(args,termSubstNF, typeSubstNF))
       case b@BoundIndex(t, scope) => b.substitute(termSubstNF) match {
         case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubstNF), j), normalizeSpine(args,termSubstNF, typeSubstNF))
         case TermFront(t) => Redex(t, args).normalize0(Subst.id,Subst.id, termSubstNF, typeSubstNF)
@@ -267,7 +263,6 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val looseBounds = body.looseBounds ++ args.looseBounds
   lazy val symbols = body.symbols ++ args.symbols
   lazy val headSymbol = {
-    import Reductions
     Reductions.tick()
     body.headSymbol
   }
@@ -300,7 +295,6 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
                                                   }
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
     normalize0(termSubst, typeSubst, termSubst, typeSubst)
   }
@@ -357,7 +351,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val looseBounds = body.looseBounds.map(_ - 1).filter(_ > 0)
   lazy val symbols = body.symbols
   lazy val headSymbol = {
-    import Reductions
     Reductions.tick()
     body.headSymbol
   }
@@ -383,7 +376,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
                                                   TermAbstr(typ, body.replaceAt(at.tail, by))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
 //      ???
@@ -445,7 +437,6 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val looseBounds = body.looseBounds
   lazy val symbols = body.symbols
   lazy val headSymbol = {
-    import Reductions
     Reductions.tick()
     body.headSymbol
   }
@@ -472,7 +463,6 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
                                                   TypeAbstr(body.replaceAt(at.tail, by))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
 //      ???
@@ -539,7 +529,6 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
     term.normalize(σ._1 o termSubst, σ._2 o typeSubst)
   }
@@ -727,7 +716,6 @@ protected[impl] case object SNil extends Spine {
   import TermImpl.{mkSpineNil => nil}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
     nil
   }
@@ -771,7 +759,6 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
 //      ???
@@ -839,7 +826,6 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
     cons(Right(hd), tail.normalize(termSubst, typeSubst))
   }
@@ -894,7 +880,6 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    import Reductions
     Reductions.tick()
     sp.normalize(s._1 o termSubst, s._2 o typeSubst)
   }
@@ -948,8 +933,9 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
   protected[TermImpl] var terms: Set[Term] = Set.empty
 
-  // primitive symbols (heads)
+  // atomic symbols (heads)
   protected[TermImpl] var boundAtoms: Map[Type, Map[Int, Head]] = Map.empty
+  protected[TermImpl] var metaVars: Map[Type, Map[Int, Head]] = Map.empty
   protected[TermImpl] var symbolAtoms: Map[Signature#Key, Head] = Map.empty
 
   // composite terms
@@ -966,7 +952,7 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
 
   // primitive symbols (heads)
-  protected[term] def mkAtom0(id: Signature#Key): Head = // Atom(id)
+  protected[impl] def mkAtom0(id: Signature#Key): Head = // Atom(id)
     symbolAtoms.get(id) match {
       case Some(hd) => hd
       case None     => val hd = Atom(id)
@@ -974,7 +960,7 @@ object TermImpl extends TermBank {
                        hd
   }
 
-  protected[term] def mkBoundAtom(t: Type, scope: Int): Head = //BoundIndex(t,scope)
+  protected[impl] def mkBoundAtom(t: Type, scope: Int): Head = //BoundIndex(t,scope)
     boundAtoms.get(t) match {
     case Some(inner) => inner.get(scope) match {
       case Some(hd)   => hd
@@ -987,8 +973,21 @@ object TermImpl extends TermBank {
                         hd
   }
 
+  protected[impl] def mkMetaVar0(t: Type, scope: Int): Head = //MetaIndex(t,scope)
+    metaVars.get(t) match {
+      case Some(inner) => inner.get(scope) match {
+        case Some(hd)   => hd
+        case None       => val hd = MetaIndex(t, scope)
+          metaVars += ((t,inner.+((scope, hd))))
+          hd
+      }
+      case None        => val hd = MetaIndex(t, scope)
+        metaVars += ((t, Map((scope, hd))))
+        hd
+    }
+
   // composite terms
-  protected[term] def mkRoot(hd: Head, args: Spine): TermImpl = //Root(hd, args)
+  protected[impl] def mkRoot(hd: Head, args: Spine): TermImpl = //Root(hd, args)
     global(roots.get(hd) match {
     case Some(inner) => inner.get(args) match {
       case Some(root)  => root
@@ -1000,7 +999,7 @@ object TermImpl extends TermBank {
                         roots += ((hd, Map((args, root))))
                         root
   })
-  protected[term] def mkRedex(left: Term, args: Spine): Redex = //Redex(left, args)
+  protected[impl] def mkRedex(left: Term, args: Spine): Redex = //Redex(left, args)
     global(redexes.get(left) match {
     case Some(inner) => inner.get(args) match {
       case Some(redex) => redex
@@ -1012,7 +1011,7 @@ object TermImpl extends TermBank {
                         redexes += ((left, Map((args, redex))))
                         redex
   })
-  protected[term] def mkTermAbstr(t: Type, body: Term): TermImpl = //TermAbstr(t, body)
+  protected[impl] def mkTermAbstr(t: Type, body: Term): TermImpl = //TermAbstr(t, body)
     global(termAbstractions.get(body) match {
     case Some(inner) => inner.get(t) match {
       case Some(abs)   => abs
@@ -1024,7 +1023,7 @@ object TermImpl extends TermBank {
                         termAbstractions += ((body, Map((t, abs))))
                         abs
   })
-  protected[term] def mkTypeAbstr(body: Term): TermImpl = //TypeAbstr(body)
+  protected[impl] def mkTypeAbstr(body: Term): TermImpl = //TypeAbstr(body)
     global(typeAbstractions.get(body) match {
     case Some(abs) => abs
     case None      => val abs = TypeAbstr(body)
@@ -1033,8 +1032,8 @@ object TermImpl extends TermBank {
   })
 
   // Spines
-  protected[term] def mkSpineNil: Spine = SNil
-  protected[term] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine = //term.fold(App(_, tail),TyApp(_, tail))
+  protected[impl] def mkSpineNil: Spine = SNil
+  protected[impl] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine = //term.fold(App(_, tail),TyApp(_, tail))
     spines.get(term) match {
     case Some(inner) => inner.get(tail) match {
       case Some(sp)   => sp
@@ -1062,6 +1061,7 @@ object TermImpl extends TermBank {
   val local = new TermFactory {
     def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
     def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+    def mkMetaVar(t: Type, id: Int): Term = Root(MetaIndex(t, id), SNil)
     def mkAtom(id: Signature#Key): Term = Root(Atom(id), SNil)
     def mkTypeApp(func: Term, args: Seq[Type]): Term = Redex(func, args.foldRight(mkSpineNil)((ty,sp) => TyApp(ty,sp)))
     def mkTypeApp(func: Term, arg: Type): Term =  Redex(func, TyApp(arg, SNil))
@@ -1073,8 +1073,8 @@ object TermImpl extends TermBank {
 
 
   def mkAtom(id: Signature#Key): TermImpl = mkRoot(mkAtom0(id), SNil)
-
   def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
+  def mkMetaVar(typ: Type, id: Int): TermImpl = mkRoot(mkMetaVar0(typ, id), SNil)
 
   def mkTermApp(func: Term, arg: Term): TermImpl = mkTermApp(func, Seq(arg))
   def mkTermApp(func: Term, args: Seq[Term]): TermImpl = func match {
@@ -1123,6 +1123,7 @@ object TermImpl extends TermBank {
       case Root(h, sp) => val sp2 = insertSpine0(sp)
         val h2 = h match {
           case BoundIndex(ty, scope) => mkBoundAtom(ty, scope)
+          case MetaIndex(ty, id) => mkMetaVar0(ty, id)
           case Atom(id) => mkAtom0(id)
           case hc@HeadClosure(chd, s) => hc // TODO: do we need closures in bank?
         }

@@ -1,10 +1,10 @@
 package leo.agents.impl
 
 import leo.agents._
+import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.datastructures.term.Term
-import leo.datastructures.term.Term._
+import Term._
 import leo.datastructures._
 import leo.modules.countersat.FiniteHerbrandEnumeration
 
@@ -44,9 +44,7 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
 
       case s@Symbol(_)       => false
       case s@Bound(_,_)      => false
-      case s @@@ t            => containsDomain(s) || containsDomain(t)
       case f ∙ args           => containsDomain(f) || args.exists(_.fold({t => containsDomain(t)},(t => false)))
-      case s @@@@ ty          => containsDomain(s)
       case ty :::> s        => containsDomain(s)
       case TypeLambda(t)    => containsDomain(t)
     }

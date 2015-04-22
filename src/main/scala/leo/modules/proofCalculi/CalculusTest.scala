@@ -1,7 +1,6 @@
 package leo.modules.proofCalculi
 
 import leo.datastructures._
-import leo.datastructures.term.Term
 import leo.modules.output.Output
 
 

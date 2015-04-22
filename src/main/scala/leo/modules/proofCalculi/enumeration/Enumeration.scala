@@ -1,7 +1,6 @@
 package leo.modules.proofCalculi.enumeration
 
-import leo.datastructures.Type
-import leo.datastructures.term.Term
+import leo.datastructures.{Term, Type}
 
 /**
  * Created by lex on 07.04.15.

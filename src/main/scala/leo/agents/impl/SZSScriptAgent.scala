@@ -3,8 +3,6 @@ package impl
 
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.datastructures.context.Context
-import leo.datastructures.impl
-import leo.datastructures.term.Term
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.modules.output.{SZS_GaveUp, StatusSZS}

@@ -3,7 +3,6 @@ package leo.modules.normalization
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
 import scala.collection.immutable.HashMap
 import Term._
 

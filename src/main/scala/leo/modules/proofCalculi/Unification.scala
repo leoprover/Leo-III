@@ -1,7 +1,6 @@
 package leo.modules.proofCalculi
 
-import leo.datastructures.term.Term
-import leo.datastructures.{Type, Subst}
+import leo.datastructures.{Term, Type, Subst}
 
 trait Unification {
 
@@ -32,7 +31,7 @@ object IdComparison extends Unification{
  */
 object HuetsPreUnification extends Unification {
 
-  import leo.datastructures.term.Term._
+  import Term._
   import leo.datastructures.TermFront
   import leo.datastructures.BoundFront
   import leo.modules.proofCalculi.util.executionModels._
@@ -136,10 +135,10 @@ object HuetsPreUnification extends Unification {
     val ys = typ.funParamTypes.zip(List.range(1,typ.funArity+1)).map(p => Term.mkBound(p._1,p._2))
     val xs =
       if (ys.isEmpty)
-        hdSymb.ty.funParamTypes.map(p => Term.mkFreshVar(p))
+        hdSymb.ty.funParamTypes.map(p => Term.mkFreshMetaVar(p))
       else {
         val ysTyp = Type.mkFunType(ys.map(_.ty))
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshVar(Type.mkFunType(ysTyp,p)), ys))
+        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshMetaVar(Type.mkFunType(ysTyp,p)), ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
 

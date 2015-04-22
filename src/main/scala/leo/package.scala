@@ -1,5 +1,4 @@
-import leo.datastructures.term.Term
-import leo.datastructures.{QuasiOrdering, Type, Clause, Literal, Weight}
+import leo.datastructures._
 
 package object leo {
   type TypeOrdering = QuasiOrdering[Type]

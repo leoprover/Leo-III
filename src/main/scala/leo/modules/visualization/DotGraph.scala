@@ -2,8 +2,7 @@ package leo.modules.visualization
 
 import leo.datastructures._
 import leo.datastructures.impl.Signature
-import leo.datastructures.term._
-import leo.datastructures.term.Term._
+import Term._
 
 /**
  *
@@ -41,8 +40,6 @@ class DotGraph {
                                     append(edge(p, scope.toString ++ ty.pretty))
                                     append(edge(p, "bottom"))
                                     p
-      case s @@@ t                => ""
-      case s @@@@ ty              => ""
       case f ∙ args               => val p1 = insertTerm(f)
                                      val p2 = insertArgs(args)
                                      val p = next

@@ -4,9 +4,8 @@ package impl
 
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.datastructures.term.Term
 import leo.modules.proofCalculi._
-import leo.datastructures.{Derived, Clause, Literal}
+import leo.datastructures.{Term, Derived, Clause, Literal}
 
 /**
  * Class to execute a calculus step from the paramodulation.

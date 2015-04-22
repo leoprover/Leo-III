@@ -3,7 +3,6 @@ package leo.modules.proofCalculi
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
 import scala.collection.immutable.HashMap
 import Term._
 
@@ -19,8 +18,8 @@ class UnificationTestSuite extends LeoTestSuite {
   val a = mkAtom(s.addUninterpreted("a",s.i))
   val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
 
-    val x = mkFreshVar(s.i)
-    val z = mkFreshVar(s.i)
+    val x = mkFreshMetaVar(s.i)
+    val z = mkFreshMetaVar(s.i)
     val t1 : Term = mkTermApp(f , List(x,x))
     val t2 : Term = mkTermApp(f , List(a,z))
 
@@ -40,7 +39,7 @@ class UnificationTestSuite extends LeoTestSuite {
   val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
 
 
-    val t1 : Term = mkTermApp(mkFreshVar(s.i ->: s.i),a)
+    val t1 : Term = mkTermApp(mkFreshMetaVar(s.i ->: s.i),a)
     val t2 : Term = mkTermApp(f , List(a,a))
 
     val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2,1).iterator

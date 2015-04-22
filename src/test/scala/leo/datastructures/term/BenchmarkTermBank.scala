@@ -3,7 +3,7 @@ package leo.datastructures.term
 import java.io.{File, FileNotFoundException}
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Clause, Role, Role_Definition, Role_Type, Role_Unknown}
+import leo.datastructures._
 
 /**
  * Created by lex on 19.09.14.
