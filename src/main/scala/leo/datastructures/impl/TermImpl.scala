@@ -197,7 +197,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
         case _ => throw new IllegalArgumentException("type front found where it was not expected")
       }
       case HeadClosure(h2, (termSubst2, typeSubst2)) => h2 match {
-        case h@Atom(id) => Root(h, normalizeSpine(args,termSubst, typeSubst))
+        case Atom(_) | MetaIndex(_,_) => Root(h2, normalizeSpine(args,termSubst, typeSubst))
         case b@BoundIndex(t, scope) => b.substitute(termSubst2.comp(termSubst)) match {
           case BoundFront(j) => Root(BoundIndex(t.substitute(typeSubst2 o typeSubst), j), args.normalize(termSubst, typeSubst))
           case TermFront(t) => Redex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
