@@ -74,10 +74,12 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   def replace(what: Term, by: Term): Term
   def replaceAt(at: Position, by: Term): Term
 
-  /** Apply substitution `subst` to underlying term. */
-  def substitute(subst: Subst): Term = this.closure(subst).betaNormalize
-  /** Apply type substitution `tySubst` to underlying term. */
-  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
+  /** Apply meta-variable substitution `subst` to underlying term.
+    * I.e. each meta-variable `i` occurring within `this` is replaced by `subst(i)`,
+    * Note that the term might needs to be re-normalized. */
+  def substitute(subst: Subst): Term
+//  /** Apply type substitution `tySubst` to underlying term. */
+//  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
 
   /** Explicitly create a term closure, i.e. a postponed substitution */
   def closure(subst: Subst): Term

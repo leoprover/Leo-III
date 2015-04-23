@@ -181,7 +181,14 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
                                                     case _ => Root(hd, args.replaceAt(at, by))
                                                   }
 
-  def instantiateWith(subst: Subst) = ???
+  def substitute(subst: Subst): Term = hd match {
+    case MetaIndex(ty,id) => subst.substBndIdx(id) match {
+      case TermFront(t) => Redex(t, args.substitute(subst))
+      case BoundFront(j) => Root(MetaIndex(ty, j), args.substitute(subst))
+      case _ => throw new IllegalArgumentException("type front found during meta variable instantiation.")
+    }
+    case _ => Root(hd, args.substitute(subst))
+  }
 
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -294,6 +301,8 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
                                                     case _ => Redex(body, args.replaceAt(at, by))
                                                   }
 
+  def substitute(subst: Subst): Term = Redex(body.substitute(subst), args.substitute(subst))
+
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
     normalize0(termSubst, typeSubst, termSubst, typeSubst)
@@ -375,6 +384,8 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
                                                 else
                                                   TermAbstr(typ, body.replaceAt(at.tail, by))
 
+  def substitute(subst: Subst): Term = TermAbstr(typ, body.substitute(subst))
+
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
@@ -406,7 +417,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
 
   /** Pretty */
-  lazy val pretty = s"λ[${typ.pretty}}]. (${body.pretty})"
+  lazy val pretty = s"λ[${typ.pretty}]. (${body.pretty})"
 }
 
 
@@ -461,6 +472,8 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
                                                   by
                                                 else
                                                   TypeAbstr(body.replaceAt(at.tail, by))
+
+  def substitute(subst: Subst): Term = TypeAbstr(body.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -526,7 +539,9 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   def replace(what: Term, by: Term): Term = ???
   def replaceAt(at: Position, by: Term): Term = ???
 
-//  def preNormalize(s: Subst) = term.preNormalize(σ o s)
+
+  def substitute(subst: Subst): Term = ???
+  //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -709,6 +724,8 @@ protected[impl] sealed abstract class Spine extends Pretty {
   def replace(what: Term, by: Term): Spine
   def replaceAt(at: Position, by: Term): Spine = replaceAt0(at.posHead, at.tail, by)
 
+  def substitute(subst: Subst): Spine
+
   protected[impl] def replaceAt0(pos: Int, tail: Position, by: Term): Spine
 }
 
@@ -751,6 +768,7 @@ protected[impl] case object SNil extends Spine {
   def replace(what: Term, by: Term): Spine = SNil
   def replaceAt0(pos: Int, tail: Position, by: Term): Spine = SNil
 
+  def substitute(subst: Subst): Spine = SNil
   // Pretty printing
   override val pretty = "⊥"
 }
@@ -816,6 +834,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
     case _ => App(hd, tail.replaceAt0(pos-1, posTail, by))
   }
 
+  def substitute(subst: Subst): Spine = App(hd.substitute(subst), tail.substitute(subst))
 
 
   // Pretty printing
@@ -871,6 +890,8 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
     case _ => TyApp(hd, tail.replaceAt0(pos-1, posTail, by))
   }
 
+  def substitute(subst: Subst): Spine = TyApp(hd, tail.substitute(subst))
+
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
 }
@@ -912,6 +933,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   def replace(what: Term, by: Term): Spine = ???
   def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = ???
 
+  def substitute(subst: Subst): Spine = ???
 
   // Pretty printing
   override def pretty = s"(${sp.pretty}[${s._1.pretty}/${s._2.pretty}])"
