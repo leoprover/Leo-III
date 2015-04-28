@@ -54,9 +54,11 @@ trait Term extends QuasiOrdered[Term] with Pretty {
 
   // Queries on terms
   def ty: Type
-  def freeVars: Set[Term]
+  def freeVars: Set[Term] // TODO: Clarify that this does ...
   def boundVars: Set[Term]
-  def looseBounds: Set[Int]
+  def looseBounds: Set[Int]  // TODO ..as opposed to this
+  def metaVars: Set[(Type, Int)]
+  def metaIndices: Set[Int] = metaVars.map(x => x._2)
   def occurrences: Map[Term, Set[Position]]
   def symbols: Set[Signature#Key]
   def symbolsOfType(ty: Type) = {

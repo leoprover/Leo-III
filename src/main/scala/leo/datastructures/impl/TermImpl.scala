@@ -125,6 +125,10 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case BoundIndex(_,i) => args.looseBounds + i
     case _ => args.looseBounds
   }
+  lazy val metaVars = hd match {
+    case MetaIndex(ty, i) => args.metaVars.+((ty, i))
+    case _ => args.metaVars
+  }
   lazy val headSymbol = {
     Reductions.tick()
     Root(hd, SNil)
@@ -268,6 +272,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val freeVars = body.freeVars ++ args.freeVars
   lazy val boundVars = body.boundVars ++ args.boundVars
   lazy val looseBounds = body.looseBounds ++ args.looseBounds
+  lazy val metaVars = body.metaVars ++ args.metaVars
   lazy val symbols = body.symbols ++ args.symbols
   lazy val headSymbol = {
     Reductions.tick()
@@ -358,6 +363,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   val freeVars = body.freeVars
   val boundVars = body.boundVars
   lazy val looseBounds = body.looseBounds.map(_ - 1).filter(_ > 0)
+  lazy val metaVars = body.metaVars
   lazy val symbols = body.symbols
   lazy val headSymbol = {
     Reductions.tick()
@@ -446,6 +452,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   val freeVars = body.freeVars
   val boundVars = body.boundVars
   lazy val looseBounds = body.looseBounds
+  lazy val metaVars = body.metaVars
   lazy val symbols = body.symbols
   lazy val headSymbol = {
     Reductions.tick()
@@ -513,6 +520,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val freeVars = Set[Term]()
   lazy val boundVars = Set[Term]()
   lazy val looseBounds = Set.empty[Int]
+  lazy val metaVars = Set[(Type, Int)]()
   lazy val symbols = Set[Signature#Key]()
   lazy val headSymbol = ???
   lazy val headSymbolDepth = 1 + term.headSymbolDepth
@@ -701,6 +709,7 @@ protected[impl] sealed abstract class Spine extends Pretty {
   def freeVars: Set[Term]
   def boundVars: Set[Term]
   def looseBounds: Set[Int]
+  def metaVars: Set[(Type, Int)]
   def symbols: Set[Signature#Key]
   def asTerms: Seq[Either[Term, Type]]
   def scopeNumber: (Int, Int)
@@ -747,6 +756,7 @@ protected[impl] case object SNil extends Spine {
   val freeVars = Set[Term]()
   val boundVars = Set[Term]()
   val looseBounds = Set[Int]()
+  val metaVars = Set[(Type, Int)]()
   val symbols = Set[Signature#Key]()
   val length = 0
   val asTerms = Seq()
@@ -797,6 +807,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   val freeVars = hd.freeVars ++ tail.freeVars
   val boundVars = hd.boundVars ++ tail.boundVars
   lazy val looseBounds = hd.looseBounds ++ tail.looseBounds
+  lazy val metaVars = hd.metaVars ++ tail.metaVars
   val symbols = hd.symbols ++ tail.symbols
   val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
@@ -859,6 +870,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   val freeVars = tail.freeVars
   val boundVars = tail.boundVars
   lazy val looseBounds = tail.looseBounds
+  lazy val metaVars = tail.metaVars
   val symbols = tail.symbols
   val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
@@ -915,6 +927,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   val freeVars = Set[Term]()
   val symbols = Set[Signature#Key]()
   lazy val looseBounds = ???
+  lazy val metaVars = ???
   val boundVars= Set[Term]() // TODO: implement
   lazy val length = sp.length
   lazy val asTerms = ???
