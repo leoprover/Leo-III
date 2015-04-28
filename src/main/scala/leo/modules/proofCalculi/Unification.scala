@@ -82,7 +82,7 @@ object HuetsPreUnification extends Unification {
   // bug two: negative fresh variables cause some term functions to throw index out of bound exception, to get it, simply change back
   // the fresh variables counter to negative. I changed it into positive to see if there are other bugs
   private def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
-    l.map(e => {System.out.println("applying sub: " + s.pretty + " to e: " + (e._1.pretty,e._2.pretty) + " to get " + (e._1.substitute(s).betaNormalize.pretty,e._2.substitute(s).betaNormalize.pretty));(e._1.substitute(s).betaNormalize,e._2.substitute(s).betaNormalize)})
+    l.map(e => (e._1.substitute(s).betaNormalize,e._2.substitute(s).betaNormalize))
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec

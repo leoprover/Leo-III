@@ -49,8 +49,8 @@ class UnificationTestSuite extends LeoTestSuite {
     // should have 4 unifiers, we need to check they are different from each other
     for( a <- 1 to 4) {
       val sb: Subst = result.next
-      println(sb.pretty)
       assert (t1.substitute(sb).betaNormalize.equals (t2))
     }
+    assert (result.isEmpty)
   }
 }
