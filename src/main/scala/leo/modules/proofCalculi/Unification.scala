@@ -49,7 +49,7 @@ object HuetsPreUnification extends Unification {
   }
 
   protected def isFlexible(t: Term): Boolean = t.headSymbol match {
-    case Bound(_, ind) if t.looseBounds.contains(ind) => true // flexible variable
+    case MetaVar(_, _) => true // flexible variable
     case _ => false // function symbol or bound variable
   }
 
@@ -68,10 +68,10 @@ object HuetsPreUnification extends Unification {
 
   // computes the substitution from the solved problems
   protected def computeSubst(sproblems: Seq[UEq]): Subst = {
-    val maxIdx: Int = Bound.unapply(sproblems.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
+    val maxIdx: Int = MetaVar.unapply(sproblems.maxBy(e => MetaVar.unapply(e._1).get._2)._1).get._2
     var sub = Subst.id
     for (i <- 1 to maxIdx)
-      sproblems.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
+      sproblems.find(e => MetaVar.unapply(e._1).get._2 == maxIdx - i + 1) match {
         case Some((_,t)) => sub = sub.cons(TermFront(t))
         case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
     }
@@ -82,7 +82,7 @@ object HuetsPreUnification extends Unification {
   // bug two: negative fresh variables cause some term functions to throw index out of bound exception, to get it, simply change back
   // the fresh variables counter to negative. I changed it into positive to see if there are other bugs
   private def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
-    l.map(e => {System.out.println("applying sub: " + s.pretty + " to e: " + (e._1.pretty,e._2.pretty) + " to get " + (e._1.closure(s).betaNormalize.pretty,e._2.closure(s).betaNormalize.pretty));(e._1.closure(s).betaNormalize,e._2.closure(s).betaNormalize)})
+    l.map(e => {System.out.println("applying sub: " + s.pretty + " to e: " + (e._1.pretty,e._2.pretty) + " to get " + (e._1.substitute(s).betaNormalize.pretty,e._2.substitute(s).betaNormalize.pretty));(e._1.substitute(s).betaNormalize,e._2.substitute(s).betaNormalize)})
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
@@ -210,11 +210,11 @@ object HuetsPreUnification extends Unification {
       if (!isFlexible(t)) false
       // getting flexible head
       else {
-        val (_,x) = Bound.unapply(t.headSymbol).get
+        val (_,x) = MetaVar.unapply(t.headSymbol).get
       // check t is eta equal to x
         if (!t.headSymbol.etaExpand.equals(t) && !t.equals(t.headSymbol)) false
       // check it doesnt occur in s
-        else !s.looseBounds.contains(x)
+        else !s.metaIndices.contains(x)
       }
     }
   }

@@ -28,7 +28,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val sb: Subst = result.next
     assert(!result.hasNext)
     println(sb.pretty)
-    assert (t1.closure(sb).betaNormalize.equals (t2.closure(sb).betaNormalize))
+    assert (t1.substitute(sb).betaNormalize.equals (t2.substitute(sb).betaNormalize))
   }
 
   // x(a) = f(a,a)
@@ -50,7 +50,7 @@ class UnificationTestSuite extends LeoTestSuite {
     for( a <- 1 to 1) {
       val sb: Subst = result.next
       println(sb.pretty)
-      assert (t1.closure(sb).betaNormalize.equals (t2))
+      assert (t1.substitute(sb).betaNormalize.equals (t2))
     }
   }
 }
