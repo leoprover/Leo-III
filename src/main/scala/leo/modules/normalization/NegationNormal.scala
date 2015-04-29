@@ -22,10 +22,12 @@ object NegationNormal extends AbstractNormalize{
    * @return a normalized formula
    */
   override def normalize(formula: Clause): Clause = {
-    formula.mapLit { l => l.termMap { t =>
-        val t1 = if (l.polarity) t else Not(t)
-        nnf(rmEq(t1, 1))
-      }.flipPolarity
+    formula.mapLit { l =>
+        val l1 = l.termMap { t =>
+          val t1 = if (l.polarity) t else Not(t)
+          nnf(rmEq(t1, 1))
+        }
+        if(l.polarity) l1 else l1.flipPolarity
     }
   }
 
