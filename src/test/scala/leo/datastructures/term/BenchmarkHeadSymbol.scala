@@ -2,8 +2,9 @@ package leo.datastructures.term
 
 import java.io.{File, FileNotFoundException}
 
-import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term.{mkTermApp => ap, mkTypeApp => tyAp}
+import leo.datastructures._
+import leo.datastructures.impl.{Reductions, Signature}
+import Term.{mkTermApp => ap, mkTypeApp => tyAp}
 import leo.datastructures.{Clause, Role, Role_Definition, Role_Type, Role_Unknown}
 
 /**

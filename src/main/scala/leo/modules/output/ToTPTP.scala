@@ -1,10 +1,10 @@
 package leo.modules.output
 
+import leo.datastructures._
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term._
+import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
-import leo.datastructures.term._
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
@@ -138,7 +138,6 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
                        val newBVars = makeBVarList(bVarTys, bVars.length)
                        s"^ [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
-      case t1 @@@ t2 => s"${toTPTP0(t1, bVars)} @ ${toTPTP0(t2, bVars)}"
       case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")

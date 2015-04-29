@@ -1,9 +1,9 @@
 package leo.modules.normalization
 
+import leo.datastructures._
 import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.term._
 import Term._
-import leo.datastructures.{Clause, Forall, &, |||}
+import leo.datastructures._
 
 /**
  * Computes for a Skolemized Term the Prenex Normal Form
@@ -51,8 +51,6 @@ object PrenexNormal extends AbstractNormalize {
       //Pass through
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t                => mkTermApp(internalNormalize(s),internalNormalize(t))
-    case s @@@@ ty              => mkTypeApp(internalNormalize(s),ty)
     case f ∙ args               => Term.mkApp(internalNormalize(f), args.map(_.fold({t => Left(internalNormalize(t))},(Right(_)))))
     case ty :::> t              => \(ty)(internalNormalize(t))
     case TypeLambda(t)          => mkTypeAbs(internalNormalize(t))
@@ -65,8 +63,6 @@ object PrenexNormal extends AbstractNormalize {
     case s@Symbol(_)           => s
     case Bound(ty,n) if n < i  => formula
     case Bound(ty,n)            => mkBound(ty,n+1)
-    case s @@@ t                => mkTermApp(incrementBound(s,i), incrementBound(t,i))
-    case s @@@@ ty              => mkTypeApp(incrementBound(s,i), ty)
     case f ∙ args               => Term.mkApp(incrementBound(f,i), args.map(_.fold({t => Left(incrementBound(t,i))},(Right(_)))))
     case ty :::> t              => \(ty)(incrementBound(t,i+1))
     case TypeLambda(t)          => mkTypeAbs(incrementBound(t,i))

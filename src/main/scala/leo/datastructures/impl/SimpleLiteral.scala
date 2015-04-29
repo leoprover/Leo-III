@@ -1,7 +1,6 @@
 package leo.datastructures.impl
 
-import leo.datastructures.term.Term
-import leo.datastructures.{Literal, ===}
+import leo.datastructures.{Term, Literal, ===}
 
 /**
  * Implementation of the `Literal` type.

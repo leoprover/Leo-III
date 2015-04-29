@@ -1,5 +1,6 @@
 package leo
 
+import leo.datastructures.Term
 import leo.datastructures.impl.Signature
 import org.scalatest.Tag
 
@@ -26,7 +27,7 @@ trait TestUtility {
     sig
   }
 
-  def resetTermBank: Unit = {leo.datastructures.term.Term.reset()}
+  def resetTermBank: Unit = {Term.reset()}
 
   def resetBlackBoard: Unit = {leo.datastructures.blackboard.Blackboard().clear()}
 

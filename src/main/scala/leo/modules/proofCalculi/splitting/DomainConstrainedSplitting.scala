@@ -3,10 +3,9 @@ package modules.proofCalculi.splitting
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import leo.datastructures._
 import leo.datastructures.blackboard.{Store, FormulaStore}
-import leo.datastructures.term.Term._
-import leo.datastructures.{Type}
-import leo.datastructures.term.Term
+import Term._
 import leo.datastructures._
 import leo.datastructures.context.Context
 

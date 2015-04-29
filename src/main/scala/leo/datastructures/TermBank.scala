@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.term.Term
-
 /**
  * A `TermBank` is a special term `Factory` that caches previously
  * created terms. Each term is only created once and reused for each

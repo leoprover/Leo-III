@@ -1,7 +1,6 @@
 package leo.datastructures
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.term._
 
 /**
  * Term index data structure
@@ -72,11 +71,10 @@ object TermIndex {
         case Some(set) => occurs_at += ((subterm, inner + ((position, set + term))))
       }
     }
-    import Term.{Bound, Symbol, @@@, ∙, @@@@, :::>, TypeLambda}
+    import Term.{Bound, Symbol, ∙, :::>, TypeLambda}
     subterm match {
       case Bound(t,scope) => ()
       case Symbol(id)     => ()
-      case s @@@ t        => () // not implemented for curried terms
       case f ∙ args       => insertSubterms(term, f, position.headPos); var i = 1
                               for(arg <- args) {
                                 arg match {
@@ -84,7 +82,6 @@ object TermIndex {
                                   case Right(_) => ()
                                 }
                               }
-      case s @@@@ ty      => () // not implemented for curried terms
       case ty :::> s      => insertSubterms(term, s, position.abstrPos)
       case TypeLambda(t)  => insertSubterms(term, t, position.abstrPos)
     }

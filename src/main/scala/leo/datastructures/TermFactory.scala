@@ -1,8 +1,6 @@
 package leo.datastructures
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
-
 
 /**
  * Term creation factory.
@@ -17,6 +15,14 @@ trait TermFactory {
   def mkAtom(id: Signature#Key): Term
   /** Create bound index with de-Bruijn index `scope` and type `t` */
   def mkBound(t: Type, scope: Int): Term
+
+  def mkMetaVar(t: Type, id: Int): Term
+  
+  private var varCounter = 0
+  def mkFreshMetaVar(ty: Type): Term = {
+    varCounter = varCounter + 1
+    mkMetaVar(ty, varCounter)
+  }
 
   /** Create application term `(func arg)` */
   def mkTermApp(func: Term, arg: Term): Term
@@ -38,11 +44,7 @@ trait TermFactory {
     * where `args = Seq(arg_1, ..., arg_n)` and `arg_i` is either a term or a type */
   def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term
 
-  private var varCounter = 0
-  def mkFreshVar(ty: Type): Term = {
-    varCounter = varCounter - 1
-    Term.mkBound(ty, varCounter)
-  }
+
   // Pretty operators
 
   /** Creates a new term abstraction with parameter type `hd` and body `body`. Pretty variant of `mkTermAbs` */

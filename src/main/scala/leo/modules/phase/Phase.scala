@@ -10,7 +10,6 @@ import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore, SZSSt
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term
 import leo.modules.{SZSException, Utility}
 import leo.modules.normalization.{DefExpansion, NegationNormal, Simplification, Skolemization}
 import leo.modules.output._

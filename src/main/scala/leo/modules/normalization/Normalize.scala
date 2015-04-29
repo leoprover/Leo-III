@@ -1,8 +1,7 @@
 package leo.modules.normalization
 
-import leo.datastructures.Clause
+import leo.datastructures.{Term, Clause}
 import leo.datastructures.blackboard.FormulaStore
-import leo.datastructures.term.Term
 
 /**
  * This trait is shared by every Normalizing Object.

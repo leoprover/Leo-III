@@ -1,8 +1,8 @@
 package leo.modules.normalization
 
+import leo.datastructures._
 import leo.datastructures.blackboard.FormulaStore
 import leo.datastructures.impl.Signature
-import leo.datastructures.term._
 import Term._
 
 import leo.datastructures._
@@ -67,8 +67,6 @@ object Skolemization extends AbstractNormalize{
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t    => mkTermApp(skolemize(s),skolemize(t))
-    case s @@@@ ty  => mkTypeApp(skolemize(s),ty)
     case f ∙ args   => Term.mkApp(skolemize(f), args.map(_.fold({t => Left(skolemize(t))},(Right(_)))))
     case ty :::> s  => mkTermAbs(ty, skolemize(s))
     case TypeLambda(t) => mkTypeAbs(skolemize(t))
@@ -109,9 +107,7 @@ object Skolemization extends AbstractNormalize{
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
       case s@Bound(_,_)           => s
-      case s @@@ t    => Exists(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
       case f ∙ args   => Exists(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
-      case s @@@@ ty  => Exists(\(ty)(mkTypeApp(miniscope(s),ty)))
       case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
 //      case _  => formula
@@ -145,8 +141,6 @@ object Skolemization extends AbstractNormalize{
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
       case s@Bound(_,_)           => s
-      case s @@@ t    => Forall(\(ty)(mkTermApp(miniscope(s),miniscope(t))))
-      case s @@@@ ty  => Forall(\(ty)(mkTypeApp(miniscope(s),ty)))
       case f ∙ args   => Forall(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
       case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
@@ -156,8 +150,6 @@ object Skolemization extends AbstractNormalize{
       // In neither of the above cases, move inwards
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s @@@ t    => mkTermApp(miniscope(s),miniscope(t))
-    case s @@@@ ty  => mkTypeApp(miniscope(s),ty)
     case f ∙ args   => Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))
     case ty :::> s  => mkTermAbs(ty, miniscope(s))
     case TypeLambda(t) => mkTypeAbs(miniscope(t))

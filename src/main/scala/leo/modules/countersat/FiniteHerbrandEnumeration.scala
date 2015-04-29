@@ -3,8 +3,7 @@ package modules.countersat
 
 import leo.datastructures._
 import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term._
-import leo.datastructures.term.Term
+import Term._
 
 /**
  *
@@ -47,9 +46,7 @@ object FiniteHerbrandEnumeration {
       //If it is not a quantifier, continue iterating
     case s@Symbol(_)       => s
     case s@Bound(_,_)      => s
-    case s @@@ t            => mkTermApp(replaceQuant(s, domain),replaceQuant(t,domain))  // Should not happen after beta normalize, unless s is irreduceable
     case f ∙ args           => mkApp(replaceQuant(f,domain), args.map(_.fold({t => Left(replaceQuant(t,domain))},(Right(_)))))
-    case s @@@@ ty          => mkTypeApp(replaceQuant(s,domain), ty)
     case ty :::> s        => mkTermAbs(ty, replaceQuant(s,domain))
     case TypeLambda(t)    => mkTypeAbs(replaceQuant(t,domain))
   }

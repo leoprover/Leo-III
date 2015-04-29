@@ -3,8 +3,8 @@ package leo.datastructures.term
 import java.io.{File, FileNotFoundException}
 
 import leo.datastructures._
-import leo.datastructures.impl.Signature
-import leo.datastructures.term.Term.{mkTermApp => ap, mkTypeApp => tyAp}
+import leo.datastructures.impl.{Reductions, Signature}
+import Term.{mkTermApp => ap, mkTypeApp => tyAp}
 
 /**
  * Created by lex on 13.08.14.
