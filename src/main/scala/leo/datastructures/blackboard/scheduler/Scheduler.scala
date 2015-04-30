@@ -2,6 +2,8 @@ package leo
 package datastructures
 package blackboard.scheduler
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import leo.datastructures.blackboard._
 
 import scala.collection.mutable
@@ -112,7 +114,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def working() : Boolean = {
     this.synchronized(
-      return w.work || curExec.nonEmpty
+      return w.work || curExec.nonEmpty || filterNum.get() > 0
     )
   }
 
@@ -252,17 +254,18 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
             case Some(xs) =>
               val ts = if(xs.isEmpty) result.keys else xs
               ts.foreach{t =>
-                newD.getOrElse(t, Nil).foreach{d => a.filter(DataEvent(d,t))}
-                updateD.getOrElse(t, Nil).foreach{d => a.filter(DataEvent(d,t))}
+                // Queuing for filtering on the existing threads
+                newD.getOrElse(t, Nil).foreach{d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a,t,d))}//a.filter(DataEvent(d,t))}
+                updateD.getOrElse(t, Nil).foreach{d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a,t,d))}//a.filter(DataEvent(d,t))}
                 // TODO look at not written data,,,
               }
           }
         }
       }
 //      Out.comment(s"[Writer]: Gone through all.")
+
       curExec.remove(task)
       work = false
-      Blackboard().forceCheck()
     }
   }
 
@@ -277,6 +280,20 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       ExecTask.put(a.run(t),t)
       AgentWork.dec(a)
 //      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
+    }
+  }
+
+  private var filterNum : AtomicInteger = new AtomicInteger(0)
+
+  private class GenFilter(a : AgentController, t : DataType, newD : Any) extends Runnable{
+    override def run(): Unit = {
+      // Sync and trigger on last check
+
+      a.filter(DataEvent(newD,t))
+
+      if(filterNum.decrementAndGet() == 0)
+        Blackboard().forceCheck()
+      //Release sync
     }
   }
 

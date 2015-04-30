@@ -147,6 +147,7 @@ trait CompletePhase extends Phase {
     var scedKill = false
     override def toFilter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
+        Out.comment(s"Got done event for $getName")
         synchronized{finish = true; notifyAll()};List()
       case DataEvent(SZSStore(s,c), StatusType) if c.parentContext == null && c.isClosed => // The root context was closed
         synchronized{finish = true; notifyAll()};List()
