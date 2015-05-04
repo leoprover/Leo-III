@@ -47,10 +47,32 @@ class UnificationTestSuite extends LeoTestSuite {
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
     // should have 4 unifiers, we need to check they are different from each other
-    for( a <- 1 to 1) {
+    for( a <- 1 to 4) {
       val sb: Subst = result.next
-      println(sb.pretty)
       assert (t1.substitute(sb).betaNormalize.equals (t2))
+    }
+    assert (result.isEmpty)
+  }
+
+  // x(f(a)) = f(x(a)) -> inf # of unifiers
+  test("x(f(a)) = f(x(a))", Checked){
+  val s = getFreshSignature
+
+  val a = mkAtom(s.addUninterpreted("a",s.i))
+  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+  val x = mkFreshMetaVar(s.i ->: s.i)
+
+    val t1 : Term = mkTermApp(x,mkTermApp(f,a))
+    val t2 : Term = mkTermApp(f,mkTermApp(x,a))
+
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2,1).iterator
+
+    val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
+
+    // should have inf many unifiers
+    for( a <- 1 to 50) {
+      val sb: Subst = result.next
+      assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
     }
   }
 }
