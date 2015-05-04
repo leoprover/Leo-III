@@ -54,12 +54,9 @@ class ToTPTPTestSuite extends LeoTestSuite {
           val parsed = parseRes.right.get
           print("Processing of parsed formulae ...")
           val processed = InputProcessing.process(sig)(parsed)
-          if (processed.isEmpty) {
-            println("Failed!")
-            fail("Backward processing returned empty result.")
-          } else {
+
             println("Success!")
-            val (name, form, role) = processed.get
+            val (name, form, role) = processed
             println(s"Equivalent names: ${name == fs.name}")
             println(s"Equivalent roles: ${role == fs.role}")
 
@@ -74,7 +71,7 @@ class ToTPTPTestSuite extends LeoTestSuite {
 
               fail("toTPTP translation defective or backward translation buggy.")
             }
-          }
+
         }
       }
     }

@@ -3,10 +3,10 @@ package leo.datastructures.tptp
 object Commons {
 
   // Files
-  sealed case class TPTPInput(inputs: List[Either[AnnotatedFormula, Include]]) {
-    def getIncludes:List[Include] = inputs.filter(x => x.isRight).map(_.merge).asInstanceOf[List[Include]]
+  sealed case class TPTPInput(inputs: Seq[Either[AnnotatedFormula, Include]]) {
+    def getIncludes:Seq[Include] = inputs.filter(x => x.isRight).map(_.right.get)
     def getIncludeCount: Int = getIncludes.size
-    def getFormulae:List[AnnotatedFormula] = inputs.filter(x => x.isLeft).map(_.merge).asInstanceOf[List[AnnotatedFormula]]
+    def getFormulae:Seq[AnnotatedFormula] = inputs.filter(x => x.isLeft).map(_.left.get)
     def getFormulaeCount: Int = getFormulae.size
   }
 

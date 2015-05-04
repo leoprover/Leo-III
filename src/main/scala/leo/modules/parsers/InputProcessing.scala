@@ -52,13 +52,7 @@ object InputProcessing {
    * @return A List of tuples (name, term, role) of translated terms
    */
   def processAll(sig: Signature)(input: Seq[AnnotatedFormula]): Seq[Result] = {
-    input.map({case f => process(sig)(f) match {
-      case None      => {  // TODO: Why not just drop it?
-        val role = processRole(f.role)
-        (f.name, singleTermToClause(LitTrue(), role), role)
-      }
-      case Some(res) => res
-    }})
+    input.map(process(sig)(_))
   }
 
   private def processRole(role: String): Role = Role(role)
@@ -69,13 +63,17 @@ object InputProcessing {
   }
   private def singleTermToClause(t: Term, role: Role): Clause = Clause.mkClause(Seq(Literal.mkPosLit(t)), roleToClauseOrigin(role))
 
-  def process(sig: Signature)(input: AnnotatedFormula): Option[Result] = {
-    input match {
+  def process(sig: Signature)(input: AnnotatedFormula): Result = {
+    val p = input match {
       case _:TPIAnnotated => processTPI(sig)(input.asInstanceOf[TPIAnnotated])
       case _:THFAnnotated => processTHF(sig)(input.asInstanceOf[THFAnnotated])
       case _:TFFAnnotated => processTFF(sig)(input.asInstanceOf[TFFAnnotated])
       case _:FOFAnnotated => processFOF(sig)(input.asInstanceOf[FOFAnnotated])
       case _:CNFAnnotated => processCNF(sig)(input.asInstanceOf[CNFAnnotated])
+    }
+    p match {
+      case None => val role = processRole(input.role); (input.name, singleTermToClause(LitTrue, role), role)
+      case Some(res) => res
     }
   }
 
