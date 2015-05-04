@@ -19,6 +19,10 @@ import scala.collection.immutable.HashSet
  * @since 12/1/14
  */
 object Utility {
+
+  /** The working directory in which the executable was launched from. */
+  val wd: String = System.getenv("user.dir")
+
   /**
    * List of currently loaded tptp files
    */
