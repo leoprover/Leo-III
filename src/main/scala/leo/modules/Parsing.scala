@@ -175,7 +175,10 @@ object Parsing {
     if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
       throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist.")
     } else {
-      Source.fromFile(absolutePath.toFile).getLines() mkString "\n"
+        val s = Source.fromFile(absolutePath.toFile)
+        val res = s.getLines() mkString "\n"
+        s.close()
+        res
     }
   }
 
