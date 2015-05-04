@@ -62,7 +62,7 @@
          <artifactId>scalatest-maven-plugin</artifactId>
          <version>1.0</version>
          <configuration>
-	        <forkMode>once</forkMode>
+	        <forkMode>never</forkMode>
           <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory> <!-- So Maven can Display it good -->
           <junitxml>.</junitxml>
           <filereports>WDF TestSuite.txt</filereports>
