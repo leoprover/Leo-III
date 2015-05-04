@@ -21,4 +21,4 @@ then
    make
 fi
 
-java -jar target/leo-iii-jar-with-dependencies.jar "$@"
+java -jar "`dirname "$0"`/target/leo-iii-jar-with-dependencies.jar" "$@"
