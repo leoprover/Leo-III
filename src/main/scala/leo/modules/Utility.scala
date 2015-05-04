@@ -19,6 +19,10 @@ import scala.collection.immutable.HashSet
  * @since 12/1/14
  */
 object Utility {
+
+  /** The working directory in which the executable was launched from. */
+  val wd: String = System.getenv("user.dir")
+
   /**
    * List of currently loaded tptp files
    */
@@ -144,7 +148,7 @@ object Utility {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+        processed match { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
           val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
           if (FormulaDataStore.addFormula(f))
             Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
@@ -306,12 +310,10 @@ object Utility {
 
 class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
-case class SZSOutput(status : StatusSZS, problem: String = "") extends Output {
-  override def output: String = problem match {
-    case "" => s"% SZS status ${status.output}"
-    case prob => s"% SZS status ${status.output} for $problem"
+case class SZSOutput(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
+  override def output: String = if (furtherInfo == "") {
+    s"% SZS status ${status.output} for $problem"
+  } else {
+    s"% SZS status ${status.output} for $problem : $furtherInfo"
   }
 }
-
-
-
