@@ -64,6 +64,15 @@ object Subst {
   val shift: Subst = SubstImpl.shift
   def shift(n: Int): Subst = SubstImpl.shift(n)
 
+  def singleton(what: Int, by: Term): Subst = {
+    var s = Subst.id
+    for(idx <- 1 to (what-1)) {
+      s = BoundFront(idx) +: s
+    }
+
+    TermFront(by) +: s
+  }
+
   // legacy
   //  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
   //    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)

@@ -8,7 +8,9 @@ import leo.datastructures.{Literal, Clause, ClauseOrigin, Type}
  * @author Alexander Steen
  * @since 23.11.2014
  */
-abstract sealed class VectorClause extends Clause
+abstract sealed class VectorClause extends Clause {
+  lazy val flexHeadLits: Seq[Literal] = lits.filter(_.flexHead)
+}
 
 object VectorClause {
   private var clauseCounter : Int = 0

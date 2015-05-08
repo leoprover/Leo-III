@@ -8,7 +8,9 @@ import leo.datastructures.{Term, Literal, ===}
  * @author Alexander Steen
  * @since 19.11.2014
  */
-abstract class SimpleLiteral extends Literal {}
+protected[impl] abstract class SimpleLiteral extends Literal {
+  lazy val flexHead: Boolean = term.headSymbol.isVariable
+}
 
 
 object SimpleLiteral {

@@ -63,7 +63,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   // Predicates on terms
   val isAtom = args == SNil
   val isConstant = isAtom && hd.isConstant
-  val isVariable = isAtom && hd.isBound
+  val isVariable = isAtom && (hd.isBound || hd.isMetaVariable)
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = args != SNil
