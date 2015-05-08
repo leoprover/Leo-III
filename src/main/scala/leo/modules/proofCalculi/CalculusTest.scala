@@ -140,6 +140,51 @@ object PropParamodulation extends ParamodStep{
     override def output: String = "Paramod-Full"
   }
 
+trait CalculusRule
+trait UnaryCalculusRule[R] extends (Clause => R) with CalculusRule {
+    def canApply(cl: Clause): Boolean
+}
+
+/**
+ * {{{
+ *    C \/ [Q U^k]^\alpha , P general binding for NOT, OR, FORALL $i, EQ, NEQ
+ *   ------------------------------------
+ *     V[Q/P] \/ [P U^k]^\alpha
+ * }}}
+ */
+object PrimSubst extends UnaryCalculusRule[Set[Clause]] {
+    def canApply(cl: Clause) = cl.flexHeadLits.nonEmpty
+
+    def apply(cl: Clause): Set[Clause] = {
+      val lt = cl.flexHeadLits.head
+      val restLits = cl.lits.filterNot(_ == lt)
+
+      import Term.TermApp
+      val (hd, args) = TermApp.unapply(lt.term).get
+      val metaVarIdx = hd.metaIndices.head
+      val ty = hd.ty
+
+      val notBinding = HuetsPreUnification.partialBinding(ty, Not)
+      val orBinding = HuetsPreUnification.partialBinding(ty, |||)
+//      val forallIBinding = HuetsPreUnification.partialBinding(ty, Forall)
+      val eqBinding = HuetsPreUnification.partialBinding(ty, ===)
+      val neqBinding = HuetsPreUnification.partialBinding(ty, !===)
+
+      val notSubst = Subst.singleton(metaVarIdx, notBinding)
+      val orSubst = Subst.singleton(metaVarIdx, orBinding)
+      val eqSubst = Subst.singleton(metaVarIdx, eqBinding)
+      val neqSubst = Subst.singleton(metaVarIdx, neqBinding)
+
+      Set(
+        Clause.mkClause(Literal.mkLit(Term.mkTermApp(notBinding, args).betaNormalize, lt.polarity) +: restLits.map(_.termMap(_.substitute(notSubst).betaNormalize)), Derived),
+        Clause.mkClause(Literal.mkLit(Term.mkTermApp(orBinding, args).betaNormalize, lt.polarity) +: restLits.map(_.termMap(_.substitute(orSubst).betaNormalize)), Derived),
+        Clause.mkClause(Literal.mkLit(Term.mkTermApp(eqBinding, args).betaNormalize, lt.polarity) +: restLits.map(_.termMap(_.substitute(eqSubst).betaNormalize)), Derived),
+        Clause.mkClause(Literal.mkLit(Term.mkTermApp(neqBinding, args).betaNormalize, lt.polarity) +: restLits.map(_.termMap(_.substitute(neqSubst).betaNormalize)), Derived)
+      )
+
+    }
+}
+
   // TODO: Optimize
   object Simp {
     def apply (c : Clause) : Clause = {
