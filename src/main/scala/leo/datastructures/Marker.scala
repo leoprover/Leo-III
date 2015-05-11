@@ -109,6 +109,23 @@ case object FromConjecture extends ClauseOrigin { val priority = 2 }
 case object Derived extends ClauseOrigin { val priority = 1 }
 
 
+abstract sealed class ClauseAnnotation extends Pretty
+case class InferredFrom(rule: leo.modules.proofCalculi.CalculusRule, cl: Set[Clause]) extends ClauseAnnotation {
+  def pretty: String = s"inference(${rule.name}), [], [${cl.map(_.id).mkString(",")}])"
+}
+case object NoAnnotation extends ClauseAnnotation {
+  val pretty: String = ""
+}
+
+object ClauseAnnotation {
+  def apply(rule: leo.modules.proofCalculi.CalculusRule, cls: Set[Clause]): ClauseAnnotation =
+    new InferredFrom(rule, cls)
+
+  def apply(rule: leo.modules.proofCalculi.CalculusRule, cl: Clause): ClauseAnnotation =
+    new InferredFrom(rule, Set(cl))
+}
+
+
 //////////////////////////////////////////////
 //////////////////////////////////////////////
 
