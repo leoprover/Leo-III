@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import leo.datastructures.blackboard._
 
 import scala.collection.mutable
-import java.util.concurrent.Executors
+import java.util.concurrent.{RejectedExecutionException, Executors}
 
 
 /**
@@ -134,11 +134,11 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def killAll() : Unit = s.synchronized{
     endFlag = true
     pauseFlag = false
-    ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
     exe.shutdownNow()
-    curExec.clear()
     AgentWork.executingAgents() foreach(_.kill())
+    curExec.clear()
     AgentWork.clear()
+    ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
     sT.interrupt()
     s.notifyAll()
     curExec.clear()
@@ -248,18 +248,23 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           })
         }
 
-        Blackboard().filterAll {a =>    // Informing agents of the changes
-          a.interest match {
-            case None => ()
-            case Some(xs) =>
-              val ts = if(xs.isEmpty) result.keys else xs
-              ts.foreach{t =>
-                // Queuing for filtering on the existing threads
-                newD.getOrElse(t, Nil).foreach{d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a,t,d))}//a.filter(DataEvent(d,t))}
-                updateD.getOrElse(t, Nil).foreach{d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a,t,d))}//a.filter(DataEvent(d,t))}
-                // TODO look at not written data,,,
-              }
+        try {
+          Blackboard().filterAll { a => // Informing agents of the changes
+            a.interest match {
+              case None => ()
+              case Some(xs) =>
+                val ts = if (xs.isEmpty) result.keys else xs
+                ts.foreach { t =>
+                  // Queuing for filtering on the existing threads
+                  newD.getOrElse(t, Nil).foreach { d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
+                  updateD.getOrElse(t, Nil).foreach { d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
+                  // TODO look at not written data,,,
+                }
+            }
           }
+        } catch {
+          case e : RejectedExecutionException => return
+          case _ => Out.severe("Problem occured while filtering new tasks.")
         }
       }
 //      Out.comment(s"[Writer]: Gone through all.")

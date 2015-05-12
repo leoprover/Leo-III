@@ -134,7 +134,10 @@ trait CompletePhase extends Phase {
     init()
     initWait()
 
-    if(!waitTillEnd()) return false
+    if(!waitTillEnd()) {
+      Out.info(s"$name will be terminated and program is quitting.")
+      return false
+    }
     // Ending all agents and clear the scheduler
     end()
 
@@ -155,6 +158,7 @@ trait CompletePhase extends Phase {
     override def name: String = s"${getName}Terminator"
     override def run(t: Task): Result = Result()
     override def kill(): Unit = synchronized{
+      Out.info(s"$name was killed.")
       scedKill = true
       finish = true
       notifyAll()
