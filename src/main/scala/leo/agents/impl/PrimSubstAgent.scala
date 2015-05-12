@@ -4,6 +4,7 @@ package impl
 
 import leo.datastructures.blackboard._
 import Store._
+import leo.modules.proofCalculi.StdPrimSubst
 
 /**
  * Created by lex on 11.05.15.
@@ -44,7 +45,7 @@ class PrimSubstAgent extends Agent {
   def toFilter(event: Event) = {
     event match {
       case DataEvent(f: FormulaStore, FormulaType) => {
-        if (f.clause.flexHeadLits.nonEmpty) {
+        if (StdPrimSubst.canApply(f.clause)) {
           Seq(PrimSubstTask(f))
         } else {
           Seq()
