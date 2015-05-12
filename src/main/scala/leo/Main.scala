@@ -85,20 +85,26 @@ object Main {
       }
       deferredKill.kill()
 
-      Out.output(s"% SZS status ${SZSDataStore.getStatus(Context()).fold(SZS_Unknown.output)(_.output)} for ${Configuration.PROBLEMFILE}")
+
+      val endTime = System.currentTimeMillis()
+      Out.output(SZSOutput(SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown), Configuration.PROBLEMFILE, s"${endTime-beginTime} ms"))
+
       // TODO build switch for mulitple contexts
       // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
-      if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printDerivation(_))
-      val endTime = System.currentTimeMillis()
-      Out.output("% Time: " + (endTime - beginTime) + "ms")
-
+      if (Configuration.PROOF_OBJECT) {
+        Out.comment(s"SZS output start Proof for ${Configuration.PROBLEMFILE}")
+        FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printDerivation(_))
+        Out.comment(s"SZS output end Proof for ${Configuration.PROBLEMFILE}")
+      }
+      
     } catch {
       case e:SZSException => {
         if (e.getMessage != null) {
-          Out.comment(e.getMessage)
           Out.info(e.getMessage)
+          Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.getMessage))
+        } else {
+          Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE))
         }
-        Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE))
         Out.debug(e.debugMessage)
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
@@ -108,10 +114,11 @@ object Main {
       }
       case e:Throwable => {
         if (e.getMessage != null) {
-          Out.comment(e.getMessage)
           Out.info(e.getMessage)
+          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.getMessage))
+        } else {
+          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE))
         }
-        Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE))
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
           Out.trace("Caused by: " + e.getCause.getMessage)

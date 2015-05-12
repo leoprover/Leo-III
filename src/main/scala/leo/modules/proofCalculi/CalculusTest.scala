@@ -140,6 +140,38 @@ object PropParamodulation extends ParamodStep{
     override def output: String = "Paramod-Full"
   }
 
+trait CalculusRule {
+  def name: String
+}
+trait UnaryCalculusRule[R] extends (Clause => R) with CalculusRule {
+    def canApply(cl: Clause): Boolean
+}
+
+/**
+ * {{{
+ *    C \/ [Q U^k]^\alpha , P general binding for `hdSymb`
+ *   ------------------------------------
+ *     V[Q/P] \/ [P U^k]^\alpha
+ * }}}
+ */
+class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause]] {
+  val name = "prim_subst"
+
+    def canApply(cl: Clause) = cl.flexHeadLits.nonEmpty
+
+    def apply(cl: Clause): Set[Clause] = hdSymbs.map{hdSymb =>
+      val vars = cl.flexHeadLits.map(_.term.headSymbol)
+      vars.map{case hd =>
+        val binding = HuetsPreUnification.partialBinding(hd.ty, hdSymb)
+        val subst = Subst.singleton(hd.metaIndices.head, binding)
+        Clause.mkClause(cl.lits.map(_.termMap(_.substitute(subst).betaNormalize)), cl.implicitBindings, Derived, ClauseAnnotation(this, cl))
+      }
+    }.flatten
+}
+
+object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
+
+
   // TODO: Optimize
   object Simp {
     def apply (c : Clause) : Clause = {
