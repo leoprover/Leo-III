@@ -1,14 +1,14 @@
 package leo.modules.phase
 
-import leo.agents.impl.{ParamodulationAgent, SplittingAgent, ClausificationAgent, NormalClauseAgent}
+import leo.agents.impl._
 import leo.agents.{PriorityController, FifoController, AgentController}
-import leo.modules.normalization.{Skolemization, NegationNormal, Simplification, DefExpansion}
+import leo.modules.normalization._
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  override protected val agents: Seq[AgentController] = List(new FifoController(new NormalClauseAgent(DefExpansion)), new FifoController(new NormalClauseAgent(Simplification)), new FifoController(new NormalClauseAgent(NegationNormal)),new FifoController(new NormalClauseAgent(Skolemization)))
+  override protected val agents: Seq[AgentController] = List(new FifoController(new NormalClauseAgent(DefExpansion)), new FifoController(new NormalClauseAgent(Simplification)), new FifoController(new NormalClauseAgent(NegationNormal)),new FifoController(new NormalClauseAgent(Skolemization)), new FifoController(new NormalClauseAgent(PrenexNormal)), new FifoController(new MetaVarAgent))
 }
 
 object SimplificationPhase extends CompletePhase {
