@@ -16,7 +16,7 @@ import scala.collection.mutable
  * @author Max Wisniewski
  * @since 5/13/15
  */
-class UnificationStore extends DataStore {
+object UnificationStore extends DataStore {
 
   private val openUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term),Iterable[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Iterable[Subst]]]()
   private val doneUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term), Set[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Set[Subst]]]()

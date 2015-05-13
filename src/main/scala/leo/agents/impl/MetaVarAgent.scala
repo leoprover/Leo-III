@@ -14,6 +14,7 @@ import leo.datastructures.blackboard._
  */
 class MetaVarAgent extends Agent {
   override def name: String = "MetavarAgent"
+  override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
 
   /**
    * This function runs the specific agent on the registered Blackboard.
