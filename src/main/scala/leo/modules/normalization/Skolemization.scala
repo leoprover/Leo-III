@@ -23,6 +23,8 @@ object Skolemization extends AbstractNormalize{
   /**
    * Normalizes a formula corresponding to the object.
    *
+   * IMPORTANT: Does only work after NegationNormal form, since polarity is not considered here.
+   *
    * @param formula - A annotated formula
    * @return a normalized formula
    */

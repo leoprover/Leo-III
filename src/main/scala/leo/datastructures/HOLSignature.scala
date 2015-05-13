@@ -96,7 +96,8 @@ trait HOLSignature {
   )
 
   // Standard defined symbols
-  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
+  lazy val definedConsts = List(
+    ("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
     ("&",   andDef,  o ->: o ->: o), // Key 43
     ("=>",  implDef, o ->: o ->: o), // Key 44
     ("<=",  ifDef,   o ->: o ->: o), // Key 45

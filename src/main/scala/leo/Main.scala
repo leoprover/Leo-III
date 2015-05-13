@@ -9,7 +9,7 @@ import leo.datastructures.context.Context
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
-import leo.modules.phase.Phase
+import leo.modules.phase.{PreprocessPhase, LoadPhase, Phase}
 import Phase._
 
 
@@ -82,6 +82,7 @@ object Main {
         r = phase.execute()
         val end = System.currentTimeMillis()
         Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
+        Utility.formulaContext()
       }
       if(!deferredKill.isFinished) deferredKill.kill()
 

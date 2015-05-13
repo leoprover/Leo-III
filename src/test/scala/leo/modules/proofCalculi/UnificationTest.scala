@@ -23,7 +23,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(f , List(x,x))
     val t2 : Term = mkTermApp(f , List(a,z))
 
-    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2,1).iterator
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2).iterator
 
     val sb: Subst = result.next
     assert(!result.hasNext)
@@ -42,7 +42,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(mkFreshMetaVar(s.i ->: s.i),a)
     val t2 : Term = mkTermApp(f , List(a,a))
 
-    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2,1).iterator
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
@@ -65,7 +65,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,a))
     val t2 : Term = mkTermApp(f,mkTermApp(x,a))
 
-    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2,1).iterator
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 

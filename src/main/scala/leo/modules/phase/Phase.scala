@@ -20,7 +20,7 @@ import leo.modules.proofCalculi.{IdComparison, Paramodulation, PropParamodulatio
 
 object Phase {
   def getStdPhases : Seq[Phase] = List(new LoadPhase(true), SimplificationPhase, ParamodPhase)
-  def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, SimpleEnumerationPhase, ParamodPhase)
+  def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
   def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
   def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
   def getCounterSatRemote : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
