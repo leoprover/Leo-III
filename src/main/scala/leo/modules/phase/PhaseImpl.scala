@@ -1,6 +1,6 @@
 package leo.modules.phase
 
-import leo.agents.impl.{ParamodulationAgent, SplittingAgent, ClausificationAgent, NormalClauseAgent}
+import leo.agents.impl._
 import leo.agents.{PriorityController, FifoController, AgentController}
 import leo.modules.normalization.{Skolemization, NegationNormal, Simplification, DefExpansion}
 import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
@@ -28,6 +28,6 @@ object SplitPhase extends CompletePhase {
 
 object ParamodPhase extends CompletePhase {
   override val name : String = "ParamodPhase"
-  override protected val agents: Seq[AgentController] = List(new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison)), new PriorityController(new ClausificationAgent()))
+  override protected val agents: Seq[AgentController] = List(new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison)), new PriorityController(new ClausificationAgent()), new PriorityController(PrimSubstAgent))
 }
 

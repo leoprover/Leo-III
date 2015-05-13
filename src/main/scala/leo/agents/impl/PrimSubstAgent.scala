@@ -9,7 +9,7 @@ import leo.modules.proofCalculi.StdPrimSubst
 /**
  * Created by lex on 11.05.15.
  */
-class PrimSubstAgent extends Agent {
+object PrimSubstAgent extends Agent {
   /**
    *
    * @return the name of the agent
