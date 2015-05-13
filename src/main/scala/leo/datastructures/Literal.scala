@@ -33,7 +33,7 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
 
   def replace(what : Term, by : Term) : Literal = Literal.mkLit(term.replace(what,by), polarity)
 
-  def substitute(s : Subst) : Literal = termMap {_.closure(s)}
+  def substitute(s : Subst) : Literal = termMap {_.substitute(s).betaNormalize}
 
   lazy val flipPolarity: Literal =  if (polarity)
                                       Literal.mkNegLit(term)
