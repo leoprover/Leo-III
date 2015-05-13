@@ -74,7 +74,6 @@ object Main {
         new FifoController(ContextControlAgent).register()
         it = getHOStdPhase.iterator
       }
-      it = List(new LoadPhase(true), PreprocessPhase).iterator
       var r = true
       while (it.hasNext && r && !deferredKill.isFinished) {
         val phase = it.next()

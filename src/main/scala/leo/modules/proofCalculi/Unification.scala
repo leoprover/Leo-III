@@ -10,17 +10,16 @@ trait Unification {
    *
    * @param t - First term to unify
    * @param s - Second term to unify
-   * @param n - Offset for new implicit Bindings (n+1 will be the next binding). Number of parameters.
    * @return a stream of Substitution to make both terms equal, empty stream if they are not unifiable
    */
-  def unify(t : Term, s : Term, n : Int) : Iterable[Subst]
+  def unify(t : Term, s : Term) : Iterable[Subst]
 }
 
 /**
  * Tests solely for equality
  */
 object IdComparison extends Unification{
-  override def unify(t : Term, s : Term, n : Int) : Iterable[Subst] = if (s == t) Stream(Subst.id) else Stream.empty
+  override def unify(t : Term, s : Term) : Iterable[Subst] = if (s == t) Stream(Subst.id) else Stream.empty
 }
 
 // Look for TODO, TOFIX (and TOTEST in the corresponding test file)
@@ -39,7 +38,7 @@ object HuetsPreUnification extends Unification {
 
   type UEq = Tuple2[Term,Term]
 
-  def unify (t1 : Term, s1 : Term, n : Int) : Iterable[Subst] = {
+  def unify (t1 : Term, s1 : Term) : Iterable[Subst] = {
 
     val t = t1.etaExpand
     val s = s1.etaExpand

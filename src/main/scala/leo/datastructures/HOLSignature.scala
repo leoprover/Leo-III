@@ -92,12 +92,12 @@ trait HOLSignature {
     ("$to_rat",      forall(1 ->: rat)), // Key 38
     ("$to_real",      forall(1 ->: real)), // Key 39
       ("$is_rat",      forall(1 ->: o)), // Key 40
-      ("$is_int",      forall(1 ->: o)), // Key 41
-    ("?", forall((1 ->: o) ->: o)) // Key 42
+      ("$is_int",      forall(1 ->: o)) // Key 41
   )
 
   // Standard defined symbols
   lazy val definedConsts = List(
+    ("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
     ("&",   andDef,  o ->: o ->: o), // Key 43
     ("=>",  implDef, o ->: o ->: o), // Key 44
     ("<=",  ifDef,   o ->: o ->: o), // Key 45
