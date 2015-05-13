@@ -10,6 +10,7 @@ import leo.datastructures._
  */
 abstract sealed class VectorClause extends Clause {
   lazy val flexHeadLits: Set[Literal] = lits.filter(_.flexHead).toSet
+  lazy val uniLits: Set[Literal] = lits.filter(_.isUni).toSet
 }
 
 object VectorClause {

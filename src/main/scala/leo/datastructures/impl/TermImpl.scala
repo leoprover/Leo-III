@@ -862,7 +862,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
 
   // Handling def. expansion
-  val δ_expandable = tail.δ_expandable
+  lazy val δ_expandable = tail.δ_expandable
   def partial_δ_expand(rep: Int) = cons(Right(hd), tail.partial_δ_expand(rep))
   lazy val full_δ_expand = cons(Right(hd), tail.full_δ_expand)
 

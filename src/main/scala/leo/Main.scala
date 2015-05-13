@@ -83,7 +83,6 @@ object Main {
         r = phase.execute()
         val end = System.currentTimeMillis()
         Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
-        Utility.formulaContext()
       }
       if(!deferredKill.isFinished) deferredKill.kill()
 

@@ -23,6 +23,8 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
   def isFlexFlex: Boolean
   /** Returns true iff the literal is an unification constraint. */
   def isUni: Boolean
+  /** If `this.isUni` returns (A,B) where A = B is the underlying literal's unification constraint */
+  def uniComponents: Option[(Term, Term)]
   /** Returns true iff the literal has a flexible head. */
   def flexHead: Boolean
 
@@ -31,7 +33,7 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
 
   def replace(what : Term, by : Term) : Literal = Literal.mkLit(term.replace(what,by), polarity)
 
-  def substitute(s : Subst) : Literal = termMap {_.closure(s)}
+  def substitute(s : Subst) : Literal = termMap {_.substitute(s).betaNormalize}
 
   lazy val flipPolarity: Literal =  if (polarity)
                                       Literal.mkNegLit(term)
