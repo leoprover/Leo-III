@@ -112,9 +112,20 @@ object HuetsPreUnification extends Unification {
   /**
    *  all terms are flex variables
    */
-  private def computeDefaultSub(ls: List[Term]): Subst = {
+  private def computeDefaultSub(ls: Seq[Term]): Subst = {
+    val it = ls.iterator
+    var map : Map[Int, Term] = Map()
+    while (it.hasNext) {
+      val flex = it.next()
+      val (ty, id) = MetaVar.unapply(flex).get
+      val tys = ty.funParamTypesWithResultType
+
+      map = map + (id -> λ(tys.init)(Term.mkFreshMetaVar(tys.last)))
+    }
+    Subst.fromMap(map)
+
     //val maxIdx: Int = Bound.unapply(ls.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-    var sub = Subst.id
+//    var sub = Subst.id
     /*for (i <- 1 to maxIdx)
       ls.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
         case Some((typ,t)) => {
@@ -122,7 +133,7 @@ object HuetsPreUnification extends Unification {
         }
         case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
     }*/
-    sub
+//    sub
   }
 
   // n is arity of variable
