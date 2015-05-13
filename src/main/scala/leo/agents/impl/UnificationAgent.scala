@@ -21,7 +21,7 @@ class UnificationAgent extends Agent {
    */
   override def run(t: Task): Result = t match {
     case UnificationTask(f,t1,t2,s) =>
-      val nf = f.randomName().newClause(f.clause.mapLit(_.termMap(_.substitute(s).betaNormalize)))
+      val nf = f.randomName().newClause(f.clause.substitute(s))
       Result().insert(FormulaType)(nf).insert(UnifierType)(UnifierStore(f,t1,t2,s))
     case _ => Result()
   }
@@ -33,7 +33,7 @@ class UnificationAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
-      f.clause.map{l => isUniConstrained(l) match {
+      f.clause.uniLits.map{ l => l.uniComponents match {
         case Some((t1,t2))  => UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
         case _  => Nil
       }}.flatten
@@ -41,12 +41,6 @@ class UnificationAgent extends Agent {
       UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
     case _ => Nil
   }
-
- private def isUniConstrained(l : Literal) : Option[(Term,Term)] = l.term match {
-   case ===(t1, t2) if !l.polarity  => Some((t1,t2))
-   case !===(t1,t2) if l.polarity   => Some((t1,t2))
-   case _                         => None
- }
 }
 
 private class UnificationTask(val f : FormulaStore, val t1 : Term, val t2 : Term, val s : Subst) extends Task {
