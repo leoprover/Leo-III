@@ -65,12 +65,37 @@ object Subst {
   def shift(n: Int): Subst = SubstImpl.shift(n)
 
   def singleton(what: Int, by: Term): Subst = {
-    var s = Subst.id
-    for(idx <- 1 to (what-1)) {
-      s = BoundFront(idx) +: s
-    }
+    var i = 1
+    var subst: Vector[Front] = Range(1, what-1).map(BoundFront(_)).toVector
+    new SubstImpl(0,subst :+ TermFront(by))
 
-    TermFront(by) +: s
+//
+//    var s = Subst.id
+//    for(idx <- 1 to (what-1)) {
+//      s = BoundFront(idx) +: s
+//    }
+//
+//    TermFront(by) +: s
+  }
+
+  def fromMap(map: Map[Int, Term]): Subst = {
+    if (map.isEmpty) {
+      Subst.id
+    } else {
+      var subst: Vector[Front] = Vector()
+      val maxIndex = map.keySet.max
+      var i = 1
+      while (i <= maxIndex) {
+        subst = subst :+ map.get(i).fold(BoundFront(i):Front)(TermFront(_))
+        i = i + 1
+      }
+      new SubstImpl(0, subst)
+    }
+  }
+
+  def fromSeq(seq: Seq[(Int, Term)]): Subst = {
+    val map : Map[Int, Term] = Map.apply(seq:_*)
+    fromMap(map)
   }
 
   // legacy
