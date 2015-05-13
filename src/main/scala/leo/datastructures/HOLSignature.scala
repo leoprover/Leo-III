@@ -124,7 +124,7 @@ trait HOLSignature {
   protected def existsDef: Term = Λ(
     mkTermAbs(1 ->: o,
       mkTermApp(not,
-        mkTermApp(all,
+        mkTermApp(Term.mkTypeApp(all, 1),
           mkTermAbs(1,
             mkTermApp(not,
               mkTermApp((2, 1 ->: o), (1, 1))))))))
@@ -183,7 +183,7 @@ trait HOLSignature {
       mkTermAbs(1,
         mkTermApp(not,
           mkTermApp(
-            mkTermApp(eq,
+            mkTermApp(Term.mkTypeApp(eq, 1),
               (2, 1)),
               (1, 1))))))
 }
