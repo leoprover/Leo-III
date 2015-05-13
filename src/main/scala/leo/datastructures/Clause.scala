@@ -27,6 +27,8 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   def isEmpty: Boolean = lits.isEmpty
   /** all literals `lt` with `lt.flexHead`, i.e. with a flexible head. */
   def flexHeadLits: Set[Literal]
+  /** all literals `lt` with `lt.isUni`. */
+  def uniLits: Set[Literal]
 
   def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 
