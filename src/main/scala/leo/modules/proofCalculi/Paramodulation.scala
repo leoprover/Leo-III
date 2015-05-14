@@ -144,6 +144,8 @@ trait CalculusRule {
   def name: String
 }
 trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusRule {
+  type HintType = Hint
+
     def canApply(cl: Clause): (Boolean, Hint)
 }
 
