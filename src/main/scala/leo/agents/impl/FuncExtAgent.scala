@@ -9,7 +9,7 @@ import leo.modules.proofCalculi.FuncExt
 /**
  * Created by lex on 11.05.15.
  */
-object BoolExtAgent extends Agent {
+object FuncExtAgent extends Agent {
   /**
    *
    * @return the name of the agent
