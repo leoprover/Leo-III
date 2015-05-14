@@ -222,7 +222,7 @@ object FuncExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
     (boolExtLits.nonEmpty, (boolExtLits, otherLits))
   }
 
-  def apply(v1: Clause, boolExtLits_otherLits: (Seq[Literal], Seq[Literal])) = {
+  def apply(cl: Clause, boolExtLits_otherLits: (Seq[Literal], Seq[Literal])) = {
     val boolExtLits = boolExtLits_otherLits._1
     val otherLits = boolExtLits_otherLits._2
     var groundLits: Seq[Literal] = Seq()
@@ -233,11 +233,16 @@ object FuncExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
       if (lit.polarity) {
         // FuncPos, insert fresh var
         val freshVar = Term.mkFreshMetaVar(left.ty._funDomainType)
-        groundLits = groundLits :+ Literal.mkLit(===(Term.mkTermApp(left, freshVar).betaNormalize,Term.mkTermApp(right, freshVar).betaNormalize), true)
+        groundLits = groundLits :+ Literal.mkEqLit(Term.mkTermApp(left, freshVar).betaNormalize,Term.mkTermApp(right, freshVar).betaNormalize)
       } else {
         // FuncNeg, insert skolem term
         // get freevars of clause
-        // TODO
+        val fvs = cl.freeVars.toSeq
+        val fv_types = fvs.map(_.ty)
+        import leo.datastructures.impl.Signature
+        val skConst = Term.mkAtom(Signature.get.freshSkolemVar(Type.mkFunType(fv_types, left.ty._funDomainType)))
+        val skTerm = Term.mkTermApp(skConst, fvs)
+        groundLits = groundLits :+ Literal.mkUniLit(Term.mkTermApp(left, skTerm).betaNormalize,Term.mkTermApp(right, skTerm).betaNormalize)
       }
     }
     Clause.mkClause(otherLits ++ groundLits, Derived)
