@@ -57,36 +57,11 @@ object PrimSubstAgent extends Agent {
 }
 
 private case class PrimSubstTask(f: FormulaStore) extends Task {
-  /**
-   * Prints a short name of the task
-   * @return
-   */
   def name = "prim_subst"
+  def writeSet() = Set.empty
+  def readSet() = Set(f)
 
-  /**
-   *
-   * Returns a set of all Formulas, that will be written by the task.
-   *
-   * @return Write set for the task
-   */
-  def writeSet() = Set(f)
+  def bid(budget: Double) = budget*f.clause.flexHeadLits.size / f.clause.lits.size
 
-  /**
-   *
-   * Returns a set of all Formulas that are read for the task.
-   *
-   * @return Read set for the Task.
-   */
-  def readSet() = Set.empty
-
-  /**
-   *
-   * Defines the gain of a Task, defined for
-   * a specific agent.
-   *
-   * @return - Possible profit, if the task is executed
-   */
-  def bid(budget: Double) = budget / 5
-
-  def pretty = "prim_subst"
+  def pretty = s"prim_subst(${f.pretty})"
 }
