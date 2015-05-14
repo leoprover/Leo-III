@@ -20,6 +20,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
   /** The types of the implicitly universally quantified variables. */
+  def freeVars: Set[Term]
   def implicitBindings: Seq[Type]
   /** Annotation, NOTE: This is preliminary! */
   def annotation: ClauseAnnotation
