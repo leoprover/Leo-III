@@ -23,7 +23,7 @@ object PrimSubstAgent extends Agent {
     t match {
       case PrimSubstTask(f) => {
         import leo.modules.proofCalculi.StdPrimSubst
-        val ncs = StdPrimSubst.apply(f.clause)
+        val ncs = StdPrimSubst.apply(f.clause, ())
         val res = Result()
         for (cl <- ncs) {
           res.insert(FormulaType)(Store(cl, f.status, f.context))
@@ -45,7 +45,7 @@ object PrimSubstAgent extends Agent {
   def toFilter(event: Event) = {
     event match {
       case DataEvent(f: FormulaStore, FormulaType) => {
-        if (StdPrimSubst.canApply(f.clause)) {
+        if (StdPrimSubst.canApply(f.clause)._1) {
           Seq(PrimSubstTask(f))
         } else {
           Seq()
@@ -86,7 +86,7 @@ private case class PrimSubstTask(f: FormulaStore) extends Task {
    *
    * @return - Possible profit, if the task is executed
    */
-  def bid(budget: Double) = budget / 20
+  def bid(budget: Double) = budget / 5
 
   def pretty = "prim_subst"
 }
