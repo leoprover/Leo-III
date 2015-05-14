@@ -143,8 +143,8 @@ object PropParamodulation extends ParamodStep{
 trait CalculusRule {
   def name: String
 }
-trait UnaryCalculusRule[R] extends (Clause => R) with CalculusRule {
-    def canApply(cl: Clause): Boolean
+trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusRule {
+    def canApply(cl: Clause): (Boolean, Hint)
 }
 
 /**
@@ -153,13 +153,15 @@ trait UnaryCalculusRule[R] extends (Clause => R) with CalculusRule {
  *   ------------------------------------
  *     V[Q/P] \/ [P U^k]^\alpha
  * }}}
+ *
+ * Hint not needed since its implemented in clause.
  */
-class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause]] {
+class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause], Unit] {
   val name = "prim_subst"
 
-    def canApply(cl: Clause) = cl.flexHeadLits.nonEmpty
+    def canApply(cl: Clause) = (cl.flexHeadLits.nonEmpty, ())
 
-    def apply(cl: Clause): Set[Clause] = hdSymbs.map{hdSymb =>
+    def apply(cl: Clause, hint: Unit): Set[Clause] = hdSymbs.map{hdSymb =>
       val vars = cl.flexHeadLits.map(_.term.headSymbol)
       vars.map{case hd =>
         val binding = HuetsPreUnification.partialBinding(hd.ty, hdSymb)
@@ -170,6 +172,79 @@ class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause]] {
 }
 
 object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
+
+
+
+object BoolExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
+  def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {
+    var it = cl.lits.iterator
+    var boolExtLits: Seq[Literal] = Seq()
+    var otherLits: Seq[Literal] = Seq()
+    while (it.hasNext) {
+      val lit = it.next()
+      import leo.datastructures.impl.Signature
+      lit.term match {
+        case (left === _) if left.ty == Signature.get.o => boolExtLits = boolExtLits :+ lit
+        case _ => otherLits = otherLits :+ lit
+      }
+    }
+    (boolExtLits.nonEmpty, (boolExtLits, otherLits))
+  }
+  
+  def apply(v1: Clause, boolExtLits_otherLits: (Seq[Literal], Seq[Literal])) = {
+    val boolExtLits = boolExtLits_otherLits._1
+    val otherLits = boolExtLits_otherLits._2
+    var groundLits: Seq[Literal] = Seq()
+    val it = boolExtLits.iterator
+    while (it.hasNext) {
+      val lit = it.next()
+      val (left, right) = ===.unapply(lit.term).get
+      groundLits = groundLits :+ Literal.mkLit(<=>(left,right), lit.polarity)
+    }
+    Clause.mkClause(otherLits ++ groundLits, Derived)
+  }
+
+  def name = "bool_ext"
+}
+
+object FuncExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
+  def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {
+    var it = cl.lits.iterator
+    var boolExtLits: Seq[Literal] = Seq()
+    var otherLits: Seq[Literal] = Seq()
+    while (it.hasNext) {
+      val lit = it.next()
+      lit.term match {
+        case (left === _) if left.ty.isFunType => boolExtLits = boolExtLits :+ lit
+        case _ => otherLits = otherLits :+ lit
+      }
+    }
+    (boolExtLits.nonEmpty, (boolExtLits, otherLits))
+  }
+
+  def apply(v1: Clause, boolExtLits_otherLits: (Seq[Literal], Seq[Literal])) = {
+    val boolExtLits = boolExtLits_otherLits._1
+    val otherLits = boolExtLits_otherLits._2
+    var groundLits: Seq[Literal] = Seq()
+    val it = boolExtLits.iterator
+    while (it.hasNext) {
+      val lit = it.next()
+      val (left, right) = ===.unapply(lit.term).get
+      if (lit.polarity) {
+        // FuncPos, insert fresh var
+        val freshVar = Term.mkFreshMetaVar(left.ty._funDomainType)
+        groundLits = groundLits :+ Literal.mkLit(===(Term.mkTermApp(left, freshVar).betaNormalize,Term.mkTermApp(right, freshVar).betaNormalize), true)
+      } else {
+        // FuncNeg, insert skolem term
+        // get freevars of clause
+        // TODO
+      }
+    }
+    Clause.mkClause(otherLits ++ groundLits, Derived)
+  }
+
+  def name = "func_ext"
+}
 
 
   // TODO: Optimize
