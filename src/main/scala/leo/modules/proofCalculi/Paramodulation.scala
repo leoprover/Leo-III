@@ -1,6 +1,7 @@
 package leo.modules.proofCalculi
 
 import leo.datastructures._
+import leo.modules.normalization.{NegationNormal, Simplification}
 import leo.modules.output.Output
 
 
@@ -201,9 +202,9 @@ object BoolExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
     while (it.hasNext) {
       val lit = it.next()
       val (left, right) = ===.unapply(lit.term).get
-      groundLits = groundLits :+ Literal.mkLit(<=>(left,right), lit.polarity)
+      groundLits = groundLits :+ Literal.mkLit(<=>(left,right).full_δ_expand.betaNormalize, lit.polarity)
     }
-    Clause.mkClause(otherLits ++ groundLits, Derived)
+    NegationNormal.normalize(Simplification.normalize(Clause.mkClause(otherLits ++ groundLits, Derived)))
   }
 
   def name = "bool_ext"
