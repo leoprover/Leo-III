@@ -63,7 +63,7 @@ object Main {
       //==========================================
       Blackboard().addDS(FormulaDataStore)
       Blackboard().addDS(SZSDataStore)
-      Utility.printSignature()
+//      Utility.printSignature()
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {
         new FifoController(CounterContextControlAgent).register()
