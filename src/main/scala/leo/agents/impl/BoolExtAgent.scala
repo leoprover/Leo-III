@@ -15,7 +15,7 @@ object BoolExtAgent extends Agent {
    * @return the name of the agent
    */
   def name = "Boolean Extensionality Agent"
-
+  override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
@@ -23,12 +23,14 @@ object BoolExtAgent extends Agent {
     t match {
       case BoolExtTask(f, hint) => {
         val nc = BoolExt.apply(f.clause, hint)
+        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clause: ${nc.pretty}")
         Result().insert(FormulaType)(Store(nc, f.status, f.context))
       }
       case _: Task =>
-        Out.warn(s"[$name]: Got a wrong task to execute.")
+        Out.warn(s"[$name]: Got a wrong task to execute.");
+        Result()
     }
-    Result()
+
   }
 
   /**
@@ -43,6 +45,7 @@ object BoolExtAgent extends Agent {
       case DataEvent(f: FormulaStore, FormulaType) => {
         val (canApply, hint) = BoolExt.canApply(f.clause)
         if (canApply) {
+          Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} can be replaced by equivalences")
           Seq(BoolExtTask(f, hint))
         } else {
           Seq()

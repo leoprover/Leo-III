@@ -15,6 +15,7 @@ object PrimSubstAgent extends Agent {
    * @return the name of the agent
    */
   def name = "Agent PrimSubst"
+  override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
 
   /**
    * This function runs the specific agent on the registered Blackboard.
@@ -26,13 +27,16 @@ object PrimSubstAgent extends Agent {
         val ncs = StdPrimSubst.apply(f.clause, ())
         val res = Result()
         for (cl <- ncs) {
-          res.insert(FormulaType)(Store(cl, f.status, f.context))
+          res.insert(FormulaType)(Store(cl, f.context))
         }
+        Out.trace(s"[$name:]\n  Clause ${f.clause.pretty}\n flex-heads instantiated, new claues:\n ${ncs.map(_.pretty).mkString("\n")}")
+        res
       }
       case _: Task =>
-        Out.warn(s"[$name]: Got a wrong task to execute.")
+        Out.warn(s"[$name]: Got a wrong task to execute.");
+        Result()
     }
-    Result()
+
   }
 
   /**
