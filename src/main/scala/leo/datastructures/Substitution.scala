@@ -93,6 +93,28 @@ object Subst {
     }
   }
 
+  def fromMaps(termMap: Map[Int, Term], boundMap: Map[Int, Int]): Subst = {
+    if (termMap.isEmpty && boundMap.isEmpty) {
+      Subst.id
+    } else {
+      var subst: Vector[Front] = Vector()
+      val maxIndex = (termMap.keySet ++ boundMap.keySet).max
+      var i = 1
+      while (i <= maxIndex) {
+        if (termMap.isDefinedAt(i)) {
+          subst = subst :+ TermFront(termMap(i))
+        } else if (boundMap.isDefinedAt(i)) {
+          subst = subst :+ BoundFront(boundMap(i))
+        } else {
+          subst = subst :+ BoundFront(i)
+        }
+
+        i = i + 1
+      }
+      new SubstImpl(0, subst)
+    }
+  }
+
   def fromSeq(seq: Seq[(Int, Term)]): Subst = {
     val map : Map[Int, Term] = Map.apply(seq:_*)
     fromMap(map)
