@@ -33,8 +33,8 @@ class MetaVarAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
-      if((f.status & 31) == 31 && f.clause.lits.exists{l => initQuant(l)}) {
-        // TODO: Remove status as soon as skolemize is acostumed to metavars.
+      if(f.clause.lits.exists{l => initQuant(l)}) {
+        // Remark: Removed status int here
         List(MetavarTask(f))
       } else {
         Nil
