@@ -160,7 +160,7 @@ object FormulaDataStore extends DataStore {
      *
      * @return the existing store or the new one
      */
-    def add(f : FormulaStore) : Boolean = {
+    def add(f : FormulaStore) : Boolean = formulaSet.synchronized {
       formulaSet get (f,f.context) match {
         case Some(f1) =>
           false
@@ -176,24 +176,24 @@ object FormulaDataStore extends DataStore {
      *
      * @return All stored formulas
      */
-    def getAll : Iterable[FormulaStore] = formulaSet.getAll
+    def getAll : Iterable[FormulaStore] = formulaSet.synchronized(formulaSet.getAll)
 
-    def getAll(c : Context) : Iterable[FormulaStore] = formulaSet.getAll(c)
+    def getAll(c : Context) : Iterable[FormulaStore] = formulaSet.synchronized(formulaSet.getAll(c))
 
-    def rm(f : FormulaStore) : Boolean = {
+    def rm(f : FormulaStore) : Boolean = formulaSet.synchronized {
       formulaSet.remove(f, f.context)
     }
 
-    def rmName(n : String) : Boolean = {
+    def rmName(n : String) : Boolean = formulaSet.synchronized {
       formulaSet.getAll.find {f => f.name == n} match {
         case None => false
         case Some(f) => formulaSet.remove(f, f.context)
       }
     }
 
-    def getName(n : String) : Option[FormulaStore] = formulaSet.getAll.find {f => f.name == n}
+    def getName(n : String) : Option[FormulaStore] = formulaSet.synchronized(formulaSet.getAll.find {f => f.name == n})
 
-    def contains(f : FormulaStore) : Boolean = formulaSet.contains(f, f.context)
+    def contains(f : FormulaStore) : Boolean = formulaSet.synchronized(formulaSet.contains(f, f.context))
   }
 
 

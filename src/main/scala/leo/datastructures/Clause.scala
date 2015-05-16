@@ -20,11 +20,16 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
   /** The types of the implicitly universally quantified variables. */
+  def freeVars: Set[Term]
   def implicitBindings: Seq[Type]
+  /** Annotation, NOTE: This is preliminary! */
+  def annotation: ClauseAnnotation
 
   def isEmpty: Boolean = lits.isEmpty
-  /** True iff this clause contains a literal `lt` with `lt.flexHead`, i.e. with a flexible head. */
-  def flexHeadLits: Seq[Literal]
+  /** all literals `lt` with `lt.flexHead`, i.e. with a flexible head. */
+  def flexHeadLits: Set[Literal]
+  /** all literals `lt` with `lt.isUni`. */
+  def uniLits: Set[Literal]
 
   def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 
@@ -75,7 +80,9 @@ object Clause {
 
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
   def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, implicitBindings, origin)
+  def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin, annotation: ClauseAnnotation): Clause = ClauseImpl.mkClause(lits, implicitBindings, origin, annotation)
   def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, Seq(), origin)
+  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin, annotation: ClauseAnnotation): Clause = ClauseImpl.mkClause(lits, Seq(), origin, annotation)
   def mkDerivedClause(lits: Iterable[Literal], implicitBindings: Seq[Type]): Clause = mkClause(lits, implicitBindings, Derived)
 
   def empty() = mkClause(Nil, Nil, Derived)

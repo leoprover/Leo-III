@@ -9,7 +9,7 @@ import leo.datastructures.{Term, Literal, ===}
  * @since 19.11.2014
  */
 protected[impl] abstract class SimpleLiteral extends Literal {
-  lazy val flexHead: Boolean = term.headSymbol.isVariable
+  lazy val flexHead: Boolean = !term.isTermAbs && !term.isTypeAbs && term.headSymbol.isVariable
 }
 
 
@@ -30,13 +30,15 @@ object SimpleLiteral {
     val polarity = true
     val isUni = false
     val isFlexFlex = false
+    val uniComponents = None
     lazy val pretty = s"[${term.pretty}] = T"
   }
   private case class NegativeLiteral(term: Term, id: Int) extends SimpleLiteral {
     val polarity = false
-    lazy val isUni = term match {
-      case (_ === _) => true
-      case _ => false
+    lazy val isUni = uniComponents.isDefined
+    lazy val uniComponents = term match {
+      case (l === r) => Some((l,r))
+      case _ => None
     }
     lazy val isFlexFlex = term match {
       case (l === r) => (l.isApp || l.isAtom) && (r.isApp || r.isAtom) && l.headSymbol.symbols.isEmpty && r.headSymbol.symbols.isEmpty

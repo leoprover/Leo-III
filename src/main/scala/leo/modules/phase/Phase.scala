@@ -20,7 +20,7 @@ import leo.modules.proofCalculi.{IdComparison, Paramodulation, PropParamodulatio
 
 object Phase {
   def getStdPhases : Seq[Phase] = List(new LoadPhase(true), SimplificationPhase, ParamodPhase)
-  def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, SimpleEnumerationPhase, ParamodPhase)
+  def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
   def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
   def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
   def getCounterSatRemote : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
@@ -134,7 +134,10 @@ trait CompletePhase extends Phase {
     init()
     initWait()
 
-    if(!waitTillEnd()) return false
+    if(!waitTillEnd()) {
+      Out.info(s"$name will be terminated and program is quitting.")
+      return false
+    }
     // Ending all agents and clear the scheduler
     end()
 
@@ -155,6 +158,7 @@ trait CompletePhase extends Phase {
     override def name: String = s"${getName}Terminator"
     override def run(t: Task): Result = Result()
     override def kill(): Unit = synchronized{
+      Out.info(s"$name was killed.")
       scedKill = true
       finish = true
       notifyAll()

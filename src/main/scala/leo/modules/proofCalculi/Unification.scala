@@ -10,17 +10,16 @@ trait Unification {
    *
    * @param t - First term to unify
    * @param s - Second term to unify
-   * @param n - Offset for new implicit Bindings (n+1 will be the next binding). Number of parameters.
    * @return a stream of Substitution to make both terms equal, empty stream if they are not unifiable
    */
-  def unify(t : Term, s : Term, n : Int) : Iterable[Subst]
+  def unify(t : Term, s : Term) : Iterable[Subst]
 }
 
 /**
  * Tests solely for equality
  */
 object IdComparison extends Unification{
-  override def unify(t : Term, s : Term, n : Int) : Iterable[Subst] = if (s == t) Stream(Subst.id) else Stream.empty
+  override def unify(t : Term, s : Term) : Iterable[Subst] = if (s == t) Stream(Subst.id) else Stream.empty
 }
 
 // Look for TODO, TOFIX (and TOTEST in the corresponding test file)
@@ -39,7 +38,7 @@ object HuetsPreUnification extends Unification {
 
   type UEq = Tuple2[Term,Term]
 
-  def unify (t1 : Term, s1 : Term, n : Int) : Iterable[Subst] = {
+  def unify (t1 : Term, s1 : Term) : Iterable[Subst] = {
 
     val t = t1.etaExpand
     val s = s1.etaExpand
@@ -113,9 +112,20 @@ object HuetsPreUnification extends Unification {
   /**
    *  all terms are flex variables
    */
-  private def computeDefaultSub(ls: List[Term]): Subst = {
+  private def computeDefaultSub(ls: Seq[Term]): Subst = {
+    val it = ls.iterator
+    var map : Map[Int, Term] = Map()
+    while (it.hasNext) {
+      val flex = it.next()
+      val (ty, id) = MetaVar.unapply(flex).get
+      val tys = ty.funParamTypesWithResultType
+
+      map = map + (id -> λ(tys.init)(Term.mkFreshMetaVar(tys.last)))
+    }
+    Subst.fromMap(map)
+
     //val maxIdx: Int = Bound.unapply(ls.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-    var sub = Subst.id
+//    var sub = Subst.id
     /*for (i <- 1 to maxIdx)
       ls.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
         case Some((typ,t)) => {
@@ -123,7 +133,7 @@ object HuetsPreUnification extends Unification {
         }
         case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
     }*/
-    sub
+//    sub
   }
 
   // n is arity of variable

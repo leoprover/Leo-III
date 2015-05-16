@@ -2,14 +2,14 @@ package leo
 
 import leo.agents.{FifoController}
 import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{DoneEvent, Blackboard}
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
-import leo.modules.phase.Phase
+import leo.modules.phase.{PreprocessPhase, LoadPhase, Phase}
 import Phase._
 
 
@@ -63,6 +63,7 @@ object Main {
       //==========================================
       Blackboard().addDS(FormulaDataStore)
       Blackboard().addDS(SZSDataStore)
+//      Utility.printSignature()
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {
         new FifoController(CounterContextControlAgent).register()
@@ -75,7 +76,7 @@ object Main {
         it = getHOStdPhase.iterator
       }
       var r = true
-      while (it.hasNext && r && !deferredKill.finished) {
+      while (it.hasNext && r && !deferredKill.isFinished) {
         val phase = it.next()
         Out.info(s"\n [Phase]:\n  Starting ${phase.name}\n${phase.description}")
         val start = System.currentTimeMillis()
@@ -83,7 +84,7 @@ object Main {
         val end = System.currentTimeMillis()
         Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
       }
-      deferredKill.kill()
+      if(!deferredKill.isFinished) deferredKill.kill()
 
 
       val endTime = System.currentTimeMillis()
@@ -146,7 +147,9 @@ object Main {
     var remain : Double = timeout
     var exit : Boolean = false
 
-    var finished = false
+    private var finished = false
+
+    def isFinished = synchronized(finished)
 
     def kill() : Unit = {
       synchronized{
@@ -171,12 +174,15 @@ object Main {
               Scheduler().signal()
               //agentStatus()
               remain -= interval
+              Out.info(s"Leo-III is still working. (Remain=$remain)")
             }
           }
         }
         SZSDataStore.forceStatus(Context())(SZS_Timeout)
-        //Out.output(SZSOutput(SZS_Timeout))    // TODO Interference with other SZS status
+        Out.info(s"Timeout: Killing all Processes.")
         finished = true
+        //TODO: Better mechanism
+        Blackboard().filterAll(_.filter(DoneEvent()))
         Scheduler().killAll()
       }
     }

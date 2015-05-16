@@ -55,7 +55,7 @@ class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.
 
   private class Wait(lock : AnyRef) extends Agent{
     override def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; Out.comment("GOt done event.");lock.synchronized(lock.notifyAll());List()
+      case d : DoneEvent => finish = true; lock.synchronized(lock.notifyAll());List()
       case _ => List()
     }
     override def name: String = "PreprocessPhaseTerminator"

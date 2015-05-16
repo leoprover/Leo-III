@@ -103,8 +103,9 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
   lazy val freeVars = hd match {
-    case BoundIndex(_,_) => args.freeVars
-    case _             => args.freeVars + hd
+    case BoundIndex(_,_) => args.freeVars + hd
+    case MetaIndex(_,_) => args.freeVars + hd
+    case _             => args.freeVars
   }
   lazy val symbols=  hd match {
     case Atom(key)             => args.symbols + key
@@ -269,7 +270,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
-  lazy val freeVars = body.freeVars ++ args.freeVars
+  lazy val freeVars = body.freeVars union args.freeVars
   lazy val boundVars = body.boundVars ++ args.boundVars
   lazy val looseBounds = body.looseBounds ++ args.looseBounds
   lazy val metaVars = body.metaVars ++ args.metaVars
@@ -360,7 +361,17 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
   // Queries on terms
   lazy val ty = typ ->: body.ty
-  val freeVars = body.freeVars
+  val freeVars = {
+    import leo.datastructures.Term.Bound
+    body.freeVars.map{_ match {
+      case Bound(ty, scope) => Term.mkBound(ty, scope-1)
+      case fv => fv
+    }}.filter{ _ match {
+      case Bound(_, scope) => scope > 0
+      case _ => true
+    }
+    }
+  }
   val boundVars = body.boundVars
   lazy val looseBounds = body.looseBounds.map(_ - 1).filter(_ > 0)
   lazy val metaVars = body.metaVars
@@ -517,7 +528,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 
   // Queries on terms
   lazy val ty = term.ty
-  lazy val freeVars = Set[Term]()
+  lazy val freeVars = betaNormalize.freeVars
   lazy val boundVars = Set[Term]()
   lazy val looseBounds = Set.empty[Int]
   lazy val metaVars = Set[(Type, Int)]()
@@ -548,7 +559,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   def replaceAt(at: Position, by: Term): Term = ???
 
 
-  def substitute(subst: Subst): Term = ???
+  def substitute(subst: Subst): Term = this.betaNormalize.substitute(subst)
   //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -628,7 +639,7 @@ protected[impl] case class MetaIndex(typ: Type, id: Int) extends Head {
   def full_δ_expand = TermImpl.headToTerm(this)
 
   // Pretty printing
-  override val pretty = s"M$id"
+  override val pretty = s"m$id"
 }
 
 protected[impl] case class Atom(id: Signature#Key) extends Head {
@@ -862,7 +873,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
 
   // Handling def. expansion
-  val δ_expandable = tail.δ_expandable
+  lazy val δ_expandable = tail.δ_expandable
   def partial_δ_expand(rep: Int) = cons(Right(hd), tail.partial_δ_expand(rep))
   lazy val full_δ_expand = cons(Right(hd), tail.full_δ_expand)
 

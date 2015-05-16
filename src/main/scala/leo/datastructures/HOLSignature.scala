@@ -96,7 +96,8 @@ trait HOLSignature {
   )
 
   // Standard defined symbols
-  lazy val definedConsts = List(("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
+  lazy val definedConsts = List(
+    ("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
     ("&",   andDef,  o ->: o ->: o), // Key 43
     ("=>",  implDef, o ->: o ->: o), // Key 44
     ("<=",  ifDef,   o ->: o ->: o), // Key 45
@@ -124,7 +125,7 @@ trait HOLSignature {
   protected def existsDef: Term = Λ(
     mkTermAbs(1 ->: o,
       mkTermApp(not,
-        mkTermApp(all,
+        mkTermApp(Term.mkTypeApp(all, 1),
           mkTermAbs(1,
             mkTermApp(not,
               mkTermApp((2, 1 ->: o), (1, 1))))))))
@@ -183,7 +184,7 @@ trait HOLSignature {
       mkTermAbs(1,
         mkTermApp(not,
           mkTermApp(
-            mkTermApp(eq,
+            mkTermApp(Term.mkTypeApp(eq, 1),
               (2, 1)),
               (1, 1))))))
 }
