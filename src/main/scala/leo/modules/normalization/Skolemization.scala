@@ -34,7 +34,7 @@ object Skolemization extends AbstractNormalize{
 
   private def internalNormalize(formula: Term): Term = {
     val mini = miniscope(formula)
-    val r = skolemize(mini, Set())
+    val r = skolemize(mini, Seq())
     r
   }
 
@@ -47,37 +47,38 @@ object Skolemization extends AbstractNormalize{
    * @param formula
    * @return
    */
-  private def skolemize(formula : Term, looseBounds: Set[Term]) : Term = formula match {
+  private def skolemize(formula : Term, univBounds: Seq[Term]) : Term = formula match {
       //Remove exist quantifier
       // TODO: Raising Bound variables is borken. Fix it.
     case Exists(s@(ty :::> t))  =>
 //      println("step: freevars: "+s.freeVars.map{_.pretty}.mkString(","))
 //      println("step: looseBounds: " + looseBounds.map{_.pretty}.mkString(","))
-      val fvs = (s.freeVars diff looseBounds).toSeq
+      val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
 //      println("freevars im skolemization: " + fvs.map(_.pretty).mkString(","))
       val fv_types = fvs.map(_.ty)
       import leo.datastructures.impl.Signature
       val skConst = Term.mkAtom(Signature.get.freshSkolemVar(Type.mkFunType(fv_types, ty)))
       val skTerm = Term.mkTermApp(skConst, fvs)
 
-      var sub: Map[Int, Term] = Map(1 -> skTerm)
-      val lBIt = looseBounds.iterator
+
+      var sub: Map[Int, Int] = Map()
+      val lBIt = s.looseBounds.iterator
       while (lBIt.hasNext) {
         val b = lBIt.next()
-        val (ty, sc) = Bound.unapply(b).get
-        sub = sub + (sc+1 -> mkBound(ty, sc))
+        sub = sub + (b+1 -> b)
       }
-      val norm = t.closure(Subst.fromMap(sub)).betaNormalize
+      val norm = t.closure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
 //      println("step in skolemization: " + norm.pretty)
 
-      skolemize(norm, looseBounds)
+      skolemize(norm, univBounds)
       // Pass through
+    case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case f ∙ args   => Term.mkApp(skolemize(f, looseBounds), args.map(_.fold({t => Left(skolemize(t, looseBounds))},(Right(_)))))
-    case ty :::> s  => mkTermAbs(ty, skolemize(s, looseBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} + mkBound(ty, 1)))
-    case TypeLambda(t) => mkTypeAbs(skolemize(t, looseBounds))
+    case f ∙ args   => Term.mkApp(skolemize(f, univBounds), args.map(_.fold({t => Left(skolemize(t, univBounds))},(Right(_)))))
+    case ty :::> s  => mkTermAbs(ty, skolemize(s, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)}))
+    case TypeLambda(t) => mkTypeAbs(skolemize(t, univBounds))
 //    case _  => formula
   }
 
