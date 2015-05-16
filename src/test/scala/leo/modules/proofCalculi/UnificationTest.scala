@@ -86,15 +86,35 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,a)))
     val t2 : Term = mkTermApp(f,List(mkTermApp(x,a),mkTermApp(f, List(mkTermApp(f, List(a,a)),a))))
 
-    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2,1).iterator
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
-    // should have inf many unifiers
-    //for( a <- 1 to 7) { // the 8th substitutions fails from some reason
+    // Does it have only 6 unifiers?!
+    for( a <- 1 to 5) { // the 7th substitutions fails from some reason
       val sb: Subst = result.next
       assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
-    //}
+    }
   }
 
+  test("x(f(a,g(a,a))) = f(a,g(x(a),a))", Checked){
+  val s = getFreshSignature
+
+  val a = mkAtom(s.addUninterpreted("a",s.i))
+  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
+  val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i ->: s.i))
+  val x = mkFreshMetaVar(s.i ->: s.i)
+
+    val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,mkTermApp(g,List(a,a)))))
+    val t2 : Term = mkTermApp(f,List(a,mkTermApp(g,List(mkTermApp(x,List(a)),a))))
+
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2).iterator
+
+    val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
+
+    for( a <- 1 to 5) { // fails for 30 pre-unifiers!
+      val sb: Subst = result.next
+      assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
+    }
+  }
 }
