@@ -38,6 +38,7 @@
       <groupId>net.alchim31.maven</groupId>
       <artifactId>scala-maven-plugin</artifactId>
       <version>3.2.0</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   
@@ -106,7 +107,7 @@
       <plugin>
 	      <groupId>org.apache.maven.plugins</groupId>
 	      <artifactId>maven-assembly-plugin</artifactId>
-	      <version>2.5.3</version>
+	      <version>2.5.4</version>
 	      <configuration>
 	        <finalName>leo-iii</finalName>
 	        <descriptorRefs>
