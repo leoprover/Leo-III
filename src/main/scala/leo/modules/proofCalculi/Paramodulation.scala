@@ -48,7 +48,7 @@ object PropParamodulation extends ParamodStep{
     val merged = cSub.merge(d)
     //    leo.Out.severe("What: "+lc.pretty)
     //    leo.Out.severe("By: "+alpha.pretty)
-    val res = Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)
+    val res = NegationNormal.normalize(Simplification.normalize(Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)))
     return TrivRule.triv(TrivRule.teqf(Simp(res)))
   }
 
@@ -108,7 +108,7 @@ object PropParamodulation extends ParamodStep{
       val merged = cSub.merge(d)
       //    leo.Out.severe("What: "+lc.pretty)
       //    leo.Out.severe("By: "+alpha.pretty)
-      val res = Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)
+      val res = NegationNormal.normalize(Simplification.normalize(Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)))
       return TrivRule.triv(TrivRule.teqf(Simp(res)))
     }
 
