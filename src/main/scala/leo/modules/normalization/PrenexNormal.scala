@@ -51,6 +51,7 @@ object PrenexNormal extends AbstractNormalize {
       //Pass through
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
+    case s@MetaVar(_,_)         => s
     case f ∙ args               => Term.mkApp(internalNormalize(f), args.map(_.fold({t => Left(internalNormalize(t))},(Right(_)))))
     case ty :::> t              => \(ty)(internalNormalize(t))
     case TypeLambda(t)          => mkTypeAbs(internalNormalize(t))
@@ -61,6 +62,7 @@ object PrenexNormal extends AbstractNormalize {
 
   private def incrementBound(formula : Term, i : Int) : Term = formula match {
     case s@Symbol(_)           => s
+    case s@MetaVar(_,_)        => s
     case Bound(ty,n) if n < i  => formula
     case Bound(ty,n)            => mkBound(ty,n+1)
     case f ∙ args               => Term.mkApp(incrementBound(f,i), args.map(_.fold({t => Left(incrementBound(t,i))},(Right(_)))))
