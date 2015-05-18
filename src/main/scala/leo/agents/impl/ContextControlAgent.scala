@@ -31,6 +31,7 @@ abstract class AbstractContextControlAgent extends Agent {
 
   override def run(t: Task): blackboard.Result = t match {
     case SetContextTask(con,status) =>
+      Out.comment(s"[$name]: Set context ${con.contextID} to ${status.output}.")
       con.close()
       val r = Result()
       r.insert(StatusType)(SZSStore(status, con))

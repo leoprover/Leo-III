@@ -230,6 +230,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.inserts(t).filter{d =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
+
             Blackboard().getDS(t).foreach{ds => add |= ds.insert(d)}  // More elegant without risk of lazy skipping of updating ds?
             add
           })

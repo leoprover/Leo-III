@@ -30,7 +30,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case t1: NormalTask =>
       val fstore = t1.get()
       val calc = norm(fstore)
-      val erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause))).newOrigin(List(t1.get()), norm.name)
+      var erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause)))
 
       // If the Result is trivial true, delete the initial clause
       if(TrivRule.teqt(erg.clause)) return Result().remove(FormulaType)(fstore)
@@ -40,6 +40,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
         Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
         Result().update(FormulaType)(fstore)(erg)
       } else {
+        erg.newOrigin(List(t1.get()), norm.name)
         Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
         Result().update(FormulaType)(fstore)(erg)
       }
