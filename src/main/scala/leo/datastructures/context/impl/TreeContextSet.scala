@@ -101,15 +101,19 @@ class TreeContextSet[A] extends ContextSet[A] {
    * @param c - The context to insert
    * @return true, iff insertion was successful
    */
-  override def add(a: A, c: Context): Boolean = {
-    (contextSets.get(c) match {
-      case Some(s) => s
-      case None =>
-          val s = new mutable.HashSet[A] with mutable.SynchronizedSet[A]
-          contextSets.put(c,s)
-          s
-    }).add(a)
-  }
+  override def add(a: A, c: Context): Boolean =
+    if(contains(a,c)) false
+    else
+    {
+      (contextSets.get(c) match {
+        case Some(s) => s.add(a)
+        case None =>
+            val s = new mutable.HashSet[A] with mutable.SynchronizedSet[A]
+            contextSets.put(c,s)
+            s.add(a)
+      })
+      true
+    }
 
   /**
    * Returns a set of all elements in the context c.

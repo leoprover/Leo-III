@@ -53,12 +53,14 @@ class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent 
     case _ : Event => Nil
   }
 
+  private var ex : Int = 0
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(task: Task): Result = {
     task match {
       case ParamodTask(f1, f2, r, t, l, s) =>
+        //synchronized{ex=ex+1;println(s"[$name]: Executed a task $ex times.\n   ${task.pretty}")}
         return Result().insert(FormulaType)(r.newOrigin(List(f1,f2), "paramodulation"))
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.")

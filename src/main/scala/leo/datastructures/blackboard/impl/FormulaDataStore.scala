@@ -1,8 +1,9 @@
 package leo.datastructures.blackboard.impl
 
+import leo.datastructures.Clause
 import leo.datastructures.blackboard._
-import leo.datastructures.context.impl.TreeContextSet
-import leo.datastructures.context.{ContextSet, Context}
+import leo.datastructures.context.impl.{TreeContextMap, TreeContextSet}
+import leo.datastructures.context.{ContextMap, ContextSet, Context}
 import leo.modules.proofCalculi.TrivRule
 
 /**
@@ -153,6 +154,7 @@ object FormulaDataStore extends DataStore {
   private object FormulaSet {
 
     private val formulaSet : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
+    private val clauseMap : ContextMap[Clause, FormulaStore] = new TreeContextMap[Clause,FormulaStore]()
 
     /**
      * Looks up the termMap, for an already existing store and returns this or the given store
@@ -165,8 +167,14 @@ object FormulaDataStore extends DataStore {
         case Some(f1) =>
           false
         case None =>
-          formulaSet.add(f, f.context)
-          true
+          clauseMap lookup (f.clause, f.context) match {
+            case Some(f1) =>
+              false
+            case None =>
+              formulaSet.add(f, f.context)
+              clauseMap.put(f.clause, f, f.context)
+              true
+          }
       }
     }
 
@@ -181,19 +189,26 @@ object FormulaDataStore extends DataStore {
     def getAll(c : Context) : Iterable[FormulaStore] = formulaSet.synchronized(formulaSet.getAll(c))
 
     def rm(f : FormulaStore) : Boolean = formulaSet.synchronized {
-      formulaSet.remove(f, f.context)
+      if(formulaSet.remove(f, f.context)) {
+        clauseMap.remove(f.clause, f.context)
+        return true
+      }
+      return false
     }
 
     def rmName(n : String) : Boolean = formulaSet.synchronized {
       formulaSet.getAll.find {f => f.name == n} match {
         case None => false
-        case Some(f) => formulaSet.remove(f, f.context)
+        case Some(f) =>
+          val r = formulaSet.remove(f, f.context)
+          if(r) clauseMap.remove(f.clause, f.context)
+          r
       }
     }
 
     def getName(n : String) : Option[FormulaStore] = formulaSet.synchronized(formulaSet.getAll.find {f => f.name == n})
 
-    def contains(f : FormulaStore) : Boolean = formulaSet.synchronized(formulaSet.contains(f, f.context))
+    def contains(f : FormulaStore) : Boolean = formulaSet.synchronized(clauseMap.lookup(f.clause,f.context).isDefined)
   }
 
 
@@ -215,19 +230,17 @@ object FormulaDataStore extends DataStore {
       }
 //      leo.Out.comment(s"[FormulaStore]: \n    ${fo.pretty} \n  is updated to \n    ${fn.pretty}.")
       addFormula(fn)
-      return true
     case _ => false
   }
 
   override def insert(n: Any): Boolean = n match {
     case fn : FormulaStore =>
       if(FormulaSet.contains(fn)){
-//        leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
+//       leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
         return false
       }
 //      leo.Out.comment(s"[FormulaStore]: ${fn.pretty} is added.")
       addFormula(fn)
-      return true
     case _ => false
   }
 

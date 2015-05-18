@@ -64,6 +64,14 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
         }
       })
 
+  override def equals(obj : Any) : Boolean = obj match {
+    case co : Clause =>
+      cong(co)
+    case _ => false
+  }
+
+  override def hashCode() : Int = lits.map(_.hashCode()).fold(0){(a,b) => a^b}  // XOR on all literal hascodes
+
   // TODO: Maybe move this to "utilities"?
   private def mkDisjunction(terms: Seq[Term]): Term = terms match {
     case Seq() => LitFalse()

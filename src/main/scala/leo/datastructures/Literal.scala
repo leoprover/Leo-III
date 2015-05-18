@@ -52,6 +52,13 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
 
   def fold[A](f: (Term, Boolean) => A): A = f(term, polarity)
   def termMap[A](f: Term => Term): Literal = Literal.mkLit(f(term), polarity)
+
+  override def equals(obj : Any) : Boolean = obj match {
+    case ol : Literal => polarity == ol.polarity && term == ol.term
+    case _ => false
+  }
+
+  override def hashCode() : Int = {val h = term.hashCode(); if(polarity) h else ~h}
 }
 
 object Literal extends Function2[Term, Boolean, Literal]{

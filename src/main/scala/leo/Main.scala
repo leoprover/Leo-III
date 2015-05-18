@@ -92,6 +92,7 @@ object Main {
 
       // TODO build switch for mulitple contexts
       // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+      //Utility.formulaContext()
       if (Configuration.PROOF_OBJECT) {
         Out.comment(s"SZS output start Proof for ${Configuration.PROBLEMFILE}")
         FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printDerivation(_))
