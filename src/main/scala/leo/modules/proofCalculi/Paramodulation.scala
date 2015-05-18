@@ -141,13 +141,18 @@ object PropParamodulation extends ParamodStep{
     override def output: String = "Paramod-Full"
   }
 
-trait CalculusRule {
-  def name: String
-}
-trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusRule {
+trait CalculusRule[Hint] {
   type HintType = Hint
 
-    def canApply(cl: Clause): (Boolean, Hint)
+  def name: String
+}
+trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusRule[Hint] {
+
+  def canApply(cl: Clause): (Boolean, Hint)
+}
+
+trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with CalculusRule[Hint] {
+  def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
 }
 
 /**
