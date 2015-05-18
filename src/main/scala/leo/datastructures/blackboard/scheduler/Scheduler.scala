@@ -4,6 +4,7 @@ package blackboard.scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import leo.agents.impl.SetContextTask
 import leo.datastructures.blackboard._
 
 import scala.collection.mutable
@@ -309,14 +310,18 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private val results : mutable.Set[(Result,Task)] = new mutable.HashSet[(Result,Task)]
+    private var results : Seq[(Result,Task)] = Seq[(Result,Task)]()
 
     def get() : (Result,Task) = this.synchronized {
       while (true) {
         try {
            while(results.isEmpty) this.wait()
            val r = results.head
-           results.remove(r)
+           r._2 match {
+             case SetContextTask(_,_) => println("got setcontexttask in ExecTask get")
+             case _ => ()
+           }
+           results = results.tail
            return r
         } catch {
           // If got interrupted exception, restore status and continue
@@ -330,7 +335,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
     def put(r : Result, t : Task) {
       this.synchronized{
-        results.add((r,t))        // Must not be synchronized, but maybe it should
+        results = results :+ ((r,t))        // Must not be synchronized, but maybe it should
         this.notifyAll()
       }
     }
