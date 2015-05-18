@@ -42,6 +42,7 @@ object NegationNormal extends AbstractNormalize{
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
+    case s@MetaVar(_,_)         => s
     case f ∙ args               => Term.mkApp(rmEq(f,pol), args.map(_.fold({t => Left(rmEq(t,pol))},(Right(_)))))
     case ty :::> t              => mkTermAbs(ty, rmEq(t,pol))
     case TypeLambda(t)          => mkTypeAbs(rmEq(t,pol))
@@ -73,6 +74,7 @@ object NegationNormal extends AbstractNormalize{
 
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
+    case s@MetaVar(_,_)         => s
     case f ∙ args               => Term.mkApp(nnf(f), args.map(_.fold({t => Left(nnf(t))},(Right(_)))))
     case ty :::> t              => mkTermAbs(ty, nnf(t))
     case TypeLambda(t)          => mkTypeAbs(nnf(t))
