@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import leo.agents.impl.SetContextTask
 import leo.datastructures.blackboard._
 
+import scala.collection.immutable.TreeMap
 import scala.collection.mutable
 import java.util.concurrent.{RejectedExecutionException, Executors}
 
@@ -311,14 +312,16 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private var results : Seq[(Result,Task)] = Seq[(Result,Task)]()
+    private var results : Map[Int, Seq[(Result,Task)]] = TreeMap[Int, Seq[(Result,Task)]]()
 
     def get() : (Result,Task) = this.synchronized {
       while (true) {
         try {
-           while(results.isEmpty) this.wait()
-           val r = results.head
-           results = results.tail
+           while(results.keys.isEmpty) {this.wait()}
+           val k = results.keys.head
+           val s = results.get(k).get
+           val r = s.head
+           if(s.size > 1) results = results + (k -> s.tail) else results = results - k
            return r
         } catch {
           // If got interrupted exception, restore status and continue
@@ -332,7 +335,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
     def put(r : Result, t : Task) {
       this.synchronized{
-        results = results :+ ((r,t))        // Must not be synchronized, but maybe it should
+        val s : Seq[(Result,Task)] = results.get(r.priority).fold(Seq[(Result,Task)]()){x => x}
+        results = results + (r.priority -> (s :+ ((r,t))))        // Must not be synchronized, but maybe it should
         this.notifyAll()
       }
     }

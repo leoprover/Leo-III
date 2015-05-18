@@ -30,6 +30,8 @@ class Result {
   private val insertM : mutable.HashMap[DataType, Seq[Any]] = new mutable.HashMap[DataType, Seq[Any]]()
   private val updateM : mutable.HashMap[DataType, Seq[(Any,Any)]] = new mutable.HashMap[DataType, Seq[(Any,Any)]]()
   private val removeM : mutable.HashMap[DataType, Seq[Any]] = new mutable.HashMap[DataType, Seq[Any]]()
+  private var prio : Int = 5
+
 
   /**
    * Inserts given data d of type t into
@@ -101,4 +103,20 @@ class Result {
    * @return all stored datatypes
    */
   protected[blackboard] def keys : Seq[DataType] = ((removeM.keySet union insertM.keySet) union updateM.keySet).toList
+
+  /**
+   * Returns the priority of the Result.
+   * The priority is between 1 and 10, where 1 is important and 10 is unimportant.
+   *
+   * @return priority of the result
+   */
+  protected[blackboard] def priority : Int = prio
+
+  /**
+   * Sets the priority of the result to a value between
+   * 1 and 10, where 1 is important and 10 is unimportant.
+   *
+   * @param prio sets the priority to max(min(prio,10),1)
+   */
+  def setPriority(prio : Int) : Result = {this.prio = prio.min(10).max(1); this}
 }

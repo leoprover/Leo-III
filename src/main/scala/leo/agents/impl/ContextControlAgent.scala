@@ -34,8 +34,7 @@ abstract class AbstractContextControlAgent extends Agent {
       Out.trace(s"[$name]: Set context ${con.contextID} to ${status.output}.")
       con.close()
       val r = Result()
-      r.insert(StatusType)(SZSStore(status, con))
-      r
+      r.insert(StatusType)(SZSStore(status, con)).setPriority(1)
     case _  => Out.warn(s"[$name]:\n Got wrong task\n   ${t.pretty}"); Result()
   }
 
