@@ -141,6 +141,7 @@ object PropParamodulation extends ParamodStep{
     override def output: String = "Paramod-Full"
   }
 
+
 trait CalculusRule[Hint] {
   type HintType = Hint
 
@@ -154,6 +155,116 @@ trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with Calculus
 trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with CalculusRule[Hint] {
   def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
 }
+
+
+object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, Term), Term)],Set[(Literal, (Term, Term), Term)])] {
+  type EqLit = Literal  // the equality literal that causes the paramodulation
+  type TTR = Term // term to replace in literal (since it unifies with a side of the EqLit)
+  type DirEq = (Term, Term)  // the terms of that equality sorted by: (term that unifies with TTR, term that will be replaced for TTR)
+
+  type sideHint = Set[(EqLit, DirEq, TTR)]
+
+
+  def mayUnify(s: Term, t: Term): Boolean = {
+    // Match case on head symbols:
+    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+    // * = if same type
+    if (s.headSymbol == t.headSymbol)
+      true
+    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
+      true
+    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
+      true
+    else
+      false
+  }
+
+  def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
+    var left_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
+    var right_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
+
+    val (eqLits1, eqLits2) = (cl1.eqLits, cl2.eqLits)
+    // for equalities from left clause
+    val eqLits1It = eqLits1.iterator
+
+    while(eqLits1It.hasNext) {
+      val eqLit = eqLits1It.next()
+      val (l,r) = eqLit.eqComponents.get
+
+      val lits2 = cl2.lits.iterator
+
+      while(lits2.hasNext) {
+        val otherLit = lits2.next()
+        val subterms = otherLit.term.occurrences.keySet.iterator
+        while (subterms.hasNext) {
+          val st = subterms.next()
+          if (mayUnify(st, l)) {
+            left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (l, r), st))
+          }
+          if (mayUnify(st, r)) {
+            left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (r, l), st))
+          }
+        }
+      }
+    }
+
+    val eqLits2It = eqLits1.iterator
+
+    while(eqLits2It.hasNext) {
+      val eqLit = eqLits2It.next()
+      val (l,r) = eqLit.eqComponents.get
+
+      val lits1 = cl1.lits.iterator
+
+      while(lits1.hasNext) {
+        val otherLit = lits1.next()
+        val subterms = otherLit.term.occurrences.keySet.iterator
+        while (subterms.hasNext) {
+          val st = subterms.next()
+          if (mayUnify(st, l)) {
+            right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (l, r), st))
+          }
+          if (mayUnify(st, r)) {
+            right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (r, l), st))
+          }
+        }
+      }
+    }
+    (right_termsThatMayUnify.nonEmpty || left_termsThatMayUnify.nonEmpty,(left_termsThatMayUnify,right_termsThatMayUnify))
+  }
+
+  def apply(cl1: Clause, cl2: Clause, hint: (Set[(EqLit, DirEq, TTR)],Set[(EqLit, DirEq, TTR)])) = {
+    var newCls : Set[Clause] = Set()
+
+    // for equalities from left clause
+    val leftHint = hint._1
+    val leftIt = leftHint.iterator
+    while (leftIt.hasNext) {
+      val (eqLit, (left,right), ttr) = leftIt.next()
+      val restLits = cl1.lits.filterNot(_ == eqLit)
+      val uniConstraint = Literal.mkUniLit(left, ttr)
+      val replLits = cl2.replace(ttr, right).lits
+      newCls = newCls + Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived)
+    }
+
+    // for equalities from right clause
+    val rightHint = hint._2
+    val rightIt = rightHint.iterator
+    while (rightIt.hasNext) {
+      val (eqLit, (left,right), ttr) = rightIt.next()
+      val restLits = cl2.lits.filterNot(_ == eqLit)
+      val uniConstraint = Literal.mkUniLit(left, ttr)
+      val replLits = cl1.replace(ttr, right).lits
+      newCls = newCls + Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived)
+    }
+
+    newCls
+  }
+
+  def name = "new_paramod"
+}
+
+
 
 /**
  * {{{
