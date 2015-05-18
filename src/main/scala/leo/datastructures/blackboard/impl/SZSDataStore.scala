@@ -46,7 +46,7 @@ object SZSDataStore extends DataStore {
   }
 
   override def insert(n: Any): Boolean = n match {
-    case SZSStore(s, c) => szsSet.put(c, SZSStore(s,c)); leo.Out.comment(s"[SZSStore]: Inserted ${s}"); true
+    case SZSStore(s, c) => szsSet.put(c, SZSStore(s,c)); true
     case _ => false
   }
 

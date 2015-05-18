@@ -318,10 +318,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         try {
            while(results.isEmpty) this.wait()
            val r = results.head
-           r._2 match {
-             case SetContextTask(_,_) => println("got setcontexttask in ExecTask get")
-             case _ => ()
-           }
            results = results.tail
            return r
         } catch {
