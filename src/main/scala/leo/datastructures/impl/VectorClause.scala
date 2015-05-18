@@ -12,6 +12,7 @@ abstract sealed class VectorClause extends Clause {
   lazy val flexHeadLits: Set[Literal] = lits.filter(_.flexHead).toSet
   lazy val uniLits: Set[Literal] = lits.filter(_.isUni).toSet
   lazy val freeVars: Set[Term] = lits.map(_.term.freeVars).flatten.toSet
+  lazy val eqLits: Set[Literal] = lits.filter(_.isEq).toSet
 }
 
 object VectorClause {

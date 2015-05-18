@@ -30,6 +30,8 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   def flexHeadLits: Set[Literal]
   /** all literals `lt` with `lt.isUni`. */
   def uniLits: Set[Literal]
+  /** all positive equality literals */
+  def eqLits: Set[Literal]
 
   def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 

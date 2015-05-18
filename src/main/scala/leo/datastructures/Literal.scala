@@ -23,8 +23,10 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
   def isFlexFlex: Boolean
   /** Returns true iff the literal is an unification constraint. */
   def isUni: Boolean
+  /** Returns true iff the literal is a positive equality. */
+  def isEq: Boolean
   /** If `this.isUni` returns (A,B) where A = B is the underlying literal's unification constraint */
-  def uniComponents: Option[(Term, Term)]
+  def eqComponents: Option[(Term, Term)]
   /** Returns true iff the literal has a flexible head. */
   def flexHead: Boolean
 

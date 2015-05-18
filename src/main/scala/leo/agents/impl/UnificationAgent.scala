@@ -33,7 +33,7 @@ class UnificationAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
-      f.clause.uniLits.map{ l => l.uniComponents match {
+      f.clause.uniLits.map{ l => l.eqComponents match {
         case Some((t1,t2))  => UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
         case _  => Nil
       }}.flatten
