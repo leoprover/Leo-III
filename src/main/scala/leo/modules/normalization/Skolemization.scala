@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.impl.Signature
 import Term._
 
@@ -168,5 +168,5 @@ object Skolemization extends AbstractNormalize{
 
   override def applicable(status : Int): Boolean = (status & 15) == 7
 
-  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 15)
+  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 15)
 }

@@ -4,7 +4,7 @@ package modules
 import java.io.{PrintWriter, StringWriter, FileNotFoundException, File}
 
 import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.datastructures.{TermIndex, Role_Definition, Role_Unknown, Role_Type}
+import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
@@ -68,7 +68,7 @@ object Utility {
 
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-              val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+              val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
               if (FormulaDataStore.addFormula(f))
                 Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
               }
@@ -100,7 +100,7 @@ object Utility {
 
                     val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
                     processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-                      val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+                      val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
                       if (FormulaDataStore.addFormula(f))
                         Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
                       }
@@ -149,7 +149,7 @@ object Utility {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
         processed match { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-          val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context())
+          val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, NoAnnotation)
           if (FormulaDataStore.addFormula(f))
             Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
         }
@@ -278,12 +278,17 @@ object Utility {
   def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
 
   private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+    f.annotation match {
+      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")
+      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+      case _ => sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")
+    }
+//    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
   }
 
   private def mkTPTP(f : FormulaStore) : String = {
     try{
-      ToTPTP(f).output
+      ToTPTP.withAnnotation(f).output
     } catch {
       case e : Throwable => f.pretty
     }

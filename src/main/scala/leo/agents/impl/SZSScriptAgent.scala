@@ -73,7 +73,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
 
   private def createTask(f : FormulaStore, c : Context) : Iterable[Task] = {
     Out.trace(s"[$name]: Got a task.")
-    val conj = f.newRole(Role_Conjecture).newClause(negateClause(f.clause))
+    val conj = Store(negateClause(f.clause), Role_Conjecture, f.context, f.status)
     val context : Set[FormulaStore] = FormulaDataStore.getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
     return List(new ScriptTask(context + conj, c))
   }

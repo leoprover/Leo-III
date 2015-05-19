@@ -24,7 +24,7 @@ class UnificationAgent extends Agent {
   override def run(t: Task): Result = t match {
     case UnificationTask(f,t1,t2,s) =>
       Out.trace(s"[$name]: Run unification task on clause ${f.clause.pretty}: \n unify ${t1.pretty} and ${t2.pretty} with \n ${s.pretty}")
-      val nf = f.randomName().newClause(f.clause.substitute(s))
+      val nf = Store(f.clause.substitute(s), Role_Plain, f.context, f.status)
       Result().insert(FormulaType)(nf).insert(UnifierType)(UnifierStore(f,t1,t2,s))
     case _ => Result()
   }

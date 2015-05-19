@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.{Store, FormulaStore}
 import Term._
 import leo.datastructures._
 
@@ -88,5 +88,5 @@ object NegationNormal extends AbstractNormalize{
    */
   override def applicable(status : Int): Boolean = (status & 7) == 3
 
-  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 7)
+  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 7)
 }

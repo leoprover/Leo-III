@@ -4,33 +4,18 @@ package blackboard
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import leo.datastructures.{Role_Plain, Role, Clause, Pretty}
 import leo.datastructures.context.Context
 
 
 object Store {
   protected[blackboard] var unnamedFormulas : AtomicInteger = new AtomicInteger(0)
 
-  def apply(name : String, initClause : Clause, context : Context) : FormulaStore
-    = new FormulaStore(name, initClause, Role_Plain, 0, context, List(), "initial")
+  def apply(cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation = NoAnnotation): FormulaStore
+  = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), cl, role, status, context, annotation)
 
-  def apply(initClause : Clause, role : Role, status : Int, context : Context) : FormulaStore
-    = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), initClause, role, status, context : Context, List(), "initial")
+  def apply(name: String, cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation): FormulaStore
+  = new FormulaStore(name, cl, role, status, context, annotation)
 
-  def apply(initClause : Clause, context : Context) : FormulaStore
-  = Store(initClause,Role_Plain, 0, context)
-
-  def apply(initClause : Clause, status : Int, context : Context) : FormulaStore
-    = Store(initClause, Role_Plain ,status, context)
-
-  def apply(initClause : Clause, role : Role, context : Context) : FormulaStore
-    = Store(initClause, role, 0, context)
-
-  def apply(name : String, initClause : Clause, role : Role, context : Context) : FormulaStore
-    = Store(name, initClause, role, 0, context)
-
-  def apply(name : String, initClause : Clause, role : Role, status : Int, context : Context) : FormulaStore
-    = new FormulaStore(name, initClause, role, status, context, List(), "initial")
 }
 
 /**
@@ -52,7 +37,7 @@ object Store {
  * </table>
  *
  */
-class FormulaStore(val name : String, val clause : Clause, val role : Role, val status : Int, val context : Context, val origin : List[FormulaStore], val reason : String)
+class FormulaStore(val name : String, val clause : Clause, val role : Role, val status : Int, val context : Context, val annotation : ClauseAnnotation)
   extends Pretty with Ordered[FormulaStore] with HasCongruence[FormulaStore] {
 
   /**
@@ -65,15 +50,6 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
    */
   def normalized : Boolean = (status & 3)== 3
 
-  def newName(nname : String) : FormulaStore = new FormulaStore(nname, clause, role, status, context, origin, reason)
-  def newClause(nclause : Clause) : FormulaStore = new FormulaStore(name,nclause, role, status, context, origin, reason)
-  def newStatus(nstatus : Int) : FormulaStore = new FormulaStore(name, clause, role, nstatus,context,origin, reason)
-  def newRole(nrole : Role) : FormulaStore = new FormulaStore(name, clause, nrole, status,context,origin, reason)
-  def newOrigin(norigin : List[FormulaStore], nreason : String) = new FormulaStore(name, clause, role, status, context, norigin, nreason)
-  def newContext(ncontext : Context) : FormulaStore = new FormulaStore(name, clause, role, status, ncontext, origin, reason)
-
-  def randomName() : FormulaStore = new FormulaStore("gen_formula_"+Store.unnamedFormulas.incrementAndGet(), clause, role, status, context, origin, reason)
-
   lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
 
   override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
@@ -84,9 +60,8 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
   override def cong(that: FormulaStore): Boolean = clause.cong(that.clause)
 
   override def equals(o : Any) : Boolean = o match {
-    case fo : FormulaStore =>
-      return (this.clause cong fo.clause) && (this.role == fo.role)
-    case _ => return false
+    case fo : FormulaStore => (this.clause cong fo.clause) && (this.role == fo.role)
+    case _ => false
   }
 
   override def hashCode() : Int = this.clause.hashCode() ^ this.role.hashCode()

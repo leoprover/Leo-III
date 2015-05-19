@@ -5,7 +5,7 @@ import leo.agents._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
-import leo.datastructures.Type
+import leo.datastructures.{Role_Plain, Type}
 import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
 
 /**
@@ -46,7 +46,7 @@ class DomainConstrainedSplitAgent extends Agent {
         while(i <= t1.card.size) {
           val c = it.next()
           val cardi = t1.card(i-1)
-          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(_.newContext(c).newOrigin(Nil,"CardAxiom")).foreach{f => r.insert(FormulaType)(f)}
+          val ax = s.map(DomainConstrainedSplitting.cardinalityAxioms(cardi)(_)).flatten.toList.map(f => Store(f.clause, Role_Plain, c, f.status)/*newOrigin(Nil,"CardAxiom")*/).foreach{f => r.insert(FormulaType)(f)}
           i = i+1
         }
 

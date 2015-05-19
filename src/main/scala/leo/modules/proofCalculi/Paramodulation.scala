@@ -466,7 +466,7 @@ class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause], Unit]
       vars.map{case hd =>
         val binding = HuetsPreUnification.partialBinding(hd.ty, hdSymb)
         val subst = Subst.singleton(hd.metaIndices.head, binding)
-        Simplification.normalize(Clause.mkClause(cl.lits.map(_.termMap(_.substitute(subst).betaNormalize)), cl.implicitBindings, Derived, ClauseAnnotation(this, cl)))
+        Simplification.normalize(Clause.mkClause(cl.lits.map(_.termMap(_.substitute(subst).betaNormalize)), cl.implicitBindings, Derived))
       }
     }.flatten
 }

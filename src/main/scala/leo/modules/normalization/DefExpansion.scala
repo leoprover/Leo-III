@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
-import leo.datastructures.{Term, Clause}
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.{Role_Plain, Term, Clause}
+import leo.datastructures.blackboard.{Store, FormulaStore}
 
 /**
  * Created by lex on 07.07.14.
@@ -27,5 +27,5 @@ object DefExpansion extends AbstractNormalize {
    */
   override def applicable(status : Int): Boolean = (status & 3) == 1
 
-  def markStatus(fS : FormulaStore) : FormulaStore = fS.newStatus((fS.status | 2) -1)
+  def markStatus(fS : FormulaStore) : FormulaStore = Store(fS.clause, Role_Plain, fS.context, (fS.status | 2) -1)
 }

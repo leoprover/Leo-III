@@ -2,6 +2,7 @@ package leo
 package agents
 package impl
 
+import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
 import Store._
 import leo.modules.proofCalculi.StdPrimSubst
@@ -27,7 +28,7 @@ object PrimSubstAgent extends Agent {
         val ncs = StdPrimSubst.apply(f.clause, ())
         val res = Result()
         for (cl <- ncs) {
-          res.insert(FormulaType)(Store(cl, f.context))
+          res.insert(FormulaType)(Store(cl, Role_Plain, f.context, f.status, ClauseAnnotation(StdPrimSubst, f)))
         }
         Out.trace(s"[$name:]\n  Clause ${f.clause.pretty}\n flex-heads instantiated, new claues:\n ${ncs.map(_.pretty).mkString("\n")}")
         res

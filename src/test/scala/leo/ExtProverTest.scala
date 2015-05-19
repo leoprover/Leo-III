@@ -4,7 +4,7 @@ import leo.agents.FifoController
 import leo.agents.impl.ContextControlAgent
 import leo.datastructures.blackboard.impl.{SZSDataStore, FormulaDataStore}
 import leo.datastructures.{Role_Conjecture, Role_NegConjecture}
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{Store, Blackboard}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
@@ -74,7 +74,7 @@ class ExtProverTest extends LeoTestSuite {
       //Negate the conjecture by ourselves, since the load phase uses Configurations (not present here)
       FormulaDataStore.getAll(_.role == Role_Conjecture) foreach { f =>
         assert(f.clause.lits.size == 1, "Found a conjecture with more than one literal.")
-        val nf = f.newClause(f.clause.mapLit(_.flipPolarity)).newRole(Role_NegConjecture).newOrigin(List(f),"Negate-Conjecture")
+        val nf = Store(f.clause.mapLit(_.flipPolarity), Role_NegConjecture, f.context, f.status) //newOrigin(List(f),"Negate-Conjecture")
         FormulaDataStore.removeFormula(f)
         FormulaDataStore.addFormula(nf)
       }

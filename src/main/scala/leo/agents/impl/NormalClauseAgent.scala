@@ -2,6 +2,7 @@ package leo
 package agents
 package impl
 
+import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
 import leo.modules.normalization.Normalize
 import leo.modules.proofCalculi.TrivRule
@@ -30,17 +31,18 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case t1: NormalTask =>
       val fstore = t1.get()
       val calc = norm(fstore)
-      var erg = calc.newClause(TrivRule.triv(TrivRule.teqf(calc.clause)))
+      val ergCl = TrivRule.triv(TrivRule.teqf(calc.clause))
 
       // If the Result is trivial true, delete the initial clause
-      if(TrivRule.teqt(erg.clause)) return Result().remove(FormulaType)(fstore)
+      if(TrivRule.teqt(ergCl)) return Result().remove(FormulaType)(fstore)
 
       // Else check if something happend and update the formula
-      val r= if (fstore.clause.cong(erg.clause)) {
+      val r= if (fstore.clause.cong(ergCl)) {
+        val erg =Store(ergCl, Role_Plain, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
         Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
         Result().update(FormulaType)(fstore)(erg)
       } else {
-        erg.newOrigin(List(t1.get()), norm.name)
+        val erg = Store(ergCl, Role_Plain, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
         Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
         Result().update(FormulaType)(fstore)(erg)
       }

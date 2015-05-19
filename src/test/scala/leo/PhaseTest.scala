@@ -6,7 +6,7 @@ import leo.datastructures.blackboard.impl.{SZSDataStore, FormulaDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.datastructures.{Role_NegConjecture, Role_Conjecture}
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{Store, Blackboard}
 import leo.datastructures.impl.Signature
 import leo.modules._
 import leo.modules.output.SZS_Timeout
@@ -69,7 +69,7 @@ class PhaseTest extends FunSuite {
       //Negate the conjecture by ourselves, since the load phase uses Configurations (not present here)
       FormulaDataStore.getAll(_.role == Role_Conjecture) foreach { f =>
         assert(f.clause.lits.size == 1, "Found a conjecture with more than one literal.")
-        val nf = f.newClause(f.clause.mapLit(_.flipPolarity)).newRole(Role_NegConjecture).newOrigin(List(f),"Negate-Conjecture")
+        val nf = Store(f.clause.mapLit(_.flipPolarity), Role_NegConjecture, f.context, f.status) //f.newClause(f.clause.mapLit(_.flipPolarity)).newRole(Role_NegConjecture).newOrigin(List(f),"Negate-Conjecture")
         FormulaDataStore.removeFormula(f)
         FormulaDataStore.addFormula(nf)
       }
