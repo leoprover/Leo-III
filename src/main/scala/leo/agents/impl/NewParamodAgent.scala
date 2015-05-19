@@ -48,8 +48,10 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
       case NewParamodTask(f1, f2, hint) =>
         val r = Result()
         val newHint: rule.HintType = hint.fold(in => (Set(in), Set()):rule.HintType, in => (Set(), Set(in)):rule.HintType)
-        rule.apply(f1.clause, f2.clause, (newHint)).foreach( cl =>
+        rule.apply(f1.clause, f2.clause, (newHint)).foreach( cl => {
+          Out.trace(rule.name + "new paramod agent insert clause: "+cl.pretty)
           r.insert(FormulaType)(Store(cl, f1.status, f1.context).newOrigin(List(f1, f2), rule.name))
+        }
         )
         r
       case _: Task =>
@@ -62,7 +64,7 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
   private case class NewParamodTask(f1 : FormulaStore, f2: FormulaStore, hint: Either[(Literal, (Term, Term), Term),(Literal, (Term, Term), Term)]) extends Task {
     override def readSet(): Set[FormulaStore] = Set(f1, f2)
     override def writeSet(): Set[FormulaStore] = Set.empty
-    override def bid(budget: Double): Double = budget / hint.left.getOrElse(hint.right.get)._1.id
+    override def bid(budget: Double): Double = budget / Math.max(f1.clause.weight, f2.clause.weight) /*hint.left.getOrElse(hint.right.get)._1.id*/
 
     override val toString : String = s"New Paramod: ${f1.pretty} with ${f2.pretty}"
     override val pretty : String = s"New Paramod: ${f1.pretty} with ${f2.pretty}"
