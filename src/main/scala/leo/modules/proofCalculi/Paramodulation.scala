@@ -156,8 +156,9 @@ trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with
   def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
 }
 
+trait ParamodRule extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, Term), Term)],Set[(Literal, (Term, Term), Term)])]
 
-object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, Term), Term)],Set[(Literal, (Term, Term), Term)])] {
+object NewParamod extends ParamodRule {
   type EqLit = Literal  // the equality literal that causes the paramodulation
   type TTR = Term // term to replace in literal (since it unifies with a side of the EqLit)
   type DirEq = (Term, Term)  // the terms of that equality sorted by: (term that unifies with TTR, term that will be replaced for TTR)
@@ -169,14 +170,15 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
     // Match case on head symbols:
     // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
     // * = if same type
-    if (s.headSymbol == t.headSymbol)
-      true
-    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
-      true
-    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
-      true
-    else
-      false
+    s == t
+//    if (s.headSymbol == t.headSymbol)
+//      true
+//    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
+//      true
+//    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
+//      true
+//    else
+//      false
   }
 
   def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
@@ -244,7 +246,7 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
       val restLits = cl1.lits.filterNot(_ == eqLit)
       val uniConstraint = Literal.mkUniLit(left, ttr)
       val replLits = cl2.replace(ttr, right).lits
-      newCls = newCls + Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived)
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
     // for equalities from right clause
@@ -255,7 +257,7 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
       val restLits = cl2.lits.filterNot(_ == eqLit)
       val uniConstraint = Literal.mkUniLit(left, ttr)
       val replLits = cl1.replace(ttr, right).lits
-      newCls = newCls + Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived)
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
     newCls
@@ -264,6 +266,107 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
   def name = "new_paramod"
 }
 
+object NewPropParamod extends ParamodRule {
+  type EqLit = Literal  // the equality literal that causes the paramodulation
+  type TTR = Term // term to replace in literal (since it unifies with a side of the EqLit)
+  type DirEq = (Term, Term)  // the terms of that equality sorted by: (term that unifies with TTR, term that will be replaced for TTR)
+
+  type sideHint = Set[(EqLit, DirEq, TTR)]
+
+
+  def mayUnify(s: Term, t: Term): Boolean = {
+    // Match case on head symbols:
+    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+    // * = if same type
+//    if (s.headSymbol == t.headSymbol)
+//      true
+//    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
+//      true
+//    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
+//      true
+//    else
+//      false
+    s == t
+  }
+
+  def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
+    var left_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
+    var right_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
+
+    val (eqLits1, eqLits2) = (cl1.lits, cl2.lits)
+    // for equalities from left clause
+    val eqLits1It = eqLits1.iterator
+
+    while(eqLits1It.hasNext) {
+      val eqLit = eqLits1It.next()
+      val (l,r): (Term, Term) = (eqLit.term, if (eqLit.polarity) LitTrue else LitFalse)
+
+      val lits2 = cl2.lits.iterator
+
+      while(lits2.hasNext) {
+        val otherLit = lits2.next()
+        val subterms = otherLit.term.occurrences.keySet.iterator
+        while (subterms.hasNext) {
+          val st = subterms.next()
+          if (mayUnify(st, l)) {
+            left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (l, r), st))
+          }
+        }
+      }
+    }
+
+    val eqLits2It = eqLits1.iterator
+
+    while(eqLits2It.hasNext) {
+      val eqLit = eqLits2It.next()
+      val (l,r): (Term, Term) = (eqLit.term, if (eqLit.polarity) LitTrue else LitFalse)
+
+      val lits1 = cl1.lits.iterator
+
+      while(lits1.hasNext) {
+        val otherLit = lits1.next()
+        val subterms = otherLit.term.occurrences.keySet.iterator
+        while (subterms.hasNext) {
+          val st = subterms.next()
+          if (mayUnify(st, l)) {
+            right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (l, r), st))
+          }
+        }
+      }
+    }
+    (right_termsThatMayUnify.nonEmpty || left_termsThatMayUnify.nonEmpty,(left_termsThatMayUnify,right_termsThatMayUnify))
+  }
+
+  def apply(cl1: Clause, cl2: Clause, hint: (Set[(EqLit, DirEq, TTR)],Set[(EqLit, DirEq, TTR)])) = {
+    var newCls : Set[Clause] = Set()
+
+    // for equalities from left clause
+    val leftHint = hint._1
+    val leftIt = leftHint.iterator
+    while (leftIt.hasNext) {
+      val (eqLit, (left,right), ttr) = leftIt.next()
+      val restLits = cl1.lits.filterNot(_ == eqLit)
+      val uniConstraint = Literal.mkUniLit(left, ttr)
+      val replLits = cl2.replace(ttr, right).lits
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits, Derived))))
+    }
+
+    // for equalities from right clause
+    val rightHint = hint._2
+    val rightIt = rightHint.iterator
+    while (rightIt.hasNext) {
+      val (eqLit, (left,right), ttr) = rightIt.next()
+      val restLits = cl2.lits.filterNot(_ == eqLit)
+      val uniConstraint = Literal.mkUniLit(left, ttr)
+      val replLits = cl1.replace(ttr, right).lits
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits, Derived))))
+    }
+
+    newCls
+  }
+
+  def name = "new_paramod_prop"
+}
 
 
 /**
