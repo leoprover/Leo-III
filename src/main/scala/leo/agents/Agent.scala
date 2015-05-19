@@ -6,6 +6,7 @@ import leo.datastructures.blackboard.{DataType, Event, FormulaStore, Blackboard,
 import leo.datastructures.context.Context
 
 
+import scala.StringBuilder
 import scala.collection.mutable
 
 
@@ -66,6 +67,34 @@ abstract class Agent {
    *         Some(xs) -> The agent registers only for data changes for any type in xs.
    */
   def interest : Option[Seq[DataType]] = Some(Nil)
+
+  /**
+   * Prints the comment in the comment stream of the console.
+   * Formated with the name of the agent.
+   *
+   * @param comment - The comment to be printed
+   */
+  def comment(comment : String) : Unit = leo.Out.comment(formatOut(comment))
+  /**
+   * Prints the comment in the debug stream of the console.
+   * Formated with the name of the agent.
+   *
+   * @param debug - The comment to be printed
+   */
+  def debug (debug : String) : Unit = leo.Out.comment(formatOut(debug))
+  /**
+   * Prints the comment in the fine stream of the console.
+   * Formated with the name of the agent.
+   *
+   * @param trace - The comment to be printed
+   */
+  def trace (trace : String) : Unit = leo.Out.comment(formatOut(trace))
+  private def formatOut(out : String) : String = {
+    val sb = new StringBuilder()
+    sb.append(s"[${name}]:")
+    out.lines.foreach{s => sb.append("\n  "+s)}
+    sb.toString()
+  }
 }
 
 
