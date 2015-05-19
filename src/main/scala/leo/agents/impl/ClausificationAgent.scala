@@ -57,31 +57,21 @@ class ClausificationAgent extends Agent {
   }
 }
 
-
-private class ClausificationTask(val dc : FormulaStore, val nc : Seq[Clause]) extends Task{
+/**
+ * Creates a Clausification task with `dc` the old FormulaStore to be deleted and `nc` the list
+ * of new clauses to be inserted into the blackboard.
+ * @param dc - Old Formula Store
+ * @param nc - List of new clauses
+ * @return A Clausification Task
+ */
+private case class ClausificationTask(dc : FormulaStore, nc : Seq[Clause]) extends Task{
   override def readSet(): Set[FormulaStore] = Set(dc)
   override def writeSet(): Set[FormulaStore] = Set.empty
-  override def bid(budget: Double): Double = budget / 20
+  override def bid(budget: Double): Double = budget / dc.clause.weight
 
   override val toString : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
 
   override val pretty : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
 
   override val name : String = "Clausification"
-}
-
-object ClausificationTask {
-  /**
-   * Creates a Clausification task with `dc` the old FormulaStore to be deleted and `nc` the list
-   * of new clauses to be inserted into the blackboard.
-   * @param dc - Old Formula Store
-   * @param nc - List of new clauses
-   * @return A Clausification Task
-   */
-  def apply(dc : FormulaStore, nc : Seq[Clause]) : Task = new ClausificationTask(dc, nc)
-
-  def unapply(t : Task) : Option[(FormulaStore, Seq[Clause])] = t match {
-    case t : ClausificationTask => Some(t.dc, t.nc)
-    case _ => None
-  }
 }

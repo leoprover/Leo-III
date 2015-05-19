@@ -3,7 +3,7 @@ package leo.modules.phase
 import leo.agents.impl._
 import leo.agents.{PriorityController, FifoController, AgentController}
 import leo.modules.normalization._
-import leo.modules.proofCalculi.{PropParamodulation, IdComparison, Paramodulation}
+import leo.modules.proofCalculi._
 import leo.modules.proofCalculi.splitting.ClauseHornSplit
 
 object PreprocessPhase extends CompletePhase {
@@ -28,6 +28,6 @@ object SplitPhase extends CompletePhase {
 
 object ParamodPhase extends CompletePhase {
   override val name : String = "ParamodPhase"
-  override protected val agents: Seq[AgentController] = List(new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison)), new PriorityController(new ClausificationAgent()), new PriorityController(PrimSubstAgent), new PriorityController(BoolExtAgent), new PriorityController(FuncExtAgent))
+  override protected val agents: Seq[AgentController] = List(new PriorityController(new NewParamodAgent(NewParamod)), new PriorityController(new NewParamodAgent(NewPropParamod)), new PriorityController(new UnificationAgent)/*new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison))*/, new PriorityController(new ClausificationAgent()), new PriorityController(PrimSubstAgent), new PriorityController(BoolExtAgent), new PriorityController(FuncExtAgent))
 }
 

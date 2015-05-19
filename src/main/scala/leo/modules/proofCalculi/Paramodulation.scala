@@ -156,27 +156,50 @@ trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with
   def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
 }
 
+trait ParamodRule extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, Term), Term)],Set[(Literal, (Term, Term), Term)])]
 
-object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, Term), Term)],Set[(Literal, (Term, Term), Term)])] {
+object NewParamod extends ParamodRule {
   type EqLit = Literal  // the equality literal that causes the paramodulation
   type TTR = Term // term to replace in literal (since it unifies with a side of the EqLit)
   type DirEq = (Term, Term)  // the terms of that equality sorted by: (term that unifies with TTR, term that will be replaced for TTR)
 
   type sideHint = Set[(EqLit, DirEq, TTR)]
 
+  def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
 
-  def mayUnify(s: Term, t: Term): Boolean = {
-    // Match case on head symbols:
-    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
-    // * = if same type
-    if (s.headSymbol == t.headSymbol)
+  def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
+    if (depth <= 0)
       true
-    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
-      true
-    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
-      true
-    else
-      false
+    else {
+      // Match case on head symbols:
+      // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+      // * = if same type
+      if (s.headSymbol == t.headSymbol && s.ty == t.ty) {
+        import leo.datastructures.Term._
+        // rigid-rigid
+        (s,t) match {
+          case (Symbol(id1), Symbol(id2)) => id1 == id2
+          case (f1 ∙ args1, f2 ∙ args2) => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+            case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
+            case (Right(ty1), Right(ty2)) => ty1 == ty2
+            case _ => false
+          } } // TODO: Do we need the first part? f1, f2 should be atoms
+          case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+          case _ => false
+        }
+      }
+      else if (s.headSymbol.isVariable && t.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
+        // flex-flex
+        true
+      } else {
+        // flex-rigid
+        //        val flex = if (s.headSymbol.isVariable) s else t
+        //        val rigid = if (t.headSymbol.isVariable) t else s
+
+
+        true
+      }
+    }
   }
 
   def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
@@ -244,7 +267,7 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
       val restLits = cl1.lits.filterNot(_ == eqLit)
       val uniConstraint = Literal.mkUniLit(left, ttr)
       val replLits = cl2.replace(ttr, right).lits
-      newCls = newCls + Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived)
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
     // for equalities from right clause
@@ -255,7 +278,7 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
       val restLits = cl2.lits.filterNot(_ == eqLit)
       val uniConstraint = Literal.mkUniLit(left, ttr)
       val replLits = cl1.replace(ttr, right).lits
-      newCls = newCls + Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived)
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
     newCls
@@ -264,6 +287,164 @@ object NewParamod extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, 
   def name = "new_paramod"
 }
 
+object NewPropParamod extends ParamodRule {
+  type EqLit = Literal  // the equality literal that causes the paramodulation
+  type TTR = Term // term to replace in literal (since it unifies with a side of the EqLit)
+  type DirEq = (Term, Term)  // the terms of that equality sorted by: (term that unifies with TTR, term that will be replaced for TTR)
+
+  type sideHint = Set[(EqLit, DirEq, TTR)]
+
+
+  def mayUnify(s: Term, t: Term) = {
+//    println("##################")
+    mayUnify0(s,t,5)
+  }
+
+  def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
+//    println("###############")
+//    println(s"checking mayunify of ${s.pretty} and ${t.pretty}")
+//    println(s"with headsymbols: ${s.headSymbol.pretty} and ${t.headSymbol.pretty}")
+    if (depth <= 0)
+      true
+    else {
+      // Match case on head symbols:
+      // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+      // * = if same type
+      if (s.ty == t.ty && !s.headSymbol.isVariable && !t.headSymbol.isVariable) {
+//        println("rigid-rigid case")
+        import leo.datastructures.Term._
+        // rigid-rigid
+        (s,t) match {
+          case (Symbol(id1), Symbol(id2)) => id1 == id2
+          case (Symbol(_), _) => false
+          case (_, Symbol(_)) => false
+          case (f1 ∙ args1, f2 ∙ args2) if args1.length > 0 && args2.length > 0 => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+            case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
+            case (Right(ty1), Right(ty2)) => ty1 == ty2
+            case _ => false
+          } } // TODO: Do we need the first part? f1, f2 should be atoms
+          case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+          case _ => false
+        }
+      } else if (s.headSymbol.isVariable && t.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
+        // flex-flex
+        true
+      } else if (s.ty == t.ty) {
+        // flex-rigid
+//        val flex = if (s.headSymbol.isVariable) s else t
+//        val rigid = if (t.headSymbol.isVariable) t else s
+
+
+        true
+      } else {
+        false
+      }
+    }
+  }
+
+
+//      if (s.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
+//      if (t.headSymbol.isVariable) {
+//        // flex-flex
+//        true
+//      } else {
+//        // s flex - t rigid
+//
+//
+//
+//        ???
+//      }
+//    } else if (t.headSymbol.isVariable && s.ty == t.ty && t.headSymbol.ty == s.headSymbol.ty)
+//      true
+//    else
+//      false
+//    s == t
+
+
+  def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
+
+    var left_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
+    var right_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
+
+    val (eqLits1, eqLits2) = (cl1.lits, cl2.lits)
+    // for equalities from left clause
+    val eqLits1It = eqLits1.iterator
+
+    while(eqLits1It.hasNext) {
+      val eqLit = eqLits1It.next()
+      val (l,r): (Term, Term) = (eqLit.term, if (eqLit.polarity) LitTrue else LitFalse)
+
+      val lits2 = cl2.lits.iterator
+
+      while(lits2.hasNext) {
+        val otherLit = lits2.next()
+        val subterms = otherLit.term.occurrences.keySet.iterator
+        while (subterms.hasNext) {
+          val st = subterms.next()
+          if (mayUnify(st, l)) {
+
+//            println(s"paramod ${cl1.pretty} with ${cl2.pretty}")
+//println(s"subterms of otherLit: ${ otherLit.term.occurrences.keySet.map(_.pretty).mkString("\n")}")
+//            println(s"1. may unify: ${st.pretty} with ${l.pretty}")
+            left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (l, r), st))
+          }
+        }
+      }
+    }
+
+    val eqLits2It = eqLits2.iterator
+
+    while(eqLits2It.hasNext) {
+      val eqLit = eqLits2It.next()
+      val (l,r): (Term, Term) = (eqLit.term, if (eqLit.polarity) LitTrue else LitFalse)
+
+      val lits1 = cl1.lits.iterator
+
+      while(lits1.hasNext) {
+        val otherLit = lits1.next()
+        val subterms = otherLit.term.occurrences.keySet.iterator
+        while (subterms.hasNext) {
+          val st = subterms.next()
+          if (mayUnify(st, l)) {
+//            println(s"2. may unify: ${st.pretty} with ${l.pretty}")
+            right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (l, r), st))
+          }
+        }
+      }
+    }
+    (right_termsThatMayUnify.nonEmpty || left_termsThatMayUnify.nonEmpty,(left_termsThatMayUnify,right_termsThatMayUnify))
+  }
+
+  def apply(cl1: Clause, cl2: Clause, hint: (Set[(EqLit, DirEq, TTR)],Set[(EqLit, DirEq, TTR)])) = {
+    var newCls : Set[Clause] = Set()
+
+    // for equalities from left clause
+    val leftHint = hint._1
+    val leftIt = leftHint.iterator
+    while (leftIt.hasNext) {
+      val (eqLit, (left,right), ttr) = leftIt.next()
+      val restLits = cl1.lits.filterNot(_ == eqLit)
+      val uniConstraint = Literal.mkUniLit(left, ttr)
+      val replLits = cl2.replace(ttr, right).lits
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
+    }
+
+    // for equalities from right clause
+    val rightHint = hint._2
+    val rightIt = rightHint.iterator
+    while (rightIt.hasNext) {
+      val (eqLit, (left,right), ttr) = rightIt.next()
+      val restLits = cl2.lits.filterNot(_ == eqLit)
+      val uniConstraint = Literal.mkUniLit(left, ttr)
+      val replLits = cl1.replace(ttr, right).lits
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
+    }
+
+    newCls.filterNot(cl => TrivRule.teqt(cl))
+  }
+
+  def name = "new_paramod_prop"
+}
 
 
 /**
@@ -325,6 +506,56 @@ object BoolExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
 
   def name = "bool_ext"
 }
+/** alternative boolean extensionality rule:
+  * {{{
+  *   C \/ [s1_o = t1_o]^alpha1 \/ [s2_o = t2_o]^alpha2 \/ .... \/ [sn_o = tn_o]^alphan
+  * --------------------------------------------------------------------------------------
+  *   C \/ [s1]^t \/ [t1]^f \/ [s2]^t \/ [t2]^f ... \/ [sn]^t \/ [tn]^f
+  *   ....
+  *   C \/ [s1]^f \/ [t1]^t \/ [s2]^f \/ [t2]^t ... \/ [sn]^f \/ [tn]^t
+  * }}}
+  *
+  * That are, n^2^ many new clauses
+  * */
+object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Literal])] {
+  def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {
+    var it = cl.lits.iterator
+    var boolExtLits: Seq[Literal] = Seq()
+    var otherLits: Seq[Literal] = Seq()
+    while (it.hasNext) {
+      val lit = it.next()
+      import leo.datastructures.impl.Signature
+      lit.term match {
+        case (left === _) if left.ty == Signature.get.o => boolExtLits = boolExtLits :+ lit
+        case _ => otherLits = otherLits :+ lit
+      }
+    }
+    (boolExtLits.nonEmpty, (boolExtLits, otherLits))
+  }
+
+  def apply(v1: Clause, boolExtLits_otherLits: (Seq[Literal], Seq[Literal])) = {
+    val boolExtLits = boolExtLits_otherLits._1
+    val otherLits = boolExtLits_otherLits._2
+    var groundLits: Seq[Seq[Literal]] = Seq(otherLits)
+    val it = boolExtLits.iterator
+    while (it.hasNext) {
+      val lit = it.next()
+      val (left, right) = ===.unapply(lit.term).get
+      var newGroundLits : Seq[Seq[Literal]] = Seq()
+      groundLits.foreach( lits =>
+        newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkPosLit(right))
+                                :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkNegLit(right))
+      )
+      groundLits = newGroundLits
+//      groundLits = groundLits :+ Literal.mkLit(<=>(left,right).full_δ_expand.betaNormalize, lit.polarity)
+    }
+    groundLits.map(lits => Clause.mkClause(lits, Derived)).toSet
+//    NegationNormal.normalize(Simplification.normalize(Clause.mkClause(otherLits ++ groundLits, Derived)))
+  }
+
+  def name = "bool_ext_alt"
+}
+
 
 object FuncExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
   def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {

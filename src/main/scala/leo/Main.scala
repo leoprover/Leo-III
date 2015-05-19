@@ -3,7 +3,7 @@ package leo
 import leo.agents.{FifoController}
 import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard.{DoneEvent, Blackboard}
-import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
+import leo.datastructures.blackboard.impl.{UnificationStore, FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
@@ -63,6 +63,7 @@ object Main {
       //==========================================
       Blackboard().addDS(FormulaDataStore)
       Blackboard().addDS(SZSDataStore)
+      Blackboard().addDS(UnificationStore)
 //      Utility.printSignature()
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {

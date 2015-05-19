@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.blackboard._
 import Store._
-import leo.modules.proofCalculi.BoolExt
+import leo.modules.proofCalculi.{BoolExt, BoolExtAlt}
 
 /**
  * Created by lex on 11.05.15.
@@ -22,9 +22,12 @@ object BoolExtAgent extends Agent {
   def run(t: Task): Result = {
     t match {
       case BoolExtTask(f, hint) => {
-        val nc = BoolExt.apply(f.clause, hint)
-        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clause: ${nc.pretty}")
-        Result().insert(FormulaType)(Store(nc, f.status, f.context))
+        val ncs = BoolExt.apply(f.clause, hint)
+        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.pretty}")
+//        val r = Result()
+//        ncs.foreach {nc => r.insert(FormulaType)(Store(nc, f.status, f.context))}
+        Result().insert(FormulaType)(Store(ncs, f.status, f.context).newOrigin(List(f), BoolExt.name))
+//        r
       }
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.");
