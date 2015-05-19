@@ -165,20 +165,41 @@ object NewParamod extends ParamodRule {
 
   type sideHint = Set[(EqLit, DirEq, TTR)]
 
+  def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
 
-  def mayUnify(s: Term, t: Term): Boolean = {
-    // Match case on head symbols:
-    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
-    // * = if same type
-    s == t
-//    if (s.headSymbol == t.headSymbol)
-//      true
-//    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
-//      true
-//    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
-//      true
-//    else
-//      false
+  def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
+    if (depth <= 0)
+      true
+    else {
+      // Match case on head symbols:
+      // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+      // * = if same type
+      if (s.headSymbol == t.headSymbol && s.ty == t.ty) {
+        import leo.datastructures.Term._
+        // rigid-rigid
+        (s,t) match {
+          case (Symbol(id1), Symbol(id2)) => id1 == id2
+          case (f1 ∙ args1, f2 ∙ args2) => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+            case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
+            case (Right(ty1), Right(ty2)) => ty1 == ty2
+            case _ => false
+          } } // TODO: Do we need the first part? f1, f2 should be atoms
+          case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+          case _ => false
+        }
+      }
+      else if (s.headSymbol.isVariable && t.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
+        // flex-flex
+        true
+      } else {
+        // flex-rigid
+        //        val flex = if (s.headSymbol.isVariable) s else t
+        //        val rigid = if (t.headSymbol.isVariable) t else s
+
+
+        true
+      }
+    }
   }
 
   def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
@@ -274,22 +295,74 @@ object NewPropParamod extends ParamodRule {
   type sideHint = Set[(EqLit, DirEq, TTR)]
 
 
-  def mayUnify(s: Term, t: Term): Boolean = {
-    // Match case on head symbols:
-    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
-    // * = if same type
-//    if (s.headSymbol == t.headSymbol)
-//      true
-//    else if (s.headSymbol.isVariable && s.headSymbol.ty == t.headSymbol.ty)
-//      true
-//    else if (t.headSymbol.isVariable && t.headSymbol.ty == s.headSymbol.ty)
+  def mayUnify(s: Term, t: Term) = {
+//    println("##################")
+    mayUnify0(s,t,5)
+  }
+
+  def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
+//    println("###############")
+//    println(s"checking mayunify of ${s.pretty} and ${t.pretty}")
+//    println(s"with headsymbols: ${s.headSymbol.pretty} and ${t.headSymbol.pretty}")
+    if (depth <= 0)
+      true
+    else {
+      // Match case on head symbols:
+      // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+      // * = if same type
+      if (s.ty == t.ty && !s.headSymbol.isVariable && !t.headSymbol.isVariable) {
+//        println("rigid-rigid case")
+        import leo.datastructures.Term._
+        // rigid-rigid
+        (s,t) match {
+          case (Symbol(id1), Symbol(id2)) => id1 == id2
+          case (Symbol(_), _) => false
+          case (_, Symbol(_)) => false
+          case (f1 ∙ args1, f2 ∙ args2) if args1.length > 0 && args2.length > 0 => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+            case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
+            case (Right(ty1), Right(ty2)) => ty1 == ty2
+            case _ => false
+          } } // TODO: Do we need the first part? f1, f2 should be atoms
+          case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+          case _ => false
+        }
+      } else if (s.headSymbol.isVariable && t.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
+        // flex-flex
+        true
+      } else if (s.ty == t.ty) {
+        // flex-rigid
+//        val flex = if (s.headSymbol.isVariable) s else t
+//        val rigid = if (t.headSymbol.isVariable) t else s
+
+
+        true
+      } else {
+        false
+      }
+    }
+  }
+
+
+//      if (s.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
+//      if (t.headSymbol.isVariable) {
+//        // flex-flex
+//        true
+//      } else {
+//        // s flex - t rigid
+//
+//
+//
+//        ???
+//      }
+//    } else if (t.headSymbol.isVariable && s.ty == t.ty && t.headSymbol.ty == s.headSymbol.ty)
 //      true
 //    else
 //      false
-    s == t
-  }
+//    s == t
+
 
   def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
+
     var left_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
     var right_termsThatMayUnify: Set[(EqLit, DirEq, TTR)] = Set()
 
@@ -309,13 +382,17 @@ object NewPropParamod extends ParamodRule {
         while (subterms.hasNext) {
           val st = subterms.next()
           if (mayUnify(st, l)) {
+
+//            println(s"paramod ${cl1.pretty} with ${cl2.pretty}")
+//println(s"subterms of otherLit: ${ otherLit.term.occurrences.keySet.map(_.pretty).mkString("\n")}")
+//            println(s"1. may unify: ${st.pretty} with ${l.pretty}")
             left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (l, r), st))
           }
         }
       }
     }
 
-    val eqLits2It = eqLits1.iterator
+    val eqLits2It = eqLits2.iterator
 
     while(eqLits2It.hasNext) {
       val eqLit = eqLits2It.next()
@@ -329,6 +406,7 @@ object NewPropParamod extends ParamodRule {
         while (subterms.hasNext) {
           val st = subterms.next()
           if (mayUnify(st, l)) {
+//            println(s"2. may unify: ${st.pretty} with ${l.pretty}")
             right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (l, r), st))
           }
         }
@@ -348,7 +426,7 @@ object NewPropParamod extends ParamodRule {
       val restLits = cl1.lits.filterNot(_ == eqLit)
       val uniConstraint = Literal.mkUniLit(left, ttr)
       val replLits = cl2.replace(ttr, right).lits
-      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits, Derived))))
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
     // for equalities from right clause
@@ -359,10 +437,10 @@ object NewPropParamod extends ParamodRule {
       val restLits = cl2.lits.filterNot(_ == eqLit)
       val uniConstraint = Literal.mkUniLit(left, ttr)
       val replLits = cl1.replace(ttr, right).lits
-      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits, Derived))))
+      newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
-    newCls
+    newCls.filterNot(cl => TrivRule.teqt(cl))
   }
 
   def name = "new_paramod_prop"
