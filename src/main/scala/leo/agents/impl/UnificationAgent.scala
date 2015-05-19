@@ -1,4 +1,5 @@
-package leo.agents
+package leo
+package agents
 package impl
 
 import leo.datastructures._
@@ -15,12 +16,14 @@ import leo.datastructures.blackboard.impl.{UnificationStore, UnifierType, Unifie
  */
 class UnificationAgent extends Agent {
   override def name: String = "unification agent"
+  override val interest = Some(List(FormulaType, UnifierType))
 
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(t: Task): Result = t match {
     case UnificationTask(f,t1,t2,s) =>
+      Out.trace(s"[$name]: Run unification task on clause ${f.clause.pretty}: \n unify ${t1.pretty} and ${t2.pretty} with \n ${s.pretty}")
       val nf = f.randomName().newClause(f.clause.substitute(s))
       Result().insert(FormulaType)(nf).insert(UnifierType)(UnifierStore(f,t1,t2,s))
     case _ => Result()
@@ -43,7 +46,7 @@ class UnificationAgent extends Agent {
   }
 }
 
-private class UnificationTask(val f : FormulaStore, val t1 : Term, val t2 : Term, val s : Subst) extends Task {
+private case class UnificationTask(f : FormulaStore, t1 : Term, t2 : Term, s : Subst) extends Task {
 
   override def name: String = "unification task"
   override def writeSet(): Set[FormulaStore] = Set()
@@ -51,12 +54,4 @@ private class UnificationTask(val f : FormulaStore, val t1 : Term, val t2 : Term
   override def bid(budget: Double): Double = budget / 10
 
   override def pretty: String = "unify"
-}
-
-object UnificationTask {
-  def apply(f : FormulaStore, t1 : Term, t2 : Term, s : Subst) : Task = new UnificationTask(f,t1,t2,s)
-  def unapply(t : Task) : Option[(FormulaStore, Term, Term, Subst)] = t match {
-    case u : UnificationTask => Some((u.f, u.t1, u.t2, u.s))
-    case _                  => None
-  }
 }
