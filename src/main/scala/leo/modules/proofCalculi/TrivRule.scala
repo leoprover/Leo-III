@@ -56,4 +56,12 @@ object TrivRule {
   }
 
   def triv(c : Clause) : Clause = Clause.mkClause(triv(c.lits),c.implicitBindings, Derived)
+
+
+  private def simpEq(lt : Literal) : Literal = lt.termMap(_ match {
+    case ===(l,r) => if (l==r) LitTrue() else ===(l,r)
+    case t => t
+  })
+
+  def simpEq(c : Clause) : Clause = c.mapLit(simpEq(_))
 }

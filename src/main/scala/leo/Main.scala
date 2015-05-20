@@ -1,9 +1,9 @@
 package leo
 
 import leo.agents.{FifoController}
-import leo.agents.impl.{CounterContextControlAgent, ContextControlAgent}
-import leo.datastructures.blackboard.{DoneEvent, Blackboard}
-import leo.datastructures.blackboard.impl.{UnificationStore, FormulaDataStore, SZSDataStore}
+import leo.agents.impl.{FormulaSelectionAgent, CounterContextControlAgent, ContextControlAgent}
+import leo.datastructures.blackboard.{FormulaStore, FormulaType, DoneEvent, Blackboard}
+import leo.datastructures.blackboard.impl._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
@@ -64,6 +64,8 @@ object Main {
       Blackboard().addDS(FormulaDataStore)
       Blackboard().addDS(SZSDataStore)
       Blackboard().addDS(UnificationStore)
+      Blackboard().addDS(SelectionTimeStore)
+      Blackboard().addDS(UnificationTaskStore)
 //      Utility.printSignature()
       var it: Iterator[Phase] = null
       if (Configuration.COUNTER_SAT) {
@@ -89,6 +91,12 @@ object Main {
 
 
       val endTime = System.currentTimeMillis()
+
+      println("=============\n   Passive\n================")
+      SelectionTimeStore.all(FormulaType).foreach{case f : FormulaStore => println(f.pretty)}
+      println("=============\n   Active\n================")
+      SelectionTimeStore.noSelect(Context()).foreach{case f => println(f.pretty)}
+
       Out.output(SZSOutput(SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown), Configuration.PROBLEMFILE, s"${endTime-beginTime} ms"))
 
       // TODO build switch for mulitple contexts

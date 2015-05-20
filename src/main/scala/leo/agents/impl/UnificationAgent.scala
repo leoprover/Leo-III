@@ -5,7 +5,7 @@ package impl
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{UnificationTaskType, UnificationStore, UnifierType, UnifierStore}
-import leo.modules.proofCalculi.HuetsPreUnification
+import leo.modules.proofCalculi.{TrivRule, HuetsPreUnification}
 
 /**
  *
@@ -25,8 +25,21 @@ class UnificationAgent extends Agent {
   override def run(t: Task): Result = t match {
     case UnificationTask(f,t1,t2,s) =>
       trace(s"Run unification task on clause ${f.clause.pretty}: \n unify ${t1.pretty} and ${t2.pretty} with \n ${s.pretty}")
-      val nf = Store(f.clause.substitute(s), f.created, Role_Plain, f.context, f.status, ClauseAnnotation(HuetsPreUnification, Set(f))) // TODO apply triv rules and replace [t = t] = b with [true] = b
-      Result().insert(UnificationTaskType)(nf).insert(UnifierType)(UnifierStore(f,t1,t2,s))
+      val nc = f.clause.substitute(s)
+      val trivc = TrivRule.teqf(TrivRule.simpEq(nc))
+      val r = Result().insert(UnifierType)(UnifierStore(f,t1,t2,s))
+      if(!TrivRule.teqt(trivc)){
+        val nf = Store(trivc, f.created, Role_Plain, f.context, f.status, ClauseAnnotation(HuetsPreUnification, Set(f)))
+        if(nc.uniLits.isEmpty) {
+          trace(s"Solved unification constrained. Reinsert\n   ${nf.pretty}\ninto passive.")
+          r.insert(FormulaType)(nf)
+        }
+        else {
+          trace(s"Updated new unification constrained. \n   ${nf.pretty}\nfrom\n   ${f.pretty}")
+          r.insert(UnificationTaskType)(nf)
+        }
+      }
+      r
     case FinishUnify(f) =>
       trace(s"Finished unification. Inserted\n   ${f.pretty}\ninto active.")
       Result().insert(FormulaType)(f)
@@ -40,7 +53,10 @@ class UnificationAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, UnificationTaskType) =>
-      if(f.clause.uniLits.isEmpty) return List(FinishUnify(f))
+      if(f.clause.uniLits.isEmpty){
+        trace(s"Received task with no unifier. FINISH HIM!")
+        return List(FinishUnify(f))
+      }
       f.clause.uniLits.map{ l => l.eqComponents match {
         case Some((t1,t2))  => UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
         case _  => Nil

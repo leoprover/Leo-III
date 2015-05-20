@@ -81,14 +81,14 @@ abstract class Agent {
    *
    * @param debug - The comment to be printed
    */
-  def debug (debug : String) : Unit = leo.Out.comment(formatOut(debug))
+  def debug (debug : String) : Unit = leo.Out.debug(formatOut(debug))
   /**
    * Prints the comment in the fine stream of the console.
    * Formated with the name of the agent.
    *
    * @param trace - The comment to be printed
    */
-  def trace (trace : String) : Unit = leo.Out.comment(formatOut(trace))
+  def trace (trace : String) : Unit = leo.Out.trace(formatOut(trace))
   private def formatOut(out : String) : String = {
     val sb = new StringBuilder()
     sb.append(s"[${name}]:")

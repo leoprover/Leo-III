@@ -96,7 +96,7 @@ object SelectionTimeStore extends DataStore {
     nsts.clear()
     csts.clear()
   }
-  override protected[blackboard] def all(t: DataType): Set[Any] = t match {
+  override def all(t: DataType): Set[Any] = t match {
     case SelectionTimeType => sts.toSet
     case FormulaType => sts.keys.toSet
     case _ => Set.empty
