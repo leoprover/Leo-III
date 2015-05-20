@@ -2,10 +2,9 @@ package leo
 package datastructures.blackboard
 package impl
 
-import leo.datastructures.TimeStamp
-import leo.datastructures.context.OrderedContextSet
-import leo.datastructures.context.impl.TreeOrderedContextSet
-import leo.datastructures.context.Context
+import leo.datastructures.{TimeStamp}
+import leo.datastructures.context.{OrderedContextSet, Context}
+import leo.datastructures.context.impl.{TreeOrderedContextSet}
 
 import scala.collection.mutable
 
@@ -17,7 +16,8 @@ object SelectionTimeStore extends DataStore {
 
   private val sts : mutable.Map[FormulaStore, TimeStamp] = new mutable.HashMap[FormulaStore, TimeStamp]()
   private val csts : OrderedContextSet[TimeData] = new TreeOrderedContextSet[TimeData]()  // To query for ranges of time
-  private val nsts : mutable.Set[FormulaStore] = new mutable.HashSet[FormulaStore]()
+  // private val nsts : mutable.Set[FormulaStore] = new mutable.HashSet[FormulaStore]()
+
 
   /**
    * Returns the timestamp of the selection of the clause
@@ -51,7 +51,7 @@ object SelectionTimeStore extends DataStore {
    *
    * @return set of non selected formula stores
    */
-  def noSelect(c : Context) : Iterable[FormulaStore] = synchronized {nsts.toIterable}
+  def noSelect(c : Context) : Iterable[FormulaStore] = FormulaDataStore.getFormulas(c).filter{get(_).isEmpty}
 
   //==========================================
   //      Blackboard Controlling
@@ -59,10 +59,7 @@ object SelectionTimeStore extends DataStore {
   override def storedTypes: Seq[DataType] = List(FormulaType, SelectionTimeType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
     case (fo : FormulaStore, fn : FormulaStore) => synchronized {
-      if (sts.remove(fo).map { t => sts.put(fn, t); csts.remove(TimeData(fo, t), fo.context); csts.add(TimeData(fn, t), fn.context) }.isEmpty) {
-        nsts.remove(fo)
-        nsts.add(fn)
-      }
+      sts.remove(fo).map { t => sts.put(fn, t); csts.remove(TimeData(fo, t), fo.context); csts.add(TimeData(fn, t), fn.context) }
       false // We do not check for new data
     }
     case ((TimeData(fo,to)), (TimeData(fn,tn))) => synchronized {
@@ -70,30 +67,24 @@ object SelectionTimeStore extends DataStore {
       csts.remove(TimeData(fo,to), fo.context)
       sts.put(fn, tn)
       csts.add(TimeData(fn,tn), fn.context)
-      nsts.remove(fn)
       true
     }
     case _ => false
   }
   override def insert(n: Any): Boolean = n match {
-    case f : FormulaStore => synchronized {
-      if (!sts.contains(f)) nsts.add(f)
-      false
-    }
     case TimeData(f,t) => synchronized {
       if (sts.get(f).fold(true)(_ != t)) {
         sts.put(f, t)
         csts.add(TimeData(f,t), f.context)
-        nsts.remove(f)
         true
       } else
         false
     }
     case _ => false
   }
+
   override def clear(): Unit = {
     sts.clear()
-    nsts.clear()
     csts.clear()
   }
   override def all(t: DataType): Set[Any] = t match {
@@ -105,7 +96,6 @@ object SelectionTimeStore extends DataStore {
   override def delete(d: Any): Unit = d match {
     case (f : FormulaStore) => synchronized {
       sts.remove(f).map{t => csts.remove(TimeData(f,t), f.context)}
-      nsts.remove(f)
     }
     case (TimeData(f,t)) => synchronized {
       sts.get(f).map{t1 => if(t == t1) {sts.remove(f); csts.remove(TimeData(f,t), f.context)}}

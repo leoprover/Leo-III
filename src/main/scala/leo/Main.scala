@@ -92,10 +92,10 @@ object Main {
 
       val endTime = System.currentTimeMillis()
 
-      println("=============\n   Passive\n================")
-      SelectionTimeStore.all(FormulaType).foreach{case f : FormulaStore => println(SelectionTimeStore.get(f).get.pretty+"@"+f.pretty)}
-      println("=============\n   Active\n================")
-      SelectionTimeStore.noSelect(Context()).foreach{case f => println(f.created.pretty+"@"+f.pretty)}
+//      println("=============\n   Passive\n================")
+//      SelectionTimeStore.all(FormulaType).foreach{case f : FormulaStore => println(SelectionTimeStore.get(f).get.pretty+"@"+f.pretty)}
+//      println("=============\n   Active\n================")
+//      SelectionTimeStore.noSelect(Context()).foreach{case f => println(f.created.pretty+"@"+f.pretty)}
 
       Out.output(SZSOutput(SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown), Configuration.PROBLEMFILE, s"${endTime-beginTime} ms"))
 

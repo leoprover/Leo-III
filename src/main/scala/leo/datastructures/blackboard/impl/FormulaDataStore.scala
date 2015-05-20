@@ -208,7 +208,10 @@ object FormulaDataStore extends DataStore {
 
     def getName(n : String) : Option[FormulaStore] = formulaSet.synchronized(formulaSet.getAll.find {f => f.name == n})
 
-    def contains(f : FormulaStore) : Boolean = formulaSet.synchronized(clauseMap.lookup(f.clause,f.context).isDefined)
+    def contains(f : FormulaStore) : Boolean = formulaSet.synchronized{
+      val oc = clauseMap.lookup(f.clause,f.context)
+      //oc.foreach{f1 => leo.Out.comment(s"[FormulaStore]: contains(${f.pretty}) is true.\n  Found ${f1.pretty} ")}
+      oc.isDefined}
   }
 
 
@@ -236,7 +239,7 @@ object FormulaDataStore extends DataStore {
   override def insert(n: Any): Boolean = n match {
     case fn : FormulaStore =>
       if(FormulaSet.contains(fn)){
-//       leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
+      // leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
         return false
       }
 //      leo.Out.comment(s"[FormulaStore]: ${fn.pretty} is added.")

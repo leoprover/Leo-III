@@ -87,6 +87,8 @@ trait Scheduler {
   protected[scheduler] def start()
 
   def working() : Boolean
+
+  def openTasks : Int
 }
 
 
@@ -113,6 +115,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private var sW : Thread = null
 
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
+
+  def openTasks : Int = synchronized(curExec.size)
 
   def working() : Boolean = {
     this.synchronized(
@@ -194,6 +198,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       try {
         for ((a, t) <- tasks) {
           this.synchronized {
+            while (curExec.size > numberOfThreads) this.wait()
             curExec.add(t)
             if (endFlag) return // Savely exit
             if (pauseFlag) {
@@ -273,6 +278,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 //      Out.comment(s"[Writer]: Gone through all.")
 
       curExec.remove(task)
+      Scheduler().signal()  // Get new task
       work = false
     }
   }

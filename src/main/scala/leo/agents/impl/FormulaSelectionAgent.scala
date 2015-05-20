@@ -15,7 +15,9 @@ object FormulaSelectionAgent extends Agent {
 
   def run(t: Task): Result = {
     t match {
-      case AddTimeStampTask(f) => Result().insert(SelectionTimeType)(TimeData(f, TimeStamp()))
+      case AddTimeStampTask(f) =>
+        //if(f.clause.lits.size == 1) comment(s"Has selected clause ${f.pretty}.(weight=${t.bid(100)})")
+        Result().insert(SelectionTimeType)(TimeData(f, TimeStamp()))
       case _ => Out.warn(s"[$name]: Got a wrong task to execute."); Result()
     }
   }
@@ -25,7 +27,9 @@ object FormulaSelectionAgent extends Agent {
       case DataEvent(f: FormulaStore, FormulaType) => {
         // new formula, add timestamp to selectiontimestore
         if (!SelectionTimeStore.get(f).isDefined) {
-          Seq(AddTimeStampTask(f))
+          val t = AddTimeStampTask(f)
+          //if(f.clause.lits.size == 1) comment(s"Try select clause ${f.pretty}.(weight=${t.bid(100)})")
+          Seq(t)
         } else {
           Seq()
         }
