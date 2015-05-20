@@ -38,11 +38,11 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
 
       // Else check if something happend and update the formula
       val r= if (fstore.clause.cong(ergCl)) {
-        val erg =Store(ergCl, Role_Plain, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
+        val erg =Store(fstore.name, ergCl, Role_Plain, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
         Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
         Result().update(FormulaType)(fstore)(erg)
       } else {
-        val erg = Store(ergCl, Role_Plain, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
+        val erg = Store(fstore.name, ergCl, Role_Plain, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
         Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
         Result().update(FormulaType)(fstore)(erg)
       }
