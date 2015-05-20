@@ -1,8 +1,9 @@
 package leo.modules.proofCalculi
 
 import leo.datastructures.{Term, Type, Subst}
+import leo.modules.output.SZS_EquiSatisfiable
 
-trait Unification {
+trait Unification extends CalculusRule {
 
  type Substitute = (Subst,Seq[Type])
 
@@ -13,6 +14,9 @@ trait Unification {
    * @return a stream of Substitution to make both terms equal, empty stream if they are not unifiable
    */
   def unify(t : Term, s : Term) : Iterable[Subst]
+
+  val name = "unification"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
 }
 
 /**

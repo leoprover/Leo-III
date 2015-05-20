@@ -5,6 +5,7 @@ package impl
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{UnificationTaskType, UnificationStore, UnifierType, UnifierStore}
+import leo.modules.proofCalculi.HuetsPreUnification
 
 /**
  *
@@ -24,7 +25,7 @@ class UnificationAgent extends Agent {
   override def run(t: Task): Result = t match {
     case UnificationTask(f,t1,t2,s) =>
       trace(s"Run unification task on clause ${f.clause.pretty}: \n unify ${t1.pretty} and ${t2.pretty} with \n ${s.pretty}")
-      val nf = Store(f.clause.substitute(s), f.created, Role_Plain, f.context, f.status, NoAnnotation) // TODO apply triv rules and replace [t = t] = b with [true] = b
+      val nf = Store(f.clause.substitute(s), f.created, Role_Plain, f.context, f.status, ClauseAnnotation(HuetsPreUnification, Set(f))) // TODO apply triv rules and replace [t = t] = b with [true] = b
       Result().insert(UnificationTaskType)(nf).insert(UnifierType)(UnifierStore(f,t1,t2,s))
     case FinishUnify(f) =>
       trace(s"Finished unification. Inserted\n   ${f.pretty}\ninto active.")
