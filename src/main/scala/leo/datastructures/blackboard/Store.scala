@@ -11,10 +11,13 @@ object Store {
   protected[blackboard] var unnamedFormulas : AtomicInteger = new AtomicInteger(0)
 
   def apply(cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation = NoAnnotation): FormulaStore
-  = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), cl, role, status, context, annotation)
+  = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), cl, TimeStamp(), role, status, context, annotation)
 
   def apply(name: String, cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation): FormulaStore
-  = new FormulaStore(name, cl, role, status, context, annotation)
+  = new FormulaStore(name, cl, TimeStamp(), role, status, context, annotation)
+
+  def apply(cl: Clause, created : TimeStamp, role: Role, context: Context, status: Int, annotation: ClauseAnnotation): FormulaStore
+  = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), cl, created, role, status, context, annotation)
 
 }
 
@@ -37,7 +40,7 @@ object Store {
  * </table>
  *
  */
-class FormulaStore(val name : String, val clause : Clause, val role : Role, val status : Int, val context : Context, val annotation : ClauseAnnotation)
+class FormulaStore(val name : String, val clause : Clause, val created : TimeStamp, val role : Role, val status : Int, val context : Context, val annotation : ClauseAnnotation)
   extends Pretty with Ordered[FormulaStore] with HasCongruence[FormulaStore] {
 
   /**
@@ -49,8 +52,6 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
    * @return true, if normalized
    */
   def normalized : Boolean = (status & 3)== 3
-
-  val created: TimeStamp = TimeStamp()
 
   lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
 
