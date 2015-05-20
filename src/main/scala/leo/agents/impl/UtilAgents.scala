@@ -39,7 +39,7 @@ class ConjectureAgent extends Agent {
     }
   }
 
-  private object NegConjRule extends CalculusRule[Unit] {
+  private object NegConjRule extends CalculusRule {
     val name = "neg_conjecture"
     def canApply(fs: FormulaStore) = fs.role == Role_Conjecture
     def apply(fs: FormulaStore) = Store(fs.clause.mapLit(l => l.flipPolarity), Role_NegConjecture, fs.context, fs.status & ~7, ClauseAnnotation(this, fs)) // TODO: This is not generally not valid, fix me
