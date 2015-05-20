@@ -4,6 +4,7 @@ package impl
 
 import leo.datastructures.{ClauseAnnotation, Clause, Role_NegConjecture, Role_Conjecture}
 import leo.datastructures.blackboard._
+import leo.modules.output.SZS_CounterSatisfiable
 import leo.modules.proofCalculi.{UnaryCalculusRule, CalculusRule}
 
 
@@ -41,6 +42,7 @@ class ConjectureAgent extends Agent {
 
   private object NegConjRule extends CalculusRule {
     val name = "neg_conjecture"
+    override val inferenceStatus = Some(SZS_CounterSatisfiable)
     def canApply(fs: FormulaStore) = fs.role == Role_Conjecture
     def apply(fs: FormulaStore) = Store(fs.name, fs.clause.mapLit(l => l.flipPolarity), Role_NegConjecture, fs.context, fs.status & ~7, ClauseAnnotation(this, fs)) // TODO: This is not generally not valid, fix me
   }

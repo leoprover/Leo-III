@@ -113,7 +113,7 @@ case object Derived extends ClauseOrigin { val priority = 1 }
 
 abstract sealed class ClauseAnnotation extends Pretty
 case class InferredFrom(rule: leo.modules.proofCalculi.CalculusRule, fs: Set[FormulaStore]) extends ClauseAnnotation {
-  def pretty: String = s"inference(${rule.name},[],[${fs.map(_.name).mkString(",")}])"
+  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${fs.map(_.name).mkString(",")}])"
 }
 case object NoAnnotation extends ClauseAnnotation {
   val pretty: String = ""

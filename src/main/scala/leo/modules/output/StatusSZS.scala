@@ -65,6 +65,16 @@ case object SZS_Theorem extends SuccessSZS {
 }
 
 /**
+ * All models of Ax are models of ~C.
+ * - F is not valid, and ~C is a theorem of Ax.
+ * - Possible dataforms are Proofs of ~C from Ax.
+ */
+case object SZS_CounterTheorem extends SuccessSZS {
+  val output = "CounterTheorem"
+  val pretty = "CTH"
+}
+
+/**
  * Some interpretations are models of Ax, and
  * some models of Ax are models of C.
  * - F is satisfiable, and ~F is not valid.
@@ -73,6 +83,15 @@ case object SZS_Theorem extends SuccessSZS {
 case object SZS_Satisfiable extends SuccessSZS {
   val output = "Satisfiable"
   val pretty = "SAT"
+}
+
+/**
+ * There exists a model of Ax iff there exists a model of C, i.e., Ax is
+ * (un)satisfiable iff C is (un)satisfiable.
+ */
+case object SZS_EquiSatisfiable extends SuccessSZS {
+  val output = "EquiSatisfiable"
+  val pretty = "ESA"
 }
 
 /**

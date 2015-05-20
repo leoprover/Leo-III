@@ -1,6 +1,7 @@
 package leo.modules
 
 import leo.datastructures.Clause
+import leo.modules.output.SuccessSZS
 
 /**
  * Created by lex on 20.05.15.
@@ -8,6 +9,7 @@ import leo.datastructures.Clause
 package object proofCalculi {
   trait CalculusRule {
     def name: String
+    def inferenceStatus: Option[SuccessSZS] = None
   }
 
   trait CalculusHintRule[Hint] extends CalculusRule {

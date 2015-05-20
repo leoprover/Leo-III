@@ -1,8 +1,9 @@
 package leo.modules.normalization
 
-import leo.datastructures.{ClauseAnnotation, Role_Plain, Term, Clause}
+import leo.datastructures.{ClauseAnnotation, Role_Plain , Clause}
 import leo.datastructures.blackboard.{Store, FormulaStore}
-import leo.modules.proofCalculi.{CalculusRule, UnaryCalculusRule}
+import leo.modules.output.SZS_Theorem
+import leo.modules.proofCalculi.CalculusRule
 
 /**
  * This trait is shared by every Normalizing Object.
@@ -17,6 +18,9 @@ trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Functi
    * @return name of the normalization
    */
   def name : String
+
+  // Should be the case for all normalization steps
+  override val inferenceStatus = Some(SZS_Theorem)
 
   /**
    * Normalizes a formula corresponding to the object.
