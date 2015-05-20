@@ -248,6 +248,24 @@ trait ContextSet[A] {
   def clear() : Unit
 }
 
+trait OrderedContextSet[A <: Ordered[A]] extends ContextSet[A] {
+  /**
+   * Returns a set of all `a'` with a' < a.
+   *
+   * @param a searched parameter.
+   * @return set of all elements strictly smaller than a.
+   */
+  def getSmaller(a : A, c : Context) : Set[A]
+
+  /**
+   * Returns a set of all `a'` with a' >= a.
+   *
+   * @param a searched parameter
+   * @return set of all elements strictly smaller than a
+   */
+  def getBigger(a : A, c : Context) : Set[A]
+}
+
 /**
  * Common trait for all context sensitive maps.
  *
