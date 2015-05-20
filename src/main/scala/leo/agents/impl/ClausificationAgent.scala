@@ -2,7 +2,7 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.{Role_Plain, Clause}
+import leo.datastructures.{ClauseAnnotation, Role_Plain, Clause}
 import leo.datastructures.blackboard._
 import leo.modules.proofCalculi.{TrivRule, Clausification}
 
@@ -28,27 +28,26 @@ class ClausificationAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
-      val nc : Seq[Clause] = Clausification.clausify(f.clause)
-      val fc = nc.filter(!TrivRule.teqt(_))        // Optimized clauses (no [ T = T] or [ T = F]) containing clauses.
-      if(fc.isEmpty) {
-        return Nil
+      if (Clausification.canApply(f.clause)._1) {
+        Out.trace(s"[$name:]\n  Test ${f.clause.pretty}\nClausifier recommends one-step clausification")
+        Seq(ClausificationTask(f))
+      } else {
+        Seq()
       }
-      else {
-        Out.trace(s"[$name:]\n  Test ${f.clause.pretty}\n  Clausifier recommends \n    ${nc.map(_.pretty).mkString("\n    ")}")
-        return List(ClausificationTask(f, fc))
-      }
-    case _ => return Nil
+    case _ => Seq()
   }
 
   /**
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(t: Task): Result = t match {
-    case ClausificationTask(dc, nc) =>
+    case ClausificationTask(dc) =>
       val r : Result = Result()
-      val of = nc map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
-      val nf = of map {c => dc.randomName().newClause(c).newRole(Role_Plain).newOrigin(List(dc), "clausification")}
-      Out.trace(s"$name: Clausify ${dc.name} `${dc.clause.pretty}`\n  Created new clauses:\n   ${nc.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
+
+      val newCls = Clausification.apply(dc.clause, true)
+      val of = newCls map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
+      val nf = of map {c => Store(c, Role_Plain, dc.context, dc.status, ClauseAnnotation(Clausification, dc))}
+      Out.trace(s"$name: Clausify ${dc.name} `${dc.clause.pretty}`\n  Created new clauses:\n   ${newCls.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")
       nf.foreach{f => r.insert(FormulaType)(f)}
       return r
     case _ =>
@@ -61,17 +60,16 @@ class ClausificationAgent extends Agent {
  * Creates a Clausification task with `dc` the old FormulaStore to be deleted and `nc` the list
  * of new clauses to be inserted into the blackboard.
  * @param dc - Old Formula Store
- * @param nc - List of new clauses
  * @return A Clausification Task
  */
-private case class ClausificationTask(dc : FormulaStore, nc : Seq[Clause]) extends Task{
+private case class ClausificationTask(dc : FormulaStore) extends Task{
   override def readSet(): Set[FormulaStore] = Set(dc)
   override def writeSet(): Set[FormulaStore] = Set.empty
   override def bid(budget: Double): Double = budget / dc.clause.weight
 
-  override val toString : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
+  override val toString : String = s"Clausify: ${dc.pretty}"
 
-  override val pretty : String = s"Clausify: ${dc.pretty} => [${nc.map(_.pretty).mkString(", ")}}]"
+  override val pretty : String = s"Clausify: ${dc.pretty}"
 
   override val name : String = "Clausification"
 }

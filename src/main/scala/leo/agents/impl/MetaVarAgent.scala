@@ -3,8 +3,9 @@ package agents
 package impl
 
 import leo.datastructures.Term._
+import leo.datastructures.blackboard.impl
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Exists, Literal, Forall, Term}
+import leo.datastructures._
 import leo.datastructures.blackboard._
 
 /**
@@ -20,7 +21,7 @@ class MetaVarAgent extends Agent {
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(t: Task): Result = t match {
-    case MetavarTask(f) => Result().update(FormulaType)(f)(f.newClause(f.clause.mapLit(replaceQuants(_))))
+    case MetavarTask(f) => Result().update(FormulaType)(f)(Store(f.clause.mapLit(replaceQuants(_)), Role_Plain, f.context, f.status))
     case _ => Result()
   }
 
@@ -57,20 +58,11 @@ class MetaVarAgent extends Agent {
   }
 }
 
-private class MetavarTask(var f : FormulaStore) extends Task {
+private case class MetavarTask(f : FormulaStore) extends Task {
   override def name: String = "Metavar replace"
   override def writeSet(): Set[FormulaStore] = Set(f)
   override def readSet(): Set[FormulaStore] = Set()
   override def bid(budget: Double): Double = budget / 5
 
   override def pretty: String = "metavar replace"
-}
-
-object MetavarTask {
-  def apply(f : FormulaStore) : Task = new MetavarTask(f)
-
-  def unapply(t : Task) : Option[FormulaStore] = t match {
-    case t1 : MetavarTask => Some(t1.f)
-    case _                => None
-  }
 }

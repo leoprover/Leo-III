@@ -2,6 +2,7 @@ package leo
 package agents
 package impl
 
+import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
 import Store._
 import leo.modules.proofCalculi.{BoolExt, BoolExtAlt}
@@ -26,7 +27,7 @@ object BoolExtAgent extends Agent {
         Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.pretty}")
 //        val r = Result()
 //        ncs.foreach {nc => r.insert(FormulaType)(Store(nc, f.status, f.context))}
-        Result().insert(FormulaType)(Store(ncs, f.status, f.context).newOrigin(List(f), BoolExt.name))
+        Result().insert(FormulaType)(Store(ncs, Role_Plain, f.context, f.status, ClauseAnnotation(BoolExt, f)))
 //        r
       }
       case _: Task =>

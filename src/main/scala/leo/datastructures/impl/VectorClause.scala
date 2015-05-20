@@ -20,18 +20,13 @@ object VectorClause {
 
   def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin): Clause = {
     clauseCounter += 1
-    new VectorClause0(lits, origin, implicitBindings, NoAnnotation, clauseCounter)
-  }
-
-  def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin, annotation: ClauseAnnotation): Clause = {
-    clauseCounter += 1
-    new VectorClause0(lits, origin, implicitBindings, annotation, clauseCounter)
+    new VectorClause0(lits, origin, implicitBindings, clauseCounter)
   }
 
 
   def lastClauseId = clauseCounter
 
-  private class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin, val implicitBindings: Seq[Type], val annotation: ClauseAnnotation, val id: Int) extends VectorClause {
+  private class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin, val implicitBindings: Seq[Type], val id: Int) extends VectorClause {
     lazy val lits = literals.toVector.sorted
   }
 }

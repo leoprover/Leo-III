@@ -1,8 +1,10 @@
-package leo.agents
+package leo
+package agents
 package impl
 
-import leo.datastructures.{Role_NegConjecture, Role_Conjecture}
+import leo.datastructures.{ClauseAnnotation, Clause, Role_NegConjecture, Role_Conjecture}
 import leo.datastructures.blackboard._
+import leo.modules.proofCalculi.{UnaryCalculusRule, CalculusRule}
 
 
 /**
@@ -23,7 +25,7 @@ class ConjectureAgent extends Agent {
    * @return - set of tasks, if empty the agent won't work on this event
    */
   override def toFilter(e: Event): Iterable[Task] = e match {
-    case DataEvent( event : FormulaStore, FormulaType) => if (event.role == Role_Conjecture) List(new SingleFormTask(event)) else Nil
+    case DataEvent( event : FormulaStore, FormulaType) => if (NegConjRule.canApply(event)) List(new SingleFormTask(event)) else Nil
     case _ => Nil
   }
 
@@ -32,22 +34,20 @@ class ConjectureAgent extends Agent {
    */
   override def run(t: Task) : Result = {
     t match {
-      case t1: SingleFormTask =>
-        val fS = t1.getFormula()
-        val form = fS.clause
-        val status = fS.status
-        val rS = fS.newClause(form.mapLit(l => l.flipPolarity)).newRole(Role_NegConjecture).newStatus(status & ~7) // TODO: This is not generally not valid, fix me
-
-
-        return Result().update(FormulaType)(fS)(rS.newOrigin(List(fS), "negate conjecture"))
-      case _ => throw new IllegalArgumentException("Executing wrong task.")
+      case SingleFormTask(fS) => Result().update(FormulaType)(fS)(NegConjRule(fS))
+      case _ => Out.warn(s"[$name]: Got a wrong task to execute."); Result()
     }
+  }
+
+  private object NegConjRule extends CalculusRule[Unit] {
+    val name = "neg_conjecture"
+    def canApply(fs: FormulaStore) = fs.role == Role_Conjecture
+    def apply(fs: FormulaStore) = Store(fs.clause.mapLit(l => l.flipPolarity), Role_NegConjecture, fs.context, fs.status & ~7, ClauseAnnotation(this, fs)) // TODO: This is not generally not valid, fix me
   }
 }
 
 
-class SingleFormTask(f : FormulaStore) extends Task {
-  def getFormula() : FormulaStore = f
+private case class SingleFormTask(f : FormulaStore) extends Task {
   override def readSet(): Set[FormulaStore] = Set(f)
   override def writeSet(): Set[FormulaStore] = Set(f)
 
@@ -58,7 +58,7 @@ class SingleFormTask(f : FormulaStore) extends Task {
   override val name : String = "Read-/Write Transformation"
 
   override def equals(other : Any) = other match {
-    case o : SingleFormTask => o.getFormula() == f
+    case SingleFormTask(oF) => oF == f
     case _                  => false
   }
 }

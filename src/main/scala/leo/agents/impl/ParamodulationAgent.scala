@@ -3,9 +3,10 @@ package agents
 package impl
 
 import leo.datastructures.blackboard._
+import leo.datastructures.blackboard.impl
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.modules.proofCalculi._
-import leo.datastructures.{Term, Derived, Clause, Literal}
+import leo.datastructures._
 
 /**
  * Class to execute a calculus step from the paramodulation.
@@ -42,7 +43,7 @@ class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent 
           t : (Term, Literal, Unification#Substitute) =>
             val removeLit = Clause.mkClause(bf.clause.lits.filter{l1 => ! l1.cong(t._2)}, bf.clause.implicitBindings, Derived)
             val nc = para.exec(f.clause, removeLit, t._1, t._2, t._3)
-            val nf = Store(nc, f.status & bf.status, f.context)
+            val nf = Store(nc, Role_Plain, f.context, f.status & bf.status)
             if (!TrivRule.teqt(nc)){
               val task = ParamodTask(f,bf, nf, t._1, t._2, t._3)
               q = task :: q
@@ -61,7 +62,7 @@ class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent 
     task match {
       case ParamodTask(f1, f2, r, t, l, s) =>
         //synchronized{ex=ex+1;println(s"[$name]: Executed a task $ex times.\n   ${task.pretty}")}
-        return Result().insert(FormulaType)(r.newOrigin(List(f1,f2), para.output))
+        return Result().insert(FormulaType)(r/*.newOrigin(List(f1,f2), para.output)*/)
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.")
     }

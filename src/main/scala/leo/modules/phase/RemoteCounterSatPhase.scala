@@ -2,9 +2,9 @@ package leo.modules.phase
 
 import leo.agents.impl.{SZSScriptMessage, SZSScriptAgent}
 import leo.agents.{FifoController, AgentController}
-import leo.datastructures.Role_Conjecture
+import leo.datastructures.{Role_Plain, Role_Conjecture}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{Blackboard, FormulaStore}
+import leo.datastructures.blackboard.{Store, Blackboard, FormulaStore}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.modules.output.{SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
@@ -41,7 +41,7 @@ object RemoteCounterSatPhase extends CompletePhase {
     }
     while(it.hasNext) {
       val c = it.next()
-      Blackboard().send(SZSScriptMessage(con.newContext(c))(c), da)
+      Blackboard().send(SZSScriptMessage(Store(con.clause, Role_Plain, c, con.status))(c), da)
     }
 
     initWait()

@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.{Store, FormulaStore}
 import Term._
 import leo.datastructures._
 
@@ -81,5 +81,5 @@ object PrenexNormal extends AbstractNormalize {
    */
   override def applicable(status : Int): Boolean = (status & 31) == 15
 
-  def markStatus(fs : FormulaStore) : FormulaStore = fs.newStatus(fs.status | 31)
+  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 31)
 }

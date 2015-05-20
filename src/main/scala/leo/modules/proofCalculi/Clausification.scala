@@ -9,7 +9,7 @@ import leo.datastructures._
  * @author Max Wisniewski
  * @since 1/12/15
  */
-object Clausification {
+object Clausification extends UnaryCalculusRule[Seq[Clause], Boolean]{
   def clausify(c : Clause) : Seq[Clause] = {
     val clausilits : Seq[Literal] = c.lits.filter(clausifiable)
     if(!clausilits.isEmpty) {
@@ -27,6 +27,15 @@ object Clausification {
     }
     Nil
   }
+
+  def canApply(cl: Clause) = {
+    val r = cl.lits.exists(clausifiable(_))
+    (r,r)
+  }
+
+  def apply(cl: Clause, hint: Boolean) = clausify(cl)
+
+  def name = "clausification"
 
   private def updateLits(c : Clause, l : Seq[Literal]) : Clause = Clause.mkClause(l, c.implicitBindings, Derived)
 

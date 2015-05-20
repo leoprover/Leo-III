@@ -49,6 +49,10 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     out.reverse
   }
 
+  def withAnnotation(f: FormulaStore): Output = new Output {
+    def output = toTPTP(f.name, f.clause.toTerm, f.role, f.annotation)
+  }
+
   /**
    * Returns a TPTP conform definition of a constant. The type is always
    * returned and, if existant, also the definition.
@@ -99,7 +103,10 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   // Translation of THF formula
   ///////////////////////////////
   // TODO: Fixme write translation from clause
-  private def toTPTP(name: String, t: Term, role: Role): String = s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
+  private def toTPTP(name: String, t: Term, role: Role, clauseAnnotation: ClauseAnnotation = NoAnnotation): String = clauseAnnotation match {
+    case NoAnnotation => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
+    case other => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}),${other.pretty})."
+  }
 
   private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = "("+{
     val sig = Signature.get

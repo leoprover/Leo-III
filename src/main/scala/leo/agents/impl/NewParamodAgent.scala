@@ -2,7 +2,8 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.{Derived, Clause, Literal, Term}
+import leo.datastructures._
+import leo.datastructures.blackboard.impl
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.blackboard._
 import leo.modules.proofCalculi.{ParamodRule, TrivRule, NewParamod}
@@ -50,7 +51,7 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
         val newHint: rule.HintType = hint.fold(in => (Set(in), Set()):rule.HintType, in => (Set(), Set(in)):rule.HintType)
         rule.apply(f1.clause, f2.clause, (newHint)).foreach( cl => {
           Out.trace(rule.name + "new paramod agent insert clause: "+cl.pretty)
-          r.insert(FormulaType)(Store(cl, f1.status, f1.context).newOrigin(List(f1, f2), rule.name))
+          r.insert(FormulaType)(Store(cl, Role_Plain, f1.context, f1.status, ClauseAnnotation(rule, Set(f1, f2))))
         }
         )
         r
