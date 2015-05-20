@@ -112,7 +112,7 @@ case object Derived extends ClauseOrigin { val priority = 1 }
 
 
 abstract sealed class ClauseAnnotation extends Pretty
-case class InferredFrom[H](rule: leo.modules.proofCalculi.CalculusRule[H], fs: Set[FormulaStore]) extends ClauseAnnotation {
+case class InferredFrom(rule: leo.modules.proofCalculi.CalculusRule, fs: Set[FormulaStore]) extends ClauseAnnotation {
   def pretty: String = s"inference(${rule.name},[],[${fs.map(_.name).mkString(",")}])"
 }
 case object NoAnnotation extends ClauseAnnotation {
@@ -123,10 +123,10 @@ case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotat
 }
 
 object ClauseAnnotation {
-  def apply[H](rule: leo.modules.proofCalculi.CalculusRule[_ <: H], cls: Set[FormulaStore]): ClauseAnnotation =
+  def apply(rule: leo.modules.proofCalculi.CalculusRule, cls: Set[FormulaStore]): ClauseAnnotation =
     new InferredFrom(rule, cls)
 
-  def apply[H](rule: leo.modules.proofCalculi.CalculusRule[_ <: H], cl: FormulaStore): ClauseAnnotation =
+  def apply(rule: leo.modules.proofCalculi.CalculusRule, cl: FormulaStore): ClauseAnnotation =
     new InferredFrom(rule, Set(cl))
 
   def apply(file: String, name: String): ClauseAnnotation = new FromFile(file, name)

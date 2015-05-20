@@ -142,19 +142,7 @@ object PropParamodulation extends ParamodStep{
   }
 
 
-trait CalculusRule[Hint] {
-  type HintType = Hint
 
-  def name: String
-}
-trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusRule[Hint] {
-
-  def canApply(cl: Clause): (Boolean, Hint)
-}
-
-trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with CalculusRule[Hint] {
-  def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
-}
 
 trait ParamodRule extends BinaryCalculusRule[Set[Clause], (Set[(Literal, (Term, Term), Term)],Set[(Literal, (Term, Term), Term)])]
 
@@ -543,8 +531,11 @@ object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Lite
       val (left, right) = ===.unapply(lit.term).get
       var newGroundLits : Seq[Seq[Literal]] = Seq()
       groundLits.foreach( lits =>
-        newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkPosLit(right))
-                                :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkNegLit(right))
+        if (lit.polarity) {
+          newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkPosLit(right)) :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkNegLit(right))
+        } else {
+          newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkNegLit(right)) :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkPosLit(right))
+        }
       )
       groundLits = newGroundLits
 //      groundLits = groundLits :+ Literal.mkLit(<=>(left,right).full_δ_expand.betaNormalize, lit.polarity)

@@ -23,12 +23,13 @@ object BoolExtAgent extends Agent {
   def run(t: Task): Result = {
     t match {
       case BoolExtTask(f, hint) => {
-        val ncs = BoolExt.apply(f.clause, hint)
-        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.pretty}")
-//        val r = Result()
-//        ncs.foreach {nc => r.insert(FormulaType)(Store(nc, f.status, f.context))}
-        Result().insert(FormulaType)(Store(ncs, Role_Plain, f.context, f.status, ClauseAnnotation(BoolExt, f)))
-//        r
+        val ncs = BoolExtAlt.apply(f.clause, hint)
+        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.map(_.pretty).mkString("\n")}")
+//        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.pretty}")
+        val r = Result()
+        ncs.foreach {nc => r.insert(FormulaType)(Store(nc, Role_Plain, f.context,f.status, ClauseAnnotation(BoolExtAlt, f)))}
+//        Result().insert(FormulaType)(Store(ncs, Role_Plain, f.context, f.status, ClauseAnnotation(BoolExt, f)))
+        r
       }
       case _: Task =>
         Out.warn(s"[$name]: Got a wrong task to execute.");

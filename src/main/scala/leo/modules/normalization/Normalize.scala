@@ -10,7 +10,7 @@ import leo.modules.proofCalculi.{CalculusRule, UnaryCalculusRule}
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] with CalculusRule[Unit] {
+trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] with CalculusRule {
 
   /**
    *
