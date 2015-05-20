@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures._
 import leo.datastructures.blackboard.impl
-import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.blackboard.impl._
 import leo.datastructures.blackboard._
 import leo.modules.proofCalculi.{ParamodRule, TrivRule, NewParamod}
 
@@ -14,17 +14,18 @@ import leo.modules.proofCalculi.{ParamodRule, TrivRule, NewParamod}
 class NewParamodAgent(rule: ParamodRule) extends Agent {
 
   override def name: String = s"Agent NewParamod"
-  override val interest = Some(List(FormulaType))
+  override val interest = Some(List(FormulaType, SelectionTimeType))
 
 
   override def toFilter(event: Event): Iterable[Task] = event match {
-    case DataEvent(f : FormulaStore, FormulaType) =>
+    case DataEvent(TimeData(f : FormulaStore, t : TimeStamp), SelectionTimeType) =>
+//    case DataEvent(f : FormulaStore, FormulaType) =>
       if(!f.normalized){
         Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
         return Nil
       }
       var tasks: Seq[Task] = Seq()
-      val others = FormulaDataStore.getFormulas.iterator
+      val others = (SelectionTimeStore.noSelect(f.context) ++ SelectionTimeStore.after(t, f.context).filterNot(_ == f)).iterator
       while( others.hasNext) {
         val other = others.next()
         val (canApply, hint) = rule.canApply(f.clause, other.clause)
@@ -41,6 +42,35 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
         }
       }
       tasks
+    case DataEvent(f: FormulaStore, FormulaType) => {
+      // from unification
+      if(!f.normalized){
+        Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
+        return Nil
+      }
+      if (SelectionTimeStore.get(f).isEmpty) {
+        var tasks: Seq[Task] = Seq()
+        val others = SelectionTimeStore.after(f.created, f.context).iterator
+        while( others.hasNext) {
+          val other = others.next()
+          val (canApply, hint) = rule.canApply(f.clause, other.clause)
+          if (canApply) {
+            val (leftIt,rightIt) = (hint._1.iterator, hint._2.iterator)
+            while(leftIt.hasNext) {
+              val h = leftIt.next()
+              tasks = tasks :+ NewParamodTask(f, other, Left(h))
+            }
+            while(rightIt.hasNext) {
+              val h = rightIt.next()
+              tasks = tasks :+ NewParamodTask(f, other, Right(h))
+            }
+          }
+        }
+        tasks
+      } else {
+        Seq()
+      }
+    }
     case _ : Event => Nil
   }
 
@@ -51,7 +81,8 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
         val newHint: rule.HintType = hint.fold(in => (Set(in), Set()):rule.HintType, in => (Set(), Set(in)):rule.HintType)
         rule.apply(f1.clause, f2.clause, (newHint)).foreach( cl => {
           Out.trace(rule.name + "new paramod agent insert clause: "+cl.pretty)
-          r.insert(FormulaType)(Store(cl, Role_Plain, f1.context, f1.status, ClauseAnnotation(rule, Set(f1, f2))))
+          r.insert(UnificationTaskType)(Store(cl, Role_Plain, f1.context, f1.status, ClauseAnnotation(rule, Set(f1, f2))))
+//          r.insert(FormulaType)(Store(cl, Role_Plain, f1.context, f1.status, ClauseAnnotation(rule, Set(f1, f2))))
         }
         )
         r
