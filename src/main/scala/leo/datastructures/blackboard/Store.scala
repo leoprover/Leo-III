@@ -50,6 +50,8 @@ class FormulaStore(val name : String, val clause : Clause, val role : Role, val 
    */
   def normalized : Boolean = (status & 3)== 3
 
+  val created: TimeStamp = TimeStamp()
+
   lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
 
   override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
