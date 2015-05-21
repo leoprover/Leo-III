@@ -210,6 +210,7 @@ private object TaskSet {
             }
             // TODO increase budget or we will run into a endless loop
             TaskSet.wait()
+            regAgents.foreach{ case (a,budget) => regAgents.update(a,budget+AGENT_SALARY)}
           }
         }
 

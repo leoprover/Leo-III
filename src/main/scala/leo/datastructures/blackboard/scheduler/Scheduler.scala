@@ -281,6 +281,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       curExec.remove(task)
       Scheduler().signal()  // Get new task
       work = false
+      //Blackboard().forceCheck()
     }
   }
 
