@@ -286,6 +286,29 @@ object Utility {
 //    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
   }
 
+  def printProof(f : FormulaStore) : Unit = {
+
+    var sf : Set[FormulaStore] = new HashSet[FormulaStore]
+    var proof : Seq[String] = Seq()
+
+    def derivationProof(f: FormulaStore)
+    {
+      if (!sf.contains(f)) {
+        sf = sf + f
+        f.annotation match {
+          case InferredFrom(_, fs) =>
+            fs.foreach(derivationProof(_))
+            proof = mkTPTP(f) +: proof
+          case _ =>
+            proof = mkTPTP(f) +: proof
+        }
+      }
+    }
+
+    derivationProof(f)
+    Out.output(proof.reverse.mkString("\n"))
+  }
+
   private def mkTPTP(f : FormulaStore) : String = {
     try{
       ToTPTP.withAnnotation(f).output

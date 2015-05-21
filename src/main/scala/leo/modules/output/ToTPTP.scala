@@ -121,7 +121,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
         }
       }
       // Give Bound variables names
-      case m@MetaVar(_,scope) => m.pretty
+      case m@MetaVar(_,scope) => "sV"+scope
       case Bound(ty, scope) => bVars(scope-1)._1
       // Unary connectives
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"

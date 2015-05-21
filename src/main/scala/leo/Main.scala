@@ -104,7 +104,7 @@ object Main {
       //Utility.formulaContext()
       if (Configuration.PROOF_OBJECT) {
         Out.comment(s"SZS output start Proof for ${Configuration.PROBLEMFILE}")
-        FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printDerivation(_))
+        FormulaDataStore.getAll { p => p.clause.isEmpty}.headOption.fold(Out.comment("No proof found."))(Utility.printProof(_))
         Out.comment(s"SZS output end Proof for ${Configuration.PROBLEMFILE}")
       }
       
