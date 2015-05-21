@@ -639,7 +639,7 @@ protected[impl] case class MetaIndex(typ: Type, id: Int) extends Head {
   def full_δ_expand = TermImpl.headToTerm(this)
 
   // Pretty printing
-  override val pretty = s"m$id"
+  override val pretty = s"sV$id"
 }
 
 protected[impl] case class Atom(id: Signature#Key) extends Head {
