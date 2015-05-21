@@ -108,8 +108,8 @@ object PropParamodulation extends ParamodStep{
       val merged = cSub.merge(d)
       //    leo.Out.severe("What: "+lc.pretty)
       //    leo.Out.severe("By: "+alpha.pretty)
-      val res = NegationNormal.normalize(Simplification.normalize(Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)))
-      return TrivRule.triv(TrivRule.teqf(Simp(res)))
+      val res = NegationNormal.normalize(Simp(Clause.mkClause(merged.substitute(s._1).lits, s._2 ++ merged.implicitBindings, Derived)))
+      return TrivRule.triv(TrivRule.teqf(res))
     }
 
     /**
@@ -156,18 +156,25 @@ object NewParamod extends ParamodRule {
   def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
 
   def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
-    if (depth <= 0)
-      true
-    else {
+    if (s == t) return true
+    if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable
+    if (depth <= 0) return true
+    if (s.ty != t.ty) return false
+    if (s.headSymbol.ty != t.headSymbol.ty) return false
+
+
       // Match case on head symbols:
       // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
       // * = if same type
-      if (s.headSymbol == t.headSymbol && s.ty == t.ty) {
+      if (!s.headSymbol.isVariable && !t.headSymbol.isVariable) {
+        //        println("rigid-rigid case")
         import leo.datastructures.Term._
         // rigid-rigid
         (s,t) match {
           case (Symbol(id1), Symbol(id2)) => id1 == id2
-          case (f1 ∙ args1, f2 ∙ args2) => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+          case (Symbol(_), _) => false
+          case (_, Symbol(_)) => false
+          case (f1 ∙ args1, f2 ∙ args2) if args1.length > 0 && args2.length > 0 => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
             case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
             case (Right(ty1), Right(ty2)) => ty1 == ty2
             case _ => false
@@ -175,19 +182,18 @@ object NewParamod extends ParamodRule {
           case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
           case _ => false
         }
-      }
-      else if (s.headSymbol.isVariable && t.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
-        // flex-flex
-        true
       } else {
+        true
+      }
+
+//      else if (/*s.headSymbol.isVariable && t.headSymbol.isVariable && */ ) {
+//        // flex-flex and flex-rigid togehter
+//        true
+//      }
+
         // flex-rigid
         //        val flex = if (s.headSymbol.isVariable) s else t
         //        val rigid = if (t.headSymbol.isVariable) t else s
-
-
-        true
-      }
-    }
   }
 
   def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
@@ -269,7 +275,7 @@ object NewParamod extends ParamodRule {
       newCls = newCls + TrivRule.triv(TrivRule.teqf(Simp(Clause.mkClause(restLits ++ replLits :+ uniConstraint, Derived))))
     }
 
-    newCls
+    newCls.filterNot(TrivRule.teqt)
   }
 
   def name = "new_paramod"
@@ -283,51 +289,47 @@ object NewPropParamod extends ParamodRule {
   type sideHint = Set[(EqLit, DirEq, TTR)]
 
 
-  def mayUnify(s: Term, t: Term) = {
-//    println("##################")
-    mayUnify0(s,t,5)
-  }
+  def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
 
   def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
-//    println("###############")
-//    println(s"checking mayunify of ${s.pretty} and ${t.pretty}")
-//    println(s"with headsymbols: ${s.headSymbol.pretty} and ${t.headSymbol.pretty}")
-    if (depth <= 0)
-      true
-    else {
-      // Match case on head symbols:
-      // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
-      // * = if same type
-      if (s.ty == t.ty && !s.headSymbol.isVariable && !t.headSymbol.isVariable) {
-//        println("rigid-rigid case")
-        import leo.datastructures.Term._
-        // rigid-rigid
-        (s,t) match {
-          case (Symbol(id1), Symbol(id2)) => id1 == id2
-          case (Symbol(_), _) => false
-          case (_, Symbol(_)) => false
-          case (f1 ∙ args1, f2 ∙ args2) if args1.length > 0 && args2.length > 0 => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
-            case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
-            case (Right(ty1), Right(ty2)) => ty1 == ty2
-            case _ => false
-          } } // TODO: Do we need the first part? f1, f2 should be atoms
-          case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+    if (s == t) return true
+    if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable
+    if (depth <= 0) return true
+    if (s.ty != t.ty) return false
+    if (s.headSymbol.ty != t.headSymbol.ty) return false
+
+
+    // Match case on head symbols:
+    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+    // * = if same type
+    if (!s.headSymbol.isVariable && !t.headSymbol.isVariable) {
+      //        println("rigid-rigid case")
+      import leo.datastructures.Term._
+      // rigid-rigid
+      (s,t) match {
+        case (Symbol(id1), Symbol(id2)) => id1 == id2
+        case (Symbol(_), _) => false
+        case (_, Symbol(_)) => false
+        case (f1 ∙ args1, f2 ∙ args2) if args1.length > 0 && args2.length > 0 => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+          case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
+          case (Right(ty1), Right(ty2)) => ty1 == ty2
           case _ => false
-        }
-      } else if (s.headSymbol.isVariable && t.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
-        // flex-flex
-        true
-      } else if (s.ty == t.ty) {
-        // flex-rigid
-//        val flex = if (s.headSymbol.isVariable) s else t
-//        val rigid = if (t.headSymbol.isVariable) t else s
-
-
-        true
-      } else {
-        false
+        } } // TODO: Do we need the first part? f1, f2 should be atoms
+        case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+        case _ => false
       }
+    } else {
+      true
     }
+
+    //      else if (/*s.headSymbol.isVariable && t.headSymbol.isVariable && */ ) {
+    //        // flex-flex and flex-rigid togehter
+    //        true
+    //      }
+
+    // flex-rigid
+    //        val flex = if (s.headSymbol.isVariable) s else t
+    //        val rigid = if (t.headSymbol.isVariable) t else s
   }
 
 
@@ -454,12 +456,12 @@ class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause], Unit]
       vars.map{case hd =>
         val binding = HuetsPreUnification.partialBinding(hd.ty, hdSymb)
         val subst = Subst.singleton(hd.metaIndices.head, binding)
-        Simplification.normalize(Clause.mkClause(cl.lits.map(_.termMap(_.substitute(subst).betaNormalize)), cl.implicitBindings, Derived))
+        TrivRule.teqf((Simp(Clause.mkClause(cl.lits.map(_.termMap(_.substitute(subst).betaNormalize)), cl.implicitBindings, Derived))))
       }
-    }.flatten
+    }.flatten.filterNot(TrivRule.teqt)
 }
 
-object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
+object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue))
 
 
 
@@ -489,7 +491,7 @@ object BoolExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
       val (left, right) = ===.unapply(lit.term).get
       groundLits = groundLits :+ Literal.mkLit(<=>(left,right).full_δ_expand.betaNormalize, lit.polarity)
     }
-    NegationNormal.normalize(Simplification.normalize(Clause.mkClause(otherLits ++ groundLits, Derived)))
+    NegationNormal.normalize(Simp(Clause.mkClause(otherLits ++ groundLits, Derived)))
   }
 
   def name = "bool_ext"
@@ -531,7 +533,7 @@ object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Lite
       val (left, right) = ===.unapply(lit.term).get
       var newGroundLits : Seq[Seq[Literal]] = Seq()
       groundLits.foreach( lits =>
-        if (lit.polarity) {
+        if (!lit.polarity) {
           newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkPosLit(right)) :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkNegLit(right))
         } else {
           newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkNegLit(right)) :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkPosLit(right))
@@ -540,8 +542,8 @@ object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Lite
       groundLits = newGroundLits
 //      groundLits = groundLits :+ Literal.mkLit(<=>(left,right).full_δ_expand.betaNormalize, lit.polarity)
     }
-    groundLits.map(lits => Clause.mkClause(lits, Derived)).toSet
-//    NegationNormal.normalize(Simplification.normalize(Clause.mkClause(otherLits ++ groundLits, Derived)))
+    groundLits.map(lits => TrivRule.teqf(TrivRule.simpEq(Clause.mkClause(lits, Derived)))).filterNot(TrivRule.teqt(_)).toSet
+//    NegationNormal.normalize(ion.normalize(Clause.mkClause(otherLits ++ groundLits, Derived)))
   }
 
   def name = "bool_ext_alt"
@@ -586,7 +588,7 @@ object FuncExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
         groundLits = groundLits :+ Literal.mkUniLit(Term.mkTermApp(left, skTerm).betaNormalize,Term.mkTermApp(right, skTerm).betaNormalize)
       }
     }
-    Clause.mkClause(otherLits ++ groundLits, Derived)
+    TrivRule.teqf(TrivRule.simpEq(Clause.mkClause(otherLits ++ groundLits, Derived)))
   }
 
   def name = "func_ext"
