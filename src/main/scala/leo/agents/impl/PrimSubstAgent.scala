@@ -30,7 +30,7 @@ object PrimSubstAgent extends Agent {
         for (cl <- ncs) {
           res.insert(FormulaType)(Store(cl, Role_Plain, f.context, f.status, ClauseAnnotation(StdPrimSubst, f)))
         }
-        Out.trace(s"[$name:]\n  Clause ${f.clause.pretty}\n flex-heads instantiated, new claues:\n ${ncs.map(_.pretty).mkString("\n")}")
+        Out.trace(s"[$name:]\n  Clause of ${f.pretty}:\nflex-heads instantiated, new clauses:\n ${ncs.map(_.pretty).mkString("\n")}")
         res
       }
       case _: Task =>
