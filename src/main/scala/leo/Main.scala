@@ -54,7 +54,7 @@ object Main {
       deferredKill.start()
 
       // Create Scheduler
-      Scheduler(Configuration.THREADCOUNT)
+      Scheduler()
 
       //==========================================
       //

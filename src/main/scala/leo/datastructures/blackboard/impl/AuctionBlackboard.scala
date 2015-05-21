@@ -190,72 +190,74 @@ private object TaskSet {
    *
    * @return
    */
-  def getTask : Iterable[(AgentController,Task)] = this.synchronized{
+  def getTask : Iterable[(AgentController,Task)] = {
 
     while(!Scheduler().isTerminated) {
       try {
+        this.synchronized {
+          //        println("Beginning to get items for the auction.")
 
-//        println("Beginning to get items for the auction.")
-
-        //
-        // 1. Get all Tasks the Agents want to bid on during the auction with their current money
-        //
-        var r: List[(Double, AgentController, Task)] = Nil
-        while (r.isEmpty) {
-          regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r}}
-          if (r.isEmpty) {
-            if(!Scheduler.working() && execTasks.isEmpty && regAgents.forall{case (a,_) => !a.hasTasks}) {
-            //if(!Scheduler.working() && execTasks.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
-              Blackboard().filterAll{a => a.filter(DoneEvent())}
-            }
-            // TODO increase budget or we will run into a endless loop
-            TaskSet.wait()
-            regAgents.foreach{ case (a,budget) => regAgents.update(a,budget+AGENT_SALARY)}
-          }
-        }
-
-//        println("Got tasks and ready to auction.")
-        //
-        // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
-        //
-        // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
-        // Value should be positive, s.t. we can square the values without changing order
-        //
-        val queue: List[(Double, AgentController, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size}
-
-//        println("Sorted tasks.")
-
-        // 3. Take from beginning to front only the non colliding tasks
-        // Check the currenlty executing tasks too.
-        var newTask: List[(AgentController, Task)] = Nil
-        for ((price, a, t) <- queue) {
-          if (!newTask.exists { e => t.collide(e._2)} && !collision(t)) {
-            val budget = regAgents.apply(a)
-            if (budget >= price) {
-              // The task is not colliding with previous tasks and agent has enough money
-              newTask = (a, t) :: newTask
-              execTasks.add(t)
-              regAgents.put(a, budget - price)
+          //
+          // 1. Get all Tasks the Agents want to bid on during the auction with their current money
+          //
+          var r: List[(Double, AgentController, Task)] = Nil
+          while (r.isEmpty) {
+            //leo.Out.comment("Checking for new tasks.")
+            regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r } }
+            if (r.isEmpty) {
+              if (!Scheduler.working() && execTasks.isEmpty && regAgents.forall { case (a, _) => !a.hasTasks }) {
+              //  if(!Scheduler.working() && execTasks.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
+                Blackboard().filterAll { a => a.filter(DoneEvent()) }
+              }
+              // TODO increase budget or we will run into a endless loop
+              //leo.Out.comment("Going to wait for new Tasks.")
+              TaskSet.wait()
+              regAgents.foreach { case (a, budget) => regAgents.update(a, budget + AGENT_SALARY) }
             }
           }
-        }
 
-//        println("Choose optimal.")
+          //        println("Got tasks and ready to auction.")
+          //
+          // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
+          //
+          // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
+          // Value should be positive, s.t. we can square the values without changing order
+          //
+          val queue: List[(Double, AgentController, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size }
 
-        //
-        // 4. After work pay salary, tell colliding and return the tasks
-        //
-        for ((a, b) <- regAgents) {
-          if(a.maxMoney - b > AGENT_SALARY) {
-            regAgents.put(a, b + AGENT_SALARY)
+          //        println("Sorted tasks.")
+
+          // 3. Take from beginning to front only the non colliding tasks
+          // Check the currenlty executing tasks too.
+          var newTask: List[(AgentController, Task)] = Nil
+          for ((price, a, t) <- queue) {
+            if (!newTask.exists { e => t.collide(e._2) } && !collision(t)) {
+              val budget = regAgents.apply(a)
+              if (budget >= price) {
+                // The task is not colliding with previous tasks and agent has enough money
+                newTask = (a, t) :: newTask
+                execTasks.add(t)
+                regAgents.put(a, budget - price)
+              }
+            }
           }
-          a.removeColliding(newTask.map(_._2))
+
+          //        println("Choose optimal.")
+
+          //
+          // 4. After work pay salary, tell colliding and return the tasks
+          //
+          for ((a, b) <- regAgents) {
+            if (a.maxMoney - b > AGENT_SALARY) {
+              regAgents.put(a, b + AGENT_SALARY)
+            }
+            a.removeColliding(newTask.map(_._2))
+          }
+
+          //        println("Sending "+newTask.size+" tasks to scheduler.")
+
+          return newTask
         }
-
-//        println("Sending "+newTask.size+" tasks to scheduler.")
-
-        return newTask
-
         //Lastly interrupt recovery
       } catch {
         case e : InterruptedException => Thread.currentThread().interrupt()

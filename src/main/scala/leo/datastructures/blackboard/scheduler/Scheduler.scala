@@ -17,25 +17,8 @@ import java.util.concurrent.{RejectedExecutionException, Executors}
  */
 object Scheduler {
 
-  private[scheduler] var s : Scheduler = null
-  private var n : Int = 5
-
-  /**
-   * Defines a scheduler with numberOfThreads Threads or
-   * a simple get for the singleton.
-   *
-   * @param numberOfThreads - Number of Threads
-   * @return Singleton Scheduler
-   */
-  def apply(numberOfThreads : Int) : Scheduler = {
-    n = numberOfThreads
-    if (s == null) {
-      s = new SchedulerImpl(numberOfThreads)
-      s.start()
-
-    }
-    s
-  }
+  private[scheduler] lazy val s : Scheduler = {val s = new SchedulerImpl(n); s.start(); s}
+  private lazy val n : Int = Configuration.THREADCOUNT
 
   /**
    * Creates a Scheduler for 5 Threads or a get for the singleton,
@@ -43,7 +26,7 @@ object Scheduler {
    * @return
    */
   def apply() : Scheduler = {
-    apply(n)  // TODO config presettings
+    s
   }
 
   def working() : Boolean = {
@@ -281,7 +264,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       curExec.remove(task)
       Scheduler().signal()  // Get new task
       work = false
-      //Blackboard().forceCheck()
+      Blackboard().forceCheck()
     }
   }
 
