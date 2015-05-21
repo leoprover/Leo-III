@@ -7,6 +7,8 @@ import leo.datastructures.blackboard.impl
 import leo.datastructures.impl.Signature
 import leo.datastructures._
 import leo.datastructures.blackboard._
+import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable}
+import leo.modules.proofCalculi.CalculusRule
 
 /**
  * This Agent removes all initial all quantifiers and replaces them by MetaVariables.
@@ -21,7 +23,7 @@ class MetaVarAgent extends Agent {
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(t: Task): Result = t match {
-    case MetavarTask(f) => Result().update(FormulaType)(f)(Store(f.clause.mapLit(replaceQuants(_)), Role_Plain, f.context, f.status))
+    case MetavarTask(f) => Result().update(FormulaType)(f)(CNFForall(f))
     case _ => Result()
   }
 
@@ -34,13 +36,21 @@ class MetaVarAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
-      if(f.clause.lits.exists{l => initQuant(l)}) {
+      if(CNFForall.canApply(f)) {
         // Remark: Removed status int here
         List(MetavarTask(f))
       } else {
         Nil
       }
     case _ => Nil
+  }
+
+
+  private object CNFForall extends CalculusRule {
+    val name = "cnf_forall"
+    override val inferenceStatus = Some(SZS_Theorem)
+    def canApply(fs: FormulaStore) = fs.clause.lits.exists{l => initQuant(l)}
+    def apply(f: FormulaStore) = Store(f.clause.mapLit(replaceQuants(_)), Role_Plain, f.context, f.status, ClauseAnnotation(this, f))
   }
 
   private def initQuant(l : Literal) : Boolean = l.term match {
