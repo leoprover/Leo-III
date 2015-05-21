@@ -25,7 +25,7 @@ object FuncExtAgent extends Agent {
     t match {
       case FuncExtTask(f, hint) => {
         val nc = FuncExt.apply(f.clause, hint)
-        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} type grounded\n New clause: ${nc.pretty}")
+        Out.trace(s"[$name:]\n  Equalities in clause of ${f.pretty} type grounded\n New clause: ${nc.pretty}")
         Result().insert(FormulaType)(Store(nc, Role_Plain, f.context, f.status, ClauseAnnotation(FuncExt, f)))
       }
       case _: Task =>
@@ -47,7 +47,7 @@ object FuncExtAgent extends Agent {
       case DataEvent(f: FormulaStore, FormulaType) => {
         val (canApply, hint) = FuncExt.canApply(f.clause)
         if (canApply) {
-          Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} can be type grounded")
+          Out.trace(s"[$name:]\n  Equalities in clause of ${f.pretty} can be type grounded")
           Seq(FuncExtTask(f, hint))
         } else {
           Seq()

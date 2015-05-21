@@ -24,11 +24,9 @@ object BoolExtAgent extends Agent {
     t match {
       case BoolExtTask(f, hint) => {
         val ncs = BoolExtAlt.apply(f.clause, hint)
-        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.map(_.pretty).mkString("\n")}")
-//        Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} replaced by equivalences\n New clauses: ${ncs.pretty}")
+        Out.trace(s"[$name:]\n  Equalities in clause of ${f.pretty} replaced by equivalences\n New clauses: ${ncs.map(_.pretty).mkString("\n")}")
         val r = Result()
         ncs.foreach {nc => r.insert(FormulaType)(Store(nc, Role_Plain, f.context,f.status, ClauseAnnotation(BoolExtAlt, f)))}
-//        Result().insert(FormulaType)(Store(ncs, Role_Plain, f.context, f.status, ClauseAnnotation(BoolExt, f)))
         r
       }
       case _: Task =>
@@ -50,7 +48,7 @@ object BoolExtAgent extends Agent {
       case DataEvent(f: FormulaStore, FormulaType) => {
         val (canApply, hint) = BoolExt.canApply(f.clause)
         if (canApply) {
-          Out.trace(s"[$name:]\n  Equalities in clause ${f.clause.pretty} can be replaced by equivalences")
+          Out.trace(s"[$name:]\n  Equalities in clause of ${f.pretty} can be replaced by equivalences")
           Seq(BoolExtTask(f, hint))
         } else {
           Seq()
