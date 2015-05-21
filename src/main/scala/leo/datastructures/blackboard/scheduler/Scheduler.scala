@@ -192,14 +192,15 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         }
         if (endFlag) return // If is ended quit
       }
+
       // Blocks until a task is available
       val tasks = Blackboard().getTask
 
       try {
         for ((a, t) <- tasks) {
           this.synchronized {
-            while (curExec.size > numberOfThreads) this.wait()
             curExec.add(t)
+            while (curExec.size > numberOfThreads) this.wait()
             if (endFlag) return // Savely exit
             if (pauseFlag) {
               Out.trace("Scheduler paused.")
