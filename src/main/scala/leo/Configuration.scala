@@ -2,7 +2,7 @@ package leo
 
 import java.util.logging.Level
 
-import leo.datastructures.{Literal}
+import leo.datastructures.{ClWeight_LitCount, Literal}
 import leo.modules.CLParameterParser
 import leo.modules.output.Output
 
@@ -92,7 +92,7 @@ object Configuration extends DefaultConfiguration {
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   import leo.datastructures.{SizeBasedOrdering,LitWeight_TermSize, CLWeight_LitWeightSum, Orderings, CLOrdering_Lex_Weight_Age_Origin}
 
-  lazy val CLAUSE_WEIGHTING: ClauseWeight = CLWeight_LitWeightSum
+  lazy val CLAUSE_WEIGHTING: ClauseWeight = ClWeight_LitCount
   lazy val CLAUSE_ORDERING: ClauseOrdering = CLOrdering_Lex_Weight_Age_Origin
 
   lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize

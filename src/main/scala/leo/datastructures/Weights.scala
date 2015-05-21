@@ -32,6 +32,11 @@ object CLWeight_FIFO extends ClauseWeight {
   def weightOf[A <: Clause](cl: A) = cl.id
 }
 
+/** Clause weighting that assigns the number of literals in the clause as weight. */
+object ClWeight_LitCount extends ClauseWeight {
+  def weightOf[A <: Clause](cl: A) = cl.lits.size
+}
+
 /** Clause weighting that assigns the maximum of all literals weights as weight. */
 object ClWeight_MaxLitWeight extends ClauseWeight {
   def weightOf[A <: Clause](cl: A) = cl.lits.map(_.weight).max
