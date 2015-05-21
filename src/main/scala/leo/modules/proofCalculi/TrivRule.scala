@@ -20,6 +20,7 @@ object TrivRule {
   def teqf(c : Seq[Literal]) : Seq[Literal] = c filter {l => l.term match{
     case LitTrue() if !l.polarity => false
     case LitFalse() if l.polarity => false
+    case ===(LitTrue(), LitFalse()) if l.polarity => false
     case _                      => true
   }}
 
