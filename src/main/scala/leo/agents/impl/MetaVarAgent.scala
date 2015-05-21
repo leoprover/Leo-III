@@ -23,7 +23,10 @@ class MetaVarAgent extends Agent {
    * This function runs the specific agent on the registered Blackboard.
    */
   override def run(t: Task): Result = t match {
-    case MetavarTask(f) => Result().update(FormulaType)(f)(CNFForall(f))
+    case MetavarTask(f) => {
+      trace("applied cnf_forall on "+f.pretty)
+      Result().update(FormulaType)(f)(CNFForall(f))
+    }
     case _ => Result()
   }
 
@@ -37,7 +40,7 @@ class MetaVarAgent extends Agent {
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
       if(CNFForall.canApply(f)) {
-        // Remark: Removed status int here
+        trace("Can apply cnf_forall")
         List(MetavarTask(f))
       } else {
         Nil
