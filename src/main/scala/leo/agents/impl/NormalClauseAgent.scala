@@ -42,7 +42,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
         Out.trace(s"[$name]: : No change in Normalization.\n  ${fstore.pretty}(${fstore.status})\n to\n  ${erg.pretty}(${erg.status}).")
         Result().update(FormulaType)(fstore)(erg)
       } else {
-        val erg = Store(fstore.name, ergCl, fstore.role, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
+        val erg = Store(ergCl, fstore.role, calc.context, calc.status, ClauseAnnotation(norm, Set(fstore)))
         Out.trace(s"[$name]: : Updated Formula.\n  ${fstore.pretty}\n to\n  ${erg.pretty}.")
         Result().update(FormulaType)(fstore)(erg)
       }

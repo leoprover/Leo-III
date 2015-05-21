@@ -54,6 +54,6 @@ class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.
     val name = "neg_conjecture"
     override val inferenceStatus = Some(SZS_CounterSatisfiable)
     def canApply(fs: FormulaStore) = fs.role == Role_Conjecture
-    def apply(fs: FormulaStore) = Store(fs.name, fs.clause.mapLit(l => l.flipPolarity), Role_NegConjecture, fs.context, fs.status & ~7, ClauseAnnotation(this, fs)) // TODO: This is not generally not valid, fix me
+    def apply(fs: FormulaStore) = Store(fs.name + "_neg", fs.clause.mapLit(l => l.flipPolarity), Role_NegConjecture, fs.context, fs.status & ~7, ClauseAnnotation(this, fs)) // TODO: This is not generally not valid, fix me
   }
 }
