@@ -49,7 +49,7 @@ class MetaVarAgent extends Agent {
   private object CNFForall extends CalculusRule {
     val name = "cnf_forall"
     override val inferenceStatus = Some(SZS_Theorem)
-    def canApply(fs: FormulaStore) = fs.clause.lits.exists{l => initQuant(l)}
+    def canApply(fs: FormulaStore) = fs.clause.lits.exists{l => initQuant(l)} && (fs.status & 31) == 31
     def apply(f: FormulaStore) = Store(f.clause.mapLit(replaceQuants(_)), Role_Plain, f.context, f.status, ClauseAnnotation(this, f))
   }
 
