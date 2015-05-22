@@ -81,7 +81,7 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
         val newHint: rule.HintType = hint.fold(in => (Set(in), Set()):rule.HintType, in => (Set(), Set(in)):rule.HintType)
         rule.apply(f1.clause, f2.clause, (newHint)).foreach( cl => {
           val erg = Store(cl, Role_Plain, f1.context, f1.status, ClauseAnnotation(rule, Set(f1, f2)))
-          trace(rule.name + " insert: "+erg.pretty)
+          trace(rule.name + "paramod from\n" + f1.pretty +"\n" + f2.pretty + "\n" + "insert: "+erg.pretty)
           r.insert(UnificationTaskType)(erg)
         }
         )
