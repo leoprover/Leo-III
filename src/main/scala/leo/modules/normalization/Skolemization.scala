@@ -29,12 +29,12 @@ object Skolemization extends AbstractNormalize{
    * @return a normalized formula
    */
   override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap(internalNormalize(_)))
+    formula.mapLit(_.termMap(internalNormalize(_, formula.freeVars)))
   }
 
-  private def internalNormalize(formula: Term): Term = {
+  private def internalNormalize(formula: Term, fV: Set[Term]): Term = {
     val mini = miniscope(formula)
-    val r = skolemize(mini, Seq())
+    val r = skolemize(mini, fV.toSeq)
     r
   }
 
