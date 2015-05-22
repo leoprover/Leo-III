@@ -41,6 +41,10 @@ object Simplification extends AbstractNormalize{
     case s === t =>
       (norm(s), norm(t)) match {
         case (s1,t1) if s1 == t1 => LitTrue
+        case (LitTrue(),t1) => t1
+        case (s1,LitTrue()) => s1
+        case (LitFalse(), t1) => Not(t1)
+        case (s1, LitFalse()) => Not(s1)
         case (s1,t1)             => ===(s1,t1)
       }
     case s & t =>
