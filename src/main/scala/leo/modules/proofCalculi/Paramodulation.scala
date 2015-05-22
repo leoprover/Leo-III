@@ -3,8 +3,7 @@ package leo.modules.proofCalculi
 import leo.datastructures._
 import leo.modules.normalization.{NegationNormal, Simplification}
 import leo.modules.output.Output
-
-
+import leo.modules.proofCalculi.enumeration.SimpleEnum
 
 
 trait ParamodStep extends Output{
@@ -215,10 +214,10 @@ object NewParamod extends ParamodRule {
         val subterms = otherLit.term.occurrences.keySet.iterator
         while (subterms.hasNext) {
           val st = subterms.next()
-          if (mayUnify(st, l)) {
+          if (!st.isVariable && mayUnify(st, l)) {
             left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (l, r), st))
           }
-          if (mayUnify(st, r)) {
+          if (!st.isVariable && mayUnify(st, r)) {
             left_termsThatMayUnify = left_termsThatMayUnify + ((eqLit, (r, l), st))
           }
         }
@@ -238,10 +237,10 @@ object NewParamod extends ParamodRule {
         val subterms = otherLit.term.occurrences.keySet.iterator
         while (subterms.hasNext) {
           val st = subterms.next()
-          if (mayUnify(st, l)) {
+          if (!st.isVariable && mayUnify(st, l)) {
             right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (l, r), st))
           }
-          if (mayUnify(st, r)) {
+          if (!st.isVariable && mayUnify(st, r)) {
             right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (r, l), st))
           }
         }
@@ -371,7 +370,7 @@ object NewPropParamod extends ParamodRule {
         val subterms = otherLit.term.occurrences.keySet.iterator
         while (subterms.hasNext) {
           val st = subterms.next()
-          if (mayUnify(st, l)) {
+          if (!st.isVariable && mayUnify(st, l)) {
 
 //            println(s"paramod ${cl1.pretty} with ${cl2.pretty}")
 //println(s"subterms of otherLit: ${ otherLit.term.occurrences.keySet.map(_.pretty).mkString("\n")}")
@@ -395,7 +394,7 @@ object NewPropParamod extends ParamodRule {
         val subterms = otherLit.term.occurrences.keySet.iterator
         while (subterms.hasNext) {
           val st = subterms.next()
-          if (mayUnify(st, l)) {
+          if (!st.isVariable && mayUnify(st, l)) {
 //            println(s"2. may unify: ${st.pretty} with ${l.pretty}")
             right_termsThatMayUnify = right_termsThatMayUnify + ((eqLit, (l, r), st))
           }
@@ -461,7 +460,7 @@ class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause], Unit]
     }.flatten.filterNot(TrivRule.teqt)
 }
 
-object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue))
+object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
 
 
 
@@ -533,7 +532,7 @@ object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Lite
       val (left, right) = ===.unapply(lit.term).get
       var newGroundLits : Seq[Seq[Literal]] = Seq()
       groundLits.foreach( lits =>
-        if (!lit.polarity) {
+        if (lit.polarity) {
           newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkPosLit(right)) :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkNegLit(right))
         } else {
           newGroundLits = newGroundLits :+ (lits :+ Literal.mkNegLit(left) :+ Literal.mkNegLit(right)) :+ (lits :+ Literal.mkPosLit(left) :+ Literal.mkPosLit(right))
