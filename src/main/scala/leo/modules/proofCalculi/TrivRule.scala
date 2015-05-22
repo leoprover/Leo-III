@@ -44,6 +44,7 @@ object TrivRule {
     c.lits exists  {l => l.term match {
       case LitTrue() if l.polarity => true
       case LitFalse() if !l.polarity => true
+      case ===(s,t) if s == t && l.polarity => true
       case _                    => false
     }}
   }
