@@ -3,8 +3,8 @@ package leo.modules.phase
 import leo.agents.impl._
 import leo.agents.{PriorityController, FifoController, AgentController}
 import leo.modules.normalization._
-import leo.modules.proofCalculi._
-import leo.modules.proofCalculi.splitting.ClauseHornSplit
+import leo.modules.calculus._
+import leo.modules.calculus.splitting.ClauseHornSplit
 
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"

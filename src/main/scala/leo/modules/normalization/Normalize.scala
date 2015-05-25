@@ -3,7 +3,7 @@ package leo.modules.normalization
 import leo.datastructures.{ClauseAnnotation, Role_Plain , Clause}
 import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.modules.output.SZS_Theorem
-import leo.modules.proofCalculi.CalculusRule
+import leo.modules.calculus.CalculusRule
 
 /**
  * This trait is shared by every Normalizing Object.

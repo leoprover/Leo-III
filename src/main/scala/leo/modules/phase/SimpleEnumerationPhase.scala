@@ -7,7 +7,7 @@ import leo.datastructures.{Term, Type}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
-import leo.modules.proofCalculi.enumeration.SimpleEnum
+import leo.modules.calculus.enumeration.SimpleEnum
 
 object SimpleEnumerationPhase extends CompletePhase {
   override val name = "SimpleEnumerationPhase"

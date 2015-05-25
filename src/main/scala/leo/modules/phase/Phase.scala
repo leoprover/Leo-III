@@ -13,9 +13,9 @@ import leo.datastructures.impl.Signature
 import leo.modules.{SZSException, Utility}
 import leo.modules.normalization.{DefExpansion, NegationNormal, Simplification, Skolemization}
 import leo.modules.output._
-import leo.modules.proofCalculi.enumeration.SimpleEnum
-import leo.modules.proofCalculi.splitting.ClauseHornSplit
-import leo.modules.proofCalculi.{IdComparison, Paramodulation, PropParamodulation}
+import leo.modules.calculus.enumeration.SimpleEnum
+import leo.modules.calculus.splitting.ClauseHornSplit
+import leo.modules.calculus.{IdComparison, Paramodulation, PropParamodulation}
 
 
 object Phase {

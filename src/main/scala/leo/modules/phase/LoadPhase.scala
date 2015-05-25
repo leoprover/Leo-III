@@ -1,15 +1,13 @@
 package leo.modules.phase
 
 import leo._
-import leo.agents.impl.ConjectureAgent
-import leo.agents.{Task, Agent, FifoController, AgentController}
+import leo.agents.{Task, Agent, AgentController}
 import leo.datastructures.{ClauseAnnotation, Role_NegConjecture, Role_Conjecture}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
-import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules.output.{SZS_CounterSatisfiable, SZS_Error}
-import leo.modules.proofCalculi.CalculusRule
+import leo.modules.calculus.CalculusRule
 import leo.modules.{SZSException, Utility}
 
 class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.PROBLEMFILE) extends Phase{

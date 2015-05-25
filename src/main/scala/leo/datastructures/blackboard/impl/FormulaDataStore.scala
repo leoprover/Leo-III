@@ -4,7 +4,7 @@ import leo.datastructures.Clause
 import leo.datastructures.blackboard._
 import leo.datastructures.context.impl.{TreeContextMap, TreeContextSet}
 import leo.datastructures.context.{ContextMap, ContextSet, Context}
-import leo.modules.proofCalculi.TrivRule
+import leo.modules.calculus.TrivRule
 
 /**
  *
