@@ -1,8 +1,10 @@
 package leo.datastructures.blackboard
 package impl
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import leo.datastructures.{Subst, Term}
-import leo.modules.proofCalculi.HuetsPreUnification
+import leo.modules.calculus.HuetsPreUnification
 
 import scala.collection.mutable
 
@@ -20,7 +22,7 @@ object UnificationStore extends DataStore {
 
   private val openUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term),Iterable[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Iterable[Subst]]]()
   private val doneUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term), Set[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Set[Subst]]]()
-
+  val debugCounter : AtomicInteger = new AtomicInteger(0)
   /**
    * Returns the next unused unifier for a unification constrained [t1 = t2] = F in f.
    *
@@ -35,9 +37,15 @@ object UnificationStore extends DataStore {
     t2u.get((t1,t2)) match {
       case Some(us) => us.headOption
       case None     => // Create new
+        val i = debugCounter.incrementAndGet()
+        println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")
         val us = HuetsPreUnification.unify(t1,t2)
+        println(s"###### unify $i")
         t2u.put((t1,t2), us)
-        us.headOption
+        println(s"###### put $i")
+        val res = us.headOption
+        println(s"###### unification result $i: ${res}")
+        res
     }
   }
 
