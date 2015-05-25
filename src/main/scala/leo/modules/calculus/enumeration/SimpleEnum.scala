@@ -1,4 +1,4 @@
-package leo.modules.proofCalculi.enumeration
+package leo.modules.calculus.enumeration
 
 import leo.datastructures.{Term, Type}
 import Term.mkAtom

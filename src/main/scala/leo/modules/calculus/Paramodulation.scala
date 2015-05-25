@@ -1,9 +1,9 @@
-package leo.modules.proofCalculi
+package leo.modules.calculus
 
 import leo.datastructures._
 import leo.modules.normalization.{NegationNormal, Simplification}
 import leo.modules.output.Output
-import leo.modules.proofCalculi.enumeration.SimpleEnum
+import leo.modules.calculus.enumeration.SimpleEnum
 
 
 trait ParamodStep extends Output{
@@ -320,34 +320,7 @@ object NewPropParamod extends ParamodRule {
     } else {
       true
     }
-
-    //      else if (/*s.headSymbol.isVariable && t.headSymbol.isVariable && */ ) {
-    //        // flex-flex and flex-rigid togehter
-    //        true
-    //      }
-
-    // flex-rigid
-    //        val flex = if (s.headSymbol.isVariable) s else t
-    //        val rigid = if (t.headSymbol.isVariable) t else s
   }
-
-
-//      if (s.headSymbol.isVariable && s.ty == t.ty && s.headSymbol.ty == t.headSymbol.ty) {
-//      if (t.headSymbol.isVariable) {
-//        // flex-flex
-//        true
-//      } else {
-//        // s flex - t rigid
-//
-//
-//
-//        ???
-//      }
-//    } else if (t.headSymbol.isVariable && s.ty == t.ty && t.headSymbol.ty == s.headSymbol.ty)
-//      true
-//    else
-//      false
-//    s == t
 
 
   def canApply(cl1: Clause, cl2: Clause): (Boolean, HintType) = {
@@ -445,13 +418,13 @@ object NewPropParamod extends ParamodRule {
  *
  * Hint not needed since its implemented in clause.
  */
-class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause], Unit] {
+class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusHintRule[Set[Clause], Set[Term]] {
   val name = "prim_subst"
 
-    def canApply(cl: Clause) = (cl.flexHeadLits.nonEmpty, ())
+  def canApply(cl: Clause) = (cl.flexHeadLits.nonEmpty, cl.flexHeadLits.map(_.term.headSymbol))
 
-    def apply(cl: Clause, hint: Unit): Set[Clause] = hdSymbs.map{hdSymb =>
-      val vars = cl.flexHeadLits.map(_.term.headSymbol)
+  def apply(cl: Clause, hint: HintType): Set[Clause] = hdSymbs.map{hdSymb =>
+      val vars = hint
       vars.map{case hd =>
         val binding = HuetsPreUnification.partialBinding(hd.ty, hdSymb)
         val subst = Subst.singleton(hd.metaIndices.head, binding)
@@ -462,9 +435,69 @@ class PrimSubst(hdSymbs: Set[Term]) extends UnaryCalculusRule[Set[Clause], Unit]
 
 object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
 
+object RestrFac extends UnaryCalculusHintRule[Clause, Option[(Literal, Literal)]] {
+  val name = "restr_fac"
+
+  def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
+
+  def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
+    if (s == t) return true
+    if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable
+    if (depth <= 0) return true
+    if (s.ty != t.ty) return false
+    if (s.headSymbol.ty != t.headSymbol.ty) return false
 
 
-object BoolExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
+    // Match case on head symbols:
+    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+    // * = if same type
+    if (!s.headSymbol.isVariable && !t.headSymbol.isVariable) {
+      //        println("rigid-rigid case")
+      import leo.datastructures.Term._
+      // rigid-rigid
+      (s,t) match {
+        case (Symbol(id1), Symbol(id2)) => id1 == id2
+        case (Symbol(_), _) => false
+        case (_, Symbol(_)) => false
+        case (f1 ∙ args1, f2 ∙ args2) if args1.length > 0 && args2.length > 0 => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+          case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
+          case (Right(ty1), Right(ty2)) => ty1 == ty2
+          case _ => false
+        } } // TODO: Do we need the first part? f1, f2 should be atoms
+        case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
+        case _ => false
+      }
+    } else {
+      true
+    }
+  }
+
+  def canApply(cl: Clause) = if (cl.lits.length == 2) {
+    val (l1, l2) = (cl.lits(0), cl.lits(1))
+    if (l1.polarity == l2.polarity) {
+      (true, None)
+    } else {
+      (l1.flexHead || l2.flexHead, if (l1.flexHead) Some(l1, l2) else Some(l2, l1))
+    }
+  } else
+    (false, None)
+
+  def apply(cl: Clause, hint: HintType): Clause = {
+    if (hint.isEmpty) {
+      // same polarity
+      val (l1, l2) = (cl.lits(0), cl.lits(1))
+      val keep = if (l1.flexHead) l1 else l2
+      Clause.mkClause(Seq(keep, Literal.mkUniLit(l1.term, l2.term)), Derived)
+    } else {
+      val (l1, l2) = hint.get
+      Clause.mkClause(Seq(l1, Literal.mkUniLit(l1.term, Not(l2.term))), Derived)
+    }
+  }
+}
+
+
+
+object BoolExt extends UnaryCalculusHintRule[Clause, (Seq[Literal], Seq[Literal])] {
   def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {
     var it = cl.lits.iterator
     var boolExtLits: Seq[Literal] = Seq()
@@ -506,7 +539,7 @@ object BoolExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
   *
   * That are, n^2^ many new clauses
   * */
-object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Literal])] {
+object BoolExtAlt extends UnaryCalculusHintRule[Set[Clause], (Seq[Literal], Seq[Literal])] {
   def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {
     var it = cl.lits.iterator
     var boolExtLits: Seq[Literal] = Seq()
@@ -549,7 +582,7 @@ object BoolExtAlt extends UnaryCalculusRule[Set[Clause], (Seq[Literal], Seq[Lite
 }
 
 
-object FuncExt extends UnaryCalculusRule[Clause, (Seq[Literal], Seq[Literal])] {
+object FuncExt extends UnaryCalculusHintRule[Clause, (Seq[Literal], Seq[Literal])] {
   def canApply(cl: Clause): (Boolean, (Seq[Literal], Seq[Literal])) = {
     var it = cl.lits.iterator
     var boolExtLits: Seq[Literal] = Seq()

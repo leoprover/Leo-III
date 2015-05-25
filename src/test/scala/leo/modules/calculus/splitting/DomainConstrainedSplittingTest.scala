@@ -1,5 +1,5 @@
 package leo
-package modules.proofCalculi.splitting
+package modules.calculus.splitting
 
 import leo.Configuration
 import leo.datastructures.impl.Signature

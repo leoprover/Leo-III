@@ -8,7 +8,7 @@ import leo.datastructures.impl.Signature
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable}
-import leo.modules.proofCalculi.CalculusRule
+import leo.modules.calculus.CalculusRule
 
 /**
  * This Agent removes all initial all quantifiers and replaces them by MetaVariables.

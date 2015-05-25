@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.blackboard._
 import leo.datastructures.context.SplitKind
-import leo.modules.proofCalculi.splitting.Split
+import leo.modules.calculus.splitting.Split
 import leo.datastructures.context.Context
 import leo.datastructures.{Role_Plain, Clause}
 

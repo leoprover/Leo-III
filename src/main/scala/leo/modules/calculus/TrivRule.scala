@@ -1,4 +1,4 @@
-package leo.modules.proofCalculi
+package leo.modules.calculus
 
 import leo.datastructures._
 

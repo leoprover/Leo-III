@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.{ClauseAnnotation, Role_Plain, Clause}
 import leo.datastructures.blackboard._
-import leo.modules.proofCalculi.{TrivRule, Clausification}
+import leo.modules.calculus.{TrivRule, Clausification}
 
 object ClausificationAgent {
   def apply() : Unit = new PriorityController(new ClausificationAgent()).register()

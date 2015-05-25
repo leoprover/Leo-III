@@ -6,7 +6,7 @@ import leo.modules.output.SuccessSZS
 /**
  * Created by lex on 20.05.15.
  */
-package object proofCalculi {
+package object calculus {
   trait CalculusRule {
     def name: String
     def inferenceStatus: Option[SuccessSZS] = None

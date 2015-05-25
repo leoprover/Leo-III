@@ -5,7 +5,7 @@ package impl
 import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
 import Store._
-import leo.modules.proofCalculi.FuncExt
+import leo.modules.calculus.FuncExt
 
 /**
  * Created by lex on 11.05.15.

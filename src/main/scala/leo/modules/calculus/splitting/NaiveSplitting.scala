@@ -1,5 +1,5 @@
 package leo
-package modules.proofCalculi.splitting
+package modules.calculus.splitting
 
 import leo.datastructures.Clause
 import leo.datastructures.context.{NoSplit, BetaSplit, AlphaSplit, SplitKind}

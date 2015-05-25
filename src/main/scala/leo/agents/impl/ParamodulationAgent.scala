@@ -5,7 +5,7 @@ package impl
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl
 import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.modules.proofCalculi._
+import leo.modules.calculus._
 import leo.datastructures._
 
 /**

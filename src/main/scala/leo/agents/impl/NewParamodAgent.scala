@@ -6,7 +6,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.impl
 import leo.datastructures.blackboard.impl._
 import leo.datastructures.blackboard._
-import leo.modules.proofCalculi.{ParamodRule, TrivRule, NewParamod}
+import leo.modules.calculus._
 
 /**
  * Created by lex on 18.05.15.

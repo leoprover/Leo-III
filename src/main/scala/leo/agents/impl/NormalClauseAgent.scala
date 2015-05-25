@@ -5,7 +5,7 @@ package impl
 import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
 import leo.modules.normalization.Normalize
-import leo.modules.proofCalculi.TrivRule
+import leo.modules.calculus.TrivRule
 
 import scala.collection.mutable
 

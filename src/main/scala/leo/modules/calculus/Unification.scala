@@ -1,4 +1,4 @@
-package leo.modules.proofCalculi
+package leo.modules.calculus
 
 import leo.datastructures.{Term, Type, Subst}
 import leo.modules.output.SZS_EquiSatisfiable
@@ -37,7 +37,7 @@ object HuetsPreUnification extends Unification {
   import Term._
   import leo.datastructures.TermFront
   import leo.datastructures.BoundFront
-  import leo.modules.proofCalculi.util.executionModels._
+  import leo.modules.calculus.util.executionModels._
   import annotation.tailrec
 
   type UEq = Tuple2[Term,Term]
@@ -145,7 +145,7 @@ object HuetsPreUnification extends Unification {
   // hdSymb is head
   // y1,..,yn are new bound variable
   // x1,..,xm are new free variables
-  protected[proofCalculi] def partialBinding(typ: Type, hdSymb: Term) = {
+  protected[calculus] def partialBinding(typ: Type, hdSymb: Term) = {
     val ys = typ.funParamTypes.zip(List.range(1,typ.funArity+1)).map(p => Term.mkBound(p._1,p._2))
     val xs =
       if (ys.isEmpty)

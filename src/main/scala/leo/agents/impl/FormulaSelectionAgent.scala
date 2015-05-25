@@ -5,6 +5,7 @@ package impl
 import leo.datastructures.TimeStamp
 import leo.datastructures.blackboard.impl.{SelectionTimeStore, TimeData, SelectionTimeType}
 import leo.datastructures.blackboard._
+import leo.modules.calculus.{FuncExt, BoolExt, StdPrimSubst}
 
 /**
  * Created by lex on 20.05.15.
@@ -26,7 +27,7 @@ object FormulaSelectionAgent extends Agent {
     event match {
       case DataEvent(f: FormulaStore, FormulaType) => {
         // new formula, add timestamp to selectiontimestore
-        if (!SelectionTimeStore.get(f).isDefined) {
+        if (!SelectionTimeStore.get(f).isDefined /*&& !BoolExt.canApply(f.clause)._1 && !FuncExt.canApply(f.clause)._1*/) {
           val t = AddTimeStampTask(f)
           //if(f.clause.lits.size == 1) comment(s"Try select clause ${f.pretty}.(weight=${t.bid(100)})")
           Seq(t)

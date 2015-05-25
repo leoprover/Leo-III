@@ -6,7 +6,7 @@ import leo.datastructures.blackboard._
 import leo.datastructures.context.{BetaSplit, NoSplit, Context}
 import leo.datastructures.impl.Signature
 import leo.datastructures.{Role_Plain, Type}
-import leo.modules.proofCalculi.splitting.DomainConstrainedSplitting
+import leo.modules.calculus.splitting.DomainConstrainedSplitting
 
 /**
  *
