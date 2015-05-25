@@ -20,7 +20,7 @@ object TermIndex {
   def contains(t: Term): Boolean = termset.contains(t)
 
   def insert(term: Term): Term = {
-    val t = term.betaNormalize
+    val t = term.betaNormalize.etaExpand
     val t2 = if (!Term.contains(t))
       Term.insert(t)
      else
