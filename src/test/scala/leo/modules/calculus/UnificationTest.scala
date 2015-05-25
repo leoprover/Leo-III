@@ -117,4 +117,26 @@ class UnificationTestSuite extends LeoTestSuite {
       assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
     }
   }
+
+  test("y(ey) = ~ (sKf(skX(y), ey))", Checked) {
+    val s = getFreshSignature
+
+    val y = mkFreshMetaVar(s.i ->: s.o)
+    val ey = mkFreshMetaVar(s.i)
+
+    val sKf = mkAtom(s.addUninterpreted("skf", s.i ->: s.i ->: s.o))
+    val skX = mkAtom(s.addUninterpreted("skX", (s.i ->: s.o) ->: s.i))
+
+    val t1 = mkTermApp(y, Seq(ey))
+    println("t1: "+ t1.typeCheck)
+    val t2 = Not(mkTermApp(sKf, Seq(mkTermApp(skX, y), ey)))
+    println("t2" + t2.typeCheck)
+
+    val result : Iterator[Subst] = HuetsPreUnification.unify(t1,t2).iterator
+
+    assert(result.nonEmpty)
+    // This unification task should be solvable, right?
+    val sb1 = result.next
+    println("unifier: " + sb1.pretty)
+  }
 }
