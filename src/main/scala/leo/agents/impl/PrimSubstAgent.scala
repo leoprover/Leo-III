@@ -4,8 +4,7 @@ package impl
 
 import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
-import Store._
-import leo.modules.proofCalculi.StdPrimSubst
+import leo.modules.calculus.StdPrimSubst
 
 /**
  * Created by lex on 11.05.15.
@@ -23,9 +22,9 @@ object PrimSubstAgent extends Agent {
    */
   def run(t: Task): Result = {
     t match {
-      case PrimSubstTask(f) => {
-        import leo.modules.proofCalculi.StdPrimSubst
-        val ncs = StdPrimSubst.apply(f.clause, ())
+      case PrimSubstTask(f, hint) => {
+        import leo.modules.calculus.StdPrimSubst
+        val ncs = StdPrimSubst.apply(f.clause, hint)
         val res = Result()
         for (cl <- ncs) {
           res.insert(FormulaType)(Store(cl, Role_Plain, f.context, f.status, ClauseAnnotation(StdPrimSubst, f)))
@@ -50,8 +49,9 @@ object PrimSubstAgent extends Agent {
   def toFilter(event: Event) = {
     event match {
       case DataEvent(f: FormulaStore, FormulaType) => {
-        if (StdPrimSubst.canApply(f.clause)._1) {
-          Seq(PrimSubstTask(f))
+        val (canApply, hint) = StdPrimSubst.canApply(f.clause)
+        if (canApply) {
+          Seq(PrimSubstTask(f, hint))
         } else {
           Seq()
         }
@@ -59,14 +59,14 @@ object PrimSubstAgent extends Agent {
       case _ : Event => Nil
     }
   }
+
+  private case class PrimSubstTask(f: FormulaStore, hint: StdPrimSubst.HintType) extends Task {
+    val name = "prim_subst"
+    def writeSet() = Set.empty
+    def readSet() = Set(f)
+
+    def bid(budget: Double) = budget*f.clause.flexHeadLits.size / f.clause.lits.size
+    lazy val pretty = s"prim_subst(${f.pretty})"
+  }
 }
 
-private case class PrimSubstTask(f: FormulaStore) extends Task {
-  def name = "prim_subst"
-  def writeSet() = Set.empty
-  def readSet() = Set(f)
-
-  def bid(budget: Double) = budget*f.clause.flexHeadLits.size / f.clause.lits.size
-
-  def pretty = s"prim_subst(${f.pretty})"
-}
