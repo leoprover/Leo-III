@@ -28,7 +28,7 @@ class ClausificationAgent extends Agent {
    */
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, FormulaType) =>
-      if (Clausification.canApply(f.clause)._1) {
+      if (Clausification.canApply(f.clause)) {
         Out.trace(s"[$name:]\n  Test ${f.clause.pretty}\nClausifier recommends one-step clausification")
         Seq(ClausificationTask(f))
       } else {
@@ -44,7 +44,7 @@ class ClausificationAgent extends Agent {
     case ClausificationTask(dc) =>
       val r : Result = Result()
 
-      val newCls = Clausification.apply(dc.clause, true)
+      val newCls = Clausification.apply(dc.clause)
       val of = newCls map {c => TrivRule.triv(TrivRule.teqf(c))}      // Transform C | A | A => C | A and C | [T = F] => C
       val nf = of map {c => Store(c, Role_Plain, dc.context, dc.status, ClauseAnnotation(Clausification, dc))}
       Out.trace(s"$name: Clausify ${dc.name} `${dc.clause.pretty}`\n  Created new clauses:\n   ${newCls.map(_.pretty).mkString("\n   ")}\n  Optimized to\n   ${of.map(_.pretty).mkString("\n   ")}")

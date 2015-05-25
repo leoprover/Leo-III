@@ -16,7 +16,11 @@ package object proofCalculi {
     type HintType = Hint
   }
 
-  trait UnaryCalculusRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusHintRule[Hint] {
+  trait UnaryCalculusRule[Res] extends (Clause => Res) with CalculusRule {
+    def canApply(cl: Clause): Boolean
+  }
+
+  trait UnaryCalculusHintRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusHintRule[Hint] {
     def canApply(cl: Clause): (Boolean, Hint)
   }
 
