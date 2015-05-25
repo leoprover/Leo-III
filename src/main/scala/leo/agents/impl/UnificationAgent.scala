@@ -5,7 +5,7 @@ package impl
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{UnificationTaskType, UnificationStore, UnifierType, UnifierStore}
-import leo.modules.proofCalculi.{TrivRule, HuetsPreUnification}
+import leo.modules.calculus.{TrivRule, HuetsPreUnification}
 
 /**
  *
@@ -54,11 +54,16 @@ class UnificationAgent extends Agent {
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(f : FormulaStore, UnificationTaskType) =>
       if(f.clause.uniLits.isEmpty){
-        trace(s"Received task with no unifier. FINISH HIM!")
+        trace(s"Received clause with no unification task. Write back.")
         return List(FinishUnify(f))
       }
       f.clause.uniLits.map{ l => l.eqComponents match {
-        case Some((t1,t2))  => UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
+        case Some((t1,t2))  => {
+          trace(s"Received clause with unification task.")
+          UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s =>
+            trace(s"next unifier for uni lit (new task for ${f.pretty}")
+            List(UnificationTask(f,t1,t2,s))}
+        }
         case _  => Nil
       }}.flatten
     case DataEvent(UnifierStore(f, t1, t2, subst), UnifierType) => // Executed One, take the next one
