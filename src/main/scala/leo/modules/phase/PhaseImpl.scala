@@ -8,7 +8,7 @@ import leo.modules.calculus.splitting.ClauseHornSplit
 
 object PreprocessPhase extends CompletePhase {
   override val name = "PreprocessPhase"
-  override protected val agents: Seq[AgentController] = List(new FifoController(new NormalClauseAgent(DefExpansion)), new FifoController(new NormalClauseAgent(Simplification)), new FifoController(new NormalClauseAgent(NegationNormal)),new FifoController(new NormalClauseAgent(Skolemization)), new FifoController(new NormalClauseAgent(PrenexNormal)), new FifoController(new MetaVarAgent))
+  override protected val agents: Seq[AgentController] = List(new FifoController(new NormalClauseAgent(DefExpansion)), new FifoController(new NormalClauseAgent(Simplification)), new FifoController(new NormalClauseAgent(NegationNormal)),new FifoController(new NormalClauseAgent(Skolemization)), new FifoController(new NormalClauseAgent(PrenexNormal)), new FifoController(MetaVarAgent))
 }
 
 object SimplificationPhase extends CompletePhase {
@@ -18,7 +18,7 @@ object SimplificationPhase extends CompletePhase {
 
 object ExhaustiveClausificationPhase extends CompletePhase {
   override val name = "ClausificationPhase"
-  override protected val agents : Seq[AgentController] = List(new FifoController(new ClausificationAgent()))
+  override protected val agents : Seq[AgentController] = List(new FifoController(ClausificationAgent))
 }
 
 object SplitPhase extends CompletePhase {
@@ -31,9 +31,9 @@ object ParamodPhase extends CompletePhase {
   override protected val agents: Seq[AgentController] = List(new PriorityController(new NewParamodAgent(NewParamod)),
     new PriorityController(FormulaSelectionAgent),
     new PriorityController(new NewParamodAgent(NewPropParamod)),
-    new PriorityController(new UnificationAgent)
+    new PriorityController(UnificationAgent)
     /*new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison))*/,
-    new PriorityController(new ClausificationAgent()),
+    new PriorityController(ClausificationAgent),
     new PriorityController(PrimSubstAgent),
     new PriorityController(BoolExtAgent),
     new PriorityController(FuncExtAgent))
