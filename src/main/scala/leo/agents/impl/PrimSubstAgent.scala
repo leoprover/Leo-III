@@ -60,11 +60,10 @@ object PrimSubstAgent extends Agent {
     }
   }
 
-  private case class PrimSubstTask(f: FormulaStore, hint: StdPrimSubst.HintType) extends Task {
+  final private case class PrimSubstTask(f: FormulaStore, hint: StdPrimSubst.HintType) extends Task {
     val name = "prim_subst"
     def writeSet() = Set.empty
     def readSet() = Set(f)
-
     def bid(budget: Double) = budget*f.clause.flexHeadLits.size / f.clause.lits.size
     lazy val pretty = s"prim_subst(${f.pretty})"
   }

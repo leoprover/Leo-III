@@ -4,7 +4,6 @@ package impl
 
 import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
-import Store._
 import leo.modules.calculus.{BoolExt, BoolExtAlt}
 
 /**
@@ -15,7 +14,7 @@ object BoolExtAgent extends Agent {
    *
    * @return the name of the agent
    */
-  def name = "Boolean Extensionality Agent"
+  val name = "Boolean Extensionality Agent"
   override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
   /**
    * This function runs the specific agent on the registered Blackboard.
@@ -60,14 +59,13 @@ object BoolExtAgent extends Agent {
       case _ : Event => Nil
     }
   }
+
+  final private case class BoolExtTask(f: FormulaStore, hint: BoolExt.HintType) extends Task {
+    val name = "bool_ext"
+    def writeSet() = Set.empty
+    def readSet() = Set(f)
+    def bid(budget: Double) = budget*hint._1.size / (hint._1.size + hint._2.size)
+    lazy val pretty = s"bool_ext(${f.pretty})"
+  }
 }
 
-private case class BoolExtTask(f: FormulaStore, hint: BoolExt.HintType) extends Task {
-  def name = "bool_ext"
-  def writeSet() = Set.empty
-  def readSet() = Set(f)
-
-  def bid(budget: Double) = budget*hint._1.size / (hint._1.size + hint._2.size)
-
-  def pretty = s"bool_ext(${f.pretty})"
-}

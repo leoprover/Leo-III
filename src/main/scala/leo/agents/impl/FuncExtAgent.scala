@@ -56,14 +56,13 @@ object FuncExtAgent extends Agent {
       case _ : Event => Nil
     }
   }
+
+  final private case class FuncExtTask(f: FormulaStore, hint: FuncExt.HintType) extends Task {
+    val name = "func_ext"
+    def writeSet() = Set.empty
+    def readSet() = Set(f)
+    def bid(budget: Double) = budget*hint._1.size / (hint._1.size + hint._2.size)
+    lazy val pretty = s"func_ext(${f.pretty})"
+  }
 }
 
-private case class FuncExtTask(f: FormulaStore, hint: FuncExt.HintType) extends Task {
-  def name = "func_ext"
-  def writeSet() = Set.empty
-  def readSet() = Set(f)
-
-  def bid(budget: Double) = budget*hint._1.size / (hint._1.size + hint._2.size)
-
-  def pretty = s"func_ext(${f.pretty})"
-}

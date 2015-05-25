@@ -15,7 +15,7 @@ import leo.modules.calculus.{TrivRule, HuetsPreUnification}
  * @author Max Wisniewski
  * @since 5/13/15
  */
-class UnificationAgent extends Agent {
+object UnificationAgent extends Agent {
   override def name: String = "unification agent"
   override val interest = Some(List(UnificationTaskType, UnifierType))
 
@@ -71,23 +71,23 @@ class UnificationAgent extends Agent {
       UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
     case _ => Nil
   }
+
+  private case class UnificationTask(f : FormulaStore, t1 : Term, t2 : Term, s : Subst) extends Task {
+    override val name: String = "unification task"
+    override def writeSet(): Set[FormulaStore] = Set()
+    override def readSet(): Set[FormulaStore] = Set(f)
+    override def bid(budget: Double): Double = budget / (1+f.clause.uniLits.size)
+
+    override val pretty: String = "unify"
+  }
+
+  private case class FinishUnify(f : FormulaStore) extends Task {
+    override val name : String = "finish unification task"
+    override def writeSet(): Set[FormulaStore] = Set()
+    override def readSet(): Set[FormulaStore] = Set(f)
+    override def bid(budget: Double): Double = budget / 2
+
+    override val pretty: String = "unify"
+  }
 }
 
-private case class UnificationTask(f : FormulaStore, t1 : Term, t2 : Term, s : Subst) extends Task {
-
-  override def name: String = "unification task"
-  override def writeSet(): Set[FormulaStore] = Set()
-  override def readSet(): Set[FormulaStore] = Set(f)
-  override def bid(budget: Double): Double = budget / (1+f.clause.uniLits.size)
-
-  override def pretty: String = "unify"
-}
-
-private case class FinishUnify(f : FormulaStore) extends Task {
-  override def name : String = "finish unification task"
-  override def writeSet(): Set[FormulaStore] = Set()
-  override def readSet(): Set[FormulaStore] = Set(f)
-  override def bid(budget: Double): Double = budget / 2
-
-  override def pretty: String = "unify"
-}

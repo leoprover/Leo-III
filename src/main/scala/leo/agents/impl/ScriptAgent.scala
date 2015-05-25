@@ -109,14 +109,15 @@ abstract class ScriptAgent(path : String) extends Agent {
     extSet foreach {p => p.destroy()}
     extSet.clear()
   }; super.kill()
-}
 
-class ScriptTask(val fs : Set[FormulaStore], val c : Context) extends Task {
-  override def readSet(): Set[FormulaStore] = fs
-  override def writeSet(): Set[FormulaStore] = Set.empty
-  override def bid(budget: Double): Double = budget
 
-  override val pretty : String = "ScriptTask (BIG)"
-  override val name : String = "Script Call"
+  final case class ScriptTask(fs : Set[FormulaStore], c : Context) extends Task {
+    override def readSet(): Set[FormulaStore] = fs
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def bid(budget: Double): Double = budget
+
+    override val pretty : String = "ScriptTask (BIG)"
+    override val name : String = "Script Call"
+  }
 }
 

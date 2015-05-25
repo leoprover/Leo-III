@@ -40,13 +40,11 @@ object FormulaSelectionAgent extends Agent {
   }
 
 
-  private case class AddTimeStampTask(f: FormulaStore) extends Task {
+  final private case class AddTimeStampTask(f: FormulaStore) extends Task {
     val name = "AddTimeStampTask"
     def writeSet() = Set()
     def readSet() = Set(f)
-
     def bid(budget: Double) = budget/f.clause.weight
-
     lazy val pretty = s"Task: Add time stamp to ${f.pretty}"
   }
 }

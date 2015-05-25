@@ -28,8 +28,8 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
   override val name = norm.name + "Agent"
 
   override def run(t: Task): Result = t match {
-    case t1: NormalTask =>
-      val fstore = t1.get()
+    case NormalTask(f) =>
+      val fstore = f
       val calc = norm(fstore)
       val ergCl = TrivRule.triv(TrivRule.teqf(calc.clause))
 
@@ -62,31 +62,17 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case _ => Nil
   }
 
-
-
-}
-
-/**
- * Normalization applies to one Formula only and this one is read and written.
- * @param f - Formula to be normalized
- */
-class NormalTask(f : FormulaStore) extends Task {
-
-  def get() = f
-
-  override def readSet(): Set[FormulaStore] = Set(f)
-  override def writeSet(): Set[FormulaStore] = Set(f)
-
-  override def bid(budget : Double) : Double = math.min(budget / 5,1)
-
-  override val toString : String = "NormalizationTask: Normalize " + f.toString + "."
-
-  override val pretty : String =  "NormalizationTask: Normalize " + f.toString + "."
-
-  override val name : String = "Normalization"
-
-  override def equals(other : Any) = other match {
-    case o : NormalTask => o.get() == f
-    case _              => false
+  /**
+   * Normalization applies to one Formula only and this one is read and written.
+   * @param f - Formula to be normalized
+   */
+  final private case class NormalTask(f : FormulaStore) extends Task {
+    override def readSet(): Set[FormulaStore] = Set(f)
+    override def writeSet(): Set[FormulaStore] = Set(f)
+    override def bid(budget : Double) : Double = math.min(budget / 5,1)
+    override lazy val pretty : String =  "NormalizationTask: Normalize " + f.toString + "."
+    override val name : String = "Normalization"
   }
+
 }
+

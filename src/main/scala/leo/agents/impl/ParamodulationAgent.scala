@@ -68,25 +68,16 @@ class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent 
     }
     Result()
   }
-}
 
 
+  final private case class ParamodTask(f1 : FormulaStore, f2 : FormulaStore, r : FormulaStore, t : Term, l : Literal, s : Unification#Substitute) extends Task {
+    override def readSet(): Set[FormulaStore] = Set(f1, f2)
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def bid(budget: Double): Double = budget / 10
 
-
-private class ParamodTask(val f1 : FormulaStore, val f2 : FormulaStore, val r : FormulaStore, val t : Term, val l : Literal, val s : Unification#Substitute) extends Task {
-  override def readSet(): Set[FormulaStore] = Set(f1, f2)
-  override def writeSet(): Set[FormulaStore] = Set.empty
-  override def bid(budget: Double): Double = budget / 10
-
-  override val toString : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
-  override val pretty : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
-  override val name : String = "Paramodulation"
-}
-
-object ParamodTask {
-  def apply(f1 : FormulaStore, f2 : FormulaStore, r: FormulaStore, t : Term, l : Literal, s : Unification#Substitute) : Task = new ParamodTask(f1, f2, r, t, l ,s)
-  def unapply (t : Task) : Option[(FormulaStore, FormulaStore, FormulaStore, Term, Literal, Unification#Substitute)] = t match {
-    case t1 : ParamodTask => Some((t1.f1, t1.f2, t1.r, t1.t, t1.l, t1.s))
-    case _ : Task => None
+    override val toString : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
+    override val pretty : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"
+    override val name : String = "Paramodulation"
   }
 }
+

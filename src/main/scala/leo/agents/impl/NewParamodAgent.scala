@@ -93,13 +93,11 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
   }
 
 
-  private case class NewParamodTask(f1 : FormulaStore, f2: FormulaStore, hint: Either[(Literal, (Term, Term), Term),(Literal, (Term, Term), Term)]) extends Task {
+  final private case class NewParamodTask(f1 : FormulaStore, f2: FormulaStore, hint: Either[(Literal, (Term, Term), Term),(Literal, (Term, Term), Term)]) extends Task {
     override def readSet(): Set[FormulaStore] = Set(f1, f2)
     override def writeSet(): Set[FormulaStore] = Set.empty
     override def bid(budget: Double): Double = budget / Math.max(f1.clause.weight, f2.clause.weight) /*hint.left.getOrElse(hint.right.get)._1.id*/
-
-    override val toString : String = s"New Paramod: ${f1.pretty} with ${f2.pretty}"
-    override val pretty : String = s"New Paramod: ${f1.pretty} with ${f2.pretty}"
+    override lazy val pretty : String = s"New Paramod: ${f1.pretty} with ${f2.pretty}"
     override val name : String = "New Paramodulation"
   }
 

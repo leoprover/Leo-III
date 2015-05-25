@@ -15,8 +15,8 @@ import leo.modules.calculus.CalculusRule
  *
  *
  */
-class MetaVarAgent extends Agent {
-  override def name: String = "MetavarAgent"
+object MetaVarAgent extends Agent {
+  override val name: String = "MetavarAgent"
   override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
 
   /**
@@ -69,13 +69,13 @@ class MetaVarAgent extends Agent {
     case Exists(ty :::> t1) if !pol => mkTermApp(\(ty)(replaceQuant(pol)(t1)),Term.mkFreshMetaVar(ty))
     case _ => t
   }
+
+  final private case class MetavarTask(f : FormulaStore) extends Task {
+    override val name: String = "Metavar replace"
+    override def writeSet(): Set[FormulaStore] = Set(f)
+    override def readSet(): Set[FormulaStore] = Set()
+    override def bid(budget: Double): Double = budget / 5
+    override val pretty: String = "metavar replace"
+  }
 }
 
-private case class MetavarTask(f : FormulaStore) extends Task {
-  override def name: String = "Metavar replace"
-  override def writeSet(): Set[FormulaStore] = Set(f)
-  override def readSet(): Set[FormulaStore] = Set()
-  override def bid(budget: Double): Double = budget / 5
-
-  override def pretty: String = "metavar replace"
-}

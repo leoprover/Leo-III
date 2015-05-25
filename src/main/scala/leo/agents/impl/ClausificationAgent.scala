@@ -6,17 +6,13 @@ import leo.datastructures.{ClauseAnnotation, Role_Plain, Clause}
 import leo.datastructures.blackboard._
 import leo.modules.calculus.{TrivRule, Clausification}
 
-object ClausificationAgent {
-  def apply() : Unit = new PriorityController(new ClausificationAgent()).register()
-}
-
 /**
  * Performs stepwise clausification on the Clauses of the Blackboard.
  *
  * @author Max Wisniewski
  * @since 12/1/15
  */
-class ClausificationAgent extends Agent {
+object ClausificationAgent extends Agent {
   override def name: String = "ClausificationAgent"
   override val interest : Option[Seq[DataType]] = Some(List(FormulaType))
 
@@ -54,22 +50,20 @@ class ClausificationAgent extends Agent {
       Out.warn(s"$name: Got a wrong task to execute")
       return Result()
   }
+
+  /**
+   * Creates a Clausification task with `dc` the old FormulaStore to be deleted and `nc` the list
+   * of new clauses to be inserted into the blackboard.
+   * @param dc - Old Formula Store
+   * @return A Clausification Task
+   */
+  final private case class ClausificationTask(dc : FormulaStore) extends Task{
+    override def readSet(): Set[FormulaStore] = Set(dc)
+    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def bid(budget: Double): Double = budget / dc.clause.weight
+    override lazy val pretty : String = s"Clausify: ${dc.pretty}"
+    override val name : String = "Clausification"
+  }
+
 }
 
-/**
- * Creates a Clausification task with `dc` the old FormulaStore to be deleted and `nc` the list
- * of new clauses to be inserted into the blackboard.
- * @param dc - Old Formula Store
- * @return A Clausification Task
- */
-private case class ClausificationTask(dc : FormulaStore) extends Task{
-  override def readSet(): Set[FormulaStore] = Set(dc)
-  override def writeSet(): Set[FormulaStore] = Set.empty
-  override def bid(budget: Double): Double = budget / dc.clause.weight
-
-  override val toString : String = s"Clausify: ${dc.pretty}"
-
-  override val pretty : String = s"Clausify: ${dc.pretty}"
-
-  override val name : String = "Clausification"
-}
