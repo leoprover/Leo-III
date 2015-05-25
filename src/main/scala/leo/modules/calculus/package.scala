@@ -20,6 +20,10 @@ package object calculus {
     def canApply(cl: Clause): Boolean
   }
 
+  trait PolyadicCalculusRule[Res] extends ((Clause, Set[Clause]) => Res) with CalculusRule {
+    def canApply(cl: Clause, cls: Set[Clause]): Boolean
+  }
+
   trait UnaryCalculusHintRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusHintRule[Hint] {
     def canApply(cl: Clause): (Boolean, Hint)
   }
