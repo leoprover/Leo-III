@@ -67,7 +67,9 @@ object UnificationAgent extends Agent {
         case _  => Nil
       }}.flatten
     case DataEvent(UnifierStore(f, t1, t2, subst), UnifierType) => // Executed One, take the next one
+      println(s"############Inserted data. Now getting the next task.")
       if(f.clause.uniLits.isEmpty) return List(FinishUnify(f)) // Should not happen
+      println(s"############### Getting the next unifier.")
       UnificationStore.nextUnifier(f,t1,t2).fold(Nil : List[Task]){s => List(UnificationTask(f,t1,t2,s))}
     case _ => Nil
   }

@@ -35,8 +35,12 @@ object UnificationStore extends DataStore {
     // Obtein the map to the formulastore, and initialize, if not existant.
     val t2u : mutable.Map[(Term,Term),Iterator[Subst]] = openUniMap.get(f).getOrElse({val nm = new mutable.HashMap[(Term,Term),Iterator[Subst]](); openUniMap.put(f,nm); nm})
     t2u.get((t1,t2)) match {
-      case Some(us) if us.hasNext => Some(us.next())
-      case Some(_) => None
+      case Some(us) if us.hasNext =>
+        println(s"######One more unifier for ${t1.pretty} and ${t2.pretty}")
+        Some(us.next())
+      case Some(_) =>
+        println(s"##### no more unifier for ${t1.pretty} and ${t2.pretty}")
+        None
       case None     => // Create new
         val i = debugCounter.incrementAndGet()
         println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")

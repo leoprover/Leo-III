@@ -336,17 +336,19 @@ package util.executionModels {
   //mutable, non deterministic, stream
   abstract class NDStream[S /*result type*/ ]( val initial: Configuration[S], val myFun: Configuration[S] => Iterable[Configuration[S]] ) extends Iterable[S] with SearchAlgorithm {
 
-    type T = Configuration[S]
+    protected var MAX_DEPTH : Int = 60  // TODO Load from Configurations
+
+    type T = (Configuration[S], Int)  // Configuration and Depth in the search
     private val results: mutable.Queue[S] = new mutable.Queue[S]()
     protected var hd: Option[S] = None
     protected val hdFunc: () => Option[S] = () => nextVal
     protected var terminal: Boolean = false
     protected def initDS: Unit = {
-      add( initial )
+      add( (initial, 0) )
       hd = hdFunc()
     }
 
-    protected var depth: Int = 1000
+
 
     @tailrec
     protected final def nextVal: Option[S] = {
@@ -357,13 +359,15 @@ package util.executionModels {
       } else {
         val conf = get
         if ( conf == None ) None
-        else if (depth > 0) {
-          val confs: Iterable[Configuration[S]] = { depth = depth - 1; myFun( conf.get )}
+        else if (conf.get._2 < MAX_DEPTH) {
+          val confs: Iterable[Configuration[S]] = { myFun( conf.get._1 )}
           confs.foreach( x => {
             if ( x.result != None )
-              results.enqueue( x.result.get );
-            if ( !x.isTerminal )
-              add( x )
+              results.enqueue( x.result.get )
+            if ( !x.isTerminal ) {
+              //println("New configuration in Depth "+conf.get._2)
+              add((x, conf.get._2 + 1))
+            }
           } )
           nextVal
         } else {

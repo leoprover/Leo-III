@@ -2,7 +2,7 @@ package leo
 package agents
 package impl
 
-import leo.datastructures.Role_Plain
+import leo.datastructures.{ClauseAnnotation, Role_Plain}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.UnificationTaskType
 import leo.modules.calculus.RestrFac
@@ -19,7 +19,7 @@ object RestrFactAgent extends Agent {
       case RestrFacTask(fs, hint) => {
         val res = RestrFac(fs.clause, hint)
         trace(s"Applied restricted factorization on ${fs.pretty}\n New clause: ${res.pretty}.")
-        Result().insert(UnificationTaskType)(Store(res, Role_Plain, fs.context, fs.status))
+        Result().insert(UnificationTaskType)(Store(res, Role_Plain, fs.context, fs.status, ClauseAnnotation(RestrFac, fs)))
       }
       case _ => Out.warn(s"[$name]: Got a wrong task to execute.");
         Result()
