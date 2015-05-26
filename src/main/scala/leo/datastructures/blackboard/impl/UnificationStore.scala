@@ -36,21 +36,21 @@ object UnificationStore extends DataStore {
     val t2u : mutable.Map[(Term,Term),Iterator[Subst]] = openUniMap.get(f).getOrElse({val nm = new mutable.HashMap[(Term,Term),Iterator[Subst]](); openUniMap.put(f,nm); nm})
     t2u.get((t1,t2)) match {
       case Some(us) if us.hasNext =>
-        println(s"######One more unifier for ${t1.pretty} and ${t2.pretty}")
+//        println(s"######One more unifier for ${t1.pretty} and ${t2.pretty}")
         Some(us.next())
       case Some(_) =>
-        println(s"##### no more unifier for ${t1.pretty} and ${t2.pretty}")
+//        println(s"##### no more unifier for ${t1.pretty} and ${t2.pretty}")
         None
       case None     => // Create new
         val i = debugCounter.incrementAndGet()
-        println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")
+//        println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")
         val us = HuetsPreUnification.unify(t1,t2).iterator
-        println(s"###### unify $i")
+//        println(s"###### unify $i")
         t2u.put((t1,t2), us)
-        println(s"###### put $i")
+//        println(s"###### put $i")
         if (us.hasNext) {
           val res = us.next()
-          println(s"###### unification result $i: ${res}")
+//          println(s"###### unification result $i: ${res}")
           Some(res)
         } else {
           None
