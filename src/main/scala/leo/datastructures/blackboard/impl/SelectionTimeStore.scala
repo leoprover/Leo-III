@@ -46,6 +46,9 @@ object SelectionTimeStore extends DataStore {
    */
   def after(t : TimeStamp, c : Context) : Iterable[FormulaStore] = csts.getSmaller(TimeData(null,t), c).map(_.f)
 
+
+  def wasSelected(c: Context): Iterable[FormulaStore] = csts.getAll(c).map(_.f)
+
   /**
    * Returns a set of all formulas, that have no selection time.
    *
