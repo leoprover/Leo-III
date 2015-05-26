@@ -35,6 +35,7 @@ object ParamodPhase extends CompletePhase {
     /*new PriorityController(new ParamodulationAgent(Paramodulation, IdComparison)), new PriorityController(new ParamodulationAgent(PropParamodulation, IdComparison))*/,
     new PriorityController(ClausificationAgent),
     new PriorityController(PrimSubstAgent),
+    new PriorityController(RestrFactAgent),
     new PriorityController(BoolExtAgent),
     new PriorityController(FuncExtAgent))
 }
