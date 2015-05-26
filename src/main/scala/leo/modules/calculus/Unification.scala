@@ -339,10 +339,14 @@ package util.executionModels {
     type T = Configuration[S]
     private val results: mutable.Queue[S] = new mutable.Queue[S]()
     protected var hd: Option[S] = None
+    protected val hdFunc: () => Option[S] = () => nextVal
+    protected var terminal: Boolean = false
     protected def initDS: Unit = {
       add( initial )
-      hd = nextVal
+      hd = hdFunc()
     }
+
+    protected var depth: Int = 1000
 
     @tailrec
     protected final def nextVal: Option[S] = {
@@ -353,8 +357,8 @@ package util.executionModels {
       } else {
         val conf = get
         if ( conf == None ) None
-        else {
-          val confs: Iterable[Configuration[S]] = myFun( conf.get )
+        else if (depth > 0) {
+          val confs: Iterable[Configuration[S]] = { depth = depth - 1; myFun( conf.get )}
           confs.foreach( x => {
             if ( x.result != None )
               results.enqueue( x.result.get );
@@ -362,6 +366,8 @@ package util.executionModels {
               add( x )
           } )
           nextVal
+        } else {
+          None
         }
       }
     }
@@ -371,14 +377,29 @@ package util.executionModels {
     def iterator: Iterator[S] =
       if (!wasCalled) new Iterator[S] {
         wasCalled = true
-        def next: S =
-          if (hd.isEmpty) throw new NoSuchElementException("Stream is empty")
+        def next: S = {
+          if (hd.isEmpty && terminal) throw new NoSuchElementException("Stream is empty")
           else {
+            if (hd.isEmpty) {hd = hdFunc(); if (hd.isEmpty) {terminal = true;throw new NoSuchElementException("Stream is empty")} }
             val ret = hd.get
-            hd = nextVal
+            hd = None
             ret
           }
-        def hasNext: Boolean = !hd.isEmpty
+        }
+        def hasNext: Boolean = {
+          if (hd.isEmpty) {
+            if (terminal) false
+            else {
+              hd = hdFunc()
+              if (hd.isEmpty) {
+                terminal = true
+                false
+              } else
+                true
+            }
+          }
+          else true
+        }
     }
     else throw new UnsupportedOperationException("iterator for NDStream can right now be called only once!")
   }

@@ -20,7 +20,7 @@ import scala.collection.mutable
  */
 object UnificationStore extends DataStore {
 
-  private val openUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term),Iterable[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Iterable[Subst]]]()
+  private val openUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term),Iterator[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Iterator[Subst]]]()
   private val doneUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term), Set[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Set[Subst]]]()
   val debugCounter : AtomicInteger = new AtomicInteger(0)
   /**
@@ -33,19 +33,25 @@ object UnificationStore extends DataStore {
    */
   def nextUnifier(f: FormulaStore, t1: Term, t2: Term) : Option[Subst] = synchronized {   // TODO better organization of synchronized
     // Obtein the map to the formulastore, and initialize, if not existant.
-    val t2u : mutable.Map[(Term,Term),Iterable[Subst]] = openUniMap.get(f).getOrElse({val nm = new mutable.HashMap[(Term,Term),Iterable[Subst]](); openUniMap.put(f,nm); nm})
+    val t2u : mutable.Map[(Term,Term),Iterator[Subst]] = openUniMap.get(f).getOrElse({val nm = new mutable.HashMap[(Term,Term),Iterator[Subst]](); openUniMap.put(f,nm); nm})
     t2u.get((t1,t2)) match {
-      case Some(us) => us.headOption
+      case Some(us) if us.hasNext => Some(us.next())
+      case Some(_) => None
       case None     => // Create new
         val i = debugCounter.incrementAndGet()
         println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")
-        val us = HuetsPreUnification.unify(t1,t2)
+        val us = HuetsPreUnification.unify(t1,t2).iterator
         println(s"###### unify $i")
         t2u.put((t1,t2), us)
         println(s"###### put $i")
-        val res = us.headOption
-        println(s"###### unification result $i: ${res}")
-        res
+        if (us.hasNext) {
+          val res = us.next()
+          println(s"###### unification result $i: ${res}")
+          Some(res)
+        } else {
+          None
+        }
+
     }
   }
 
@@ -64,15 +70,16 @@ object UnificationStore extends DataStore {
 
   def appliedUnifier(f : FormulaStore, t1 : Term, t2 : Term) : Option[Set[Subst]] = synchronized(doneUniMap.get(f).fold(None : Option[Set[Subst]])(_.get((t1,t2))))
 
-  private def finishUni(f : FormulaStore, t1 : Term, t2 : Term, u : Subst) : Boolean= synchronized {
-    openUniMap.get(f).fold(false){usmap => usmap.get((t1,t2)).fold(false){it => it.headOption.fold(false){h =>
-      if (h==u) {
-        usmap.update((t1,t2), it.tail)
-        true
-      } else {
-        false
-      }
-    }}}}
+  private def finishUni(f : FormulaStore, t1 : Term, t2 : Term, u : Subst) : Boolean= true
+//    synchronized {
+//    openUniMap.get(f).fold(false){usmap => usmap.get((t1,t2)).fold(false){it => it.headOption.fold(false){h =>
+//      if (h==u) {
+//        usmap.update((t1,t2), it.tail)
+//        true
+//      } else {
+//        false
+//      }
+//    }}}}
 
   private def updateFormula(fo : FormulaStore, fn : FormulaStore) = synchronized {
     openUniMap.remove(fo).map{usmap => if(openUniMap.get(fn).isEmpty) openUniMap.put(fn, usmap)}
@@ -101,7 +108,7 @@ object UnificationStore extends DataStore {
   override protected[blackboard] def all(t: DataType): Set[Any] = t match {
     case FormulaType => openUniMap.keySet.toSet   // Important, since mutable
     case UnifierType => // Get all inforamtion from the unifier map.
-      openUniMap.flatMap{case (f : FormulaStore, t2u : mutable.Map[(Term,Term), Iterable[Subst]]) =>
+      openUniMap.flatMap{case (f : FormulaStore, t2u : mutable.Map[(Term,Term), Iterator[Subst]]) =>
         t2u.flatMap{case ((t1,t2),usmap) => usmap.map(subst => UnifierStore(f,t1,t2,subst))}
       }.toSet
   }
