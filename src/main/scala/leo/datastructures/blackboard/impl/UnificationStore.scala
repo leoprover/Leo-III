@@ -38,13 +38,13 @@ object UnificationStore extends DataStore {
       case Some(us) => us.headOption
       case None     => // Create new
         val i = debugCounter.incrementAndGet()
-        println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")
+//        println(s"###### create unification task $i for \n ${t1.pretty}\n${t2.pretty}")
         val us = HuetsPreUnification.unify(t1,t2)
-        println(s"###### unify $i")
+//        println(s"###### unify $i")
         t2u.put((t1,t2), us)
-        println(s"###### put $i")
+//        println(s"###### put $i")
         val res = us.headOption
-        println(s"###### unification result $i: ${res}")
+//        println(s"###### unification result $i: ${res}")
         res
     }
   }
