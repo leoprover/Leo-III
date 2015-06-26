@@ -34,6 +34,8 @@ object IdComparison extends Unification{
  */
 object HuetsPreUnification extends Unification {
 
+  var DEBUG = false
+
   import Term._
   import leo.datastructures.TermFront
   import leo.datastructures.BoundFront
@@ -117,7 +119,7 @@ object HuetsPreUnification extends Unification {
    *  all terms are flex variables
    */
   private def computeDefaultSub(ls: Seq[Term]): Subst = {
-    val it = ls.iterator
+ /*   val it = ls.iterator
     var map : Map[Int, Term] = Map()
     while (it.hasNext) {
       val flex = it.next()
@@ -127,9 +129,9 @@ object HuetsPreUnification extends Unification {
       map = map + (id -> λ(tys.init)(Term.mkFreshMetaVar(tys.last)))
     }
     Subst.fromMap(map)
-
+*/
     //val maxIdx: Int = Bound.unapply(ls.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-//    var sub = Subst.id
+    Subst.id
     /*for (i <- 1 to maxIdx)
       ls.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
         case Some((typ,t)) => {
@@ -146,17 +148,27 @@ object HuetsPreUnification extends Unification {
   // y1,..,yn are new bound variable
   // x1,..,xm are new free variables
   protected[calculus] def partialBinding(typ: Type, hdSymb: Term) = {
+    if (DEBUG) System.out.println("DEBUG bindings for typ: " + typ.pretty + " and a: " + hdSymb.pretty + " of type: " + hdSymb.ty.pretty)
     val ys = typ.funParamTypes.zip(List.range(1,typ.funArity+1)).map(p => Term.mkBound(p._1,p._2))
+    if (DEBUG) System.out.println("DEBUG bindings ys: " + ys.map(_.pretty))
     val xs =
       if (ys.isEmpty)
-        hdSymb.ty.funParamTypes.map(p => Term.mkFreshMetaVar(p))
+        hdSymb.ty.funParamTypes.map(p => {
+          Term.mkFreshMetaVar(p)
+        })
       else {
-        val ysTyp = Type.mkFunType(ys.map(_.ty))
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshMetaVar(Type.mkFunType(ysTyp,p)), ys))
+        val ysTyp = ys.map(_.ty)
+        hdSymb.ty.funParamTypes.map(p =>
+          Term.mkTermApp(Term.mkFreshMetaVar(Type.mkFunType(ysTyp,p)), ys)
+        )
+
       }
+      if (DEBUG) System.out.println("DEBUG bindings xs: " + xs.map(v => v.pretty + " --> " + v.ty.pretty))
     val t = Term.mkTermApp(hdSymb,xs)
+    if (DEBUG) System.out.println("DEBUG bindings t: " + t.pretty)
 
     val aterm = Term.λ(ys.map(_.ty))(t)
+    if (DEBUG) System.out.println("DEBUG bindings aterm: " + aterm.pretty)
     aterm.etaExpand
   }
 
@@ -176,7 +188,9 @@ object HuetsPreUnification extends Unification {
     def apply(e: UEq): UEq = {
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      (t.headSymbol,partialBinding(t.headSymbol.ty,  s.headSymbol))
+      if (DEBUG) System.out.println("DEBUG Imitate for var: " + t.headSymbol.pretty + " -- t.hd.ty: "+ t.headSymbol.ty.pretty + " -- s.hd: " + s.headSymbol.pretty + " -- " + t.headSymbol.pretty)
+      val aterm = partialBinding(t.headSymbol.ty,  s.headSymbol)
+      (t.headSymbol,aterm)
     }
       // must make sure s doesnt have as head a bound variable
     def canApply(e: UEq) = {
@@ -199,7 +213,12 @@ object HuetsPreUnification extends Unification {
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
       val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.funArity+1)).map(p => Term.mkBound(p._1,p._2))
-      bvars.map(e => (t.headSymbol,partialBinding(t.headSymbol.ty, e)))
+      bvars.map(e => {
+        if (DEBUG) System.out.println("DEBUG Poject for var: " + t.headSymbol.pretty + " -- t.hd.ty: "+ t.headSymbol.ty.pretty + " -- s.hd: " + e.pretty + " -- " + t.headSymbol.pretty)
+        val aterm = partialBinding(t.headSymbol.ty, e)
+        (t.headSymbol,aterm)
+      }
+      )
     }
     def canApply(e: UEq) = ??? // always applicable on flex-rigid equations not under application of Bind
   }
@@ -214,6 +233,7 @@ object HuetsPreUnification extends Unification {
     def apply(e: UEq) = {
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      //System.out.println("DEBUG Bind: t.hd: "+ t.headSymbol.pretty + " -- s: " + s.pretty)
       // getting flexible head
       (t.headSymbol,s)
     }
@@ -266,11 +286,26 @@ object HuetsPreUnification extends Unification {
   private def simplifyArguments(l: Seq[Either[Term,Type]]): Seq[Term] = l.filter(_.isLeft).map(_.left.get)
 
   // the state of the search space
-  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[Subst], val isTerminal: Boolean)
+  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[Subst], val isTerminal: Boolean, val prevConf: Option[Configuration[Subst]] /* recrusive description of the branch so far*/)
     extends Configuration[Subst] {
+    def this(uproblems: Seq[UEq], sproblems: Seq[UEq], result: Option[Subst],  isTerminal: Boolean) {
+      this(uproblems, sproblems, result, isTerminal, None)
+    }
     def this(result: Option[Subst]) = this(List(), List(), result, true) // for success
+    def this(result: Option[Subst], pf:Option[Configuration[Subst]]) = this(List(), List(), result, true, pf) // for debug success
     def this(l: Seq[UEq], s: Seq[UEq]) = this(l, s, None, false) // for in node
-    override def toString  = "{" + uproblems.flatMap(x => ("<"+x._1.pretty+", "+ x._2.pretty+">")) + "}"
+    def this(l: Seq[UEq], s: Seq[UEq], pf:Option[Configuration[Subst]]) = this(l, s, None, false,pf) // for debug node
+    override def toString  = {
+      val buf = new scala.collection.mutable.StringBuilder
+      prevConf match {
+        case Some(prevConf) => buf ++= prevConf.toString ++= "\n"
+        case _ => ()
+      }
+      buf ++= "{"
+      uproblems.foreach(x => buf ++= "<" ++= x._1.pretty ++= ", " ++= x._2.pretty ++= ">")
+      buf ++= "}"
+      buf.toString
+    }
   }
 
   // the transition function in the search space (returned list containing more than one element -> ND step, no element -> failed branch)
@@ -286,7 +321,10 @@ object HuetsPreUnification extends Unification {
 
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {
-        List(new MyConfiguration(Some(computeSubst(sproblems))))
+        val conf = new MyConfiguration(Some(computeSubst(sproblems)), if (DEBUG) Some(conf2) else None)
+        if (DEBUG)
+          System.out.println("Unifier found\n------------------\n" + conf.toString)
+        List(conf)
       }
       // else consider top equation
       else {
@@ -299,17 +337,20 @@ object HuetsPreUnification extends Unification {
           // and then compose this subtitution to the one generated by computeSubst
           if (isFlexible(t) && isFlexible(s)) {
             val defSub = computeDefaultSub(uproblems.foldLeft(List[Term]())((ls,e) => e._1.headSymbol::e._2.headSymbol::ls))
-            List(new MyConfiguration(Some(defSub.comp(computeSubst(sproblems)))))
+            val conf = new MyConfiguration(Some(defSub.comp(computeSubst(sproblems))), if (DEBUG) Some(conf2) else None)
+            if (DEBUG)
+              System.out.println("Pre-unifier found\n------------------\n" + conf.toString)
+            List(conf)
           } else {
 
             // else we have a flex-rigid and we cannot apply bind
 
             val lb = new ListBuffer[MyConfiguration]
             // compute the imitate partial binding and add the new configuration
-            if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(t,s)+:uproblems, sproblems))
+            if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(t,s)+:uproblems, sproblems, if (DEBUG) Some(conf2) else None))
 
             // compute all the project partial bindings and add them to the return list
-            ProjectRule(t,s).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems)))
+            ProjectRule(t,s).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems, if (DEBUG) Some(conf2) else None)))
 
             lb.toList
           }
