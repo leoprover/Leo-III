@@ -53,16 +53,6 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     }
   }
 
-
-  /**
-   * Removes a task from the list of currently executed tasks.
-   *
-   * @param t - The finished task.
-   */
-  override def finishTask(t : Task) : Unit = TaskSet.finishTask(t)
-
-  override def getRunningTasks() : Iterable[Task] = TaskSet.execTasks.toList
-
   /**
    * Method that filters the whole Blackboard, if a new agent 'a' is added
    * to the context.
@@ -85,8 +75,6 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   }
 
   override def signalTask() : Unit = TaskSet.signalTask()
-
-  override def collision(t : Task) : Boolean = TaskSet.collision(t)
 
   /**
    *
@@ -150,7 +138,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 private object TaskSet {
 
   val regAgents = mutable.HashMap[AgentController,Double]()
-  protected[impl] val execTasks = new mutable.HashSet[Task]
+  //protected[impl] val execTasks = new mutable.HashSet[Task]
 
   private val AGENT_SALARY : Double = 5
 
@@ -163,7 +151,7 @@ private object TaskSet {
     this.synchronized {
       regAgents.foreach(_._1.clearTasks())
       regAgents.clear()
-      execTasks.clear()
+      LockSet.clear()
     }
   }
 
@@ -174,8 +162,6 @@ private object TaskSet {
   def removeAgent(a : AgentController): Unit = this.synchronized{
     regAgents.remove(a)
   }
-
-  private[impl] def finishTask(t : Task) = synchronized(execTasks.remove(t))
 
   def agents : List[AgentController] = this.synchronized(regAgents.toList.map(_._1))
 
@@ -205,9 +191,12 @@ private object TaskSet {
             //leo.Out.comment("Checking for new tasks.")
             regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r } }
             if (r.isEmpty) {
-              if (!Scheduler.working() && execTasks.isEmpty && regAgents.forall { case (a, _) => !a.hasTasks }) {
-              //  if(!Scheduler.working() && execTasks.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
-                Blackboard().filterAll { a => a.filter(DoneEvent()) }
+              if (!Scheduler.working() && LockSet.isEmpty && regAgents.forall { case (a, _) => !a.hasTasks }) {
+              //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
+                leo.Out.comment(s"Scheduler active = ${Scheduler.working()}")
+                leo.Out.comment(s"Locks existing = ${!LockSet.isEmpty}")
+                leo.Out.comment(s"Agents have work = ${!regAgents.forall { case (a, _) => !a.hasTasks }}")
+                Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
               // TODO increase budget or we will run into a endless loop
               //leo.Out.comment("Going to wait for new Tasks.")
@@ -231,12 +220,12 @@ private object TaskSet {
           // Check the currenlty executing tasks too.
           var newTask: List[(AgentController, Task)] = Nil
           for ((price, a, t) <- queue) {
-            if (!newTask.exists { e => t.collide(e._2) } && !collision(t)) {
+            if (LockSet.isExecutable(t)) {
               val budget = regAgents.apply(a)
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
                 newTask = (a, t) :: newTask
-                execTasks.add(t)
+                LockSet.lockTask(t)
                 regAgents.put(a, budget - price)
               }
             }
@@ -266,18 +255,5 @@ private object TaskSet {
     }
     return Nil
   }
-
-
-
-
-  /**
-   * Checks if a Task collides with the current executing ones.
-   *
-   * @param t - Task that could be executed
-   *
-   * @return true, iff the task collides
-   */
-  def collision(t : Task) : Boolean = this.synchronized(execTasks.exists{e => t.collide(e)})
-
 
 }

@@ -1,7 +1,7 @@
 package leo.agents
 
 import leo._
-import leo.datastructures.blackboard.{Event, Blackboard}
+import leo.datastructures.blackboard.{Event, Blackboard, LockSet}
 
 import scala.collection.mutable
 
@@ -43,7 +43,7 @@ class PriorityController(a : Agent) extends AgentController(a) {
     val it = a.toFilter(f).iterator
     while(it.hasNext) {
       val t = it.next()
-      if (!Blackboard().collision(t)) {
+      if (!LockSet.isOutdated(t)) {
         synchronized {
           q.enqueue (t)
         }
@@ -99,9 +99,20 @@ class PriorityController(a : Agent) extends AgentController(a) {
     synchronized {
       q = q.filter { tbe =>
         nExec.forall{e =>
-          val take = e.writeSet().intersect(tbe.writeSet()).isEmpty && e.writeSet().intersect(tbe.writeSet()).isEmpty && e != tbe
-          if(!take && e != tbe) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was therefore removed.")
-          take
+          if(e.eq(tbe)) {
+            false
+          } else {
+            val sharedTypes = tbe.lockedTypes & e.lockedTypes
+            sharedTypes exists { d =>
+              val we = e.writeSet().getOrElse(d, Set.empty[Any])
+              val wtb = tbe.writeSet().getOrElse(d, Set.empty[Any])
+              val rtb = tbe.readSet().getOrElse(d, Set.empty[Any])
+
+              val take = (we & wtb).isEmpty && (we & rtb).isEmpty // If the tbe task excesses any data, that will be updated.
+              if (!take && !e.eq(tbe)) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was therefore removed.")
+              take
+            }
+          }
         }
       }
     }

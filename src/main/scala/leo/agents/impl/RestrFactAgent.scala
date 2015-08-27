@@ -42,8 +42,8 @@ object RestrFactAgent extends Agent {
 
   final private case class RestrFacTask(fs: FormulaStore, hint: RestrFac.HintType) extends Task {
     val name = "Restr Fac Task"
-    def writeSet() = Set()
-    def readSet() = Set(fs)
+    def writeSet() = Map.empty[DataType, Set[Any]]
+    def readSet() = Map.empty[DataType, Set[Any]] + (FormulaType -> Set(fs))
     def bid(budget: Double) = budget / 5
     lazy val pretty = s"Restr Fac Task on ${fs.pretty}"
   }

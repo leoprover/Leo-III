@@ -3,7 +3,7 @@ package impl
 
 import leo.datastructures.blackboard
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{FormulaStore, Result}
+import leo.datastructures.blackboard.{DataType, FormulaStore, Result, FormulaType}
 import java.io.{PrintWriter, File}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
@@ -54,7 +54,7 @@ abstract class ScriptAgent(path : String) extends Agent {
       val writer = new PrintWriter(file)
       val b = new StringBuilder
       try{
-        contextToTPTP(t1.readSet()) foreach {out =>
+        contextToTPTP(t1.readSet().getOrElse(FormulaType, Set.empty[Any]).asInstanceOf[Set[FormulaStore]]) foreach {out =>
           b.append(out.output+"\n")
           writer.println(out.output)}
       } finally writer.close()
@@ -112,8 +112,8 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
   final case class ScriptTask(fs : Set[FormulaStore], c : Context) extends Task {
-    override def readSet(): Set[FormulaStore] = fs
-    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def readSet : Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (FormulaType -> fs.asInstanceOf[Set[Any]])
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
     override def bid(budget: Double): Double = budget
 
     override val pretty : String = "ScriptTask (BIG)"

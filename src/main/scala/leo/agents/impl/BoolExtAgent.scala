@@ -62,8 +62,8 @@ object BoolExtAgent extends Agent {
 
   final private case class BoolExtTask(f: FormulaStore, hint: BoolExt.HintType) extends Task {
     val name = "bool_ext"
-    def writeSet() = Set.empty
-    def readSet() = Set(f)
+    def writeSet() = Map.empty
+    def readSet() = Map.empty + (FormulaType -> Set(f))
     def bid(budget: Double) = budget*hint._1.size / (hint._1.size + hint._2.size)
     lazy val pretty = s"bool_ext(${f.pretty})"
   }

@@ -67,8 +67,8 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
    * @param f - Formula to be normalized
    */
   final private case class NormalTask(f : FormulaStore) extends Task {
-    override def readSet(): Set[FormulaStore] = Set(f)
-    override def writeSet(): Set[FormulaStore] = Set(f)
+    override def readSet : Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
+    override def writeSet : Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
     override def bid(budget : Double) : Double = math.min(budget / 5,1)
     override lazy val pretty : String =  "NormalizationTask: Normalize " + f.toString + "."
     override val name : String = "Normalization"

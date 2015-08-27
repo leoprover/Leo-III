@@ -58,8 +58,8 @@ object ClausificationAgent extends Agent {
    * @return A Clausification Task
    */
   final private case class ClausificationTask(dc : FormulaStore) extends Task{
-    override def readSet(): Set[FormulaStore] = Set(dc)
-    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(dc))
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
     override def bid(budget: Double): Double = budget / dc.clause.weight
     override lazy val pretty : String = s"Clausify: ${dc.pretty}"
     override val name : String = "Clausification"

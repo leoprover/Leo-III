@@ -120,9 +120,8 @@ object CounterContextControlAgent extends AbstractContextControlAgent {
 private class SetContextTask(val c : Context, val s : StatusSZS) extends Task {
   override def name: String = "SetContextTask"
   override def pretty: String = "SetContextTask"
-  override def writeSet(): Set[FormulaStore] = Set()
-  override def readSet(): Set[FormulaStore] = Set()
-  override def contextWriteSet() : Set[Context] = Set(c)
+  override def writeSet(): Map[DataType, Set[Any]] = Map.empty + (ContextType -> Set(c))
+  override def readSet(): Map[DataType, Set[Any]] = Map.empty
   override def bid(budget: Double): Double = budget / 2
 }
 

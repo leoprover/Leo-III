@@ -103,7 +103,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def working() : Boolean = {
     this.synchronized(
-      return w.work || curExec.nonEmpty || filterNum.get() > 0
+      return w.work || curExec.nonEmpty || filterNum.get() > 0 || AgentWork.nonEmpty
     )
   }
 
@@ -193,7 +193,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
 
             // Execute task
-            if (!exe.isShutdown) exe.submit(new GenAgent(a, t))
+            if (!exe.isShutdown) {
+              AgentWork.inc(a)
+              exe.submit(new GenAgent(a, t))
+            }
           }
         }
       } catch {
@@ -213,7 +216,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(endFlag) return              // Savely exit
       if(curExec.contains(task)) {
         work = true
-        Blackboard().finishTask(task)
 
 //        Out.comment("[Writer] : Got task and begin to work.")
         // Update blackboard
@@ -261,6 +263,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 //      Out.comment(s"[Writer]: Gone through all.")
 
+      LockSet.releaseTask(task)
       curExec.remove(task)
       Scheduler().signal()  // Get new task
       work = false
@@ -275,7 +278,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class GenAgent(a : AgentController, t : Task) extends Runnable{
     override def run()  {
-      AgentWork.inc(a)
       ExecTask.put(a.run(t),t)
       AgentWork.dec(a)
 //      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
@@ -356,6 +358,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     def executingAgents() : Iterable[AgentController] = synchronized(agentWork.keys)
 
     def clear() = synchronized(agentWork.clear())
+
+    def isEmpty : Boolean = synchronized(agentWork.isEmpty)
+
+    def nonEmpty : Boolean = synchronized(agentWork.nonEmpty)
   }
 
   /**
@@ -367,8 +373,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
-    override def readSet(): Set[FormulaStore] = Set.empty
-    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
     override def bid(budget : Double) : Double = 1
     override def name: String = "ExitTask"
 

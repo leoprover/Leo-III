@@ -74,8 +74,8 @@ object UnificationAgent extends Agent {
 
   private case class UnificationTask(f : FormulaStore, t1 : Term, t2 : Term, s : Subst) extends Task {
     override val name: String = "unification task"
-    override def writeSet(): Set[FormulaStore] = Set()
-    override def readSet(): Set[FormulaStore] = Set(f)
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
     override def bid(budget: Double): Double = budget / (1+f.clause.uniLits.size)
 
     override val pretty: String = "unify"
@@ -83,8 +83,8 @@ object UnificationAgent extends Agent {
 
   private case class FinishUnify(f : FormulaStore) extends Task {
     override val name : String = "finish unification task"
-    override def writeSet(): Set[FormulaStore] = Set()
-    override def readSet(): Set[FormulaStore] = Set(f)
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
     override def bid(budget: Double): Double = budget / 2
 
     override val pretty: String = "unify"

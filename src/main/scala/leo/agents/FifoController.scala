@@ -2,6 +2,7 @@ package leo.agents
 
 import leo._
 import leo.datastructures.blackboard.{Event, Blackboard}
+import leo.datastructures.blackboard.LockSet
 
 import scala.collection.mutable
 
@@ -43,7 +44,7 @@ class FifoController(a : Agent) extends AgentController(a) {
   override def filter(f: Event) : Unit = {
     var done = false
     for(t <- a.toFilter(f)) {
-      if (!Blackboard().collision(t)) {
+      if (!LockSet.isOutdated(t)) {
         q.synchronized {
           q.enqueue(t)
         }
@@ -90,15 +91,26 @@ class FifoController(a : Agent) extends AgentController(a) {
 
   /**
    *
-   * Given a set of (newly) executing tasks, remove all colliding tasks.
+   * Given a set of (newly) executing tasks, remove all outdated tasks.
    *
    * @param nExec - The newly executing tasks
    */
   override def removeColliding(nExec: Iterable[Task]): Unit = q.synchronized(q.dequeueAll{tbe =>
     nExec.exists{e =>
-      val rem = e.writeSet().intersect(tbe.writeSet()).nonEmpty || e.writeSet().intersect(tbe.writeSet()).nonEmpty || e == tbe // Remove only tasks depending on written (changed) data.
-      if(rem && e != tbe) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was removed.")
-      rem
+      if(e.eq(tbe)) {
+        true
+      }else {
+        val sharedTypes = tbe.lockedTypes & e.lockedTypes
+        sharedTypes exists { d =>
+          val we = e.writeSet().getOrElse(d, Set.empty[Any])
+          val wtb = tbe.writeSet().getOrElse(d, Set.empty[Any])
+          val rtb = tbe.readSet().getOrElse(d, Set.empty[Any])
+
+          val rem = (we & wtb).nonEmpty || (we & rtb).nonEmpty // If the tbe task excesses any data, that will be updated.
+          if (rem && !e.eq(tbe)) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was removed.")
+          rem
+        }
+      }
     }
   })
 }
