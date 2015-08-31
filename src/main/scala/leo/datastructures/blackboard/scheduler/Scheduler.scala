@@ -4,7 +4,6 @@ package blackboard.scheduler
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import leo.agents.impl.SetContextTask
 import leo.datastructures.blackboard._
 
 import scala.collection.immutable.TreeMap
@@ -27,12 +26,6 @@ object Scheduler {
    */
   def apply() : Scheduler = {
     s
-  }
-
-  def working() : Boolean = {
-    if (s == null) return false
-    // s exists
-    s.working()
   }
 }
 
@@ -69,8 +62,6 @@ trait Scheduler {
 
   protected[scheduler] def start()
 
-  def working() : Boolean
-
   def openTasks : Int
 }
 
@@ -100,12 +91,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
 
   def openTasks : Int = synchronized(curExec.size)
-
-  def working() : Boolean = {
-    this.synchronized(
-      return w.work || curExec.nonEmpty || filterNum.get() > 0 || AgentWork.nonEmpty
-    )
-  }
 
   override def isTerminated : Boolean = endFlag
 
@@ -214,6 +199,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     override def run(): Unit = while(!endFlag) {
       val (result,task) = ExecTask.get()
       if(endFlag) return              // Savely exit
+      var doneSmth = false
       if(curExec.contains(task)) {
         work = true
 
@@ -222,8 +208,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.inserts(t).filter{d =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
-
             Blackboard().getDS(t).foreach{ds => add |= ds.insert(d)}  // More elegant without risk of lazy skipping of updating ds?
+            doneSmth |= add
             add
           })
         }.toMap
@@ -232,13 +218,14 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
             Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
+            doneSmth |= add
             add
           }.map(_._2))    // Only catch the new ones
         }.toMap
 
         result.keys.foreach {t =>
           (t,result.removes(t).foreach{d =>
-            Blackboard().getDS(t).foreach{ds =>ds.delete(d)}  // TODO save deletion?
+            Blackboard().getDS(t).foreach{ds =>ds.delete(d)}
           })
         }
 
@@ -250,8 +237,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
                 val ts = if (xs.isEmpty) result.keys else xs
                 ts.foreach { t =>
                   // Queuing for filtering on the existing threads
-                  newD.getOrElse(t, Nil).foreach { d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
-                  updateD.getOrElse(t, Nil).foreach { d => filterNum.incrementAndGet(); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
+                  newD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter new data ($d)\n\t\tin Agent ${a.name}" ); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
+                  updateD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter update to ($d)\n\t\tin Agent ${a.name}"); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
                   // TODO look at not written data,,,
                 }
             }
@@ -265,6 +252,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
       LockSet.releaseTask(task)
       curExec.remove(task)
+      val lockCount = if(doneSmth) ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") else ActiveTracker.decAndGet()
+      if(lockCount <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -284,15 +273,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
   }
 
-  private var filterNum : AtomicInteger = new AtomicInteger(0)
-
   private class GenFilter(a : AgentController, t : DataType, newD : Any) extends Runnable{
     override def run(): Unit = {
       // Sync and trigger on last check
 
       a.filter(DataEvent(newD,t))
 
-      if(filterNum.decrementAndGet() == 0)
+      if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0)
         Blackboard().forceCheck()
       //Release sync
     }

@@ -191,11 +191,8 @@ private object TaskSet {
             //leo.Out.comment("Checking for new tasks.")
             regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r } }
             if (r.isEmpty) {
-              if (!Scheduler.working() && LockSet.isEmpty && regAgents.forall { case (a, _) => !a.hasTasks }) {
+              if (ActiveTracker.isNotActive) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
-                leo.Out.comment(s"Scheduler active = ${Scheduler.working()}")
-                leo.Out.comment(s"Locks existing = ${!LockSet.isEmpty}")
-                leo.Out.comment(s"Agents have work = ${!regAgents.forall { case (a, _) => !a.hasTasks }}")
                 Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
               // TODO increase budget or we will run into a endless loop

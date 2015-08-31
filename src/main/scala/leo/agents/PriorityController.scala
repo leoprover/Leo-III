@@ -1,7 +1,7 @@
 package leo.agents
 
 import leo._
-import leo.datastructures.blackboard.{Event, Blackboard, LockSet}
+import leo.datastructures.blackboard.{ActiveTracker, Event, Blackboard, LockSet}
 
 import scala.collection.mutable
 
@@ -18,11 +18,16 @@ class PriorityController(a : Agent) extends AgentController(a) {
 
   override def setActive(a : Boolean) = {
     super.setActive(a)
+    if(a)
+      ActiveTracker.subAndGet(synchronized(q.size))
+    else
+      ActiveTracker.addAndGet(synchronized(q.size))
     if(a && q.nonEmpty) Blackboard().signalTask()
   }
 
   override def unregister(): Unit = {
     super.unregister()
+    ActiveTracker.subAndGet(synchronized(q.size))
     synchronized{q.clear()}
   }
 
@@ -46,6 +51,7 @@ class PriorityController(a : Agent) extends AgentController(a) {
       if (!LockSet.isOutdated(t)) {
         synchronized {
           q.enqueue (t)
+          ActiveTracker.incAndGet(s"New Pending task : ${t.pretty}")
         }
         done = true
       }
@@ -110,6 +116,7 @@ class PriorityController(a : Agent) extends AgentController(a) {
 
               val take = (we & wtb).isEmpty && (we & rtb).isEmpty // If the tbe task excesses any data, that will be updated.
               if (!take && !e.eq(tbe)) Out.trace(s"The task\n  $tbe\n collided with\n  $e\n and was therefore removed.")
+              if(!take) ActiveTracker.decAndGet(s"Remove due to collsion ${tbe.pretty}")
               take
             }
           }

@@ -55,8 +55,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     case DataEvent(event : FormulaStore, FormulaType) =>
       if (norm.applicable ( event.status ) && !event.clause.isEmpty) {
         List(new NormalTask(event))
-      }
-      else {
+      } else {
         Nil
       }
     case _ => Nil
@@ -70,7 +69,7 @@ class NormalClauseAgent(norm : Normalize) extends Agent {
     override def readSet : Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
     override def writeSet : Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
     override def bid(budget : Double) : Double = math.min(budget / 5,1)
-    override lazy val pretty : String =  "NormalizationTask: Normalize " + f.toString + "."
+    override lazy val pretty : String =  "normalize " + f.pretty + "."
     override val name : String = "Normalization"
   }
 

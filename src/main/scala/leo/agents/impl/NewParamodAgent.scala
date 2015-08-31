@@ -13,19 +13,20 @@ import leo.modules.calculus._
  */
 class NewParamodAgent(rule: ParamodRule) extends Agent {
 
-  override def name: String = s"Agent NewParamod"
+  override def name: String = s"Agent ${rule.name}"
   override val interest = Some(List(FormulaType, SelectionTimeType))
 
 
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(TimeData(f : FormulaStore, t : TimeStamp), SelectionTimeType) =>
-//    case DataEvent(f : FormulaStore, FormulaType) =>
       if(!f.normalized){
         Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
+        ActiveTracker.addComment(s"$name: Got Non normalized formula ${f.pretty} with status ${f.status}.")
         return Nil
       }
       var tasks: Seq[Task] = Seq()
       val others = (SelectionTimeStore.noSelect(f.context) ++ SelectionTimeStore.after(t, f.context).filterNot(_ == f)).iterator
+      ActiveTracker.addComment(s"$name: Testing for paramod\n\t${others.map(_.pretty).mkString(", ")}")
       while( others.hasNext) {
         val other = others.next()
         val (canApply, hint) = rule.canApply(f.clause, other.clause)
