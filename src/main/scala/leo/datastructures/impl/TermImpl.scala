@@ -232,7 +232,14 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 
   /** Pretty */
   lazy val pretty = s"${hd.pretty} ⋅ (${args.pretty})"
+
+  override val hashCode = Root.hash(hd, args)
 }
+
+object Root {
+  private[Root] def hash(hd: Head, args: Spine) =
+    scala.util.hashing.MurmurHash3.productHash((hd, args))
+  }
 
 
 // For all terms that have not been normalized, assume they are a redex, represented
@@ -363,13 +370,12 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val ty = typ ->: body.ty
   val freeVars = {
     import leo.datastructures.Term.Bound
-    body.freeVars.map{_ match {
-      case Bound(ty, scope) => Term.mkBound(ty, scope-1)
+    body.freeVars.map {
+      case Bound(ty, scope) => Term.mkBound(ty, scope - 1)
       case fv => fv
-    }}.filter{ _ match {
+    }.filter {
       case Bound(_, scope) => scope > 0
       case _ => true
-    }
     }
   }
   val boundVars = body.boundVars
