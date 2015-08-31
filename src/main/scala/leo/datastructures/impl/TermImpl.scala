@@ -171,13 +171,20 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     }
   }
 
-  def replace(what: Term, by: Term): Term = if (this == what)
-                                              by
-                                            else
-                                              hd.replace(what, by) match {
-                                                case Some(repl) => Redex(repl, args.replace(what, by))
-                                                case None => Root(hd, args.replace(what, by))
-                                              }
+  def replace(what: Term, by: Term): Term =
+    if (this == what)
+      by
+    else
+      hd.replace(what, by) match {
+        case Some(repl) => Redex(repl, args.replace(what, by))
+        case None =>
+          val newArgs = args.replace(what, by)
+          if (newArgs eq args)
+            this
+          else
+            Root(hd, args.replace(what, by))
+      }
+
   def replaceAt(at: Position, by: Term): Term = if (at == Position.root)
                                                   by
                                                 else
@@ -849,10 +856,18 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
     case _ => App(hd, tail.init)
   }
 
-  def replace(what: Term, by: Term): Spine = if (hd == what)
-                                              App(by, tail.replace(what,by))
-                                             else
-                                              App(hd.replace(what,by), tail.replace(what,by))
+  def replace(what: Term, by: Term): Spine =
+    if (hd == what) {
+      App(by, tail.replace(what, by))
+    } else {
+      val newHd = hd.replace(what, by)
+      val newTail = tail.replace(what, by)
+      if ((newHd eq hd) && (newTail eq tail))
+        this
+      else
+        App(hd.replace(what, by), newTail)
+    }
+
 
   def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
     case 1 if posTail == Position.root => App(by, tail)
@@ -911,7 +926,13 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
     case TyApp(_,SNil) => TyApp(hd, SNil)
     case _ => TyApp(hd, tail.init)
   }
-  def replace(what: Term, by: Term): Spine = TyApp(hd, tail.replace(what,by))
+  def replace(what: Term, by: Term): Spine = {
+    val newTail = tail.replace(what, by)
+    if (newTail eq tail)
+      this
+    else
+      TyApp(hd, tail.replace(what,by))
+  }
   def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
     case 1 => throw new IllegalArgumentException("Trying to replace term inside of type.")
     case _ => TyApp(hd, tail.replaceAt0(pos-1, posTail, by))
