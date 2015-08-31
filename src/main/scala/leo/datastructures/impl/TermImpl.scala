@@ -26,7 +26,7 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   def isLocal = _locality == LOCAL
   def locality = _locality
 
-  lazy val betaNormalize: Term = {
+  lazy val betaNormalize = {
     val erg = normalize(Subst.id, Subst.id)
     if (isGlobal)
      TermImpl.insert0(erg)
@@ -40,7 +40,7 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   }
   def etaExpand0: Term
 
-  lazy val topEtaContract: Term = this
+  def topEtaContract: Term = this
 
   def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
   def tyClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
@@ -64,9 +64,9 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   val isAtom = args == SNil
   val isConstant = isAtom && hd.isConstant
   val isVariable = isAtom && (hd.isBound || hd.isMetaVariable)
-  val isTermAbs = false
-  val isTypeAbs = false
-  val isApp = args != SNil
+  def isTermAbs = false
+  def isTypeAbs = false
+  def isApp = ! isAtom
 
   // Handling def. expansion
   lazy val δ_expandable = hd.δ_expandable || args.δ_expandable
@@ -107,7 +107,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case MetaIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
-  lazy val symbols=  hd match {
+  lazy val symbols= hd match {
     case Atom(key)             => args.symbols + key
     case HeadClosure(Atom(key), _) => args.symbols + key
     case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
@@ -134,7 +134,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     Reductions.tick()
     Root(hd, SNil)
   }
-  val headSymbolDepth = 0
+  def headSymbolDepth = 0
   lazy val occurrences = if (args.length == 0)
                            Map(this.asInstanceOf[Term] -> Set(Position.root))
                          else
@@ -344,12 +344,12 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   import TermImpl.mkTermAbstr
 
   // Predicates on terms
-  val isAtom = false
-  val isConstant = false
-  val isVariable = false
-  val isTermAbs = true
-  val isTypeAbs = false
-  val isApp = false
+  def isAtom = false
+  def isConstant = false
+  def isVariable = false
+  def isTermAbs = true
+  def isTypeAbs = false
+  def isApp = false
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable
@@ -443,12 +443,12 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   import Type.∀
 
   // Predicates on terms
-  val isAtom = false
-  val isConstant = false
-  val isVariable = false
-  val isTermAbs = false
-  val isTypeAbs = true
-  val isApp = false
+  def isAtom = false
+  def isConstant = false
+  def isVariable = false
+  def isTermAbs = false
+  def isTypeAbs = true
+  def isApp = false
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable
@@ -511,12 +511,12 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   // Closure should never be handed to the outside
 
   // Predicates on terms
-  val isAtom = false
-  val isConstant = false
-  val isVariable = false
-  val isTermAbs = false
-  val isTypeAbs = false
-  val isApp = false
+  def isAtom = false
+  def isConstant = false
+  def isVariable = false
+  def isTermAbs = false
+  def isTypeAbs = false
+  def isApp = false
 
   // Handling def. expansion
   lazy val δ_expandable = false // TODO
@@ -530,10 +530,10 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val ty = term.ty
   lazy val freeVars = betaNormalize.freeVars
   lazy val boundVars = Set[Term]()
-  lazy val looseBounds = Set.empty[Int]
-  lazy val metaVars = Set[(Type, Int)]()
-  lazy val symbols = Set[Signature#Key]()
-  lazy val headSymbol = ???
+  def looseBounds = Set.empty[Int]
+  def metaVars = Set.empty[(Type, Int)]
+  def symbols = Set.empty[Signature#Key]
+  def headSymbol = ???
   lazy val headSymbolDepth = 1 + term.headSymbolDepth
   val scopeNumber = term.scopeNumber
   val occurrences = Map[Term, Set[Position]]()
@@ -548,10 +548,10 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 //    }
 //    case _ => throw new UnknownError("head symbol not a root")
 //  }
-  lazy val size = term.size // this might not be senseful, but will never occur when used properly
+  def size = term.size // this might not be senseful, but will never occur when used properly
 
   // Other operations
-  lazy val typeCheck = ???
+  def typeCheck = ???
 
   def etaExpand0: Term = ???
 
@@ -596,45 +596,43 @@ protected[impl] sealed abstract class Head extends Pretty {
                                               None
 
   // Handling def. expansion
-  val δ_expandable: Boolean
+  def δ_expandable: Boolean
   def partial_δ_expand(rep: Int): Term
   def full_δ_expand: Term
 }
 
-protected[impl] case class BoundIndex(typ: Type, scope: Int) extends Head {
+protected[impl] case class BoundIndex(ty: Type, scope: Int) extends Head {
   // Predicates
-  val isBound = true
-  val isConstant = false
-  val isMetaVariable = false
+  def isBound = true
+  def isConstant = false
+  def isMetaVariable = false
 
   // Queries
-  val ty = typ
-  val scopeNumber = (-scope, typ.scopeNumber)
+  val scopeNumber = (-scope, ty.scopeNumber)
 
   // Handling def. expansion
-  val δ_expandable = false
+  def δ_expandable = false
   def partial_δ_expand(rep: Int) = full_δ_expand
   def full_δ_expand = TermImpl.headToTerm(this)
 
   // Pretty printing
-  override val pretty = s"$scope"
+  override def pretty = scope.toString
 
   // Local definitions
   def substitute(s: Subst) = s.substBndIdx(scope)
 }
 
-protected[impl] case class MetaIndex(typ: Type, id: Int) extends Head {
+protected[impl] case class MetaIndex(ty: Type, id: Int) extends Head {
   // Predicates
-  val isBound = false
-  val isConstant = false
-  val isMetaVariable = true
+  def isBound = false
+  def isConstant = false
+  def isMetaVariable = true
 
   // Queries
-  val ty = typ
-  val scopeNumber = (0,0)
+  def scopeNumber = (0,0)
 
   // Handling def. expansion
-  val δ_expandable = false
+  def δ_expandable = false
   def partial_δ_expand(rep: Int) = full_δ_expand
   def full_δ_expand = TermImpl.headToTerm(this)
 
@@ -646,13 +644,13 @@ protected[impl] case class Atom(id: Signature#Key) extends Head {
   private lazy val meta = Signature.get(id)
 
   // Predicates
-  val isBound = false
-  val isConstant = true
-  val isMetaVariable = false
+  def isBound = false
+  def isConstant = true
+  def isMetaVariable = false
 
   // Queries
   lazy val ty = meta._ty
-  val scopeNumber = (0,0)
+  val scopeNumber = (0, 0)
 
   // Handling def. expansion
   lazy val δ_expandable = meta.hasDefn
@@ -676,16 +674,16 @@ protected[impl] case class Atom(id: Signature#Key) extends Head {
 
 protected[impl] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
   // Predicates
-  val isBound = false
-  val isConstant = false
-  val isMetaVariable = false
+  def isBound = false
+  def isConstant = false
+  def isMetaVariable = false
 
   // Queries
-  lazy val ty = ???
+  def ty = ???
   lazy val scopeNumber = hd.scopeNumber
 
   // Handling def. expansion
-  lazy val δ_expandable = ???
+  def δ_expandable = ???
   def partial_δ_expand(rep: Int) = ???
   def full_δ_expand = ???
 
@@ -759,20 +757,20 @@ protected[impl] case object SNil extends Spine {
   val etaExpand: Spine = this
 
   // Handling def. expansion
-  val δ_expandable = false
+  def δ_expandable = false
   def partial_δ_expand(rep: Int) = SNil
-  val full_δ_expand = SNil
+  def full_δ_expand = SNil
 
   // Queries
-  val freeVars = Set[Term]()
-  val boundVars = Set[Term]()
-  val looseBounds = Set[Int]()
-  val metaVars = Set[(Type, Int)]()
-  val symbols = Set[Signature#Key]()
-  val length = 0
-  val asTerms = Seq()
+  def freeVars = Set.empty[Term]
+  def boundVars = Set.empty[Term]
+  def looseBounds = Set.empty[Int]
+  def metaVars = Set.empty[(Type, Int)]
+  def symbols = Set.empty[Signature#Key]
+  def length = 0
+  def asTerms = Seq.empty
   val scopeNumber = (0, 0)
-  val size = 1
+  def size = 1
   def occurrences0(pos: Int) = Map()
 
   // Misc
@@ -927,21 +925,21 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
     Reductions.tick()
     sp.normalize(s._1 o termSubst, s._2 o typeSubst)
   }
-  lazy val etaExpand: Spine = ???
+  def etaExpand: Spine = ???
 
   // Handling def. expansion
-  lazy val δ_expandable = false // TODO
+  def δ_expandable = false // TODO
   def partial_δ_expand(rep: Int) = ???
-  lazy val full_δ_expand = ???
+  def full_δ_expand = ???
 
   // Queries
-  val freeVars = Set[Term]()
-  val symbols = Set[Signature#Key]()
-  lazy val looseBounds = ???
-  lazy val metaVars = ???
-  val boundVars= Set[Term]() // TODO: implement
+  def freeVars = Set[Term]()
+  def symbols = Set[Signature#Key]()
+  def looseBounds = ???
+  def metaVars = ???
+  def boundVars= Set[Term]() // TODO: implement
   lazy val length = sp.length
-  lazy val asTerms = ???
+  def asTerms = ???
   lazy val scopeNumber = sp.scopeNumber
   lazy val size = sp.size // todo: properly implement
   def occurrences0(pos: Int) = Map.empty
@@ -1212,7 +1210,7 @@ object TermImpl extends TermBank {
     redexes = Map.empty
 
     // Spines
-   spines = Map.empty
+    spines = Map.empty
   }
 
 
@@ -1269,7 +1267,7 @@ object TermImpl extends TermBank {
   def statistics: TermBankStatistics = {
     val numberOfTerms = terms.size +1
 
-    val parentNodeCountMap: Map[Int, Int] = Map.empty
+    def parentNodeCountMap: Map[Int, Int] = Map.empty
 
     // Term sizes
     // start element (min, max, X)
@@ -1278,9 +1276,9 @@ object TermImpl extends TermBank {
                                             val max = Math.max(acc._2, s)
                                             (min, max, acc._3  + s)
                                            })
-    val minSizeOfTerms = intermediate._1
-    val maxSizeOfTerms = intermediate._2
-    val avgSizeOfTerms = intermediate._3 / numberOfTerms
+    def minSizeOfTerms = intermediate._1
+    def maxSizeOfTerms = intermediate._2
+    def avgSizeOfTerms = intermediate._3 / numberOfTerms
 
     var termAbstractionsSize = 0
     termAbstractions.foreach({ case (term, map) =>

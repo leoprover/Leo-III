@@ -65,17 +65,8 @@ object Subst {
   def shift(n: Int): Subst = SubstImpl.shift(n)
 
   def singleton(what: Int, by: Term): Subst = {
-    var i = 1
     var subst: Vector[Front] = Range(1, what-1).map(BoundFront(_)).toVector
     new SubstImpl(0,subst :+ TermFront(by))
-
-//
-//    var s = Subst.id
-//    for(idx <- 1 to (what-1)) {
-//      s = BoundFront(idx) +: s
-//    }
-//
-//    TermFront(by) +: s
   }
 
   def fromMap(map: Map[Int, Term]): Subst = {
@@ -86,7 +77,7 @@ object Subst {
       val maxIndex = map.keySet.max
       var i = 1
       while (i <= maxIndex) {
-        subst = subst :+ map.get(i).fold(BoundFront(i):Front)(TermFront(_))
+        subst = subst :+ map.get(i).fold(BoundFront(i):Front)(TermFront)
         i = i + 1
       }
       new SubstImpl(0, subst)
@@ -136,10 +127,10 @@ object Subst {
 /** Substitutions as constant-time accessible vectors */
 sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
-  lazy val normalize: Subst = new RASubst(shift, fts.map({_ match {
+  lazy val normalize: Subst = new RASubst(shift, fts.map{
     case TermFront(t) => TermFront(t.betaNormalize)
     case a => a
-  } }))
+  })
 
   def comp(other: Subst): Subst = other.isShift match {
     case true if other.shiftedBy == 0 => this
@@ -163,8 +154,8 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
     case false => fts.map(_.pretty).mkString("•") ++ s"↑$shift"
   }
 
-  lazy val isShift = fts.isEmpty
-  lazy val shiftedBy = shift
+  def isShift = fts.isEmpty
+  def shiftedBy = shift
   lazy val length = fts.length
   def drop(n: Int): Subst = new RASubst(shift, fts.drop(n))
 
@@ -172,7 +163,7 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
     case true => fts(i-1)
     case false => BoundFront(i+shift)
   }
-  lazy val fronts = fts
+  def fronts = fts
 }
 
 
@@ -285,13 +276,13 @@ case class BoundFront(n: Int) extends Front {
   override def pretty = s"$n"
 }
 case class TermFront(term: Term) extends Front {
-  def substitute(subst: Subst) = TermFront(term.closure((subst)))
+  def substitute(subst: Subst) = TermFront(term.closure(subst))
 
   /** Pretty */
   override def pretty = term.pretty
 }
 case class TypeFront(typ: Type) extends Front {
-  def substitute(subst: Subst) = TypeFront(typ.closure((subst)))
+  def substitute(subst: Subst) = TypeFront(typ.closure(subst))
 
   /** Pretty */
   override def pretty = typ.pretty
