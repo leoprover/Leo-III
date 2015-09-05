@@ -13,19 +13,20 @@ import leo.modules.calculus._
  */
 class NewParamodAgent(rule: ParamodRule) extends Agent {
 
-  override def name: String = s"Agent NewParamod"
+  override def name: String = s"Agent ${rule.name}"
   override val interest = Some(List(FormulaType, SelectionTimeType))
 
 
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(TimeData(f : FormulaStore, t : TimeStamp), SelectionTimeType) =>
-//    case DataEvent(f : FormulaStore, FormulaType) =>
       if(!f.normalized){
         Out.trace(s"[$name]:\n Got non normalized formula\n  ${f.pretty} (${f.status}))")
+        ActiveTracker.addComment(s"$name: Got Non normalized formula ${f.pretty} with status ${f.status}.")
         return Nil
       }
       var tasks: Seq[Task] = Seq()
       val others = (SelectionTimeStore.noSelect(f.context) ++ SelectionTimeStore.after(t, f.context).filterNot(_ == f)).iterator
+      ActiveTracker.addComment(s"$name: Testing for paramod\n\t${others.map(_.pretty).mkString(", ")}")
       while( others.hasNext) {
         val other = others.next()
         val (canApply, hint) = rule.canApply(f.clause, other.clause)
@@ -94,8 +95,8 @@ class NewParamodAgent(rule: ParamodRule) extends Agent {
 
 
   final private case class NewParamodTask(f1 : FormulaStore, f2: FormulaStore, hint: Either[(Literal, (Term, Term), Term),(Literal, (Term, Term), Term)]) extends Task {
-    override def readSet(): Set[FormulaStore] = Set(f1, f2)
-    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f1, f2))
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
     override def bid(budget: Double): Double = budget / Math.max(f1.clause.weight, f2.clause.weight) /*hint.left.getOrElse(hint.right.get)._1.id*/
     override lazy val pretty : String = s"New Paramod: ${f1.pretty} with ${f2.pretty}"
     override val name : String = "New Paramodulation"

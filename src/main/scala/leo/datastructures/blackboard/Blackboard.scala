@@ -77,15 +77,6 @@ trait TaskOrganize {
    */
   protected[blackboard] def getTask : Iterable[(AgentController,Task)]
 
-
-
-  /**
-   * Tells the tassk set, that one task has finished computing.
-   *
-   * @param t - The finished task.
-   */
-  protected[blackboard] def finishTask(t : Task) : Unit
-
   /**
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be
    * thrown correctly.
@@ -96,14 +87,6 @@ trait TaskOrganize {
    * Signal Task is called, when a new task is available.
    */
   def signalTask() : Unit
-
-  /**
-   * Checks through the current executing threads, if one is colliding
-   *
-   * @param t - Task that will be tested
-   * @return true, iff no currently executing task collides
-   */
-  def collision(t : Task) : Boolean
 
   /**
    * Registers an agent to the blackboard, should only be called by the agent itself
@@ -131,14 +114,6 @@ trait TaskOrganize {
    * @return all registered agents and their budget
    */
   def getAgents : Iterable[(AgentController, Double)]
-
-  /**
-   * Returns a collection of tasks that are currently executed
-   * in the system. Debugging reasons only!!!
-   *
-   * @return Collection of tasks that are executed.
-   */
-  def getRunningTasks : Iterable[Task]
 }
 
 /**

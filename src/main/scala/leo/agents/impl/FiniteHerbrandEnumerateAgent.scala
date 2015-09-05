@@ -71,8 +71,8 @@ class FiniteHerbrandEnumerateAgent(c : Context, domain : Map[Type, Seq[Term]]) e
 
   final private case class FiniteHerbrandEnumerateTask(f : FormulaStore) extends Task {
     override val name: String = "FiniteHerbrandEnumerateTask"
-    override def writeSet(): Set[FormulaStore] = Set.empty
-    override def readSet(): Set[FormulaStore] = Set(f)
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
     override def bid(budget: Double): Double = budget/20
     override lazy val pretty: String = s"FiniteHerbrandEnumerateTask(${f.pretty}"
   }

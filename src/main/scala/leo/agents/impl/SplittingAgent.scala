@@ -53,12 +53,10 @@ class SplittingAgent (s : Split) extends Agent {
 
   final private case class SplitTask(o : FormulaStore, cs : Seq[Seq[Clause]], k : SplitKind) extends Task {
     override def name: String = "Split"
-    override def writeSet(): Set[FormulaStore] = Set()
-    override def readSet(): Set[FormulaStore] = Set(o)
+    override def writeSet(): Map[DataType,Set[Any]] = Map.empty + (ContextType -> Set(o.context))
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(o))
     private val factor : Double = {val f = cs.map(_.foldLeft(0){(a,x) => a+x.weight}).max / o.clause.weight; if(f > 1 || f<0) 0 else 1-f}
     override def bid(budget: Double): Double = budget * factor                                                  // Der Split mit der kleinsten größten Klausel wird bevorhzugt
-
-    override def contextWriteSet() : Set[Context] = Set(o.context)    // TODO: Look for on filtering
 
     override def pretty: String = s"SplitTask:\n On\n  ${o.pretty}\n To\n   ${cs.map(_.map(_.pretty).mkString(", ")).mkString("\n   ")}."
   }

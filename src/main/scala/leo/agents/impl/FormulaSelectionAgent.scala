@@ -57,16 +57,16 @@ object FormulaSelectionAgent extends Agent {
 
   final private case class RemoveFormulaTask(f: FormulaStore) extends Task {
     val name = "RemoveFormulaTask"
-    def writeSet() = Set(f)
-    def readSet() = Set()
+    def writeSet() = Map.empty + (FormulaType -> Set(f))
+    def readSet() = Map.empty
     def bid(budget: Double) = budget/f.clause.weight
     lazy val pretty = s"Task: Remove subsumed formula ${f.pretty}"
   }
 
   final private case class AddTimeStampTask(f: FormulaStore) extends Task {
     val name = "AddTimeStampTask"
-    def writeSet() = Set()
-    def readSet() = Set(f)
+    def writeSet() = Map.empty
+    def readSet() = Map.empty + (FormulaType -> Set(f))
     def bid(budget: Double) = budget/f.clause.weight
     lazy val pretty = s"Task: Add time stamp to ${f.pretty}"
   }

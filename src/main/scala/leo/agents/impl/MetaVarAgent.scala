@@ -72,8 +72,8 @@ object MetaVarAgent extends Agent {
 
   final private case class MetavarTask(f : FormulaStore) extends Task {
     override val name: String = "Metavar replace"
-    override def writeSet(): Set[FormulaStore] = Set(f)
-    override def readSet(): Set[FormulaStore] = Set()
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f))
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty
     override def bid(budget: Double): Double = budget / 5
     override val pretty: String = "metavar replace"
   }
