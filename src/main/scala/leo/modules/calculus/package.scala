@@ -1,5 +1,6 @@
 package leo.modules
 
+import leo.datastructures.impl.Signature
 import leo.datastructures.{Term, Clause}
 import leo.modules.output.SuccessSZS
 
@@ -37,6 +38,7 @@ package object calculus {
 
   protected def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
     if (s == t) return true
+    if (s.ty == Signature.get.o && t.ty == Signature.get.o) return true
     if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable
     if (depth <= 0) return true
     if (s.ty != t.ty) return false
