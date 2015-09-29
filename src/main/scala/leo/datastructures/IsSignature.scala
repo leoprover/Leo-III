@@ -14,6 +14,9 @@ trait IsSignature {
 
   type TypeOrKind = Either[Type, Kind]
 
+  final val multStatus: Int = 0
+  final val lexStatus: Int = 1
+
   ///////////////////////////////
   // Symbol types
   ///////////////////////////////
