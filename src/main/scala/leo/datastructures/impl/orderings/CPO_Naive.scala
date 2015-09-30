@@ -220,8 +220,28 @@ object CPO_Naive {
   }
 
   private final def gt0Mult(s: Seq[Term], t: Seq[Term]): Boolean = {
-    if (s.nonEmpty && t.nonEmpty) {
-      ???
+    if (s.nonEmpty && t.isEmpty) true
+    else if (s.nonEmpty && t.nonEmpty) {
+      val sameElements = s.intersect(t)
+      val remSameS = s.diff(sameElements)
+      val remSameT = t.diff(sameElements)
+      gt0Mult0(remSameS, remSameT)
+    } else false
+  }
+
+  private final def gt0Mult0(s: Seq[Term], t: Seq[Term]): Boolean = {
+    if (s.nonEmpty && t.isEmpty) true
+    else if (s.nonEmpty && t.nonEmpty) {
+      val sn = s.head
+      val tIt = t.iterator
+      var keepT: Seq[Term] = Seq()
+      while (tIt.hasNext) {
+        val tn = tIt.next()
+        if (!gt(sn, tn)) {
+          keepT = keepT :+ tn
+        }
+      }
+      gt0Mult0(s.tail,keepT)
     } else false
   }
 
@@ -249,7 +269,7 @@ object CPO_Naive {
           }
 
           /* case 1: f(t) > v */
-          if (fargList.exists(gt0WithType(_, t, Set()))) return true
+          if (fargList.exists(gt(_, t))) return true
 
           /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
           if (t.isApp || t.isConstant) {
