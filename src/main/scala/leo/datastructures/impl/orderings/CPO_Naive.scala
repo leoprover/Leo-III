@@ -1,5 +1,6 @@
 package leo.datastructures.impl.orderings
 
+import leo.datastructures.Term.∙
 import leo.datastructures.{Term, Type}
 import leo.datastructures.impl.Signature
 import leo.modules.output.logger.Out
@@ -30,9 +31,9 @@ object CPO_Naive {
 
   // Core function for comparisons
   def gt(a: Type, b: Type): Boolean = gt0(a,b)
-
-  // Defined by other functions
   def ge(a: Type, b: Type): Boolean = ge0(a,b)
+
+  // Defined by gt/ge
   def lt(a: Type, b: Type): Boolean = gt(b,a)
   def le(a: Type, b: Type): Boolean = ge(b,a)
 
@@ -49,17 +50,15 @@ object CPO_Naive {
   ////////////////////////////////////
 
   // Core function for comparisons
-  def gt(s: Term, t: Term): Boolean ={
-    ge(s.ty, t.ty) && gt0(s,t, Set())
-  }
-  def gt(s: Term, t: Term, bound: Set[Term]): Boolean = {
-    ge(s.ty, t.ty) && gt0(s,t, bound)
-  }
+  def gt(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && gt0(s,t, Set())
+  def gt(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && gt0(s,t, bound)
 
-  // Defined by other functions
-  def ge(s: Term, t: Term): Boolean = s == t || gt(s,t)
+  def ge(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && ge0(s,t, Set())
+  def ge(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && ge0(s,t, bound)
+
+  // Defined by gt/ge
   def lt(s: Term, t: Term): Boolean = gt(t,s)
-  def le(s: Term, t: Term): Boolean = s == t || lt(s,t)
+  def le(s: Term, t: Term): Boolean = ge(t,s)
 
   def compare(s: Term, t: Term): CMP_Result = {
     if (s == t) CMP_EQ
@@ -229,6 +228,7 @@ object CPO_Naive {
     } else false
   }
 
+  @tailrec
   private final def gt0Mult0(s: Seq[Term], t: Seq[Term]): Boolean = {
     if (s.nonEmpty && t.isEmpty) true
     else if (s.nonEmpty && t.nonEmpty) {
@@ -246,12 +246,15 @@ object CPO_Naive {
   }
 
   final private def gt0(s: Term, t: Term, x: Set[Term]): Boolean = {
-    import leo.datastructures.Term.{:::>, Bound, MetaVar, Symbol, TypeLambda, ∙}
+    import leo.datastructures.Term.{:::>, Bound, MetaVar, Symbol, TypeLambda, ∙,mkApp}
+
+    if (s == t) return false
 
     if (s.isApp || s.isConstant) {
       val (f,args) = ∙.unapply(s).get
 
       f match {
+        // All f(t)-rules
         case Symbol(idf) =>
         /* f(t) > ... cases */
           var fargList: Seq[Term] = Seq()
@@ -269,7 +272,7 @@ object CPO_Naive {
           }
 
           /* case 1: f(t) > v */
-          if (fargList.exists(gt(_, t))) return true
+          if (fargList.exists(ge(_, t))) return true
 
           /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
           if (t.isApp || t.isConstant) {
@@ -315,17 +318,59 @@ object CPO_Naive {
           }
           // otherwise, fail
           return false
-        case _ => /* tu > .... cases */
-          ???
+
+        // All @-rules
+        case _ => {
+          val sWOLastArg = mkApp(f,args.init)
+          val lastArg = args.last
+          // if (ge0(sWOLastArg,t,x) || ge(lastArg,t,x))
+
+          return false
+        }
       }
-    } else if (s.isTermAbs) {
-      ???
-    } else if (s.isTypeAbs) {
-      ???
-    } else
-      Out.severe("Comparing unrecognized term. This is considered a bug! Please report.")
-      false
+    }
+
+    // All \-rules (\>, \=, \!=, \X) without \eta
+    // TODO: eta rules left out for now -- we are in eta-long form invariantly
+    if (s.isTermAbs) {
+      val (sInTy, sO) = :::>.unapply(s).get
+
+      if (ge(sO,t,x)) return true
+
+      if (t.isTermAbs) {
+        val (tInTy, tO) = :::>.unapply(t).get
+
+        if (sInTy == tInTy) return gt0(sO, tO, x)
+        else return gt0(s, tO, x)
+      }
+
+      if (t.isVariable) {
+        return Bound.unapply(t).isDefined || x.contains(t)
+      }
+
+      return false
+    }
+
+    /* adaption for type abstractions*/
+    if (s.isTypeAbs) {
+      val sO = TypeLambda.unapply(s).get
+
+      if (ge(sO,t,x)) return true
+
+      if (t.isTypeAbs) {
+        val tO = TypeLambda.unapply(t).get
+
+        return gt0(sO,tO,x)
+      }
+      // TODO: More cases? (such as variable on the right?)
+      return false
+    }
+    /* adaption end */
+    Out.severe("Comparing unrecognized term. This is considered a bug! Please report.")
+    false
   }
+
+  final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = ???
 
   def typegt(s: Type, t: Type): Boolean = ???
 
