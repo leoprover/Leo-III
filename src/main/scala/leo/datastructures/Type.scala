@@ -90,7 +90,9 @@ abstract class Type extends Pretty {
   def +(ty: Type) = Type.mkUnionType(this, ty)
 
   val numberOfComponents: Int = 1
-
+  def order: Int = ??? // TODO
+  def arity: Int = ??? // TODO
+  def polyPrefixArgsCount: Int = ??? // TODO
 
   protected[datastructures] def closure(subst: Subst): Type
 }

@@ -78,10 +78,19 @@ object CPO_Naive {
   /////////////////////////////////////////////////////////////////
 
   // ###############################################################################
+
+  // well-founded ordering of symbols in signature
+  final private def precedence(s: Signature#Key, t: Signature#Key): Int = t - s
+
+  // Well-founded ordering of base types (sort)
+  final private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
+  final private def ge_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = eq_baseType(bt1,bt2) || gt_baseType(bt1,bt2)
+  final private def eq_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 == bt2
+
   ////////////////////////////////////
   // Comparisons of types
   ////////////////////////////////////
-  private def gt0(a: Type, b: Type): Boolean = {
+  final private def gt0(a: Type, b: Type): Boolean = {
     import leo.datastructures.Type.{BaseType,->,∀}
 
     if (a == b) return false
@@ -129,7 +138,7 @@ object CPO_Naive {
     false
   }
 
-  private def ge0(a: Type, b: Type): Boolean = { // TODO: Do we need that?
+  final private def ge0(a: Type, b: Type): Boolean = { // TODO: Do we need that?
     import leo.datastructures.Type.{BaseType,->,∀}
 
     if (a == b) return true
@@ -176,7 +185,7 @@ object CPO_Naive {
 
   // Two types are equal wrt to the type ordering if they are
   // syntacticallly equal of they are equal base types (wrt to ordering of base types).
-  private def eq_type(a: Type, b: Type): Boolean = {
+  final private def eq_type(a: Type, b: Type): Boolean = {
     import leo.datastructures.Type.BaseType
     if (a == b) return true
     if (a.isBaseType && b.isBaseType) {
@@ -185,10 +194,6 @@ object CPO_Naive {
     }
     false
   }
-  // Well-founded ordering of base types (sort)
-  private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
-  private def ge_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = eq_baseType(bt1,bt2) || gt_baseType(bt1,bt2)
-  private def eq_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 == bt2
 
   // ###############################################################################
   ////////////////////////////////////
@@ -254,7 +259,9 @@ object CPO_Naive {
       val (f,args) = ∙.unapply(s).get
 
       f match {
+        // #############
         // All f(t)-rules
+        // #############
         case Symbol(idf) =>
         /* f(t) > ... cases */
           var fargList: Seq[Term] = Seq()
@@ -319,7 +326,9 @@ object CPO_Naive {
           // otherwise, fail
           return false
 
+        // #############
         // All @-rules
+        // #############
         case _ => {
           val sWOLastArg = mkApp(f,args.init)
           val lastArg = args.last
@@ -329,8 +338,9 @@ object CPO_Naive {
         }
       }
     }
-
+    // #############
     // All \-rules (\>, \=, \!=, \X) without \eta
+    // #############
     // TODO: eta rules left out for now -- we are in eta-long form invariantly
     if (s.isTermAbs) {
       val (sInTy, sO) = :::>.unapply(s).get
@@ -350,8 +360,9 @@ object CPO_Naive {
 
       return false
     }
-
+    // #############
     /* adaption for type abstractions*/
+    // #############
     if (s.isTypeAbs) {
       val sO = TypeLambda.unapply(s).get
 
@@ -372,13 +383,8 @@ object CPO_Naive {
 
   final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = ???
 
-  def typegt(s: Type, t: Type): Boolean = ???
 
-  def precedence(s: Signature#Key, t: Signature#Key): Int = t - s
-
-
-
-  private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
+  final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
     case Seq() => Seq()
     case Seq(h, rest@_*) => h match {
       case Left(term) => term +: filterTermArgs(rest)
