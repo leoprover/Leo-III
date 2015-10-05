@@ -17,8 +17,9 @@ protected[datastructures] case class BaseTypeNode(id: Signature#Key) extends Typ
 
   val funDomainType   = None
   val funCodomainType = None
-  val funArity = 0
+  val arity = 0
   val funParamTypesWithResultType = Seq(this)
+  val polyPrefixArgsCount = 0
 
   val scopeNumber = 0
 
@@ -60,8 +61,9 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
 
   val funDomainType   = None
   val funCodomainType = None
-  val funArity = 0
+  val arity = 0
   val funParamTypesWithResultType = Seq(this)
+  val polyPrefixArgsCount = 0
 
   val scopeNumber = -scope
 
@@ -110,8 +112,9 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
 
   lazy val funDomainType   = Some(in)
   lazy val funCodomainType = Some(out)
-  lazy val funArity = 1 + out.funArity
+  lazy val arity = 1 + out.arity
   lazy val funParamTypesWithResultType = Seq(in) ++ out.funParamTypesWithResultType
+  val polyPrefixArgsCount = 0
 
   val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
 
@@ -147,8 +150,9 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
 
   val funDomainType   = None
   val funCodomainType = None
-  val funArity = 0
+  val arity = 0
   val funParamTypesWithResultType = Seq(this)
+  val polyPrefixArgsCount = 0
 
   val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
 
@@ -186,8 +190,9 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
 
   val funDomainType   = None
   val funCodomainType = None
-  val funArity = 0
+  val arity = 0
   val funParamTypesWithResultType = Seq(this)
+  val polyPrefixArgsCount = 0
 
   val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
 
@@ -230,8 +235,9 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
 
   val funDomainType   = None
   val funCodomainType = None
-  val funArity = 0
+  val arity = 0
   val funParamTypesWithResultType = Seq(this)
+  lazy val polyPrefixArgsCount = 1 + body.polyPrefixArgsCount
 
   val scopeNumber = body.scopeNumber + 1
 

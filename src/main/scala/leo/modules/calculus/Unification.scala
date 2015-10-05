@@ -146,7 +146,7 @@ object HuetsPreUnification extends Unification {
   // y1,..,yn are new bound variable
   // x1,..,xm are new free variables
   protected[calculus] def partialBinding(typ: Type, hdSymb: Term) = {
-    val ys = typ.funParamTypes.zip(List.range(1,typ.funArity+1)).map(p => Term.mkBound(p._1,p._2))
+    val ys = typ.funParamTypes.zip(List.range(1,typ.arity+1)).map(p => Term.mkBound(p._1,p._2))
     val xs =
       if (ys.isEmpty)
         hdSymb.ty.funParamTypes.map(p => Term.mkFreshMetaVar(p))
@@ -198,7 +198,7 @@ object HuetsPreUnification extends Unification {
     def apply(e: UEq): Seq[UEq] = {
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.funArity+1)).map(p => Term.mkBound(p._1,p._2))
+      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1)).map(p => Term.mkBound(p._1,p._2))
       bvars.map(e => (t.headSymbol,partialBinding(t.headSymbol.ty, e)))
     }
     def canApply(e: UEq) = ??? // always applicable on flex-rigid equations not under application of Bind
