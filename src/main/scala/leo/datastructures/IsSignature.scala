@@ -134,7 +134,7 @@ trait IsSignature {
   /** Adds a term variable without type to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term): Key            = addConstant0(identifier, None, Some(defn), 0)
+  def addDefined(identifier: String, defn: Term): Key            = addConstant0(identifier, None, Some(defn), 1)
   /** Adds an uninterpreted constant with type `typ` to the signature,
     * multiset status is default, but can be overridden by `status` parameter.
     * @return The key the symbol is indexed by
