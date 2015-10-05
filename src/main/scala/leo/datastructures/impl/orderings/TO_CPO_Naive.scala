@@ -1,7 +1,7 @@
 package leo.datastructures.impl.orderings
 
-import leo.datastructures.Term.∙
-import leo.datastructures.{Term, Type}
+import leo.datastructures.{Precedence, Term, Type}
+import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.modules.output.logger.Out
 
@@ -14,12 +14,7 @@ import scala.annotation.tailrec
  * @author Alexander Steen <a.steen@fu-berlin.de>
  * @since 29.09.2015
  */
-object CPO_Naive {
-  type CMP_Result = Byte
-  final val CMP_EQ: CMP_Result = 0.toByte
-  final val CMP_LT: CMP_Result = 1.toByte
-  final val CMP_GT: CMP_Result = 2.toByte
-  final val CMP_NC: CMP_Result = 3.toByte
+object TO_CPO_Naive {
 
   /////////////////////////////////////////////////////////////////
   /// Exported functions
@@ -80,7 +75,7 @@ object CPO_Naive {
   // ###############################################################################
 
   // well-founded ordering of symbols in signature
-  final private def precedence(s: Signature#Key, t: Signature#Key): Int = t - s
+  final private def precedence(s: Signature#Key, t: Signature#Key): CMP_Result = Precedence.arity_UnaryFirst.compare(s,t)
 
   // Well-founded ordering of base types (sort)
   final private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
@@ -254,9 +249,11 @@ object CPO_Naive {
     import leo.datastructures.Term.{:::>, Bound, MetaVar, Symbol, TypeLambda, ∙,mkApp}
 
     if (s == t) return false
+    if (s.isVariable) return false
 
     if (s.isApp || s.isConstant) {
       val (f,args) = ∙.unapply(s).get
+      val fargList: Seq[Term] = effectiveArgs(f.ty,args)
 
       f match {
         // #############
@@ -264,64 +261,53 @@ object CPO_Naive {
         // #############
         case Symbol(idf) =>
         /* f(t) > ... cases */
-          var fargList: Seq[Term] = Seq()
-          if(Signature(idf)._ty.isPolyType) {
-            if (args.head.isRight) {
-              // take first argument, rest will be terms (?)
-              fargList = filterTermArgs(args.tail)
-              Out.info("Removed corresponding type argument from spine for polymorphic head symbol.")
-            } else {
-              fargList = filterTermArgs(args)
-              Out.severe("Polymorphic head symbol but no type argument in spine at head.")
-            }
-          } else {
-            fargList = filterTermArgs(args)
-          }
 
-          /* case 1: f(t) > v */
+          /* case 1: f(t) >= v */
           if (fargList.exists(ge(_, t))) return true
 
           /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
           if (t.isApp || t.isConstant) {
+
             val (g,args2) = ∙.unapply(t).get
-
-
-            g match {
-              case Symbol(idg) => /* case 2+3 */
-
-                var gargList: Seq[Term] = Seq()
-                if(Signature(idg)._ty.isPolyType) {
-                  if (args2.head.isRight) {
-                    // take first argument, rest will be terms (?)
-                    gargList = filterTermArgs(args2.tail)
-                    Out.info("Removed corresponding type argument from spine for polymorphic head symbol.")
+            try {
+              val gargList: Seq[Term] = effectiveArgs(g.ty, args2)
+              g match {
+                case Symbol(idg) =>
+                  /* case 2+3 */
+                  if (precedence(idf, idg) == CMP_EQ) {
+                    return gargList.forall(gt0(s, _, x)) && gt0Stat(fargList, gargList, Signature(idf).status)
+                  } else if (precedence(idf, idg) == CMP_GT) {
+                    return gargList.forall(gt0(s, _, x))
                   } else {
-                    gargList = filterTermArgs(args2)
-                    Out.severe("Polymorphic head symbol but no type argument in spine at head.")
+                    return false
                   }
-                } else {
-                  gargList = filterTermArgs(args2)
-                }
 
-                if (precedence(idf, idg) == 0) {
-                  return gargList.forall(gt0(s,_, x)) && gt0Stat(fargList,gargList,Signature(idf).status)
-                } else if (precedence(idf, idg) > 0) {
-                  return gargList.forall(gt0(s,_, x))
-                } else {
-                  return false
-                }
-              case _ => /* case 4*/
-                ???
+                case _ if gargList.nonEmpty =>
+                  /* case 4*/
+                  return gt0(s, Term.mkApp(g, args2.init), x) && gt0(s, gargList.last, x)
+              }
+            } catch {
+              case e:AssertionError => {
+                Out.severe(e.getMessage)
+                Out.output("TERM s: \t\t " + s.pretty)
+                Out.output("TERM t: \t\t " + t.pretty)
+                throw e
+              }
+              case e: Exception => {
+                println(idf)
+                println(f.pretty)
+                throw e
+              }
             }
           }
           /* case 5: f(t) > lambda yv*/
           if (t.isTermAbs) {
-            val (_,body) = :::>.unapply(t).get
-            return gt0(s,body,x)
+            val (_,tO) = :::>.unapply(t).get
+            return gt0(s,tO,x)
           }
           /* case 6: f(t) > y */
           if (t.isVariable) {
-            return Bound.unapply(t).isDefined
+            return Bound.unapply(t).isDefined || x.contains(t)
           }
           // otherwise, fail
           return false
@@ -329,10 +315,35 @@ object CPO_Naive {
         // #############
         // All @-rules
         // #############
-        case _ => {
-          val sWOLastArg = mkApp(f,args.init)
-          val lastArg = args.last
-          // if (ge0(sWOLastArg,t,x) || ge(lastArg,t,x))
+        case _ if fargList.nonEmpty => {
+
+          if (ge0(mkApp(f,args.init),t,x) || ge(fargList.last,t,x)) return true
+
+          if (t.isApp) {
+            val (g,args2) = ∙.unapply(t).get
+
+            val gargList: Seq[Term] = effectiveArgs(g.ty,args2)
+
+            if (gargList.nonEmpty) {
+              val s2 = mkApp(f,args.init)
+              val t2 = mkApp(g, args2.init)
+              if (s2 == t2) {
+                if (gt0(fargList.last, gargList.last,x)) return true
+              }
+
+              return ((gt(s2,t2,x) || ge(fargList.last,t2,x) || gt(s,t2))
+                   && (gt(s2,gargList.last,x) || ge(fargList.last,gargList.last,x) || gt(s,gargList.last)))
+            }
+          }
+
+          if (t.isTermAbs) {
+            val (_, tO) = :::>.unapply(t).get
+            return gt0(s, tO, x)
+          }
+
+          if (t.isVariable) {
+            return Bound.unapply(t).isDefined || x.contains(t)
+          }
 
           return false
         }
@@ -378,11 +389,22 @@ object CPO_Naive {
     }
     /* adaption end */
     Out.severe("Comparing unrecognized term. This is considered a bug! Please report.")
+    Out.severe(s.pretty)
     false
   }
 
-  final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = ???
+  final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = {
+    if (s == t) true
+    else gt0(s,t,x) // TODO ??
+  }
 
+
+
+
+  final private def effectiveArgs(forTy: Type, args: Seq[Either[Term, Type]]): Seq[Term] = {
+    assert(args.take(forTy.polyPrefixArgsCount).forall(_.isRight), s"Number of expected type arguments (${forTy.polyPrefixArgsCount}) do not match ty abstraction count: \n\t Type: ${forTy.pretty}\n\tArgs: ${args.map(_.fold(_.pretty,_.pretty))}")
+    filterTermArgs(args.drop(forTy.polyPrefixArgsCount))
+  }
 
   final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
     case Seq() => Seq()
