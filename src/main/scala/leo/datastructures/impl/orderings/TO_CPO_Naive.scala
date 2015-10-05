@@ -1,5 +1,6 @@
 package leo.datastructures.impl.orderings
 
+import leo.Configuration
 import leo.datastructures.{Precedence, Term, Type}
 import leo.datastructures._
 import leo.datastructures.impl.Signature
@@ -75,7 +76,7 @@ object TO_CPO_Naive {
   // ###############################################################################
 
   // well-founded ordering of symbols in signature
-  final private def precedence(s: Signature#Key, t: Signature#Key): CMP_Result = Precedence.arity_UnaryFirst.compare(s,t)
+  final private def precedence(s: Signature#Key, t: Signature#Key): CMP_Result = Configuration.PRECEDENCE.compare(s,t)
 
   // Well-founded ordering of base types (sort)
   final private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
@@ -249,8 +250,9 @@ object TO_CPO_Naive {
     import leo.datastructures.Term.{:::>, Bound, MetaVar, Symbol, TypeLambda, ∙,mkApp}
 
     if (s == t) return false
+    println("asdasdasd")
     if (s.isVariable) return false
-
+    println("asdasdasd")
     if (s.isApp || s.isConstant) {
       val (f,args) = ∙.unapply(s).get
       val fargList: Seq[Term] = effectiveArgs(f.ty,args)
@@ -265,6 +267,12 @@ object TO_CPO_Naive {
           /* case 1: f(t) >= v */
           if (fargList.exists(ge(_, t))) return true
 
+
+          /* case 6: f(t) > y */
+          if (t.isVariable) {
+
+            return Bound.unapply(t).isDefined || x.contains(t)
+          }
           /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
           if (t.isApp || t.isConstant) {
 
@@ -305,10 +313,7 @@ object TO_CPO_Naive {
             val (_,tO) = :::>.unapply(t).get
             return gt0(s,tO,x)
           }
-          /* case 6: f(t) > y */
-          if (t.isVariable) {
-            return Bound.unapply(t).isDefined || x.contains(t)
-          }
+
           // otherwise, fail
           return false
 

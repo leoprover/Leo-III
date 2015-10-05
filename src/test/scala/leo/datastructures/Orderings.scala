@@ -32,7 +32,7 @@ class Orderings extends LeoTestSuite {
 
   val source = getClass.getResource("/problems").getPath
   val problem_suffix = ".p"
-  val problems = Seq( "SYN000^1")//, "COM003_1", "KRS003_1", "SYN000^1" )
+  val problems = Seq( "ord1")//, "COM003_1", "KRS003_1", "SYN000^1" )
 
   for (p <- problems) {
    test(s"Ordering test for $p", Benchmark) {
@@ -46,25 +46,37 @@ class Orderings extends LeoTestSuite {
           fail()
       }
      Utility.printUserDefinedSignature()
-     val fsIt = FormulaDataStore.getFormulas.iterator
-     while (fsIt.hasNext) {
-       val f = fsIt.next()
 
-       val fsIt2 = FormulaDataStore.getFormulas.iterator
-       while (fsIt2.hasNext) {
-         val f2 = fsIt2.next()
-         val (a,b) = (f.clause.lits.head.term, f2.clause.lits.head.term)
-         val res = TO_CPO_Naive.compare(a,b)
-         res match {
-           case CMP_EQ => eq += ((a,b))
-           case CMP_GT => gt += ((a,b))
-           case CMP_LT => lt += ((a,b))
-           case CMP_NC => nc += ((a,b))
-           case _ => assert(false)
-         }
-         Out.output(TermCMPResult(a, b,res))
-       }
-     }
+     val pc = Term.mkAtom(Signature("p").key)
+     val h = Term.mkAtom(Signature("h").key)
+     val a = Term.mkTermApp(pc,h)
+     val b = Term.mkBound(Signature.get.i, 1) //Term.mkTermApp(pc,Term.mkBound(Signature.get.i, 1))
+     Out.output("a: " + a.pretty)
+     Out.output("b: " + b.pretty)
+     val res = TO_CPO_Naive.compare(a,b)
+     Out.output(TermCMPResult(a, b, res))
+
+//     val fsIt = FormulaDataStore.getFormulas.iterator
+//     while (fsIt.hasNext) {
+//       val f = fsIt.next()
+//
+//       val fsIt2 = FormulaDataStore.getFormulas.iterator
+//       while (fsIt2.hasNext) {
+//         val f2 = fsIt2.next()
+//         if (f != f2) {
+//           val (a, b) = (f.clause.lits.head.term, f2.clause.lits.head.term)
+//           val res = TO_CPO_Naive.compare(a, b)
+//           res match {
+//             case CMP_EQ => eq += ((a, b))
+//             case CMP_GT => gt += ((a, b))
+//             case CMP_LT => lt += ((a, b))
+//             case CMP_NC => nc += ((a, b))
+//             case _ => assert(false)
+//           }
+//           Out.output(TermCMPResult(a, b, res))
+//         }
+//       }
+//     }
 
      printHeading("Statistics")
 
