@@ -100,7 +100,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val TERM_ORDERING: TermOrdering = TermOrdering.senseless
 
-  lazy val PRECEDENCE: Precedence = Precedence.arity_UnaryFirst
+  lazy val PRECEDENCE: Precedence = Precedence.arityOrder_UnaryFirst
 
   // more to come ...
 
