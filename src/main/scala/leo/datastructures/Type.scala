@@ -90,7 +90,7 @@ abstract class Type extends Pretty {
   def +(ty: Type) = Type.mkUnionType(this, ty)
 
   val numberOfComponents: Int = 1
-  def order: Int = ??? // TODO
+  def order: Int
   /**
    * The number of "prefix" type abstractions, i.e. the length
    * of the longest prefix of this type only containing
