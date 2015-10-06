@@ -2,7 +2,7 @@ package leo
 
 import leo.agents.{FifoController}
 import leo.agents.impl.{FormulaSelectionAgent, CounterContextControlAgent, ContextControlAgent}
-import leo.datastructures.blackboard.{FormulaStore, FormulaType, DoneEvent, Blackboard}
+import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
@@ -97,7 +97,8 @@ object Main {
 //      println("=============\n   Active\n================")
 //      SelectionTimeStore.noSelect(Context()).foreach{case f => println(f.created.pretty+"@"+f.pretty)}
 
-      Out.output(SZSOutput(SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown), Configuration.PROBLEMFILE, s"${endTime-beginTime} ms"))
+      val szs_status = SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown)
+      Out.output(SZSOutput(szs_status, Configuration.PROBLEMFILE, s"${endTime-beginTime} ms"))
 
       // TODO build switch for mulitple contexts
       // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))

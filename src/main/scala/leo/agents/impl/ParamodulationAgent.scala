@@ -71,8 +71,8 @@ class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent 
 
 
   final private case class ParamodTask(f1 : FormulaStore, f2 : FormulaStore, r : FormulaStore, t : Term, l : Literal, s : Unification#Substitute) extends Task {
-    override def readSet(): Set[FormulaStore] = Set(f1, f2)
-    override def writeSet(): Set[FormulaStore] = Set.empty
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty + (FormulaType -> Set(f1, f2))
+    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
     override def bid(budget: Double): Double = budget / 10
 
     override val toString : String = s"Paramod: ${f1.pretty} with ${f2.pretty}[, ${l.pretty}] over ${t.pretty}=${l.pretty}}]"

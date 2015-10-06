@@ -11,7 +11,7 @@ import Term._
  * TODO create a test suite for the utilities and test them
  */
 class UnificationTestSuite extends LeoTestSuite {
-  // x(a) = f(a,a)
+   //x(a) = f(a,a)
   test("f(x,x) = f(a,a)", Checked){
   val s = getFreshSignature
 

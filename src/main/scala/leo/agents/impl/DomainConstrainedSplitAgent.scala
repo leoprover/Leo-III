@@ -70,8 +70,8 @@ object DomainConstrainedMessage {
 
 private class DomainConstrainedTask(val card : Seq[Int]) extends Task {
   override def name: String = "DomainConstrainedTask"
-  override def writeSet(): Set[FormulaStore] = Set.empty
-  override def readSet(): Set[FormulaStore] = Set.empty
+  override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+  override def readSet(): Map[DataType, Set[Any]] = Map.empty
 
   override def bid(budget: Double): Double = budget / 10
 

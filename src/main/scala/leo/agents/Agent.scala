@@ -122,7 +122,7 @@ abstract class Task extends Pretty {
    *
    * @return Read set for the Task.
    */
-  def readSet() : Set[FormulaStore]
+  def readSet() : Map[DataType, Set[Any]]
 
   /**
    *
@@ -130,15 +130,9 @@ abstract class Task extends Pretty {
    *
    * @return Write set for the task
    */
-  def writeSet() : Set[FormulaStore]
+  def writeSet() : Map[DataType, Set[Any]]
 
-  /**
-   * Defines a set of Contexts on which the task will
-   * write.
-   *
-   * @return set of all contexts the task will manipulate
-   */
-  def contextWriteSet() : Set[Context] = Set.empty
+  def lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
 
   /**
    * Checks for two tasks, if they are in conflict with each other.
@@ -148,12 +142,17 @@ abstract class Task extends Pretty {
    */
   def collide(t2 : Task) : Boolean = {
     val t1 = this
-    if(t1 equals t2) true
-    else {
-      t1.readSet().intersect(t2.writeSet()).nonEmpty ||
-        t2.readSet().intersect(t1.writeSet()).nonEmpty ||
-        t2.writeSet().intersect((t1.writeSet())).nonEmpty ||
-        t2.contextWriteSet().intersect((t1.contextWriteSet())).nonEmpty
+    if(t1 eq t2) return true
+    val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)  // Restrict to the datatypes both tasks use.
+
+    !sharedTypes.exists{d =>        // There exist no datatype
+      val r1 : Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
+      val w1 : Set[Any] = t1.writeSet().getOrElse(d, Set.empty[Any])
+      val r2 : Set[Any] = t2.readSet().getOrElse(d, Set.empty[Any])
+      val w2 : Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
+
+      (r1 & w2).nonEmpty || (r2 & w1).nonEmpty || (w1 & w2).nonEmpty
+      true
     }
   }
 

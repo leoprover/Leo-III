@@ -336,13 +336,19 @@ package util.executionModels {
   //mutable, non deterministic, stream
   abstract class NDStream[S /*result type*/ ]( val initial: Configuration[S], val myFun: Configuration[S] => Iterable[Configuration[S]] ) extends Iterable[S] with SearchAlgorithm {
 
-    type T = Configuration[S]
+    protected var MAX_DEPTH : Int = 60  // TODO Load from Configurations
+
+    type T = (Configuration[S], Int)  // Configuration and Depth in the search
     private val results: mutable.Queue[S] = new mutable.Queue[S]()
     protected var hd: Option[S] = None
+    protected val hdFunc: () => Option[S] = () => nextVal
+    protected var terminal: Boolean = false
     protected def initDS: Unit = {
-      add( initial )
-      hd = nextVal
+      add( (initial, 0) )
+      hd = hdFunc()
     }
+
+
 
     @tailrec
     protected final def nextVal: Option[S] = {
@@ -353,15 +359,19 @@ package util.executionModels {
       } else {
         val conf = get
         if ( conf == None ) None
-        else {
-          val confs: Iterable[Configuration[S]] = myFun( conf.get )
+        else if (conf.get._2 < MAX_DEPTH) {
+          val confs: Iterable[Configuration[S]] = { myFun( conf.get._1 )}
           confs.foreach( x => {
             if ( x.result != None )
-              results.enqueue( x.result.get );
-            if ( !x.isTerminal )
-              add( x )
+              results.enqueue( x.result.get )
+            if ( !x.isTerminal ) {
+              //println("New configuration in Depth "+conf.get._2)
+              add((x, conf.get._2 + 1))
+            }
           } )
           nextVal
+        } else {
+          None
         }
       }
     }
@@ -371,14 +381,29 @@ package util.executionModels {
     def iterator: Iterator[S] =
       if (!wasCalled) new Iterator[S] {
         wasCalled = true
-        def next: S =
-          if (hd.isEmpty) throw new NoSuchElementException("Stream is empty")
+        def next: S = {
+          if (hd.isEmpty && terminal) throw new NoSuchElementException("Stream is empty")
           else {
+            if (hd.isEmpty) {hd = hdFunc(); if (hd.isEmpty) {terminal = true;throw new NoSuchElementException("Stream is empty")} }
             val ret = hd.get
-            hd = nextVal
+            hd = None
             ret
           }
-        def hasNext: Boolean = !hd.isEmpty
+        }
+        def hasNext: Boolean = {
+          if (hd.isEmpty) {
+            if (terminal) false
+            else {
+              hd = hdFunc()
+              if (hd.isEmpty) {
+                terminal = true
+                false
+              } else
+                true
+            }
+          }
+          else true
+        }
     }
     else throw new UnsupportedOperationException("iterator for NDStream can right now be called only once!")
   }

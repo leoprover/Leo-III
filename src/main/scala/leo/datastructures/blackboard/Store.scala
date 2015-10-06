@@ -53,9 +53,9 @@ class FormulaStore(val name : String, val clause : Clause, val created : TimeSta
    */
   def normalized : Boolean = (status & 3)== 3
 
-  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
+  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), status="+status+")."
 
-  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), context="+context.contextID+")."
+  override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), status="+status+")."
 
   def compare(that: FormulaStore): Int = this.clause compare that.clause
 
@@ -63,7 +63,7 @@ class FormulaStore(val name : String, val clause : Clause, val created : TimeSta
   override def cong(that: FormulaStore): Boolean = clause.cong(that.clause)
 
   override def equals(o : Any) : Boolean = o match {
-    case fo : FormulaStore => (this.clause cong fo.clause) && (this.role == fo.role)
+    case fo : FormulaStore => (this.clause cong fo.clause) && (this.role == fo.role) && (this.status == fo.status)    // TODO: Quickfix. Prevents the blackboard from not normalizing, but should be tested somewhere else.
     case _ => false
   }
 

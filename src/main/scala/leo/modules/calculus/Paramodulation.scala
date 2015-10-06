@@ -234,7 +234,7 @@ object NewParamod extends ParamodRule {
     newCls.filterNot(TrivRule.teqt)
   }
 
-  def name = "new_paramod"
+  def name = "full_paramod"
 }
 
 object NewPropParamod extends ParamodRule {
@@ -327,7 +327,7 @@ object NewPropParamod extends ParamodRule {
     newCls.filterNot(cl => TrivRule.teqt(cl))
   }
 
-  def name = "new_paramod_prop"
+  def name = "prop_paramod"
 }
 
 
