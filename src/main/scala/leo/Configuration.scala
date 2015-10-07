@@ -100,7 +100,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val TERM_ORDERING: TermOrdering = TermOrdering.senseless
 
-  lazy val PRECEDENCE: Precedence = Precedence.arityOrder_UnaryFirst
+  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder_UnaryFirst
 
   // more to come ...
 
@@ -147,7 +147,8 @@ object Configuration extends DefaultConfiguration {
       DEFAULT_VERBOSITY}
   }
 
-  protected def uniqueIntFor(param: String, default: Int): Int = configMap.get(param) match {
+  protected def uniqueIntFor(param: String, default: Int): Int = if (configMap == null) default
+    else configMap.get(param) match {
     case None => default
     case Some(arg :: Nil) => processIntFor(param, arg, default)
     case Some(arg :: _) => {
