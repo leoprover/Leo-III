@@ -196,10 +196,13 @@ object TO_CPO_Naive {
   // Comparisons of terms
   ////////////////////////////////////
 
-  private final def gt0Stat(s: Seq[Term], t: Seq[Term], status: Int): Boolean = {
-    if (status == Signature.get.lexStatus) {
-      gt0Lex(s,t)
-    } else if (status == Signature.get.multStatus) {
+  private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int): Boolean = {
+    import leo.datastructures.IsSignature.{lexStatus,multStatus}
+    if (status == lexStatus) {
+      if (s.length > t.length){
+        alleq(s,t,t.length)
+      } else gt0Lex(a,s,t,x)
+    } else if (status == multStatus) {
       gt0Mult(s,t)
     } else {
       // This should not happen
@@ -209,29 +212,39 @@ object TO_CPO_Naive {
   }
 
   @tailrec
-  private final def gt0Lex(s: Seq[Term], t: Seq[Term]): Boolean = {
+  private final def gt0Lex(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term]): Boolean = {
     if (s.nonEmpty && t.nonEmpty) {
       if (s.head == t.head) {
-        gt0Lex(s.tail,t.tail)
+        gt0Lex(a,s.tail,t.tail,x)
       } else {
-        gt(s.head,t.head)
+        gt(s.head,t.head) && t.tail.forall(gt0(a,_,x))
       }
     } else false
   }
 
-  private final def gt0Mult(s: Seq[Term], t: Seq[Term]): Boolean = {
+  @tailrec
+  private final def alleq(s: Seq[Term], t: Seq[Term], n: Int): Boolean = {
+    if (n == 0) true
+    else if (s.head == t.head) {
+      alleq(s.tail,t.tail,n-1)
+    }
+    else false
+  }
+
+  final def gt0Mult(s: Seq[Term], t: Seq[Term]): Boolean = {
     if (s.nonEmpty && t.isEmpty) true
     else if (s.nonEmpty && t.nonEmpty) {
       val sameElements = s.intersect(t)
       val remSameS = s.diff(sameElements)
       val remSameT = t.diff(sameElements)
-      gt0Mult0(remSameS, remSameT)
+      if (remSameS.isEmpty && remSameT.isEmpty) false
+      else gt0Mult0(remSameS, remSameT)
     } else false
   }
 
   @tailrec
   private final def gt0Mult0(s: Seq[Term], t: Seq[Term]): Boolean = {
-    if (s.nonEmpty && t.isEmpty) true
+    if (t.isEmpty) true
     else if (s.nonEmpty && t.nonEmpty) {
       val sn = s.head
       val tIt = t.iterator
@@ -251,6 +264,11 @@ object TO_CPO_Naive {
 
     if (s == t) return false
     if (s.isVariable) return false
+
+    /* case 6+10+15: ... > y */
+    if (t.isVariable) {
+      return Bound.unapply(t).isDefined || x.contains(t)
+    }
 
     if (s.isApp || s.isConstant) {
       val (f,args) = ∙.unapply(s).get
@@ -276,7 +294,7 @@ object TO_CPO_Naive {
                 case Symbol(idg) =>
                   /* case 2+3 */
                   if (precedence(idf, idg) == CMP_EQ) {
-                    return gargList.forall(gt0(s, _, x)) && gt0Stat(fargList, gargList, Signature(idf).status)
+                    return gt0Stat(s,fargList, gargList, x, Signature(idf).status)
                   } else if (precedence(idf, idg) == CMP_GT) {
                     return gargList.forall(gt0(s, _, x))
                   } else {
@@ -305,12 +323,6 @@ object TO_CPO_Naive {
           if (t.isTermAbs) {
             val (_,tO) = :::>.unapply(t).get
             return gt0(s,tO,x)
-          }
-
-          /* case 6: f(t) > y */
-          if (t.isVariable) {
-
-            return Bound.unapply(t).isDefined || x.contains(t)
           }
 
           // otherwise, fail
@@ -345,10 +357,6 @@ object TO_CPO_Naive {
             return gt0(s, tO, x)
           }
 
-          if (t.isVariable) {
-            return Bound.unapply(t).isDefined || x.contains(t)
-          }
-
           return false
         }
       }
@@ -367,10 +375,6 @@ object TO_CPO_Naive {
 
         if (sInTy == tInTy) return gt0(sO, tO, x)
         else return gt0(s, tO, x)
-      }
-
-      if (t.isVariable) {
-        return Bound.unapply(t).isDefined || x.contains(t)
       }
 
       return false
