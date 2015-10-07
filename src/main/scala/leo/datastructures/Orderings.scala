@@ -113,6 +113,7 @@ object Precedence {
   final val arity_UnaryFirst: Precedence = Prec_Arity_UnaryFirst
   final val arityOrder: Precedence = Prec_ArityOrder
   final val arityOrder_UnaryFirst: Precedence = Prec_ArityOrder_UnaryFirst
+  final val arityInvOrder_UnaryFirst: Precedence = Prec_ArityInvOrder_UnaryFirst
 }
 
 ///////////////////////
