@@ -69,14 +69,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   protected[impl] case class DefinedMeta(identifier: String,
                                              index: Key,
                                              typ: Option[Type],
-                                             definition: Term) extends Meta {
+                                             definition: Term,
+                                             status: Int) extends Meta {
     def name = identifier
     def key = index
     def symType = Defined
     def ty: Option[Type] = typ
     def kind: Option[Kind] = None
     def defn: Option[Term] = Some(definition)
-    def status = 0
 
     def hasType = typ.isDefined
     def hasKind = false
@@ -140,7 +140,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 
       case Some(fed) => { // Defined
         val Left(ty) = typ.get
-        val meta = DefinedMeta(identifier, key, Some(ty), fed)
+        val meta = DefinedMeta(identifier, key, Some(ty), fed, status)
           metaMap += ((key, meta))
           definedSet += key
         }
@@ -152,7 +152,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   def addDefinition(key: Key, defn: Term) = {
     metaMap.get(key) match {
       case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty => {
-        val newMeta = DefinedMeta(meta.name, key, Some(meta._ty), defn)
+        val newMeta = DefinedMeta(meta.name, key, Some(meta._ty), defn, meta.status)
         metaMap += ((key, newMeta))
         definedSet += key
         uiSet -= key
@@ -283,12 +283,12 @@ object Signature {
       sig.addBaseType(name)
     }
 
-    for ((name, ty) <- sig.fixedConsts) {
-      sig.addFixed(name, ty, 1)
+    for ((name, ty, status) <- sig.fixedConsts) {
+      sig.addFixed(name, ty, status)
     }
 
-    for ((name, fed, ty) <- sig.definedConsts) {
-      sig.addDefined(name, fed, ty)
+    for ((name, fed, ty, status) <- sig.definedConsts) {
+      sig.addDefined(name, fed, ty, status)
     }
    sig
   }

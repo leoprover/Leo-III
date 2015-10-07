@@ -14,9 +14,6 @@ trait IsSignature {
 
   type TypeOrKind = Either[Type, Kind]
 
-  final val multStatus: Int = 0
-  final val lexStatus: Int = 1
-
   ///////////////////////////////
   // Symbol types
   ///////////////////////////////
@@ -130,7 +127,7 @@ trait IsSignature {
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term, typ: Type): Key = addConstant0(identifier, Some(Left(typ)), Some(defn), 0)
+  def addDefined(identifier: String, defn: Term, typ: Type, status: Int = 0): Key = addConstant0(identifier, Some(Left(typ)), Some(defn), status)
   /** Adds a term variable without type to the signature.
     * @return The key the symbol is indexed by
     */
@@ -220,4 +217,9 @@ trait IsSignature {
   def freshSkolemVar(ty: Type): Key
   /** Create fresh base type symbol */
   def freshTypeVar: Key
+}
+
+object IsSignature {
+  final val multStatus: Int = 0
+  final val lexStatus: Int = 1
 }

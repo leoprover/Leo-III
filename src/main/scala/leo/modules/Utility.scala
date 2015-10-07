@@ -160,12 +160,15 @@ object Utility {
   }
 
   def printSignature(): Unit = {
+    import leo.datastructures.IsSignature.{lexStatus,multStatus}
     val s = Signature.get
     println("Name | Id | (Type) | (Def)")
     (s.allConstants).foreach { case c => {
       val c1 = s(c)
       print(c1.name + " | ")
       print(c1.key + " |")
+      if (c1.status == lexStatus) print("lex " + " | ")
+      if (c1.status == multStatus) print("mult" + " | ")
       c1.ty foreach { case ty => print(ty.pretty + " | ")}
       c1.defn foreach { case defn => print(defn.pretty)}
       println()
@@ -174,11 +177,14 @@ object Utility {
   }
 
   def printUserDefinedSignature(): Unit = {
+    import leo.datastructures.IsSignature.{lexStatus,multStatus}
     val s = Signature.get
     (s.allUserConstants).foreach { case c => {
       val c1 = s(c)
       print(c1.name + " | ")
       print(c1.key + " | ")
+      if (c1.status == lexStatus) print("lex " + " | ")
+      if (c1.status == multStatus) print("mult" + " | ")
       c1.ty foreach { case ty => print(ty.pretty + " | ")}
       c1.defn foreach { case defn => print(defn.pretty)}
       println()
