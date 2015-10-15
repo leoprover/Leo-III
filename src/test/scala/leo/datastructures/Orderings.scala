@@ -32,10 +32,10 @@ class Orderings extends LeoTestSuite {
 //    Out.output(TypeCMPResult(∀(1 ->: s.i),∀(s.i ->: s.i ->: s.i)))
 //  }
 
-//  val source = getClass.getResource("/problems").getPath
-  val source = "/home/lex/TPTP/Problems/PUZ/"
+  val source = getClass.getResource("/problems").getPath
+//  val source = "/home/lex/TPTP/Problems/PUZ/"
   val problem_suffix = ".p"
-  val problems = Seq( "PUZ085^1")//, "COM003_1", "KRS003_1", "SYN000^1" )
+  val problems = Seq( "COM001_1")//, "COM003_1", "KRS003_1", "SYN000^1" )
   // PUZ085^1: 0 NC
   // COM001_1: 0 NC
   // COM003_1: 0 NC
@@ -95,8 +95,8 @@ class Orderings extends LeoTestSuite {
              case _ => assert(false)
            }
 
-           Out.output(s"## ${f.name} w/ ${f2.name}")
-           Out.output(TermCMPResult(a, b, res))
+//           Out.output(s"## ${f.name} w/ ${f2.name}")
+//           Out.output(TermCMPResult(a, b, res))
          }
        }
      }
@@ -144,6 +144,36 @@ class Orderings extends LeoTestSuite {
          Out.severe("##########")
        }
      }
+
+     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(_.clause.lits.head.term).toSeq
+     import scala.util.Sorting
+     def localLT(a: Term, b: Term): Boolean = TO_CPO_Naive.lt(a,b)
+     val sorted = Sorting.stableSort[Term](terms, (a:Term,b:Term) => TO_CPO_Naive.lt(a,b) )
+
+     TestUtility.printHLine()
+     Out.output("Sort it via internal sorting function")
+     val output = "\t" + sorted.map(a =>  a.pretty).mkString("\n\t")
+     Out.output(s"Sorted:\n ${output}")
+     TestUtility.printHLine()
+
+
+     val reallysorted = {
+       var really = true
+       for (i <- 0 to sorted.length-1) {
+         for (j <- i+1 to sorted.length-1) {
+           if (!TO_CPO_Naive.lt(sorted(i), sorted(j))) {
+             really = false
+           }
+         }
+       }
+       really
+     }
+
+     Out.output(s"Check if really sorted afterwards: ${reallysorted}")
+     val max = sorted.last
+     val min = sorted.head
+     Out.output(s"Maximal Term: ${max.pretty} . Really? ${sorted.init.forall(TO_CPO_Naive.lt(_,max))}")
+     Out.output(s"Minimal Term: ${min.pretty} . Really? ${sorted.tail.forall(TO_CPO_Naive.lt(min,_))}")
     }
   }
 

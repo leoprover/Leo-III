@@ -18,7 +18,6 @@ object Superposition extends BinaryCalculusRule[Clause, (Literal, Literal, Posit
     val equ = hint._1
     val into = hint._2
     val where = hint._3
-
-
+    ???
   }
 }
