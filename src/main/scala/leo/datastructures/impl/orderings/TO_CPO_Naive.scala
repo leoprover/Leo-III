@@ -1,7 +1,7 @@
 package leo.datastructures.impl.orderings
 
 import leo.Configuration
-import leo.datastructures.{Precedence, Term, Type}
+import leo.datastructures.{Term, Type}
 import leo.datastructures._
 import leo.datastructures.impl.Signature
 import leo.modules.output.logger.Out
@@ -21,54 +21,50 @@ object TO_CPO_Naive {
   /// Exported functions
   /////////////////////////////////////////////////////////////////
 
-  ////////////////////////////////////
-  // Comparisons of types
-  ////////////////////////////////////
+  /* Comparisons of types */
 
   // Core function for comparisons
-  def gt(a: Type, b: Type): Boolean = gt0(a,b)
-  def ge(a: Type, b: Type): Boolean = ge0(a,b)
+  @inline final def gt(a: Type, b: Type): Boolean = gt0(a,b)
+  @inline final def ge(a: Type, b: Type): Boolean = ge0(a,b)
 
   // Defined by gt/ge
-  def lt(a: Type, b: Type): Boolean = gt(b,a)
-  def le(a: Type, b: Type): Boolean = ge(b,a)
+  @inline final def lt(a: Type, b: Type): Boolean = gt(b,a)
+  @inline final def le(a: Type, b: Type): Boolean = ge(b,a)
 
-  def compare(a: Type, b: Type): CMP_Result = {
+  @inline final def compare(a: Type, b: Type): CMP_Result = {
     if (a == b) CMP_EQ
     else if (gt(a,b)) CMP_GT
     else if (lt(a,b)) CMP_LT
     else CMP_NC
   }
-  def canCompare(a: Type, b: Type): Boolean = compare(a,b) != CMP_NC
+  @inline final def canCompare(a: Type, b: Type): Boolean = compare(a,b) != CMP_NC
 
-  ////////////////////////////////////
-  // Comparisons of terms
-  ////////////////////////////////////
+
+  /* Comparisons of terms */
 
   // Core function for comparisons
-  def gt(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && gt0(s,t, Set())
-  def gt(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && gt0(s,t, bound)
+  @inline final def gt(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && gt0(s,t, Set())
+  @inline final def gt(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && gt0(s,t, bound)
+  @inline final def gtMult(s: Seq[Term], t: Seq[Term]): Boolean = gt0Mult(s,t)
 
-  def ge(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && ge0(s,t, Set())
-  def ge(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && ge0(s,t, bound)
-
-  def equiv(s: Term, t: Term): Boolean = ???
+  @inline final def ge(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && ge0(s,t, Set())
+  @inline final def ge(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && ge0(s,t, bound)
 
   // Defined by gt/ge
-  def lt(s: Term, t: Term): Boolean = gt(t,s)
-  def le(s: Term, t: Term): Boolean = ge(t,s)
+  @inline final def lt(s: Term, t: Term): Boolean = gt(t,s)
+  @inline final def le(s: Term, t: Term): Boolean = ge(t,s)
 
-  def compare(s: Term, t: Term): CMP_Result = {
+  @inline final def compare(s: Term, t: Term): CMP_Result = {
     if (s == t) CMP_EQ
     else if (gt(s,t)) CMP_GT
     else if (lt(s,t)) CMP_LT
     else CMP_NC
   }
-  def canCompare(s: Term, t: Term): Boolean = compare(s,t) != CMP_NC
+  @inline final def canCompare(s: Term, t: Term): Boolean = compare(s,t) != CMP_NC
 
-  ////////////////////////////////////
-  // Common comparison-related operations
-  ////////////////////////////////////
+  /* Common comparison-related operations */
+
+  // Nothing
 
 
   /////////////////////////////////////////////////////////////////
@@ -136,7 +132,7 @@ object TO_CPO_Naive {
     false
   }
 
-  final private def ge0(a: Type, b: Type): Boolean = { // TODO: Do we need that?
+  final private def ge0(a: Type, b: Type): Boolean = {
     import leo.datastructures.Type.{BaseType,->,∀}
 
     if (a == b) return true
@@ -183,7 +179,7 @@ object TO_CPO_Naive {
 
   // Two types are equal wrt to the type ordering if they are
   // syntacticallly equal of they are equal base types (wrt to ordering of base types).
-  final private def eq_type(a: Type, b: Type): Boolean = {
+  @inline final private def eq_type(a: Type, b: Type): Boolean = {
     import leo.datastructures.Type.BaseType
     if (a == b) return true
     if (a.isBaseType && b.isBaseType) {
@@ -198,7 +194,7 @@ object TO_CPO_Naive {
   // Comparisons of terms
   ////////////////////////////////////
 
-  private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int): Boolean = {
+  @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int): Boolean = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
     if (status == lexStatus) {
       if (s.length > t.length){
@@ -233,7 +229,7 @@ object TO_CPO_Naive {
     else false
   }
 
-  final def gt0Mult(s: Seq[Term], t: Seq[Term]): Boolean = {
+  private final def gt0Mult(s: Seq[Term], t: Seq[Term]): Boolean = {
     if (s.nonEmpty && t.isEmpty) true
     else if (s.nonEmpty && t.nonEmpty) {
       val sameElements = s.intersect(t)
@@ -259,11 +255,6 @@ object TO_CPO_Naive {
       }
       gt0Mult0(s.tail,keepT)
     } else false
-  }
-
-  private final def equivMult(s: Seq[Term], t: Seq[Term]): Boolean = {
-    if (s == t) true
-    else s.diff(t).isEmpty && t.diff(s).isEmpty // TODO: Implement efficiently
   }
 
   final private def gt0(s: Term, t: Term, x: Set[Term]): Boolean = {
@@ -399,7 +390,6 @@ object TO_CPO_Naive {
 
         return gt0(sO,tO,x)
       }
-      // TODO: More cases? (such as variable on the right?)
       return false
     }
     /* adaption end */
@@ -409,11 +399,9 @@ object TO_CPO_Naive {
   }
 
 
-
-
-  final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = {
+  @inline final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = {
     if (s == t) true
-    else gt0(s,t,x) // TODO ??
+    else gt0(s,t,x)
   }
 
 
