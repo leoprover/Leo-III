@@ -52,6 +52,8 @@ object TO_CPO_Naive {
   def ge(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && ge0(s,t, Set())
   def ge(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && ge0(s,t, bound)
 
+  def equiv(s: Term, t: Term): Boolean = ???
+
   // Defined by gt/ge
   def lt(s: Term, t: Term): Boolean = gt(t,s)
   def le(s: Term, t: Term): Boolean = ge(t,s)
@@ -121,7 +123,7 @@ object TO_CPO_Naive {
     if (a.isPolyType) {
       val aO = ∀.unapply(a).get
 
-      if (gt0(aO, b)) return true
+      if (ge0(aO, b)) return true
 
       if (b.isPolyType) {
         val bO = ∀.unapply(b).get
@@ -257,6 +259,11 @@ object TO_CPO_Naive {
       }
       gt0Mult0(s.tail,keepT)
     } else false
+  }
+
+  private final def equivMult(s: Seq[Term], t: Seq[Term]): Boolean = {
+    if (s == t) true
+    else s.diff(t).isEmpty && t.diff(s).isEmpty // TODO: Implement efficiently
   }
 
   final private def gt0(s: Term, t: Term, x: Set[Term]): Boolean = {
@@ -400,6 +407,9 @@ object TO_CPO_Naive {
     Out.severe(s.pretty)
     false
   }
+
+
+
 
   final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = {
     if (s == t) true
