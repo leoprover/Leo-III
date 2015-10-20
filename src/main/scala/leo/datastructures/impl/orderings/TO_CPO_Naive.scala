@@ -25,11 +25,11 @@ object TO_CPO_Naive {
 
   // Core function for comparisons
   @inline final def gt(a: Type, b: Type): Boolean = gt0(a,b)
-  @inline final def ge(a: Type, b: Type): Boolean = ge0(a,b)
+  @inline final def gteq(a: Type, b: Type): Boolean = ge0(a,b)
 
   // Defined by gt/ge
   @inline final def lt(a: Type, b: Type): Boolean = gt(b,a)
-  @inline final def le(a: Type, b: Type): Boolean = ge(b,a)
+  @inline final def lteq(a: Type, b: Type): Boolean = gteq(b,a)
 
   @inline final def compare(a: Type, b: Type): CMP_Result = {
     if (a == b) CMP_EQ
@@ -43,16 +43,16 @@ object TO_CPO_Naive {
   /* Comparisons of terms */
 
   // Core function for comparisons
-  @inline final def gt(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && gt0(s,t, Set())
-  @inline final def gt(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && gt0(s,t, bound)
+  @inline final def gt(s: Term, t: Term): Boolean = gteq(s.ty, t.ty) && gt0(s,t, Set())
+  @inline final def gt(s: Term, t: Term, bound: Set[Term]): Boolean = gteq(s.ty, t.ty) && gt0(s,t, bound)
   @inline final def gtMult(s: Seq[Term], t: Seq[Term]): Boolean = gt0Mult(s,t)
 
-  @inline final def ge(s: Term, t: Term): Boolean = ge(s.ty, t.ty) && ge0(s,t, Set())
-  @inline final def ge(s: Term, t: Term, bound: Set[Term]): Boolean = ge(s.ty, t.ty) && ge0(s,t, bound)
+  @inline final def gteq(s: Term, t: Term): Boolean = gteq(s.ty, t.ty) && ge0(s,t, Set())
+  @inline final def gteq(s: Term, t: Term, bound: Set[Term]): Boolean = gteq(s.ty, t.ty) && ge0(s,t, bound)
 
   // Defined by gt/ge
   @inline final def lt(s: Term, t: Term): Boolean = gt(t,s)
-  @inline final def le(s: Term, t: Term): Boolean = ge(t,s)
+  @inline final def lteq(s: Term, t: Term): Boolean = gteq(t,s)
 
   @inline final def compare(s: Term, t: Term): CMP_Result = {
     if (s == t) CMP_EQ
@@ -280,7 +280,7 @@ object TO_CPO_Naive {
         /* f(t) > ... cases */
 
           /* case 1: f(t) >= v */
-          if (fargList.exists(ge(_, t))) return true
+          if (fargList.exists(gteq(_, t))) return true
 
           /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
           if (t.isApp || t.isConstant) {
@@ -331,7 +331,7 @@ object TO_CPO_Naive {
         // #############
         case _ if fargList.nonEmpty => {
 
-          if (ge0(mkApp(f,args.init),t,x) || ge(fargList.last,t,x)) return true
+          if (ge0(mkApp(f,args.init),t,x) || gteq(fargList.last,t,x)) return true
 
           if (t.isApp) {
             val (g,args2) = ∙.unapply(t).get
@@ -345,8 +345,8 @@ object TO_CPO_Naive {
                 if (gt0(fargList.last, gargList.last,x)) return true
               }
 
-              return ((gt(s2,t2,x) || ge(fargList.last,t2,x) || gt(s,t2))
-                   && (gt(s2,gargList.last,x) || ge(fargList.last,gargList.last,x) || gt(s,gargList.last)))
+              return ((gt(s2,t2,x) || gteq(fargList.last,t2,x) || gt(s,t2))
+                   && (gt(s2,gargList.last,x) || gteq(fargList.last,gargList.last,x) || gt(s,gargList.last)))
             }
           }
 
@@ -366,7 +366,7 @@ object TO_CPO_Naive {
     if (s.isTermAbs) {
       val (sInTy, sO) = :::>.unapply(s).get
 
-      if (ge(sO,t,x)) return true
+      if (gteq(sO,t,x)) return true
 
       if (t.isTermAbs) {
         val (tInTy, tO) = :::>.unapply(t).get
@@ -383,7 +383,7 @@ object TO_CPO_Naive {
     if (s.isTypeAbs) {
       val sO = TypeLambda.unapply(s).get
 
-      if (ge(sO,t,x)) return true
+      if (gteq(sO,t,x)) return true
 
       if (t.isTypeAbs) {
         val tO = TypeLambda.unapply(t).get
