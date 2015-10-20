@@ -98,7 +98,7 @@ object Configuration extends DefaultConfiguration {
   lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
   lazy val LITERAL_ORDERING: LiteralOrdering = Orderings.simple[Literal](LitWeight_TermSize)
 
-  lazy val TERM_ORDERING: TermOrdering = TermOrdering.senseless
+  lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder_UnaryFirst
 

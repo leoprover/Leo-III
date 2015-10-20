@@ -15,7 +15,7 @@ package object leo {
   final val CMP_GT: CompareResult = 4.toByte
 
   type TypeOrdering = QuasiOrdering[Type]
-  type TermOrdering = QuasiOrdering[Term]
+  type TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive.type // FIXME Hacky
   type ClauseOrdering = Ordering[Clause]
   type LiteralOrdering = Ordering[Literal]
 
