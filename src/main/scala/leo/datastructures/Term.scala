@@ -55,6 +55,7 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   // Queries on terms
   def ty: Type
   def freeVars: Set[Term] // TODO: Clarify that this does ...
+  def ground: Boolean
   def boundVars: Set[Term]
   def looseBounds: Set[Int]  // TODO ..as opposed to this
   def metaVars: Set[(Type, Int)]
