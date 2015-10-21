@@ -98,11 +98,11 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
   def cong(that: Literal): Boolean = (this.polarity == that.polarity) && (this.term == that.term)
 
   // System function adaptions
-  override def equals(obj : Any) : Boolean = obj match {
+  override final def equals(obj : Any) : Boolean = obj match {
     case ol:Literal if ol.polarity == polarity => ol.left == left && ol.right == right
     case _ => false
   }
-  override def hashCode() : Int = {
+  override final def hashCode() : Int = {
     val lh = left.hashCode();val rh = right.hashCode()
     if(polarity) lh^rh else ~(lh^rh)
   }
