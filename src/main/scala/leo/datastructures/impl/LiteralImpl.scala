@@ -104,7 +104,7 @@ object LiteralImpl {
       * `s = $true` or `s = $false`. */
     val equational: Boolean = false
     /** Returns true iff the literal is propositional. */
-    lazy val propositional: Boolean = left.isAtom
+    val propositional: Boolean = left.isAtom
 
     /** Returns true iff the literal is a positive equation. */
     val equation: Boolean = false
@@ -113,6 +113,6 @@ object LiteralImpl {
     /** Returns true iff the literal is a flex-flex unification constraint, */
     val flexflex: Boolean = false
     /** Returns true iff the literal has a flexible head. */
-    lazy val flexHead: Boolean = !left.isTermAbs && !left.isTypeAbs && left.headSymbol.isVariable
+    val flexHead: Boolean = !left.isTermAbs && !left.isTypeAbs && left.headSymbol.isVariable
   }
 }
