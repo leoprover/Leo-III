@@ -3,30 +3,25 @@ package leo.agents
 import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
 
 /**
- * <p>
- * Controlling Entity for an Agent.
- * </p>
- *
- * <p>
- * The AgentController stores all generated Tasks
- * and passes them to the auction scheduler.
- * The publishing order is determined by the implementation.
- * </p>
- * @param a is the Agent to be controlled.
+ * Common interface to all agents.
  */
-abstract class AgentController(a : Agent) extends TAgent {
-  val name : String = a.name
+trait TAgent {
+  val name : String
 
   def openTasks : Int
 
   private var _isActive : Boolean = true
 
-  def run(t : Task) : Result = {
-    //    Out.comment(s"[$name]: Executing task\n    ${t.pretty}.")
-    a.run(t)
-  }
+  def isActive : Boolean = _isActive
 
-  def kill() = a.kill()
+  def setActive(a : Boolean) = _isActive = a
+
+  def run(t : Task) : Result
+
+  def kill()
+
+  def register() = Blackboard().registerAgent(this)
+  def unregister() = Blackboard().unregisterAgent(this)
 
   /**
    * Declares the agents interest in specific data.
@@ -35,7 +30,7 @@ abstract class AgentController(a : Agent) extends TAgent {
    *         Some(Nil) -> The agent registers for all data changes. <br />
    *         Some(xs) -> The agent registers only for data changes for any type in xs.
    */
-  lazy val interest : Option[Seq[DataType]] = a.interest
+  def interest : Option[Seq[DataType]]
 
   /*
 --------------------------------------------------------------------------------------------
@@ -77,7 +72,7 @@ abstract class AgentController(a : Agent) extends TAgent {
    *
    * @return maxMoney
    */
-  var maxMoney : Double = 100000
+  def maxMoney : Double
 
   /**
    * As getTasks with an infinite budget.
@@ -99,7 +94,18 @@ abstract class AgentController(a : Agent) extends TAgent {
    */
   def clearTasks() : Unit
 
-  def taskFinished(t : Task) : Unit = {}
+  /**
+   * <p>
+   * This method is called after a task is run and
+   * all filter where applied sucessfully
+   * </p>
+   * <p>
+   * The Method is standard implemented as the empty Instruction.
+   * </p>
+   *
+   * @param t The comletely finished task
+   */
+  def taskFinished(t : Task) : Unit
 
-  def taskChoosen(t : Task) : Unit = {}
+  def taskChoosen(t : Task) : Unit
 }

@@ -17,7 +17,7 @@ import java.util.concurrent.{RejectedExecutionException, Executors}
 object Scheduler {
 
   private[scheduler] lazy val s : Scheduler = {val s = new SchedulerImpl(n); s.start(); s}
-  private lazy val n : Int = Configuration.THREADCOUNT
+  private lazy val n : Int = try {Configuration.THREADCOUNT} catch { case _ : Exception => Configuration.DEFAULT_THREADCOUNT}
 
   /**
    * Creates a Scheduler for 5 Threads or a get for the singleton,
@@ -112,7 +112,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     AgentWork.executingAgents() foreach(_.kill())
     curExec.clear()
     AgentWork.clear()
-    ExecTask.put(ExitResult,ExitTask)   // For the writer to exit, if he is waiting for a result
+    ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
     sT.interrupt()
     s.notifyAll()
     curExec.clear()
@@ -197,7 +197,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     var work : Boolean = false
 
     override def run(): Unit = while(!endFlag) {
-      val (result,task) = ExecTask.get()
+      val (result,task, agent) = ExecTask.get()
       if(endFlag) return              // Savely exit
       var doneSmth = false
       if(curExec.contains(task)) {
@@ -252,6 +252,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
       LockSet.releaseTask(task)
       curExec.remove(task)
+      agent.taskFinished(task)  // TODO maybe move after all filtering
       val lockCount = if(doneSmth) ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") else ActiveTracker.decAndGet()
       if(lockCount <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task
@@ -265,15 +266,15 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * @param a - Agent that will be executed
    * @param t - Task on which the agent runs.
    */
-  private class GenAgent(a : AgentController, t : Task) extends Runnable{
+  private class GenAgent(a : TAgent, t : Task) extends Runnable{
     override def run()  {
-      ExecTask.put(a.run(t),t)
+      ExecTask.put(a.run(t),t, a)
       AgentWork.dec(a)
 //      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
-  private class GenFilter(a : AgentController, t : DataType, newD : Any) extends Runnable{
+  private class GenFilter(a : TAgent, t : DataType, newD : Any) extends Runnable{
     override def run(): Unit = {
       // Sync and trigger on last check
 
@@ -292,9 +293,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private var results : Map[Int, Seq[(Result,Task)]] = TreeMap[Int, Seq[(Result,Task)]]()
+    private var results : Map[Int, Seq[(Result,Task, TAgent)]] = TreeMap[Int, Seq[(Result,Task, TAgent)]]()
 
-    def get() : (Result,Task) = this.synchronized {
+    def get() : (Result,Task,TAgent) = this.synchronized {
       while (true) {
         try {
            while(results.keys.isEmpty) {this.wait()}
@@ -313,17 +314,17 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       null  // Should never be reached
     }
 
-    def put(r : Result, t : Task) {
+    def put(r : Result, t : Task, a : TAgent) {
       this.synchronized{
-        val s : Seq[(Result,Task)] = results.get(r.priority).fold(Seq[(Result,Task)]()){x => x}
-        results = results + (r.priority -> (s :+ ((r,t))))        // Must not be synchronized, but maybe it should
+        val s : Seq[(Result,Task,TAgent)] = results.get(r.priority).fold(Seq[(Result,Task,TAgent)]()){x => x}
+        results = results + (r.priority -> (s :+ ((r,t,a))))        // Must not be synchronized, but maybe it should
         this.notifyAll()
       }
     }
   }
 
   private object AgentWork {
-    protected val agentWork : mutable.Map[AgentController, Int] = new mutable.HashMap[AgentController, Int]()
+    protected val agentWork : mutable.Map[TAgent, Int] = new mutable.HashMap[TAgent, Int]()
 
     /**
      * Increases the amount of work of an agent by 1.
@@ -331,18 +332,18 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
      * @param a - Agent that executes a task
      * @return the updated number of task of the agent.
      */
-    def inc(a : AgentController) : Int = synchronized(agentWork.get(a) match {
+    def inc(a : TAgent) : Int = synchronized(agentWork.get(a) match {
       case Some(v)  => agentWork.update(a,v+1); return v+1
       case None     => agentWork.put(a,1); return 1
     })
 
-    def dec(a : AgentController) : Int = synchronized(agentWork.get(a) match {
+    def dec(a : TAgent) : Int = synchronized(agentWork.get(a) match {
       case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
       case Some(v)  if v == 1 => agentWork.remove(a); return 0
       case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
     })
 
-    def executingAgents() : Iterable[AgentController] = synchronized(agentWork.keys)
+    def executingAgents() : Iterable[TAgent] = synchronized(agentWork.keys)
 
     def clear() = synchronized(agentWork.clear())
 
