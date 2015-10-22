@@ -12,8 +12,7 @@ import leo.modules.CLParameterParser
  */
 object StateDrivenAgentTest {
   def main(args : Array[String]): Unit ={
-    Blackboard().addDS(TaskQueue)
-    TaskQueue.insert("schlafen")
+    Blackboard().addDS(TaskDAG)
     StateTestAgent.setMaxTasks(1)
     StateTestAgent.register()
     (new FifoController(ObserveAgent)).register()
@@ -24,7 +23,7 @@ object StateDrivenAgentTest {
       while(!end){wait()}
     }
     Scheduler().killAll()
-    println(s"EndState:\n  ${TaskQueue.all(TaskType).mkString(",")}")
+    println(s"EndState:\n  ${TaskDAG.all(TaskType).mkString(",")}")
   }
 
   private var end = false
@@ -38,30 +37,26 @@ object StateDrivenAgentTest {
 
 
 
-
 object StateTestAgent extends StateDrivenAgent {
-  final val PARTASK : Int = 1
-  override protected def searchTasks: Iterable[Task] = if(!TaskQueue.contains("losgehen")) {
-      TaskQueue.get(PARTASK) map {s => StateTestTask(s)}
-    } else { Nil }
+  final val PARTASK : Int = 3
+  override protected def searchTasks: Iterable[Task] =TaskDAG.eligable.map{s => StateTestTask(s)}
   override def kill(): Unit = {}
 
-
+  var round : Int = 0
 
   override def run(t: Task): Result = t match {
-      case StateTestTask("schlafen") => Result().remove(TaskType)("schlafen").insert(TaskType)("aufstehen")
-      case StateTestTask("aufstehen") => Result().remove(TaskType)("aufstehen").insert(TaskType)("waschen")
-      case StateTestTask("waschen") => Result().remove(TaskType)("waschen").insert(TaskType)("frühstücken")
-      case StateTestTask("frühstücken") => Result().remove(TaskType)("frühstücken").insert(TaskType)("anziehen")
-      case StateTestTask("anziehen") => Result().remove(TaskType)("anziehen").insert(TaskType)("losgehen")
-      case _ => println(s"${t.pretty} got no match"); Result()
+      case StateTestTask(s) =>
+        round = round + 1
+        //println(s"Done $s as $round")
+        Result().insert(TaskType)(s)
+      case _ => Result()
     }
 
 
 
 
-  override def openTasks: Int = 5 - TaskQueue.size
-  override val name: String = "fib_agent"
+  override def openTasks: Int = TaskDAG.openWork
+  override val name: String = "dag_agent"
 }
 
 
@@ -101,41 +96,69 @@ object ObserveAgent extends Agent {
 /**
  * TaskQueue, delivering Strings in orderly fashion.
  */
-object TaskQueue extends DataStore {
+object TaskDAG extends DataStore {
 
-  private var q : List[String] = Nil
+  private var done : Set[String] = Set()
 
-  def get(n : Int) = synchronized{
-    q.take(n)
+  /**
+   * Stores the structure:
+   *  a -> Set(b)
+   * where a can be executed, if all elements `b` are
+   * in [[done]].
+   */
+  private var dag : Map[String, Set[String]] = Map(
+    "schlafen" -> Set(),
+    "aufstehen" -> Set("schlafen"),
+    "erleichtern" -> Set("aufstehen"),
+    "essen" -> Set("aufstehen"),
+    "zaehne_putzen" -> Set("essen", "erleichtern"),
+    "tasche_öffnen" -> Set("aufstehen"),
+    "tasche_packen" -> Set("tasche_öffnen"),
+    "tasche_schließen" -> Set("tasche_packen"),
+    "unterhose_anziehen" -> Set("zaehne_putzen"),
+    "unterhemd_anziehen" -> Set("zaehne_putzen"),
+    "hemd_anziehen" -> Set("unterhemd_anziehen"),
+    "socken_anziehen" -> Set("zaehne_putzen"),
+    "hose_anziehen" -> Set("hemd_anziehen", "unterhose_anziehen", "socken_anziehen"),
+    "schuhe_anziehen" -> Set("socken_anziehen", "hose_anziehen"),
+    "losgehen" -> Set("schuhe_anziehen", "hose_anziehen", "hemd_anziehen", "tasche_schließen")
+  )
+
+
+  def size : Int = synchronized(done.size)
+
+  def eligable : Iterable[String] = synchronized{
+    dag.filter{ case (w, req) => !(done contains w)&& (req subsetOf done)}.map(_._1)
   }
 
-  def size : Int = synchronized(q.size)
+  def openWork : Int = {
+    dag.size - done.size
+  }
 
-  def contains(s : String) = synchronized(q.toSet.contains(s))
 
   override val storedTypes: Seq[DataType] = Seq(TaskType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
     case (os : String, ns : String) => synchronized{
-      q = ((q.takeWhile(_ != os) ++ List(ns)) ++ {val p = q.dropWhile(_ != os); if(p.isEmpty) p else p.tail})
+      done = done - os + ns
       true
     }
     case _ => false
   }
   override def delete(d: Any): Unit = d match {
     case ds : String => synchronized{
-      q = q.takeWhile(_ != ds) ++ {val p = q.dropWhile(_ != ds); if(p.isEmpty) p else p.tail}
+      done = done - ds
     }
     case _ => false
   }
   override def insert(n: Any): Boolean = n match {
     case ns : String => synchronized {
-      q = q :+ ns
+      done = done + ns
       true
     }
     case _ => false
   }
-  override def clear(): Unit = synchronized{q = Nil}
-  override def all(t: DataType): Set[Any] = synchronized(q.toSet)
+  override def clear(): Unit = synchronized{done = Set()}
+  override def all(t: DataType): Set[Any] = synchronized(done.toSet)
 }
 
 case object TaskType extends DataType {}
