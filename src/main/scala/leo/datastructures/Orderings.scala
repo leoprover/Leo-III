@@ -81,6 +81,36 @@ object Orderings {
     }
   }
 
+  final def mult[A](gt: (A,A) => Boolean): Seq[A] => Seq[A] => Boolean = {
+    s => t => {
+      if (s.nonEmpty && t.isEmpty) true
+      else if (s.nonEmpty && t.nonEmpty) {
+        val sameElements = s.intersect(t)
+        val remSameS = s.diff(sameElements)
+        val remSameT = t.diff(sameElements)
+        if (remSameS.isEmpty && remSameT.isEmpty) false
+        else mult0(gt, remSameS, remSameT)
+      } else false
+    }
+  }
+
+  @tailrec
+  final private def mult0[A](gt: (A,A) => Boolean, s: Seq[A], t: Seq[A]): Boolean = {
+    if (t.isEmpty) true
+    else if (s.nonEmpty && t.nonEmpty) {
+      val sn = s.head
+      val tIt = t.iterator
+      var keepT: Seq[A] = Seq()
+      while (tIt.hasNext) {
+        val tn = tIt.next()
+        if (!gt(sn,tn)) {
+          keepT = keepT :+ tn
+        }
+      }
+      mult0(gt, s.tail,keepT)
+    } else false
+  }
+
   implicit def toQuasiOrdering[A](ord: Ordering[A]): QuasiOrdering[A] = new QuasiOrdering[A] {
     def compare(x: A, y: A) = Some(ord.compare(x,y))
   }
