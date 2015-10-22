@@ -2,6 +2,8 @@ package leo.datastructures
 
 import leo.Configuration
 
+import scala.collection.LinearSeq
+
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -15,62 +17,76 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   def id: Int
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
-  /** The clause's weight. */
-  def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
+  /** The types of the implicitly universally quantified variables. */
+  def implicitlyBound: LinearSeq[Type]
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
-  /** The types of the implicitly universally quantified variables. */
-  def freeVars: Set[Term]
-  def implicitBindings: Seq[Type]
 
-  def isEmpty: Boolean = lits.isEmpty
-  /** all literals `lt` with `lt.flexHead`, i.e. with a flexible head. */
-  def flexHeadLits: Set[Literal]
-  /** all literals `lt` with `lt.isUni`. */
-  def uniLits: Set[Literal]
-  /** all positive equality literals */
-  def eqLits: Set[Literal]
+  // Further properties
+  /** Those literals in `lits` that are positive. */
+  def posLits: Seq[Literal]
+  /** Those literals in `lits` that are negative. */
+  def negLits: Seq[Literal]
 
-  def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
+  /** True iff this clause is horn. */
+  @inline final val horn: Boolean = posLits.length <= 1
+  /** True iff this clause is a unit clause. */
+  @inline final val unit: Boolean = lits.length == 1
+  /** True iff this clause is a demodulator. */
+  @inline final val demodulator: Boolean = posLits.length == 1 && negLits.isEmpty
+  /** True iff this clause is a rewrite rule. */
+  @inline final val rewriteRule: Boolean = demodulator && posLits.head.oriented
+  /** True iff this clause is ground. */
+  @inline final val ground: Boolean = lits.view.forall(_.ground)
+  /** True iff this clause is purely positive. i.e.
+    * if all literals are positive. */
+  @inline final val positive: Boolean = lits.view.forall(_.polarity)
+  /** True iff this clause is purely negative. i.e.
+    * if all literals are negative. */
+  @inline final val negative: Boolean = lits.view.forall(!_.polarity)
 
-  def map[A](f: Literal => A): Seq[A] = lits.map(f)
-  def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
-  def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replace(what, by)), implicitBindings, Derived)
+  /** Returns a term representation of this clause.
+    * @return Term `[l1] || [l2] || ... || [ln]` where `[.]` is the term representation of a literal,
+    * and li are the literals in `lits`, `n = lits.length`. */
+  final lazy val term: Term = mkPolyUnivQuant(implicitlyBound, mkDisjunction(lits.map(_.term)))
 
-  // TODO: Not right! Substitute has to mention newly introduced implicit bindings
-  def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)), implicitBindings, Derived)
+  // Operations on clauses
+  // FIXME: Not right! Substitute has to mention newly introduced implicit bindings
+  def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
 
-  def merge(that : Clause) = {
-    val newBindings = implicitBindings ++ that.implicitBindings
-    val liftedThis = lits.map(_.termMap(_.closure(Subst.shift(that.implicitBindings.length)))) // TODO betanormalize
-    val newLits = liftedThis ++ that.lits
-    Clause.mkClause(newLits, newBindings, Derived)
-  }
+  @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
+  @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
+  @inline final def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replaceAll(what, by)))
 
-  lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
+  /** The clause's weight. */
+  @inline final def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
+  @inline final def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 
-  lazy val toTerm: Term = mkPolyUnivQuant(implicitBindings, mkDisjunction(lits.map(_.toTerm)))
+  final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
-  // TODO: Optimized on sorted Literals.
-  def cong(that : Clause) : Boolean =
-    (lits forall { l1 =>
-      that.lits exists { l2 =>
-        l1.polarity == l2.polarity && l1.term == l2.term
-      }
-    })&&(
-      that.lits forall { l1 =>
-        lits exists { l2 =>
-          l1.polarity == l2.polarity && l1.term == l2.term
-        }
-      })
 
-  override def equals(obj : Any) : Boolean = obj match {
+  // System function adaptions
+  override final def equals(obj : Any): Boolean = obj match {
     case co : Clause =>
       cong(co)
     case _ => false
   }
+  override final def hashCode(): Int = if (lits.isEmpty) 0
+  else lits.tail.foldLeft(lits.head.hashCode()){case (h,l) => h^l.hashCode()}
 
-  override def hashCode() : Int = lits.map(_.hashCode()).fold(0){(a,b) => a^b}  // XOR on all literal hascodes
+  // TODO: Do we still need this?
+  // TODO: Optimized on sorted Literals.
+  def cong(that : Clause) : Boolean =
+    (lits forall { l1 =>
+      that.lits exists { l2 =>
+        l1.polarity == l2.polarity && l1 == l2
+      }
+    })&&(
+      that.lits forall { l1 =>
+        lits exists { l2 =>
+          l1.polarity == l2.polarity && l1 == l2
+        }
+      })
 
   // TODO: Maybe move this to "utilities"?
   private def mkDisjunction(terms: Seq[Term]): Term = terms match {
@@ -87,12 +103,11 @@ object Clause {
   import impl.{VectorClause => ClauseImpl}
 
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
-  def mkClause(lits: Iterable[Literal], implicitBindings: Seq[Type], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, implicitBindings, origin)
-  def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ClauseImpl.mkClause(lits, Seq(), origin)
-  def mkDerivedClause(lits: Iterable[Literal], implicitBindings: Seq[Type]): Clause = mkClause(lits, implicitBindings, Derived)
+  @inline final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = ???
+  @inline final def mkClause(lits: Iterable[Literal]): Clause = mkClause(lits, Derived)
 
-  def empty() = mkClause(Nil, Nil, Derived)
+  @inline final val empty = mkClause(Seq.empty)
 
-  def lastClauseId: Int = ClauseImpl.lastClauseId
+  @inline final def lastClauseId: Int = ClauseImpl.lastClauseId
 }
 
