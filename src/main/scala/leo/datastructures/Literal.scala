@@ -99,7 +99,7 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
 
   // System function adaptions
   override final def equals(obj : Any) : Boolean = obj match {
-    case ol:Literal if ol.polarity == polarity => ol.left == left && ol.right == right
+    case ol:Literal if ol.polarity == polarity => (ol.left == left && ol.right == right) || (ol.left == right && ol.right == left)
     case _ => false
   }
   override final def hashCode() : Int = {
