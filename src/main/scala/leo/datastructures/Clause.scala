@@ -18,7 +18,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
-  def implicitlyBound: LinearSeq[Type]
+  def implicitlyBound: Set[(Type, Int)]
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
@@ -40,18 +40,20 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   @inline final val ground: Boolean = lits.view.forall(_.ground)
   /** True iff this clause is purely positive. i.e.
     * if all literals are positive. */
-  @inline final val positive: Boolean = lits.view.forall(_.polarity)
+  @inline final val positive: Boolean = negLits.isEmpty
   /** True iff this clause is purely negative. i.e.
     * if all literals are negative. */
-  @inline final val negative: Boolean = lits.view.forall(!_.polarity)
+  @inline final val negative: Boolean = posLits.isEmpty
+
+  @inline final val empty: Boolean = lits.isEmpty
+  @inline final val effectivelyEmpty: Boolean = lits.isEmpty || lits.forall(_.flexflex)
 
   /** Returns a term representation of this clause.
     * @return Term `[l1] || [l2] || ... || [ln]` where `[.]` is the term representation of a literal,
     * and li are the literals in `lits`, `n = lits.length`. */
-  final lazy val term: Term = mkPolyUnivQuant(implicitlyBound, mkDisjunction(lits.map(_.term)))
+  final lazy val term: Term = mkPolyUnivQuant(implicitlyBound.map(_._1).toSeq, mkDisjunction(lits.map(_.term)))
 
   // Operations on clauses
-  // FIXME: Not right! Substitute has to mention newly introduced implicit bindings
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
