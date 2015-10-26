@@ -16,6 +16,10 @@ import leo.datastructures.blackboard.{ActiveTracker, DataType, Event}
  * [[setMaxTasks(0)]] or concurrent.
  * </p>
  *
+ * <p>
+ * The agent prevents the scheduler from sending a [[DoneEvent]]
+ * as long as there is still work open.
+ * </p>
  * @author Max Wisniewski
  * @since 10/19/2015
  */
