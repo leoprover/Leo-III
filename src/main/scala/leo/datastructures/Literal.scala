@@ -11,7 +11,9 @@ import leo.Configuration
  * @since 07.11.2014
  * @note Oct. 2015: Substantially updated (literals as equations)
  */
-trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
+trait Literal extends Pretty with HasCongruence[Literal] {
+  import leo.datastructures.Orderings.CMP_Result
+
   /** The unique, increasing literal number. */
   def id: Int
   /** The left side of the literal's equation.
@@ -67,7 +69,7 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
     * `mc(l) ≡ {{s},{t}}` if `l.polarity` and `mc(l) ≡ {{s,t}}` if `!l.polarity`,
     * and `(s,t) ≡ (l.left,l.right)`.
     * */
-  @inline final def compare(that: Literal): Int = Configuration.LITERAL_ORDERING.compare(this, that)
+  @inline final def compare(that: Literal): CMP_Result = Literal.compare(this, that)
 
 
   // Utility functions
@@ -110,6 +112,7 @@ trait Literal extends Pretty with Ordered[Literal] with HasCongruence[Literal] {
 
 object Literal extends Function3[Term, Term, Boolean, Literal] {
   import leo.datastructures.impl.{LiteralImpl => LitImpl}
+  import leo.datastructures.Orderings._
 
   // Constructor methods
   /** Create new (equational) literal with equation `left = right`
@@ -141,5 +144,56 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   /** Create new (non-equational) literal with equation
     * `left = right ≡ $true/$false` and polarity `true`. */
   @inline final def apply(left: Term, right: Boolean) = mkLit(left, right)
+
+
+  // Ordering stuff
+
+  final def compare(a: Literal, b: Literal): CMP_Result = {
+    if (a == b) CMP_EQ
+    else if (a.polarity == b.polarity) cmpSamePol(a,b)
+    else if (a.polarity) cmpDiffPol(a,b)
+    else Orderings.invCMPRes(cmpDiffPol(b,a))
+  }
+
+  /** Compare two literals of same polarity*/
+  private final def cmpSamePol(a: Literal, b: Literal): CMP_Result = {
+    assert(a.polarity == b.polarity);
+    assert(a != b) // This should have been catched in `compare`
+    // TODO: Improve if oriented
+    val (al,ar) = (a.left,a.right)
+    val (bl,br) = (b.left,b.right)
+
+    val albl = al.compareTo(bl)
+    val albr = al.compareTo(br)
+    val arbl = ar.compareTo(bl)
+    val arbr = ar.compareTo(br)
+
+    if ((albl == CMP_GT && albr == CMP_GT) ||
+        (isGE(albl) && isGE(arbr)) ||
+        (isGE(arbl) && isGE(albr)) ||
+        (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
+    else if ((albl == CMP_LT && arbl == CMP_LT) ||
+             (isLE(albl) && isLE(arbr)) ||
+             (isLE(arbl) && isLE(albr)) ||
+             (albr == CMP_LT && arbr == CMP_LT)) CMP_LT
+    else CMP_NC
+  }
+
+  /** Compare two literals of different polarity.
+    * `a` must have positive polarity, `b` must have negative polarity.*/
+  private final def cmpDiffPol(a: Literal, b: Literal): CMP_Result = {
+    assert(a.polarity); assert(!b.polarity)
+    // TODO: Improve if oriented
+    val (al,ar) = (a.left,a.right)
+    val (bl,br) = (b.left,b.right)
+
+    val albl = al.compareTo(bl)
+    val albr = al.compareTo(br)
+    val arbl = ar.compareTo(bl)
+    val arbr = ar.compareTo(br)
+    if ((albl == CMP_GT && albr == CMP_GT) || (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
+    else if ((isLE(albl) || isLE(albr)) && (isLE(arbl) || isLE(arbr))) CMP_LT
+    else CMP_NC
+  }
 }
 
