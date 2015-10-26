@@ -1,7 +1,6 @@
 package leo.datastructures
 
 import leo.Configuration
-import leo.datastructures.Orderings.CMP_Result
 import leo.datastructures.impl.{TermImpl, Signature}
 
 
@@ -56,7 +55,7 @@ trait Term extends Pretty {
   // Queries on terms
   def ty: Type
   def freeVars: Set[Term] // TODO: Clarify that this does ...
-  def ground: Boolean
+  def ground: Boolean = freeVars.isEmpty
   def boundVars: Set[Term]
   def looseBounds: Set[Int]  // TODO ..as opposed to this
   def metaVars: Set[(Type, Int)]

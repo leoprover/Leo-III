@@ -145,7 +145,7 @@ object BenchmarkHeadSymbol {
 
     // Expand definitions
     //    println("Normalize parsed formulae:")
-    val fs2 = fs.map({case (name, clause, role) => (name, clause.mapLit(_.termMap(_.betaNormalize)) ,role)})
+    val fs2 = fs.map({case (name, clause, role) => (name, clause.mapLit(_.termMap{case (l,r) => (l.betaNormalize, r.betaNormalize)}) ,role)})
     //    fs2.foreach({case (name, term, role) =>
     //      println(s"$name \t $role \t\t ${term.pretty}")
     //    })

@@ -43,11 +43,11 @@ object LiteralImpl {
     import leo.Configuration.{TERM_ORDERING => ord}
     /** The left side of the literal's equation.
       * Invariant: `left >= right or !oriented` where > is a term ordering. */
-    val left: Term = if (ord.gteq(t1,t2, metaVars.map {case (ty,sc) => Term.mkMetaVar(ty,sc)})) t1 else t2
+    val left: Term = if (ord.gteq(t1,t2)) t1 else t2
     /** The left side of the literal's equation.
       * Invariant: `!equational => right = $true or right = $false`.
       * Invariant: `left >= right or !oriented` where `>` is a term ordering. */
-    val right: Term = if (ord.gteq(t1,t2, metaVars.map {case (ty,sc) => Term.mkMetaVar(ty,sc)})) t2 else t1
+    val right: Term = if (ord.gteq(t1,t2)) t2 else t1
     /** Whether the equation could have been oriented wrt. a term ordering `>`. */
     val oriented: Boolean = ord.canCompare(t1,t2)
 

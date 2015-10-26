@@ -15,7 +15,7 @@ import scala.annotation.tailrec
  * @author Alexander Steen <a.steen@fu-berlin.de>
  * @since 29.09.2015
  */
-object TO_CPO_Naive extends LeoOrdering[Term] {
+object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   import leo.datastructures.Orderings._
   /////////////////////////////////////////////////////////////////
   /// Exported functions
@@ -51,16 +51,16 @@ object TO_CPO_Naive extends LeoOrdering[Term] {
   @inline final def gteq(s: Term, t: Term, bound: Set[Term]): Boolean = gteq(s.ty, t.ty) && ge0(s,t, bound)
 
   // Defined by gt/ge
-//  @inline final def lt(s: Term, t: Term): Boolean = gt(t,s)
-//  @inline final def lteq(s: Term, t: Term): Boolean = gteq(t,s)
-//
-//  @inline final def compare(s: Term, t: Term): CMP_Result = {
-//    if (s == t) CMP_EQ
-//    else if (gt(s,t)) CMP_GT
-//    else if (lt(s,t)) CMP_LT
-//    else CMP_NC
-//  }
-//  @inline final def canCompare(s: Term, t: Term): Boolean = compare(s,t) != CMP_NC
+  @inline final def lt(s: Term, t: Term): Boolean = gt(t,s)
+  @inline final def lteq(s: Term, t: Term): Boolean = gteq(t,s)
+
+  @inline final def compare(s: Term, t: Term): CMP_Result = {
+    if (s == t) CMP_EQ
+    else if (gt(s,t)) CMP_GT
+    else if (lt(s,t)) CMP_LT
+    else CMP_NC
+  }
+  @inline final def canCompare(s: Term, t: Term): Boolean = compare(s,t) != CMP_NC
 
   /* Common comparison-related operations */
 

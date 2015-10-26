@@ -65,10 +65,9 @@ object Utility {
           case Right(x) =>
             loadedSet += fileAbs
             x.getIncludes.foreach(x => loadRelative(x._1, path))
-
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-              val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
+              val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
               if (FormulaDataStore.addFormula(f))
                 Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
               }
@@ -100,7 +99,7 @@ object Utility {
 
                     val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
                     processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-                      val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
+                      val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
                       if (FormulaDataStore.addFormula(f))
                         Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
                       }
@@ -149,7 +148,7 @@ object Utility {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
         processed match { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-          val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, NoAnnotation)
+          val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, NoAnnotation)
           if (FormulaDataStore.addFormula(f))
             Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
         }

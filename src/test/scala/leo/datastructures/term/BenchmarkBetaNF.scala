@@ -142,7 +142,7 @@ object BenchmarkBetaNF {
 
     // Expand definitions
 //    println("Normalize parsed formulae:")
-    val fs2 = fs.map({case (name, clause, role) => (name, clause.mapLit(_.termMap(_.betaNormalize)) ,role)})
+    val fs2 = fs.map({case (name, clause, role) => (name, clause.mapLit(_.termMap{case (l,r) => (l.betaNormalize, r.betaNormalize)}) ,role)})
     //    fs2.foreach({case (name, term, role) =>
     //      println(s"$name \t $role \t\t ${term.pretty}")
     //    })
@@ -150,7 +150,7 @@ object BenchmarkBetaNF {
 
     // Expand definitions
 //    println("Expand definitions:")
-    val fs3 = fs2.map({case (name, clause, role) => (name, clause.mapLit(_.termMap(_.full_δ_expand)), role)})
+    val fs3 = fs2.map({case (name, clause, role) => (name, clause.mapLit(_.termMap{case (l,r) => (l.full_δ_expand, r.full_δ_expand)}), role)})
 //    fs3.foreach({case (name, term, role) =>
 //      println(s"$name \t $role \t\t ${term.pretty}")
 //    })

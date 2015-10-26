@@ -12,7 +12,6 @@ import leo.Configuration
  * @note Oct. 2015: Substantially updated (literals as equations)
  */
 trait Literal extends Pretty with HasCongruence[Literal] {
-  import leo.datastructures.Orderings.CMP_Result
 
   /** The unique, increasing literal number. */
   def id: Int

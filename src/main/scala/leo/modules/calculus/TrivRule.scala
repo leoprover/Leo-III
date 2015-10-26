@@ -30,7 +30,7 @@ object TrivRule {
    * @param c - Clause
    * @return `c` without trivial contradictions.
    */
-  def teqf(c : Clause) : Clause = Clause.mkClause(teqf(c.lits),c.implicitBindings, Derived)
+  def teqf(c : Clause) : Clause = Clause.mkClause(teqf(c.lits), Derived)
 
   /**
    *
@@ -57,13 +57,11 @@ object TrivRule {
     case x :: xs => x :: ltriv(xs.filterNot(_.cong(x)))
   }
 
-  def triv(c : Clause) : Clause = Clause.mkClause(triv(c.lits),c.implicitBindings, Derived)
+  def triv(c : Clause) : Clause = Clause.mkClause(triv(c.lits), Derived)
 
 
-  private def simpEq(lt : Literal) : Literal = lt.termMap(_ match {
-    case ===(l,r) => if (l==r) LitTrue() else ===(l,r)
-    case t => t
-  })
+  private def simpEq(lt : Literal) : Literal = lt.termMap {case (l,r) =>
+  if (l == r) (LitTrue, LitTrue) else (l,r)}
 
-  def simpEq(c : Clause) : Clause = c.mapLit(simpEq(_))
+  def simpEq(c : Clause) : Clause = c.mapLit(simpEq)
 }

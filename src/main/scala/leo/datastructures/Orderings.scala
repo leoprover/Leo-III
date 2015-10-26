@@ -19,11 +19,7 @@ import scala.annotation.tailrec
 
 object Orderings {
 
-  type CMP_Result = Byte
-  final val CMP_EQ: CMP_Result = 0.toByte
-  final val CMP_LT: CMP_Result = 1.toByte
-  final val CMP_GT: CMP_Result = 2.toByte
-  final val CMP_NC: CMP_Result = 3.toByte
+
 
   @inline final def isComparable(x: CMP_Result): Boolean = (x & ~CMP_EQ) != 0
   @inline final def isGE(x: CMP_Result): Boolean = (x & (CMP_EQ | CMP_GT)) != 0
@@ -32,6 +28,11 @@ object Orderings {
     if (x == CMP_GT) CMP_LT
     else if (x == CMP_LT) CMP_GT
     else x
+  }
+  final def intToCMPRes(x: Int, y: Int): CMP_Result = {
+    if (x > y) CMP_GT
+    else if (x < y) CMP_LT
+    else CMP_EQ
   }
 
   /** Return a (simple) ordering that is induced by a weighting. */
@@ -151,23 +152,23 @@ object ClauseOrdering {
 //////////////////////
 // Associated traits
 //////////////////////
-
-trait LeoOrdering[A] {
-  import leo.datastructures.Orderings._
-
-  def gt(s: A, t: A): Boolean
-  def gteq(s: A, t: A): Boolean
-
-  // Defined by gt/ge
-  @inline final def lt(s: A, t: A): Boolean = gt(t,s)
-  @inline final def lteq(s: A, t: A): Boolean = gteq(t,s)
-
-  @inline final def compare(s: A, t: A): CMP_Result = {
-    if (s == t) CMP_EQ
-    else if (gt(s,t)) CMP_GT
-    else if (lt(s,t)) CMP_LT
-    else CMP_NC
-  }
-  @inline final def canCompare(s: A, t: A): Boolean = compare(s,t) != CMP_NC
-}
+//
+//trait LeoOrdering[A] {
+//  import leo.datastructures.Orderings._
+//
+//  def gt(s: A, t: A): Boolean
+//  def gteq(s: A, t: A): Boolean
+//
+//  // Defined by gt/ge
+//  @inline final def lt(s: A, t: A): Boolean = gt(t,s)
+//  @inline final def lteq(s: A, t: A): Boolean = gteq(t,s)
+//
+//  @inline final def compare(s: A, t: A): CMP_Result = {
+//    if (s == t) CMP_EQ
+//    else if (gt(s,t)) CMP_GT
+//    else if (lt(s,t)) CMP_LT
+//    else CMP_NC
+//  }
+//  @inline final def canCompare(s: A, t: A): Boolean = compare(s,t) != CMP_NC
+//}
 

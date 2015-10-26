@@ -25,8 +25,13 @@ object VectorClause {
   private var clauseCounter : Int = 0
 
   final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = {
+    println("constructor")
     clauseCounter += 1
-    new VectorClause0(clauseCounter, lits, origin)
+    try {
+      new VectorClause0(clauseCounter, lits, origin)
+    } catch {
+      case e: Exception => println(e.toString); e.printStackTrace(); throw e
+    }
   }
 
   @inline final def lastClauseId = clauseCounter

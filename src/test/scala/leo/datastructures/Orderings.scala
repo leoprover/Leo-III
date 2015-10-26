@@ -35,7 +35,7 @@ class Orderings extends LeoTestSuite {
   val source = getClass.getResource("/problems").getPath
 //  val source = "/home/lex/TPTP/Problems/PUZ/"
   val problem_suffix = ".p"
-  val problems = Seq( "COM001_1")//, "COM003_1", "KRS003_1", "SYN000^1" )
+  val problems = Seq( "COM003_1")//, "COM003_1", "KRS003_1", "SYN000^1" )
   // PUZ085^1: 0 NC
   // COM001_1: 0 NC
   // COM003_1: 0 NC

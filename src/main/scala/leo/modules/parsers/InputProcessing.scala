@@ -61,7 +61,17 @@ object InputProcessing {
     case Role_NegConjecture => FromConjecture
     case _ => FromAxiom
   }
-  private def singleTermToClause(t: Term, role: Role): Clause = Clause.mkClause(Seq(Literal.mkPosLit(t)), roleToClauseOrigin(role))
+  private def singleTermToClause(t: Term, role: Role): Clause = {
+    println("asdasd")
+    val l = Literal.mkPos(t, LitTrue)
+    println("l erzeugt")
+    println(l.pretty)
+    val ab = roleToClauseOrigin(role)
+    println(ab.toString)
+    val cl = Clause.mkClause(Seq(l),ab )
+    println("cl erzeugt")
+    cl
+  }
 
   def process(sig: Signature)(input: AnnotatedFormula): Result = {
     val p = input match {
@@ -616,15 +626,15 @@ object InputProcessing {
 
   protected[parsers] def processCNF0(sig: Signature)(input: CNFLogicalFormula, origin: ClauseOrigin): Clause = {
     import leo.datastructures.tptp.cnf.{Positive, Negative, Inequality}
-    import leo.datastructures.Literal.{mkNegLit, mkPosLit, mkUniLit}
-    val lits = input.literals.map { _ match {
-      case Positive(f) => mkPosLit(processAtomicFormula(sig)(f, ???))
-      case Negative(f) => mkNegLit(processAtomicFormula(sig)(f, ???))
-      case Inequality(l, r) => mkUniLit(processTerm(sig)(l, ???), processTerm(sig)(r, ???))
-    }
-    }
-    import leo.datastructures.Clause.{mkClause}
-    mkClause(lits, origin)
+//    val lits = input.literals.map { _ match {
+//      case Positive(f) => mkPosLit(processAtomicFormula(sig)(f, ???))
+//      case Negative(f) => mkNegLit(processAtomicFormula(sig)(f, ???))
+//      case Inequality(l, r) => mkUniLit(processTerm(sig)(l, ???), processTerm(sig)(r, ???))
+//    }
+//    }
+//    import leo.datastructures.Clause.{mkClause}
+//    mkClause(lits, origin)
+    ???
   }
 
 

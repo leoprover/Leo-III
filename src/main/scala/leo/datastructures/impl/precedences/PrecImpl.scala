@@ -1,6 +1,7 @@
 package leo.datastructures.impl.precedences
 
 import leo.datastructures._
+import leo.datastructures.Orderings._
 import leo.modules.output.logger.Out
 
 object Prec_SigInduced extends Precedence {

@@ -5,6 +5,12 @@ package leo
  */
 package object datastructures {
 
+  type CMP_Result = Byte
+  final val CMP_EQ: CMP_Result = 0.toByte
+  final val CMP_LT: CMP_Result = 1.toByte
+  final val CMP_GT: CMP_Result = 2.toByte
+  final val CMP_NC: CMP_Result = 3.toByte
+
   def fuseMaps[A,B](map1: Map[A,Set[B]], map2: Map[A,Set[B]]): Map[A, Set[B]] = {
     map2.foldLeft(map1)({case (intermediateMap, (k,v)) =>
       if (!intermediateMap.contains(k))

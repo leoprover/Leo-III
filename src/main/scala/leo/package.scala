@@ -2,7 +2,7 @@ import leo.datastructures._
 
 package object leo {
 
-  type TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive.type // FIXME Hacky
+  type TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive.type
   type ClauseOrdering = Ordering[Clause]
   type LiteralOrdering = Ordering[Literal]
 
