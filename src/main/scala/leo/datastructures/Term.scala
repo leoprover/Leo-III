@@ -1,6 +1,7 @@
 package leo.datastructures
 
 import leo.Configuration
+import leo.datastructures.Orderings.CMP_Result
 import leo.datastructures.impl.{TermImpl, Signature}
 
 
@@ -26,7 +27,7 @@ import scala.language.implicitConversions
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-trait Term extends QuasiOrdered[Term] with Pretty {
+trait Term extends Pretty {
 
   // Predicates on terms
   /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
@@ -90,7 +91,7 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   def tyClosure(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): Option[Int] = Configuration.TERM_ORDERING.compare(this, that)
+  def compareTo(that: Term): CMP_Result = Configuration.TERM_ORDERING.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
   /** Return the β-nf of the term */
