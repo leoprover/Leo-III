@@ -34,6 +34,7 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
     while(it.hasNext){
       val line = it.next()
       b.append("  Out: "+line+"\n")
+      println(line)
       getSZS(line) match {
         case Some(status) =>
           context.close()

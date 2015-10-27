@@ -72,7 +72,7 @@ abstract class ScriptAgent(path : String) extends Agent {
         val errstr : mutable.ListBuffer[String] = new ListBuffer[String]
         val process = res.run(new ProcessIO(in => in.close(), // Input not used
                                             stdout => try{
-                                              {scala.io.Source.fromInputStream(stdout).getLines().foreach(str.append(_)); stdout.close()}
+                                              {scala.io.Source.fromInputStream(stdout).getLines().foreach{s => str.append(s)}; stdout.close()}
                                             } catch {
                                               case e : IOException => stdout.close()
                                             },

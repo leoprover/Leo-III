@@ -19,7 +19,7 @@ object ExternalProverPhase extends CompletePhase {
         case "leo2" => {
           val path = System.getenv("LEO2_PATH")
           if (path != null) {
-            "scripts/leoexec.sh"
+            getClass.getResource("scripts/leoexec.sh").getPath
           } else {
             throw new SZSException(SZS_UsageError, "--with-prover used with LEO2 prover, but $LEO2_PATH is not set.")
           }
@@ -27,12 +27,12 @@ object ExternalProverPhase extends CompletePhase {
         case "satallax" => {
           val path = System.getenv("SATALLAX_PATH")
           if (path != null) {
-            "scripts/satallaxexec.sh"
+            getClass.getResource("scripts/satallaxexec.sh").getPath
           } else {
             throw new SZSException(SZS_UsageError, "--with-prover used with satallax prover, but $SATALLAX_PATH is not set.")
           }
         }
-        case "remote-leo2" => "scripts/remote-leoexec.sh"
+        case "remote-leo2" => getClass.getResource("/scripts/remote-leoexec.sh").getPath
         case _ => throw new SZSException(SZS_UsageError, "--with-prover parameter used with unrecognized <prover> argument.")
       }
     }
