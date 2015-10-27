@@ -24,7 +24,7 @@ import leo.modules.{SZSException, Utility}
 class LitOrderingTestSuite extends LeoTestSuite {
   val source = "/home/lex/TPTP/Problems/GRP/"
   val problem_suffix = ".p"
-  val problems = Seq( "GRP657+1")//, "COM003_1", "KRS003_1", "SYN000^1" )
+  val problems = Seq( "GRP659+1")//, "COM003_1", "KRS003_1", "SYN000^1" )
   // GRP656+1 eqlits comparable
   // GRP657+1 eqlits comparable
   // GRP658+1 eqlits comparable
@@ -33,6 +33,8 @@ class LitOrderingTestSuite extends LeoTestSuite {
   // GRP660+2 eqlits comparable
   // GRP660+3 eqlits comparable
   // GRP685+1 eqlits comparable
+  // LCL895+1
+  // REL027+4
 
 
   for (p <- problems) {
@@ -153,11 +155,19 @@ class LitOrderingTestSuite extends LeoTestSuite {
       val maxlits = Literal.maxOf(eqlits.toSeq)
       for (ll <- maxlits) {
         Out.output(ll.pretty)
+        val reallymaximal = eqlits.filterNot(_ == ll).forall(a => Orderings.isGE(ll.compare(a)))
+          Out.output(s"Check if really maximal? ${reallymaximal}")
+        assert(reallymaximal)
       }
+
+
       printHeading("Strictly Maximal literals")
       val smaxlits = Literal.strictlyMaxOf(eqlits.toSeq)
       for (lll <- smaxlits) {
         Out.output(lll.pretty)
+        val reallymaximal = eqlits.filterNot(_ == lll).forall(a => (lll.compare(a) == CMP_GT))
+        Out.output(s"Check if really strictly maximal? ${reallymaximal}")
+        assert(reallymaximal)
       }
     }
   }
