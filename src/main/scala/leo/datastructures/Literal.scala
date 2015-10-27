@@ -144,6 +144,9 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
 
 
   // Ordering stuff
+  sealed abstract class LitMaxFlag
+  case object LitStrictlyMax extends LitMaxFlag
+  case object LitMax extends LitMaxFlag
 
   final def compare(a: Literal, b: Literal): CMP_Result = {
     if (a == b) CMP_EQ
@@ -151,6 +154,40 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
     else if (a.polarity) cmpDiffPol(a,b)
     else Orderings.invCMPRes(cmpDiffPol(b,a))
   }
+  final def maximalityOf(lits: Seq[Literal]): Map[LitMaxFlag, Seq[Literal]] = {
+    var notmax: Seq[Literal] = Seq()
+    var notstrictMax: Seq[Literal] = Seq()
+
+    val maxIdx = lits.length-1
+    var i = 0
+    while (i <= maxIdx) {
+      val l1 = lits(i)
+      var j = i+1
+      while (j <= maxIdx) {
+        val l2 = lits(j)
+        val cmp = l1.compare(l2)
+        if (cmp == CMP_GT) {
+          notmax = notmax :+ l2
+          notstrictMax = notstrictMax :+ l2
+        } else if (cmp == CMP_LT) {
+          notmax = notmax :+ l1
+          notstrictMax = notstrictMax :+ l1
+        } else if (cmp == CMP_EQ) {
+          notstrictMax = notstrictMax :+ l1
+          notstrictMax = notstrictMax :+ l2
+        } else {
+          // NC
+
+        }
+
+        j += 1
+      }
+      i += 1
+    }
+    Map(LitStrictlyMax -> lits.diff(notstrictMax), LitMax -> lits.diff(notmax))
+  }
+  final def maxOf(lits: Seq[Literal]): Seq[Literal] = maximalityOf(lits)(LitMax)
+  final def strictlyMaxOf(lits: Seq[Literal]): Seq[Literal] = maximalityOf(lits)(LitStrictlyMax)
 
   /** Compare two literals of same polarity*/
   private final def cmpSamePol(a: Literal, b: Literal): CMP_Result = {

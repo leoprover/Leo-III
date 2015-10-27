@@ -40,7 +40,10 @@ object VectorClause {
 
   @inline final def lastClauseId = clauseCounter
 
-  private class VectorClause0(val id: Int, literals: Iterable[Literal], val origin: ClauseOrigin) extends VectorClause {
+  private final class VectorClause0(val id: Int, literals: Iterable[Literal], val origin: ClauseOrigin) extends VectorClause {
     lazy val lits = literals.toVector
+    import leo.datastructures.Literal.{LitMaxFlag, LitStrictlyMax, LitMax}
+
+    lazy val maxLits: Map[LitMaxFlag, Seq[Literal]] = Literal.maximalityOf(lits)
   }
 }

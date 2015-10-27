@@ -1,9 +1,7 @@
 package leo.datastructures
 
 import leo.Configuration
-
-import scala.collection.LinearSeq
-
+import Literal.LitMaxFlag
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -27,6 +25,8 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   def posLits: Seq[Literal]
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
+
+  def maxLits: Map[LitMaxFlag, Seq[Literal]]
 
   /** True iff this clause is ground. */
   def ground: Boolean
@@ -92,6 +92,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
 
 object Clause {
   import impl.{VectorClause => ClauseImpl}
+  import Literal.{LitMax, LitStrictlyMax}
 
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
   @inline final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause =  ClauseImpl.mkClause(lits, origin)
@@ -114,5 +115,8 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
+
+  @inline final def strictMaxOf(c: Clause): Seq[Literal] = c.maxLits(LitStrictlyMax)
+  @inline final def maxOf(c: Clause): Seq[Literal] = c.maxLits(LitMax)
 }
 
