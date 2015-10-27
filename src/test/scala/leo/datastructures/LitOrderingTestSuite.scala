@@ -24,7 +24,7 @@ import leo.modules.{SZSException, Utility}
 class LitOrderingTestSuite extends LeoTestSuite {
   val source = "/home/lex/TPTP/Problems/GRP/"
   val problem_suffix = ".p"
-  val problems = Seq( "GRP685+1")//, "COM003_1", "KRS003_1", "SYN000^1" )
+  val problems = Seq( "GRP657+1")//, "COM003_1", "KRS003_1", "SYN000^1" )
   // GRP656+1 eqlits comparable
   // GRP657+1 eqlits comparable
   // GRP658+1 eqlits comparable
@@ -149,6 +149,16 @@ class LitOrderingTestSuite extends LeoTestSuite {
           Out.warn(s"Could not compare\n\t${l1.pretty}\n\t${l2.pretty}")
         }
       }
+      printHeading("Maximal literals")
+      val maxlits = Literal.maxOf(eqlits.toSeq)
+      for (ll <- maxlits) {
+        Out.output(ll.pretty)
+      }
+      printHeading("Strictly Maximal literals")
+      val smaxlits = Literal.strictlyMaxOf(eqlits.toSeq)
+      for (lll <- smaxlits) {
+        Out.output(lll.pretty)
+      }
     }
   }
 
@@ -161,28 +171,4 @@ class LitOrderingTestSuite extends LeoTestSuite {
     }
   }
 
-  private case class TypeCMPResult(a: Type, b: Type) extends Output {
-    lazy val output = s"Comparing\t${a.pretty}\t with \t${b.pretty}\tResult: ${cmpResToStr(TO_CPO_Naive.compare(a,b))}"
-
-    private final def cmpResToStr(cmpRes: CMP_Result): String = {
-      cmpRes match {
-        case CMP_EQ => "EQ"
-        case CMP_GT => "GT"
-        case CMP_LT => "LT"
-        case CMP_NC => "NC"
-      }
-    }
-  }
-  private case class TermCMPResult(a: Term, b: Term, res: CMP_Result) extends Output {
-    lazy val output = s"Comparing\n\t${a.pretty}\n\t${b.pretty}\nResult: ${cmpResToStr(res)}"
-
-    private final def cmpResToStr(cmpRes: CMP_Result): String = {
-      cmpRes match {
-        case CMP_EQ => "EQ"
-        case CMP_GT => "GT"
-        case CMP_LT => "LT"
-        case CMP_NC => "NC"
-      }
-    }
-  }
 }
