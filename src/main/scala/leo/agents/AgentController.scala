@@ -4,7 +4,8 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
 
 /**
  * <p>
- * Controlling Entity for an Agent.
+ * Controlling Entity for Reactive Agents. This Controller is a sorting mechanism for
+ * maintaining the tasks of a Reactive, Filterlike Agent.
  * </p>
  *
  * <p>

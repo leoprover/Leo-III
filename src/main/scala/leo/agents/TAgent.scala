@@ -3,24 +3,56 @@ package leo.agents
 import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
 
 /**
- * Common interface to all agents.
+ * Interface to any agent in the architecture.
+ * Contains
+ * <ul>
+ *	<li> Activation Controls, to enable / disable the agent </li>
+ *  <li> Offers an execution mechanism to the action of the agent </li>
+ *  <li> Support the selection mechanism of tasks for the blackboard </li>
+ * </ul>
  */
 trait TAgent {
   val name : String
 
+	/**
+	* Method to pinpoint the task, that can be currently executed.
+	* Most importantly an agent with >0 openTasks will prevent
+	* a [[DoneEvent]] from beeing sent.
+	*/
   def openTasks : Int
 
   private var _isActive : Boolean = true
 
+  /**
+  * This flag shows, whether an agent should be considered for execution.
+  * In this fashion, the agent can not prevent a [[DoneEvent]] from being sent.
+  */
   def isActive : Boolean = _isActive
-
+	
+	/**
+	* Sets the active status.
+	*/
   def setActive(a : Boolean) = _isActive = a
 
+  /**
+  * This method will ultimately execute a task, if it is selected by the scheduler.
+  */
   def run(t : Task) : Result
 
+  /**
+  * This method is called, whenever the program is forcefully stopped.
+  * It has to be implemented to reset internal stati or the agent cannot simply be terminated.
+  */
   def kill()
 
+  /**
+  * Registers this agent in the System for execution.
+  */
   def register() = Blackboard().registerAgent(this)
+  
+  /**
+  * Unregisteres this agent in the system.
+  */
   def unregister() = Blackboard().unregisterAgent(this)
 
   /**
