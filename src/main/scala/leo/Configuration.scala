@@ -96,7 +96,6 @@ object Configuration extends DefaultConfiguration {
   lazy val CLAUSE_ORDERING: ClauseOrdering = ClauseOrdering.lex_WeightAgeOrigin
 
   lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
-  lazy val LITERAL_ORDERING: LiteralOrdering = Orderings.simple[Literal](LitWeight_TermSize)
 
   lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
