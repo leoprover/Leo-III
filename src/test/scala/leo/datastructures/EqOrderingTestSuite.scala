@@ -64,7 +64,7 @@ class EqOrderingTestSuite extends LeoTestSuite {
         val f = fsIt.next()
 
         Out.output(s"Unit clause: ${f.clause.pretty}")
-        assert(f.clause.unit)
+        assert(Clause.unit(f.clause))
         Out.output(s"equational? ${f.clause.lits.head.equational}")
         if (!f.clause.lits.head.equational) {
           Out.output(s"Leading quantifiers? ${hasLeadingQuant(f.clause.lits.head.left)}")

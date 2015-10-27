@@ -28,14 +28,6 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
 
-  /** True iff this clause is horn. */
-  def horn: Boolean
-  /** True iff this clause is a unit clause. */
-  def unit: Boolean
-  /** True iff this clause is a demodulator. */
-  def demodulator: Boolean
-  /** True iff this clause is a rewrite rule. */
-  def rewriteRule: Boolean
   /** True iff this clause is ground. */
   def ground: Boolean
   /** True iff this clause is purely positive. i.e.
@@ -44,9 +36,6 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** True iff this clause is purely negative. i.e.
     * if all literals are negative. */
   def negative: Boolean
-
-  def empty: Boolean
-  def effectivelyEmpty: Boolean
 
   /** Returns a term representation of this clause.
     * @return Term `[l1] || [l2] || ... || [ln]` where `[.]` is the term representation of a literal,
@@ -111,5 +100,19 @@ object Clause {
   @inline final val empty = mkClause(Seq.empty)
 
   @inline final def lastClauseId: Int = ClauseImpl.lastClauseId
+
+  // Utility
+  @inline final def empty(c: Clause): Boolean = c.lits.isEmpty
+  final def effectivelyEmpty(c: Clause): Boolean = empty(c) || c.lits.forall(_.flexflex)
+  final def trivial(c: Clause): Boolean = c.lits.exists(Literal.isTrue) || c.posLits.exists(l => c.negLits.exists(l2 => l.unsignedEquals(l2)))
+
+  /** True iff this clause is horn. */
+  @inline final def horn(c: Clause): Boolean = c.posLits.length <= 1
+  /** True iff this clause is a unit clause. */
+  @inline final def unit(c: Clause): Boolean = c.lits.length == 1
+  /** True iff this clause is a demodulator. */
+  @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
+  /** True iff this clause is a rewrite rule. */
+  @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
 }
 

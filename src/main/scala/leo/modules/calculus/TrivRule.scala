@@ -54,7 +54,7 @@ object TrivRule {
 
   private def ltriv(c : List[Literal]) : List[Literal] = c match {
     case Nil => Nil
-    case x :: xs => x :: ltriv(xs.filterNot(_.cong(x)))
+    case x :: xs => x :: ltriv(xs.filterNot(_ == x))
   }
 
   def triv(c : Clause) : Clause = Clause.mkClause(triv(c.lits), Derived)

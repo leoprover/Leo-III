@@ -11,7 +11,7 @@ import leo.Configuration
  * @since 07.11.2014
  * @note Oct. 2015: Substantially updated (literals as equations)
  */
-trait Literal extends Pretty with HasCongruence[Literal] {
+trait Literal extends Pretty {
 
   /** The unique, increasing literal number. */
   def id: Int
@@ -93,14 +93,11 @@ trait Literal extends Pretty with HasCongruence[Literal] {
 
   @inline final def substitute(s : Subst) : Literal = termMap {case (l,r) => (l.substitute(s).betaNormalize,r.substitute(s).betaNormalize)}
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
-
-
-  // TODO: Do we need that anymore?
-  def cong(that: Literal): Boolean = (this.polarity == that.polarity) && (this.term == that.term)
+  @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
 
   // System function adaptions
   override final def equals(obj : Any) : Boolean = obj match {
-    case ol:Literal if ol.polarity == polarity => (ol.left == left && ol.right == right) || (ol.left == right && ol.right == left)
+    case ol:Literal if ol.polarity == polarity => unsignedEquals(ol)
     case _ => false
   }
   override final def hashCode() : Int = {
@@ -111,6 +108,7 @@ trait Literal extends Pretty with HasCongruence[Literal] {
 
 object Literal extends Function3[Term, Term, Boolean, Literal] {
   import leo.datastructures.impl.{LiteralImpl => LitImpl}
+  import leo.datastructures.Term.Symbol
   import leo.datastructures.Orderings._
 
   // Constructor methods
@@ -194,5 +192,14 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
     else if ((isLE(albl) || isLE(albr)) && (isLE(arbl) || isLE(arbr))) CMP_LT
     else CMP_NC
   }
+
+  // Utility methods
+  final def trivial(l: Literal): Boolean = l.left == l.right
+  final def distinctSides(l: Literal): Boolean = (l.left, l.right) match {
+    case (Symbol(idl), Symbol(idr)) => idl != idr
+    case _ => false
+  }
+  final def isTrue(l: Literal): Boolean = if (l.polarity) trivial(l) else distinctSides(l)
+  final def isFalse(l: Literal): Boolean = if (!l.polarity) trivial(l) else distinctSides(l)
 }
 

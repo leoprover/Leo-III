@@ -41,7 +41,7 @@ class ParamodulationAgent(para : ParamodStep, comp : Unification) extends Agent 
       FormulaDataStore.getFormulas(f.context) foreach  {
         bf => para.find(f.clause,bf.clause, comp).fold(()) {
           t : (Term, Literal, Unification#Substitute) =>
-            val removeLit = Clause.mkClause(bf.clause.lits.filter{l1 => ! l1.cong(t._2)}, bf.clause.implicitBindings, Derived)
+            val removeLit = Clause.mkClause(bf.clause.lits.filter{l1 => !(l1 == t._2)}, bf.clause.implicitBindings, Derived)
             val nc = para.exec(f.clause, removeLit, t._1, t._2, t._3)
             val nf = Store(nc, Role_Plain, f.context, f.status & bf.status)
             if (!TrivRule.teqt(nc)){
