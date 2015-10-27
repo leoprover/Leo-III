@@ -1,5 +1,7 @@
 package leo.agents.impl
 
+import leo.datastructures.blackboard.FormulaStore
+import leo.modules.output.ToTPTP
 import leo.{Ignored, LeoTestSuite, Configuration}
 import leo.modules.CLParameterParser
 
@@ -9,7 +11,7 @@ import leo.modules.CLParameterParser
 class SZSScriptAgentTest extends LeoTestSuite {
 //  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
 
-  val a : SZSScriptAgent = new SZSScriptAgent("scripts/echo.sh")({x => x})
+  val a : SZSScriptAgent = new SZSScriptAgent("scripts/echo.sh")({fs : Set[FormulaStore] => ToTPTP(fs).map(_.output)})({x => x})
 
   test("Scan line", Ignored) {
     val erg1 = a.getSZS("% SZS status Theorem")

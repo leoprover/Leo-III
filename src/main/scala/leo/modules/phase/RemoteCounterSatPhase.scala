@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Store, Blackboard, FormulaStore}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
-import leo.modules.output.{SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
+import leo.modules.output.{ToTPTP, SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
 
 /**
  * Invokes external scripts if the context was split previoulsy.
@@ -15,7 +15,7 @@ import leo.modules.output.{SZS_CounterSatisfiable, SZS_Theorem, StatusSZS}
 object RemoteCounterSatPhase extends CompletePhase {
   override def name: String = "RemoteCounterSatPhase"
 
-  val da : AgentController = new FifoController(SZSScriptAgent("scripts/leoexec.sh")(reInt))
+  val da : AgentController = new FifoController(SZSScriptAgent("scripts/leoexec.sh"){fs => ToTPTP(fs).map(_.output)}(reInt))
 
   override protected def agents: Seq[AgentController] = List(da)
 

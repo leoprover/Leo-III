@@ -7,7 +7,7 @@ import leo.datastructures.Role_NegConjecture
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.modules.SZSException
-import leo.modules.output.{SZS_Error, SZS_UsageError}
+import leo.modules.output.{ToTPTP, SZS_Error, SZS_UsageError}
 
 object ExternalProverPhase extends CompletePhase {
   override def name: String = "ExternalProverPhase"
@@ -40,7 +40,7 @@ object ExternalProverPhase extends CompletePhase {
     throw new SZSException(SZS_Error, "This is considered an system error, please report this problem.", "CL parameter with-prover lost")
   }
 
-  lazy val extProver : AgentController = new FifoController(SZSScriptAgent(prover)(x => x))
+  lazy val extProver : AgentController = new FifoController(SZSScriptAgent(prover){fs => ToTPTP(fs).map(_.output)}(x => x))
 
 
   override protected def agents: Seq[AgentController] = List(extProver)

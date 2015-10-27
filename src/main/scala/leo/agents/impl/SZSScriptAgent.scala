@@ -5,19 +5,30 @@ import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.datastructures.context.Context
 import leo.datastructures._
 import leo.datastructures.blackboard._
-import leo.modules.output.{SZS_GaveUp, StatusSZS}
+import leo.modules.output.{Output, SZS_GaveUp, StatusSZS, ToTPTP}
 import leo.modules.output.logger.Out
 
 object SZSScriptAgent {
-  def apply(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(reinterpreteResult)
+  /**
+   * Creates a new [[SZSScriptAgent]] to run an external prover on a given set of formulas
+   * obtained through messages in the blackboard.
+   *
+   * @param cmd - The filepath to an executable prover. This also might be a script to run the prover.
+   * @param encodeOutput - A method to translate the Clauses to a suitable representation for the external prover
+   * @param reinterpreteResult - May transform the result depending on the status of the current Context (in a CounterSAT case Theorem will prover CounterSatisfiyability)
+   * @return An agent to run an external prover on the specified translation.
+   */
+  def apply(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
 }
 
 /**
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
   override val name = s"SZSScriptAgent ($cmd)"
+
+  override def encode(fs : Set[FormulaStore]) : Seq[String] = encodeOutput(fs)
 
   /**
    * Scans the `input` Stream for an SZS status.
@@ -31,10 +42,10 @@ class SZSScriptAgent(cmd : String)(reinterpreteResult : StatusSZS => StatusSZS) 
     val context = c   // TODO Fix
     val it = input
     val b = new StringBuilder
+
     while(it.hasNext){
       val line = it.next()
       b.append("  Out: "+line+"\n")
-      println(line)
       getSZS(line) match {
         case Some(status) =>
           context.close()
