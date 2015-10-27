@@ -29,24 +29,24 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   def negLits: Seq[Literal]
 
   /** True iff this clause is horn. */
-  @inline final lazy val horn: Boolean = posLits.length <= 1
+  def horn: Boolean
   /** True iff this clause is a unit clause. */
-  @inline final lazy val unit: Boolean = lits.length == 1
+  def unit: Boolean
   /** True iff this clause is a demodulator. */
-  @inline final lazy val demodulator: Boolean = posLits.length == 1 && negLits.isEmpty
+  def demodulator: Boolean
   /** True iff this clause is a rewrite rule. */
-  @inline final lazy val rewriteRule: Boolean = demodulator && posLits.head.oriented
+  def rewriteRule: Boolean
   /** True iff this clause is ground. */
-  @inline final lazy val ground: Boolean = lits.view.forall(_.ground)
+  def ground: Boolean
   /** True iff this clause is purely positive. i.e.
     * if all literals are positive. */
-  @inline final lazy val positive: Boolean = negLits.isEmpty
+  def positive: Boolean
   /** True iff this clause is purely negative. i.e.
     * if all literals are negative. */
-  @inline final lazy val negative: Boolean = posLits.isEmpty
+  def negative: Boolean
 
-  @inline final lazy val empty: Boolean = lits.isEmpty
-  @inline final lazy val effectivelyEmpty: Boolean = lits.isEmpty || lits.forall(_.flexflex)
+  def empty: Boolean
+  def effectivelyEmpty: Boolean
 
   /** Returns a term representation of this clause.
     * @return Term `[l1] || [l2] || ... || [ln]` where `[.]` is the term representation of a literal,

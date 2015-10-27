@@ -13,7 +13,7 @@ import leo.modules.output.Output
 /**
  * Created by lex on 9/29/15.
  */
-class Orderings extends LeoTestSuite {
+class TermOrderingTestSuite extends LeoTestSuite {
 //  test("Type order test", Checked) {
 //    val s = Signature.get
 //
@@ -32,10 +32,10 @@ class Orderings extends LeoTestSuite {
 //    Out.output(TypeCMPResult(∀(1 ->: s.i),∀(s.i ->: s.i ->: s.i)))
 //  }
 
-  val source = getClass.getResource("/problems").getPath
-//  val source = "/home/lex/TPTP/Problems/PUZ/"
+//  val source = getClass.getResource("/problems").getPath
+  val source = "/home/lex/TPTP/Problems/GRP/"
   val problem_suffix = ".p"
-  val problems = Seq( "COM003_1")//, "COM003_1", "KRS003_1", "SYN000^1" )
+  val problems = Seq( "GRP685+1")//, "COM003_1", "KRS003_1", "SYN000^1" )
   // PUZ085^1: 0 NC
   // COM001_1: 0 NC
   // COM003_1: 0 NC
