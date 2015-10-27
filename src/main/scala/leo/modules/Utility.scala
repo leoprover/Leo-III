@@ -115,7 +115,7 @@ object Utility {
           } else {
             Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
           }
-        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
+        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, e.toString, e)
       }
     }
   }

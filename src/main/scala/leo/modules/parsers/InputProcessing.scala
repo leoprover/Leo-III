@@ -55,22 +55,14 @@ object InputProcessing {
     input.map(process(sig)(_))
   }
 
-  private def processRole(role: String): Role = Role(role)
-  private def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
+  private final def processRole(role: String): Role = Role(role)
+  private final def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
     case Role_Conjecture => FromConjecture
     case Role_NegConjecture => FromConjecture
     case _ => FromAxiom
   }
-  private def singleTermToClause(t: Term, role: Role): Clause = {
-    println("asdasd")
-    val l = Literal.mkPos(t, LitTrue)
-    println("l erzeugt")
-    println(l.pretty)
-    val ab = roleToClauseOrigin(role)
-    println(ab.toString)
-    val cl = Clause.mkClause(Seq(l),ab )
-    println("cl erzeugt")
-    cl
+  private final def singleTermToClause(t: Term, role: Role): Clause = {
+    Clause.mkClause(Seq(Literal.mkPos(t, LitTrue)), roleToClauseOrigin(role))
   }
 
   def process(sig: Signature)(input: AnnotatedFormula): Result = {
