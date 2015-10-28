@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Clause, Role}
+import leo.datastructures.{Term, Clause, Role}
 import leo.datastructures.tptp.Commons
 import leo.modules.parsers.{TPTP, InputProcessing}
 import leo.modules.output.{SZS_SyntaxError, SZS_InputError}
@@ -100,7 +100,7 @@ object Parsing {
    *         Note that formulae with role `definition` or `type` are returned as triples
    *         `(Id, Clause($true), Role)` with their respective identifier and role.
    */
-  def processProblem(problem: Seq[Commons.AnnotatedFormula]): Seq[(FormulaId, Clause, Role)] = {
+  def processProblem(problem: Seq[Commons.AnnotatedFormula]): Seq[(FormulaId, Term, Role)] = {
     InputProcessing.processAll(Signature.get)(problem)
   }
   /**
@@ -116,7 +116,7 @@ object Parsing {
    *         Note that a formula with role `definition` or `type` is returned as a triple
    *         `(Id, Clause($true), Role)` with its respective identifier and role.
    */
-  def processFormula(formula: Commons.AnnotatedFormula): (FormulaId, Clause, Role) = {
+  def processFormula(formula: Commons.AnnotatedFormula): (FormulaId, Term, Role) = {
     InputProcessing.process(Signature.get)(formula)
   }
 
@@ -145,7 +145,7 @@ object Parsing {
    *         Note that formulae with role `definition` or `type` are returned as triples
    *         `(Id, Clause($true), Role)` with their respective identifier and role.
    */
-  def parseProblem(file: String, assumeProcessed: Set[Path] = Set()): Seq[(FormulaId, Clause, Role)] = {
+  def parseProblem(file: String, assumeProcessed: Set[Path] = Set()): Seq[(FormulaId, Term, Role)] = {
     processProblem(readProblem(file,assumeProcessed))
   }
 
@@ -162,7 +162,7 @@ object Parsing {
    *         Note that a formula with role `definition` or `type` is returned as a triple
    *         `(Id, Clause($true), Role)` with its respective identifier and role.
    */
-  def parseFormula(formula: String): (FormulaId, Clause, Role) = {
+  def parseFormula(formula: String): (FormulaId, Term, Role) = {
     processFormula(readFormula(formula))
   }
 

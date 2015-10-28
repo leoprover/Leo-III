@@ -31,7 +31,14 @@ object BenchmarkBetaNF {
       loadRelative(pwd.last, pwd.init)
     }
   }
-
+  private final def singleTermToClause(t: Term, role: Role): Clause = {
+    Clause.mkClause(Seq(Literal.mkPos(t, LitTrue)), roleToClauseOrigin(role))
+  }
+  private final def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
+    case Role_Conjecture => FromConjecture
+    case Role_NegConjecture => FromConjecture
+    case _ => FromAxiom
+  }
   private def loadRelative(file : String, rel : Array[String]): Seq[(String, Clause, Role)] = {
     import leo.modules.parsers.{InputProcessing, TPTP}
 
@@ -58,7 +65,7 @@ object BenchmarkBetaNF {
 //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
 //              benchmark(name, form, role)
 //            }
-            processed.filter({case (_, _, role) => role != Role_Definition && role != Role_Type && role != Role_Unknown})
+            processed.filter({case (_, _, role) => role != Role_Definition && role != Role_Type && role != Role_Unknown}).map {case (a,b,c) => (a,singleTermToClause(b,c),c)}
         }
 
       } catch {

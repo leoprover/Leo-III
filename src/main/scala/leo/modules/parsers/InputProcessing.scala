@@ -25,7 +25,7 @@ import leo.modules.output.SZS_InputError
  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
-  type Result = (String, Clause, Role)
+  type Result = (String, Term, Role)
 
   // Types for replacing bound variables by de bruijn indices
   type TermVarReplaces = (Map[Variable, (Type, Int)], Int) // (varname -> (vartype, position in list), index offset)
@@ -74,7 +74,8 @@ object InputProcessing {
       case _:CNFAnnotated => processCNF(sig)(input.asInstanceOf[CNFAnnotated])
     }
     p match {
-      case None => val role = processRole(input.role); (input.name, singleTermToClause(LitTrue, role), role)
+//      case None => val role = processRole(input.role); (input.name, singleTermToClause(LitTrue, role), role)
+      case None => val role = processRole(input.role); (input.name, LitTrue, role)
       case Some(res) => res
     }
   }
@@ -100,7 +101,8 @@ object InputProcessing {
           case None => {
             Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.")
             val role = processRole("axiom");
-            Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
+//            Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
+            Some((input.name, processTHF0(sig)(lf, noRep), role))
           }
           case Some((defName, defDef)) => {
             if (sig.exists(defName)) {
@@ -128,7 +130,8 @@ object InputProcessing {
                                                         }
                                                         None
                                                       }
-      case Logical(lf)                               => val role = processRole(input.role); Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
+//      case Logical(lf)                               => val role = processRole(input.role); Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
+      case Logical(lf)                               => val role = processRole(input.role); Some((input.name, processTHF0(sig)(lf, noRep), role))
       case Sequent(_,_)                              => throw new IllegalArgumentException("Processing of THF sequents not implemented")
     }
   }
@@ -341,11 +344,13 @@ object InputProcessing {
       // Logical formulae can either be terms (axioms, conjecture, ...) or definitions.
       case Logical(lf) if input.role == "definition" => processTFFDef(sig)(lf) match {
         case None => Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.");
-                     val role = processRole("axiom"); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
+//                     val role = processRole("axiom"); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
+val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), role))
         case Some((defName, defDef)) => sig.addDefined(defName, defDef, defDef.ty)
                                         None
       }
-      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
+//      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processTFF0(sig)(lf, noRep),role), role))
+      case Logical(lf) => val role = processRole(input.role); Some((input.name, processTFF0(sig)(lf, noRep), role))
       // Typed Atoms are top-level declarations, put them into signature
       case TypedAtom(atom, ty) => {
         convertTFFType(sig)(ty, noRep) match {
@@ -529,7 +534,8 @@ object InputProcessing {
 //                                                          sig.addDefined(defName, defDef, defDef.ty)
 //                                                          None
 //                                                        }
-      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processFOF0(sig)(lf, noRep), role), role))
+//      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processFOF0(sig)(lf, noRep), role), role))
+      case Logical(lf) => val role = processRole(input.role); Some((input.name, processFOF0(sig)(lf, noRep), role))
       case Sequent(_,_) => throw new IllegalArgumentException("Processing of fof sequents not yet implemented.")
     }
   }
@@ -613,7 +619,8 @@ object InputProcessing {
   import leo.datastructures.tptp.cnf.{ Formula => CNFLogicalFormula}
   def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = {
     val role = processRole(input.role)
-    Some((input.name, processCNF0(sig)(input.formula, roleToClauseOrigin(role)), role))
+    ???
+//    Some((input.name, processCNF0(sig)(input.formula, roleToClauseOrigin(role)), role))
   }
 
   protected[parsers] def processCNF0(sig: Signature)(input: CNFLogicalFormula, origin: ClauseOrigin): Clause = {

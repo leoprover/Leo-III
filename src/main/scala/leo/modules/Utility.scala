@@ -44,6 +44,15 @@ object Utility {
     }
   }
 
+  private final def singleTermToClause(t: Term, role: Role): Clause = {
+    Clause.mkClause(Seq(Literal.mkPos(t, LitTrue)), roleToClauseOrigin(role))
+  }
+  private final def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
+    case Role_Conjecture => FromConjecture
+    case Role_NegConjecture => FromConjecture
+    case _ => FromAxiom
+  }
+
   private def loadRelative(file : String, rel : Array[String]): Unit = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
@@ -66,7 +75,8 @@ object Utility {
             loadedSet += fileAbs
             x.getIncludes.foreach(x => loadRelative(x._1, path))
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+            processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+              val form = singleTermToClause(term, role)
               val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
               if (FormulaDataStore.addFormula(f))
                 Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
@@ -98,7 +108,8 @@ object Utility {
                     x.getIncludes.foreach(x => loadRelative(x._1, path))
 
                     val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                    processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+                    processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+                      val form = singleTermToClause(term, role)
                       val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
                       if (FormulaDataStore.addFormula(f))
                         Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
@@ -147,7 +158,8 @@ object Utility {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed match { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+        processed match { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+          val form = singleTermToClause(term, role)
           val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, NoAnnotation)
           if (FormulaDataStore.addFormula(f))
             Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
