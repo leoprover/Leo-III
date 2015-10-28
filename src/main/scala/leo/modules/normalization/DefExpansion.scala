@@ -20,6 +20,8 @@ object DefExpansion extends AbstractNormalize {
     formula.mapLit(_.termMap {case (l,r) => (l.full_δ_expand.betaNormalize,r.full_δ_expand.betaNormalize)})
   }
 
+  def normalize(t: Term): Term = t.full_δ_expand
+
   /**
    * Checks if the staus bit 1 is raised and the second is not
    *

@@ -25,6 +25,9 @@ object PrenexNormal extends AbstractNormalize {
     formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l),internalNormalize(r))})
   }
 
+  def normalize(t: Term): Term = {
+    internalNormalize(t)
+  }
 
   private def internalNormalize(formula: Term): Term = formula match {
 

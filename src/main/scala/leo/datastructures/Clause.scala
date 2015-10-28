@@ -94,9 +94,13 @@ object Clause {
   import impl.{VectorClause => ClauseImpl}
   import Literal.{LitMax, LitStrictlyMax}
 
+  def apply(lit: Literal): Clause = mkClause(lit)
+  def apply(lits: Iterable[Literal]): Clause = mkClause(lits)
+
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
   @inline final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause =  ClauseImpl.mkClause(lits, origin)
   @inline final def mkClause(lits: Iterable[Literal]): Clause = mkClause(lits, Derived)
+  @inline final def mkClause(lit: Literal): Clause = mkClause(Vector(lit), Derived)
 
   @inline final val empty = mkClause(Seq.empty)
 

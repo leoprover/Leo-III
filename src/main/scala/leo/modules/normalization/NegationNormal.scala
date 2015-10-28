@@ -31,6 +31,10 @@ object NegationNormal extends AbstractNormalize{
     }
   }
 
+  def normalize(t: Term): Term = {
+    nnf(rmEq(t, 1))
+  }
+
   private def pol(b : Boolean) : Int = if(b) 1 else -1
 
   private def rmEq(formula : Term, pol : Int) : Term = formula match {

@@ -33,6 +33,10 @@ object Skolemization extends AbstractNormalize{
     formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l, fv),internalNormalize(r, fv))})
   }
 
+  def normalize(t: Term): Term = {val fv: Set[Term] = Set() // TODO FIXME
+    internalNormalize(t, fv)
+  }
+
   private def internalNormalize(formula: Term, fV: Set[Term]): Term = {
     val mini = miniscope(formula)
     val r = skolemize(mini, fV.toSeq)
