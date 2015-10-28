@@ -9,8 +9,8 @@ import leo.datastructures.context.Context
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
-import leo.modules.phase.{PreprocessPhase, LoadPhase, Phase}
-import Phase._
+//import leo.modules.phase.{PreprocessPhase, LoadPhase, Phase}
+//import Phase._
 
 
 /**
@@ -49,64 +49,71 @@ object Main {
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
       val interval = 10
 
-
-      val deferredKill: DeferredKill = new DeferredKill(interval, timeout)
-      deferredKill.start()
-
-      // Create Scheduler
-      Scheduler()
-
-      //==========================================
-      //
-      // Initialize Phases and data strucutres for the blackboard.
-      //
-      //==========================================
-      Blackboard().addDS(FormulaDataStore)
-      Blackboard().addDS(SZSDataStore)
-      Blackboard().addDS(UnificationStore)
-      Blackboard().addDS(SelectionTimeStore)
-      Blackboard().addDS(UnificationTaskStore)
-//      Utility.printSignature()
-      var it: Iterator[Phase] = null
-      if (Configuration.COUNTER_SAT) {
-        new FifoController(CounterContextControlAgent).register()
-        it = getCounterSat.iterator
-      } else if (Configuration.isSet("with-prover")) {
-        new FifoController(ContextControlAgent).register()
-        it = getExternalPhases.iterator
+      if (Configuration.isSet("seq")) {
+        import leo.modules.seqpproc.SeqPProc
+        SeqPProc()
       } else {
-        new FifoController(ContextControlAgent).register()
-        it = getHOStdPhase.iterator
-      }
-      var r = true
-      while (it.hasNext && r && !deferredKill.isFinished) {
-        val phase = it.next()
-        Out.info(s"\n [Phase]:\n  Starting ${phase.name}\n${phase.description}")
-        val start = System.currentTimeMillis()
-        r = phase.execute()
-        val end = System.currentTimeMillis()
-        Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
-      }
-      if(!deferredKill.isFinished) deferredKill.kill()
+        throw new NotImplementedError("standard mode not included right now, use --seq")
 
-
-      val endTime = System.currentTimeMillis()
-
-//      println("=============\n   Passive\n================")
-//      SelectionTimeStore.all(FormulaType).foreach{case f : FormulaStore => println(SelectionTimeStore.get(f).get.pretty+"@"+f.pretty)}
-//      println("=============\n   Active\n================")
-//      SelectionTimeStore.noSelect(Context()).foreach{case f => println(f.created.pretty+"@"+f.pretty)}
-
-      val szs_status = SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown)
-      Out.output(SZSOutput(szs_status, Configuration.PROBLEMFILE, s"${endTime-beginTime} ms"))
-
-      // TODO build switch for mulitple contexts
-      // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
-      //Utility.formulaContext()
-      if (Configuration.PROOF_OBJECT) {
-        Out.comment(s"SZS output start Proof for ${Configuration.PROBLEMFILE}")
-        FormulaDataStore.getAll { p => p.clause.empty}.headOption.fold(Out.comment("No proof found."))(Utility.printProof(_))
-        Out.comment(s"SZS output end Proof for ${Configuration.PROBLEMFILE}")
+//        val deferredKill: DeferredKill = new DeferredKill(interval, timeout)
+//        deferredKill.start()
+//
+//        // Create Scheduler
+//        Scheduler()
+//
+//        //==========================================
+//        //
+//        // Initialize Phases and data strucutres for the blackboard.
+//        //
+//        //==========================================
+//        Blackboard().addDS(FormulaDataStore)
+//        Blackboard().addDS(SZSDataStore)
+//        Blackboard().addDS(UnificationStore)
+//        Blackboard().addDS(SelectionTimeStore)
+//        Blackboard().addDS(UnificationTaskStore)
+//        //      Utility.printSignature()
+//        var it: Iterator[Phase] = null
+//        if (Configuration.COUNTER_SAT) {
+//          new FifoController(CounterContextControlAgent).register()
+//          it = getCounterSat.iterator
+//        } else if (Configuration.isSet("with-prover")) {
+//          new FifoController(ContextControlAgent).register()
+//          it = getExternalPhases.iterator
+//        } else {
+//          new FifoController(ContextControlAgent).register()
+//          it = getHOStdPhase.iterator
+//        }
+//        var r = true
+//        while (it.hasNext && r && !deferredKill.isFinished) {
+//          val phase = it.next()
+//          Out.info(s"\n [Phase]:\n  Starting ${phase.name}\n${phase.description}")
+//          val start = System.currentTimeMillis()
+//          r = phase.execute()
+//          val end = System.currentTimeMillis()
+//          Out.info(s"\n [Phase]:\n  Ended ${phase.name}\n  Time: ${end - start}ms")
+//        }
+//        if (!deferredKill.isFinished) deferredKill.kill()
+//
+//
+//        val endTime = System.currentTimeMillis()
+//
+//        //      println("=============\n   Passive\n================")
+//        //      SelectionTimeStore.all(FormulaType).foreach{case f : FormulaStore => println(SelectionTimeStore.get(f).get.pretty+"@"+f.pretty)}
+//        //      println("=============\n   Active\n================")
+//        //      SelectionTimeStore.noSelect(Context()).foreach{case f => println(f.created.pretty+"@"+f.pretty)}
+//
+//        val szs_status = SZSDataStore.getStatus(Context()).getOrElse(SZS_Unknown)
+//        Out.output(SZSOutput(szs_status, Configuration.PROBLEMFILE, s"${endTime - beginTime} ms"))
+//
+//        // TODO build switch for mulitple contexts
+//        // if (Configuration.PROOF_OBJECT) FormulaDataStore.getAll { p => p.clause.isEmpty}.foreach(Utility.printDerivation(_))
+//        //Utility.formulaContext()
+//        if (Configuration.PROOF_OBJECT) {
+//          Out.comment(s"SZS output start Proof for ${Configuration.PROBLEMFILE}")
+//          import leo.datastructures.Clause.empty
+//          FormulaDataStore.getAll { p => empty(p.clause) }.headOption.fold(Out.comment("No proof found."))(Utility.printProof(_))
+//          Out.comment(s"SZS output end Proof for ${Configuration.PROBLEMFILE}")
+//        }
       }
       
     } catch {
