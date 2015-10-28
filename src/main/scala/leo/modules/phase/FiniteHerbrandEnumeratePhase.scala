@@ -1,3 +1,4 @@
+/*
 package leo.modules.phase
 
 import leo.agents.impl.FiniteHerbrandEnumerateAgent
@@ -75,3 +76,4 @@ object FiniteHerbrandEnumeratePhase extends CompletePhase {
     return Clause.mkClause(List(Literal(s.freshSkolemVar(ty), true)), Derived)
   }
 }
+*/

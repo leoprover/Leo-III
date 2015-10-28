@@ -76,23 +76,23 @@ object NaiveSplitting extends Split {
    * @return Some(cs) with
    */
   override def split(c : Clause) : Option[(Seq[Seq[Clause]],SplitKind)] = {
-    val maxLit = c.lits.max
+    val maxLit = c.lits.max(Orderings.simple(LitWeight_FIFO))
     val rLits = c.lits.filterNot(_ != maxLit)   // Remove maximal Literal
 
     maxLit.term match {
       case (a <=> b) if maxLit.polarity =>
         val left = Impl(a,b)
         val right = Impl(b,a)
-        return Some(List(List(createClause(Literal(left,true),rLits,c.implicitBindings)),List(createClause(Literal(right,true),rLits,c.implicitBindings))), AlphaSplit)
+        return Some(List(List(createClause(Literal(left,true),rLits)),List(createClause(Literal(right,true),rLits))), AlphaSplit)
       case (a <=> b) =>             // if ! maxLit.polarity
         val left = &(a, Not(b))
         val right = &(Not(a),b)
-        return Some(List(List(createClause(Literal(left,true),rLits,c.implicitBindings)),List(createClause(Literal(right,false),rLits,c.implicitBindings))), BetaSplit)
+        return Some(List(List(createClause(Literal(left,true),rLits)),List(createClause(Literal(right,false),rLits))), BetaSplit)
       case _  => return None
     }
   }
 
-  protected[splitting] def createClause(l : Literal, cl : Seq[Literal], imp : Seq[Type]) : Clause = Clause.mkDerivedClause(l +: cl, imp)
+  protected[splitting] def createClause(l : Literal, cl : Seq[Literal]) : Clause = Clause.mkClause(l +: cl)
 }
 
 /**
@@ -121,8 +121,8 @@ class HornSplit(f : Literal => Int) extends Split {
 
     if (l.isEmpty || r.isEmpty) return None   // No split available
     // TODO : Check for independency
-    val leftClause = Clause.mkClause(neg ++ l, c.implicitBindings, Derived)
-    val rightClause = Clause.mkClause(neg ++ r, c.implicitBindings, Derived)
+    val leftClause = Clause.mkClause(neg ++ l, Derived)
+    val rightClause = Clause.mkClause(neg ++ r, Derived)
     return Some((List(List(leftClause),List(rightClause))), AlphaSplit)
   }
 

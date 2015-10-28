@@ -1,3 +1,4 @@
+/*
 package leo.modules.phase
 
 import leo.agents.impl.{SZSScriptMessage, SZSScriptAgent}
@@ -54,3 +55,4 @@ object RemoteCounterSatPhase extends CompletePhase {
   }
 }
 
+*/

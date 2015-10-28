@@ -60,7 +60,7 @@ class ToTPTPTestSuite extends LeoTestSuite {
             println(s"Equivalent names: ${name == fs.name}")
             println(s"Equivalent roles: ${role == fs.role}")
 
-            val (oldFormula, newFormula) = (fs.clause.lits.head.term, form.lits.head.term)
+            val (oldFormula, newFormula) = (fs.clause.lits.head.term, form)
             println(s"Equivalent formula: ${oldFormula == newFormula}")
 
             if ((name != fs.name) || (role != fs.role) || (oldFormula != newFormula)) {

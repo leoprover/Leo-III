@@ -1,3 +1,4 @@
+/*
 package leo.modules.calculus
 
 import leo.datastructures._
@@ -428,3 +429,4 @@ object RestrFac extends UnaryCalculusHintRule[Clause, Option[(Literal, Literal)]
       case x +: xs => x +: removeBounds(xs, m, pos-1)
     }
   }
+*/

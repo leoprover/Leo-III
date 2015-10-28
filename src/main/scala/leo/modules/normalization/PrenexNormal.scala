@@ -22,7 +22,7 @@ object PrenexNormal extends AbstractNormalize {
    * @return a normalized formula
    */
   override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap(internalNormalize(_)))
+    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l),internalNormalize(r))})
   }
 
 

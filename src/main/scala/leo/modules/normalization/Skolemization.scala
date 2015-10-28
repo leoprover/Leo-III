@@ -29,7 +29,8 @@ object Skolemization extends AbstractNormalize{
    * @return a normalized formula
    */
   override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap(internalNormalize(_, formula.freeVars)))
+    val fv: Set[Term] = Set() // TODO FIXME
+    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l, fv),internalNormalize(r, fv))})
   }
 
   private def internalNormalize(formula: Term, fV: Set[Term]): Term = {

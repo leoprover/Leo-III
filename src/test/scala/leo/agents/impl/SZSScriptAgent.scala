@@ -1,3 +1,4 @@
+/*
 package leo.agents.impl
 
 import leo.{Ignored, LeoTestSuite, Configuration}
@@ -21,3 +22,4 @@ class SZSScriptAgentTest extends LeoTestSuite {
 
 
 }
+*/

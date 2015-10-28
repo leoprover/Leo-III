@@ -1,3 +1,4 @@
+/*
 package leo.modules.phase
 
 import leo._
@@ -33,3 +34,4 @@ object SimpleEnumerationPhase extends CompletePhase {
     return true
   }
 }
+*/
