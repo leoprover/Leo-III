@@ -94,21 +94,32 @@ object Clause {
   import impl.{VectorClause => ClauseImpl}
   import Literal.{LitMax, LitStrictlyMax}
 
-  def apply(lit: Literal): Clause = mkClause(lit)
+  /** Create a unit clause containing only literal `lit` with origin `Derived`. */
+  def apply(lit: Literal): Clause = mkUnit(lit)
+  /** Create a clause containing the set of literals `lits` with origin `Derived`. */
   def apply(lits: Iterable[Literal]): Clause = mkClause(lits)
 
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
   @inline final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause =  ClauseImpl.mkClause(lits, origin)
+  /** Create a clause containing the set of literals `lits` with origin `Derived`. */
   @inline final def mkClause(lits: Iterable[Literal]): Clause = mkClause(lits, Derived)
-  @inline final def mkClause(lit: Literal): Clause = mkClause(Vector(lit), Derived)
+  /** Create a unit clause containing only literal `lit` with origin `Derived`. */
+  @inline final def mkUnit(lit: Literal): Clause = mkClause(Vector(lit), Derived)
 
+  /** The empty clause. */
   @inline final val empty = mkClause(Seq.empty)
 
+  /** Returns the last clause id that has been issued. */
   @inline final def lastClauseId: Int = ClauseImpl.lastClauseId
 
   // Utility
+  /** Returns true iff clause `c` is empty. */
   @inline final def empty(c: Clause): Boolean = c.lits.isEmpty
+  /** Returns true iff clause `c` is either empty or only contains flex-flex literals. */
   final def effectivelyEmpty(c: Clause): Boolean = empty(c) || c.lits.forall(_.flexflex)
+  /** Returns true iff the clause is trivially equal to `$true` since either
+    * (1) one literal always evaluates to true, or
+    * (2) it contains two literals that are equal except for their polarity. */
   final def trivial(c: Clause): Boolean = c.lits.exists(Literal.isTrue) || c.posLits.exists(l => c.negLits.exists(l2 => l.unsignedEquals(l2)))
 
   /** True iff this clause is horn. */

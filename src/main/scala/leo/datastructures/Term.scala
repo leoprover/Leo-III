@@ -48,6 +48,7 @@ trait Term extends Pretty {
   def δ_expandable: Boolean
   def partial_δ_expand(rep: Int): Term
   def full_δ_expand: Term
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term
 
   def head_δ_expandable: Boolean
   def head_δ_expand: Term

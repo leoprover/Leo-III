@@ -18,8 +18,8 @@ trait Literal extends Pretty {
   /** The left side of the literal's equation.
     * Invariant: `left > right or !oriented` where > is a term ordering. */
   def left: Term
-  /** The left side of the literal's equation.
-    * Invariant: `!equational => right = $true or right = $false`.
+  /** The right side of the literal's equation.
+    * Invariant: `!equational => right = $true`.
     * Invariant: `left > right or !oriented` where `>` is a term ordering. */
   def right: Term
   /** The polarity of the literal.
@@ -38,8 +38,8 @@ trait Literal extends Pretty {
   def term: Term
 
   // Further properties
-  /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` and not
-    * `s = $true` or `s = $false`.*/
+  /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` with
+    * `t != $true` and `t != $false`.*/
   def equational: Boolean
   /** Returns true iff the literal is propositional. */
   def propositional: Boolean
@@ -113,17 +113,14 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
 
   // Constructor methods
   /** Create new (equational) literal with equation `left = right`
-    * and polarity `polarity`. Note that the resulting literal is only
+    * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
   @inline final def mkLit(t1: Term, t2: Term, pol: Boolean): Literal = LitImpl.mkLit(t1,t2,pol)
   /** Create new (non-equational) literal with equation
-    * `left = right ≡ $true/$false` and polarity `polarity`. */
-  @inline final def mkLit(t: Term, right: Boolean, pol: Boolean): Literal = LitImpl.mkLit(t,right,pol)
+    * `left = $true` and polarity `pol`. */
+  @inline final def mkLit(t: Term, pol: Boolean): Literal = LitImpl.mkLit(t,pol)
 
   // Convenience methods
-  /** Create new (non-equational) literal with equation
-    * `left = right ≡ $true/$false` and polarity `true`. */
-  @inline final def mkLit(t: Term, right: Boolean): Literal = mkLit(t, right, true)
   /** Create new (equational) literal with equation `left = right`
     * and positive polarity. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
@@ -135,12 +132,12 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
 
   // Apply method redirections
   /** Create new (equational) literal with equation `left = right`
-    * and polarity `polarity`. Note that the resulting literal is only
+    * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline override final def apply(t1: Term, t2: Term, polarity: Boolean) = mkLit(t1,t2,polarity)
+  @inline override final def apply(t1: Term, t2: Term, pol: Boolean) = mkLit(t1,t2,pol)
   /** Create new (non-equational) literal with equation
-    * `left = right ≡ $true/$false` and polarity `true`. */
-  @inline final def apply(left: Term, right: Boolean) = mkLit(left, right)
+    * `left = $true` and polarity `pol`. */
+  @inline final def apply(left: Term, pol: Boolean) = mkLit(left, pol)
 
 
   // Ordering stuff

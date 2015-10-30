@@ -18,21 +18,21 @@ object LiteralImpl {
     litCounter += 1
 
     if (left == LitFalse()) {
-      return new NonEqLiteral(litCounter, right, false, pol)
+      return new NonEqLiteral(litCounter, right, !pol)
     } else if (right == LitFalse()) {
-      return new NonEqLiteral(litCounter, left, false, pol)
+      return new NonEqLiteral(litCounter, left, !pol)
     } else if (left == LitTrue()) {
-      return new NonEqLiteral(litCounter, right, true, pol)
+      return new NonEqLiteral(litCounter, right, pol)
     } else if (right == LitTrue()) {
-      return new NonEqLiteral(litCounter, left, true, pol)
+      return new NonEqLiteral(litCounter, left, pol)
     }
     new EqLiteral(litCounter,left,right,pol)
   }
   /** Create new (non-equational) literal with equation
-    * `left = right ≡ $true/$false` and polarity `polarity`. */
-  final def mkLit(t: Term, right: Boolean, pol: Boolean): Literal = {
+    * `left = $true` and polarity `pol`. */
+  final def mkLit(t: Term, pol: Boolean): Literal = {
     litCounter += 1
-    new NonEqLiteral(litCounter, t, right, pol)
+    new NonEqLiteral(litCounter, t, pol)
   }
 
 
@@ -79,15 +79,11 @@ object LiteralImpl {
 
   private final class NonEqLiteral(val id: Int,
                                    val left: Term,
-                                   rt: Boolean,
                                    val polarity: Boolean) extends LiteralImpl {
     /** The left side of the literal's equation.
       * Invariant: `!equational => right = $true or right = $false`.
       * Invariant: `left > right or !oriented` where `>` is a term ordering. */
-    val right: Term = {
-      import leo.datastructures.{LitTrue,LitFalse}
-      if (rt) LitTrue else LitFalse
-    }
+    val right: Term = LitTrue
     /** Whether the equation could have been oriented wrt. a term ordering `>`. */
     val oriented: Boolean = true
 
@@ -97,7 +93,7 @@ object LiteralImpl {
       *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ true`). */
     lazy val term: Term = {
       import leo.datastructures.Not
-      if (polarity == rt) left else Not(left)
+      if (polarity) left else Not(left)
     }
 
     /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` and not

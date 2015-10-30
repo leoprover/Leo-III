@@ -58,7 +58,7 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
 
 /** Representation of terms that are in (weak) head normal form. */
 protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
-  import TermImpl.{headToTerm, mkRedex}
+  import TermImpl.{headToTerm, mkRedex, mkRoot}
 
   // Predicates on terms
   val isAtom = args == SNil
@@ -79,6 +79,17 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   def full_δ_expand = δ_expandable match {
     case true => mkRedex(hd.full_δ_expand, args.full_δ_expand)
     case false => this
+  }
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = hd match {
+    case Atom(key) if !symbs.contains(key) => {
+      val meta = Signature(key)
+      if (meta.hasDefn) {
+        mkRedex(meta._defn, args.exhaustive_δ_expand_upTo(symbs))
+      } else {
+        mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
+      }
+    }
+    case _ => this
   }
 
   lazy val head_δ_expandable = hd.δ_expandable
@@ -252,6 +263,8 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val δ_expandable = body.δ_expandable || args.δ_expandable
   def partial_δ_expand(rep: Int) = mkRedex(body.partial_δ_expand(rep), args.partial_δ_expand(rep))
   def full_δ_expand = mkRedex(body.full_δ_expand, args.full_δ_expand)
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = mkRedex(body.exhaustive_δ_expand_upTo(symbs), args.exhaustive_δ_expand_upTo(symbs))
+
 
   lazy val head_δ_expandable = headSymbol.δ_expandable
   def head_δ_expand = mkRedex(body.head_δ_expand, args)
@@ -358,6 +371,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
   lazy val head_δ_expandable = headSymbol.δ_expandable
   def head_δ_expand = mkTermAbstr(typ, body.head_δ_expand)
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = mkTermAbstr(typ, body.exhaustive_δ_expand_upTo(symbs))
 
   // Queries on terms
   lazy val ty = typ ->: body.ty
@@ -454,6 +468,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val δ_expandable = body.δ_expandable
   def partial_δ_expand(rep: Int) = mkTypeAbstr(body.partial_δ_expand(rep))
   def full_δ_expand = mkTypeAbstr(body.full_δ_expand)
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = mkTypeAbstr(body.exhaustive_δ_expand_upTo(symbs))
 
   lazy val head_δ_expandable = headSymbol.δ_expandable
   def head_δ_expand = mkTypeAbstr(body.head_δ_expand)
@@ -522,6 +537,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val δ_expandable = false // TODO
   def partial_δ_expand(rep: Int) = ???
   def full_δ_expand = ???
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = ???
 
   lazy val head_δ_expandable = ???
   def head_δ_expand = ???
@@ -714,6 +730,7 @@ protected[impl] sealed abstract class Spine extends Pretty {
   def δ_expandable: Boolean
   def partial_δ_expand(rep: Int): Spine
   def full_δ_expand: Spine
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Spine
 
   // Queries
   def length: Int
@@ -762,6 +779,7 @@ protected[impl] case object SNil extends Spine {
   val δ_expandable = false
   def partial_δ_expand(rep: Int) = SNil
   val full_δ_expand = SNil
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = SNil
 
   // Queries
   val freeVars = Set[Term]()
@@ -812,7 +830,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   lazy val δ_expandable = hd.δ_expandable || tail.δ_expandable
   def partial_δ_expand(rep: Int) = cons(Left(hd.partial_δ_expand(rep)), tail.partial_δ_expand(rep))
   lazy val full_δ_expand = cons(Left(hd.full_δ_expand), tail.full_δ_expand)
-
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = cons(Left(hd.exhaustive_δ_expand_upTo(symbs)), tail.exhaustive_δ_expand_upTo(symbs))
 
   // Queries
   val freeVars = hd.freeVars ++ tail.freeVars
@@ -876,7 +894,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val δ_expandable = tail.δ_expandable
   def partial_δ_expand(rep: Int) = cons(Right(hd), tail.partial_δ_expand(rep))
   lazy val full_δ_expand = cons(Right(hd), tail.full_δ_expand)
-
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = cons(Right(hd), tail.exhaustive_δ_expand_upTo(symbs))
   // Queries
   val freeVars = tail.freeVars
   val boundVars = tail.boundVars
@@ -933,7 +951,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   lazy val δ_expandable = false // TODO
   def partial_δ_expand(rep: Int) = ???
   lazy val full_δ_expand = ???
-
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = ???
   // Queries
   val freeVars = Set[Term]()
   val symbols = Set[Signature#Key]()
