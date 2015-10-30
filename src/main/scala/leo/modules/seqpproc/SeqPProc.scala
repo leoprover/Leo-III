@@ -46,32 +46,32 @@ object SeqPProc extends Function0[Unit]{
       val lit = cl.lits.head
       assert(!lit.equational, "initial literal equational")
       val left = lit.left
-      val right = if (lit.right == LitTrue()) true else if (lit.right == LitFalse()) false else {assert(false, "right side neither $true nor $false"); false}
+
       Out.debug(s"Original: ${cur.cl.pretty}")
       // Def expansion and simplification
       val left2 = DefExpSimp(left)
-      val cl2 = ClauseWrapper(Clause(Literal(left2, right)), InferredFrom(DefExpSimp, Set(cur)))
+      val cl2 = ClauseWrapper(Clause(Literal(left2, lit.polarity)), InferredFrom(DefExpSimp, Set(cur)))
       Out.debug(s"Def expansion: ${cl2.cl.pretty}")
       // NNF
       val left3 = NegationNormal.normalize(left2)
-      val cl3 = ClauseWrapper(Clause(Literal(left3, right)), InferredFrom(NegationNormal, Set(cl2)))
+      val cl3 = ClauseWrapper(Clause(Literal(left3, lit.polarity)), InferredFrom(NegationNormal, Set(cl2)))
       Out.debug(s"NNF: ${cl3.cl.pretty}")
       // Skolem
       val left4 = Skolemization.normalize(left3)
-      val cl4 = ClauseWrapper(Clause(Literal(left4, right)), InferredFrom(Skolemization, Set(cl3)))
+      val cl4 = ClauseWrapper(Clause(Literal(left4, lit.polarity)), InferredFrom(Skolemization, Set(cl3)))
       Out.debug(s"Skolemize: ${cl4.cl.pretty}")
       // Prenex
       val left5 = PrenexNormal.normalize(left4)
-      val cl5 = ClauseWrapper(Clause(Literal(left5, right)), InferredFrom(PrenexNormal, Set(cl4)))
+      val cl5 = ClauseWrapper(Clause(Literal(left5, lit.polarity)), InferredFrom(PrenexNormal, Set(cl4)))
       Out.debug(s"Prenex: ${cl5.cl.pretty}")
       // Remove quantifiers
-      val left6 = CNF_Forall(left5, right)
-      val cl6 = ClauseWrapper(Clause(Literal(left6, right)), InferredFrom(CNF_Forall, Set(cl5)))
+      val left6 = CNF_Forall(left5, lit.polarity)
+      val cl6 = ClauseWrapper(Clause(Literal(left6, lit.polarity)), InferredFrom(CNF_Forall, Set(cl5)))
       Out.debug(s"CNF_Forall: ${cl6.cl.pretty}")
       // To equation if possible
       if (LiftEq.canApply(left6)) {
         assert(cl6.cl.lits.head.polarity, "Polarity not $true")
-        val eqLit = LiftEq(left6, right, true)
+        val eqLit = LiftEq(left6, lit.polarity, true)
         val cl7 = ClauseWrapper(Clause(eqLit), InferredFrom(LiftEq, Set(cl6)))
         preprocessed = preprocessed + cl7
       } else {

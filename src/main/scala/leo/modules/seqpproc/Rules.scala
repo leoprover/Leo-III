@@ -1,15 +1,37 @@
 package leo.modules.seqpproc
 
-import leo.datastructures.{Term, Forall, Exists, Literal}
+import leo.datastructures.impl.Signature
+import leo.datastructures._
 import leo.datastructures.Term.:::>
 import leo.modules.calculus.CalculusRule
 import leo.modules.normalization.Simplification
 import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable}
 
+import scala.collection.SortedSet
+
 object DefExpSimp extends CalculusRule {
   val name = "defexp_and_simp"
   override val inferenceStatus = Some(SZS_Theorem)
-  def apply(t: Term): Term = Simplification.normalize(t.full_δ_expand)
+  def apply(t: Term): Term = {
+    val sig = Signature.get
+    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key, sig("<=>").key)
+    Simplification.normalize(t.exhaustive_δ_expand_upTo(symb))
+  }
+}
+
+object PolaritySwitch extends CalculusRule {
+  val name = "polarity_switch"
+  override val inferenceStatus = Some(SZS_Theorem)
+  def canApply(t: Term): Boolean = t match {
+    case Not(_) => true
+    case _ => false
+  }
+  def canApply(l: Literal): Boolean = canApply(l.left) || canApply(l.right)
+
+  def apply(l: Literal): (Boolean, Literal) = {
+    var switch = false
+
+  }
 }
 
 object CNF_Forall extends CalculusRule {
