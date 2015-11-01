@@ -13,7 +13,7 @@ import leo.datastructures._
  */
  abstract sealed class VectorClause extends Clause {
   /** The types of the implicitly universally quantified variables. */
-  final val implicitlyBound: Set[(Type, Int)] = lits.map(_.metaVars).toSet.flatten
+  final val implicitlyBound: Seq[Type] = ??? //lits.map(_.metaVars).toSet.flatten
 
   /** Those literals in `lits` that are positive. */
   @inline final val posLits: Seq[Literal] = lits.filter(_.polarity)

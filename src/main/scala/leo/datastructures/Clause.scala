@@ -16,7 +16,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
-  def implicitlyBound: Set[(Type, Int)]
+  def implicitlyBound: Seq[Type]
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
@@ -40,7 +40,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** Returns a term representation of this clause.
     * @return Term `[l1] || [l2] || ... || [ln]` where `[.]` is the term representation of a literal,
     * and li are the literals in `lits`, `n = lits.length`. */
-  final lazy val term: Term = mkPolyUnivQuant(implicitlyBound.map(_._1).toSeq, mkDisjunction(lits.map(_.term)))
+  final lazy val term: Term = mkPolyUnivQuant(implicitlyBound, mkDisjunction(lits.map(_.term)))
 
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
