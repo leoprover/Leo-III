@@ -113,6 +113,10 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
+  lazy val fv: Set[(Int, Type)] = hd match {
+    case BoundIndex(ty,i) => args.fv + ((i, ty))
+    case _ => args.fv
+  }
   lazy val freeVars = hd match {
     case BoundIndex(_,_) => args.freeVars + hd
     case MetaIndex(_,_) => args.freeVars + hd
@@ -283,6 +287,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
     }
     case _ => throw new IllegalArgumentException("closure occured in term")// other cases do not apply
   }
+  lazy val fv: Set[(Int, Type)] = body.fv union args.fv
   lazy val freeVars = body.freeVars union args.freeVars
   lazy val boundVars = body.boundVars ++ args.boundVars
   lazy val looseBounds = body.looseBounds ++ args.looseBounds
@@ -375,6 +380,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
   // Queries on terms
   lazy val ty = typ ->: body.ty
+  lazy val fv: Set[(Int, Type)] = body.fv.map{case (i,t) => (i-1,t)}.filter(_._1 > 0)
   val freeVars = {
     import leo.datastructures.Term.Bound
     body.freeVars.map{_ match {
@@ -475,6 +481,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
 
   // Queries on terms
   lazy val ty = ∀(body.ty)
+  lazy val fv: Set[(Int, Type)] = body.fv
   val freeVars = body.freeVars
   val boundVars = body.boundVars
   lazy val looseBounds = body.looseBounds
@@ -544,6 +551,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 
   // Queries on terms
   lazy val ty = term.ty
+  lazy val fv: Set[(Int, Type)] = betaNormalize.fv
   lazy val freeVars = betaNormalize.freeVars
   lazy val boundVars = Set[Term]()
   lazy val looseBounds = Set.empty[Int]
@@ -734,6 +742,7 @@ protected[impl] sealed abstract class Spine extends Pretty {
 
   // Queries
   def length: Int
+  def fv: Set[(Int, Type)]
   def freeVars: Set[Term]
   def boundVars: Set[Term]
   def looseBounds: Set[Int]
@@ -782,6 +791,7 @@ protected[impl] case object SNil extends Spine {
   def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = SNil
 
   // Queries
+  val fv: Set[(Int, Type)] = Set()
   val freeVars = Set[Term]()
   val boundVars = Set[Term]()
   val looseBounds = Set[Int]()
@@ -833,6 +843,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = cons(Left(hd.exhaustive_δ_expand_upTo(symbs)), tail.exhaustive_δ_expand_upTo(symbs))
 
   // Queries
+  lazy val fv: Set[(Int, Type)] = hd.fv union tail.fv
   val freeVars = hd.freeVars ++ tail.freeVars
   val boundVars = hd.boundVars ++ tail.boundVars
   lazy val looseBounds = hd.looseBounds ++ tail.looseBounds
@@ -896,6 +907,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val full_δ_expand = cons(Right(hd), tail.full_δ_expand)
   def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = cons(Right(hd), tail.exhaustive_δ_expand_upTo(symbs))
   // Queries
+  lazy val fv: Set[(Int, Type)] = tail.fv
   val freeVars = tail.freeVars
   val boundVars = tail.boundVars
   lazy val looseBounds = tail.looseBounds
@@ -953,6 +965,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   lazy val full_δ_expand = ???
   def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = ???
   // Queries
+  lazy val fv: Set[(Int, Type)] = ???
   val freeVars = Set[Term]()
   val symbols = Set[Signature#Key]()
   lazy val looseBounds = ???

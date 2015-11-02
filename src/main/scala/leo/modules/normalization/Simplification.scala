@@ -91,6 +91,7 @@ object Simplification extends AbstractNormalize{
     case Not(s) => norm(s) match {
       case LitTrue()    => LitFalse
       case LitFalse()   => LitTrue
+      case Not(s1)      => s1
       case s1           => Not(s1)
     }
     case Forall(t) => norm(t) match {

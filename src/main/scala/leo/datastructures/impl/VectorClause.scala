@@ -13,7 +13,11 @@ import leo.datastructures._
  */
  abstract sealed class VectorClause extends Clause {
   /** The types of the implicitly universally quantified variables. */
-  final val implicitlyBound: Seq[Type] = ??? //lits.map(_.metaVars).toSet.flatten
+  final val implicitlyBound: Seq[(Int, Type)] = {
+    val fvs = lits.map(_.fv).fold(Set())((s1,s2) => s1 ++ s2)
+    fvs.toSeq.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
+  }
+  @inline final def maxImplicitlyBound: Int = implicitlyBound.head._1
 
   /** Those literals in `lits` that are positive. */
   @inline final val posLits: Seq[Literal] = lits.filter(_.polarity)

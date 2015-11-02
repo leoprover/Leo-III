@@ -53,9 +53,7 @@ trait Literal extends Pretty {
   def flexHead: Boolean
 
   /** Returns the set of free variables from `s = t` regarded as term. */
-  @inline final lazy val fv: Set[Term] = left.freeVars ++ right.freeVars
-  /** Returns the set of meta variables from `s = t` regarded as term. */
-  @inline final lazy val metaVars: Set[(Type, Int)] = left.metaVars ++ right.metaVars
+  @inline final lazy val fv: Set[(Int, Type)] = left.fv ++ right.fv
   /** Returns true iff the equation `s = t` is ground. */
   @inline final lazy val ground: Boolean = left.ground && right.ground
 
@@ -91,7 +89,7 @@ trait Literal extends Pretty {
       Literal(left,right,true)
   }
 
-  @inline final def substitute(s : Subst) : Literal = termMap {case (l,r) => (l.substitute(s).betaNormalize,r.substitute(s).betaNormalize)}
+  @inline final def substitute(s : Subst) : Literal = termMap {case (l,r) => (l.closure(s).betaNormalize,r.closure(s).betaNormalize)}
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
 

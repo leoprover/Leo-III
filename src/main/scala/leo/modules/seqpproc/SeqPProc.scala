@@ -149,13 +149,82 @@ object SeqPProc extends Function0[Unit]{
         } else {
           // Subsumption
           if (!processed.exists(cw => Subsumption.subsumes(cw.cl, simpl))) {
-            val nu = ClauseWrapper(cur.id, simpl, cur.role, cur.annotation) // Simpl annotation?
-            processed = processed.filterNot(cw => Subsumption.subsumes(simpl, cw.cl)) + nu
+            var curr = simpl
+            var curr_cw = ClauseWrapper(cur.id, curr, cur.role, cur.annotation) // Simpl annotation?
+            processed = processed.filterNot(cw => Subsumption.subsumes(curr, cw.cl)) + curr_cw
+
+            var newclauses: Set[ClauseWrapper] = Set()
 
             // Extensionality
-            val (cA_funcExt, fE, fE_other) = FuncExt.canApply(simpl)
+            val (cA_funcExt, fE, fE_other) = FuncExt.canApply(curr)
             if (cA_funcExt) {
-              ClauseWrapper(Clause(FuncExt(fE,???) ++ fE_other), InferredFrom(FuncExt, Set(nu)))
+              val funcExt_cw = ClauseWrapper(Clause(FuncExt(fE,simpl.implicitlyBound) ++ fE_other), InferredFrom(FuncExt, Set(curr_cw)))
+              Out.debug(s"Func Ext: ${funcExt_cw.pretty}")
+              newclauses = newclauses + funcExt_cw
+              // Break here
+            } else {
+              val (cA_boolExt, bE, bE_other) = BoolExt.canApply(curr)
+              if (cA_boolExt) {
+                val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(curr_cw))))
+                Out.debug(s"Bool Ext:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+                newclauses = newclauses union boolExt_cws
+                // Break here
+              } else {
+                // To equality if possible
+                val (cA_lift, lift, lift_other) = LiftEq.canApply(curr)
+                if (cA_lift) {
+                  curr = Clause(LiftEq(lift, lift_other))
+                  curr_cw = ClauseWrapper(curr, InferredFrom(LiftEq, Set(curr_cw)))
+                  // No break here
+                }
+                /* create new claues from curr and processed from here */
+                // All paramodulations
+                // ...
+                // Equality factoring
+                // ....
+                // Prim subst
+                val (cA_ps, ps_vars) = StdPrimSubst.canApply(curr)
+                if (cA_ps) {
+                  val new_ps = StdPrimSubst(curr, ps_vars)
+                  newclauses = newclauses union new_ps.map(cl => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set(curr_cw))))
+                }
+                /* work on new claues from here */
+                // Simplify new clauses
+                newclauses = newclauses.map(cw => ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw))))
+                // Remove those which are tautologies
+                newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
+                // CNF new clauses
+                // Pre-unify new clauses
+                val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = newclauses.foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
+                  val (cA, ul, ol) = PreUni.canApply(cw.cl)
+                  if (cA) {
+                    (uni + ((cw, ul, ol)),ot)
+                  } else {
+                    (uni, ot + cw)
+                  }
+                }}
+                if (uniClauses.nonEmpty) {
+                  Out.debug("Unification tasks found.")
+                  newclauses = otherClauses
+                  uniClauses.foreach { case (cw, ul, ol) =>
+                    val nc = PreUni(ul, ol)
+                    newclauses = newclauses union nc.map(cl => ClauseWrapper(cl, InferredFrom(PreUni, Set(cw))))
+                  }
+
+                }
+
+              }
+            }
+
+
+            // At the end, for each generated clause apply simplification etc.
+            val newIt = newclauses.iterator
+            while (newIt.hasNext) {
+              val newCl = newIt.next()
+              // More to come ...
+              if (!Clause.trivial(newCl.cl)) {
+                unprocessed = unprocessed + newCl
+              }
             }
 
           } else {

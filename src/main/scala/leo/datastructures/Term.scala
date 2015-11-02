@@ -55,12 +55,17 @@ trait Term extends Pretty {
 
   // Queries on terms
   def ty: Type
-  def freeVars: Set[Term] // TODO: Clarify that this does ...
   def ground: Boolean = freeVars.isEmpty
+
+  // TODO: REMOVE OLD FUNCTIONS SUCH AS
+  def freeVars: Set[Term] // TODO: Clarify that this does ...
   def boundVars: Set[Term]
   def looseBounds: Set[Int]  // TODO ..as opposed to this
   def metaVars: Set[(Type, Int)]
   def metaIndices: Set[Int] = metaVars.map(x => x._2)
+  // TODO END
+
+  def fv: Set[(Int, Type)]
   def occurrences: Map[Term, Set[Position]]
   def symbols: Set[Signature#Key]
   def symbolsOfType(ty: Type) = {
