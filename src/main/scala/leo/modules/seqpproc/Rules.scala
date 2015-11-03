@@ -312,15 +312,17 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
     (can, flexheads)
   }
 
-  def apply(cl: Clause, flexHeads: FlexHeads): Set[Clause] = hdSymbs.flatMap {hdSymb =>
+  def apply(cl: Clause, flexHeads: FlexHeads): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map { case hd =>
       val vargen = leo.modules.calculus.freshVarGen(cl)
       val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
-      cl.substitute(Subst.singleton(hd.fv.head._1, binding))
+      val subst = Subst.singleton(hd.fv.head._1, binding)
+      (cl.substitute(subst),subst)
     }
   }
 }
 object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
+
 
 object EqFac extends CalculusRule {
   val name = "eq_fac"

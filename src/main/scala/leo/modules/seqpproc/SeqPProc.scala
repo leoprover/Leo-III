@@ -188,7 +188,7 @@ object SeqPProc extends Function0[Unit]{
                 val (cA_ps, ps_vars) = StdPrimSubst.canApply(curr)
                 if (cA_ps) {
                   Out.debug(s"Prim subst on: ${curr_cw.pretty}")
-                  val new_ps = StdPrimSubst(curr, ps_vars).map(cl => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set(curr_cw))))
+                  val new_ps = StdPrimSubst(curr, ps_vars).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set(curr_cw)))}
                   Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
                   newclauses = newclauses union new_ps
                 }
