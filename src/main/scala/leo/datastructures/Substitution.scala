@@ -115,6 +115,11 @@ object Subst {
     }
   }
 
+  def fromShiftingSeq(seq: Seq[(Int, Int)]): Subst = {
+    val map : Map[Int, Int] = Map.apply(seq:_*)
+    fromMaps(Map(), map)
+  }
+
   def fromSeq(seq: Seq[(Int, Term)]): Subst = {
     val map : Map[Int, Term] = Map.apply(seq:_*)
     fromMap(map)
@@ -170,7 +175,7 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
 
   def substBndIdx(i: Int) = fts.length >= i match {
     case true => fts(i-1)
-    case false => BoundFront(i+shift)
+    case false => BoundFront(i+shift-fts.length)
   }
   lazy val fronts = fts
 }
