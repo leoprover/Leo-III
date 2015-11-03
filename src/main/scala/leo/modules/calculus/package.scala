@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Term, Clause}
+import leo.datastructures.{Type, Term, Clause}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -31,6 +31,44 @@ package object calculus {
 
   trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with CalculusHintRule[Hint] {
     def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
+  }
+
+  trait FreshVarGen extends Function1[Type, Term] {
+    /** Returns a fresh variable wrt. the context of this generator. */
+    def apply(ty: Type): Term = Term.mkBound(ty, apply())
+    /** Returns a fresh variable represented as its loose de-bruijn index
+      *  wrt. the context of this generator. */
+    def apply(): Int
+  }
+  final def freshVarGen(cl: Clause): FreshVarGen = new FreshVarGen {
+    var cur = cl.maxImplicitlyBound
+    /** Returns a fresh variable represented as its loose de-bruijn index
+      *  wrt. the context of this generator. */
+    override def apply(): Int = {
+      cur = cur + 1
+      cur
+    }
+  }
+
+  // Adopted from tomer's code:
+  // n is arity of variable
+  // m is arity of head
+  // hdSymb is head
+  // y1,..,yn are new bound variable
+  // x1,..,xm are new free variables
+  final def partialBinding(varGen: FreshVarGen, typ: Type, hdSymb: Term) = {
+    val ys = typ.funParamTypes.zip(List.range(1,typ.arity+1)).map(p => Term.mkBound(p._1,p._2))
+    val xs =
+      if (ys.isEmpty)
+        hdSymb.ty.funParamTypes.map(p => Term.mkFreshMetaVar(p))
+      else {
+        val ysTyp = Type.mkFunType(ys.map(_.ty))
+        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(varGen(Type.mkFunType(ysTyp,p)), ys))
+      }
+    val t = Term.mkTermApp(hdSymb,xs)
+
+    val aterm = Term.λ(ys.map(_.ty))(t)
+    aterm.etaExpand
   }
 
 
