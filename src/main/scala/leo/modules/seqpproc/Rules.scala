@@ -126,8 +126,23 @@ object Simp extends CalculusRule {
     val litIt = cl.lits.iterator
     while (litIt.hasNext) {
       val lit = apply(litIt.next())
+//      val lit = litIt.next()
       if (!Literal.isFalse(lit)) {
         newLits = newLits :+ lit
+      }
+    }
+    val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
+    val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
+    assert(prefvs.size == fvs.size)
+    if (fvs.nonEmpty) {
+      if (fvs.size != fvs.head) {
+        Out.finest(s"FV Optimization needed on ${cl.pretty}")
+        Out.finest(s"Old: \t${fvs.mkString("-")}")
+        // gaps in fvs
+        val newFvs = Seq.range(fvs.size, 0, -1)
+        Out.finest(s"New: \t${newFvs.mkString("-")}")
+        val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
+        return Clause(newLits.map(_.substitute(subst)))
       }
     }
     Clause(newLits)
@@ -293,13 +308,14 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
         can = true
       }
     }
-    Out.debug(s"flexHeads: ${flexheads.map(_.pretty).mkString(",")}")
+    Out.finest(s"flexHeads: ${flexheads.map(_.pretty).mkString(",")}")
     (can, flexheads)
   }
 
   def apply(cl: Clause, flexHeads: FlexHeads): Set[Clause] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map { case hd =>
-      val binding = HuetsPreUnification.partialBinding(hd.ty, hdSymb) // FIXME uses metavars
+      val vargen = leo.modules.calculus.freshVarGen(cl)
+      val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
       cl.substitute(Subst.singleton(hd.fv.head._1, binding))
     }
   }
