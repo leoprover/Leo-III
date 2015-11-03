@@ -141,7 +141,7 @@ object SeqPProc extends Function0[Unit]{
       } else {
         val cur = unprocessed.head
         unprocessed = unprocessed.tail
-        Out.output(s"Taken: ${cur.pretty}")
+        Out.debug(s"Taken: ${cur.pretty}")
         val simpl = simplify(cur.cl)
         if (Clause.empty(simpl)) {
           loop = false
@@ -158,15 +158,17 @@ object SeqPProc extends Function0[Unit]{
             // Extensionality
             val (cA_funcExt, fE, fE_other) = FuncExt.canApply(curr)
             if (cA_funcExt) {
+              Out.debug(s"Func Ext on: ${curr_cw.pretty}")
               val funcExt_cw = ClauseWrapper(Clause(FuncExt(fE,simpl.implicitlyBound) ++ fE_other), InferredFrom(FuncExt, Set(curr_cw)))
-              Out.debug(s"Func Ext: ${funcExt_cw.pretty}")
+              Out.trace(s"Func Ext result: ${funcExt_cw.pretty}")
               newclauses = newclauses + funcExt_cw
               // Break here
             } else {
               val (cA_boolExt, bE, bE_other) = BoolExt.canApply(curr)
               if (cA_boolExt) {
+                Out.debug(s"Bool Ext on: ${curr_cw.pretty}")
                 val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(curr_cw))))
-                Out.debug(s"Bool Ext:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+                Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
                 newclauses = newclauses union boolExt_cws
                 // Break here
               } else {
@@ -185,8 +187,10 @@ object SeqPProc extends Function0[Unit]{
                 // Prim subst
                 val (cA_ps, ps_vars) = StdPrimSubst.canApply(curr)
                 if (cA_ps) {
-                  val new_ps = StdPrimSubst(curr, ps_vars)
-                  newclauses = newclauses union new_ps.map(cl => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set(curr_cw))))
+                  Out.debug(s"Prim subst on: ${curr_cw.pretty}")
+                  val new_ps = StdPrimSubst(curr, ps_vars).map(cl => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set(curr_cw))))
+                  Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
+                  newclauses = newclauses union new_ps
                 }
                 /* work on new claues from here */
                 // Simplify new clauses
@@ -204,7 +208,7 @@ object SeqPProc extends Function0[Unit]{
                   }
                 }}
                 if (uniClauses.nonEmpty) {
-                  Out.debug("Unification tasks found.")
+                  Out.debug("Unification tasks found. Working on it...")
                   newclauses = otherClauses
                   uniClauses.foreach { case (cw, ul, ol) =>
                     val nc = PreUni(ul, ol)
@@ -258,7 +262,7 @@ protected[seqpproc] case class ClauseWrapper(id: String, cl: Clause, role: Role,
 
   def compare(that: ClauseWrapper) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl) // FIXME mustmatch withequals and hash
 
-  def pretty: String = s"[$id] ${role.pretty}:\t${cl.pretty}"
+  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation match {case InferredFrom(_,cws) => cws.map(_.id).mkString(","); case _ => ""}})"
 }
 
 protected[seqpproc] object ClauseWrapper {
