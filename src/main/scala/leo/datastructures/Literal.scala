@@ -228,7 +228,8 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   // Utility methods
   final def trivial(l: Literal): Boolean = l.left == l.right
   final def distinctSides(l: Literal): Boolean = (l.left, l.right) match {
-    case (Symbol(idl), Symbol(idr)) => idl != idr
+    case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= HOLSignature.lastId && idr <= HOLSignature.lastId
+      // TODO: Extend to 'distinct symbols' from TPTP
     case _ => false
   }
   final def isTrue(l: Literal): Boolean = if (l.polarity) trivial(l) else distinctSides(l)
