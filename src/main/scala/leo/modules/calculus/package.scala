@@ -71,6 +71,11 @@ package object calculus {
     aterm.etaExpand
   }
 
+  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)]): Term = {
+    val skFunc = Signature.get.freshSkolemVar(Type.mkFunType(fvs.map(_._2), goalTy))
+    Term.mkTermApp(Term.mkAtom(skFunc), fvs.map {case (i,t) => Term.mkBound(t,i)})
+  }
+
 
   def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
 
