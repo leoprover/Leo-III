@@ -8,6 +8,7 @@ import leo.datastructures._
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
+
 /**
  * Translation module that takes internal terms or types and translates them
  * to a TPTP representation (in THF format).
@@ -98,6 +99,25 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
   /** Translate the type to a TPTP String in THF format. */
   def output(ty: Type) = toTPTP(ty)
+
+  ///////////////////////////////
+  // Translation of other data structures
+  ///////////////////////////////
+
+  def apply(subst: Subst): Output = new Output {
+    override def output: String = {
+      val sb = new StringBuilder
+      var i = 1
+      var max = subst.length
+      while (i < max) {
+        val erg = subst.substBndIdx(i)
+        sb.append(s"bind(${i}, $$thf(${erg.pretty})),")
+        i = i+1
+      }
+      sb.append(s"bind(${max}, $$thf(${subst.substBndIdx(max).pretty}))")
+      sb.toString()
+    }
+  }
 
   ///////////////////////////////
   // Translation of THF formula
