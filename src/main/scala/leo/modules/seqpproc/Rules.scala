@@ -62,8 +62,57 @@ object CNF_Forall extends CalculusRule {
   }
   def removeLeadingQuants(t: Term, polarity: Boolean): Term = t match {
     case Forall(ty :::> body) => removeLeadingQuants(body, polarity)
-    case t => t
+    case _ => t
   }
+}
+
+/** Non-extensional CNF rule. */
+object CNF extends CalculusRule {
+  val name = "cnf"
+  override val inferenceStatus = Some(SZS_Theorem)
+
+  type FormulaCharacter = Byte
+  final val none: FormulaCharacter = ???
+  final val alpha: FormulaCharacter = ???
+  final val beta: FormulaCharacter = ???
+
+  def canApply(l: Literal): Boolean = if (!l.equational) {
+    l.left match {
+      case _ => true
+    }
+  } else false
+
+  def apply(vargen: leo.modules.calculus.FreshVarGen, fvs: Seq[(Int, Type)], l: Literal): (FormulaCharacter, Seq[Literal]) = {
+    import leo.datastructures.{|||, &, Not, Forall, Exists, Impl, <=>}
+    if (l.equational) {
+      (none, Seq(l))
+    } else {
+      if (l.polarity) {
+        l.left match {
+          case Not(t) => (alpha, Seq(Literal(t, false)))
+          case s ||| t => (beta, Seq(Literal(s, true),Literal(t,true)))
+          case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
+          case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
+          case s <=> t => ???
+          case Forall(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
+          case Exists(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),true)))
+          case _ => (none, Seq(l))
+        }
+      } else {
+        l.left match {
+          case Not(t) => (alpha, Seq(Literal(t, true)))
+          case s ||| t => (alpha, Seq(Literal(s, false),Literal(t,false)))
+          case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
+          case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
+          case s <=> t => ???
+          case Forall(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),false)))
+          case Exists(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
+          case _ => (none, Seq(l))
+        }
+      }
+    }
+  }
+
 }
 
 
@@ -193,10 +242,7 @@ object FuncExt extends CalculusRule {
       val newVars = funArgTysWithIndex.map {case (ty, ind) => Term.mkBound(ty, lastVar + ind + 1)}
       Literal(Term.mkTermApp(lit.left, newVars), Term.mkTermApp(lit.right, newVars), true)
     } else {
-      val skTerms = funArgTys.map(ty => {
-        val skFunc = Signature.get.freshSkolemVar(Type.mkFunType(fvs.map(_._2), ty))
-        Term.mkTermApp(Term.mkAtom(skFunc), fvs.map {case (i,t) => Term.mkBound(t,i)})
-      })
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, fvs))
       Literal(Term.mkTermApp(lit.left, skTerms), Term.mkTermApp(lit.right, skTerms), false)
     }
   }
