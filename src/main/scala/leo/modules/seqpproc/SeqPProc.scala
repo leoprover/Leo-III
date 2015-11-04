@@ -126,7 +126,10 @@ object SeqPProc extends Function0[Unit]{
     val inputIt = effectiveInput.iterator
     while (inputIt.hasNext) {
       val cur = inputIt.next()
-      preprocessed = preprocessed + preprocess(cur)
+      val processed = preprocess(cur)
+      if (!Clause.trivial(processed.cl)) {
+        preprocessed = preprocessed + processed
+      }
     }
     // initialize sets
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
@@ -142,7 +145,9 @@ object SeqPProc extends Function0[Unit]{
         val cur = unprocessed.head
         unprocessed = unprocessed.tail
         Out.debug(s"Taken: ${cur.pretty}")
-        val simpl = simplify(cur.cl)
+        // TODO: simpl to be simplification by rewriting à la E
+        val simpl = cur.cl
+//        val simpl = simplify(cur.cl)
         if (Clause.empty(simpl)) {
           loop = false
           returnSZS = SZS_Theorem
@@ -188,7 +193,8 @@ object SeqPProc extends Function0[Unit]{
                 val (cA_ps, ps_vars) = StdPrimSubst.canApply(curr)
                 if (cA_ps) {
                   Out.debug(s"Prim subst on: ${curr_cw.pretty}")
-                  val new_ps = StdPrimSubst(curr, ps_vars).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set(curr_cw)))}
+                  val new_ps_pre = StdPrimSubst(curr, ps_vars)
+                  val new_ps = new_ps_pre.map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set((curr_cw,ToTPTP(subst)))))}
                   Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
                   newclauses = newclauses union new_ps
                 }
@@ -224,8 +230,12 @@ object SeqPProc extends Function0[Unit]{
             // At the end, for each generated clause apply simplification etc.
             val newIt = newclauses.iterator
             while (newIt.hasNext) {
-              val newCl = newIt.next()
-              // More to come ...
+              var newCl = newIt.next()
+              // Simplify again
+              newCl = ClauseWrapper(Simp(newCl.cl), InferredFrom(Simp, Set(newCl)))
+              // TODO: Cheap rewriting à la E
+              // ...
+
               if (!Clause.trivial(newCl.cl)) {
                 unprocessed = unprocessed + newCl
               }
@@ -247,11 +257,17 @@ object SeqPProc extends Function0[Unit]{
 }
 
 protected[seqpproc] abstract sealed class WrapperAnnotation extends Pretty
-case class InferredFrom(rule: leo.modules.calculus.CalculusRule, cws: Set[ClauseWrapper]) extends WrapperAnnotation {
-  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${cws.map(_.id).mkString(",")}])"
+case class InferredFrom(rule: leo.modules.calculus.CalculusRule, cws: Set[(ClauseWrapper, Output)]) extends WrapperAnnotation {
+  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${cws.map{case (cw,add) => if (add == null) {cw.id} else {cw.id + ":[" + add.output + "]"} }.mkString(",")}])"
 }
 case object NoAnnotation extends WrapperAnnotation {val pretty: String = ""}
 case class FromFile(fileName: String, formulaName: String) extends WrapperAnnotation { def pretty = s"file('$fileName',$formulaName)" }
+
+object InferredFrom {
+  def apply(rule: leo.modules.calculus.CalculusRule, cws: Set[ClauseWrapper]): WrapperAnnotation = {
+    new InferredFrom(rule, cws.map((_,null)))
+  }
+}
 
 protected[seqpproc] case class ClauseWrapper(id: String, cl: Clause, role: Role, annotation: WrapperAnnotation) extends Ordered[ClauseWrapper] with Pretty {
   override def equals(o: Any): Boolean = o match {
@@ -262,7 +278,8 @@ protected[seqpproc] case class ClauseWrapper(id: String, cl: Clause, role: Role,
 
   def compare(that: ClauseWrapper) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl) // FIXME mustmatch withequals and hash
 
-  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation match {case InferredFrom(_,cws) => cws.map(_.id).mkString(","); case _ => ""}})"
+//  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation match {case InferredFrom(_,cws) => cws.map(_._1.id).mkString(","); case _ => ""}})"
+  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty})"
 }
 
 protected[seqpproc] object ClauseWrapper {
