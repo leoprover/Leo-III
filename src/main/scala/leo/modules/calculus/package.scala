@@ -60,10 +60,10 @@ package object calculus {
     val ys = typ.funParamTypes.zip(List.range(1,typ.arity+1)).map(p => Term.mkBound(p._1,p._2))
     val xs =
       if (ys.isEmpty)
-        hdSymb.ty.funParamTypes.map(p => Term.mkFreshMetaVar(p))
+        hdSymb.ty.funParamTypes.map(p => varGen(p))
       else {
         val ysTyp = Type.mkFunType(ys.map(_.ty))
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(varGen(Type.mkFunType(ysTyp,p)), ys))
+        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp({val i = varGen();Term.mkBound(Type.mkFunType(ysTyp,p),i+ys.size)}, ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
 
