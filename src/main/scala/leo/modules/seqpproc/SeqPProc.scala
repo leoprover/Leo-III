@@ -172,6 +172,7 @@ object SeqPProc extends Function0[Unit]{
                   Out.debug(s"Prim subst on: ${curr_cw.pretty}")
                   val new_ps_pre = StdPrimSubst(curr, ps_vars)
                   val new_ps = new_ps_pre.map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set((curr_cw,ToTPTP(subst)))))}
+                  // FIXME: Additional binding information does not get updates when FVs are beeing renamed
                   Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
                   newclauses = newclauses union new_ps
                 }
