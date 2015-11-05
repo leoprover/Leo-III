@@ -66,8 +66,8 @@ object Subst {
 
   def singleton(what: Int, by: Term): Subst = {
     var i = 1
-    var subst: Vector[Front] = Range(1, what-1).map(BoundFront(_)).toVector
-    new SubstImpl(0,subst :+ TermFront(by))
+    var subst: Vector[Front] = Range(1, what).map(BoundFront(_)).toVector
+    new SubstImpl(what,subst :+ TermFront(by))
 
 //
 //    var s = Subst.id
@@ -89,7 +89,7 @@ object Subst {
         subst = subst :+ map.get(i).fold(BoundFront(i):Front)(TermFront(_))
         i = i + 1
       }
-      new SubstImpl(0, subst)
+      new SubstImpl(maxIndex, subst)
     }
   }
 
@@ -111,7 +111,7 @@ object Subst {
 
         i = i + 1
       }
-      new SubstImpl(0, subst)
+      new SubstImpl(maxIndex, subst)
     }
   }
 
