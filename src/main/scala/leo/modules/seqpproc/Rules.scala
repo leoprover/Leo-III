@@ -3,12 +3,14 @@ package leo.modules.seqpproc
 import leo.datastructures.impl.Signature
 import leo.datastructures._
 import leo.datastructures.Term.:::>
+import leo.modules.SZSException
 import leo.modules.calculus.CalculusRule
 import leo.modules.calculus.HuetsPreUnification
 import leo.modules.normalization.Simplification
-import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem, SZS_CounterSatisfiable}
+import leo.modules.output.{SZS_Error, SZS_EquiSatisfiable, SZS_Theorem, SZS_CounterSatisfiable}
 import leo.Out
 
+import scala.annotation.tailrec
 import scala.collection.SortedSet
 
 object DefExpSimp extends CalculusRule {
@@ -68,21 +70,30 @@ object CNF_Forall extends CalculusRule {
 
 /** Non-extensional CNF rule. */
 object CNF extends CalculusRule {
-  val name = "cnf"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "cnf"
+  final override val inferenceStatus = Some(SZS_Theorem)
 
   type FormulaCharacter = Byte
-  final val none: FormulaCharacter = ???
-  final val alpha: FormulaCharacter = ???
-  final val beta: FormulaCharacter = ???
+  final val none: FormulaCharacter = 0.toByte
+  final val alpha: FormulaCharacter = 1.toByte
+  final val beta: FormulaCharacter = 2.toByte
+  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
+  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
 
-  def canApply(l: Literal): Boolean = if (!l.equational) {
+  final def canApply(l: Literal): Boolean = if (!l.equational) {
     l.left match {
-      case _ => true
+      case Not(t) => true
+      case s ||| t => true
+      case s & t => true
+      case s Impl t => true
+      case s <=> t => true
+      case Forall(ty :::> t) => true
+      case Exists(ty :::> t) => true
+      case _ => false
     }
   } else false
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, fvs: Seq[(Int, Type)], l: Literal): (FormulaCharacter, Seq[Literal]) = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, fvs: Seq[(Int, Type)], l: Literal): (FormulaCharacter, Seq[Literal]) = {
     import leo.datastructures.{|||, &, Not, Forall, Exists, Impl, <=>}
     if (l.equational) {
       (none, Seq(l))
@@ -94,8 +105,8 @@ object CNF extends CalculusRule {
           case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
           case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
           case s <=> t => ???
-          case Forall(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
-          case Exists(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),true)))
+          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
+          case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),true)))
           case _ => (none, Seq(l))
         }
       } else {
@@ -105,13 +116,44 @@ object CNF extends CalculusRule {
           case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
           case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
           case s <=> t => ???
-          case Forall(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),false)))
-          case Exists(ty :::> t) => (none, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
+          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),false)))
+          case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
           case _ => (none, Seq(l))
         }
       }
     }
   }
+
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause): Seq[Clause] = {
+    val fvs = cl.implicitlyBound
+    apply0(vargen, fvs, cl.lits, Seq(Seq())).map(Clause.apply)
+  }
+
+  final private def apply0(vargen: leo.modules.calculus.FreshVarGen, fvs: Seq[(Int, Type)], lits: Seq[Literal], acc: Seq[Seq[Literal]]): Seq[Seq[Literal]] = {
+    if (lits.isEmpty) {
+      acc
+    } else {
+      val hd = lits.head
+      val tail = lits.tail
+      val (resChar, res) = apply(vargen, fvs, hd)
+      if (resChar == none) {
+        // Already normalized
+        apply0(vargen, fvs, tail, acc.map(hd +: _))
+      } else if (resChar == alpha) {
+        val deepRes = apply0(vargen, fvs, res, Seq(Seq()))
+        apply0(vargen, fvs, tail, deepRes.flatMap(res => res.flatMap(r => acc.map(_ :+ r))))
+      } else if (resChar == beta) {
+        val deepRes = apply0(vargen, fvs, res, Seq(Seq()))
+        apply0(vargen, fvs, tail, deepRes.flatMap(res => acc.map(_ ++ res)))
+      } else {
+        throw new SZSException(SZS_Error,
+          "cnf calculus error: returning something other than alpha or beta",
+          s"Returning ${resChar} while normalizing ${hd.pretty}")
+      }
+
+    }
+  }
+
 
 }
 
@@ -177,21 +219,37 @@ object Simp extends CalculusRule {
       val lit = apply(litIt.next())
 //      val lit = litIt.next()
       if (!Literal.isFalse(lit)) {
-        newLits = newLits :+ lit
+        if (!newLits.contains(lit)) {
+          newLits = newLits :+ lit
+        }
       }
     }
     val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
-    assert(prefvs.size == fvs.size)
+    assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
     if (fvs.nonEmpty) {
       if (fvs.size != fvs.head) {
         Out.finest(s"FV Optimization needed on ${cl.pretty}")
         Out.finest(s"Old: \t${fvs.mkString("-")}")
         // gaps in fvs
         val newFvs = Seq.range(fvs.size, 0, -1)
-        Out.finest(s"New: \t${newFvs.mkString("-")}")
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
+        Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
         return Clause(newLits.map(_.substitute(subst)))
+      }
+    }
+    Clause(newLits)
+  }
+
+  def shallowSimp(cl: Clause): Clause = {
+    var newLits: Seq[Literal] = Seq()
+    val litIt = cl.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (!Literal.isFalse(lit)) {
+        if (!newLits.contains(lit)) {
+          newLits = newLits :+ lit
+        }
       }
     }
     Clause(newLits)
@@ -229,8 +287,8 @@ object FuncExt extends CalculusRule {
   }
 
   def apply(lit: Literal, fvs: Seq[(Int, Type)]): Literal = {
-    assert(lit.left.ty.isFunType)
-    assert(lit.equational)
+    assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
+    assert(lit.equational, "Trying to apply func ext on non-eq literal")
 
     val funArgTys = lit.left.ty.funParamTypes
     if (lit.polarity) {
@@ -286,8 +344,8 @@ object BoolExt extends CalculusRule {
   }
 
   def apply(l: Literal): (ExtLits, ExtLits) = {
-    assert(l.equational)
-    assert(l.term.ty == Signature.get.o)
+    assert(l.equational, "Trying to apply bool ext on non-eq literal")
+    assert(l.term.ty == Signature.get.o, "Trying to apply bool ext on non-bool literal")
 
     if (l.polarity) {
        (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, true)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, false)))
@@ -360,9 +418,13 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
 
   def apply(cl: Clause, flexHeads: FlexHeads): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map { case hd =>
+//      println(s"${hd.pretty} - ${hd.fv.head._1}")
+//      println(s"max fv: ${cl.maxImplicitlyBound}")
       val vargen = leo.modules.calculus.freshVarGen(cl)
       val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
       val subst = Subst.singleton(hd.fv.head._1, binding)
+//      println(s"${subst.pretty}")
+//      println(Literal(Term.mkBound(hd.fv.head._2, hd.fv.head._1), true).substitute(subst).pretty)
       (cl.substitute(subst),subst)
     }
   }
