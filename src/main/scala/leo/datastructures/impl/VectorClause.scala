@@ -17,7 +17,7 @@ import leo.datastructures._
     val fvs = lits.map(_.fv).fold(Set())((s1,s2) => s1 ++ s2)
     fvs.toSeq.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
   }
-  @inline final def maxImplicitlyBound: Int = implicitlyBound.head._1
+  @inline final def maxImplicitlyBound: Int = if (implicitlyBound.isEmpty) 0 else implicitlyBound.head._1
 
   /** Those literals in `lits` that are positive. */
   @inline final val posLits: Seq[Literal] = lits.filter(_.polarity)
