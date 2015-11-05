@@ -19,7 +19,7 @@ object SeqPProc extends Function0[Unit]{
     Clause.mkClause(Seq(Literal.mkLit(t, true)))
   }
 
-  final def preprocess(cur: ClauseWrapper): ClauseWrapper = {
+  final def preprocess(cur: ClauseWrapper): Set[ClauseWrapper] = {
     val cl = cur.cl
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cl), "clause not unit")
@@ -56,45 +56,20 @@ object SeqPProc extends Function0[Unit]{
     left = CNF_Forall(left, pol)
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(CNF_Forall, Set(cw)))
     Out.debug(s"CNF_Forall: ${cw.cl.pretty}")
-    // To equation if possible
-    if (LiftEq.canApply(left)) {
-      cw = ClauseWrapper(Clause(LiftEq(left, pol)), InferredFrom(LiftEq, Set(cw)))
-      Out.debug(s"to_eq: ${cw.cl.pretty}")
-      Out.debug(s"orientable? ${cw.cl.lits.head.oriented}")
+    // Exhaustively CNF
+    val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
+    Out.debug(s"CNF:\n\t${left2.map(_.cl.pretty).mkString("\n\t")}")
+    left2.map { c =>
+      // To equation if possible
+      val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
+      if (cA_lift) {
+        Out.debug(s"to_eq: ${c.cl.pretty}")
+        val curr = Clause(LiftEq(lift, lift_other))
+        ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
+
+      } else c
     }
     //TODO: Replace leibniz/andrew equalities
-    Out.debug("####################")
-    cw
-
-    /*val left2 = DefExpSimp(left)
-    val cl2 = ClauseWrapper(Clause(Literal(left2, lit.polarity)), InferredFrom(DefExpSimp, Set(cur)))
-    Out.debug(s"Def expansion: ${cl2.cl.pretty}")
-    // NNF
-    val left3 = NegationNormal.normalize(left2)
-    val cl3 = ClauseWrapper(Clause(Literal(left3, lit.polarity)), InferredFrom(NegationNormal, Set(cl2)))
-    Out.debug(s"NNF: ${cl3.cl.pretty}")
-    // Skolem
-    val left4 = Skolemization.normalize(left3)
-    val cl4 = ClauseWrapper(Clause(Literal(left4, lit.polarity)), InferredFrom(Skolemization, Set(cl3)))
-    Out.debug(s"Skolemize: ${cl4.cl.pretty}")
-    // Prenex
-    val left5 = PrenexNormal.normalize(left4)
-    val cl5 = ClauseWrapper(Clause(Literal(left5, lit.polarity)), InferredFrom(PrenexNormal, Set(cl4)))
-    Out.debug(s"Prenex: ${cl5.cl.pretty}")
-    // Remove quantifiers
-    val left6 = CNF_Forall(left5, lit.polarity)
-    val cl6 = ClauseWrapper(Clause(Literal(left6, lit.polarity)), InferredFrom(CNF_Forall, Set(cl5)))
-    Out.debug(s"CNF_Forall: ${cl6.cl.pretty}")
-    // To equation if possible
-    if (LiftEq.canApply(left6)) {
-      assert(cl6.cl.lits.head.polarity, "Polarity not $true")
-      val eqLit = LiftEq(left6, lit.polarity, true)
-      val cl7 = ClauseWrapper(Clause(eqLit), InferredFrom(LiftEq, Set(cl6)))
-      preprocessed = preprocessed + cl7
-    } else {
-      preprocessed = preprocessed + cl6
-    }
-    Out.debug("####################")*/
   }
 
 
@@ -127,10 +102,12 @@ object SeqPProc extends Function0[Unit]{
     while (inputIt.hasNext) {
       val cur = inputIt.next()
       val processed = preprocess(cur)
-      if (!Clause.trivial(processed.cl)) {
-        preprocessed = preprocessed + processed
-      }
+      preprocessed = preprocessed ++ processed.filterNot(cw => Clause.trivial(cw.cl))
+      Out.debug("####################")
     }
+    Out.debug("####################")
+    Out.debug("####################")
+    Out.debug("####################")
     // initialize sets
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
@@ -140,7 +117,7 @@ object SeqPProc extends Function0[Unit]{
     while (loop) {
       if (unprocessed.isEmpty) {
         loop = false
-        returnSZS = SZS_Satisfiable
+        returnSZS = SZS_CounterSatisfiable
       } else {
         val cur = unprocessed.head
         unprocessed = unprocessed.tail
@@ -204,6 +181,7 @@ object SeqPProc extends Function0[Unit]{
                 // Remove those which are tautologies
                 newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
                 // CNF new clauses
+                newclauses = newclauses.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
                 // Pre-unify new clauses
                 val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = newclauses.foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
                   val (cA, ul, ol) = PreUni.canApply(cw.cl)
