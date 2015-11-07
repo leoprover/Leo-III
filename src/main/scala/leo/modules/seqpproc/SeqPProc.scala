@@ -133,7 +133,7 @@ object SeqPProc extends Function0[Unit]{
           if (!processed.exists(cw => Subsumption.subsumes(cw.cl, simpl))) {
             var curr = simpl
             var curr_cw = ClauseWrapper(cur.id, curr, cur.role, cur.annotation) // Simpl annotation?
-            processed = processed.filterNot(cw => Subsumption.subsumes(curr, cw.cl)) + curr_cw
+
 
             var newclauses: Set[ClauseWrapper] = Set()
 
@@ -154,6 +154,7 @@ object SeqPProc extends Function0[Unit]{
                 newclauses = newclauses union boolExt_cws
                 // Break here
               } else {
+                processed = processed.filterNot(cw => Subsumption.subsumes(curr, cw.cl)) + curr_cw
                 // To equality if possible
                 val (cA_lift, lift, lift_other) = LiftEq.canApply(curr)
                 if (cA_lift) {
@@ -163,7 +164,19 @@ object SeqPProc extends Function0[Unit]{
                 }
                 /* create new claues from curr and processed from here */
                 // All paramodulations
-                // ...
+                val procIt = processed.iterator
+                while (procIt.hasNext) {
+                  val procCl = procIt.next()
+                  Out.debug(s"Paramod on ${curr_cw.id} and ${procCl.id}")
+                  val paramodres = if (curr_cw.id == procCl.id)
+                    OrderedParamod(curr, procCl.cl).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(curr_cw, procCl))))
+                  else {
+                    OrderedParamod(curr, procCl.cl).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(curr_cw, procCl)))) ++
+                    OrderedParamod(procCl.cl, curr).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(curr_cw, procCl))))}
+
+                  newclauses = newclauses ++ paramodres
+                  Out.debug(s"Paramod result:\n\t${paramodres.map(_.pretty).mkString("\n\t")}")
+                }
                 // Equality factoring
                 // ....
                 // Prim subst
@@ -196,8 +209,9 @@ object SeqPProc extends Function0[Unit]{
                   Out.debug("Unification tasks found. Working on it...")
                   newclauses = otherClauses
                   uniClauses.foreach { case (cw, ul, ol) =>
-                    val nc = PreUni(ul, ol)
-                    newclauses = newclauses union nc.map(cl => ClauseWrapper(cl, InferredFrom(PreUni, Set(cw))))
+                    val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
+                    Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
+                    newclauses = newclauses union nc
                   }
 
                 }
@@ -222,6 +236,7 @@ object SeqPProc extends Function0[Unit]{
 
           } else {
             Out.debug("clause subsumbed, skipping.")
+            Out.trace(s"Subsumed by:\n\t${processed.filter(cw => Subsumption.subsumes(cw.cl, simpl)).map(_.pretty).mkString("\n\t")}")
           }
 
         }
