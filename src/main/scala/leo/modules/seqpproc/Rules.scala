@@ -77,8 +77,8 @@ object CNF extends CalculusRule {
   final val none: FormulaCharacter = 0.toByte
   final val alpha: FormulaCharacter = 1.toByte
   final val beta: FormulaCharacter = 2.toByte
-  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
-  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
+//  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
+//  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
 
   final def canApply(l: Literal): Boolean = if (!l.equational) {
     l.left match {
@@ -385,7 +385,7 @@ object PreUni extends CalculusRule {
   }
 
 
-  def apply(uniLits: UniLits, otherLits: OtherLits): Set[Clause] = ???
+  def apply(vargen: leo.modules.calculus.FreshVarGen, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = ???
 }
 
 
@@ -440,6 +440,130 @@ object EqFac extends CalculusRule {
 }
 
 
+object OrderedParamod extends CalculusRule {
+  val name = "paramod_ordered"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+
+  def apply(cl: Clause, withCl: Clause): Set[Clause] = {
+    var result: Set[Clause] = Set()
+    val leftMax = (Clause.maxOf(cl))// ++ cl.negLits).distinct
+    val rightMax = (Clause.maxOf(withCl))// ++ withCl.negLits).distinct
+
+//    Out.trace(s"leftMax:\n\t${leftMax.map(_.pretty).mkString("\n\t")}")
+//    Out.trace(s"rightMax:\n\t${rightMax.map(_.pretty).mkString("\n\t")}")
+    val leftIt = leftMax.iterator
+    while (leftIt.hasNext) {
+      val l = leftIt.next() // Thats the literal we use for rewriting, that should be equational?
+      if (l.polarity) {
+      val toFind = l.left
+
+      val rightIt = rightMax.iterator
+      while (rightIt.hasNext) {
+        val r = rightIt.next()
+        //        if (r.equational) {
+        val findWithin = r.left.occurrences
+
+        val findWithinIt = findWithin.iterator
+        while (findWithinIt.hasNext) {
+          val st = findWithinIt.next()
+          if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+            // paramodulate
+            Out.finest(s"May unify: ${toFind.pretty} with ${st._1.pretty} at ${st._2.map(_.pretty).mkString(" and ")} in ${r.left.pretty}")
+            // get all literals of cl without l
+            val litsOfClWithoutL = cl.lits.diff(Seq(l))
+            val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
+            // TODO: Do that more efficiently, e.g. with zippers
+            val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
+            val repls = st._2.map(pos => Literal(r.left.replaceAt(pos, l.right), r.right, r.polarity))
+            val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
+
+            result = result ++ repls.map(l => Clause(l +: uni +: fused))
+          }
+        }
+
+        if (!r.oriented) {
+          // Do same stuff for r.right
+          val findWithin = r.right.occurrences
+
+          val findWithinIt = findWithin.iterator
+          while (findWithinIt.hasNext) {
+            val st = findWithinIt.next()
+            if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+              // paramodulate
+              // get all literals of cl without l
+              val litsOfClWithoutL = cl.lits.diff(Seq(l))
+              val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
+              // TODO: Do that more efficiently, e.g. with zippers
+              val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
+              val repls = st._2.map(pos => Literal(r.left, r.right.replaceAt(pos, l.right), r.polarity))
+              val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
+              result = result ++ repls.map(l => Clause(l +: uni +: fused))
+            }
+          }
+        }
+        //        } else {
+        //
+        //        }
+      }
+
+      // ...
+      if (!l.oriented) {
+        // Same as above with toFind = l.right
+        val toFind = l.right
+
+        val rightIt = rightMax.iterator
+        while (rightIt.hasNext) {
+          val r = rightIt.next()
+          //          if (r.equational) {
+          val findWithin = r.left.occurrences
+
+          val findWithinIt = findWithin.iterator
+          while (findWithinIt.hasNext) {
+            val st = findWithinIt.next()
+            if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+              // paramodulate
+              // get all literals of cl without l
+              val litsOfClWithoutL = cl.lits.diff(Seq(l))
+              val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
+              // TODO: Do that more efficiently, e.g. with zippers
+              val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
+              val repls = st._2.map(pos => Literal(r.left.replaceAt(pos, l.right), r.right, r.polarity))
+              val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
+              result = result ++ repls.map(l => Clause(l +: uni +: fused))
+            }
+          }
+
+          if (!r.oriented) {
+            // Do same stuff for r.right
+            val findWithin = r.right.occurrences
+
+            val findWithinIt = findWithin.iterator
+            while (findWithinIt.hasNext) {
+              val st = findWithinIt.next()
+              if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+                // paramodulate
+                // get all literals of cl without l
+                val litsOfClWithoutL = cl.lits.diff(Seq(l))
+                val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
+                // TODO: Do that more efficiently, e.g. with zippers
+                val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
+                val repls = st._2.map(pos => Literal(r.left, r.right.replaceAt(pos, l.right), r.polarity))
+                val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
+                result = result ++ repls.map(l => Clause(l +: uni +: fused))
+              }
+            }
+          }
+          //          } else {
+          //
+          //          }
+        }
+      }
+
+      } else { /* skip since its not positive*/ }
+    }
+    result
+  }
+}
 
 
 
