@@ -385,7 +385,25 @@ object PreUni extends CalculusRule {
   }
 
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = ???
+  def apply(vargen: leo.modules.calculus.FreshVarGen, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
+    var solved: Set[(Literal, Subst)] = Set()
+    var unsolved: Set[Literal] = Set()
+    var subst = Subst.id
+    val uniLitIt = uniLits.iterator
+    while (uniLitIt.hasNext) {
+      val uniLit = uniLitIt.next().substitute(subst)
+      val unires = HuetsPreUnification.unify(vargen, uniLit.left, uniLit.right).iterator
+      if (unires.hasNext) {
+        val unifier = unires.next()
+        solved = solved + ((uniLit, unifier))
+        subst = subst.comp(unifier)
+      } else {
+        unsolved = unsolved + uniLit
+      }
+    }
+
+    Set((Clause(unsolved.map(_.substitute(subst)) ++ otherLits.map(_.substitute(subst))), subst))
+  }
 }
 
 
