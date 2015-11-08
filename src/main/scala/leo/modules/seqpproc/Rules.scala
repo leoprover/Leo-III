@@ -484,7 +484,7 @@ object OrderedParamod extends CalculusRule {
         val findWithinIt = findWithin.iterator
         while (findWithinIt.hasNext) {
           val st = findWithinIt.next()
-          if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+          if (!st._1.isVariable && leo.modules.calculus.mayUnify(toFind, st._1)) {
             // paramodulate
             Out.finest(s"May unify: ${toFind.pretty} with ${st._1.pretty} at ${st._2.map(_.pretty).mkString(" and ")} in ${r.left.pretty}")
             // get all literals of cl without l
@@ -506,7 +506,7 @@ object OrderedParamod extends CalculusRule {
           val findWithinIt = findWithin.iterator
           while (findWithinIt.hasNext) {
             val st = findWithinIt.next()
-            if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+            if (!st._1.isVariable && leo.modules.calculus.mayUnify(toFind, st._1)) {
               // paramodulate
               // get all literals of cl without l
               val litsOfClWithoutL = cl.lits.diff(Seq(l))
@@ -538,7 +538,7 @@ object OrderedParamod extends CalculusRule {
           val findWithinIt = findWithin.iterator
           while (findWithinIt.hasNext) {
             val st = findWithinIt.next()
-            if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+            if (!st._1.isVariable && leo.modules.calculus.mayUnify(toFind, st._1)) {
               // paramodulate
               // get all literals of cl without l
               val litsOfClWithoutL = cl.lits.diff(Seq(l))
@@ -558,7 +558,7 @@ object OrderedParamod extends CalculusRule {
             val findWithinIt = findWithin.iterator
             while (findWithinIt.hasNext) {
               val st = findWithinIt.next()
-              if (leo.modules.calculus.mayUnify(toFind, st._1)) {
+              if (!st._1.isVariable && leo.modules.calculus.mayUnify(toFind, st._1)) {
                 // paramodulate
                 // get all literals of cl without l
                 val litsOfClWithoutL = cl.lits.diff(Seq(l))
