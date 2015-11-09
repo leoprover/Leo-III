@@ -141,7 +141,7 @@ object SeqPProc extends Function0[Unit]{
             val (cA_funcExt, fE, fE_other) = FuncExt.canApply(curr)
             if (cA_funcExt) {
               Out.debug(s"Func Ext on: ${curr_cw.pretty}")
-              val funcExt_cw = ClauseWrapper(Clause(FuncExt(fE,simpl.implicitlyBound) ++ fE_other), InferredFrom(FuncExt, Set(curr_cw)))
+              val funcExt_cw = ClauseWrapper(Clause(FuncExt(leo.modules.calculus.freshVarGen(simpl),fE) ++ fE_other), InferredFrom(FuncExt, Set(curr_cw)))
               Out.trace(s"Func Ext result: ${funcExt_cw.pretty}")
               newclauses = newclauses + funcExt_cw
               // Break here

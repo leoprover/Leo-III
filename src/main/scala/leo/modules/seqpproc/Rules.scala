@@ -70,6 +70,7 @@ object CNF_Forall extends CalculusRule {
 
 /** Non-extensional CNF rule. */
 object CNF extends CalculusRule {
+  // TODO: Can be optimize this? E.g. dependencies for skolemterm
   final val name = "cnf"
   final override val inferenceStatus = Some(SZS_Theorem)
 
@@ -93,7 +94,7 @@ object CNF extends CalculusRule {
     }
   } else false
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, fvs: Seq[(Int, Type)], l: Literal): (FormulaCharacter, Seq[Literal]) = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l: Literal): (FormulaCharacter, Seq[Literal]) = {
     import leo.datastructures.{|||, &, Not, Forall, Exists, Impl, <=>}
     if (l.equational) {
       (none, Seq(l))
@@ -106,7 +107,7 @@ object CNF extends CalculusRule {
           case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
           case s <=> t => ???
           case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
-          case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),true)))
+          case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),true)))
           case _ => (none, Seq(l))
         }
       } else {
@@ -116,7 +117,7 @@ object CNF extends CalculusRule {
           case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
           case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
           case s <=> t => ???
-          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fvs))),false)))
+          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),false)))
           case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
           case _ => (none, Seq(l))
         }
@@ -125,26 +126,25 @@ object CNF extends CalculusRule {
   }
 
   final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause): Seq[Clause] = {
-    val fvs = cl.implicitlyBound
-    apply0(vargen, fvs, cl.lits, Seq(Seq())).map(Clause.apply)
+    apply0(vargen, cl.lits, Seq(Seq())).map(Clause.apply)
   }
 
-  final private def apply0(vargen: leo.modules.calculus.FreshVarGen, fvs: Seq[(Int, Type)], lits: Seq[Literal], acc: Seq[Seq[Literal]]): Seq[Seq[Literal]] = {
+  final private def apply0(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal], acc: Seq[Seq[Literal]]): Seq[Seq[Literal]] = {
     if (lits.isEmpty) {
       acc
     } else {
       val hd = lits.head
       val tail = lits.tail
-      val (resChar, res) = apply(vargen, fvs, hd)
+      val (resChar, res) = apply(vargen, hd)
       if (resChar == none) {
         // Already normalized
-        apply0(vargen, fvs, tail, acc.map(hd +: _))
+        apply0(vargen, tail, acc.map(hd +: _))
       } else if (resChar == alpha) {
-        val deepRes = apply0(vargen, fvs, res, Seq(Seq()))
-        apply0(vargen, fvs, tail, deepRes.flatMap(res => res.flatMap(r => acc.map(_ :+ r))))
+        val deepRes = apply0(vargen, res, Seq(Seq()))
+        apply0(vargen, tail, deepRes.flatMap(res => res.flatMap(r => acc.map(_ :+ r))))
       } else if (resChar == beta) {
-        val deepRes = apply0(vargen, fvs, res, Seq(Seq()))
-        apply0(vargen, fvs, tail, deepRes.flatMap(res => acc.map(_ ++ res)))
+        val deepRes = apply0(vargen, res, Seq(Seq()))
+        apply0(vargen, tail, deepRes.flatMap(res => acc.map(_ ++ res)))
       } else {
         throw new SZSException(SZS_Error,
           "cnf calculus error: returning something other than alpha or beta",
@@ -286,26 +286,29 @@ object FuncExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(lit: Literal, fvs: Seq[(Int, Type)]): Literal = {
+  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)]): Literal = {
     assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
     assert(lit.equational, "Trying to apply func ext on non-eq literal")
 
     val funArgTys = lit.left.ty.funParamTypes
     if (lit.polarity) {
-      // Fresh variables
       // TODO: Maybe set implicitly quantified variables manually? Otherwise the whole terms is
       // traversed again and again
-      val lastVar = fvs.head._1
-      val funArgTysWithIndex = funArgTys.zipWithIndex
-      val newVars = funArgTysWithIndex.map {case (ty, ind) => Term.mkBound(ty, lastVar + ind + 1)}
+      val newVars = funArgTys.map {case ty => vargen(ty)}
       Literal(Term.mkTermApp(lit.left, newVars), Term.mkTermApp(lit.right, newVars), true)
     } else {
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, fvs))
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV)) //initFV: We only use the
+      // free vars that were existent at the very beginning, i.e. simulating
+      // that we applies func_ext to all negative literals first
+      // in order to minimize the FVs inside the sk-term
       Literal(Term.mkTermApp(lit.left, skTerms), Term.mkTermApp(lit.right, skTerms), false)
     }
   }
 
-  def apply(lits: Seq[Literal], fvs: Seq[(Int, Type)]): Seq[Literal] = lits.map(apply(_,fvs))
+  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal]): Seq[Literal] = {
+    val initFV = vargen.existingVars
+    lits.map(apply(_,vargen, initFV))
+  }
 }
 
 object BoolExt extends CalculusRule {
