@@ -124,8 +124,8 @@ object HuetsPreUnification extends Unification {
       val flex = it.next()
       val (ty, id) = Bound.unapply(flex).get
       val tys = ty.funParamTypesWithResultType
-      val newVar = vargen()
-      map = map + (id -> λ(tys.init)(Term.mkBound(tys.last, newVar+tys.init.size)))
+      val newVar = vargen.next(tys.last)
+      map = map + (id -> λ(tys.init)(Term.mkBound(tys.last, newVar._1+tys.init.size)))
     }
     Subst.fromMap(map)
 

@@ -35,19 +35,27 @@ package object calculus {
 
   trait FreshVarGen extends Function1[Type, Term] {
     /** Returns a fresh variable wrt. the context of this generator. */
-    def apply(ty: Type): Term = Term.mkBound(ty, apply())
+    def apply(ty: Type): Term = Term.mkBound(ty, next(ty)._1)
     /** Returns a fresh variable represented as its loose de-bruijn index
       *  wrt. the context of this generator. */
-    def apply(): Int
+    def next(ty: Type): (Int, Type)
+    /** Return all already used variables within the context of this generator.
+      * @example If `f` is a FreshVarGen for clause `cl`, then
+      *          `f.existingVars == cl.implicitlyBound`
+      *          he list of all free variables of a clause*/
+    def existingVars: Seq[(Int, Type)]
   }
   final def freshVarGen(cl: Clause): FreshVarGen = new FreshVarGen {
-    var cur = cl.maxImplicitlyBound
+    private var cur = cl.maxImplicitlyBound
+    private var vars: Seq[(Int, Type)] = cl.implicitlyBound
     /** Returns a fresh variable represented as its loose de-bruijn index
       *  wrt. the context of this generator. */
-    override def apply(): Int = {
+    override final def next(ty: Type): (Int, Type) = {
       cur = cur + 1
-      cur
+      vars = (cur, ty) +: vars
+      (cur, ty)
     }
+    override final def existingVars: Seq[(Int, Type)] = vars
   }
 
   // Adopted from tomer's code:
@@ -63,7 +71,7 @@ package object calculus {
         hdSymb.ty.funParamTypes.map(p => varGen(p))
       else {
         val ysTyp = Type.mkFunType(ys.map(_.ty))
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp({val i = varGen();Term.mkBound(Type.mkFunType(ysTyp,p),i+ys.size)}, ys))
+        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp({val i = varGen.next(Type.mkFunType(ysTyp,p));Term.mkBound(i._2,i._1+ys.size)}, ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
 
