@@ -171,16 +171,25 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
       this
     } else {
       val hdFunParamTypes = hd.ty.funParamTypes
-      val args0:Spine = args.etaExpand
       if (args.length < hdFunParamTypes.length) {
         // Introduce new lambda binders
         var missing = hdFunParamTypes.length - args.length
+        val newHead = hd match {
+          case BoundIndex(t, sc) => BoundIndex(t, sc + missing)
+          case _ => hd
+        }
+        val newargs = args.normalize(Subst.shift(missing), Subst.id).etaExpand
+
+
         val newTypes = hdFunParamTypes.drop(args.length)
         val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
-        val newSpine = args0 ++ newSpineSuffix
-        newTypes.foldRight(Root(hd, newSpine):Term){case (ty, t) => TermAbstr(ty, t)}
+        val newSpine = newargs ++ newSpineSuffix
+//        println(s"${Root(hd, newSpine).pretty} missing ${hdFunParamTypes.length - args.length}")
+        val liftedBody: Term = Root(newHead, newSpine)
+//        println(s"${liftedBody.pretty}")
+        newTypes.foldRight(liftedBody){case (ty, t) => TermAbstr(ty, t)}
       } else {
-        Root(hd, args0)
+        Root(hd, args.etaExpand)
       }
 
     }
