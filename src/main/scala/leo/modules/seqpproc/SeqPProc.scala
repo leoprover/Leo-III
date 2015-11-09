@@ -209,6 +209,7 @@ object SeqPProc extends Function0[Unit]{
                   Out.debug("Unification tasks found. Working on it...")
                   newclauses = otherClauses
                   uniClauses.foreach { case (cw, ul, ol) =>
+                    Out.debug(s"Unification task from clause ${cw.pretty}")
                     val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
                     Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
                     newclauses = newclauses union nc

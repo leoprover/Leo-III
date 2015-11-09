@@ -309,6 +309,7 @@ object FuncExt extends CalculusRule {
     val initFV = vargen.existingVars
     lits.map(apply(_,vargen, initFV))
   }
+
 }
 
 object BoolExt extends CalculusRule {
@@ -389,16 +390,18 @@ object PreUni extends CalculusRule {
 
 
   def apply(vargen: leo.modules.calculus.FreshVarGen, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
-    var solved: Set[(Literal, Subst)] = Set()
     var unsolved: Set[Literal] = Set()
     var subst = Subst.id
     val uniLitIt = uniLits.iterator
     while (uniLitIt.hasNext) {
-      val uniLit = uniLitIt.next().substitute(subst)
-      val unires = HuetsPreUnification.unify(vargen, uniLit.left, uniLit.right).iterator
+      val uniLit = uniLitIt.next()
+      Out.debug(s"Working on ${uniLit.pretty}")
+      val substUniLit = uniLit.substitute(subst)
+      Out.debug(s"After applying subst ${substUniLit.pretty}")
+      val unires = HuetsPreUnification.unify(vargen, substUniLit.left, substUniLit.right).iterator
       if (unires.hasNext) {
-        val unifier = unires.next()
-        solved = solved + ((uniLit, unifier))
+        val unifier = unires.next().normalize
+        Out.debug(s"Was solved! Unifier ${unifier.pretty}")
         subst = subst.comp(unifier)
       } else {
         unsolved = unsolved + uniLit
