@@ -91,25 +91,32 @@ object HuetsPreUnification extends Unification {
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
   protected def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
-    // apply delete
-    val ind1 = uproblems.indexWhere(DeleteRule.canApply)
-    if (ind1 > -1)
-      detExhaust(vargen, uproblems.take(ind1) ++ uproblems.drop(ind1+1), sproblems)
-    // apply decomp
+    // apply Func /* by Alex */
+    val ind0 = uproblems.indexWhere(FuncRule.canApply)
+    if (ind0 > -1) {
+      leo.Out.finest(s"Can apply func on: ${uproblems(ind0)._1.pretty} == ${uproblems(ind0)._2.pretty}")
+      detExhaust(vargen, (uproblems.take(ind0) :+ FuncRule(vargen, uproblems(ind0))) ++ uproblems.drop(ind0 + 1), sproblems)}
     else {
-      val ind2 = uproblems.indexWhere(DecompRule.canApply)
-      if (ind2 > -1)
-        detExhaust(vargen, (DecompRule(vargen, uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2+1)).sortWith(sort), sproblems)
-    // apply bind
+      // apply delete
+      val ind1 = uproblems.indexWhere(DeleteRule.canApply)
+      if (ind1 > -1)
+        detExhaust(vargen, uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems)
+      // apply decomp
       else {
-        val ind3 = uproblems.indexWhere(BindRule.canApply)
-        if (ind3 > -1) {
-          val be = BindRule(vargen, uproblems(ind3))
-          val sb = computeSubst(List(be))
-          detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3+1)), applySubstToList(sb,sproblems):+ be)
-        } else
-    // none is applicable, do nothing
-        (uproblems,sproblems)
+        val ind2 = uproblems.indexWhere(DecompRule.canApply)
+        if (ind2 > -1)
+          detExhaust(vargen, (DecompRule(vargen, uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1)).sortWith(sort), sproblems)
+        // apply bind
+        else {
+          val ind3 = uproblems.indexWhere(BindRule.canApply)
+          if (ind3 > -1) {
+            val be = BindRule(vargen, uproblems(ind3))
+            val sb = computeSubst(List(be))
+            detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
+          } else
+          // none is applicable, do nothing
+            (uproblems, sproblems)
+        }
       }
     }
   }
@@ -167,6 +174,25 @@ object HuetsPreUnification extends Unification {
     def canApply(e: UEq): Boolean // returns true if we can apply the rule
   }
 
+  /* new rules by Alex */
+
+  object FuncRule extends HuetsRule[UEq] {
+
+    def apply(varGen: FreshVarGen, e: UEq): UEq = {
+      val funArgTys = e._1.ty.funParamTypes
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, varGen.existingVars))
+      (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
+    }
+
+    def canApply(e: UEq) = {
+      // we can apply it if the sides of the equation have functional type
+      assert(e._1.ty == e._2.ty, "Func Rule: Both UEq sides have not-matching type")
+      e._1.ty.isFunType
+    }
+  }
+
+  /* new rules end*/
+
   // not to forget that the approximations must be in eta-long-form
   /**
    * 4a
@@ -185,7 +211,7 @@ object HuetsPreUnification extends Unification {
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
       s.headSymbol match {
         // cannot be flexible and fail on bound variable
-        case Bound(_,_) => false // FIXME
+        case Bound(_,_) => assert(false, "ImitateRule: Should not happen, right?");false // FIXME
         case _ => true
       }
     }
