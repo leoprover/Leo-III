@@ -226,6 +226,7 @@ object Simp extends CalculusRule {
     }
     val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
+    Out.debug(s"Simp on ${cl.pretty}")
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
     if (fvs.nonEmpty) {
       if (fvs.size != fvs.head) {

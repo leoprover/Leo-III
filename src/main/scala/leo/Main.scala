@@ -130,6 +130,7 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
+        Out.trace(Utility.userDefinedSignatureAsString)
       }
       case e:Throwable => {
         if (e.getMessage != null) {
@@ -143,6 +144,7 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
+        Out.trace(Utility.userDefinedSignatureAsString)
       }
     } finally {
       Scheduler().killAll()
