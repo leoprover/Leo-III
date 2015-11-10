@@ -13,7 +13,7 @@ import scala.collection.SortedSet
 /**
  * Created by lex on 10/28/15.
  */
-object SeqPProc extends Function0[Unit]{
+object SeqPProc extends Function1[Long, Unit]{
 
   private final def termToClause(t: Term): Clause = {
     Clause.mkClause(Seq(Literal.mkLit(t, true)))
@@ -77,7 +77,7 @@ object SeqPProc extends Function0[Unit]{
     Simplification.normalize(cl)
   }
 
-  final def apply(): Unit = {
+  final def apply(startTime: Long): Unit = {
 
     // Read problem
     val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
@@ -112,6 +112,7 @@ object SeqPProc extends Function0[Unit]{
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
     var returnSZS: StatusSZS = SZS_Unknown
+    var derivationClause: ClauseWrapper = null
     var loop = true
     // proof loop
     while (loop) {
@@ -128,6 +129,7 @@ object SeqPProc extends Function0[Unit]{
         if (Clause.empty(simpl)) {
           loop = false
           returnSZS = SZS_Theorem
+          derivationClause = ClauseWrapper(cur.id, simpl, cur.role, cur.annotation)
         } else {
           // Subsumption
           if (!processed.exists(cw => Subsumption.subsumes(cw.cl, simpl))) {
@@ -245,10 +247,26 @@ object SeqPProc extends Function0[Unit]{
 
     }
 
-    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE))
+    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${System.currentTimeMillis() - startTime} ms"))
+    if (Configuration.PROOF_OBJECT) {
+      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+      Out.output(makeDerivation(derivationClause).toString)
+      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+    }
   }
 
-
+  def makeDerivation(cw: ClauseWrapper, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
+    case NoAnnotation => sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).\n")
+    case a@FromFile(_, _) => sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).\n")
+    case a@InferredFrom(_, parents) => {
+      sb.append(" | "*indent);
+      sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).\n")
+      if (parents.size == 1) {
+        makeDerivation(parents.head._1,sb,indent)
+      } else parents.foreach {case (parent, _) => makeDerivation(parent,sb,indent+1)}
+      sb
+    }
+  }
 }
 
 protected[seqpproc] abstract sealed class WrapperAnnotation extends Pretty

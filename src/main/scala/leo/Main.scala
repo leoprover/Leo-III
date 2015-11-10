@@ -51,7 +51,7 @@ object Main {
 
       if (Configuration.isSet("seq")) {
         import leo.modules.seqpproc.SeqPProc
-        SeqPProc()
+        SeqPProc(beginTime)
       } else {
         throw new NotImplementedError("standard mode not included right now, use --seq")
 
