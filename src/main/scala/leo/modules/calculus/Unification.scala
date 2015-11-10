@@ -73,7 +73,7 @@ object HuetsPreUnification extends Unification {
   // computes the substitution from the solved problems
   protected def computeSubst(sproblems: Seq[UEq]): Subst = {
     val maxIdx: Int = Bound.unapply(sproblems.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-    var sub = Subst.id
+    var sub = Subst.shift(maxIdx)
     for (i <- 1 to maxIdx)
       sproblems.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
         case Some((_,t)) => sub = sub.cons(TermFront(t))
