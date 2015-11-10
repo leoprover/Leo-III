@@ -226,7 +226,7 @@ object Simp extends CalculusRule {
     }
     val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
-    Out.debug(s"Simp on ${cl.pretty}")
+    Out.trace(s"Simp on ${cl.pretty}")
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
     if (fvs.nonEmpty) {
       if (fvs.size != fvs.head) {
@@ -499,7 +499,8 @@ object OrderedParamod extends CalculusRule {
             val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
             // TODO: Do that more efficiently, e.g. with zippers
             val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
-            val repls = st._2.map(pos => Literal(r.left.replaceAt(pos, l.right), r.right, r.polarity))
+            val liftedR = r.substitute(Subst.shift(cl.maxImplicitlyBound))
+            val repls = st._2.map(pos => Literal(liftedR.left.replaceAt(pos, l.right), liftedR.right, r.polarity))
             val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
 
             result = result ++ repls.map(l => Clause(l +: uni +: fused))

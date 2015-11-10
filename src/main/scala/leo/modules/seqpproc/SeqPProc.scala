@@ -175,7 +175,7 @@ object SeqPProc extends Function0[Unit]{
                     OrderedParamod(procCl.cl, curr).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(curr_cw, procCl))))}
 
                   newclauses = newclauses ++ paramodres
-                  Out.debug(s"Paramod result:\n\t${paramodres.map(_.pretty).mkString("\n\t")}")
+                  Out.trace(s"Paramod result:\n\t${paramodres.map(_.pretty).mkString("\n\t")}")
                 }
                 // Equality factoring
                 // ....
