@@ -296,13 +296,13 @@ object FuncExt extends CalculusRule {
       // TODO: Maybe set implicitly quantified variables manually? Otherwise the whole terms is
       // traversed again and again
       val newVars = funArgTys.map {case ty => vargen(ty)}
-      Literal(Term.mkTermApp(lit.left, newVars), Term.mkTermApp(lit.right, newVars), true)
+      Literal(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)
     } else {
       val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV)) //initFV: We only use the
       // free vars that were existent at the very beginning, i.e. simulating
       // that we applies func_ext to all negative literals first
       // in order to minimize the FVs inside the sk-term
-      Literal(Term.mkTermApp(lit.left, skTerms), Term.mkTermApp(lit.right, skTerms), false)
+      Literal(Term.mkTermApp(lit.left, skTerms).betaNormalize, Term.mkTermApp(lit.right, skTerms).betaNormalize, false)
     }
   }
 
