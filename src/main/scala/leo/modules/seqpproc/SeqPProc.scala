@@ -81,6 +81,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
     // Read problem
     val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
+    val startTimeWOParsing = System.currentTimeMillis()
     // Negate conjecture
     val conjecture = input.filter {case (id, term, role) => role == Role_Conjecture}
     if (conjecture.size > 1) throw new SZSException(SZS_InputError, "Only one conjecture per input problem permitted.")
@@ -153,7 +154,8 @@ object SeqPProc extends Function1[Long, Unit]{
                 Out.debug(s"Bool Ext on: ${curr_cw.pretty}")
                 val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(curr_cw))))
                 Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
-                newclauses = newclauses union boolExt_cws
+
+                newclauses = newclauses union boolExt_cws.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
                 // Break here
               } else {
                 processed = processed.filterNot(cw => Subsumption.subsumes(curr, cw.cl)) + curr_cw
@@ -234,6 +236,8 @@ object SeqPProc extends Function1[Long, Unit]{
 
               if (!Clause.trivial(newCl.cl)) {
                 unprocessed = unprocessed + newCl
+              } else {
+                Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
               }
             }
 
@@ -247,8 +251,8 @@ object SeqPProc extends Function1[Long, Unit]{
 
     }
 
-    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${System.currentTimeMillis() - startTime} ms"))
-    if (Configuration.PROOF_OBJECT) {
+    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${System.currentTimeMillis() - startTime} ms resp. ${System.currentTimeMillis() - startTimeWOParsing} ms w/o parsing"))
+    if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
       Out.output(makeDerivation(derivationClause).toString)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
