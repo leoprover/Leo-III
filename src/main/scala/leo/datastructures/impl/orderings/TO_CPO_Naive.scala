@@ -269,6 +269,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
     }
 
     if (s.isApp || s.isConstant) {
+
       val (f,args) = ∙.unapply(s).get
       val fargList: Seq[Term] = effectiveArgs(f.ty,args)
 
@@ -357,6 +358,8 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
 
           return false
         }
+        case _ => println(s.pretty);println(f.pretty); assert(false, "CPO: should not happen, sth not in beta nf");
+
       }
     }
     // #############
