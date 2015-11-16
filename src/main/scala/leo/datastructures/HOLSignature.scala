@@ -57,55 +57,57 @@ trait HOLSignature {
 
   // Fixed symbols
   import Type.{mkPolyType => forall}
-  lazy val fixedConsts = List(("$true", o), // Key 6
-    ("$false",                        o), // Key 7
-    ("#box",                    o ->: o), // Key 8
-    ("#diamond",                o ->: o), // Key 9
-    ("~",                       o ->: o), // Key 10
-    ("!",        forall((1 ->: o) ->: o)), // Key 11
-    ("|",                 o ->: o ->: o), // Key 12
-    ("=",        forall(1 ->: 1 ->: o)), // Key 13
-    ("$$let",    forall(forall(2 ->: 1 ->: 1))), // Key 14
-    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1)),  // Key 15
-    ("$less",    forall(1 ->: 1 ->: o)), // Key 16
-    ("$lesseq",   forall(1 ->: 1 ->: o)), // Key 17
-    ("$greater",  forall(1 ->: 1 ->: o)), // Key 18
-    ("$greatereq",forall(1 ->: 1 ->: o)), // Key 19
-    ("@+",        forall((1 ->: o) ->: 1)), // Key 20
-    ("@-",        forall((1 ->: o) ->: 1)), // Key 21
-    ("$uminus",   forall(1 ->: 1)), // Key 22
-    ("$sum",      forall(1 ->: 1 ->: 1)), // Key 23
-    ("$difference",forall(1 ->: 1 ->: 1)), // Key 24
-    ("$product",   forall(1 ->: 1 ->: 1)), // Key 25
-    ("$quotient",  forall(1 ->: 1 ->: 1)), // Key 26
-    ("$quotient_e",forall(1 ->: 1 ->: 1)), // Key 27
-    ("$quotient_t",forall(1 ->: 1 ->: 1)), // key 28
-    ("$quotient_f",forall(1 ->: 1 ->: 1)), // Key 29
-    ("$remainder_e",forall(1 ->: 1 ->: 1)), // Key 30
-    ("$remainder_t",forall(1 ->: 1 ->: 1)), // key 31
-    ("$remainder_f",forall(1 ->: 1 ->: 1)), // Key 32
-    ("$floor",     forall(1 ->: 1)), // Key 33
-    ("$ceiling",   forall(1 ->: 1)), // Key 34
-    ("$truncate",  forall(1 ->: 1)), // Key 35
-    ("$round",     forall(1 ->: 1)), // Key 36
-    ("$to_int",      forall(1 ->: int)), // Key 37
-    ("$to_rat",      forall(1 ->: rat)), // Key 38
-    ("$to_real",      forall(1 ->: real)), // Key 39
-      ("$is_rat",      forall(1 ->: o)), // Key 40
-      ("$is_int",      forall(1 ->: o)) // Key 41
+  import IsSignature.{lexStatus, multStatus}
+  lazy val fixedConsts = List(
+    ("$true",                         o, multStatus), // Key 6
+    ("$false",                        o, multStatus), // Key 7
+    ("#box",                    o ->: o, multStatus), // Key 8
+    ("#diamond",                o ->: o, multStatus), // Key 9
+    ("~",                       o ->: o, multStatus), // Key 10
+    ("!",        forall((1 ->: o) ->: o), multStatus), // Key 11
+    ("|",                 o ->: o ->: o, multStatus), // Key 12
+    ("=",        forall(1 ->: 1 ->: o), multStatus), // Key 13
+    ("$$let",    forall(forall(2 ->: 1 ->: 1)), multStatus), // Key 14
+    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1), multStatus),  // Key 15
+    ("$less",    forall(1 ->: 1 ->: o), lexStatus), // Key 16
+    ("$lesseq",   forall(1 ->: 1 ->: o), lexStatus), // Key 17
+    ("$greater",  forall(1 ->: 1 ->: o), lexStatus), // Key 18
+    ("$greatereq",forall(1 ->: 1 ->: o), lexStatus), // Key 19
+    ("@+",        forall((1 ->: o) ->: 1), multStatus), // Key 20
+    ("@-",        forall((1 ->: o) ->: 1), multStatus), // Key 21
+    ("$uminus",   forall(1 ->: 1), multStatus), // Key 22
+    ("$sum",      forall(1 ->: 1 ->: 1), multStatus), // Key 23
+    ("$difference",forall(1 ->: 1 ->: 1), lexStatus), // Key 24
+    ("$product",   forall(1 ->: 1 ->: 1), multStatus), // Key 25
+    ("$quotient",  forall(1 ->: 1 ->: 1), lexStatus), // Key 26
+    ("$quotient_e",forall(1 ->: 1 ->: 1), lexStatus), // Key 27
+    ("$quotient_t",forall(1 ->: 1 ->: 1), lexStatus), // key 28
+    ("$quotient_f",forall(1 ->: 1 ->: 1), lexStatus), // Key 29
+    ("$remainder_e",forall(1 ->: 1 ->: 1), lexStatus), // Key 30
+    ("$remainder_t",forall(1 ->: 1 ->: 1), lexStatus), // key 31
+    ("$remainder_f",forall(1 ->: 1 ->: 1), lexStatus), // Key 32
+    ("$floor",     forall(1 ->: 1), multStatus), // Key 33
+    ("$ceiling",   forall(1 ->: 1), multStatus), // Key 34
+    ("$truncate",  forall(1 ->: 1), multStatus), // Key 35
+    ("$round",     forall(1 ->: 1), multStatus), // Key 36
+    ("$to_int",      forall(1 ->: int), multStatus), // Key 37
+    ("$to_rat",      forall(1 ->: rat), multStatus), // Key 38
+    ("$to_real",      forall(1 ->: real), multStatus), // Key 39
+      ("$is_rat",      forall(1 ->: o), multStatus), // Key 40
+      ("$is_int",      forall(1 ->: o), multStatus) // Key 41
   )
 
   // Standard defined symbols
   lazy val definedConsts = List(
-    ("?", existsDef, forall((1 ->: o) ->: o)), // Key 42
-    ("&",   andDef,  o ->: o ->: o), // Key 43
-    ("=>",  implDef, o ->: o ->: o), // Key 44
-    ("<=",  ifDef,   o ->: o ->: o), // Key 45
-    ("<=>", iffDef,  o ->: o ->: o), // Key 46
-    ("~&", nandDef,  o ->: o ->: o), // Key 47
-    ("~|",  norDef,  o ->: o ->: o), // Key 48
-    ("<~>",niffDef,  o ->: o ->: o), // Key 49
-    ("!=",  neqDef, forall(1 ->: 1 ->: o))) // Key 50
+    ("?", existsDef, forall((1 ->: o) ->: o), multStatus), // Key 42
+    ("&",   andDef,  o ->: o ->: o, multStatus), // Key 43
+    ("=>",  implDef, o ->: o ->: o, lexStatus), // Key 44
+    ("<=",  ifDef,   o ->: o ->: o, lexStatus), // Key 45
+    ("<=>", iffDef,  o ->: o ->: o, multStatus), // Key 46
+    ("~&", nandDef,  o ->: o ->: o, multStatus), // Key 47
+    ("~|",  norDef,  o ->: o ->: o, multStatus), // Key 48
+    ("<~>",niffDef,  o ->: o ->: o, multStatus), // Key 49
+    ("!=",  neqDef, forall(1 ->: 1 ->: o), multStatus)) // Key 50
 
 
   //////////////////////

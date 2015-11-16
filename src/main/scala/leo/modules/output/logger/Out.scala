@@ -29,6 +29,11 @@ object Out extends Logging {
           }
         }
       })
+
+      override def publish(record: LogRecord): Unit = {
+        super.publish(record)
+        flush()
+      }
     }
   )
 

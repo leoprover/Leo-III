@@ -1,5 +1,7 @@
 package leo.datastructures
 
+import leo.datastructures.Position.RootPos
+
 /**
  * Created by lex on 16.10.14.
  */
@@ -7,7 +9,11 @@ abstract class Position(protected val seq: Seq[Int]) extends Pretty {
   import leo.datastructures.Position.DerivedPos
 
   def posHead: Int = seq.head
-  def tail: Position = DerivedPos(seq.tail)
+  def tail: Position = {
+    val t = seq.tail
+    if (t.isEmpty) RootPos
+    else DerivedPos(t)
+  }
 
   def abstrPos: Position = new DerivedPos(seq :+ 1)
   def headPos: Position = new DerivedPos(seq :+ 0)

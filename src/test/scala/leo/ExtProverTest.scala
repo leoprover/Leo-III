@@ -1,3 +1,4 @@
+/*
 package leo
 
 import leo.agents.FifoController
@@ -153,3 +154,4 @@ class ExtProverTest extends LeoTestSuite {
     }
   }
 }
+*/

@@ -1,9 +1,10 @@
+/*
 package leo
 package modules.phase
 
 import leo.Configuration
 import leo.agents._
-import leo.agents.impl.{FiniteHerbrandEnumerateAgent, _}
+//import leo.agents.impl.{FiniteHerbrandEnumerateAgent, _}
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore, SZSStore}
@@ -11,20 +12,20 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.impl.Signature
 import leo.modules.{SZSException, Utility}
-import leo.modules.normalization.{DefExpansion, NegationNormal, Simplification, Skolemization}
+//import leo.modules.normalization.{DefExpansion, NegationNormal, Simplification, Skolemization}
 import leo.modules.output._
-import leo.modules.calculus.enumeration.SimpleEnum
-import leo.modules.calculus.splitting.ClauseHornSplit
-import leo.modules.calculus.{IdComparison, Paramodulation, PropParamodulation}
+//import leo.modules.calculus.enumeration.SimpleEnum
+//import leo.modules.calculus.splitting.ClauseHornSplit
+//import leo.modules.calculus.{IdComparison, Paramodulation, PropParamodulation}
 
 
 object Phase {
-  def getStdPhases : Seq[Phase] = List(new LoadPhase(true), SimplificationPhase, ParamodPhase)
-  def getHOStdPhase : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
-  def getSplitFirst : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
-  def getCounterSat : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
-  def getCounterSatRemote : Seq[Phase] =  List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
-  def getExternalPhases : Seq[Phase] = List(new LoadPhase(true), PreprocessPhase, ExternalProverPhase)
+  def getStdPhases : Seq[Phase] = List() //List(new LoadPhase(true), SimplificationPhase, ParamodPhase)
+  def getHOStdPhase : Seq[Phase] = List() //List(new LoadPhase(true), PreprocessPhase, ParamodPhase)
+  def getSplitFirst : Seq[Phase] = List() //List(new LoadPhase(true), PreprocessPhase, ExhaustiveClausificationPhase, SplitPhase, ParamodPhase)
+  def getCounterSat : Seq[Phase] =  List() //List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, PreprocessPhase, ParamodPhase)
+  def getCounterSatRemote : Seq[Phase] =  List() //List(new LoadPhase(false), FiniteHerbrandEnumeratePhase, RemoteCounterSatPhase)
+  def getExternalPhases : Seq[Phase] = List() //List(new LoadPhase(true), PreprocessPhase, ExternalProverPhase)
 
   /**
    * Creates a complete phase from a List of Agents.
@@ -165,4 +166,4 @@ trait CompletePhase extends Phase {
       notifyAll()
     }
   }
-}
+}*/

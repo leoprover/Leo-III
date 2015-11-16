@@ -44,6 +44,15 @@ object Utility {
     }
   }
 
+  private final def singleTermToClause(t: Term, role: Role): Clause = {
+    Clause.mkClause(Seq(Literal.mkPos(t, LitTrue)), roleToClauseOrigin(role))
+  }
+  private final def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
+    case Role_Conjecture => FromConjecture
+    case Role_NegConjecture => FromConjecture
+    case _ => FromAxiom
+  }
+
   private def loadRelative(file : String, rel : Array[String]): Unit = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
@@ -65,10 +74,10 @@ object Utility {
           case Right(x) =>
             loadedSet += fileAbs
             x.getIncludes.foreach(x => loadRelative(x._1, path))
-
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-              val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
+            processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+              val form = singleTermToClause(term, role)
+              val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
               if (FormulaDataStore.addFormula(f))
                 Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
               }
@@ -99,8 +108,9 @@ object Utility {
                     x.getIncludes.foreach(x => loadRelative(x._1, path))
 
                     val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                    processed foreach { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-                      val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, FromFile(fileAbs, name))
+                    processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+                      val form = singleTermToClause(term, role)
+                      val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
                       if (FormulaDataStore.addFormula(f))
                         Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
                       }
@@ -116,7 +126,7 @@ object Utility {
           } else {
             Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
           }
-        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
+        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, e.toString, e)
       }
     }
   }
@@ -148,8 +158,9 @@ object Utility {
     TPTP.parseFormula(s) match {
       case Right(a) =>
         val processed = InputProcessing.process(Signature.get)(a)
-        processed match { case (name, form, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-          val f = Store(name, form.mapLit(_.termMap(TermIndex.insert(_))), role, Context(), 0, NoAnnotation)
+        processed match { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
+          val form = singleTermToClause(term, role)
+          val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, NoAnnotation)
           if (FormulaDataStore.addFormula(f))
             Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
         }
@@ -160,12 +171,15 @@ object Utility {
   }
 
   def printSignature(): Unit = {
+    import leo.datastructures.IsSignature.{lexStatus,multStatus}
     val s = Signature.get
     println("Name | Id | (Type) | (Def)")
     (s.allConstants).foreach { case c => {
       val c1 = s(c)
       print(c1.name + " | ")
       print(c1.key + " |")
+      if (c1.status == lexStatus) print("lex " + " | ")
+      if (c1.status == multStatus) print("mult" + " | ")
       c1.ty foreach { case ty => print(ty.pretty + " | ")}
       c1.defn foreach { case defn => print(defn.pretty)}
       println()
@@ -174,16 +188,24 @@ object Utility {
   }
 
   def printUserDefinedSignature(): Unit = {
+    println(userDefinedSignatureAsString)
+  }
+  def userDefinedSignatureAsString: String = {
+    import leo.datastructures.IsSignature.{lexStatus,multStatus}
     val s = Signature.get
+    val sb = new StringBuilder()
     (s.allUserConstants).foreach { case c => {
       val c1 = s(c)
-      print(c1.name + " | ")
-      print(c1.key + " | ")
-      c1.ty foreach { case ty => print(ty.pretty + " | ")}
-      c1.defn foreach { case defn => print(defn.pretty)}
-      println()
+      sb.append(c1.name + " | ")
+      sb.append(c1.key + " | ")
+      if (c1.status == lexStatus) sb.append("lex " + " | ")
+      if (c1.status == multStatus) sb.append("mult" + " | ")
+      c1.ty foreach { case ty => sb.append(ty.pretty + " | ")}
+      c1.defn foreach { case defn => sb.append(defn.pretty)}
+      sb.append("\n")
     }
     }
+    sb.toString()
   }
 
   /**

@@ -27,9 +27,10 @@ object Simplification extends AbstractNormalize{
    * @return a normalized formula
    */
   override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap(internalNormalize(_)))
+    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))})
   }
 
+  def normalize(t: Term): Term = internalNormalize(t)
 
   private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize)
 
@@ -90,6 +91,7 @@ object Simplification extends AbstractNormalize{
     case Not(s) => norm(s) match {
       case LitTrue()    => LitFalse
       case LitFalse()   => LitTrue
+      case Not(s1)      => s1
       case s1           => Not(s1)
     }
     case Forall(t) => norm(t) match {

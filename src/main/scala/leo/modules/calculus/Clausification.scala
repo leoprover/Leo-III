@@ -13,7 +13,7 @@ object Clausification extends UnaryCalculusRule[Seq[Clause]]{
   def clausify(c : Clause) : Seq[Clause] = {
     val clausilits : Seq[Literal] = c.lits.filter(clausifiable)
     if(!clausilits.isEmpty) {
-      val mLit = clausilits.max
+      val mLit = clausilits.max(Orderings.simple(LitWeight_FIFO))
       val pol = mLit.polarity
       val rLits = rmEl(c.lits, mLit)
       mLit.term match {
@@ -32,7 +32,7 @@ object Clausification extends UnaryCalculusRule[Seq[Clause]]{
   def apply(cl: Clause) = clausify(cl)
   val name = "cnf"
 
-  private def updateLits(c : Clause, l : Seq[Literal]) : Clause = Clause.mkClause(l, c.implicitBindings, Derived)
+  private def updateLits(c : Clause, l : Seq[Literal]) : Clause = Clause.mkClause(l, Derived)
 
   private def appendLit(ls : Seq[Literal], t : Term, pol : Boolean) : Seq[Literal] = Literal(t, pol) +: ls
 

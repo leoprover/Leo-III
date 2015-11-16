@@ -1,8 +1,8 @@
 import leo.datastructures._
 
 package object leo {
-  type TypeOrdering = QuasiOrdering[Type]
-  type TermOrdering = QuasiOrdering[Term]
+
+  type TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive.type
   type ClauseOrdering = Ordering[Clause]
   type LiteralOrdering = Ordering[Literal]
 

@@ -1,3 +1,4 @@
+/*
 package leo.agents.impl
 
 import leo.datastructures.blackboard.FormulaStore
@@ -23,3 +24,4 @@ class SZSScriptAgentTest extends LeoTestSuite {
 
 
 }
+*/

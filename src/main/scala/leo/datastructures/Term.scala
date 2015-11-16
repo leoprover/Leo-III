@@ -26,7 +26,7 @@ import scala.language.implicitConversions
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-trait Term extends QuasiOrdered[Term] with Pretty {
+trait Term extends Pretty {
 
   // Predicates on terms
   /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
@@ -48,17 +48,24 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   def δ_expandable: Boolean
   def partial_δ_expand(rep: Int): Term
   def full_δ_expand: Term
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term
 
   def head_δ_expandable: Boolean
   def head_δ_expand: Term
 
   // Queries on terms
   def ty: Type
+  def ground: Boolean = freeVars.isEmpty
+
+  // TODO: REMOVE OLD FUNCTIONS SUCH AS
   def freeVars: Set[Term] // TODO: Clarify that this does ...
   def boundVars: Set[Term]
   def looseBounds: Set[Int]  // TODO ..as opposed to this
   def metaVars: Set[(Type, Int)]
   def metaIndices: Set[Int] = metaVars.map(x => x._2)
+  // TODO END
+
+  def fv: Set[(Int, Type)]
   def occurrences: Map[Term, Set[Position]]
   def symbols: Set[Signature#Key]
   def symbolsOfType(ty: Type) = {
@@ -89,7 +96,7 @@ trait Term extends QuasiOrdered[Term] with Pretty {
   def tyClosure(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): Option[Int] = Configuration.TERM_ORDERING.compare(this, that)
+  def compareTo(that: Term): CMP_Result = Configuration.TERM_ORDERING.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
   /** Return the β-nf of the term */

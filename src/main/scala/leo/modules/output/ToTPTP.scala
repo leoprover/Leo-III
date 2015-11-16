@@ -8,6 +8,7 @@ import leo.datastructures._
 import scala.annotation.tailrec
 import leo.datastructures.blackboard.FormulaStore
 
+
 /**
  * Translation module that takes internal terms or types and translates them
  * to a TPTP representation (in THF format).
@@ -24,12 +25,12 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
   def apply(f: FormulaStore): Output = new Output {
-    def output = toTPTP(f.name, f.clause.toTerm, f.role)
+    def output = toTPTP(f.name, f.clause.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/
   def apply(name: String, t: Clause, role: Role): Output = new Output {
-    def output = toTPTP(name, t.toTerm, role)
+    def output = toTPTP(name, t.term, role)
   }
   def apply(name: String, t: Term, role: Role): Output = new Output {
     def output = toTPTP(name, t, role)
@@ -50,7 +51,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
 
   def withAnnotation(f: FormulaStore): Output = new Output {
-    def output = toTPTP(f.name, f.clause.toTerm, f.role, f.annotation)
+    def output = toTPTP(f.name, f.clause.term, f.role, f.annotation)
   }
 
   /**
@@ -87,9 +88,9 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
 
   /** Translate the `FormulaStore` into a TPTP String in THF format. */
-  def output(f: FormulaStore) = toTPTP(f.name, f.clause.toTerm, f.role)
+  def output(f: FormulaStore) = toTPTP(f.name, f.clause.term, f.role)
   /** Translate the term information triple into a TPTP String. */
-  def output(name: String, t: Clause, role: Role) = toTPTP(name, t.toTerm, role)
+  def output(name: String, t: Clause, role: Role) = toTPTP(name, t.term, role)
 
   // Extra output function for types only (not sure if needed somewhere)
   /** Return an `Output` object that contains the TPTP representation of the given type.*/
@@ -98,6 +99,25 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
   /** Translate the type to a TPTP String in THF format. */
   def output(ty: Type) = toTPTP(ty)
+
+  ///////////////////////////////
+  // Translation of other data structures
+  ///////////////////////////////
+
+  def apply(subst: Subst): Output = new Output {
+    override def output: String = {
+      val sb = new StringBuilder
+      var i = 1
+      var max = subst.length
+      while (i < max) {
+        val erg = subst.substBndIdx(i)
+        sb.append(s"bind(${i}, $$thf(${erg.pretty})),")
+        i = i+1
+      }
+      sb.append(s"bind(${max}, $$thf(${subst.substBndIdx(max).pretty}))")
+      sb.toString()
+    }
+  }
 
   ///////////////////////////////
   // Translation of THF formula

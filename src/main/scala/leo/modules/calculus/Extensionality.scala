@@ -1,3 +1,4 @@
+/*
 package leo.modules.calculus
 
 import leo.datastructures._
@@ -133,4 +134,4 @@ object BoolExtAlt extends UnaryCalculusHintRule[Set[Clause], (Seq[Literal], Seq[
   }
 
   def name = "bool_ext_alt"
-}
+}*/

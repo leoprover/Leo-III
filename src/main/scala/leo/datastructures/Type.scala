@@ -47,7 +47,7 @@ abstract class Type extends Pretty {
   def _funDomainType: Type = funDomainType.get
   def funCodomainType: Option[Type]
   def _funCodomainType: Type = funCodomainType.get
-  def funArity: Int
+  def arity: Int
   def funParamTypesWithResultType: Seq[Type]
   def funParamTypes: Seq[Type] = funParamTypesWithResultType.init
 
@@ -90,7 +90,15 @@ abstract class Type extends Pretty {
   def +(ty: Type) = Type.mkUnionType(this, ty)
 
   val numberOfComponents: Int = 1
-
+  def order: Int
+  /**
+   * The number of "prefix" type abstractions, i.e. the length
+   * of the longest prefix of this type only containing
+   * type abstractions (corresponds to the number
+   * of type variables if the type is rank-1).
+   * @return
+   */
+  def polyPrefixArgsCount: Int
 
   protected[datastructures] def closure(subst: Subst): Type
 }

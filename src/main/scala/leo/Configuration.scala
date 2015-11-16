@@ -90,15 +90,16 @@ object Configuration extends DefaultConfiguration {
 
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
-  import leo.datastructures.{SizeBasedOrdering,LitWeight_TermSize, CLWeight_LitWeightSum, Orderings, CLOrdering_Lex_Weight_Age_Origin}
+  import leo.datastructures.{Precedence,TermOrdering,ClauseOrdering,LitWeight_TermSize,Orderings}
 
   lazy val CLAUSE_WEIGHTING: ClauseWeight = ClWeight_LitCount
-  lazy val CLAUSE_ORDERING: ClauseOrdering = CLOrdering_Lex_Weight_Age_Origin
+  lazy val CLAUSE_ORDERING: ClauseOrdering = ClauseOrdering.lex_WeightAgeOrigin
 
   lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
-  lazy val LITERAL_ORDERING: LiteralOrdering = Orderings.simple[Literal](LitWeight_TermSize)
 
-  lazy val TERM_ORDERING: TermOrdering = SizeBasedOrdering
+  lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
+
+  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder_UnaryFirst
 
   // more to come ...
 
@@ -145,7 +146,8 @@ object Configuration extends DefaultConfiguration {
       DEFAULT_VERBOSITY}
   }
 
-  protected def uniqueIntFor(param: String, default: Int): Int = configMap.get(param) match {
+  protected def uniqueIntFor(param: String, default: Int): Int = if (configMap == null) default
+    else configMap.get(param) match {
     case None => default
     case Some(arg :: Nil) => processIntFor(param, arg, default)
     case Some(arg :: _) => {
