@@ -46,30 +46,6 @@ abstract class AgentController(a : Agent) extends TAgent {
 
 
   /**
-   * This method should be called, whenever a formula is added to the blackboard.
-   *
-   * The filter then checks the blackboard if it can generate tasks from it,
-   * that will be stored in the Agent.
-   *
-   * @param event - Newly added or updated formula
-   */
-  def filter(event : Event) : Unit
-
-
-  /**
-   *
-   * Returns a a list of Tasks, the Agent can afford with the given budget.
-   *
-   * @param budget - Budget that is granted to the agent.
-   */
-  def getTasks(budget : Double) : Iterable[Task]
-
-  /**
-   * @return true if the agent has tasks, false otherwise
-   */
-  def hasTasks : Boolean
-
-  /**
    * Each task can define a maximum amount of money, they
    * want to posses.
    *
@@ -79,26 +55,6 @@ abstract class AgentController(a : Agent) extends TAgent {
    * @return maxMoney
    */
   var maxMoney : Double = 100000
-
-  /**
-   * As getTasks with an infinite budget.
-   *
-   * @return - All Tasks that the current agent wants to execute.
-   */
-  def getAllTasks : Iterable[Task]
-
-  /**
-   *
-   * Given a set of (newly) executing tasks, remove all colliding tasks.
-   *
-   * @param nExec - The newly executing tasks
-   */
-  def removeColliding(nExec : Iterable[Task]) : Unit
-
-  /**
-   * Removes all Tasks
-   */
-  def clearTasks() : Unit
 
   def taskFinished(t : Task) : Unit = {}
 

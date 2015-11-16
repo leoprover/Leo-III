@@ -92,7 +92,7 @@ abstract class StateDrivenAgent extends TAgent{
     }
   }
 
-  override def getTasks(budget: Double): Iterable[Task] = {
+  override def getTasks : Iterable[Task] = {
     val ts = searchTasks
     activeStatus(ts)
     MAX_WORK match {

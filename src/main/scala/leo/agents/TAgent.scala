@@ -1,5 +1,6 @@
 package leo.agents
 
+import leo.datastructures.Pretty
 import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
 
 /**
@@ -17,7 +18,7 @@ trait TAgent {
 	/**
 	* Method to pinpoint the task, that can be currently executed.
 	* Most importantly an agent with >0 openTasks will prevent
-	* a [[DoneEvent]] from beeing sent.
+	* a [[leo.datastructures.blackboard.DoneEvent]] from beeing sent.
 	*/
   def openTasks : Int
 
@@ -25,7 +26,7 @@ trait TAgent {
 
   /**
   * This flag shows, whether an agent should be considered for execution.
-  * In this fashion, the agent can not prevent a [[DoneEvent]] from being sent.
+  * In this fashion, the agent can not prevent a [[leo.datastructures.blackboard.DoneEvent]] from being sent.
   */
   def isActive : Boolean = _isActive
 	
@@ -33,11 +34,6 @@ trait TAgent {
 	* Sets the active status.
 	*/
   def setActive(a : Boolean) = _isActive = a
-
-  /**
-  * This method will ultimately execute a task, if it is selected by the scheduler.
-  */
-  def run(t : Task) : Result
 
   /**
   * This method is called, whenever the program is forcefully stopped.
@@ -84,11 +80,9 @@ trait TAgent {
 
   /**
    *
-   * Returns a a list of Tasks, the Agent can afford with the given budget.
-   *
-   * @param budget - Budget that is granted to the agent.
+   * Returns a a list of Tasks, the Agent can afford with the given realtive budget..
    */
-  def getTasks(budget : Double) : Iterable[Task]
+  def getTasks : Iterable[Task]
 
   /**
    * @return true if the agent has tasks, false otherwise
@@ -140,4 +134,81 @@ trait TAgent {
   def taskFinished(t : Task) : Unit
 
   def taskChoosen(t : Task) : Unit
+}
+
+
+
+/**
+  * Common trait for all Agent Task's. Each agent specifies the
+  * work it can do.
+  *
+  * The specific fields and accessors for the real task will be in
+  * the implementation.
+  *
+  * @author Max Wisniewski
+  * @since 6/26/14
+  */
+abstract class Task extends Pretty {
+
+  /**
+    * Prints a short name of the task
+    * @return
+    */
+  def name : String
+
+  /**
+    * Computes the result, a delta on the blackboard state,
+    * of the task.
+    * @return
+    */
+  def run : Result
+
+  /**
+    *
+    * Returns a set of all Formulas that are read for the task.
+    *
+    * @return Read set for the Task.
+    */
+  def readSet() : Map[DataType, Set[Any]]
+
+  /**
+    *
+    * Returns a set of all Formulas, that will be written by the task.
+    *
+    * @return Write set for the task
+    */
+  def writeSet() : Map[DataType, Set[Any]]
+
+  def lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
+
+  /**
+    * Checks for two tasks, if they are in conflict with each other.
+    *
+    * @param t2 - Second Task
+    * @return true, iff they collide
+    */
+  def collide(t2 : Task) : Boolean = {
+    val t1 = this
+    if(t1 eq t2) return true
+    val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)  // Restrict to the datatypes both tasks use.
+
+    !sharedTypes.exists{d =>        // There exist no datatype
+      val r1 : Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
+      val w1 : Set[Any] = t1.writeSet().getOrElse(d, Set.empty[Any])
+      val r2 : Set[Any] = t2.readSet().getOrElse(d, Set.empty[Any])
+      val w2 : Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
+
+      (r1 & w2).nonEmpty || (r2 & w1).nonEmpty || (w1 & w2).nonEmpty
+      true
+    }
+  }
+
+  /**
+    *
+    * Defines the realtive bid of an agent for a task.
+    * The result has to in [0,1].
+    *
+    * @return - Possible profit, if the task is executed
+    */
+  def bid() : Double
 }

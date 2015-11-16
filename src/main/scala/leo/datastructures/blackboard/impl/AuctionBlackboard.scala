@@ -189,7 +189,7 @@ private object TaskSet {
           var r: List[(Double, TAgent, Task)] = Nil
           while (r.isEmpty) {
             //leo.Out.comment("Checking for new tasks.")
-            regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks(budget).foreach { t => r = (t.bid(budget), a, t) :: r } }
+            regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks.foreach { t => r = (t.bid * budget, a, t) :: r } }
             if (r.isEmpty) {
               if (ActiveTracker.isNotActive) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {

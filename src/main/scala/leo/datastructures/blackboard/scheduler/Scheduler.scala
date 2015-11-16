@@ -245,7 +245,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           }
         } catch {
           case e : RejectedExecutionException => return
-          case _ => Out.severe("Problem occured while filtering new tasks.")
+          case _ : Exception => Out.severe("Problem occured while filtering new tasks.")
         }
       }
 //      Out.comment(s"[Writer]: Gone through all.")
@@ -268,7 +268,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    */
   private class GenAgent(a : TAgent, t : Task) extends Runnable{
     override def run()  {
-      ExecTask.put(a.run(t),t, a)
+      ExecTask.put(t.run,t, a)
       AgentWork.dec(a)
 //      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
@@ -363,8 +363,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private object ExitTask extends Task {
     override def readSet(): Map[DataType, Set[Any]] = Map.empty
     override def writeSet(): Map[DataType, Set[Any]] = Map.empty
-    override def bid(budget : Double) : Double = 1
+    override def bid : Double = 1
     override def name: String = "ExitTask"
+
+    override def run : Result = {
+      Result()
+    }
 
     override def pretty: String = "Exit Task"
   }

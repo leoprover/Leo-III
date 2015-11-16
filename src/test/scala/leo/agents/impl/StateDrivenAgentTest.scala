@@ -42,18 +42,6 @@ object StateTestAgent extends StateDrivenAgent {
   override protected def searchTasks: Iterable[Task] =TaskDAG.eligable.map{s => StateTestTask(s)}
   override def kill(): Unit = {}
 
-  var round : Int = 0
-
-  override def run(t: Task): Result = t match {
-      case StateTestTask(s) =>
-        round = round + 1
-        //println(s"Done $s as $round")
-        Result().insert(TaskType)(s)
-      case _ => Result()
-    }
-
-
-
 
   override def openTasks: Int = TaskDAG.openWork
   override val name: String = "dag_agent"
@@ -71,11 +59,19 @@ case class StateTestTask(s : String) extends Task{
   override def name: String = s
   override def writeSet(): Map[DataType, Set[Any]] = Map(TaskType -> Set(s))
   override def readSet(): Map[DataType, Set[Any]] = Map.empty
-  override def bid(budget: Double): Double = budget / 10
+  override def bid : Double = 0.1
   override def pretty: String = s
   override def equals(o : Any) = o match {
     case StateTestTask(s1) => s.equals(s1)
     case _ => false
+  }
+
+  override def run : Result = {
+
+    var round: Int = 0
+    round = round + 1
+    //println(s"Done $s as $round")
+    Result().insert(TaskType)(s)
   }
 }
 

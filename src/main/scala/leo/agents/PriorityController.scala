@@ -32,7 +32,7 @@ class PriorityController(a : Agent) extends AgentController(a) {
   }
 
   // Sort by a fixed amount of money
-  protected var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid(100)})
+  protected var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid})
 
   override def hasTasks : Boolean = q.synchronized(q.nonEmpty)
 
@@ -65,17 +65,16 @@ class PriorityController(a : Agent) extends AgentController(a) {
    *
    * Returns a a list of Tasks, the Agent can afford with the given budget.
    *
-   * @param budget - Budget that is granted to the agent.
    */
-  override def getTasks(budget: Double): Iterable[Task] = {
+  override def getTasks : Iterable[Task] = {
     var erg = List[Task]()
     var costs : Double = 0
     q.synchronized {
       for (t <- q) {
         // TODO Change to iterator since for is inefficient
-        if (costs > budget) return erg
+        if (costs > 1) return erg
         else {
-          costs += t.bid(budget)
+          costs += t.bid
           erg = t :: erg
         }
       }
