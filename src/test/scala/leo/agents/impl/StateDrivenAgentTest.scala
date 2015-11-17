@@ -67,13 +67,14 @@ case class StateTestTask(s : String) extends Task{
   }
 
   override def run : Result = {
-
     var round: Int = 0
     round = round + 1
     //println(s"Done $s as $round")
     Result().insert(TaskType)(s)
   }
 }
+
+
 
 object ObserveAgent extends Agent {
   override def name: String = "observe_agent"
