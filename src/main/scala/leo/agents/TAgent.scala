@@ -12,7 +12,7 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
  *  <li> Support the selection mechanism of tasks for the blackboard </li>
  * </ul>
  */
-trait TAgent {
+trait TAgent extends Dependency[TAgent] {
   val name : String
 
 	/**
@@ -148,7 +148,7 @@ trait TAgent {
   * @author Max Wisniewski
   * @since 6/26/14
   */
-abstract class Task extends Pretty {
+abstract class Task extends Pretty with Dependency[Agent] {
 
   /**
     * Prints a short name of the task
@@ -179,7 +179,13 @@ abstract class Task extends Pretty {
     */
   def writeSet() : Map[DataType, Set[Any]]
 
-  def lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
+  /**
+    *
+    * Set of [[DataType]] touched by this Task.
+    *
+    * @return all [[DataType]] contained in this task.
+    */
+  val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
 
   /**
     * Checks for two tasks, if they are in conflict with each other.
@@ -211,4 +217,28 @@ abstract class Task extends Pretty {
     * @return - Possible profit, if the task is executed
     */
   def bid() : Double
+}
+
+/**
+  * Defines dependencies between data considered for execution.
+  *
+  * For any data contained in `before` should be exeuted before this object.
+  * Any data in `after` should be executed after this object.
+  *
+  * @tparam A - arbitrary Types
+  */
+trait Dependency[A] {
+  /**
+    * A set of all data, that should be executed before this object.
+    *
+    * @return all data to be executed before
+    */
+  def before : Set[A] = Set.empty
+
+  /**
+    * A set of all data, that should be executed after this object.
+    *
+    * @return all data to be executed afterwards
+    */
+  def after : Set[A] = Set.empty
 }
