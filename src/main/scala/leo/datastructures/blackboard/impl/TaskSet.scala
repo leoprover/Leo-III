@@ -3,6 +3,7 @@ package leo.datastructures.blackboard.impl
 import leo.agents._
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, Map, Set, HashSet}
+import scala.collection.parallel.immutable
 
 /**
   * Set to hold all [[leo.agents.Task]] commited by the [[leo.agents.TAgent]].
@@ -50,26 +51,13 @@ class TaskSet {
     */
   private val agentWork : mutable.Map[TAgent, Int] = new mutable.HashMap[TAgent, Int]()
 
-  /**
-    * Assoziates for each agent a map, which data is written by which task.
-    */
-  private val write : mutable.Map[TAgent, mutable.Map[Any, Task]] = new mutable.HashMap[TAgent,Map[Any,Task]]()
-
-  /**
-    * Assoziates for each agent a map, which data is read by which task.
-    */
-  private val read : mutable.Map[TAgent, mutable.Map[Any, Task]] = new mutable.HashMap[TAgent, mutable.Map[Any,Task]]()
+  private val depSet : DependencySet = new DependencySetImpl()
 
   /**
     * Stores the tasks for an agent, that has turned passive
     */
   private val passiveTasks : mutable.Map[TAgent, Iterable[Task]] = new mutable.HashMap[TAgent, Iterable[Task]]()
 
-  /**
-    * Stores the dependecy graph between the agents.
-    * Restores a full symmetric version of the incomplete information in [[leo.agents.TAgent]]
-    */
-  private val in : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
 
   /* ----------------------------------------------------------------------------------
    *
@@ -83,16 +71,8 @@ class TaskSet {
     * @param a
     */
   def addAgent(a : TAgent) : Unit = synchronized {
-    write.put(a, write.getOrElse(a,new mutable.HashMap[Any, Task]()))   // Initialize write and read
-    read.put(a, read.getOrElse(a,new mutable.HashMap[Any, Task]()))
+    depSet.addAgent(a)
     agentWork.put(a, agentWork.getOrElse(a, 0))
-
-    var ins : scala.collection.immutable.Set[TAgent] = a.after
-    in.keys.foreach{a1 =>
-      if(a1.before contains a)
-        ins += a1
-    }
-    in.put(a, ins)
   }
 
   /**
@@ -100,17 +80,9 @@ class TaskSet {
     * @param a
     */
   def remove(a : TAgent) : Unit = {
-    write.remove(a)
-    read.remove(a)
+    depSet.rmAgent(a)
     agentWork.remove(a)
     passiveTasks.remove(a)
-    in.remove(a)
-
-    // TODO Removes tasks or remove on demand?
-    in.keys.foreach{a1 =>
-      if(a1.before contains a)
-        in.put(a1, in.getOrElse(a1, scala.collection.immutable.Set.empty) - a)
-    }
   }
 
 
@@ -219,5 +191,168 @@ class TaskSet {
   def executableTasks : Iterable[Task] = {
     //TODO implement
     ???
+  }
+}
+
+/**
+  * Maintains the Dependecies between the currently active tasks.
+  */
+trait DependencySet {
+  /**
+    * Adds an agent for dependency resolvement.
+    *
+    * @param a The new agent.
+    */
+  def addAgent(a : TAgent)
+
+  /**
+    * Removes an agent from the dependecy set
+    * @param a
+    */
+  def rmAgent(a : TAgent)
+
+  /**
+    * Adds a new Task / Node to the dependecy set.
+    * @param t
+    * @return Returns all tasks, that previously were independent, but are now dependent on `t`
+    */
+  def add(t : Task, a : TAgent) : Iterable[Task]
+
+  /**
+    * Removes a finished task from the dependecy set
+    * @param t
+    * @return Returns all tasks, that were only dependent on `t` and are hence independent
+    */
+  def rm(t : Task, a : TAgent) : Iterable[Task]
+
+  /**
+    * Returns all tasks, `t` depends on.
+    * @param t
+    * @return
+    */
+  def getDep(t : Task) : Iterable[Task]
+
+  /**
+    * Checks, if the given task has dependecies.
+    *
+    * @param t
+    * @return
+    */
+  def existDep(t : Task) : Boolean
+}
+
+
+class DependencySetImpl extends DependencySet {
+
+  private val ta : mutable.Map[Task, TAgent] = new mutable.HashMap[Task, TAgent]
+
+  private val in : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
+
+  private val out : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
+
+  // TODO split another map (nonintersection) for data types
+  private val write : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
+
+  private val read : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
+
+
+  override def addAgent(a: TAgent): Unit = {
+    write.put(a, write.getOrElse(a,new mutable.HashMap[Any, mutable.Set[Task]]()))   // Initialize write and read
+    read.put(a, read.getOrElse(a,new mutable.HashMap[Any, mutable.Set[Task]]()))
+
+    var ins : scala.collection.immutable.Set[TAgent] = scala.collection.immutable.Set.empty[TAgent]
+    in.keys.foreach{a1 =>
+      if((a1.before contains a) || (a.after contains a1)) {
+        ins += a1
+        out.get(a1).map{f => out.put(a1, f + a)}  // Collect only the agents currently added (no unnecessary lookups later)
+      }
+    }
+    in.put(a, ins)
+
+
+    var outs : scala.collection.immutable.Set[TAgent] = scala.collection.immutable.Set.empty[TAgent]
+    out.keys.foreach{a1 =>
+      if((a1.after contains a) || (a.before contains a1)) {
+        outs += a1
+        in.get(a1).map{f => in.put(a1, f + a)}
+      }
+    }
+    out.put(a, outs)
+  }
+
+
+  override def rmAgent(a: TAgent): Unit = {
+    write.remove(a)
+    read.remove(a)
+
+    in.get(a) foreach (_.foreach{ a1 =>
+      out.get(a1) map {f => out.put(a1, f - a)}
+    })
+    in.remove(a)
+
+    out.get(a) foreach (_.foreach{ a1 =>
+      in.get(a1) map {f => in.put(a1, f - a)}
+    })
+    out.remove(a)
+  }
+
+  private def getImpl(t : Task) : Iterable[Task] = ???
+
+  override def getDep(t: Task): Iterable[Task] = {
+
+    val ws = t.writeSet().flatMap(_._2)
+    val rs = t.readSet().flatMap(_._2)
+
+    ta.get(t).fold(Nil : Iterable[Task]){ a : TAgent =>
+
+      null
+    }
+  }
+
+  override def existDep(t: Task): Boolean = {
+    // TODO Scan for one element instead of checking size
+    getDep(t).nonEmpty
+  }
+
+
+
+  override def rm(t: Task, a : TAgent) : Iterable[Task] = {
+    ta.remove(t)
+    write.get(a) foreach {m =>
+      t.writeSet() foreach {case (dt,dw) =>
+        m.get(dw) foreach { ds =>
+          ds.remove(t)
+        }
+      }
+    }
+
+    read.get(a) foreach {m =>
+      t.readSet() foreach {case (dt,dw) =>
+        m.get(dw) foreach { ds =>
+          ds.remove(t)
+        }
+      }
+    }
+
+    getDep(t).filter{t1 => !existDep(t1)} // TODO optimize
+  }
+
+  override def add(t: Task, a : TAgent) : Iterable[Task] = {
+    ta.put(t,a)
+    //Insert into write structure
+    write.get(a) foreach {m =>
+      t.writeSet() foreach { case (dt,dw) =>
+        m.getOrElse(dw, mutable.Set.empty[Task]).add(t)
+      }
+    }
+
+    //Insert into read structure
+    read.get(a) foreach {m =>
+      t.readSet() foreach { case (dt,dw) =>
+        m.getOrElse(dw, mutable.Set.empty[Task]).add(t)
+      }
+    }
+
+    getImpl(t) // TODO optimize, only return the ones that are now with 1 dependency
   }
 }

@@ -148,7 +148,7 @@ trait TAgent extends Dependency[TAgent] {
   * @author Max Wisniewski
   * @since 6/26/14
   */
-abstract class Task extends Pretty with Dependency[Agent] {
+abstract class Task extends Pretty  {
 
   /**
     * Prints a short name of the task
