@@ -2,6 +2,7 @@ package leo.datastructures.blackboard.impl
 
 import leo.agents._
 import scala.collection.mutable
+import scala.collection.immutable
 import scala.collection.mutable.{HashMap, Map, Set, HashSet}
 import scala.collection.parallel.immutable
 
@@ -296,16 +297,40 @@ class DependencySetImpl extends DependencySet {
     out.remove(a)
   }
 
-  private def getImpl(t : Task) : Iterable[Task] = ???
-
-  override def getDep(t: Task): Iterable[Task] = {
-
-    val ws = t.writeSet().flatMap(_._2)
-    val rs = t.readSet().flatMap(_._2)
+  private def getColliding(t : Task)(as : scala.collection.immutable.Set[TAgent]) = {
+    val ws = t.writeSet().flatMap(_._2).toSet
+    val rs = t.readSet().flatMap(_._2).toSet
+    val empty = scala.collection.immutable.Set.empty[Task]
 
     ta.get(t).fold(Nil : Iterable[Task]){ a : TAgent =>
+      as.flatMap{a1 =>
+        // Collect all Task colliding of the agent
+        write.get(a1).fold(empty){wsa1 =>
+          //We have the map from data -> Set(Task) for agent a1
+          val wts = ws.foldLeft(empty){(ts, d) => ts.union(wsa1.get(d).fold(empty)(_.toSet))}
+          val rts = rs.foldLeft(empty){(ts, d) => ts.union(wsa1.get(d).fold(empty)(_.toSet))}
+          wts.union(rts)
+        }.union(read.get(a1).fold(empty){rsa1 =>
+          ws.foldLeft(empty){(ts, d) => ts.union(rsa1.get(d).fold(empty)(_.toSet))}
+        }).toIterable
+      }
+    }
+  }
 
-      null
+
+  private def getImpl(t : Task) : Iterable[Task] = {
+    ta.get(t).fold(Iterable.empty[Task]){a =>
+      out.get(a).fold(Iterable.empty[Task]){depA =>
+        getColliding(t)(depA)
+      }
+    }
+  }
+
+  override def getDep(t: Task): Iterable[Task] = {
+    ta.get(t).fold(Iterable.empty[Task]){a =>
+      in.get(a).fold(Iterable.empty[Task]){depA =>
+        getColliding(t)(depA)
+      }
     }
   }
 
