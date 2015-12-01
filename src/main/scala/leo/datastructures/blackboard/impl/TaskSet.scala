@@ -1,10 +1,9 @@
 package leo.datastructures.blackboard.impl
 
+import leo._
 import leo.agents._
+import leo.datastructures.blackboard.ActiveTracker
 import scala.collection.mutable
-import scala.collection.immutable
-import scala.collection.mutable.{HashMap, Map, Set, HashSet}
-import scala.collection.parallel.immutable
 
 /**
   * Set to hold all [[leo.agents.Task]] commited by the [[leo.agents.TAgent]].
@@ -22,8 +21,8 @@ import scala.collection.parallel.immutable
   * </ol>
   * </p>
   */
-class TaskSet {
-
+class TaskSelectionSet {
+  // TODO handle turning passive / active correctly
 
   /* -----------------------------------------------------------------------------------
    *
@@ -33,24 +32,14 @@ class TaskSet {
    */
 
   /**
-    * Saves the in degree of a task (Node) in the Dependency Graph.
+    * Set of all tasks (Node) with in degree of 0. Stored by agent to preselect tasks (sorted)
     */
-  private val inDegree : mutable.Map[Task,Int] = new mutable.HashMap[Task,Int]()
-
-  /**
-    * Set of all tasks (Node) with in degree of 0.
-    */
-  private val zero : mutable.Set[Task] = new mutable.HashSet[Task]()
+  private val zero : mutable.Map[TAgent, AgentTaskQueue] = new mutable.HashMap[TAgent, AgentTaskQueue]()
 
   /**
     * Assoziates an agent with its agent.
     */
   private val agent : mutable.Map[Task, TAgent] = new mutable.HashMap[Task, TAgent]()
-
-  /**
-    * Saves the amount of tasks for one agent
-    */
-  private val agentWork : mutable.Map[TAgent, Int] = new mutable.HashMap[TAgent, Int]()
 
   private val depSet : DependencySet = new DependencySetImpl()
 
@@ -58,6 +47,8 @@ class TaskSet {
     * Stores the tasks for an agent, that has turned passive
     */
   private val passiveTasks : mutable.Map[TAgent, Iterable[Task]] = new mutable.HashMap[TAgent, Iterable[Task]]()
+
+  private val currentlyExecution : mutable.Set[Task] = new mutable.HashSet[Task]()
 
 
   /* ----------------------------------------------------------------------------------
@@ -69,21 +60,20 @@ class TaskSet {
 
   /**
     * Adds a new [[leo.agents.TAgent]] to the TaskGraph.
-    * @param a
+    * @param a The agent to be added
     */
   def addAgent(a : TAgent) : Unit = synchronized {
     depSet.addAgent(a)
-    agentWork.put(a, agentWork.getOrElse(a, 0))
   }
 
   /**
     * Removes a [[leo.agents.TAgent]] from the TaskGraph
-    * @param a
+    * @param a The agent to be removed
     */
-  def remove(a : TAgent) : Unit = {
+  def removeAgent(a : TAgent) : Unit = synchronized {
     depSet.rmAgent(a)
-    agentWork.remove(a)
     passiveTasks.remove(a)
+    zero.remove(a)
   }
 
 
@@ -91,18 +81,22 @@ class TaskSet {
     * Marks an agent as passive and considers its tasks no longer for execution.
     * @param a The agent to be turned passive
     */
-  def passive(a : TAgent) : Unit = {
-    // TODO Implement
-    ???
+  def passive(a : TAgent) : Unit = synchronized {
+    // Fixme Recalculate the dependecy
+    passiveTasks.put(a, zero.get(a).fold(Iterable.empty[Task])(_.clear))
+    zero.remove(a)
   }
 
   /**
     * Marks an agent as active and reanables its tasks for exectuion.
     * @param a The agent to be turned active
     */
-  def active(a : TAgent) : Unit = {
-    // TODO implement
-    ???
+  def active(a : TAgent) : Unit = synchronized {
+    // Fixme Recalculate the dependency
+    val ats = new AgentTaskQueue()
+    passiveTasks.remove(a).foreach(_.foreach(ats.add))
+    if(!ats.isEmpty)
+      zero.put(a, ats)
   }
 
   /**
@@ -111,9 +105,16 @@ class TaskSet {
     * @param a The agent that created the task.
     * @param t The task the agent `a` wants to execute.
     */
-  def submit(a : TAgent, t : Task) : Unit = {
-    // TODO Implement
-    ???
+  def submit(a : TAgent, t : Task) : Unit = synchronized {
+    depSet.add(t,a).foreach{t1 =>
+      agent.get(t1).foreach{a1 =>
+        zero.get(a1).foreach{aq =>
+          aq.rm(t1)
+        }
+      }
+    }
+    if(!depSet.existDep(t))
+      zero.getOrElseUpdate(a, new AgentTaskQueue).add(t)
   }
 
   /**
@@ -133,9 +134,14 @@ class TaskSet {
     *
     * @param t the newly finished task
     */
-  def finish(t : Task) : Unit = {
-    // TODO Implement
-    ???
+  def finish(t : Task) : Unit = synchronized {
+    depSet.rm(t, agent.get(t).get).foreach{t1 =>
+      agent.get(t1).foreach{a1 =>
+        // Consider the new free independent Tasks
+        zero.getOrElseUpdate(a1, new AgentTaskQueue).add(t1)
+      }
+    }
+    agent.remove(t)
   }
 
   /**
@@ -145,10 +151,7 @@ class TaskSet {
     *
     * @param ts the newly finished tasks
     */
-  def finish(ts : Iterable[Task]) : Unit = {
-    // TODO Implement
-    ???
-  }
+  def finish(ts : Iterable[Task]) : Unit = ts.foreach(finish)
 
   /**
     * Marks a set of tasks as commited to the scheduler.
@@ -157,9 +160,11 @@ class TaskSet {
     *
     * @param ts The set of tasks committed to the scheduler.
     */
-  def commit(ts : Set[Task]) : Unit = {
-    // TODO implement
-    ???
+  def commit(ts : scala.collection.immutable.Set[Task]) : Unit = synchronized {
+    ts.foreach{t =>
+      currentlyExecution.add(t)
+      depSet.obsoleteTasks(t).foreach{t => depSet.rm(t, agent.get(t).get)}
+    }
   }
 
   /**
@@ -168,10 +173,8 @@ class TaskSet {
     *
     * @return true, iff there exist executable task
     */
-  def existExecutable : Boolean = {
-    // TODO Implement
-    // FIXME How to handle currently executing tasks?
-    ???
+  def existExecutable : Boolean = synchronized {
+    executableTasks.nonEmpty  // TODO optimize
   }
 
   /**
@@ -189,9 +192,8 @@ class TaskSet {
     *
     * @return a set of non dependent [[leo.agents.Task]], ready for selection.
     */
-  def executableTasks : Iterable[Task] = {
-    //TODO implement
-    ???
+  def executableTasks : Iterable[Task] = synchronized {
+    zero.values.flatMap(_.all).toSet[Task] -- currentlyExecution.toSet
   }
 }
 
@@ -208,27 +210,29 @@ trait DependencySet {
 
   /**
     * Removes an agent from the dependecy set
-    * @param a
+    * @param a The agent to be removed
     */
   def rmAgent(a : TAgent)
 
   /**
     * Adds a new Task / Node to the dependecy set.
-    * @param t
+    * @param t The task to be added
+    * @param a The Agent this task is added for
     * @return Returns all tasks, that previously were independent, but are now dependent on `t`
     */
   def add(t : Task, a : TAgent) : Iterable[Task]
 
   /**
     * Removes a finished task from the dependecy set
-    * @param t
+    * @param t The task to be added
+    * @param a The Agent this task is added for
     * @return Returns all tasks, that were only dependent on `t` and are hence independent
     */
   def rm(t : Task, a : TAgent) : Iterable[Task]
 
   /**
     * Returns all tasks, `t` depends on.
-    * @param t
+    * @param t The task the dependencies are calculated for
     * @return
     */
   def getDep(t : Task) : Iterable[Task]
@@ -236,10 +240,20 @@ trait DependencySet {
   /**
     * Checks, if the given task has dependecies.
     *
-    * @param t
+    * @param t The task that is checked for dependencies
     * @return
     */
   def existDep(t : Task) : Boolean
+
+  /**
+    * Determines all task, that are colliding with the given task.
+    * Not considering any dependency.
+    * Can be used to remove all tasks obsolte after commiting a task.
+    *
+    * @param t The given Task
+    * @return all task colliding
+    */
+  def obsoleteTasks(t : Task) : Iterable[Task]
 }
 
 
@@ -379,5 +393,74 @@ class DependencySetImpl extends DependencySet {
     }
 
     getImpl(t) // TODO optimize, only return the ones that are now with 1 dependency
+  }
+
+  override def obsoleteTasks(t : Task) : Iterable[Task] = {
+    val empty = scala.collection.immutable.Set.empty[Task]
+    val ws = write.values.foldLeft(empty){(ws,wm) =>
+      ws.union(t.writeSet().foldLeft(empty){(ws,w) => ws.union(wm.getOrElse(w,empty))})
+    }
+    val rs = read.values.foldLeft(empty){(rs,rm) =>
+      rs.union(t.writeSet().foldLeft(empty){(rs,r) => ws.union(rm.getOrElse(r,empty))})
+    }
+    ws.union(rs)
+  }
+}
+
+class AgentTaskQueue {
+
+  private var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid})
+
+  def all : Iterable[Task] = q.toIterable
+
+  def add(t : Task) : Unit = {
+    ActiveTracker.incAndGet(s"Inserted task\n $t")
+    q.enqueue(t)
+  }
+
+  def rm(t : Task) : Unit = {
+    val empty = scala.collection.immutable.Set.empty[Any]
+    q = q.filter { tbe =>
+      if(t.eq(tbe)) {
+        false
+      } else {
+        val sharedTypes = tbe.lockedTypes & t.lockedTypes
+        sharedTypes exists { d =>
+          val we = t.writeSet().getOrElse(d, empty)
+          val wtb = tbe.writeSet().getOrElse(d, empty)
+          val rtb = tbe.readSet().getOrElse(d, empty)
+
+          val take = (we & wtb).isEmpty && (we & rtb).isEmpty // If the tbe task excesses any data, that will be updated.
+          if (!take && !t.eq(tbe)) Out.trace(s"The task\n  $tbe\n collided with\n  $t\n and was therefore removed.")
+          if(!take) ActiveTracker.decAndGet(s"Remove due to collsion ${tbe.pretty}")
+          take
+        }
+      }
+    }
+  }
+
+  def head : Option[Task] = q.headOption
+
+  def isEmpty : Boolean = q.isEmpty
+
+  def initAfforadble : List[Task] = {
+    var erg = List[Task]()
+    var costs : Double = 0
+      for (t <- q) {
+        // TODO Change to iterator since for is inefficient
+        if (costs > 1) return erg
+        else {
+          costs += t.bid
+          erg = t :: erg
+        }
+      }
+    erg
+  }
+
+  def clear : Iterable[Task] = {
+    q.foreach{t => ActiveTracker.decAndGet(s"Clear: Task \n  $t\n  was removed.")}
+    val ts = q.toIterable
+    q.clear()
+    ts
   }
 }

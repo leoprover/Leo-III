@@ -216,7 +216,7 @@ abstract class Task extends Pretty  {
     *
     * @return - Possible profit, if the task is executed
     */
-  def bid() : Double
+  def bid : Double
 }
 
 /**
