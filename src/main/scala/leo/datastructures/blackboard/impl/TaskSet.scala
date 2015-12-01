@@ -163,7 +163,14 @@ class TaskSelectionSet {
   def commit(ts : scala.collection.immutable.Set[Task]) : Unit = synchronized {
     ts.foreach{t =>
       currentlyExecution.add(t)
-      depSet.obsoleteTasks(t).foreach{t => depSet.rm(t, agent.get(t).get)}
+      depSet.obsoleteTasks(t).foreach{t =>
+        val a = agent.get(t).get
+        depSet.rm(t, a).foreach{tz =>
+          val a = agent.get(tz).get
+          zero.getOrElseUpdate(a, new AgentTaskQueue).add(tz)
+        }
+        zero.get(a).foreach(_.rm(t))
+      }
     }
   }
 
