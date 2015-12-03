@@ -76,6 +76,14 @@ class TaskSelectionSet {
     zero.remove(a)
   }
 
+  def containsAgent(a : TAgent) : Boolean = synchronized {
+    depSet.containsAgent(a)
+  }
+
+  def dependOn(before : TAgent, after : TAgent) = synchronized {
+    depSet.dependAgent(before, after)
+  }
+
 
   /**
     * Marks an agent as passive and considers its tasks no longer for execution.
@@ -106,6 +114,13 @@ class TaskSelectionSet {
     * @param t The task the agent `a` wants to execute.
     */
   def submit(a : TAgent, t : Task) : Unit = synchronized {
+    //First test clash with currently executing tasks
+    if(currentlyExecution.exists{t1 =>
+      t.writeSet().exists{case (dt, dws) => t1.writeSet().getOrElse(dt, Set.empty).intersect(dws).nonEmpty} ||
+      t.readSet().exists{case (dt, rws) => t1.writeSet().getOrElse(dt, Set.empty).intersect(rws).nonEmpty}
+    })
+      return
+
     depSet.add(t,a).foreach{t1 =>
       agent.get(t1).foreach{a1 =>
         zero.get(a1).foreach{aq =>
@@ -113,6 +128,7 @@ class TaskSelectionSet {
         }
       }
     }
+    agent.put(t,a)
     if(!depSet.existDep(t))
       zero.getOrElseUpdate(a, new AgentTaskQueue).add(t)
   }
@@ -222,6 +238,23 @@ trait DependencySet {
   def rmAgent(a : TAgent)
 
   /**
+    * Returns true, iff the agent is currently added
+    *
+    * @param a - The added agent
+    * @return Returns true, if the agent was added
+    */
+  def containsAgent(a : TAgent) : Boolean
+
+  /**
+    * Checks if two agents depent on each other
+    *
+    * @param before the agent has to be executed first
+    * @param after the agent has to be executed last
+    * @return true if the order supports the statement
+    */
+  def dependAgent(before : TAgent, after : TAgent) : Boolean
+
+  /**
     * Adds a new Task / Node to the dependecy set.
     * @param t The task to be added
     * @param a The Agent this task is added for
@@ -266,6 +299,8 @@ trait DependencySet {
 
 class DependencySetImpl extends DependencySet {
 
+  private val allAgents : mutable.Set[TAgent] = new mutable.HashSet[TAgent]
+
   private val ta : mutable.Map[Task, TAgent] = new mutable.HashMap[Task, TAgent]
 
   private val in : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
@@ -277,13 +312,13 @@ class DependencySetImpl extends DependencySet {
 
   private val read : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
 
-
+  // TODO Hier funktioniert das symmetrisch machen noch nicht!
   override def addAgent(a: TAgent): Unit = {
     write.put(a, write.getOrElse(a,new mutable.HashMap[Any, mutable.Set[Task]]()))   // Initialize write and read
     read.put(a, read.getOrElse(a,new mutable.HashMap[Any, mutable.Set[Task]]()))
 
     var ins : scala.collection.immutable.Set[TAgent] = scala.collection.immutable.Set.empty[TAgent]
-    in.keys.foreach{a1 =>
+    allAgents.foreach{a1 =>
       if((a1.before contains a) || (a.after contains a1)) {
         ins += a1
         out.get(a1).map{f => out.put(a1, f + a)}  // Collect only the agents currently added (no unnecessary lookups later)
@@ -293,13 +328,14 @@ class DependencySetImpl extends DependencySet {
 
 
     var outs : scala.collection.immutable.Set[TAgent] = scala.collection.immutable.Set.empty[TAgent]
-    out.keys.foreach{a1 =>
+    allAgents.foreach{a1 =>
       if((a1.after contains a) || (a.before contains a1)) {
         outs += a1
         in.get(a1).map{f => in.put(a1, f + a)}
       }
     }
     out.put(a, outs)
+    allAgents.add(a)
   }
 
 
@@ -316,6 +352,11 @@ class DependencySetImpl extends DependencySet {
       in.get(a1) map {f => in.put(a1, f - a)}
     })
     out.remove(a)
+    allAgents.remove(a)
+  }
+
+  override def containsAgent(a : TAgent) : Boolean = {
+    write.contains(a)
   }
 
   private def getColliding(t : Task)(as : scala.collection.immutable.Set[TAgent]) = {
@@ -328,7 +369,7 @@ class DependencySetImpl extends DependencySet {
         // Collect all Task colliding of the agent
         write.get(a1).fold(empty){wsa1 =>
           //We have the map from data -> Set(Task) for agent a1
-          val wts = ws.foldLeft(empty){(ts, d) => ts.union(wsa1.get(d).fold(empty)(_.toSet))}
+          val wts = ws.foldLeft(empty){(ts, d) => {ts.union(wsa1.get(d).fold(empty)(_.toSet))}}
           val rts = rs.foldLeft(empty){(ts, d) => ts.union(wsa1.get(d).fold(empty)(_.toSet))}
           wts.union(rts)
         }.union(read.get(a1).fold(empty){rsa1 =>
@@ -363,43 +404,54 @@ class DependencySetImpl extends DependencySet {
 
 
   override def rm(t: Task, a : TAgent) : Iterable[Task] = {
-    ta.remove(t)
     write.get(a) foreach {m =>
-      t.writeSet() foreach {case (dt,dw) =>
-        m.get(dw) foreach { ds =>
-          ds.remove(t)
+      t.writeSet() foreach {case (dt,dws) =>
+        dws foreach { dw =>
+          m.get(dw) foreach { ds =>
+            ds.remove(t)
+          }
         }
       }
     }
 
     read.get(a) foreach {m =>
-      t.readSet() foreach {case (dt,dw) =>
-        m.get(dw) foreach { ds =>
-          ds.remove(t)
+      t.readSet() foreach {case (dt,dws) =>
+        dws foreach { dw =>
+          m.get(dw) foreach { ds =>
+            ds.remove(t)
+          }
         }
       }
     }
 
-    getDep(t).filter{t1 => !existDep(t1)} // TODO optimize
+    val impls = getImpl(t).filter{t1 =>
+      !existDep(t1)} // TODO optimize
+    ta.remove(t)
+    impls
   }
 
   override def add(t: Task, a : TAgent) : Iterable[Task] = {
     ta.put(t,a)
     //Insert into write structure
     write.get(a) foreach {m =>
-      t.writeSet() foreach { case (dt,dw) =>
-        m.getOrElse(dw, mutable.Set.empty[Task]).add(t)
+      t.writeSet() foreach { case (dt,dws) =>
+        dws foreach { dw =>
+          m.getOrElseUpdate(dw, mutable.Set.empty[Task]).add(t)
+        }
       }
     }
 
     //Insert into read structure
     read.get(a) foreach {m =>
-      t.readSet() foreach { case (dt,dw) =>
-        m.getOrElse(dw, mutable.Set.empty[Task]).add(t)
+      t.readSet() foreach { case (dt,dws) =>
+        dws foreach { dw =>
+          m.getOrElseUpdate(dw, mutable.Set.empty[Task]).add(t)
+        }
       }
     }
 
-    getImpl(t) // TODO optimize, only return the ones that are now with 1 dependency
+    val imp = getImpl(t) // TODO optimize, only return the ones that are now with 1 dependency
+    imp
   }
 
   override def obsoleteTasks(t : Task) : Iterable[Task] = {
@@ -411,6 +463,17 @@ class DependencySetImpl extends DependencySet {
       rs.union(t.writeSet().foldLeft(empty){(rs,r) => ws.union(rm.getOrElse(r,empty))})
     }
     ws.union(rs)
+  }
+
+  /**
+    * Checks if two agents depent on each other
+    *
+    * @param before the agent has to be executed first
+    * @param after the agent has to be executed last
+    * @return true if the order supports the statement
+    */
+  override def dependAgent(before: TAgent, after: TAgent): Boolean = {
+    out.get(before).fold[Boolean](false){as => as.contains(after)}
   }
 }
 

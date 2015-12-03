@@ -17,13 +17,17 @@ import leo.datastructures.blackboard.{ActiveTracker, DataType, Event}
  * </p>
  *
  * <p>
- * The agent prevents the scheduler from sending a [[DoneEvent]]
+ * The agent prevents the scheduler from sending a [[leo.datastructures.blackboard.DoneEvent]]
  * as long as there is still work open.
  * </p>
  * @author Max Wisniewski
  * @since 10/19/2015
  */
 abstract class StateDrivenAgent extends TAgent{
+
+  override val after : Set[TAgent] = Set.empty
+  override val before : Set[TAgent] = Set.empty
+
   private var MAX_WORK : Option[Int] = None
   def setMaxTasks(m : Int) : Unit = {MAX_WORK = Some(m)}
   private var toActiveTracker = false

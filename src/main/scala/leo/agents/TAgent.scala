@@ -233,12 +233,12 @@ trait Dependency[A] {
     *
     * @return all data to be executed before
     */
-  def before : Set[A] = Set.empty
+  def before : Set[A]
 
   /**
     * A set of all data, that should be executed after this object.
     *
     * @return all data to be executed afterwards
     */
-  def after : Set[A] = Set.empty
+  def after : Set[A]
 }
