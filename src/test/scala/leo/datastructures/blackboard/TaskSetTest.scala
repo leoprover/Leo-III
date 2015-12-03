@@ -9,7 +9,7 @@ import leo.datastructures.blackboard.impl.TaskSelectionSet
   */
 class TaskSetTest extends LeoTestSuite {
 
-  test("insertAgents_NoDep"){
+  test("insertAgents_NoDep."){
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
     taskSet.addAgent(AgentB)
     taskSet.addAgent(AgentD)
@@ -20,7 +20,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(!taskSet.dependOn(AgentD,AgentB), "There should be no dependencies")
   }
 
-  test("insertAgents_WithDep"){
+  test("insertAgents_WithDep."){
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
 
     taskSet.addAgent(AgentA)
@@ -29,7 +29,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(taskSet.dependOn(AgentA, AgentB), "AgentA should be executed before AgentB")
   }
 
-  test("Task with no dependencies and no intersection"){
+  test("Task with no dependencies and no intersection."){
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
     taskSet.addAgent(AgentB)
     taskSet.addAgent(AgentD)
@@ -46,7 +46,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(exec.contains(t2), "The task set should contain task2")
   }
 
-  test("Task with no dependencies but intersections"){
+  test("Task with no dependencies but intersections."){
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
     taskSet.addAgent(AgentB)
     taskSet.addAgent(AgentD)
@@ -63,7 +63,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(exec.contains(t2), "The task set should contain task2")
   }
 
-  test("Task with dependencies but no intersections"){
+  test("Task with dependencies but no intersections."){
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
     taskSet.addAgent(AgentA)
     taskSet.addAgent(AgentB)
@@ -80,7 +80,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(exec.contains(t2), "The task set should contain task2")
   }
 
-  test("Task with dependencies and intersections"){
+  test("Task with dependencies and intersections."){
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
     taskSet.addAgent(AgentA)
     taskSet.addAgent(AgentB)
@@ -97,7 +97,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(!exec.contains(t2), "The task set should not contain task2")
   }
 
-  test("Task with dependencies and intersection 2") {
+  test("Task with dependencies and intersection 2.") {
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
     // A -> B -> C
     taskSet.addAgent(AgentA)
@@ -124,7 +124,7 @@ class TaskSetTest extends LeoTestSuite {
     assert(exec3.contains(t1), "Task1 should be executed first")
   }
 
-  test("Task commit & finish") {
+  test("Task commit & finish.") {
     val taskSet : TaskSelectionSet = new TaskSelectionSet()
 
     taskSet.addAgent(AgentA)
@@ -148,6 +148,48 @@ class TaskSetTest extends LeoTestSuite {
     assert(exec2.contains(t2), "Only t2 should be executable")
   }
 
+  test("Task commit & finish interleave accepting.") {
+    val taskSet : TaskSelectionSet = new TaskSelectionSet()
+
+    taskSet.addAgent(AgentA)
+    taskSet.addAgent(AgentB)
+
+    val t1 =  new DummyTask("task1", Set(3), Set(1))
+    val t2 = new DummyTask("task2", Set(1), Set(2))
+
+    taskSet.submit(AgentA, t1)
+
+    taskSet.commit(Set(t1))
+
+    taskSet.submit(AgentA, t2)
+
+    taskSet.finish(t1)
+
+    val exec2 = taskSet.executableTasks.toSet
+    assert(exec2.contains(t2), "Only t2 should be executable")
+  }
+
+
+  test("Task commit & finish interleave rejecting."){
+    val taskSet : TaskSelectionSet = new TaskSelectionSet()
+
+    taskSet.addAgent(AgentA)
+    taskSet.addAgent(AgentB)
+
+    val t1 =  new DummyTask("task1", Set(1), Set(3))
+    val t2 = new DummyTask("task2", Set(1), Set(2))
+
+    taskSet.submit(AgentA, t1)
+
+    taskSet.commit(Set(t1))
+
+    taskSet.submit(AgentA, t2)
+
+    taskSet.finish(t1)
+
+    val exec2 = taskSet.executableTasks.toSet
+    assert(exec2.isEmpty, "There should be no executable tasks.")
+  }
 }
 
 
