@@ -190,6 +190,27 @@ class TaskSetTest extends LeoTestSuite {
     val exec2 = taskSet.executableTasks.toSet
     assert(exec2.isEmpty, "There should be no executable tasks.")
   }
+
+  test("Task rejecting & interleave no dependency.") {
+    val taskSet : TaskSelectionSet = new TaskSelectionSet()
+
+    taskSet.addAgent(AgentB)
+    taskSet.addAgent(AgentD)
+
+    val t1 =  new DummyTask("task1", Set(1), Set(3))
+    val t2 = new DummyTask("task2", Set(1), Set(2))
+
+    taskSet.submit(AgentB, t1)
+
+    taskSet.commit(Set(t1))
+
+    taskSet.submit(AgentD, t2)
+
+    taskSet.finish(t1)
+
+    val exec2 = taskSet.executableTasks.toSet
+    assert(exec2.isEmpty, "There should be no executable tasks.")
+  }
 }
 
 
@@ -198,18 +219,18 @@ class TaskSetTest extends LeoTestSuite {
 object AgentA extends TAgent {
   override val name: String = "DummyA"
 
-  override def filter(event: Event): Unit = ???
-  override def clearTasks(): Unit = ???
-  override def interest: Option[Seq[DataType]] = ???
-  override def kill(): Unit = ???
-  override def maxMoney: Double = ???
-  override def taskChoosen(t: Task): Unit = ???
-  override def getAllTasks: Iterable[Task] = ???
-  override def taskFinished(t: Task): Unit = ???
-  override def hasTasks: Boolean = ???
-  override def removeColliding(nExec: Iterable[Task]): Unit = ???
-  override def openTasks: Int = ???
-  override def getTasks: Iterable[Task] = ???
+  override def filter(event: Event): Unit = ()
+  override def clearTasks(): Unit = ()
+  override def interest: Option[Seq[DataType]] = None
+  override def kill(): Unit = ()
+  override def maxMoney: Double = 0
+  override def taskChoosen(t: Task): Unit = ()
+  override def getAllTasks: Iterable[Task] = Iterable.empty
+  override def taskFinished(t: Task): Unit = ()
+  override def hasTasks: Boolean = true
+  override def removeColliding(nExec: Iterable[Task]): Unit = ()
+  override def openTasks: Int = 0
+  override def getTasks: Iterable[Task] = Iterable.empty
 
 
   override def before: Set[TAgent] = Set(AgentB)
@@ -219,18 +240,18 @@ object AgentA extends TAgent {
 object AgentB extends TAgent {
   override val name: String = "DummyB"
 
-  override def filter(event: Event): Unit = ???
-  override def clearTasks(): Unit = ???
-  override def interest: Option[Seq[DataType]] = ???
-  override def kill(): Unit = ???
-  override def maxMoney: Double = ???
-  override def taskChoosen(t: Task): Unit = ???
-  override def getAllTasks: Iterable[Task] = ???
-  override def taskFinished(t: Task): Unit = ???
-  override def hasTasks: Boolean = ???
-  override def removeColliding(nExec: Iterable[Task]): Unit = ???
-  override def openTasks: Int = ???
-  override def getTasks: Iterable[Task] = ???
+  override def filter(event: Event): Unit = ()
+  override def clearTasks(): Unit = ()
+  override def interest: Option[Seq[DataType]] = None
+  override def kill(): Unit = ()
+  override def maxMoney: Double = 0
+  override def taskChoosen(t: Task): Unit = ()
+  override def getAllTasks: Iterable[Task] = Iterable.empty
+  override def taskFinished(t: Task): Unit = ()
+  override def hasTasks: Boolean = true
+  override def removeColliding(nExec: Iterable[Task]): Unit = ()
+  override def openTasks: Int = 0
+  override def getTasks: Iterable[Task] = Iterable.empty
 
   override def before: Set[TAgent] = Set.empty
   override def after: Set[TAgent] = Set.empty
@@ -239,18 +260,18 @@ object AgentB extends TAgent {
 object AgentC extends TAgent {
   override val name: String = "DummyC"
 
-  override def filter(event: Event): Unit = ???
-  override def clearTasks(): Unit = ???
-  override def interest: Option[Seq[DataType]] = ???
-  override def kill(): Unit = ???
-  override def maxMoney: Double = ???
-  override def taskChoosen(t: Task): Unit = ???
-  override def getAllTasks: Iterable[Task] = ???
-  override def taskFinished(t: Task): Unit = ???
-  override def hasTasks: Boolean = ???
-  override def removeColliding(nExec: Iterable[Task]): Unit = ???
-  override def openTasks: Int = ???
-  override def getTasks: Iterable[Task] = ???
+  override def filter(event: Event): Unit = ()
+  override def clearTasks(): Unit = ()
+  override def interest: Option[Seq[DataType]] = None
+  override def kill(): Unit = ()
+  override def maxMoney: Double = 0
+  override def taskChoosen(t: Task): Unit = ()
+  override def getAllTasks: Iterable[Task] = Iterable.empty
+  override def taskFinished(t: Task): Unit = ()
+  override def hasTasks: Boolean = true
+  override def removeColliding(nExec: Iterable[Task]): Unit = ()
+  override def openTasks: Int = 0
+  override def getTasks: Iterable[Task] = Iterable.empty
 
   override def before: Set[TAgent] = Set.empty
   override def after: Set[TAgent] = Set(AgentB)
@@ -259,18 +280,18 @@ object AgentC extends TAgent {
 object AgentD extends TAgent {
   override val name: String = "DummyD"
 
-  override def filter(event: Event): Unit = ???
-  override def clearTasks(): Unit = ???
-  override def interest: Option[Seq[DataType]] = ???
-  override def kill(): Unit = ???
-  override def maxMoney: Double = ???
-  override def taskChoosen(t: Task): Unit = ???
-  override def getAllTasks: Iterable[Task] = ???
-  override def taskFinished(t: Task): Unit = ???
-  override def hasTasks: Boolean = ???
-  override def removeColliding(nExec: Iterable[Task]): Unit = ???
-  override def openTasks: Int = ???
-  override def getTasks: Iterable[Task] = ???
+  override def filter(event: Event): Unit = ()
+  override def clearTasks(): Unit = ()
+  override def interest: Option[Seq[DataType]] = None
+  override def kill(): Unit = ()
+  override def maxMoney: Double = 0
+  override def taskChoosen(t: Task): Unit = ()
+  override def getAllTasks: Iterable[Task] = Iterable.empty
+  override def taskFinished(t: Task): Unit = ()
+  override def hasTasks: Boolean = true
+  override def removeColliding(nExec: Iterable[Task]): Unit = ()
+  override def openTasks: Int = 0
+  override def getTasks: Iterable[Task] = Iterable.empty
 
   override def before: Set[TAgent] = Set.empty
   override def after: Set[TAgent] = Set.empty
