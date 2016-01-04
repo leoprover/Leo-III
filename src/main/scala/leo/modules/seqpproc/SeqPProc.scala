@@ -84,13 +84,15 @@ object SeqPProc extends Function1[Long, Unit]{
     val startTimeWOParsing = System.currentTimeMillis()
     // Negate conjecture
     val conjecture = input.filter {case (id, term, role) => role == Role_Conjecture}
-    if (conjecture.size > 1) throw new SZSException(SZS_InputError, "Only one conjecture per input problem permitted.")
-    assert(conjecture.size == 1)
+    if (conjecture.size > 1) throw new SZSException(SZS_InputError, "At most one conjecture per input problem permitted.")
 
-    val conj = conjecture.head
-    val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation)
-    val rest = input.filterNot(_._1 == conjecture.head._1)
-    val effectiveInput: Seq[ClauseWrapper] = {
+    val effectiveInput: Seq[ClauseWrapper] = if (conjecture.isEmpty) {
+      input.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) }
+    } else {
+      assert(conjecture.size == 1)
+      val conj = conjecture.head
+      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation)
+      val rest = input.filterNot(_._1 == conjecture.head._1)
       rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
         override def name: String = "neg_conjecture"
         override val inferenceStatus = Some(SZS_CounterSatisfiable)
@@ -129,7 +131,11 @@ object SeqPProc extends Function1[Long, Unit]{
 //        val simpl = simplify(cur.cl)
         if (Clause.empty(simpl)) {
           loop = false
-          returnSZS = SZS_Theorem
+          if (conjecture.isEmpty) {
+            returnSZS = SZS_ContradictoryAxioms
+          } else {
+            returnSZS = SZS_Theorem
+          }
           derivationClause = ClauseWrapper(cur.id, simpl, cur.role, cur.annotation)
         } else {
           // Subsumption
