@@ -350,6 +350,7 @@ object HuetsPreUnification extends Unification {
 //            println(s"${uproblems.map{case (l,r) => l.pretty ++ "=" ++ r.pretty}.mkString("\t")}")
 //            val defSub = computeDefaultSub(vargen, uproblems.foldLeft(List[Term]())((ls,e) => e._1.headSymbol::e._2.headSymbol::ls))
             /* the one above is from tomer, the one below by alex: I tried to implement the toFix annotation above */
+            // FIXME Is that right? I think we lose completeness here
             val defSub = computeDefaultSub2(vargen, uproblems)
 //            println(s"default Sub: ${defSub.pretty}")
 //            println(s"with other: ${defSub.comp(computeSubst(sproblems)).normalize.pretty}")
