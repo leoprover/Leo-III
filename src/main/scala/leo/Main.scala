@@ -53,7 +53,7 @@ object Main {
         import leo.modules.seqpproc.SeqPProc
         SeqPProc(beginTime)
       } else {
-        throw new NotImplementedError("standard mode not included right now, use --seq")
+        throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
 
 //        val deferredKill: DeferredKill = new DeferredKill(interval, timeout)
 //        deferredKill.start()
