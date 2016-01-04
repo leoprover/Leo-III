@@ -456,12 +456,64 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
 }
 object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
 
-
+// TODO: Thats not right!
+// Ordering prevents non-equational clauses from being
+// enabled for factoring.
 object EqFac extends CalculusRule {
   val name = "eq_fac"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def canApply(cl: Clause): Boolean = ???
+  def apply(cl: Clause): Set[Clause] =  {
+    var result: Set[Clause] = Set()
+    val it = new SeqZippingSeqIterator(cl.posLits)
+//    val it = new SeqZippingSeqIterator(Clause.maxOf(cl).filter(_.polarity))
+
+    while (it.hasNext) {
+      val lit = it.next()
+      // lit: s = t
+      val s = lit.left
+      val t = lit.right
+      val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == s || l.right == s}
+      val lwSSSIt = litsWithSyntacticSameSide.iterator
+      while (lwSSSIt.hasNext) {
+        val lwSSS = lwSSSIt.next()
+        if (lwSSS.left == s) {
+          if (leo.modules.calculus.mayUnify(t, lwSSS.right)) {
+            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.right))
+            result = result + newCl
+          }
+        } else {
+          // Right side equivalent to s
+          if (leo.modules.calculus.mayUnify(t, lwSSS.left)) {
+            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.left))
+            result = result + newCl
+          }
+        }
+      }
+
+      if (!lit.oriented) {
+        val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == t || l.right == t}
+        val lwSSSIt = litsWithSyntacticSameSide.iterator
+        while (lwSSSIt.hasNext) {
+          val lwSSS = lwSSSIt.next()
+          if (lwSSS.left == t) {
+            if (leo.modules.calculus.mayUnify(s, lwSSS.right)) {
+              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.right))
+              result = result + newCl
+            }
+          } else {
+            // Right side equivalent to s
+            if (leo.modules.calculus.mayUnify(s, lwSSS.left)) {
+              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.left))
+              result = result + newCl
+            }
+          }
+        }
+      }
+
+    }
+    result
+  }
 }
 
 

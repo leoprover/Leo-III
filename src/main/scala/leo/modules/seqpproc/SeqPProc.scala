@@ -188,7 +188,13 @@ object SeqPProc extends Function1[Long, Unit]{
                   Out.trace(s"Paramod result:\n\t${paramodres.map(_.pretty).mkString("\n\t")}")
                 }
                 // Equality factoring
-                // ....
+                Out.debug(s"Eq_factoring on ${curr_cw.id}")
+
+                val factorres = EqFac(curr).map(cl => ClauseWrapper(cl, InferredFrom(EqFac, Set(curr_cw))))
+
+                newclauses = newclauses ++ factorres
+                Out.trace(s"Eq_factoring result:\n\t${factorres.map(_.pretty).mkString("\n\t")}")
+
                 // Prim subst
                 val (cA_ps, ps_vars) = StdPrimSubst.canApply(curr)
                 if (cA_ps) {
