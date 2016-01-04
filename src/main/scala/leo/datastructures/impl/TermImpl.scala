@@ -650,7 +650,7 @@ protected[impl] case class BoundIndex(typ: Type, scope: Int) extends Head {
   def full_δ_expand = TermImpl.headToTerm(this)
 
   // Pretty printing
-  override val pretty = s"$scope"
+  override lazy val pretty = s"$scope:${typ.pretty}"
 
   // Local definitions
   def substitute(s: Subst) = s.substBndIdx(scope)
