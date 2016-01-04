@@ -65,18 +65,17 @@ class FifoController(a : Agent) extends AgentController(a) {
 
   /**
    *
-   * Returns a a list of Tasks, the Agent can afford with the given budget.
+   * Returns a a list of Tasks, the Agent can afford with the given budget ( relative costs <=1)
    *
-   * @param budget - Budget that is granted to the agent.
    */
-  override def getTasks(budget: Double): Iterable[Task] = {
+  override def getTasks : Iterable[Task] = {
     var erg = List[Task]()
     var costs : Double = 0
     q.synchronized {
       for (t <- q) {
-        if (costs > budget) return erg
+        if (costs > 1) return erg
         else {
-          costs += t.bid(budget)
+          costs += t.bid
           erg = t :: erg
         }
       }

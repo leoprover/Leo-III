@@ -1,8 +1,6 @@
 package leo.datastructures.blackboard
 
-import leo.agents.{AgentController, Task, Agent}
-import leo.datastructures.context.Context
-import leo.modules.output.StatusSZS
+import leo.agents.{TAgent, AgentController, Task}
 
 // Singleton Blackboards
 object Blackboard {
@@ -54,7 +52,7 @@ trait TaskOrganize {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  def filterAll(t : AgentController => Unit) : Unit
+  def filterAll(t : TAgent => Unit) : Unit
 
 
   /**
@@ -63,7 +61,7 @@ trait TaskOrganize {
    *
    * @param a - New Agent.
    */
-  protected[blackboard] def freshAgent(a : AgentController) : Unit
+  protected[blackboard] def freshAgent(a : TAgent) : Unit
 
   /**
    *
@@ -75,7 +73,7 @@ trait TaskOrganize {
    *
    * @return Not yet executed noncolliding set of tasks
    */
-  protected[blackboard] def getTask : Iterable[(AgentController,Task)]
+  protected[blackboard] def getTask : Iterable[(TAgent,Task)]
 
   /**
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be
@@ -93,7 +91,7 @@ trait TaskOrganize {
    *
    * @param a - the new agent
    */
-  def registerAgent(a : AgentController) : Unit
+  def registerAgent(a : TAgent) : Unit
 
   /**
    * Removes an agent from the notification lists.
@@ -105,7 +103,7 @@ trait TaskOrganize {
    *
    * @param a the agent to be unregistered.
    */
-  def unregisterAgent(a : AgentController) : Unit
+  def unregisterAgent(a : TAgent) : Unit
 
   /**
    *
@@ -113,7 +111,7 @@ trait TaskOrganize {
    *
    * @return all registered agents and their budget
    */
-  def getAgents : Iterable[(AgentController, Double)]
+  def getAgents : Iterable[(TAgent, Double)]
 }
 
 /**
@@ -162,5 +160,5 @@ trait MessageBlackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  def send(m : Message, to : AgentController)
+  def send(m : Message, to : TAgent)
 }

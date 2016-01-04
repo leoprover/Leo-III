@@ -31,6 +31,7 @@ import java.io.IOException
 abstract class ScriptAgent(path : String) extends Agent {
 
   def handle(c : Context, input : Iterator[String], err : Iterator[String], errno : Int) : blackboard.Result
+  def encode(fs : Set[FormulaStore]) : Seq[String]
 
   /**
    *
@@ -54,9 +55,9 @@ abstract class ScriptAgent(path : String) extends Agent {
       val writer = new PrintWriter(file)
       val b = new StringBuilder
       try{
-        contextToTPTP(t1.readSet().getOrElse(FormulaType, Set.empty[Any]).asInstanceOf[Set[FormulaStore]]) foreach {out =>
-          b.append(out.output+"\n")
-          writer.println(out.output)}
+        encode(t1.readSet().getOrElse(FormulaType, Set.empty[Any]).asInstanceOf[Set[FormulaStore]]) foreach {out =>
+          b.append(out+"\n")
+          writer.println(out)}
       } finally writer.close()
       Out.trace(s"[$name]: Writing to temporary file:\n"+b.toString())
       //Executing the prover
@@ -72,7 +73,7 @@ abstract class ScriptAgent(path : String) extends Agent {
         val errstr : mutable.ListBuffer[String] = new ListBuffer[String]
         val process = res.run(new ProcessIO(in => in.close(), // Input not used
                                             stdout => try{
-                                              {scala.io.Source.fromInputStream(stdout).getLines().foreach(str.append(_)); stdout.close()}
+                                              {scala.io.Source.fromInputStream(stdout).getLines().foreach{s => str.append(s)}; stdout.close()}
                                             } catch {
                                               case e : IOException => stdout.close()
                                             },
@@ -97,16 +98,13 @@ abstract class ScriptAgent(path : String) extends Agent {
   }
 
 
-
-  private def contextToTPTP(fS : Set[FormulaStore]) : Seq[Output] = ToTPTP(fS)
-
-
-
   /**
    * The script agent terminates all external processes if the kill command occures.
    */
   override def kill() = extSet.synchronized{
-    extSet foreach {p => p.destroy()}
+    extSet foreach {p =>
+      p.destroy()
+    }
     extSet.clear()
   }; super.kill()
 

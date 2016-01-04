@@ -4,7 +4,8 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
 
 /**
  * <p>
- * Controlling Entity for an Agent.
+ * Controlling Entity for Reactive Agents. This Controller is a sorting mechanism for
+ * maintaining the tasks of a Reactive, Filterlike Agent.
  * </p>
  *
  * <p>
@@ -14,24 +15,17 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
  * </p>
  * @param a is the Agent to be controlled.
  */
-abstract class AgentController(a : Agent) {
+abstract class AgentController(a : Agent) extends TAgent {
   val name : String = a.name
 
   def openTasks : Int
 
   private var _isActive : Boolean = true
 
-  def isActive : Boolean = _isActive
-
-  def setActive(a : Boolean) = _isActive = a
-
   def run(t : Task) : Result = {
     //    Out.comment(s"[$name]: Executing task\n    ${t.pretty}.")
     a.run(t)
   }
-
-  def register() = Blackboard().registerAgent(this)
-  def unregister() = Blackboard().unregisterAgent(this)
 
   def kill() = a.kill()
 
@@ -52,30 +46,6 @@ abstract class AgentController(a : Agent) {
 
 
   /**
-   * This method should be called, whenever a formula is added to the blackboard.
-   *
-   * The filter then checks the blackboard if it can generate tasks from it,
-   * that will be stored in the Agent.
-   *
-   * @param event - Newly added or updated formula
-   */
-  def filter(event : Event) : Unit
-
-
-  /**
-   *
-   * Returns a a list of Tasks, the Agent can afford with the given budget.
-   *
-   * @param budget - Budget that is granted to the agent.
-   */
-  def getTasks(budget : Double) : Iterable[Task]
-
-  /**
-   * @return true if the agent has tasks, false otherwise
-   */
-  def hasTasks : Boolean
-
-  /**
    * Each task can define a maximum amount of money, they
    * want to posses.
    *
@@ -86,23 +56,10 @@ abstract class AgentController(a : Agent) {
    */
   var maxMoney : Double = 100000
 
-  /**
-   * As getTasks with an infinite budget.
-   *
-   * @return - All Tasks that the current agent wants to execute.
-   */
-  def getAllTasks : Iterable[Task]
+  def taskFinished(t : Task) : Unit = {}
 
-  /**
-   *
-   * Given a set of (newly) executing tasks, remove all colliding tasks.
-   *
-   * @param nExec - The newly executing tasks
-   */
-  def removeColliding(nExec : Iterable[Task]) : Unit
+  def taskChoosen(t : Task) : Unit = {}
 
-  /**
-   * Removes all Tasks
-   */
-  def clearTasks() : Unit
+  override val after : Set[TAgent] = Set.empty
+  override val before : Set[TAgent] = Set.empty
 }
