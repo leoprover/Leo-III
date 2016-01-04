@@ -16,6 +16,7 @@ project/plugins/project/
 *.iml
 /.project
 /.classpath
+src/main/resources/META-INF/
 
 # Compile specific
 out/*
