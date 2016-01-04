@@ -78,7 +78,6 @@ case class StateTestTask(s : String) extends Task{
 
 object ObserveAgent extends Agent {
   override def name: String = "observe_agent"
-  override def run(t: Task): Result = Result()
   override def toFilter(event: Event): Iterable[Task] = event match {
     case DataEvent(s : String, TaskType) =>
       println(s)
