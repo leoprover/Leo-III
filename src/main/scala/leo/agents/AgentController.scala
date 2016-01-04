@@ -22,10 +22,6 @@ abstract class AgentController(a : Agent) extends TAgent {
 
   private var _isActive : Boolean = true
 
-  def run(t : Task) : Result = {
-    //    Out.comment(s"[$name]: Executing task\n    ${t.pretty}.")
-    a.run(t)
-  }
 
   def kill() = a.kill()
 

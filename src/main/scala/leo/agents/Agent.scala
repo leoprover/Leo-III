@@ -36,10 +36,6 @@ abstract class Agent {
    */
   def name : String
 
-  /**
-   * This function runs the specific agent on the registered Blackboard.
-   */
-  def run(t : Task) : Result
 
   /**
    * This method is called when an agent is killed by the scheduler
