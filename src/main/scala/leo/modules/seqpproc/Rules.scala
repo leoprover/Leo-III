@@ -463,57 +463,150 @@ object EqFac extends CalculusRule {
   val name = "eq_fac"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(cl: Clause): Set[Clause] =  {
+  def apply(cl: Clause): Set[Clause] = {
+    if (Clause.horn(cl)) return Set()
+
     var result: Set[Clause] = Set()
-    val it = new SeqZippingSeqIterator(cl.posLits)
-//    val it = new SeqZippingSeqIterator(Clause.maxOf(cl).filter(_.polarity))
 
-    while (it.hasNext) {
-      val lit = it.next()
-      // lit: s = t
-      val s = lit.left
-      val t = lit.right
-      val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == s || l.right == s}
-      val lwSSSIt = litsWithSyntacticSameSide.iterator
-      while (lwSSSIt.hasNext) {
-        val lwSSS = lwSSSIt.next()
-        if (lwSSS.left == s) {
-          if (leo.modules.calculus.mayUnify(t, lwSSS.right)) {
-            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.right))
-            result = result + newCl
-          }
-        } else {
-          // Right side equivalent to s
-          if (leo.modules.calculus.mayUnify(t, lwSSS.left)) {
-            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.left))
-            result = result + newCl
+    //    val posMaxLits = Clause.maxOf(cl).filter(_.polarity)
+    val posMaxLitsIt = new SeqZippingSeqIterator(cl.posLits)
+
+    while (posMaxLitsIt.hasNext) {
+      val maxLit = nextMaxLit(cl, posMaxLitsIt) // s = t
+
+      if (maxLit != null) {
+        Out.debug(s"########## Next max pos lit: ${maxLit.pretty}")
+        val otherLitIt = cl.posLits.iterator
+
+        while (otherLitIt.hasNext) {
+          val otherLit = otherLitIt.next()
+          if (maxLit != otherLit) {
+            Out.debug(s"########## Next other lit: ${otherLit.pretty}")
+            val stayLits = posMaxLitsIt.leftOf ++ posMaxLitsIt.rightOf
+
+            if (!maxLit.left.isVariable || otherLit.equational) {
+              Out.debug(s"########## Not Var 1")
+              if (!otherLit.left.isVariable || maxLit.equational) {
+                Out.debug(s"########## Not Var 2a")
+                if (leo.modules.calculus.mayUnify(maxLit.left, otherLit.left) &&
+                  leo.modules.calculus.mayUnify(maxLit.right, otherLit.right)) {
+                  Out.debug(s"########## May unify")
+                  result = result + factor((maxLit.left, maxLit.right), (otherLit.left, otherLit.right), stayLits)
+                } else {
+                  Out.debug(s"########## May not unify")
+                }
+              }
+              if (!otherLit.right.isVariable || maxLit.equational) {
+                Out.debug(s"########## Not Var 2b")
+                if (leo.modules.calculus.mayUnify(maxLit.left, otherLit.right) &&
+                  leo.modules.calculus.mayUnify(maxLit.right, otherLit.left)) {
+                  Out.debug(s"########## May unify")
+                  result = result + factor((maxLit.left, maxLit.right), (otherLit.right, otherLit.left), stayLits)
+                } else {
+                  Out.debug(s"########## May not unify")
+                }
+              }
+
+            }
+
+
+            // TODO: Do we need that?
+//            if (!maxLit.oriented) {
+//              // the same with t as maxTerm
+//              if (leo.modules.calculus.mayUnify(maxLit.right, otherLit.left) &&
+//                leo.modules.calculus.mayUnify(maxLit.left, otherLit.right)) {
+//                result = result + factor((maxLit.right, maxLit.left), (otherLit.left, otherLit.right), stayLits)
+//              }
+//              if (leo.modules.calculus.mayUnify(maxLit.right, otherLit.right) &&
+//                leo.modules.calculus.mayUnify(maxLit.left, otherLit.left)) {
+//                result = result + factor((maxLit.right, maxLit.left), (otherLit.right, otherLit.left), stayLits)
+//              }
+//            }
           }
         }
+
+
       }
 
-      if (!lit.oriented) {
-        val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == t || l.right == t}
-        val lwSSSIt = litsWithSyntacticSameSide.iterator
-        while (lwSSSIt.hasNext) {
-          val lwSSS = lwSSSIt.next()
-          if (lwSSS.left == t) {
-            if (leo.modules.calculus.mayUnify(s, lwSSS.right)) {
-              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.right))
-              result = result + newCl
-            }
-          } else {
-            // Right side equivalent to s
-            if (leo.modules.calculus.mayUnify(s, lwSSS.left)) {
-              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.left))
-              result = result + newCl
-            }
-          }
-        }
-      }
 
     }
+
     result
   }
+
+//    val it = new SeqZippingSeqIterator(cl.posLits)
+////    val it = new SeqZippingSeqIterator(Clause.maxOf(cl).filter(_.polarity))
+//
+//    while (it.hasNext) {
+//      val lit = it.next()
+//      // lit: s = t
+//      val s = lit.left
+//      val t = lit.right
+//      val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == s || l.right == s}
+//      val lwSSSIt = litsWithSyntacticSameSide.iterator
+//      while (lwSSSIt.hasNext) {
+//        val lwSSS = lwSSSIt.next()
+//        if (lwSSS.left == s) {
+//          if (leo.modules.calculus.mayUnify(t, lwSSS.right)) {
+//            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.right))
+//            result = result + newCl
+//          }
+//        } else {
+//          // Right side equivalent to s
+//          if (leo.modules.calculus.mayUnify(t, lwSSS.left)) {
+//            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.left))
+//            result = result + newCl
+//          }
+//        }
+//      }
+//
+//      if (!lit.oriented) {
+//        val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == t || l.right == t}
+//        val lwSSSIt = litsWithSyntacticSameSide.iterator
+//        while (lwSSSIt.hasNext) {
+//          val lwSSS = lwSSSIt.next()
+//          if (lwSSS.left == t) {
+//            if (leo.modules.calculus.mayUnify(s, lwSSS.right)) {
+//              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.right))
+//              result = result + newCl
+//            }
+//          } else {
+//            // Right side equivalent to s
+//            if (leo.modules.calculus.mayUnify(s, lwSSS.left)) {
+//              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.left))
+//              result = result + newCl
+//            }
+//          }
+//        }
+//      }
+//
+//    }
+//    result
+//  }
+
+
+  // Local definitions
+  // sets the iterator to the position where the next maximal literal is
+  private final def nextMaxLit(cl: Clause, iterator: ZippingSeqIterator[Literal]): Literal = {
+    while (iterator.hasNext) {
+      val nextLit = iterator.next()
+      if (Clause.maxOf(cl) contains nextLit) {
+        return nextLit
+      }
+    }
+
+    null
+  }
+
+  private final def factor(maxLitTerms: (Term,Term), otherLitTerms: (Term,Term), remainingLits: Seq[Literal]): Clause = {
+    val constraint1 = Literal.mkNeg(maxLitTerms._1, otherLitTerms._1)
+    val constraint2 = Literal.mkNeg(maxLitTerms._2, otherLitTerms._2)
+    val litList = remainingLits :+ constraint1 :+ constraint2
+    val litList2 = litList.distinct.filterNot(Literal.isFalse)
+    Clause(litList2)
+  }
+
+
 }
 
 
