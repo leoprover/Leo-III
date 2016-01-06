@@ -70,7 +70,8 @@ package object calculus {
       if (ys.isEmpty)
         hdSymb.ty.funParamTypes.map(p => varGen(p))
       else {
-        val ysTyp = Type.mkFunType(ys.map(_.ty))
+//        val ysTyp = Type.mkFunType(ys.map(_.ty))
+        val ysTyp = ys.map(_.ty)
         hdSymb.ty.funParamTypes.map(p => Term.mkTermApp({val i = varGen.next(Type.mkFunType(ysTyp,p));Term.mkBound(i._2,i._1+ys.size)}, ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
