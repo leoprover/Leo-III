@@ -3,6 +3,7 @@ package leo.modules.extraction_normalization
 import leo.datastructures.Term._
 import leo.datastructures.impl.Signature
 import leo.datastructures.{Literal, Term, Clause, Type}
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 
@@ -39,14 +40,14 @@ object ArgumentExtraction extends Function1[Clause, (Clause, Set[(Term, Term)])]
     * @return The clause with extracted arguments and a Map of unit equations
     */
   def apply(c : Clause) : (Clause, Set[(Term, Term)]) = {
-    val res = c.map(apply(_))
-    (Clause(res.map(_._1)), res.map(_._2).flatten.toSet)
+    val (lits, rewrites) : (Seq[Literal], Seq[Set[(Term, Term)]]) = c.map(apply(_)).unzip
+    (Clause(lits), rewrites.flatten.toSet)
   }
 
   def apply(l : Literal) : (Literal, Set[(Term, Term)]) = {
-    val (lt, unitsL) = apply(l.left)
-    val (rt, unitsR) = apply(l.right)
-    (l.termMap{ (_,_) => (lt,rt)}, unitsL & unitsR)
+    val (lt, unitsL) = if(!us.contains(l.left)) apply(l.left) else (l.left, Set[(Term, Term)]())
+    val (rt, unitsR) = if(!us.contains(l.right)) apply(l.right) else (l.right, Set[(Term, Term)]())
+    (l.termMap{ (_,_) => (lt,rt)}, unitsL union unitsR)
   }
 
   def apply(t : Term) : (Term, Set[(Term,Term)]) = {
@@ -115,7 +116,7 @@ object ArgumentExtraction extends Function1[Clause, (Clause, Set[(Term, Term)])]
     val s = Signature.get
     if(t.ty.funParamTypesWithResultType.last != s.o) return false
     t.headSymbol match {
-      case Symbol(k)    => println(t.pretty +" > "+t.headSymbol.pretty); !s.allUserConstants.contains(k)    // Extract if it is no user constant (can be treated in CNF)
+      case Symbol(k)    => !s.allUserConstants.contains(k)    // Extract if it is no user constant (can be treated in CNF)
       //case Bound(_, i)  => t.headSymbolDepth < i              // If it is a meta variable, it should be extracted TODO Fix the symbol depth (it treats type-lambdas as wll here)
       case _            => false                              // all other cases will generate non-treatable clauses.
     }

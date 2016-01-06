@@ -6,10 +6,12 @@ import leo.datastructures._
 /**
   * Created by mwisnie on 1/5/16.
   */
-class Simplification extends Normalization {
+object Simplification extends Normalization {
   override def apply(formula : Clause) : Clause = {
     formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))})
   }
+
+  def apply(literal : Literal) : Literal = literal.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))}
 
   def normalize(t: Term): Term = internalNormalize(t)
 

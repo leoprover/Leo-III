@@ -5,6 +5,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.fof.Formula
+import leo.modules.extraction_normalization.ArgumentExtraction
 import leo.modules.{SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
@@ -63,8 +64,8 @@ object NormalizationMain {
           conjecture = Some(f.clause.mapLit(_.flipPolarity))
         } else {
           val c = f.clause
-          if (c.lits.size == 1 && c.lits.forall(_.polarity) && c.lits.forall(_.oriented)) {
-            // Rewrite Rule
+          if (c.lits.size == 1 && c.lits.forall(_.equation) && c.lits.forall(_.oriented) && c.lits.forall(_.equational)) {
+            // Rewrite Rule TODO better filter (if equational, aber left hat keine Boolschen variablen ... )
             rewrite.add(c.lits.head)
           } else {
             clauses.add(c)
@@ -76,6 +77,37 @@ object NormalizationMain {
       //            Normalization
       // --------------------------------------------
 
+      import leo.modules.extraction_normalization._
+
+      clauses.foreach{c =>
+        clauses.remove(c)
+        clauses.add(Simplification(c))
+      }
+      rewrite.foreach{l =>
+        rewrite.remove(l)
+        rewrite.add(Simplification(l))
+      }
+      conjecture.foreach{c =>
+        conjecture = Some(Simplification(c))
+      }
+
+      clauses.foreach{c =>
+        clauses.remove(c)
+        val (c1, units) = ArgumentExtraction(c)
+        clauses.add(c1)
+        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
+      }
+      rewrite.foreach{l =>
+        rewrite.remove(l)
+        val (l1, units) = ArgumentExtraction(l)
+        rewrite.add(l1)
+        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
+      }
+      conjecture.foreach{c =>
+        val (c1, units) = ArgumentExtraction(c)
+        conjecture = Some(c1)
+        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
+      }
 
 
 
@@ -83,21 +115,13 @@ object NormalizationMain {
       //          Output (nach Std.)
       // ---------------------------------------------
 
-      val itr = rewrite.iterator
+      //Typdefinitionen
       var counter : Int = 0
-      while(itr.hasNext){
-        val r = itr.next
-        counter += 1
-        println(ToTPTP(Store((counter).toString, Clause(r), Role_Axiom, Context(), 0, NoAnnotation)).output)
-      }
-      val itc = clauses.iterator
-      while(itc.hasNext){
-        val c = itc.next
-        counter += 1
-        println(ToTPTP(Store((counter).toString, c, Role_Axiom, Context(), 0, NoAnnotation)).output)
-      }
-      conjecture.foreach(c => println(ToTPTP(Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)).output))
+      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Clause(l), Role_Definition, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
+      val clauseF : Seq[FormulaStore] = clauses.toSeq.map{c => {counter += 1; Store(counter.toString, c, Role_Axiom, Context(), 0, NoAnnotation)}}
+      val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
 
+      ToTPTP((rewriteF ++(clauseF ++ conjectureF))).foreach{o => println(o.output)}
 
       //println(s"Loaded:\n  ${forms.map(ToTPTP(_).output).mkString("\n  ")}")
     } catch {

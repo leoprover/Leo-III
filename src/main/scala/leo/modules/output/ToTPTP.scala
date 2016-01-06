@@ -36,7 +36,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     def output = toTPTP(name, t, role)
   }
 
-  def apply(formulas : Set[FormulaStore]) : Seq[Output] = {
+  def apply(formulas : Seq[FormulaStore]) : Seq[Output] = {
     var out: List[Output] = List.empty[Output]
     var defn : List[Output] = List.empty[Output]
     Signature.get.allUserConstants foreach { k =>
@@ -49,6 +49,8 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
       out = ToTPTP(formula) :: out}
     out.reverse
   }
+
+  def apply(formulas : Set[FormulaStore]) : Seq[Output] = apply(formulas.toSeq)
 
   def withAnnotation(f: FormulaStore): Output = new Output {
     def output = toTPTP(f.name, f.clause.term, f.role, f.annotation)
