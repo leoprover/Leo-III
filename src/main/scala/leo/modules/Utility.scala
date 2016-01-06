@@ -33,7 +33,7 @@ object Utility {
   /**
    * Loads a tptp file and saves the formulas in the context.
    */
-  def load(file: String): Unit = {
+  def load(file: String) : Set[FormulaStore] = {
     if (file.charAt(0) != '/') {
       // Relative load
       loadRelative(file, _pwd.split('/'))
@@ -53,13 +53,14 @@ object Utility {
     case _ => FromAxiom
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Unit = {
+  private def loadRelative(file : String, rel : Array[String]): Set[FormulaStore] = {
     import scala.util.parsing.input.CharArrayReader
     import leo.modules.parsers.TPTP
     import leo.modules.parsers.InputProcessing
 
     Out.debug(s"Loading ${rel.mkString("/")}/${file}.")
     val (fileAbs, path) = newPath(rel, file)
+    var result : Set[FormulaStore] = Set()    // TODO write to a stream?
     if (!loadedSet(fileAbs)) {
       try {
         val source = scala.io.Source.fromFile(fileAbs, "utf-8")
@@ -73,13 +74,12 @@ object Utility {
             throw new SZSException(SZS_SyntaxError)
           case Right(x) =>
             loadedSet += fileAbs
-            x.getIncludes.foreach(x => loadRelative(x._1, path))
+            x.getIncludes.foreach(x => result &= loadRelative(x._1, path))
             val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
             processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
               val form = singleTermToClause(term, role)
               val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
-              if (FormulaDataStore.addFormula(f))
-                Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
+              result += f
               }
             }
         }
@@ -105,7 +105,7 @@ object Utility {
                     throw new SZSException(SZS_SyntaxError)
                   case Right(x) =>
                     loadedSet += fileAbs
-                    x.getIncludes.foreach(x => loadRelative(x._1, path))
+                    x.getIncludes.foreach(x => result &= loadRelative(x._1, path))
 
                     val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
                     processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
@@ -129,6 +129,7 @@ object Utility {
         case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, e.toString, e)
       }
     }
+    result
   }
 
   private def parseAbsolute(fileAbs : String, path : String) : Unit = {
