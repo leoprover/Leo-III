@@ -259,7 +259,7 @@ object HuetsPreUnification extends Unification {
   /**
    * 4b
    * equation is not oriented
-    * TODO: Alex: I filtered out all of those bound vars that have non-functional type. Is that correct?
+    * TODO: Alex: I filtered out all of those bound vars that have non-compatible type. Is that correct?
    */
   object ProjectRule extends HuetsRule[Seq[UEq]] {
     def apply(vargen: FreshVarGen, e: UEq): Seq[UEq] = {
@@ -268,8 +268,8 @@ object HuetsPreUnification extends Unification {
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
       val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1)).map(p => Term.mkBound(p._1,p._2)) // TODO
       leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
-      //Filter only those bound vars that are itself function types, or not?
-      val funBVars = bvars.filter(_.ty.isFunType)
+      //Filter only those bound vars that are itself types with result type == type of general binding
+      val funBVars = bvars.filter(_.ty.funParamTypesWithResultType.last == t.headSymbol.ty)
       leo.Out.finest(s"Function type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
       val res = funBVars.map(e => (t.headSymbol,partialBinding(vargen, t.headSymbol.ty, e)))
 
