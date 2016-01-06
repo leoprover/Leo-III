@@ -11,7 +11,7 @@ import leo.modules.calculus.CalculusRule
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] with CalculusRule {
+trait Normalize extends Function3[Clause,Int,Boolean,Clause] with Function1[Clause,Clause] with CalculusRule {
 
   /**
    *
@@ -52,11 +52,11 @@ abstract class AbstractNormalize extends Normalize {
    * @param check - Status of the forula
    * @return The possibly normalized formula.
    */
-  override def apply(formula : FormulaStore, check : Boolean) : FormulaStore = {
+  override def apply(formula : Clause, status : Int, check : Boolean) : Clause = {
     if (check) {
-      if (applicable(formula.status)) markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula))) else formula
+      if (applicable(status)) normalize(formula) else formula
     } else
-      markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula)))
+      normalize(formula)
   }
 
   /**
@@ -64,7 +64,7 @@ abstract class AbstractNormalize extends Normalize {
    * @param formula
    * @return
    */
-  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula)))
+  override def apply(formula : Clause) : Clause =  normalize(formula)
 
   def markStatus(fs : FormulaStore) : FormulaStore
 }
