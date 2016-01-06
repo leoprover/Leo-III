@@ -16,13 +16,16 @@ import leo.modules.output.SZS_InputError
 
 
 /**
- * Processing module from TPTP input.
- * Declarations are inserted into the given Signature,
- * terms are returned in internal term representation.
- *
- * @author Alexander Steen
- * @since 18.06.2014
- */
+  * Processing module from TPTP input.
+  * Declarations are inserted into the given Signature,
+  * terms are returned in internal term representation.
+  *
+  * @author Alexander Steen
+  * @since 18.06.2014
+  *
+  * @todo - Cannot handle implicit quantified variables in FOF dialect
+  * @todo - Cannot handle CNF and TPI
+  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)

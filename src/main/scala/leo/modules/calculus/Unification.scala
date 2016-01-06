@@ -72,53 +72,65 @@ object HuetsPreUnification extends Unification {
 
   // computes the substitution from the solved problems
   protected def computeSubst(sproblems: Seq[UEq]): Subst = {
-    val maxIdx: Int = Bound.unapply(sproblems.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-    var sub = Subst.shift(maxIdx)
-    for (i <- 1 to maxIdx)
-      sproblems.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
-        case Some((_,t)) => sub = sub.cons(TermFront(t))
-        case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
+    // Alex: Added check on empty sproblems list. That is correct, is it?
+    if (sproblems.isEmpty) Subst.id
+    else {
+      val maxIdx: Int = Bound.unapply(sproblems.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
+      var sub = Subst.shift(maxIdx)
+      for (i <- 1 to maxIdx)
+        sproblems.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
+          case Some((_,t)) => sub = sub.cons(TermFront(t))
+          case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
+        }
+      sub
     }
-    sub
   }
 
   // bug one: see output - a sub with a term at index 15 replaces a bound variable at index 16 and not 15
   // bug two: negative fresh variables cause some term functions to throw index out of bound exception, to get it, simply change back
   // the fresh variables counter to negative. I changed it into positive to see if there are other bugs
   private def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
-    l.map(e => (e._1.substitute(s).betaNormalize,e._2.substitute(s).betaNormalize))
+    l.map(e => (e._1.closure(s).betaNormalize,e._2.closure(s).betaNormalize))
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
   protected def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
-    // apply Func /* by Alex */
-    val ind0 = uproblems.indexWhere(FuncRule.canApply)
-    if (ind0 > -1) {
-      leo.Out.finest(s"Can apply func on: ${uproblems(ind0)._1.pretty} == ${uproblems(ind0)._2.pretty}")
-      detExhaust(vargen, (uproblems.take(ind0) :+ FuncRule(vargen, uproblems(ind0))) ++ uproblems.drop(ind0 + 1), sproblems)}
-    else {
-      // apply delete
-      val ind1 = uproblems.indexWhere(DeleteRule.canApply)
-      if (ind1 > -1)
-        detExhaust(vargen, uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems)
-      // apply decomp
-      else {
-        val ind2 = uproblems.indexWhere(DecompRule.canApply)
-        if (ind2 > -1)
-          detExhaust(vargen, (DecompRule(vargen, uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1)).sortWith(sort), sproblems)
+    leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+
+    // apply delete
+    val ind1 = uproblems.indexWhere(DeleteRule.canApply)
+    if (ind1 > -1) {
+    leo.Out.finest("Apply Delete")
+    detExhaust(vargen, uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems)
+    // apply decomp
+    } else {
+      val ind2 = uproblems.indexWhere(DecompRule.canApply)
+      if (ind2 > -1) {
+        leo.Out.finest("Apply Decomp")
+        detExhaust(vargen, (DecompRule(vargen, uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1)).sortWith(sort), sproblems)
         // apply bind
-        else {
-          val ind3 = uproblems.indexWhere(BindRule.canApply)
-          if (ind3 > -1) {
-            val be = BindRule(vargen, uproblems(ind3))
-            val sb = computeSubst(List(be))
-            detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
-          } else
-          // none is applicable, do nothing
+      } else {
+        val ind3 = uproblems.indexWhere(BindRule.canApply)
+        if (ind3 > -1) {
+          leo.Out.finest("Apply Bind")
+          val be = BindRule(vargen, uproblems(ind3))
+          val sb = computeSubst(List(be))
+          detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
+        } else {
+          // apply Func /* by Alex */
+          val ind4 = uproblems.indexWhere(FuncRule.canApply)
+          if (ind4 > -1) {
+            leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
+            detExhaust(vargen, (uproblems.take(ind4) :+ FuncRule(vargen, uproblems(ind4))) ++ uproblems.drop(ind4 + 1), sproblems)}
+          else {
+            // none is applicable, do nothing
             (uproblems, sproblems)
+          }
         }
+
       }
     }
+
   }
 
   /**
@@ -148,6 +160,7 @@ object HuetsPreUnification extends Unification {
 //    sub
   }
 
+  /* New Version by Alex. Maps all variables of same type to same new var. */
   private def computeDefaultSub2(vargen: FreshVarGen, ls: Seq[(Term, Term)]): Subst = {
     val lsIt = ls.iterator
     var tyToVarMap: Map[Type, Term] = Map()
@@ -201,6 +214,7 @@ object HuetsPreUnification extends Unification {
   object FuncRule extends HuetsRule[UEq] {
 
     def apply(varGen: FreshVarGen, e: UEq): UEq = {
+      leo.Out.trace(s"Func rule on ${e._1.pretty} = ${e._2.pretty}")
       val funArgTys = e._1.ty.funParamTypes
       val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, varGen.existingVars))
       (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
@@ -208,7 +222,7 @@ object HuetsPreUnification extends Unification {
 
     def canApply(e: UEq) = {
       // we can apply it if the sides of the equation have functional type
-      assert(e._1.ty == e._2.ty, "Func Rule: Both UEq sides have not-matching type")
+      assert(e._1.ty == e._2.ty, s"Func Rule: Both UEq sides have not-matching type:\n\t${e._1.pretty}\n\t${e._1.ty.pretty}\n\t${e._2.pretty}\n\t${e._2.ty.pretty}")
       e._1.ty.isFunType
     }
   }
@@ -223,9 +237,12 @@ object HuetsPreUnification extends Unification {
   object ImitateRule extends HuetsRule[UEq] {
 
     def apply(vargen: FreshVarGen, e: UEq): UEq = {
+      leo.Out.trace(s"Apply Imitate")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s.headSymbol))
+      val res = (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s.headSymbol))
+      leo.Out.trace(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
+      res
     }
       // must make sure s doesnt have as head a bound variable
     def canApply(e: UEq) = {
@@ -242,13 +259,23 @@ object HuetsPreUnification extends Unification {
   /**
    * 4b
    * equation is not oriented
+    * TODO: Alex: I filtered out all of those bound vars that have non-compatible type. Is that correct?
    */
   object ProjectRule extends HuetsRule[Seq[UEq]] {
     def apply(vargen: FreshVarGen, e: UEq): Seq[UEq] = {
+      leo.Out.trace(s"Apply Project")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
       val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1)).map(p => Term.mkBound(p._1,p._2)) // TODO
-      bvars.map(e => (t.headSymbol,partialBinding(vargen, t.headSymbol.ty, e)))
+      leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
+      //Filter only those bound vars that are itself types with result type == type of general binding
+      val funBVars = bvars.filter(_.ty.funParamTypesWithResultType.last == t.headSymbol.ty)
+      leo.Out.finest(s"Function type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
+      val res = funBVars.map(e => (t.headSymbol,partialBinding(vargen, t.headSymbol.ty, e)))
+
+      leo.Out.trace(s"Result of Project:\n\t${res.map(eq => eq._1.pretty ++ " = " ++ eq._2.pretty).mkString("\n\t")}")
+
+      res
     }
     def canApply(e: UEq) = ??? // always applicable on flex-rigid equations not under application of Bind
   }
@@ -332,7 +359,7 @@ object HuetsPreUnification extends Unification {
       val conf = conf2.asInstanceOf[MyConfiguration]
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (uproblems, sproblems) = detExhaust(vargen, conf.uproblems,conf.sproblems)
-
+      leo.Out.trace(s"Finished detExhaust")
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {
         List(new MyConfiguration(Some(computeSubst(sproblems))))
@@ -340,6 +367,7 @@ object HuetsPreUnification extends Unification {
       // else consider top equation
       else {
         val (t,s) = uproblems.head
+        leo.Out.finest(s"selected: ${t.pretty} = ${s.pretty}")
         // if it is rigid-rigid -> fail
         if (!isFlexible(t) && !isFlexible(s)) List()
         else {
@@ -347,7 +375,8 @@ object HuetsPreUnification extends Unification {
           // TOFIX compute a substitution for all types that maps all variables in the uproblems set to the same term
           // and then compose this subtitution to the one generated by computeSubst
           if (isFlexible(t) && isFlexible(s)) {
-//            println(s"${uproblems.map{case (l,r) => l.pretty ++ "=" ++ r.pretty}.mkString("\t")}")
+            leo.Out.finest(s"Flex-flex")
+            leo.Out.finest(s"${uproblems.map{case (l,r) => l.pretty ++ "=" ++ r.pretty}.mkString("\t")}")
 //            val defSub = computeDefaultSub(vargen, uproblems.foldLeft(List[Term]())((ls,e) => e._1.headSymbol::e._2.headSymbol::ls))
             /* the one above is from tomer, the one below by alex: I tried to implement the toFix annotation above */
             // FIXME Is that right? I think we lose completeness here
@@ -356,7 +385,7 @@ object HuetsPreUnification extends Unification {
 //            println(s"with other: ${defSub.comp(computeSubst(sproblems)).normalize.pretty}")
             List(new MyConfiguration(Some(defSub.comp(computeSubst(sproblems)))))
           } else {
-
+            leo.Out.finest(s"flex-rigid")
             // else we have a flex-rigid and we cannot apply bind
 
             val lb = new ListBuffer[MyConfiguration]

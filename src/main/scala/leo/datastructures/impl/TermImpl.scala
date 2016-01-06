@@ -161,7 +161,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   lazy val typeCheck = typeCheck0(hd.ty, args)
   private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
     case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t.codomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case _ => true // other cases should not appear
   }
@@ -315,7 +315,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val typeCheck = typeCheck0(body.ty, args)
   private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
     case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t.codomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
   }

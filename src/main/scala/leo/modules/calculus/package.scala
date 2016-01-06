@@ -70,7 +70,8 @@ package object calculus {
       if (ys.isEmpty)
         hdSymb.ty.funParamTypes.map(p => varGen(p))
       else {
-        val ysTyp = Type.mkFunType(ys.map(_.ty))
+//        val ysTyp = Type.mkFunType(ys.map(_.ty))
+        val ysTyp = ys.map(_.ty)
         hdSymb.ty.funParamTypes.map(p => Term.mkTermApp({val i = varGen.next(Type.mkFunType(ysTyp,p));Term.mkBound(i._2,i._1+ys.size)}, ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
@@ -93,7 +94,7 @@ package object calculus {
 //    if (s.ty == Signature.get.o && t.ty == Signature.get.o) return true
     if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?
     if (depth <= 0) return true
-    if (s.headSymbol.ty != t.headSymbol.ty) return false
+//    if (s.headSymbol.ty != t.headSymbol.ty) return false
 
     // Match case on head symbols:
     // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
@@ -106,7 +107,7 @@ package object calculus {
       case (_, Bound(_,_)) => true
       case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
       case (TypeLambda(s2), TypeLambda(t2)) => mayUnify0(s2, t2, depth)
-      case (f1 ∙ args1, f2 ∙ args2) if args1.length == args2.length => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+      case (f1 ∙ args1, f2 ∙ args2) if f1.ty == f2.ty && args1.length == args2.length => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
         case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
         case (Right(ty1), Right(ty2)) => ty1 == ty2
         case _ => false
