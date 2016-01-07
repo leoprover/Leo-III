@@ -128,4 +128,17 @@ object NormalizationMain {
       case e : SZSException =>  Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.getMessage))
     }
   }
+
+  private def helpText : String = {
+    val sb = StringBuilder.newBuilder
+    sb.append("Normalize -- A Higher-Order Normalization Tool\n")
+    sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
+    sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
+    sb.append("Options:\n")
+
+    sb.append("-d [INT]\t\ŧ minimal depth of argument extraction.")
+    sb.append("-e \t\t\ŧ if set, performs the procedure exhaustively.")
+
+    sb.toString()
+  }
 }
