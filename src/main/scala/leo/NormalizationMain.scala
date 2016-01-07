@@ -5,7 +5,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.fof.Formula
-import leo.modules.extraction_normalization.ArgumentExtraction
+import leo.modules.extraction_normalization.{Simplification, ArgumentExtraction}
 import leo.modules.{SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
@@ -16,6 +16,21 @@ import scala.collection.mutable
   * Created by mwisnie on 1/6/16.
   */
 object NormalizationMain {
+
+  /**
+    * Set of clauses of the problem w/o rewrite
+    */
+  val clauses = mutable.Set[Clause]()
+
+  /**
+    * All positive unit clauses of the problem
+    */
+  val rewrite = mutable.Set[Literal]()
+
+  /**
+    * Conjecture of the problem
+    */
+  var conjecture : Option[Clause] = None
 
   /**
     *
@@ -51,9 +66,7 @@ object NormalizationMain {
       // -------------------------------------------
       //          Datastructures
       //-------------------------------------------
-      val clauses = mutable.Set[Clause]()       // All clauses of the problem file w/o rewrite
-      val rewrite = mutable.Set[Literal]()      // All positive unit clauses of the problem file
-      var conjecture : Option[Clause] = None            // The conjecture
+
 
       val it : Iterator[FormulaStore] = forms.iterator
       while(it.hasNext){
@@ -79,36 +92,14 @@ object NormalizationMain {
 
       import leo.modules.extraction_normalization._
 
-      clauses.foreach{c =>
-        clauses.remove(c)
-        clauses.add(Simplification(c))
-      }
-      rewrite.foreach{l =>
-        rewrite.remove(l)
-        rewrite.add(Simplification(l))
-      }
-      conjecture.foreach{c =>
-        conjecture = Some(Simplification(c))
-      }
+      var change = true
 
-      clauses.foreach{c =>
-        clauses.remove(c)
-        val (c1, units) = ArgumentExtraction(c)
-        clauses.add(c1)
-        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
-      }
-      rewrite.foreach{l =>
-        rewrite.remove(l)
-        val (l1, units) = ArgumentExtraction(l)
-        rewrite.add(l1)
-        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
-      }
-      conjecture.foreach{c =>
-        val (c1, units) = ArgumentExtraction(c)
-        conjecture = Some(c1)
-        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
-      }
+      while(change) {
+        change = false
 
+        change &= simplifyAll
+        change &= extractAll
+      }
 
 
       // ---------------------------------------------
@@ -127,6 +118,59 @@ object NormalizationMain {
     } catch {
       case e : SZSException =>  Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.getMessage))
     }
+  }
+
+  /**
+    * Simplifies all clauses (clauses, rewrite, conjecutre) of the problem.
+    *
+    * @return true if anything changed
+    */
+  private def simplifyAll : Boolean = {
+    var change = false
+    clauses.foreach { c =>
+      clauses.remove(c)
+      val c1 = Simplification(c)
+      clauses.add(c1)
+      change &= c == c1
+    }
+    rewrite.foreach { l =>
+      rewrite.remove(l)
+      val l1 = Simplification(l)
+      rewrite.add(l1)
+      change &= l == l1
+    }
+    conjecture.foreach { c =>
+      val c1 = Simplification(c)
+      conjecture = Some(c1)
+      change &= c == c1
+    }
+    change
+  }
+
+  private def extractAll : Boolean = {
+    var change = false
+
+    clauses.foreach { c =>
+      clauses.remove(c)
+      val (c1, units) = ArgumentExtraction(c)
+      clauses.add(c1)
+      units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
+      change &= units.isEmpty
+    }
+    rewrite.foreach { l =>
+      rewrite.remove(l)
+      val (l1, units) = ArgumentExtraction(l)
+      rewrite.add(l1)
+      units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
+      change &= units.isEmpty
+    }
+    conjecture.foreach { c =>
+      val (c1, units) = ArgumentExtraction(c)
+      conjecture = Some(c1)
+      units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
+      change &= units.isEmpty
+    }
+    change
   }
 
   private def helpText : String = {
