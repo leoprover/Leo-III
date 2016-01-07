@@ -12,8 +12,8 @@ PROVERS=("~/bin/leo/bin/leo -t $TIMEOUT %PROB"
 "~/bin/satallax/bin/satallax.opt -t $TIMEOUT %PROB")
 PSHORTNAMES=("leo"
 "satallax")
-TRANSLATIONS=("translate %PROB ARG1"
-"translate %PROB ARG2"
+TRANSLATIONS=("./translate %PROB ARG1"
+"./translate %PROB ARG2"
 )
 
 
@@ -36,7 +36,7 @@ for problem in "$PROBDIR"/*.p; do
   ## translate the problem according to translation algorithm
   for ((i = 0; i < ${#TRANSLATIONS[@]}; i++)) do
     translation=${TRANSLATIONS[$i]}
-    echo "${translation/"%PROB"/$problem} > $RESDIR/${basename:0:(-2)}_tr${i}.p 2> $RESDIR/ERROR"
+    ${translation/"%PROB"/$problem} > $RESDIR/${basename:0:(-2)}_tr${i}.p 2> $RESDIR/ERROR
   done
     
   for ((j = 0; j < ${#PROVERS[@]}; j++)); do
@@ -45,14 +45,14 @@ for problem in "$PROBDIR"/*.p; do
     
     prover=${PROVERS[$j]}
     ## solve Original problem first      
-    call="./translate"
+    call="./prove"
     #call=${prover/"%PROB"/${problem}}
-    (call_prover "./translate" "-1") >> "$resultname"
+    (call_prover $call "-1") >> "$resultname"
     
     
     ## run prover on each translation
     for ((i = 0; i < ${#TRANSLATIONS[@]}; i++)) do
-      call="./translate"
+      call="./prove"
       #call=${prover/"%PROB"/"$RESDIR/${basename:0:(-2)}_tr${i}.p"}
       (call_prover $call $i) >> "$resultname"
     done
