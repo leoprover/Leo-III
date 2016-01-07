@@ -50,7 +50,7 @@ object NormalizationMain {
     } catch {
       case e: IllegalArgumentException => {
         Out.severe(e.getMessage)
-        Configuration.help()
+        println(helpText)
         return
       }
     }
@@ -180,8 +180,9 @@ object NormalizationMain {
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
-    sb.append("-d [INT] minimal depth of argument extraction.\n")
-    sb.append("-e if set, performs the procedure exhaustively.\n")
+    sb.append("-d N \t\t minimal depth of argument extraction\n")
+    sb.append("-ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
+    sb.append("-h \t\t display this help message\n")
 
     sb.toString()
   }
