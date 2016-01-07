@@ -45,15 +45,12 @@ object ArgumentExtraction extends Function1[Clause, (Clause, Set[(Term, Term)])]
   }
 
   def apply(l : Literal) : (Literal, Set[(Term, Term)]) = {
-    val (lt, unitsL) = if(!us.contains(l.left)) apply(l.left) else (l.left, Set[(Term, Term)]())
-    val (rt, unitsR) = if(!us.contains(l.right)) apply(l.right) else (l.right, Set[(Term, Term)]())
+    val (lt, unitsL) = apply(l.left)
+    val (rt, unitsR) = apply(l.right)
     (l.termMap{ (_,_) => (lt,rt)}, unitsL union unitsR)
   }
 
   def apply(t : Term) : (Term, Set[(Term,Term)]) = {
-    if(us.contains(t)) {
-      return (us.get(t).get, Set())
-    }
     t match {
       case s@Symbol(_) => (s, Set())
       case s@Bound(_, _) => (s, Set())
