@@ -1,0 +1,51 @@
+#!/bin/bash
+
+## Parameter:
+## Directory that contains problems (possibly with subdirectories etc)
+
+PROBDIR=$1
+TIMEOUT=30
+
+PROVERS=("~/bin/leo/bin/leo -t $TIMEOUT %PROB"
+"~/bin/satallax/bin/satallax.opt -t $TIMEOUT %PROB")
+
+TRANSLATIONS=("translate %PROB ARG1"
+"translate %PROB ARG2"
+)
+
+
+function call_prover() {
+  erg=$( TIMEFORMAT='%R'; time ($1  |  grep -Po '(?<=SZS status\s)[^\s]*' | head -1) 2>&1 )
+ # result=$($erg | cut -d " " -f 1)
+ # time=$($erg | cut -d " " -f 2)
+  result=$(echo "$erg" | head -n 1)
+  time=$(echo "$erg" | head -n 2 | tail -n 1)
+  echo  -e "$2\t$result\t$time\t$3"
+}
+
+### Call a function f that calls a ATP on a problem and gives the time and SZS
+### f Parameter: Prover, Timeout, translation function, input problem (original untranslated)
+### f Output: SZS, Time
+### This function is called on a series of problems, possibly with different translations per problem
+
+for problem in "$PROBDIR"/*.p; do
+ 
+  ## Call each prover on the original problem
+  for prover in "${PROVERS[@]}"; do
+     call_prover "./translate" $problem "-1"
+  done 
+
+  ## translate the problem according to translation algorithm
+  for ((i = 0; i < ${#TRANSLATIONS[@]}; i++)) do
+    translation=${TRANSLATIONS[$i]}
+    echo "${translation/"%PROB"/$problem} > ${problem:0:(-2)}_tr${i}.p 2> ERROR"
+    
+    ## Call each prover on the translated problems
+    for prover in "${PROVERS[@]}"; do
+      call_prover "./translate" $problem $i
+      #echo "time (${prover/"%PROB"/"${problem:0:(-2)}_tr${i}.p"} |  grep -Po '(?<=SZS status\s)[^\s]*' | head -1) 2> timeresult"
+    done
+  done
+
+  
+done
