@@ -40,7 +40,7 @@ object NormalizationMain {
       }
     }
     if (Configuration.HELP) {
-      Configuration.help()
+      println(helpText)
       return
     }
 
@@ -136,8 +136,8 @@ object NormalizationMain {
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
-    sb.append("-d [INT]\t\ŧ minimal depth of argument extraction.")
-    sb.append("-e \t\t\ŧ if set, performs the procedure exhaustively.")
+    sb.append("-d [INT] minimal depth of argument extraction.\n")
+    sb.append("-e if set, performs the procedure exhaustively.\n")
 
     sb.toString()
   }
