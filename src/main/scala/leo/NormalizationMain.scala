@@ -112,6 +112,7 @@ object NormalizationMain {
       val clauseF : Seq[FormulaStore] = clauses.toSeq.map{c => {counter += 1; Store(counter.toString, c, Role_Axiom, Context(), 0, NoAnnotation)}}
       val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
 
+      //TODO Print and Format the time need for normalization
       ToTPTP((rewriteF ++(clauseF ++ conjectureF))).foreach{o => println(o.output)}
 
       //println(s"Loaded:\n  ${forms.map(ToTPTP(_).output).mkString("\n  ")}")
