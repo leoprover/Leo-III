@@ -101,6 +101,9 @@ object NormalizationMain {
         }
       }
 
+      val argExt : Boolean = Configuration.isSet("a")
+      val simpl : Boolean = Configuration.isSet("s")
+
       // --------------------------------------------
       //            Normalization
       // --------------------------------------------
@@ -112,8 +115,8 @@ object NormalizationMain {
       while(change) {
         change = false
 
-        change &= simplifyAll
-        change &= extractAll
+        if(simpl) change &= simplifyAll
+        if(argExt) change &= extractAll
       }
 
       if(Configuration.isSet("e"))
@@ -222,8 +225,10 @@ object NormalizationMain {
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
+    sb.append("-e \t\tFull extensional handeling for rewrite rules.")
+    sb.append("-a \t\tEnables argument extraction.")
+    sb.append("-s \t\tEnables simplification")
     sb.append("-d N \t\t maximal depth of argument extraction\n")
-    sb.append("-e Full extensional handeling for rewrite rules.")
     sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
     sb.append("-h \t\t display this help message\n")
 
