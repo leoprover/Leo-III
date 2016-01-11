@@ -32,6 +32,8 @@ object NormalizationMain {
     */
   var conjecture : Option[Clause] = None
 
+  var extract0r : ArgumentExtraction = ArgumentExtraction
+
   /**
     *
     * Reads from an input file and performs
@@ -62,6 +64,19 @@ object NormalizationMain {
     // Begin of the normalization
     try {
       val forms = load(Configuration.PROBLEMFILE)
+
+      Configuration.valueOf("d").foreach
+      {s =>
+        s.headOption.foreach
+        {i =>
+          try{
+            val iv = i.toInt
+            extract0r = new ArgumentExtraction({ x => x.size <= iv})    // NOTE : Change to modify maximal size. (Add debug output)
+          } catch {
+            case _ : Exception => ()
+          }
+        }
+      }
 
       // -------------------------------------------
       //          Datastructures
@@ -101,6 +116,8 @@ object NormalizationMain {
         change &= extractAll
       }
 
+      if(Configuration.isSet("e"))
+        extensionalRewrite
 
       // ---------------------------------------------
       //          Output (nach Std.)
@@ -108,7 +125,7 @@ object NormalizationMain {
 
       //Typdefinitionen
       var counter : Int = 0
-      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Clause(l), Role_Definition, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
+      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Clause(l), Role_Axiom, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
       val clauseF : Seq[FormulaStore] = clauses.toSeq.map{c => {counter += 1; Store(counter.toString, c, Role_Axiom, Context(), 0, NoAnnotation)}}
       val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
 
@@ -148,25 +165,30 @@ object NormalizationMain {
     change
   }
 
+  /**
+    * Extracts in one round from each Formula in the current state the arguments.
+    *
+    * @return
+    */
   private def extractAll : Boolean = {
     var change = false
 
     clauses.foreach { c =>
       clauses.remove(c)
-      val (c1, units) = ArgumentExtraction(c)
+      val (c1, units) = extract0r(c)
       clauses.add(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
       change &= units.isEmpty
     }
     rewrite.foreach { l =>
       rewrite.remove(l)
-      val (l1, units) = ArgumentExtraction(l)
+      val (l1, units) = extract0r(l)
       rewrite.add(l1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
       change &= units.isEmpty
     }
     conjecture.foreach { c =>
-      val (c1, units) = ArgumentExtraction(c)
+      val (c1, units) = extract0r(c)
       conjecture = Some(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
       change &= units.isEmpty
@@ -174,15 +196,35 @@ object NormalizationMain {
     change
   }
 
+  /**
+    * Performs boolean and functional extension on rewrite rules.
+    */
+  private def extensionalRewrite : Unit = {
+    import leo.modules.calculus._
+    import leo.modules.seqpproc.{FuncExt, BoolExt}
+    rewrite.foreach{ l : Literal =>
+      rewrite.remove(l)
+      val fun_l : Literal= if(FuncExt.canApply(l)) FuncExt(freshVarGen(Clause(l)), Seq(l)).headOption.fold(l)(l1 => l1) else l
+      if(BoolExt.canApply(fun_l)) {
+        val (bool_t, bool_f) = BoolExt(fun_l)
+        clauses.add(Clause(bool_t))
+        clauses.add(Clause(bool_f))
+      } else {
+        clauses.add(Clause(fun_l))
+      }
+    }
+  }
+
   private def helpText : String = {
     val sb = StringBuilder.newBuilder
     sb.append("Normalize -- A Higher-Order Normalization Tool\n")
-    sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
+    sb.append("Christoph Benzmüller, Alexander Steen, Maxi Wisniewski and others.\n\n")
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
-    sb.append("-d N \t\t minimal depth of argument extraction\n")
-    sb.append("-ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
+    sb.append("-d N \t\t maximal depth of argument extraction\n")
+    sb.append("-e Full extensional handeling for rewrite rules.")
+    sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
     sb.append("-h \t\t display this help message\n")
 
     sb.toString()
