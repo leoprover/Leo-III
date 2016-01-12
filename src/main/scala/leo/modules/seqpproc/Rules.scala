@@ -78,7 +78,7 @@ object CNF extends CalculusRule {
   final val none: FormulaCharacter = 0.toByte
   final val alpha: FormulaCharacter = 1.toByte
   final val beta: FormulaCharacter = 2.toByte
-//  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
+  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
 //  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
 
   final def canApply(l: Literal): Boolean = if (!l.equational) {
@@ -101,7 +101,7 @@ object CNF extends CalculusRule {
     } else {
       if (l.polarity) {
         l.left match {
-          case Not(t) => (alpha, Seq(Literal(t, false)))
+          case Not(t) => (one, Seq(Literal(t, false)))
           case s ||| t => (beta, Seq(Literal(s, true),Literal(t,true)))
           case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
           case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
@@ -112,7 +112,7 @@ object CNF extends CalculusRule {
         }
       } else {
         l.left match {
-          case Not(t) => (alpha, Seq(Literal(t, true)))
+          case Not(t) => (one, Seq(Literal(t, true)))
           case s ||| t => (alpha, Seq(Literal(s, false),Literal(t,false)))
           case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
           case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
@@ -139,12 +139,21 @@ object CNF extends CalculusRule {
       if (resChar == none) {
         // Already normalized
         apply0(vargen, tail, acc.map(hd +: _))
-      } else if (resChar == alpha) {
+      } else if (resChar == one) {
         val deepRes = apply0(vargen, res, Seq(Seq()))
         apply0(vargen, tail, deepRes.flatMap(res => res.flatMap(r => acc.map(_ :+ r))))
+      } else if (resChar == alpha) {
+        val deepRes0 = apply0(vargen, res.take(1), Seq(Seq()))
+        val deepRes1 = apply0(vargen, res.drop(1), Seq(Seq()))
+        val deepRes = deepRes0 ++ deepRes1
+//        leo.Out.comment(s"Deep res alpha: ${deepRes.map(_.map(_.pretty))}")
+        apply0(vargen, tail, deepRes.flatMap(res => acc.map(r => r ++ res)))
       } else if (resChar == beta) {
-        val deepRes = apply0(vargen, res, Seq(Seq()))
-        apply0(vargen, tail, deepRes.flatMap(res => acc.map(_ ++ res)))
+        val deepRes0 = apply0(vargen, res.take(1), Seq(Seq()))
+        val deepRes1 = apply0(vargen, res.drop(1), Seq(Seq()))
+        val deepRes = deepRes0.flatMap(res => deepRes1.map(res2 => res ++ res2))
+//        leo.Out.comment(s"Deep res beta: ${deepRes.map(_.map(_.pretty))}")
+        apply0(vargen, tail, deepRes.flatMap(res => acc.map(r => r ++ res)))
       } else {
         throw new SZSException(SZS_Error,
           "cnf calculus error: returning something other than alpha or beta",
