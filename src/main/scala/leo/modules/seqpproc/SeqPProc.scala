@@ -2,7 +2,7 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures.{Term, Clause, Literal, Role, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
+import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
 import leo.modules.normalization._
 import leo.modules.output._
 import leo.modules.{SZSOutput, SZSException, Parsing}
@@ -262,8 +262,17 @@ object SeqPProc extends Function1[Long, Unit]{
       }
 
     }
+    val time = System.currentTimeMillis() - startTime
+    val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
-    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${System.currentTimeMillis() - startTime} ms resp. ${System.currentTimeMillis() - startTimeWOParsing} ms w/o parsing"))
+    Out.output(s" Time passed: ${time}")
+    Out.output(s" Effectove reasoning time: ${timeWOParsing}")
+    Out.output(s" No. of processed clauses: ${processed.size}")
+    Out.output(s" No. of generated clauses: ${processed.size + unprocessed.size}")
+    if (derivationClause != null)
+      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+
+    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
       Out.output(makeDerivation(derivationClause).toString)
