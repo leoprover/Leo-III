@@ -280,6 +280,22 @@ object SeqPProc extends Function1[Long, Unit]{
     }
   }
 
+
+  import scala.collection.mutable
+
+  //TODO: Is that right?
+  def axiomsUsed(cw: ClauseWrapper): Int = axiomsUsed0(cw, mutable.Set())
+
+  def axiomsUsed0(cw: ClauseWrapper, used: mutable.Set[ClauseWrapper]): Int = cw.annotation match {
+    case NoAnnotation => 0
+    case FromFile(_, _) if cw.role == Role_Axiom => if (used.contains(cw)) 0 else {
+      used.add(cw)
+      1
+    }
+    case InferredFrom(_, parents) => parents.map(p => axiomsUsed(p._1)).sum
+
+  }
+
   def makeDerivation(cw: ClauseWrapper, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
     case NoAnnotation => sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).\n")
     case a@FromFile(_, _) => sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).\n")
