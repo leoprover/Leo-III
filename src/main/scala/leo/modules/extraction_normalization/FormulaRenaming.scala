@@ -50,11 +50,11 @@ object FormulaRenaming {
     * @param delta    A difference in generated clauses, compared to the original.
     * @return
     */
-  def apply(l : Literal, polarity : Int, delta : Int = 1) : (Literal, Seq[Clause]) = ???
+  def apply(l : Literal, polarity : Int, delta : Int) : (Literal, Seq[Clause]) = ???
 
 
 
-  def apply(t : Term, polarity : Int, delta : Int = 1) : (Term, Seq[Clause]) = t match {
+  def apply(t : Term, polarity : Int, delta : Int) : (Term, Seq[Clause]) = t match {
     case |||(l,r)     => ???
     case &(l,r)       => ???
     case <=>(l,r)     =>  ???
@@ -78,6 +78,7 @@ object FormulaRenaming {
     //    case _  => formula
   }
 
+  //TODO Alles nochmal überprüfen
   protected def cnf_size(t : Term, pol : Boolean) : Int = t match {
     case |||(l,r)     => if(pol) cnf_size(l,pol)+cnf_size(r,pol) else cnf_size(l,pol)*cnf_size(r,pol)
     case &(l,r)       => if(pol) cnf_size(l,pol)*cnf_size(r,pol) else cnf_size(l,pol)+cnf_size(r,pol)

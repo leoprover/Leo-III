@@ -36,15 +36,15 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     def output = toTPTP(name, t, role)
   }
 
-  def apply(formulas : Seq[FormulaStore]) : Seq[Output] = {
+  def apply(formulas : Seq[FormulaStore], withDefinitions : Boolean = true) : Seq[Output] = {
     var out: List[Output] = List.empty[Output]
     var defn : List[Output] = List.empty[Output]
     Signature.get.allUserConstants foreach { k =>
       val (t,d) = constantToTPTP(k)
       out = t :: out
-      d.fold(()){d1 => defn = d1 :: defn}
+      if(withDefinitions) d.fold(()){d1 => defn = d1 :: defn}
     }
-    out = defn ++ out           // Important, since the definition has to be made after the type declaration
+    if(withDefinitions) out = defn ++ out           // Important, since the definition has to be made after the type declaration
     formulas foreach {formula =>
       out = ToTPTP(formula) :: out}
     out.reverse

@@ -9,6 +9,7 @@ import leo.modules.extraction_normalization.{Simplification, ArgumentExtraction}
 import leo.modules.{SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
+import leo.datastructures.impl.Signature
 
 import scala.collection.mutable
 
@@ -101,6 +102,16 @@ object NormalizationMain {
         }
       }
 
+      if(Configuration.isSet("def")) {
+        val s = Signature.get
+        s.allUserConstants.foreach { k =>
+          val m = s(k)
+          m.defn.foreach { t =>
+            rewrite.add(Literal(Term.mkAtom(k), t, true))
+          }
+        }
+      }
+
       val argExt : Boolean = Configuration.isSet("a")
       val simpl : Boolean = Configuration.isSet("s")
 
@@ -133,7 +144,7 @@ object NormalizationMain {
       val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
 
       //TODO Print and Format the time need for normalization
-      ToTPTP((rewriteF ++(clauseF ++ conjectureF))).foreach{o => println(o.output)}
+      ToTPTP((rewriteF ++(clauseF ++ conjectureF)), !Configuration.isSet("def")).foreach{o => println(o.output)}
 
       //println(s"Loaded:\n  ${forms.map(ToTPTP(_).output).mkString("\n  ")}")
     } catch {
@@ -228,6 +239,7 @@ object NormalizationMain {
     sb.append("-e \t\tFull extensional handeling for rewrite rules.")
     sb.append("-a \t\tEnables argument extraction.")
     sb.append("-s \t\tEnables simplification")
+    sb.append("--def \t\tHandles definitions as unit equations.")
     sb.append("-d N \t\t maximal depth of argument extraction\n")
     sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
     sb.append("-h \t\t display this help message\n")
