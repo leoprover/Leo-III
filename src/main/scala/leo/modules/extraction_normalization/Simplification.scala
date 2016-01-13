@@ -110,7 +110,7 @@ object Simplification extends Normalization {
     * @param formula
     * @return
     */
-  protected def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
+  protected[extraction_normalization] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
     case Bound(t,scope) => List((scope,t))
     case Symbol(id)     => List()
     case f ∙ args       => freeVariables(f) ++ args.flatMap(_.fold(freeVariables(_), _ => List()))
@@ -127,7 +127,7 @@ object Simplification extends Normalization {
     * @param formula - Body of an abstraction
     * @return true, iff the deBrujin Index occurs in the body
     */
-  protected def isBound(formula : Term) : Boolean = {
+  protected[extraction_normalization] def isBound(formula : Term) : Boolean = {
     freeVariables(formula).filter {case (a,b) => a == 1}.nonEmpty
   }
 
@@ -139,7 +139,7 @@ object Simplification extends Normalization {
     * @param formula Abstraction with not bound variable.
     * @return the term without the function.
     */
-  protected def removeUnbound(formula : Term) : Term = formula match {
+  protected[extraction_normalization] def removeUnbound(formula : Term) : Term = formula match {
     case ty :::> t =>
       //      println("Removed the abstraction in '"+formula.pretty+"'.")
       mkTermApp(formula,mkBound(ty,-4711)).betaNormalize

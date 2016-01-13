@@ -179,6 +179,28 @@ object NormalizationMain {
     change
   }
 
+  private def fullNormalizeAll : Boolean = {
+    var change = false
+    clauses.foreach { c =>
+      clauses.remove(c)
+      val c1 = Simplification(c)
+      clauses.add(c1)
+      change &= c == c1
+    }
+    rewrite.foreach { l =>
+      rewrite.remove(l)
+      val l1 = Simplification(l)
+      rewrite.add(l1)
+      change &= l == l1
+    }
+    conjecture.foreach { c =>
+      val c1 = Simplification(c)
+      conjecture = Some(c1)
+      change &= c == c1
+    }
+    change
+  }
+
   /**
     * Extracts in one round from each Formula in the current state the arguments.
     *
