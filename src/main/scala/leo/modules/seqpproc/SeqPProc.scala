@@ -53,9 +53,9 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PrenexNormal, Set(cw)))
     Out.debug(s"Prenex: ${cw.cl.pretty}")
     // Remove quantifiers
-    left = CNF_Forall(left, pol)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(CNF_Forall, Set(cw)))
-    Out.debug(s"CNF_Forall: ${cw.cl.pretty}")
+    left = Instantiate(left, pol)
+    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Instantiate, Set(cw)))
+    Out.debug(s"Instantiate: ${cw.cl.pretty}")
     // Exhaustively CNF
     val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
     Out.debug(s"CNF:\n\t${left2.map(_.cl.pretty).mkString("\n\t")}")

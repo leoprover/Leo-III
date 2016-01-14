@@ -18,7 +18,7 @@ object DefExpSimp extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
   def apply(t: Term): Term = {
     val sig = Signature.get
-    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key, sig("<=>").key)
+    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
     Simplification.normalize(t.exhaustive_δ_expand_upTo(symb))
   }
 }
@@ -56,14 +56,15 @@ object PolaritySwitch extends CalculusRule {
   }
 }
 
-object CNF_Forall extends CalculusRule {
-  val name = "cnf_forall"
-  override val inferenceStatus = Some(SZS_Theorem)
+object Instantiate extends CalculusRule {
+  val name = "inst"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+
   def apply(t: Term, polarity: Boolean): Term =  {
-    removeLeadingQuants(t, polarity)
+    removeLeadingQuants(t, polarity, Seq())
   }
-  def removeLeadingQuants(t: Term, polarity: Boolean): Term = t match {
-    case Forall(ty :::> body) => removeLeadingQuants(body, polarity)
+  def removeLeadingQuants(t: Term, polarity: Boolean, fv: Seq[(Int, Type)]): Term = t match {
+    case Forall(ty :::> body) if polarity => removeLeadingQuants(body, polarity, (fv.size, ty) +: fv)
     case _ => t
   }
 }
@@ -87,7 +88,7 @@ object CNF extends CalculusRule {
       case s ||| t => true
       case s & t => true
       case s Impl t => true
-      case s <=> t => true
+//      case s <=> t => true
       case Forall(ty :::> t) => true
       case Exists(ty :::> t) => true
       case _ => false
@@ -105,7 +106,7 @@ object CNF extends CalculusRule {
           case s ||| t => (beta, Seq(Literal(s, true),Literal(t,true)))
           case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
           case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
-          case s <=> t => ???
+//          case s <=> t => ???
           case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
           case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),true)))
           case _ => (none, Seq(l))
@@ -116,7 +117,7 @@ object CNF extends CalculusRule {
           case s ||| t => (alpha, Seq(Literal(s, false),Literal(t,false)))
           case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
           case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
-          case s <=> t => ???
+//          case s <=> t => ???
           case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),false)))
           case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
           case _ => (none, Seq(l))
