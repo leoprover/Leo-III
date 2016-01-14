@@ -89,7 +89,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
         mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
       }
     }
-    case _ => this
+    case _ => mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
   }
 
   lazy val head_δ_expandable = hd.δ_expandable
