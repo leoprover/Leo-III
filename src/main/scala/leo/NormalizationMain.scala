@@ -129,6 +129,9 @@ object NormalizationMain {
         if(simpl) change &= simplifyAll
         if(argExt) change &= extractAll
       }
+      if(Configuration.isSet("p")){
+        fullNormalizeAll
+      }
 
       if(Configuration.isSet("e"))
         extensionalRewrite
@@ -180,25 +183,40 @@ object NormalizationMain {
   }
 
   private def fullNormalizeAll : Boolean = {
+    extensionalRewrite
     var change = false
     clauses.foreach { c =>
       clauses.remove(c)
-      val c1 = PrenexNormal(Skolemization(NegationNormal((DefExpansion(Simplification(c))))))
+      val c1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(c))))))
       clauses.add(c1)
       change &= c == c1
     }
     rewrite.foreach { l =>
       rewrite.remove(l)
-      val l1 = PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(l)))))
+      val l1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(l))))))
       rewrite.add(l1)
       change &= l == l1
     }
     conjecture.foreach { c =>
       val cn = c.mapLit(_.flipPolarity)
-      val c1 = PrenexNormal(Skolemization(NegationNormal((DefExpansion(Simplification(c))))))
-      assert(c1.lits.size == 1, "Conjecture was splitted.")
-      conjecture = Some(c1.mapLit(_.flipPolarity))
-      change &= c == c1
+      //println(s"Original: ${cn.pretty}")
+      val cs = Simplification(cn)
+      //println(s"Simp : ${cs.pretty}")
+      val cd = DefExpansion(cs)
+      //println(s"DefExp : ${cd.pretty}")
+      val cs2 = Simplification(cd)
+      //println(s"Simp : ${cs2.pretty}")
+      val cnn = NegationNormal(cs2)
+      //println(s"Neg : ${cnn.pretty}")
+      val csk = Skolemization(cnn)
+      //println(s"Skol : ${csk.pretty}")
+      val cp = PrenexNormal(csk)
+      //println(s"Prenex : ${cp.pretty}")
+      assert(cp.lits.size == 1, "Conjecture was splitted.")
+      val c1 = Simplification.polarityNorm(cp.mapLit(_.flipPolarity))
+      //println(s"Simp : ${c1.pretty}")
+      conjecture = Some(c1)
+      change &= c == cp
     }
     change
   }

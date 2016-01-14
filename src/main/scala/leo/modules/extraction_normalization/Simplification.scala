@@ -1,5 +1,6 @@
 package leo.modules.extraction_normalization
 
+import leo.Configuration
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.impl.Signature
@@ -8,11 +9,25 @@ import leo.datastructures.impl.Signature
   * Created by mwisnie on 1/5/16.
   */
 object Simplification extends Normalization {
-  override def apply(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))})
+
+  def polarityNorm(formula : Clause) : Clause = formula.mapLit(polarityNorm(_))
+
+  def polarityNorm(lit : Literal) : Literal = (lit.left, lit.right) match {
+    case (Not(l),Not(r))  => Literal(l,r, lit.polarity)
+    case (Not(l),r) => Literal(l,r, !lit.polarity)
+    case (l, Not(r)) => Literal(l,r, !lit.polarity)
+    case (l,r)  => Literal(l,r, lit.polarity)
   }
 
-  def apply(literal : Literal) : Literal = literal.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))}
+  override def apply(formula : Clause) : Clause = {
+    formula.mapLit(apply(_))
+  }
+
+  def apply(literal : Literal) : Literal = {
+    val left = internalNormalize(literal.left)
+    val right = internalNormalize(literal.right)
+    Literal(left,right, literal.polarity)
+  }
 
   def normalize(t: Term): Term = internalNormalize(t)
 

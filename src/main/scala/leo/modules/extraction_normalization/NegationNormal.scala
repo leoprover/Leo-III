@@ -21,17 +21,21 @@ object NegationNormal extends Normalization{
    */
   def apply(formula: Clause): Clause = {
     formula.mapLit { li =>
-        val l1 = li.termMap { case (l,r) => {
-          val (t1,t2) = if (li.polarity) (l,r) else (Not(l), Not(r))
-          (nnf(rmEq(t1, 1)),nnf(rmEq(t2, 1)))
-        } }
-        if(li.polarity) l1 else l1.flipPolarity
+      if(li.left.ty == Signature.get.o) {
+        val l1 = li.termMap { case (l, r) => {
+          val (t1, t2) = if (li.polarity) (l, r) else (Not(l), r)
+          (nnf(rmEq(t1, 1)), nnf(rmEq(t2, 1)))
+        }
+        }
+        if (li.polarity) l1 else l1.flipPolarity
+      } else li
     }
   }
 
   def apply(literal : Literal) : Literal = {
+    if(literal.left.ty != Signature.get.o) return literal
     val l1 = literal.termMap { case (l,r) => {
-      val (t1,t2) = if (literal.polarity) (l,r) else (Not(l), Not(r))
+      val (t1,t2) = if (literal.polarity) (l,r) else (Not(l), r)
       (nnf(rmEq(t1, 1)),nnf(rmEq(t2, 1)))
     } }
     if(literal.polarity) l1 else l1.flipPolarity
@@ -50,7 +54,7 @@ object NegationNormal extends Normalization{
             => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
     case (s === t) if pol == -1 && s.ty == Signature.get.o
             => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
-    case (s !=== t) if pol == -11 && s.ty == Signature.get.o
+    case (s !=== t) if pol == -1 && s.ty == Signature.get.o
           => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
     case (s !=== t) if pol == 1 && s.ty == Signature.get.o
           => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))

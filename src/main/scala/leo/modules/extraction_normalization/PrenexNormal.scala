@@ -13,6 +13,7 @@ import leo.datastructures.blackboard.{FormulaStore, Store}
 object PrenexNormal extends Normalization {
   /**
    * Normalizes a formula corresponding to the object.
+    * We assume a positive literal weight after applying negationnormalform
    *
    * @param formula - A annotated formula
    * @return a normalized formula

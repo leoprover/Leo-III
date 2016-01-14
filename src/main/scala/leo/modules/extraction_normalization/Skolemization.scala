@@ -27,7 +27,11 @@ object Skolemization extends Normalization{
    */
   override def apply(formula : Clause) : Clause = {
     val fv: Set[Term] = formula.implicitlyBound.map{case (v,ty) => Term.mkBound(ty,v)}.toSet
-    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l, fv),internalNormalize(r, fv))})
+    formula.mapLit(_.termMap {case (l,r) => (l,r) match {
+      case (l1, LitTrue())  => (internalNormalize(l1,fv), LitTrue())
+      case (l1, LitFalse()) => (internalNormalize(l1,fv), LitFalse())
+      case _  => (l,r)
+    }})
   }
 
   def apply(literal : Literal) : Literal = {
@@ -72,6 +76,7 @@ object Skolemization extends Normalization{
           val b = lBIt.next()
           sub = sub + (b+1 -> b)
         }
+
         val norm = t.closure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
 
         skolemize(norm, univBounds)
@@ -82,7 +87,7 @@ object Skolemization extends Normalization{
         Term.mkApp(Term.mkAtom(k), args.map(_.fold({t => Left(skolemize(t, univBounds))},Right(_))))
 
       // Reaching any non boolean connective we will stop, since we can no longer distinquish positive from negative equalities
-      case s      => s
+      case term      => term
       //    case _  => formula
     }
   }
@@ -120,7 +125,7 @@ object Skolemization extends Normalization{
         |||(left,right)
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
-      case s@Bound(_,_)           => s
+      case s@Bound(_,i)           => if(i == 1) LitTrue else s
       case f ∙ args   => Exists(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
       case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
@@ -154,7 +159,7 @@ object Skolemization extends Normalization{
         &(left,right)
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
-      case s@Bound(_,_)           => s
+      case s@Bound(_,i)           => if(i == 1) LitTrue else s
       case f ∙ args   => Forall(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
       case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
