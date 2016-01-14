@@ -5,7 +5,7 @@ import leo.Out
 import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
 import leo.modules.normalization._
 import leo.modules.output._
-import leo.modules.{SZSOutput, SZSException, Parsing}
+import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
 import leo.modules.calculus.{Subsumption, CalculusRule}
 
 import scala.collection.SortedSet
@@ -63,10 +63,9 @@ object SeqPProc extends Function1[Long, Unit]{
       // To equation if possible
       val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
       if (cA_lift) {
-        Out.debug(s"to_eq: ${c.cl.pretty}")
         val curr = Clause(LiftEq(lift, lift_other))
+        Out.debug(s"to_eq: ${curr.pretty}")
         ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
-
       } else c
     }
     //TODO: Replace leibniz/andrew equalities
@@ -116,6 +115,9 @@ object SeqPProc extends Function1[Long, Unit]{
     var processed: Set[ClauseWrapper] = Set()
     var returnSZS: StatusSZS = SZS_Unknown
     var derivationClause: ClauseWrapper = null
+    var subsumed: Int = 0
+    var processedCounter: Int = 0
+    var genCounter: Int = unprocessed.size
     var loop = true
     // proof loop
     while (loop) {
@@ -123,13 +125,14 @@ object SeqPProc extends Function1[Long, Unit]{
         loop = false
         returnSZS = SZS_CounterSatisfiable
       } else {
+        processedCounter = processedCounter + 1
         val cur = unprocessed.head
         unprocessed = unprocessed.tail
         Out.debug(s"Taken: ${cur.pretty}")
         // TODO: simpl to be simplification by rewriting à la E
         val simpl = cur.cl
 //        val simpl = simplify(cur.cl)
-        if (Clause.empty(simpl)) {
+        if (Clause.effectivelyEmpty(simpl)) {
           loop = false
           if (conjecture.isEmpty) {
             returnSZS = SZS_ContradictoryAxioms
@@ -247,6 +250,7 @@ object SeqPProc extends Function1[Long, Unit]{
               // ...
 
               if (!Clause.trivial(newCl.cl)) {
+                genCounter = genCounter + 1
                 unprocessed = unprocessed + newCl
               } else {
                 Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
@@ -255,6 +259,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
           } else {
             Out.debug("clause subsumbed, skipping.")
+            subsumed = subsumed + 1
             Out.trace(s"Subsumed by:\n\t${processed.filter(cw => Subsumption.subsumes(cw.cl, simpl)).map(_.pretty).mkString("\n\t")}")
           }
 
@@ -262,13 +267,19 @@ object SeqPProc extends Function1[Long, Unit]{
       }
 
     }
+
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
+      Utility.printUserDefinedSignature()
+    }
+
     val time = System.currentTimeMillis() - startTime
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
     Out.output(s" Time passed: ${time}")
-    Out.output(s" Effectove reasoning time: ${timeWOParsing}")
-    Out.output(s" No. of processed clauses: ${processed.size}")
-    Out.output(s" No. of generated clauses: ${processed.size + unprocessed.size}")
+    Out.output(s" Effective reasoning time: ${timeWOParsing}")
+    Out.output(s" No. of processed clauses: ${processedCounter}")
+    Out.output(s" No. of generated clauses: ${genCounter}")
+    Out.output(s" No. of subsumed clauses: ${subsumed}")
     if (derivationClause != null)
       Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
 
