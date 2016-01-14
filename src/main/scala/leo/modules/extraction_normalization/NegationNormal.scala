@@ -3,6 +3,7 @@ package leo.modules.extraction_normalization
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.blackboard.{FormulaStore, Store}
+import leo.datastructures.impl.Signature
 
 /**
  * Calculates the Negation Normal Form (NNF) of a term.
@@ -28,6 +29,14 @@ object NegationNormal extends Normalization{
     }
   }
 
+  def apply(literal : Literal) : Literal = {
+    val l1 = literal.termMap { case (l,r) => {
+      val (t1,t2) = if (literal.polarity) (l,r) else (Not(l), Not(r))
+      (nnf(rmEq(t1, 1)),nnf(rmEq(t2, 1)))
+    } }
+    if(literal.polarity) l1 else l1.flipPolarity
+  }
+
   def normalize(t: Term): Term = {
     nnf(rmEq(t, 1))
   }
@@ -35,8 +44,16 @@ object NegationNormal extends Normalization{
   private def pol(b : Boolean) : Int = if(b) 1 else -1
 
   private def rmEq(formula : Term, pol : Int) : Term = formula match {
-    case (s <=> t) if pol == 1  => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
-    case (s <=> t) if pol == -1 => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
+    case (s <=> t) if pol == 1    => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
+    case (s <=> t) if pol == -1   => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
+    case (s === t) if pol == 1 && s.ty == Signature.get.o
+            => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
+    case (s === t) if pol == -1 && s.ty == Signature.get.o
+            => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
+    case (s !=== t) if pol == -11 && s.ty == Signature.get.o
+          => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
+    case (s !=== t) if pol == 1 && s.ty == Signature.get.o
+          => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
 
     case Impl(s,t)               => Impl(rmEq(s,(-1)*pol),rmEq(t,pol))
     case Not(t)                  => Not(rmEq(t,(-1)*pol))

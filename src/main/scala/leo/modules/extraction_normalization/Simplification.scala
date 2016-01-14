@@ -2,6 +2,7 @@ package leo.modules.extraction_normalization
 
 import leo.datastructures.Term._
 import leo.datastructures._
+import leo.datastructures.impl.Signature
 
 /**
   * Created by mwisnie on 1/5/16.
@@ -22,6 +23,8 @@ object Simplification extends Normalization {
     //case Symbol(key) => formula
 
     // First normalize, then match
+    case s === t if s.ty == Signature.get.o => norm(<=>(s,t))
+    case s !=== t if s.ty == Signature.get.o => norm(Not(<=>(s,t)))
     case s === t =>
       (norm(s), norm(t)) match {
         case (s1,t1) if s1 == t1 => LitTrue

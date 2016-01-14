@@ -3,6 +3,8 @@ package leo.modules.extraction_normalization
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.blackboard.{FormulaStore, Store}
+import leo.datastructures.impl.Signature
+import leo.datastructures.Type._
 
 /**
  *
@@ -24,8 +26,12 @@ object Skolemization extends Normalization{
    * @return a normalized formula
    */
   override def apply(formula : Clause) : Clause = {
-    val fv: Set[Term] = Set() // TODO FIXME
+    val fv: Set[Term] = formula.implicitlyBound.map{case (v,ty) => Term.mkBound(ty,v)}.toSet
     formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l, fv),internalNormalize(r, fv))})
+  }
+
+  def apply(literal : Literal) : Literal = {
+    apply(Clause(literal)).lits.head
   }
 
   def normalize(t: Term): Term = {val fv: Set[Term] = Set() // TODO FIXME
@@ -47,39 +53,38 @@ object Skolemization extends Normalization{
    * @param formula
    * @return
    */
-  private def skolemize(formula : Term, univBounds: Seq[Term]) : Term = formula match {
+  private def skolemize(formula : Term, univBounds: Seq[Term]) : Term = {
+    val s = Signature.get
+    formula match {
       //Remove exist quantifier
       // TODO: Raising Bound variables is borken. Fix it.
-    case Exists(s@(ty :::> t))  =>
-//      println("step: freevars: "+s.freeVars.map{_.pretty}.mkString(","))
-//      println("step: looseBounds: " + looseBounds.map{_.pretty}.mkString(","))
-      val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
-//      println("freevars im skolemization: " + fvs.map(_.pretty).mkString(","))
+      case Exists(s@(ty :::> t))  =>
+        val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
       val fv_types = fvs.map(_.ty)
-      import leo.datastructures.impl.Signature
-      val skConst = Term.mkAtom(Signature.get.freshSkolemVar(Type.mkFunType(fv_types, ty)))
-      val skTerm = Term.mkTermApp(skConst, fvs)
+        import leo.datastructures.impl.Signature
+        val skConst = Term.mkAtom(Signature.get.freshSkolemVar(Type.mkFunType(fv_types, ty)))
+        val skTerm = Term.mkTermApp(skConst, fvs)
 
 
-      var sub: Map[Int, Int] = Map()
-      val lBIt = s.looseBounds.iterator
-      while (lBIt.hasNext) {
-        val b = lBIt.next()
-        sub = sub + (b+1 -> b)
-      }
-      val norm = t.closure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
-//      println("step in skolemization: " + norm.pretty)
+        var sub: Map[Int, Int] = Map()
+        val lBIt = s.looseBounds.iterator
+        while (lBIt.hasNext) {
+          val b = lBIt.next()
+          sub = sub + (b+1 -> b)
+        }
+        val norm = t.closure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
 
-      skolemize(norm, univBounds)
-      // Pass through
-    case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))
+        skolemize(norm, univBounds)
+      case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))
 
-    case s@Symbol(_)            => s
-    case s@Bound(_,_)           => s
-    case f ∙ args   => Term.mkApp(skolemize(f, univBounds), args.map(_.fold({t => Left(skolemize(t, univBounds))},(Right(_)))))
-    case ty :::> s  => mkTermAbs(ty, skolemize(s, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)}))
-    case TypeLambda(t) => mkTypeAbs(skolemize(t, univBounds))
-//    case _  => formula
+      case Symbol(k) ∙ args if !s.allUserConstants.contains(k) && s(k).ty.fold(false){ty => ty == s.o ->: s.o || ty == s.o ->: s.o ->: s.o}
+        => // The symbol is a boolean connective, not defined by the user.
+        Term.mkApp(Term.mkAtom(k), args.map(_.fold({t => Left(skolemize(t, univBounds))},Right(_))))
+
+      // Reaching any non boolean connective we will stop, since we can no longer distinquish positive from negative equalities
+      case s      => s
+      //    case _  => formula
+    }
   }
 
   /**

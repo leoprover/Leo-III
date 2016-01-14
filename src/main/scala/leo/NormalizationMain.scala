@@ -5,7 +5,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.fof.Formula
-import leo.modules.extraction_normalization.{Simplification, ArgumentExtraction}
+import leo.modules.extraction_normalization._
 import leo.modules.{SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
@@ -183,19 +183,21 @@ object NormalizationMain {
     var change = false
     clauses.foreach { c =>
       clauses.remove(c)
-      val c1 = Simplification(c)
+      val c1 = PrenexNormal(Skolemization(NegationNormal((DefExpansion(Simplification(c))))))
       clauses.add(c1)
       change &= c == c1
     }
     rewrite.foreach { l =>
       rewrite.remove(l)
-      val l1 = Simplification(l)
+      val l1 = PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(l)))))
       rewrite.add(l1)
       change &= l == l1
     }
     conjecture.foreach { c =>
-      val c1 = Simplification(c)
-      conjecture = Some(c1)
+      val cn = c.mapLit(_.flipPolarity)
+      val c1 = PrenexNormal(Skolemization(NegationNormal((DefExpansion(Simplification(c))))))
+      assert(c1.lits.size == 1, "Conjecture was splitted.")
+      conjecture = Some(c1.mapLit(_.flipPolarity))
       change &= c == c1
     }
     change
@@ -261,6 +263,7 @@ object NormalizationMain {
     sb.append("-e \t\tFull extensional handeling for rewrite rules.")
     sb.append("-a \t\tEnables argument extraction.")
     sb.append("-s \t\tEnables simplification")
+    sb.append("-p \t\tTranslates the problem into a prenex normal form.")
     sb.append("--def \t\tHandles definitions as unit equations.")
     sb.append("-d N \t\t maximal depth of argument extraction\n")
     sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
