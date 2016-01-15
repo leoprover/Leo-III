@@ -45,7 +45,7 @@ object Skolemization extends Normalization{
   private def internalNormalize(formula: Term, fV: Set[Term]): Term = {
     val mini = miniscope(formula)
     val r = skolemize(mini, fV.toSeq)
-    r
+    r.betaNormalize
   }
 
   /**
