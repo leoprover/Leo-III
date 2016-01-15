@@ -5,10 +5,11 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.fof.Formula
-import leo.modules.extraction_normalization.{Simplification, ArgumentExtraction}
+import leo.modules.extraction_normalization._
 import leo.modules.{SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
+import leo.datastructures.impl.Signature
 
 import scala.collection.mutable
 
@@ -101,6 +102,19 @@ object NormalizationMain {
         }
       }
 
+      if(Configuration.isSet("def")) {
+        val s = Signature.get
+        s.allUserConstants.foreach { k =>
+          val m = s(k)
+          m.defn.foreach { t =>
+            rewrite.add(Literal(Term.mkAtom(k), t, true))
+          }
+        }
+      }
+
+      val argExt : Boolean = Configuration.isSet("a")
+      val simpl : Boolean = Configuration.isSet("s")
+
       // --------------------------------------------
       //            Normalization
       // --------------------------------------------
@@ -112,8 +126,11 @@ object NormalizationMain {
       while(change) {
         change = false
 
-        change &= simplifyAll
-        change &= extractAll
+        if(simpl) change &= simplifyAll
+        if(argExt) change &= extractAll
+      }
+      if(Configuration.isSet("p")){
+        fullNormalizeAll
       }
 
       if(Configuration.isSet("e"))
@@ -130,7 +147,7 @@ object NormalizationMain {
       val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
 
       //TODO Print and Format the time need for normalization
-      ToTPTP((rewriteF ++(clauseF ++ conjectureF))).foreach{o => println(o.output)}
+      ToTPTP((rewriteF ++(clauseF ++ conjectureF)), !Configuration.isSet("def")).foreach{o => println(o.output)}
 
       //println(s"Loaded:\n  ${forms.map(ToTPTP(_).output).mkString("\n  ")}")
     } catch {
@@ -161,6 +178,45 @@ object NormalizationMain {
       val c1 = Simplification(c)
       conjecture = Some(c1)
       change &= c == c1
+    }
+    change
+  }
+
+  private def fullNormalizeAll : Boolean = {
+    extensionalRewrite
+    var change = false
+    clauses.foreach { c =>
+      clauses.remove(c)
+      val c1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(c))))))
+      clauses.add(c1)
+      change &= c == c1
+    }
+    rewrite.foreach { l =>
+      rewrite.remove(l)
+      val l1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(l))))))
+      rewrite.add(l1)
+      change &= l == l1
+    }
+    conjecture.foreach { c =>
+      val cn = c.mapLit(_.flipPolarity)
+      //println(s"Original: ${cn.pretty}")
+      val cs = Simplification(cn)
+      //println(s"Simp : ${cs.pretty}")
+      val cd = DefExpansion(cs)
+      //println(s"DefExp : ${cd.pretty}")
+      val cs2 = Simplification(cd)
+      //println(s"Simp : ${cs2.pretty}")
+      val cnn = NegationNormal(cs2)
+      //println(s"Neg : ${cnn.pretty}")
+      val csk = Skolemization(cnn)
+      //println(s"Skol : ${csk.pretty}")
+      val cp = PrenexNormal(csk)
+      //println(s"Prenex : ${cp.pretty}")
+      assert(cp.lits.size == 1, "Conjecture was splitted.")
+      val c1 = Simplification.polarityNorm(cp.mapLit(_.flipPolarity))
+      //println(s"Simp : ${c1.pretty}")
+      conjecture = Some(c1)
+      change &= c == cp
     }
     change
   }
@@ -218,12 +274,16 @@ object NormalizationMain {
   private def helpText : String = {
     val sb = StringBuilder.newBuilder
     sb.append("Normalize -- A Higher-Order Normalization Tool\n")
-    sb.append("Christoph Benzmüller, Alexander Steen, Maxi Wisniewski and others.\n\n")
+    sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
+    sb.append("-e \t\tFull extensional handeling for rewrite rules.")
+    sb.append("-a \t\tEnables argument extraction.")
+    sb.append("-s \t\tEnables simplification")
+    sb.append("-p \t\tTranslates the problem into a prenex normal form.")
+    sb.append("--def \t\tHandles definitions as unit equations.")
     sb.append("-d N \t\t maximal depth of argument extraction\n")
-    sb.append("-e Full extensional handeling for rewrite rules.")
     sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
     sb.append("-h \t\t display this help message\n")
 

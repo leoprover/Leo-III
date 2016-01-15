@@ -1,17 +1,33 @@
 package leo.modules.extraction_normalization
 
+import leo.Configuration
 import leo.datastructures.Term._
 import leo.datastructures._
+import leo.datastructures.impl.Signature
 
 /**
   * Created by mwisnie on 1/5/16.
   */
 object Simplification extends Normalization {
-  override def apply(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))})
+
+  def polarityNorm(formula : Clause) : Clause = formula.mapLit(polarityNorm(_))
+
+  def polarityNorm(lit : Literal) : Literal = (lit.left, lit.right) match {
+    case (Not(l),Not(r))  => Literal(l,r, lit.polarity)
+    case (Not(l),r) => Literal(l,r, !lit.polarity)
+    case (l, Not(r)) => Literal(l,r, !lit.polarity)
+    case (l,r)  => Literal(l,r, lit.polarity)
   }
 
-  def apply(literal : Literal) : Literal = literal.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))}
+  override def apply(formula : Clause) : Clause = {
+    formula.mapLit(apply(_))
+  }
+
+  def apply(literal : Literal) : Literal = {
+    val left = internalNormalize(literal.left)
+    val right = internalNormalize(literal.right)
+    Literal(left,right, literal.polarity)
+  }
 
   def normalize(t: Term): Term = internalNormalize(t)
 
@@ -22,6 +38,8 @@ object Simplification extends Normalization {
     //case Symbol(key) => formula
 
     // First normalize, then match
+    case s === t if s.ty == Signature.get.o => norm(<=>(s,t))
+    case s !=== t if s.ty == Signature.get.o => norm(Not(<=>(s,t)))
     case s === t =>
       (norm(s), norm(t)) match {
         case (s1,t1) if s1 == t1 => LitTrue
@@ -110,7 +128,7 @@ object Simplification extends Normalization {
     * @param formula
     * @return
     */
-  protected def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
+  protected[extraction_normalization] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
     case Bound(t,scope) => List((scope,t))
     case Symbol(id)     => List()
     case f ∙ args       => freeVariables(f) ++ args.flatMap(_.fold(freeVariables(_), _ => List()))
@@ -127,7 +145,7 @@ object Simplification extends Normalization {
     * @param formula - Body of an abstraction
     * @return true, iff the deBrujin Index occurs in the body
     */
-  protected def isBound(formula : Term) : Boolean = {
+  protected[extraction_normalization] def isBound(formula : Term) : Boolean = {
     freeVariables(formula).filter {case (a,b) => a == 1}.nonEmpty
   }
 
@@ -139,7 +157,7 @@ object Simplification extends Normalization {
     * @param formula Abstraction with not bound variable.
     * @return the term without the function.
     */
-  protected def removeUnbound(formula : Term) : Term = formula match {
+  protected[extraction_normalization] def removeUnbound(formula : Term) : Term = formula match {
     case ty :::> t =>
       //      println("Removed the abstraction in '"+formula.pretty+"'.")
       mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
