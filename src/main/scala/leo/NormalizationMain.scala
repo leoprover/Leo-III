@@ -5,7 +5,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{Store, FormulaStore}
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.fof.Formula
-import leo.modules.extraction_normalization.ArgumentExtraction
+import leo.modules.extraction_normalization.{Simplification, ArgumentExtraction}
 import leo.modules.{SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
@@ -16,6 +16,23 @@ import scala.collection.mutable
   * Created by mwisnie on 1/6/16.
   */
 object NormalizationMain {
+
+  /**
+    * Set of clauses of the problem w/o rewrite
+    */
+  val clauses = mutable.Set[Clause]()
+
+  /**
+    * All positive unit clauses of the problem
+    */
+  val rewrite = mutable.Set[Literal]()
+
+  /**
+    * Conjecture of the problem
+    */
+  var conjecture : Option[Clause] = None
+
+  var extract0r : ArgumentExtraction = ArgumentExtraction
 
   /**
     *
@@ -35,7 +52,7 @@ object NormalizationMain {
     } catch {
       case e: IllegalArgumentException => {
         Out.severe(e.getMessage)
-        Configuration.help()
+        println(helpText)
         return
       }
     }
@@ -48,12 +65,23 @@ object NormalizationMain {
     try {
       val forms = load(Configuration.PROBLEMFILE)
 
+      Configuration.valueOf("d").foreach
+      {s =>
+        s.headOption.foreach
+        {i =>
+          try{
+            val iv = i.toInt
+            extract0r = new ArgumentExtraction({ x => x.size <= iv})    // NOTE : Change to modify maximal size. (Add debug output)
+          } catch {
+            case _ : Exception => ()
+          }
+        }
+      }
+
       // -------------------------------------------
       //          Datastructures
       //-------------------------------------------
-      val clauses = mutable.Set[Clause]()       // All clauses of the problem file w/o rewrite
-      val rewrite = mutable.Set[Literal]()      // All positive unit clauses of the problem file
-      var conjecture : Option[Clause] = None            // The conjecture
+
 
       val it : Iterator[FormulaStore] = forms.iterator
       while(it.hasNext){
@@ -79,37 +107,17 @@ object NormalizationMain {
 
       import leo.modules.extraction_normalization._
 
-      clauses.foreach{c =>
-        clauses.remove(c)
-        clauses.add(Simplification(c))
-      }
-      rewrite.foreach{l =>
-        rewrite.remove(l)
-        rewrite.add(Simplification(l))
-      }
-      conjecture.foreach{c =>
-        conjecture = Some(Simplification(c))
+      var change = true
+
+      while(change) {
+        change = false
+
+        change &= simplifyAll
+        change &= extractAll
       }
 
-      clauses.foreach{c =>
-        clauses.remove(c)
-        val (c1, units) = ArgumentExtraction(c)
-        clauses.add(c1)
-        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
-      }
-      rewrite.foreach{l =>
-        rewrite.remove(l)
-        val (l1, units) = ArgumentExtraction(l)
-        rewrite.add(l1)
-        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
-      }
-      conjecture.foreach{c =>
-        val (c1, units) = ArgumentExtraction(c)
-        conjecture = Some(c1)
-        units.foreach{case (l,r) => rewrite.add(Literal(l,r,true))}
-      }
-
-
+      if(Configuration.isSet("e"))
+        extensionalRewrite
 
       // ---------------------------------------------
       //          Output (nach Std.)
@@ -117,10 +125,11 @@ object NormalizationMain {
 
       //Typdefinitionen
       var counter : Int = 0
-      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Clause(l), Role_Definition, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
+      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Clause(l), Role_Axiom, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
       val clauseF : Seq[FormulaStore] = clauses.toSeq.map{c => {counter += 1; Store(counter.toString, c, Role_Axiom, Context(), 0, NoAnnotation)}}
       val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
 
+      //TODO Print and Format the time need for normalization
       ToTPTP((rewriteF ++(clauseF ++ conjectureF))).foreach{o => println(o.output)}
 
       //println(s"Loaded:\n  ${forms.map(ToTPTP(_).output).mkString("\n  ")}")
@@ -129,15 +138,94 @@ object NormalizationMain {
     }
   }
 
+  /**
+    * Simplifies all clauses (clauses, rewrite, conjecutre) of the problem.
+    *
+    * @return true if anything changed
+    */
+  private def simplifyAll : Boolean = {
+    var change = false
+    clauses.foreach { c =>
+      clauses.remove(c)
+      val c1 = Simplification(c)
+      clauses.add(c1)
+      change &= c == c1
+    }
+    rewrite.foreach { l =>
+      rewrite.remove(l)
+      val l1 = Simplification(l)
+      rewrite.add(l1)
+      change &= l == l1
+    }
+    conjecture.foreach { c =>
+      val c1 = Simplification(c)
+      conjecture = Some(c1)
+      change &= c == c1
+    }
+    change
+  }
+
+  /**
+    * Extracts in one round from each Formula in the current state the arguments.
+    *
+    * @return
+    */
+  private def extractAll : Boolean = {
+    var change = false
+
+    clauses.foreach { c =>
+      clauses.remove(c)
+      val (c1, units) = extract0r(c)
+      clauses.add(c1)
+      units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
+      change &= units.isEmpty
+    }
+    rewrite.foreach { l =>
+      rewrite.remove(l)
+      val (l1, units) = extract0r(l)
+      rewrite.add(l1)
+      units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
+      change &= units.isEmpty
+    }
+    conjecture.foreach { c =>
+      val (c1, units) = extract0r(c)
+      conjecture = Some(c1)
+      units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
+      change &= units.isEmpty
+    }
+    change
+  }
+
+  /**
+    * Performs boolean and functional extension on rewrite rules.
+    */
+  private def extensionalRewrite : Unit = {
+    import leo.modules.calculus._
+    import leo.modules.seqpproc.{FuncExt, BoolExt}
+    rewrite.foreach{ l : Literal =>
+      rewrite.remove(l)
+      val fun_l : Literal= if(FuncExt.canApply(l)) FuncExt(freshVarGen(Clause(l)), Seq(l)).headOption.fold(l)(l1 => l1) else l
+      if(BoolExt.canApply(fun_l)) {
+        val (bool_t, bool_f) = BoolExt(fun_l)
+        clauses.add(Clause(bool_t))
+        clauses.add(Clause(bool_f))
+      } else {
+        clauses.add(Clause(fun_l))
+      }
+    }
+  }
+
   private def helpText : String = {
     val sb = StringBuilder.newBuilder
     sb.append("Normalize -- A Higher-Order Normalization Tool\n")
-    sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
+    sb.append("Christoph Benzmüller, Alexander Steen, Maxi Wisniewski and others.\n\n")
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
-    sb.append("-d [INT] minimal depth of argument extraction.\n")
-    sb.append("-e if set, performs the procedure exhaustively.\n")
+    sb.append("-d N \t\t maximal depth of argument extraction\n")
+    sb.append("-e Full extensional handeling for rewrite rules.")
+    sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
+    sb.append("-h \t\t display this help message\n")
 
     sb.toString()
   }

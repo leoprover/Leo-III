@@ -7,10 +7,16 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 
+
+object ArgumentExtraction extends ArgumentExtraction(_ => true)
+
 /**
-  * Created by mwisnie on 1/5/16.
+  * Extracts Arguments of functions and introduces
+  * descriptions for the new introduced term.
+  *
+  * @param filter Defines a filter on the arguments, that can be extracted.
   */
-object ArgumentExtraction extends Function1[Clause, (Clause, Set[(Term, Term)])]{
+class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Clause, Set[(Term, Term)])]{
 
   /**
     * Stores a mapping for the unit equations to use the same descriptor
@@ -90,11 +96,11 @@ object ArgumentExtraction extends Function1[Clause, (Clause, Set[(Term, Term)])]
     if(us.contains(t)){
       return (Left(us.get(t).get), Set())
     }
-    if(shouldExtract(t)) {
+    if(shouldExtract(t) && filter(t)) {
       val newArgs = t.freeVars.toSeq  // Arguments passed to the function to define
       val argtypes = newArgs.map(_.ty)
 
-      val c = s.freshSkolemVar(Type.mkFunType(argtypes, s.o)) // TODO other name (extra function in Signature)
+      val c = s.freshSkolemVar(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
       val ct = Term.mkTermApp(Term.mkAtom(c), newArgs).betaNormalize       // Head symbol + variables
       us.put(t, ct)
       (Left(ct), Set((t, ct)))
