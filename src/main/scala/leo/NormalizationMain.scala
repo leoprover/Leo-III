@@ -114,6 +114,7 @@ object NormalizationMain {
 
       val argExt : Boolean = Configuration.isSet("a")
       val simpl : Boolean = Configuration.isSet("s")
+      val rename : Boolean = Configuration.isSet("r")
 
       // --------------------------------------------
       //            Normalization
@@ -125,9 +126,9 @@ object NormalizationMain {
 
       while(change) {
         change = false
-
-        if(simpl) change &= simplifyAll
-        if(argExt) change &= extractAll
+        if(simpl) change |= simplifyAll
+        if(argExt) change |= extractAll
+        if(rename) change |= renameAll
       }
       if(Configuration.isSet("p")){
         fullNormalizeAll
@@ -155,6 +156,45 @@ object NormalizationMain {
     }
   }
 
+  private def renameAll : Boolean = {
+    var change = false
+    val delta = Configuration.valueOf("rdelta").fold(1)(s => s.headOption.fold(1) { h =>
+      try{
+        h.toInt
+      } catch {
+        case _ : Exception => 1
+      }
+    })
+
+    clauses.toSeq.foreach{ c =>
+      clauses.remove(c)
+      val c1 = Simplification(DefExpansion(c))
+      val (nc, defs) = FormulaRenaming(c1, delta)
+      clauses.add(nc)
+      defs.foreach(clauses.add(_))
+      change |= defs.nonEmpty
+      //if(defs.nonEmpty) println(c.pretty+" defs:\n  "+defs.map(_.pretty).mkString("\n  "))
+    }
+    rewrite.toSeq.foreach{ l =>
+      rewrite.remove(l)
+      val l1 = Simplification(DefExpansion(l))
+      val (lc, defs) = FormulaRenaming(l1, delta)
+      rewrite.add(lc)
+      defs.foreach(clauses.add(_))
+      change |= defs.nonEmpty
+      //if(defs.nonEmpty) println(l.pretty+" defs:\n  "+defs.map(_.pretty).mkString("\n  "))
+    }
+    conjecture.foreach{c =>
+      val c1 = Simplification(DefExpansion(c))
+      val (nc, defs) = FormulaRenaming(c1, delta)
+      conjecture = Some(nc)
+      defs.foreach(clauses.add(_))
+      change |= defs.nonEmpty
+      //if(defs.nonEmpty) println(c.pretty+" defs:\n  "+defs.map(_.pretty).mkString("\n  "))
+    }
+    change
+  }
+
   /**
     * Simplifies all clauses (clauses, rewrite, conjecutre) of the problem.
     *
@@ -166,18 +206,18 @@ object NormalizationMain {
       clauses.remove(c)
       val c1 = Simplification(c)
       clauses.add(c1)
-      change &= c == c1
+      change |= c != c1
     }
     rewrite.foreach { l =>
       rewrite.remove(l)
       val l1 = Simplification(l)
       rewrite.add(l1)
-      change &= l == l1
+      change |= l != l1
     }
     conjecture.foreach { c =>
       val c1 = Simplification(c)
       conjecture = Some(c1)
-      change &= c == c1
+      change |= c != c1
     }
     change
   }
@@ -189,13 +229,13 @@ object NormalizationMain {
       clauses.remove(c)
       val c1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(c))))))
       clauses.add(c1)
-      change &= c == c1
+      change |= c != c1
     }
     rewrite.foreach { l =>
       rewrite.remove(l)
       val l1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(l))))))
       rewrite.add(l1)
-      change &= l == l1
+      change |= l != l1
     }
     conjecture.foreach { c =>
       val cn = c.mapLit(_.flipPolarity)
@@ -216,7 +256,7 @@ object NormalizationMain {
       val c1 = Simplification.polarityNorm(cp.mapLit(_.flipPolarity))
       //println(s"Simp : ${c1.pretty}")
       conjecture = Some(c1)
-      change &= c == cp
+      change |= c != cp
     }
     change
   }
@@ -234,20 +274,20 @@ object NormalizationMain {
       val (c1, units) = extract0r(c)
       clauses.add(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
-      change &= units.isEmpty
+      change |= units.isEmpty
     }
     rewrite.foreach { l =>
       rewrite.remove(l)
       val (l1, units) = extract0r(l)
       rewrite.add(l1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
-      change &= units.isEmpty
+      change |= units.isEmpty
     }
     conjecture.foreach { c =>
       val (c1, units) = extract0r(c)
       conjecture = Some(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
-      change &= units.isEmpty
+      change |= units.isEmpty
     }
     change
   }
@@ -282,6 +322,8 @@ object NormalizationMain {
     sb.append("-a \t\tEnables argument extraction.")
     sb.append("-s \t\tEnables simplification")
     sb.append("-p \t\tTranslates the problem into a prenex normal form.")
+    sb.append("-r \t\tFormula renaming enable.\n")
+    sb.append("--rdelta \t\tOffset for the renaming to be triggered.\n")
     sb.append("--def \t\tHandles definitions as unit equations.")
     sb.append("-d N \t\t maximal depth of argument extraction\n")
     sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
