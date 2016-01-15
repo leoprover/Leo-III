@@ -31,7 +31,7 @@ object Simplification extends Normalization {
 
   def normalize(t: Term): Term = internalNormalize(t)
 
-  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize)
+  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize).betaNormalize
 
   private def norm(formula : Term) : Term = formula match {
     //case Bound(ty)   => formula // Sollte egal sein
@@ -72,14 +72,16 @@ object Simplification extends Normalization {
         case (s1, t1)                 => |||(s1,t1)
       }
     case s <=> t =>
-      (norm(s), norm(t)) match {
-        case (s1, t1) if s1 == t1 => LitTrue
+      val (ns, nt) = (norm(s), norm(t))
+      val res : Term = (ns, nt) match {
+        case (s1, t1) if s1 == t1   => LitTrue
         case (s1, LitTrue())        => s1
         case (LitTrue(), t1)        => t1
         case (s1, LitFalse())       => norm(Not(s1))
         case (LitFalse(), t1)       => norm(Not(t1))
-        case (s1, t1)             => <=>(s1,t1)
+        case (s1, t1)               => &(Impl(s1,t1),Impl(t1,s1))
       }
+      return res
     case s Impl t =>
       (norm(s), norm(t)) match {
         case (s1, t1) if s1 == t1 => LitTrue
@@ -119,7 +121,6 @@ object Simplification extends Normalization {
     case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))
-    //    case _  => formula
   }
 
   /**

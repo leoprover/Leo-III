@@ -24,7 +24,7 @@ object NegationNormal extends Normalization{
       if(li.left.ty == Signature.get.o) {
         val l1 = li.termMap { case (l, r) => {
           val (t1, t2) = if (li.polarity) (l, r) else (Not(l), r)
-          (nnf(rmEq(t1, 1)), nnf(rmEq(t2, 1)))
+          (nnf(rmEq(t1, 1)).betaNormalize, nnf(rmEq(t2, 1)).betaNormalize)
         }
         }
         if (li.polarity) l1 else l1.flipPolarity
@@ -36,13 +36,13 @@ object NegationNormal extends Normalization{
     if(literal.left.ty != Signature.get.o) return literal
     val l1 = literal.termMap { case (l,r) => {
       val (t1,t2) = if (literal.polarity) (l,r) else (Not(l), r)
-      (nnf(rmEq(t1, 1)),nnf(rmEq(t2, 1)))
+      (nnf(rmEq(t1, 1)).betaNormalize,nnf(rmEq(t2, 1)).betaNormalize)
     } }
     if(literal.polarity) l1 else l1.flipPolarity
   }
 
   def normalize(t: Term): Term = {
-    nnf(rmEq(t, 1))
+    nnf(rmEq(t, 1)).betaNormalize
   }
 
   private def pol(b : Boolean) : Int = if(b) 1 else -1

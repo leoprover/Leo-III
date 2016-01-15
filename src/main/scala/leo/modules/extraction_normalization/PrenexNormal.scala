@@ -19,15 +19,42 @@ object PrenexNormal extends Normalization {
    * @return a normalized formula
    */
   def apply(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l),internalNormalize(r))})
+    var maxBound = formula.maxImplicitlyBound
+    formula.mapLit(lit => lit.termMap {case (l,r) =>
+      (internalNormalize(l).betaNormalize,internalNormalize(r).betaNormalize) match {
+        case (l1, LitTrue()) if lit.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2, LitTrue())
+        case (l1, LitFalse()) if !lit.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2,LitFalse())
+        case s      => s
+      }
+    })
   }
 
   def apply(literal : Literal) : Literal = {
-    literal.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))}
+    var maxBound = literal.fv.toSeq.sortBy(_._1).headOption.fold(0){case (i,ty) => i}
+    literal.termMap {case (l,r) =>
+      (internalNormalize(l).betaNormalize, internalNormalize(r).betaNormalize) match {
+        case (l1, LitTrue()) if literal.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2, LitTrue())
+        case (l1, LitFalse()) if !literal.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2,LitFalse())
+        case s      => s
+      }
+
+    }
   }
 
   def normalize(t: Term): Term = {
-    internalNormalize(t)
+    internalNormalize(t).betaNormalize
   }
 
   private def internalNormalize(formula: Term): Term = formula match {
@@ -74,5 +101,10 @@ object PrenexNormal extends Normalization {
     case TypeLambda(t)          => mkTypeAbs(incrementBound(t,i))
 
 //    case _                      => formula
+  }
+
+  private def moveForallToClause(t : Term, maxBound : Int) : (Term, Int) = t match {
+    case Forall(ty :::> t1)   => moveForallToClause(Term.mkTermApp(Term.mkTermAbs(ty, t1), Term.mkBound(ty, maxBound+1)).betaNormalize, maxBound + 1)
+    case s                    => (s, maxBound)
   }
 }

@@ -162,13 +162,13 @@ object NormalizationMain {
     */
   private def simplifyAll : Boolean = {
     var change = false
-    clauses.foreach { c =>
+    clauses.toSeq.foreach { c =>
       clauses.remove(c)
       val c1 = Simplification(c)
       clauses.add(c1)
       change &= c == c1
     }
-    rewrite.foreach { l =>
+    rewrite.toSeq.foreach { l =>
       rewrite.remove(l)
       val l1 = Simplification(l)
       rewrite.add(l1)
@@ -185,15 +185,16 @@ object NormalizationMain {
   private def fullNormalizeAll : Boolean = {
     extensionalRewrite
     var change = false
-    clauses.foreach { c =>
+    clauses.toSeq.foreach { c =>
       clauses.remove(c)
-      val c1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(c))))))
+      val c1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(Simplification(DefExpansion(Simplification(c)))))))
+      //println(s"  ${c.pretty}\nprenex to\n  ${c1.pretty}\n")
       clauses.add(c1)
       change &= c == c1
     }
-    rewrite.foreach { l =>
+    rewrite.toSeq.foreach { l =>
       rewrite.remove(l)
-      val l1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(DefExpansion(Simplification(l))))))
+      val l1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(Simplification(DefExpansion(Simplification(l)))))))
       rewrite.add(l1)
       change &= l == l1
     }
@@ -229,14 +230,14 @@ object NormalizationMain {
   private def extractAll : Boolean = {
     var change = false
 
-    clauses.foreach { c =>
+    clauses.toSeq.foreach { c =>
       clauses.remove(c)
       val (c1, units) = extract0r(c)
       clauses.add(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
       change &= units.isEmpty
     }
-    rewrite.foreach { l =>
+    rewrite.toSeq.foreach { l =>
       rewrite.remove(l)
       val (l1, units) = extract0r(l)
       rewrite.add(l1)
@@ -258,7 +259,7 @@ object NormalizationMain {
   private def extensionalRewrite : Unit = {
     import leo.modules.calculus._
     import leo.modules.seqpproc.{FuncExt, BoolExt}
-    rewrite.foreach{ l : Literal =>
+    rewrite.toSeq.foreach{ l : Literal =>
       rewrite.remove(l)
       val fun_l : Literal= if(FuncExt.canApply(l)) FuncExt(freshVarGen(Clause(l)), Seq(l)).headOption.fold(l)(l1 => l1) else l
       if(BoolExt.canApply(fun_l)) {
@@ -278,14 +279,14 @@ object NormalizationMain {
     sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
     sb.append("Options:\n")
 
-    sb.append("-e \t\tFull extensional handeling for rewrite rules.")
-    sb.append("-a \t\tEnables argument extraction.")
-    sb.append("-s \t\tEnables simplification")
-    sb.append("-p \t\tTranslates the problem into a prenex normal form.")
-    sb.append("--def \t\tHandles definitions as unit equations.")
-    sb.append("-d N \t\t maximal depth of argument extraction\n")
-    sb.append("--ne N \t\t non exhaustively.  Will iterate N(=1 std) times.\n")
-    sb.append("-h \t\t display this help message\n")
+    sb.append("-e \t\tFull extensional handeling for rewrite rules.\n")
+    sb.append("-a \t\tEnables argument extraction.\n")
+    sb.append("-s \t\tEnables simplification\n")
+    sb.append("-p \t\tTranslates the problem into a prenex normal form.\n")
+    sb.append("--def \t\tHandles definitions as unit equations.\n")
+    sb.append("-d N \t\tMaximal depth of argument extraction\n")
+    sb.append("--ne N \t\tNon exhaustively.  Will iterate N(=1 std) times.\n")
+    sb.append("-h \t\tDisplay this help message\n")
 
     sb.toString()
   }
