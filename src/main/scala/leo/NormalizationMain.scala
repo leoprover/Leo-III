@@ -127,8 +127,11 @@ object NormalizationMain {
       while(change) {
         change = false
         if(simpl) change |= simplifyAll
+        //println("change (simp) : "+change)
         if(argExt) change |= extractAll
+        //println("change (argExt) : "+change)
         if(rename) change |= renameAll
+        //println("change (rename) : "+change)
       }
       if(Configuration.isSet("p")){
         fullNormalizeAll
@@ -254,10 +257,23 @@ object NormalizationMain {
       val cp = PrenexNormal(csk)
       //println(s"Prenex : ${cp.pretty}")
       assert(cp.lits.size == 1, "Conjecture was splitted.")
-      val c1 = Simplification.polarityNorm(cp.mapLit(_.flipPolarity))
-      //println(s"Simp : ${c1.pretty}")
-      conjecture = Some(c1)
-      change |= c != cp
+      if(cp.lits.size == 1){
+        // Negate the formula
+        val c1 = Simplification.polarityNorm(cp.mapLit(_.flipPolarity))
+        // Negate the implicit quantified variables
+        val qv = c1.implicitlyBound.sortBy(_._1)
+        val l2 : Literal = qv.foldLeft(c1.lits.head){case (l,(b,ty)) => (l.left, l.right) match {
+          case (left, LitTrue()) if l.polarity  =>  Literal(Exists(Term.mkTermAbs(ty, left)), true)
+          case (left, LitTrue()) if !l.polarity =>  Literal(Exists(Term.mkTermAbs(ty, Not(left))), true)
+          case (left, LitFalse()) if l.polarity =>  Literal(Exists(Term.mkTermAbs(ty, Not(left))), true)
+          case (left, LitFalse()) if !l.polarity  => Literal(Exists(Term.mkTermAbs(ty, left)), true)
+          case (left, right)  if l.polarity       => Literal(Exists(Term.mkTermAbs(ty, ===(left,right))), true)
+          case (left, right)  if !l.polarity       => Literal(Exists(Term.mkTermAbs(ty, Not(===(left,right)))), true)
+        }}
+        val c2 : Clause = Clause(l2)
+        conjecture = Some(c2)
+        change |= c != c2
+      }
     }
     change
   }
@@ -275,20 +291,20 @@ object NormalizationMain {
       val (c1, units) = extract0r(c)
       clauses.add(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
-      change |= units.isEmpty
+      change |= units.nonEmpty
     }
     rewrite.toSeq.foreach { l =>
       rewrite.remove(l)
       val (l1, units) = extract0r(l)
       rewrite.add(l1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
-      change |= units.isEmpty
+      change |= units.nonEmpty
     }
     conjecture.foreach { c =>
       val (c1, units) = extract0r(c)
       conjecture = Some(c1)
       units.foreach { case (l, r) => rewrite.add(Literal(l, r, true)) }
-      change |= units.isEmpty
+      change |= units.nonEmpty
     }
     change
   }
