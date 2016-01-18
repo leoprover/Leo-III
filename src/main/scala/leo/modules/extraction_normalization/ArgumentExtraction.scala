@@ -2,7 +2,7 @@ package leo.modules.extraction_normalization
 
 import leo.datastructures.Term._
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Literal, Term, Clause, Type}
+import leo.datastructures._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
@@ -60,6 +60,13 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
     t match {
       case s@Symbol(_) => (s, Set())
       case s@Bound(_, _) => (s, Set())
+      case ===(l,r) if l.ty != Signature.get.o  =>
+        val (l1, units1) = extractOrRekurse(l)
+        val (r1, units2) = extractOrRekurse(r)
+        (===(l1.fold(t => t, _ => l), r1.fold(t => t, _ => r)), units1 union units2)
+      case !===(l,r) if l.ty != Signature.get.o =>
+        val (t1, units) = apply(===(l,r))
+        (Not(t1),units)
       case (h@Symbol(k)) ∙ args =>
         if (isUser(k)) {
           handleApp(h, args)

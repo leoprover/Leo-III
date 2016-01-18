@@ -54,11 +54,11 @@ object FormulaRenaming {
   }
 
   def applyConjecture(c : Clause, delta: Int = 1) : (Clause, Seq[Clause]) = {
-    val lits = c.lits
-    val apps = lits.map(f => apply(f,delta))
-    val nlits = apps.map(_._1)
-    val cs = apps.flatMap(_._2)
-    (Clause(nlits), cs)
+    assert(c.lits.size == 1, "The conjecture should contain exactly one clause.")
+    if(c.lits.size > 1) return (c, Seq())
+    val lit = c.lits.head
+    val (nLit, units) = apply(lit.flipPolarity, delta)
+    (Clause(nLit.flipPolarity), units)
   }
 
 
