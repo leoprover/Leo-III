@@ -42,16 +42,16 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(DefExpSimp, Set(cw)))
     Out.debug(s"Def expansion: ${cw.cl.pretty}")
     // NNF
-    left = NegationNormal.normalize(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(NegationNormal, Set(cw)))
-    // Skolem
-    left = Skolemization.normalize(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Skolemization, Set(cw)))
-    Out.debug(s"Skolemize: ${cw.cl.pretty}")
-    // Prenex
-    left = PrenexNormal.normalize(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PrenexNormal, Set(cw)))
-    Out.debug(s"Prenex: ${cw.cl.pretty}")
+//    left = NegationNormal.normalize(left)
+//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(NegationNormal, Set(cw)))
+//    // Skolem
+//    left = Skolemization.normalize(left)
+//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Skolemization, Set(cw)))
+//    Out.debug(s"Skolemize: ${cw.cl.pretty}")
+//    // Prenex
+//    left = PrenexNormal.normalize(left)
+//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PrenexNormal, Set(cw)))
+//    Out.debug(s"Prenex: ${cw.cl.pretty}")
     // Remove quantifiers
     left = Instantiate(left, pol)
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Instantiate, Set(cw)))
