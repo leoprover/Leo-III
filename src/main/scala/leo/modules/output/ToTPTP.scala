@@ -25,7 +25,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
   def apply(f: FormulaStore): Output = new Output {
-    def output = toTPTP(f.name, f.clause.term, f.role)
+      def output = toTPTP(f.name, f.clause.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/

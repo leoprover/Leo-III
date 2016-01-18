@@ -118,6 +118,9 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
   private def shouldExtract(t : Term) : Boolean = {
     val s = Signature.get
     if(t.ty.funParamTypesWithResultType.last != s.o) return false
+
+    if(t.isConstant) return false
+
     t.headSymbol match {
       case Symbol(k)    => !s.allUserConstants.contains(k)    // Extract if it is no user constant (can be treated in CNF)
       //case Bound(_, i)  => t.headSymbolDepth < i              // If it is a meta variable, it should be extracted TODO Fix the symbol depth (it treats type-lambdas as wll here)

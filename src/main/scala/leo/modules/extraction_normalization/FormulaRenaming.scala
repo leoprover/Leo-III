@@ -53,6 +53,14 @@ object FormulaRenaming {
     (Clause(nlits), cs)
   }
 
+  def applyConjecture(c : Clause, delta: Int = 1) : (Clause, Seq[Clause]) = {
+    val lits = c.lits
+    val apps = lits.map(f => apply(f,delta))
+    val nlits = apps.map(_._1)
+    val cs = apps.flatMap(_._2)
+    (Clause(nlits), cs)
+  }
+
 
   /**
     *
