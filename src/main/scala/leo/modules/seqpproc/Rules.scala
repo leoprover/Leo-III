@@ -65,6 +65,13 @@ object Instantiate extends CalculusRule {
   }
   def removeLeadingQuants(t: Term, polarity: Boolean, fv: Seq[(Int, Type)]): Term = t match {
     case Forall(ty :::> body) if polarity => removeLeadingQuants(body, polarity, (fv.size, ty) +: fv)
+    case Exists(ty :::> body) if !polarity => removeLeadingQuants(body, polarity, (fv.size, ty) +: fv)
+    case Exists(ty :::> body) if polarity => {
+      leo.Out.debug(s"Polarity true and Exists case")
+      Out.debug(s"fv are: ${fv.map(f => f._1.toString + ":" + "")}")
+      removeLeadingQuants(body.closure(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fv))).betaNormalize, polarity, fv)
+    }
+    case Forall(ty :::> body) if !polarity => removeLeadingQuants(body.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fv))), polarity, fv)
     case _ => t
   }
 }
