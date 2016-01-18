@@ -2,10 +2,10 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures.{Term, Clause, Literal, Role, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
+import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
 import leo.modules.normalization._
 import leo.modules.output._
-import leo.modules.{SZSOutput, SZSException, Parsing}
+import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
 import leo.modules.calculus.{Subsumption, CalculusRule}
 
 import scala.collection.SortedSet
@@ -42,20 +42,20 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(DefExpSimp, Set(cw)))
     Out.debug(s"Def expansion: ${cw.cl.pretty}")
     // NNF
-    left = NegationNormal.normalize(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(NegationNormal, Set(cw)))
-    // Skolem
-    left = Skolemization.normalize(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Skolemization, Set(cw)))
-    Out.debug(s"Skolemize: ${cw.cl.pretty}")
-    // Prenex
-    left = PrenexNormal.normalize(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PrenexNormal, Set(cw)))
-    Out.debug(s"Prenex: ${cw.cl.pretty}")
+//    left = NegationNormal.normalize(left)
+//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(NegationNormal, Set(cw)))
+//    // Skolem
+//    left = Skolemization.normalize(left)
+//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Skolemization, Set(cw)))
+//    Out.debug(s"Skolemize: ${cw.cl.pretty}")
+//    // Prenex
+//    left = PrenexNormal.normalize(left)
+//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PrenexNormal, Set(cw)))
+//    Out.debug(s"Prenex: ${cw.cl.pretty}")
     // Remove quantifiers
-    left = CNF_Forall(left, pol)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(CNF_Forall, Set(cw)))
-    Out.debug(s"CNF_Forall: ${cw.cl.pretty}")
+    left = Instantiate(left, pol)
+    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Instantiate, Set(cw)))
+    Out.debug(s"Instantiate: ${cw.cl.pretty}")
     // Exhaustively CNF
     val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
     Out.debug(s"CNF:\n\t${left2.map(_.cl.pretty).mkString("\n\t")}")
@@ -63,10 +63,9 @@ object SeqPProc extends Function1[Long, Unit]{
       // To equation if possible
       val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
       if (cA_lift) {
-        Out.debug(s"to_eq: ${c.cl.pretty}")
         val curr = Clause(LiftEq(lift, lift_other))
+        Out.debug(s"to_eq: ${curr.pretty}")
         ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
-
       } else c
     }
     //TODO: Replace leibniz/andrew equalities
@@ -116,6 +115,9 @@ object SeqPProc extends Function1[Long, Unit]{
     var processed: Set[ClauseWrapper] = Set()
     var returnSZS: StatusSZS = SZS_Unknown
     var derivationClause: ClauseWrapper = null
+    var subsumed: Int = 0
+    var processedCounter: Int = 0
+    var genCounter: Int = unprocessed.size
     var loop = true
     // proof loop
     while (loop) {
@@ -123,13 +125,14 @@ object SeqPProc extends Function1[Long, Unit]{
         loop = false
         returnSZS = SZS_CounterSatisfiable
       } else {
+        processedCounter = processedCounter + 1
         val cur = unprocessed.head
         unprocessed = unprocessed.tail
         Out.debug(s"Taken: ${cur.pretty}")
         // TODO: simpl to be simplification by rewriting à la E
         val simpl = cur.cl
 //        val simpl = simplify(cur.cl)
-        if (Clause.empty(simpl)) {
+        if (Clause.effectivelyEmpty(simpl)) {
           loop = false
           if (conjecture.isEmpty) {
             returnSZS = SZS_ContradictoryAxioms
@@ -247,6 +250,7 @@ object SeqPProc extends Function1[Long, Unit]{
               // ...
 
               if (!Clause.trivial(newCl.cl)) {
+                genCounter = genCounter + 1
                 unprocessed = unprocessed + newCl
               } else {
                 Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
@@ -255,6 +259,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
           } else {
             Out.debug("clause subsumbed, skipping.")
+            subsumed = subsumed + 1
             Out.trace(s"Subsumed by:\n\t${processed.filter(cw => Subsumption.subsumes(cw.cl, simpl)).map(_.pretty).mkString("\n\t")}")
           }
 
@@ -263,12 +268,43 @@ object SeqPProc extends Function1[Long, Unit]{
 
     }
 
-    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${System.currentTimeMillis() - startTime} ms resp. ${System.currentTimeMillis() - startTimeWOParsing} ms w/o parsing"))
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
+      Utility.printUserDefinedSignature()
+    }
+
+    val time = System.currentTimeMillis() - startTime
+    val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
+
+    Out.output(s" Time passed: ${time}")
+    Out.output(s" Effective reasoning time: ${timeWOParsing}")
+    Out.output(s" No. of processed clauses: ${processedCounter}")
+    Out.output(s" No. of generated clauses: ${genCounter}")
+    Out.output(s" No. of subsumed clauses: ${subsumed}")
+    if (derivationClause != null)
+      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+
+    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
       Out.output(makeDerivation(derivationClause).toString)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
+  }
+
+
+  import scala.collection.mutable
+
+  //TODO: Is that right?
+  def axiomsUsed(cw: ClauseWrapper): Int = axiomsUsed0(cw, mutable.Set())
+
+  def axiomsUsed0(cw: ClauseWrapper, used: mutable.Set[ClauseWrapper]): Int = cw.annotation match {
+    case NoAnnotation => 0
+    case FromFile(_, _) if cw.role == Role_Axiom => if (used.contains(cw)) 0 else {
+      used.add(cw)
+      1
+    }
+    case InferredFrom(_, parents) => parents.map(p => axiomsUsed(p._1)).sum
+
   }
 
   def makeDerivation(cw: ClauseWrapper, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {

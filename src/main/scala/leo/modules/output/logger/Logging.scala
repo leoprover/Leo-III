@@ -76,4 +76,14 @@ trait Logging {
     log.setLevel(level)
     log.getHandlers.toSeq.foreach(_.setLevel(level))
   }
+
+  def logLevel: Level = log.getLevel
+  def logLevelAbove(level: Level): Boolean = {
+    val thisLogLevel = log.getLevel
+    level.intValue() > thisLogLevel.intValue()
+  }
+  def logLevelAtLeast(level: Level): Boolean = {
+    val thisLogLevel = log.getLevel
+    level.intValue() >= thisLogLevel.intValue()
+  }
 }

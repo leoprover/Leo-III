@@ -84,12 +84,12 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case Atom(key) if !symbs.contains(key) => {
       val meta = Signature(key)
       if (meta.hasDefn) {
-        mkRedex(meta._defn, args.exhaustive_δ_expand_upTo(symbs))
+        mkRedex(meta._defn.exhaustive_δ_expand_upTo(symbs), args.exhaustive_δ_expand_upTo(symbs))
       } else {
         mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
       }
     }
-    case _ => this
+    case _ => mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
   }
 
   lazy val head_δ_expandable = hd.δ_expandable

@@ -18,7 +18,7 @@ object DefExpSimp extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
   def apply(t: Term): Term = {
     val sig = Signature.get
-    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key, sig("<=>").key)
+    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
     Simplification.normalize(t.exhaustive_δ_expand_upTo(symb))
   }
 }
@@ -56,14 +56,22 @@ object PolaritySwitch extends CalculusRule {
   }
 }
 
-object CNF_Forall extends CalculusRule {
-  val name = "cnf_forall"
-  override val inferenceStatus = Some(SZS_Theorem)
+object Instantiate extends CalculusRule {
+  val name = "inst"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+
   def apply(t: Term, polarity: Boolean): Term =  {
-    removeLeadingQuants(t, polarity)
+    removeLeadingQuants(t, polarity, Seq())
   }
-  def removeLeadingQuants(t: Term, polarity: Boolean): Term = t match {
-    case Forall(ty :::> body) => removeLeadingQuants(body, polarity)
+  def removeLeadingQuants(t: Term, polarity: Boolean, fv: Seq[(Int, Type)]): Term = t match {
+    case Forall(ty :::> body) if polarity => removeLeadingQuants(body, polarity, (fv.size, ty) +: fv)
+    case Exists(ty :::> body) if !polarity => removeLeadingQuants(body, polarity, (fv.size, ty) +: fv)
+    case Exists(ty :::> body) if polarity => {
+      leo.Out.debug(s"Polarity true and Exists case")
+      Out.debug(s"fv are: ${fv.map(f => f._1.toString + ":" + "")}")
+      removeLeadingQuants(body.closure(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fv))).betaNormalize, polarity, fv)
+    }
+    case Forall(ty :::> body) if !polarity => removeLeadingQuants(body.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fv))), polarity, fv)
     case _ => t
   }
 }
@@ -78,7 +86,7 @@ object CNF extends CalculusRule {
   final val none: FormulaCharacter = 0.toByte
   final val alpha: FormulaCharacter = 1.toByte
   final val beta: FormulaCharacter = 2.toByte
-//  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
+  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
 //  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
 
   final def canApply(l: Literal): Boolean = if (!l.equational) {
@@ -87,7 +95,7 @@ object CNF extends CalculusRule {
       case s ||| t => true
       case s & t => true
       case s Impl t => true
-      case s <=> t => true
+//      case s <=> t => true
       case Forall(ty :::> t) => true
       case Exists(ty :::> t) => true
       case _ => false
@@ -101,22 +109,22 @@ object CNF extends CalculusRule {
     } else {
       if (l.polarity) {
         l.left match {
-          case Not(t) => (alpha, Seq(Literal(t, false)))
+          case Not(t) => (one, Seq(Literal(t, false)))
           case s ||| t => (beta, Seq(Literal(s, true),Literal(t,true)))
           case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
           case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
-          case s <=> t => ???
+//          case s <=> t => ???
           case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
           case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),true)))
           case _ => (none, Seq(l))
         }
       } else {
         l.left match {
-          case Not(t) => (alpha, Seq(Literal(t, true)))
+          case Not(t) => (one, Seq(Literal(t, true)))
           case s ||| t => (alpha, Seq(Literal(s, false),Literal(t,false)))
           case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
           case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
-          case s <=> t => ???
+//          case s <=> t => ???
           case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),false)))
           case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
           case _ => (none, Seq(l))
@@ -139,12 +147,21 @@ object CNF extends CalculusRule {
       if (resChar == none) {
         // Already normalized
         apply0(vargen, tail, acc.map(hd +: _))
-      } else if (resChar == alpha) {
+      } else if (resChar == one) {
         val deepRes = apply0(vargen, res, Seq(Seq()))
         apply0(vargen, tail, deepRes.flatMap(res => res.flatMap(r => acc.map(_ :+ r))))
+      } else if (resChar == alpha) {
+        val deepRes0 = apply0(vargen, res.take(1), Seq(Seq()))
+        val deepRes1 = apply0(vargen, res.drop(1), Seq(Seq()))
+        val deepRes = deepRes0 ++ deepRes1
+//        leo.Out.comment(s"Deep res alpha: ${deepRes.map(_.map(_.pretty))}")
+        apply0(vargen, tail, deepRes.flatMap(res => acc.map(r => r ++ res)))
       } else if (resChar == beta) {
-        val deepRes = apply0(vargen, res, Seq(Seq()))
-        apply0(vargen, tail, deepRes.flatMap(res => acc.map(_ ++ res)))
+        val deepRes0 = apply0(vargen, res.take(1), Seq(Seq()))
+        val deepRes1 = apply0(vargen, res.drop(1), Seq(Seq()))
+        val deepRes = deepRes0.flatMap(res => deepRes1.map(res2 => res ++ res2))
+//        leo.Out.comment(s"Deep res beta: ${deepRes.map(_.map(_.pretty))}")
+        apply0(vargen, tail, deepRes.flatMap(res => acc.map(r => r ++ res)))
       } else {
         throw new SZSException(SZS_Error,
           "cnf calculus error: returning something other than alpha or beta",
