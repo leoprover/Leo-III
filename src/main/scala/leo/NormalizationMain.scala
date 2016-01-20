@@ -223,7 +223,7 @@ object NormalizationMain {
     var change = false
     clauses.toSeq.foreach { c =>
       clauses.remove(c)
-      val c1 = Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(Simplification(DefExpansion(Simplification(c)))))))
+      val c1 = Simplification(Simplification.polarityNorm(PrenexNormal(Skolemization(NegationNormal(Simplification(DefExpansion(Simplification(c))))))))
       //println(s"  ${c.pretty}\nprenex to\n  ${c1.pretty}\n")
       clauses.add(c1)
       change |= c != c1
@@ -252,7 +252,7 @@ object NormalizationMain {
       assert(cp.lits.size == 1, "Conjecture was splitted.")
       if(cp.lits.size == 1){
         // Negate the formula
-        val c1 = Simplification.polarityNorm(cp.mapLit(_.flipPolarity))
+        val c1 = Simplification(Simplification.polarityNorm(cp.mapLit(_.flipPolarity)))
         // Negate the implicit quantified variables
         val qv = c1.implicitlyBound.sortBy(_._1)
         val l2 : Literal = qv.foldLeft(c1.lits.head){case (l,(b,ty)) => (l.left, l.right) match {

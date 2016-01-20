@@ -104,6 +104,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
       return (Left(us.get(t).get), Set())
     }
     if(shouldExtract(t) && filter(t)) {
+
       val newArgs = t.freeVars.toSeq  // Arguments passed to the function to define
       val argtypes = newArgs.map(_.ty)
 

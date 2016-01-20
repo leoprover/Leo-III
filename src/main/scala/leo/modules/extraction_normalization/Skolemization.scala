@@ -125,7 +125,7 @@ object Skolemization extends Normalization{
         |||(left,right)
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
-      case s@Bound(_,i)           => if(i == 1) LitTrue else s
+      case s@Bound(_,i)           => if(i == 1) LitTrue() else s
       case f ∙ args   => Exists(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
       case ty :::> s  => Exists(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Exists(\(ty)(mkTypeAbs(miniscope(t))))
@@ -159,7 +159,7 @@ object Skolemization extends Normalization{
         &(left,right)
       // In neither of the above cases, move inwards
       case s@Symbol(_)            => s
-      case s@Bound(_,i)           => if(i == 1) LitTrue else s
+      case s@Bound(_,i)           => if(i == 1) LitFalse() else s
       case f ∙ args   => Forall(\(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},(Right(_)))))))
       case ty :::> s  => Forall(\(ty)(mkTermAbs(ty, miniscope(s))))
       case TypeLambda(t) => Forall(\(ty)(mkTypeAbs(miniscope(t))))
