@@ -31,7 +31,11 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     * information triple.*/
   def apply(name: String, c: Clause, role: Role): Output = new Output {
     val t : Term = if(role == Role_Definition) definitionToTerm(c) else c.term
-    def output = toTPTP(name, t, role)
+    def output = try {
+      toTPTP(name, t, role)
+    } catch {
+      case e : IndexOutOfBoundsException => println("out-of-bounds : \n  "+t.pretty+"\n from\n  "+c.pretty); throw e
+    }
   }
   private def definitionToTerm(c : Clause) : Term = {
     if(c.lits.size != 1) return c.term

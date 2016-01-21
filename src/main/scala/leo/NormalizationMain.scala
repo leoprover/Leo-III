@@ -10,6 +10,7 @@ import leo.modules.{Parsing, SZSOutput, SZSException, CLParameterParser}
 import leo.modules.Utility._
 import leo.modules.output.ToTPTP
 import leo.datastructures.impl.Signature
+import leo.modules.seqpproc.Simp
 
 import scala.collection.mutable
 
@@ -139,16 +140,18 @@ object NormalizationMain {
 
       //Typdefinitionen
       var counter : Int = 0
-      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Clause(l), Role_Definition, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
-      val clauseF : Seq[FormulaStore] = clauses.toSeq.map{c => {counter += 1; Store(counter.toString, c, Role_Axiom, Context(), 0, NoAnnotation)}}
-      val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, c, Role_Conjecture, Context(), 0, NoAnnotation)}
+      val rewriteF : Seq[FormulaStore] = rewrite.toSeq.map{l => {counter += 1; Store(counter.toString, Simp(Clause(l)), Role_Definition, Context(), 0, NoAnnotation)}}  // TODO is definition ok?
+      val clauseF : Seq[FormulaStore] = clauses.toSeq.map{c => {counter += 1; Store(counter.toString, Simp(c), Role_Axiom, Context(), 0, NoAnnotation)}}
+      val conjectureF : Seq[FormulaStore] = conjecture.toSeq.map{c => Store((counter+1).toString, Simp(c), Role_Conjecture, Context(), 0, NoAnnotation)}
 
       //TODO Print and Format the time need for normalization
-      ToTPTP((rewriteF ++(clauseF ++ conjectureF)), !Configuration.isSet("def")).foreach{o => println(o.output)}
-
+      val sb : mutable.StringBuilder = new StringBuilder()
+      ToTPTP((rewriteF ++ (clauseF ++ conjectureF)), !Configuration.isSet("def")).foreach { o => sb.append(o.output);sb.append("\n") }
+      println(sb.toString())
       //println(s"Loaded:\n  ${forms.map(ToTPTP(_).output).mkString("\n  ")}")
     } catch {
-      case e : SZSException =>  Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.getMessage))
+      case e : SZSException =>  System.err.println(SZSOutput(e.status, Configuration.PROBLEMFILE,e.getMessage).output)
+      case e : Exception => System.err.println(e.getMessage)
     }
   }
 
