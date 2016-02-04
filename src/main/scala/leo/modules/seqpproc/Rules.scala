@@ -230,6 +230,8 @@ object Simp extends CalculusRule {
   }
 
   def apply(cl: Clause): Clause  = {
+
+    Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Seq()
     val litIt = cl.lits.iterator
     while (litIt.hasNext) {
@@ -242,8 +244,9 @@ object Simp extends CalculusRule {
       }
     }
     val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
+    Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
-    Out.trace(s"Simp on ${cl.pretty}")
+
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
     if (fvs.nonEmpty) {
       if (fvs.size != fvs.head) {

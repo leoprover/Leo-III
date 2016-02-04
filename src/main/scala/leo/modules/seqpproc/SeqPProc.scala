@@ -123,7 +123,7 @@ object SeqPProc extends Function1[Long, Unit]{
     while (loop) {
       if (unprocessed.isEmpty) {
         loop = false
-        returnSZS = SZS_CounterSatisfiable
+//        returnSZS = SZS_CounterSatisfiable
       } else {
         processedCounter = processedCounter + 1
         val cur = unprocessed.head
@@ -210,13 +210,13 @@ object SeqPProc extends Function1[Long, Unit]{
                 }
                 /* work on new claues from here */
                 // Simplify new clauses
-                newclauses = newclauses.map(cw => ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw))))
+                newclauses = newclauses.map(cw => {Out.trace(s"Simp on ${cw.pretty}");ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)))})
                 // Remove those which are tautologies
                 newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
                 // CNF new clauses
                 newclauses = newclauses.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
                 // Pre-unify new clauses
-                val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = newclauses.foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
+                val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = (newclauses).foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
                   val (cA, ul, ol) = PreUni.canApply(cw.cl)
                   if (cA) {
                     (uni + ((cw, ul, ol)),ot)
