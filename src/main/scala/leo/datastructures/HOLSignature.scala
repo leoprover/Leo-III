@@ -157,7 +157,7 @@ trait HOLSignature {
         mkTermApp(conj, mkTermApp(
           mkTermApp(impl, (2, o)), (1, o))),
         mkTermApp(
-          mkTermApp(lpmi, (2, o)), (1, o)))))
+          mkTermApp(impl, (1, o)), (2, o)))))
 
   protected def nandDef: Term = mkTermAbs(o,
     mkTermAbs(o,
