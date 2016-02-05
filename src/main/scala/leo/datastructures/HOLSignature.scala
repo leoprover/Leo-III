@@ -43,6 +43,9 @@ trait HOLSignature {
 
   val letKey = HOLSignature.letKey
   val iteKey = HOLSignature.iteKey
+  import IsSignature.{lexStatus, multStatus}
+  val multProp = multStatus*IsSignature.PropStatus
+  val lexProp = lexStatus*IsSignature.PropStatus
 
   // Don't change the order of the elements in this lists.
   // If you do so, you may need to update the Signature implementation.
@@ -57,57 +60,57 @@ trait HOLSignature {
 
   // Fixed symbols
   import Type.{mkPolyType => forall}
-  import IsSignature.{lexStatus, multStatus}
+  import IsSignature.{PropAC => ac, PropAssociative => a, PropCommutative => c}
   lazy val fixedConsts = List(
-    ("$true",                         o, multStatus), // Key 6
-    ("$false",                        o, multStatus), // Key 7
-    ("#box",                    o ->: o, multStatus), // Key 8
-    ("#diamond",                o ->: o, multStatus), // Key 9
-    ("~",                       o ->: o, multStatus), // Key 10
-    ("!",        forall((1 ->: o) ->: o), multStatus), // Key 11
-    ("|",                 o ->: o ->: o, multStatus), // Key 12
-    ("=",        forall(1 ->: 1 ->: o), multStatus), // Key 13
-    ("$$let",    forall(forall(2 ->: 1 ->: 1)), multStatus), // Key 14
-    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1), multStatus),  // Key 15
-    ("$less",    forall(1 ->: 1 ->: o), lexStatus), // Key 16
-    ("$lesseq",   forall(1 ->: 1 ->: o), lexStatus), // Key 17
-    ("$greater",  forall(1 ->: 1 ->: o), lexStatus), // Key 18
-    ("$greatereq",forall(1 ->: 1 ->: o), lexStatus), // Key 19
-    ("@+",        forall((1 ->: o) ->: 1), multStatus), // Key 20
-    ("@-",        forall((1 ->: o) ->: 1), multStatus), // Key 21
-    ("$uminus",   forall(1 ->: 1), multStatus), // Key 22
-    ("$sum",      forall(1 ->: 1 ->: 1), multStatus), // Key 23
-    ("$difference",forall(1 ->: 1 ->: 1), lexStatus), // Key 24
-    ("$product",   forall(1 ->: 1 ->: 1), multStatus), // Key 25
-    ("$quotient",  forall(1 ->: 1 ->: 1), lexStatus), // Key 26
-    ("$quotient_e",forall(1 ->: 1 ->: 1), lexStatus), // Key 27
-    ("$quotient_t",forall(1 ->: 1 ->: 1), lexStatus), // key 28
-    ("$quotient_f",forall(1 ->: 1 ->: 1), lexStatus), // Key 29
-    ("$remainder_e",forall(1 ->: 1 ->: 1), lexStatus), // Key 30
-    ("$remainder_t",forall(1 ->: 1 ->: 1), lexStatus), // key 31
-    ("$remainder_f",forall(1 ->: 1 ->: 1), lexStatus), // Key 32
-    ("$floor",     forall(1 ->: 1), multStatus), // Key 33
-    ("$ceiling",   forall(1 ->: 1), multStatus), // Key 34
-    ("$truncate",  forall(1 ->: 1), multStatus), // Key 35
-    ("$round",     forall(1 ->: 1), multStatus), // Key 36
-    ("$to_int",      forall(1 ->: int), multStatus), // Key 37
-    ("$to_rat",      forall(1 ->: rat), multStatus), // Key 38
-    ("$to_real",      forall(1 ->: real), multStatus), // Key 39
-      ("$is_rat",      forall(1 ->: o), multStatus), // Key 40
-      ("$is_int",      forall(1 ->: o), multStatus) // Key 41
+    ("$true",                         o, multProp), // Key 6
+    ("$false",                        o, multProp), // Key 7
+    ("#box",                    o ->: o, multProp), // Key 8
+    ("#diamond",                o ->: o, multProp), // Key 9
+    ("~",                       o ->: o, multProp), // Key 10
+    ("!",        forall((1 ->: o) ->: o), multProp), // Key 11
+    ("|",                 o ->: o ->: o, multProp | ac), // Key 12
+    ("=",        forall(1 ->: 1 ->: o), multProp | c), // Key 13
+    ("$$let",    forall(forall(2 ->: 1 ->: 1)), multProp), // Key 14
+    ("$$ite",    forall(o ->: 1 ->: 1 ->: 1), multProp),  // Key 15
+    ("$less",    forall(1 ->: 1 ->: o), lexProp), // Key 16
+    ("$lesseq",   forall(1 ->: 1 ->: o), lexProp), // Key 17
+    ("$greater",  forall(1 ->: 1 ->: o), lexProp), // Key 18
+    ("$greatereq",forall(1 ->: 1 ->: o), lexProp), // Key 19
+    ("@+",        forall((1 ->: o) ->: 1), multProp), // Key 20
+    ("@-",        forall((1 ->: o) ->: 1), multProp), // Key 21
+    ("$uminus",   forall(1 ->: 1), multProp), // Key 22
+    ("$sum",      forall(1 ->: 1 ->: 1), multProp | ac), // Key 23
+    ("$difference",forall(1 ->: 1 ->: 1), lexProp), // Key 24
+    ("$product",   forall(1 ->: 1 ->: 1), multProp | ac), // Key 25
+    ("$quotient",  forall(1 ->: 1 ->: 1), lexProp), // Key 26
+    ("$quotient_e",forall(1 ->: 1 ->: 1), lexProp), // Key 27
+    ("$quotient_t",forall(1 ->: 1 ->: 1), lexProp), // key 28
+    ("$quotient_f",forall(1 ->: 1 ->: 1), lexProp), // Key 29
+    ("$remainder_e",forall(1 ->: 1 ->: 1), lexProp), // Key 30
+    ("$remainder_t",forall(1 ->: 1 ->: 1), lexProp), // key 31
+    ("$remainder_f",forall(1 ->: 1 ->: 1), lexProp), // Key 32
+    ("$floor",     forall(1 ->: 1), multProp), // Key 33
+    ("$ceiling",   forall(1 ->: 1), multProp), // Key 34
+    ("$truncate",  forall(1 ->: 1), multProp), // Key 35
+    ("$round",     forall(1 ->: 1), multProp), // Key 36
+    ("$to_int",      forall(1 ->: int), multProp), // Key 37
+    ("$to_rat",      forall(1 ->: rat), multProp), // Key 38
+    ("$to_real",      forall(1 ->: real), multProp), // Key 39
+      ("$is_rat",      forall(1 ->: o), multProp), // Key 40
+      ("$is_int",      forall(1 ->: o), multProp) // Key 41
   )
 
   // Standard defined symbols
   lazy val definedConsts = List(
-    ("?", existsDef, forall((1 ->: o) ->: o), multStatus), // Key 42
-    ("&",   andDef,  o ->: o ->: o, multStatus), // Key 43
-    ("=>",  implDef, o ->: o ->: o, lexStatus), // Key 44
-    ("<=",  ifDef,   o ->: o ->: o, lexStatus), // Key 45
-    ("<=>", iffDef,  o ->: o ->: o, multStatus), // Key 46
-    ("~&", nandDef,  o ->: o ->: o, multStatus), // Key 47
-    ("~|",  norDef,  o ->: o ->: o, multStatus), // Key 48
-    ("<~>",niffDef,  o ->: o ->: o, multStatus), // Key 49
-    ("!=",  neqDef, forall(1 ->: 1 ->: o), multStatus)) // Key 50
+    ("?", existsDef, forall((1 ->: o) ->: o), multProp), // Key 42
+    ("&",   andDef,  o ->: o ->: o, multProp | ac), // Key 43
+    ("=>",  implDef, o ->: o ->: o, lexProp), // Key 44
+    ("<=",  ifDef,   o ->: o ->: o, lexProp), // Key 45
+    ("<=>", iffDef,  o ->: o ->: o, multProp | ac), // Key 46
+    ("~&", nandDef,  o ->: o ->: o, multProp), // Key 47
+    ("~|",  norDef,  o ->: o ->: o, multProp), // Key 48
+    ("<~>",niffDef,  o ->: o ->: o, multProp), // Key 49
+    ("!=",  neqDef, forall(1 ->: 1 ->: o), multProp)) // Key 50
 
 
   //////////////////////
