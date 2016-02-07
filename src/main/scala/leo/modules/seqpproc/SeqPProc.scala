@@ -306,6 +306,7 @@ object SeqPProc extends Function1[Long, Unit]{
     }
 
     if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
+      Out.output("Signature extension used:")
       Utility.printUserDefinedSignature()
     }
 
@@ -317,8 +318,8 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.output(s" No. of processed clauses: ${processedCounter}")
     Out.output(s" No. of generated clauses: ${genCounter}")
     Out.output(s" No. of subsumed clauses: ${subsumed}")
-    if (derivationClause != null)
-      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+//    if (derivationClause != null)
+//      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
 
     Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
