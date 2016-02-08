@@ -2,7 +2,7 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
+import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
 import leo.modules.normalization._
 import leo.modules.output._
 import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
@@ -29,28 +29,26 @@ object SeqPProc extends Function1[Long, Unit]{
     var cw = cur
     var left = lit.left
 
-    Out.debug(s"Original: ${cur.cl.pretty}")
-
     // Def expansion and simplification
     left = DefExpSimp(left)
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(DefExpSimp, Set(cw)))
-    Out.debug(s"Def expansion: ${cw.cl.pretty}")
+    Out.trace(s"Def expansion: ${cw.cl.pretty}")
 
     if (PolaritySwitch.canApply(left)) {
       left = PolaritySwitch(left)
       pol = !pol
       cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PolaritySwitch, Set(cw)))
-      Out.debug(s"Pol. switch: ${cw.cl.pretty}")
+      Out.trace(s"Pol. switch: ${cw.cl.pretty}")
     }
 
     // Remove quantifiers
     left = Instantiate(left, pol)
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Instantiate, Set(cw)))
-    Out.debug(s"Instantiate: ${cw.cl.pretty}")
+    Out.trace(s"Instantiate: ${cw.cl.pretty}")
 
     // Exhaustively CNF
     val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
-    Out.debug(s"CNF:\n\t${left2.map(_.cl.pretty).mkString("\n\t")}")
+    Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")
 
     val left3 = left2.map { c =>
       // To equation if possible
@@ -58,14 +56,14 @@ object SeqPProc extends Function1[Long, Unit]{
       val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
       if (cA_lift) {
         val curr = Clause(LiftEq(lift, lift_other))
-        Out.debug(s"to_eq: ${curr.pretty}")
+        Out.trace(s"to_eq: ${curr.pretty}")
         cur_c = ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
       }
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cur_c.cl)
       if (cA_funcExt) {
-          Out.debug(s"Func Ext on: ${cur_c.pretty}")
+          Out.trace(s"Func Ext on: ${cur_c.pretty}")
           val funcExt_cw = ClauseWrapper(Clause(FuncExt(leo.modules.calculus.freshVarGen(cur_c.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cur_c)))
-          Out.trace(s"Func Ext result: ${funcExt_cw.pretty}")
+          Out.finest(s"Func Ext result: ${funcExt_cw.pretty}")
           cur_c = funcExt_cw
       }
       cur_c
@@ -76,15 +74,15 @@ object SeqPProc extends Function1[Long, Unit]{
     val left4 = left3.flatMap { c =>
       val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
       if (cA_boolExt) {
-        Out.debug(s"Bool Ext on: ${c.pretty}")
+        Out.trace(s"Bool Ext on: ${c.pretty}")
         val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(c))))
-        Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
-        boolExt_cws.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw))); Out.finest(s"${res.pretty}\n\t"); res}))
+        Out.finest(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+        boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw))); Out.finest(s"${res.pretty}\n\t"); res}))
       } else
         Set(c)
     }
 
-    val left5 = left4.map(cw => {Out.trace(s"Simp on ${cw.pretty}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
+    val left5 = left4.map(cw => {Out.trace(s"Simp on ${cw.id}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
     val left6 = left5.filterNot(cw => Clause.trivial(cw.cl))
 
     // Pre-unify new clauses
@@ -97,12 +95,12 @@ object SeqPProc extends Function1[Long, Unit]{
       }
     }}
     if (uniClauses.nonEmpty) {
-      Out.debug("Unification tasks found. Working on it...")
+      Out.trace("Unification tasks found. Working on it...")
       var newclauses = otherClauses
       uniClauses.foreach { case (cw, ul, ol) =>
-        Out.debug(s"Unification task from clause ${cw.pretty}")
+        Out.finest(s"Unification task from clause ${cw.pretty}")
         val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
-        Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
+        Out.finest(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
         newclauses = newclauses union nc
       }
       newclauses
@@ -120,17 +118,19 @@ object SeqPProc extends Function1[Long, Unit]{
     // Read problem
     val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
     val startTimeWOParsing = System.currentTimeMillis()
+    // Filter out inputs that were produced by definitions and type declarations
+    val filteredInput = input.filterNot(i => i._3 == Role_Definition || i._3 == Role_Type)
     // Negate conjecture
-    val conjecture = input.filter {case (id, term, role) => role == Role_Conjecture}
+    val conjecture = filteredInput.filter {case (id, term, role) => role == Role_Conjecture}
     if (conjecture.size > 1) throw new SZSException(SZS_InputError, "At most one conjecture per input problem permitted.")
 
     val effectiveInput: Seq[ClauseWrapper] = if (conjecture.isEmpty) {
-      input.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) }
+      filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) }
     } else {
       assert(conjecture.size == 1)
       val conj = conjecture.head
       val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation)
-      val rest = input.filterNot(_._1 == conjecture.head._1)
+      val rest = filteredInput.filterNot(_._1 == conjecture.head._1)
       rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
         override def name: String = "neg_conjecture"
         override val inferenceStatus = Some(SZS_CounterSatisfiable)
@@ -138,17 +138,18 @@ object SeqPProc extends Function1[Long, Unit]{
     }
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
+    Out.debug("## Preprocess BEGIN")
     var preprocessed: SortedSet[ClauseWrapper] = SortedSet()
     val inputIt = effectiveInput.iterator
     while (inputIt.hasNext) {
       val cur = inputIt.next()
+      Out.debug(s"# Process: ${cur.pretty}")
       val processed = preprocess(cur)
+      Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       preprocessed = preprocessed ++ processed.filterNot(cw => Clause.trivial(cw.cl))
-      Out.debug("####################")
+      if (inputIt.hasNext) Out.trace("--------------------")
     }
-    Out.debug("####################")
-    Out.debug("####################")
-    Out.debug("####################")
+    Out.debug("## Preprocess END")
     // initialize sets
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
@@ -203,7 +204,7 @@ object SeqPProc extends Function1[Long, Unit]{
                 val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(curr_cw))))
                 Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
 
-                newclauses = newclauses union boolExt_cws.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
+                newclauses = newclauses union boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
                 // Break here
               } else {
                 processed = processed.filterNot(cw => Subsumption.subsumes(curr, cw.cl)) + curr_cw
