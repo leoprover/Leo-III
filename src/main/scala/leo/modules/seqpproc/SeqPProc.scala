@@ -71,6 +71,8 @@ object SeqPProc extends Function1[Long, Unit]{
       cur_c
     }
 
+    // Do here AC and EQ Simp
+
     val left4 = left3.flatMap { c =>
       val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
       if (cA_boolExt) {

@@ -191,7 +191,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   def definedSymbols: Set[Key] = definedSet.toSet
   def uninterpretedSymbols: Set[Key] = uiSet.toSet
   def baseTypes: Set[Key] = typeSet.toSet
-
+  def acSymbols: Set[Key] = ???
 
   ///////////////////////////////
   // Creating of fresh variables

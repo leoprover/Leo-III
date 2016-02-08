@@ -207,6 +207,8 @@ trait IsSignature {
     case None => false
     case Some(t) => t == ty
   })
+  /** Returns a set of all AC symbols */
+  def acSymbols: Set[Key]
   /** Returns a set of all indexed base type constants keys */
   def baseTypes: Set[Key]
 
