@@ -114,8 +114,9 @@ object CNF extends CalculusRule {
           case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
           case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
 //          case s <=> t => ???
-          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
-          case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),true)))
+//          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
+          case Forall(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a, vargen.apply(ty)).betaNormalize,true)))
+          case Exists(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a,leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize ,true)))
           case _ => (none, Seq(l))
         }
       } else {
@@ -125,8 +126,8 @@ object CNF extends CalculusRule {
           case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
           case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
 //          case s <=> t => ???
-          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, leo.modules.calculus.skTerm(ty, vargen.existingVars))),false)))
-          case Exists(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),false)))
+          case Forall(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a,leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize ,false)))
+          case Exists(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a, vargen.apply(ty)).betaNormalize,false)))
           case _ => (none, Seq(l))
         }
       }
@@ -253,7 +254,7 @@ object ACSimp extends CalculusRule {
   }
 
   def apply(cl: Clause, acSymbols: Set[Signature#Key]): Clause = {
-
+    Clause(cl.lits.map(apply(_, acSymbols)))
   }
 }
 
