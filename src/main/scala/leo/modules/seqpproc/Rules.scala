@@ -225,12 +225,28 @@ object ACSimp extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
 
   def apply(t: Term, acSymbols: Set[Signature#Key]): Term = {
-
-
-
     ???
   }
 
+  def apply(t: Term, acSymbol: Term): Term = {
+    import leo.datastructures.Term.{:::>, TypeLambda, ∙, TermApp}
+    t match {
+      case (ty :::> body) => Term.mkTermAbs(ty, apply(body, acSymbol))
+      case TypeLambda(body) => Term.mkTypeAbs(apply(body, acSymbol))
+      case TermApp(f, args) if f == acSymbol => Term.mkTermApp(f, apply0(args, acSymbol, Set()))
+      case (f ∙ args) => Term.mkApp(f, args.map {case arg => arg.fold({case t => Left(apply(t, acSymbol))}, {case ty => Right(ty)})})
+      case _ => t
+    }
+  }
+
+  def apply0(symbolArgs: Seq[Term], acSymbol: Term, collectedArgs: Set[Term]): Seq[Term] = {
+    import leo.datastructures.Term.{TermApp}
+    //    l match {
+    //      case TermApp(hd, args) if hd == acSymbol => ???
+    //      case _ => l
+    //    }
+    ???
+  }
 
   def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
     val leftAC = lit.left.symbols intersect allACSymbols
