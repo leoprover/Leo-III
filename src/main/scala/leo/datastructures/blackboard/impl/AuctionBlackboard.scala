@@ -49,8 +49,16 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    */
   override def filterAll(t: (TAgent) => Unit): Unit = {
     TaskSet.agents.foreach{ a =>
-      t(a)
+      t(a)  // TODO submit tasks
     }
+  }
+
+  override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
+    TaskSet.synchronized(TaskSet.taskSet.submit(a, ts))
+  }
+
+  override def finishTask(t : Task) : Unit = {
+    TaskSet.synchronized(TaskSet.taskSet.finish(t))
   }
 
   /**
@@ -140,6 +148,11 @@ private object TaskSet {
   val regAgents = mutable.HashMap[TAgent,Double]()
   //protected[impl] val execTasks = new mutable.HashSet[Task]
 
+  /**
+    * The set containing all dependencies on agents
+    */
+  val taskSet : TaskSelectionSet = new TaskSelectionSet()
+
   private val AGENT_SALARY : Double = 5
 
   /**
@@ -149,18 +162,20 @@ private object TaskSet {
 
   def clear() : Unit = {
     this.synchronized {
-      regAgents.foreach(_._1.clearTasks())
       regAgents.clear()
       LockSet.clear()
+      this.taskSet.clear()
     }
   }
 
   def addAgent(a : TAgent) {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
+    this.synchronized(taskSet.addAgent(a))
   }
 
   def removeAgent(a : TAgent): Unit = this.synchronized{
-    regAgents.remove(a)
+    this.synchronized(regAgents.remove(a))
+    this.synchronized(taskSet.removeAgent(a))
   }
 
   def agents : List[TAgent] = this.synchronized(regAgents.toList.map(_._1))
@@ -189,13 +204,16 @@ private object TaskSet {
           var r: List[(Double, TAgent, Task)] = Nil
           while (r.isEmpty) {
             //leo.Out.comment("Checking for new tasks.")
-            regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks.foreach { t => r = (t.bid * budget, a, t) :: r } }
+            val ts = taskSet.executableTasks
+            ts.foreach { case t =>
+              val a = t.getAgent
+              val budget = regAgents.getOrElse(a, 0.0)
+              r = (t.bid * budget, a, t) :: r  }
             if (r.isEmpty) {
               if (ActiveTracker.isNotActive) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
-              // TODO increase budget or we will run into a endless loop
               //leo.Out.comment("Going to wait for new Tasks.")
               TaskSet.wait()
               regAgents.foreach { case (a, budget) => regAgents.update(a, budget + AGENT_SALARY) }
@@ -229,6 +247,8 @@ private object TaskSet {
             }
           }
 
+          taskSet.commit(newTask.map(_._2).toSet)
+
           //        println("Choose optimal.")
 
           //
@@ -238,9 +258,7 @@ private object TaskSet {
             if (a.maxMoney - b > AGENT_SALARY) {
               regAgents.put(a, b + AGENT_SALARY)
             }
-            a.removeColliding(newTask.map(_._2))
           }
-
           //        println("Sending "+newTask.size+" tasks to scheduler.")
 
           return newTask

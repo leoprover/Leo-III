@@ -57,7 +57,7 @@ abstract class ScriptAgent(path : String) extends Agent {
   super.kill()
 
 
-  final case class ScriptTask(fs: Set[FormulaStore], c: Context) extends Task {
+  final case class ScriptTask(fs: Set[FormulaStore], c: Context, a : TAgent) extends Task {
     override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (FormulaType -> fs.asInstanceOf[Set[Any]])
 
     override def writeSet(): Map[DataType, Set[Any]] = Map.empty
@@ -66,6 +66,8 @@ abstract class ScriptAgent(path : String) extends Agent {
 
     override val pretty: String = "ScriptTask (BIG)"
     override val name: String = "Script Call"
+
+    override val getAgent : TAgent = a
 
     /**
       * This function runs the specific agent on the registered Blackboard.

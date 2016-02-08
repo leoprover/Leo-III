@@ -112,6 +112,19 @@ trait TaskOrganize {
    * @return all registered agents and their budget
    */
   def getAgents : Iterable[(TAgent, Double)]
+
+  /**
+    * Submits a new Task to the list of executable tasks.
+    * @param ts Set of new Tasks
+    */
+  def submitTasks(a : TAgent, ts : Set[Task]) : Unit
+
+  /**
+    * Declares, that a task has been completely executed.
+    *
+    * @param t The finished task.
+    */
+  def finishTask(t : Task) : Unit
 }
 
 /**

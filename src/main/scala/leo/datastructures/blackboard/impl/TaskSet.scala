@@ -84,6 +84,14 @@ class TaskSelectionSet {
     depSet.dependAgent(before, after)
   }
 
+  def clear() : Unit = synchronized {
+    zero.clear()
+    agent.clear()
+    passiveTasks.clear()
+    currentlyExecution.clear()
+    depSet.clear()
+  }
+
 
   /**
     * Marks an agent as passive and considers its tasks no longer for execution.
@@ -294,6 +302,11 @@ trait DependencySet {
     * @return all task colliding
     */
   def obsoleteTasks(t : Task) : Iterable[Task]
+
+  /**
+    * Brings the Set back to the initial state.
+    */
+  def clear() : Unit
 }
 
 
@@ -311,6 +324,15 @@ class DependencySetImpl extends DependencySet {
   private val write : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
 
   private val read : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
+
+  override def clear() : Unit = {
+    allAgents.clear()
+    ta.clear()
+    in.clear()
+    out.clear()
+    write.clear()
+    read.clear()
+  }
 
   // TODO Hier funktioniert das symmetrisch machen noch nicht!
   override def addAgent(a: TAgent): Unit = {

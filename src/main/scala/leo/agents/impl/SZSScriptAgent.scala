@@ -78,7 +78,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
    */
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
-  override def toFilter(event: Event): Iterable[Task] = event match {
+  override def filter(event: Event): Iterable[Task] = event match {
     case SZSScriptMessage(f,c) => createTask(f,c)
     case _                   => List()
   }
@@ -87,7 +87,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
     Out.trace(s"[$name]: Got a task.")
     val conj = Store(negateClause(f.clause), Role_Conjecture, f.context, f.status)
     val context : Set[FormulaStore] = FormulaDataStore.getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
-    return List(new ScriptTask(context + conj, c))
+    return List(new ScriptTask(context + conj, c, this))
   }
 
   private def negateClause(c : Clause) : Clause = {
@@ -100,6 +100,9 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
     case l1 +: Seq()  => if(l1.polarity) l1.term else Not(l1.term)
     case l1 +: ls   => if(l1.polarity) |||(l1.term, orLit(ls)) else |||(Not(l1.term), orLit(ls))
   }
+
+  override def before: Set[TAgent] = Set.empty
+  override def after: Set[TAgent] = Set.empty
 }
 
 
