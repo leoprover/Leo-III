@@ -14,12 +14,12 @@ import scala.annotation.tailrec
 import scala.collection.SortedSet
 
 object DefExpSimp extends CalculusRule {
-  val name = "defexp_and_simp"
+  val name = "defexp_and_simp_and_etaexpand"
   override val inferenceStatus = Some(SZS_Theorem)
   def apply(t: Term): Term = {
     val sig = Signature.get
     val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
-    Simplification.normalize(t.exhaustive_δ_expand_upTo(symb))
+    Simplification.normalize(t.exhaustive_δ_expand_upTo(symb).betaNormalize.etaExpand)
   }
 }
 
