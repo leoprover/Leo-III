@@ -111,7 +111,7 @@ object InputProcessing {
             if (sig.exists(defName)) {
               val meta = sig(defName)
               if (meta.isUninterpreted && meta._ty == defDef.ty) {
-                sig.addDefinition(meta.key, defDef)
+                sig.addDefinition(meta.key, defDef.betaNormalize.etaExpand)
               } else {
                 Out.debug("Old type: " + meta._ty.pretty)
                 Out.debug("Symbol: " + defName)
@@ -120,7 +120,7 @@ object InputProcessing {
                 Out.warn("Symbol "+defName + " already defined. Redefinition ignored.")
               }
             } else {
-              sig.addDefined(defName, defDef, defDef.ty)
+              sig.addDefined(defName, defDef.betaNormalize.etaExpand, defDef.ty)
             }
             None
           }
