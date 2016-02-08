@@ -173,22 +173,32 @@ object Utility {
   def printSignature(): Unit = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
     val s = Signature.get
-    println("Name | Id | (Type) | (Def)")
+    val sb = new StringBuilder()
+    sb.append(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
     (s.allConstants).foreach { case c => {
       val c1 = s(c)
-      print(c1.name + " | ")
-      print(c1.key + " |")
-      if (c1.status == lexStatus) print("lex " + " | ")
-      if (c1.status == multStatus) print("mult" + " | ")
-      c1.ty foreach { case ty => print(ty.pretty + " | ")}
-      c1.defn foreach { case defn => print(defn.pretty)}
-      println()
+      sb.append(s"${c1.name}\t|\t")
+      sb.append(s"${c1.key}\t|\t")
+      c1.ty foreach { case ty => sb.append(s"${ty.pretty}\t|\t")}
+      c1.kind foreach { case kind => sb.append(s"${kind.pretty}\t|\t")}
+      if (c1.hasDefn)
+        sb.append(s"${c1._defn.pretty}\t|\t")
+      else
+        sb.append(s"---\t|\t")
+      if (c1.status == lexStatus) sb.append("lex,")
+      if (c1.status == multStatus) sb.append("mult,")
+      if (c1.isASymbol) sb.append("A,")
+      if (c1.isCSymbol) sb.append("C,")
+      if (c1.isExternal) sb.append("Ext")
+      sb.append("\n")
     }
     }
+    Out.output(sb.toString())
   }
 
   def printUserDefinedSignature(): Unit = {
-    println(userDefinedSignatureAsString)
+    Out.output(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+    Out.output(userDefinedSignatureAsString)
   }
   def userDefinedSignatureAsString: String = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
@@ -196,12 +206,19 @@ object Utility {
     val sb = new StringBuilder()
     (s.allUserConstants).foreach { case c => {
       val c1 = s(c)
-      sb.append(c1.name + " | ")
-      sb.append(c1.key + " | ")
-      if (c1.status == lexStatus) sb.append("lex " + " | ")
-      if (c1.status == multStatus) sb.append("mult" + " | ")
-      c1.ty foreach { case ty => sb.append(ty.pretty + " | ")}
-      c1.defn foreach { case defn => sb.append(defn.pretty)}
+      sb.append(s"${c1.name}\t|\t")
+      sb.append(s"${c1.key}\t|\t")
+      c1.ty foreach { case ty => sb.append(s"${ty.pretty}\t|\t")}
+      c1.kind foreach { case kind => sb.append(s"${kind.pretty}\t|\t")}
+      if (c1.hasDefn)
+        sb.append(s"${c1._defn.pretty}\t|\t")
+      else
+        sb.append(s"---\t|\t")
+      if (c1.status == lexStatus) sb.append("lex,")
+      if (c1.status == multStatus) sb.append("mult,")
+      if (c1.isASymbol) sb.append("A,")
+      if (c1.isCSymbol) sb.append("C,")
+      if (c1.isExternal) sb.append("Ext")
       sb.append("\n")
     }
     }

@@ -31,43 +31,82 @@ object SeqPProc extends Function1[Long, Unit]{
 
     Out.debug(s"Original: ${cur.cl.pretty}")
 
+    // Def expansion and simplification
+    left = DefExpSimp(left)
+    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(DefExpSimp, Set(cw)))
+    Out.debug(s"Def expansion: ${cw.cl.pretty}")
+
     if (PolaritySwitch.canApply(left)) {
       left = PolaritySwitch(left)
       pol = !pol
       cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PolaritySwitch, Set(cw)))
       Out.debug(s"Pol. switch: ${cw.cl.pretty}")
     }
-    // Def expansion and simplification
-    left = DefExpSimp(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(DefExpSimp, Set(cw)))
-    Out.debug(s"Def expansion: ${cw.cl.pretty}")
-    // NNF
-//    left = NegationNormal.normalize(left)
-//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(NegationNormal, Set(cw)))
-//    // Skolem
-//    left = Skolemization.normalize(left)
-//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Skolemization, Set(cw)))
-//    Out.debug(s"Skolemize: ${cw.cl.pretty}")
-//    // Prenex
-//    left = PrenexNormal.normalize(left)
-//    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PrenexNormal, Set(cw)))
-//    Out.debug(s"Prenex: ${cw.cl.pretty}")
+
     // Remove quantifiers
     left = Instantiate(left, pol)
     cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Instantiate, Set(cw)))
     Out.debug(s"Instantiate: ${cw.cl.pretty}")
+
     // Exhaustively CNF
     val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
     Out.debug(s"CNF:\n\t${left2.map(_.cl.pretty).mkString("\n\t")}")
-    left2.map { c =>
+
+    val left3 = left2.map { c =>
       // To equation if possible
+      var cur_c = c
       val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
       if (cA_lift) {
         val curr = Clause(LiftEq(lift, lift_other))
         Out.debug(s"to_eq: ${curr.pretty}")
-        ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
-      } else c
+        cur_c = ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
+      }
+      val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cur_c.cl)
+      if (cA_funcExt) {
+          Out.debug(s"Func Ext on: ${cur_c.pretty}")
+          val funcExt_cw = ClauseWrapper(Clause(FuncExt(leo.modules.calculus.freshVarGen(cur_c.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cur_c)))
+          Out.trace(s"Func Ext result: ${funcExt_cw.pretty}")
+          cur_c = funcExt_cw
+      }
+      cur_c
     }
+
+    // Do here AC and EQ Simp
+
+    val left4 = left3.flatMap { c =>
+      val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
+      if (cA_boolExt) {
+        Out.debug(s"Bool Ext on: ${c.pretty}")
+        val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(c))))
+        Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+        boolExt_cws.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw))); Out.finest(s"${res.pretty}\n\t"); res}))
+      } else
+        Set(c)
+    }
+
+    val left5 = left4.map(cw => {Out.trace(s"Simp on ${cw.pretty}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
+    val left6 = left5.filterNot(cw => Clause.trivial(cw.cl))
+
+    // Pre-unify new clauses
+    val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = left6.foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
+      val (cA, ul, ol) = PreUni.canApply(cw.cl)
+      if (cA) {
+        (uni + ((cw, ul, ol)),ot)
+      } else {
+        (uni, ot + cw)
+      }
+    }}
+    if (uniClauses.nonEmpty) {
+      Out.debug("Unification tasks found. Working on it...")
+      var newclauses = otherClauses
+      uniClauses.foreach { case (cw, ul, ol) =>
+        Out.debug(s"Unification task from clause ${cw.pretty}")
+        val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
+        Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
+        newclauses = newclauses union nc
+      }
+      newclauses
+    } else left6
     //TODO: Replace leibniz/andrew equalities
   }
 
@@ -210,7 +249,7 @@ object SeqPProc extends Function1[Long, Unit]{
                 }
                 /* work on new claues from here */
                 // Simplify new clauses
-                newclauses = newclauses.map(cw => {Out.trace(s"Simp on ${cw.pretty}");ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)))})
+                newclauses = newclauses.map(cw => {Out.trace(s"Simp on ${cw.pretty}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
                 // Remove those which are tautologies
                 newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
                 // CNF new clauses
@@ -269,6 +308,7 @@ object SeqPProc extends Function1[Long, Unit]{
     }
 
     if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
+      Out.output("Signature extension used:")
       Utility.printUserDefinedSignature()
     }
 
@@ -280,8 +320,8 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.output(s" No. of processed clauses: ${processedCounter}")
     Out.output(s" No. of generated clauses: ${genCounter}")
     Out.output(s" No. of subsumed clauses: ${subsumed}")
-    if (derivationClause != null)
-      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+//    if (derivationClause != null)
+//      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
 
     Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {

@@ -219,6 +219,44 @@ object LiftEq extends CalculusRule {
 
 }
 
+object ACSimp extends CalculusRule {
+  val name = "ac_simp"
+  override val inferenceStatus = Some(SZS_Theorem)
+
+  def apply(t: Term, acSymbols: Set[Signature#Key]): Term = {
+
+
+
+    ???
+  }
+
+
+  def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
+    val leftAC = lit.left.symbols intersect allACSymbols
+    if (lit.equational) {
+      val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
+      val rightAC = lit.right.symbols intersect allACSymbols
+      val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
+      if (newLeft == lit.left && newRight == lit.right) lit
+      else Literal(newLeft, newRight, lit.polarity)
+    } else {
+      if (leftAC.isEmpty) lit
+      else {
+        val norm = apply(lit.left, leftAC)
+        if (norm != lit.left)
+          Literal(norm, lit.polarity)
+        else
+          lit
+      }
+    }
+
+  }
+
+  def apply(cl: Clause, acSymbols: Set[Signature#Key]): Clause = {
+
+  }
+}
+
 object Simp extends CalculusRule {
   val name = "simp"
   override val inferenceStatus = Some(SZS_Theorem)
