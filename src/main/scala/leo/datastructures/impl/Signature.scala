@@ -21,7 +21,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
   protected var metaMap: IntMap[Meta] = IntMap.empty
 
-  protected var typeSet, fixedSet, definedSet, uiSet: BitSet = BitSet.empty
+  /* typeSet: set of all type constructors,
+  * fixedSet: set of all built-in symbols (regardless if primitive or not)
+  * definedSet: set of all symbols having a definition
+  * uiSet: set of all symbols not having a definition
+  * aSet: set of all associative symbols
+  * cSet: set of all commutative symbols
+  */
+  protected var typeSet, fixedSet, definedSet, uiSet, aSet, cSet: Set[Key] = BitSet.empty
 
   ///////////////////////////////
   // Meta information
@@ -144,10 +151,12 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       val meta = DefinedMeta(identifier, key, typ, deff, flag)
       metaMap += ((key, meta))
       fixedSet += key
+      definedSet += key
     } else {
       val meta = UninterpretedMeta(identifier, key, typ, flag)
       metaMap += ((key, meta))
       fixedSet += key
+      uiSet += key
     }
   }
 
@@ -187,10 +196,11 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 
   def allConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
   def allUserConstants = (uiSet | definedSet | typeSet).filter(_ > HOLSignature.lastId)
-  def fixedSymbols: Set[Key] = fixedSet.toSet
-  def definedSymbols: Set[Key] = definedSet.toSet
-  def uninterpretedSymbols: Set[Key] = uiSet.toSet
-  def baseTypes: Set[Key] = typeSet.toSet
+  def primitiveSymbols: Set[Key] = fixedSet &~ definedSet
+  def fixedSymbols: Set[Key] = fixedSet
+  def definedSymbols: Set[Key] = definedSet
+  def uninterpretedSymbols: Set[Key] = uiSet
+  def baseTypes: Set[Key] = typeSet
   def acSymbols: Set[Key] = ???
 
   ///////////////////////////////
