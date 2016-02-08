@@ -149,7 +149,7 @@ object SeqPProc extends Function1[Long, Unit]{
       preprocessed = preprocessed ++ processed.filterNot(cw => Clause.trivial(cw.cl))
       if (inputIt.hasNext) Out.trace("--------------------")
     }
-    Out.debug("## Preprocess END")
+    Out.debug("## Preprocess END\n\n")
     // initialize sets
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
@@ -160,6 +160,7 @@ object SeqPProc extends Function1[Long, Unit]{
     var genCounter: Int = unprocessed.size
     var loop = true
     // proof loop
+    Out.debug("## Reasoning loop BEGIN")
     while (loop) {
       if (unprocessed.isEmpty) {
         loop = false
