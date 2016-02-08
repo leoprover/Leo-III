@@ -94,7 +94,7 @@ trait IsSignature {
     /** Returns true iff the symbol is a type constructor symbol */
     @inline final def isTypeConstructor: Boolean  = hasKind
     /** Returns true iff the symbol is a type symbol */
-    @inline final def isType: Boolean             = hasKind && _kind.isTypeKind
+    @inline final def isType: Boolean             = isTypeConstructor && _kind.isTypeKind
   }
 
 
@@ -176,8 +176,8 @@ trait IsSignature {
   /** Returns true iff the symbol is associative and commutative */
   final def isACSymbol(key: Key): Boolean = meta(key).isACSymbol
 
-  /** Returns true iff the symbol indexed by `key` is a base type symbol */
-  final def isBaseType(key: Key): Boolean      = meta(key).isType
+  /** Returns true iff the symbol indexed by `key` is a type symbol */
+  final def isType(key: Key): Boolean      = meta(key).isType
   /** Returns true iff the symbol indexed by `key` is a type operator (constructor) symbol */
   final def isTypeConstructor(key: Key): Boolean      = meta(key).isTypeConstructor
 
@@ -224,11 +224,16 @@ trait IsSignature {
     case Some(t) => t == ty
   })
 
+  /** Returns a set of all associative symbols */
+  def aSymbols: Set[Key]
+  /** Returns a set of all commutative symbols */
+  def cSymbols: Set[Key]
   /** Returns a set of all AC symbols */
-  def acSymbols: Set[Key]
+  final def acSymbols: Set[Key] = aSymbols | cSymbols
 
+  def typeConstructors: Set[Key]
   /** Returns a set of all indexed base type constants keys */
-  def baseTypes: Set[Key]
+  final def typeSymbols: Set[Key] = typeConstructors.filter(isType)
 
   ///////////////////////////////
   // Creating of fresh variables

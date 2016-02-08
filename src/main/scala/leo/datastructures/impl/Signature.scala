@@ -34,7 +34,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   // Meta information
   ///////////////////////////////
 
-  /** Case class for meta information for base types that are indexed in the signature */
+  /** Case class for meta information for type constructors
+    * that are indexed in the signature */
   protected[impl] case class TypeMeta(name: String,
                                           key: Key,
                                           k:  Kind,
@@ -44,7 +45,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     val defn: Option[Term] = None
   }
 
-  /** Case class for meta information for (un)-interpreted symbols,
+  /** Case class for meta information for (un)-interpreted term symbols,
     * i.e. symbols without definition regardless whether system or user provided. */
   protected[impl] case class UninterpretedMeta(name: String,
                                                    key: Key,
@@ -83,22 +84,15 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       case None => { // Uninterpreted or type
         typ match {
           case Right(k:Kind) => { // Type
-            true match {
-              case k.isTypeKind | k.isFunKind => {
-                val meta = TypeMeta(identifier, key, k, IsSignature.PropNoProp)
-                metaMap += ((key, meta))
-              }
-              case _ => { // it is neither a base or funKind, then it's a super kind.
-              val meta = TypeMeta(identifier, key, Type.superKind, IsSignature.PropNoProp)
-                metaMap += ((key, meta))
-              }
-            }
+          val meta = TypeMeta(identifier, key, k, IsSignature.PropNoProp)
+            metaMap += ((key, meta))
             typeSet += key
           }
           case Left(t:Type) => { // Uninterpreted symbol
           val meta = UninterpretedMeta(identifier, key, t, status*IsSignature.PropStatus)
             metaMap += ((key, meta))
             uiSet += key
+            // TODO: AC sets
           }
         }
       }
@@ -110,7 +104,6 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
           definedSet += key
         }
     }
-
     key
   }
 
@@ -131,6 +124,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
      metaMap.get(key) match {
        case None => false
        case Some(meta) => {
+         if (meta.isFixedSymbol) return false
+
+         if (meta.isASymbol) aSet -= key
+         if (meta.isCSymbol) cSet -= key
+         if (meta.isDefined) definedSet -= key
+         if (meta.isUninterpreted) uiSet -= key
+         if (meta.isTypeConstructor) typeSet -= key
+
          val id = meta.name
          metaMap -= key
          keyMap -= id
@@ -156,18 +157,18 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       val meta = UninterpretedMeta(identifier, key, typ, flag)
       metaMap += ((key, meta))
       fixedSet += key
-      uiSet += key
     }
   }
 
-  /** Adds a type symbol to the signature that is then marked as system symbol type */
-  protected def addFixedType(identifier: String): Unit = {
+  /** Adds a type contructor symbol to the signature that is then marked as system symbol type */
+  protected def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
-    val meta = TypeMeta(identifier, key, Type.typeKind, IsSignature.PropFixed)
+    val meta = TypeMeta(identifier, key, kind, IsSignature.PropFixed)
     metaMap += ((key, meta))
-    fixedSet += key
+    fixedSet += key // since its system-provided
+    typeSet += key // since its a type constructor
   }
 
   ///////////////////////////////
@@ -186,6 +187,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     fixedSet = fixedSet.empty
     definedSet = definedSet.empty
     uiSet = uiSet.empty
+    aSet = aSet.empty
+    cSet = cSet.empty
 
     Term.reset()
   }
@@ -195,13 +198,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   ///////////////////////////////
 
   def allConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
-  def allUserConstants = (uiSet | definedSet | typeSet).filter(_ > HOLSignature.lastId)
+  def allUserConstants = allConstants &~ fixedSet
   def primitiveSymbols: Set[Key] = fixedSet &~ definedSet
   def fixedSymbols: Set[Key] = fixedSet
   def definedSymbols: Set[Key] = definedSet
   def uninterpretedSymbols: Set[Key] = uiSet
-  def baseTypes: Set[Key] = typeSet
-  def acSymbols: Set[Key] = ???
+  def typeConstructors: Set[Key] = typeSet
+  def aSymbols: Set[Key] = aSet
+  def cSymbols: Set[Key] = cSet
 
   ///////////////////////////////
   // Creating of fresh variables
@@ -261,7 +265,7 @@ object Signature {
   /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
   def withHOL(sig: Signature): Signature = {
     for ((name, k) <- sig.types) {
-      sig.addFixedType(name)
+      sig.addFixedTypeConstructor(name, k)
     }
 
     for ((name, ty, flag) <- sig.fixedConsts) {
