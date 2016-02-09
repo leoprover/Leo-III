@@ -13,18 +13,10 @@ import scala.collection.mutable
 
 /**
  * <p>
- * Interface for all Agent Implementations.
- * </p>
- *
- * <p>
- * The Agent itself is not a Thread, but a function to be called, at any
- * time its guard is satisfied.
- * </p>
- *
- * <p>
- * To register an Agent, it has to be passed to an AgentController.
- * (Runnable vs. Thread)
- * </p>
+ * A implementation of TAgent which supports empty implementations
+  * for non-essential methods of [[TAgent]]
+  * <p>
+  *
  * @author Max Wisniewski
  * @since 5/14/14
  */

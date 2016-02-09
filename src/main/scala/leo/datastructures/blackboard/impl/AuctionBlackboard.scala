@@ -49,7 +49,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    */
   override def filterAll(t: (TAgent) => Unit): Unit = {
     TaskSet.agents.foreach{ a =>
-      t(a)  // TODO submit tasks
+      t(a)
     }
   }
 
@@ -75,7 +75,9 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
         ts.foreach{t =>
           dsmap.getOrElse(t, Set.empty).foreach{ds =>
             ds.all(t).foreach{d =>
-              a.filter(DataEvent(d,t))
+              val ts : Iterable[Task] = a.filter(DataEvent(d,t))
+              //ts.foreach(t => ActiveTracker.incAndGet(s"Inserted Task\n  ${t.pretty}"))
+              submitTasks(a, ts.toSet)
             }
         }}
         forceCheck()

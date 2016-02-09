@@ -255,8 +255,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       LockSet.releaseTask(task)
       curExec.remove(task)
       agent.taskFinished(task)
+      Blackboard().finishTask(task)
+
       val lockCount = if(doneSmth) ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") else {
-        Blackboard().finishTask(task)   // Here because no filter is started
         ActiveTracker.decAndGet()
       }
       if(lockCount <= 0) Blackboard().forceCheck()
@@ -273,24 +274,32 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * @param t - Task on which the agent runs.
    */
   private class GenAgent(a : TAgent, t : Task) extends Runnable{
-    override def run()  {
-      ExecTask.put(t.run,t, a)
-      AgentWork.dec(a)
+    override def run()  { // TODO catch error and move outside or at least recover
+      try {
+        ExecTask.put(t.run, t, a)
+        AgentWork.dec(a)
+      } catch {
+        case e : Exception =>
+          leo.Out.severe(e.getMessage)
+          Scheduler().killAll()
+      }
 //      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
   private class GenFilter(a : TAgent, t : DataType, newD : Any, from : Task) extends Runnable{
-    override def run(): Unit = {
+    override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
-
-      val ts = a.filter(DataEvent(newD,t))
-      Blackboard().submitTasks(a, ts.toSet)
-
-      if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0) {
-        Blackboard().finishTask(from)
-        Blackboard().forceCheck()
+      try {
+        val ts = a.filter(DataEvent(newD, t))
+        Blackboard().submitTasks(a, ts.toSet)
+      } catch {
+        case e : Exception => leo.Out.warn(e.getMessage)
       }
+
+      if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0)
+        Blackboard().forceCheck()
+
       //Release sync
     }
   }
