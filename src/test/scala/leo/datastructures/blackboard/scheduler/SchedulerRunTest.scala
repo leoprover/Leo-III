@@ -13,12 +13,11 @@ object SchedulerRunTest {
   def main(args : Array[String]) {
     Blackboard().addDS(Store)
 
-    Store.v.add("ping")
-
     AgentA.register()
     AgentB.register()
     EndAgent.register()
 
+    Blackboard().addData(AnyType)("ping")
 
 
     Scheduler().signal()
@@ -78,7 +77,7 @@ object AgentB extends Agent {
     case DataEvent(s : String, AnyType) =>
       if(s == "pong") {
         println("Got 2nd task")
-        Seq(TaskB("pong", "zonk"))
+        Seq(TaskB("pong", "ping"))
       }
       else
         Seq()
