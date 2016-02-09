@@ -2,6 +2,7 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
+import leo.datastructures.impl.Signature
 import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
 import leo.modules.normalization._
 import leo.modules.output._
@@ -70,8 +71,13 @@ object SeqPProc extends Function1[Long, Unit]{
     }
 
     // Do here AC and EQ Simp
+    val acSymbols = Signature.get.acSymbols
+    Out.debug(s"AC Symbols: ${acSymbols.toString()}")
+    val leftAC = left3.map {c => Out.trace(s"AC Simp on ${c.pretty}");val res = ACSimp.apply(c.cl,acSymbols);Out.trace(s"AC Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(ACSimp, Set(c)))}
 
-    val left4 = left3.flatMap { c =>
+    val leftEqSimp = leftAC.map {c => Out.trace(s"Shallow Simp on ${c.pretty}");val res = Simp.shallowSimp(c.cl);Out.trace(s"Simp Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(Simp, Set(c)))}
+
+    val left4 = leftEqSimp.flatMap { c =>
       val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
       if (cA_boolExt) {
         Out.trace(s"Bool Ext on: ${c.pretty}")

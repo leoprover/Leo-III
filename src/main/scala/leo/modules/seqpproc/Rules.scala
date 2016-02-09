@@ -224,8 +224,23 @@ object ACSimp extends CalculusRule {
   val name = "ac_simp"
   override val inferenceStatus = Some(SZS_Theorem)
 
+  def lt(a: Term, b: Term): Boolean = {
+    import leo.datastructures.Term.{Symbol, Bound}
+    (a,b) match {
+      case (Bound(_,i1), Bound(_, i2)) => i1 < i2
+      case (Bound(_,_), _) => true
+      case (Symbol(k1), Symbol(k2)) => k1 < k2
+      case (Symbol(_), Bound(_,_)) => false
+      case (Symbol(_), _) => true
+      case (_, Bound(_,_)) => false
+      case (_, Symbol(_)) => false
+      case (a,b) => a.size < b.size
+
+    }
+  }
+
   def apply(t: Term, acSymbols: Set[Signature#Key]): Term = {
-    ???
+    acSymbols.foldLeft(t){case (term,symbol) => apply(term, symbol)}
   }
 
   def apply(t: Term, acSymbol: Term): Term = {
@@ -233,19 +248,45 @@ object ACSimp extends CalculusRule {
     t match {
       case (ty :::> body) => Term.mkTermAbs(ty, apply(body, acSymbol))
       case TypeLambda(body) => Term.mkTypeAbs(apply(body, acSymbol))
-      case TermApp(f, args) if f == acSymbol => Term.mkTermApp(f, apply0(args, acSymbol, Set()))
+      case TermApp(f, args) if f == acSymbol => {
+        val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
+
+        val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(acSymbol, Seq(arg, term))}
+//        Term.mkTermApp(f, newArgs)
+        newArgs
+      }
       case (f ∙ args) => Term.mkApp(f, args.map {case arg => arg.fold({case t => Left(apply(t, acSymbol))}, {case ty => Right(ty)})})
       case _ => t
     }
   }
 
-  def apply0(symbolArgs: Seq[Term], acSymbol: Term, collectedArgs: Set[Term]): Seq[Term] = {
+  def apply0(symbolArgs: Seq[Term], acSymbol: Term, collectedArgs: Set[Term]): Set[Term] = {
     import leo.datastructures.Term.{TermApp}
+
+    if (symbolArgs.isEmpty) collectedArgs
+    else {
+      val (hdArg, restArgs) = (symbolArgs.head, symbolArgs.tail)
+      hdArg match {
+        case TermApp(f, moreArgs) if f == acSymbol => apply0(restArgs, acSymbol, collectedArgs ++ apply0(moreArgs, acSymbol, Set()))
+        case a => apply0(restArgs, acSymbol, collectedArgs + a)
+      }
+    }
+
+//    val argIt = symbolArgs.iterator
+//    while (argIt.hasNext) {
+//      val arg = argIt.next()
+//
+//      arg match {
+//        case TermApp(f, moreArgs) if f == acSymbol => apply0(moreArgs, acSymbol, Set())
+//        case _ => ???
+//      }
+//    }
+//
     //    l match {
     //      case TermApp(hd, args) if hd == acSymbol => ???
     //      case _ => l
     //    }
-    ???
+//    ???
   }
 
   def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
@@ -322,13 +363,22 @@ object Simp extends CalculusRule {
     val litIt = cl.lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
-      if (!Literal.isFalse(lit)) {
-        if (!newLits.contains(lit)) {
-          newLits = newLits :+ lit
+      val normLit = eqSimp(lit)
+      if (!Literal.isFalse(normLit)) {
+        if (!newLits.contains(normLit)) {
+          newLits = newLits :+ normLit
         }
       }
     }
     Clause(newLits)
+  }
+
+  def eqSimp(l: Literal): Literal = {
+    if (!l.equational) l
+    else (l.left, l.right) match {
+      case (a,b) if a == b => Literal(LitTrue(), l.polarity)
+      case (a,b) => l
+    }
   }
 
 }
