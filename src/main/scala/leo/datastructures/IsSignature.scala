@@ -229,7 +229,7 @@ trait IsSignature {
   /** Returns a set of all commutative symbols */
   def cSymbols: Set[Key]
   /** Returns a set of all AC symbols */
-  final def acSymbols: Set[Key] = aSymbols | cSymbols
+  final def acSymbols: Set[Key] = aSymbols & cSymbols
 
   def typeConstructors: Set[Key]
   /** Returns a set of all indexed base type constants keys */
