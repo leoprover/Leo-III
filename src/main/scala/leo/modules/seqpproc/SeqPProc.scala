@@ -71,13 +71,15 @@ object SeqPProc extends Function1[Long, Unit]{
     }
 
     // Do here AC and EQ Simp
-    val acSymbols = Signature.get.acSymbols
-    Out.debug(s"AC Symbols: ${acSymbols.toString()}")
-    val leftAC = left3.map {c => Out.trace(s"AC Simp on ${c.pretty}");val res = ACSimp.apply(c.cl,acSymbols);Out.trace(s"AC Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(ACSimp, Set(c)))}
+    val leftAC = if (Configuration.isSet("acsimp")) {
+      val acSymbols = Signature.get.acSymbols
+      val a = left3.map {c => Out.trace(s"AC Simp on ${c.pretty}");val res = ACSimp.apply(c.cl,acSymbols);Out.trace(s"AC Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(ACSimp, Set(c)))}
+      a.map {c => Out.trace(s"Shallow Simp on ${c.pretty}");val res = Simp.shallowSimp(c.cl);Out.trace(s"Simp Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(Simp, Set(c)))}
+    }
+    else left3
 
-    val leftEqSimp = leftAC.map {c => Out.trace(s"Shallow Simp on ${c.pretty}");val res = Simp.shallowSimp(c.cl);Out.trace(s"Simp Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(Simp, Set(c)))}
 
-    val left4 = leftEqSimp.flatMap { c =>
+    val left4 = leftAC.flatMap { c =>
       val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
       if (cA_boolExt) {
         Out.trace(s"Bool Ext on: ${c.pretty}")
@@ -156,6 +158,7 @@ object SeqPProc extends Function1[Long, Unit]{
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug("## Preprocess END\n\n")
+    val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
     // initialize sets
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
@@ -315,26 +318,29 @@ object SeqPProc extends Function1[Long, Unit]{
 
     }
 
-    if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
-      Out.output("Signature extension used:")
-      Utility.printUserDefinedSignature()
-    }
-
     val time = System.currentTimeMillis() - startTime
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
-    Out.output(s" Time passed: ${time}")
-    Out.output(s" Effective reasoning time: ${timeWOParsing}")
-    Out.output(s" No. of processed clauses: ${processedCounter}")
-    Out.output(s" No. of generated clauses: ${genCounter}")
-    Out.output(s" No. of subsumed clauses: ${subsumed}")
-//    if (derivationClause != null)
-//      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
-
+    Out.output("")
     Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
+
+    Out.comment(s"Time passed: ${time}ms")
+    Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
+    Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
+    Out.comment(s"No. of processed clauses: ${processedCounter}")
+    Out.comment(s"No. of generated clauses: ${genCounter}")
+    Out.comment(s"No. of subsumed clauses: ${subsumed}")
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
+      Out.comment("Signature extension used:")
+      Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+      Out.comment(Utility.userDefinedSignatureAsString)
+    }
+    //    if (derivationClause != null)
+    //      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      Out.output(makeDerivation(derivationClause).toString)
+      Out.output(makeDerivation(derivationClause).drop(1).toString)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
@@ -356,11 +362,12 @@ object SeqPProc extends Function1[Long, Unit]{
   }
 
   def makeDerivation(cw: ClauseWrapper, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
-    case NoAnnotation => sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).\n")
-    case a@FromFile(_, _) => sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).\n")
+    case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
+    case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
     case a@InferredFrom(_, parents) => {
+      sb.append("\n");
       sb.append(" | "*indent);
-      sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).\n")
+      sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
       if (parents.size == 1) {
         makeDerivation(parents.head._1,sb,indent)
       } else parents.foreach {case (parent, _) => makeDerivation(parent,sb,indent+1)}

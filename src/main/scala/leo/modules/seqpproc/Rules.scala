@@ -271,22 +271,6 @@ object ACSimp extends CalculusRule {
         case a => apply0(restArgs, acSymbol, collectedArgs + a)
       }
     }
-
-//    val argIt = symbolArgs.iterator
-//    while (argIt.hasNext) {
-//      val arg = argIt.next()
-//
-//      arg match {
-//        case TermApp(f, moreArgs) if f == acSymbol => apply0(moreArgs, acSymbol, Set())
-//        case _ => ???
-//      }
-//    }
-//
-    //    l match {
-    //      case TermApp(hd, args) if hd == acSymbol => ???
-    //      case _ => l
-    //    }
-//    ???
   }
 
   def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
