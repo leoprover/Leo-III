@@ -151,13 +151,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       val deff = defn.get
       val meta = DefinedMeta(identifier, key, typ, deff, flag)
       metaMap += ((key, meta))
-      fixedSet += key
       definedSet += key
     } else {
       val meta = UninterpretedMeta(identifier, key, typ, flag)
       metaMap += ((key, meta))
-      fixedSet += key
     }
+    fixedSet += key
+    if (leo.datastructures.isPropSet(IsSignature.PropAssociative, flag)) aSet += key
+    if (leo.datastructures.isPropSet(IsSignature.PropCommutative, flag)) cSet += key
   }
 
   /** Adds a type contructor symbol to the signature that is then marked as system symbol type */
