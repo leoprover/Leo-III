@@ -67,6 +67,7 @@ trait Term extends Pretty {
 
   def fv: Set[(Int, Type)]
   def occurrences: Map[Term, Set[Position]]
+  def feasibleOccurences: Map[Term, Set[Position]]
   def symbols: Set[Signature#Key]
   def symbolsOfType(ty: Type) = {
     val sig = Signature.get
