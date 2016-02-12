@@ -740,7 +740,7 @@ object OrderedParamod extends CalculusRule {
       while (rightIt.hasNext) {
         val r = rightIt.next()
         //        if (r.equational) {
-        val findWithin = r.left.occurrences
+        val findWithin = r.left.feasibleOccurences
 
         val findWithinIt = findWithin.iterator
         while (findWithinIt.hasNext) {
@@ -754,7 +754,7 @@ object OrderedParamod extends CalculusRule {
             // TODO: Do that more efficiently, e.g. with zippers
             val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
             val liftedR = r.substitute(Subst.shift(cl.maxImplicitlyBound))
-            val repls = st._2.map(pos => Literal(liftedR.left.replaceAt(pos, l.right), liftedR.right, r.polarity))
+            val repls = st._2.map(pos => Literal(liftedR.left.replaceAt(pos, l.right.closure(Subst.shift(pos.abstractionCount)).betaNormalize), liftedR.right, r.polarity))
             val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
 
             result = result ++ repls.map(l => Clause(l +: uni +: fused))
@@ -763,7 +763,7 @@ object OrderedParamod extends CalculusRule {
 
         if (!r.oriented) {
           // Do same stuff for r.right
-          val findWithin = r.right.occurrences
+          val findWithin = r.right.feasibleOccurences
 
           val findWithinIt = findWithin.iterator
           while (findWithinIt.hasNext) {
@@ -775,7 +775,7 @@ object OrderedParamod extends CalculusRule {
               val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
               // TODO: Do that more efficiently, e.g. with zippers
               val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
-              val repls = st._2.map(pos => Literal(r.left, r.right.replaceAt(pos, l.right), r.polarity))
+              val repls = st._2.map(pos => Literal(r.left, r.right.replaceAt(pos, l.right.closure(Subst.shift(pos.abstractionCount)).betaNormalize), r.polarity))
               val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
               result = result ++ repls.map(l => Clause(l +: uni +: fused))
             }
@@ -795,7 +795,7 @@ object OrderedParamod extends CalculusRule {
         while (rightIt.hasNext) {
           val r = rightIt.next()
           //          if (r.equational) {
-          val findWithin = r.left.occurrences
+          val findWithin = r.left.feasibleOccurences
 
           val findWithinIt = findWithin.iterator
           while (findWithinIt.hasNext) {
@@ -807,7 +807,7 @@ object OrderedParamod extends CalculusRule {
               val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
               // TODO: Do that more efficiently, e.g. with zippers
               val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
-              val repls = st._2.map(pos => Literal(r.left.replaceAt(pos, l.right), r.right, r.polarity))
+              val repls = st._2.map(pos => Literal(r.left.replaceAt(pos, l.right.closure(Subst.shift(pos.abstractionCount)).betaNormalize), r.right, r.polarity))
               val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
               result = result ++ repls.map(l => Clause(l +: uni +: fused))
             }
@@ -815,7 +815,7 @@ object OrderedParamod extends CalculusRule {
 
           if (!r.oriented) {
             // Do same stuff for r.right
-            val findWithin = r.right.occurrences
+            val findWithin = r.right.feasibleOccurences
 
             val findWithinIt = findWithin.iterator
             while (findWithinIt.hasNext) {
@@ -827,7 +827,7 @@ object OrderedParamod extends CalculusRule {
                 val litsOfWithClWithoutR = withCl.lits.diff(Seq(r))
                 // TODO: Do that more efficiently, e.g. with zippers
                 val fused = leo.modules.calculus.fuseLiterals(litsOfClWithoutL, cl.implicitlyBound, litsOfWithClWithoutR, withCl.implicitlyBound)
-                val repls = st._2.map(pos => Literal(r.left, r.right.replaceAt(pos, l.right), r.polarity))
+                val repls = st._2.map(pos => Literal(r.left, r.right.replaceAt(pos, l.right.closure(Subst.shift(pos.abstractionCount)).betaNormalize), r.polarity))
                 val uni = Literal.mkNeg(toFind, st._1.closure(Subst.shift(cl.maxImplicitlyBound)).betaNormalize)
                 result = result ++ repls.map(l => Clause(l +: uni +: fused))
               }
