@@ -171,7 +171,10 @@ object SeqPProc extends Function1[Long, Unit]{
     // proof loop
     Out.debug("## Reasoning loop BEGIN")
     while (loop) {
-      if (unprocessed.isEmpty) {
+      if (System.currentTimeMillis() - startTime > 1000*Configuration.TIMEOUT) {
+        loop = false
+        returnSZS = SZS_Timeout
+      } else if (unprocessed.isEmpty) {
         loop = false
 //        returnSZS = SZS_CounterSatisfiable
       } else {
