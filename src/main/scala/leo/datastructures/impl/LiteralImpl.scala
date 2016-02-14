@@ -109,6 +109,6 @@ object LiteralImpl {
     /** Returns true iff the literal is a flex-flex unification constraint, */
     val flexflex: Boolean = false
     /** Returns true iff the literal has a flexible head. */
-    val flexHead: Boolean = !left.isTermAbs && !left.isTypeAbs && left.headSymbol.isVariable
+    val flexHead: Boolean = left.isApp && left.headSymbol.isVariable
   }
 }
