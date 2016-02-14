@@ -51,7 +51,10 @@ object SeqPProc extends Function1[Long, Unit]{
     val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
     Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")
 
-    val left3 = left2.map { c =>
+    // Remove defined equalities as far as possible
+    val leftEq = left2.map {c => Out.trace(s"Replace equalities in ${c.id}");val res =  ReplaceDefinedEquality(c.cl);Out.finest(s"Result: ${res.pretty}") ;ClauseWrapper(res, InferredFrom(ReplaceDefinedEquality, Set(c)))}
+
+    val left3 = leftEq.map { c =>
       // To equation if possible
       var cur_c = c
       val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
@@ -113,7 +116,6 @@ object SeqPProc extends Function1[Long, Unit]{
       }
       newclauses
     } else left6
-    //TODO: Replace leibniz/andrew equalities
   }
 
 
@@ -162,6 +164,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // initialize sets
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
+    var units: Set[ClauseWrapper] = Set()
     var returnSZS: StatusSZS = SZS_Unknown
     var derivationClause: ClauseWrapper = null
     var subsumed: Int = 0
@@ -221,6 +224,9 @@ object SeqPProc extends Function1[Long, Unit]{
                 // Break here
               } else {
                 processed = processed.filterNot(cw => Subsumption.subsumes(curr, cw.cl)) + curr_cw
+                if (Clause.rewriteRule(curr_cw.cl)) {
+                  units = units + curr_cw
+                }
                 // To equality if possible
                 val (cA_lift, lift, lift_other) = LiftEq.canApply(curr)
                 if (cA_lift) {
@@ -333,6 +339,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"No. of processed clauses: ${processedCounter}")
     Out.comment(s"No. of generated clauses: ${genCounter}")
     Out.comment(s"No. of subsumed clauses: ${subsumed}")
+    Out.comment(s"No. of units in store: ${units.size}")
     if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
       Out.comment("Signature extension used:")
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
