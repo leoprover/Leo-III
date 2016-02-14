@@ -220,6 +220,116 @@ object LiftEq extends CalculusRule {
 
 }
 
+
+object ReplaceDefinedEquality extends CalculusRule {
+  val name = "repl_def_eq"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  type Polarity = Boolean
+
+  def apply(cl: Clause): Clause = {
+    var flexHeadPosMap: Map[Int, Literal] = Map()
+    var flexHeadNegMap: Map[Int, Literal] = Map()
+    var rest: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Seq()
+    var subst = Subst.id
+
+    val litIt = cl.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (lit.flexHead) {
+        import leo.datastructures.Term.{TermApp, Bound}
+
+        val (head1, args1) = TermApp.unapply(lit.left).get
+        if (args1.size == 1) {
+          assert(Bound.unapply(head1).isDefined)
+          val flexheadIndex = Bound.unapply(head1).get._2
+          if (lit.polarity) {
+            if (!flexHeadPosMap.contains(flexheadIndex))
+              flexHeadPosMap = flexHeadPosMap + (flexheadIndex -> lit)
+            else
+              rest = rest :+ lit
+          } else {
+            if (!flexHeadNegMap.contains(flexheadIndex))
+              flexHeadNegMap = flexHeadNegMap + (flexheadIndex -> lit)
+            else
+              rest = rest :+ lit
+          }
+        } else {
+          rest = rest :+ lit
+        }
+
+      } else {
+        rest = rest :+ lit
+      }
+    }
+
+    var mapIt = flexHeadPosMap.iterator
+    while (mapIt.hasNext) {
+      val (flexIndex, lit) = mapIt.next()
+      if (flexHeadNegMap.contains(flexIndex)) {
+        val (eqLit, sub) = replaceLeibnizEq(flexHeadNegMap(flexIndex), flexHeadPosMap(flexIndex))
+        newLits = newLits :+ eqLit
+        subst = subst.comp(sub)
+        flexHeadNegMap = flexHeadNegMap - flexIndex
+      } else {
+        rest = rest :+ lit
+      }
+    }
+    var restMapIt = flexHeadNegMap.iterator
+    while (restMapIt.hasNext) {
+      rest = rest :+ restMapIt.next()._2
+    }
+
+    Clause(rest.map(_.substitute(subst)) ++ newLits)
+  }
+
+  def replaceLeibnizEq(negLit: Literal, posLit: Literal): (Literal, Subst) = {
+
+    assert(negLit.flexHead)
+    assert(!negLit.equational)
+    assert(posLit.flexHead)
+    assert(!posLit.equational)
+
+    import leo.datastructures.Term.{TermApp, Bound}
+    val (head1, args1) = TermApp.unapply(negLit.left).get
+    val (head2, args2) = TermApp.unapply(posLit.left).get
+    assert(head1 == head2)
+    assert(head1.isVariable)
+    assert(args1.size == 1 && args2.size == 1)
+
+    val (eqArg1, eqArg2) = (args1.head, args2.head)
+    val (varTyp, varIndex) = Bound.unapply(head1).get
+
+    val eqLit = Literal.mkPos(eqArg1, eqArg2)
+    (eqLit, Subst.singleton(varIndex, Term.mkTermAbs(eqArg1.ty, ===(eqArg1.closure(Subst.shift(1)).betaNormalize, Term.mkBound(eqArg1.ty, 1)))))
+  }
+
+  def replaceAndrewsEq(lit: Literal): Literal = ???
+}
+
+object RewriteSimp extends CalculusRule {
+  val name = "rewrite"
+  override val inferenceStatus = Some(SZS_Theorem)
+
+  def apply(rewriteRules: Set[Clause], simplify: Clause): Clause = ???
+
+
+  def apply(rule: Literal, simplify: Clause): Clause = {
+    assert(rule.oriented)
+    val toFind = rule.left
+    val replaceBy = rule.right
+
+    val simpLitIt = simplify.lits.iterator
+    while (simpLitIt.hasNext) {
+      val lit = simpLitIt.next()
+      ???
+
+    }
+
+    ???
+  }
+}
+
 object ACSimp extends CalculusRule {
   val name = "ac_simp"
   override val inferenceStatus = Some(SZS_Theorem)
