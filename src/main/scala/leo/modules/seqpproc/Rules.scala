@@ -221,90 +221,55 @@ object LiftEq extends CalculusRule {
 }
 
 
-object ReplaceDefinedEquality extends CalculusRule {
-  val name = "repl_def_eq"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+object ReplaceLeibnizEq extends CalculusRule {
+  val name = "replace_leibeq"
+  override val inferenceStatus = Some(SZS_Theorem)
   type Polarity = Boolean
 
-  def apply(cl: Clause): Clause = {
-    var flexHeadPosMap: Map[Int, Literal] = Map()
-    var flexHeadNegMap: Map[Int, Literal] = Map()
-    var rest: Seq[Literal] = Seq()
-    var newLits: Seq[Literal] = Seq()
-    var subst = Subst.id
 
+  def canApply(cl: Clause): (Boolean, Map[Int, Term]) = {
+    import leo.datastructures.Term.{TermApp, Bound}
+    var gbTermMap: Map[Int, Term] = Map()
+    var flexHeadSet: Set[Int] = Set()
     val litIt = cl.lits.iterator
-    while (litIt.hasNext) {
+    while(litIt.hasNext) {
       val lit = litIt.next()
       if (lit.flexHead) {
-        import leo.datastructures.Term.{TermApp, Bound}
+        val (head,args) = TermApp.unapply(lit.left).get
+        assert(head.isVariable)
+        if (args.size == 1) {
+          val (headType, headIndex) = Bound.unapply(head).get
+          val arg = args.head
+          if (!(arg.looseBounds contains headIndex)) {
+            if (lit.polarity) {
+              flexHeadSet = flexHeadSet + headIndex
+            } else {
+              if (gbTermMap contains headIndex) {
+                val curEntry = gbTermMap(headIndex)
+                if (arg.compareTo(curEntry) == CMP_LT) {
+                  gbTermMap = gbTermMap + (headIndex -> arg)
+                }
+              } else {
+                gbTermMap = gbTermMap + (headIndex -> arg)
+              }
 
-        val (head1, args1) = TermApp.unapply(lit.left).get
-        if (args1.size == 1) {
-          assert(Bound.unapply(head1).isDefined)
-          val flexheadIndex = Bound.unapply(head1).get._2
-          if (lit.polarity) {
-            if (!flexHeadPosMap.contains(flexheadIndex))
-              flexHeadPosMap = flexHeadPosMap + (flexheadIndex -> lit)
-            else
-              rest = rest :+ lit
-          } else {
-            if (!flexHeadNegMap.contains(flexheadIndex))
-              flexHeadNegMap = flexHeadNegMap + (flexheadIndex -> lit)
-            else
-              rest = rest :+ lit
+            }
           }
-        } else {
-          rest = rest :+ lit
+
         }
-
-      } else {
-        rest = rest :+ lit
       }
     }
-
-    var mapIt = flexHeadPosMap.iterator
-    while (mapIt.hasNext) {
-      val (flexIndex, lit) = mapIt.next()
-      if (flexHeadNegMap.contains(flexIndex)) {
-        val (eqLit, sub) = replaceLeibnizEq(flexHeadNegMap(flexIndex), flexHeadPosMap(flexIndex))
-        newLits = newLits :+ eqLit
-        subst = subst.comp(sub)
-        flexHeadNegMap = flexHeadNegMap - flexIndex
-      } else {
-        rest = rest :+ lit
-      }
-    }
-    var restMapIt = flexHeadNegMap.iterator
-    while (restMapIt.hasNext) {
-      rest = rest :+ restMapIt.next()._2
-    }
-
-    Clause(rest.map(_.substitute(subst)) ++ newLits)
+    val resMap = gbTermMap.filterKeys(k => flexHeadSet.contains(k))
+    Out.debug(s"${resMap.toString()}")
+    (resMap.nonEmpty, resMap)
   }
 
-  def replaceLeibnizEq(negLit: Literal, posLit: Literal): (Literal, Subst) = {
-
-    assert(negLit.flexHead)
-    assert(!negLit.equational)
-    assert(posLit.flexHead)
-    assert(!posLit.equational)
-
-    import leo.datastructures.Term.{TermApp, Bound}
-    val (head1, args1) = TermApp.unapply(negLit.left).get
-    val (head2, args2) = TermApp.unapply(posLit.left).get
-    assert(head1 == head2)
-    assert(head1.isVariable)
-    assert(args1.size == 1 && args2.size == 1)
-
-    val (eqArg1, eqArg2) = (args1.head, args2.head)
-    val (varTyp, varIndex) = Bound.unapply(head1).get
-
-    val eqLit = Literal.mkPos(eqArg1, eqArg2)
-    (eqLit, Subst.singleton(varIndex, Term.mkTermAbs(eqArg1.ty, ===(eqArg1.closure(Subst.shift(1)).betaNormalize, Term.mkBound(eqArg1.ty, 1)))))
+  def apply(cl: Clause, bindings: Map[Int, Term]): (Clause, Subst) = {
+    val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t, Term.mkBound(t.ty, 1))))
+    val subst = Subst.fromMap(gbMap)
+    val newLits = cl.lits.map(_.substitute(subst))
+    (Clause(Simp(newLits)), subst)
   }
-
-  def replaceAndrewsEq(lit: Literal): Literal = ???
 }
 
 object RewriteSimp extends CalculusRule {
@@ -414,19 +379,18 @@ object Simp extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
 
   def apply(lit: Literal): Literal = if (lit.equational) {
-    PolaritySwitch(Literal(Simplification.normalize(lit.left), Simplification.normalize(lit.right), lit.polarity))
+    PolaritySwitch(eqSimp(Literal(Simplification.normalize(lit.left), Simplification.normalize(lit.right), lit.polarity)))
   } else {
     PolaritySwitch(Literal(Simplification.normalize(lit.left), lit.polarity))
   }
 
-  def apply(cl: Clause): Clause  = {
-
-    Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
+  def apply(lits: Seq[Literal]): Seq[Literal] = {
+    //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Seq()
-    val litIt = cl.lits.iterator
+    val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = apply(litIt.next())
-//      val lit = litIt.next()
+      //      val lit = litIt.next()
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
           newLits = newLits :+ lit
@@ -440,19 +404,25 @@ object Simp extends CalculusRule {
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
     if (fvs.nonEmpty) {
       if (fvs.size != fvs.head) {
-        Out.finest(s"FV Optimization needed on ${cl.pretty}")
+        Out.finest(s"FV Optimization needed")
         Out.finest(s"Old: \t${fvs.mkString("-")}")
         // gaps in fvs
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        return Clause(newLits.map(_.substitute(subst)))
+        return (newLits.map(_.substitute(subst)))
       }
     }
-    Clause(newLits)
+    newLits
   }
 
+  def apply(cl: Clause): Clause  = Clause(apply(cl.lits))
+
   def shallowSimp(cl: Clause): Clause = {
+    Clause(shallowSimp0(cl))
+  }
+
+  def shallowSimp0(cl: Clause): Seq[Literal] = {
     var newLits: Seq[Literal] = Seq()
     val litIt = cl.lits.iterator
     while (litIt.hasNext) {
@@ -464,7 +434,7 @@ object Simp extends CalculusRule {
         }
       }
     }
-    Clause(newLits)
+    newLits
   }
 
   def eqSimp(l: Literal): Literal = {

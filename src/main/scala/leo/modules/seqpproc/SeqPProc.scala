@@ -52,7 +52,17 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")
 
     // Remove defined equalities as far as possible
-    val leftEq = left2.map {c => Out.trace(s"Replace equalities in ${c.id}");val res =  ReplaceDefinedEquality(c.cl);Out.finest(s"Result: ${res.pretty}") ;ClauseWrapper(res, InferredFrom(ReplaceDefinedEquality, Set(c)))}
+    val leftEq = left2.map { c =>
+      Out.finest(s"Searching for defined equalities in ${c.id}")
+      val (cA_leibniz, termMap) = ReplaceLeibnizEq.canApply(c.cl)
+      if (cA_leibniz) {
+        Out.trace(s"Replace Leibniz equalities in ${c.id}")
+        val (resCl, subst) =  ReplaceLeibnizEq(c.cl,termMap)
+        val res = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((c,ToTPTP(subst)))))
+        Out.finest(s"Result: ${res.pretty}")
+        res
+      } else c
+    }
 
     val left3 = leftEq.map { c =>
       // To equation if possible
