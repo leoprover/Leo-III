@@ -145,7 +145,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
 
 
-  def simplify(cw: ClauseWrapper): ClauseWrapper = {
+  final def simplify(cw: ClauseWrapper): ClauseWrapper = {
     // TODO: simpl to be simplification by rewriting à la E etc
     cw
   }
@@ -234,11 +234,11 @@ object SeqPProc extends Function1[Long, Unit]{
           // Subsumption
           if (!processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
             var newclauses: Set[ClauseWrapper] = Set()
-//            var curr = simpl
-//            var curr_cw = ClauseWrapper(cur.id, curr, cur.role, cur.annotation) // Simpl annotation?
 
+            /////////////////////////////////////////
             // Simplifying (mofifying inferences and backward subsumption) BEGIN
             // TODO: à la E: direct descendant criterion, etc.
+            /////////////////////////////////////////
             /* Subsumption */
             processed = processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)) + cur
             /* Add rewrite rules to set */
@@ -260,9 +260,13 @@ object SeqPProc extends Function1[Long, Unit]{
               cur = ClauseWrapper(newCl, InferredFrom(LiftEq, Set(cur)))
               // No break here
             }
+            /////////////////////////////////////////
             // Simplifying (mofifying inferences) END
+            /////////////////////////////////////////
 
+            /////////////////////////////////////////
             // Generating inferences BEGIN
+            /////////////////////////////////////////
             /* Boolean Extensionality */
             val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cur.cl)
             if (cA_boolExt) {
@@ -306,9 +310,13 @@ object SeqPProc extends Function1[Long, Unit]{
             }
 
             /* TODO: Choice */
+            /////////////////////////////////////////
             // Generating inferences END
+            /////////////////////////////////////////
 
+            /////////////////////////////////////////
             // Simplification of newly generated clauses BEGIN
+            /////////////////////////////////////////
             /* Simplify new clauses */
             newclauses = newclauses.map(cw => {Out.trace(s"Simp on ${cw.pretty}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
             /* Remove those which are tautologies */
@@ -373,9 +381,14 @@ object SeqPProc extends Function1[Long, Unit]{
                 ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
               } else c
             }
+            /////////////////////////////////////////
             // Simplification of newly generated clauses END
+            /////////////////////////////////////////
 
+            /////////////////////////////////////////
             // At the end, for each generated clause apply simplification etc.
+            // and add to unprocessed
+            /////////////////////////////////////////
             val newIt = newclauses.iterator
             while (newIt.hasNext) {
               var newCl = newIt.next()
@@ -401,12 +414,17 @@ object SeqPProc extends Function1[Long, Unit]{
 
     }
 
+    /////////////////////////////////////////
+    // Main loop terminated, print result
+    /////////////////////////////////////////
+
     val time = System.currentTimeMillis() - startTime
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
     Out.output("")
     Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
 
+    /* Output additional information about the reasoning process. */
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
@@ -419,9 +437,11 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
       Out.comment(Utility.userDefinedSignatureAsString)
     }
+    // FIXME: Count axioms used in proof:
     //    if (derivationClause != null)
     //      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
 
+    /* Print proof object if possible and requested. */
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
       Out.output(makeDerivation(derivationClause).drop(1).toString)
