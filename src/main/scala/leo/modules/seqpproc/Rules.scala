@@ -260,12 +260,51 @@ object ReplaceLeibnizEq extends CalculusRule {
       }
     }
     val resMap = gbTermMap.filterKeys(k => flexHeadSet.contains(k))
-    Out.debug(s"${resMap.toString()}")
     (resMap.nonEmpty, resMap)
   }
 
   def apply(cl: Clause, bindings: Map[Int, Term]): (Clause, Subst) = {
     val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t, Term.mkBound(t.ty, 1))))
+    val subst = Subst.fromMap(gbMap)
+    val newLits = cl.lits.map(_.substitute(subst))
+    (Clause(Simp(newLits)), subst)
+  }
+}
+
+object ReplaceAndrewsEq extends CalculusRule {
+  val name = "replace_andrewseq"
+  override val inferenceStatus = Some(SZS_Theorem)
+
+  def canApply(cl: Clause): (Boolean, Map[Int, Type]) = {
+    import leo.datastructures.Term.{TermApp, Bound}
+    var varMap: Map[Int, Type] = Map()
+
+    val litIt = cl.lits.iterator
+    while(litIt.hasNext) {
+      val lit = litIt.next()
+      if (lit.flexHead) {
+        val (head,args) = TermApp.unapply(lit.left).get
+        assert(head.isVariable)
+        if (args.size == 2) {
+          val (headType, headIndex) = Bound.unapply(head).get
+          val (arg1,arg2) = (args.head,args.tail.head)
+          if (arg1 == arg2 && !(arg1.looseBounds contains headIndex)) {
+            if (!lit.polarity) {
+              if (!varMap.contains(headIndex)) {
+                varMap = varMap + (headIndex -> arg1.ty)
+              }
+            }
+          }
+
+        }
+      }
+    }
+
+    (varMap.nonEmpty, varMap)
+  }
+
+  def apply(cl: Clause, vars: Map[Int, Type]): (Clause, Subst) = {
+    val gbMap = vars.mapValues {case ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
     (Clause(Simp(newLits)), subst)
