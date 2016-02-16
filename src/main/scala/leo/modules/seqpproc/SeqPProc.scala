@@ -52,24 +52,31 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")
 
     // Remove defined equalities as far as possible
-    val leftEq = left2.map { c =>
+    val replaceLeibniz = !Configuration.isSet("nleq")
+    val replaceAndrews = !Configuration.isSet("naeq")
+    val leftEq = if (!replaceLeibniz && !replaceAndrews) left2
+    else left2.map { c =>
+      var cur_c = c
       Out.finest(s"Searching for defined equalities in ${c.id}")
-      val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(c.cl)
-      val c_res = if (cA_leibniz) {
-        Out.trace(s"Replace Leibniz equalities in ${c.id}")
-        val (resCl, subst) =  ReplaceLeibnizEq(c.cl,leibTermMap)
-        val res = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((c,ToTPTP(subst)))))
-        Out.finest(s"Result: ${res.pretty}")
-        res
-      } else c
-      val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(c_res.cl)
-      if (cA_Andrews) {
-        Out.trace(s"Replace Andrews equalities in ${c.id}")
-        val (resCl, subst) =  ReplaceAndrewsEq(c_res.cl,andrewsTermMap)
-        val res = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((c,ToTPTP(subst)))))
-        Out.finest(s"Result: ${res.pretty}")
-        res
-      } else c_res
+      if (replaceLeibniz) {
+        val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(c.cl)
+        if (cA_leibniz) {
+          Out.trace(s"Replace Leibniz equalities in ${c.id}")
+          val (resCl, subst) = ReplaceLeibnizEq(c.cl, leibTermMap)
+          cur_c = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((c, ToTPTP(subst)))))
+          Out.finest(s"Result: ${cur_c.pretty}")
+        }
+      }
+      if (replaceAndrews) {
+        val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cur_c.cl)
+        if (cA_Andrews) {
+          Out.trace(s"Replace Andrews equalities in ${c.id}")
+          val (resCl, subst) = ReplaceAndrewsEq(cur_c.cl, andrewsTermMap)
+          cur_c = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((c, ToTPTP(subst)))))
+          Out.finest(s"Result: ${cur_c.pretty}")
+        }
+      }
+      cur_c
     }
 
     val left3 = leftEq.map { c =>
