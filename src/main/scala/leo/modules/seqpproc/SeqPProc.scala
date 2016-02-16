@@ -145,9 +145,12 @@ object SeqPProc extends Function1[Long, Unit]{
 
 
 
-  final def simplify(cw: ClauseWrapper): ClauseWrapper = {
+  final def simplify(cw: ClauseWrapper, rules: Set[ClauseWrapper]): ClauseWrapper = {
+    val simp = Simp.shallowSimp(cw.cl)
+    val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), simp)
     // TODO: simpl to be simplification by rewriting à la E etc
-    cw
+    if (rewriteSimp != cw.cl) ClauseWrapper(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)))
+    else cw
   }
 
 
@@ -221,7 +224,7 @@ object SeqPProc extends Function1[Long, Unit]{
         unprocessed = unprocessed.tail
         Out.debug(s"Taken: ${cur.pretty}")
 
-        cur = simplify(cur)
+        cur = simplify(cur, units)
         if (Clause.effectivelyEmpty(cur.cl)) {
           loop = false
           if (conjecture.isEmpty) {
@@ -393,7 +396,7 @@ object SeqPProc extends Function1[Long, Unit]{
             while (newIt.hasNext) {
               var newCl = newIt.next()
               // Simplify again, including rewriting etc.
-              newCl = simplify(newCl)
+              newCl = simplify(newCl, units)
 
               if (!Clause.trivial(newCl.cl)) {
                 genCounter = genCounter + 1

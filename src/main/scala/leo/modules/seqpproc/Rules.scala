@@ -315,7 +315,7 @@ object RewriteSimp extends CalculusRule {
   val name = "rewrite"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(rewriteRules: Set[Clause], simplify: Clause): Clause = ???
+  def apply(rewriteRules: Set[Clause], simplify: Clause): Clause = simplify
 
 
   def apply(rule: Literal, simplify: Clause): Clause = {
@@ -331,6 +331,14 @@ object RewriteSimp extends CalculusRule {
     }
 
     ???
+  }
+
+  def apply(rule: Literal, negLiteral: Literal): Literal = {
+    assert(!negLiteral.polarity)
+    assert(rule.oriented)
+
+
+    negLiteral
   }
 }
 
