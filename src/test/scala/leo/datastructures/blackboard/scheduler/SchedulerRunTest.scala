@@ -32,7 +32,7 @@ object EndAgent extends Agent {
   override def name : String = "EndAgent"
   override def filter(event: Event): Iterable[Task] = event match {
     case d : DoneEvent =>
-      println("Terminating")
+      println("Terminating"+" store="+Store.v.mkString(","))
       Scheduler().killAll()
       Iterable.empty
     case _ => Iterable.empty
@@ -46,7 +46,7 @@ object AgentA extends Agent {
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent(s : String, AnyType) =>
       if(s == "ping") {
-        println("Got task")
+        println("New Task")
         Seq(TaskA("ping", "pong"))
       }
       else
@@ -63,7 +63,7 @@ case class TaskA(in : String, out : String) extends Task {
   override def writeSet(): Map[DataType, Set[Any]] = Map(AnyType -> Set(in))
   override def readSet(): Map[DataType, Set[Any]] = Map.empty
   override def run: Result = {
-    println("Exec Task")
+    println(in+" store="+Store.v.mkString(","))
     Result().update(AnyType)(in)(out)
   }
   override def bid: Double = 0.6
@@ -76,7 +76,6 @@ object AgentB extends Agent {
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent(s : String, AnyType) =>
       if(s == "pong") {
-        println("Got 2nd task")
         Seq(TaskB("pong", "ping"))
       }
       else
@@ -93,7 +92,7 @@ case class TaskB(in : String, out : String) extends Task {
   override def writeSet(): Map[DataType, Set[Any]] = Map.empty
   override def readSet(): Map[DataType, Set[Any]] = Map(AnyType -> Set(in))
   override def run: Result = {
-    println("Exec 2nd task")
+    println(in+" store="+Store.v.mkString(","))
     Result().insert(AnyType)(out)
   }
   override def bid: Double = 0.5

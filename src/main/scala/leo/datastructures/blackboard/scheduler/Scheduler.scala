@@ -257,10 +257,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       agent.taskFinished(task)
       Blackboard().finishTask(task)
 
-      val lockCount = if(doneSmth) ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") else {
-        ActiveTracker.decAndGet()
-      }
-      if(lockCount <= 0) Blackboard().forceCheck()
+      if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -297,6 +294,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         case e : Exception => leo.Out.warn(e.getMessage)
       }
 
+      println(s"Before Filter gaveUp : ${ActiveTracker.get}")
       if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0)
         Blackboard().forceCheck()
 
