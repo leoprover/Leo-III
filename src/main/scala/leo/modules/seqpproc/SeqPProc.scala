@@ -107,7 +107,8 @@ object SeqPProc extends Function1[Long, Unit]{
     else left3
 
 
-    val left4 = leftAC.flatMap { c =>
+    val left4 = if (Configuration.isSet("nbe")) leftAC
+    else leftAC.flatMap { c =>
       val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
       if (cA_boolExt) {
         Out.trace(s"Bool Ext on: ${c.pretty}")
@@ -271,13 +272,15 @@ object SeqPProc extends Function1[Long, Unit]{
             // Generating inferences BEGIN
             /////////////////////////////////////////
             /* Boolean Extensionality */
-            val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cur.cl)
-            if (cA_boolExt) {
-              Out.debug(s"Bool Ext on: ${cur.pretty}")
-              val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cur))))
-              Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+            if (!Configuration.isSet("nbe")) {
+              val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cur.cl)
+              if (cA_boolExt) {
+                Out.debug(s"Bool Ext on: ${cur.pretty}")
+                val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cur))))
+                Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
 
-              newclauses = newclauses union boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
+                newclauses = newclauses union boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
+              }
             }
 
             /* paramodulation where at least one involved clause is `cur` */
