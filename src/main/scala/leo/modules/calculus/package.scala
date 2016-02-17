@@ -57,6 +57,7 @@ package object calculus {
     }
     override final def existingVars: Seq[(Int, Type)] = vars
   }
+  final def freshVarGenFromBlank: FreshVarGen = freshVarGen(Clause(Seq()))
 
   // Adopted from tomer's code:
   // n is arity of variable
