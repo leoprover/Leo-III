@@ -108,7 +108,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
 
     val left4 = if (Configuration.isSet("nbe")) leftAC
-    else leftAC.flatMap { c =>
+    else leftAC union leftAC.flatMap { c =>
       val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
       if (cA_boolExt) {
         Out.trace(s"Bool Ext on: ${c.pretty}")
