@@ -262,15 +262,27 @@ object HuetsPreUnification extends Unification {
     * TODO: Alex: I filtered out all of those bound vars that have non-compatible type. Is that correct?
    */
   object ProjectRule extends HuetsRule[Seq[UEq]] {
+    final private def isSuffixOf(potentialSuffix: Seq[Type], searchIn: Seq[Type]): Boolean = {
+      if (potentialSuffix == searchIn) true
+      else {
+        if (potentialSuffix.size >= searchIn.size) false
+        else {
+          val searchIn2 = searchIn.drop(potentialSuffix.size)
+          if (searchIn2 == potentialSuffix) true
+          else false
+        }
+      }
+    }
+
     def apply(vargen: FreshVarGen, e: UEq): Seq[UEq] = {
       leo.Out.trace(s"Apply Project")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
       val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1)).map(p => Term.mkBound(p._1,p._2)) // TODO
       leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
-      //Filter only those bound vars that are itself types with result type == type of general binding
-      val funBVars = bvars.filter(_.ty.funParamTypesWithResultType.last == t.headSymbol.ty)
-      leo.Out.finest(s"Function type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
+      //Take only those bound vars that are itself a type with result type == type of general binding
+      val funBVars = bvars.filter(bvar => isSuffixOf(bvar.ty.funParamTypesWithResultType,t.headSymbol.ty.funParamTypesWithResultType))
+      leo.Out.finest(s"compatible type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
       val res = funBVars.map(e => (t.headSymbol,partialBinding(vargen, t.headSymbol.ty, e)))
 
       leo.Out.trace(s"Result of Project:\n\t${res.map(eq => eq._1.pretty ++ " = " ++ eq._2.pretty).mkString("\n\t")}")
