@@ -214,14 +214,14 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
                                                     case _ => Root(hd, args.replaceAt(at, by))
                                                   }
 
-  def substitute(subst: Subst): Term = hd match {
-    case MetaIndex(ty,id) => subst.substBndIdx(id) match {
-      case TermFront(t) => Redex(t, args.substitute(subst))
-      case BoundFront(j) => Root(MetaIndex(ty, j), args.substitute(subst))
-      case _ => throw new IllegalArgumentException("type front found during meta variable instantiation.")
-    }
-    case _ => Root(hd, args.substitute(subst))
-  }
+//  def substitute(subst: Subst): Term = hd match {
+//    case MetaIndex(ty,id) => subst.substBndIdx(id) match {
+//      case TermFront(t) => Redex(t, args.substitute(subst))
+//      case BoundFront(j) => Root(MetaIndex(ty, j), args.substitute(subst))
+//      case _ => throw new IllegalArgumentException("type front found during meta variable instantiation.")
+//    }
+//    case _ => Root(hd, args.substitute(subst))
+//  }
 
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -338,7 +338,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
                                                     case _ => Redex(body, args.replaceAt(at, by))
                                                   }
 
-  def substitute(subst: Subst): Term = Redex(body.substitute(subst), args.substitute(subst))
+//  def substitute(subst: Subst): Term = Redex(body.substitute(subst), args.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -435,7 +435,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
                                                 else
                                                   TermAbstr(typ, body.replaceAt(at.tail, by))
 
-  def substitute(subst: Subst): Term = TermAbstr(typ, body.substitute(subst))
+//  def substitute(subst: Subst): Term = TermAbstr(typ, body.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -528,7 +528,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
                                                 else
                                                   TypeAbstr(body.replaceAt(at.tail, by))
 
-  def substitute(subst: Subst): Term = TypeAbstr(body.substitute(subst))
+//  def substitute(subst: Subst): Term = TypeAbstr(body.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -599,7 +599,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   def replaceAt(at: Position, by: Term): Term = ???
 
 
-  def substitute(subst: Subst): Term = this.betaNormalize.substitute(subst)
+//  def substitute(subst: Subst): Term = this.betaNormalize.substitute(subst)
   //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
