@@ -60,18 +60,27 @@ object Instantiate extends CalculusRule {
   val name = "inst"
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
-  def apply(t: Term, polarity: Boolean): Term =  {
-    removeLeadingQuants(t, polarity, Seq())
-  }
-  def removeLeadingQuants(t: Term, polarity: Boolean, fv: Seq[(Int, Type)]): Term = t match {
-    case Forall(ty :::> body) if polarity => removeLeadingQuants(body, polarity, (fv.size+1, ty) +: fv)
-    case Exists(ty :::> body) if !polarity => removeLeadingQuants(body, polarity, (fv.size+1, ty) +: fv)
-    case Exists(ty :::> body) if polarity => {
-      leo.Out.debug(s"Polarity true and Exists case")
-      Out.debug(s"fv are: ${fv.map(f => f._1.toString + ":" + "")}")
-      removeLeadingQuants(body.closure(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fv))).betaNormalize, polarity, fv)
+  def apply(t: Term, polarity: Boolean, vargen: leo.modules.calculus.FreshVarGen): Term =  t match {
+    case Forall(ty :::> body) if polarity => {
+      // to increase fv counter
+      vargen.apply(ty)
+//      val intermediate = Term.mkTermApp(body, vargen.apply(ty)).betaNormalize
+      leo.Out.debug(s"intermediate: ${body.pretty}")
+      apply(body, polarity, vargen)
     }
-    case Forall(ty :::> body) if !polarity => removeLeadingQuants(body.closure(Subst.singleton(1, leo.modules.calculus.skTerm(ty, fv))).betaNormalize, polarity, fv)
+    case Exists(ty :::> body) if !polarity => {
+      // to increase fv counter
+      vargen.apply(ty)
+      apply(body, polarity, vargen)
+    }
+    case Exists(a@(ty :::> body)) if polarity => {
+      val intermediate = Term.mkTermApp(a, leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize
+      apply(intermediate, polarity, vargen)
+    }
+    case Forall(a@(ty :::> body)) if !polarity => {
+      val intermediate = Term.mkTermApp(a, leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize
+      apply(intermediate, polarity, vargen)
+    }
     case _ => t
   }
 }
