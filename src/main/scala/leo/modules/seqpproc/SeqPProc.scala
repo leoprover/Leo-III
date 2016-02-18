@@ -42,11 +42,6 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.trace(s"Pol. switch: ${cw.cl.pretty}")
     }
 
-    // Remove quantifiers
-    left = Instantiate(left, pol)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(Instantiate, Set(cw)))
-    Out.trace(s"Instantiate: ${cw.cl.pretty}")
-
     // Exhaustively CNF
     val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
     Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")

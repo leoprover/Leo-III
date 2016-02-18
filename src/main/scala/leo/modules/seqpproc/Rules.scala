@@ -56,35 +56,6 @@ object PolaritySwitch extends CalculusRule {
   }
 }
 
-object Instantiate extends CalculusRule {
-  val name = "inst"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
-
-  def apply(t: Term, polarity: Boolean, vargen: leo.modules.calculus.FreshVarGen): Term =  t match {
-    case Forall(ty :::> body) if polarity => {
-      // to increase fv counter
-      vargen.apply(ty)
-//      val intermediate = Term.mkTermApp(body, vargen.apply(ty)).betaNormalize
-      leo.Out.debug(s"intermediate: ${body.pretty}")
-      apply(body, polarity, vargen)
-    }
-    case Exists(ty :::> body) if !polarity => {
-      // to increase fv counter
-      vargen.apply(ty)
-      apply(body, polarity, vargen)
-    }
-    case Exists(a@(ty :::> body)) if polarity => {
-      val intermediate = Term.mkTermApp(a, leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize
-      apply(intermediate, polarity, vargen)
-    }
-    case Forall(a@(ty :::> body)) if !polarity => {
-      val intermediate = Term.mkTermApp(a, leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize
-      apply(intermediate, polarity, vargen)
-    }
-    case _ => t
-  }
-}
-
 /** Non-extensional CNF rule. */
 object CNF extends CalculusRule {
   // TODO: Can be optimize this? E.g. dependencies for skolemterm
