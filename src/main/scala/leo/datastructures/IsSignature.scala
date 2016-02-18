@@ -254,6 +254,7 @@ object IsSignature {
   final val PropAC: SymbProp = PropAssociative | PropCommutative
   final protected[datastructures] val PropFixed: SymbProp = 8 /* Fixed term of type symbol of the system */
   final protected[datastructures] val PropExternal: SymbProp = 16 /* Term or type symbol that refers to a external object */
+  final protected[datastructures] val PropSkolemConstant: SymbProp = 32 /* Term symbol that was introduced within skolemization */
 
   final val multStatus: Int = 0
   final val lexStatus: Int = 1
