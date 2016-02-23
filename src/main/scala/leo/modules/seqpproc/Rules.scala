@@ -829,10 +829,6 @@ object OrderedParamod2 extends CalculusRule {
   final val name = "paramod_ordered"
   final override val inferenceStatus = Some(SZS_Theorem)
 
-  type Side = Boolean
-  final val left: Side = true
-  final val right: Side = false
-
   /**
     * Preconditions:
     * - withClause.lits(withIndex).polarity == true
@@ -850,19 +846,19 @@ object OrderedParamod2 extends CalculusRule {
     * @param intoPosition position in `side(l=r)` that is rewritten
     * @return
     */
-  final def apply(withClause: Clause, withIndex: Int, withSide: Side,
-            intoClause: Clause, intoIndex: Int, intoSide: Side, intoPosition: Position, intoSubterm: Term): Clause = {
+  final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
+            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term): Clause = {
     assert(withClause.lits.isDefinedAt(withIndex))
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
-    assert(!(withSide == right) || !withClause.lits(withIndex).oriented)
-    assert(!(intoSide == right) || !intoClause.lits(intoIndex).oriented)
+    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented)
+    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented)
 
     val withLiteral = withClause.lits(withIndex)
-    val (toFind, replaceBy) = if (withSide == left) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
+    val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
 
     val intoLiteral = intoClause.lits(intoIndex)
-    val (findWithin, otherSide) = if (intoSide == left) (intoLiteral.left,intoLiteral.right) else (intoLiteral.right,intoLiteral.left)
+    val (findWithin, otherSide) = if (intoSide == Literal.leftSide) (intoLiteral.left,intoLiteral.right) else (intoLiteral.right,intoLiteral.left)
 
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
