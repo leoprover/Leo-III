@@ -1,7 +1,7 @@
 package leo.datastructures
 
 import leo.Configuration
-import Literal.LitMaxFlag
+import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
 
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
@@ -27,7 +27,7 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
 
-  def maxLits: Map[LitMaxFlag, Seq[Literal]]
+  def maxLitsMap: Map[LitMaxFlag, Seq[Literal]]
 
   /** True iff this clause is ground. */
   def ground: Boolean
@@ -44,6 +44,9 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
     * FIXME: Only works if there are no gaps in implicitly bound variables.
     */
   final lazy val term: Term = mkPolyUnivQuant(implicitlyBound.map(_._2), mkDisjunction(lits.map(_.term)))
+
+  @inline final def maxLits: Seq[Literal] = maxLitsMap(LitMax)
+  @inline final def strictlyMaxLits: Seq[Literal] = maxLitsMap(LitStrictlyMax)
 
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
@@ -133,8 +136,5 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
-
-  @inline final def strictMaxOf(c: Clause): Seq[Literal] = c.maxLits(LitStrictlyMax)
-  @inline final def maxOf(c: Clause): Seq[Literal] = c.maxLits(LitMax)
 }
 
