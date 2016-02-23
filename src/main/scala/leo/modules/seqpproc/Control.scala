@@ -2,7 +2,7 @@ package leo
 package modules.seqpproc
 
 import leo.datastructures.{Clause, Literal, Position, Term}
-import leo.modules.seqpproc.OrderedParamod2.Side
+import Literal.Side
 
 /**
   * Created by lex on 22.02.16.
@@ -68,9 +68,11 @@ object ParamodControl {
   type IntoConfiguration = (LiteralIndex, Literal, Side, Position, Subterm)
 
   final private def withConfigurationIterator(maximalLiterals: Seq[Literal]): Iterator[WithConfiguration] = new Iterator[WithConfiguration] {
+    import Literal.{leftSide, rightSide}
+
     var litIndex = 0
     var lits = maximalLiterals
-    var side = true
+    var side = leftSide
 
     final def hasNext: Boolean = {
       if (lits.isEmpty) false
@@ -88,11 +90,12 @@ object ParamodControl {
     final def next(): WithConfiguration = {
       if (hasNext) {
         val res = (litIndex, lits.head, side)
-        if (lits.head.oriented || !side) {
+        if (lits.head.oriented || side == rightSide) {
           litIndex += 1
           lits = lits.tail
+          side = leftSide
         } else {
-          side = !side
+          side = rightSide
         }
         res
       } else {
@@ -103,16 +106,44 @@ object ParamodControl {
 
 
   final private def intoConfigurationIterator(maximalLiterals: Seq[Literal]): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
+    import Literal.{leftSide, rightSide, selectSide}
     var litIndex = 0
     var lits = maximalLiterals
-    var side = true
-    var curSubterms: Seq[Term] = null
+    var side = leftSide
+    var curSubterms: Set[Term] = null
+    var curPositions: Set[Position] = null
     var curPositionIndex = 0
 
-    def hasNext: Boolean = if (curSubterms == null) {
-      lits.nonEmpty
-    } else {
-      ???
+    def hasNext: Boolean = if (lits.isEmpty) false
+    else {
+      if (curSubterms == null) {
+        // first init
+        curSubterms = selectSide(lits.head,side).feasibleOccurences.keySet
+        curPositions = selectSide(lits.head,side).feasibleOccurences(curSubterms.head)
+        true
+      } else {
+        if (curPositions.isEmpty) {
+          curSubterms = curSubterms.tail
+          if (curSubterms.isEmpty) {
+            if (lits.head.oriented || side == rightSide) {
+              lits = lits.tail
+              litIndex += 1
+              side = leftSide
+            } else {
+              side = rightSide
+            }
+            curSubterms = selectSide(lits.head,side).feasibleOccurences.keySet
+            curPositions = selectSide(lits.head,side).feasibleOccurences(curSubterms.head)
+            hasNext
+          } else {
+            curPositions = selectSide(lits.head,side).feasibleOccurences(curSubterms.head)
+            assert(hasNext)
+            true
+          }
+        } else {
+          true
+        }
+      }
     }
 
     def next(): IntoConfiguration = {
