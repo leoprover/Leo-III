@@ -825,6 +825,65 @@ object EqFac extends CalculusRule {
 
 }
 
+object OrderedParamod2 extends CalculusRule {
+  final val name = "paramod_ordered"
+  final override val inferenceStatus = Some(SZS_Theorem)
+
+  type Side = Boolean
+  final val left: Side = true
+  final val right: Side = false
+
+  /**
+    * Preconditions:
+    * - withClause.lits(withIndex).polarity == true
+    * - withSide == right => !withClause.lits(withIndex).oriented
+    * - intoSide == right => !intoClause.lits(intoIndex).oriented
+    * - if `t` is the `intoSide` of intoClause.lits(intoIndex), then
+    *   u.fv = intoClause.implicitlyBound where `u` is a subterm of `t`
+    *
+    * @param withClause clause that contains the literal used for rewriting
+    * @param withIndex index of literal `s=t` in `withClause` that is used for rewriting
+    * @param withSide `left` or `right`, depending on which side of `s=t` we search in `into`
+    * @param intoClause clause that is rewritten
+    * @param intoIndex index of literal `l=r` in `intoClause` that is rewritten
+    * @param intoSide side of `l=r` that is rewritten
+    * @param intoPosition position in `side(l=r)` that is rewritten
+    * @return
+    */
+  final def apply(withClause: Clause, withIndex: Int, withSide: Side,
+            intoClause: Clause, intoIndex: Int, intoSide: Side, intoPosition: Position, intoSubterm: Term): Clause = {
+    assert(withClause.lits.isDefinedAt(withIndex))
+    assert(intoClause.lits.isDefinedAt(intoIndex))
+    assert(withClause.lits(withIndex).polarity)
+    assert(!(withSide == right) || !withClause.lits(withIndex).oriented)
+    assert(!(intoSide == right) || !intoClause.lits(intoIndex).oriented)
+
+    val withLiteral = withClause.lits(withIndex)
+    val (toFind, replaceBy) = if (withSide == left) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
+
+    val intoLiteral = intoClause.lits(intoIndex)
+    val (findWithin, otherSide) = if (intoSide == left) (intoLiteral.left,intoLiteral.right) else (intoLiteral.right,intoLiteral.left)
+
+
+    /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
+    * i.e. it is lated eliminated using Simp. */
+    val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false))
+    /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
+    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound)))
+    /* Replace subterm (and shift accordingly) */
+    val rewrittenIntoLit = Literal(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))),otherSide,intoLiteral.polarity)
+    /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
+    val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit)
+    /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
+    val unificationLit = Literal.mkNeg(toFind, intoSubterm)
+
+    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits
+    val resultingClause = Clause(newlits :+ unificationLit)
+
+    resultingClause
+  }
+}
+
 
 object OrderedParamod extends CalculusRule {
   val name = "paramod_ordered"
