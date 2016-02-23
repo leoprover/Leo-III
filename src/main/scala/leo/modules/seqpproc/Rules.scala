@@ -680,6 +680,7 @@ object EqFac extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
 
   def apply(cl: Clause): Set[Clause] = {
+    Out.trace(s"EqFactor, maximal literals:\n\t${cl.maxLits.map(_.pretty).mkString("\n\t")}")
     if (Clause.horn(cl)) return Set()
 
     var result: Set[Clause] = Set()
@@ -749,57 +750,6 @@ object EqFac extends CalculusRule {
 
     result
   }
-
-//    val it = new SeqZippingSeqIterator(cl.posLits)
-////    val it = new SeqZippingSeqIterator(Clause.maxOf(cl).filter(_.polarity))
-//
-//    while (it.hasNext) {
-//      val lit = it.next()
-//      // lit: s = t
-//      val s = lit.left
-//      val t = lit.right
-//      val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == s || l.right == s}
-//      val lwSSSIt = litsWithSyntacticSameSide.iterator
-//      while (lwSSSIt.hasNext) {
-//        val lwSSS = lwSSSIt.next()
-//        if (lwSSS.left == s) {
-//          if (leo.modules.calculus.mayUnify(t, lwSSS.right)) {
-//            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.right))
-//            result = result + newCl
-//          }
-//        } else {
-//          // Right side equivalent to s
-//          if (leo.modules.calculus.mayUnify(t, lwSSS.left)) {
-//            val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(t, lwSSS.left))
-//            result = result + newCl
-//          }
-//        }
-//      }
-//
-//      if (!lit.oriented) {
-//        val litsWithSyntacticSameSide = it.rightOf.filter {l => l.left == t || l.right == t}
-//        val lwSSSIt = litsWithSyntacticSameSide.iterator
-//        while (lwSSSIt.hasNext) {
-//          val lwSSS = lwSSSIt.next()
-//          if (lwSSS.left == t) {
-//            if (leo.modules.calculus.mayUnify(s, lwSSS.right)) {
-//              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.right))
-//              result = result + newCl
-//            }
-//          } else {
-//            // Right side equivalent to s
-//            if (leo.modules.calculus.mayUnify(s, lwSSS.left)) {
-//              val newCl = Clause(it.leftOf ++ it.rightOf :+ Literal.mkNeg(s, lwSSS.left))
-//              result = result + newCl
-//            }
-//          }
-//        }
-//      }
-//
-//    }
-//    result
-//  }
-
 
   // Local definitions
   // sets the iterator to the position where the next maximal literal is

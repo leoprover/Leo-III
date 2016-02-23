@@ -126,7 +126,7 @@ object SeqPProc extends Function1[Long, Unit]{
         (uni, ot + cw)
       }
     }}
-    if (uniClauses.nonEmpty) {
+    val left7 = if (uniClauses.nonEmpty) {
       Out.trace("Unification tasks found. Working on it...")
       var newclauses = otherClauses
       uniClauses.foreach { case (cw, ul, ol) =>
@@ -137,6 +137,9 @@ object SeqPProc extends Function1[Long, Unit]{
       }
       newclauses
     } else left6
+
+    left7.foreach(_.propertyFlag = ClauseWrapper.PropBoolExt | ClauseWrapper.PropUnified)
+    left7
   }
 
 
@@ -165,16 +168,16 @@ object SeqPProc extends Function1[Long, Unit]{
     if (conjecture.size > 1) throw new SZSException(SZS_InputError, "At most one conjecture per input problem permitted.")
 
     val effectiveInput: Seq[ClauseWrapper] = if (conjecture.isEmpty) {
-      filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) }
+      filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseWrapper.PropNoProp) }
     } else {
       assert(conjecture.size == 1)
       val conj = conjecture.head
-      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation)
+      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation, ClauseWrapper.PropNoProp)
       val rest = filteredInput.filterNot(_._1 == conjecture.head._1)
-      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id)) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
+      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseWrapper.PropNoProp) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
         override def name: String = "neg_conjecture"
         override val inferenceStatus = Some(SZS_CounterSatisfiable)
-      }, Set(conjWrapper)))
+      }, Set(conjWrapper)),ClauseWrapper.PropNoProp)
     }
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
@@ -268,13 +271,21 @@ object SeqPProc extends Function1[Long, Unit]{
             /////////////////////////////////////////
             /* Boolean Extensionality */
             if (!Configuration.isSet("nbe")) {
-              val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cur.cl)
-              if (cA_boolExt) {
-                Out.debug(s"Bool Ext on: ${cur.pretty}")
-                val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cur))))
-                Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+              if (!leo.datastructures.isPropSet(ClauseWrapper.PropBoolExt, cur.propertyFlag)) {
+                val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cur.cl)
+                if (cA_boolExt) {
+                  Out.debug(s"Bool Ext on: ${cur.pretty}")
+                  val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cur))))
+                  Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
 
-                newclauses = newclauses union boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
+                  newclauses = newclauses union boolExt_cws.flatMap(cw => {
+                    Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");
+                    CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
+                  }.map(c => {
+                    Out.finest(s"${c.pretty}\n\t");
+                    ClauseWrapper(c, InferredFrom(CNF, Set(cw)))
+                  }))
+                }
               }
             }
 
@@ -312,7 +323,7 @@ object SeqPProc extends Function1[Long, Unit]{
             /* Remove those which are tautologies */
             newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
             /* exhaustively CNF new clauses */
-            newclauses = newclauses.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {Out.finest(s"${c.pretty}\n\t");ClauseWrapper(c, InferredFrom(CNF, Set(cw)))}))
+            newclauses = newclauses.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw)));Out.finest(s"${res.pretty}\n\t") ;res}))
 
             /* Pre-unify new clauses */
             val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = (newclauses).foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
@@ -470,40 +481,5 @@ object SeqPProc extends Function1[Long, Unit]{
   }
 }
 
-protected[seqpproc] abstract sealed class WrapperAnnotation extends Pretty
-case class InferredFrom(rule: leo.modules.calculus.CalculusRule, cws: Set[(ClauseWrapper, Output)]) extends WrapperAnnotation {
-  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${cws.map{case (cw,add) => if (add == null) {cw.id} else {cw.id + ":[" + add.output + "]"} }.mkString(",")}])"
-}
-case object NoAnnotation extends WrapperAnnotation {val pretty: String = ""}
-case class FromFile(fileName: String, formulaName: String) extends WrapperAnnotation { def pretty = s"file('$fileName',$formulaName)" }
 
-object InferredFrom {
-  def apply(rule: leo.modules.calculus.CalculusRule, cws: Set[ClauseWrapper]): WrapperAnnotation = {
-    new InferredFrom(rule, cws.map((_,null)))
-  }
-}
-
-protected[seqpproc] case class ClauseWrapper(id: String, cl: Clause, role: Role, annotation: WrapperAnnotation) extends Ordered[ClauseWrapper] with Pretty {
-  override def equals(o: Any): Boolean = o match {
-    case cw: ClauseWrapper => cw.cl == cl && cw.role == role
-    case _ => false
-  }
-  override def hashCode(): Int = cl.hashCode() ^ role.hashCode()
-
-  def compare(that: ClauseWrapper) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl) // FIXME mustmatch withequals and hash
-
-//  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation match {case InferredFrom(_,cws) => cws.map(_._1.id).mkString(","); case _ => ""}})"
-  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty})"
-}
-
-protected[seqpproc] object ClauseWrapper {
-  private var counter: Int = 0
-  def apply(cl: Clause, r: Role, annotation: WrapperAnnotation): ClauseWrapper = {
-    counter += 1
-    ClauseWrapper(s"gen_formula_$counter", cl, r, annotation)
-  }
-  def apply(cl: Clause, r: Role): ClauseWrapper = apply(cl, r, NoAnnotation)
-  def apply(cl: Clause): ClauseWrapper =apply(cl, Role_Plain, NoAnnotation)
-  def apply(cl: Clause, annotation: WrapperAnnotation): ClauseWrapper = apply(cl, Role_Plain, annotation)
-}
 

@@ -1,8 +1,9 @@
 package leo
 package modules.seqpproc
 
-import leo.datastructures.{Clause, Literal, Position, Term}
+import leo.datastructures._
 import Literal.Side
+import leo.modules.output.Output
 
 /**
   * Created by lex on 22.02.16.
@@ -177,4 +178,44 @@ object ParamodControl {
 
 object FactorizationControl {
 
+}
+
+protected[seqpproc] abstract sealed class WrapperAnnotation extends Pretty
+case class InferredFrom(rule: leo.modules.calculus.CalculusRule, cws: Set[(ClauseWrapper, Output)]) extends WrapperAnnotation {
+  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${cws.map{case (cw,add) => if (add == null) {cw.id} else {cw.id + ":[" + add.output + "]"} }.mkString(",")}])"
+}
+case object NoAnnotation extends WrapperAnnotation {val pretty: String = ""}
+case class FromFile(fileName: String, formulaName: String) extends WrapperAnnotation { def pretty = s"file('$fileName',$formulaName)" }
+
+object InferredFrom {
+  def apply(rule: leo.modules.calculus.CalculusRule, cws: Set[ClauseWrapper]): WrapperAnnotation = {
+    new InferredFrom(rule, cws.map((_,null)))
+  }
+}
+
+protected[seqpproc] case class ClauseWrapper(id: String, cl: Clause, role: Role, annotation: WrapperAnnotation, var propertyFlag: ClauseWrapper.WrapperProp) extends Ordered[ClauseWrapper] with Pretty {
+  override def equals(o: Any): Boolean = o match {
+    case cw: ClauseWrapper => cw.cl == cl && cw.role == role
+    case _ => false
+  }
+  override def hashCode(): Int = cl.hashCode() ^ role.hashCode()
+
+  def compare(that: ClauseWrapper) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl) // FIXME mustmatch withequals and hash
+
+  //  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation match {case InferredFrom(_,cws) => cws.map(_._1.id).mkString(","); case _ => ""}})"
+  def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty})"
+}
+
+protected[seqpproc] object ClauseWrapper {
+  private var counter: Int = 0
+  def apply(cl: Clause, r: Role, annotation: WrapperAnnotation, propFlag: WrapperProp): ClauseWrapper = {
+    counter += 1
+    ClauseWrapper(s"gen_formula_$counter", cl, r, annotation, PropNoProp)
+  }
+  def apply(cl: Clause, annotation: WrapperAnnotation, propFlag: WrapperProp = PropNoProp): ClauseWrapper = apply(cl, Role_Plain, annotation, propFlag)
+
+  type WrapperProp = Int
+  final val PropNoProp: WrapperProp = 0
+  final val PropUnified: WrapperProp = 1
+  final val PropBoolExt: WrapperProp = 2
 }
