@@ -52,10 +52,10 @@ object ParamodControl {
 
         if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
           Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
-          val newCl = OrderedParamod2(withClause, withIndex, withSide,
+          val newCl = OrderedParamod(withClause, withIndex, withSide,
             intoClause, intoIndex, intoSide, intoPos, intoTerm)
 
-          val newClWrapper = ClauseWrapper(newCl, InferredFrom(OrderedParamod2, Set(withWrapper, intoWrapper)))
+          val newClWrapper = ClauseWrapper(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)))
           Out.finest(s"Result: ${newClWrapper.pretty}")
           results = results + newClWrapper
         }

@@ -279,19 +279,8 @@ object SeqPProc extends Function1[Long, Unit]{
             }
 
             /* paramodulation where at least one involved clause is `cur` */
-            val procIt = processed.iterator
-            while (procIt.hasNext) {
-              val procCl = procIt.next()
-              Out.debug(s"Paramod on ${cur.id} and ${procCl.id}")
-              val paramodres = if (cur.id == procCl.id)
-                OrderedParamod(cur.cl, procCl.cl).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(cur, procCl))))
-              else {
-                OrderedParamod(cur.cl, procCl.cl).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(cur, procCl)))) ++
-                  OrderedParamod(procCl.cl, cur.cl).map(cl => ClauseWrapper(cl, InferredFrom(OrderedParamod, Set(cur, procCl))))}
-
-              newclauses = newclauses union paramodres
-              Out.trace(s"Paramod result:\n\t${paramodres.map(_.pretty).mkString("\n\t")}")
-            }
+            val paramod_result = ParamodControl.paramodSet(cur, processed)
+            newclauses = newclauses union paramod_result
 
             /* Equality factoring */
             Out.debug(s"Eq_factoring on ${cur.id}")
