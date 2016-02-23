@@ -33,15 +33,33 @@ object ParamodControl {
   }
 
   final private def allParamods0(withWrapper: ClauseWrapper, intoWrapper: ClauseWrapper): Set[ClauseWrapper] = {
+    var results: Set[ClauseWrapper] = Set()
+
     val withClause = withWrapper.cl
     val intoClause = intoWrapper.cl
 
     val withConfigurationIt = withConfigurationIterator(Clause.maxOf(withClause))
     while (withConfigurationIt.hasNext) {
-      val withConf = withConfigurationIt.next()
+      val (withIndex, withLit, withSide) = withConfigurationIt.next()
+      val withTerm = if (withSide) withLit.left else withLit.right
 
+      val intoConfigurationIt = intoConfigurationIterator(Clause.maxOf(intoClause))
+      while (intoConfigurationIt.hasNext) {
+        val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
+
+        if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+          val newCl = OrderedParamod2(withClause, withIndex, withSide,
+            intoClause, intoIndex, intoSide, intoPos, intoTerm)
+
+          val newClWrapper = ClauseWrapper(newCl, InferredFrom(OrderedParamod2, Set(withWrapper, intoWrapper)))
+
+          results = results + newClWrapper
+        }
+
+      }
     }
-    ???
+
+    results
   }
 
   type LiteralIndex = Int
@@ -94,12 +112,13 @@ object ParamodControl {
     def hasNext: Boolean = if (curSubterms == null) {
       lits.nonEmpty
     } else {
-
+      ???
     }
 
     def next(): IntoConfiguration = {
       if (hasNext) {
-        val res = (litIndex, lits.head.left.fe, )
+        val res = ???
+        ???
       } else {
         throw new NoSuchElementException
       }
