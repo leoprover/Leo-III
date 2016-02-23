@@ -38,21 +38,25 @@ object ParamodControl {
     val withClause = withWrapper.cl
     val intoClause = intoWrapper.cl
 
-    val withConfigurationIt = withConfigurationIterator(Clause.maxOf(withClause))
+    val withConfigurationIt = withConfigurationIterator(withClause)
     while (withConfigurationIt.hasNext) {
       val (withIndex, withLit, withSide) = withConfigurationIt.next()
       val withTerm = if (withSide) withLit.left else withLit.right
 
-      val intoConfigurationIt = intoConfigurationIterator(Clause.maxOf(intoClause))
+      assert(withClause.lits(withIndex) == withLit, s"${withIndex} in ${withClause.pretty}\n lit = ${withLit.pretty}")
+      assert(withClause.lits(withIndex).polarity)
+
+      val intoConfigurationIt = intoConfigurationIterator(intoClause)
       while (intoConfigurationIt.hasNext) {
         val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
 
         if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+          Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
           val newCl = OrderedParamod2(withClause, withIndex, withSide,
             intoClause, intoIndex, intoSide, intoPos, intoTerm)
 
           val newClWrapper = ClauseWrapper(newCl, InferredFrom(OrderedParamod2, Set(withWrapper, intoWrapper)))
-
+          Out.finest(s"Result: ${newClWrapper.pretty}")
           results = results + newClWrapper
         }
 
@@ -67,20 +71,24 @@ object ParamodControl {
   type Subterm = Term
   type IntoConfiguration = (LiteralIndex, Literal, Side, Position, Subterm)
 
-  final private def withConfigurationIterator(maximalLiterals: Seq[Literal]): Iterator[WithConfiguration] = new Iterator[WithConfiguration] {
+  final private def withConfigurationIterator(cl: Clause): Iterator[WithConfiguration] = new Iterator[WithConfiguration] {
     import Literal.{leftSide, rightSide}
-
+    var maxLits = cl.maxLits
     var litIndex = 0
-    var lits = maximalLiterals
+    var lits = cl.lits
     var side = leftSide
 
     final def hasNext: Boolean = {
+//      Out.finest("hasNext")
       if (lits.isEmpty) false
       else {
+//        Out.finest(s"lits not empty")
         val hd = lits.head
-        if (hd.polarity) true
+//        Out.finest(s"hd: ${hd.pretty}")
+        if (hd.polarity && maxLits.contains(hd)) true
         else {
-          litIndex += 1
+//          Out.finest(s"negative polarity, skip")
+          litIndex = litIndex + 1
           lits = lits.tail
           hasNext
         }
@@ -89,6 +97,7 @@ object ParamodControl {
 
     final def next(): WithConfiguration = {
       if (hasNext) {
+        assert(lits.head.polarity)
         val res = (litIndex, lits.head, side)
         if (lits.head.oriented || side == rightSide) {
           litIndex += 1
@@ -97,6 +106,7 @@ object ParamodControl {
         } else {
           side = rightSide
         }
+        assert(res._2.polarity)
         res
       } else {
         throw new NoSuchElementException
@@ -105,51 +115,59 @@ object ParamodControl {
   }
 
 
-  final private def intoConfigurationIterator(maximalLiterals: Seq[Literal]): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
+  final private def intoConfigurationIterator(cl: Clause): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
     import Literal.{leftSide, rightSide, selectSide}
+    val maxLits = cl.maxLits
     var litIndex = 0
-    var lits = maximalLiterals
+    var lits = cl.lits
     var side = leftSide
     var curSubterms: Set[Term] = null
     var curPositions: Set[Position] = null
-    var curPositionIndex = 0
 
     def hasNext: Boolean = if (lits.isEmpty) false
     else {
-      if (curSubterms == null) {
-        // first init
-        curSubterms = selectSide(lits.head,side).feasibleOccurences.keySet
-        curPositions = selectSide(lits.head,side).feasibleOccurences(curSubterms.head)
-        true
+      val hd = lits.head
+      if (!maxLits.contains(hd)) {
+        lits = lits.tail
+        litIndex += 1
+        hasNext
       } else {
-        if (curPositions.isEmpty) {
-          curSubterms = curSubterms.tail
-          if (curSubterms.isEmpty) {
-            if (lits.head.oriented || side == rightSide) {
-              lits = lits.tail
-              litIndex += 1
-              side = leftSide
+        if (curSubterms == null) {
+          curSubterms = selectSide(hd,side).feasibleOccurences.keySet
+          curPositions = selectSide(hd,side).feasibleOccurences(curSubterms.head)
+          true
+        } else {
+          if (curPositions.isEmpty) {
+            curSubterms = curSubterms.tail
+            if (curSubterms.isEmpty) {
+              if (hd.oriented || side == rightSide) {
+                lits = lits.tail
+                litIndex += 1
+                side = leftSide
+              } else {
+                side = rightSide
+              }
+              curSubterms = null
+              curPositions = null
+              hasNext
             } else {
-              side = rightSide
+              curPositions = selectSide(hd,side).feasibleOccurences(curSubterms.head)
+              assert(hasNext)
+              true
             }
-            curSubterms = selectSide(lits.head,side).feasibleOccurences.keySet
-            curPositions = selectSide(lits.head,side).feasibleOccurences(curSubterms.head)
-            hasNext
           } else {
-            curPositions = selectSide(lits.head,side).feasibleOccurences(curSubterms.head)
-            assert(hasNext)
             true
           }
-        } else {
-          true
         }
       }
+
     }
 
     def next(): IntoConfiguration = {
       if (hasNext) {
-        val res = ???
-        ???
+        val res = (litIndex, lits.head, side, curPositions.head, curSubterms.head)
+        curPositions = curPositions.tail
+        res
       } else {
         throw new NoSuchElementException
       }

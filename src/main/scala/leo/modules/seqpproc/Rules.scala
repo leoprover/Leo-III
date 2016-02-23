@@ -806,7 +806,7 @@ object EqFac extends CalculusRule {
   private final def nextMaxLit(cl: Clause, iterator: ZippingSeqIterator[Literal]): Literal = {
     while (iterator.hasNext) {
       val nextLit = iterator.next()
-      if (Clause.maxOf(cl) contains nextLit) {
+      if (cl.maxLits contains nextLit) {
         return nextLit
       }
     }
@@ -857,24 +857,26 @@ object OrderedParamod2 extends CalculusRule {
     val withLiteral = withClause.lits(withIndex)
     val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
 
-    val intoLiteral = intoClause.lits(intoIndex)
-    val (findWithin, otherSide) = if (intoSide == Literal.leftSide) (intoLiteral.left,intoLiteral.right) else (intoLiteral.right,intoLiteral.left)
-
-
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * i.e. it is lated eliminated using Simp. */
     val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false))
+
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
     val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound)))
+
+    val intoLiteral = shiftedIntoLits(intoIndex)
+    val (findWithin, otherSide) = if (intoSide == Literal.leftSide) (intoLiteral.left,intoLiteral.right) else (intoLiteral.right,intoLiteral.left)
+
     /* Replace subterm (and shift accordingly) */
     val rewrittenIntoLit = Literal(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))),otherSide,intoLiteral.polarity)
     /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
     val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit)
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
-    val unificationLit = Literal.mkNeg(toFind, intoSubterm)
+    val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)))
 
-    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits
-    val resultingClause = Clause(newlits :+ unificationLit)
+    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
+    val newlits_simp = Simp.apply(newlits)
+    val resultingClause = Clause(newlits_simp)
 
     resultingClause
   }
@@ -887,8 +889,8 @@ object OrderedParamod extends CalculusRule {
 
   def apply(cl: Clause, withCl: Clause): Set[Clause] = {
     var result: Set[Clause] = Set()
-    val leftMax = (Clause.maxOf(cl))// ++ cl.negLits).distinct
-    val rightMax = (Clause.maxOf(withCl))// ++ withCl.negLits).distinct
+    val leftMax = cl.maxLits// ++ cl.negLits).distinct
+    val rightMax = withCl.maxLits // ++ withCl.negLits).distinct
 
 //    Out.trace(s"leftMax:\n\t${leftMax.map(_.pretty).mkString("\n\t")}")
 //    Out.trace(s"rightMax:\n\t${rightMax.map(_.pretty).mkString("\n\t")}")
