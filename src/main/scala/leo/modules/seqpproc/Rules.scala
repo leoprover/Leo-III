@@ -771,8 +771,13 @@ object EqFac extends CalculusRule {
     val litList2 = litList.distinct.filterNot(Literal.isFalse)
     Clause(litList2)
   }
+}
 
+object OrderedEqFac extends CalculusRule {
+  final val name = "eqfactor_ordered"
+  final override val inferenceStatus = Some(SZS_Theorem)
 
+  final def apply(cl: Clause, maxLitIndex: Int, withLitIndex: Int): Clause = ???
 }
 
 object OrderedParamod extends CalculusRule {
