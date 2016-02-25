@@ -144,6 +144,8 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   @inline final def selectSide(l: Literal, side: Side): Term = if (side) l.left else l.right
   /** Returns the opposite side of the specified side. */
   @inline final def selectOtherSide(l: Literal, side: Side): Term = selectSide(l, !side)
+  /** Returns the sides of the literal l = r where the first element is l if first==leftSide, r otherwise. */
+  @inline final def getSidesOrdered(l: Literal, first: Side): (Term, Term) = if (first) (l.left, l.right) else (l.right,l.left)
 
   // Ordering stuff
   sealed abstract class LitMaxFlag
