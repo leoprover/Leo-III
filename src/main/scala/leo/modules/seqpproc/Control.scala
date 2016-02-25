@@ -178,7 +178,9 @@ object ParamodControl {
 
 object FactorizationControl {
 
+  final def factor(cl: ClauseWrapper): ClauseWrapper = ???
 }
+
 
 protected[seqpproc] abstract sealed class WrapperAnnotation extends Pretty
 case class InferredFrom(rule: leo.modules.calculus.CalculusRule, cws: Set[(ClauseWrapper, Output)]) extends WrapperAnnotation {
