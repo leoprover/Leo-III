@@ -1,5 +1,6 @@
 package leo.modules.seqpproc
 
+import leo.datastructures.Literal.Side
 import leo.datastructures.impl.Signature
 import leo.datastructures._
 import leo.datastructures.Term.:::>
@@ -777,7 +778,32 @@ object OrderedEqFac extends CalculusRule {
   final val name = "eqfactor_ordered"
   final override val inferenceStatus = Some(SZS_Theorem)
 
-  final def apply(cl: Clause, maxLitIndex: Int, withLitIndex: Int): Clause = ???
+  final def apply(cl: Clause, maxLitIndex: Int, maxLitSide: Side,
+                  withLitIndex: Int, withLitSide: Side): Clause = {
+    assert(cl.lits.isDefinedAt(maxLitIndex));
+    assert(cl.lits.isDefinedAt(withLitIndex));
+
+    assert(cl.lits(maxLitIndex).polarity)
+    assert(cl.lits(withLitIndex).polarity)
+
+    val maxLit = cl.lits(maxLitIndex)
+    val (maxLitSide1, maxLitSide2) = Literal.getSidesOrdered(maxLit, maxLitSide)
+    val withLit = cl.lits(withLitIndex)
+    val (withLitSide1, withLitSide2) = Literal.getSidesOrdered(withLit, withLitSide)
+
+    /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
+    * i.e. it is lated eliminated using Simp. */
+    val lits_without_maxLit = cl.lits.updated(maxLitIndex, Literal.mkLit(LitTrue(),false))
+    val unification_task1: Literal = Literal.mkNeg(maxLitSide1, withLitSide1)
+    val unification_task2: Literal = Literal.mkNeg(maxLitSide2, withLitSide2)
+
+    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
+    val newlitsSimp = Simp(newlits)
+
+    Clause(newlitsSimp)
+  }
+
+
 }
 
 object OrderedParamod extends CalculusRule {
