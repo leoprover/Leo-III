@@ -179,6 +179,8 @@ object ParamodControl {
 object FactorizationControl {
 
   final def factor(cl: ClauseWrapper): ClauseWrapper = ???
+
+  final def factorLit(lit: Literal, others: Seq[Literal]): Clause = ???
 }
 
 
