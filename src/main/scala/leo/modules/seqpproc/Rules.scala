@@ -811,7 +811,8 @@ object OrderedParamod extends CalculusRule {
   final override val inferenceStatus = Some(SZS_Theorem)
 
   /**
-    * Preconditions:
+    *
+    * @note Preconditions:
     * - withClause.lits(withIndex).polarity == true
     * - withSide == right => !withClause.lits(withIndex).oriented
     * - intoSide == right => !intoClause.lits(intoIndex).oriented
@@ -825,7 +826,6 @@ object OrderedParamod extends CalculusRule {
     * @param intoIndex index of literal `l=r` in `intoClause` that is rewritten
     * @param intoSide side of `l=r` that is rewritten
     * @param intoPosition position in `side(l=r)` that is rewritten
-    * @return
     */
   final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
             intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term): Clause = {

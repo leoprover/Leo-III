@@ -8,6 +8,7 @@ import leo.modules.normalization._
 import leo.modules.output._
 import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
 import leo.modules.calculus.{Subsumption, CalculusRule}
+import leo.modules.seqpproc.controlStructures._
 
 import scala.collection.SortedSet
 
@@ -290,7 +291,7 @@ object SeqPProc extends Function1[Long, Unit]{
             }
 
             /* paramodulation where at least one involved clause is `cur` */
-            val paramod_result = ParamodControl.paramodSet(cur, processed)
+            val paramod_result = Control.paramodSet(cur, processed)
             newclauses = newclauses union paramod_result
 
             /* Equality factoring */
