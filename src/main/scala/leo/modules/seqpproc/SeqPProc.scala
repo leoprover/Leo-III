@@ -283,15 +283,8 @@ object SeqPProc extends Function1[Long, Unit]{
             newclauses = newclauses union factor_result
 
             /* Prim subst */
-            val (cA_ps, ps_vars) = StdPrimSubst.canApply(cur.cl)
-            if (cA_ps) {
-              Out.debug(s"Prim subst on: ${cur.id}")
-              val new_ps_pre = StdPrimSubst(cur.cl, ps_vars)
-              val new_ps = new_ps_pre.map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set((cur,ToTPTP(subst)))))}
-              // FIXME: Additional binding information does not get updates when FVs are beeing renamed
-              Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
-              newclauses = newclauses union new_ps
-            }
+            val primSubst_result = Control.primsubst(cur)
+            newclauses = newclauses union primSubst_result
 
             /* TODO: Choice */
             /////////////////////////////////////////

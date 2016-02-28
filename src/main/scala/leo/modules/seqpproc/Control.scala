@@ -16,7 +16,7 @@ object Control {
   @inline final def paramodSet(cl: ClauseWrapper, withSet: Set[ClauseWrapper]): Set[ClauseWrapper] = ParamodControl.paramodSet(cl,withSet)
   @inline final def factor(cl: ClauseWrapper): Set[ClauseWrapper] = FactorizationControl.factor(cl)
   @inline final def boolext(cl: ClauseWrapper): Set[ClauseWrapper] = BoolExtControl.boolext(cl)
-
+  @inline final def primsubst(cl: ClauseWrapper): Set[ClauseWrapper] = PrimSubstControl.primSubst(cl)
   // Redundancy inferences
   // ...
 }
@@ -242,6 +242,24 @@ package inferenceControl {
         }
       }
       res
+    }
+  }
+
+
+  protected[modules] object PrimSubstControl {
+    import leo.modules.output.ToTPTP
+
+    final def primSubst(cw: ClauseWrapper): Set[ClauseWrapper] = {
+      // TODO: Read from configuration thorougness of prim subst.
+      val (cA_ps, ps_vars) = StdPrimSubst.canApply(cw.cl)
+      if (cA_ps) {
+        Out.debug(s"Prim subst on: ${cw.id}")
+        val new_ps_pre = StdPrimSubst(cw.cl, ps_vars)
+        val new_ps = new_ps_pre.map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set((cw,ToTPTP(subst)))))}
+        Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
+        return new_ps
+      }
+      Set()
     }
   }
 
