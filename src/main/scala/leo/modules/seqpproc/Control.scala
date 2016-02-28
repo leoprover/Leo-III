@@ -329,24 +329,51 @@ package redundancyControl {
 }
 
 package indexingControl {
+
+  import leo.datastructures.impl.Signature
+
   object FVIndexControl {
     import leo.modules.indexing.CFF
     import leo.modules.indexing.FVIndex
+    import leo.datastructures.Clause
 
     val maxFeatures: Int = 150
     var initialized = false
     var features: Seq[CFF] = Seq()
 
-    def init(initClauses: Set[ClauseWrapper]): Unit = {
+    final def init(initClauses: Set[ClauseWrapper]): Unit = {
       assert(!initialized)
 
-      features = features :+ FVIndex.posLitsFeature
+      val symbs = Signature.get.allUserConstants.toVector
+      val featureFunctions: Seq[CFF] = Vector(FVIndex.posLitsFeature(_), FVIndex.negLitsFeature(_)) ++
+        symbs.flatMap {case symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
+        FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}
 
+      var initFeatures: Seq[Set[Int]] = Seq()
+      val featureFunctionIt = featureFunctions.iterator
+      while (featureFunctionIt.hasNext) {
+        val cff = featureFunctionIt.next()
 
+        val res = initClauses.map {case cw => cff(cw.cl)}
+        initFeatures = res +: initFeatures
+      }
+      val sortedFeatures = initFeatures.zipWithIndex.sortBy(_._1.size).take(maxFeatures)
+      this.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
       initialized = true
+
+      // TOOD: Insert by feature, not each feature vector gets recalculated
+      val initIt = initClauses.iterator
+      while (initIt.hasNext) {
+        val initCl = initIt.next()
+        insert(initCl)
+      }
     }
 
-    def insert(cl: ClauseWrapper): Unit = ???
+    final def insert(cl: ClauseWrapper): Unit = {
+      assert(initialized)
+      val featureVector = features.map(_(cl.cl))
+      FVIndex.add(cl.cl, featureVector)
+    }
   }
 }
 
