@@ -6,18 +6,11 @@ import leo.datastructures.impl.Signature
   * Created by lex on 28.02.16.
   */
 object FVIndex {
-  val fvTrie: FixedLengthTrie[ClauseFeature, Clause] = FixedLengthTrie()
-  var initialized = false
-
-  def initIndex(maxNumberOfFeatures: Int): Unit = {
-    assert(!initialized)
-
-
-    initialized = true
+  final private val fvTrie: FixedLengthTrie[ClauseFeature, Clause] = FixedLengthTrie()
+  def add(cl: Clause, featureVector: FeatureVector): Unit = {
+    fvTrie.insert(featureVector, cl)
   }
-  def registerSymbols(symbols: Set[Signature#Key]): Unit = ???
-  def add(cl: Clause, featureVector: FeatureVector): Unit = ???
-  def asTrie: FixedLengthTrie[ClauseFeature, Clause] = ???
+  def asTrie: FixedLengthTrie[ClauseFeature, Clause] = fvTrie
 
   @inline final def posLitsFeature(cl: Clause): Int = cl.posLits.size
   @inline final def negLitsFeature(cl: Clause): Int = cl.negLits.size
