@@ -12,8 +12,13 @@ import leo.modules.seqpproc.controlStructures._
 object Control {
   import inferenceControl._
 
-  final def paramodSet(cl: ClauseWrapper, withSet: Set[ClauseWrapper]): Set[ClauseWrapper] = ParamodControl.paramodSet(cl,withSet)
-  final def factor(cl: ClauseWrapper): Set[ClauseWrapper] = FactorizationControl.factor(cl)
+  // Generating inferences
+  @inline final def paramodSet(cl: ClauseWrapper, withSet: Set[ClauseWrapper]): Set[ClauseWrapper] = ParamodControl.paramodSet(cl,withSet)
+  @inline final def factor(cl: ClauseWrapper): Set[ClauseWrapper] = FactorizationControl.factor(cl)
+  @inline final def boolext(cl: ClauseWrapper): Set[ClauseWrapper] = BoolExtControl.boolext(cl)
+
+  // Redundancy inferences
+  // ...
 }
 
 /** Package collcetion control objects for inference rules.
@@ -36,8 +41,6 @@ package inferenceControl {
     * @since 22.02.16
     */
   protected[modules] object ParamodControl {
-//    import inferenceControl._
-
     final def paramodSet(cl: ClauseWrapper, withset: Set[ClauseWrapper]): Set[ClauseWrapper] = {
       var results: Set[ClauseWrapper] = Set()
       val withsetIt = withset.iterator
@@ -212,6 +215,32 @@ package inferenceControl {
       }
 
       Out.trace(s"Factor result:\n\t${res.map(_.pretty).mkString("\n\t")}")
+      res
+    }
+  }
+
+
+  protected[modules] object BoolExtControl {
+    final def boolext(cw: ClauseWrapper): Set[ClauseWrapper] = {
+      var res: Set[ClauseWrapper] = Set()
+      if (!Configuration.isSet("nbe")) {
+        if (!leo.datastructures.isPropSet(ClauseWrapper.PropBoolExt, cw.propertyFlag)) {
+          val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
+          if (cA_boolExt) {
+            Out.debug(s"Bool Ext on: ${cw.pretty}")
+            val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cw))))
+            Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+
+            res = boolExt_cws.flatMap(cw => {
+              Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");
+              CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
+            }.map(c => {
+              Out.finest(s"${c.pretty}\n\t");
+              ClauseWrapper(c, InferredFrom(CNF, Set(cw)))
+            }))
+          }
+        }
+      }
       res
     }
   }

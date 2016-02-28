@@ -271,37 +271,16 @@ object SeqPProc extends Function1[Long, Unit]{
             // Generating inferences BEGIN
             /////////////////////////////////////////
             /* Boolean Extensionality */
-            if (!Configuration.isSet("nbe")) {
-              if (!leo.datastructures.isPropSet(ClauseWrapper.PropBoolExt, cur.propertyFlag)) {
-                val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cur.cl)
-                if (cA_boolExt) {
-                  Out.debug(s"Bool Ext on: ${cur.pretty}")
-                  val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cur))))
-                  Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
-
-                  newclauses = newclauses union boolExt_cws.flatMap(cw => {
-                    Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");
-                    CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
-                  }.map(c => {
-                    Out.finest(s"${c.pretty}\n\t");
-                    ClauseWrapper(c, InferredFrom(CNF, Set(cw)))
-                  }))
-                }
-              }
-            }
+            val boolext_result = Control.boolext(cur)
+            newclauses = newclauses union boolext_result
 
             /* paramodulation where at least one involved clause is `cur` */
             val paramod_result = Control.paramodSet(cur, processed)
             newclauses = newclauses union paramod_result
 
-            /* Equality factoring */
+            /* Equality factoring of `cur` */
             val factor_result = Control.factor(cur)
             newclauses = newclauses union factor_result
-
-//            Out.debug(s"Eq_factoring on ${cur.id}")
-//            val factorres = EqFac(cur.cl).map(cl => ClauseWrapper(cl, InferredFrom(EqFac, Set(cur))))
-//            newclauses = newclauses union factorres
-//            Out.trace(s"Eq_factoring result:\n\t${factorres.map(_.pretty).mkString("\n\t")}")
 
             /* Prim subst */
             val (cA_ps, ps_vars) = StdPrimSubst.canApply(cur.cl)
