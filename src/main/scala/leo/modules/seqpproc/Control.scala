@@ -10,15 +10,16 @@ import leo.modules.seqpproc.controlStructures._
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
 object Control {
-  import inferenceControl._
-
   // Generating inferences
-  @inline final def paramodSet(cl: ClauseWrapper, withSet: Set[ClauseWrapper]): Set[ClauseWrapper] = ParamodControl.paramodSet(cl,withSet)
-  @inline final def factor(cl: ClauseWrapper): Set[ClauseWrapper] = FactorizationControl.factor(cl)
-  @inline final def boolext(cl: ClauseWrapper): Set[ClauseWrapper] = BoolExtControl.boolext(cl)
-  @inline final def primsubst(cl: ClauseWrapper): Set[ClauseWrapper] = PrimSubstControl.primSubst(cl)
+  @inline final def paramodSet(cl: ClauseWrapper, withSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
+  @inline final def factor(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.FactorizationControl.factor(cl)
+  @inline final def boolext(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.BoolExtControl.boolext(cl)
+  @inline final def primsubst(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.PrimSubstControl.primSubst(cl)
   // Redundancy inferences
-  // ...
+  @inline final def subsumesForward(cl: ClauseWrapper, processed: Set[ClauseWrapper]): Boolean = ???
+  // Indexing
+  final def fvIndexInit(initClauses: Set[ClauseWrapper]): Unit = indexingControl.FVIndexControl.init(initClauses)
+  final def fvIndexInsert(cl: ClauseWrapper): Unit = indexingControl.FVIndexControl.insert(cl)
 }
 
 /** Package collcetion control objects for inference rules.
@@ -319,6 +320,34 @@ package inferenceControl {
     }
   }
 
+}
+
+package redundancyControl {
+  object Subsumption {
+    def testForwardSubsumption(cl: ClauseWrapper, withSet: Set[ClauseWrapper]): Boolean = ???
+  }
+}
+
+package indexingControl {
+  object FVIndexControl {
+    import leo.modules.indexing.CFF
+    import leo.modules.indexing.FVIndex
+
+    val maxFeatures: Int = 150
+    var initialized = false
+    var features: Seq[CFF] = Seq()
+
+    def init(initClauses: Set[ClauseWrapper]): Unit = {
+      assert(!initialized)
+
+      features = features :+ FVIndex.posLitsFeature
+
+
+      initialized = true
+    }
+
+    def insert(cl: ClauseWrapper): Unit = ???
+  }
 }
 
 ////////////////////////////////////////////////////////

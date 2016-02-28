@@ -199,6 +199,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
     val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
     // initialize sets
+    Control.fvIndexInit(preprocessed.toSet)
     var unprocessed: SortedSet[ClauseWrapper] = preprocessed
     var processed: Set[ClauseWrapper] = Set()
     var units: Set[ClauseWrapper] = Set()
@@ -246,6 +247,7 @@ object SeqPProc extends Function1[Long, Unit]{
             /////////////////////////////////////////
             /* Subsumption */
             processed = processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)) + cur
+            Control.fvIndexInsert(cur)
             /* Add rewrite rules to set */
             if (Clause.rewriteRule(cur.cl)) {
               units = units + cur
