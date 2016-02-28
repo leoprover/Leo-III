@@ -103,17 +103,18 @@ object SeqPProc extends Function1[Long, Unit]{
     else left3
 
 
-    val left4 = if (Configuration.isSet("nbe")) leftAC
-    else leftAC union leftAC.flatMap { c =>
-      val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
-      if (cA_boolExt) {
-        Out.trace(s"Bool Ext on: ${c.pretty}")
-        val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(c))))
-        Out.finest(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
-        boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw))); Out.finest(s"${res.pretty}\n\t"); res}))
-      } else
-        Set(c)
-    }
+//    val left4 = if (Configuration.isSet("nbe")) leftAC
+//    else leftAC union leftAC.flatMap { c =>
+//      val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
+//      if (cA_boolExt) {
+//        Out.trace(s"Bool Ext on: ${c.pretty}")
+//        val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(c))))
+//        Out.finest(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
+//        boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw))); Out.finest(s"${res.pretty}\n\t"); res}))
+//      } else
+//        Set(c)
+//    }
+    val left4 = leftAC
 
     val left5 = left4.map(cw => {Out.trace(s"Simp on ${cw.id}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
     val left6 = left5.filterNot(cw => Clause.trivial(cw.cl))
@@ -139,7 +140,8 @@ object SeqPProc extends Function1[Long, Unit]{
       newclauses
     } else left6
 
-    left7.foreach(_.propertyFlag = ClauseWrapper.PropBoolExt | ClauseWrapper.PropUnified)
+    // TODO: Do that in a reasonable way...
+    left7.foreach(_.propertyFlag = ClauseWrapper.PropUnified)
     left7
   }
 
