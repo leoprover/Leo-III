@@ -295,10 +295,13 @@ object SeqPProc extends Function1[Long, Unit]{
             newclauses = newclauses union paramod_result
 
             /* Equality factoring */
-            Out.debug(s"Eq_factoring on ${cur.id}")
-            val factorres = EqFac(cur.cl).map(cl => ClauseWrapper(cl, InferredFrom(EqFac, Set(cur))))
-            newclauses = newclauses union factorres
-            Out.trace(s"Eq_factoring result:\n\t${factorres.map(_.pretty).mkString("\n\t")}")
+            val factor_result = Control.factor(cur)
+            newclauses = newclauses union factor_result
+
+//            Out.debug(s"Eq_factoring on ${cur.id}")
+//            val factorres = EqFac(cur.cl).map(cl => ClauseWrapper(cl, InferredFrom(EqFac, Set(cur))))
+//            newclauses = newclauses union factorres
+//            Out.trace(s"Eq_factoring result:\n\t${factorres.map(_.pretty).mkString("\n\t")}")
 
             /* Prim subst */
             val (cA_ps, ps_vars) = StdPrimSubst.canApply(cur.cl)
