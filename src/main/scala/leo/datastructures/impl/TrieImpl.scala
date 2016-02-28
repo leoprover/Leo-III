@@ -5,23 +5,23 @@ import leo.datastructures.Trie
 /**
   * Created by lex on 28.02.16.
   */
-protected[datastructures] class HashMapTrieImpl[K,V] extends leo.datastructures.Trie[K,V] {
+protected[datastructures] abstract class HashMapTrieImpl[K,V] extends leo.datastructures.Trie[K,V] {
   import scala.collection.immutable.HashMap
-  import scala.collection.immutable.HashSet
 
   protected[this] var subTrieMap: Map[K, HashMapTrieImpl[K,V]] = HashMap[K, HashMapTrieImpl[K,V]]()
-  protected[this] var values: Set[V] = HashSet[V]()
 
+  protected[this] def apply(keyLength: Int): HashMapTrieImpl[K,V]
+  protected[this] def addValue(entry: V): Unit
 
   def insert(key: Seq[K], entry: V): Unit = {
     if (key.isEmpty) {
-      this.values = this.values + entry
+      addValue(entry)
     } else {
       val (hd,tail) = (key.head, key.tail)
       if (subTrieMap.contains(hd)) {
         subTrieMap(hd).insert(tail, entry)
       } else {
-        val newSubTrie = new HashMapTrieImpl[K,V]()
+        val newSubTrie = apply(tail.length)
         newSubTrie.insert(tail, entry)
         subTrieMap = subTrieMap + (hd -> newSubTrie)
       }
@@ -31,8 +31,6 @@ protected[datastructures] class HashMapTrieImpl[K,V] extends leo.datastructures.
   def get(key: Seq[K]): Set[V] = subTrie(key).fold(Set[V]())(_.valueSet)
 
   def getAll: Set[V] = valueSet ++ subTrieMap.values.flatMap(_.getAll)
-
-  def valueSet: Set[V] = values
 
   def subTrie(prefix: Seq[K]): Option[Trie[K, V]] = {
     if (prefix.isEmpty) Some(this)
@@ -51,15 +49,62 @@ protected[datastructures] class HashMapTrieImpl[K,V] extends leo.datastructures.
   def getPrefix(prefix: Seq[K]): Set[V] = subTrie(prefix).fold(Set[V]())(_.getAll)
 
   def isEmpty: Boolean = valueSet.isEmpty && subTrieMap.isEmpty
+}
 
-//  case object EmptyTrie extends leo.datastructures.Trie[K,V] {
-//    def insert(key: Seq[K], entry: V): Unit = {this = new HashMapTrieImpl[K,V]}
-//    def get(key: Seq[K]): Set[V] = Set.empty
-//    def valueSet: Set[V] = Set.empty
-//    def subTrie(prefix: Seq[K]): Trie[K, V] = EmptyTrie
-//    def getPrefix(prefix: Seq[K]): Set[V] = Set.empty
-//    def isEmpty: Boolean = true
-//    def getAll: Set[V] = Set.empty
-//    override def toString(): String = "empty"
-//  }
+// #################################
+
+protected[datastructures] class DefaultHashMapTrieImpl[K,V] extends HashMapTrieImpl[K,V] {
+  import scala.collection.immutable.HashSet
+  protected[this] var values: Set[V] = HashSet[V]()
+
+  protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = new DefaultHashMapTrieImpl[K,V]
+  protected[this] def addValue(entry: V): Unit = {
+    values = values + entry
+  }
+  def valueSet: Set[V] = values
+}
+
+// #################################
+
+
+protected[datastructures] class FixedLengthHashMapTrieImpl[K,V] extends HashMapTrieImpl[K,V] with leo.datastructures.FixedLengthTrie[K,V] {
+  protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = {
+    if (keyLength == 0) Leaf
+    else new FixedLengthHashMapTrieImpl[K,V]
+  }
+
+  protected[this] def addValue(entry: V): Unit = throw new IllegalArgumentException
+  def valueSet: Set[V] = Set.empty
+
+
+
+  private object Leaf extends FixedLengthHashMapTrieImpl[K,V] {
+    import scala.collection.immutable.HashSet
+    protected[this] var values: Set[V] = HashSet[V]()
+//    override var subTrieMap = null
+
+    override protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = throw new IllegalArgumentException
+    override protected[this] def addValue(entry: V): Unit = {values = values + entry}
+
+
+    override def insert(key: Seq[K], entry: V): Unit = {
+      if (key.isEmpty) addValue(entry)
+      else throw new IllegalArgumentException
+    }
+
+    override def valueSet: Set[V] = values
+
+    override def get(key: Seq[K]): Set[V] = getPrefix(key)
+    override def getAll: Set[V] = values
+    override def subTrie(prefix: Seq[K]): Option[Trie[K, V]] = {
+     if (prefix.isEmpty) Some(this)
+     else None
+    }
+    override def getPrefix(prefix: Seq[K]): Set[V] = {
+      if (prefix.isEmpty) values
+      else Set.empty
+    }
+    override def iterator: Iterator[Trie[K, V]] =  Iterator.empty
+    override def isEmpty: Boolean = values.isEmpty
+  }
 }

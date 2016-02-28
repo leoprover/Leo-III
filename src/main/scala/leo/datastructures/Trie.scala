@@ -23,8 +23,19 @@ trait Trie[Key, Value] {
   def iterator: Iterator[Trie[Key, Value]]
 
   /** Returns the subtrie that is located at position `prefix` */
-  def subTrie(prefix: Seq[Key]): Trie[Key, Value]
+  def subTrie(prefix: Seq[Key]): Option[Trie[Key, Value]]
 }
+
+object Trie {
+  import impl.DefaultHashMapTrieImpl
+  def apply[K,V](): Trie[K,V] = new DefaultHashMapTrieImpl[K,V]()
+  def apply[K,V](key: Seq[K], entry: V): Trie[K,V] = {
+    val newTrie = apply[K,V]()
+    newTrie.insert(key, entry)
+    newTrie
+  }
+}
+
 
 /**
   * Special-case of `Trie` where each entry key has the same length.
@@ -33,10 +44,10 @@ trait Trie[Key, Value] {
   */
 trait FixedLengthTrie[Key, Value] extends Trie[Key, Value]
 
-object Trie {
-  import impl.HashMapTrieImpl
-  def apply[K,V](): Trie[K,V] = new HashMapTrieImpl[K,V]()
-  def apply[K,V](key: Seq[K], entry: V): Trie[K,V] = {
+object FixedLengthTrie {
+  import impl.FixedLengthHashMapTrieImpl
+  def apply[K,V](): FixedLengthTrie[K,V] = new FixedLengthHashMapTrieImpl[K,V]()
+  def apply[K,V](key: Seq[K], entry: V): FixedLengthTrie[K,V] = {
     val newTrie = apply[K,V]()
     newTrie.insert(key, entry)
     newTrie
