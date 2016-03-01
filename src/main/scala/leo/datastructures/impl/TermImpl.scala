@@ -84,12 +84,12 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case Atom(key) if !symbs.contains(key) => {
       val meta = Signature(key)
       if (meta.hasDefn) {
-        mkRedex(meta._defn, args.exhaustive_δ_expand_upTo(symbs))
+        mkRedex(meta._defn.exhaustive_δ_expand_upTo(symbs), args.exhaustive_δ_expand_upTo(symbs))
       } else {
         mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
       }
     }
-    case _ => this
+    case _ => mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
   }
 
   lazy val head_δ_expandable = hd.δ_expandable
@@ -154,6 +154,10 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
                            Map(this.asInstanceOf[Term] -> Set(Position.root))
                          else
                            fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root), headToTerm(hd) -> Set(Position.root.headPos)), args.occurrences)
+  lazy val feasibleOccurences = if (args.length == 0)
+    Map(this.asInstanceOf[Term] -> Set(Position.root))
+  else
+    fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root), headToTerm(hd) -> Set(Position.root.headPos)), args.feasibleOccurences)
   val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 2 + args.size
 
@@ -161,7 +165,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   lazy val typeCheck = typeCheck0(hd.ty, args)
   private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
     case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t.codomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case _ => true // other cases should not appear
   }
@@ -210,14 +214,14 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
                                                     case _ => Root(hd, args.replaceAt(at, by))
                                                   }
 
-  def substitute(subst: Subst): Term = hd match {
-    case MetaIndex(ty,id) => subst.substBndIdx(id) match {
-      case TermFront(t) => Redex(t, args.substitute(subst))
-      case BoundFront(j) => Root(MetaIndex(ty, j), args.substitute(subst))
-      case _ => throw new IllegalArgumentException("type front found during meta variable instantiation.")
-    }
-    case _ => Root(hd, args.substitute(subst))
-  }
+//  def substitute(subst: Subst): Term = hd match {
+//    case MetaIndex(ty,id) => subst.substBndIdx(id) match {
+//      case TermFront(t) => Redex(t, args.substitute(subst))
+//      case BoundFront(j) => Root(MetaIndex(ty, j), args.substitute(subst))
+//      case _ => throw new IllegalArgumentException("type front found during meta variable instantiation.")
+//    }
+//    case _ => Root(hd, args.substitute(subst))
+//  }
 
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -310,12 +314,12 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 1 + body.size + args.size
   lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
-
+  lazy val feasibleOccurences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
   // Other operations
   lazy val typeCheck = typeCheck0(body.ty, args)
   private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
     case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t._funCodomainType, rest) && head.typeCheck
+    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t.codomainType, rest) && head.typeCheck
     case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
     case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
   }
@@ -334,7 +338,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
                                                     case _ => Redex(body, args.replaceAt(at, by))
                                                   }
 
-  def substitute(subst: Subst): Term = Redex(body.substitute(subst), args.substitute(subst))
+//  def substitute(subst: Subst): Term = Redex(body.substitute(subst), args.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -413,6 +417,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   val scopeNumber = (body.scopeNumber._1 + 1,Math.min(typ.scopeNumber,body.scopeNumber._2))
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
+  lazy val feasibleOccurences = body.occurrences.filterNot {case oc => oc._1.looseBounds.contains(1)}.mapValues(_.map(_.prependAbstrPos))
 
   // Other operations
   lazy val typeCheck = body.typeCheck
@@ -430,7 +435,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
                                                 else
                                                   TermAbstr(typ, body.replaceAt(at.tail, by))
 
-  def substitute(subst: Subst): Term = TermAbstr(typ, body.substitute(subst))
+//  def substitute(subst: Subst): Term = TermAbstr(typ, body.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -505,6 +510,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   val scopeNumber = (body.scopeNumber._1, body.scopeNumber._2+1)
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
+  lazy val feasibleOccurences = ??? // TODO
 
   // Other operations
   lazy val typeCheck = body.typeCheck
@@ -522,7 +528,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
                                                 else
                                                   TypeAbstr(body.replaceAt(at.tail, by))
 
-  def substitute(subst: Subst): Term = TypeAbstr(body.substitute(subst))
+//  def substitute(subst: Subst): Term = TypeAbstr(body.substitute(subst))
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
@@ -570,6 +576,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val headSymbolDepth = 1 + term.headSymbolDepth
   val scopeNumber = term.scopeNumber
   val occurrences = Map[Term, Set[Position]]()
+  lazy val feasibleOccurences = Map[Term, Set[Position]]() // TODO
 //    term.headSymbol match {
 //    case Root(head, SNil) => head match {
 //      case b@BoundIndex(typ, scope) => b.substitute(σ) match {
@@ -592,7 +599,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   def replaceAt(at: Position, by: Term): Term = ???
 
 
-  def substitute(subst: Subst): Term = this.betaNormalize.substitute(subst)
+//  def substitute(subst: Subst): Term = this.betaNormalize.substitute(subst)
   //  def preNormalize(s: Subst) = term.preNormalize(σ o s)
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
@@ -762,7 +769,8 @@ protected[impl] sealed abstract class Spine extends Pretty {
   def size: Int
   lazy val occurrences: Map[Term, Set[Position]] = occurrences0(1)
   def occurrences0(pos: Int): Map[Term, Set[Position]]
-
+  lazy val feasibleOccurences: Map[Term, Set[Position]] =  feasibleOccurrences0(1)
+  def feasibleOccurrences0(pos: Int): Map[Term, Set[Position]]
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)): Spine
 
@@ -811,6 +819,7 @@ protected[impl] case object SNil extends Spine {
   val scopeNumber = (0, 0)
   val size = 1
   def occurrences0(pos: Int) = Map()
+  def feasibleOccurrences0(pos: Int) = Map()
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = SpineClos(sp, spSubst)
@@ -863,6 +872,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   lazy val scopeNumber = (Math.min(hd.scopeNumber._1, tail.scopeNumber._1),Math.min(hd.scopeNumber._2, tail.scopeNumber._2))
   lazy val size = 1+ hd.size + tail.size
   def occurrences0(pos: Int) = fuseMaps(hd.occurrences.mapValues(_.map(_.preprendArgPos(pos))), tail.occurrences0(pos+1))
+  def feasibleOccurrences0(pos: Int) = fuseMaps(hd.feasibleOccurences.mapValues(_.map(_.preprendArgPos(pos))), tail.feasibleOccurrences0(pos+1))
 
 
   // Misc
@@ -927,6 +937,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val scopeNumber = (tail.scopeNumber._1,Math.min(hd.scopeNumber, tail.scopeNumber._2))
   lazy val size = 1 + tail.size
   def occurrences0(pos: Int) = tail.occurrences0(pos+1)
+  def feasibleOccurrences0(pos: Int) = tail.feasibleOccurrences0(pos+1)
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = TyApp(hd.substitute(subst._2), tail.merge(subst, sp, spSubst))
@@ -985,6 +996,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   lazy val scopeNumber = sp.scopeNumber
   lazy val size = sp.size // todo: properly implement
   def occurrences0(pos: Int) = Map.empty
+  def feasibleOccurrences0(pos: Int) = Map.empty
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = sp.merge((s._1 o subst._1,s._2 o subst._2),sp, spSubst)

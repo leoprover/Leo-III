@@ -5,6 +5,8 @@ package leo
  */
 package object datastructures {
 
+  @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
+
   type CMP_Result = Byte
   final val CMP_EQ: CMP_Result = 0.toByte
   final val CMP_LT: CMP_Result = 1.toByte

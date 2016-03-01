@@ -21,90 +21,57 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
   protected var metaMap: IntMap[Meta] = IntMap.empty
 
-  protected var typeSet, fixedSet, definedSet, uiSet: BitSet = BitSet.empty
+  /* typeSet: set of all type constructors,
+  * fixedSet: set of all built-in symbols (regardless if primitive or not)
+  * definedSet: set of all symbols having a definition
+  * uiSet: set of all symbols not having a definition
+  * aSet: set of all associative symbols
+  * cSet: set of all commutative symbols
+  */
+  protected var typeSet, fixedSet, definedSet, uiSet, aSet, cSet: Set[Key] = BitSet.empty
 
   ///////////////////////////////
   // Meta information
   ///////////////////////////////
 
-  /** Case class for meta information for base types that are indexed in the signature */
-  protected[impl] case class TypeMeta(identifier: String,
-                                          index: Key,
-                                          k:  Kind) extends Meta {
-    def name = identifier
-    def key = index
-    def symType = if (k == TypeKind) {
-      BaseType
-    } else {
-      TypeConstructor
-    }
-    def ty: Option[Type] = None
-    def kind: Option[Kind] = Some(k)
-    def defn: Option[Term] = None
-    def status = -1
-
-    def hasType = false
-    def hasKind = true
-    def hasDefn = false
+  /** Case class for meta information for type constructors
+    * that are indexed in the signature */
+  protected[impl] case class TypeMeta(name: String,
+                                          key: Key,
+                                          k:  Kind,
+                                          flag: IsSignature.SymbProp) extends Meta {
+    val ty: Option[Type] = None
+    val kind: Option[Kind] = Some(k)
+    val defn: Option[Term] = None
   }
 
-  /** Case class for meta information for uninterpreted symbols */
-  protected[impl] case class UninterpretedMeta(identifier: String,
-                                                   index: Key,
+  /** Case class for meta information for (un)-interpreted term symbols,
+    * i.e. symbols without definition regardless whether system or user provided. */
+  protected[impl] case class UninterpretedMeta(name: String,
+                                                   key: Key,
                                                    typ: Type,
-                                                   status: Int) extends Meta {
-    def name = identifier
-    def key = index
-    def symType = Uninterpreted
-    def ty: Option[Type] = Some(typ)
-    def kind: Option[Kind] = None
-    def defn: Option[Term] = None
-
-    def hasType = true
-    def hasKind = false
-    def hasDefn = false
+                                                   flag: IsSignature.SymbProp) extends Meta {
+    val ty: Option[Type] = Some(typ)
+    val kind: Option[Kind] = None
+    val defn: Option[Term] = None
   }
 
   /** Case class for meta information for defined symbols */
-  protected[impl] case class DefinedMeta(identifier: String,
-                                             index: Key,
-                                             typ: Option[Type],
+  protected[impl] case class DefinedMeta(name: String,
+                                             key: Key,
+                                             typ: Type,
                                              definition: Term,
-                                             status: Int) extends Meta {
-    def name = identifier
-    def key = index
-    def symType = Defined
-    def ty: Option[Type] = typ
-    def kind: Option[Kind] = None
-    def defn: Option[Term] = Some(definition)
-
-    def hasType = typ.isDefined
-    def hasKind = false
-    def hasDefn = true
-  }
-
-  /** Case class for meta information for fixed (interpreted) symbols */
-  protected[impl] case class FixedMeta(identifier: String,
-                                           index: Key,
-                                           typ: Type,
-                                           status: Int) extends Meta {
-    def name = identifier
-    def key = index
-    def symType = Fixed
-    def ty: Option[Type] = Some(typ)
-    def kind: Option[Kind] = None
-    def defn: Option[Term] = None
-
-    def hasType = true
-    def hasKind = false
-    def hasDefn = false
+                                             flag: IsSignature.SymbProp) extends Meta {
+    val ty: Option[Type] = Some(typ)
+    val kind: Option[Kind] = None
+    val defn: Option[Term] = Some(definition)
   }
 
   ///////////////////////////////
   // Maintenance methods for the signature
   ///////////////////////////////
 
-  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term], status: Int): Key = {
+  protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], status: Int): Key = {
     if (keyMap.contains(identifier)) {
       throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
@@ -116,43 +83,34 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     defn match {
       case None => { // Uninterpreted or type
         typ match {
-          case None => throw new IllegalArgumentException("Neither definition nor type was passed to addConstant0.")
-          case Some(Right(k:Kind)) => { // Type
-            true match {
-              case k.isTypeKind | k.isFunKind => {
-                val meta = TypeMeta(identifier, key, k)
-                metaMap += ((key, meta))
-              }
-              case _ => { // it is neither a base or funKind, then it's a super kind.
-              val meta = TypeMeta(identifier, key, Type.superKind)
-                metaMap += ((key, meta))
-              }
-            }
+          case Right(k:Kind) => { // Type
+          val meta = TypeMeta(identifier, key, k, IsSignature.PropNoProp)
+            metaMap += ((key, meta))
             typeSet += key
           }
-          case Some(Left(t:Type)) => { // Uninterpreted symbol
-          val meta = UninterpretedMeta(identifier, key, t, status)
+          case Left(t:Type) => { // Uninterpreted symbol
+          val meta = UninterpretedMeta(identifier, key, t, status*IsSignature.PropStatus)
             metaMap += ((key, meta))
             uiSet += key
+            // TODO: AC sets
           }
         }
       }
 
       case Some(fed) => { // Defined
-        val Left(ty) = typ.get
-        val meta = DefinedMeta(identifier, key, Some(ty), fed, status)
+        val ty = typ.left.get
+        val meta = DefinedMeta(identifier, key, ty, fed, status*IsSignature.PropStatus)
           metaMap += ((key, meta))
           definedSet += key
         }
     }
-
     key
   }
 
   def addDefinition(key: Key, defn: Term) = {
     metaMap.get(key) match {
       case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty => {
-        val newMeta = DefinedMeta(meta.name, key, Some(meta._ty), defn, meta.status)
+        val newMeta = DefinedMeta(meta.name, key, meta._ty, defn, meta.flag)
         metaMap += ((key, newMeta))
         definedSet += key
         uiSet -= key
@@ -166,6 +124,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
      metaMap.get(key) match {
        case None => false
        case Some(meta) => {
+         if (meta.isFixedSymbol) return false
+
+         if (meta.isASymbol) aSet -= key
+         if (meta.isCSymbol) cSet -= key
+         if (meta.isDefined) definedSet -= key
+         if (meta.isUninterpreted) uiSet -= key
+         if (meta.isTypeConstructor) typeSet -= key
+
          val id = meta.name
          metaMap -= key
          keyMap -= id
@@ -176,18 +142,34 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 
   def exists(identifier: String): Boolean = keyMap.contains(identifier)
 
-  def symbolType(identifier: String): SymbolType = metaMap(keyMap(identifier)).symType
-  def symbolType(identifier: Key): SymbolType = metaMap(identifier).symType
-
-  /** Adds a symbol to the signature that is then marked as `Fixed` symbol type */
-  protected def addFixed(identifier: String, typ: Type, status: Int): Unit = {
+  /** Adds a term symbol to the signature that is then marked as system symbol type */
+  protected def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: IsSignature.SymbProp): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
-
-    val meta = FixedMeta(identifier, key, typ, status)
-    metaMap += ((key, meta))
+    if (defn.isDefined) {
+      val deff = defn.get
+      val meta = DefinedMeta(identifier, key, typ, deff, flag)
+      metaMap += ((key, meta))
+      definedSet += key
+    } else {
+      val meta = UninterpretedMeta(identifier, key, typ, flag)
+      metaMap += ((key, meta))
+    }
     fixedSet += key
+    if (leo.datastructures.isPropSet(IsSignature.PropAssociative, flag)) aSet += key
+    if (leo.datastructures.isPropSet(IsSignature.PropCommutative, flag)) cSet += key
+  }
+
+  /** Adds a type contructor symbol to the signature that is then marked as system symbol type */
+  protected def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
+    val key = curConstKey
+    curConstKey += 1
+    keyMap += ((identifier, key))
+    val meta = TypeMeta(identifier, key, kind, IsSignature.PropFixed)
+    metaMap += ((key, meta))
+    fixedSet += key // since its system-provided
+    typeSet += key // since its a type constructor
   }
 
   ///////////////////////////////
@@ -206,6 +188,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     fixedSet = fixedSet.empty
     definedSet = definedSet.empty
     uiSet = uiSet.empty
+    aSet = aSet.empty
+    cSet = cSet.empty
 
     Term.reset()
   }
@@ -215,12 +199,14 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   ///////////////////////////////
 
   def allConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
-  def allUserConstants = (uiSet | definedSet | typeSet).filter(_ > HOLSignature.lastId)
-  def fixedSymbols: Set[Key] = fixedSet.toSet
-  def definedSymbols: Set[Key] = definedSet.toSet
-  def uninterpretedSymbols: Set[Key] = uiSet.toSet
-  def baseTypes: Set[Key] = typeSet.toSet
-
+  def allUserConstants = allConstants &~ fixedSet
+  def primitiveSymbols: Set[Key] = fixedSet &~ definedSet
+  def fixedSymbols: Set[Key] = fixedSet
+  def definedSymbols: Set[Key] = definedSet
+  def uninterpretedSymbols: Set[Key] = uiSet
+  def typeConstructors: Set[Key] = typeSet
+  def aSymbols: Set[Key] = aSet
+  def cSymbols: Set[Key] = cSet
 
   ///////////////////////////////
   // Creating of fresh variables
@@ -280,15 +266,15 @@ object Signature {
   /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
   def withHOL(sig: Signature): Signature = {
     for ((name, k) <- sig.types) {
-      sig.addBaseType(name)
+      sig.addFixedTypeConstructor(name, k)
     }
 
-    for ((name, ty, status) <- sig.fixedConsts) {
-      sig.addFixed(name, ty, status)
+    for ((name, ty, flag) <- sig.fixedConsts) {
+      sig.addFixed(name, ty, None, flag | IsSignature.PropFixed)
     }
 
-    for ((name, fed, ty, status) <- sig.definedConsts) {
-      sig.addDefined(name, fed, ty, status)
+    for ((name, fed, ty, flag) <- sig.definedConsts) {
+      sig.addFixed(name, ty, Some(fed), flag | IsSignature.PropFixed)
     }
    sig
   }

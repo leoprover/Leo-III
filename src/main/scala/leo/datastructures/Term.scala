@@ -67,6 +67,7 @@ trait Term extends Pretty {
 
   def fv: Set[(Int, Type)]
   def occurrences: Map[Term, Set[Position]]
+  def feasibleOccurences: Map[Term, Set[Position]]
   def symbols: Set[Signature#Key]
   def symbolsOfType(ty: Type) = {
     val sig = Signature.get
@@ -83,10 +84,10 @@ trait Term extends Pretty {
   def replace(what: Term, by: Term): Term
   def replaceAt(at: Position, by: Term): Term
 
-  /** Apply meta-variable substitution `subst` to underlying term.
-    * I.e. each meta-variable `i` occurring within `this` is replaced by `subst(i)`,
-    * Note that the term might needs to be re-normalized. */
-  def substitute(subst: Subst): Term
+  /** Apply substitution `subst` to underlying term.
+    * I.e. each free variable `i` (NOT meta-vars!) occurring within `this` is replaced by `subst(i)`,
+    * The term is then beta normalized */
+  def substitute(subst: Subst): Term = closure(subst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
 

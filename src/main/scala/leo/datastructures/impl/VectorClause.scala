@@ -48,6 +48,6 @@ object VectorClause {
     lazy val lits = literals.toVector
     import leo.datastructures.Literal.{LitMaxFlag, LitStrictlyMax, LitMax}
 
-    lazy val maxLits: Map[LitMaxFlag, Seq[Literal]] = Literal.maximalityOf(lits)
+    lazy val maxLitsMap: Map[LitMaxFlag, Seq[Literal]] = Literal.maximalityOf(lits)
   }
 }

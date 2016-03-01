@@ -16,7 +16,7 @@ protected[datastructures] case class BaseTypeNode(id: Signature#Key) extends Typ
   def typeVars = Set.empty
 
   val funDomainType   = None
-  val funCodomainType = None
+  val codomainType = this
   val arity = 0
   val funParamTypesWithResultType = Seq(this)
   val order = 0
@@ -61,7 +61,7 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
   def typeVars: Set[Type] = Set(this)
 
   val funDomainType   = None
-  val funCodomainType = None
+  val codomainType = this
   val arity = 0
   val funParamTypesWithResultType = Seq(this)
   val order = 0
@@ -113,7 +113,7 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   def typeVars = in.typeVars ++ out.typeVars
 
   lazy val funDomainType   = Some(in)
-  lazy val funCodomainType = Some(out)
+  lazy val codomainType = out
   lazy val arity = 1 + out.arity
   lazy val funParamTypesWithResultType = Seq(in) ++ out.funParamTypesWithResultType
   lazy val order = Math.max(1+in.order,out.order)
@@ -152,7 +152,7 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   def typeVars = l.typeVars ++ r.typeVars
 
   val funDomainType   = None
-  val funCodomainType = None
+  val codomainType = this
   val arity = 0
   val funParamTypesWithResultType = Seq(this)
   val order = 0
@@ -193,7 +193,7 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   def typeVars = l.typeVars ++ r.typeVars
 
   val funDomainType   = None
-  val funCodomainType = None
+  val codomainType = this
   val arity = 0
   val funParamTypesWithResultType = Seq(this)
   val order = 0
@@ -239,7 +239,7 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
   def typeVars = body.typeVars
 
   val funDomainType   = None
-  val funCodomainType = None
+  val codomainType = this
   val arity = 0
   val funParamTypesWithResultType = Seq(this)
   val order = 0

@@ -15,27 +15,6 @@ trait IsSignature {
   type TypeOrKind = Either[Type, Kind]
 
   ///////////////////////////////
-  // Symbol types
-  ///////////////////////////////
-
-  /** Type of symbols in the signature table */
-  sealed abstract class SymbolType {
-    /** Returns true iff type `this` is equal to `typ` */
-    def is(typ: SymbolType): Boolean = this.equals(typ)
-  }
-
-  /** `SymbolType` of a fixed symbol, e.g. `$true: $o` or `$false: $o` */
-  case object Fixed extends SymbolType
-  /** `SymbolType` of a defined symbol, e.g. `&: $o -> $o -> $o`  */
-  case object Defined extends SymbolType
-  /** `SymbolType` of a uninterpreted symbol, e.g. `p: $i -> $o`*/
-  case object Uninterpreted extends SymbolType
-  /** `SymbolType` of a base type symbol, e.g. `$o: *` */
-  case object BaseType extends SymbolType
-  /** `SymbolType` of a constructor symbol, e.g. 'map: * -> * -> * */
-  case object TypeConstructor extends SymbolType
-
-  ///////////////////////////////
   // Meta information
   ///////////////////////////////
 
@@ -43,52 +22,79 @@ trait IsSignature {
    * Entry base class for meta information saved along with symbols in the signature table.
    */
   abstract class Meta {
+    import IsSignature.SymbProp
+    // Key information about the symbol
     /** The name of the symbol (i.e. string representation of it) */
     def name: String
-    /** The key of type `Key` that is used as table key for that entry */
+    /** The key of type [[Key]] that is used as table key for that entry */
     def key: Key
-    /** The type of symbol the entry describes */
-    def symType: SymbolType
-    /** Returns the type saved with the symbol if any, `None` otherwise */
+    /** Flag holding additional information in bit-encoding */
+    def flag: SymbProp
+    // Additional information about the symbol
+    /** Returns the type saved with the symbol if any, [[None]] otherwise */
     def ty: Option[Type]
-    /** Unsafe variant of `getType`.
+    /** Unsafe variant of [[ty]].
       * @throws NoSuchElementException if no type is available
       */
     def _ty: Type = ty.get
+
+    /** Returns the kind saved with the symbol if any, [[None]] otherwise */
     def kind: Option[Kind]
+    /** Unsafe variant of [[kind]].
+      * @throws NoSuchElementException if no type is available
+      */
     def _kind: Kind = kind.get
-    /** Returns the definition saved with the symbol if any, `None` otherwise */
+
+    /** Returns the definition saved with the symbol if any, [[None]] otherwise */
     def defn: Option[Term]
     /**
-     * Unsafe variant of `getDefn`. Gets the definition term directly
+     * Unsafe variant of [[defn]]. Gets the definition term directly
      * @throws NoSuchElementException if no definition is available
      */
     def _defn: Term = defn.get
+
+    // Query functions
     /** Returns the status of the symbol, where 0 = mult, 1 = lex.*/
-    def status: Int
+    lazy val status: Int = if (isPropSet(IsSignature.PropStatus, flag)) IsSignature.lexStatus else IsSignature.multStatus
 
     /** Returns true iff the symbol has a type associated with it */
-    def hasType: Boolean
+    @inline final def hasType: Boolean = ty.isDefined
     /** Returns true iff the symbol has a kind associated with it */
-    def hasKind: Boolean
+    @inline final def hasKind: Boolean = kind.isDefined
     /** Returns true iff the constant has a definition term associated with it */
-    def hasDefn: Boolean
+    @inline final def hasDefn: Boolean = defn.isDefined
     /** Returns true iff the symbol has lex status. */
-    def hasLexStatus: Boolean = status == 1
+    @inline final def hasLexStatus: Boolean = isPropSet(IsSignature.PropStatus, flag)
     /** Returns true iff the symbol has mult status. */
-    def hasMultStatus: Boolean = status == 0
+    @inline final def hasMultStatus: Boolean = !isPropSet(IsSignature.PropStatus, flag)
 
 
-    /** Returns true iff the symbol is a fixed (interpreted) symbol */
-    def isFixed: Boolean         = symType == Fixed
+    /** Returns true iff the symbol is a primitive (interpreted) symbol provided by the system */
+    @inline final def isPrimitive: Boolean     = isPropSet(IsSignature.PropFixed, flag) && !hasDefn
+    /** Returns true iff the symbol is a symbol provided by the system */
+    @inline final def isFixedSymbol: Boolean  = isPropSet(IsSignature.PropFixed, flag)
+    /** Returns true iff the symbol is a user provided symbol */
+    @inline final def isUserSymbol: Boolean    = !isPropSet(IsSignature.PropFixed, flag)
     /** Returns true iff the symbol is a defined symbol */
-    def isDefined: Boolean       = symType == Defined
-    /** Returns true iff the symbol is a uninterpreted symbol */
-    def isUninterpreted: Boolean = symType == Uninterpreted
+    @inline final def isDefined: Boolean          = hasDefn
+    /** Returns true iff the symbol is an uninterpreted term symbol */
+    @inline final def isUninterpreted: Boolean    = !isPropSet(IsSignature.PropFixed, flag) && !hasDefn
+    /** Returns true iff the symbol refers to an external object */
+    @inline final def isExternal: Boolean    = isPropSet(IsSignature.PropExternal, flag)
+
+    /** Returns true iff the symbol is associative */
+    @inline final def isASymbol: Boolean    = isPropSet(IsSignature.PropAssociative, flag)
+    /** Returns true iff the symbol is commutative */
+    @inline final def isCSymbol: Boolean    = isPropSet(IsSignature.PropCommutative, flag)
+    /** Returns true iff the symbol is associative */
+    @inline final def isACSymbol: Boolean    = isPropSet(IsSignature.PropAssociative | IsSignature.PropCommutative, flag)
+
+    /** Returns true iff the symbol is a term symbol */
+    @inline final def isTermSymbol: Boolean             = hasType
+    /** Returns true iff the symbol is a type constructor symbol */
+    @inline final def isTypeConstructor: Boolean  = hasKind
     /** Returns true iff the symbol is a type symbol */
-    def isType: Boolean          = symType == BaseType
-    /** Returns true iff the symbol is a type symbol */
-    def isTypeConstructor: Boolean          = symType == TypeConstructor
+    @inline final def isType: Boolean             = isTypeConstructor && _kind.isTypeKind
   }
 
 
@@ -107,7 +113,7 @@ trait IsSignature {
     * @throws IllegalArgumentException if the symbol described by `identifier` already exists or a
     *                                  illegal typ/definition combination is supplied
     */
-  protected def addConstant0(identifier: String, typ: Option[TypeOrKind], defn: Option[Term], status: Int): Key
+  protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], status: Int): Key
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
@@ -115,10 +121,10 @@ trait IsSignature {
   /** Returns true iff a indexed constant symbol with name `identifier` exists */
   def exists(identifier: String): Boolean
 
-  /** Returns the symbol type of  `identifier`, if it exists in signature */
-  def symbolType(identifier: String): SymbolType
-  /** Returns the symbol type of  `identifier`, if it exists in signature */
-  def symbolType(identifier: Key): SymbolType
+  ///** Returns the symbol type of  `identifier`, if it exists in signature */
+  //def symbolType(identifier: String): SymbolType
+  ///** Returns the symbol type of  `identifier`, if it exists in signature */
+  //def symbolType(identifier: Key): SymbolType
 
   ///////////////////////////////
   // Utility methods
@@ -127,24 +133,20 @@ trait IsSignature {
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addDefined(identifier: String, defn: Term, typ: Type, status: Int = 0): Key = addConstant0(identifier, Some(Left(typ)), Some(defn), status)
-  /** Adds a term variable without type to the signature.
-    * @return The key the symbol is indexed by
-    */
-  def addDefined(identifier: String, defn: Term): Key            = addConstant0(identifier, None, Some(defn), 1)
+  final def addDefined(identifier: String, defn: Term, typ: Type, status: Int = 0): Key = addConstant0(identifier, Left(typ), Some(defn), status)
   /** Adds an uninterpreted constant with type `typ` to the signature,
     * multiset status is default, but can be overridden by `status` parameter.
     * @return The key the symbol is indexed by
     */
-  def addUninterpreted(identifier: String, typ: Type, status: Int = 0): Key       = addConstant0(identifier, Some(Left(typ)), None, status)
+  final def addUninterpreted(identifier: String, typ: Type, status: Int = 0): Key       = addConstant0(identifier, Left(typ), None, status)
   /** Adds an uninterpreted constant with kind `k` to the signature.
     * @return The key the symbol is indexed by
     */
-  def addTypeConstructor(identifier: String, k: Kind): Key         = addConstant0(identifier, Some(Right(k)), None, -1)
+  final def addTypeConstructor(identifier: String, k: Kind): Key         = addConstant0(identifier, Right(k), None, -1)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
-  def addBaseType(identifier: String): Key                       = addConstant0(identifier, Some(Right(Type.typeKind)), None, -1)
+  final def addBaseType(identifier: String): Key                       = addConstant0(identifier, Right(Type.typeKind), None, -1)
 
   /** If the symbol indexed by `key` is a uninterpreted symbol, then `addDefinition(key, defn)` turns this symbol
     * into a defined symbol with definition `defn`.*/
@@ -156,16 +158,28 @@ trait IsSignature {
     * @throws IllegalArgumentException  if the symbol described by `identifier` does not exist in the signature */
   def meta(identifier: String): Meta
 
-  /** Returns true iff the symbol index by `key` is a defined symbol */
-  def isDefinedSymbol(key: Key): Boolean = meta(key).isDefined
-  /** Returns true iff the symbol index by `key` is a fixed symbol */
-  def isFixedSymbol(key: Key): Boolean   = meta(key).isFixed
-  /** Returns true iff the symbol index by `key` is a uninterpreted symbol */
-  def isUninterpreted(key: Key): Boolean = meta(key).isUninterpreted
-  /** Returns true iff the symbol index by `key` is a base type symbol */
-  def isBaseType(key: Key): Boolean      = meta(key).isType
-  /** Returns true iff the symbol index by `key` is a type operator (constructor) symbol */
-  def isTypeConstructor(key: Key): Boolean      = meta(key).isTypeConstructor
+  /** Returns true iff the symbol indexed by `key` is a primitive symbol of the system,
+    * i.e. not having a definition. */
+  final def isPrimitiveSymbol(key: Key): Boolean   = meta(key).isFixedSymbol && !meta(key).isDefined
+  /** Returns true iff the symbol indexed by `key` is a symbol provided by the system  */
+  final def isFixedSymbol(key: Key): Boolean   = meta(key).isFixedSymbol
+  /** Returns true iff the symbol was provided by the user. */
+  final def isUserSymbol(key: Key): Boolean = meta(key).isUserSymbol
+  /** Returns true iff the symbol indexed by `key` has a definition */
+  final def isDefinedSymbol(key: Key): Boolean = meta(key).isDefined
+  /** Returns true iff the symbol indexed by `key` is an uninterpreted term symbol */
+  final def isUninterpretedSymbol(key: Key): Boolean = meta(key).isUninterpreted
+  /** Returns true iff the symbol is associative */
+  final def isASymbol(key: Key): Boolean = meta(key).isASymbol
+  /** Returns true iff the symbol is commutative */
+  final def isCSymbol(key: Key): Boolean = meta(key).isCSymbol
+  /** Returns true iff the symbol is associative and commutative */
+  final def isACSymbol(key: Key): Boolean = meta(key).isACSymbol
+
+  /** Returns true iff the symbol indexed by `key` is a type symbol */
+  final def isType(key: Key): Boolean      = meta(key).isType
+  /** Returns true iff the symbol indexed by `key` is a type operator (constructor) symbol */
+  final def isTypeConstructor(key: Key): Boolean      = meta(key).isTypeConstructor
 
   /** Empty the signature (deletes all symbols from signature and resets all indexing key counters. */
   def empty(): Unit
@@ -179,14 +193,17 @@ trait IsSignature {
   /** Returns a set of all indexed constants that are supplied by the user/problem. */
   def allUserConstants: Set[Key]
   /** Returns a set of all indexed constants with given type*/
-  def constantsOfType(ty: Type): Set[Key] = allConstants.filter(meta(_).ty match {
+  final def constantsOfType(ty: Type): Set[Key] = allConstants.filter(meta(_).ty match {
     case None => false
     case Some(t) => t == ty
   })
+
+  /** Returns a set of all primtive symbols. */
+  def primitiveSymbols: Set[Key]
   /** Returns a set of all indexed fixed constants keys */
   def fixedSymbols: Set[Key]
   /** Returns a set of all indexed fixed constants with given type */
-  def fixedSymbolsOfType(ty: Type): Set[Key] = fixedSymbols.filter(meta(_).ty match {
+  final def fixedSymbolsOfType(ty: Type): Set[Key] = fixedSymbols.filter(meta(_).ty match {
     case None => false
     case Some(t) => t == ty
   })
@@ -194,20 +211,29 @@ trait IsSignature {
   /** Returns a set of all indexed defined constants keys */
   def definedSymbols: Set[Key]
   /** Returns a set of all indexed defined constants with given type */
-  def definedSymbolsOfType(ty: Type): Set[Key] = definedSymbols.filter(meta(_).ty match {
+  final def definedSymbolsOfType(ty: Type): Set[Key] = definedSymbols.filter(meta(_).ty match {
     case None => false
     case Some(t) => t == ty
   })
+
   /** Returns a set of all indexed uninterpreted constants keys */
   def uninterpretedSymbols: Set[Key]
   /** Returns a set of all indexed uninterpreted constants with given type */
-  def uninterpretedSymbolsOfType(ty: Type): Set[Key] = uninterpretedSymbols.filter(meta(_).ty match {
+  final def uninterpretedSymbolsOfType(ty: Type): Set[Key] = uninterpretedSymbols.filter(meta(_).ty match {
     case None => false
     case Some(t) => t == ty
   })
-  /** Returns a set of all indexed base type constants keys */
-  def baseTypes: Set[Key]
 
+  /** Returns a set of all associative symbols */
+  def aSymbols: Set[Key]
+  /** Returns a set of all commutative symbols */
+  def cSymbols: Set[Key]
+  /** Returns a set of all AC symbols */
+  final def acSymbols: Set[Key] = aSymbols & cSymbols
+
+  def typeConstructors: Set[Key]
+  /** Returns a set of all indexed base type constants keys */
+  final def typeSymbols: Set[Key] = typeConstructors.filter(isType)
 
   ///////////////////////////////
   // Creating of fresh variables
@@ -220,6 +246,16 @@ trait IsSignature {
 }
 
 object IsSignature {
+  type SymbProp = Int
+  final val PropNoProp: SymbProp = 0
+  final protected[datastructures] val PropStatus: SymbProp = 1 /* Lexstatus if set. Multstatus otherwise */
+  final val PropAssociative: SymbProp = 2
+  final val PropCommutative: SymbProp = 4
+  final val PropAC: SymbProp = PropAssociative | PropCommutative
+  final protected[datastructures] val PropFixed: SymbProp = 8 /* Fixed term of type symbol of the system */
+  final protected[datastructures] val PropExternal: SymbProp = 16 /* Term or type symbol that refers to a external object */
+  final protected[datastructures] val PropSkolemConstant: SymbProp = 32 /* Term symbol that was introduced within skolemization */
+
   final val multStatus: Int = 0
   final val lexStatus: Int = 1
 }

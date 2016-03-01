@@ -12,7 +12,6 @@ import leo.Configuration
  * @note Oct. 2015: Substantially updated (literals as equations)
  */
 trait Literal extends Pretty {
-
   /** The unique, increasing literal number. */
   def id: Int
   /** The left side of the literal's equation.
@@ -70,7 +69,6 @@ trait Literal extends Pretty {
 
 
   // Utility functions
-
   @inline final def fold[A](f: (Term, Term, Boolean) => A): A = f(left,right,polarity)
 
   @inline final def termMap[A](f: (Term, Term) => (Term, Term)): Literal = {
@@ -137,6 +135,17 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
     * `left = $true` and polarity `pol`. */
   @inline final def apply(left: Term, pol: Boolean) = mkLit(left, pol)
 
+  // Equation selection stuff
+  type Side = Boolean
+  final val leftSide: Side = true
+  final val rightSide: Side = false
+
+  /** Returns the specified side of the underlying equation. */
+  @inline final def selectSide(l: Literal, side: Side): Term = if (side) l.left else l.right
+  /** Returns the opposite side of the specified side. */
+  @inline final def selectOtherSide(l: Literal, side: Side): Term = selectSide(l, !side)
+  /** Returns the sides of the literal l = r where the first element is l if first==leftSide, r otherwise. */
+  @inline final def getSidesOrdered(l: Literal, first: Side): (Term, Term) = if (first) (l.left, l.right) else (l.right,l.left)
 
   // Ordering stuff
   sealed abstract class LitMaxFlag

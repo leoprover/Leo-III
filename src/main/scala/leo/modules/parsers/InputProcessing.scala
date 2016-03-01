@@ -16,13 +16,16 @@ import leo.modules.output.SZS_InputError
 
 
 /**
- * Processing module from TPTP input.
- * Declarations are inserted into the given Signature,
- * terms are returned in internal term representation.
- *
- * @author Alexander Steen
- * @since 18.06.2014
- */
+  * Processing module from TPTP input.
+  * Declarations are inserted into the given Signature,
+  * terms are returned in internal term representation.
+  *
+  * @author Alexander Steen
+  * @since 18.06.2014
+  *
+  * @todo - Cannot handle implicit quantified variables in FOF dialect
+  * @todo - Cannot handle CNF and TPI
+  */
 object InputProcessing {
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
@@ -108,7 +111,7 @@ object InputProcessing {
             if (sig.exists(defName)) {
               val meta = sig(defName)
               if (meta.isUninterpreted && meta._ty == defDef.ty) {
-                sig.addDefinition(meta.key, defDef)
+                sig.addDefinition(meta.key, defDef.betaNormalize.etaExpand)
               } else {
                 Out.debug("Old type: " + meta._ty.pretty)
                 Out.debug("Symbol: " + defName)
@@ -117,7 +120,7 @@ object InputProcessing {
                 Out.warn("Symbol "+defName + " already defined. Redefinition ignored.")
               }
             } else {
-              sig.addDefined(defName, defDef, defDef.ty)
+              sig.addDefined(defName, defDef.betaNormalize.etaExpand, defDef.ty)
             }
             None
           }

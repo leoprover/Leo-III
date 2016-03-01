@@ -106,16 +106,20 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
 
   def apply(subst: Subst): Output = new Output {
     override def output: String = {
-      val sb = new StringBuilder
-      var i = 1
-      var max = subst.length
-      while (i < max) {
-        val erg = subst.substBndIdx(i)
-        sb.append(s"bind(${i}, $$thf(${erg.pretty})),")
-        i = i+1
+      if (subst.length == 0) {
+        ""
+      } else {
+        val sb = new StringBuilder
+        var i = 1
+        var max = subst.length
+        while (i < max) {
+          val erg = subst.substBndIdx(i)
+          sb.append(s"bind(${i}, $$thf(${erg.pretty})),")
+          i = i+1
+        }
+        sb.append(s"bind(${max}, $$thf(${subst.substBndIdx(max).pretty}))")
+        sb.toString()
       }
-      sb.append(s"bind(${max}, $$thf(${subst.substBndIdx(max).pretty}))")
-      sb.toString()
     }
   }
 

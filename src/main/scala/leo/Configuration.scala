@@ -84,7 +84,10 @@ object Configuration extends DefaultConfiguration {
     v
   }
 
-  lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+  lazy val TIMEOUT: Int = {
+    if (configMap.get(PARAM_TIMEOUT).isEmpty) Out.info(s"No timeout was given, using default timeout -t ${DEFAULT_TIMEOUT}")
+    uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+  }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
 
@@ -192,6 +195,6 @@ object Configuration extends DefaultConfiguration {
 
 trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
-  val DEFAULT_VERBOSITY = java.util.logging.Level.WARNING
+  val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
 }

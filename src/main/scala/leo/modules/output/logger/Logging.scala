@@ -6,6 +6,8 @@ import java.util.logging.Level
 import leo.Configuration
 import leo.modules.output.Output
 
+import scala.annotation.elidable
+
 /**
  *
  * @author Alexander Steen
@@ -26,20 +28,28 @@ trait Logging {
   import java.util.logging.Level._
 
   /** Log ALL details for debug tracing, including verbose intermediate information. */
+  @elidable(elidable.FINEST)
   final def finest(msg: => String): Unit = if (log.isLoggable(FINEST)) log.finest(msg)
   /** Log ALL details for debug tracing, including verbose intermediate information. */
+  @elidable(elidable.FINEST)
   final def finest(msg: Output): Unit = if (log.isLoggable(FINEST)) log.finest(msg.output)
   /** Log fine-grained debug trace information, i.e. small step messages with extensive information output. */
+  @elidable(elidable.FINER)
   final def trace(msg: => String): Unit = if (log.isLoggable(FINER)) log.finer(msg)
   /** Log fine-grained debug trace information, i.e. small step messages with extensive information output. */
+  @elidable(elidable.FINER)
   final def trace(msg: Output): Unit = if (log.isLoggable(FINER)) log.finer(msg.output)
   /** Log coarse-grained debug messages that help tracing program flow. */
+  @elidable(elidable.FINE)
   final def debug(msg: => String): Unit = if (log.isLoggable(FINE)) log.fine(msg)
   /** Log coarse-grained debug message Outputs that help tracing program flow. */
+  @elidable(elidable.FINE)
   final def debug(msg: Output): Unit = if (log.isLoggable(FINE)) log.fine(msg.output)
   /** Log important (static or run-time) configuration parameters, e.g. settings from command line. */
+  @elidable(elidable.CONFIG)
   final def config(msg: => String): Unit = if (log.isLoggable(CONFIG)) log.config(msg)
   /** Log important (static or run-time) configuration parameters, e.g. settings from command line. */
+  @elidable(elidable.CONFIG)
   final def config(msg: Output): Unit = if (log.isLoggable(CONFIG)) log.config(msg.output)
   /** Log additional (run-time) information. */
   final def info(msg: => String): Unit  = if (log.isLoggable(INFO))  log.info(msg)
@@ -65,5 +75,15 @@ trait Logging {
   def setLogLevel(level: Level): Unit = {
     log.setLevel(level)
     log.getHandlers.toSeq.foreach(_.setLevel(level))
+  }
+
+  def logLevel: Level = log.getLevel
+  def logLevelAbove(level: Level): Boolean = {
+    val thisLogLevel = log.getLevel
+    level.intValue() > thisLogLevel.intValue()
+  }
+  def logLevelAtLeast(level: Level): Boolean = {
+    val thisLogLevel = log.getLevel
+    level.intValue() >= thisLogLevel.intValue()
   }
 }

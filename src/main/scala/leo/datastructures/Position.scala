@@ -15,14 +15,16 @@ abstract class Position(protected val seq: Seq[Int]) extends Pretty {
     else DerivedPos(t)
   }
 
-  def abstrPos: Position = new DerivedPos(seq :+ 1)
+  def abstrPos: Position = new DerivedPos(seq :+ -1)
   def headPos: Position = new DerivedPos(seq :+ 0)
   def argPos(i: Int): Position = new DerivedPos(seq :+ i)
 
 
-  def prependAbstrPos: Position = new DerivedPos(1 +: seq)
+  def prependAbstrPos: Position = new DerivedPos(-1 +: seq)
   def prependHeadPos: Position = new DerivedPos(0 +: seq)
   def preprendArgPos(i: Int): Position = new DerivedPos(i +: seq)
+
+  def abstractionCount: Int = seq.count(_ == -1)
 
   def pretty = if (seq.isEmpty)
                 "ε"
@@ -39,7 +41,7 @@ object Position {
 
   object AbstrPos {
     def unapply(pos: Position): Boolean = {
-      pos.seq.nonEmpty && pos.seq.head == 1
+      pos.seq.nonEmpty && pos.seq.head == -1
     }
   }
 
