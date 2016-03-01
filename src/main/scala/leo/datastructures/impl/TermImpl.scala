@@ -50,6 +50,17 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
 
   // Other
   def order = ???
+
+  // FV Indexing utility
+  type Count = Int
+  type Depth = Int
+  protected[this] def symbolMap: Map[Signature#Key, (Count, Depth)]
+  @inline final private def fuseSymbolMapFunction(a: (Count, Depth), b: (Count, Depth)) = (a._1 + b._1, Math.max(a._2, b._2))
+  final protected[this] def fuseSymbolMap(map1: Map[Signature#Key, (Count, Depth)], map2: Map[Signature#Key, (Count, Depth)]): Map[Signature#Key, (Count, Depth)] = mergeMapsBy(map1,map2, fuseSymbolMapFunction)(0,0)
+
+  @inline final def symbols: Set[Signature#Key] = symbolMap.keySet
+  @inline final def symbolFreqOf(symbol: Signature#Key): Int = symbolMap.getOrElse(symbol, (0,0))._1
+  @inline final def symbolDepthOf(symbol: Signature#Key): Int = symbolMap.getOrElse(symbol, (0,0))._2
 }
 
 /////////////////////////////////////////////////
@@ -122,16 +133,19 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case MetaIndex(_,_) => args.freeVars + hd
     case _             => args.freeVars
   }
-  lazy val symbols=  hd match {
-    case Atom(key)             => args.symbols + key
-    case HeadClosure(Atom(key), _) => args.symbols + key
-    case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
-      case BoundFront(_) => args.symbols
-      case TermFront(t) => t.symbols ++ args.symbols
-      case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
+  lazy val symbolFrequency: Map[Signature#Key, Int] = {
+  val hdMap: Map[Signature#Key, Int] = hd match {
+      case Atom(key)             => Map(key, 1)
+      case HeadClosure(Atom(key), _) => Map(key,1)
+      case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
+        case BoundFront(_) => Map()
+        case TermFront(t) => t.symbolFrequency
+        case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
+      }
+      case HeadClosure(HeadClosure(h, s2), s1) => HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbolFrequency
+      case _ => Map()
     }
-    case HeadClosure(HeadClosure(h, s2), s1) => HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbols ++ args.symbols
-    case _ => args.symbols
+  addMaps(hdMap, args.symbolFrequency)
   }
   lazy val boundVars = hd match {
     case BoundIndex(_,_) => args.freeVars + hd
@@ -764,6 +778,7 @@ protected[impl] sealed abstract class Spine extends Pretty {
   def looseBounds: Set[Int]
   def metaVars: Set[(Type, Int)]
   def symbols: Set[Signature#Key]
+  def symbolFrequency: Map[Signature#Key, Int]
   def asTerms: Seq[Either[Term, Type]]
   def scopeNumber: (Int, Int)
   def size: Int

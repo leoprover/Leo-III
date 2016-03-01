@@ -68,16 +68,20 @@ trait Term extends Pretty {
   def fv: Set[(Int, Type)]
   def occurrences: Map[Term, Set[Position]]
   def feasibleOccurences: Map[Term, Set[Position]]
-  def symbols: Set[Signature#Key]
-  def symbolsOfType(ty: Type) = {
-    val sig = Signature.get
-    symbols.filter({i => sig(i)._ty == ty})
-  }
   def headSymbol: Term
   def headSymbolDepth: Int
   def scopeNumber: (Int,Int)
   def size: Int
   def order: LangOrder
+
+  def symbols: Set[Signature#Key]
+  final def symbolsOfType(ty: Type) = {
+    val sig = Signature.get
+    symbols.filter({i => sig(i)._ty == ty})
+  }
+  // Functions for FV-Indexing
+  def symbolFreqOf(symbol: Signature#Key): Int
+  def symbolDepthOf(symbol: Signature#Key): Int
 
   // Substitutions and replacements
   /** Replace every occurrence of `what` in `this` by `by`. */
@@ -107,12 +111,8 @@ trait Term extends Pretty {
   /** Eta-contract term on root level if possible */
   def topEtaContract: Term
 
-
-
   /// Hidden definitions
   protected[datastructures] def normalize(termSubst: Subst, typeSubst: Subst): Term
-
-//  protected[internal] def weakEtaContract(under: Subst, scope: Int): Term
 }
 
 
