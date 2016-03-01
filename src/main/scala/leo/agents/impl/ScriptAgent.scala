@@ -50,7 +50,7 @@ abstract class ScriptAgent(path : String) extends Agent {
     */
   override def kill() = extSet.synchronized {
     extSet foreach { p =>
-      p.destroy()
+      p.destroy()   // TODO richtiges kill
     }
     extSet.clear()
   };
