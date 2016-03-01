@@ -37,8 +37,6 @@ object EndAgent extends Agent {
       Iterable.empty
     case _ => Iterable.empty
   }
-  override def after: Set[TAgent] = Set.empty
-  override def before: Set[TAgent] = Set.empty
 }
 
 object AgentA extends Agent {
@@ -53,8 +51,6 @@ object AgentA extends Agent {
         Seq()
     case _ => Iterable.empty
   }
-  override def after: Set[TAgent] = Set.empty
-  override def before: Set[TAgent] = Set.empty
 }
 
 case class TaskA(in : String, out : String) extends Task {
@@ -82,8 +78,6 @@ object AgentB extends Agent {
         Seq()
     case _ => Iterable.empty
   }
-  override def after: Set[TAgent] = Set.empty
-  override def before: Set[TAgent] = Set.empty
 }
 
 case class TaskB(in : String, out : String) extends Task {
