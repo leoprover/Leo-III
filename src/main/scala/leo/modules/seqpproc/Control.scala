@@ -16,7 +16,7 @@ object Control {
   @inline final def boolext(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.BoolExtControl.boolext(cl)
   @inline final def primsubst(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.PrimSubstControl.primSubst(cl)
   // Redundancy inferences
-  @inline final def subsumesForward(cl: ClauseWrapper, processed: Set[ClauseWrapper]): Boolean = ???
+  @inline final def indexedForwardSubsumptionTest(cl: ClauseWrapper, processed: Set[ClauseWrapper]): Boolean = ???
   // Indexing
   final def fvIndexInit(initClauses: Set[ClauseWrapper]): Unit = indexingControl.FVIndexControl.init(initClauses)
   final def fvIndexInsert(cl: ClauseWrapper): Unit = indexingControl.FVIndexControl.insert(cl)
