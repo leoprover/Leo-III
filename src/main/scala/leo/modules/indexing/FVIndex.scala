@@ -20,8 +20,23 @@ object FVIndex {
   @inline final def negLitsSymbolDepthFeature(symb: Signature#Key, cl: Clause): Int = maxDepthOfSymbol(symb, cl.negLits)
 
   final private def countSymbol(symb: Signature#Key, lits: Seq[Literal]): Int = {
-//    lits.head.left.
-    ???
+    var count = 0
+    val litsIt = lits.iterator
+    while (litsIt.hasNext) {
+      val lit = litsIt.next()
+      count = count + lit.left.symbolFreqOf(symb)
+      count = count + lit.right.symbolFreqOf(symb)
+    }
+    count
   }
-  final private def maxDepthOfSymbol(symb: Signature#Key, lits: Seq[Literal]): Int = ???
+  final private def maxDepthOfSymbol(symb: Signature#Key, lits: Seq[Literal]): Int = {
+    var depth = 0
+    val litsIt = lits.iterator
+    while (litsIt.hasNext) {
+      val lit = litsIt.next()
+      depth = Math.max(depth,lit.left.symbolDepthOf(symb))
+      depth = Math.max(depth,lit.right.symbolDepthOf(symb))
+    }
+    depth
+  }
 }
