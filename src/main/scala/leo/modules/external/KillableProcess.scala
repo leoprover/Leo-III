@@ -8,8 +8,19 @@ import java.lang.reflect.Field
   * Allows sigkill to be send to the currently executing process.
   */
 object KillableProcess {
+
+  private[external] val isUNIXSystem : Boolean= {
+    try {
+      val process = Runtime.getRuntime.exec("echo a")
+      process.getClass().getName().equals("java.lang.UNIXProcess")    // If it allows unix like processes
+    } catch{
+      case _ : Exception => false
+    }
+  }
+
   /**
-    * Creates a killable process
+    * Creates a killable process.
+    *
     * @param cmd the command to be executed
     * @return A Processhandle to the killable process
     */
@@ -57,7 +68,8 @@ trait KillableProcess {
 
 case class Command(cmd : String) {
   def exec() : KillableProcess = {
-    val process = Runtime.getRuntime.exec(cmd)
+    val cmd1 : Array[String] = if(KillableProcess.isUNIXSystem) Array("/bin/sh","-c",cmd) else {Array(cmd)}   // If it is a Unix like system, we allow chaining
+    val process = Runtime.getRuntime.exec(cmd1)
     new KillableProcessImpl(process)
   }
 }

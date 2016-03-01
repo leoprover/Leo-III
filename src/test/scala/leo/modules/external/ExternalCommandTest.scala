@@ -28,9 +28,23 @@ class ExternalCommandTest extends LeoTestSuite {
     assert(out.tail.tail.head == "drei", "Third element should be 'drei'")
   }
 
+  test("Command Chain Test"){
+    val result = ExternalCall.exec("echo hallo & echo main")
+
+    result.exitValue
+    val out : Iterator[String] = result.out
+
+    assert(out.size == 2)
+
+    while(out.hasNext){
+      val next = out.next
+      assert(next == "main" || next == "hallo")
+    }
+  }
+
   test("Termination Test") {
     val t = System.currentTimeMillis()
-    val result = ExternalCall.exec("sleep 1000")
+    val result = ExternalCall.exec("sleep 100 & sleep 1000")
 
     // Killing in between
     result.kill()

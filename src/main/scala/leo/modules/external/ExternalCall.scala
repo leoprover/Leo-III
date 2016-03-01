@@ -58,6 +58,7 @@ trait ExternalResult {
 object ExternalCall {
   /**
     * Runs a command (with parameters) and a newly created file,
+    *
     * @param cmd  The command to be executed
     * @param fileArgs Lines of a file to be passed to the command
     * @return An asynchronous Wrapper to the Result
