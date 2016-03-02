@@ -28,7 +28,7 @@ package object datastructures {
       val (entry, value) = map1It.next()
       resultMap = resultMap + (entry -> f(resultMap.getOrElse(entry,defaultValue), value))
     }
-    map2
+    resultMap
   }
   @inline final def addMaps[A](map1: Map[A, Int], map2: Map[A, Int]): Map[A, Int] = mergeMapsBy(map1,map2,(a:Int,b:Int) => a+b)(0)
 
