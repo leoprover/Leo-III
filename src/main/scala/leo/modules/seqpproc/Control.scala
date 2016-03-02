@@ -351,17 +351,19 @@ package indexingControl {
 
       var initFeatures: Seq[Set[Int]] = Seq()
       val featureFunctionIt = featureFunctions.iterator
+      var i = 0
       while (featureFunctionIt.hasNext) {
         val cff = featureFunctionIt.next()
-
-        val res = initClauses.map {case cw => cff(cw.cl)}
+        val res = initClauses.map {case cw => {Out.finest(s"$i feature of ${cw.pretty} = ${cff(cw.cl)}");cff(cw.cl)}}
         initFeatures = res +: initFeatures
+        i = i+1
       }
+      Out.trace(s"init Features: ${initFeatures.toString()}")
       val sortedFeatures = initFeatures.zipWithIndex.sortBy(_._1.size).take(maxFeatures)
+      Out.trace(s"sorted Features: ${sortedFeatures.toString()}")
       this.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
       initialized = true
 
-      // TOOD: Insert by feature, not each feature vector gets recalculated
       val initIt = initClauses.iterator
       while (initIt.hasNext) {
         val initCl = initIt.next()
