@@ -212,7 +212,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
     // proof loop
     Out.debug("## Reasoning loop BEGIN")
-    while (loop) {
+    while (loop && !prematureCancel(processedCounter)) {
       if (System.currentTimeMillis() - startTime > 1000*Configuration.TIMEOUT) {
         loop = false
         returnSZS = SZS_Timeout
@@ -393,6 +393,16 @@ object SeqPProc extends Function1[Long, Unit]{
         }
       }
 
+    }
+
+    @inline def prematureCancel(counter: Int): Boolean = {
+      try {
+        val limit: Int = Configuration.valueOf("ll").get.head.toInt
+        counter >= limit
+      } catch {
+        case e: NumberFormatException => false
+        case e: NoSuchElementException => false
+      }
     }
 
     /////////////////////////////////////////
