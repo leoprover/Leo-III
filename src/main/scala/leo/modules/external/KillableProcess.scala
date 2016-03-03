@@ -85,7 +85,7 @@ private class KillableProcessImpl(process : Process) extends KillableProcess {
   override def kill: Unit = {
     pid match {
       case Some(pid1) => Runtime.getRuntime.exec("kill -9 "+pid1)   // TODO If implemented for windows, extend to different kill
-      case None => process.destroyForcibly()
+      case None => process.destroy()
     }
   }
 

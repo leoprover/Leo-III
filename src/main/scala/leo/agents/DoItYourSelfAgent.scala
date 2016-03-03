@@ -47,6 +47,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[FormulaStore], c : C
         r.insert(FormulaType)(it.next())
       }
     }
+    val l : Map[String, String] = Map("a" -> "b")
     r
   }
   override def bid: Double = 1
