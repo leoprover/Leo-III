@@ -3,8 +3,8 @@ package leo.modules.seqpproc
 import leo.Configuration
 import leo.Out
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse}
-import leo.modules.normalization._
+import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse, ClauseAnnotation, ClauseProxy}
+import ClauseAnnotation._
 import leo.modules.output._
 import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
 import leo.modules.calculus.{Subsumption, CalculusRule}
@@ -141,7 +141,7 @@ object SeqPProc extends Function1[Long, Unit]{
     } else left6
 
     // TODO: Do that in a reasonable way...
-    left7.foreach(_.propertyFlag = ClauseWrapper.PropUnified)
+    left7.foreach(_.properties = ClauseAnnotation.PropUnified)
     left7
   }
 
@@ -171,21 +171,21 @@ object SeqPProc extends Function1[Long, Unit]{
     if (conjecture.size > 1) throw new SZSException(SZS_InputError, "At most one conjecture per input problem permitted.")
 
     val effectiveInput: Seq[ClauseWrapper] = if (conjecture.isEmpty) {
-      filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseWrapper.PropNoProp) }
+      filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) }
     } else {
       assert(conjecture.size == 1)
       val conj = conjecture.head
-      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation, ClauseWrapper.PropNoProp)
+      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation, ClauseAnnotation.PropNoProp)
       val rest = filteredInput.filterNot(_._1 == conjecture.head._1)
-      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseWrapper.PropNoProp) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
+      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
         override def name: String = "neg_conjecture"
         override val inferenceStatus = Some(SZS_CounterSatisfiable)
-      }, Set(conjWrapper)),ClauseWrapper.PropNoProp)
+      }, Set(conjWrapper)),ClauseAnnotation.PropNoProp)
     }
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     Out.debug("## Preprocess BEGIN")
-    var preprocessed: SortedSet[ClauseWrapper] = SortedSet()
+    var preprocessed: SortedSet[ClauseWrapper] = SortedSet[ClauseWrapper]()
     val inputIt = effectiveInput.iterator
     while (inputIt.hasNext) {
       val cur = inputIt.next()
@@ -441,22 +441,7 @@ object SeqPProc extends Function1[Long, Unit]{
   }
 
 
-  import scala.collection.mutable
-
-  //TODO: Is that right?
-  def axiomsUsed(cw: ClauseWrapper): Int = axiomsUsed0(cw, mutable.Set())
-
-  def axiomsUsed0(cw: ClauseWrapper, used: mutable.Set[ClauseWrapper]): Int = cw.annotation match {
-    case NoAnnotation => 0
-    case FromFile(_, _) if cw.role == Role_Axiom => if (used.contains(cw)) 0 else {
-      used.add(cw)
-      1
-    }
-    case InferredFrom(_, parents) => parents.map(p => axiomsUsed(p._1)).sum
-
-  }
-
-  def makeDerivation(cw: ClauseWrapper, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
+  def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
     case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
     case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
     case a@InferredFrom(_, parents) => {

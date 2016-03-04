@@ -1,17 +1,14 @@
 package leo.modules.seqpproc
 
-import leo.datastructures.IsSignature
-import leo.datastructures.Clause
+import leo.datastructures.{Role, IsSignature, Clause}
 import leo.modules.output.StatusSZS
 
-trait ClauseProxy {
-  def cl: Clause
-}
+
 
 /**
   * Created by lex on 20.02.16.
   */
-trait State[T <: ClauseProxy] {
+abstract class State[T <: Clause] {
 
   def signature: IsSignature
   def szsStatus: StatusSZS
@@ -41,7 +38,7 @@ trait State[T <: ClauseProxy] {
   def noParamod: Int
   def noFactor: Int
 }
-
-object State {
-  def fresh[T <: ClauseProxy](sig: IsSignature): State[T] = ???
-}
+//
+//object State {
+//  def fresh[T <: ClauseProxy](sig: IsSignature): State[T] = ???
+//}

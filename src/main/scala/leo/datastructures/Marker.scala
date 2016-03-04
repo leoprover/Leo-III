@@ -1,6 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.blackboard.FormulaStore
+import leo.modules.output.Output
 
 
 /////////////////////////////////////////////
@@ -111,25 +111,50 @@ case object FromConjecture extends ClauseOrigin { val priority = 2 }
 case object Derived extends ClauseOrigin { val priority = 1 }
 
 
+
+
+trait ClauseProxy extends Pretty {
+  def id: String
+  def cl: Clause
+  def role: Role
+  def annotation: ClauseAnnotation
+  def properties: ClauseAnnotation.ClauseProp
+
+  override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty})"
+}
+
 abstract sealed class ClauseAnnotation extends Pretty
-case class InferredFrom(rule: leo.modules.calculus.CalculusRule, fs: Set[FormulaStore]) extends ClauseAnnotation {
-  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${fs.map(_.name).mkString(",")}])"
-}
-case object NoAnnotation extends ClauseAnnotation {
-  val pretty: String = ""
-}
-case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
-  def pretty = s"file('$fileName',$formulaName)"
-}
 
 object ClauseAnnotation {
-  def apply(rule: leo.modules.calculus.CalculusRule, cls: Set[FormulaStore]): ClauseAnnotation =
-    new InferredFrom(rule, cls)
+  case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Set[(A, Output)]) extends ClauseAnnotation {
+    def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status(" + _.pretty.toLowerCase + ")")}],[${
+      cws.map { case (cw, add) => if (add == null) {
+        cw.id
+      } else {
+        cw.id + ":[" + add.output + "]"
+      }
+      }.mkString(",")
+    }])"
+  }
+  object InferredFrom {
+    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Set[A]): ClauseAnnotation =
+      InferredFrom(rule, cs.map((_, null.asInstanceOf[Output])))
 
-  def apply(rule: leo.modules.calculus.CalculusRule, cl: FormulaStore): ClauseAnnotation =
-    new InferredFrom(rule, Set(cl))
+    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, c: A): ClauseAnnotation =
+      InferredFrom(rule, Set((c,null.asInstanceOf[Output])))
+  }
 
-  def apply(file: String, name: String): ClauseAnnotation = new FromFile(file, name)
+  case object NoAnnotation extends ClauseAnnotation {
+    val pretty: String = ""
+  }
+  case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
+    def pretty = s"file('$fileName',$formulaName)"
+  }
+
+  type ClauseProp = Int
+  final val PropNoProp: ClauseProp = 0
+  final val PropUnified: ClauseProp = 1
+  final val PropBoolExt: ClauseProp = 2
 }
 
 

@@ -54,9 +54,9 @@ abstract class AbstractNormalize extends Normalize {
    */
   override def apply(formula : FormulaStore, check : Boolean) : FormulaStore = {
     if (check) {
-      if (applicable(formula.status)) markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula))) else formula
+      if (applicable(formula.status)) markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation.InferredFrom(this, formula))) else formula
     } else
-      markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula)))
+      markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation.InferredFrom(this, formula)))
   }
 
   /**
@@ -64,7 +64,7 @@ abstract class AbstractNormalize extends Normalize {
    * @param formula
    * @return
    */
-  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation(this, formula)))
+  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation.InferredFrom(this, formula)))
 
   def markStatus(fs : FormulaStore) : FormulaStore
 }

@@ -10,7 +10,7 @@ import leo.datastructures.context.Context
 object Store {
   protected[blackboard] var unnamedFormulas : AtomicInteger = new AtomicInteger(0)
 
-  def apply(cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation = NoAnnotation): FormulaStore
+  def apply(cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): FormulaStore
   = new FormulaStore("gen_formula_"+unnamedFormulas.incrementAndGet(), cl, TimeStamp(), role, status, context, annotation)
 
   def apply(name: String, cl: Clause, role: Role, context: Context, status: Int, annotation: ClauseAnnotation): FormulaStore
@@ -41,7 +41,7 @@ object Store {
  *
  */
 class FormulaStore(val name : String, val clause : Clause, val created : TimeStamp, val role : Role, val status : Int, val context : Context, val annotation : ClauseAnnotation)
-  extends Pretty with Ordered[FormulaStore] with HasCongruence[FormulaStore] {
+  extends ClauseProxy with Ordered[FormulaStore] with HasCongruence[FormulaStore] {
 
   /**
    *
@@ -52,8 +52,11 @@ class FormulaStore(val name : String, val clause : Clause, val created : TimeSta
    * @return true, if normalized
    */
   def normalized : Boolean = (status & 3)== 3
+  def id = name
+  def cl = clause
+  def properties = ClauseAnnotation.PropNoProp
 
-  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), status="+status+")."
+//  lazy val pretty : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), status="+status+")."
 
   override lazy val toString : String = "leo("+name+","+role.pretty+",("+clause.pretty+"), status="+status+")."
 

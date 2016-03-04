@@ -50,8 +50,8 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     out.reverse
   }
 
-  def withAnnotation(f: FormulaStore): Output = new Output {
-    def output = toTPTP(f.name, f.clause.term, f.role, f.annotation)
+  def withAnnotation(cl: ClauseProxy): Output = new Output {
+    def output = toTPTP(cl.id, cl.cl.term, cl.role, cl.annotation)
   }
 
   /**
@@ -88,7 +88,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
 
   /** Translate the `FormulaStore` into a TPTP String in THF format. */
-  def output(f: FormulaStore) = toTPTP(f.name, f.clause.term, f.role)
+  def output(cl: ClauseProxy) = toTPTP(cl.id, cl.cl.term, cl.role)
   /** Translate the term information triple into a TPTP String. */
   def output(name: String, t: Clause, role: Role) = toTPTP(name, t.term, role)
 
@@ -127,8 +127,8 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   // Translation of THF formula
   ///////////////////////////////
   // TODO: Fixme write translation from clause
-  private def toTPTP(name: String, t: Term, role: Role, clauseAnnotation: ClauseAnnotation = NoAnnotation): String = clauseAnnotation match {
-    case NoAnnotation => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
+  private def toTPTP(name: String, t: Term, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): String = clauseAnnotation match {
+    case ClauseAnnotation.NoAnnotation => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
     case other => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}),${other.pretty})."
   }
 

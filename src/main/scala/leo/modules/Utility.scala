@@ -3,6 +3,7 @@ package modules
 
 import java.io.{PrintWriter, StringWriter, FileNotFoundException, File}
 
+import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures._
 import leo.datastructures.blackboard._
@@ -314,29 +315,29 @@ object Utility {
     }
   }
 
-  def printDerivation(f : FormulaStore) : Unit = Out.output(derivationString(new HashSet[Int](), 0, f, new StringBuilder()).toString())
+  def printDerivation(cl: ClauseProxy) : Unit = Out.output(derivationString(new HashSet[Int](), 0, cl, new StringBuilder()).toString())
 
-  private def derivationString(origin: Set[Int], indent : Int, f: FormulaStore, sb : StringBuilder) : StringBuilder = {
-    f.annotation match {
-      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")
-      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
-      case _ => sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\n")
+  private def derivationString(origin: Set[Int], indent : Int, cl: ClauseProxy, sb : StringBuilder) : StringBuilder = {
+    cl.annotation match {
+      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
+      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")){case (cls, sbu) => derivationString(origin.+(indent), indent+1,cls._1,sbu)}
+      case _ => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
     }
 //    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
   }
 
-  def printProof(f : FormulaStore) : Unit = {
+  def printProof(cl: ClauseProxy) : Unit = {
 
-    var sf : Set[FormulaStore] = new HashSet[FormulaStore]
+    var sf : Set[ClauseProxy] = new HashSet[ClauseProxy]
     var proof : Seq[String] = Seq()
 
-    def derivationProof(f: FormulaStore)
+    def derivationProof(f: ClauseProxy)
     {
       if (!sf.contains(f)) {
         sf = sf + f
         f.annotation match {
           case InferredFrom(_, fs) =>
-            fs.foreach(derivationProof(_))
+            fs.foreach(f => derivationProof(f._1))
             proof = mkTPTP(f) +: proof
           case _ =>
             proof = mkTPTP(f) +: proof
@@ -344,15 +345,15 @@ object Utility {
       }
     }
 
-    derivationProof(f)
+    derivationProof(cl)
     Out.output(proof.reverse.mkString("\n"))
   }
 
-  private def mkTPTP(f : FormulaStore) : String = {
+  private def mkTPTP(cl : ClauseProxy) : String = {
     try{
-      ToTPTP.withAnnotation(f).output
+      ToTPTP.withAnnotation(cl).output
     } catch {
-      case e : Throwable => f.pretty
+      case e : Throwable => cl.pretty
     }
   }
 

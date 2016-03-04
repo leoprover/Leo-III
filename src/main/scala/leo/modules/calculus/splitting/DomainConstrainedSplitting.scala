@@ -81,6 +81,6 @@ object DomainConstrainedSplitting {
 
   //TODO namensgebung fixen
   def cardinalityAxioms(n : Int)(t : Type) : Seq[FormulaStore] = {
-    cardinalityTerms(n)(t).map{t => Store(name + numb.getAndIncrement, Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, Context(), 0, NoAnnotation)}
+    cardinalityTerms(n)(t).map{t => Store(name + numb.getAndIncrement, Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, Context(), 0, ClauseAnnotation.NoAnnotation)}
   }
 }
