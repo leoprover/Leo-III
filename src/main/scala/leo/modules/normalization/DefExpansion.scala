@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures.{Role_Plain, Term, Clause}
-import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 
 /**
  * Created by lex on 07.07.14.
@@ -21,13 +21,4 @@ object DefExpansion extends AbstractNormalize {
   }
 
   def normalize(t: Term): Term = t.full_δ_expand
-
-  /**
-   * Checks if the staus bit 1 is raised and the second is not
-   *
-   * @return True if a normaliziation is possible, false otherwise
-   */
-  override def applicable(status : Int): Boolean = (status & 3) == 1
-
-  def markStatus(fS : FormulaStore) : FormulaStore = Store(fS.clause, Role_Plain, fS.context, (fS.status | 2) -1)
 }

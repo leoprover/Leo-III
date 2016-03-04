@@ -2,7 +2,7 @@ package leo
 package agents
 
 import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{DataType, Event, FormulaStore, Blackboard, Result}
+import leo.datastructures.blackboard.{DataType, Event, AnnotatedClause, Blackboard, Result}
 import leo.datastructures.context.Context
 
 

@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import leo.datastructures.tptp.cnf.Formula
 
 import scala.language.implicitConversions
@@ -158,16 +158,8 @@ object Simplification extends AbstractNormalize{
    */
   protected[normalization] def removeUnbound(formula : Term) : Term = formula match {
     case ty :::> t =>
-//      println("Removed the abstraction in '"+formula.pretty+"'.")
-      mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
-    case _        => formula
+      //      println("Removed the abstraction in '"+formula.pretty+"'.")
+      mkTermApp(formula, mkBound(ty, -4711)).betaNormalize
+    case _ => formula
   }
-
-  /**
-   * If the status has the first Bit not set, the term is simplified.
-   */
-  override def applicable(status : Int): Boolean = (status & 1) == 0
-
-
-  def markStatus(fs: FormulaStore): FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 1)
 }

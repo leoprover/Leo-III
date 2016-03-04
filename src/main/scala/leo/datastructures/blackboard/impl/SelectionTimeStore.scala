@@ -14,7 +14,7 @@ import scala.collection.mutable
  */
 object SelectionTimeStore extends DataStore {
 
-  private val sts : mutable.Map[FormulaStore, TimeStamp] = new mutable.HashMap[FormulaStore, TimeStamp]()
+  private val sts : mutable.Map[AnnotatedClause, TimeStamp] = new mutable.HashMap[AnnotatedClause, TimeStamp]()
   private val csts : OrderedContextSet[TimeData] = new TreeOrderedContextSet[TimeData]()  // To query for ranges of time
   // private val nsts : mutable.Set[FormulaStore] = new mutable.HashSet[FormulaStore]()
 
@@ -25,7 +25,7 @@ object SelectionTimeStore extends DataStore {
    * @param f - any FormulaStore
    * @return None, if the clause was not yet selected (still in active), Some(t) if `f` was moved from active to passiv on time `t`
    */
-  def get(f : FormulaStore) : Option[TimeStamp] = sts.get(f)
+  def get(f : AnnotatedClause) : Option[TimeStamp] = sts.get(f)
 
   /**
    * Returns a set of all formula stores, that were selected
@@ -34,7 +34,7 @@ object SelectionTimeStore extends DataStore {
    * @param t - Upper Bound of the TimeStamp
    * @return set of all formulas with a TimeStamp smaller or equal to t.
    */
-  def before(t : TimeStamp, c : Context) : Iterable[FormulaStore] = csts.getSmaller(TimeData(null,t), c).map(_.f)
+  def before(t : TimeStamp, c : Context) : Iterable[AnnotatedClause] = csts.getSmaller(TimeData(null,t), c).map(_.f)
 
 
   /**
@@ -44,24 +44,24 @@ object SelectionTimeStore extends DataStore {
    * @param t - Upper Bound of the TimeStamp
    * @return set of all formulas with a TimeStamp bigger or equal to t.
    */
-  def after(t : TimeStamp, c : Context) : Iterable[FormulaStore] = csts.getSmaller(TimeData(null,t), c).map(_.f)
+  def after(t : TimeStamp, c : Context) : Iterable[AnnotatedClause] = csts.getSmaller(TimeData(null,t), c).map(_.f)
 
 
-  def wasSelected(c: Context): Iterable[FormulaStore] = csts.getAll(c).map(_.f)
+  def wasSelected(c: Context): Iterable[AnnotatedClause] = csts.getAll(c).map(_.f)
 
   /**
    * Returns a set of all formulas, that have no selection time.
    *
    * @return set of non selected formula stores
    */
-  def noSelect(c : Context) : Iterable[FormulaStore] = FormulaDataStore.getFormulas(c).filter{get(_).isEmpty}
+  def noSelect(c : Context) : Iterable[AnnotatedClause] = FormulaDataStore.getFormulas(c).filter{get(_).isEmpty}
 
   //==========================================
   //      Blackboard Controlling
   //==========================================
   override def storedTypes: Seq[DataType] = List(FormulaType, SelectionTimeType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo : FormulaStore, fn : FormulaStore) => synchronized {
+    case (fo : AnnotatedClause, fn : AnnotatedClause) => synchronized {
       sts.remove(fo).map { t => sts.put(fn, t); csts.remove(TimeData(fo, t), fo.context); csts.add(TimeData(fn, t), fn.context) }
       false // We do not check for new data
     }
@@ -97,7 +97,7 @@ object SelectionTimeStore extends DataStore {
   }
 
   override def delete(d: Any): Unit = d match {
-    case (f : FormulaStore) => synchronized {
+    case (f : AnnotatedClause) => synchronized {
       sts.remove(f).map{t => csts.remove(TimeData(f,t), f.context)}
     }
     case (TimeData(f,t)) => synchronized {
@@ -114,6 +114,6 @@ case object SelectionTimeType extends DataType {}
  * @param f the formula
  * @param t the time
  */
-case class TimeData(f : FormulaStore, t : TimeStamp) extends Ordered[TimeData]{
+case class TimeData(f : AnnotatedClause, t : TimeStamp) extends Ordered[TimeData]{
   override def compare(that: TimeData): Int = t.compareTo(that.t)
 }

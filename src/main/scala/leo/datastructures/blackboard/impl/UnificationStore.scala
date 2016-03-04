@@ -20,8 +20,8 @@ import scala.collection.mutable
  */
 object UnificationStore extends DataStore {
 
-  private val openUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term),Iterator[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Iterator[Subst]]]()
-  private val doneUniMap : mutable.Map[FormulaStore, mutable.Map[(Term,Term), Set[Subst]]] = new mutable.HashMap[FormulaStore, mutable.Map[(Term,Term),Set[Subst]]]()
+  private val openUniMap : mutable.Map[AnnotatedClause, mutable.Map[(Term,Term),Iterator[Subst]]] = new mutable.HashMap[AnnotatedClause, mutable.Map[(Term,Term),Iterator[Subst]]]()
+  private val doneUniMap : mutable.Map[AnnotatedClause, mutable.Map[(Term,Term), Set[Subst]]] = new mutable.HashMap[AnnotatedClause, mutable.Map[(Term,Term),Set[Subst]]]()
   val debugCounter : AtomicInteger = new AtomicInteger(0)
   /**
    * Returns the next unused unifier for a unification constrained [t1 = t2] = F in f.
@@ -31,7 +31,7 @@ object UnificationStore extends DataStore {
    * @param t2 - The right hand side of the equation.
    * @return Some(subst) to further compute the unification. None if no unifier exists.
    */
-  def nextUnifier(f: FormulaStore, t1: Term, t2: Term) : Option[Subst] = synchronized {   // TODO better organization of synchronized
+  def nextUnifier(f: AnnotatedClause, t1: Term, t2: Term) : Option[Subst] = synchronized {   // TODO better organization of synchronized
     // Obtein the map to the formulastore, and initialize, if not existant.
     val t2u : mutable.Map[(Term,Term),Iterator[Subst]] = openUniMap.get(f).getOrElse({val nm = new mutable.HashMap[(Term,Term),Iterator[Subst]](); openUniMap.put(f,nm); nm})
     t2u.get((t1,t2)) match {
@@ -71,20 +71,21 @@ object UnificationStore extends DataStore {
 
   /**
    * Returns the number of applicable unifier for a unification constrained.
+ *
    * @return Number of open unifiers or None, if the task was not yet considered.
    */
-  def openUnifier(f : FormulaStore, t1 : Term, t2 : Term) : Option[Int] = synchronized(openUniMap.get(f).fold(None : Option[Int])(_.get((t1,t2)).map(_.size)))
+  def openUnifier(f: AnnotatedClause, t1 : Term, t2 : Term) : Option[Int] = synchronized(openUniMap.get(f).fold(None : Option[Int])(_.get((t1,t2)).map(_.size)))
 
   /**
    * Returns the number of already applied unifiers on a unification constrained.
    *
    * @return The number of applied unifiers or None, if the task was not yet considered.
    */
-  def appliedUnifierSize(f : FormulaStore, t1 : Term, t2 : Term) : Option[Int] = synchronized(doneUniMap.get(f).fold(None : Option[Int])(_.get((t1,t2)).map(_.size)))
+  def appliedUnifierSize(f: AnnotatedClause, t1 : Term, t2 : Term) : Option[Int] = synchronized(doneUniMap.get(f).fold(None : Option[Int])(_.get((t1,t2)).map(_.size)))
 
-  def appliedUnifier(f : FormulaStore, t1 : Term, t2 : Term) : Option[Set[Subst]] = synchronized(doneUniMap.get(f).fold(None : Option[Set[Subst]])(_.get((t1,t2))))
+  def appliedUnifier(f: AnnotatedClause, t1 : Term, t2 : Term) : Option[Set[Subst]] = synchronized(doneUniMap.get(f).fold(None : Option[Set[Subst]])(_.get((t1,t2))))
 
-  private def finishUni(f : FormulaStore, t1 : Term, t2 : Term, u : Subst) : Boolean= true
+  private def finishUni(f: AnnotatedClause, t1 : Term, t2 : Term, u : Subst) : Boolean= true
 //    synchronized {
 //    openUniMap.get(f).fold(false){usmap => usmap.get((t1,t2)).fold(false){it => it.headOption.fold(false){h =>
 //      if (h==u) {
@@ -95,7 +96,7 @@ object UnificationStore extends DataStore {
 //      }
 //    }}}}
 
-  private def updateFormula(fo : FormulaStore, fn : FormulaStore) = synchronized {
+  private def updateFormula(fo: AnnotatedClause, fn: AnnotatedClause) = synchronized {
     openUniMap.remove(fo).map{usmap => if(openUniMap.get(fn).isEmpty) openUniMap.put(fn, usmap)}
     doneUniMap.remove(fo).map{usmap => if(doneUniMap.get(fn).isEmpty) doneUniMap.put(fn, usmap)}
   }
@@ -105,7 +106,7 @@ object UnificationStore extends DataStore {
   //=================================
   override val storedTypes: Seq[DataType] = List(UnifierType, FormulaType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo : FormulaStore, fn : FormulaStore) => // TODO, what should happen, if fo is updated? recalculate all unifier or just move the contents?
+    case (fo: AnnotatedClause, fn: AnnotatedClause) => // TODO, what should happen, if fo is updated? recalculate all unifier or just move the contents?
       updateFormula(fo, fn)
       false
     case _ => false
@@ -122,13 +123,13 @@ object UnificationStore extends DataStore {
   override protected[blackboard] def all(t: DataType): Set[Any] = t match {
     case FormulaType => openUniMap.keySet.toSet   // Important, since mutable
     case UnifierType => // Get all inforamtion from the unifier map.
-      openUniMap.flatMap{case (f : FormulaStore, t2u : mutable.Map[(Term,Term), Iterator[Subst]]) =>
+      openUniMap.flatMap{case (f: AnnotatedClause, t2u : mutable.Map[(Term,Term), Iterator[Subst]]) =>
         t2u.flatMap{case ((t1,t2),usmap) => usmap.map(subst => UnifierStore(f,t1,t2,subst))}
       }.toSet
   }
 
   override def delete(d: Any): Unit = d match {
-    case f : FormulaStore => openUniMap.remove(f)
+    case f: AnnotatedClause => openUniMap.remove(f)
     case _ => ()
   }
 }
@@ -138,18 +139,18 @@ object UnificationStore extends DataStore {
  */
 case object UnifierType extends DataType {}
 
-class UnifierStore(val f : FormulaStore, val t1 : Term, val t2 : Term, val u : Subst) {}
+class UnifierStore(val f: AnnotatedClause, val t1 : Term, val t2 : Term, val u : Subst) {}
 
 /**
  * Represents the the data of the UnificationStore in the agent system.
  */
 object UnifierStore {
-  def apply(f: FormulaStore, t1 : Term, t2 : Term, subst : Subst)= new UnifierStore(f,t1,t2, subst)
+  def apply(f: AnnotatedClause, t1 : Term, t2 : Term, subst : Subst)= new UnifierStore(f,t1,t2, subst)
 
   /**
    * Deconstructs a UnifierStore(FormulaStore, Term, Term)
    */
-  def unapply(a : Any) : Option[(FormulaStore,Term,Term, Subst)] = a match {
+  def unapply(a : Any) : Option[(AnnotatedClause,Term,Term, Subst)] = a match {
     case us : UnifierStore => Some((us.f, us.t1, us.t2, us.u))
     case _ => None
   }

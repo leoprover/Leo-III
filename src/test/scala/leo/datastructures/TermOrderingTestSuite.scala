@@ -3,11 +3,14 @@ package datastructures
 
 import java.nio.file.Path
 
+import leo.datastructures.ClauseAnnotation.NoAnnotation
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
 import leo.datastructures.Type._
 import leo.datastructures.impl.Signature
-import leo.modules.{SZSException, Utility}
+import leo.modules.{Parsing, SZSException, Utility}
 import leo.modules.output.Output
 
 /**
@@ -47,9 +50,10 @@ class TermOrderingTestSuite extends LeoTestSuite {
    test(s"Ordering test for $p", Benchmark) {
       printHeading(s"Ordering test for $p")
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
-      try {
-        Utility.load(source + "/" + p + ".p")
-      } catch {
+     var fs : Seq[AnnotatedClause] = Seq()
+     try {
+       fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
+     } catch {
         case e: SZSException =>
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
           fail()
@@ -77,7 +81,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
 //     Out.output(s"## ${f1.name} w/ ${f2.name}")
 //     Out.output(TermCMPResult(a, b, res))
 
-     val fsIt = FormulaDataStore.getFormulas.iterator
+     val fsIt = fs.iterator
      while (fsIt.hasNext) {
        val f = fsIt.next()
 

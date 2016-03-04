@@ -3,8 +3,9 @@ package modules.calculus.splitting
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures._
-import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import Term._
 import leo.datastructures._
 import leo.datastructures.context.Context
@@ -68,6 +69,7 @@ object DomainConstrainedSplitting {
 
   /**
    * Creates an exist quantifier over a list of variables, rather than one single variable.
+ *
    * @param n - Number of variables to create
    * @param t - Type of the varibles.
    * @param term - Term to quantify over
@@ -80,7 +82,7 @@ object DomainConstrainedSplitting {
   }
 
   //TODO namensgebung fixen
-  def cardinalityAxioms(n : Int)(t : Type) : Seq[FormulaStore] = {
-    cardinalityTerms(n)(t).map{t => Store(name + numb.getAndIncrement, Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, Context(), 0, ClauseAnnotation.NoAnnotation)}
+  def cardinalityAxioms(n : Int)(t : Type) : Seq[AnnotatedClause] = {
+    cardinalityTerms(n)(t).map{t => Store(name + numb.getAndIncrement, Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, Context(), NoAnnotation)}
   }
 }

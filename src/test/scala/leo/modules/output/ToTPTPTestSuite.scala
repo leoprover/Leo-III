@@ -1,9 +1,12 @@
 package leo.modules.output
 
+import leo.datastructures.ClauseAnnotation.NoAnnotation
+import leo.datastructures.context.Context
+import leo.datastructures.{Literal, Clause}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Ignored, LeoTestSuite}
-import leo.datastructures.blackboard.Blackboard
-import leo.modules.Utility
+import leo.datastructures.blackboard.{Store, AnnotatedClause, Blackboard}
+import leo.modules.{Parsing, Utility}
 import leo.modules.parsers.TPTP
 import leo.modules.parsers.InputProcessing
 
@@ -36,10 +39,10 @@ class ToTPTPTestSuite extends LeoTestSuite {
 
       printHeading(s"Forward/Backward translation test for ${p._2}")
       print(s"## Parsing and processing ${p._1} ...")
-      Utility.load(source + "/" +  p._1 + ".p")
+      var fos : Seq[AnnotatedClause] = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
       println("Success!")
       Utility.printUserDefinedSignature()
-      for (fs <- FormulaDataStore.getFormulas) {
+      for (fs <- fos) {
         val toTPTP = ToTPTP(fs)
         println("## Back translation ... success!")
         println(toTPTP.output)

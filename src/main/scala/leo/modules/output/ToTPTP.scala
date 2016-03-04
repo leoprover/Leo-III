@@ -6,7 +6,7 @@ import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
 import scala.annotation.tailrec
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.AnnotatedClause
 
 
 /**
@@ -15,16 +15,15 @@ import leo.datastructures.blackboard.FormulaStore
  * Translation can be done directly into a string by method `output`
  * or indirect into a `Output` object by the apply method.
  *
- * @see [[Term]], [[leo.datastructures.blackboard.FormulaStore]]
- *
+ * @see [[Term]], [[leo.datastructures.blackboard.AnnotatedClause]]
  * @author Alexander Steen
  * @since 07.11.2014
  */
-object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Clause, Role, Output] {
+object ToTPTP extends Function1[AnnotatedClause, Output] with Function3[String, Clause, Role, Output] {
 
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
-  def apply(f: FormulaStore): Output = new Output {
+  def apply(f: AnnotatedClause): Output = new Output {
     def output = toTPTP(f.name, f.clause.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
@@ -36,7 +35,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
     def output = toTPTP(name, t, role)
   }
 
-  def apply(formulas : Set[FormulaStore]) : Seq[Output] = {
+  def apply(formulas : Set[AnnotatedClause]): Seq[Output] = {
     var out: List[Output] = List.empty[Output]
     var defn : List[Output] = List.empty[Output]
     Signature.get.allUserConstants foreach { k =>

@@ -12,7 +12,7 @@ import scala.collection.mutable
  */
 object UnificationTaskStore  extends DataStore {
 
-  private val uts : mutable.Set[FormulaStore] = new mutable.HashSet[FormulaStore]()
+  private val uts : mutable.Set[AnnotatedClause] = new mutable.HashSet[AnnotatedClause]()
 
   // TODO Check for same clauses???
 
@@ -20,7 +20,7 @@ object UnificationTaskStore  extends DataStore {
 
   override def storedTypes: Seq[DataType] = List(UnificationTaskType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo : FormulaStore, fn : FormulaStore) =>
+    case (fo : AnnotatedClause, fn : AnnotatedClause) =>
       uts.remove(fo)
       if(uts.contains(fn))
         false
@@ -31,7 +31,7 @@ object UnificationTaskStore  extends DataStore {
     case _ => false
   }
   override def insert(n: Any): Boolean = n match {
-    case f : FormulaStore =>
+    case f : AnnotatedClause =>
       if(uts.contains(f))
         false
       else {
@@ -45,7 +45,7 @@ object UnificationTaskStore  extends DataStore {
     case _ => Set()
   }
   override def delete(d: Any): Unit = d match {
-    case f : FormulaStore => uts.remove(f)
+    case f : AnnotatedClause => uts.remove(f)
     case _ => ()
   }
 }

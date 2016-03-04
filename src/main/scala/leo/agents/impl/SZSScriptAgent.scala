@@ -18,17 +18,17 @@ object SZSScriptAgent {
    * @param reinterpreteResult - May transform the result depending on the status of the current Context (in a CounterSAT case Theorem will prover CounterSatisfiyability)
    * @return An agent to run an external prover on the specified translation.
    */
-  def apply(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
+  def apply(cmd : String)(encodeOutput : Set[AnnotatedClause] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
 }
 
 /**
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+class SZSScriptAgent(cmd : String)(encodeOutput : Set[AnnotatedClause] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
   override val name = s"SZSScriptAgent ($cmd)"
 
-  override def encode(fs : Set[FormulaStore]) : Seq[String] = encodeOutput(fs)
+  override def encode(fs : Set[AnnotatedClause]) : Seq[String] = encodeOutput(fs)
 
   /**
    * Scans the `input` Stream for an SZS status.
@@ -72,10 +72,10 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
     case _                   => List()
   }
 
-  private def createTask(f : FormulaStore, c : Context) : Iterable[Task] = {
+  private def createTask(f : AnnotatedClause, c : Context) : Iterable[Task] = {
     Out.trace(s"[$name]: Got a task.")
-    val conj = Store(negateClause(f.clause), Role_Conjecture, f.context, f.status)
-    val context : Set[FormulaStore] = FormulaDataStore.getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
+    val conj = Store(negateClause(f.clause), Role_Conjecture, f.context)
+    val context : Set[AnnotatedClause] = FormulaDataStore.getAll(f.context){ bf => bf.name != f.name}.toSet[AnnotatedClause]
     return List(new ScriptTask(cmd, context + conj, c, this))
   }
 
@@ -99,9 +99,10 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
 
 /**
  * A message with f (the to be conjecture)
+ *
  * @param f
  */
-private class SZSScriptMessage(val f : FormulaStore, val c : Context) extends Message {}
+private class SZSScriptMessage(val f: AnnotatedClause, val c : Context) extends Message {}
 
 /**
  * Object to create and deconstruct messages to the SZSScriptAgent.
@@ -114,7 +115,7 @@ object SZSScriptMessage {
    * @param f - The conjecture
    * @return Message for the SZSScriptAgent.
    */
-  def apply(f : FormulaStore)(c : Context) : Message = new SZSScriptMessage(f,c)
+  def apply(f: AnnotatedClause)(c : Context) : Message = new SZSScriptMessage(f,c)
 
   /**
    * Deconstructs an Event, if it is a Message to the SZSScriptAgent.
@@ -122,7 +123,7 @@ object SZSScriptMessage {
    * @param m
    * @return
    */
-  def unapply(m : Event) : Option[(FormulaStore, Context)] = m match {
+  def unapply(m : Event) : Option[(AnnotatedClause, Context)] = m match {
     case m : SZSScriptMessage => Some((m.f,m.c))
     case _                    => None
   }

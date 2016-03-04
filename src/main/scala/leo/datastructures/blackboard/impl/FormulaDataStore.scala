@@ -22,7 +22,7 @@ object FormulaDataStore extends DataStore {
    *
    * @return All formulas of the blackboard.
    */
-  def getFormulas: Iterable[FormulaStore] = FormulaSet.getAll
+  def getFormulas: Iterable[AnnotatedClause] = FormulaSet.getAll
 
   /**
    *
@@ -33,7 +33,7 @@ object FormulaDataStore extends DataStore {
    * @param p Predicate to select formulas
    * @return Set of Formulas satisfying the Predicate
    */
-  def getAll(p: FormulaStore => Boolean): Iterable[FormulaStore] = FormulaSet.getAll.filter(p)
+  def getAll(p: AnnotatedClause => Boolean): Iterable[AnnotatedClause] = FormulaSet.getAll.filter(p)
 
 
   /**
@@ -45,7 +45,7 @@ object FormulaDataStore extends DataStore {
    * @param p Predicate the formulas have to satisfy
    * @return All formulas in `c` satisfying `p`
    */
-  def getAll(c: Context)(p: (FormulaStore) => Boolean): Iterable[FormulaStore] = FormulaSet.getAll(c).filter(p)
+  def getAll(c: Context)(p: (AnnotatedClause) => Boolean): Iterable[AnnotatedClause] = FormulaSet.getAll(c).filter(p)
 
 
   /**
@@ -56,7 +56,7 @@ object FormulaDataStore extends DataStore {
    * @param name - Name of the Formula
    * @return Some(x) if x.name = name exists otherwise None
    */
-  def getFormulaByName(name: String): Option[FormulaStore] = FormulaSet.getName(name)
+  def getFormulaByName(name: String): Option[AnnotatedClause] = FormulaSet.getName(name)
 
 
   /**
@@ -68,7 +68,7 @@ object FormulaDataStore extends DataStore {
    * @param formula to be added.
    * @return The inserted Formula, or the already existing one.
    */
-  def addFormula(formula : FormulaStore) : Boolean = {
+  def addFormula(formula : AnnotatedClause) : Boolean = {
     val f = FormulaSet.add(formula)
     // TODO: handle merge
     f
@@ -82,7 +82,7 @@ object FormulaDataStore extends DataStore {
    * @param formula - New to add formula
    * @return true if the formula was not contained in the blackboard previously
    */
-  def addNewFormula(formula : FormulaStore) : Boolean = {
+  def addNewFormula(formula : AnnotatedClause) : Boolean = {
     // TODO: Implement Sets to check containment of Clauses.
     if(TrivRule.teqt(formula.clause)) return false
     if (FormulaSet.getAll(formula.context).exists(_.cong(formula)))
@@ -97,9 +97,10 @@ object FormulaDataStore extends DataStore {
    * <p>
    * Removes a formula from the Set fo formulas of the Blackboard.
    * </p>
+ *
    * @return true if the formula was removed, false if the formula does not exist.
    */
-  def removeFormula(formula: FormulaStore): Boolean = FormulaSet.rm(formula)
+  def removeFormula(formula: AnnotatedClause): Boolean = FormulaSet.rm(formula)
 
 
 
@@ -124,7 +125,7 @@ object FormulaDataStore extends DataStore {
    * @param c - A given Context
    * @return All formulas in the context `c`
    */
-  def getFormulas(c: Context): Iterable[FormulaStore] = FormulaSet.getAll(c)
+  def getFormulas(c: Context): Iterable[AnnotatedClause] = FormulaSet.getAll(c)
 
   /**
    * <p>
@@ -133,18 +134,19 @@ object FormulaDataStore extends DataStore {
    *
    * @param p - All x with p(x) will be removed.
    */
-  def rmAll(p: FormulaStore => Boolean) = FormulaSet.getAll.foreach{f => if(p(f)) FormulaSet.rm(f)}
+  def rmAll(p: AnnotatedClause => Boolean) = FormulaSet.getAll.foreach{ f => if(p(f)) FormulaSet.rm(f)}
 
 
   /**
    * <p>
    * Removes all formulas in the context `c` satisfiying `p`.
    * </p>
+ *
    * @param c - A given Context
    * @param p - Predicate the formulas have to satisfy
    * @return Removes all formulas in `c` satisfying `p`
    */
-  def rmAll(c: Context)(p: FormulaStore => Boolean): Unit = FormulaSet.getAll(c) foreach {f => if(p(f)) FormulaSet.rm(f)}
+  def rmAll(c: Context)(p: AnnotatedClause => Boolean): Unit = FormulaSet.getAll(c) foreach { f => if(p(f)) FormulaSet.rm(f)}
 
   /**
    * Stores the formulas in first in a map from name to the @see{FormulaStore}
@@ -153,8 +155,8 @@ object FormulaDataStore extends DataStore {
    */
   private object FormulaSet {
 
-    private val formulaSet : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
-    private val clauseMap : ContextMap[Clause, FormulaStore] = new TreeContextMap[Clause,FormulaStore]()
+    private val formulaSet : ContextSet[AnnotatedClause] = new TreeContextSet[AnnotatedClause]()
+    private val clauseMap : ContextMap[Clause, AnnotatedClause] = new TreeContextMap[Clause, AnnotatedClause]()
 
     /**
      * Looks up the termMap, for an already existing store and returns this or the given store
@@ -162,7 +164,7 @@ object FormulaDataStore extends DataStore {
      *
      * @return the existing store or the new one
      */
-    def add(f : FormulaStore) : Boolean = formulaSet.synchronized {
+    def add(f: AnnotatedClause) : Boolean = formulaSet.synchronized {
       formulaSet get (f,f.context) match {
         case Some(f1) =>
           false
@@ -184,11 +186,11 @@ object FormulaDataStore extends DataStore {
      *
      * @return All stored formulas
      */
-    def getAll : Iterable[FormulaStore] = formulaSet.synchronized(formulaSet.getAll)
+    def getAll : Iterable[AnnotatedClause] = formulaSet.synchronized(formulaSet.getAll)
 
-    def getAll(c : Context) : Iterable[FormulaStore] = formulaSet.synchronized(formulaSet.getAll(c))
+    def getAll(c : Context) : Iterable[AnnotatedClause] = formulaSet.synchronized(formulaSet.getAll(c))
 
-    def rm(f : FormulaStore) : Boolean = formulaSet.synchronized {
+    def rm(f: AnnotatedClause) : Boolean = formulaSet.synchronized {
       if(formulaSet.remove(f, f.context)) {
         clauseMap.remove(f.clause, f.context)
         return true
@@ -206,9 +208,9 @@ object FormulaDataStore extends DataStore {
       }
     }
 
-    def getName(n : String) : Option[FormulaStore] = formulaSet.synchronized(formulaSet.getAll.find {f => f.name == n})
+    def getName(n : String) : Option[AnnotatedClause] = formulaSet.synchronized(formulaSet.getAll.find { f => f.name == n})
 
-    def contains(f : FormulaStore) : Boolean = formulaSet.synchronized{
+    def contains(f: AnnotatedClause) : Boolean = formulaSet.synchronized{
       val oc = clauseMap.lookup(f.clause,f.context)
       //oc.foreach{f1 => leo.Out.comment(s"[FormulaStore]: contains(${f.pretty}) is true.\n  Found ${f1.pretty} ")}
       oc.isDefined}
@@ -225,7 +227,7 @@ object FormulaDataStore extends DataStore {
   override def storedTypes: Seq[DataType] = List(FormulaType)
 
   override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo : FormulaStore,fn : FormulaStore)  =>
+    case (fo: AnnotatedClause, fn: AnnotatedClause)  =>
       removeFormula(fo)
       if(FormulaSet.contains(fn)){
 //        leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
@@ -237,7 +239,7 @@ object FormulaDataStore extends DataStore {
   }
 
   override def insert(n: Any): Boolean = n match {
-    case fn : FormulaStore =>
+    case fn: AnnotatedClause =>
       if(FormulaSet.contains(fn)){
       // leo.Out.comment(s"[FormulaStore]: ${fn.pretty} was already contained.")
         return false
@@ -254,7 +256,7 @@ object FormulaDataStore extends DataStore {
   }
 
   override def delete(d: Any): Unit = d match {
-    case fd : FormulaStore =>
+    case fd: AnnotatedClause =>
       removeFormula(fd)
   }
 }

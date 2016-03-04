@@ -1,12 +1,16 @@
 package leo.datastructures
 
 import leo._
+import leo.datastructures.ClauseAnnotation.NoAnnotation
+import leo.datastructures.blackboard.{AnnotatedClause, Store}
 import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.output.Output
 import leo.datastructures.Term.{:::>}
 import leo.datastructures.{=== => EQ}
-import leo.modules.{SZSException, Utility}
+import leo.modules.{Parsing, SZSException, Utility}
 
 /**
  * Created by lex on 10/27/15.
@@ -29,8 +33,9 @@ class EqOrderingTestSuite extends LeoTestSuite {
     test(s"Ordering test for $p", Benchmark) {
       printHeading(s"Ordering test for $p")
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
+      var fs : Seq[AnnotatedClause] = Seq()
       try {
-        Utility.load(source + "/" + p + ".p")
+        fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
       } catch {
         case e: SZSException =>
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
@@ -39,7 +44,7 @@ class EqOrderingTestSuite extends LeoTestSuite {
       Utility.printSignature()
 
       printHeading("Parsed terms")
-      val fsIt = FormulaDataStore.getFormulas.iterator
+      val fsIt = fs.iterator
 
       def hasLeadingQuant(t: Term): Boolean = {
         t match {

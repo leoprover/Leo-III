@@ -2,7 +2,7 @@ package leo.datastructures.context
 
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite, Configuration}
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.blackboard.AnnotatedClause
 import leo.modules.CLParameterParser
 import leo.datastructures.blackboard.Blackboard
 
@@ -57,7 +57,7 @@ class TreeContextSetTestSuite extends LeoTestSuite {
   }
 
   test("Empty get all",Checked) {
-    val s : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
+    val s : ContextSet[AnnotatedClause] = new TreeContextSet[AnnotatedClause]()
 
     assert(s.getAll.isEmpty, "Initial the context set is empty.")
   }

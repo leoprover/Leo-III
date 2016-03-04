@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import Term._
 import leo.datastructures._
 
@@ -84,13 +84,4 @@ object NegationNormal extends AbstractNormalize{
     case TypeLambda(t)          => mkTypeAbs(nnf(t))
 //    case x                      => x
   }
-
-  /**
-   * Checks if status bits 1,2 are raised and the third is not
-   *
-   * @return True if a normaliziation is possible, false otherwise
-   */
-  override def applicable(status : Int): Boolean = (status & 7) == 3
-
-  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 7)
 }

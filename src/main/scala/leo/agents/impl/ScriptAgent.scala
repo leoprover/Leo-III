@@ -3,7 +3,7 @@ package impl
 
 import leo.datastructures.blackboard
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{DataType, FormulaStore, Result, FormulaType}
+import leo.datastructures.blackboard.{DataType, AnnotatedClause, Result, FormulaType}
 import java.io.{PrintWriter, File}
 import leo.modules.external.{ExternalCall, ExternalResult}
 import leo.modules.output.{ToTPTP, Output}
@@ -33,7 +33,7 @@ abstract class ScriptAgent(path : String) extends Agent {
 
   def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
 
-  def encode(fs: Set[FormulaStore]): Seq[String]
+  def encode(fs: Set[AnnotatedClause]): Seq[String]
 
   /**
     *
@@ -59,7 +59,7 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
 
-  final case class ScriptTask(script : String, fs: Set[FormulaStore], c: Context, a : ScriptAgent) extends Task {
+  final case class ScriptTask(script : String, fs: Set[AnnotatedClause], c: Context, a : ScriptAgent) extends Task {
     override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (FormulaType -> fs.asInstanceOf[Set[Any]])
 
     override def writeSet(): Map[DataType, Set[Any]] = Map.empty

@@ -1,7 +1,7 @@
 package leo.modules.normalization
 
 import leo.datastructures._
-import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import Term._
 import leo.datastructures._
 
@@ -74,15 +74,4 @@ object PrenexNormal extends AbstractNormalize {
 
 //    case _                      => formula
   }
-
-  /**
-   * Checks if the last three statusbits are raised.
-   * (status & 15) = status & 0..01111  ~~ Selects the last 4 Bits
-   * equals 7 only if the last three bits are set and the 4th not
-   *
-   * @return True if a normaliziation is possible, false otherwise
-   */
-  override def applicable(status : Int): Boolean = (status & 31) == 15
-
-  def markStatus(fs : FormulaStore) : FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 31)
 }

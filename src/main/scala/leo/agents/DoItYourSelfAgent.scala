@@ -32,7 +32,7 @@ class DoItYourSelfAgent(val procedure : ProofProcedure) extends Agent{
 
 case class DoItYourSelfMessage(c : Context) extends Message
 
-class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[FormulaStore], c : Context) extends Task{
+class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[AnnotatedClause], c : Context) extends Task{
   override val name: String = a.procedure.name+"Task"
   override val getAgent: TAgent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map()

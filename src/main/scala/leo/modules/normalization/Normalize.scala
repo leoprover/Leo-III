@@ -1,7 +1,8 @@
 package leo.modules.normalization
 
-import leo.datastructures.{ClauseAnnotation, Role_Plain , Clause}
-import leo.datastructures.blackboard.{Store, FormulaStore}
+import leo.datastructures.context.Context
+import leo.datastructures.{ClauseProxy, ClauseAnnotation, Role_Plain, Clause}
+import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import leo.modules.output.SZS_Theorem
 import leo.modules.calculus.CalculusRule
 
@@ -11,7 +12,7 @@ import leo.modules.calculus.CalculusRule
  *
  * Created by Max Wisniewski on 4/7/14.
  */
-trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Function1[FormulaStore,FormulaStore] with CalculusRule {
+trait Normalize extends Function1[ClauseProxy,ClauseProxy] with CalculusRule {
 
   /**
    *
@@ -33,10 +34,10 @@ trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Functi
   /**
    * Checks whether the given formula is normalizable.
    *
-   * @param status - Bitarray stored in Int, Explaination see {@see leo.datastructures.blackboard.FormulaStore}
+   * @param formula - The formula
    * @return True if a normaliziation is possible, false otherwise
    */
-  def applicable (status : Int) : Boolean
+  def applicable (formula : Clause) : Boolean
 }
 
 /**
@@ -45,26 +46,11 @@ trait Normalize extends Function2[FormulaStore,Boolean,FormulaStore] with Functi
  * if possible
  */
 abstract class AbstractNormalize extends Normalize {
-  /**
-   * If check is true, then
-   *
-   * @param formula - Formula that should be normalized.
-   * @param check - Status of the forula
-   * @return The possibly normalized formula.
-   */
-  override def apply(formula : FormulaStore, check : Boolean) : FormulaStore = {
-    if (check) {
-      if (applicable(formula.status)) markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation.InferredFrom(this, formula))) else formula
-    } else
-      markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation.InferredFrom(this, formula)))
+
+  override def apply(formula: ClauseProxy): ClauseProxy = formula match {
+    case f : AnnotatedClause => Store(normalize(formula.cl), Role_Plain, f.context, ClauseAnnotation.InferredFrom(this, formula))
+    case _ => Store(normalize(formula.cl), Role_Plain, Context(), ClauseAnnotation.InferredFrom(this, formula))
   }
 
-  /**
-   * Like apply2, but assumes the normalization is applicable
-   * @param formula
-   * @return
-   */
-  override def apply(formula : FormulaStore) : FormulaStore =  markStatus(Store(normalize(formula.clause), Role_Plain, formula.context, formula.status, ClauseAnnotation.InferredFrom(this, formula)))
-
-  def markStatus(fs : FormulaStore) : FormulaStore
+  override def applicable(clause : Clause) : Boolean = clause == normalize(clause)
 }
