@@ -89,7 +89,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
        while (fsIt2.hasNext) {
          val f2 = fsIt2.next()
          if (f != f2) {
-           val (a, b) = (f.clause.lits.head.term, f2.clause.lits.head.term)
+           val (a, b) = (f.cl.lits.head.term, f2.cl.lits.head.term)
            val res = TO_CPO_Naive.compare(a, b)
            res match {
              case CMP_EQ => eq += ((a, b))
@@ -149,7 +149,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
        }
      }
 
-     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(_.clause.lits.head.term).toSeq
+     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(_.cl.lits.head.term).toSeq
      import scala.util.Sorting
      def localLT(a: Term, b: Term): Boolean = TO_CPO_Naive.lt(a,b)
      val sorted = Sorting.stableSort[Term](terms, (a:Term,b:Term) => TO_CPO_Naive.lt(a,b) )

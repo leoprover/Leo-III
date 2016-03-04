@@ -104,7 +104,7 @@ object UnificationStore extends DataStore {
   //=================================
   //  Blackboard System handling
   //=================================
-  override val storedTypes: Seq[DataType] = List(UnifierType, FormulaType)
+  override val storedTypes: Seq[DataType] = List(UnifierType, ClauseType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
     case (fo: AnnotatedClause, fn: AnnotatedClause) => // TODO, what should happen, if fo is updated? recalculate all unifier or just move the contents?
       updateFormula(fo, fn)
@@ -121,7 +121,7 @@ object UnificationStore extends DataStore {
     doneUniMap.clear()
   }
   override protected[blackboard] def all(t: DataType): Set[Any] = t match {
-    case FormulaType => openUniMap.keySet.toSet   // Important, since mutable
+    case ClauseType => openUniMap.keySet.toSet   // Important, since mutable
     case UnifierType => // Get all inforamtion from the unifier map.
       openUniMap.flatMap{case (f: AnnotatedClause, t2u : mutable.Map[(Term,Term), Iterator[Subst]]) =>
         t2u.flatMap{case ((t1,t2),usmap) => usmap.map(subst => UnifierStore(f,t1,t2,subst))}

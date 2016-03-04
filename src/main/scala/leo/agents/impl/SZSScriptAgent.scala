@@ -18,17 +18,17 @@ object SZSScriptAgent {
    * @param reinterpreteResult - May transform the result depending on the status of the current Context (in a CounterSAT case Theorem will prover CounterSatisfiyability)
    * @return An agent to run an external prover on the specified translation.
    */
-  def apply(cmd : String)(encodeOutput : Set[AnnotatedClause] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
+  def apply(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
 }
 
 /**
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String)(encodeOutput : Set[AnnotatedClause] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
   override val name = s"SZSScriptAgent ($cmd)"
 
-  override def encode(fs : Set[AnnotatedClause]) : Seq[String] = encodeOutput(fs)
+  override def encode(fs : Set[ClauseProxy]) : Seq[String] = encodeOutput(fs)
 
   /**
    * Scans the `input` Stream for an SZS status.
@@ -72,10 +72,10 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[AnnotatedClause] => Seq[St
     case _                   => List()
   }
 
-  private def createTask(f : AnnotatedClause, c : Context) : Iterable[Task] = {
+  private def createTask(f : ClauseProxy, c : Context) : Iterable[Task] = {
     Out.trace(s"[$name]: Got a task.")
-    val conj = Store(negateClause(f.clause), Role_Conjecture, f.context)
-    val context : Set[AnnotatedClause] = FormulaDataStore.getAll(f.context){ bf => bf.name != f.name}.toSet[AnnotatedClause]
+    val conj : ClauseProxy = Store(negateClause(f.cl), Role_Conjecture, c)
+    val context : Set[ClauseProxy] = FormulaDataStore.getAll(c){ bf => bf.id != f.id}.toSet[ClauseProxy]
     return List(new ScriptTask(cmd, context + conj, c, this))
   }
 

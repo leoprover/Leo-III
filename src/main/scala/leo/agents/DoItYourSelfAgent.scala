@@ -1,6 +1,6 @@
 package leo.agents
 
-import leo.datastructures.Clause
+import leo.datastructures.{ClauseProxy, Clause}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.modules.output.StatusSZS
@@ -32,19 +32,19 @@ class DoItYourSelfAgent(val procedure : ProofProcedure) extends Agent{
 
 case class DoItYourSelfMessage(c : Context) extends Message
 
-class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[AnnotatedClause], c : Context) extends Task{
+class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Context) extends Task{
   override val name: String = a.procedure.name+"Task"
   override val getAgent: TAgent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map()
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
-    val (status, res) = a.procedure.execute(fs.map(_.clause))
+    val (status, res) = a.procedure.execute(fs)
     c.close()
     var r = Result().insert(StatusType)(SZSStore(status, c))
     if(res.nonEmpty){
       val it = res.get.iterator
       while(it.hasNext){
-        r.insert(FormulaType)(it.next())
+        r.insert(ClauseType)(it.next())
       }
     }
     val l : Map[String, String] = Map("a" -> "b")
@@ -75,5 +75,5 @@ trait ProofProcedure {
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  def execute(formulas : Iterable[Clause]) : (StatusSZS, Option[Seq[Clause]])
+  def execute(formulas : Iterable[ClauseProxy]) : (StatusSZS, Option[Seq[ClauseProxy]])
 }

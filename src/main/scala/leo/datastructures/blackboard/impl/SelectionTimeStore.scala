@@ -2,7 +2,7 @@ package leo
 package datastructures.blackboard
 package impl
 
-import leo.datastructures.{TimeStamp}
+import leo.datastructures.{ClauseProxy, TimeStamp}
 import leo.datastructures.context.{OrderedContextSet, Context}
 import leo.datastructures.context.impl.{TreeOrderedContextSet}
 
@@ -14,7 +14,7 @@ import scala.collection.mutable
  */
 object SelectionTimeStore extends DataStore {
 
-  private val sts : mutable.Map[AnnotatedClause, TimeStamp] = new mutable.HashMap[AnnotatedClause, TimeStamp]()
+  private val sts : mutable.Map[ClauseProxy, TimeStamp] = new mutable.HashMap[ClauseProxy, TimeStamp]()
   private val csts : OrderedContextSet[TimeData] = new TreeOrderedContextSet[TimeData]()  // To query for ranges of time
   // private val nsts : mutable.Set[FormulaStore] = new mutable.HashSet[FormulaStore]()
 
@@ -25,7 +25,7 @@ object SelectionTimeStore extends DataStore {
    * @param f - any FormulaStore
    * @return None, if the clause was not yet selected (still in active), Some(t) if `f` was moved from active to passiv on time `t`
    */
-  def get(f : AnnotatedClause) : Option[TimeStamp] = sts.get(f)
+  def get(f : ClauseProxy) : Option[TimeStamp] = sts.get(f)
 
   /**
    * Returns a set of all formula stores, that were selected
@@ -34,7 +34,7 @@ object SelectionTimeStore extends DataStore {
    * @param t - Upper Bound of the TimeStamp
    * @return set of all formulas with a TimeStamp smaller or equal to t.
    */
-  def before(t : TimeStamp, c : Context) : Iterable[AnnotatedClause] = csts.getSmaller(TimeData(null,t), c).map(_.f)
+  def before(t : TimeStamp, c : Context) : Iterable[ClauseProxy] = csts.getSmaller(TimeData(null,t), c).map(_.f)
 
 
   /**
@@ -44,41 +44,45 @@ object SelectionTimeStore extends DataStore {
    * @param t - Upper Bound of the TimeStamp
    * @return set of all formulas with a TimeStamp bigger or equal to t.
    */
-  def after(t : TimeStamp, c : Context) : Iterable[AnnotatedClause] = csts.getSmaller(TimeData(null,t), c).map(_.f)
+  def after(t : TimeStamp, c : Context) : Iterable[ClauseProxy] = csts.getSmaller(TimeData(null,t), c).map(_.f)
 
 
-  def wasSelected(c: Context): Iterable[AnnotatedClause] = csts.getAll(c).map(_.f)
+  def wasSelected(c: Context): Iterable[ClauseProxy] = csts.getAll(c).map(_.f)
 
   /**
    * Returns a set of all formulas, that have no selection time.
    *
    * @return set of non selected formula stores
    */
-  def noSelect(c : Context) : Iterable[AnnotatedClause] = FormulaDataStore.getFormulas(c).filter{get(_).isEmpty}
+  def noSelect(c : Context) : Iterable[ClauseProxy] = FormulaDataStore.getFormulas(c).filter{get(_).isEmpty}
 
   //==========================================
   //      Blackboard Controlling
   //==========================================
-  override def storedTypes: Seq[DataType] = List(FormulaType, SelectionTimeType)
+  override def storedTypes: Seq[DataType] = List(ClauseType, SelectionTimeType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo : AnnotatedClause, fn : AnnotatedClause) => synchronized {
-      sts.remove(fo).map { t => sts.put(fn, t); csts.remove(TimeData(fo, t), fo.context); csts.add(TimeData(fn, t), fn.context) }
+    case (fo : ClauseProxy, fn : ClauseProxy) => synchronized {
+      sts.remove(fo).map { t => sts.put(fn, t); csts.remove(TimeData(fo, t), Context()); csts.add(TimeData(fn, t), Context()) }
       false // We do not check for new data
     }
-    case ((TimeData(fo,to)), (TimeData(fn,tn))) => synchronized {
+    case ((fo : ClauseProxy, co : Context), (fn : ClauseProxy, cn : Context)) => synchronized {
+      sts.remove(fo).map { t => sts.put(fn, t); csts.remove(TimeData(fo, t), co); csts.add(TimeData(fn, t), cn) }
+      false // We do not check for new data
+    }
+    case ((TimeData(fo,to, co)), (TimeData(fn,tn, cn))) => synchronized {
       sts.remove(fo)
-      csts.remove(TimeData(fo,to), fo.context)
+      csts.remove(TimeData(fo,to), co)
       sts.put(fn, tn)
-      csts.add(TimeData(fn,tn), fn.context)
+      csts.add(TimeData(fn,tn), cn)
       true
     }
     case _ => false
   }
   override def insert(n: Any): Boolean = n match {
-    case TimeData(f,t) => synchronized {
+    case TimeData(f,t, c) => synchronized {
       if (sts.get(f).fold(true)(_ != t)) {
         sts.put(f, t)
-        csts.add(TimeData(f,t), f.context)
+        csts.add(TimeData(f,t), c)
         true
       } else
         false
@@ -92,16 +96,19 @@ object SelectionTimeStore extends DataStore {
   }
   override def all(t: DataType): Set[Any] = t match {
     case SelectionTimeType => sts.toSet
-    case FormulaType => sts.keys.toSet
+    case ClauseType => sts.keys.toSet
     case _ => Set.empty
   }
 
   override def delete(d: Any): Unit = d match {
-    case (f : AnnotatedClause) => synchronized {
-      sts.remove(f).map{t => csts.remove(TimeData(f,t), f.context)}
+    case (f : ClauseProxy) => synchronized {
+      sts.remove(f).map{t => csts.remove(TimeData(f,t), Context())}
     }
-    case (TimeData(f,t)) => synchronized {
-      sts.get(f).map{t1 => if(t == t1) {sts.remove(f); csts.remove(TimeData(f,t), f.context)}}
+    case (f : ClauseProxy, c : Context) => synchronized {
+      sts.remove(f).map{t => csts.remove(TimeData(f,t), c)}
+    }
+    case (TimeData(f,t, c)) => synchronized {
+      sts.get(f).map{t1 => if(t == t1) {sts.remove(f); csts.remove(TimeData(f,t), c)}}
     }
   }
 }
@@ -114,6 +121,6 @@ case object SelectionTimeType extends DataType {}
  * @param f the formula
  * @param t the time
  */
-case class TimeData(f : AnnotatedClause, t : TimeStamp) extends Ordered[TimeData]{
+case class TimeData(f : ClauseProxy, t : TimeStamp, c : Context = Context()) extends Ordered[TimeData]{
   override def compare(that: TimeData): Int = t.compareTo(that.t)
 }

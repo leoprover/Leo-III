@@ -1,9 +1,9 @@
 package leo.agents
 package impl
 
-import leo.datastructures.blackboard
+import leo.datastructures.{ClauseProxy, blackboard}
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{DataType, AnnotatedClause, Result, FormulaType}
+import leo.datastructures.blackboard.{DataType, AnnotatedClause, Result, ClauseType}
 import java.io.{PrintWriter, File}
 import leo.modules.external.{ExternalCall, ExternalResult}
 import leo.modules.output.{ToTPTP, Output}
@@ -33,7 +33,7 @@ abstract class ScriptAgent(path : String) extends Agent {
 
   def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
 
-  def encode(fs: Set[AnnotatedClause]): Seq[String]
+  def encode(fs: Set[ClauseProxy]): Seq[String]
 
   /**
     *
@@ -59,8 +59,8 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
 
-  final case class ScriptTask(script : String, fs: Set[AnnotatedClause], c: Context, a : ScriptAgent) extends Task {
-    override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (FormulaType -> fs.asInstanceOf[Set[Any]])
+  final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
+    override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (ClauseType -> fs.asInstanceOf[Set[Any]])
 
     override def writeSet(): Map[DataType, Set[Any]] = Map.empty
 

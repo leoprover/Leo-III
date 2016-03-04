@@ -108,9 +108,9 @@ object Utility {
     println("-"*maxSize)
     FormulaDataStore.getFormulas(c).foreach {
       x =>
-        val name = x.name.toString.take(maxNameSize)
+        val name = x.id.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty
+        val form = x.cl.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -132,9 +132,9 @@ object Utility {
     println("-"*maxSize)
     FormulaDataStore.getFormulas.foreach {
       x =>
-        val name = x.name.toString.take(maxNameSize)
+        val name = x.id.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty
+        val form = x.cl.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
