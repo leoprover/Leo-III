@@ -2,6 +2,8 @@ package leo
 package datastructures.blackboard
 package impl
 
+import leo.datastructures.ClauseProxy
+
 import scala.collection.mutable
 
 /**
@@ -12,15 +14,17 @@ import scala.collection.mutable
  */
 object UnificationTaskStore  extends DataStore {
 
-  private val uts : mutable.Set[AnnotatedClause] = new mutable.HashSet[AnnotatedClause]()
+  private val uts : mutable.Set[ClauseProxy] = new mutable.HashSet[ClauseProxy]()
 
   // TODO Check for same clauses???
 
   // TODO does anyone need to look at this data???
 
+  // TODO use context
+
   override def storedTypes: Seq[DataType] = List(UnificationTaskType)
   override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo : AnnotatedClause, fn : AnnotatedClause) =>
+    case (fo : ClauseProxy, fn : ClauseProxy) =>
       uts.remove(fo)
       if(uts.contains(fn))
         false
@@ -31,7 +35,7 @@ object UnificationTaskStore  extends DataStore {
     case _ => false
   }
   override def insert(n: Any): Boolean = n match {
-    case f : AnnotatedClause =>
+    case f : ClauseProxy =>
       if(uts.contains(f))
         false
       else {
@@ -45,7 +49,7 @@ object UnificationTaskStore  extends DataStore {
     case _ => Set()
   }
   override def delete(d: Any): Unit = d match {
-    case f : AnnotatedClause => uts.remove(f)
+    case f : ClauseProxy => uts.remove(f)
     case _ => ()
   }
 }
