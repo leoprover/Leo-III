@@ -112,6 +112,20 @@ trait TaskOrganize {
    * @return all registered agents and their budget
    */
   def getAgents : Iterable[(TAgent, Double)]
+
+  /**
+    * Submits a new Task to the list of executable tasks.
+    *
+    * @param ts Set of new Tasks
+    */
+  def submitTasks(a : TAgent, ts : Set[Task]) : Unit
+
+  /**
+    * Declares, that a task has been completely executed.
+    *
+    * @param t The finished task.
+    */
+  def finishTask(t : Task) : Unit
 }
 
 /**
@@ -148,6 +162,52 @@ trait DataBlackboard {
    */
   protected[blackboard] def getDS(d : DataType) : Seq[DataStore]
 
+
+  /**
+    *
+    * Adds new data to the blackboard.
+    *
+    * @param dataType The type of data to be added
+    * @param d the data to be added
+    * @return true if sucessfully added. false if already existing or could no be added
+    */
+  def addData(dataType : DataType)(d : Any) : Boolean = {
+    val isNew = getDS(dataType) exists (ds => ds.insert(d)) // TODO forall or exist?
+    if(isNew)
+      Blackboard().filterAll{a =>
+        Blackboard().submitTasks(a, a.filter(DataEvent(d, dataType)).toSet)
+      }
+    isNew
+  }
+
+  /**
+    *
+    * Updates data in the blackboard
+    *
+    * @param dataType The type of data to be updated
+    * @param d1 the old value
+    * @param d2 the new value
+    * @return true if sucessfully been updated. false if already existing or could no be added
+    */
+  def updateData(dataType: DataType)(d1 : Any)(d2 : Any) : Boolean = {
+    val isNew = getDS(dataType) exists {ds => ds.delete(d1); ds.insert(d2)} // TODO forall or exist?
+    if(isNew)
+      Blackboard().filterAll{a =>
+        Blackboard().submitTasks(a, a.filter(DataEvent(d2, dataType)).toSet)
+      }
+    isNew
+  }
+
+  /**
+    *
+    * Removes data from the blackboard.
+    *
+    * @param dataType The type of data to be deleted
+    * @param d the value to be deleted
+    */
+  def removeData(dataType: DataType)(d : Any) : Unit = {
+    getDS(dataType) foreach { d => d.delete(d) }
+  }
 }
 
 /**

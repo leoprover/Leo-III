@@ -1,6 +1,5 @@
 package leo
 
-import leo.agents.{FifoController}
 //import leo.agents.impl.{FormulaSelectionAgent, CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl._

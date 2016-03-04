@@ -13,29 +13,14 @@ import scala.collection.mutable
 
 /**
  * <p>
- * Interface for all Agent Implementations.
- * </p>
- *
- * <p>
- * The Agent itself is not a Thread, but a function to be called, at any
- * time its guard is satisfied.
- * </p>
- *
- * <p>
- * To register an Agent, it has to be passed to an AgentController.
- * (Runnable vs. Thread)
- * </p>
+ * A implementation of TAgent which supports empty implementations
+  * for non-essential methods of [[TAgent]]
+  * <p>
+  *
  * @author Max Wisniewski
  * @since 5/14/14
  */
-abstract class Agent {
-
-  /**
-   *
-   * @return the name of the agent
-   */
-  def name : String
-
+abstract class Agent extends TAgent {
 
   /**
    * This method is called when an agent is killed by the scheduler
@@ -45,15 +30,6 @@ abstract class Agent {
    * execution of the agent, this method can clean up the processes.
    */
   def kill(): Unit = {}
-
-  /**
-   * Triggers the filtering of the Agent.
-   *
-   * Upon an Event the Agent can generate Tasks, he wants to execute.
-   * @param event on the blackboard concerning change of data.
-   * @return a List of Tasks the Agent wants to execute.
-   */
-  def toFilter(event : Event) : Iterable[Task]
 
   /**
    * Declares the agents interest in specific data.
@@ -91,5 +67,11 @@ abstract class Agent {
     out.lines.foreach{s => sb.append("\n  "+s)}
     sb.toString()
   }
+
+  override def taskChoosen(t: Task): Unit = {}
+  override def taskFinished(t: Task): Unit = {}
+  override def maxMoney: Double = 10000
+  override def after : Set[TAgent] = Set.empty
+  override val before : Set[TAgent] = Set.empty
 }
 

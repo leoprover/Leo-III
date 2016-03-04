@@ -308,14 +308,8 @@ object Utility {
     Signature.resetWithHOL(Signature.get)
   }
 
-  def agentStatus() : Unit = {
-    println("Agents: ")
-    for((a,b) <- Blackboard().getAgents) {
-      println(a.name + " , "+ (if(a.isActive) "active" else "inactive") + " , "+ b +" budget , "+a.openTasks+" tasks")
-    }
-  }
-
   def printDerivation(cl: ClauseProxy) : Unit = Out.output(derivationString(new HashSet[Int](), 0, cl, new StringBuilder()).toString())
+
 
   private def derivationString(origin: Set[Int], indent : Int, cl: ClauseProxy, sb : StringBuilder) : StringBuilder = {
     cl.annotation match {

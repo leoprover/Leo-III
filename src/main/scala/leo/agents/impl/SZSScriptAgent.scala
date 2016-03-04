@@ -54,20 +54,9 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
         case None         => ()
       }
     }
-    while(err.hasNext){
-      val line = err.next()
-      b.append("  Err: "+line+"\n")
-      getSZS(line) match {
-        case Some(status) =>
-          context.close()
-          Out.info(s"[$name]: Got ${status.output} from the external prover.")
-          return Result().insert(StatusType)(SZSStore(reinterpreteResult(status), context))
-        case None         => ()
-      }
-    }
     Out.info(s"[$name]: No SZS status returned in\n${b.toString}")
     context.close()
-    return Result().insert(StatusType)(SZSStore(SZS_GaveUp, context))
+    Result().insert(StatusType)(SZSStore(SZS_GaveUp, context))
   }
 
   /**
@@ -78,7 +67,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
    */
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
-  override def toFilter(event: Event): Iterable[Task] = event match {
+  override def filter(event: Event): Iterable[Task] = event match {
     case SZSScriptMessage(f,c) => createTask(f,c)
     case _                   => List()
   }
@@ -87,7 +76,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
     Out.trace(s"[$name]: Got a task.")
     val conj = Store(negateClause(f.clause), Role_Conjecture, f.context, f.status)
     val context : Set[FormulaStore] = FormulaDataStore.getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
-    return List(new ScriptTask(context + conj, c))
+    return List(new ScriptTask(cmd, context + conj, c, this))
   }
 
   private def negateClause(c : Clause) : Clause = {

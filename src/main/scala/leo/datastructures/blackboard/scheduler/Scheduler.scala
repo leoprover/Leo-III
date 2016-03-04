@@ -22,7 +22,8 @@ object Scheduler {
   /**
    * Creates a Scheduler for 5 Threads or a get for the singleton,
    * if the scheduler already exists.
-   * @return
+    *
+    * @return
    */
   def apply() : Scheduler = {
     s
@@ -75,7 +76,8 @@ trait Scheduler {
  * Central Object for coordinating the ThreadPool responsible for
  * executing the Agents
  * </p>
- * @author Max Wisniewski
+  *
+  * @author Max Wisniewski
  * @since 5/15/14
  */
 protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Scheduler {
@@ -237,8 +239,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
                 val ts = if (xs.isEmpty) result.keys else xs
                 ts.foreach { t =>
                   // Queuing for filtering on the existing threads
-                  newD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter new data ($d)\n\t\tin Agent ${a.name}" ); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
-                  updateD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter update to ($d)\n\t\tin Agent ${a.name}"); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
+                  newD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter new data ($d)\n\t\tin Agent ${a.name}" ); exe.submit(new GenFilter(a, t, d, task)) } //a.filter(DataEvent(d,t))}
+                  updateD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter update to ($d)\n\t\tin Agent ${a.name}"); exe.submit(new GenFilter(a, t, d, task)) } //a.filter(DataEvent(d,t))}
                   // TODO look at not written data,,,
                 }
             }
@@ -252,9 +254,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
       LockSet.releaseTask(task)
       curExec.remove(task)
-      agent.taskFinished(task)  // TODO maybe move after all filtering
-      val lockCount = if(doneSmth) ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") else ActiveTracker.decAndGet()
-      if(lockCount <= 0) Blackboard().forceCheck()
+      agent.taskFinished(task)
+      Blackboard().finishTask(task)
+
+      if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -263,25 +266,38 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   /**
    * The Generic Agent runs an agent on a task and writes the Result Back, such that it can be updated to the blackboard.
-   * @param a - Agent that will be executed
+    *
+    * @param a - Agent that will be executed
    * @param t - Task on which the agent runs.
    */
   private class GenAgent(a : TAgent, t : Task) extends Runnable{
-    override def run()  {
-      ExecTask.put(t.run,t, a)
-      AgentWork.dec(a)
+    override def run()  { // TODO catch error and move outside or at least recover
+      try {
+        ExecTask.put(t.run, t, a)
+        AgentWork.dec(a)
+      } catch {
+        case e : Exception =>
+          leo.Out.severe(e.getMessage)
+          Scheduler().killAll()
+      }
 //      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
-  private class GenFilter(a : TAgent, t : DataType, newD : Any) extends Runnable{
-    override def run(): Unit = {
+  private class GenFilter(a : TAgent, t : DataType, newD : Any, from : Task) extends Runnable{
+    override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
+      try {
+        val ts = a.filter(DataEvent(newD, t))
+        Blackboard().submitTasks(a, ts.toSet)
+      } catch {
+        case e : Exception => leo.Out.warn(e.getMessage)
+      }
 
-      a.filter(DataEvent(newD,t))
-
+      println(s"Before Filter gaveUp : ${ActiveTracker.get}")
       if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0)
         Blackboard().forceCheck()
+
       //Release sync
     }
   }
@@ -371,6 +387,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
 
     override def pretty: String = "Exit Task"
+    override def getAgent : TAgent = null
   }
 }
 
