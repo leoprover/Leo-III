@@ -139,63 +139,54 @@ object SeqPProc extends Function1[Long, Unit]{
         override val inferenceStatus = Some(SZS_CounterSatisfiable)
       }, Set(conjWrapper)),ClauseAnnotation.PropNoProp)
     }
+
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
+    val state: State[ClauseWrapper] = State.fresh(Signature.get)
     Out.debug("## Preprocess BEGIN")
-    var preprocessed: SortedSet[ClauseWrapper] = SortedSet[ClauseWrapper]()
     val inputIt = effectiveInput.iterator
     while (inputIt.hasNext) {
       val cur = inputIt.next()
       Out.debug(s"# Process: ${cur.pretty}")
       val processed = preprocess(cur)
       Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
-      preprocessed = preprocessed ++ processed.filterNot(cw => Clause.trivial(cw.cl))
+      var preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
+      state.addUnprocessed(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug("## Preprocess END\n\n")
 
     val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
-    // initialize sets
-    Control.fvIndexInit(preprocessed.toSet)
-    var unprocessed: SortedSet[ClauseWrapper] = preprocessed
-    var processed: Set[ClauseWrapper] = Set()
-    var units: Set[ClauseWrapper] = Set()
-    var returnSZS: StatusSZS = SZS_Unknown
-    var derivationClause: ClauseWrapper = null
-    var subsumed: Int = 0
-    var processedCounter: Int = 0
-    var genCounter: Int = unprocessed.size
+    Control.fvIndexInit(state.unprocessed.toSet)
     var loop = true
 
     // proof loop
     Out.debug("## Reasoning loop BEGIN")
-    while (loop && !prematureCancel(processedCounter)) {
+    Out.debug(s"${state.noProcessedCl}")
+    while (loop && !prematureCancel(state.noProcessedCl)) {
       if (System.currentTimeMillis() - startTime > 1000*Configuration.TIMEOUT) {
         loop = false
-        returnSZS = SZS_Timeout
-      } else if (unprocessed.isEmpty) {
+        state.setSZSStatus(SZS_Timeout)
+      } else if (state.unprocessed.isEmpty) {
         loop = false
-//        returnSZS = SZS_CounterSatisfiable
       } else {
         // No cancel, do reasoning step
-        processedCounter = processedCounter + 1
-        var cur = unprocessed.head
+        var cur = state.nextUnprocessed
         // cur is the current clausewrapper
-        unprocessed = unprocessed.tail
         Out.debug(s"Taken: ${cur.pretty}")
 
-        cur = simplify(cur, units)
+        cur = simplify(cur, state.rewriteRules)
         if (Clause.effectivelyEmpty(cur.cl)) {
           loop = false
           if (conjecture.isEmpty) {
-            returnSZS = SZS_ContradictoryAxioms
+            state.setSZSStatus(SZS_ContradictoryAxioms)
           } else {
-            returnSZS = SZS_Theorem
+            state.setSZSStatus(SZS_Theorem)
           }
-          derivationClause = cur
+          state.setDerivationClause(cur)
         } else {
           // Subsumption
-          if (!processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+          if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
             var newclauses: Set[ClauseWrapper] = Set()
 
             /////////////////////////////////////////
@@ -203,11 +194,12 @@ object SeqPProc extends Function1[Long, Unit]{
             // TODO: à la E: direct descendant criterion, etc.
             /////////////////////////////////////////
             /* Subsumption */
-            processed = processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)) + cur
+            state.setProcessed(state.processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)))
+            state.addProcessed(cur)
             Control.fvIndexInsert(cur)
             /* Add rewrite rules to set */
             if (Clause.rewriteRule(cur.cl)) {
-              units = units + cur
+              state.addRewriteRule(cur)
             }
             /* Functional Extensionality */
             val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cur.cl)
@@ -236,7 +228,7 @@ object SeqPProc extends Function1[Long, Unit]{
             newclauses = newclauses union boolext_result
 
             /* paramodulation where at least one involved clause is `cur` */
-            val paramod_result = Control.paramodSet(cur, processed)
+            val paramod_result = Control.paramodSet(cur, state.processed)
             newclauses = newclauses union paramod_result
 
             /* Equality factoring of `cur` */
@@ -291,11 +283,11 @@ object SeqPProc extends Function1[Long, Unit]{
             while (newIt.hasNext) {
               var newCl = newIt.next()
               // Simplify again, including rewriting etc.
-              newCl = simplify(newCl, units)
+              newCl = simplify(newCl, state.rewriteRules)
 
               if (!Clause.trivial(newCl.cl)) {
-                genCounter = genCounter + 1
-                unprocessed = unprocessed + newCl
+                state.incGeneratedCl(1)
+                state.addUnprocessed(newCl)
               } else {
                 Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
               }
@@ -303,8 +295,8 @@ object SeqPProc extends Function1[Long, Unit]{
 
           } else {
             Out.debug("clause subsumbed, skipping.")
-            subsumed = subsumed + 1
-            Out.trace(s"Subsumed by:\n\t${processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+            state.incForwardSubsumedCl()
+            Out.trace(s"Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
           }
 
         }
@@ -330,30 +322,30 @@ object SeqPProc extends Function1[Long, Unit]{
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
     Out.output("")
-    Out.output(SZSOutput(returnSZS, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
+    Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
 
     /* Output additional information about the reasoning process. */
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
-    Out.comment(s"No. of processed clauses: ${processedCounter}")
-    Out.comment(s"No. of generated clauses: ${genCounter}")
-    Out.comment(s"No. of subsumed clauses: ${subsumed}")
-    Out.comment(s"No. of units in store: ${units.size}")
+    Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
+    Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
+    Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+    Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
     if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
       Out.comment("Signature extension used:")
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-      Out.comment(Utility.userDefinedSignatureAsString)
+      Out.comment(Utility.userDefinedSignatureAsString) // TODO: Adjust for state
     }
     // FIXME: Count axioms used in proof:
     //    if (derivationClause != null)
     //      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
 
     /* Print proof object if possible and requested. */
-    if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
+    if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && state.derivationClause.isDefined) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
 //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Utility.printDerivation(derivationClause)
+      Utility.printDerivation(state.derivationClause.get)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
