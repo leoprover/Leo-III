@@ -1,4 +1,4 @@
-package leo.modules.extraction_normalization
+package leo.modules.preprocessing
 
 import leo.datastructures.{<=>, Term}
 import leo.datastructures.impl.Signature

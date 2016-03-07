@@ -1,4 +1,4 @@
-package leo.modules.extraction_normalization
+package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
@@ -139,7 +139,7 @@ object FormulaRenaming {
   }
 
   //TODO Alles nochmal überprüfen
-  protected[extraction_normalization] def cnf_size(t: Term, pol: Boolean): Int = t match {
+  protected[preprocessing] def cnf_size(t: Term, pol: Boolean): Int = t match {
     case |||(l, r) => if (pol) cnf_size(l, pol) * cnf_size(r, pol) else cnf_size(l, pol) + cnf_size(r, pol)
     case &(l, r) => if (pol) cnf_size(l, pol) + cnf_size(r, pol) else cnf_size(l, pol) * cnf_size(r, pol)
     case Not(t1) => cnf_size(t1, !pol)
@@ -155,7 +155,7 @@ object FormulaRenaming {
     //    case _  => formula
   }
 
-  protected[extraction_normalization] def introduce_definition(t: Term, pol: Boolean): (Term, Clause) = {
+  protected[preprocessing] def introduce_definition(t: Term, pol: Boolean): (Term, Clause) = {
     val definition =
       if (us.contains(t))
         us.get(t).get

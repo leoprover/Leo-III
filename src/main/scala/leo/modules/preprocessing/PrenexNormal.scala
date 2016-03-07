@@ -1,8 +1,6 @@
-package leo.modules.normalization
+package leo.modules.preprocessing
 
-import leo.datastructures._
-import leo.datastructures.blackboard.{Store, AnnotatedClause}
-import Term._
+import leo.datastructures.Term._
 import leo.datastructures._
 
 /**
@@ -11,22 +9,51 @@ import leo.datastructures._
  * @author Max Wisniewski
  * @since 6/17/14
  */
-object PrenexNormal extends AbstractNormalize {
-
-  override val name : String = "PrenexNormal"
-
+object PrenexNormal extends Normalization {
   /**
    * Normalizes a formula corresponding to the object.
+    * We assume a positive literal weight after applying negationnormalform
    *
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l),internalNormalize(r))})
+  def apply(formula : Clause) : Clause = {
+    var maxBound = formula.maxImplicitlyBound
+    formula.mapLit(lit => lit.termMap {case (l,r) =>
+      (internalNormalize(l).betaNormalize,internalNormalize(r).betaNormalize) match {
+        case (l1, LitTrue()) if lit.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2, LitTrue())
+        case (l1, LitFalse()) if !lit.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2,LitFalse())
+        case s      => s
+      }
+    })
+  }
+
+  def apply(literal : Literal) : Literal = {
+    var maxBound = literal.fv.toSeq.sortBy(_._1).headOption.fold(0){case (i,ty) => i}
+    literal.termMap {case (l,r) =>
+      (internalNormalize(l).betaNormalize, internalNormalize(r).betaNormalize) match {
+        case (l1, LitTrue()) if literal.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2, LitTrue())
+        case (l1, LitFalse()) if !literal.polarity =>
+          val (l2, nmaxBound) = moveForallToClause(l1, maxBound)
+          maxBound = nmaxBound
+          (l2,LitFalse())
+        case s      => s
+      }
+
+    }
   }
 
   def normalize(t: Term): Term = {
-    internalNormalize(t)
+    internalNormalize(t).betaNormalize
   }
 
   private def internalNormalize(formula: Term): Term = formula match {
@@ -73,5 +100,10 @@ object PrenexNormal extends AbstractNormalize {
     case TypeLambda(t)          => mkTypeAbs(incrementBound(t,i))
 
 //    case _                      => formula
+  }
+
+  private def moveForallToClause(t : Term, maxBound : Int) : (Term, Int) = t match {
+    case Forall(ty :::> t1)   => moveForallToClause(Term.mkTermApp(Term.mkTermAbs(ty, t1), Term.mkBound(ty, maxBound+1)).betaNormalize, maxBound + 1)
+    case s                    => (s, maxBound)
   }
 }
