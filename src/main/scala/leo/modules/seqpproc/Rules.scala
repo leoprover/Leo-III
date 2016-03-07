@@ -7,7 +7,6 @@ import leo.datastructures.Term.:::>
 import leo.modules.SZSException
 import leo.modules.calculus.CalculusRule
 import leo.modules.calculus.HuetsPreUnification
-import leo.modules.normalization.Simplification
 import leo.modules.output.{SZS_Error, SZS_EquiSatisfiable, SZS_Theorem, SZS_CounterSatisfiable}
 import leo.Out
 import leo.modules.preprocessing.Simplification

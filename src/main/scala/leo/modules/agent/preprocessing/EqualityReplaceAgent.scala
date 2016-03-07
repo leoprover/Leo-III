@@ -4,7 +4,6 @@ import leo.agents.{TAgent, Task, Agent}
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{Clause, Term, Type, ClauseProxy}
 import leo.datastructures.blackboard._
-import leo.modules.calculus.CalculusRule
 import leo.datastructures.context.Context
 import leo.modules.seqpproc.{ReplaceAndrewsEq, ReplaceLeibnizEq}
 
@@ -23,11 +22,11 @@ object EqualityReplaceAgent extends Agent{
   private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
     val (can1, map) = ReplaceLeibnizEq.canApply(cl.cl)
     if(can1){
-      Seq(new LeibnitzEQ(cl, cl.cl, map, c, this))
+      Seq(new LeibnitzEQTask(cl, cl.cl, map, c, this))
     } else {
       val (can2, map2) = ReplaceAndrewsEq.canApply(cl.cl)
       if(can2){
-        Seq(new AndrewEQ(cl, cl.cl, map2, c, this))
+        Seq(new AndrewEQTask(cl, cl.cl, map2, c, this))
       } else {
         Seq()
       }
@@ -47,7 +46,7 @@ abstract class EqualityReplaceTask(cl : ClauseProxy, a : TAgent) extends Task {
 /**
   * Replaces Leibnitzequality and then andrew equality.
   */
-class LeibnitzEQ(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
+class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceLeibnizEq(clause, map)
     val (can, map2) = ReplaceAndrewsEq.canApply(nc)
@@ -63,7 +62,7 @@ class LeibnitzEQ(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c : Co
 /**
   * Replaces only Andrew Equality
   */
-class AndrewEQ(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
+class AndrewEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceAndrewsEq(clause, map)
     Result().update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ReplaceAndrewsEq, cl)), c))

@@ -40,7 +40,7 @@ class FormulaRenamingTask(cl : ClauseProxy, clause : Clause, defs : Seq[Clause],
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
     var r : Result= Result()
-    val defn : Set[ClauseProxy] = defs map {d => Store(d, Role_Definition, c)}
+    val defn : Set[ClauseProxy] = (defs map {d => Store(d, Role_Definition, c)}).toSet
     r = r.update(ClauseType)((cl, c))((Store(clause, cl.role, c, InferredFrom(FormulaRenaming, defn + cl))))
     val it = defn.iterator
     while(it.hasNext) {
