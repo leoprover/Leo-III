@@ -13,12 +13,14 @@ abstract class State[T <: ClauseProxy] extends Pretty {
 
   def signature: IsSignature
   def szsStatus: StatusSZS
+  def setSZSStatus(szs: StatusSZS): Unit
 
   def unprocessed: SortedSet[T]
   def nextUnprocessed: T
   def addUnprocessed(unprocessed: T): Unit
   def addUnprocessed(unprocessed: Set[T]): Unit
   def processed: Set[T]
+  def setProcessed(p: Set[T]): Unit
   def addProcessed(cl: T): Unit
 
   def rewriteRules: Set[T]
@@ -54,6 +56,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   override def signature: IsSignature = sig
   override def szsStatus: StatusSZS = current_szs
+  override def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
   override def unprocessed: SortedSet[T] = current_unprocessed
   override def nextUnprocessed: T = {
@@ -64,6 +67,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   override def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl}
   override def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls}
   override def processed: Set[T] = current_processed
+  override def setProcessed(c: Set[T]): Unit = {current_processed = c}
   override def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
 
   override def rewriteRules: Set[T] = current_rewriterules
