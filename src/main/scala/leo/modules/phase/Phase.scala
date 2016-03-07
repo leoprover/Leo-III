@@ -23,8 +23,8 @@ object Phase {
    * @param dagents - Agents to be used in this phase.
    * @return - A phase executing all agents until nothing is left to do.
    */
-  def apply(dname : String, dagents : Seq[AgentController]) : Phase = new CompletePhase {
-    override protected def agents: Seq[AgentController] = dagents
+  def apply(dname : String, dagents : Seq[TAgent]) : Phase = new CompletePhase {
+    override protected def agents: Seq[TAgent] = dagents
     override def name: String = dname
   }
 }
@@ -61,7 +61,7 @@ trait Phase {
    * A list of all agents to be started.
    * @return
    */
-  protected def agents : Seq[AgentController]
+  protected def agents : Seq[TAgent]
 
   /**
    * Method to start the agents, defined in `agents`

@@ -1,8 +1,9 @@
 
 package leo.modules.phase
 
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.TagName
 import leo._
-import leo.agents.{AgentController}
+import leo.agents.{TAgent, AgentController}
 import leo.datastructures.ClauseAnnotation.{InferredFrom, FromFile}
 import leo.datastructures._
 import leo.datastructures.blackboard.{ClauseType, Blackboard, Store}
@@ -15,7 +16,7 @@ import leo.modules.{Parsing, SZSException}
 class LoadPhase(problemfile: String = Configuration.PROBLEMFILE, negateConjecture : Boolean = true) extends Phase{
   override val name = "LoadPhase"
 
-  override val agents : Seq[AgentController] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
+  override val agents : Seq[TAgent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 
