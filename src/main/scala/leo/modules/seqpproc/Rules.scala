@@ -783,12 +783,12 @@ object OrderedEqFac extends CalculusRule {
     assert(cl.lits.isDefinedAt(maxLitIndex));
     assert(cl.lits.isDefinedAt(withLitIndex));
 
-    assert(cl.lits(maxLitIndex).polarity)
-    assert(cl.lits(withLitIndex).polarity)
-
     val maxLit = cl.lits(maxLitIndex)
-    val (maxLitSide1, maxLitSide2) = Literal.getSidesOrdered(maxLit, maxLitSide)
     val withLit = cl.lits(withLitIndex)
+    assert(maxLit.polarity || maxLit.flexHead)
+    assert(withLit.polarity || withLit.flexHead)
+
+    val (maxLitSide1, maxLitSide2) = Literal.getSidesOrdered(maxLit, maxLitSide)
     val (withLitSide1, withLitSide2) = Literal.getSidesOrdered(withLit, withLitSide)
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
