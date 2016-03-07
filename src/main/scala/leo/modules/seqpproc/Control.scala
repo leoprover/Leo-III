@@ -189,28 +189,63 @@ package inferenceControl {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
 
           if (maxLitIndex != otherLitIndex) {
-            val realMaxLit = if (maxLit.polarity)
-              maxLit
-            else {
-              assert(maxLit.flexHead)
-              Literal(Not(maxLit.left), true) // Is that right?
-            }
-            val realOtherLit = if (otherLit.polarity)
-              otherLit
-            else {
-              assert(otherLit.flexHead)
-              Literal(Not(otherLit.left), true)
-            }
-            val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(realMaxLit, maxLitSide)
-            val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(realOtherLit, otherLitSide)
-            val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-            val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-            Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-            Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
-            if (test1 && test2) {
-              val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-              val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
-              res = res + result
+            if (maxLit.polarity == otherLit.polarity) {
+              // same polarity, standard
+              val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
+              val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
+              val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+              val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+              if (test1 && test2) {
+                val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
+                val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+                res = res + result
+              }
+            } else {
+              // Exactly one is flexhead and negative
+              // attach not to not-flex literal
+              if (maxLit.flexHead) {
+                // TODO
+                assert(!otherLit.flexHead)
+                // otherlit is not flexhead
+                //following only makes sense if otherlit is equality between booleans
+                if (otherLit.left.ty == maxLit.left.ty) {
+//                  val adjustedOtherLit = Literal.mkLit(Not(otherLit.left), otherLit.right, !otherLit.polarity)
+//
+//                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
+//                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(adjustedOtherLit, otherLitSide)
+//                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+//                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+//                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+//                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+//                  if (test1 && test2) {
+//                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
+//                    val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+//                    res = res + result
+//                  }
+                }
+              } else {
+                assert(otherLit.flexHead)
+                assert(!maxLit.flexHead)
+
+                //following only makes sense if maxLit is equality between booleans
+                if (maxLit.left.ty == otherLit.left.ty) {
+//                  val adjustedMaxLit = Literal.mkLit(Not(maxLit.left), maxLit.right, !maxLit.polarity)
+//
+//                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(adjustedMaxLit, maxLitSide)
+//                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
+//                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+//                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+//                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+//                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+//                  if (test1 && test2) {
+//                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
+//                    val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+//                    res = res + result
+//                  }
+                }
+              }
             }
           }
         }
