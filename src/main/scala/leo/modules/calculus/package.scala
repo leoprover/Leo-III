@@ -108,6 +108,8 @@ package object calculus {
       case (_, Bound(_,_)) => true
       case (_ :::> body1, _ :::> body2) => mayUnify0(body1, body2, depth)
       case (TypeLambda(s2), TypeLambda(t2)) => mayUnify0(s2, t2, depth)
+      case (Bound(_,_) ∙ _, _) => true
+      case (_, Bound(_,_) ∙ _) => true
       case (f1 ∙ args1, f2 ∙ args2) if f1.ty == f2.ty && args1.length == args2.length => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
         case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
         case (Right(ty1), Right(ty2)) => ty1 == ty2

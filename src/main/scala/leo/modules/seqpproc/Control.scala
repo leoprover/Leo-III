@@ -15,7 +15,12 @@ object Control {
   @inline final def factor(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.FactorizationControl.factor(cl)
   @inline final def boolext(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.BoolExtControl.boolext(cl)
   @inline final def primsubst(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.PrimSubstControl.primSubst(cl)
-  // Redundancy inferences
+  @inline final def preunifySet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.PreUniControl.preunifySet(clSet)
+  // simplification inferences
+  @inline final def convertDefinedEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
+  @inline final def convertLeibnizEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
+  @inline final def convertAndrewsEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
+  // Redundancy
   @inline final def indexedForwardSubsumptionTest(cl: ClauseWrapper, processed: Set[ClauseWrapper]): Boolean = ???
   // Indexing
   final def fvIndexInit(initClauses: Set[ClauseWrapper]): Unit = indexingControl.FVIndexControl.init(initClauses)
@@ -189,28 +194,63 @@ package inferenceControl {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
 
           if (maxLitIndex != otherLitIndex) {
-            val realMaxLit = if (maxLit.polarity)
-              maxLit
-            else {
-              assert(maxLit.flexHead)
-              Literal(Not(maxLit.left), true) // Is that right?
-            }
-            val realOtherLit = if (otherLit.polarity)
-              otherLit
-            else {
-              assert(otherLit.flexHead)
-              Literal(Not(otherLit.left), true)
-            }
-            val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(realMaxLit, maxLitSide)
-            val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(realOtherLit, otherLitSide)
-            val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-            val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-            Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-            Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
-            if (test1 && test2) {
-              val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-              val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
-              res = res + result
+            if (maxLit.polarity == otherLit.polarity) {
+              // same polarity, standard
+              val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
+              val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
+              val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+              val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+              if (test1 && test2) {
+                val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
+                val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+                res = res + result
+              }
+            } else {
+              // Exactly one is flexhead and negative
+              // attach not to not-flex literal
+              if (maxLit.flexHead) {
+                // TODO
+                assert(!otherLit.flexHead)
+                // otherlit is not flexhead
+                //following only makes sense if otherlit is equality between booleans
+                if (otherLit.left.ty == maxLit.left.ty) {
+//                  val adjustedOtherLit = Literal.mkLit(Not(otherLit.left), otherLit.right, !otherLit.polarity)
+//
+//                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
+//                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(adjustedOtherLit, otherLitSide)
+//                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+//                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+//                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+//                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+//                  if (test1 && test2) {
+//                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
+//                    val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+//                    res = res + result
+//                  }
+                }
+              } else {
+                assert(otherLit.flexHead)
+                assert(!maxLit.flexHead)
+
+                //following only makes sense if maxLit is equality between booleans
+                if (maxLit.left.ty == otherLit.left.ty) {
+//                  val adjustedMaxLit = Literal.mkLit(Not(maxLit.left), maxLit.right, !maxLit.polarity)
+//
+//                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(adjustedMaxLit, maxLitSide)
+//                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
+//                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+//                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+//                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+//                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+//                  if (test1 && test2) {
+//                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
+//                    val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+//                    res = res + result
+//                  }
+                }
+              }
             }
           }
         }
@@ -218,6 +258,35 @@ package inferenceControl {
 
       Out.trace(s"Factor result:\n\t${res.map(_.pretty).mkString("\n\t")}")
       res
+    }
+  }
+
+  protected[modules] object PreUniControl {
+    import leo.modules.output.ToTPTP
+    import leo.datastructures.ClauseAnnotation._
+
+    final def preunifySet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = {
+      var resultSet: Set[ClauseWrapper] = clSet
+      val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = clSet.foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
+        val (cA, ul, ol) = PreUni.canApply(cw.cl)
+        if (cA) {
+          (uni + ((cw, ul, ol)),ot)
+        } else {
+          (uni, ot + cw)
+        }
+      }}
+      if (uniClauses.nonEmpty) {
+        Out.debug("Unification tasks found. Working on it...")
+        resultSet = otherClauses
+        uniClauses.foreach { case (cw, ul, ol) =>
+          Out.debug(s"Unification task from clause ${cw.pretty}")
+          val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
+          Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
+          resultSet = resultSet union nc
+        }
+
+      }
+      resultSet
     }
   }
 
@@ -249,7 +318,6 @@ package inferenceControl {
     }
   }
 
-
   protected[modules] object PrimSubstControl {
     import leo.modules.output.ToTPTP
     import leo.datastructures.ClauseAnnotation.InferredFrom
@@ -265,6 +333,75 @@ package inferenceControl {
         return new_ps
       }
       Set()
+    }
+  }
+
+  protected[modules] object DefinedEqualityProcessing {
+    import leo.modules.output.ToTPTP
+    import leo.datastructures.ClauseAnnotation._
+
+    final def convertDefinedEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = {
+      val replaceLeibniz = !Configuration.isSet("nleq")
+      val replaceAndrews = !Configuration.isSet("naeq")
+      if (replaceLeibniz || replaceAndrews) {
+        clSet.map { c =>
+          var cur_c = c
+          Out.finest(s"Searching for defined equalities in ${c.id}")
+          if (replaceLeibniz) {
+            cur_c = convertLeibniz0(cur_c)
+          }
+          if (replaceAndrews) {
+            cur_c = convertAndrews0(cur_c)
+          }
+          cur_c
+        }
+      }
+      clSet
+    }
+
+    // Leibniz Equalities
+    final def convertLeibnizEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = {
+      if (Configuration.isSet("nleq")) clSet
+      else
+        clSet.map(convertLeibniz0)
+    }
+
+    final def convertLeibnizEqualities(cl: ClauseWrapper): ClauseWrapper = {
+      if (Configuration.isSet("nleq")) cl
+      else convertLeibniz0(cl)
+    }
+    @inline private final def convertLeibniz0(cl: ClauseWrapper): ClauseWrapper = {
+      val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(cl.cl)
+      if (cA_leibniz) {
+        Out.trace(s"Replace Leibniz equalities in ${cl.id}")
+        val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)
+        val res = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((cl, ToTPTP(subst)))))
+        Out.finest(s"Result: ${res.pretty}")
+        res
+      } else
+        cl
+    }
+
+    // Andrews Equalities
+    final def convertAndrewsEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = {
+      if (Configuration.isSet("naeq")) clSet
+      else clSet.map(convertAndrews0)
+    }
+
+    final def convertAndrewsEqualities(cl: ClauseWrapper): ClauseWrapper = {
+      if (Configuration.isSet("naeq")) cl
+      else convertAndrews0(cl)
+    }
+    @inline private final def convertAndrews0(cl: ClauseWrapper): ClauseWrapper = {
+      val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cl.cl)
+      if (cA_Andrews) {
+        Out.trace(s"Replace Andrews equalities in ${cl.id}")
+        val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)
+        val res = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((cl, ToTPTP(subst)))))
+        Out.finest(s"Result: ${res.pretty}")
+        res
+      } else
+        cl
     }
   }
 

@@ -48,32 +48,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")
 
     // Remove defined equalities as far as possible
-    val replaceLeibniz = !Configuration.isSet("nleq")
-    val replaceAndrews = !Configuration.isSet("naeq")
-    val leftEq = if (!replaceLeibniz && !replaceAndrews) left2
-    else left2.map { c =>
-      var cur_c = c
-      Out.finest(s"Searching for defined equalities in ${c.id}")
-      if (replaceLeibniz) {
-        val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(c.cl)
-        if (cA_leibniz) {
-          Out.trace(s"Replace Leibniz equalities in ${c.id}")
-          val (resCl, subst) = ReplaceLeibnizEq(c.cl, leibTermMap)
-          cur_c = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((c, ToTPTP(subst)))))
-          Out.finest(s"Result: ${cur_c.pretty}")
-        }
-      }
-      if (replaceAndrews) {
-        val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cur_c.cl)
-        if (cA_Andrews) {
-          Out.trace(s"Replace Andrews equalities in ${c.id}")
-          val (resCl, subst) = ReplaceAndrewsEq(cur_c.cl, andrewsTermMap)
-          cur_c = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((c, ToTPTP(subst)))))
-          Out.finest(s"Result: ${cur_c.pretty}")
-        }
-      }
-      cur_c
-    }
+    val leftEq = Control.convertDefinedEqualities(left2)
 
     val left3 = leftEq.map { c =>
       // To equation if possible
@@ -120,25 +95,7 @@ object SeqPProc extends Function1[Long, Unit]{
     val left6 = left5.filterNot(cw => Clause.trivial(cw.cl))
 
     // Pre-unify new clauses
-    val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = left6.foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
-      val (cA, ul, ol) = PreUni.canApply(cw.cl)
-      if (cA) {
-        (uni + ((cw, ul, ol)),ot)
-      } else {
-        (uni, ot + cw)
-      }
-    }}
-    val left7 = if (uniClauses.nonEmpty) {
-      Out.trace("Unification tasks found. Working on it...")
-      var newclauses = otherClauses
-      uniClauses.foreach { case (cw, ul, ol) =>
-        Out.finest(s"Unification task from clause ${cw.pretty}")
-        val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
-        Out.finest(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
-        newclauses = newclauses union nc
-      }
-      newclauses
-    } else left6
+    val left7 = Control.preunifySet(left6)
 
     // TODO: Do that in a reasonable way...
     left7.foreach(_.properties = ClauseAnnotation.PropUnified)
@@ -175,7 +132,7 @@ object SeqPProc extends Function1[Long, Unit]{
     } else {
       assert(conjecture.size == 1)
       val conj = conjecture.head
-      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, NoAnnotation, ClauseAnnotation.PropNoProp)
+      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
       val rest = filteredInput.filterNot(_._1 == conjecture.head._1)
       rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
         override def name: String = "neg_conjecture"
@@ -306,53 +263,13 @@ object SeqPProc extends Function1[Long, Unit]{
             newclauses = newclauses.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw)));Out.finest(s"${res.pretty}\n\t") ;res}))
 
             /* Pre-unify new clauses */
-            val (uniClauses, otherClauses):(Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)], Set[ClauseWrapper]) = (newclauses).foldLeft((Set[(ClauseWrapper, PreUni.UniLits, PreUni.OtherLits)](), Set[ClauseWrapper]())) {case ((uni,ot),cw) => {
-              val (cA, ul, ol) = PreUni.canApply(cw.cl)
-              if (cA) {
-                (uni + ((cw, ul, ol)),ot)
-              } else {
-                (uni, ot + cw)
-              }
-            }}
-            if (uniClauses.nonEmpty) {
-              Out.debug("Unification tasks found. Working on it...")
-              newclauses = otherClauses
-              uniClauses.foreach { case (cw, ul, ol) =>
-                Out.debug(s"Unification task from clause ${cw.pretty}")
-                val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
-                Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
-                newclauses = newclauses union nc
-              }
+            val preuni_result = Control.preunifySet(newclauses)
+            newclauses = preuni_result
 
-            }
             /* Replace defined equalities */
-            val replaceLeibniz = !Configuration.isSet("nleq")
-            val replaceAndrews = !Configuration.isSet("naeq")
-            if (replaceLeibniz || replaceAndrews) {
-              newclauses = newclauses.map { c =>
-                var cur_c = c
-                Out.finest(s"Searching for defined equalities in ${c.id}")
-                if (replaceLeibniz) {
-                  val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(c.cl)
-                  if (cA_leibniz) {
-                    Out.trace(s"Replace Leibniz equalities in ${c.id}")
-                    val (resCl, subst) = ReplaceLeibnizEq(c.cl, leibTermMap)
-                    cur_c = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((c, ToTPTP(subst)))))
-                    Out.finest(s"Result: ${cur_c.pretty}")
-                  }
-                }
-                if (replaceAndrews) {
-                  val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cur_c.cl)
-                  if (cA_Andrews) {
-                    Out.trace(s"Replace Andrews equalities in ${c.id}")
-                    val (resCl, subst) = ReplaceAndrewsEq(cur_c.cl, andrewsTermMap)
-                    cur_c = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((c, ToTPTP(subst)))))
-                    Out.finest(s"Result: ${cur_c.pretty}")
-                  }
-                }
-                cur_c
-              }
-            }
+            val defEq_result = Control.convertDefinedEqualities(newclauses)
+            newclauses = defEq_result
+
             /* Replace eq symbols on top-level by equational literals. */
             newclauses = newclauses.map { c =>
               val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
@@ -423,7 +340,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"No. of generated clauses: ${genCounter}")
     Out.comment(s"No. of subsumed clauses: ${subsumed}")
     Out.comment(s"No. of units in store: ${units.size}")
-    if (Out.logLevelAtLeast(java.util.logging.Level.FINER)) {
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
       Out.comment("Signature extension used:")
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
       Out.comment(Utility.userDefinedSignatureAsString)
@@ -435,7 +352,8 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Print proof object if possible and requested. */
     if (returnSZS == SZS_Theorem && Configuration.PROOF_OBJECT) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      Out.output(makeDerivation(derivationClause).drop(1).toString)
+//      Out.output(makeDerivation(derivationClause).drop(1).toString)
+      Utility.printDerivation(derivationClause)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
