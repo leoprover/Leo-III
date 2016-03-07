@@ -537,6 +537,7 @@ object BoolExt extends CalculusRule {
   def canApply(l: Literal): Boolean = l.equational && l.left.ty == Signature.get.o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
+
   def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
     var can = false
     var extLits:Seq[Literal] = Seq()

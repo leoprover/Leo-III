@@ -23,14 +23,27 @@ object ToTPTP extends Function1[AnnotatedClause, Output] with Function3[String, 
 
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
+
   def apply(f: AnnotatedClause): Output = new Output {
     def output = toTPTP(f.name, f.clause.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/
-  def apply(name: String, t: Clause, role: Role): Output = new Output {
-    def output = toTPTP(name, t.term, role)
+  def apply(name: String, c: Clause, role: Role): Output = new Output {
+    val t : Term = if(role == Role_Definition) definitionToTerm(c) else c.term
+    def output = toTPTP(name, t, role)
   }
+  private def definitionToTerm(c : Clause) : Term = {
+    if(c.lits.size != 1) return c.term
+    val l = c.lits.head
+    if(!l.polarity) return c.term
+    if(!l.left.isAtom) {
+      ===(l.right, l.left)
+    } else {
+      ===(l.left, l.right)
+    }
+  }
+
   def apply(name: String, t: Term, role: Role): Output = new Output {
     def output = toTPTP(name, t, role)
   }

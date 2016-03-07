@@ -18,9 +18,9 @@ lazy val leo = (project in file(".")).
     
     scalacOptions ++= Seq("-Xelide-below","401"),
     
-    mainClass in (Compile, packageBin) := Some("leo.Main"),
+    mainClass in (Compile, packageBin) := Some("leo.NormalizationMain"),
     
-    mainClass in (Compile, run) := Some("leo.Main"),
+    mainClass in (Compile, run) := Some("leo.NormalizationMain"),
     
     javaOptions += "-Xss4m",
     
