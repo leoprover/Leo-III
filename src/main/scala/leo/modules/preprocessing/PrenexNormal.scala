@@ -10,6 +10,7 @@ import leo.datastructures._
  * @since 6/17/14
  */
 object PrenexNormal extends Normalization {
+  override val name : String = "prenex_normal"
   /**
    * Normalizes a formula corresponding to the object.
     * We assume a positive literal weight after applying negationnormalform

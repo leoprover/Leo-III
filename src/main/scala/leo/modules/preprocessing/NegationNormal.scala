@@ -11,7 +11,7 @@ import leo.datastructures.impl.Signature
  * @since 6/12/14
  */
 object NegationNormal extends Normalization{
-
+  override val name : String = "negation_normal"
   /**
    * Normalizes a formula corresponding to the object.
    *

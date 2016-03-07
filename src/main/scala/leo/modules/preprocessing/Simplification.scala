@@ -10,6 +10,8 @@ import leo.datastructures.impl.Signature
   */
 object Simplification extends Normalization {
 
+  override val name : String = "simplify"
+
   def polarityNorm(formula : Clause) : Clause = formula.mapLit(polarityNorm(_))
 
   def polarityNorm(lit : Literal) : Literal = (lit.left, lit.right) match {

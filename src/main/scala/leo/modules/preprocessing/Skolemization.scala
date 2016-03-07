@@ -17,6 +17,8 @@ import leo.datastructures.Type._
  */
 object Skolemization extends Normalization{
 
+  override val name : String = "skolemize"
+
   /**
    * Normalizes a formula corresponding to the object.
    *

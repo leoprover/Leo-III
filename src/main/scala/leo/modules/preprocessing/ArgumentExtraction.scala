@@ -3,6 +3,7 @@ package leo.modules.preprocessing
 import leo.datastructures.Term._
 import leo.datastructures.impl.Signature
 import leo.datastructures._
+import leo.modules.calculus.CalculusRule
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
@@ -16,7 +17,9 @@ object ArgumentExtraction extends ArgumentExtraction(_ => true)
   *
   * @param filter Defines a filter on the arguments, that can be extracted.
   */
-class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Clause, Set[(Term, Term)])]{
+class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Clause, Set[(Term, Term)])] with CalculusRule{
+
+  override val name : String = "argument_extraction"
 
   /**
     * Stores a mapping for the unit equations to use the same descriptor
@@ -40,7 +43,6 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
     * The extracted unit equations are not themselves extracted and can be considered
     * for further simplification
     * </p>
-    *
     *
     * @param c The clause to be extracted
     * @return The clause with extracted arguments and a Map of unit equations

@@ -3,6 +3,7 @@ package leo.modules.preprocessing
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.impl.Signature
+import leo.modules.calculus.CalculusRule
 
 import scala.collection.mutable
 
@@ -18,8 +19,8 @@ import scala.collection.mutable
   *  - DefinitionExpantion
   *  - Extensionality
   */
-object FormulaRenaming {
-
+object FormulaRenaming extends CalculusRule{
+  override val name : String = "formula_renaming"
   /**
     * Stores a mapping for the unit equations to use the same descriptor
     * for equal definitions.

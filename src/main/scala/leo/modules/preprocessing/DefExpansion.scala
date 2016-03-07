@@ -31,4 +31,6 @@ object DefExpansion extends Normalization {
     val notExpandedKeys = Set[Signature#Key](s("&").key, s("?").key, s("!").key).union(s.allUserConstants)
     t.exhaustive_δ_expand_upTo(notExpandedKeys).betaNormalize
   }
+
+  override val name: String = "def_exp"
 }

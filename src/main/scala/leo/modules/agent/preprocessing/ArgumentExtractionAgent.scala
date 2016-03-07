@@ -13,6 +13,8 @@ import leo.modules.preprocessing.ArgumentExtraction
   */
 object ArgumentExtractionAgent extends Agent {
   override def name: String = "argument_extraction_agent"
+  override val after : Set[TAgent] = Set(EqualityReplaceAgent)
+  override val interest = Some(Seq(ClauseType))
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent((cl : ClauseProxy), ClauseType) => commonFilter(cl, Context())
     case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
@@ -39,7 +41,7 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override def run: Result = {
     var r : Result= Result()
     val defn : Set[ClauseProxy] = defs map {case (t1, t2) => Store(Clause(Literal(t1, t2, true)), Role_Definition, c)}
-    r = r.update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ArgumentExtractionRule, defn + cl))))
+    r = r.update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ArgumentExtraction, defn + cl))))
     val it = defn.iterator
     while(it.hasNext) {
       val d = it.next()
@@ -50,8 +52,4 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override val bid: Double = 0.1
 
   override val pretty: String = s"argument_extraction(${cl.cl.pretty})"
-}
-
-object ArgumentExtractionRule extends CalculusRule {
-  override def name: String = "argument_extraction"
 }
