@@ -14,7 +14,7 @@ lazy val leo = (project in file(".")).
     
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-      "org.scalatest" % "scalatest_2.10" % "2.0" % "test"),
+      "org.scalatest" %% "scalatest" % "2.2.6" % "test"),
     
     scalacOptions ++= Seq("-Xelide-below","401"),
     
