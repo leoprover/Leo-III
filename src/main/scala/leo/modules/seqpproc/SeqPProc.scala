@@ -17,89 +17,43 @@ import scala.collection.SortedSet
  */
 object SeqPProc extends Function1[Long, Unit]{
 
-  private final def termToClause(t: Term): Clause = {
+  @inline private final def termToClause(t: Term): Clause = {
     Clause.mkClause(Seq(Literal.mkLit(t, true)))
   }
 
   final def preprocess(cur: ClauseWrapper): Set[ClauseWrapper] = {
-    val cl = cur.cl
+    var result: Set[ClauseWrapper] = Set()
     // Fresh clause, that means its unit and nonequational
-    assert(Clause.unit(cl), "clause not unit")
-    val lit = cl.lits.head
-    var pol = lit.polarity
+    assert(Clause.unit(cur.cl), "clause not unit")
+    val lit = cur.cl.lits.head
     assert(!lit.equational, "initial literal equational")
-    var cw = cur
-    var left = lit.left
 
     // Def expansion and simplification
-    left = DefExpSimp(left)
-    cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(DefExpSimp, Set(cw)))
-    Out.trace(s"Def expansion: ${cw.cl.pretty}")
-
-    if (PolaritySwitch.canApply(left)) {
-      left = PolaritySwitch(left)
-      pol = !pol
-      cw = ClauseWrapper(Clause(Literal(left, pol)), InferredFrom(PolaritySwitch, Set(cw)))
-      Out.trace(s"Pol. switch: ${cw.cl.pretty}")
-    }
+    var cw = cur
+    cw = Control.expandDefinitions(cw)
+    cw = Control.switchPolarity(cw)
 
     // Exhaustively CNF
-    val left2 = CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl).map(Simp.shallowSimp).map(ClauseWrapper(_, InferredFrom(CNF, Set(cw)))).toSet
-    Out.trace(s"CNF:\n\t${left2.map(_.pretty).mkString("\n\t")}")
-
+    result = Control.cnf(cw)
     // Remove defined equalities as far as possible
-    val leftEq = Control.convertDefinedEqualities(left2)
+    result = Control.convertDefinedEqualities(result)
 
-    val left3 = leftEq.map { c =>
-      // To equation if possible
-      var cur_c = c
-      val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
-      if (cA_lift) {
-        val curr = Clause(LiftEq(lift, lift_other))
-        Out.trace(s"to_eq: ${curr.pretty}")
-        cur_c = ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
-      }
-      val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cur_c.cl)
-      if (cA_funcExt) {
-          Out.trace(s"Func Ext on: ${cur_c.pretty}")
-          val funcExt_cw = ClauseWrapper(Clause(FuncExt(leo.modules.calculus.freshVarGen(cur_c.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cur_c)))
-          Out.finest(s"Func Ext result: ${funcExt_cw.pretty}")
-          cur_c = funcExt_cw
-      }
-      cur_c
+    // To equation if possible and then apply func ext
+    // AC Simp if enabled, then Simp.
+    result = result.map { cl =>
+      var result = cl
+      result = Control.liftEq(result)
+      result = Control.funcext(result)
+      result = Control.acSimp(result)
+      Control.simp(result)
     }
-
-    // Do here AC and EQ Simp
-    val leftAC = if (Configuration.isSet("acsimp")) {
-      val acSymbols = Signature.get.acSymbols
-      val a = left3.map {c => Out.trace(s"AC Simp on ${c.pretty}");val res = ACSimp.apply(c.cl,acSymbols);Out.trace(s"AC Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(ACSimp, Set(c)))}
-      a.map {c => Out.trace(s"Shallow Simp on ${c.pretty}");val res = Simp.shallowSimp(c.cl);Out.trace(s"Simp Result: ${res.pretty}");ClauseWrapper(res, InferredFrom(Simp, Set(c)))}
-    }
-    else left3
-
-
-//    val left4 = if (Configuration.isSet("nbe")) leftAC
-//    else leftAC union leftAC.flatMap { c =>
-//      val (cA_boolExt, bE, bE_other) = BoolExt.canApply(c.cl)
-//      if (cA_boolExt) {
-//        Out.trace(s"Bool Ext on: ${c.pretty}")
-//        val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(c))))
-//        Out.finest(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
-//        boolExt_cws.flatMap(cw => {Out.finest(s"#\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw))); Out.finest(s"${res.pretty}\n\t"); res}))
-//      } else
-//        Set(c)
-//    }
-    val left4 = leftAC
-
-    val left5 = left4.map(cw => {Out.trace(s"Simp on ${cw.id}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
-    val left6 = left5.filterNot(cw => Clause.trivial(cw.cl))
-
     // Pre-unify new clauses
-    val left7 = Control.preunifySet(left6)
+    result = Control.preunifySet(result)
+    result = result.filterNot(cw => Clause.trivial(cw.cl))
 
     // TODO: Do that in a reasonable way...
-    left7.foreach(_.properties = ClauseAnnotation.PropUnified)
-    left7
+    result.foreach(_.properties = ClauseAnnotation.PropUnified)
+    result
   }
 
 
@@ -202,20 +156,9 @@ object SeqPProc extends Function1[Long, Unit]{
               state.addRewriteRule(cur)
             }
             /* Functional Extensionality */
-            val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cur.cl)
-            if (cA_funcExt) {
-              Out.debug(s"Func Ext on: ${cur.pretty}")
-              val funcExt_cw = ClauseWrapper(Clause(FuncExt(leo.modules.calculus.freshVarGen(cur.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cur)))
-              Out.trace(s"Func Ext result: ${funcExt_cw.pretty}")
-              cur = funcExt_cw
-            }
+            cur = Control.funcext(cur)
             /* To equality if possible */
-            val (cA_lift, lift, lift_other) = LiftEq.canApply(cur.cl)
-            if (cA_lift) {
-              val newCl = Clause(LiftEq(lift, lift_other))
-              cur = ClauseWrapper(newCl, InferredFrom(LiftEq, Set(cur)))
-              // No break here
-            }
+            cur = Control.liftEq(cur)
             /////////////////////////////////////////
             // Simplifying (mofifying inferences) END
             /////////////////////////////////////////
@@ -248,29 +191,17 @@ object SeqPProc extends Function1[Long, Unit]{
             // Simplification of newly generated clauses BEGIN
             /////////////////////////////////////////
             /* Simplify new clauses */
-            newclauses = newclauses.map(cw => {Out.trace(s"Simp on ${cw.pretty}");val res = ClauseWrapper(Simp(cw.cl), InferredFrom(Simp, Set(cw)));Out.trace(s"Simp result: ${res.pretty}");res})
+            newclauses = Control.simpSet(newclauses)
             /* Remove those which are tautologies */
             newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
             /* exhaustively CNF new clauses */
-            newclauses = newclauses.flatMap(cw => {Out.finest(s"#####################\ncnf of ${cw.pretty}:\n\t");CNF(leo.modules.calculus.freshVarGen(cw.cl),cw.cl)}.map(c => {val res = ClauseWrapper(c, InferredFrom(CNF, Set(cw)));Out.finest(s"${res.pretty}\n\t") ;res}))
-
+            newclauses = newclauses.flatMap(cw => Control.cnf(cw))
             /* Pre-unify new clauses */
-            val preuni_result = Control.preunifySet(newclauses)
-            newclauses = preuni_result
-
+            newclauses = Control.preunifySet(newclauses)
             /* Replace defined equalities */
-            val defEq_result = Control.convertDefinedEqualities(newclauses)
-            newclauses = defEq_result
-
+            newclauses = Control.convertDefinedEqualities(newclauses)
             /* Replace eq symbols on top-level by equational literals. */
-            newclauses = newclauses.map { c =>
-              val (cA_lift, lift, lift_other) = LiftEq.canApply(c.cl)
-              if (cA_lift) {
-                val curr = Clause(LiftEq(lift, lift_other))
-                Out.trace(s"to_eq: ${curr.pretty}")
-                ClauseWrapper(curr, InferredFrom(LiftEq, Set(c)))
-              } else c
-            }
+            newclauses = newclauses.map(Control.liftEq)
             /////////////////////////////////////////
             // Simplification of newly generated clauses END
             /////////////////////////////////////////
@@ -292,13 +223,11 @@ object SeqPProc extends Function1[Long, Unit]{
                 Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
               }
             }
-
           } else {
             Out.debug("clause subsumbed, skipping.")
             state.incForwardSubsumedCl()
             Out.trace(s"Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
           }
-
         }
       }
 
