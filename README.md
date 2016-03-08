@@ -32,12 +32,17 @@ Further information can be found at the [Leo-III Website](http://page.mi.fu-berl
 Required Dependencies
 ----------------
 
-Leo III needs Java >= 1.7 to run.
-Scala 2.11.X is required to build and run the project. Maven will automatically download scala and further dependencies.
+Leo III needs Java >= 1.8 to run.
+Scala 2.11.6 is required to build and run the project. 
+The build tool (maven, sbt) will automatically download scala and further dependencies.
 Alternative, Scala can be downloaded at [Scala-lang.org](http://scala-lang.org/download/).
 
+Building the project (SBT)
+----------------
+tba ....
 
-Building the project
+
+Building the project (Maven)
 ----------------
 
 [Maven](http://maven.apache.org/) manages the build process of Leo-III. Information about downloading and installing Maven can be found at [the download section of the maven website](http://maven.apache.org/download.cgi).
