@@ -80,18 +80,20 @@ object SeqPProc extends Function1[Long, Unit]{
     // Negate conjecture
     val conjecture = filteredInput.filter {case (id, term, role) => role == Role_Conjecture}
     if (conjecture.size > 1) throw new SZSException(SZS_InputError, "At most one conjecture per input problem permitted.")
+    val conj = conjecture.head
+    val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
+    val negatedConjecture = ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
+      override def name: String = "neg_conjecture"
+      override val inferenceStatus = Some(SZS_CounterSatisfiable)
+    }, Set(conjWrapper)),ClauseAnnotation.PropNoProp)
 
+    // Input to proving process (axioms plus negated conjecture, if existent)
     val effectiveInput: Seq[ClauseWrapper] = if (conjecture.isEmpty) {
       filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) }
     } else {
       assert(conjecture.size == 1)
-      val conj = conjecture.head
-      val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
       val rest = filteredInput.filterNot(_._1 == conjecture.head._1)
-      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) } :+ ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
-        override def name: String = "neg_conjecture"
-        override val inferenceStatus = Some(SZS_CounterSatisfiable)
-      }, Set(conjWrapper)),ClauseAnnotation.PropNoProp)
+      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) } :+ negatedConjecture
     }
 
     // Proprocess terms with standard normalization techniques for terms (non-equational)
