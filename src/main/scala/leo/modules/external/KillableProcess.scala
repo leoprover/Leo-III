@@ -2,6 +2,7 @@ package leo.modules.external
 
 import java.io.{OutputStream, InputStream}
 import java.lang.reflect.Field
+import java.util.concurrent.TimeUnit
 
 /**
   * <p>
@@ -40,11 +41,25 @@ object KillableProcess {
   * Killable Process. Calls for SigKill.
   */
 trait KillableProcess {
+
+  /**
+    *
+    * Waits for timeout[unit] time for the process to finish.
+    * Returns true, if the process has finished, false otherwise.
+    *
+    * @param timout The amount of time to wait for the process to finish
+    * @param unit The unit of the time waiting
+    * @return true iff the process has successfully terminated
+    */
+  @throws[InterruptedException]
+  def waitFor(timout : Long, unit : TimeUnit) : Boolean
+
   /**
     * Waits for the exit Value of the spawnt process.
     *
     * @return The exit Value of the process
     */
+  @throws[InterruptedException]
   def exitValue : Int
 
   /**
@@ -53,6 +68,7 @@ trait KillableProcess {
     *
     * @return stdout of the process
     */
+  @throws[InterruptedException]
   def output : InputStream
 
   /**
@@ -60,6 +76,7 @@ trait KillableProcess {
     *
     * @return stdin of the process
     */
+  @throws[InterruptedException]
   def input : OutputStream
 
   /**
@@ -67,11 +84,13 @@ trait KillableProcess {
     *
     * @return stderr of the process
     */
+  @throws[InterruptedException]
   def error : InputStream
 
   /**
     * Sends a sigkill to the process
     */
+  @throws[InterruptedException]
   def kill : Unit
 }
 
@@ -85,6 +104,7 @@ case class Command(cmd : String) {
 
 
 private class KillableProcessImpl(process : Process) extends KillableProcess {
+
   override def exitValue: Int = process.waitFor()
 
   override def output: InputStream = process.getInputStream
@@ -93,8 +113,8 @@ private class KillableProcessImpl(process : Process) extends KillableProcess {
 
   override def kill: Unit = {
     pid match {
-      case Some(pid1) => Runtime.getRuntime.exec("kill -9 "+pid1)   // TODO If implemented for windows, extend to different kill
-      case None => process.destroy()
+      case Some(pid1) => Runtime.getRuntime.exec("kill -9 "+pid1)
+      case None => process.destroyForcibly()
     }
   }
 
@@ -112,4 +132,5 @@ private class KillableProcessImpl(process : Process) extends KillableProcess {
       return None   // TODO implement windows handles
     }
   }
+  override def waitFor(timout: Long, unit: TimeUnit): Boolean = process.waitFor(timout, unit)
 }
