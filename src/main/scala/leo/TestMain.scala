@@ -4,6 +4,8 @@ import leo.datastructures.ClauseProxy
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.modules.CLParameterParser
+import leo.modules.external.ExternalCall
+import leo.modules.output.ToTPTP
 import leo.modules.phase.LoadPhase
 
 /**
@@ -20,16 +22,21 @@ object TestMain {
       }
     }
 
-    val load = new LoadPhase("ex1.p")
+    val load = new LoadPhase("src/test/resources/problems/sur_cantor.p", false)
     Blackboard().addDS(FormulaDataStore)
 
     load.execute()
 
-    val it : Iterator[ClauseProxy] = FormulaDataStore.getFormulas.toIterator
+    val it : Set[ClauseProxy] = FormulaDataStore.getFormulas.toSet
 
-    while(it.hasNext){
-      val cp = it.next()
-      Out.output(cp.pretty)
+    val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
+    println("Start executing")
+    val exitV = e.exitValue
+    val output = e.out
+    println("Leo2 returned with "+exitV)
+    while(output.hasNext){
+      val o = output.next()
+      println(o)
     }
   }
 }

@@ -19,13 +19,13 @@ import leo.datastructures.blackboard.AnnotatedClause
  * @author Alexander Steen
  * @since 07.11.2014
  */
-object ToTPTP extends Function1[AnnotatedClause, Output] with Function3[String, Clause, Role, Output] {
+object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clause, Role, Output] {
 
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
 
-  def apply(f: AnnotatedClause): Output = new Output {
-    def output = toTPTP(f.name, f.clause.term, f.role)
+  def apply(f: ClauseProxy): Output = new Output {
+    def output = toTPTP(f.id, f.cl.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/
@@ -48,7 +48,7 @@ object ToTPTP extends Function1[AnnotatedClause, Output] with Function3[String, 
     def output = toTPTP(name, t, role)
   }
 
-  def apply(formulas : Set[AnnotatedClause]): Seq[Output] = {
+  def apply(formulas : Set[ClauseProxy]): Seq[Output] = {
     var out: List[Output] = List.empty[Output]
     var defn : List[Output] = List.empty[Output]
     Signature.get.allUserConstants foreach { k =>
