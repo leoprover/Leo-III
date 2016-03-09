@@ -22,7 +22,7 @@ object TestMain {
       }
     }
 
-    val load = new LoadPhase("src/test/resources/problems/sur_cantor.p", false)
+    val load = new LoadPhase(Configuration.PROBLEMFILE, false)
     Blackboard().addDS(FormulaDataStore)
 
     load.execute()
