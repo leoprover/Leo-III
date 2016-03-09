@@ -17,6 +17,14 @@ object Control {
   @inline final def primsubst(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.PrimSubstControl.primSubst(cl)
   @inline final def preunifySet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.PreUniControl.preunifySet(clSet)
   // simplification inferences
+  @inline final def cnf(cl: ClauseWrapper): Set[ClauseWrapper] = inferenceControl.CNFControl.cnf(cl)
+  @inline final def expandDefinitions(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.expandDefinitions(cl)
+  @inline final def switchPolarity(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.switchPolarity(cl)
+  @inline final def liftEq(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.liftEq(cl)
+  @inline final def funcext(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.funcext(cl)
+  @inline final def acSimp(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.acSimp(cl)
+  @inline final def simp(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.simp(cl)
+  @inline final def simpSet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.SimplificationControl.simpSet(clSet)
   @inline final def convertDefinedEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
   @inline final def convertLeibnizEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
   @inline final def convertAndrewsEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
@@ -31,13 +39,28 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
-  import leo.datastructures.{Clause, Literal, Term, Position}
+  import leo.datastructures._
   import Literal.Side
 
   package object inferenceControl {
     type LiteralIndex = Int
     type WithConfiguration = (LiteralIndex, Literal, Side)
   }
+
+
+  protected[modules] object CNFControl {
+    import leo.datastructures.ClauseAnnotation.InferredFrom
+
+    final def cnf(cl: ClauseWrapper): Set[ClauseWrapper] = {
+      Out.trace(s"CNF of ${cl.id}")
+      val cnfresult = CNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
+      val cnfsimp = cnfresult.map(Simp.shallowSimp)
+      val result = cnfresult.map {c => ClauseWrapper(c, InferredFrom(CNF, Set(cl)), cl.properties)}
+      Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
+      result
+    }
+  }
+
 
   /**
     * Object that offers methods that filter/control how paramodulation steps between a claues
@@ -50,14 +73,15 @@ package inferenceControl {
     final def paramodSet(cl: ClauseWrapper, withset: Set[ClauseWrapper]): Set[ClauseWrapper] = {
       var results: Set[ClauseWrapper] = Set()
       val withsetIt = withset.iterator
-
+      Out.debug(s"Paramod on ${cl.id} (SOS: ${leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties)}) and processed set")
       while (withsetIt.hasNext) {
         val other = withsetIt.next()
-        Out.debug(s"Paramod on ${cl.id} and ${other.id}")
-
-        results = results ++ allParamods(cl, other)
+        if (!Configuration.SOS || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, other.properties) ||
+          leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties))  {
+          Out.trace(s"Paramod on ${cl.id} and ${other.id}")
+          results = results ++ allParamods(cl, other)
+        }
       }
-
       results
     }
 
@@ -72,6 +96,8 @@ package inferenceControl {
 
     final private def allParamods0(withWrapper: ClauseWrapper, intoWrapper: ClauseWrapper): Set[ClauseWrapper] = {
       import leo.datastructures.ClauseAnnotation.InferredFrom
+      assert(!Configuration.SOS || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, withWrapper.properties) ||
+        leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, intoWrapper.properties))
 
       var results: Set[ClauseWrapper] = Set()
 
@@ -95,7 +121,7 @@ package inferenceControl {
             val newCl = OrderedParamod(withClause, withIndex, withSide,
               intoClause, intoIndex, intoSide, intoPos, intoTerm)
 
-            val newClWrapper = ClauseWrapper(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)))
+            val newClWrapper = ClauseWrapper(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS)
             Out.finest(s"Result: ${newClWrapper.pretty}")
             results = results + newClWrapper
           }
@@ -204,7 +230,11 @@ package inferenceControl {
               Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-                val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)))
+                val resultprop = if (leo.datastructures.isPropSet(ClauseAnnotation.PropSOS,cl.properties))
+                  ClauseAnnotation.PropSOS
+                else ClauseAnnotation.PropNoProp
+
+                val result = ClauseWrapper(factor, InferredFrom(OrderedEqFac, Set(cl)), resultprop)
                 res = res + result
               }
             } else {
@@ -280,7 +310,7 @@ package inferenceControl {
         resultSet = otherClauses
         uniClauses.foreach { case (cw, ul, ol) =>
           Out.debug(s"Unification task from clause ${cw.pretty}")
-          val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))))}
+          val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))), cw.properties | ClauseAnnotation.PropUnified)}
           Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
           resultSet = resultSet union nc
         }
@@ -301,7 +331,7 @@ package inferenceControl {
           val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
           if (cA_boolExt) {
             Out.debug(s"Bool Ext on: ${cw.pretty}")
-            val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cw))))
+            val boolExt_cws = BoolExt.apply(bE, bE_other).map(ClauseWrapper(_, InferredFrom(BoolExt, Set(cw)),cw.properties | ClauseAnnotation.PropBoolExt))
             Out.trace(s"Bool Ext result:\n\t${boolExt_cws.map(_.pretty).mkString("\n\t")}")
 
             res = boolExt_cws.flatMap(cw => {
@@ -309,7 +339,7 @@ package inferenceControl {
               CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
             }.map(c => {
               Out.finest(s"${c.pretty}\n\t")
-              ClauseWrapper(c, InferredFrom(CNF, Set(cw)))
+              ClauseWrapper(c, InferredFrom(CNF, Set(cw)), cw.properties)
             }))
           }
         }
@@ -328,12 +358,92 @@ package inferenceControl {
       if (cA_ps) {
         Out.debug(s"Prim subst on: ${cw.id}")
         val new_ps_pre = StdPrimSubst(cw.cl, ps_vars)
-        val new_ps = new_ps_pre.map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set((cw,ToTPTP(subst)))))}
+        val new_ps = new_ps_pre.map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(StdPrimSubst, Set((cw,ToTPTP(subst)))), cw.properties)}
         Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
         return new_ps
       }
       Set()
     }
+  }
+
+  protected[modules] object SimplificationControl {
+    import leo.datastructures.ClauseAnnotation.InferredFrom
+
+    final def switchPolarity(cl: ClauseWrapper): ClauseWrapper = {
+      val litsIt = cl.cl.lits.iterator
+      var newLits: Seq[Literal] = Seq()
+      var wasApplied = false
+      while(litsIt.hasNext) {
+        val lit = litsIt.next()
+        if (PolaritySwitch.canApply(lit)) {
+          wasApplied = true
+          newLits = newLits :+ PolaritySwitch(lit)
+        } else {
+          newLits = newLits :+ lit
+        }
+      }
+      if (wasApplied) {
+        val result = ClauseWrapper(Clause(newLits), InferredFrom(PolaritySwitch, Set(cl)), cl.properties)
+        Out.trace(s"Switch polarity: ${result.pretty}")
+        result
+      } else
+        cl
+
+    }
+
+    final def expandDefinitions(cl: ClauseWrapper): ClauseWrapper = {
+      assert(Clause.unit(cl.cl))
+      val lit = cl.cl.lits.head
+      assert(!lit.equational)
+      Out.trace(s"def exp from ${cl.pretty}")
+      Out.trace(s"sos flag set in from: ${leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties)}")
+      val newleft = DefExpSimp(lit.left)
+      val result = ClauseWrapper(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, Set(cl)), cl.properties)
+      Out.trace(s"Def expansion: ${result.pretty}")
+      result
+    }
+
+    final def liftEq(cl: ClauseWrapper): ClauseWrapper = {
+      val (cA_lift, lift, lift_other) = LiftEq.canApply(cl.cl)
+      if (cA_lift) {
+        val result = ClauseWrapper(Clause(LiftEq(lift, lift_other)), InferredFrom(LiftEq, Set(cl)), cl.properties)
+        Out.trace(s"to_eq: ${result.pretty}")
+        result
+      } else
+        cl
+    }
+
+    final def funcext(cl: ClauseWrapper): ClauseWrapper = {
+      val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
+      if (cA_funcExt) {
+        Out.finest(s"Func Ext on: ${cl.pretty}")
+        val result = ClauseWrapper(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cl)), cl.properties)
+        Out.finest(s"Func Ext result: ${result.pretty}")
+        result
+      } else
+        cl
+    }
+
+    final def acSimp(cl: ClauseWrapper): ClauseWrapper = {
+      import leo.datastructures.impl.Signature
+      if (Configuration.isSet("acsimp")) {
+        val acSymbols = Signature.get.acSymbols
+        Out.trace(s"AC Simp on ${cl.pretty}")
+        val pre_result = ACSimp.apply(cl.cl,acSymbols)
+        val result = ClauseWrapper(pre_result, InferredFrom(ACSimp, Set(cl)), cl.properties)
+        Out.finest(s"AC Result: ${result.pretty}")
+        result
+      } else
+        cl
+    }
+
+    final def simp(cl: ClauseWrapper): ClauseWrapper = {
+      Out.trace(s"Simp on ${cl.id}")
+      val result = ClauseWrapper(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+      Out.finest(s"Simp result: ${result.pretty}")
+      result
+    }
+    final def simpSet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = clSet.map(simp)
   }
 
   protected[modules] object DefinedEqualityProcessing {
@@ -375,7 +485,7 @@ package inferenceControl {
       if (cA_leibniz) {
         Out.trace(s"Replace Leibniz equalities in ${cl.id}")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)
-        val res = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((cl, ToTPTP(subst)))))
+        val res = ClauseWrapper(resCl, InferredFrom(ReplaceLeibnizEq, Set((cl, ToTPTP(subst)))), cl.properties)
         Out.finest(s"Result: ${res.pretty}")
         res
       } else
@@ -397,7 +507,7 @@ package inferenceControl {
       if (cA_Andrews) {
         Out.trace(s"Replace Andrews equalities in ${cl.id}")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)
-        val res = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((cl, ToTPTP(subst)))))
+        val res = ClauseWrapper(resCl, InferredFrom(ReplaceAndrewsEq, Set((cl, ToTPTP(subst)))), cl.properties)
         Out.finest(s"Result: ${res.pretty}")
         res
       } else
@@ -549,7 +659,7 @@ package controlStructures {
 
     def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): ClauseWrapper = {
       counter += 1
-      ClauseWrapper(s"gen_formula_$counter", cl, r, annotation, ClauseAnnotation.PropNoProp)
+      ClauseWrapper(s"gen_formula_$counter", cl, r, annotation, propFlag)
     }
 
     def apply(cl: Clause, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp = ClauseAnnotation.PropNoProp): ClauseWrapper =
