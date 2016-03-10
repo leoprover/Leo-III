@@ -21,29 +21,6 @@ import scala.collection.immutable.HashSet
  */
 object Utility {
 
-  /** The working directory in which the executable was launched from. */
-  val wd: String = System.getenv("user.dir")
-
-  /**
-   * List of currently loaded tptp files
-   */
-  private val loadedSet = collection.mutable.Set.empty[String]
-
-  private val _pwd = (new File(".")).getCanonicalPath
-
-  /**
-   * Loads a tptp file and saves the formulas in the context.
-   */
-  def load(file: String): Unit = {
-    if (file.charAt(0) != '/') {
-      // Relative load
-      loadRelative(file, _pwd.split('/'))
-    } else {
-      // Absolute load
-      val pwd = file.split('/')
-      loadRelative(pwd.last, pwd.init)
-    }
-  }
 
   private final def singleTermToClause(t: Term, role: Role): Clause = {
     Clause.mkClause(Seq(Literal.mkPos(t, LitTrue)), roleToClauseOrigin(role))
@@ -54,122 +31,6 @@ object Utility {
     case _ => FromAxiom
   }
 
-  private def loadRelative(file : String, rel : Array[String]): Unit = {
-    import scala.util.parsing.input.CharArrayReader
-    import leo.modules.parsers.TPTP
-    import leo.modules.parsers.InputProcessing
-
-    Out.debug(s"Loading ${rel.mkString("/")}/${file}.")
-    val (fileAbs, path) = newPath(rel, file)
-    if (!loadedSet(fileAbs)) {
-      try {
-        val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-        val input = new CharArrayReader(source.toArray)
-        val parsed = TPTP.parseFile(input)
-        source.close()    // Close at this point. Otherwise we would have many files open with many includes.
-
-        parsed match {
-          case Left(x) =>
-            Out.severe("Parse error in file " + fileAbs + ": " + x)
-            throw new SZSException(SZS_SyntaxError)
-          case Right(x) =>
-            loadedSet += fileAbs
-            x.getIncludes.foreach(x => loadRelative(x._1, path))
-            val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-            processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-              val form = singleTermToClause(term, role)
-              val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
-              if (FormulaDataStore.addFormula(f))
-                Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
-              }
-            }
-        }
-
-      } catch {
-        case ex : FileNotFoundException =>
-          // If not relative, then search in TPTP env variable
-          val tptp = System.getenv("TPTP")
-          if (tptp != null) {
-            Out.debug(s"Loading ${tptp}/${file}.")
-            val tptpHome = tptp.split("/")
-            val (fileAbs, path) = newPath(tptpHome, file)
-            if (!loadedSet(fileAbs)) {
-              try {
-                val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-                val input = new CharArrayReader(source.toArray)
-                val parsed = TPTP.parseFile(input)
-                source.close() // Close at this point. Otherwise we would have many files open with many includes.
-
-                parsed match {
-                  case Left(x) =>
-                    Out.severe("Parse error in file " + fileAbs + ": " + x)
-                    throw new SZSException(SZS_SyntaxError)
-                  case Right(x) =>
-                    loadedSet += fileAbs
-                    x.getIncludes.foreach(x => loadRelative(x._1, path))
-
-                    val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
-                    processed foreach { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-                      val form = singleTermToClause(term, role)
-                      val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, FromFile(fileAbs, name))
-                      if (FormulaDataStore.addFormula(f))
-                        Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
-                      }
-                    }
-                }
-
-
-              } catch {
-                case ex: FileNotFoundException => Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
-                case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, "", e)
-              }
-            }
-          } else {
-            Out.severe("Problem file not found."); throw new SZSException(SZS_InputError, s"File $file not found", s"with rel ${rel.mkString("/")}", ex)
-          }
-        case e: Throwable => throw new SZSException(SZS_InputError, e.getMessage, e.toString, e)
-      }
-    }
-  }
-
-  private def parseAbsolute(fileAbs : String, path : String) : Unit = {
-
-  }
-
-  /**
-   * Returns the new absolute Path and the absolute directory
-   *
-   * @param oldDir - Old absolute Path to directory
-   * @param relPath - relative path to new file
-   */
-  private def newPath(oldDir : Array[String], relPath : String) : (String, Array[String]) = {
-    val relSplit  = relPath.split('/')
-    val path = oldDir.take(oldDir.length - relSplit.count(_ == ".."))
-    val absPath = path ++ relSplit.dropWhile(x => x == "..")
-    (absPath.mkString("/"), absPath.init)
-  }
-
-  /**
-   * Parses and adds a TPTP formula.
-   */
-  def add(s: String): Unit = {
-    import leo.modules.parsers.TPTP
-    import leo.modules.parsers.InputProcessing
-
-    TPTP.parseFormula(s) match {
-      case Right(a) =>
-        val processed = InputProcessing.process(Signature.get)(a)
-        processed match { case (name, term, role) => if(role != Role_Definition && role != Role_Type && role != Role_Unknown) {
-          val form = singleTermToClause(term, role)
-          val f = Store(name, form.mapLit(_.termMap{case (l,r) => (TermIndex.insert(l), TermIndex.insert(r))}), role, Context(), 0, NoAnnotation)
-          if (FormulaDataStore.addFormula(f))
-            Blackboard().filterAll(_.filter(DataEvent(f, FormulaType)))
-        }
-        }
-      case Left(err) =>
-        Out.severe(s"'$s' is not a valid formula: $err")
-    }
-  }
 
   def printSignature(): Unit = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
@@ -247,9 +108,9 @@ object Utility {
     println("-"*maxSize)
     FormulaDataStore.getFormulas(c).foreach {
       x =>
-        val name = x.name.toString.take(maxNameSize)
+        val name = x.id.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+") (status="+x.status+")"
+        val form = x.cl.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -271,9 +132,9 @@ object Utility {
     println("-"*maxSize)
     FormulaDataStore.getFormulas.foreach {
       x =>
-        val name = x.name.toString.take(maxNameSize)
+        val name = x.id.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)
-        val form = x.clause.pretty + " ("+x.status+") (status="+x.status+")"
+        val form = x.cl.pretty
         val form1 = form.take(maxFormulaSize)
         val form2 = form.drop(maxFormulaSize).sliding(maxFormulaSize, maxFormulaSize)
 
@@ -285,28 +146,6 @@ object Utility {
     println()
   }
 
-  /**
-   * Returns the formula with the given name in the context.
-   * The formula is not ready to manipulate in parallel with this access.
-   */
-  def get(s: String) : FormulaStore =
-    FormulaDataStore.getFormulaByName(s).
-      getOrElse{
-      println(s"There is no formula named '$s'.")
-      null
-    }
-  /**
-   * Deletes all formulas from the current context.
-   */
-  def clear(): Unit = {
-    Blackboard().clear()
-    loadedSet.clear()
-  }
-
-  /** Reset the signature to standard hol connectives */
-  def clearSignature(): Unit = {
-    Signature.resetWithHOL(Signature.get)
-  }
 
   def printDerivation(cl: ClauseProxy) : Unit = Out.output(derivationString(new HashSet[Int](), 0, cl, new StringBuilder()).toString())
 

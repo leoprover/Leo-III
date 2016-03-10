@@ -7,9 +7,9 @@ import leo.datastructures.Term.:::>
 import leo.modules.SZSException
 import leo.modules.calculus.CalculusRule
 import leo.modules.calculus.HuetsPreUnification
-import leo.modules.normalization.Simplification
 import leo.modules.output.{SZS_Error, SZS_EquiSatisfiable, SZS_Theorem, SZS_CounterSatisfiable}
 import leo.Out
+import leo.modules.preprocessing.Simplification
 
 import scala.annotation.tailrec
 import scala.collection.SortedSet
@@ -537,6 +537,7 @@ object BoolExt extends CalculusRule {
   def canApply(l: Literal): Boolean = l.equational && l.left.ty == Signature.get.o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
+
   def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
     var can = false
     var extLits:Seq[Literal] = Seq()
@@ -818,7 +819,6 @@ object OrderedParamod extends CalculusRule {
     * - intoSide == right => !intoClause.lits(intoIndex).oriented
     * - if `t` is the `intoSide` of intoClause.lits(intoIndex), then
     *   u.fv = intoClause.implicitlyBound where `u` is a subterm of `t`
-    *
     * @param withClause clause that contains the literal used for rewriting
     * @param withIndex index of literal `s=t` in `withClause` that is used for rewriting
     * @param withSide `left` or `right`, depending on which side of `s=t` we search in `into`

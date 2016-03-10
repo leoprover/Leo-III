@@ -120,7 +120,7 @@ trait ClauseProxy extends Pretty {
   def annotation: ClauseAnnotation
   def properties: ClauseAnnotation.ClauseProp
 
-  override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty})"
+  override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
 }
 
 abstract sealed class ClauseAnnotation extends Pretty
@@ -155,6 +155,15 @@ object ClauseAnnotation {
   final val PropNoProp: ClauseProp = 0
   final val PropUnified: ClauseProp = 1
   final val PropBoolExt: ClauseProp = 2
+  final val PropSOS: ClauseProp = 4
+
+  final def prettyProp(prop: ClauseProp): String = {
+    val sb = new StringBuilder
+    if (isPropSet(PropUnified, prop)) sb.append(" U ")
+    if (isPropSet(PropBoolExt, prop)) sb.append(" BE ")
+    if (isPropSet(PropSOS, prop)) sb.append(" SOS ")
+    sb.toString()
+  }
 }
 
 

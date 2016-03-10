@@ -47,6 +47,16 @@ object Main {
 
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
       val interval = 10
+      val config = {
+        val sb = new StringBuilder()
+        sb.append(s"problem(${Configuration.PROBLEMFILE}),")
+        sb.append(s"time(${Configuration.TIMEOUT}),")
+        sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
+        sb.append(s"sos(${Configuration.SOS}),")
+        // TBA ...
+        sb.init.toString()
+      }
+      Out.comment(s"Configuration: $config")
 
       if (Configuration.isSet("seq")) {
         import leo.modules.seqpproc.SeqPProc

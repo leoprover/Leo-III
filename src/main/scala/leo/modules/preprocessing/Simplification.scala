@@ -1,44 +1,45 @@
-package leo.modules.normalization
+package leo.modules.preprocessing
 
+import leo.Configuration
+import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.blackboard.{Store, FormulaStore}
-import leo.datastructures.tptp.cnf.Formula
-
-import scala.language.implicitConversions
-import Term._
-import HOLConstant.toTerm
+import leo.datastructures.impl.Signature
 
 /**
- *
- * Simple object, that removes syntactic tautologies
- * and idempotent operations.
- *
- *
- * Created by Max Wisniewski on 4/7/14.
- */
-object Simplification extends AbstractNormalize{
+  * Created by mwisnie on 1/5/16.
+  */
+object Simplification extends Normalization {
 
-  override val name : String = "Simplification"
+  override val name : String = "simplify"
 
-  /**
-   * Normalizes a formula corresponding to the object.
-   *
-   * @param formula - A annotated formula
-   * @return a normalized formula
-   */
-  override def normalize(formula : Clause) : Clause = {
-    formula.mapLit(_.termMap {case (l,r) => (internalNormalize(l), internalNormalize(r))})
+  def polarityNorm(formula : Clause) : Clause = formula.mapLit(polarityNorm(_))
+
+  def polarityNorm(lit : Literal) : Literal = (lit.left, lit.right) match {
+    case (Not(l),Not(r))  => Literal(l,r, lit.polarity)
+    case (Not(l),r) => Literal(l,r, !lit.polarity)
+    case (l, Not(r)) => Literal(l,r, !lit.polarity)
+    case (l,r)  => Literal(l,r, lit.polarity)
+  }
+
+  override def apply(formula : Clause) : Clause = {
+    formula.mapLit(apply(_))
+  }
+
+  def apply(literal : Literal) : Literal = {
+    val left = internalNormalize(literal.left)
+    val right = internalNormalize(literal.right)
+    Literal(left,right, literal.polarity)
   }
 
   def normalize(t: Term): Term = internalNormalize(t)
 
-  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize)
+  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize).betaNormalize
 
   private def norm(formula : Term) : Term = formula match {
     //case Bound(ty)   => formula // Sollte egal sein
     //case Symbol(key) => formula
 
-      // First normalize, then match
+    // First normalize, then match
     case s === t =>
       (norm(s), norm(t)) match {
         case (s1,t1) if s1 == t1 => LitTrue
@@ -71,14 +72,16 @@ object Simplification extends AbstractNormalize{
         case (s1, t1)                 => |||(s1,t1)
       }
     case s <=> t =>
-      (norm(s), norm(t)) match {
-        case (s1, t1) if s1 == t1 => LitTrue
+      val (ns, nt) = (norm(s), norm(t))
+      val res : Term = (ns, nt) match {
+        case (s1, t1) if s1 == t1   => LitTrue
         case (s1, LitTrue())        => s1
         case (LitTrue(), t1)        => t1
         case (s1, LitFalse())       => norm(Not(s1))
         case (LitFalse(), t1)       => norm(Not(t1))
-        case (s1, t1)             => <=>(s1,t1)
+        case (s1, t1)               => &(Impl(s1,t1),Impl(t1,s1))
       }
+      return res
     case s Impl t =>
       (norm(s), norm(t)) match {
         case (s1, t1) if s1 == t1 => LitTrue
@@ -111,23 +114,22 @@ object Simplification extends AbstractNormalize{
       case t1         => Exists(t1)
     }
 
-      // Pass through unimportant structures
+    // Pass through unimportant structures
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
     case s@MetaVar(_,_)         => s
     case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))
-//    case _  => formula
   }
 
   /**
-   * Returns a List with deBrujin Indizes, that are free at this level.
-   *
-   * @param formula
-   * @return
-   */
-  protected[normalization] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
+    * Returns a List with deBrujin Indizes, that are free at this level.
+    *
+    * @param formula
+    * @return
+    */
+  protected[preprocessing] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
     case Bound(t,scope) => List((scope,t))
     case Symbol(id)     => List()
     case f ∙ args       => freeVariables(f) ++ args.flatMap(_.fold(freeVariables(_), _ => List()))
@@ -136,38 +138,30 @@ object Simplification extends AbstractNormalize{
   }
 
   /**
-   * Gets the body of an abstraction and returns true, if the (deBrujin) variable
-   * occures in this context.
-   *
-   * TODO: Move to a package, where it is usefull
-   *
-   * @param formula - Body of an abstraction
-   * @return true, iff the deBrujin Index occurs in the body
-   */
-  protected[normalization] def isBound(formula : Term) : Boolean = {
+    * Gets the body of an abstraction and returns true, if the (deBrujin) variable
+    * occures in this context.
+    *
+    * TODO: Move to a package, where it is usefull
+    *
+    * @param formula - Body of an abstraction
+    * @return true, iff the deBrujin Index occurs in the body
+    */
+  protected[preprocessing] def isBound(formula : Term) : Boolean = {
     freeVariables(formula).filter {case (a,b) => a == 1}.nonEmpty
   }
 
 
   /**
-   * Removes the quantifier from a formula, that is free, by instantiating it
-   * and betanormalization.
-   *
-   * @param formula Abstraction with not bound variable.
-   * @return the term without the function.
-   */
-  protected[normalization] def removeUnbound(formula : Term) : Term = formula match {
+    * Removes the quantifier from a formula, that is free, by instantiating it
+    * and betanormalization.
+    *
+    * @param formula Abstraction with not bound variable.
+    * @return the term without the function.
+    */
+  protected[preprocessing] def removeUnbound(formula : Term) : Term = formula match {
     case ty :::> t =>
-//      println("Removed the abstraction in '"+formula.pretty+"'.")
+      //      println("Removed the abstraction in '"+formula.pretty+"'.")
       mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
     case _        => formula
   }
-
-  /**
-   * If the status has the first Bit not set, the term is simplified.
-   */
-  override def applicable(status : Int): Boolean = (status & 1) == 0
-
-
-  def markStatus(fs: FormulaStore): FormulaStore = Store(fs.clause, Role_Plain, fs.context, fs.status | 1)
 }
