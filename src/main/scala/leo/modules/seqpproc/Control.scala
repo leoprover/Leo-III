@@ -33,6 +33,8 @@ object Control {
   // Indexing
   final def fvIndexInit(initClauses: Set[ClauseWrapper]): Unit = indexingControl.FVIndexControl.init(initClauses)
   final def fvIndexInsert(cl: ClauseWrapper): Unit = indexingControl.FVIndexControl.insert(cl)
+  // External prover call
+  @inline final def callExternalLeoII(clauses: Set[ClauseWrapper]) = externalProverControl.ExternalLEOIIControl.call(clauses)
 }
 
 /** Package collcetion control objects for inference rules.
@@ -626,6 +628,27 @@ package indexingControl {
       assert(initialized)
       val featureVector = features.map(_(cl.cl))
       FVIndex.add(cl.cl, featureVector)
+    }
+  }
+}
+
+package  externalProverControl {
+
+  import leo.datastructures.ClauseAnnotation.NoAnnotation
+  import leo.modules.output.StatusSZS
+  import leo.datastructures._
+
+  object ExternalLEOIIControl {
+    final def call(cls: Set[ClauseWrapper]): StatusSZS = {
+      val modifyClauses = cls.map { cl =>
+        if (cl.role == Role_NegConjecture) {
+          ClauseWrapper(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
+        } else {
+          ClauseWrapper(cl.id, cl.cl, cl.role, NoAnnotation, cl.properties)
+        }
+      }
+      val submitClauses: Set[ClauseWrapper] = modifyClauses + ClauseWrapper(Clause(Literal(LitFalse(), true)), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
+      ???
     }
   }
 }
