@@ -45,10 +45,14 @@ object RelevanceFilter {
     var n = 0
     while(n < phase){
       pass = pass + ((1-pass)/aging)
+      n += 1
     }
 
+    val grade = sum / (sum + new_size)
 
-    (sum / (sum + new_size)) < pass
+    leo.Out.debug(s"$formula : \n  $grade >= $pass\n ${if(grade >= pass) "taken" else "not taken"}")
+
+    grade >= pass
   }
 
   /**

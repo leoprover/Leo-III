@@ -3,7 +3,9 @@ package leo
 import leo.datastructures.ClauseProxy
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.modules.CLParameterParser
+import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
+import leo.modules.{Parsing, CLParameterParser}
 import leo.modules.external.ExternalCall
 import leo.modules.output.ToTPTP
 import leo.modules.phase.LoadPhase
@@ -22,13 +24,16 @@ object TestMain {
       }
     }
 
-    val load = new LoadPhase(Configuration.PROBLEMFILE, false)
-    Blackboard().addDS(FormulaDataStore)
+    val read : Iterable[AnnotatedFormula] = Parsing.readProblem(Configuration.PROBLEMFILE)
 
-    load.execute()
+    val parsed : Iterable[ClauseProxy] = SeqFilter(read)
 
-    val it : Set[ClauseProxy] = FormulaDataStore.getFormulas.toSet
+    println("Used :")
+    println(parsed.map(_.pretty).mkString("\n"))
+    println("Unused : ")
+    println(PreFilterSet.getFormulas.mkString("\n"))
 
+    /*
     val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
     println("Start executing")
     val exitV = e.exitValue
@@ -38,5 +43,6 @@ object TestMain {
       val o = output.next()
       println(o)
     }
+    */
   }
 }

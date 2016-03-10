@@ -119,11 +119,12 @@ object PreFilterSet {
     * @return
     */
   def getCommonFormulas(symb : String) : Iterable[AnnotatedFormula] = synchronized{
-    val names : Iterator[String] = reverse.getOrElse(symb, Set[String]()).iterator
+    val names : Set[String] = reverse.getOrElse(symb, Set[String]())
     var s : Seq[AnnotatedFormula] = Seq()
-    while(names.hasNext){
-      val name = names.next()
-      unused.get(name).foreach(f => f +: s)
+    val it = names.iterator
+    while(it.hasNext){
+      val name = it.next()
+      unused.get(name).foreach(f => s = f +: s)
     }
     s
   }

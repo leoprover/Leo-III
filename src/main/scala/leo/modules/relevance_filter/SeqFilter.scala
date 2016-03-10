@@ -14,7 +14,7 @@ import leo.modules.parsers.InputProcessing
   * Clauses, considered for the RelevanceFiltering
   */
 object SeqFilter {
-  def apply(formulas : Set[AnnotatedFormula]) : Iterable[ClauseProxy] = {
+  def apply(formulas : Iterable[AnnotatedFormula]) : Iterable[ClauseProxy] = {
     var res : Seq[ClauseProxy] = Seq()
     var taken : Iterable[AnnotatedFormula] = Seq()
 
