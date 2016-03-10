@@ -26,12 +26,23 @@ object RelevanceFilter {
     * Applies a relevance filter for the standardvalue
     * of the passmark [[std_passmark]] and the aging factor [[std_aging]].
     *
-    * @param phase
-    * @param formula
-    * @return
+    * @param phase The phase we are in
+    * @param formula The formula we want to filter
+    * @return true iff the formula should be taken
     */
   def apply(phase : Int)(formula: AnnotatedFormula) : Boolean = apply(std_passmark)(std_aging)(phase)(formula)
 
+  /**
+    *
+    * Applies a relevance filter for a given passmark and aging factor for the round.
+    *
+    *
+    * @param passmark The initial passmark
+    * @param aging An aging factor to increase the passmark
+    * @param phase The current phase of the filtering
+    * @param formula The formula we want to filter
+    * @return true iff the formula should be taken
+    */
   def apply(passmark : Double)(aging : Double)(phase : Int)(formula : AnnotatedFormula) : Boolean = {
     val symbs = formula.function_symbols
     if(symbs.size == 0) return true  // TODO is there a better solution?
