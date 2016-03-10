@@ -2,12 +2,14 @@ package leo.modules.agent.relevance_filter
 
 import leo.Configuration
 import leo.agents.{TAgent, Task, Agent}
-import leo.datastructures.ClauseAnnotation.FromFile
-import leo.datastructures.{Literal, Clause, ClauseProxy}
+import leo.datastructures.ClauseAnnotation.{InferredFrom, FromFile}
+import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.modules.calculus.CalculusRule
+import leo.modules.output.SZS_Theorem
 import leo.modules.parsers.InputProcessing
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
@@ -50,7 +52,10 @@ class RelevanceTask(form : AnnotatedFormula, round : Int, a : TAgent) extends Ta
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
     val (name, term, role) = InputProcessing.process(Signature.get)(form)
-    val nc : ClauseProxy = Store(name, Clause(Literal(term, true)), role, Context(), FromFile(Configuration.PROBLEMFILE, name))
+    val nc : ClauseProxy = if(role == Role_Conjecture)    // TODO Move somewhere else?
+      Store(name, Clause(Literal(term, false)), Role_NegConjecture, Context(), InferredFrom(NegateConjecture, Store(name, Clause(Literal(term, true)), role, Context(), FromFile(Configuration.PROBLEMFILE, name))))
+    else
+      Store(name, Clause(Literal(term, true)), role, Context(), FromFile(Configuration.PROBLEMFILE, name))
     Result().remove(AnnotatedFormulaType)(form).insert(FormulaTakenType)((form,round)).insert(ClauseType)(nc)
   }
   override def bid: Double = 1.0/(5.0 + round.toDouble)
@@ -61,3 +66,8 @@ class RelevanceTask(form : AnnotatedFormula, round : Int, a : TAgent) extends Ta
 object AnnotatedFormulaType extends DataType
 
 object FormulaTakenType extends DataType
+
+object NegateConjecture extends CalculusRule {
+  override def name: String = "negate_conjecture"
+  override val inferenceStatus = Some(SZS_Theorem)
+}
