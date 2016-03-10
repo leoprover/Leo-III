@@ -31,4 +31,6 @@ class FuncFrequency {
     * @return The number of occurences
     */
   def apply(symbol : String) : Int = symbols.getOrElse(symbol, 0 : Int)
+
+  def clear() : Unit = symbols.clear()
 }

@@ -25,6 +25,8 @@ object TestMain {
     }
 
     val read : Iterable[AnnotatedFormula] = Parsing.readProblem(Configuration.PROBLEMFILE)
+    println("Used Symbols")
+    println(read.map(f => s"$f\n  -> ${f.function_symbols.mkString(", ")}").mkString("\n"))
 
     val parsed : Iterable[ClauseProxy] = SeqFilter(read)
 
