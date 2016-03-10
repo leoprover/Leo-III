@@ -336,6 +336,44 @@ package inferenceControl {
     }
   }
 
+  protected[modules] object Choice {
+    import leo.datastructures.Term.{TermApp, Bound}
+    import leo.datastructures.Type.{->}
+
+    final def detectChoice(cw: ClauseWrapper): Boolean = {
+      val clause = cw.cl
+      if (clause.lits.size == 2) {
+        val lit1 = clause.lits(0)
+        val lit2 = clause.lits(1)
+        if (!lit1.equational && !lit2.equational) {
+          val term1 = lit1.left
+          val term2 = lit2.left
+
+          term1 match {
+            case TermApp(Bound(varTy, varIdx), Seq(Bound(ptherVarTy, otherVarIdx))) =>
+            case _ =>
+          }
+          ???
+        } else
+          false
+      } else
+        false
+
+    }
+
+    private final def findCandidate(t: Term): (Boolean, Term, Term) = {
+      t match {
+        case TermApp(var1, Seq(TermApp(choiceSymb, Seq(var2)))) => {
+          choiceSymb.ty match {
+            case ((a -> b) -> c) => ???
+            case _ => (false, null, null)
+          }
+        }
+        case _ => ???
+      }
+    }
+  }
+
   protected[modules] object DefinedEqualityProcessing {
     import leo.modules.output.ToTPTP
     import leo.datastructures.ClauseAnnotation._
