@@ -48,7 +48,7 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
     def output = toTPTP(name, t, role)
   }
 
-  def apply(formulas : Set[ClauseProxy]): Seq[Output] = {
+  def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
     var out: List[Output] = List.empty[Output]
     var defn : List[Output] = List.empty[Output]
     Signature.get.allUserConstants foreach { k =>
