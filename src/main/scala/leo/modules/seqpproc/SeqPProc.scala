@@ -73,7 +73,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // Read Problem, preprocessing, state set-up
     // SOS set-sup
     /////////////////////////////////////////
-
+    var test = false
     // Read problem
     val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
     val startTimeWOParsing = System.currentTimeMillis()
@@ -168,27 +168,44 @@ object SeqPProc extends Function1[Long, Unit]{
         loop = false
       } else {
         // No cancel, do reasoning step
-        var cur = state.nextUnprocessed
-        // cur is the current clausewrapper
-        Out.debug(s"Taken: ${cur.pretty}")
+        if (state.noProcessedCl % 20 == 0 && !test) {
+          test = true
+          Out.debug(s"CALL LEO-II")
+          val returnszs = Control.callExternalLeoII(state.processed)
+          Out.debug(s"${returnszs.pretty}")
 
-        cur = simplify(cur, state.rewriteRules)
-        if (Clause.effectivelyEmpty(cur.cl)) { // TODO: Instantiate flex-flex to get real proof
-          loop = false
-          if (conjecture.isEmpty) {
-            state.setSZSStatus(SZS_ContradictoryAxioms)
-          } else {
+          if (returnszs == SZS_Theorem) {
+            loop = false
             state.setSZSStatus(SZS_Theorem)
+            val resultcl = ClauseWrapper(Clause(Seq()), InferredFrom(CallLeo, state.processed))
+            state.setDerivationClause(resultcl)
           }
-          state.setDerivationClause(cur)
+
         } else {
-          // Subsumption
-          if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
-            mainLoopInferences(cur, state)
+          test = false
+          var cur = state.nextUnprocessed
+          // cur is the current clausewrapper
+          Out.debug(s"Taken: ${cur.pretty}")
+
+          cur = simplify(cur, state.rewriteRules)
+          if (Clause.effectivelyEmpty(cur.cl)) {
+            // TODO: Instantiate flex-flex to get real proof
+            loop = false
+            if (conjecture.isEmpty) {
+              state.setSZSStatus(SZS_ContradictoryAxioms)
+            } else {
+              state.setSZSStatus(SZS_Theorem)
+            }
+            state.setDerivationClause(cur)
           } else {
-            Out.debug("clause subsumbed, skipping.")
-            state.incForwardSubsumedCl()
-            Out.trace(s"Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+            // Subsumption
+            if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+              mainLoopInferences(cur, state)
+            } else {
+              Out.debug("clause subsumbed, skipping.")
+              state.incForwardSubsumedCl()
+              Out.trace(s"Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+            }
           }
         }
       }
@@ -326,7 +343,10 @@ object SeqPProc extends Function1[Long, Unit]{
       case e: NoSuchElementException => false
     }
   }
-
+  object CallLeo extends leo.modules.calculus.CalculusRule {
+    val name = "call_leo2"
+    override val inferenceStatus = Some(SZS_Theorem)
+  }
   final def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
     case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
     case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
