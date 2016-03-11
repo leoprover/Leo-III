@@ -244,7 +244,7 @@ package inferenceControl {
               // attach not to not-flex literal
               if (maxLit.flexHead) {
                 // TODO
-                assert(!otherLit.flexHead)
+                // assert(!otherLit.flexHead) NOT TRUE, right?
                 // otherlit is not flexhead
                 //following only makes sense if otherlit is equality between booleans
                 if (otherLit.left.ty == maxLit.left.ty) {
@@ -263,8 +263,8 @@ package inferenceControl {
 //                  }
                 }
               } else {
-                assert(otherLit.flexHead)
-                assert(!maxLit.flexHead)
+               // assert(otherLit.flexHead)
+               // assert(!maxLit.flexHead)
 
                 //following only makes sense if maxLit is equality between booleans
                 if (maxLit.left.ty == otherLit.left.ty) {
@@ -674,21 +674,39 @@ package indexingControl {
 package  externalProverControl {
 
   import leo.datastructures.ClauseAnnotation.NoAnnotation
-  import leo.modules.output.StatusSZS
+  import leo.modules.output._
   import leo.datastructures._
+  import leo.modules.external._
+  import java.util.concurrent.TimeUnit
 
   object ExternalLEOIIControl {
-    final def call(cls: Set[ClauseWrapper]): StatusSZS = {
+    @inline final def call(cls: Set[ClauseWrapper]): StatusSZS = call(cls, 1)
+
+    final def call(cls: Set[ClauseWrapper], sec: Long): StatusSZS = {
       val modifyClauses = cls.map { cl =>
         if (cl.role == Role_NegConjecture) {
           ClauseWrapper(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
         } else {
-          ClauseWrapper(cl.id, cl.cl, cl.role, NoAnnotation, cl.properties)
+          ClauseWrapper(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
         }
       }
       val submitClauses: Set[ClauseWrapper] = modifyClauses + ClauseWrapper(Clause(Literal(LitFalse(), true)), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
-      ???
+      val send = ToTPTP(submitClauses).map(_.output)
+      Out.finest(s"LEO input:")
+      Out.finest(s"${send.mkString("\n")}")
+      Out.finest("LEO INPUT END")
+      val result = ExternalCall.exec("/opt/leo2/bin/leo ", send)
+      val resres = result.waitFor(sec, TimeUnit.SECONDS)
+      if (resres) {
+        exitCodeToSZS(result.exitValue)
+      } else SZS_Unknown
     }
+
+    private final def exitCodeToSZS(exitcode: Int): StatusSZS = exitcode match {
+        case 0 => SZS_Theorem
+        case 1 => SZS_Unsatisfiable
+        case _ => SZS_Unknown
+      }
   }
 }
 
