@@ -205,8 +205,6 @@ private object TaskSet {
           //
           var r: List[(Double, TAgent, Task)] = Nil
           while (r.isEmpty) {
-            //leo.Out.comment("Checking for new tasks.")
-            println(ActiveTracker.get)
             val ts = taskSet.executableTasks
             ts.foreach { case t =>
               val a = t.getAgent

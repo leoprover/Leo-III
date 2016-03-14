@@ -154,4 +154,12 @@ object PreFilterSet {
       }
     }
   }
+
+  def clear() = {
+    unused.clear()
+    usedSymbs.clear()
+    freq.clear()
+    defn.clear()
+    reverse.clear()
+  }
 }

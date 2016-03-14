@@ -28,7 +28,7 @@ sealed abstract class LogicFormula {
 case class Typed(formula: LogicFormula, typ: LogicFormula) extends LogicFormula {
   override def toString = formula.toString + " : " + typ.toString
 
-  override val function_symbols: Set[String] = formula.function_symbols union formula.function_symbols
+  override val function_symbols: Set[String] = formula.function_symbols // TODO Do we need the typ symbols as well?
 }
 case class Binary(left: LogicFormula, connective: BinaryConnective, right: LogicFormula) extends LogicFormula {
   override def toString = "(" + left.toString + ") " + connective.toString + " (" + right.toString + ")"
@@ -46,8 +46,9 @@ case class Quantified(quantifier: Quantifier, varList: List[(Commons.Variable,Op
   // TODO are we considering types as well? (Remove `union decl` if we do not want to check types)
   override val function_symbols: Set[String] = {
     val vars = varList.map(_._1).toSet
-    val decl = varList.toSet[(Commons.Variable,Option[LogicFormula])].flatMap{case (_, ty) => ty.fold(Set[String]())(_.function_symbols)}
-    (matrix.function_symbols -- vars) union decl
+    // TODO Do we need the typ symbols as well?
+    //val decl = varList.toSet[(Commons.Variable,Option[LogicFormula])].flatMap{case (_, ty) => ty.fold(Set[String]())(_.function_symbols)}
+    (matrix.function_symbols -- vars) //union decl
   }
 
   val blocked_symbols : Set[String] = varList.map(_._1).toSet
