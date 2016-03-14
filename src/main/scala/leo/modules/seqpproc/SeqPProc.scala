@@ -168,7 +168,7 @@ object SeqPProc extends Function1[Long, Unit]{
         loop = false
       } else {
         // No cancel, do reasoning step
-        if (state.noProcessedCl % 20 == 0 && !test) {
+        if (Configuration.isSet("ec") && state.noProcessedCl % 20 == 0 && !test) {
           test = true
           Out.debug(s"CALL LEO-II")
           val returnszs = Control.callExternalLeoII(state.processed)
