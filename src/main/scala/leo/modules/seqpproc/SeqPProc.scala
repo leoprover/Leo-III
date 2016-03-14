@@ -56,7 +56,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
 
   final def simplify(cw: ClauseWrapper, rules: Set[ClauseWrapper]): ClauseWrapper = {
-    val simp = Simp.shallowSimp(cw.cl)
+    val simp = Simp(cw.cl)
     val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), simp)
     // TODO: simpl to be simplification by rewriting à la E etc
     if (rewriteSimp != cw.cl) ClauseWrapper(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
