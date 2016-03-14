@@ -4,26 +4,41 @@ import leo.datastructures.{Term, Type, Subst}
 import leo.modules.output.SZS_EquiSatisfiable
 
 trait Unification extends CalculusRule {
+  val name = "pre_uni_full"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
- type Substitute = (Subst,Seq[Type])
+  /** `UEq`s are unsolved equations. */
+  type UEq = Tuple2[Term,Term]
+  type UnificationResult = (Subst, Seq[UEq])
 
   /**
-   *
-   * @param t - First term to unify
-   * @param s - Second term to unify
-   * @return a stream of Substitution to make both terms equal, empty stream if they are not unifiable
-   */
-  def unify(vargen: FreshVarGen, t : Term, s : Term) : Iterable[Subst]
+    * Generates a stream of `UnificationResult`s (tuples of substitutions and unsolved equations)
+    * where each result solves the unification constraint `t = s`. The unsolved equations on the `UnificationResult`
+    * are hereby all flex-flex unification constraints that are postponed. The result stream
+    * is empty, if the equation `t = s` is not unifiable.
+    */
+  def unify(vargen: FreshVarGen, t : Term, s : Term): Iterable[UnificationResult]
 
-  val name = "unification"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  /**
+    * Generates a stream of `UnificationResult`s (tuples of substitutions and unsolved equations)
+    * where each result solves all unification constraints `t_i = s_i` in `constraints`.
+    * The unsolved equations on the `UnificationResult`
+    * are hereby all flex-flex unification constraints that are postponed. The result stream
+    * is empty, if the equation `t = s` is not unifiable.
+    */
+  def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult]
 }
 
 /**
  * Tests solely for equality
  */
 object IdComparison extends Unification{
-  override def unify(vargen: FreshVarGen, t : Term, s : Term) : Iterable[Subst] = if (s == t) Stream(Subst.id) else Stream.empty
+  override def unify(vargen: FreshVarGen, t: Term, s: Term) : Iterable[UnificationResult] =
+    if (s == t) Stream((Subst.id, Seq())) else Stream.empty
+
+  override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] =
+    if (constraints.forall(eq => eq._1 == eq._2)) Stream((Subst.id, Seq()))
+    else Stream.empty
 }
 
 // Look for TODO, TOFIX (and TOTEST in the corresponding test file)
@@ -40,16 +55,20 @@ object HuetsPreUnification extends Unification {
   import leo.modules.calculus.util.executionModels._
   import annotation.tailrec
 
-  type UEq = Tuple2[Term,Term]
-
-  def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[Subst] = {
-
+  override def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[UnificationResult] = {
     val t = t1.etaExpand
     val s = s1.etaExpand
 
     // returns a stream whose head is a pre-unifier and whose body computes the next unifiers
-    new NDStream[Subst](new MyConfiguration(List(Tuple2(t,s)), List()), new MyFun(vargen)) with BFSAlgorithm
+    new NDStream[UnificationResult](new MyConfiguration(Seq((t,s)), Seq()), new MyFun(vargen)) with BFSAlgorithm
   }
+
+  override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
+    val expandedContraints = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand))
+    new NDStream[UnificationResult](new MyConfiguration(expandedContraints, Seq()), new MyFun(vargen)) with BFSAlgorithm
+  }
+
+  protected def isVariable(t: Term): Boolean = Bound.unapply(t).isDefined
 
   protected def isFlexible(t: Term): Boolean = t.headSymbol match {
     case Bound(_, _) => true // flexible variable
@@ -86,11 +105,8 @@ object HuetsPreUnification extends Unification {
     }
   }
 
-  // bug one: see output - a sub with a term at index 15 replaces a bound variable at index 16 and not 15
-  // bug two: negative fresh variables cause some term functions to throw index out of bound exception, to get it, simply change back
-  // the fresh variables counter to negative. I changed it into positive to see if there are other bugs
   private def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
-    l.map(e => (e._1.closure(s).betaNormalize,e._2.closure(s).betaNormalize))
+    l.map(e => (e._1.substitute(s),e._2.substitute(s)))
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
@@ -127,60 +143,8 @@ object HuetsPreUnification extends Unification {
             (uproblems, sproblems)
           }
         }
-
       }
     }
-
-  }
-
-  /**
-   *  all terms are flex variables
-   */
-  private def computeDefaultSub(vargen: FreshVarGen, ls: Seq[Term]): Subst = {
-    val it = ls.iterator
-    var map : Map[Int, Term] = Map()
-    while (it.hasNext) {
-      val flex = it.next()
-      val (ty, id) = Bound.unapply(flex).get
-      val tys = ty.funParamTypesWithResultType
-      val newVar = vargen.next(tys.last)
-      map = map + (id -> λ(tys.init)(Term.mkBound(tys.last, newVar._1+tys.init.size)))
-    }
-    Subst.fromMap(map)
-
-    //val maxIdx: Int = Bound.unapply(ls.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-//    var sub = Subst.id
-    /*for (i <- 1 to maxIdx)
-      ls.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
-        case Some((typ,t)) => {
-          sub = sub.cons()
-        }
-        case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
-    }*/
-//    sub
-  }
-
-  /* New Version by Alex. Maps all variables of same type to same new var. */
-  private def computeDefaultSub2(vargen: FreshVarGen, ls: Seq[(Term, Term)]): Subst = {
-    val lsIt = ls.iterator
-    var tyToVarMap: Map[Type, Term] = Map()
-    var substMap: Map[Int, Term] = Map()
-    while (lsIt.hasNext) {
-      val (l, r) = lsIt.next()
-      val (lHead, rHead) = (Bound.unapply(l.headSymbol).get, Bound.unapply(r.headSymbol).get)
-      if (tyToVarMap.contains(lHead._1)) {
-        val t = tyToVarMap(lHead._1)
-        substMap = substMap + (lHead._2 -> t) + (rHead._2 -> t)
-      } else {
-        val ty = lHead._1.funParamTypesWithResultType
-        val newVar = vargen.next(ty.last)
-        val t = λ(ty.init)(Term.mkBound(newVar._2, newVar._1+ty.init.size))
-        tyToVarMap = tyToVarMap + (lHead._1 -> t)
-        substMap = substMap + (lHead._2 -> t) + (rHead._2 -> t)
-      }
-    }
-
-    Subst.fromMap(substMap)
   }
 
   /*// n is arity of variable
@@ -209,12 +173,11 @@ object HuetsPreUnification extends Unification {
     def canApply(e: UEq): Boolean // returns true if we can apply the rule
   }
 
-  /* new rules by Alex */
-
+  /* FuncRule added by Alex */
   object FuncRule extends HuetsRule[UEq] {
 
     def apply(varGen: FreshVarGen, e: UEq): UEq = {
-      leo.Out.trace(s"Func rule on ${e._1.pretty} = ${e._2.pretty}")
+      leo.Out.trace(s"Apply Func on ${e._1.pretty} = ${e._2.pretty}")
       val funArgTys = e._1.ty.funParamTypes
       val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, varGen.existingVars))
       (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
@@ -226,7 +189,6 @@ object HuetsPreUnification extends Unification {
       e._1.ty.isFunType
     }
   }
-
   /* new rules end*/
 
   // not to forget that the approximations must be in eta-long-form
@@ -259,7 +221,7 @@ object HuetsPreUnification extends Unification {
   /**
    * 4b
    * equation is not oriented
-    * TODO: Alex: I filtered out all of those bound vars that have non-compatible type. Is that correct?
+   * Alex: I filtered out all of those bound vars that have non-compatible type. Is that correct?
    */
   object ProjectRule extends HuetsRule[Seq[UEq]] {
     def apply(vargen: FreshVarGen, e: UEq): Seq[UEq] = {
@@ -289,18 +251,30 @@ object HuetsPreUnification extends Unification {
   object BindRule extends HuetsRule[UEq] {
     def apply(vargen: FreshVarGen, e: UEq) = {
       // orienting the equation
-      val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      // FIXME: See FIXME a few lines below
+      val (t,s) = if (isVariable(e._1)) (e._1,e._2) else (e._2, e._1)
       // getting flexible head
       (t.headSymbol,s)
     }
     def canApply(e: UEq) = {
       // orienting the equation
-      val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      // FIXME: Bind rule needs to have a variable on the left side. isFlexible did not
+      // order that correctly if both sides were flex-head but right one was the only one
+      // that was indeed a variable
+      val (t,s) = if (isVariable(e._1)) (e._1,e._2) else (e._2, e._1)
+//      leo.Out.finest(s"isVariable(e._1): ${isFlexible(e._1)}")
+//      leo.Out.finest(s"isVariable(e._2): ${isFlexible(e._2)}")
+//      leo.Out.finest(s"Can apply bind:\n\t${t.pretty}\n\t${s.pretty}")
       // check head is flexible
       if (!isFlexible(t)) false
       // getting flexible head
       else {
+//        leo.Out.finest("isflexible(t)")
         val (_,x) = Bound.unapply(t.headSymbol).get
+//        leo.Out.finest(s"bound index: $x")
+//        leo.Out.finest(s"t.headSymbol.etaExpand.equals(t): ${t.headSymbol.etaExpand.equals(t)}")
+//        leo.Out.finest(s"t.equals(t.headSymbol): ${t.equals(t.headSymbol)}")
+//        leo.Out.finest(s"s.looseBounds.contains(x): ${s.looseBounds.contains(x)}")
       // check t is eta equal to x
         if (!t.headSymbol.etaExpand.equals(t) && !t.equals(t.headSymbol)) false
       // check it doesnt occur in s
@@ -342,48 +316,41 @@ object HuetsPreUnification extends Unification {
   private def simplifyArguments(l: Seq[Either[Term,Type]]): Seq[Term] = l.filter(_.isLeft).map(_.left.get)
 
   // the state of the search space
-  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[Subst], val isTerminal: Boolean)
-    extends Configuration[Subst] {
-    def this(result: Option[Subst]) = this(List(), List(), result, true) // for success
+  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[UnificationResult], val isTerminal: Boolean)
+    extends Configuration[UnificationResult] {
+    def this(result: Option[UnificationResult]) = this(Seq(), Seq(), result, true) // for success
     def this(l: Seq[UEq], s: Seq[UEq]) = this(l, s, None, false) // for in node
     override def toString  = "{" + uproblems.flatMap(x => ("<"+x._1.pretty+", "+ x._2.pretty+">")) + "}"
   }
 
   // the transition function in the search space (returned list containing more than one element -> ND step, no element -> failed branch)
-  protected class MyFun(vargen: FreshVarGen) extends Function1[Configuration[Subst], Seq[Configuration[Subst]]] {
+  protected class MyFun(vargen: FreshVarGen) extends Function1[Configuration[UnificationResult], Seq[Configuration[UnificationResult]]] {
 
     import  scala.collection.mutable.ListBuffer
 
     // Huets procedure is defined here
-    def apply(conf2: Configuration[Subst]): Seq[Configuration[Subst]] = {
+    override def apply(conf2: Configuration[UnificationResult]): Seq[Configuration[UnificationResult]] = {
       val conf = conf2.asInstanceOf[MyConfiguration]
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (uproblems, sproblems) = detExhaust(vargen, conf.uproblems,conf.sproblems)
       leo.Out.trace(s"Finished detExhaust")
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {
-        List(new MyConfiguration(Some(computeSubst(sproblems))))
+        Seq(new MyConfiguration(Some(Tuple2(computeSubst(sproblems),Seq()))))
       }
       // else consider top equation
       else {
         val (t,s) = uproblems.head
         leo.Out.finest(s"selected: ${t.pretty} = ${s.pretty}")
         // if it is rigid-rigid -> fail
-        if (!isFlexible(t) && !isFlexible(s)) List()
+        if (!isFlexible(t) && !isFlexible(s)) Seq()
         else {
-          // if it is flex-flex -> all equations are flex-flex -> succeeds and compute sub from the solved set
-          // TOFIX compute a substitution for all types that maps all variables in the uproblems set to the same term
-          // and then compose this subtitution to the one generated by computeSubst
+          // Changed: Do not compute default sub, but rather return substitution from
+          // solved equations and return list of unsolved ones directly.
+          // if it is flex-flex -> all equations are flex-flex
           if (isFlexible(t) && isFlexible(s)) {
             leo.Out.finest(s"Flex-flex")
-            leo.Out.finest(s"${uproblems.map{case (l,r) => l.pretty ++ "=" ++ r.pretty}.mkString("\t")}")
-//            val defSub = computeDefaultSub(vargen, uproblems.foldLeft(List[Term]())((ls,e) => e._1.headSymbol::e._2.headSymbol::ls))
-            /* the one above is from tomer, the one below by alex: I tried to implement the toFix annotation above */
-            // FIXME Is that right? I think we lose completeness here
-            val defSub = computeDefaultSub2(vargen, uproblems)
-//            println(s"default Sub: ${defSub.pretty}")
-//            println(s"with other: ${defSub.comp(computeSubst(sproblems)).normalize.pretty}")
-            List(new MyConfiguration(Some(defSub.comp(computeSubst(sproblems)))))
+            Seq(new MyConfiguration(Some((computeSubst(sproblems),uproblems))))
           } else {
             leo.Out.finest(s"flex-rigid")
             // else we have a flex-rigid and we cannot apply bind

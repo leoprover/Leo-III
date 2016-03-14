@@ -49,12 +49,13 @@ object UnificationStore extends DataStore {
 //<<<<<<< HEAD
         val us = HuetsPreUnification.unify(???,t1,t2).iterator
 //        println(s"###### unify $i")
-        t2u.put((t1,t2), us)
+//        t2u.put((t1,t2), us)// FIXME: commented out after unification change (Alex)
 //        println(s"###### put $i")
         if (us.hasNext) {
           val res = us.next()
 //          println(s"###### unification result $i: ${res}")
-          Some(res)
+//          Some(res) // commented out after unification change (Alex)
+          None // FIXME
         } else {
           None
         }

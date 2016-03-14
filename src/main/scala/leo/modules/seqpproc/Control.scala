@@ -312,7 +312,7 @@ package inferenceControl {
         resultSet = otherClauses
         uniClauses.foreach { case (cw, ul, ol) =>
           Out.debug(s"Unification task from clause ${cw.pretty}")
-          val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))), cw.properties | ClauseAnnotation.PropUnified)}
+          val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), cw.cl, ul, ol).map{case (cl,subst) => ClauseWrapper(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst)))), cw.properties | ClauseAnnotation.PropUnified)}
           Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
           resultSet = resultSet union nc
         }
@@ -680,7 +680,7 @@ package  externalProverControl {
   import java.util.concurrent.TimeUnit
 
   object ExternalLEOIIControl {
-    @inline final def call(cls: Set[ClauseWrapper]): StatusSZS = call(cls, 1)
+    @inline final def call(cls: Set[ClauseWrapper]): StatusSZS = call(cls, 5)
 
     final def call(cls: Set[ClauseWrapper], sec: Long): StatusSZS = {
       val modifyClauses = cls.map { cl =>
@@ -695,11 +695,15 @@ package  externalProverControl {
       Out.finest(s"LEO input:")
       Out.finest(s"${send.mkString("\n")}")
       Out.finest("LEO INPUT END")
-      val result = ExternalCall.exec("/opt/leo2/bin/leo ", send)
+      val result = ExternalCall.exec("/home/lex/bin/leo2/bin/leo ", send)
       val resres = result.waitFor(sec, TimeUnit.SECONDS)
       if (resres) {
+        Out.finest(s"leo did know: ${exitCodeToSZS(result.exitValue)}")
         exitCodeToSZS(result.exitValue)
-      } else SZS_Unknown
+      } else {
+        Out.finest("leo didnt know")
+        SZS_Unknown
+      }
     }
 
     private final def exitCodeToSZS(exitcode: Int): StatusSZS = exitcode match {

@@ -585,20 +585,20 @@ object BoolExt extends CalculusRule {
 object PreUni extends CalculusRule {
   val name = "pre_uni"
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
-  type UniLits = Seq[Literal]
+  type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
 
   def canApply(l: Literal): Boolean = l.uni
 
   def canApply(cl: Clause): (Boolean, UniLits, OtherLits) = {
     var can = false
-    var uniLits:Seq[Literal] = Seq()
-    var otherLits: Seq[Literal] = Seq()
+    var uniLits: UniLits = Seq()
+    var otherLits: OtherLits = Seq()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
       if (canApply(l)) {
-        uniLits = uniLits :+ l
+        uniLits = uniLits :+ (l.left, l.right)
         can = true
       } else {
         otherLits = otherLits :+ l
@@ -608,26 +608,19 @@ object PreUni extends CalculusRule {
   }
 
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
-    var unsolved: Set[Literal] = Set()
-    var subst = Subst.id
-    val uniLitIt = uniLits.iterator
-    while (uniLitIt.hasNext) {
-      val uniLit = uniLitIt.next()
-      Out.debug(s"Working on ${uniLit.pretty}")
-      val substUniLit = uniLit.substitute(subst)
-      Out.debug(s"After applying subst ${substUniLit.pretty}")
-      val unires = HuetsPreUnification.unify(vargen, substUniLit.left, substUniLit.right).iterator
-      if (unires.hasNext) {
-        val unifier = unires.next().normalize
-        Out.debug(s"Was solved! Unifier ${unifier.pretty}")
-        subst = subst.comp(unifier)
-      } else {
-        unsolved = unsolved + uniLit
-      }
+  def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
+    Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
+    if (result.hasNext) {
+      val uniResult = result.next()
+      val subst = uniResult._1
+      val flexflexPairs = uniResult._2
+      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2))
+      val updatedOtherLits = otherLits.map(_.substitute(subst))
+      Set((Clause(updatedOtherLits ++ newLiterals),subst))
+    } else {
+      Set((cl, Subst.id))
     }
-
-    Set((Clause(unsolved.map(_.substitute(subst)) ++ otherLits.map(_.substitute(subst))), subst))
   }
 }
 
