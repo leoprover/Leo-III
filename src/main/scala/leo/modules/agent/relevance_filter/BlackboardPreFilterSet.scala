@@ -22,6 +22,12 @@ object BlackboardPreFilterSet extends DataStore{
       true
   }
   override def clear(): Unit = PreFilterSet.clear()
-  override def all(t: DataType): Set[Any] = PreFilterSet.getFormulas.toSet
+  override def all(t: DataType): Set[Any] = {
+    if (t == AnnotatedFormulaType)
+      PreFilterSet.getFormulas.toSet
+    else {
+      Set.empty
+    }
+  }
   override def delete(d: Any): Unit = ()
 }

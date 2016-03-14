@@ -278,9 +278,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       } catch {
         case e : Exception =>
           leo.Out.severe(e.getMessage)
+          leo.Out.finest(e.getCause.toString)
+          if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
+            Blackboard().forceCheck()
+          }
           Scheduler().killAll()
       }
-//      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
     }
   }
 
@@ -291,12 +294,12 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val ts = a.filter(DataEvent(newD, t))
         Blackboard().submitTasks(a, ts.toSet)
       } catch {
-        case e : Exception => leo.Out.warn(e.getMessage)
+        case e : Exception =>
+          leo.Out.warn(e.getMessage)
+          leo.Out.finest(e.getCause.toString)
       }
-
-      println(s"Before Filter gaveUp : ${ActiveTracker.get}")
-      if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0)
-        Blackboard().forceCheck()
+      ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
+      Blackboard().forceCheck()
 
       //Release sync
     }

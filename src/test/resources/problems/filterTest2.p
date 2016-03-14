@@ -1,6 +1,7 @@
 thf(type_a, type, a : $o).
 thf(type_b, type, b : $o).
 thf(type_c, type, c : $o).
+thf(type_d, type, d : $o).
 thf(type_p, type, p : ($i > $o)).
 
 thf(prinzip, axiom, ! [X: $o] : (! [Y: $o] : ((X = Y) => (Y = X)))).

@@ -32,10 +32,9 @@ object RelevanceFilterAgent extends Agent {
     */
   override def filter(event: Event): Iterable[Task] = event match {
       // TODO define own factors and passmark
-    case DataEvent(form : AnnotatedFormula, AnnotatedFormulaType) =>
-      if(RelevanceFilter(form)){
-        Seq(new RelevanceTask(form, 0, this))
-      } else Seq()
+    case DataEvent(form : AnnotatedFormula, AnnotatedFormulaType)
+      if form.role == Role_Conjecture.pretty || form.role == Role_NegConjecture.pretty || form.function_symbols.isEmpty =>  // Initially we takethe conjecture and prinzipels
+        Seq(new RelevanceTask(form, -1, this))
     case DataEvent((form : AnnotatedFormula, round : Int), FormulaTakenType) =>
       // New round.
       val touched : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(form.function_symbols)
@@ -60,7 +59,8 @@ class RelevanceTask(form : AnnotatedFormula, round : Int, a : TAgent) extends Ta
   }
   override def bid: Double = 1.0/(5.0 + round.toDouble)
 
-  override def pretty: String = s"relevance_task($form)"
+  override val pretty: String = s"relevance_task($form, round = $round)"
+  override val toString : String = pretty
 }
 
 object AnnotatedFormulaType extends DataType

@@ -16,7 +16,7 @@ case class Logical(formula: LogicFormula) extends Formula {
 case class TypedAtom(formula: String, typ: Type) extends Formula {
   override def toString = formula.toString + " : " + typ.toString
 
-  override val function_symbols: Set[String] = Set() // TDOO Do there exist function symbols in here?
+  override val function_symbols: Set[String] = Set(formula)
 }
 case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula {
   override def toString = "[" + tuple1.mkString(",") +"]" + " --> " + "[" + tuple2.mkString(",") + "]"
