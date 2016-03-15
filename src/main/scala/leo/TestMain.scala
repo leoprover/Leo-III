@@ -10,7 +10,7 @@ import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
 import leo.modules.{Parsing, CLParameterParser}
 import leo.modules.external.ExternalCall
 import leo.modules.output.ToTPTP
-import leo.modules.phase.{FilterPhase, LoadPhase}
+import leo.modules.phase.{PreprocessingPhase, FilterPhase, LoadPhase}
 
 /**
   * Created by mwisnie on 3/7/16.
@@ -28,6 +28,7 @@ object TestMain {
 
     val loadphase = new LoadPhase(Configuration.PROBLEMFILE)
     val filterphase = new FilterPhase()
+    val preprocessphase = new PreprocessingPhase()
 
     Blackboard().addDS(FormulaDataStore)
     Blackboard().addDS(BlackboardPreFilterSet)
@@ -37,6 +38,11 @@ object TestMain {
       return
     }
     if(!filterphase.execute()){
+      Scheduler().killAll()
+      return
+    }
+
+    if(!preprocessphase.execute()){
       Scheduler().killAll()
       return
     }

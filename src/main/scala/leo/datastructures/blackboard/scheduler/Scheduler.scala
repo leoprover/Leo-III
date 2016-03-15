@@ -112,6 +112,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     pauseFlag = false
     exe.shutdownNow()
     AgentWork.executingAgents() foreach(_.kill())
+    Blackboard().filterAll(a => a.filter(DoneEvent()))
     curExec.clear()
     AgentWork.clear()
     ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
