@@ -1,6 +1,6 @@
 package leo.modules.parsers.syntactical_new.termParser
 
-import leo.modules.parsers.lexical.TPTPTokens
+import leo.modules.parsers.lexical.{TPTPLexical, TPTPTokens}
 import leo.datastructures.tptp.Commons._
 
 import leo.modules.parsers.syntactical_new.combinators.Combinators
@@ -9,10 +9,23 @@ import leo.modules.parsers.syntactical_new.combinators.Combinators
   * Created by samuel on 10.03.16.
   */
 object TermParser
-  extends TPTPTokens
+  extends TPTPLexical
   with Combinators
 {
-  def parse(tokens: Seq[Token]) =
+  type Token = TPTPLexical#Token
+
+  def parse(input: String): Either[ParserError,(Term, Seq[Token])] = {
+    var scanner = new TermParser.Scanner(input)
+    var tokStream: Seq[Token] = List[Token]()
+    while(!scanner.atEnd) {
+      tokStream = tokStream :+ scanner.first
+      //tokStream = tokStream :+ (scanner.first.asInstanceOf[Token])
+      scanner = scanner.rest
+    }
+    parse(tokStream)
+  }
+
+  def parse(tokens: Seq[Token]): Either[ParserError,(Term, Seq[Token])] =
     z0(List.empty)(tokens).right flatMap {
       case (TermEntry(term) :: Nil, restTokens) =>
         Right((term, restTokens))
