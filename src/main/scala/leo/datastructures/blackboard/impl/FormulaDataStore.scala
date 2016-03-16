@@ -4,7 +4,6 @@ import leo.datastructures.{ClauseProxy, Clause}
 import leo.datastructures.blackboard._
 import leo.datastructures.context.impl.{TreeContextMap, TreeContextSet}
 import leo.datastructures.context.{ContextMap, ContextSet, Context}
-import leo.modules.calculus.TrivRule
 
 /**
  *
@@ -109,7 +108,7 @@ object FormulaDataStore extends DataStore {
     */
   def addNewFormula(formula : ClauseProxy, context: Context) : Boolean = {
     // TODO: Implement Sets to check containment of Clauses.
-    if(TrivRule.teqt(formula.cl)) return false
+    if(Clause.trivial(formula.cl)) return false
     if (FormulaSet.getAll(context).exists(c => c.cl.cong(formula.cl)))
       false
     else {
