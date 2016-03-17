@@ -7,6 +7,13 @@ trait Combinators {
   type TokenStream[Token] = Seq[Token]
   type ParserRet[I,A] = Either[ParserError, (A,TokenStream[I])]
 
+  def withSideEffect[Token,A](action: => Unit)(p: Parser[Token,A]) = new Parser[Token,A] {
+    override def apply(stream: TokenStream[Token]) = {
+      action
+      p.apply(stream)
+    }
+  }
+
   abstract class Parser[Token,+A]
     extends ((TokenStream[Token]) => ParserRet[Token,A]) {
 

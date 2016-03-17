@@ -22,6 +22,7 @@ object TermParser
       //tokStream = tokStream :+ (scanner.first.asInstanceOf[Token])
       scanner = scanner.rest
     }
+    //println(s"tokens: ${tokStream}")
     parse(tokStream)
   }
 
@@ -29,8 +30,8 @@ object TermParser
     z0(List.empty)(tokens).right flatMap {
       case (TermEntry(term) :: Nil, restTokens) =>
         Right((term, restTokens))
-      case _ =>
-        Left("Stack is not empty!")
+      case (s, _) =>
+        Left(s"Stack is not empty: ${s}")
     }
 
   /* this is the type of the nodes of the abstract syntax tree: */
@@ -42,6 +43,8 @@ object TermParser
 
   type PStack = List[StackEntry]
   type PP = Parser[Token, PStack]
+
+  override def withSideEffect[Token,A](action: => Unit)(p: Parser[Token,A]) = p
 
   import scala.reflect.ClassTag
 
@@ -72,7 +75,7 @@ object TermParser
     |"dollar_dollar_word"   Z15
     |"distinct_object" action_17
   */
-  def z0(s: PStack): PP = (
+  def z0(s: PStack): PP = withSideEffect(println(s"z0(${s})"))(
     (tokenP[UpperWord](s) map action_2)
     | (tokenP[SingleQuoted](s) flatMap z12)
     | (tokenP[Real](s) map action_20 map action_16)
@@ -89,7 +92,7 @@ object TermParser
       action_6
     |"(" Z2
   */
-  def z12(s: PStack): PP = (
+  def z12(s: PStack): PP = withSideEffect(println(s"z12(${s})"))(
     (uniqueTokenP(LeftParenthesis)(s) flatMap (z2(_)))
     | (ret(s) map (action_6(_)))
   )
@@ -106,7 +109,7 @@ object TermParser
     |"dollar_dollar_word"   Z23
     |"distinct_object" action_17    Z16
   */
-  def z2(s: PStack): PP = (
+  def z2(s: PStack): PP = withSideEffect(println(s"z2(${s})"))(
     (tokenP[UpperWord](s) map (action_2(_)) flatMap (z16(_)))
     | (tokenP[SingleQuoted](s) flatMap (z17(_)))
     | (tokenP[Real](s) map (action_20(_)) map (action_16 (_)) flatMap (z16(_)))
@@ -128,7 +131,7 @@ object TermParser
     "," Z5 Z3
     | action_12 Z3
   */
-  def z16(s: PStack): PP = (
+  def z16(s: PStack): PP = withSideEffect(println(s"z16(${s})"))(
     (uniqueTokenP(Comma)(s) flatMap (z5(_)) flatMap (z3(_)))
     | (ret(s) map action_12 flatMap z3)
   )
@@ -137,7 +140,7 @@ object TermParser
   Z3 ->
      ")" action_7
   */
-  def z3(s: PStack): PP = (
+  def z3(s: PStack): PP = withSideEffect(println(s"z3(${s})"))(
     uniqueTokenP(RightParenthesis)(s) map action_7
   )
 
@@ -153,7 +156,7 @@ object TermParser
     |"dollar_dollar_word"   Z74
     |"distinct_object" action_17    Z67
  */
-  def z5(s: PStack): PP = (
+  def z5(s: PStack): PP = withSideEffect(println(s"z5(${s})"))(
     (tokenP[UpperWord](s) map action_2 flatMap z67)
     | (tokenP[SingleQuoted](s) flatMap z68)
     | (tokenP[Real](s) map action_20 map action_16 flatMap z67)
@@ -170,7 +173,7 @@ object TermParser
 
      |"," Z5 action_13
   */
-  def z67(s: PStack): PP = (
+  def z67(s: PStack): PP = withSideEffect(println(s"z67(${s})"))(
     (uniqueTokenP(Comma)(s) flatMap z5 map action_13)
     | (ret(s) map action_12 map action_13)
   )
@@ -180,19 +183,19 @@ object TermParser
        action_6   Z67
      |"(" Z2   Z67
   */
-  def z68(s: PStack): PP = (
+  def z68(s: PStack): PP = withSideEffect(println(s"z68(${s})"))(
     (uniqueTokenP(LeftParenthesis)(s) flatMap z2 flatMap z67)
     | (ret(s) map action_6 flatMap z67)
   )
 
   /*
    Z73 ->
-            Z67
+     action_22 Z67
      |"(" Z7     Z67
   */
-  def z73(s: PStack): PP = (
+  def z73(s: PStack): PP = withSideEffect(println(s"z73(${s})"))(
     (uniqueTokenP(LeftParenthesis)(s) flatMap z7 flatMap z67)
-    | z67(s)
+    | (ret(s) map action_22 flatMap z67)
   )
 
   /*
@@ -207,7 +210,7 @@ object TermParser
      |"dollar_dollar_word"   Z40
      |"distinct_object" action_17    Z33
   */
-  def z7(s: PStack): PP = (
+  def z7(s: PStack): PP = withSideEffect(println(s"z7(${s})"))(
     (tokenP[UpperWord](s) map action_2 flatMap z33)
     | (tokenP[SingleQuoted](s) flatMap z34)
     | (tokenP[Real](s) map action_20 map action_16 flatMap z33)
@@ -224,7 +227,7 @@ object TermParser
      action_12 Z8
      |"," Z5 Z8
   */
-  def z33(s: PStack): PP = (
+  def z33(s: PStack): PP = withSideEffect(println(s"z33(${s})"))(
     (uniqueTokenP(Comma)(s) flatMap z5 flatMap z8)
     | (ret(s) map action_12 flatMap z8)
   )
@@ -233,7 +236,7 @@ object TermParser
    Z8 ->
       ")" action_23
    */
-  def z8(s: PStack): PP = (
+  def z8(s: PStack): PP = withSideEffect(println(s"z8(${s})"))(
     uniqueTokenP(RightParenthesis)(s) map action_23
   )
 
@@ -242,29 +245,29 @@ object TermParser
        action_6   Z33
      |"(" Z2   Z33
   */
-  def z34(s: PStack): PP = (
+  def z34(s: PStack): PP = withSideEffect(println(s"z34(${s})"))(
     (uniqueTokenP(LeftParenthesis)(s) flatMap z2 flatMap z33)
     | (ret(s) map action_6 flatMap z33)
   )
 
   /*
    Z39 ->
-            Z33
+     action_22 Z33
      |"(" Z7     Z33
   */
-  def z39(s: PStack): PP = (
+  def z39(s: PStack): PP = withSideEffect(println(s"z39(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z7 flatMap z33 )
-    | z33(s)
+    | (ret(s) map action_22 flatMap z33)
   )
 
   /*
    Z40 ->
-          Z33
+     action_27 Z33
      |"(" Z10   Z33
   */
-  def z40(s: PStack): PP = (
+  def z40(s: PStack): PP = withSideEffect(println(s"z40(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z10 flatMap z33 )
-    | z33(s)
+    | (ret(s) map action_27 flatMap z33)
   )
 
   /*
@@ -279,7 +282,7 @@ object TermParser
      |"dollar_dollar_word"   Z57
      |"distinct_object" action_17    Z50
   */
-  def z10(s: PStack): PP = (
+  def z10(s: PStack): PP = withSideEffect(println(s"z10(${s})"))(
     (tokenP[UpperWord](s) map action_2 flatMap z50)
     | (tokenP[UpperWord](s) flatMap z51)
     | (tokenP[Real](s) map action_20 map action_16 flatMap z50)
@@ -296,7 +299,7 @@ object TermParser
      action_12 Z11
      |"," Z5 Z11
   */
-  def z50(s: PStack): PP = (
+  def z50(s: PStack): PP = withSideEffect(println(s"z50(${s})"))(
     (uniqueTokenP(Comma)(s) flatMap z5 flatMap z11)
     | (ret(s) map action_12 flatMap z11)
   )
@@ -305,7 +308,7 @@ object TermParser
    Z11 ->
       ")" action_28
    */
-  def z11(s: PStack): PP = (
+  def z11(s: PStack): PP = withSideEffect(println(s"z11(${s})"))(
     uniqueTokenP(RightParenthesis)(s) map action_28
   )
 
@@ -314,39 +317,39 @@ object TermParser
        action_6   Z50
      |"(" Z2   Z50
   */
-  def z51(s: PStack): PP = (
+  def z51(s: PStack): PP = withSideEffect(println(s"z51(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z2 flatMap z50 )
     | (ret(s) map action_6 flatMap z50)
   )
 
   /*
    Z56 ->
-            Z50
+     action_22 Z50
      |"(" Z7     Z50
   */
-  def z56(s: PStack): PP = (
+  def z56(s: PStack): PP = withSideEffect(println(s"z56(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z7 flatMap z50 )
-    | z50(s)
+    | (ret(s) map action_22 flatMap z50)
   )
 
   /*
    Z57 ->
-          Z50
+     action_27 Z50
      |"(" Z10   Z50
   */
-  def z57(s: PStack): PP = (
+  def z57(s: PStack): PP = withSideEffect(println(s"z57(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z10 flatMap z50 )
-    | z50(s)
+    | (ret(s) map action_27 flatMap z50)
   )
 
   /*
    Z74 ->
-          Z67
+     action_27 Z67
      |"(" Z10   Z67
   */
-  def z74(s: PStack): PP = (
+  def z74(s: PStack): PP = withSideEffect(println(s"z74(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z10 flatMap z67 )
-    | z67(s)
+    | (ret(s) map action_27 flatMap z67)
   )
 
   /*
@@ -354,49 +357,49 @@ object TermParser
        action_6   Z16
      |"(" Z2   Z16
   */
-  def z17(s: PStack): PP = (
+  def z17(s: PStack): PP = withSideEffect(println(s"z17(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z2 flatMap z16 )
     | (ret(s) map action_6 flatMap z16)
   )
 
   /*
    Z22 ->
-            Z16
+     action_22 Z16
      |"(" Z7     Z16
   */
-  def z22(s: PStack): PP = (
+  def z22(s: PStack): PP = withSideEffect(println(s"z22(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z7 flatMap z16 )
-    | z16(s)
+    | (ret(s) map action_22 flatMap z16)
   )
 
   /*
    Z23 ->
-          Z16
+     action_27 Z16
      |"(" Z10   Z16
   */
-  def z23(s: PStack): PP = (
+  def z23(s: PStack): PP = withSideEffect(println(s"z23(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z10 flatMap z16 )
-    | z16(s)
+    | (ret(s) map action_27 flatMap z16)
   )
 
   /*
    Z14 ->
-
+     action_22
      |"(" Z7
   */
-  def z14(s: PStack): PP = (
+  def z14(s: PStack): PP = withSideEffect(println(s"z14(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z7 )
-    | ret(s)
+    | (ret(s) map action_22)
   )
 
   /*
   Z15 ->
-
+    action_27
     |"(" Z10
   */
-  def z15(s: PStack) = (
+  def z15(s: PStack) = withSideEffect(println(s"z15(${s})"))(
     ( uniqueTokenP(LeftParenthesis)(s) flatMap z10 )
-    | ret(s)
+    | (ret(s) map action_27)
   )
 
 // -----------------------------------------------------------------
@@ -504,12 +507,30 @@ object TermParser
   }
 
   /*
+  action_22 { (defined_functor:DollarWord) => DefinedFunc(name=defined_functor.data, args=List[Term]()) }
+    defined_plain_term -> defined_constant
+  */
+  def action_22(s: PStack) = s match {
+    case TokenEntry(x: DollarWord) :: rest
+      => TermEntry(DefinedFunc(x.data, List[Term]())) :: rest
+  }
+
+  /*
   action_23 { (defined_functor:DollarWord, arguments:List[Term]) => DefinedFunc(name=defined_functor.data, args=arguments) }
 	  defined_plain_term -> defined_functor "(" arguments ")"
   */
   def action_23(s: PStack) = s match {
     case TokenEntry(RightParenthesis) :: TermEntries(args) ::TokenEntry(LeftParenthesis) :: TokenEntry(x: DollarWord) :: rest
       => TermEntry(DefinedFunc(x.data, args)) :: rest
+  }
+
+  /*
+  action_27 { (system_functor:DollarDollarWord) => SystemFunc(name=system_functor.data, args=List[Term]()) }
+    system_term -> system_constant
+  */
+  def action_27(s: PStack) = s match {
+    case TokenEntry(x: DollarDollarWord) :: rest
+    => TermEntry(SystemFunc(x.data, List[Term]())) :: rest
   }
 
   /*
@@ -522,7 +543,7 @@ object TermParser
   }
 
 
-  private def allAsTerm(x: PStack) = x map { case TermEntry(x) => x }
+  //private def allAsTerm(x: PStack) = x map { case TermEntry(x) => x }
 
   def terminalParse[T <: Token](implicit ct: ClassTag[T]) : Parser[Token, T] =
     parseIf((t: Token) => s"token of type ${ } expected, but ${ t.toString } found!")(
