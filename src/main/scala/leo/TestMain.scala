@@ -78,10 +78,7 @@ object TestMain {
     println("Preprocessing")
 
     val c = Context()
-    printContext(c)
-    printContext(normal)
-    printContext(argext)
-    printContext(rename)
+    Context.leaves(c).foreach(printContext(_))
 
     /*
     val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
