@@ -2,11 +2,13 @@ package leo
 package datastructures.context
 
 
+import leo.datastructures.context.impl.TreeContext
+
 import scala.collection._
 
 object Context {
 
-  private val root : Context = new impl.TreeContext
+  private var root : Context = new impl.TreeContext
 
   /**
    * Accesspoint and maincontext of leo.
@@ -37,6 +39,16 @@ object Context {
 
   private def pathToString(c : List[Context]) : String = c.map(_.contextID).mkString(" , ")
 
+  /**
+    * Checks if the first context is an ancestor of the second one
+    * @param cp possible ancestor
+    * @param cc possible child
+    * @return true, iff cp is an ancestor of cc
+    */
+  def isAncestor(cp : Context)(cc : Context) : Boolean = {
+    getPath(cc).contains(cp)
+  }
+
 
   /**
    * Computes the lca of a context.
@@ -60,6 +72,14 @@ object Context {
     }
     res
   }
+
+  def leaves(c : Context) : Iterable[Context] = {
+    if(c.isClosed) Iterable()
+    else if (c.childContext.isEmpty) Iterable(c)
+    else c.childContext.flatMap(c1 => leaves(c))
+  }
+
+  def clear() = {root = new TreeContext}
 }
 
 /**

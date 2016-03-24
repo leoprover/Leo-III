@@ -11,7 +11,7 @@ import leo.modules.preprocessing._
 /**
   * Created by mwisnie on 3/7/16.
   */
-object NormalizationAgent extends Agent {
+class NormalizationAgent(cs : Context*) extends Agent {
   override def name: String = "normalization_agent"
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
   val norms : Seq[Normalization] = Seq(Simplification, DefExpansion, Simplification, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
@@ -24,13 +24,14 @@ object NormalizationAgent extends Agent {
 
   private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
     var openNorm : Seq[Normalization] = norms
+    val toInsertContext = cs filter Context.isAncestor(c)
     var clause = cl.cl
     while(openNorm.nonEmpty && cl.cl != clause){
       val norm = openNorm.head
       openNorm = openNorm.tail
       clause = norm(clause)
     }
-    Seq(new NormalizationTask(cl, clause, openNorm, c, this))
+    toInsertContext map (ci => new NormalizationTask(cl, clause, openNorm, ci, this))
   }
 }
 

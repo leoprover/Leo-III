@@ -7,16 +7,7 @@ import leo.modules.agent.preprocessing.{FormulaRenamingAgent, EqualityReplaceAge
 /**
   * Created by mwisnie on 3/7/16.
   */
-class PreprocessingPhase extends CompletePhase{
+class PreprocessingPhase(as : Seq[TAgent]) extends CompletePhase{
 override def name: String = "PreProcessing Phase"
-  override protected val agents: Seq[TAgent] = {
-    var s : Seq[TAgent] = Seq()
-    s = NormalizationAgent +: s
-    s = EqualityReplaceAgent +: s
-    if(Configuration.isSet("a"))
-      s = ArgumentExtractionAgent +: s
-    if(Configuration.isSet("r"))
-      s = FormulaRenamingAgent +: s
-    s
-  }
+  override protected val agents: Seq[TAgent] = as
 }

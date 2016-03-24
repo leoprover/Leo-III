@@ -25,7 +25,7 @@ class TreeContextSet[A] extends ContextSet[A] {
    * are stored in the contexts, there is no need to implement
    * the tree again.
    */
-  private val contextSets : mutable.Map[Context,mutable.Set[A]] = new mutable.HashMap[Context,mutable.Set[A]] with mutable.SynchronizedMap[Context,mutable.Set[A]]
+  private val contextSets : mutable.Map[Context,mutable.Set[A]] = new mutable.HashMap[Context,mutable.Set[A]]
 
   /**
    * Checks if an element `a` is contained in a given context.
@@ -78,11 +78,52 @@ class TreeContextSet[A] extends ContextSet[A] {
     while(p.hasNext) {
       val n = p.next()
       contextSets.get(n) match {
-        case Some(s) => if(s.contains(a)) {s.remove(a); return true}
+        case Some(s) =>
+          if(s.contains(a)) {
+            s.remove(a)
+            distributeAlongPath(n, p, a)
+            // Removed from the context, BUT distribute to the other contexts
+            return true
+          }
         case None  => ()
       }
     }
     return false
+  }
+
+  /**
+    * Inserts the Element a into all childrens of c, that are not p[0] and rekurses into p[0] with the tail p[1..n].
+    */
+  private def distributeAlongPath(c : Context, p : Iterator[Context], a : A) : Unit = {
+    if(p.hasNext){
+      // If we are on the path, then we push the element to the sides
+      val nc = p.next()
+      c.childContext.foreach{cc =>
+        if(cc != nc){
+          contextSets.get(cc) match {
+            case Some(s) =>
+              s.add(a)
+            case None =>
+              val s = new mutable.HashSet[A]
+              contextSets.put(cc,s)
+              s.add(a)
+           }
+        }
+      }
+      distributeAlongPath(nc, p, a)
+    } else {
+      // If we completed the path, we add the element to the children
+      c.childContext.foreach{cc =>
+        contextSets.get(cc) match {
+          case Some(s) =>
+            s.add(a)
+          case None =>
+            val s = new mutable.HashSet[A]
+            contextSets.put(cc,s)
+            s.add(a)
+        }
+      }
+    }
   }
 
   /**
@@ -105,13 +146,13 @@ class TreeContextSet[A] extends ContextSet[A] {
     if(contains(a,c)) false
     else
     {
-      (contextSets.get(c) match {
+      contextSets.get(c) match {
         case Some(s) => s.add(a)
         case None =>
-            val s = new mutable.HashSet[A] with mutable.SynchronizedSet[A]
+            val s = new mutable.HashSet[A]
             contextSets.put(c,s)
             s.add(a)
-      })
+      }
       true
     }
 
