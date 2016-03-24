@@ -45,6 +45,11 @@ object TestMain {
       return
     }
 
+    println("Used :")
+    println(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
+    println("Unused : ")
+    println(PreFilterSet.getFormulas.mkString("\n"))
+
 
     // Were to split?
     // 4 Splits -> 1st Normal, 2nd Normalization + EqualityReplacement, 3rd + ArgumentExtraction, 4th + FormulaRenaming
@@ -59,13 +64,12 @@ object TestMain {
     }
 
     Scheduler().killAll()
-    println("Used :")
-    println(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
-    println("Unused : ")
-    println(PreFilterSet.getFormulas.mkString("\n"))
+
+    println("Preprocessing")
 
     val c = Context()
-    Context.leaves(c)
+    printContext(c)
+    cs foreach (c => printContext(c))
 
     /*
     val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
@@ -78,5 +82,11 @@ object TestMain {
       println(o)
     }
     */
+  }
+
+  private def printContext(c : Context): Unit ={
+    println(s"Context : ${Context.getPath(c).map(_.contextID).mkString("/")} : ")
+    val forms = FormulaDataStore.getFormulas(c)
+    println("  "+forms.map(_.pretty).mkString("\n  "))
   }
 }

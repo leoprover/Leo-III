@@ -24,7 +24,7 @@ object Context {
    * @param c - The node we want to reach
    * @return Path from the root context to c, in this direction.
    */
-  protected[context] def getPath(c : Context) : Seq[Context] = {
+  def getPath(c : Context) : Seq[Context] = {
     var res = List(c)
     var akk : Context = c
     while(akk.parentContext != null) {
