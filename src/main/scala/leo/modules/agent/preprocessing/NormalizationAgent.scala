@@ -24,7 +24,7 @@ class NormalizationAgent(cs : Context*) extends Agent {
 
   private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
     var openNorm : Seq[Normalization] = norms
-    val toInsertContext = cs filter Context.isAncestor(c)
+    val toInsertContext = ((if(cs exists (ce => Context.isAncestor(ce)(c))) Seq(c) else Seq()) ++ (cs filter Context.isAncestor(c))).toSet
     var clause = cl.cl
     while(openNorm.nonEmpty && cl.cl != clause){
       val norm = openNorm.head

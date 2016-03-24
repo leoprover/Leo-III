@@ -53,10 +53,20 @@ object TestMain {
 
     // Were to split?
     // 4 Splits -> 1st Normal, 2nd Normalization + EqualityReplacement, 3rd + ArgumentExtraction, 4th + FormulaRenaming
-    Context().split(BetaSplit, 4)
-    val cs = Context().childContext.toSeq
+    Context().split(BetaSplit, 2)
+    var cs = Context().childContext.toSeq
+    val normal = cs(0)
+    val allNormeq = cs(1)
+    cs(1).split(BetaSplit, 2)
+    cs = cs(1).childContext.toSeq
+    val normeq = cs(0)
+    val allArgExt = cs(1)
+    cs(1).split(BetaSplit, 2)
+    cs = cs(1).childContext.toSeq
+    val argext = cs(0)
+    val rename = cs(1)
 
-    val preprocessphase = new PreprocessingPhase(Seq(new ArgumentExtractionAgent(cs(2),cs(3)), EqualityReplaceAgent, new FormulaRenamingAgent(cs(3)), new NormalizationAgent(cs(1),cs(2),cs(3))))
+    val preprocessphase = new PreprocessingPhase(Seq(new ArgumentExtractionAgent(allArgExt), EqualityReplaceAgent, new FormulaRenamingAgent(rename), new NormalizationAgent(allNormeq)))
 
     if(!preprocessphase.execute()){
       Scheduler().killAll()
@@ -69,7 +79,9 @@ object TestMain {
 
     val c = Context()
     printContext(c)
-    cs foreach (c => printContext(c))
+    printContext(normal)
+    printContext(argext)
+    printContext(rename)
 
     /*
     val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
