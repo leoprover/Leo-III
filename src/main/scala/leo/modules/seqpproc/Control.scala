@@ -112,13 +112,15 @@ package inferenceControl {
         val withTerm = if (withSide) withLit.left else withLit.right
 
         assert(withClause.lits(withIndex) == withLit, s"$withIndex in ${withClause.pretty}\n lit = ${withLit.pretty}")
-        assert(withClause.lits(withIndex).polarity)
+        assert(withLit.polarity)
 
         val intoConfigurationIt = intoConfigurationIterator(intoClause)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
           assert(!intoLit.flexflex)
-          if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+          if (!withLit.equational && !intoLit.equational && intoPos == Position.root && intoLit.polarity) {
+            /* skip, this generates a redundant clause */
+          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
             Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
             val newCl = OrderedParamod(withClause, withIndex, withSide,
               intoClause, intoIndex, intoSide, intoPos, intoTerm)
