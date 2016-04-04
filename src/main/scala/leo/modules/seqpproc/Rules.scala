@@ -57,6 +57,7 @@ object PolaritySwitch extends CalculusRule {
   }
 }
 
+
 /** Non-extensional CNF rule. */
 object CNF extends CalculusRule {
   // TODO: Can be optimize this? E.g. dependencies for skolemterm
