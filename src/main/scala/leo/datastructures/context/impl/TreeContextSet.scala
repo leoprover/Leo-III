@@ -74,7 +74,6 @@ class TreeContextSet[A] extends ContextSet[A] {
    */
   override def remove(a: A, c: Context): Boolean = {
     val p = Context.getPath(c).iterator
-
     while(p.hasNext) {
       val n = p.next()
       contextSets.get(n) match {
@@ -111,18 +110,6 @@ class TreeContextSet[A] extends ContextSet[A] {
         }
       }
       distributeAlongPath(nc, p, a)
-    } else {
-      // If we completed the path, we add the element to the children
-      c.childContext.foreach{cc =>
-        contextSets.get(cc) match {
-          case Some(s) =>
-            s.add(a)
-          case None =>
-            val s = new mutable.HashSet[A]
-            contextSets.put(cc,s)
-            s.add(a)
-        }
-      }
     }
   }
 

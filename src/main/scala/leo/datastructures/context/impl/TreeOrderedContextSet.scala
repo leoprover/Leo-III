@@ -97,17 +97,6 @@ class TreeOrderedContextSet[A <: Ordered[A]] extends OrderedContextSet[A]{
         }
       }
       distributeAlongPath(nc, p, a)
-    } else {
-      // If we completed the path, we add the element to the children
-      c.childContext.foreach{cc =>
-        contextSets.get(cc) match {
-          case Some(s) =>
-            s.add(a)
-          case None => val s = mutable.SortedSet[A]()
-            contextSets.put(cc,s)
-            s.add(a)
-        }
-      }
     }
   }
 

@@ -130,18 +130,6 @@ class TreeContextMap[K,V] extends ContextMap[K,V] {
         }
       }
       distributeAlongPath(nc, p, k, v)
-    } else {
-      // If we completed the path, we add the element to the children
-      c.childContext.foreach{cc =>
-        contextMaps.get(cc) match {
-          case Some(s) =>
-            s.put(k,v)
-          case None =>
-            val m = new mutable.HashMap[K,V]()
-            contextMaps.put(cc,m)
-            m.put(k,v)
-        }
-      }
     }
   }
 
