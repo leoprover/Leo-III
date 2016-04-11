@@ -12,13 +12,6 @@ object FullCNF extends CalculusRule {
   override def name: String = "cnf"
   final override val inferenceStatus = Some(SZS_Theorem)
 
-  type FormulaCharacter = Byte
-  final val none: FormulaCharacter = 0.toByte
-  final val alpha: FormulaCharacter = 1.toByte
-  final val beta: FormulaCharacter = 2.toByte
-  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
-  //  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
-
   final def canApply(l: Literal): Boolean = if (!l.equational) {
     l.left match {
       case Not(t) => true
@@ -33,7 +26,6 @@ object FullCNF extends CalculusRule {
   } else false
 
   final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause): Seq[Clause] = {
-    println("C")
     val lits = cl.lits
     val normLits = apply(vargen, lits)
     normLits.map{ls => Clause(ls)}
