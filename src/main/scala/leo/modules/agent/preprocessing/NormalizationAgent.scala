@@ -26,12 +26,15 @@ class NormalizationAgent(cs : Context*) extends Agent {
     var openNorm : Seq[Normalization] = norms
     val toInsertContext = ((if(cs exists (ce => Context.isAncestor(ce)(c))) Seq(c) else Seq()) ++ (cs filter Context.isAncestor(c))).toSet
     var clause = cl.cl
-    while(openNorm.nonEmpty && cl.cl != clause){
+    while(openNorm.nonEmpty && cl.cl == clause){
       val norm = openNorm.head
       openNorm = openNorm.tail
       clause = norm(clause)
     }
-    toInsertContext map (ci => new NormalizationTask(cl, clause, openNorm, ci, this))
+    if(cl.cl == clause)
+      Seq()
+    else
+      toInsertContext map (ci => new NormalizationTask(cl, clause, openNorm, ci, this))
   }
 }
 

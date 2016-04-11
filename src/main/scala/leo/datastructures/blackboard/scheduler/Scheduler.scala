@@ -206,6 +206,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
         work = true
 
+
 //        Out.comment("[Writer] : Got task and begin to work.")
         // Update blackboard
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
@@ -220,6 +221,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
+
             Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
             doneSmth |= add
             add
@@ -231,6 +233,11 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
             Blackboard().getDS(t).foreach{ds =>ds.delete(d)}
           })
         }
+
+
+        // Data Written, Release Locks before filtering
+        LockSet.releaseTask(task) // TODO right position?
+        Blackboard().finishTask(task)
 
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
@@ -253,10 +260,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 //      Out.comment(s"[Writer]: Gone through all.")
 
-      LockSet.releaseTask(task)
       curExec.remove(task)
       agent.taskFinished(task)
-      Blackboard().finishTask(task)
 
       if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task

@@ -42,7 +42,7 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override def run: Result = {
     var r : Result= Result()
     val defn : Set[ClauseProxy] = defs map {case (t1, t2) => Store(Clause(Literal(t1, t2, true)), Role_Definition, c)}
-    r = r.update(ClauseType)((cl, c))(Store(nc, cl.role, c, InferredFrom(ArgumentExtraction, defn + cl)))
+    r = r.update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ArgumentExtraction, defn + cl)), c))
     val it = defn.iterator
     while(it.hasNext) {
       val d = it.next()

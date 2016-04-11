@@ -60,6 +60,7 @@ class TaskSelectionSet {
 
   /**
     * Adds a new [[leo.agents.TAgent]] to the TaskGraph.
+    *
     * @param a The agent to be added
     */
   def addAgent(a : TAgent) : Unit = synchronized {
@@ -68,6 +69,7 @@ class TaskSelectionSet {
 
   /**
     * Removes a [[leo.agents.TAgent]] from the TaskGraph
+    *
     * @param a The agent to be removed
     */
   def removeAgent(a : TAgent) : Unit = synchronized {
@@ -95,6 +97,7 @@ class TaskSelectionSet {
 
   /**
     * Marks an agent as passive and considers its tasks no longer for execution.
+    *
     * @param a The agent to be turned passive
     */
   def passive(a : TAgent) : Unit = synchronized {
@@ -105,6 +108,7 @@ class TaskSelectionSet {
 
   /**
     * Marks an agent as active and reanables its tasks for exectuion.
+    *
     * @param a The agent to be turned active
     */
   def active(a : TAgent) : Unit = synchronized {
@@ -123,6 +127,7 @@ class TaskSelectionSet {
     */
   def submit(a : TAgent, t : Task) : Unit = synchronized {
     //First test clash with currently executing tasks
+//    Out.finest(s"Submitting task:\n  agent -> ${a.name}\n  task -> ${t.name}")
     if(currentlyExecution.exists{t1 =>
       t.writeSet().exists{case (dt, dws) => t1.writeSet().getOrElse(dt, Set.empty).intersect(dws).nonEmpty} ||
       t.readSet().exists{case (dt, rws) => t1.writeSet().getOrElse(dt, Set.empty).intersect(rws).nonEmpty}
@@ -132,13 +137,17 @@ class TaskSelectionSet {
     depSet.add(t,a).foreach{t1 =>
       agent.get(t1).foreach{a1 =>
         zero.get(a1).foreach{aq =>
+//          Out.finest(s"Removed from current executable task:\n  collision -> ${t.pretty}\n  agent -> ${a1.name}\n   task -> ${t1.pretty}")
           aq.rm(t1)
         }
       }
     }
     agent.put(t,a)
-    if(!depSet.existDep(t))
+//    Out.finest(s"Add task:\n  agent -> ${a.name}\n  task -> ${t.name}")
+    if(!depSet.existDep(t)) {
+//      Out.finest(s"Add task to current executable:\n  agent -> ${a.name}\n  task -> ${t.pretty}")
       zero.getOrElseUpdate(a, new AgentTaskQueue).add(t)
+    }
   }
 
   /**
@@ -161,7 +170,6 @@ class TaskSelectionSet {
   def finish(t : Task) : Unit = synchronized {
     depSet.rm(t, agent.get(t).get).foreach{t1 =>
       agent.get(t1).foreach{a1 =>
-        // Consider the new free independent Tasks
         zero.getOrElseUpdate(a1, new AgentTaskQueue).add(t1)
       }
     }
@@ -241,6 +249,7 @@ trait DependencySet {
 
   /**
     * Removes an agent from the dependecy set
+    *
     * @param a The agent to be removed
     */
   def rmAgent(a : TAgent)
@@ -264,6 +273,7 @@ trait DependencySet {
 
   /**
     * Adds a new Task / Node to the dependecy set.
+    *
     * @param t The task to be added
     * @param a The Agent this task is added for
     * @return Returns all tasks, that previously were independent, but are now dependent on `t`
@@ -272,6 +282,7 @@ trait DependencySet {
 
   /**
     * Removes a finished task from the dependecy set
+    *
     * @param t The task to be added
     * @param a The Agent this task is added for
     * @return Returns all tasks, that were only dependent on `t` and are hence independent
@@ -280,6 +291,7 @@ trait DependencySet {
 
   /**
     * Returns all tasks, `t` depends on.
+    *
     * @param t The task the dependencies are calculated for
     * @return
     */
