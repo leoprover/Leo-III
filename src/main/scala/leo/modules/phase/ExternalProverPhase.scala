@@ -1,66 +1,45 @@
-/*
-package leo.modules.phase
 
-import leo.Configuration
-import leo.agents.impl.{SZSScriptMessage, SZSScriptAgent}
-import leo.agents.{FifoController, AgentController}
-import leo.datastructures.Role_NegConjecture
-import leo.datastructures.blackboard.Blackboard
-import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.modules.SZSException
-import leo.modules.output.{ToTPTP, SZS_Error, SZS_UsageError}
+package leo.modules.phase
+import leo.agents.TAgent
+import leo.agents.impl.{SZSScriptAgent, SZSScriptMessage}
+import leo.datastructures.{Clause, LitTrue, Literal, Role_Conjecture}
+import leo.datastructures.blackboard.{Blackboard, Store}
+import leo.datastructures.context._
+import leo.modules.agent.split_search.Aggregate_SZS
+import leo.modules.output.ToTPTP
+import leo.modules.parsers.TPTP
+
 
 object ExternalProverPhase extends CompletePhase {
-  override def name: String = "ExternalProverPhase"
+  /**
+    * Returns the name of the phase.
+    *
+    * @return
+    */
+  override def name: String = "External Prover Phase"
 
-  lazy val prover = if (Configuration.isSet("with-prover")) {
-    Configuration.valueOf("with-prover") match {
-      case None => throw new SZSException(SZS_UsageError, "--with-prover parameter used without <prover> argument.")
-      case Some(str) => str.head match {
-        case "leo2" => {
-          val path = System.getenv("LEO2_PATH")
-          if (path != null) {
-            getClass.getResource("scripts/leoexec.sh").getPath
-          } else {
-            throw new SZSException(SZS_UsageError, "--with-prover used with LEO2 prover, but $LEO2_PATH is not set.")
-          }
-        }
-        case "satallax" => {
-          val path = System.getenv("SATALLAX_PATH")
-          if (path != null) {
-            getClass.getResource("scripts/satallaxexec.sh").getPath
-          } else {
-            throw new SZSException(SZS_UsageError, "--with-prover used with satallax prover, but $SATALLAX_PATH is not set.")
-          }
-        }
-        case "remote-leo2" => getClass.getResource("/scripts/remote-leoexec.sh").getPath
-        case _ => throw new SZSException(SZS_UsageError, "--with-prover parameter used with unrecognized <prover> argument.")
-      }
+  /**
+    * A list of all agents to be started.
+    *
+    * @return
+    */
+  override protected def agents: Seq[TAgent] = _agents
+
+  private var _agents : Seq[TAgent] = Seq()
+
+  override protected def init() : Unit = {
+    val cs = Context.leaves(Context())
+    Aggregate_SZS.register()
+    _agents = Seq(Aggregate_SZS)
+    // TODO Switch for more provers
+    val ac = cs.map{c => (SZSScriptAgent("leo")(fs => ToTPTP.apply(fs).map(_.output))(x => x),c)}
+
+    //Send initial obligation (Proof true)
+    val trueC = Store(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, Context())
+    ac foreach {case (a,c) =>
+      a.register()
+      _agents = a +: agents
+      Blackboard().send(SZSScriptMessage(trueC)(c), a)
     }
-  } else {
-    throw new SZSException(SZS_Error, "This is considered an system error, please report this problem.", "CL parameter with-prover lost")
-  }
-
-  lazy val extProver : AgentController = new FifoController(SZSScriptAgent(prover){fs => ToTPTP(fs).map(_.output)}(x => x))
-
-
-  override protected def agents: Seq[AgentController] = List(extProver)
-
-  override def execute(): Boolean = {
-    init()
-
-
-    val conj = FormulaDataStore.getAll(_.role == Role_NegConjecture).head
-    Blackboard().send(SZSScriptMessage(conj)(conj.context), extProver)
-
-    initWait()
-
-    if(!waitTillEnd()) return false
-
-    end()
-    return true
-
-
   }
 }
-*/

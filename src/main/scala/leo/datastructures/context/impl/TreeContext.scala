@@ -93,6 +93,7 @@ class TreeContext extends Context{
    * and the splitkind is set to UnSplittable
    */
   override def close(): Unit = synchronized({
+    println("Close B")
     _children foreach {c => c._parent = null}
     _children = Nil
     _split = UnSplittable
@@ -107,6 +108,7 @@ class TreeContext extends Context{
    * @param finished - true => UnSplittable, false => NoSplit
    */
   override def close(finished: Boolean): Unit = synchronized({
+    println("Close A")
     _children foreach {c => c._parent = null}
     _children = Nil
     if(finished) _split = UnSplittable else _split = NoSplit

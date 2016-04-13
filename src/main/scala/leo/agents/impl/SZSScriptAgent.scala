@@ -48,7 +48,6 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
       b.append("  Out: "+line+"\n")
       getSZS(line) match {
         case Some(status) =>
-          context.close()
           Out.info(s"[$name]: Got ${status.output} from the external prover.")
           return Result().insert(StatusType)(SZSStore(reinterpreteResult(status), context))
         case None         => ()
@@ -73,7 +72,6 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
   }
 
   private def createTask(f : ClauseProxy, c : Context) : Iterable[Task] = {
-    Out.trace(s"[$name]: Got a task.")
     val conj : ClauseProxy = Store(negateClause(f.cl), Role_Conjecture, c)
     val context : Set[ClauseProxy] = FormulaDataStore.getAll(c){ bf => bf.id != f.id}.toSet[ClauseProxy]
     return List(new ScriptTask(cmd, context + conj, c, this))
@@ -102,7 +100,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
  *
  * @param f
  */
-private class SZSScriptMessage(val f: AnnotatedClause, val c : Context) extends Message {}
+private class SZSScriptMessage(val f: ClauseProxy, val c : Context) extends Message {}
 
 /**
  * Object to create and deconstruct messages to the SZSScriptAgent.
@@ -115,7 +113,7 @@ object SZSScriptMessage {
    * @param f - The conjecture
    * @return Message for the SZSScriptAgent.
    */
-  def apply(f: AnnotatedClause)(c : Context) : Message = new SZSScriptMessage(f,c)
+  def apply(f: ClauseProxy)(c : Context) : Message = new SZSScriptMessage(f,c)
 
   /**
    * Deconstructs an Event, if it is a Message to the SZSScriptAgent.
@@ -123,7 +121,7 @@ object SZSScriptMessage {
    * @param m
    * @return
    */
-  def unapply(m : Event) : Option[(AnnotatedClause, Context)] = m match {
+  def unapply(m : Event) : Option[(ClauseProxy, Context)] = m match {
     case m : SZSScriptMessage => Some((m.f,m.c))
     case _                    => None
   }

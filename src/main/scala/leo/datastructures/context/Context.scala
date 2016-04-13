@@ -79,6 +79,11 @@ object Context {
     else c.childContext.flatMap(c1 => leaves(c1))
   }
 
+  def closedLeaves(c : Context) : Iterable[Context] = {
+    if (c.childContext.isEmpty) Iterable(c)
+    else c.childContext.flatMap(c1 => leaves(c1))
+  }
+
   def clear() = {root = new TreeContext}
 }
 

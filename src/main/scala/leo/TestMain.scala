@@ -2,7 +2,7 @@ package leo
 
 import leo.datastructures.ClauseProxy
 import leo.datastructures.blackboard.Blackboard
-import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.tptp.Commons.AnnotatedFormula
@@ -12,7 +12,7 @@ import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
 import leo.modules.{CLParameterParser, Parsing}
 import leo.modules.external.ExternalCall
 import leo.modules.output.ToTPTP
-import leo.modules.phase.{FilterPhase, LoadPhase, PreprocessingPhase}
+import leo.modules.phase.{ExternalProverPhase, FilterPhase, LoadPhase, PreprocessingPhase}
 
 /**
   * Created by mwisnie on 3/7/16.
@@ -34,6 +34,7 @@ object TestMain {
 
     Blackboard().addDS(FormulaDataStore)
     Blackboard().addDS(BlackboardPreFilterSet)
+    Blackboard().addDS(SZSDataStore)
 
     if(!loadphase.execute()) {
       Scheduler().killAll()
@@ -45,9 +46,9 @@ object TestMain {
       return
     }
 
-    println("Used :")
+    leo.Out.info("Used :")
     println(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
-    println("Unused : ")
+    leo.Out.info("Unused : ")
     println(PreFilterSet.getFormulas.mkString("\n"))
 
 
@@ -73,13 +74,18 @@ object TestMain {
       return
     }
 
+    if(!ExternalProverPhase.execute()){
+      Scheduler().killAll()
+      return
+    }
+
     Scheduler().killAll()
 
-    println("Preprocessing")
 
     val c = Context()
-    Context.leaves(c).foreach(printContext(_))
+    Context.closedLeaves(c).foreach(printContext(_))
 
+    leo.Out.comment(s"\n\nSZS status ${SZSDataStore.getStatus(c).fold("Unknown")(szs => szs.output)} for ${Configuration.PROBLEMFILE}")
     /*
     val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
     println("Start executing")
@@ -94,8 +100,8 @@ object TestMain {
   }
 
   private def printContext(c : Context): Unit ={
-    println(s"Context : ${Context.getPath(c).map(_.contextID).mkString("/")} : ")
+    leo.Out.comment(s"Context : ${Context.getPath(c).map(_.contextID).mkString("/")} : status = ${SZSDataStore.getStatus(c).fold("Unkown")(szs => szs.output)}")
     val forms = FormulaDataStore.getFormulas(c)
-    println("  "+forms.map(_.pretty).mkString("\n  "))
+    leo.Out.comment("  "+forms.map(_.pretty).mkString("\n  "))
   }
 }

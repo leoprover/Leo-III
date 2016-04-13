@@ -284,7 +284,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       } catch {
         case e : Exception =>
           leo.Out.severe(e.getMessage)
-          leo.Out.finest(e.getCause.toString)
+          //leo.Out.finest(e.getCause.toString)
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }

@@ -30,6 +30,7 @@ import java.io.IOException
  * @since 11/10/14
  */
 abstract class ScriptAgent(path : String) extends Agent {
+  override val interest : Option[Seq[DataType]] = None
 
   def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
 
@@ -75,7 +76,7 @@ abstract class ScriptAgent(path : String) extends Agent {
       * This function runs the specific agent on the registered Blackboard.
       */
     override def run: Result = {
-      val process : ExternalResult = ExternalCall.run(script, encode(fs))
+      val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
 
       val retValue = process.exitValue
