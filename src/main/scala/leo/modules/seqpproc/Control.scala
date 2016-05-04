@@ -117,7 +117,7 @@ package inferenceControl {
         val intoConfigurationIt = intoConfigurationIterator(intoClause)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-
+          assert(!intoLit.flexflex)
           if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
             Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
             val newCl = OrderedParamod(withClause, withIndex, withSide,
@@ -155,7 +155,7 @@ package inferenceControl {
       def hasNext: Boolean = if (lits.isEmpty) false
       else {
         val hd = lits.head
-        if (!maxLits.contains(hd)) {
+        if (!maxLits.contains(hd) || hd.flexflex) {
           lits = lits.tail
           litIndex += 1
           hasNext
