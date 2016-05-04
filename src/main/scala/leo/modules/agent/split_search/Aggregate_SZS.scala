@@ -27,7 +27,7 @@ object Aggregate_SZS extends Agent {
     case DataEvent(SZSStore(szs, c), StatusType) =>
       if(szs != SZS_Timeout && szs != SZS_GaveUp) {
         if(c.parentContext == null){
-          Scheduler().killAll()
+//          Scheduler().killAll()
         } else {
           val pc = c.parentContext
           return Seq(Aggregate_SZSTask(szs, pc, this))
@@ -47,5 +47,6 @@ case class Aggregate_SZSTask(szs : StatusSZS, c : Context, a : TAgent) extends T
   override def run: Result = Result().insert(StatusType)(SZSStore(szs, c))
   override def bid: Double = 0.5
 
-  override def pretty: String = s"$name(${szs.output} -> ${c.contextID})"
+  override val pretty: String = s"$name(${szs.output} -> ${c.contextID})"
+  override val toString: String = s"$name(${szs.output} -> ${c.contextID})"
 }

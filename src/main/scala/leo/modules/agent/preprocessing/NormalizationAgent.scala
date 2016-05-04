@@ -50,7 +50,8 @@ class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalizat
   }
   override def bid: Double = 0.1
 
-  override def pretty: String = s"normalization_task(${cl.cl.pretty})"
+  override val pretty: String = s"normalization_task(${cl.cl.pretty})"
+  override val toString : String = pretty
 }
 
 object NormalizationRule extends CalculusRule {

@@ -53,4 +53,5 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override val bid: Double = 0.1
 
   override val pretty: String = s"argument_extraction(${cl.cl.pretty})"
+  override val toString : String = pretty
 }

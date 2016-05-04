@@ -36,6 +36,7 @@ object TestMain {
     Blackboard().addDS(BlackboardPreFilterSet)
     Blackboard().addDS(SZSDataStore)
 
+
     if(!loadphase.execute()) {
       Scheduler().killAll()
       return
@@ -47,9 +48,9 @@ object TestMain {
     }
 
     leo.Out.info("Used :")
-    println(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
+    leo.Out.info(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
     leo.Out.info("Unused : ")
-    println(PreFilterSet.getFormulas.mkString("\n"))
+    leo.Out.info(PreFilterSet.getFormulas.mkString("\n"))
 
 
     // Were to split?

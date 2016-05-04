@@ -23,23 +23,17 @@ object ExternalProverPhase extends CompletePhase {
     *
     * @return
     */
-  override protected def agents: Seq[TAgent] = _agents
-
-  private var _agents : Seq[TAgent] = Seq()
+  override protected def agents: Seq[TAgent] = Seq(Aggregate_SZS, scriptAgent)
+  private val scriptAgent : TAgent = SZSScriptAgent("leo")(fs => ToTPTP(fs).map(_.output))(x => x)
 
   override protected def init() : Unit = {
+    super.init()
     val cs = Context.leaves(Context())
-    Aggregate_SZS.register()
-    _agents = Seq(Aggregate_SZS)
-    // TODO Switch for more provers
-    val ac = cs.map{c => (SZSScriptAgent("leo")(fs => ToTPTP.apply(fs).map(_.output))(x => x),c)}
 
     //Send initial obligation (Proof true)
     val trueC = Store(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, Context())
-    ac foreach {case (a,c) =>
-      a.register()
-      _agents = a +: agents
-      Blackboard().send(SZSScriptMessage(trueC)(c), a)
+    cs foreach {c =>
+      Blackboard().send(SZSScriptMessage(trueC)(c), scriptAgent)
     }
   }
 }

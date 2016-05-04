@@ -54,7 +54,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   }
 
   override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
-    TaskSet.synchronized(TaskSet.taskSet.submit(a, ts))
+    TaskSet.synchronized(TaskSet.taskSet.submit(ts))
   }
 
   override def finishTask(t : Task) : Unit = {

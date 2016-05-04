@@ -238,6 +238,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         // Data Written, Release Locks before filtering
         LockSet.releaseTask(task) // TODO right position?
         Blackboard().finishTask(task)
+        curExec.remove(task)
+        agent.taskFinished(task)
+
+        if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
 
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
@@ -260,10 +264,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 //      Out.comment(s"[Writer]: Gone through all.")
 
-      curExec.remove(task)
-      agent.taskFinished(task)
 
-      if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -282,9 +283,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         ExecTask.put(t.run, t, a)
         AgentWork.dec(a)
       } catch {
+        case e : InterruptedException => throw e
         case e : Exception =>
-          leo.Out.severe(e.getMessage)
-          //leo.Out.finest(e.getCause.toString)
+          if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
+          if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }

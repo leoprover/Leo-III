@@ -52,5 +52,6 @@ class FormulaRenamingTask(cl : ClauseProxy, clause : Clause, defs : Seq[Clause],
   }
   override def bid: Double = 0.1
 
-  override def pretty: String = s"formula_renaming_task($name)"
+  override val pretty: String = s"formula_renaming_task($name)"
+  override val toString : String = pretty
 }

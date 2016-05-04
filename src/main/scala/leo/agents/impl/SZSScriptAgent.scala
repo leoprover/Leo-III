@@ -67,7 +67,10 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
   override def filter(event: Event): Iterable[Task] = event match {
-    case SZSScriptMessage(f,c) => createTask(f,c)
+    case SZSScriptMessage(f,c) =>
+      val ts = createTask(f,c)
+      println(s"Created Tasks : \n  ${ts.mkString("\n  ")}")
+      ts
     case _                   => List()
   }
 
