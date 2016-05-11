@@ -80,7 +80,7 @@ object GenerateTerm {
       case 5 => // dollar_dollar_word [(arguments)]
         calcExpr(dollarDollarWordMin,genDollarDollarWord)
       // variable
-      case 5 =>
+      case 6 =>
         genUpperWord(maxSize)
     }
     //println( s"maxSize: ${maxSize}, termType: ${termType}, ret: ${ret}" )

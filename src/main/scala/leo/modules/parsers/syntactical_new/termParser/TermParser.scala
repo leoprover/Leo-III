@@ -1,29 +1,40 @@
 package leo.modules.parsers.syntactical_new.termParser
 
-import leo.modules.parsers.lexical.{TPTPLexical, TPTPTokens}
+import leo.modules.parsers.lexical.{TPTPLexical}
 import leo.datastructures.tptp.Commons._
 
 import leo.modules.parsers.syntactical_new.combinators.Combinators
+import leo.modules.parsers.ParserInterface
 
 /**
   * Created by samuel on 10.03.16.
   */
 object TermParser
-  extends TPTPLexical
+  //extends TPTPLexical
+  extends ParserInterface[Term]
   with Combinators
 {
-  type Token = TPTPLexical#Token
 
-  def parse(input: String): Either[ParserError,(Term, Seq[Token])] = {
-    var scanner = new TermParser.Scanner(input)
+  val lexical: TPTPLexical = new TPTPLexical
+
+  type Token = lexical.Token
+
+  import lexical._
+
+  def tokenize(input: String): Seq[Token] = {
+    var scanner = new lexical.Scanner(input)
     var tokStream: Seq[Token] = List[Token]()
     while(!scanner.atEnd) {
       tokStream = tokStream :+ scanner.first
-      //tokStream = tokStream :+ (scanner.first.asInstanceOf[Token])
       scanner = scanner.rest
     }
-    //println(s"tokens: ${tokStream}")
-    parse(tokStream)
+    tokStream
+  }
+
+  def parse(input: String): Either[ParserError,(Term, Seq[Token])] = {
+    parse(
+      tokenize(input)
+    )
   }
 
   def parse(tokens: Seq[Token]): Either[ParserError,(Term, Seq[Token])] =
@@ -284,7 +295,7 @@ object TermParser
   */
   def z10(s: PStack): PP = withSideEffect(println(s"z10(${s})"))(
     (tokenP[UpperWord](s) map action_2 flatMap z50)
-    | (tokenP[UpperWord](s) flatMap z51)
+    | (tokenP[SingleQuoted](s) flatMap z51)
     | (tokenP[Real](s) map action_20 map action_16 flatMap z50)
     | (tokenP[Rational](s) map action_19 map action_16 flatMap z50)
     | (tokenP[LowerWord](s) flatMap z51)
@@ -414,6 +425,7 @@ object TermParser
   def action_2(s: PStack): PStack = s match {
     case TokenEntry(x: UpperWord) :: rest
       => TermEntry(Var(name=x.data)) :: rest
+    case _ => ???
   }
 
   /*
@@ -426,6 +438,7 @@ object TermParser
       => TermEntry(Func(x.data, List.empty)) :: rest
     case TokenEntry(x: SingleQuoted) :: rest
       => TermEntry(Func(x.data, List.empty)) :: rest
+    case _ => ???
   }
 
   /*
@@ -438,11 +451,7 @@ object TermParser
       => TermEntry(Func(x.data, args)) :: rest
     case TokenEntry(RightParenthesis) :: TermEntries(args) :: TokenEntry(LeftParenthesis) :: TokenEntry(x: SingleQuoted) :: rest
     => TermEntry(Func(x.data, args)) :: rest
-    /*
-    case _ =>
-      println(s)
-      s
-    */
+    case _ => ???
   }
 
   /*
@@ -451,6 +460,7 @@ object TermParser
   */
   def action_12(s: PStack) = s match {
     case TermEntry(term) :: rest => TermEntries(List(term)) :: rest
+    case _ => ???
   }
 
   /*
@@ -459,6 +469,7 @@ object TermParser
   */
   def action_13(s: PStack) = s match {
     case TermEntries(arguments) :: TokenEntry(Comma) :: TermEntry(term) :: rest => TermEntries(term :: arguments) :: rest
+    case _ => ???
   }
 
   /*
@@ -468,6 +479,7 @@ object TermParser
   def action_16(s: PStack) = s match {
     case NumberEntry(x) :: rest
       => TermEntry(NumberTerm(x)) :: rest
+    case _ => ???
   }
 
   /*
@@ -477,6 +489,7 @@ object TermParser
   def action_17(s: PStack) = s match {
     case TokenEntry(x: DistinctObject) :: rest
       => TermEntry(Distinct(x.data)) :: rest
+    case _ => ???
   }
 
   /*
@@ -486,6 +499,7 @@ object TermParser
   def action_18(s: PStack) = s match {
     case TokenEntry(x: Integer) :: rest
       => NumberEntry(IntegerNumber(x.value)) :: rest
+    case _ => ???
   }
 
   /*
@@ -495,6 +509,7 @@ object TermParser
   def action_19(s: PStack) = s match {
     case TokenEntry(x: Rational) :: rest
       => NumberEntry(RationalNumber(x.p, x.q)) :: rest
+    case _ => ???
   }
 
   /*
@@ -504,6 +519,7 @@ object TermParser
   def action_20(s: PStack) = s match {
     case TokenEntry(x: Real) :: rest
       => NumberEntry(DoubleNumber(Math.pow(x.coeff, x.exp))) :: rest
+    case _ => ???
   }
 
   /*
@@ -513,6 +529,7 @@ object TermParser
   def action_22(s: PStack) = s match {
     case TokenEntry(x: DollarWord) :: rest
       => TermEntry(DefinedFunc(x.data, List[Term]())) :: rest
+    case _ => ???
   }
 
   /*
@@ -522,6 +539,7 @@ object TermParser
   def action_23(s: PStack) = s match {
     case TokenEntry(RightParenthesis) :: TermEntries(args) ::TokenEntry(LeftParenthesis) :: TokenEntry(x: DollarWord) :: rest
       => TermEntry(DefinedFunc(x.data, args)) :: rest
+    case _ => ???
   }
 
   /*
@@ -531,6 +549,7 @@ object TermParser
   def action_27(s: PStack) = s match {
     case TokenEntry(x: DollarDollarWord) :: rest
     => TermEntry(SystemFunc(x.data, List[Term]())) :: rest
+    case _ => ???
   }
 
   /*
@@ -540,6 +559,7 @@ object TermParser
   def action_28(s: PStack) = s match {
     case TokenEntry(RightParenthesis) :: TermEntries(args) ::TokenEntry(LeftParenthesis) :: TokenEntry(x: DollarDollarWord) :: rest
     => TermEntry(SystemFunc(x.data, args)) :: rest
+    case _ => ???
   }
 
 
