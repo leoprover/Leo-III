@@ -1,4 +1,4 @@
-package leo.modules.parsers.syntactical_new.termParser
+package leo.modules.parsers.syntactical_new.termParser_functional
 
 import leo.modules.parsers.lexical.{TPTPLexical}
 import leo.datastructures.tptp.Commons._

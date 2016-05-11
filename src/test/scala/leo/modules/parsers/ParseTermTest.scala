@@ -2,9 +2,9 @@ package leo.modules.parsers
 
 import leo.modules.parsers.utils.GenerateTerm
 import leo.modules.parsers.syntactical.{TPTPParsers => TermParser0}
-import leo.modules.parsers.syntactical_new.termParser.{TermParser => TermParser1}
-import leo.modules.parsers.syntactical_new.termParser2.{TermParser2 => TermParser2}
-import leo.{Checked, LeoTestSuite}
+import leo.modules.parsers.syntactical_new.termParser_functional.{TermParser => TermParserFunctional}
+import leo.modules.parsers.syntactical_new.termParser2.TermParser2
+import leo.{Checked, Ignored, LeoTestSuite}
 import leo.datastructures.tptp.Commons._
 
 import scala.util.parsing.input.Position
@@ -20,7 +20,7 @@ class ParseTermTest
   extends LeoTestSuite
 {
 
-  test("testTermGen", Checked) {
+  test("testTermGen", Ignored) {
     //println(s"sq_char: ${sq_char}")
     //println(s"do_char: ${do_char}")
     for( length <- 10 to 100 ) {
@@ -104,12 +104,24 @@ class ParseTermTest
     }
   }
 
+  test("original parser (based on scala parser combinators):", Checked) {
+    testParser(TermParser0Wrapper)
+  }
+  test("new functional TermParser", Checked) {
+    testParser(TermParserFunctional)
+  }
+  test("new TermParser", Checked) {
+    testParser(TermParser2)
+  }
+
+  /*
   test("testUntypedParsing", Checked) {
     //println("parser 0")
     //testParser(TermParser0Wrapper)
     println("parser 1")
-    testParser(TermParser1)
+    testParser(TermParserFunctional)
     println("parser 2")
     testParser(TermParser2)
   }
+  */
 }

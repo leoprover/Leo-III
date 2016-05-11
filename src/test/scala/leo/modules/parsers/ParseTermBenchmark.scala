@@ -2,7 +2,7 @@ package leo.modules.parsers
 
 import leo.modules.parsers.utils.GenerateTerm
 import leo.modules.parsers.syntactical.{TPTPParsers => TermParser0}
-import leo.modules.parsers.syntactical_new.termParser.{TermParser => TermParser1}
+import leo.modules.parsers.syntactical_new.termParser_functional.{TermParser => TermParser1}
 import leo.modules.parsers.syntactical_new.termParser2.{TermParser2 => TermParser2}
 import leo.datastructures.tptp.Commons._
 import leo.{Checked, LeoTestSuite}
@@ -43,8 +43,10 @@ class ParseTermBenchmark
         parseRet
       }
       println(s"length: ${length}, time: ${(dt/numRuns)/1e6}ms")
-      //println(f"length: ${length}, time: ${(dt/numRuns)/1e6}%2.6fms")
     }
+  }
+  test("benchmark Parser0", Checked) {
+    testParser(Parser0Wrapper)
   }
   test("benchmark Parser1", Checked) {
     testParser(TermParser1)
@@ -52,6 +54,7 @@ class ParseTermBenchmark
   test("benchmark Parser2", Checked) {
     testParser(TermParser2)
   }
+  /*
   test("benchmark all parsers", Checked) {
     println("parser0")
     testParser(Parser0Wrapper)
@@ -60,4 +63,5 @@ class ParseTermBenchmark
     println("parser2")
     testParser(TermParser2)
   }
+  */
 }
