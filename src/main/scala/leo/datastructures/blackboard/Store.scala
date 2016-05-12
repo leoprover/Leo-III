@@ -27,7 +27,7 @@ object Store {
  *
  */
 class AnnotatedClause(val name : String, val clause : Clause, val created : TimeStamp, val role : Role, val context : Context, val annotation : ClauseAnnotation)
-  extends ClauseProxy with Ordered[AnnotatedClause] with HasCongruence[AnnotatedClause] {
+  extends ClauseProxy with Ordered[AnnotatedClause] {//} with HasCongruence[AnnotatedClause] {
 
 
   def id = name
@@ -41,7 +41,7 @@ class AnnotatedClause(val name : String, val clause : Clause, val created : Time
   def compare(that: AnnotatedClause): Int = this.clause compare that.clause
 
   /** Returns `true` iff `this` is congruent to `that`. */
-  override def cong(that: AnnotatedClause): Boolean = clause.cong(that.clause) && context.contextID == that.context.contextID
+//  override def cong(that: AnnotatedClause): Boolean = clause.cong(that.clause) && context.contextID == that.context.contextID
 
   override def equals(o : Any) : Boolean = o match {
     case fo : AnnotatedClause => (this.clause cong fo.clause) && (this.role == fo.role) && (context.contextID == fo.context.contextID)

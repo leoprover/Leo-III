@@ -33,7 +33,7 @@ object ExternalProverPhase extends CompletePhase {
     //Send initial obligation (Proof true)
     val trueC = Store(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, Context())
     cs foreach {c =>
-      Blackboard().send(SZSScriptMessage(trueC)(c), scriptAgent)
+      Blackboard().send(SZSScriptMessage(trueC, c), scriptAgent)
     }
   }
 }

@@ -35,6 +35,17 @@ object SZSScriptAgent {
     * @return Some SZSScriptAgent with this command, None if no such agent exists
     */
   def scriptAgent(script : String) : Option[SZSScriptAgent] = h.synchronized(h.get(script))
+
+  /**
+    *
+    * Runs all registered provers on the given clauses.
+    *
+    * @param clauses The clauses to run the script on.
+    */
+  def execute(clauses : Set[ClauseProxy], c : Context) : Unit = {
+    val msg = CallExternal(clauses, c)                        // TODO proof obligation
+    allScriptAgents foreach {a => Blackboard().send(msg, a)}
+  }
 }
 
 /**
@@ -95,25 +106,21 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
 
   override def filter(event: Event): Iterable[Task] = event match {
     case SZSScriptMessage(f,c) =>
-      val ts = createTask(f,c)
-      leo.Out.debug(s"Created Tasks : \n  ${ts.mkString("\n  ")}")
-      ts
+      createTask(f,c)
     case CallExternal(clauses, c) =>
-      val ts = List(new ScriptTask(cmd, clauses, c, this))
-      leo.Out.debug(s"Created Tasks : \n  ${ts.mkString("\n  ")}")
-      ts
+      List(new ScriptTask(cmd, clauses, c, this))
     case _                   => List()
   }
 
   private def createTask(f : ClauseProxy, c : Context) : Iterable[Task] = {
     val conj : ClauseProxy = Store(negateClause(f.cl), Role_Conjecture, c)
     val context : Set[ClauseProxy] = FormulaDataStore.getAll(c){ bf => bf.id != f.id}.toSet[ClauseProxy]
-    return List(new ScriptTask(cmd, context + conj, c, this))
+    List(new ScriptTask(cmd, context + conj, c, this))
   }
 
   private def negateClause(c : Clause) : Clause = {
     val lit : Literal = Literal(orLit(c.lits),false)
-    return Clause.mkClause(List(lit), Derived)
+    Clause.mkClause(List(lit), Derived)
   }
 
   private def orLit(l : Seq[Literal]) : Term = l match {

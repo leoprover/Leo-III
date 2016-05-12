@@ -226,6 +226,10 @@ class TaskSelectionSet {
   def executableTasks : Iterable[Task] = synchronized {
     zero.values.flatMap(_.all).toSet[Task] -- currentlyExecution.toSet
   }
+
+  def registeredTasks : Iterable[Task] = synchronized {
+    depSet.getAllTasks.toSet -- currentlyExecution.toSet
+  }
 }
 
 /**
@@ -309,6 +313,12 @@ trait DependencySet {
     * Brings the Set back to the initial state.
     */
   def clear() : Unit
+
+  /**
+    * A list of all registered Tasks
+    * @return all registered Tasks
+    */
+  def getAllTasks : Seq[Task]
 }
 
 
@@ -325,6 +335,8 @@ class DependencySetImpl extends DependencySet {
 
   private val read : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
 
+  private val allTasks : mutable.Set[Task] = new mutable.HashSet[Task]()
+
   override def clear() : Unit = {
     allAgents.clear()
     in.clear()
@@ -332,6 +344,8 @@ class DependencySetImpl extends DependencySet {
     write.clear()
     read.clear()
   }
+
+  override def getAllTasks : Seq[Task] = allTasks.toSeq
 
   // TODO Hier funktioniert das symmetrisch machen noch nicht!
   override def addAgent(a: TAgent): Unit = {
@@ -443,7 +457,7 @@ class DependencySetImpl extends DependencySet {
         }
       }
     }
-
+    allTasks.remove(t)
     val impls = getImpl(t).filter{t1 =>
       !existDep(t1)} // TODO optimize
     impls
@@ -467,6 +481,7 @@ class DependencySetImpl extends DependencySet {
         }
       }
     }
+    allTasks.add(t)
 
     val imp = getImpl(t) // TODO optimize, only return the ones that are now with 1 dependency
     imp

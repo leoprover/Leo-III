@@ -55,6 +55,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
     TaskSet.synchronized(TaskSet.taskSet.submit(ts))
+    signalTask()
   }
 
   override def finishTask(t : Task) : Unit = {
@@ -208,6 +209,7 @@ private object TaskSet {
           //
           var r: List[(Double, TAgent, Task)] = Nil
           while (r.isEmpty) {
+            println("Polling Tasks")
             val ts = taskSet.executableTasks
             ts.foreach { case t =>
               val a = t.getAgent
@@ -219,8 +221,10 @@ private object TaskSet {
                 Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
               //leo.Out.comment("Going to wait for new Tasks.")
+              println("Sleeping")
+              println(s"  ${taskSet.registeredTasks.map(_.pretty).mkString("\n  ")}")
               TaskSet.wait()
-              regAgents.foreach { case (a, budget) => regAgents.update(a, budget + AGENT_SALARY) }
+              regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
           }
 
@@ -240,7 +244,7 @@ private object TaskSet {
           var newTask: List[(TAgent, Task)] = Nil
           for ((price, a, t) <- queue) {
             if (LockSet.isExecutable(t)) {
-              val budget = regAgents.apply(a)
+              val budget = regAgents.apply(a)     //TODO Lock regAgents, got error during phase switch
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
                 newTask = (a, t) :: newTask
