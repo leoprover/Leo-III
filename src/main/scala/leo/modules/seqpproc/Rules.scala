@@ -57,19 +57,12 @@ object PolaritySwitch extends CalculusRule {
   }
 }
 
-
-/** Non-extensional CNF rule. */
-object CNF extends CalculusRule {
-  // TODO: Can be optimize this? E.g. dependencies for skolemterm
-  final val name = "cnf"
+/**
+  * Created by mwisnie on 4/4/16.
+  */
+object FullCNF extends CalculusRule {
+  override def name: String = "cnf"
   final override val inferenceStatus = Some(SZS_Theorem)
-
-  type FormulaCharacter = Byte
-  final val none: FormulaCharacter = 0.toByte
-  final val alpha: FormulaCharacter = 1.toByte
-  final val beta: FormulaCharacter = 2.toByte
-  final val one: FormulaCharacter = 3.toByte  // A bit hacky, we want to omit ++ operations below
-//  final val four: FormulaCharacter = 4.toByte  // A bit hacky, we want to omit ++ operations below
 
   final def canApply(l: Literal): Boolean = if (!l.equational) {
     l.left match {
@@ -77,84 +70,64 @@ object CNF extends CalculusRule {
       case s ||| t => true
       case s & t => true
       case s Impl t => true
-//      case s <=> t => true
+      //      case s <=> t => true
       case Forall(ty :::> t) => true
       case Exists(ty :::> t) => true
       case _ => false
     }
   } else false
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, l: Literal): (FormulaCharacter, Seq[Literal]) = {
-    import leo.datastructures.{|||, &, Not, Forall, Exists, Impl, <=>}
-    if (l.equational) {
-      (none, Seq(l))
-    } else {
-      if (l.polarity) {
-        l.left match {
-          case Not(t) => (one, Seq(Literal(t, false)))
-          case s ||| t => (beta, Seq(Literal(s, true),Literal(t,true)))
-          case s & t => (alpha, Seq(Literal(s, true),Literal(t,true)))
-          case s Impl t => (beta, Seq(Literal(s, false),Literal(t,true)))
-//          case s <=> t => ???
-//          case Forall(ty :::> t) => (beta, Seq(Literal(t.substitute(Subst.singleton(1, vargen.apply(ty))),true)))
-          case Forall(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a, vargen.apply(ty)).betaNormalize,true)))
-          case Exists(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a,leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize ,true)))
-          case _ => (none, Seq(l))
-        }
-      } else {
-        l.left match {
-          case Not(t) => (one, Seq(Literal(t, true)))
-          case s ||| t => (alpha, Seq(Literal(s, false),Literal(t,false)))
-          case s & t => (beta, Seq(Literal(s, false),Literal(t,false)))
-          case s Impl t => (alpha, Seq(Literal(s, true),Literal(t,false)))
-//          case s <=> t => ???
-          case Forall(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a,leo.modules.calculus.skTerm(ty, vargen.existingVars)).betaNormalize ,false)))
-          case Exists(a@ty :::> t) => (beta, Seq(Literal(Term.mkTermApp(a, vargen.apply(ty)).betaNormalize,false)))
-          case _ => (none, Seq(l))
-        }
-      }
-    }
-  }
-
   final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause): Seq[Clause] = {
-    apply0(vargen, cl.lits, Seq(Seq())).map(Clause.apply)
+    val lits = cl.lits
+    val normLits = apply(vargen, lits)
+    normLits.map{ls => Clause(ls)}
   }
 
-  final private def apply0(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal], acc: Seq[Seq[Literal]]): Seq[Seq[Literal]] = {
-    if (lits.isEmpty) {
-      acc
-    } else {
-      val hd = lits.head
-      val tail = lits.tail
-      val (resChar, res) = apply(vargen, hd)
-      if (resChar == none) {
-        // Already normalized
-        apply0(vargen, tail, acc.map(hd +: _))
-      } else if (resChar == one) {
-        val deepRes = apply0(vargen, res, Seq(Seq()))
-        apply0(vargen, tail, deepRes.flatMap(res => res.flatMap(r => acc.map(_ :+ r))))
-      } else if (resChar == alpha) {
-        val deepRes0 = apply0(vargen, res.take(1), Seq(Seq()))
-        val deepRes1 = apply0(vargen, res.drop(1), Seq(Seq()))
-        val deepRes = deepRes0 ++ deepRes1
-//        leo.Out.comment(s"Deep res alpha: ${deepRes.map(_.map(_.pretty))}")
-        apply0(vargen, tail, deepRes.flatMap(res => acc.map(r => r ++ res)))
-      } else if (resChar == beta) {
-        val deepRes0 = apply0(vargen, res.take(1), Seq(Seq()))
-        val deepRes1 = apply0(vargen, res.drop(1), Seq(Seq()))
-        val deepRes = deepRes0.flatMap(res => deepRes1.map(res2 => res ++ res2))
-//        leo.Out.comment(s"Deep res beta: ${deepRes.map(_.map(_.pretty))}")
-        apply0(vargen, tail, deepRes.flatMap(res => acc.map(r => r ++ res)))
-      } else {
-        throw new SZSException(SZS_Error,
-          "cnf calculus error: returning something other than alpha or beta",
-          s"Returning ${resChar} while normalizing ${hd.pretty}")
+  final def apply(vargen : leo.modules.calculus.FreshVarGen, l : Seq[Literal]) : (Seq[Seq[Literal]]) = {
+    var acc : Seq[Seq[Literal]] = Seq(Seq())
+    val it : Iterator[Literal] = l.iterator
+    while(it.hasNext){
+      val nl = it.next()
+      apply(vargen, nl) match {
+        case Seq(Seq(l)) => acc = acc.map{normLits => l +: normLits}
+        case norms =>  acc = multiply(norms, acc)
       }
-
     }
+    acc
   }
 
+  final def apply(vargen : leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = if(!l.equational){
+    l.left match {
+      case Not(t) => apply(vargen, Literal(t, !l.polarity))
+      case &(lt,rt) if l.polarity => apply(vargen,Literal(lt,true)) ++ apply(vargen, Literal(rt,true))
+      case &(lt,rt) if !l.polarity => multiply(apply(vargen, Literal(lt,false)), apply(vargen, Literal(rt, false)))
+      case |||(lt,rt) if l.polarity => multiply(apply(vargen, Literal(lt,true)), apply(vargen, Literal(rt, true)))
+      case |||(lt,rt) if !l.polarity => apply(vargen,Literal(lt,false)) ++ apply(vargen, Literal(rt,false))
+      case Impl(lt,rt) if l.polarity => multiply(apply(vargen, Literal(lt,false)), apply(vargen, Literal(rt, true)))
+      case Impl(lt,rt) if !l.polarity => apply(vargen,Literal(lt,true)) ++ apply(vargen, Literal(rt,false))
+      case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
+      case _ => Seq(Seq(l))
+    }
+  } else {
+    Seq(Seq(l))
+  }
 
+  private final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
+    var acc : Seq[Seq[A]] = Seq()
+    val itl = l.iterator
+    while(itl.hasNext) {
+      val llist = itl.next()
+      val itr = r.iterator
+      while(itr.hasNext){
+        val rlist = itr.next()
+        acc = (llist ++ rlist) +: acc
+      }
+    }
+    acc
+  }
 }
 
 
@@ -666,108 +639,8 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
     }
   }
 }
+
 object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
-
-// TODO: Thats not right!
-// Ordering prevents non-equational clauses from being
-// enabled for factoring.
-object EqFac extends CalculusRule {
-  val name = "eq_fac"
-  override val inferenceStatus = Some(SZS_Theorem)
-
-  def apply(cl: Clause): Set[Clause] = {
-    Out.trace(s"EqFactor, maximal literals:\n\t${cl.maxLits.map(_.pretty).mkString("\n\t")}")
-    if (Clause.horn(cl)) return Set()
-
-    var result: Set[Clause] = Set()
-
-    //    val posMaxLits = Clause.maxOf(cl).filter(_.polarity)
-    val posMaxLitsIt = new SeqZippingSeqIterator(cl.posLits)
-
-    while (posMaxLitsIt.hasNext) {
-      val maxLit = nextMaxLit(cl, posMaxLitsIt) // s = t
-
-      if (maxLit != null) {
-        Out.debug(s"########## Next max pos lit: ${maxLit.pretty}")
-        val otherLitIt = cl.posLits.iterator
-
-        while (otherLitIt.hasNext) {
-          val otherLit = otherLitIt.next()
-          if (maxLit != otherLit) {
-            Out.debug(s"########## Next other lit: ${otherLit.pretty}")
-            val stayLits = posMaxLitsIt.leftOf ++ posMaxLitsIt.rightOf
-
-            if (!maxLit.left.isVariable || otherLit.equational) {
-              Out.debug(s"########## Not Var 1")
-              if (!otherLit.left.isVariable || maxLit.equational) {
-                Out.debug(s"########## Not Var 2a")
-                if (leo.modules.calculus.mayUnify(maxLit.left, otherLit.left) &&
-                  leo.modules.calculus.mayUnify(maxLit.right, otherLit.right)) {
-                  Out.debug(s"########## May unify")
-                  result = result + factor((maxLit.left, maxLit.right), (otherLit.left, otherLit.right), stayLits)
-                } else {
-                  Out.debug(s"########## May not unify")
-                }
-              }
-              if (!otherLit.right.isVariable || maxLit.equational) {
-                Out.debug(s"########## Not Var 2b")
-                if (leo.modules.calculus.mayUnify(maxLit.left, otherLit.right) &&
-                  leo.modules.calculus.mayUnify(maxLit.right, otherLit.left)) {
-                  Out.debug(s"########## May unify")
-                  result = result + factor((maxLit.left, maxLit.right), (otherLit.right, otherLit.left), stayLits)
-                } else {
-                  Out.debug(s"########## May not unify")
-                }
-              }
-
-            }
-
-
-            // TODO: Do we need that?
-//            if (!maxLit.oriented) {
-//              // the same with t as maxTerm
-//              if (leo.modules.calculus.mayUnify(maxLit.right, otherLit.left) &&
-//                leo.modules.calculus.mayUnify(maxLit.left, otherLit.right)) {
-//                result = result + factor((maxLit.right, maxLit.left), (otherLit.left, otherLit.right), stayLits)
-//              }
-//              if (leo.modules.calculus.mayUnify(maxLit.right, otherLit.right) &&
-//                leo.modules.calculus.mayUnify(maxLit.left, otherLit.left)) {
-//                result = result + factor((maxLit.right, maxLit.left), (otherLit.right, otherLit.left), stayLits)
-//              }
-//            }
-          }
-        }
-
-
-      }
-
-
-    }
-
-    result
-  }
-
-  // Local definitions
-  // sets the iterator to the position where the next maximal literal is
-  private final def nextMaxLit(cl: Clause, iterator: ZippingSeqIterator[Literal]): Literal = {
-    while (iterator.hasNext) {
-      val nextLit = iterator.next()
-      if (cl.maxLits contains nextLit) {
-        return nextLit
-      }
-    }
-
-    null
-  }
-
-  private final def factor(maxLitTerms: (Term,Term), otherLitTerms: (Term,Term), remainingLits: Seq[Literal]): Clause = {
-    val constraint1 = Literal.mkNeg(maxLitTerms._1, otherLitTerms._1)
-    val constraint2 = Literal.mkNeg(maxLitTerms._2, otherLitTerms._2)
-    val litList = remainingLits :+ constraint1 :+ constraint2
-    val litList2 = litList.distinct.filterNot(Literal.isFalse)
-    Clause(litList2)
-  }
-}
 
 object OrderedEqFac extends CalculusRule {
   final val name = "eqfactor_ordered"
