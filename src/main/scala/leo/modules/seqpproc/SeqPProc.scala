@@ -243,7 +243,7 @@ object SeqPProc extends Function1[Long, Unit]{
     if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && state.derivationClause.isDefined) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
 //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Utility.printDerivation(state.derivationClause.get)
+      Utility.printProof(state.derivationClause.get)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
