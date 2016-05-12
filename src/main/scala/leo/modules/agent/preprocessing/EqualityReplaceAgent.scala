@@ -1,11 +1,11 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{TAgent, Task, Agent}
+import leo.agents.{Agent, TAgent, Task}
 import leo.datastructures.ClauseAnnotation.InferredFrom
-import leo.datastructures.{Clause, Term, Type, ClauseProxy}
+import leo.datastructures.{Clause, ClauseProxy, Term, Type}
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.modules.seqpproc.{ReplaceAndrewsEq, ReplaceLeibnizEq}
+import leo.modules.calculus.{ReplaceAndrewsEq, ReplaceLeibnizEq}
 
 /**
   * Created by mwisnie on 3/7/16.

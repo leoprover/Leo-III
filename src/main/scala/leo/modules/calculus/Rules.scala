@@ -1,18 +1,12 @@
-package leo.modules.seqpproc
+package leo.modules.calculus
 
-import leo.datastructures.Literal.Side
-import leo.datastructures.impl.Signature
-import leo.datastructures._
-import leo.datastructures.Term.:::>
-import leo.modules.SZSException
-import leo.modules.calculus.CalculusRule
-import leo.modules.calculus.HuetsPreUnification
-import leo.modules.output.{SZS_Error, SZS_EquiSatisfiable, SZS_Theorem, SZS_CounterSatisfiable}
 import leo.Out
+import leo.datastructures.Literal.Side
+import leo.datastructures.Term.:::>
+import leo.datastructures._
+import leo.datastructures.impl.Signature
+import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 import leo.modules.preprocessing.Simplification
-
-import scala.annotation.tailrec
-import scala.collection.SortedSet
 
 object DefExpSimp extends CalculusRule {
   val name = "defexp_and_simp_and_etaexpand"
@@ -183,7 +177,7 @@ object ReplaceLeibnizEq extends CalculusRule {
 
 
   def canApply(cl: Clause): (Boolean, Map[Int, Term]) = {
-    import leo.datastructures.Term.{TermApp, Bound}
+    import leo.datastructures.Term.{Bound, TermApp}
     var gbTermMap: Map[Int, Term] = Map()
     var flexHeadSet: Set[Int] = Set()
     val litIt = cl.lits.iterator
@@ -231,7 +225,7 @@ object ReplaceAndrewsEq extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
 
   def canApply(cl: Clause): (Boolean, Map[Int, Type]) = {
-    import leo.datastructures.Term.{TermApp, Bound}
+    import leo.datastructures.Term.{Bound, TermApp}
     var varMap: Map[Int, Type] = Map()
 
     val litIt = cl.lits.iterator
@@ -302,7 +296,7 @@ object ACSimp extends CalculusRule {
   override val inferenceStatus = Some(SZS_Theorem)
 
   def lt(a: Term, b: Term): Boolean = {
-    import leo.datastructures.Term.{Symbol, Bound}
+    import leo.datastructures.Term.{Bound, Symbol}
     (a,b) match {
       case (Bound(_,i1), Bound(_, i2)) => i1 < i2
       case (Bound(_,_), _) => true
@@ -321,7 +315,7 @@ object ACSimp extends CalculusRule {
   }
 
   def apply(t: Term, acSymbol: Term): Term = {
-    import leo.datastructures.Term.{:::>, TypeLambda, ∙, TermApp}
+    import leo.datastructures.Term.{:::>, TermApp, TypeLambda, ∙}
     t match {
       case (ty :::> body) => Term.mkTermAbs(ty, apply(body, acSymbol))
       case TypeLambda(body) => Term.mkTypeAbs(apply(body, acSymbol))
@@ -338,7 +332,7 @@ object ACSimp extends CalculusRule {
   }
 
   def apply0(symbolArgs: Seq[Term], acSymbol: Term, collectedArgs: Set[Term]): Set[Term] = {
-    import leo.datastructures.Term.{TermApp}
+    import leo.datastructures.Term.TermApp
 
     if (symbolArgs.isEmpty) collectedArgs
     else {

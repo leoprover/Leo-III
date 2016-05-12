@@ -25,6 +25,7 @@ object Control {
   @inline final def acSimp(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.acSimp(cl)
   @inline final def simp(cl: ClauseWrapper): ClauseWrapper = inferenceControl.SimplificationControl.simp(cl)
   @inline final def simpSet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.SimplificationControl.simpSet(clSet)
+  @inline final def rewriteSimp(cl: ClauseWrapper, rewriteRules: Set[ClauseWrapper]): ClauseWrapper = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)
   @inline final def convertDefinedEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
   @inline final def convertLeibnizEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
   @inline final def convertAndrewsEqualities(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
@@ -43,6 +44,7 @@ object Control {
 package inferenceControl {
   import leo.datastructures._
   import Literal.Side
+  import leo.modules.calculus._
 
   package object inferenceControl {
     type LiteralIndex = Int
@@ -493,6 +495,14 @@ package inferenceControl {
       result
     }
     final def simpSet(clSet: Set[ClauseWrapper]): Set[ClauseWrapper] = clSet.map(simp)
+
+    final def rewriteSimp(cw: ClauseWrapper, rules: Set[ClauseWrapper]): ClauseWrapper = {
+      val sim = simp(cw)
+      val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), sim.cl)
+      // TODO: simpl to be simplification by rewriting à la E etc
+      if (rewriteSimp != cw.cl) ClauseWrapper(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
+      else cw
+    }
   }
 
   protected[modules] object DefinedEqualityProcessing {

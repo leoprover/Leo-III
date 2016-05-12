@@ -3,11 +3,11 @@ package leo.modules.seqpproc
 import leo.Configuration
 import leo.Out
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse, ClauseAnnotation, ClauseProxy}
+import leo.datastructures.{Clause, ClauseAnnotation, ClauseProxy, LitFalse, LitTrue, Literal, Pretty, Role, Role_Axiom, Role_Conjecture, Role_Definition, Role_NegConjecture, Role_Plain, Role_Type, Term}
 import ClauseAnnotation._
 import leo.modules.output._
-import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
-import leo.modules.calculus.{Subsumption, CalculusRule}
+import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
+import leo.modules.calculus.{CalculusRule, Subsumption}
 import leo.modules.seqpproc.controlStructures._
 
 import scala.collection.SortedSet
@@ -51,16 +51,6 @@ object SeqPProc extends Function1[Long, Unit]{
     result = Control.preunifySet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
-  }
-
-
-
-  final def simplify(cw: ClauseWrapper, rules: Set[ClauseWrapper]): ClauseWrapper = {
-    val simp = Simp(cw.cl)
-    val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), simp)
-    // TODO: simpl to be simplification by rewriting à la E etc
-    if (rewriteSimp != cw.cl) ClauseWrapper(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
-    else cw
   }
 
 
@@ -133,7 +123,7 @@ object SeqPProc extends Function1[Long, Unit]{
       } else {
         var cur = conjectureProcessedIt.next()
         Out.debug(s"Taken: ${cur.pretty}")
-        cur = simplify(cur, state.rewriteRules)
+        cur =  Control.rewriteSimp(cur, state.rewriteRules)
         if (Clause.effectivelyEmpty(cur.cl)) { // TODO: Instantiate flex-flex to get real proof
           loop = false
           if (conjecture.isEmpty) {
@@ -187,7 +177,7 @@ object SeqPProc extends Function1[Long, Unit]{
           // cur is the current clausewrapper
           Out.debug(s"Taken: ${cur.pretty}")
 
-          cur = simplify(cur, state.rewriteRules)
+          cur = Control.rewriteSimp(cur, state.rewriteRules)
           if (Clause.effectivelyEmpty(cur.cl)) {
             // TODO: Instantiate flex-flex to get real proof
             loop = false
@@ -325,7 +315,7 @@ object SeqPProc extends Function1[Long, Unit]{
     while (newIt.hasNext) {
       var newCl = newIt.next()
       // Simplify again, including rewriting etc.
-      newCl = simplify(newCl, state.rewriteRules)
+      newCl = Control.rewriteSimp(newCl, state.rewriteRules)
 
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)

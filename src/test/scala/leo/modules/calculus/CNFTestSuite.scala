@@ -5,7 +5,7 @@ import leo.{Ignored, LeoTestSuite, Out, TestUtility}
 import leo.datastructures.{Clause, Literal}
 import leo.modules.Parsing
 import leo.modules.preprocessing.{StepCNF}
-import leo.modules.seqpproc.FullCNF
+
 
 /**
   * Created by mwisnie on 4/4/16.
