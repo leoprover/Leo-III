@@ -448,8 +448,8 @@ package inferenceControl {
       assert(!lit.equational)
       Out.trace(s"def exp from ${cl.pretty}")
       Out.trace(s"sos flag set in from: ${leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties)}")
-      val newleft = DefExpSimp(lit.left)
-      val result = ClauseWrapper(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, Set(cl)), cl.properties)
+      val newleft = leo.modules.preprocessing.DefExpSimp(lit.left)
+      val result = ClauseWrapper(Clause(Literal(newleft, lit.polarity)), InferredFrom(leo.modules.preprocessing.DefExpSimp, Set(cl)), cl.properties)
       Out.trace(s"Def expansion: ${result.pretty}")
       result
     }
