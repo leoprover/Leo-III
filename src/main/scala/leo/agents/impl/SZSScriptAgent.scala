@@ -19,6 +19,22 @@ object SZSScriptAgent {
    * @return An agent to run an external prover on the specified translation.
    */
   def apply(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
+
+  protected[agents] val h : scala.collection.mutable.Map[String, SZSScriptAgent] = new scala.collection.mutable.HashMap[String, SZSScriptAgent]
+
+  /**
+    * A list of all registered script agents
+    * @return All SZSScriptAgents registered in the Blackbaord
+    */
+  def allScriptAgents : Iterable[SZSScriptAgent] = h.synchronized(h.values)
+
+  /**
+    * Returns an script agent corresponding to a certain script.
+    *
+    * @param script - The script we search for
+    * @return Some SZSScriptAgent with this command, None if no such agent exists
+    */
+  def scriptAgent(script : String) : Option[SZSScriptAgent] = h.synchronized(h.get(script))
 }
 
 /**
@@ -26,6 +42,17 @@ object SZSScriptAgent {
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
 class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+
+  override def register() = {
+    super.register()
+    SZSScriptAgent.h.synchronized(SZSScriptAgent.h.put(cmd, this))
+  }
+
+  override def unregister() = {
+    super.unregister()
+    SZSScriptAgent.h.synchronized(SZSScriptAgent.h.remove(cmd))
+  }
+
   override val name = s"SZSScriptAgent ($cmd)"
 
   override def encode(fs : Set[ClauseProxy]) : Seq[String] = encodeOutput(fs)
@@ -69,7 +96,11 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
   override def filter(event: Event): Iterable[Task] = event match {
     case SZSScriptMessage(f,c) =>
       val ts = createTask(f,c)
-      println(s"Created Tasks : \n  ${ts.mkString("\n  ")}")
+      leo.Out.debug(s"Created Tasks : \n  ${ts.mkString("\n  ")}")
+      ts
+    case CallExternal(clauses, c) =>
+      val ts = List(new ScriptTask(cmd, clauses, c, this))
+      leo.Out.debug(s"Created Tasks : \n  ${ts.mkString("\n  ")}")
       ts
     case _                   => List()
   }
@@ -103,29 +134,6 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
  *
  * @param f
  */
-private class SZSScriptMessage(val f: ClauseProxy, val c : Context) extends Message {}
+case class SZSScriptMessage(f: ClauseProxy, c : Context) extends Message
 
-/**
- * Object to create and deconstruct messages to the SZSScriptAgent.
- */
-object SZSScriptMessage {
-  /**
-   * Creates a new Message to the SZSScriptAgent. The formula `f` will
-   * be transformed into the conjecture for the external agent.
-   *
-   * @param f - The conjecture
-   * @return Message for the SZSScriptAgent.
-   */
-  def apply(f: ClauseProxy)(c : Context) : Message = new SZSScriptMessage(f,c)
-
-  /**
-   * Deconstructs an Event, if it is a Message to the SZSScriptAgent.
-   *
-   * @param m
-   * @return
-   */
-  def unapply(m : Event) : Option[(ClauseProxy, Context)] = m match {
-    case m : SZSScriptMessage => Some((m.f,m.c))
-    case _                    => None
-  }
-}
+case class CallExternal(clauses : Set[ClauseProxy], c : Context) extends Message

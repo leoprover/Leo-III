@@ -38,7 +38,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
   override def writeSet(): Map[DataType, Set[Any]] = Map()
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
-    val (status, res) = a.procedure.execute(fs)
+    val (status, res) = a.procedure.execute(fs, c)
     c.close()
     var r = Result().insert(StatusType)(SZSStore(status, c))
     if(res.nonEmpty){
@@ -47,7 +47,6 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
         r.insert(ClauseType)(it.next())
       }
     }
-    val l : Map[String, String] = Map("a" -> "b")   // TODO hä?
     r
   }
   override def bid: Double = 1
@@ -75,5 +74,5 @@ trait ProofProcedure {
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  def execute(formulas : Iterable[ClauseProxy]) : (StatusSZS, Option[Seq[ClauseProxy]])
+  def execute(formulas : Iterable[ClauseProxy], c : Context) : (StatusSZS, Option[Seq[ClauseProxy]])
 }
