@@ -55,7 +55,7 @@ package inferenceControl {
 
     final def cnf(cl: ClauseWrapper): Set[ClauseWrapper] = {
       Out.trace(s"CNF of ${cl.id}")
-      val cnfresult = CNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
+      val cnfresult = leo.modules.preprocessing.FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
       val cnfsimp = cnfresult.map(Simp.shallowSimp)
       val result = cnfresult.map {c => ClauseWrapper(c, InferredFrom(CNF, Set(cl)), cl.properties)}
       Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
@@ -118,7 +118,9 @@ package inferenceControl {
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
           assert(!intoLit.flexflex)
-          if (!withLit.equational && !intoLit.equational && intoPos == Position.root && intoLit.polarity) {
+          if (intoPos == Position.root &&
+            ((intoClause.id == withClause.id && intoIndex == withIndex) ||
+            (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
           } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
             Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
@@ -218,12 +220,16 @@ package inferenceControl {
 
       while (maxLitIt.hasNext) {
         val (maxLitIndex, maxLit, maxLitSide) = maxLitIt.next()
+        Out.trace(s"maxLit chosen: ${maxLit.pretty}")
         val otherLitIt = new LiteralSideIterator(clause, false, true, true)
 
         while (otherLitIt.hasNext) {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
-
-          if (maxLitIndex != otherLitIndex) {
+          Out.trace(s"otherLit chosen: ${otherLit.pretty}")
+          if (maxLitIndex <= otherLitIndex && clause.maxLits.contains(otherLit) ) {
+            Out.finest(s"skipped maxLit ${maxLit.pretty} with ${otherLit.pretty}")
+            /* skipped since already tested */
+          } else {
             if (maxLit.polarity == otherLit.polarity) {
               // same polarity, standard
               val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
