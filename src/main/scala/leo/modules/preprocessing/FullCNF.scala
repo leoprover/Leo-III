@@ -53,10 +53,10 @@ object FullCNF extends CalculusRule {
       case |||(lt,rt) if !l.polarity => apply(vargen,Literal(lt,false)) ++ apply(vargen, Literal(rt,false))
       case Impl(lt,rt) if l.polarity => multiply(apply(vargen, Literal(lt,false)), apply(vargen, Literal(rt, true)))
       case Impl(lt,rt) if !l.polarity => apply(vargen,Literal(lt,true)) ++ apply(vargen, Literal(rt,false))
-      case Forall(ty :::> t) if l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(t, newVar.betaNormalize), true))
-      case Forall(ty :::> t) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(t, sko).betaNormalize, false))
-      case Exists(ty :::> t) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(t, sko).betaNormalize, true))
-      case Exists(ty :::> t) if !l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(t, newVar.betaNormalize), false))
+      case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
       case _ => Seq(Seq(l))
     }
   } else {
