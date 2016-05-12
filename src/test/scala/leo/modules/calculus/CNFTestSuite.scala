@@ -1,10 +1,11 @@
 package leo.modules.calculus
 
-import leo.LeoTestSuite
+import leo.datastructures.impl.Signature
+import leo.{Ignored, LeoTestSuite, Out, TestUtility}
 import leo.datastructures.{Clause, Literal}
 import leo.modules.Parsing
-import leo.modules.preprocessing.{FullCNF, StepCNF}
-import leo.modules.seqpproc.CNF
+import leo.modules.preprocessing.{StepCNF}
+import leo.modules.seqpproc.FullCNF
 
 /**
   * Created by mwisnie on 4/4/16.
@@ -33,17 +34,17 @@ class CNFTestSuite extends LeoTestSuite {
       val vargen1 = freshVarGen(pc)
       val vargen2 = freshVarGen(pc)
       val cnf1 = FullCNF(vargen1, pc)
-      val cnf2 = CNF(vargen2, pc)
+//      val cnf2 = CNF(vargen2, pc)
       val cnf3 = StepCNF.exhaust(pc)
       s.append(" >Max CNF\n   ")
       s.append(cnf1.map(_.pretty).mkString("\n   "))
-      s.append("\n >Alex CNF\n   ")
-      s.append(cnf2.map(_.pretty).mkString("\n   "))
+//      s.append("\n >Alex CNF\n   ")
+//      s.append(cnf2.map(_.pretty).mkString("\n   "))
       s.append("\n >Step CNF\n   ")
       s.append(cnf3.map(_.pretty).mkString("\n   "))
-      s.append(s"\n >Congruent: ${eq(cnf1, cnf2) && eq(cnf2, cnf3)}")
+      s.append(s"\n >Congruent: ${eq(cnf1, cnf3)}")
       println(s.toString())
-      assert(eq(cnf1, cnf2), "Both normalizations printed a different cnf.")
+      assert(eq(cnf1, cnf3), "Both normalizations printed a different cnf.")
 
     }
 
