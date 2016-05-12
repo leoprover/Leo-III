@@ -299,6 +299,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     // Simplification of newly generated clauses BEGIN
     /////////////////////////////////////////
+    state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
     newclauses = Control.simpSet(newclauses)
     /* Remove those which are tautologies */
@@ -319,6 +320,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // At the end, for each generated clause apply simplification etc.
     // and add to unprocessed
     /////////////////////////////////////////
+
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
@@ -326,7 +328,6 @@ object SeqPProc extends Function1[Long, Unit]{
       newCl = simplify(newCl, state.rewriteRules)
 
       if (!Clause.trivial(newCl.cl)) {
-        state.incGeneratedCl(1)
         state.addUnprocessed(newCl)
       } else {
         Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
