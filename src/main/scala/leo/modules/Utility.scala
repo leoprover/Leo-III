@@ -147,16 +147,26 @@ object Utility {
   }
 
 
-  def printDerivation(cl: ClauseProxy) : Unit = Out.output(derivationString(new HashSet[Int](), 0, cl, new StringBuilder()).toString())
+//  def printDerivation(cl: ClauseProxy) : Unit = Out.output(derivationString(new HashSet[Int](), 0, cl, new StringBuilder()).toString())
+//
+//
+//  private def derivationString(origin: Set[Int], indent : Int, cl: ClauseProxy, sb : StringBuilder) : StringBuilder = {
+//    cl.annotation match {
+//      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
+//      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")){case (cls, sbu) => derivationString(origin.+(indent), indent+1,cls._1,sbu)}
+//      case _ => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
+//    }
+////    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+//  }
 
-
-  private def derivationString(origin: Set[Int], indent : Int, cl: ClauseProxy, sb : StringBuilder) : StringBuilder = {
-    cl.annotation match {
-      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
-      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")){case (cls, sbu) => derivationString(origin.+(indent), indent+1,cls._1,sbu)}
-      case _ => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
+  def userConstantsForProof(sig: Signature): String = {
+    val sb: StringBuilder = new StringBuilder()
+    sig.allUserConstants.foreach { case key =>
+      val name = sig.apply(key).name
+      sb.append(ToTPTP(name + "_type", key).output)
+        sb.append("\n")
     }
-//    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
+    sb.toString()
   }
 
   def printProof(cl: ClauseProxy) : Unit = {
@@ -171,9 +181,15 @@ object Utility {
         f.annotation match {
           case InferredFrom(_, fs) =>
             fs.foreach(f => derivationProof(f._1))
-            proof = mkTPTP(f) +: proof
+            if (!Configuration.isSet("DEBUG"))
+              proof = mkTPTP(f) +: proof
+            else
+              proof = f.pretty +: proof
           case _ =>
-            proof = mkTPTP(f) +: proof
+            if (!Configuration.isSet("DEBUG"))
+              proof = mkTPTP(f) +: proof
+            else
+              proof = f.pretty +: proof
         }
       }
     }
