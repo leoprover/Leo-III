@@ -58,10 +58,17 @@ package inferenceControl {
     final def cnf(cl: AnnotatedClause): Set[AnnotatedClause] = {
       Out.trace(s"CNF of ${cl.id}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
-      val cnfsimp = cnfresult.map(Simp.shallowSimp)
-      val result = cnfresult.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
-      Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
-      result
+      if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
+        // no CNF step at all
+        Out.trace(s"CNF result:\n\t${cl.pretty}")
+        Set(cl)
+      } else {
+        val cnfsimp = cnfresult.map(Simp.shallowSimp)
+        val result = cnfresult.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
+        result
+      }
+
     }
   }
 
@@ -489,7 +496,11 @@ package inferenceControl {
 
     final def simp(cl: AnnotatedClause): AnnotatedClause = {
       Out.trace(s"Simp on ${cl.id}")
-      val result = AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+      val simpresult = Simp(cl.cl)
+      val result = if (simpresult != cl.cl)
+        AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+      else
+        cl
       Out.finest(s"Simp result: ${result.pretty}")
       result
     }
