@@ -21,7 +21,7 @@ object ActiveTracker {
 
   def incAndGet(debug : String) : Int = {
     val i = incAndGet()
-    leo.Out.debug(s"ActiveTracker(${i-1}->$i): $debug")
+    leo.Out.finest(s"ActiveTracker(${i-1}->$i): $debug")
     //msg.append(s"ActiveTracker(${i-1}->$i): $debug\n")
     i
   }
@@ -36,7 +36,7 @@ object ActiveTracker {
 
   def decAndGet(debug : String) : Int = {
     val i = decAndGet()
-    leo.Out.debug(s"ActiveTracker(${i+1}->$i): $debug")
+    leo.Out.finest(s"ActiveTracker(${i+1}->$i): $debug")
     //msg.append(s"ActiveTracker(${i+1}->$i): $debug\n")
     i
   }

@@ -112,6 +112,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     pauseFlag = false
     exe.shutdownNow()
     AgentWork.executingAgents() foreach(_.kill())
+    Blackboard().filterAll(a => a.filter(DoneEvent()))
     curExec.clear()
     AgentWork.clear()
     ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
@@ -205,6 +206,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
         work = true
 
+
 //        Out.comment("[Writer] : Got task and begin to work.")
         // Update blackboard
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
@@ -219,6 +221,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
+
             Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
             doneSmth |= add
             add
@@ -230,6 +233,15 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
             Blackboard().getDS(t).foreach{ds =>ds.delete(d)}
           })
         }
+
+
+        // Data Written, Release Locks before filtering
+        LockSet.releaseTask(task) // TODO right position?
+        Blackboard().finishTask(task)
+        curExec.remove(task)
+        agent.taskFinished(task)
+
+        if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
 
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
@@ -252,12 +264,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 //      Out.comment(s"[Writer]: Gone through all.")
 
-      LockSet.releaseTask(task)
-      curExec.remove(task)
-      agent.taskFinished(task)
-      Blackboard().finishTask(task)
 
-      if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -276,9 +283,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         ExecTask.put(t.run, t, a)
         AgentWork.dec(a)
       } catch {
+        case e : InterruptedException => throw e
         case e : Exception =>
-          leo.Out.severe(e.getMessage)
-          leo.Out.finest(e.getCause.toString)
+          if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
+          if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }

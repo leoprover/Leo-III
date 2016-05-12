@@ -4,7 +4,7 @@ package impl
 
 import leo.datastructures.blackboard.AnnotatedClause
 
-import scala.collection.mutable
+import scala.collection.{Iterator, mutable}
 
 /**
  *
@@ -70,15 +70,16 @@ class TreeContextMap[K,V] extends ContextMap[K,V] {
    * @return true, iff the insertion was successful
    */
   override def put(k: K, v: V, c: Context): Boolean = {
-    if(lookup(k,c).isDefined) return false
-    (contextMaps.get(c) match {
+    if(lookup(k,c).fold(false : Boolean)(v1 => v1 == v)) return false
+    remove(k,c)   // If it is in fact an update
+    contextMaps.get(c) match {
     case Some(m) =>
       m.put(k,v)
     case None =>
       val m = new mutable.HashMap[K,V]()
       contextMaps.put(c,m)
       m.put(k,v)
-    })
+    }
     true
   }
 
@@ -90,9 +91,46 @@ class TreeContextMap[K,V] extends ContextMap[K,V] {
    * @param c - The context in which to remove
    * @return true, iff the key was removed successful
    */
-  override def remove(k: K, c: Context): Boolean = Context.getPath(c).find{c1 =>
-    contextMaps.get(c).fold(false)(_.contains(k))}.fold(false){c2 =>
-      contextMaps.get(c2).fold(false){m => m.remove(k).isDefined}
+  override def remove(k: K, c: Context): Boolean = {
+    val p = Context.getPath(c).iterator
+
+    while(p.hasNext) {
+      val n = p.next()
+      contextMaps.get(n) match {
+        case Some(s) =>
+          if(s.contains(k)) {
+            val v = s.remove(k).get
+            distributeAlongPath(n, p, k, v)
+            // Removed from the context, BUT distribute to the other contexts
+            return true
+          }
+        case None  => ()
+      }
+    }
+    return false
+  }
+
+  /**
+    * Inserts the Element a into all childrens of c, that are not p[0] and rekurses into p[0] with the tail p[1..n].
+    */
+  private def distributeAlongPath(c : Context, p : Iterator[Context], k : K, v : V) : Unit = {
+    if(p.hasNext){
+      // If we are on the path, then we push the element to the sides
+      val nc = p.next()
+      c.childContext.foreach{cc =>
+        if(cc != nc){
+          contextMaps.get(cc) match {
+            case Some(s) =>
+              s.put(k,v)
+            case None =>
+              val m = new mutable.HashMap[K,V]()
+              contextMaps.put(cc,m)
+              m.put(k,v)
+          }
+        }
+      }
+      distributeAlongPath(nc, p, k, v)
+    }
   }
 
   /**
@@ -102,7 +140,7 @@ class TreeContextMap[K,V] extends ContextMap[K,V] {
    * @param c - The context to look at
    * @return All values in c
    */
-  override def valueSet(c: Context): Set[V] = Context.getPath(c).map{c1 => contextMaps.get(c1).fold(Iterable[V]())(_.values)}.flatten.toSet
+  override def valueSet(c: Context): Set[V] = Context.getPath(c).flatMap{c1 => contextMaps.get(c1).fold(Iterable[V]())(_.values)}.toSet
 
   /**
    *
@@ -111,5 +149,5 @@ class TreeContextMap[K,V] extends ContextMap[K,V] {
    * @param c - The context to look at
    * @return All keys in c
    */
-  override def keySet(c: Context): Set[K] = Context.getPath(c).map{c1 => contextMaps.get(c1).fold(Iterable[K]())(_.keys)}.flatten.toSet
+  override def keySet(c: Context): Set[K] = Context.getPath(c).flatMap{c1 => contextMaps.get(c1).fold(Iterable[K]())(_.keys)}.toSet
 }

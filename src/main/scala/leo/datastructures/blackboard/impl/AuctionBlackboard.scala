@@ -54,7 +54,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   }
 
   override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
-    TaskSet.synchronized(TaskSet.taskSet.submit(a, ts))
+    TaskSet.synchronized(TaskSet.taskSet.submit(ts))
   }
 
   override def finishTask(t : Task) : Unit = {
@@ -100,7 +100,10 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  override def send(m: Message, to: TAgent): Unit = to.filter(m)
+  override def send(m: Message, to: TAgent): Unit = {
+    val ts = to.filter(m)
+    submitTasks(to, ts.toSet)
+  }
 
   /**
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be

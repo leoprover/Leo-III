@@ -272,18 +272,21 @@ object FormulaDataStore extends DataStore {
 
   override def storedTypes: Seq[DataType] = List(ClauseType)
 
-  override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (fo: ClauseProxy, fn: ClauseProxy)  =>
-      removeFormula(fo)
-      if(FormulaSet.contains(fn, Context()))
-        return false
-      addFormula(fn)
-    case ((fo : ClauseProxy,co:Context), (fn : ClauseProxy,cn : Context)) =>
-      removeFormula(fo, co)
-      if(FormulaSet.contains(fn, cn))
-        return false
-      addFormula(fn,cn)
-    case _ => false
+  override def update(o: Any, n: Any): Boolean = {
+    (o,n) match {
+      case (fo: ClauseProxy, fn: ClauseProxy)  =>
+        removeFormula(fo)
+        if(FormulaSet.contains(fn, Context()))
+          return false
+        addFormula(fn)
+      case ((fo : ClauseProxy,co:Context), (fn : ClauseProxy,cn : Context)) =>
+        removeFormula(fo, co)
+        if(FormulaSet.contains(fn, cn))
+          return false
+        addFormula(fn,cn)
+      case _ =>
+        false
+    }
   }
 
   override def insert(n: Any): Boolean = n match {

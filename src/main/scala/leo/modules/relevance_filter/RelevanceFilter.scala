@@ -60,7 +60,6 @@ object RelevanceFilter {
     }
 
     val grade = sum / (sum + new_size)
-
     leo.Out.debug(s"$formula : \n  $grade >= $pass\n ${if(grade >= pass) "taken" else "not taken"}")
 
     grade >= pass

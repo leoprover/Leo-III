@@ -30,6 +30,7 @@ import java.io.IOException
  * @since 11/10/14
  */
 abstract class ScriptAgent(path : String) extends Agent {
+  override val interest : Option[Seq[DataType]] = None
 
   def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
 
@@ -60,13 +61,13 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
   final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
-    override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (ClauseType -> fs.asInstanceOf[Set[Any]])
+    override def readSet: Map[DataType, Set[Any]] = Map(ClauseType -> fs.asInstanceOf[Set[Any]])
 
     override def writeSet(): Map[DataType, Set[Any]] = Map.empty
 
     override def bid: Double = 1 // TODO Better value
 
-    override val pretty: String = "ScriptTask (BIG)"
+    override val pretty: String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
     override val name: String = "Script Call"
 
     override val getAgent : ScriptAgent = a
@@ -75,7 +76,7 @@ abstract class ScriptAgent(path : String) extends Agent {
       * This function runs the specific agent on the registered Blackboard.
       */
     override def run: Result = {
-      val process : ExternalResult = ExternalCall.run(script, encode(fs))
+      val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
 
       val retValue = process.exitValue
@@ -83,6 +84,8 @@ abstract class ScriptAgent(path : String) extends Agent {
       val err = process.error
       a.handle(c, out, err, retValue)
     }
+
+    override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
   }
 
 }

@@ -11,7 +11,7 @@ import leo.modules.preprocessing.ArgumentExtraction
 /**
   * Created by mwisnie on 3/7/16.
   */
-object ArgumentExtractionAgent extends Agent {
+class ArgumentExtractionAgent(cs : Context*) extends Agent {
   override def name: String = "argument_extraction_agent"
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
@@ -24,10 +24,11 @@ object ArgumentExtractionAgent extends Agent {
   private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
     // TODO If the signature is split look out for using the same definitions
     val (nc, defs) : (Clause, Set[(Term, Term)]) = ArgumentExtraction(cl.cl)
+    val toInsertContext = cs filter Context.isAncestor(c)
     if(defs.isEmpty){
       Iterable()
     } else{
-      Iterable(new ArgumentExtractionTask(cl, nc, defs, c, this))
+      toInsertContext map (ci =>new ArgumentExtractionTask(cl, nc, defs, ci, this))
     }
   }
 }
@@ -41,7 +42,7 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override def run: Result = {
     var r : Result= Result()
     val defn : Set[ClauseProxy] = defs map {case (t1, t2) => Store(Clause(Literal(t1, t2, true)), Role_Definition, c)}
-    r = r.update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ArgumentExtraction, defn + cl))))
+    r = r.update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ArgumentExtraction, defn + cl)), c))
     val it = defn.iterator
     while(it.hasNext) {
       val d = it.next()
@@ -52,4 +53,5 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override val bid: Double = 0.1
 
   override val pretty: String = s"argument_extraction(${cl.cl.pretty})"
+  override val toString : String = pretty
 }

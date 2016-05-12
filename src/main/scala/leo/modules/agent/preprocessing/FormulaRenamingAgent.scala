@@ -12,7 +12,7 @@ import leo.datastructures.{Literal, Role_Definition}
 /**
   * Created by mwisnie on 3/7/16.
   */
-object FormulaRenamingAgent extends Agent {
+class FormulaRenamingAgent(cs : Context*) extends Agent {
   override def name: String = "formula_renaming_agent"
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
@@ -24,8 +24,9 @@ object FormulaRenamingAgent extends Agent {
 
   private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
     val (nc, defs) = FormulaRenaming(cl.cl)
+    val toInsertContext = cs filter Context.isAncestor(c)
     if(defs.nonEmpty){
-      Seq(new FormulaRenamingTask(cl, nc, defs , c, this))
+      toInsertContext map (ci => new FormulaRenamingTask(cl, nc, defs , ci, this))
     } else {
       Seq()
     }
@@ -51,5 +52,6 @@ class FormulaRenamingTask(cl : ClauseProxy, clause : Clause, defs : Seq[Clause],
   }
   override def bid: Double = 0.1
 
-  override def pretty: String = s"formula_renaming_task($name)"
+  override val pretty: String = s"formula_renaming_task($name)"
+  override val toString : String = pretty
 }

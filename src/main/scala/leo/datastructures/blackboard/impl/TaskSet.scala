@@ -36,10 +36,6 @@ class TaskSelectionSet {
     */
   private val zero : mutable.Map[TAgent, AgentTaskQueue] = new mutable.HashMap[TAgent, AgentTaskQueue]()
 
-  /**
-    * Assoziates an agent with its agent.
-    */
-  private val agent : mutable.Map[Task, TAgent] = new mutable.HashMap[Task, TAgent]()
 
   private val depSet : DependencySet = new DependencySetImpl()
 
@@ -60,6 +56,7 @@ class TaskSelectionSet {
 
   /**
     * Adds a new [[leo.agents.TAgent]] to the TaskGraph.
+    *
     * @param a The agent to be added
     */
   def addAgent(a : TAgent) : Unit = synchronized {
@@ -68,6 +65,7 @@ class TaskSelectionSet {
 
   /**
     * Removes a [[leo.agents.TAgent]] from the TaskGraph
+    *
     * @param a The agent to be removed
     */
   def removeAgent(a : TAgent) : Unit = synchronized {
@@ -86,7 +84,6 @@ class TaskSelectionSet {
 
   def clear() : Unit = synchronized {
     zero.clear()
-    agent.clear()
     passiveTasks.clear()
     currentlyExecution.clear()
     depSet.clear()
@@ -95,6 +92,7 @@ class TaskSelectionSet {
 
   /**
     * Marks an agent as passive and considers its tasks no longer for execution.
+    *
     * @param a The agent to be turned passive
     */
   def passive(a : TAgent) : Unit = synchronized {
@@ -105,6 +103,7 @@ class TaskSelectionSet {
 
   /**
     * Marks an agent as active and reanables its tasks for exectuion.
+    *
     * @param a The agent to be turned active
     */
   def active(a : TAgent) : Unit = synchronized {
@@ -118,36 +117,38 @@ class TaskSelectionSet {
   /**
     * Submits a new task created by an agent to the scheduler.
     *
-    * @param a The agent that created the task.
     * @param t The task the agent `a` wants to execute.
     */
-  def submit(a : TAgent, t : Task) : Unit = synchronized {
+  def submit(t : Task) : Unit = synchronized {
     //First test clash with currently executing tasks
+//    Out.finest(s"Submitting task:\n  agent -> ${a.name}\n  task -> ${t.name}")
+//    println(s"Currently Executing: \n     ${currentlyExecution.mkString("\n     ")}\n  while\n   $t")
     if(currentlyExecution.exists{t1 =>
       t.writeSet().exists{case (dt, dws) => t1.writeSet().getOrElse(dt, Set.empty).intersect(dws).nonEmpty} ||
       t.readSet().exists{case (dt, rws) => t1.writeSet().getOrElse(dt, Set.empty).intersect(rws).nonEmpty}
     })
       return
 
-    depSet.add(t,a).foreach{t1 =>
-      agent.get(t1).foreach{a1 =>
-        zero.get(a1).foreach{aq =>
-          aq.rm(t1)
-        }
+    depSet.add(t).foreach{t1 =>
+      val a1 = t.getAgent
+      zero.get(a1).foreach{aq =>
+//          Out.finest(s"Removed from current executable task:\n  collision -> ${t.pretty}\n  agent -> ${a1.name}\n   task -> ${t1.pretty}")
+        aq.rm(t1)
       }
     }
-    agent.put(t,a)
-    if(!depSet.existDep(t))
-      zero.getOrElseUpdate(a, new AgentTaskQueue).add(t)
+//    Out.finest(s"Add task:\n  task -> ${t.name}")
+    if(!depSet.existDep(t)) {
+//      Out.finest(s"Add task to current executable:\n  task -> ${t.pretty}")
+      zero.getOrElseUpdate(t.getAgent, new AgentTaskQueue).add(t)
+    }
   }
 
   /**
     * Submits mutliple tasks created by an agent at once.
     *
-    * @param a The agent that created the tasks
     * @param ts The tasks agent `a` wants to execute
     */
-  def submit(a : TAgent, ts : Iterable[Task]) : Unit = ts.foreach(submit(a,_))
+  def submit(ts : Iterable[Task]) : Unit = ts.foreach(submit)
 
 
   /**
@@ -159,13 +160,11 @@ class TaskSelectionSet {
     * @param t the newly finished task
     */
   def finish(t : Task) : Unit = synchronized {
-    depSet.rm(t, agent.get(t).get).foreach{t1 =>
-      agent.get(t1).foreach{a1 =>
-        // Consider the new free independent Tasks
-        zero.getOrElseUpdate(a1, new AgentTaskQueue).add(t1)
-      }
+    currentlyExecution.remove(t)
+    depSet.rm(t).foreach{t1 =>
+      val a1 = t1.getAgent
+      zero.getOrElseUpdate(a1, new AgentTaskQueue).add(t1)
     }
-    agent.remove(t)
   }
 
   /**
@@ -186,14 +185,15 @@ class TaskSelectionSet {
     */
   def commit(ts : scala.collection.immutable.Set[Task]) : Unit = synchronized {
     ts.foreach{t =>
+      leo.Out.finest(s"Selected for execution: $t ")
       currentlyExecution.add(t)
-      depSet.obsoleteTasks(t).foreach{t =>
-        val a = agent.get(t).get
-        depSet.rm(t, a).foreach{tz =>
-          val a = agent.get(tz).get
+      zero.get(t.getAgent).foreach{ta => ta.rm(t)}
+      depSet.obsoleteTasks(t).foreach{to =>
+        depSet.rm(to).foreach{tz =>
+          val a = tz.getAgent
           zero.getOrElseUpdate(a, new AgentTaskQueue).add(tz)
         }
-        zero.get(a).foreach(_.rm(t))
+        zero.get(to.getAgent).foreach(_.rm(to))
       }
     }
   }
@@ -241,6 +241,7 @@ trait DependencySet {
 
   /**
     * Removes an agent from the dependecy set
+    *
     * @param a The agent to be removed
     */
   def rmAgent(a : TAgent)
@@ -264,22 +265,23 @@ trait DependencySet {
 
   /**
     * Adds a new Task / Node to the dependecy set.
+    *
     * @param t The task to be added
-    * @param a The Agent this task is added for
     * @return Returns all tasks, that previously were independent, but are now dependent on `t`
     */
-  def add(t : Task, a : TAgent) : Iterable[Task]
+  def add(t : Task) : Iterable[Task]
 
   /**
     * Removes a finished task from the dependecy set
+    *
     * @param t The task to be added
-    * @param a The Agent this task is added for
     * @return Returns all tasks, that were only dependent on `t` and are hence independent
     */
-  def rm(t : Task, a : TAgent) : Iterable[Task]
+  def rm(t : Task) : Iterable[Task]
 
   /**
     * Returns all tasks, `t` depends on.
+    *
     * @param t The task the dependencies are calculated for
     * @return
     */
@@ -314,8 +316,6 @@ class DependencySetImpl extends DependencySet {
 
   private val allAgents : mutable.Set[TAgent] = new mutable.HashSet[TAgent]
 
-  private val ta : mutable.Map[Task, TAgent] = new mutable.HashMap[Task, TAgent]
-
   private val in : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
 
   private val out : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
@@ -327,7 +327,6 @@ class DependencySetImpl extends DependencySet {
 
   override def clear() : Unit = {
     allAgents.clear()
-    ta.clear()
     in.clear()
     out.clear()
     write.clear()
@@ -386,35 +385,32 @@ class DependencySetImpl extends DependencySet {
     val rs = t.readSet().flatMap(_._2).toSet
     val empty = scala.collection.immutable.Set.empty[Task]
 
-    ta.get(t).fold(Nil : Iterable[Task]){ a : TAgent =>
-      as.flatMap{a1 =>
-        // Collect all Task colliding of the agent
-        write.get(a1).fold(empty){wsa1 =>
-          //We have the map from data -> Set(Task) for agent a1
-          val wts = ws.foldLeft(empty){(ts, d) => {ts.union(wsa1.get(d).fold(empty)(_.toSet))}}
-          val rts = rs.foldLeft(empty){(ts, d) => ts.union(wsa1.get(d).fold(empty)(_.toSet))}
-          wts.union(rts)
-        }.union(read.get(a1).fold(empty){rsa1 =>
-          ws.foldLeft(empty){(ts, d) => ts.union(rsa1.get(d).fold(empty)(_.toSet))}
-        }).toIterable
-      }
+    val a : TAgent = t.getAgent
+    as.flatMap{a1 =>
+      // Collect all Task colliding of the agent
+      write.get(a1).fold(empty){wsa1 =>
+        //We have the map from data -> Set(Task) for agent a1
+        val wts = ws.foldLeft(empty){(ts, d) => {ts.union(wsa1.get(d).fold(empty)(_.toSet))}}
+        val rts = rs.foldLeft(empty){(ts, d) => ts.union(wsa1.get(d).fold(empty)(_.toSet))}
+        wts.union(rts)
+      }.union(read.get(a1).fold(empty){rsa1 =>
+        ws.foldLeft(empty){(ts, d) => ts.union(rsa1.get(d).fold(empty)(_.toSet))}
+      }).toIterable
     }
   }
 
 
   private def getImpl(t : Task) : Iterable[Task] = {
-    ta.get(t).fold(Iterable.empty[Task]){a =>
-      out.get(a).fold(Iterable.empty[Task]){depA =>
-        getColliding(t)(depA)
-      }
+    val a = t.getAgent
+    out.get(a).fold(Iterable.empty[Task]){depA =>
+      getColliding(t)(depA)
     }
   }
 
   override def getDep(t: Task): Iterable[Task] = {
-    ta.get(t).fold(Iterable.empty[Task]){a =>
-      in.get(a).fold(Iterable.empty[Task]){depA =>
-        getColliding(t)(depA)
-      }
+    val a = t.getAgent
+    in.get(a).fold(Iterable.empty[Task]){depA =>
+      getColliding(t)(depA)
     }
   }
 
@@ -425,37 +421,37 @@ class DependencySetImpl extends DependencySet {
 
 
 
-  override def rm(t: Task, a : TAgent) : Iterable[Task] = {
-    write.get(a) foreach {m =>
+  override def rm(t: Task) : Iterable[Task] = {
+    write.get(t.getAgent) foreach {m =>
       t.writeSet() foreach {case (dt,dws) =>
         dws foreach { dw =>
           m.get(dw) foreach { ds =>
             ds.remove(t)
+            if(ds.isEmpty) m.remove(dw)
           }
         }
       }
     }
 
-    read.get(a) foreach {m =>
+    read.get(t.getAgent) foreach {m =>
       t.readSet() foreach {case (dt,dws) =>
         dws foreach { dw =>
           m.get(dw) foreach { ds =>
             ds.remove(t)
           }
+          if(m.get(dw).isEmpty) m.remove(dw)
         }
       }
     }
 
     val impls = getImpl(t).filter{t1 =>
       !existDep(t1)} // TODO optimize
-    ta.remove(t)
     impls
   }
 
-  override def add(t: Task, a : TAgent) : Iterable[Task] = {
-    ta.put(t,a)
+  override def add(t: Task) : Iterable[Task] = {
     //Insert into write structure
-    write.get(a) foreach {m =>
+    write.get(t.getAgent) foreach {m =>
       t.writeSet() foreach { case (dt,dws) =>
         dws foreach { dw =>
           m.getOrElseUpdate(dw, mutable.Set.empty[Task]).add(t)
@@ -464,7 +460,7 @@ class DependencySetImpl extends DependencySet {
     }
 
     //Insert into read structure
-    read.get(a) foreach {m =>
+    read.get(t.getAgent) foreach {m =>
       t.readSet() foreach { case (dt,dws) =>
         dws foreach { dw =>
           m.getOrElseUpdate(dw, mutable.Set.empty[Task]).add(t)
@@ -502,15 +498,18 @@ class DependencySetImpl extends DependencySet {
 class AgentTaskQueue {
 
   private var q : mutable.PriorityQueue[Task] = new mutable.PriorityQueue[Task]()(Ordering.by{(x : Task) => x.bid})
+  private var ts : mutable.Set[Task] = new mutable.HashSet[Task]
 
-  def all : Iterable[Task] = q.toIterable
+  def all : Iterable[Task] = q.toSeq
 
-  def add(t : Task) : Unit = {
+  def add(t : Task) : Unit = if(!ts.contains(t)){
     ActiveTracker.incAndGet(s"Inserted task\n $t")
     q.enqueue(t)
+    ts.add(t)
   }
 
-  def rm(t : Task) : Unit = {
+  def rm(t : Task) : Unit = if(ts.contains(t)){
+    ts.remove(t)
     val empty = scala.collection.immutable.Set.empty[Any]
     q = q.filter { tbe =>
       if(t.eq(tbe)) {
@@ -550,9 +549,10 @@ class AgentTaskQueue {
   }
 
   def clear : Iterable[Task] = {
+    ts.clear()
     q.foreach{t => ActiveTracker.decAndGet(s"Clear: Task \n  $t\n  was removed.")}
-    val ts = q.toIterable
+    val tss = q.toSeq
     q.clear()
-    ts
+    tss
   }
 }

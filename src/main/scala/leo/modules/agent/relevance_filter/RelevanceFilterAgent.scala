@@ -34,6 +34,7 @@ object RelevanceFilterAgent extends Agent {
       // TODO define own factors and passmark
     case DataEvent(form : AnnotatedFormula, AnnotatedFormulaType)
       if form.role == Role_Conjecture.pretty || form.role == Role_NegConjecture.pretty || form.function_symbols.isEmpty =>  // Initially we takethe conjecture and prinzipels
+        leo.Out.debug(s"$form : \n  ${if(form.function_symbols.isEmpty) "rule format" else "goal"}\n taken")
         Seq(new RelevanceTask(form, -1, this))
     case DataEvent((form : AnnotatedFormula, round : Int), FormulaTakenType) =>
       // New round.

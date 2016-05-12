@@ -41,12 +41,12 @@ class AnnotatedClause(val name : String, val clause : Clause, val created : Time
   def compare(that: AnnotatedClause): Int = this.clause compare that.clause
 
   /** Returns `true` iff `this` is congruent to `that`. */
-  override def cong(that: AnnotatedClause): Boolean = clause.cong(that.clause)
+  override def cong(that: AnnotatedClause): Boolean = clause.cong(that.clause) && context.contextID == that.context.contextID
 
   override def equals(o : Any) : Boolean = o match {
-    case fo : AnnotatedClause => (this.clause cong fo.clause) && (this.role == fo.role)
+    case fo : AnnotatedClause => (this.clause cong fo.clause) && (this.role == fo.role) && (context.contextID == fo.context.contextID)
     case _ => false
   }
 
-  override def hashCode() : Int = this.clause.hashCode() ^ this.role.hashCode()
+  override def hashCode() : Int = this.clause.hashCode() ^ this.role.hashCode() ^this.context.contextID.hashCode()
 }

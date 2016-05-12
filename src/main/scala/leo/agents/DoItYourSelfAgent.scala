@@ -47,7 +47,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
         r.insert(ClauseType)(it.next())
       }
     }
-    val l : Map[String, String] = Map("a" -> "b")
+    val l : Map[String, String] = Map("a" -> "b")   // TODO hä?
     r
   }
   override def bid: Double = 1

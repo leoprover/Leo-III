@@ -63,12 +63,7 @@ object SZSDataStore extends DataStore {
   }
 }
 
-class SZSStore (val szsStatus : StatusSZS, val context : Context) {}
-
-object SZSStore {
-  def apply(szsStatus : StatusSZS, context : Context) = new SZSStore(szsStatus, context)
-  def unapply(e : Any) : Option[(StatusSZS, Context)] = e match {
-    case s : SZSStore => Some((s.szsStatus, s.context))
-    case _ => None
-  }
+case class SZSStore (szsStatus : StatusSZS, context : Context) {
+  override val toString : String = s"SZSStore(${szsStatus.output} -> ${context.contextID})"
 }
+

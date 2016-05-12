@@ -35,12 +35,13 @@ object EqualityReplaceAgent extends Agent{
 }
 
 abstract class EqualityReplaceTask(cl : ClauseProxy, a : TAgent) extends Task {
-  override def name: String = "equality_replace_task"
+  override val name: String = "equality_replace_task"
   override def getAgent: TAgent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map(ClauseType -> Set(cl))
   override def readSet(): Map[DataType, Set[Any]] = Map()
-  override def bid: Double = 0.1
-  override def pretty: String = s"equality_replace_task(${cl.cl.pretty})"
+  override val bid: Double = 0.1
+  override val pretty: String = s"equality_replace_task(${cl.cl.pretty})"
+  override val toString : String = pretty
 }
 
 /**
