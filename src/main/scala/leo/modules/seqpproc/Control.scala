@@ -55,9 +55,9 @@ package inferenceControl {
 
     final def cnf(cl: ClauseWrapper): Set[ClauseWrapper] = {
       Out.trace(s"CNF of ${cl.id}")
-      val cnfresult = leo.modules.preprocessing.FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
+      val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
       val cnfsimp = cnfresult.map(Simp.shallowSimp)
-      val result = cnfresult.map {c => ClauseWrapper(c, InferredFrom(CNF, Set(cl)), cl.properties)}
+      val result = cnfresult.map {c => ClauseWrapper(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
       Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
       result
     }
@@ -346,10 +346,10 @@ package inferenceControl {
 
             res = boolExt_cws.flatMap(cw => {
               Out.finest(s"#\ncnf of ${cw.pretty}:\n\t")
-              CNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
+              FullCNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
             }.map(c => {
               Out.finest(s"${c.pretty}\n\t")
-              ClauseWrapper(c, InferredFrom(CNF, Set(cw)), cw.properties)
+              ClauseWrapper(c, InferredFrom(FullCNF, Set(cw)), cw.properties)
             }))
           }
         }

@@ -166,7 +166,7 @@ object Utility {
 
     def derivationProof(f: ClauseProxy)
     {
-      if (!sf.contains(f)) {
+      if (!sf.exists(c => c.id == f.id)) {
         sf = sf + f
         f.annotation match {
           case InferredFrom(_, fs) =>
