@@ -2,7 +2,6 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.blackboard.Store
 import leo.datastructures.impl.Signature
 import leo.datastructures.Type._
 

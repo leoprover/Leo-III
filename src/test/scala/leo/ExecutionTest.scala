@@ -2,10 +2,9 @@ package leo
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.{=== => EQUALS, _}
-import Term.{mkTermApp => ap,mkAtom}
-
-import leo.modules.churchNumerals.Numerals
-import leo.modules.churchNumerals.Numerals.fromInt
+import Term.{mkAtom, mkTermApp => ap}
+import leo.modules.Numerals
+import Numerals.fromInt
 import leo.modules.preprocessing.Simplification
 
 

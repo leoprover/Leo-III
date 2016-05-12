@@ -2,11 +2,7 @@ package leo.datastructures
 
 import leo._
 import leo.datastructures.ClauseAnnotation.NoAnnotation
-import leo.datastructures.blackboard.{AnnotatedClause, Store}
-import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
-import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.output.Output
 import leo.datastructures.Term.{:::>}
 import leo.datastructures.{=== => EQ}
@@ -35,7 +31,7 @@ class EqOrderingTestSuite extends LeoTestSuite {
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
       var fs : Seq[AnnotatedClause] = Seq()
       try {
-        fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
+        fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       } catch {
         case e: SZSException =>
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
@@ -68,14 +64,14 @@ class EqOrderingTestSuite extends LeoTestSuite {
       while (fsIt.hasNext) {
         val f = fsIt.next()
 
-        Out.output(s"Unit clause: ${f.clause.pretty}")
-        assert(Clause.unit(f.clause))
-        Out.output(s"equational? ${f.clause.lits.head.equational}")
-        if (!f.clause.lits.head.equational) {
-          Out.output(s"Leading quantifiers? ${hasLeadingQuant(f.clause.lits.head.left)}")
-          if (hasLeadingQuant(f.clause.lits.head.left)) {
+        Out.output(s"Unit clause: ${f.cl.pretty}")
+        assert(Clause.unit(f.cl))
+        Out.output(s"equational? ${f.cl.lits.head.equational}")
+        if (!f.cl.lits.head.equational) {
+          Out.output(s"Leading quantifiers? ${hasLeadingQuant(f.cl.lits.head.left)}")
+          if (hasLeadingQuant(f.cl.lits.head.left)) {
             Out.output(s"Removing leading quantifiers...")
-            val l =  f.clause.lits.head.leftTermMap(removeLeadingQuants)
+            val l =  f.cl.lits.head.leftTermMap(removeLeadingQuants)
             Out.output(s"Resulting literal: ${l.pretty}")
             Out.output(s"Now equality on top?: ${eqOnTop(l.left)}")
             if (!eqOnTop(l.left)) {

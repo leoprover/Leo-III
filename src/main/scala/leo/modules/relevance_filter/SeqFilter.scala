@@ -2,7 +2,6 @@ package leo.modules.relevance_filter
 
 import leo.Configuration
 import leo.datastructures.ClauseAnnotation.FromFile
-import leo.datastructures.blackboard.Store
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures._
@@ -36,7 +35,7 @@ object SeqFilter {
       // Translate all taken formulas to clauses
       taken.foreach{f =>
         val (name, term, role) = InputProcessing.process(Signature.get)(f)
-        val nc : ClauseProxy = Store(name, Clause(Literal(term, true)), role, Context(), FromFile(Configuration.PROBLEMFILE, name))
+        val nc : ClauseProxy = AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)
         res = nc +: res
       }
 

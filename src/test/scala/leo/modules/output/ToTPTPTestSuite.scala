@@ -2,10 +2,9 @@ package leo.modules.output
 
 import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures.context.Context
-import leo.datastructures.{Literal, Clause}
-import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal}
 import leo.{Ignored, LeoTestSuite}
-import leo.datastructures.blackboard.{Store, AnnotatedClause, Blackboard}
+import leo.datastructures.blackboard.Blackboard
 import leo.modules.{Parsing, Utility}
 import leo.modules.parsers.TPTP
 import leo.modules.parsers.InputProcessing
@@ -39,7 +38,7 @@ class ToTPTPTestSuite extends LeoTestSuite {
 
       printHeading(s"Forward/Backward translation test for ${p._2}")
       print(s"## Parsing and processing ${p._1} ...")
-      var fos : Seq[AnnotatedClause] = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
+      var fos : Seq[AnnotatedClause] = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       println("Success!")
       Utility.printUserDefinedSignature()
       for (fs <- fos) {
@@ -60,14 +59,13 @@ class ToTPTPTestSuite extends LeoTestSuite {
 
             println("Success!")
             val (name, form, role) = processed
-            println(s"Equivalent names: ${name == fs.name}")
+//            println(s"Equivalent names: ${name == fs.id}")
             println(s"Equivalent roles: ${role == fs.role}")
 
-            val (oldFormula, newFormula) = (fs.clause.lits.head.term, form)
+            val (oldFormula, newFormula) = (fs.cl.lits.head.term, form)
             println(s"Equivalent formula: ${oldFormula == newFormula}")
 
-            if ((name != fs.name) || (role != fs.role) || (oldFormula != newFormula)) {
-              println(s"Old Name: ${fs.name}, new name: $name")
+            if ((role != fs.role) || (oldFormula != newFormula)) {
               println(s"Old Role: ${fs.role}, new role: $role")
               println(s"Old formula: ${oldFormula.pretty}")
               println(s"New formula: ${newFormula.pretty}")

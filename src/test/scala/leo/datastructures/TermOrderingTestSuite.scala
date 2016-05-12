@@ -4,7 +4,6 @@ package datastructures
 import java.nio.file.Path
 
 import leo.datastructures.ClauseAnnotation.NoAnnotation
-import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
@@ -52,7 +51,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
      var fs : Seq[AnnotatedClause] = Seq()
      try {
-       fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
+       fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
      } catch {
         case e: SZSException =>
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")

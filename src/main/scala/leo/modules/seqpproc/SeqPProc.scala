@@ -3,26 +3,26 @@ package leo.modules.seqpproc
 import leo.Configuration
 import leo.Out
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Term, Clause, Literal, Role, Role_Axiom, Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Plain, Pretty, LitTrue, LitFalse, ClauseAnnotation, ClauseProxy}
+import leo.datastructures.{Clause, ClauseAnnotation, AnnotatedClause, ClauseProxy, LitFalse, LitTrue, Literal, Pretty, Role, Role_Axiom, Role_Conjecture, Role_Definition, Role_NegConjecture, Role_Plain, Role_Type, Term}
 import ClauseAnnotation._
 import leo.modules.output._
-import leo.modules.{Utility, SZSOutput, SZSException, Parsing}
-import leo.modules.calculus.{Subsumption, CalculusRule}
-import leo.modules.seqpproc.controlStructures._
+import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
+import leo.modules.calculus.{CalculusRule, Subsumption}
+
 
 import scala.collection.SortedSet
 
 /**
- * Created by lex on 10/28/15.
- */
+  * Created by lex on 10/28/15.
+  */
 object SeqPProc extends Function1[Long, Unit]{
 
   @inline private final def termToClause(t: Term): Clause = {
     Clause.mkClause(Seq(Literal.mkLit(t, true)))
   }
 
-  final def preprocess(cur: ClauseWrapper): Set[ClauseWrapper] = {
-    var result: Set[ClauseWrapper] = Set()
+  final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
+    var result: Set[AnnotatedClause] = Set()
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cur.cl), "clause not unit")
     val lit = cur.cl.lits.head
@@ -54,16 +54,6 @@ object SeqPProc extends Function1[Long, Unit]{
   }
 
 
-
-  final def simplify(cw: ClauseWrapper, rules: Set[ClauseWrapper]): ClauseWrapper = {
-    val simp = Simp(cw.cl)
-    val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), simp)
-    // TODO: simpl to be simplification by rewriting à la E etc
-    if (rewriteSimp != cw.cl) ClauseWrapper(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
-    else cw
-  }
-
-
   ///////////////////////////////////////////////////////////
 
   /* Main function containing proof loop */
@@ -83,24 +73,24 @@ object SeqPProc extends Function1[Long, Unit]{
     val conjecture = filteredInput.filter {case (id, term, role) => role == Role_Conjecture}
     if (conjecture.size > 1) throw new SZSException(SZS_InputError, "At most one conjecture per input problem permitted.")
     val conj = conjecture.head
-    val conjWrapper = ClauseWrapper(conj._1, Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
-    val negatedConjecture = ClauseWrapper(conj._1 + "_neg", Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
+    val conjWrapper = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
+    val negatedConjecture = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
       override def name: String = "neg_conjecture"
       override val inferenceStatus = Some(SZS_CounterSatisfiable)
     }, Set(conjWrapper)),ClauseAnnotation.PropSOS)
 
     // Input to proving process (axioms plus negated conjecture, if existent)
-    val effectiveInputWithoutConjecture: Seq[ClauseWrapper] = if (conjecture.isEmpty) {
-      filteredInput.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropSOS) }
+    val effectiveInputWithoutConjecture: Seq[AnnotatedClause] = if (conjecture.isEmpty) {
+      filteredInput.map { case (id, term, role) => AnnotatedClause(termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropSOS) }
     } else {
       assert(conjecture.size == 1)
       val rest = filteredInput.filterNot(_._1 == conjecture.head._1)
-      rest.map { case (id, term, role) => ClauseWrapper(id, termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) }
+      rest.map { case (id, term, role) => AnnotatedClause(termToClause(term), role, FromFile(Configuration.PROBLEMFILE, id), ClauseAnnotation.PropNoProp) }
     }
 
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
-    val state: State[ClauseWrapper] = State.fresh(Signature.get)
+    val state: State[AnnotatedClause] = State.fresh(Signature.get)
     Out.debug("## Preprocess Neg.Conjecture BEGIN")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
@@ -133,7 +123,7 @@ object SeqPProc extends Function1[Long, Unit]{
       } else {
         var cur = conjectureProcessedIt.next()
         Out.debug(s"Taken: ${cur.pretty}")
-        cur = simplify(cur, state.rewriteRules)
+        cur =  Control.rewriteSimp(cur, state.rewriteRules)
         if (Clause.effectivelyEmpty(cur.cl)) { // TODO: Instantiate flex-flex to get real proof
           loop = false
           if (conjecture.isEmpty) {
@@ -177,17 +167,17 @@ object SeqPProc extends Function1[Long, Unit]{
           if (returnszs == SZS_Theorem) {
             loop = false
             state.setSZSStatus(SZS_Theorem)
-            val resultcl = ClauseWrapper(Clause(Seq()), InferredFrom(CallLeo, state.processed))
+            val resultcl = AnnotatedClause(Clause(Seq()), InferredFrom(CallLeo, state.processed))
             state.setDerivationClause(resultcl)
           }
 
         } else {
           test = false
           var cur = state.nextUnprocessed
-          // cur is the current clausewrapper
+          // cur is the current AnnotatedClause
           Out.debug(s"Taken: ${cur.pretty}")
 
-          cur = simplify(cur, state.rewriteRules)
+          cur = Control.rewriteSimp(cur, state.rewriteRules)
           if (Clause.effectivelyEmpty(cur.cl)) {
             // TODO: Instantiate flex-flex to get real proof
             loop = false
@@ -242,15 +232,15 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Print proof object if possible and requested. */
     if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && state.derivationClause.isDefined) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-//      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Utility.printDerivation(state.derivationClause.get)
+      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+      Utility.printProof(state.derivationClause.get)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
 
-  @inline private final def mainLoopInferences(cl: ClauseWrapper, state: State[ClauseWrapper]): Unit = {
-    var cur: ClauseWrapper = cl
-    var newclauses: Set[ClauseWrapper] = Set()
+  @inline private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
+    var cur: AnnotatedClause = cl
+    var newclauses: Set[AnnotatedClause] = Set()
 
     /////////////////////////////////////////
     // Simplifying (mofifying inferences and backward subsumption) BEGIN
@@ -299,6 +289,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     // Simplification of newly generated clauses BEGIN
     /////////////////////////////////////////
+    state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
     newclauses = Control.simpSet(newclauses)
     /* Remove those which are tautologies */
@@ -319,14 +310,14 @@ object SeqPProc extends Function1[Long, Unit]{
     // At the end, for each generated clause apply simplification etc.
     // and add to unprocessed
     /////////////////////////////////////////
+
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
       // Simplify again, including rewriting etc.
-      newCl = simplify(newCl, state.rewriteRules)
+      newCl = Control.rewriteSimp(newCl, state.rewriteRules)
 
       if (!Clause.trivial(newCl.cl)) {
-        state.incGeneratedCl(1)
         state.addUnprocessed(newCl)
       } else {
         Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")

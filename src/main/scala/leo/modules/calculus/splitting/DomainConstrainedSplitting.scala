@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures._
-import leo.datastructures.blackboard.{Store, AnnotatedClause}
 import Term._
 import leo.datastructures._
 import leo.datastructures.context.Context
@@ -83,6 +82,6 @@ object DomainConstrainedSplitting {
 
   //TODO namensgebung fixen
   def cardinalityAxioms(n : Int)(t : Type) : Seq[AnnotatedClause] = {
-    cardinalityTerms(n)(t).map{t => Store(name + numb.getAndIncrement, Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, Context(), NoAnnotation)}
+    cardinalityTerms(n)(t).map{t => AnnotatedClause(Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)}
   }
 }

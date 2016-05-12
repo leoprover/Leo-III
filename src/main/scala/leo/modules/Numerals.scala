@@ -1,11 +1,11 @@
-package leo.modules.churchNumerals
+package leo.modules
 
+import leo.datastructures.Term.{intToBoundVar, intsToBoundVar, Λ, λ, mkTermApp => ap, mkTypeApp => tyAp}
+import leo.datastructures.Type.{typeVarToType, ∀}
 import leo.datastructures.impl.Signature
 import leo.datastructures.{Term, Type}
 
 import scala.language.implicitConversions
-import Term.{mkTermApp => ap, mkTypeApp => tyAp, Λ, λ,intToBoundVar,intsToBoundVar}
-import Type.{typeVarToType,∀}
 
 /**
  * Implementation of polymorphic-typed church numerals.

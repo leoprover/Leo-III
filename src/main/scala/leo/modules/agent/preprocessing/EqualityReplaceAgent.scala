@@ -1,11 +1,11 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{TAgent, Task, Agent}
+import leo.agents.{Agent, TAgent, Task}
 import leo.datastructures.ClauseAnnotation.InferredFrom
-import leo.datastructures.{Clause, Term, Type, ClauseProxy}
+import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.modules.seqpproc.{ReplaceAndrewsEq, ReplaceLeibnizEq}
+import leo.modules.calculus.{ReplaceAndrewsEq, ReplaceLeibnizEq}
 
 /**
   * Created by mwisnie on 3/7/16.
@@ -56,7 +56,7 @@ class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c 
     } else {
       nc
     }
-    Result().update(ClauseType)((cl, c))((Store(fc, cl.role, c, InferredFrom(ReplaceAndrewsEq, cl)), c))
+    Result().update(ClauseType)((cl, c))((AnnotatedClause(fc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp), c))
   }
 }
 
@@ -66,6 +66,6 @@ class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c 
 class AndrewEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceAndrewsEq(clause, map)
-    Result().update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ReplaceAndrewsEq, cl)), c))
+    Result().update(ClauseType)((cl, c))((AnnotatedClause(nc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp), c))
   }
 }

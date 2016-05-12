@@ -6,7 +6,7 @@ import leo._
 import leo.agents.{TAgent, AgentController}
 import leo.datastructures.ClauseAnnotation.{InferredFrom, FromFile}
 import leo.datastructures._
-import leo.datastructures.blackboard.{ClauseType, Blackboard, Store}
+import leo.datastructures.blackboard.{ClauseType, Blackboard}
 import leo.datastructures.blackboard.impl.{SZSDataStore}
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.Commons.AnnotatedFormula

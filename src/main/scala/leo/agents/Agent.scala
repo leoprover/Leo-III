@@ -1,10 +1,7 @@
 package leo
 package agents
 
-import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{DataType, Event, AnnotatedClause, Blackboard, Result}
-import leo.datastructures.context.Context
-
+import leo.datastructures.blackboard.DataType
 
 import scala.StringBuilder
 import scala.collection.mutable

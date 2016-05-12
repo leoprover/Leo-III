@@ -15,7 +15,7 @@ class DefExpansionTest extends LeoTestSuite{
 
     val t = <=>(a,b)
 
-    val dt = DefExpansion(t)
+    val dt = DefExpSimp(t)
 
     println(dt.pretty)
   }

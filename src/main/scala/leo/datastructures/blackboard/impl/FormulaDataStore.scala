@@ -1,10 +1,9 @@
 package leo.datastructures.blackboard.impl
 
-import leo.datastructures.{ClauseProxy, Clause}
+import leo.datastructures.{ClauseProxy, Clause, AnnotatedClause}
 import leo.datastructures.blackboard._
 import leo.datastructures.context.impl.{TreeContextMap, TreeContextSet}
 import leo.datastructures.context.{ContextMap, ContextSet, Context}
-import leo.modules.calculus.TrivRule
 
 /**
  *
@@ -56,7 +55,7 @@ object FormulaDataStore extends DataStore {
    * @param name - Name of the Formula
    * @return Some(x) if x.name = name exists otherwise None
    */
-  def getFormulaByName(name: String): Option[ClauseProxy] = FormulaSet.getName(name)
+  def getFormulaByName(name: Long): Option[ClauseProxy] = FormulaSet.getName(name)
 
 
   /**
@@ -109,7 +108,7 @@ object FormulaDataStore extends DataStore {
     */
   def addNewFormula(formula : ClauseProxy, context: Context) : Boolean = {
     // TODO: Implement Sets to check containment of Clauses.
-    if(TrivRule.teqt(formula.cl)) return false
+    if(Clause.trivial(formula.cl)) return false
     if (FormulaSet.getAll(context).exists(c => c.cl.cong(formula.cl)))
       false
     else {
@@ -146,7 +145,7 @@ object FormulaDataStore extends DataStore {
    * @param name - Name of the Formula to be removed
    * @return true, iff the element existed.
    */
-  def rmFormulaByName(name: String): Boolean = FormulaSet.rmName(name, Context())
+  def rmFormulaByName(name: Long): Boolean = FormulaSet.rmName(name, Context())
 
 
   /**
@@ -157,7 +156,7 @@ object FormulaDataStore extends DataStore {
     * @param name - Name of the Formula to be removed
     * @return true, iff the element existed.
     */
-  def rmFormulaByName(name: String, context: Context): Boolean = FormulaSet.rmName(name, context)
+  def rmFormulaByName(name: Long, context: Context): Boolean = FormulaSet.rmName(name, context)
 
   /**
    *
@@ -245,7 +244,7 @@ object FormulaDataStore extends DataStore {
       return false
     }
 
-    def rmName(n : String, context: Context) : Boolean = formulaSet.synchronized {
+    def rmName(n : Long, context: Context) : Boolean = formulaSet.synchronized {
       formulaSet.getAll.find {f => f.id == n} match {
         case None => false
         case Some(f) =>
@@ -255,7 +254,7 @@ object FormulaDataStore extends DataStore {
       }
     }
 
-    def getName(n : String) : Option[ClauseProxy] = formulaSet.synchronized(formulaSet.getAll.find { f => f.id == n})
+    def getName(n : Long) : Option[ClauseProxy] = formulaSet.synchronized(formulaSet.getAll.find { f => f.id == n})
 
     def contains(f: ClauseProxy, c : Context) : Boolean = formulaSet.synchronized{
       val oc = clauseMap.lookup(f.cl,c)

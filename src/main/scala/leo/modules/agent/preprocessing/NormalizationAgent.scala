@@ -1,8 +1,8 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{TAgent, Task, Agent}
+import leo.agents.{Agent, TAgent, Task}
 import leo.datastructures.ClauseAnnotation.InferredFrom
-import leo.datastructures.{Clause, ClauseProxy}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, ClauseProxy}
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.modules.calculus.CalculusRule
@@ -14,7 +14,7 @@ import leo.modules.preprocessing._
 class NormalizationAgent(cs : Context*) extends Agent {
   override def name: String = "normalization_agent"
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
-  val norms : Seq[Normalization] = Seq(Simplification, DefExpansion, Simplification, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
+  val norms : Seq[Normalization] = Seq(Simplification, DefExpSimp, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
 
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())
@@ -45,7 +45,7 @@ class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalizat
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
     val clause = openNorm.foldRight(nc){(norm, c) => norm(c)}
-    val cp = Store(clause, cl.role, c, InferredFrom(NormalizationRule, cl))
+    val cp = AnnotatedClause(clause, cl.role, InferredFrom(NormalizationRule, cl), ClauseAnnotation.PropNoProp)
     Result().update(ClauseType)((cl, c))((cp, c))
   }
   override def bid: Double = 0.1

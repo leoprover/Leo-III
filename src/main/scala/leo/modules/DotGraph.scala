@@ -1,8 +1,8 @@
-package leo.modules.visualization
+package leo.modules
 
+import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.impl.Signature
-import Term._
 
 /**
  *
