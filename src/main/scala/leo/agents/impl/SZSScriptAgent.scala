@@ -75,7 +75,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
   }
 
   private def createTask(f : ClauseProxy, c : Context) : Iterable[Task] = {
-    val conj : ClauseProxy = Store(negateClause(f.cl), Role_Conjecture, c)
+    val conj : ClauseProxy = AnnotatedClause(negateClause(f.cl), Role_Conjecture, f.annotation, f.properties)
     val context : Set[ClauseProxy] = FormulaDataStore.getAll(c){ bf => bf.id != f.id}.toSet[ClauseProxy]
     return List(new ScriptTask(cmd, context + conj, c, this))
   }

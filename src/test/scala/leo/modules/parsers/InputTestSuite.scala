@@ -2,12 +2,11 @@ package leo.modules.parsers
 
 import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures.context.Context
-import leo.datastructures.{Literal, Clause}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.blackboard.{Store, AnnotatedClause, Blackboard}
+import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
-
 import leo.modules.{Parsing, Utility}
 
 /**
@@ -38,7 +37,7 @@ class InputTestSuite extends LeoTestSuite {
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
-      var fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => Store(name, Clause(Literal(term, true)), role, Context(), NoAnnotation)}
+      var fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       println("Success!")
       println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${FormulaDataStore.getFormulas.size} formulae added to blackboard.")
       println()

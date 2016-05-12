@@ -1,8 +1,8 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{TAgent, Task, Agent}
-import leo.datastructures.ClauseAnnotation.InferredFrom
-import leo.datastructures.{Term, Clause, ClauseProxy, Literal}
+import leo.agents.{Agent, TAgent, Task}
+import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
+import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.modules.calculus.CalculusRule
@@ -41,8 +41,8 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
     var r : Result= Result()
-    val defn : Set[ClauseProxy] = defs map {case (t1, t2) => Store(Clause(Literal(t1, t2, true)), Role_Definition, c)}
-    r = r.update(ClauseType)((cl, c))((Store(nc, cl.role, c, InferredFrom(ArgumentExtraction, defn + cl)), c))
+    val defn : Set[ClauseProxy] = defs map {case (t1, t2) => AnnotatedClause(Clause(Literal(t1, t2, true)), Role_Definition, NoAnnotation, ClauseAnnotation.PropNoProp)}
+    r = r.update(ClauseType)((cl, c))((AnnotatedClause(nc, cl.role, InferredFrom(ArgumentExtraction, defn + cl), ClauseAnnotation.PropNoProp), c))
     val it = defn.iterator
     while(it.hasNext) {
       val d = it.next()

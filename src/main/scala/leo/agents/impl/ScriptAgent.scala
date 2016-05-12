@@ -3,7 +3,7 @@ package impl
 
 import leo.datastructures.{ClauseProxy, blackboard}
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{DataType, AnnotatedClause, Result, ClauseType}
+import leo.datastructures.blackboard.{DataType, Result, ClauseType}
 import java.io.{PrintWriter, File}
 import leo.modules.external.{ExternalCall, ExternalResult}
 import leo.modules.output.{ToTPTP, Output}

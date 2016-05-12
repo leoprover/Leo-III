@@ -3,7 +3,7 @@ package impl
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import leo.datastructures.{ClauseProxy, Subst, Term}
+import leo.datastructures.{ClauseProxy, Subst, Term, AnnotatedClause}
 import leo.modules.calculus.HuetsPreUnification
 
 import scala.collection.mutable

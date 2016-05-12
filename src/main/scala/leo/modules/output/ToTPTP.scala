@@ -6,7 +6,7 @@ import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
 import scala.annotation.tailrec
-import leo.datastructures.blackboard.AnnotatedClause
+import leo.datastructures.AnnotatedClause
 
 
 /**
@@ -15,7 +15,7 @@ import leo.datastructures.blackboard.AnnotatedClause
  * Translation can be done directly into a string by method `output`
  * or indirect into a `Output` object by the apply method.
  *
- * @see [[Term]], [[leo.datastructures.blackboard.AnnotatedClause]]
+ * @see [[Term]], [[leo.datastructures.AnnotatedClause]]
  * @author Alexander Steen
  * @since 07.11.2014
  */
@@ -25,7 +25,7 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
     * `FormulaStore`.*/
 
   def apply(f: ClauseProxy): Output = new Output {
-    def output = toTPTP(f.id, f.cl.term, f.role)
+    def output = toTPTP(f.id.toString, f.cl.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/
@@ -63,7 +63,7 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
   }
 
   def withAnnotation(cl: ClauseProxy): Output = new Output {
-    def output = toTPTP(cl.id, cl.cl.term, cl.role, cl.annotation)
+    def output = toTPTP(cl.id.toString, cl.cl.term, cl.role, cl.annotation)
   }
 
   /**
@@ -100,7 +100,7 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
   }
 
   /** Translate the `FormulaStore` into a TPTP String in THF format. */
-  def output(cl: ClauseProxy) = toTPTP(cl.id, cl.cl.term, cl.role)
+  def output(cl: ClauseProxy) = toTPTP(cl.id.toString, cl.cl.term, cl.role)
   /** Translate the term information triple into a TPTP String. */
   def output(name: String, t: Clause, role: Role) = toTPTP(name, t.term, role)
 

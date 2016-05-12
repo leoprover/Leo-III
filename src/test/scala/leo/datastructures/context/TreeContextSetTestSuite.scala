@@ -2,9 +2,8 @@ package leo.datastructures.context
 
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite, Configuration}
-import leo.datastructures.blackboard.AnnotatedClause
 import leo.modules.CLParameterParser
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.AnnotatedClause
 
 import leo.datastructures.context.impl._
 

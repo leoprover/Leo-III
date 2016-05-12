@@ -53,9 +53,9 @@ class RelevanceTask(form : AnnotatedFormula, round : Int, a : TAgent) extends Ta
   override def run: Result = {
     val (name, term, role) = InputProcessing.process(Signature.get)(form)
     val nc : ClauseProxy = if(role == Role_Conjecture)    // TODO Move somewhere else?
-      Store(name, Clause(Literal(term, false)), Role_NegConjecture, Context(), InferredFrom(NegateConjecture, Store(name, Clause(Literal(term, true)), role, Context(), FromFile(Configuration.PROBLEMFILE, name))))
+      AnnotatedClause(Clause(Literal(term, false)), Role_NegConjecture, InferredFrom(NegateConjecture, AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)), ClauseAnnotation.PropNoProp)
     else
-      Store(name, Clause(Literal(term, true)), role, Context(), FromFile(Configuration.PROBLEMFILE, name))
+      AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)
     Result().remove(AnnotatedFormulaType)(form).insert(FormulaTakenType)((form,round)).insert(ClauseType)(nc)
   }
   override def bid: Double = 1.0/(5.0 + round.toDouble)

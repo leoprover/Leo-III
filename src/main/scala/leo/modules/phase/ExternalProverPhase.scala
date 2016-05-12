@@ -2,8 +2,9 @@
 package leo.modules.phase
 import leo.agents.TAgent
 import leo.agents.impl.{SZSScriptAgent, SZSScriptMessage}
-import leo.datastructures.{Clause, LitTrue, Literal, Role_Conjecture}
-import leo.datastructures.blackboard.{Blackboard, Store}
+import leo.datastructures.ClauseAnnotation.NoAnnotation
+import leo.datastructures._
+import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.context._
 import leo.modules.agent.split_search.Aggregate_SZS
 import leo.modules.output.ToTPTP
@@ -31,7 +32,7 @@ object ExternalProverPhase extends CompletePhase {
     val cs = Context.leaves(Context())
 
     //Send initial obligation (Proof true)
-    val trueC = Store(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, Context())
+    val trueC = AnnotatedClause(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
     cs foreach {c =>
       Blackboard().send(SZSScriptMessage(trueC)(c), scriptAgent)
     }

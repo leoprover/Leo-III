@@ -114,13 +114,36 @@ case object Derived extends ClauseOrigin { val priority = 1 }
 
 
 trait ClauseProxy extends Pretty {
-  def id: String
+  def id: Long
   def cl: Clause
   def role: Role
   def annotation: ClauseAnnotation
   def properties: ClauseAnnotation.ClauseProp
 
   override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
+}
+
+case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
+                           var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy with Ordered[AnnotatedClause] {
+  override def equals(o: Any): Boolean = o match {
+    case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
+    case _ => false
+  }
+  import leo.Configuration
+  override def compare(that: AnnotatedClause) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl)
+  override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
+}
+
+object AnnotatedClause {
+  private var counter: Long = 0
+
+  def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
+    counter += 1
+    AnnotatedClause(counter, cl, r, annotation, propFlag)
+  }
+
+  def apply(cl: Clause, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp = ClauseAnnotation.PropNoProp): AnnotatedClause =
+    apply(cl, Role_Plain, annotation, propFlag)
 }
 
 abstract sealed class ClauseAnnotation extends Pretty

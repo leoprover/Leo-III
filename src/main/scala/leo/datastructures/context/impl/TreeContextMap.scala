@@ -2,8 +2,6 @@ package leo
 package datastructures.context
 package impl
 
-import leo.datastructures.blackboard.AnnotatedClause
-
 import scala.collection.{Iterator, mutable}
 
 /**
