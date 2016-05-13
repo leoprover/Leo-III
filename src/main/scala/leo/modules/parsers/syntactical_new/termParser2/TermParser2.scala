@@ -20,13 +20,10 @@ object TermParser2
   * Created by samuel on 10.03.16.
   */
 class TermParser2
-  //extends TPTPLexical
-  //extends ParserInterface[Term]
 {
+  // include the tokenizer:
   val lexical = new TPTPLexical
-
   type Token = lexical.Token
-
   import lexical._
 
   // internally used datatypes:
@@ -40,18 +37,16 @@ class TermParser2
     case class TermEntries(data: List[Term]) extends StackEntry
 
     type PStack = List[StackEntry]
-    //type PP = Parser[Token, PStack]
 
-    abstract sealed class RHS
-    case class RHSAction(value: PStack => PStack) extends RHS
-    case class RHSZSymbol(value: ZSymbol) extends RHS
-    case class RHSMatch(value: ClassId) extends RHS
+    abstract sealed class RHSEntry
+    case class RHSAction(value: PStack => PStack) extends RHSEntry
+    case class RHSZSymbol(value: ZSymbol) extends RHSEntry
+    case class RHSToken(value: TokenType) extends RHSEntry
 
     type ZSymbol = Symbol
-    //type ClassId = String
-    type ClassId = Class[_]
+    type TokenType = Class[_]
 
-    type ParseTableType = Map[(ZSymbol, Option[ClassId]), Seq[RHS]]
+    type ParseTableType = Map[(ZSymbol, Option[TokenType]), Seq[RHSEntry]]
 
     lazy val rulesMap: ParseTableType = initMap
 
@@ -63,7 +58,7 @@ class TermParser2
 
   import scala.reflect.ClassTag
 
-  def tokenize(input: String): Seq[Token] = {
+  def tokenize(input: String): TokenStream[Token] = {
     var scanner = new lexical.Scanner(input)
     var tokStream: Seq[Token] = List[Token]()
     while(!scanner.atEnd) {
@@ -74,18 +69,18 @@ class TermParser2
     tokStream
   }
 
-  def parseTerm(input: String): Either[ParserError,(Term, Seq[Token])] = {
+  def parseTerm(input: String): Either[ParserError,(Term, TokenStream[Token])] = {
     parseTerm(
       tokenize(input)
     )
   }
 
-  def parseTerm(tokens: Seq[Token]): Either[ParserError,(Term, Seq[Token])] =
+  def parseTerm(tokens: TokenStream[Token]): Either[ParserError,(Term, TokenStream[Token])] =
     zParser('z0, List.empty,tokens).right flatMap {
       case (TermEntry(term) :: Nil, restTokens) =>
         Right((term, restTokens))
       case (s, _) =>
-        Left(s"Stack is not empty: ${s}")
+        Left(s"parse tree could not bee constructed. Stack: ${s}")
     }
 
   private def zParser(currentState: ZSymbol, stack0: PStack, input0: TokenStream[Token]): Either[ParserError, (PStack,TokenStream[Token])] = {
@@ -93,20 +88,25 @@ class TermParser2
     //println(s"\tstack: ${stack0}\n\t input: ${input0}")
     var stack = stack0
     var input = input0
-    val lookupRet: Option[Seq[RHS]] = input match {
-      case sym :: rest =>
-        rulesMap.get((currentState, Some(sym.getClass))) match {
-          case None =>
-            rulesMap.get((currentState, None))
-          case Some(x) =>
-            stack = TokenEntry(sym) :: stack
-            input = rest
-            Some(x)
-        }
-      case Nil =>
-        rulesMap.get((currentState, None))
+
+    def lookupRule: Option[Seq[RHSEntry]] = {
+      input match {
+        case sym :: rest =>
+          rulesMap.get((currentState, Some(sym.getClass))) match {
+            case None =>
+              rulesMap.get((currentState, None))
+            case Some(x) =>
+              stack = TokenEntry(sym) :: stack
+              input = rest
+              Some(x)
+          }
+        case Nil =>
+          rulesMap.get((currentState, None))
+      }
     }
-    lookupRet match {
+
+    val ruleOrNothing: Option[Seq[RHSEntry]] = lookupRule
+    ruleOrNothing match {
       case None => return Left("lookup failed")
       case Some(rule) =>
         for( ruleEntry <- rule ) {
@@ -120,14 +120,14 @@ class TermParser2
                   case Right((s, rest)) =>
                     stack = s; input = rest
                 }
-            case RHSMatch( tokClassId )
+            case RHSToken( tokType )
               => input match {
-                case head :: tail if head.getClass == tokClassId
+                case head :: tail if head.getClass == tokType
                   =>
                     stack = TokenEntry(head) :: stack
                     input = tail
                 case head :: _
-                  => return Left(s"${tokClassId} expected but ${head} found!")
+                  => return Left(s"${tokType} expected but ${head} found!")
               }
           }
         }
@@ -137,8 +137,8 @@ class TermParser2
 
   private def initMap: ParseTableType = {
     import Actions._
-    implicit def act(f: (PStack) => PStack): RHSAction = RHSAction(f)
-    implicit def toRHSMatch(x: Class[_]): RHSMatch = RHSMatch(x)
+    implicit def action(f: (PStack) => PStack): RHSAction = RHSAction(f)
+    implicit def toRHSMatch(x: Class[_]): RHSToken = RHSToken(x)
     implicit def toRHSZSymbol(x: ZSymbol): RHSZSymbol = RHSZSymbol(x)
 
     def terminalEntry[T <: Token](implicit ct: ClassTag[T]): Class[_] =
@@ -435,7 +435,6 @@ class TermParser2
   private object Actions {
 
     def dbgAction(str: String) = ()
-
     //def dbgAction(str: String)  = println(str)
 
     /*

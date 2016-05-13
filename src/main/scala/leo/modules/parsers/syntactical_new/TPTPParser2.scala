@@ -61,22 +61,22 @@ class TPTPParser2
 
     type PStack = List[StackEntry]
 
-    abstract sealed class RHS
-    case class RHSAction(value: PStack => PStack) extends RHS
-    case class RHSZSymbol(value: ZSymbol) extends RHS
-    case class RHSMatch(value: FirstEntryKey) extends RHS
+    abstract sealed class RHSEntry
+    case class RHSAction(value: PStack => PStack) extends RHSEntry
+    case class RHSZSymbol(value: ZSymbol) extends RHSEntry
+    case class RHSMatch(value: FirstEntryKey) extends RHSEntry
 
     type ZSymbol = Symbol
-    type ClassId = Class[_]
+    type TokenId = Class[_]
 
     sealed class FirstEntryKey
-    case class TokenByType(t: ClassId) extends FirstEntryKey
+    case class TokenByType(t: TokenId) extends FirstEntryKey
     case class SpecificToken(t: Token) extends FirstEntryKey
     case object TermPseudoToken extends FirstEntryKey
     case object ThfFormulaPseudoToken extends FirstEntryKey
     case object AnyToken extends FirstEntryKey
 
-    type ParseTableType = Map[(ZSymbol, FirstEntryKey), Set[Seq[RHS]]]
+    type ParseTableType = Map[(ZSymbol, FirstEntryKey), Set[Seq[RHSEntry]]]
   }
 
   import ParserUtils._
@@ -134,7 +134,7 @@ class TPTPParser2
       return Left("lookup failed")
     }
 
-    def parseWithRule(rule: Seq[RHS]): Either[ParserError, (PStack,TokenStream[Token])] = {
+    def parseWithRule(rule: Seq[RHSEntry]): Either[ParserError, (PStack,TokenStream[Token])] = {
       var stack = stack0
       var input = input0
       for( ruleEntry <- rule ) {
@@ -226,7 +226,7 @@ class TPTPParser2
     Left(s"parser failed! state:${ currentState }, input: ${ input0 }, results of the strategies tried: ${results}")
   }
 
-  private def lookupRule(currentState: ZSymbol, input: TokenStream[Token]): Set[Seq[RHS]] = {
+  private def lookupRule(currentState: ZSymbol, input: TokenStream[Token]): Set[Seq[RHSEntry]] = {
     input match {
       case sym :: rest =>
         val key = SpecificToken(sym)
@@ -291,7 +291,7 @@ class TPTPParser2
                 case List("") => Seq()
                 case x => x.toSeq
               }
-              val rhs: Seq[RHS] =
+              val rhs: Seq[RHSEntry] =
                 rhsStrings map {
                   case str if str == "\"\"" =>
                     throw new Exception(s"epsilon! ${str}")

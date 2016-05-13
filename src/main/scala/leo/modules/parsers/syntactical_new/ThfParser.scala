@@ -1,14 +1,9 @@
 package leo.modules.parsers.syntactical_new
 
-import com.sun.corba.se.impl.orb.ParserTable
 import leo.datastructures.tptp.thf.{! => All, + => SumType, _}
 import leo.datastructures.tptp.Commons
 import leo.modules.parsers.ParserInterface
 import leo.modules.parsers.syntactical_new.termParser2.TermParser2
-
-// import leo.modules.parsers.syntactical_new.ThfTable
-import leo.modules.parsers.lexical.TPTPLexical
-
 
 object ParserUtils {
 
@@ -94,21 +89,21 @@ class ThfParser
 
     type PStack = List[StackEntry]
 
-    abstract sealed class RHS
-    case class RHSAction(value: PStack => PStack) extends RHS
-    case class RHSZSymbol(value: ZSymbol) extends RHS
-    case class RHSMatch(value: FirstEntryKey) extends RHS
+    abstract sealed class RHSEntry
+    case class RHSAction(value: PStack => PStack) extends RHSEntry
+    case class RHSZSymbol(value: ZSymbol) extends RHSEntry
+    case class RHSMatch(value: FirstEntryKey) extends RHSEntry
 
     type ZSymbol = Symbol
-    type ClassId = Class[_]
+    type TokenId = Class[_]
 
     sealed class FirstEntryKey
-    case class TokenByType(t: ClassId) extends FirstEntryKey
+    case class TokenByType(t: TokenId) extends FirstEntryKey
     case class SpecificToken(t: Token) extends FirstEntryKey
     case object TermPseudoToken extends FirstEntryKey
     case object AnyToken extends FirstEntryKey
 
-    type ParseTableType = Map[(ZSymbol, FirstEntryKey), Set[Seq[RHS]]]
+    type ParseTableType = Map[(ZSymbol, FirstEntryKey), Set[Seq[RHSEntry]]]
   }
 
   import ParserUtils._
@@ -164,7 +159,7 @@ class ThfParser
       return Left("lookup failed")
     }
 
-    def parseWithRule(rule: Seq[RHS]): Either[ParserError, (PStack,TokenStream[Token])] = {
+    def parseWithRule(rule: Seq[RHSEntry]): Either[ParserError, (PStack,TokenStream[Token])] = {
       var stack = stack0
       var input = input0
       for( ruleEntry <- rule ) {
@@ -247,7 +242,7 @@ class ThfParser
     Left(s"parser failed! state:${ currentState }, input: ${ input0 }")
   }
 
-  private def lookupRule(currentState: ZSymbol, input: TokenStream[Token]): Set[Seq[RHS]] = {
+  private def lookupRule(currentState: ZSymbol, input: TokenStream[Token]): Set[Seq[RHSEntry]] = {
     input match {
       case sym :: rest =>
         val key = SpecificToken(sym)
@@ -309,7 +304,7 @@ class ThfParser
                 case Array("") => Seq()
                 case x => x.toSeq
               }
-              val rhs: Seq[RHS] =
+              val rhs: Seq[RHSEntry] =
                  rhsStrings map {
                   case str if str == "\"\"" =>
                     throw new Exception(s"epsilon! ${str}")
@@ -350,8 +345,8 @@ class ThfParser
   import Actions._
 
   private object MapImplicits {
-    implicit def act(f: (PStack) => PStack): RHSAction = RHSAction(f)
-    implicit def toRHSZSymbol(x: ZSymbol): RHSZSymbol = RHSZSymbol(x)
+    //implicit def action(f: (PStack) => PStack): RHSAction = RHSAction(f)
+    def toRHSZSymbol(x: ZSymbol): RHSZSymbol = RHSZSymbol(x)
     
     def type_of[T <: Token](implicit ct: ClassTag[T]): Class[_] =
       ct.runtimeClass
