@@ -528,7 +528,7 @@ class TermParser2
       dbgAction("action_17");
       s match {
         case TokenEntry(x: DistinctObject) :: rest
-        => TermEntry(Distinct(x.data)) :: rest
+        => TermEntry(Distinct(x.chars)) :: rest
         case _ => ???
       }
     }
@@ -567,7 +567,7 @@ class TermParser2
       dbgAction("action_20");
       s match {
         case TokenEntry(x: Real) :: rest
-        => NumberEntry(DoubleNumber(Math.pow(x.coeff, x.exp))) :: rest
+        => NumberEntry(DoubleNumber(x.coeff * Math.pow(10, x.exp))) :: rest
         case _ => ???
       }
     }

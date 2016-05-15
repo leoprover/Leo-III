@@ -6,6 +6,7 @@ import leo.modules.parsers.syntactical_new.termParser_functional.{TermParser => 
 import leo.modules.parsers.syntactical_new.termParser2.TermParser2
 import leo.{Checked, Ignored, LeoTestSuite}
 import leo.datastructures.tptp.Commons._
+import leo.modules.output.logger.Out
 
 import scala.util.parsing.input.Position
 

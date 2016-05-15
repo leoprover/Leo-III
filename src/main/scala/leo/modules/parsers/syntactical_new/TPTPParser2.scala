@@ -523,7 +523,7 @@ case _ => throw new Exception(s"action_19: got ${s}")
 
 // general_data -> "distinct_object"
 def action_20(s: PStack):PStack = { dbgAction("action_20"); s match {
-case TokenEntry(DistinctObject(x)) :: rest => GeneralDataEntry(GDistinct(x)) :: rest
+case TokenEntry(x : DistinctObject) :: rest => GeneralDataEntry(GDistinct(x.chars)) :: rest
 case _ => throw new Exception(s"action_20: got ${s}")
 }}
 

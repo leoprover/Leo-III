@@ -297,7 +297,7 @@ object TPTPParsers extends TokenParsers with PackratParsers {
   )
   def atomicWord: Parser[String] = (
       elem("lower word", _.isInstanceOf[LowerWord]) ^^ {_.chars}
-    | elem("single quoted", _.isInstanceOf[SingleQuoted]) ^^ {_.chars}
+    | elem("single quoted", _.isInstanceOf[SingleQuoted]) ^^ {case x: SingleQuoted => x.data}
   )
   def atomicDefinedWord: Parser[String] = elem("Dollar word", _.isInstanceOf[DollarWord]) ^^ {_.chars}
   def atomicSystemWord: Parser[String] = elem("Dollar Dollar word", _.isInstanceOf[DollarDollarWord]) ^^ {_.chars}

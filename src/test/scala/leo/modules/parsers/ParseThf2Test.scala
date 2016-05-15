@@ -6,7 +6,9 @@ package modules.parsers
   * Created by samuel on 03.04.16.
   */
 
+import leo.datastructures.tptp.Commons.TPTPInput
 import leo.modules.parsers.syntactical_new.{TPTPParser2, ThfParser}
+import leo.modules.parsers.syntactical.{TPTPParsers => OldParser}
 import leo.{Checked, LeoTestSuite}
 
 import scala.io.Source
@@ -88,6 +90,72 @@ class ParseThf2Test
   }
   */
 
+
+  /*
+  val tokensOld = OldParser.tokens( inputString )
+  var parsedOld = OldParser.tptpFile(tokensOld)
+  */
+
+  //val parsed = TPTP.parseFile(new CharArrayReader(fromFile(source + "/" +  p._1 + ".p").toArray))
+
+  test("compare parsers", Checked) {
+    Out.output("comparing the output of both parsers...")
+    for (p <- problems) {
+      Out.output(s"testing with problem file ${p}")
+      import scala.util.parsing.input.CharArrayReader
+      def parseWithOld: TPTPInput = {
+        val stream = Source.fromFile(getClass.getResource(source).getPath() + "/" + p._1 + ".p")
+        val res = OldParser.parse(new CharArrayReader(stream.toArray), OldParser.tptpFile).get
+        stream.close()
+        res
+      }
+      def parseWithNew: TPTPInput = {
+        val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
+        val res = TPTPParser2.parse(Source.fromInputStream(stream).mkString).right.get._1
+        stream.close()
+        res
+      }
+      var oldRes = parseWithOld.inputs
+      var newRes = parseWithNew.inputs
+
+      //assert( oldRes == newRes )
+
+      var countSuccess = 0
+
+      while(
+        (!oldRes.isEmpty)
+        ||
+        (!newRes.isEmpty)
+      ) {
+        //assert( oldRes.head == newRes.head )
+        if( oldRes.head == newRes.head ) {
+          Out.output(s"success: ${oldRes.head}")
+          countSuccess += 1
+        }
+        else {
+          Out.output(s"failed: \n\t${oldRes.head}\n\t${newRes.head}")
+        }
+
+        oldRes = oldRes.tail
+        newRes = newRes.tail
+      }
+      if( countSuccess < parseWithNew.inputs.length )
+        fail(s"${parseWithNew.inputs.length - countSuccess} tests failed!")
+      //println(s"res: ${res}")
+    }
+  }
+
+  /*
+  test("parse with new parser", Checked) {
+    for (p <- problems) {
+      val stream = getClass.getResourceAsStream(source+ "/" + p._1 + ".p")
+      val res = TPTPParser2.parse(Source.fromInputStream(stream).mkString)
+      println(s"res: ${res}")
+    }
+  }
+  */
+
+  /*
   for (p <- problems) {
     Out.output(s"testing ${p._2}")
     val stream = getClass().getResourceAsStream(source + "/" + p._1 + ".p")
@@ -110,5 +178,6 @@ class ParseThf2Test
     }
     input.close()
   }
+  */
 
 }

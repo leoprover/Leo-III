@@ -29,7 +29,7 @@ general_data ->
   |general_function action_17
   |variable action_18 { TokenEntry(UpperWord(x)) :: rest => GeneralDataEntry(GVar(x)) :: rest }
   |number action_19 { NumberEntry(x) :: rest => GeneralDataEntry(GNumber(x)) :: rest }
-  |"distinct_object" action_20 { TokenEntry(DistinctObject(x)) :: rest => GeneralDataEntry(GDistinct(x)) :: rest }
+  |"distinct_object" action_20 { TokenEntry(x: DistinctObject) :: rest => GeneralDataEntry(GDistinct(x.chars)) :: rest }
   |formula_data action_21
 general_function ->
    atomic_word "(" general_terms ")" action_22 { TokenEntry(RightParenthesis) :: GeneralTermsEntry(terms) :: TokenEntry(LeftParenthesis) :: TokenEntry((LowerWord|SingleQuoted)(name)) :: rest => GeneralDataEntry(GFunc(name, terms)) :: rest }
