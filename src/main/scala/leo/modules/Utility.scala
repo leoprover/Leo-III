@@ -166,7 +166,7 @@ object Utility {
       sb.append(ToTPTP(name + "_type", key).output)
         sb.append("\n")
     }
-    sb.toString()
+    sb.dropRight(1).toString()
   }
 
   def printProof(cl: ClauseProxy) : Unit = {
