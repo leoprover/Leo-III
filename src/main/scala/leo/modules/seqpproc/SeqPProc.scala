@@ -220,6 +220,32 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
     Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
+    Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
+    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
+    Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size/state.processed.size.toDouble}")
+    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(_.cl.maxLits).size/state.processed.size.toDouble}")
+    Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
+    Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
+    Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
+    Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
+
+    Out.finest("#########################")
+    Out.finest("units")
+    Out.finest(state.rewriteRules.map(_.pretty).mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("Processed unoriented")
+    Out.finest("#########################")
+    Out.finest(state.processed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty).mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("Unprocessed oriented")
+    Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty).mkString("\n\t"))
+    Out.finest("#########################")
+
+
     if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
       Out.comment("Signature extension used:")
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
@@ -292,17 +318,18 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
-    newclauses = Control.simpSet(newclauses)
+//    newclauses = Control.simpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
-    /* Pre-unify new clauses */
-    newclauses = Control.preunifySet(newclauses)
     /* Replace defined equalities */
     newclauses = Control.convertDefinedEqualities(newclauses)
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
+    /* Pre-unify new clauses */
+    newclauses = Control.preunifySet(newclauses)
+
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
