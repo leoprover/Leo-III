@@ -209,7 +209,7 @@ object ReplaceLeibnizEq extends CalculusRule {
     val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t, Term.mkBound(t.ty, 1))))
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
-    (Clause(Simp(newLits)), subst)
+    (Clause((newLits)), subst)
   }
 }
 
@@ -249,7 +249,7 @@ object ReplaceAndrewsEq extends CalculusRule {
     val gbMap = vars.mapValues {case ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
-    (Clause(Simp(newLits)), subst)
+    (Clause((newLits)), subst)
   }
 }
 
