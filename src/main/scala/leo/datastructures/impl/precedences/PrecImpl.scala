@@ -38,6 +38,22 @@ object Prec_ArityOrder extends Precedence {
   }
 }
 
+object Prec_ArityInvOrder extends Precedence {
+  import leo.datastructures.impl.Signature
+  final def compare(x: Const, y: Const) = {
+    val (metaX, metaY) = (Signature(x), Signature(y))
+    if (metaX.ty.isEmpty || metaY.ty.isEmpty) {
+      Out.debug("Comparing unrelated symbols from signature for precedence.")
+      CMP_NC
+    }
+    if (metaX._ty.order == metaX._ty.order) {
+      if (metaX._ty.arity == metaY._ty.arity)
+        intToCMPRes(x, y)
+      else intToCMPRes(metaX._ty.arity, metaY._ty.arity)
+    } else intToCMPRes(metaY._ty.order,metaX._ty.order)
+  }
+}
+
 object Prec_Arity_UnaryFirst extends Precedence {
   import leo.datastructures.impl.Signature
   final def compare(x: Const, y: Const) = {
