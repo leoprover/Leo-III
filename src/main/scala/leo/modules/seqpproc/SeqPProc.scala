@@ -36,7 +36,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // Exhaustively CNF
     result = Control.cnf(cw)
     // Remove defined equalities as far as possible
-    result = Control.convertDefinedEqualities(result)
+//    result = result union Control.convertDefinedEqualities2(result)
 
     // To equation if possible and then apply func ext
     // AC Simp if enabled, then Simp.
@@ -108,13 +108,20 @@ object SeqPProc extends Function1[Long, Unit]{
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug("## Preprocess END\n\n")
-
+    Out.finest(s"################: ${state.unprocessed.toSet.size}")
+    Out.finest(s"Clauses and maximal literals of them:")
+    for (c <- state.unprocessed union conjecture_preprocessed)  {
+      Out.finest(s"Clause ${c.pretty}")
+      Out.finest(s"Maximal literal(s):")
+      Out.finest(s"\t${c.cl.maxLits.map(_.pretty).mkString("\n\t")}")
+    }
+    Out.finest(s"################")
     val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
     Control.fvIndexInit(state.unprocessed.toSet union conjecture_preprocessed)
     var loop = true
 
     // Init loop for conjecture-derived clauses
-    val conjectureProcessedIt = conjecture_preprocessed.iterator
+    val conjectureProcessedIt = conjecture_preprocessed.toSeq.sorted.iterator
     Out.debug("## Pre-reasoning loop BEGIN")
     while(conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
       if (System.currentTimeMillis() - startTime > 1000*Configuration.TIMEOUT) {
@@ -145,6 +152,8 @@ object SeqPProc extends Function1[Long, Unit]{
       }
     }
     Out.debug("## Pre-reasoning loop END")
+
+
 
     /////////////////////////////////////////
     // Main proof loop
@@ -308,6 +317,9 @@ object SeqPProc extends Function1[Long, Unit]{
     val primSubst_result = Control.primsubst(cur)
     newclauses = newclauses union primSubst_result
 
+    /* Replace defined equalities */
+    newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
+
     /* TODO: Choice */
     /////////////////////////////////////////
     // Generating inferences END
@@ -323,8 +335,6 @@ object SeqPProc extends Function1[Long, Unit]{
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
-    /* Replace defined equalities */
-    newclauses = Control.convertDefinedEqualities(newclauses)
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
