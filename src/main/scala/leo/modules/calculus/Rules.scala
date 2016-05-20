@@ -279,7 +279,7 @@ object OrderedParamod extends CalculusRule {
     val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)))
 
     val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
-    val newlits_simp = Simp.apply(newlits)
+    val newlits_simp = newlits // Simp.apply(newlits)
     val resultingClause = Clause(newlits_simp)
 
     resultingClause

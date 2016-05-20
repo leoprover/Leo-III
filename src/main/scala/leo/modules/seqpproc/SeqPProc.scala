@@ -48,7 +48,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Control.simp(result)
     }
     // Pre-unify new clauses
-    result = Control.preunifySet(result)
+    result = result union Control.preunifySet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }
@@ -108,7 +108,7 @@ object SeqPProc extends Function1[Long, Unit]{
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug("## Preprocess END\n\n")
-    Out.finest(s"################: ${state.unprocessed.toSet.size}")
+
     Out.finest(s"Clauses and maximal literals of them:")
     for (c <- state.unprocessed union conjecture_preprocessed)  {
       Out.finest(s"Clause ${c.pretty}")
