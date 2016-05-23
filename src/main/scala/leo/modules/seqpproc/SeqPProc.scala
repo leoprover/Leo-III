@@ -76,7 +76,7 @@ object SeqPProc extends Function1[Long, Unit]{
     val conjWrapper = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
     val negatedConjecture = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
       override def name: String = "neg_conjecture"
-      override val inferenceStatus = Some(SZS_CounterSatisfiable)
+      override val inferenceStatus = Some(SZS_CounterTheorem)
     }, Set(conjWrapper)),ClauseAnnotation.PropSOS)
 
     // Input to proving process (axioms plus negated conjecture, if existent)
