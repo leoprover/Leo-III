@@ -133,6 +133,7 @@ package inferenceControl {
             /* skip, this generates a redundant clause */
           } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
             Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
+            Out.finest(intoClause.pretty)
             val newCl = OrderedParamod(withClause, withIndex, withSide,
               intoClause, intoIndex, intoSide, intoPos, intoTerm)
 
