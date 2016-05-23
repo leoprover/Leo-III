@@ -63,7 +63,10 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
   }
 
   def withAnnotation(cl: ClauseProxy): Output = new Output {
-    def output = toTPTP(cl.id.toString, cl.cl.term, cl.role, cl.annotation)
+    def output = {
+      val normclause = leo.modules.calculus.Simp(cl.cl)
+      toTPTP(cl.id.toString, normclause.term, cl.role, cl.annotation)
+    }
   }
 
   /**

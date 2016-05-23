@@ -27,8 +27,8 @@ object Control {
   @inline final def simpSet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
-  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
-  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
+//  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
+//  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Redundancy
   @inline final def indexedForwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Boolean = ???
   // Indexing
@@ -58,10 +58,17 @@ package inferenceControl {
     final def cnf(cl: AnnotatedClause): Set[AnnotatedClause] = {
       Out.trace(s"CNF of ${cl.id}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
-      val cnfsimp = cnfresult.map(Simp.shallowSimp)
-      val result = cnfresult.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
-      Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
-      result
+      if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
+        // no CNF step at all
+        Out.trace(s"CNF result:\n\t${cl.pretty}")
+        Set(cl)
+      } else {
+        val cnfsimp = cnfresult.map(Simp.shallowSimp)
+        val result = cnfresult.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
+        result
+      }
+
     }
   }
 
@@ -126,6 +133,7 @@ package inferenceControl {
             /* skip, this generates a redundant clause */
           } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
             Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
+            Out.finest(intoClause.pretty)
             val newCl = OrderedParamod(withClause, withIndex, withSide,
               intoClause, intoIndex, intoSide, intoPos, intoTerm)
 
@@ -489,7 +497,11 @@ package inferenceControl {
 
     final def simp(cl: AnnotatedClause): AnnotatedClause = {
       Out.trace(s"Simp on ${cl.id}")
-      val result = AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+      val simpresult = Simp(cl.cl)
+      val result = if (simpresult != cl.cl)
+        AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+      else
+        cl
       Out.finest(s"Simp result: ${result.pretty}")
       result
     }
@@ -508,31 +520,52 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation._
     import leo.modules.output.ToTPTP
 
+//    final def convertDefinedEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
+//      val replaceLeibniz = !Configuration.isSet("nleq")
+//      val replaceAndrews = !Configuration.isSet("naeq")
+//      if (replaceLeibniz || replaceAndrews) {
+//        clSet.map { c =>
+//          var cur_c = c
+//          Out.finest(s"Searching for defined equalities in ${c.id}")
+//          if (replaceLeibniz) {
+//            cur_c = convertLeibniz0(cur_c)
+//          }
+//          if (replaceAndrews) {
+//            cur_c = convertAndrews0(cur_c)
+//          }
+//          cur_c
+//        }
+//      } else clSet
+//    }
     final def convertDefinedEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
       val replaceLeibniz = !Configuration.isSet("nleq")
       val replaceAndrews = !Configuration.isSet("naeq")
       if (replaceLeibniz || replaceAndrews) {
-        clSet.map { c =>
-          var cur_c = c
-          Out.finest(s"Searching for defined equalities in ${c.id}")
+        var newClauses: Set[AnnotatedClause] = Set()
+        val clSetIt = clSet.iterator
+        while (clSetIt.hasNext) {
+          val cl = clSetIt.next()
+          var cur_c = cl
           if (replaceLeibniz) {
             cur_c = convertLeibniz0(cur_c)
           }
           if (replaceAndrews) {
             cur_c = convertAndrews0(cur_c)
           }
-          cur_c
+          if (cur_c != cl) {
+            newClauses = newClauses + cur_c
+          }
         }
-      }
-      clSet
+        newClauses
+      } else clSet
     }
 
     // Leibniz Equalities
-    final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
-      if (Configuration.isSet("nleq")) clSet
-      else
-        clSet.map(convertLeibniz0)
-    }
+//    final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
+//      if (Configuration.isSet("nleq")) clSet
+//      else
+//        clSet.map(convertLeibniz0)
+//    }
 
     final def convertLeibnizEqualities(cl: AnnotatedClause): AnnotatedClause = {
       if (Configuration.isSet("nleq")) cl
@@ -551,10 +584,10 @@ package inferenceControl {
     }
 
     // Andrews Equalities
-    final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
-      if (Configuration.isSet("naeq")) clSet
-      else clSet.map(convertAndrews0)
-    }
+//    final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
+//      if (Configuration.isSet("naeq")) clSet
+//      else clSet.map(convertAndrews0)
+//    }
 
     final def convertAndrewsEqualities(cl: AnnotatedClause): AnnotatedClause = {
       if (Configuration.isSet("naeq")) cl

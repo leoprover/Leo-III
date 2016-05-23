@@ -106,7 +106,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
-  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder_UnaryFirst
+  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
   // more to come ...
 

@@ -64,7 +64,7 @@ object HuetsPreUnification extends Unification {
   }
 
   override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
-    val expandedContraints = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand))
+    val expandedContraints = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand)).sortWith(sort)
     new NDStream[UnificationResult](new MyConfiguration(expandedContraints, Seq()), new MyFun(vargen)) with BFSAlgorithm
   }
 
@@ -343,7 +343,7 @@ object HuetsPreUnification extends Unification {
         val (t,s) = uproblems.head
         leo.Out.finest(s"selected: ${t.pretty} = ${s.pretty}")
         // if it is rigid-rigid -> fail
-        if (!isFlexible(t) && !isFlexible(s)) Seq()
+        if (!isFlexible(t) && !isFlexible(s)) Seq(new MyConfiguration(Some((computeSubst(sproblems),uproblems))))
         else {
           // Changed: Do not compute default sub, but rather return substitution from
           // solved equations and return list of unsolved ones directly.

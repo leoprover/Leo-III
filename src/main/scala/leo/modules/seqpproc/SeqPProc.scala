@@ -36,7 +36,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // Exhaustively CNF
     result = Control.cnf(cw)
     // Remove defined equalities as far as possible
-    result = Control.convertDefinedEqualities(result)
+//    result = result union Control.convertDefinedEqualities2(result)
 
     // To equation if possible and then apply func ext
     // AC Simp if enabled, then Simp.
@@ -48,7 +48,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Control.simp(result)
     }
     // Pre-unify new clauses
-    result = Control.preunifySet(result)
+    result = result union Control.preunifySet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }
@@ -76,7 +76,7 @@ object SeqPProc extends Function1[Long, Unit]{
     val conjWrapper = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(conj._2, true))), conj._3, FromFile(Configuration.PROBLEMFILE, conj._1), ClauseAnnotation.PropNoProp)
     val negatedConjecture = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(conj._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
       override def name: String = "neg_conjecture"
-      override val inferenceStatus = Some(SZS_CounterSatisfiable)
+      override val inferenceStatus = Some(SZS_CounterTheorem)
     }, Set(conjWrapper)),ClauseAnnotation.PropSOS)
 
     // Input to proving process (axioms plus negated conjecture, if existent)
@@ -109,12 +109,19 @@ object SeqPProc extends Function1[Long, Unit]{
     }
     Out.debug("## Preprocess END\n\n")
 
+    Out.finest(s"Clauses and maximal literals of them:")
+    for (c <- state.unprocessed union conjecture_preprocessed)  {
+      Out.finest(s"Clause ${c.pretty}")
+      Out.finest(s"Maximal literal(s):")
+      Out.finest(s"\t${c.cl.maxLits.map(_.pretty).mkString("\n\t")}")
+    }
+    Out.finest(s"################")
     val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
     Control.fvIndexInit(state.unprocessed.toSet union conjecture_preprocessed)
     var loop = true
 
     // Init loop for conjecture-derived clauses
-    val conjectureProcessedIt = conjecture_preprocessed.iterator
+    val conjectureProcessedIt = conjecture_preprocessed.toSeq.sorted.iterator
     Out.debug("## Pre-reasoning loop BEGIN")
     while(conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
       if (System.currentTimeMillis() - startTime > 1000*Configuration.TIMEOUT) {
@@ -145,6 +152,8 @@ object SeqPProc extends Function1[Long, Unit]{
       }
     }
     Out.debug("## Pre-reasoning loop END")
+
+
 
     /////////////////////////////////////////
     // Main proof loop
@@ -220,6 +229,32 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
     Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
+    Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
+    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
+    Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size/state.processed.size.toDouble}")
+    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(_.cl.maxLits).size/state.processed.size.toDouble}")
+    Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
+    Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
+    Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
+    Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
+
+    Out.finest("#########################")
+    Out.finest("units")
+    Out.finest(state.rewriteRules.map(_.pretty).mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("Processed unoriented")
+    Out.finest("#########################")
+    Out.finest(state.processed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty).mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("Unprocessed oriented")
+    Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty).mkString("\n\t"))
+    Out.finest("#########################")
+
+
     if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
       Out.comment("Signature extension used:")
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
@@ -233,6 +268,7 @@ object SeqPProc extends Function1[Long, Unit]{
     if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && state.derivationClause.isDefined) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
       //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+      Out.output(Utility.userConstantsForProof(Signature.get))
       Utility.printProof(state.derivationClause.get)
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
@@ -281,6 +317,9 @@ object SeqPProc extends Function1[Long, Unit]{
     val primSubst_result = Control.primsubst(cur)
     newclauses = newclauses union primSubst_result
 
+    /* Replace defined equalities */
+    newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
+
     /* TODO: Choice */
     /////////////////////////////////////////
     // Generating inferences END
@@ -291,17 +330,16 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
-    newclauses = Control.simpSet(newclauses)
+//    newclauses = Control.simpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
-    /* Pre-unify new clauses */
-    newclauses = Control.preunifySet(newclauses)
-    /* Replace defined equalities */
-    newclauses = Control.convertDefinedEqualities(newclauses)
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
+    /* Pre-unify new clauses */
+    newclauses = Control.preunifySet(newclauses)
+
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
