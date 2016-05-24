@@ -129,7 +129,10 @@ object HuetsPreUnification extends Unification {
         val ind3 = uproblems.indexWhere(BindRule.canApply)
         if (ind3 > -1) {
           leo.Out.finest("Apply Bind")
+          leo.Out.finest(s"Bind on " +
+            s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
           val be = BindRule(vargen, uproblems(ind3))
+          leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
           val sb = computeSubst(List(be))
           detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
         } else {
@@ -202,6 +205,10 @@ object HuetsPreUnification extends Unification {
       leo.Out.trace(s"Apply Imitate")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
+      leo.Out.finest(s"t: ${t.pretty}")
+      leo.Out.finest(s"t.headsymbol: ${t.headSymbol.pretty}")
+      leo.Out.finest(s"s: ${s.pretty}")
+      leo.Out.finest(s"s.headsymbol: ${s.headSymbol.pretty}")
       val res = (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s.headSymbol))
       leo.Out.trace(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
       res
@@ -228,7 +235,7 @@ object HuetsPreUnification extends Unification {
       leo.Out.trace(s"Apply Project")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1)).map(p => Term.mkBound(p._1,p._2)) // TODO
+      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1).reverse).map(p => Term.mkBound(p._1,p._2)) // TODO
       leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
       //Take only those bound vars that are itself a type with result type == type of general binding
       val funBVars = bvars.filter(bvar => t.headSymbol.ty.funParamTypesWithResultType.endsWith(bvar.ty.funParamTypesWithResultType))
