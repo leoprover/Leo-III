@@ -44,20 +44,29 @@ package object calculus {
       *          `f.existingVars == cl.implicitlyBound`
       *          he list of all free variables of a clause*/
     def existingVars: Seq[(Int, Type)]
+    /**
+      * Returns a copy of the underlying FreshVarGen
+      */
+    def copy: FreshVarGen
   }
-  final def freshVarGen(cl: Clause): FreshVarGen = new FreshVarGen {
-    private var cur = cl.maxImplicitlyBound
-    private var vars: Seq[(Int, Type)] = cl.implicitlyBound
-    /** Returns a fresh variable represented as its loose de-bruijn index
-      *  wrt. the context of this generator. */
+
+  final private def freshVarGen0(variables:  Seq[(Int, Type)], curVar: Int): FreshVarGen = new FreshVarGen {
+    private var cur = curVar
+    private var vars: Seq[(Int, Type)] = variables
+
     override final def next(ty: Type): (Int, Type) = {
       cur = cur + 1
       vars = (cur, ty) +: vars
       (cur, ty)
     }
+
     override final def existingVars: Seq[(Int, Type)] = vars
+
+    override final def copy: FreshVarGen = freshVarGen0(vars, cur)
   }
-  final def freshVarGenFromBlank: FreshVarGen = freshVarGen(Clause(Seq()))
+
+  final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.maxImplicitlyBound)
+  final def freshVarGenFromBlank: FreshVarGen = freshVarGen0(Seq(), 0)
 
   // Adopted from tomer's code:
   // n is arity of variable
@@ -66,18 +75,30 @@ package object calculus {
   // y1,..,yn are new bound variable
   // x1,..,xm are new free variables
   final def partialBinding(varGen: FreshVarGen, typ: Type, hdSymb: Term) = {
-    val ys = typ.funParamTypes.zip(List.range(1,typ.arity+1)).map(p => Term.mkBound(p._1,p._2))
+    // if typ = t1 -> t2 -> ... -> tn -> t(n+1) (where t(n+1) is not a function type)
+    // then yTypes is (t1,t2,t3,..., tn)
+    val yTypes = typ.funParamTypes
+    // y1 ... yn new bound variables
+    // yi has type ti
+    // yi has de-Bruijn index (n-i)+1, i.e. y1:t1 has de-Bruijn index n and so on,
+    // since they are applied as  xi y1 y2 y3 ... yn for each 1 <= i <= m
+    // hence to keep type/parameter order y1 binds to the outermost lambda.
+    val ys = yTypes.zip(List.range(1,typ.arity+1).reverse).map(p => Term.mkBound(p._1,p._2))
+    // we need as many new free variables as arguments required by hdsymb
+    // i.e. if hdSymb.ty = u1 -> u2 -> ... -> um -> u(m+1) where u(n+1) is not a function type, then
+    // xs = (x1, ..., xm) where xi.ty = ui
     val xs =
       if (ys.isEmpty)
         hdSymb.ty.funParamTypes.map(p => varGen(p))
       else {
-//        val ysTyp = Type.mkFunType(ys.map(_.ty))
-        val ysTyp = ys.map(_.ty)
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp({val i = varGen.next(Type.mkFunType(ysTyp,p));Term.mkBound(i._2,i._1+ys.size)}, ys))
+        hdSymb.ty.funParamTypes.map(p =>
+          // We need to lift each new free variable by ys.size since we create new lambda binders around them
+          // in the last step
+          Term.mkTermApp({val i = varGen.next(Type.mkFunType(yTypes,p));Term.mkBound(i._2,i._1+ys.size)}, ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
 
-    val aterm = Term.λ(ys.map(_.ty))(t)
+    val aterm = Term.λ(yTypes)(t)
     aterm.etaExpand
   }
 
