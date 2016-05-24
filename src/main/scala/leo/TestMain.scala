@@ -48,7 +48,8 @@ object TestMain {
       return
     }
 
-    val timeWOParsing : Long = System.currentTimeMillis() - startTime
+    val afterParsing = System.currentTimeMillis()
+    val timeWOParsing : Long = afterParsing - startTime
 
     printPhase(filterphase)
     if(!filterphase.execute()){
@@ -56,6 +57,9 @@ object TestMain {
       unexpectedEnd(System.currentTimeMillis()-startTime)
       return
     }
+
+    val timeForFilter : Long = System.currentTimeMillis() - afterParsing
+    leo.Out.info(s"Filter Time : ${timeForFilter}ms")
 
     leo.Out.info("Used :")
     leo.Out.info(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
@@ -72,12 +76,13 @@ object TestMain {
       return
     }
 
+    val endTime = System.currentTimeMillis()
     val time = System.currentTimeMillis() - startTime
     Scheduler().killAll()
 
     val szsStatus : StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout : StatusSZS){x => x}
     Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${timeWOParsing} ms w/o parsing"))
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${endTime - afterParsing} ms w/o parsing"))
 
     val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption    // Empty clause suchen
     if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {

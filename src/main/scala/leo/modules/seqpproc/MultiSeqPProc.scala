@@ -79,7 +79,7 @@ object MultiSeqPProc extends ProofProcedure {
     // SOS set-sup
     /////////////////////////////////////////
     var test = false
-    val conjecture : Iterable[AnnotatedClause] = cs.filter(x => x.role == Role_NegConjecture)
+    val conjecture : Iterable[AnnotatedClause] = cs.filter(x => x.role == Role_NegConjecture || x.role == Role_Conjecture)
     assert(conjecture.size == 1)
     val negatedConjecture : AnnotatedClause = conjecture.head  // TODO no conjecture?
     val effectiveInputWithoutConjecture : Iterable[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
