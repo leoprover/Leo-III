@@ -1,6 +1,6 @@
 package leo.agents
 
-import leo.datastructures.{ClauseProxy, Clause}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.modules.output.StatusSZS
@@ -12,6 +12,7 @@ import leo.datastructures.context.Context
   */
 class DoItYourSelfAgent(val procedure : ProofProcedure) extends Agent{
   override def name: String = procedure.name
+  override val interest : Option[Seq[DataType]] = None
 
   /**
     * This method should be called, whenever a formula is added to the blackboard.
@@ -38,7 +39,8 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
   override def writeSet(): Map[DataType, Set[Any]] = Map()
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
-    val (status, res) = a.procedure.execute(fs, c)
+    val fs1 = fs.map(_.asInstanceOf[AnnotatedClause])
+    val (status, res) = a.procedure.execute(fs1, c)
     c.close()
     var r = Result().insert(StatusType)(SZSStore(status, c))
     if(res.nonEmpty){
@@ -74,5 +76,5 @@ trait ProofProcedure {
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  def execute(formulas : Iterable[ClauseProxy], c : Context) : (StatusSZS, Option[Seq[ClauseProxy]])
+  def execute(formulas : Iterable[AnnotatedClause], c : Context) : (StatusSZS, Option[Seq[AnnotatedClause]])
 }

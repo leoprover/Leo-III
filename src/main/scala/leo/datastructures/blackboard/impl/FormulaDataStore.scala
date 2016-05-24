@@ -300,7 +300,8 @@ object FormulaDataStore extends DataStore {
         return false
       }
       addFormula(fn, cn)
-    case _ => false
+    case _ =>
+      false
   }
 
   override def clear(): Unit = TaskSet.clear()

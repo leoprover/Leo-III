@@ -2,7 +2,8 @@ package leo.datastructures.blackboard.impl
 
 import leo._
 import leo.agents._
-import leo.datastructures.blackboard.ActiveTracker
+import leo.datastructures.blackboard.{ActiveTracker, TaskSet}
+
 import scala.collection.mutable
 
 /**
@@ -21,7 +22,7 @@ import scala.collection.mutable
   * </ol>
   * </p>
   */
-class TaskSelectionSet {
+class TaskSelectionSet extends TaskSet{
   // TODO handle turning passive / active correctly
 
   /* -----------------------------------------------------------------------------------
@@ -143,13 +144,6 @@ class TaskSelectionSet {
     }
   }
 
-  /**
-    * Submits mutliple tasks created by an agent at once.
-    *
-    * @param ts The tasks agent `a` wants to execute
-    */
-  def submit(ts : Iterable[Task]) : Unit = ts.foreach(submit)
-
 
   /**
     *
@@ -166,15 +160,6 @@ class TaskSelectionSet {
       zero.getOrElseUpdate(a1, new AgentTaskQueue).add(t1)
     }
   }
-
-  /**
-    * Finishes a set of tasks after their execution.
-    * They are henceforth removed from the TaskSet and no longer
-    * considered for dependecy consideration.
-    *
-    * @param ts the newly finished tasks
-    */
-  def finish(ts : Iterable[Task]) : Unit = ts.foreach(finish)
 
   /**
     * Marks a set of tasks as commited to the scheduler.

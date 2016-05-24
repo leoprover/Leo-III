@@ -206,7 +206,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
         work = true
 
-
 //        Out.comment("[Writer] : Got task and begin to work.")
         // Update blackboard
         val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
@@ -241,7 +240,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         curExec.remove(task)
         agent.taskFinished(task)
 
-        if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
+//        if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
 
         try {
           Blackboard().filterAll { a => // Informing agents of the changes

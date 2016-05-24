@@ -157,7 +157,7 @@ private object TaskSet {
   /**
     * The set containing all dependencies on agents
     */
-  val taskSet : TaskSelectionSet = new TaskSelectionSet()
+  val taskSet : TaskSet = new SimpleTaskSet()
 
   private val AGENT_SALARY : Double = 5
 
@@ -209,20 +209,17 @@ private object TaskSet {
           //
           var r: List[(Double, TAgent, Task)] = Nil
           while (r.isEmpty) {
-            println("Polling Tasks")
             val ts = taskSet.executableTasks
             ts.foreach { case t =>
               val a = t.getAgent
               val budget = regAgents.getOrElse(a, 0.0)
               r = (t.bid * budget, a, t) :: r  }
             if (r.isEmpty) {
-              if (ActiveTracker.isNotActive) {
+              if (ActiveTracker.get <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
               //leo.Out.comment("Going to wait for new Tasks.")
-              println("Sleeping")
-              println(s"  ${taskSet.registeredTasks.map(_.pretty).mkString("\n  ")}")
               TaskSet.wait()
               regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
