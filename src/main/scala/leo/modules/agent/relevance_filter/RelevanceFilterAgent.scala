@@ -1,15 +1,15 @@
 package leo.modules.agent.relevance_filter
 
 import leo.Configuration
-import leo.agents.{TAgent, Task, Agent}
-import leo.datastructures.ClauseAnnotation.{InferredFrom, FromFile}
+import leo.agents.{Agent, TAgent, Task}
+import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.SZS_Theorem
+import leo.modules.output.{SZS_CounterTheorem, SZS_Theorem}
 import leo.modules.parsers.InputProcessing
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
@@ -70,6 +70,6 @@ object AnnotatedFormulaType extends DataType
 object FormulaTakenType extends DataType
 
 object NegateConjecture extends CalculusRule {
-  override def name: String = "negate_conjecture"
-  override val inferenceStatus = Some(SZS_Theorem)
+  override def name: String = "neg_conjecture"
+  override val inferenceStatus = Some(SZS_CounterTheorem)
 }
