@@ -350,7 +350,7 @@ object HuetsPreUnification extends Unification {
         val (t,s) = uproblems.head
         leo.Out.finest(s"selected: ${t.pretty} = ${s.pretty}")
         // if it is rigid-rigid -> fail
-        if (!isFlexible(t) && !isFlexible(s)) Seq(new MyConfiguration(Some((computeSubst(sproblems),uproblems))))
+        if (!isFlexible(t) && !isFlexible(s)) Seq()
         else {
           // Changed: Do not compute default sub, but rather return substitution from
           // solved equations and return list of unsolved ones directly.
