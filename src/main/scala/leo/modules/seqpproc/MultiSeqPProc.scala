@@ -3,6 +3,7 @@ package leo.modules.seqpproc
 import java.util.concurrent.atomic.AtomicInteger
 
 import leo.agents.ProofProcedure
+import leo.agents.impl.SZSScriptAgent
 import leo.{Configuration, Out}
 import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.impl.Signature
@@ -21,6 +22,9 @@ import leo.modules.Utility
   * @since 5/24/16
   */
 object MultiSeqPProc extends ProofProcedure {
+
+  val externalCallIteration = 3
+
 
   final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
     var result: Set[AnnotatedClause] = Set()
@@ -149,11 +153,19 @@ object MultiSeqPProc extends ProofProcedure {
     /////////////////////////////////////////
     // Main proof loop
     /////////////////////////////////////////
+    var sinceLastExternal : Int = 0
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
     while (loop && !prematureCancel(state.noProcessedCl)) {
       if (state.unprocessed.isEmpty) {
         loop = false
       } else {
+        // Should an external Call be made?
+        sinceLastExternal += 1
+        if(sinceLastExternal >= externalCallIteration){
+          SZSScriptAgent.execute(state.processed, c)
+          sinceLastExternal=0
+          return (SZS_GaveUp, None) // TODO : Remove after testing Test, why does wait not work???
+        }
         // No cancel, do reasoning step
         if (Configuration.isSet("ec") && state.noProcessedCl % 20 == 0 && !test) {
           test = true

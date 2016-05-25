@@ -32,7 +32,7 @@ import java.io.IOException
 abstract class ScriptAgent(path : String) extends Agent {
   override val interest : Option[Seq[DataType]] = None
 
-  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
+  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
 
   def encode(fs: Set[ClauseProxy]): Seq[String]
 
@@ -76,13 +76,14 @@ abstract class ScriptAgent(path : String) extends Agent {
       * This function runs the specific agent on the registered Blackboard.
       */
     override def run: Result = {
+      println("Task created")
       val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
 
       val retValue = process.exitValue
       val out = process.out
       val err = process.error
-      a.handle(c, out, err, retValue)
+      a.handle(c, out, err, retValue, fs)
     }
 
     override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"

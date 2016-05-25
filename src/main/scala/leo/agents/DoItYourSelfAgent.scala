@@ -41,6 +41,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
   override def run: Result = {
     val fs1 = fs.map(_.asInstanceOf[AnnotatedClause])
     val (status, res) = a.procedure.execute(fs1, c)
+    if(res.isEmpty) return Result()
     c.close()
     var r = Result().insert(StatusType)(SZSStore(status, c))
     if(res.nonEmpty){
