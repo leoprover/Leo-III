@@ -112,7 +112,6 @@ object HuetsPreUnification extends Unification {
   @tailrec
   protected def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
     leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-
     // apply delete
     val ind1 = uproblems.indexWhere(DeleteRule.canApply)
     if (ind1 > -1) {
@@ -200,16 +199,22 @@ object HuetsPreUnification extends Unification {
    * equation is not oriented
    */
   object ImitateRule extends HuetsRule[UEq] {
+    private def takePrefixTypeArguments(t: Term): Seq[Type] = {
+      t match {
+        case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
+        case _ => Seq()
+      }
+    }
 
     def apply(vargen: FreshVarGen, e: UEq): UEq = {
       leo.Out.trace(s"Apply Imitate")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      leo.Out.finest(s"t: ${t.pretty}")
-      leo.Out.finest(s"t.headsymbol: ${t.headSymbol.pretty}")
-      leo.Out.finest(s"s: ${s.pretty}")
-      leo.Out.finest(s"s.headsymbol: ${s.headSymbol.pretty}")
-      val res = (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s.headSymbol))
+      val s0 = if (s.headSymbol.ty.isPolyType)
+        Term.mkTypeApp(s.headSymbol, takePrefixTypeArguments(s))
+      else
+        s.headSymbol
+      val res = (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s0))
       leo.Out.trace(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
       res
     }
