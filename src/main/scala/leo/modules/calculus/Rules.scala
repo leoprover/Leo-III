@@ -294,7 +294,7 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty}")
     Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty}")
-    val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)))
+    val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount)))
 
     Out.finest(s"unificationLit: ${unificationLit.pretty}")
 

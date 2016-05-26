@@ -112,7 +112,6 @@ object HuetsPreUnification extends Unification {
   @tailrec
   protected def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
     leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-
     // apply delete
     val ind1 = uproblems.indexWhere(DeleteRule.canApply)
     if (ind1 > -1) {
@@ -129,7 +128,10 @@ object HuetsPreUnification extends Unification {
         val ind3 = uproblems.indexWhere(BindRule.canApply)
         if (ind3 > -1) {
           leo.Out.finest("Apply Bind")
+          leo.Out.finest(s"Bind on " +
+            s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
           val be = BindRule(vargen, uproblems(ind3))
+          leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
           val sb = computeSubst(List(be))
           detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
         } else {
@@ -197,12 +199,22 @@ object HuetsPreUnification extends Unification {
    * equation is not oriented
    */
   object ImitateRule extends HuetsRule[UEq] {
+    private def takePrefixTypeArguments(t: Term): Seq[Type] = {
+      t match {
+        case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
+        case _ => Seq()
+      }
+    }
 
     def apply(vargen: FreshVarGen, e: UEq): UEq = {
       leo.Out.trace(s"Apply Imitate")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      val res = (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s.headSymbol))
+      val s0 = if (s.headSymbol.ty.isPolyType)
+        Term.mkTypeApp(s.headSymbol, takePrefixTypeArguments(s))
+      else
+        s.headSymbol
+      val res = (t.headSymbol,partialBinding(vargen, t.headSymbol.ty,  s0))
       leo.Out.trace(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
       res
     }
@@ -228,7 +240,7 @@ object HuetsPreUnification extends Unification {
       leo.Out.trace(s"Apply Project")
       // orienting the equation
       val (t,s) = if (isFlexible(e._1)) (e._1,e._2) else (e._2, e._1)
-      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1)).map(p => Term.mkBound(p._1,p._2)) // TODO
+      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1).reverse).map(p => Term.mkBound(p._1,p._2)) // TODO
       leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
       //Take only those bound vars that are itself a type with result type == type of general binding
       val funBVars = bvars.filter(bvar => t.headSymbol.ty.funParamTypesWithResultType.endsWith(bvar.ty.funParamTypesWithResultType))
@@ -343,7 +355,7 @@ object HuetsPreUnification extends Unification {
         val (t,s) = uproblems.head
         leo.Out.finest(s"selected: ${t.pretty} = ${s.pretty}")
         // if it is rigid-rigid -> fail
-        if (!isFlexible(t) && !isFlexible(s)) Seq(new MyConfiguration(Some((computeSubst(sproblems),uproblems))))
+        if (!isFlexible(t) && !isFlexible(s)) Seq()
         else {
           // Changed: Do not compute default sub, but rather return substitution from
           // solved equations and return list of unsolved ones directly.
