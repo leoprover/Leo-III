@@ -233,7 +233,7 @@ private object TaskSet {
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: List[(Double, TAgent, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size }
+          val queue: List[(Double, TAgent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }
 
           //        println("Sorted tasks.")
 
