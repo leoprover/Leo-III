@@ -2,7 +2,8 @@ package leo.datastructures.blackboard.impl
 
 import leo._
 import leo.agents._
-import leo.datastructures.blackboard.ActiveTracker
+import leo.datastructures.blackboard.{ActiveTracker, TaskSet}
+
 import scala.collection.mutable
 
 /**
@@ -21,7 +22,7 @@ import scala.collection.mutable
   * </ol>
   * </p>
   */
-class TaskSelectionSet {
+class TaskSelectionSet extends TaskSet{
   // TODO handle turning passive / active correctly
 
   /* -----------------------------------------------------------------------------------
@@ -143,13 +144,6 @@ class TaskSelectionSet {
     }
   }
 
-  /**
-    * Submits mutliple tasks created by an agent at once.
-    *
-    * @param ts The tasks agent `a` wants to execute
-    */
-  def submit(ts : Iterable[Task]) : Unit = ts.foreach(submit)
-
 
   /**
     *
@@ -166,15 +160,6 @@ class TaskSelectionSet {
       zero.getOrElseUpdate(a1, new AgentTaskQueue).add(t1)
     }
   }
-
-  /**
-    * Finishes a set of tasks after their execution.
-    * They are henceforth removed from the TaskSet and no longer
-    * considered for dependecy consideration.
-    *
-    * @param ts the newly finished tasks
-    */
-  def finish(ts : Iterable[Task]) : Unit = ts.foreach(finish)
 
   /**
     * Marks a set of tasks as commited to the scheduler.
@@ -225,6 +210,10 @@ class TaskSelectionSet {
     */
   def executableTasks : Iterable[Task] = synchronized {
     zero.values.flatMap(_.all).toSet[Task] -- currentlyExecution.toSet
+  }
+
+  def registeredTasks : Iterable[Task] = synchronized {
+    depSet.getAllTasks.toSet -- currentlyExecution.toSet
   }
 }
 
@@ -309,6 +298,12 @@ trait DependencySet {
     * Brings the Set back to the initial state.
     */
   def clear() : Unit
+
+  /**
+    * A list of all registered Tasks
+    * @return all registered Tasks
+    */
+  def getAllTasks : Seq[Task]
 }
 
 
@@ -325,6 +320,8 @@ class DependencySetImpl extends DependencySet {
 
   private val read : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
 
+  private val allTasks : mutable.Set[Task] = new mutable.HashSet[Task]()
+
   override def clear() : Unit = {
     allAgents.clear()
     in.clear()
@@ -332,6 +329,8 @@ class DependencySetImpl extends DependencySet {
     write.clear()
     read.clear()
   }
+
+  override def getAllTasks : Seq[Task] = allTasks.toSeq
 
   // TODO Hier funktioniert das symmetrisch machen noch nicht!
   override def addAgent(a: TAgent): Unit = {
@@ -443,7 +442,7 @@ class DependencySetImpl extends DependencySet {
         }
       }
     }
-
+    allTasks.remove(t)
     val impls = getImpl(t).filter{t1 =>
       !existDep(t1)} // TODO optimize
     impls
@@ -467,6 +466,7 @@ class DependencySetImpl extends DependencySet {
         }
       }
     }
+    allTasks.add(t)
 
     val imp = getImpl(t) // TODO optimize, only return the ones that are now with 1 dependency
     imp

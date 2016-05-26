@@ -9,10 +9,13 @@ import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.agent.preprocessing.{ArgumentExtractionAgent, EqualityReplaceAgent, FormulaRenamingAgent, NormalizationAgent}
 import leo.modules.agent.relevance_filter.BlackboardPreFilterSet
 import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
-import leo.modules.{CLParameterParser, Parsing}
+import leo.modules.{CLParameterParser, Parsing, SZSOutput}
 import leo.modules.external.ExternalCall
-import leo.modules.output.ToTPTP
-import leo.modules.phase.{ExternalProverPhase, FilterPhase, LoadPhase, PreprocessingPhase}
+import leo.modules.output.{SZS_Theorem, SZS_Timeout, StatusSZS, ToTPTP}
+import leo.modules.phase._
+import leo.modules.Utility
+import leo.datastructures.impl.Signature
+import leo.modules.seqpproc.MultiSeqPProc
 
 /**
   * Created by mwisnie on 3/7/16.
@@ -28,6 +31,8 @@ object TestMain {
       }
     }
 
+    val startTime : Long = System.currentTimeMillis()
+
     val loadphase = new LoadPhase(Configuration.PROBLEMFILE)
     val filterphase = new FilterPhase()
 
@@ -36,16 +41,25 @@ object TestMain {
     Blackboard().addDS(BlackboardPreFilterSet)
     Blackboard().addDS(SZSDataStore)
 
-
+    printPhase(loadphase)
     if(!loadphase.execute()) {
       Scheduler().killAll()
+      unexpectedEnd(System.currentTimeMillis() - startTime)
       return
     }
 
+    val afterParsing = System.currentTimeMillis()
+    val timeWOParsing : Long = afterParsing - startTime
+
+    printPhase(filterphase)
     if(!filterphase.execute()){
       Scheduler().killAll()
+      unexpectedEnd(System.currentTimeMillis()-startTime)
       return
     }
+
+    val timeForFilter : Long = System.currentTimeMillis() - afterParsing
+    leo.Out.info(s"Filter Time : ${timeForFilter}ms")
 
     leo.Out.info("Used :")
     leo.Out.info(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
@@ -53,56 +67,42 @@ object TestMain {
     leo.Out.info(PreFilterSet.getFormulas.mkString("\n"))
 
 
-    // Were to split?
-    // 4 Splits -> 1st Normal, 2nd Normalization + EqualityReplacement, 3rd + ArgumentExtraction, 4th + FormulaRenaming
-    Context().split(BetaSplit, 2)
-    var cs = Context().childContext.toSeq
-    val normal = cs(0)
-    val allNormeq = cs(1)
-    cs(1).split(BetaSplit, 2)
-    cs = cs(1).childContext.toSeq
-    val normeq = cs(0)
-    val allArgExt = cs(1)
-    cs(1).split(BetaSplit, 2)
-    cs = cs(1).childContext.toSeq
-    val argext = cs(0)
-    val rename = cs(1)
+    val searchPhase = new MultiSearchPhase(MultiSeqPProc)
 
-    val preprocessphase = new PreprocessingPhase(Seq(new ArgumentExtractionAgent(allArgExt), EqualityReplaceAgent, new FormulaRenamingAgent(rename), new NormalizationAgent(allNormeq)))
-
-    if(!preprocessphase.execute()){
+    printPhase(searchPhase)
+    if(!searchPhase.execute()){
       Scheduler().killAll()
+      unexpectedEnd(System.currentTimeMillis() - startTime)
       return
     }
 
-    if(!ExternalProverPhase.execute()){
-      Scheduler().killAll()
-      return
-    }
-
+    val endTime = System.currentTimeMillis()
+    val time = System.currentTimeMillis() - startTime
     Scheduler().killAll()
 
+    val szsStatus : StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout : StatusSZS){x => x}
+    Out.output("")
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${endTime - afterParsing} ms w/o parsing"))
 
-    val c = Context()
-    Context.closedLeaves(c).foreach(printContext(_))
-
-    leo.Out.comment(s"\n\nSZS status ${SZSDataStore.getStatus(c).fold("Unknown")(szs => szs.output)} for ${Configuration.PROBLEMFILE}")
-    /*
-    val e = ExternalCall.exec("/home/mwisnie/prover/leo2/bin/leo -po 1 ", ToTPTP(it).map(_.output))
-    println("Start executing")
-    val exitV = e.exitValue
-    val output = e.out
-    println("Leo2 returned with "+exitV)
-    while(output.hasNext){
-      val o = output.next()
-      println(o)
+    val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption    // Empty clause suchen
+    if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
+      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+      Out.output(Utility.userConstantsForProof(Signature.get))
+      Utility.printProof(proof.get)
+      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
-    */
   }
 
-  private def printContext(c : Context): Unit ={
-    leo.Out.comment(s"Context : ${Context.getPath(c).map(_.contextID).mkString("/")} : status = ${SZSDataStore.getStatus(c).fold("Unkown")(szs => szs.output)}")
-    val forms = FormulaDataStore.getFormulas(c)
-    leo.Out.comment("  "+forms.map(_.pretty).mkString("\n  "))
+  private def unexpectedEnd(time : Long) {
+    val szsStatus : StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout : StatusSZS){x => x}
+    Out.output("")
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+  }
+
+  private def printPhase(p : Phase) = {
+    Out.debug(" ########################")
+    Out.debug(s" Starting Phase ${p.name}")
+    Out.debug(p.description)
   }
 }

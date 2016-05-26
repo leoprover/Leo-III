@@ -155,6 +155,14 @@ object PreFilterSet {
     }
   }
 
+  /**
+    * Checks in the PreFilterSet, if a formumla is still unused.
+    *
+    * @param formula The formula to check for
+    * @return true, iff the formula is unused
+    */
+  def isUnused(formula : AnnotatedFormula) : Boolean = unused.contains(formula.name)
+
   def clear() = {
     unused.clear()
     usedSymbs.clear()

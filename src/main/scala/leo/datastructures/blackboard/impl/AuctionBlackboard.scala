@@ -55,10 +55,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
     TaskSet.synchronized(TaskSet.taskSet.submit(ts))
+    signalTask()
   }
 
   override def finishTask(t : Task) : Unit = {
     TaskSet.synchronized(TaskSet.taskSet.finish(t))
+    LockSet.releaseTask(t)        // TODO Still necessary?
   }
 
   /**
@@ -156,7 +158,7 @@ private object TaskSet {
   /**
     * The set containing all dependencies on agents
     */
-  val taskSet : TaskSelectionSet = new TaskSelectionSet()
+  val taskSet : TaskSet = new SimpleTaskSet()
 
   private val AGENT_SALARY : Double = 5
 
@@ -214,13 +216,13 @@ private object TaskSet {
               val budget = regAgents.getOrElse(a, 0.0)
               r = (t.bid * budget, a, t) :: r  }
             if (r.isEmpty) {
-              if (ActiveTracker.isNotActive) {
+              if (ActiveTracker.get <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
               //leo.Out.comment("Going to wait for new Tasks.")
               TaskSet.wait()
-              regAgents.foreach { case (a, budget) => regAgents.update(a, budget + AGENT_SALARY) }
+              regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
           }
 
@@ -240,7 +242,7 @@ private object TaskSet {
           var newTask: List[(TAgent, Task)] = Nil
           for ((price, a, t) <- queue) {
             if (LockSet.isExecutable(t)) {
-              val budget = regAgents.apply(a)
+              val budget = regAgents.apply(a)     //TODO Lock regAgents, got error during phase switch
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
                 newTask = (a, t) :: newTask

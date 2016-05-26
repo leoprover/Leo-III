@@ -1,15 +1,15 @@
 package leo.modules.agent.relevance_filter
 
 import leo.Configuration
-import leo.agents.{TAgent, Task, Agent}
-import leo.datastructures.ClauseAnnotation.{InferredFrom, FromFile}
+import leo.agents.{Agent, TAgent, Task}
+import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.SZS_Theorem
+import leo.modules.output.{SZS_CounterTheorem, SZS_Theorem}
 import leo.modules.parsers.InputProcessing
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
@@ -51,6 +51,7 @@ class RelevanceTask(form : AnnotatedFormula, round : Int, a : TAgent) extends Ta
   override def writeSet(): Map[DataType, Set[Any]] = Map(AnnotatedFormulaType -> Set(form))
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
+    if(!PreFilterSet.isUnused(form)) return Result()
     val (name, term, role) = InputProcessing.process(Signature.get)(form)
     val nc : ClauseProxy = if(role == Role_Conjecture)    // TODO Move somewhere else?
       AnnotatedClause(Clause(Literal(term, false)), Role_NegConjecture, InferredFrom(NegateConjecture, AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)), ClauseAnnotation.PropNoProp)
@@ -69,6 +70,6 @@ object AnnotatedFormulaType extends DataType
 object FormulaTakenType extends DataType
 
 object NegateConjecture extends CalculusRule {
-  override def name: String = "negate_conjecture"
-  override val inferenceStatus = Some(SZS_Theorem)
+  override def name: String = "neg_conjecture"
+  override val inferenceStatus = Some(SZS_CounterTheorem)
 }

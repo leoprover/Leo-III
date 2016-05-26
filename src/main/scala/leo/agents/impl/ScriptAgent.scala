@@ -32,7 +32,7 @@ import java.io.IOException
 abstract class ScriptAgent(path : String) extends Agent {
   override val interest : Option[Seq[DataType]] = None
 
-  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
+  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
 
   def encode(fs: Set[ClauseProxy]): Seq[String]
 
@@ -61,9 +61,9 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
   final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
-    override def readSet: Map[DataType, Set[Any]] = Map(ClauseType -> fs.asInstanceOf[Set[Any]])
+    override val readSet: Map[DataType, Set[Any]] = Map()
 
-    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override val writeSet: Map[DataType, Set[Any]] = Map()
 
     override def bid: Double = 1 // TODO Better value
 
@@ -82,7 +82,7 @@ abstract class ScriptAgent(path : String) extends Agent {
       val retValue = process.exitValue
       val out = process.out
       val err = process.error
-      a.handle(c, out, err, retValue)
+      a.handle(c, out, err, retValue, fs)
     }
 
     override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"

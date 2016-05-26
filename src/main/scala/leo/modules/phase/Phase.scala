@@ -136,7 +136,7 @@ trait CompletePhase extends Phase {
   protected class CompleteWait extends Agent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType]] = Some(List(StatusType))
+    override def interest : Option[Seq[DataType]] = None
     override def filter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
