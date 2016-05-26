@@ -7,7 +7,7 @@ import leo.datastructures.context.Context
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.{Output, SZS_GaveUp, StatusSZS, ToTPTP}
+import leo.modules.output._
 import leo.modules.output.logger.Out
 
 object SZSScriptAgent {
@@ -100,17 +100,17 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
       val line = it.next()
       b.append("  Out: "+line+"\n")
       getSZS(line) match {
-        case Some(status) =>
-          Out.info(s"[$name]: Got ${status.output} from the external prover.")
-          return Result()
+        case Some(status) if status == SZS_Theorem =>     // TODO Salvage other information
+          Out.info(s"[$name]: Got positive ${status.output} from the external prover.")
+          var r =  Result()
             .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
-            .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(cmd), fs), ClauseAnnotation.PropNoProp))
+            if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(cmd), fs), ClauseAnnotation.PropNoProp))
+          return r
         case None         => ()
       }
     }
-    Out.info(s"[$name]: No SZS status returned in\n${b.toString}")
-    context.close()
-    Result().insert(StatusType)(SZSStore(SZS_GaveUp, context))
+    Out.info(s"[$name]: No positive SZS status returned in\n${b.toString}")
+    Result()
   }
 
   /**

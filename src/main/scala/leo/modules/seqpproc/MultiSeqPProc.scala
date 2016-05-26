@@ -24,7 +24,7 @@ import leo.modules.Utility
   */
 object MultiSeqPProc extends ProofProcedure {
 
-  val externalCallIteration = 20
+  val externalCallIteration = 3
 
 
   final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
