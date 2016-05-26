@@ -61,9 +61,9 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
   final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
-    override def readSet: Map[DataType, Set[Any]] = Map(ClauseType -> fs.asInstanceOf[Set[Any]])
+    override val readSet: Map[DataType, Set[Any]] = Map()
 
-    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override val writeSet: Map[DataType, Set[Any]] = Map()
 
     override def bid: Double = 1 // TODO Better value
 
@@ -76,7 +76,6 @@ abstract class ScriptAgent(path : String) extends Agent {
       * This function runs the specific agent on the registered Blackboard.
       */
     override def run: Result = {
-      println("Task created")
       val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
 

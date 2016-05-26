@@ -36,8 +36,8 @@ case class DoItYourSelfMessage(c : Context) extends Message
 class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Context) extends Task{
   override val name: String = a.procedure.name+"Task"
   override val getAgent: TAgent = a
-  override def writeSet(): Map[DataType, Set[Any]] = Map()
-  override def readSet(): Map[DataType, Set[Any]] = Map()
+  override val writeSet: Map[DataType, Set[Any]] = Map.empty
+  override val readSet: Map[DataType, Set[Any]] = Map.empty
   override def run: Result = {
     val fs1 = fs.map(_.asInstanceOf[AnnotatedClause])
     val (status, res) = a.procedure.execute(fs1, c)

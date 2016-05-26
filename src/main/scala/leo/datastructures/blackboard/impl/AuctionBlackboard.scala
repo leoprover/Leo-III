@@ -60,6 +60,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   override def finishTask(t : Task) : Unit = {
     TaskSet.synchronized(TaskSet.taskSet.finish(t))
+    LockSet.releaseTask(t)        // TODO Still necessary?
   }
 
   /**

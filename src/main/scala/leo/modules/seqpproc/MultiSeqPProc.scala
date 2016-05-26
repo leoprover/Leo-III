@@ -8,6 +8,7 @@ import leo.{Configuration, Out}
 import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.impl.Signature
 import leo.datastructures._
+import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.context.Context
 import leo.modules.calculus.Subsumption
 import leo.modules.output._
@@ -23,7 +24,7 @@ import leo.modules.Utility
   */
 object MultiSeqPProc extends ProofProcedure {
 
-  val externalCallIteration = 3
+  val externalCallIteration = 20
 
 
   final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {

@@ -59,7 +59,6 @@ object SZSScriptAgent {
     // TODO Too much time. In for the translation ...
     val cast : Set[ClauseProxy] = clauses.map(_.asInstanceOf[ClauseProxy])
     val msg = CallExternal(cast, c)                        // TODO proof obligation
-    println("After message")
     allScriptAgents foreach {a => Blackboard().send(msg, a)}
   }
 }
@@ -126,9 +125,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
     case SZSScriptMessage(f,c) =>
       createTask(f,c)
     case CallExternal(clauses, c) =>
-      println("B")
       val ts = List(new ScriptTask(cmd, clauses, c, this))
-      println("C")
       ts
     case _                   => List()
   }
