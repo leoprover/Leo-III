@@ -20,9 +20,9 @@ object SZSScriptAgent {
    * @param reinterpreteResult - May transform the result depending on the status of the current Context (in a CounterSAT case Theorem will prover CounterSatisfiyability)
    * @return An agent to run an external prover on the specified translation.
    */
-  def apply(cmd : String, encodeOutput : Set[ClauseProxy] => Seq[String], reinterpreteResult : StatusSZS => StatusSZS) : TAgent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
+  def apply(name : String, cmd : String, encodeOutput : Set[ClauseProxy] => Seq[String], reinterpreteResult : StatusSZS => StatusSZS) : TAgent = new SZSScriptAgent(name, cmd)(encodeOutput)(reinterpreteResult)
 
-  def apply(cmd : String) : TAgent = apply(cmd, encodeStd, x => x)
+  def apply(name : String, cmd : String) : TAgent = apply(name, cmd, encodeStd, x => x)
 
   def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
     val ins =
@@ -67,7 +67,7 @@ object SZSScriptAgent {
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
 
   override def register() = {
     super.register()
@@ -79,7 +79,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
     SZSScriptAgent.h.synchronized(SZSScriptAgent.h.remove(cmd))
   }
 
-  override val name = s"SZSScriptAgent ($cmd)"
+  override val name = s"SZSScriptAgent ($name1)"
 
   override def encode(fs : Set[ClauseProxy]) : Seq[String] = encodeOutput(fs)
 
@@ -104,7 +104,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String
           Out.info(s"[$name]: Got positive ${status.output} from the external prover.")
           var r =  Result()
             .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
-            if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(cmd), fs), ClauseAnnotation.PropNoProp))
+            if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
           return r
         case None         => ()
       }
