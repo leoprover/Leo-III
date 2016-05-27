@@ -146,7 +146,7 @@ abstract class Task extends Pretty  {
     *
     * @return all [[DataType]] contained in this task.
     */
-  val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
+  lazy val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
 
   /**
     * Checks for two tasks, if they are in conflict with each other.
@@ -158,7 +158,7 @@ abstract class Task extends Pretty  {
     val t1 = this
     if(t1 eq t2) return true
     val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)  // Restrict to the datatypes both tasks use.
-
+    if(sharedTypes.isEmpty) return false  // Empty case
     !sharedTypes.exists{d =>        // There exist no datatype
       val r1 : Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
       val w1 : Set[Any] = t1.writeSet().getOrElse(d, Set.empty[Any])
@@ -166,7 +166,6 @@ abstract class Task extends Pretty  {
       val w2 : Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
 
       (r1 & w2).nonEmpty || (r2 & w1).nonEmpty || (w1 & w2).nonEmpty
-      true
     }
   }
 

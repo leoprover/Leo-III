@@ -1,11 +1,13 @@
 package leo.agents
 package impl
 
+import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.datastructures.context.Context
 import leo.datastructures._
 import leo.datastructures.blackboard._
-import leo.modules.output.{Output, SZS_GaveUp, StatusSZS, ToTPTP}
+import leo.modules.calculus.CalculusRule
+import leo.modules.output._
 import leo.modules.output.logger.Out
 
 object SZSScriptAgent {
@@ -18,17 +20,68 @@ object SZSScriptAgent {
    * @param reinterpreteResult - May transform the result depending on the status of the current Context (in a CounterSAT case Theorem will prover CounterSatisfiyability)
    * @return An agent to run an external prover on the specified translation.
    */
-  def apply(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
+  def apply(cmd : String, encodeOutput : Set[ClauseProxy] => Seq[String], reinterpreteResult : StatusSZS => StatusSZS) : TAgent = new SZSScriptAgent(cmd)(encodeOutput)(reinterpreteResult)
+
+  def apply(cmd : String) : TAgent = apply(cmd, encodeStd, x => x)
+
+  def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
+    val ins =
+    if(!in.exists(_.role == Role_Conjecture)){
+      //TODO Change Role of Neg_Conjecture to Plain?
+      in + AnnotatedClause(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
+    } else in
+    ToTPTP(ins).map(_.output)
+  }
+
+  protected[agents] val h : scala.collection.mutable.Map[String, SZSScriptAgent] = new scala.collection.mutable.HashMap[String, SZSScriptAgent]
+
+  /**
+    * A list of all registered script agents
+    * @return All SZSScriptAgents registered in the Blackbaord
+    */
+  def allScriptAgents : Iterable[SZSScriptAgent] = h.synchronized(h.values)
+
+  /**
+    * Returns an script agent corresponding to a certain script.
+    *
+    * @param script - The script we search for
+    * @return Some SZSScriptAgent with this command, None if no such agent exists
+    */
+  def scriptAgent(script : String) : Option[SZSScriptAgent] = h.synchronized(h.get(script))
+
+  /**
+    *
+    * Runs all registered provers on the given clauses.
+    *
+    * @param clauses The clauses to run the script on.
+    */
+  def execute[A <: ClauseProxy](clauses : Set[A], c : Context) : Unit = {
+    // TODO Too much time. In for the translation ...
+    val cast : Set[ClauseProxy] = clauses.map(_.asInstanceOf[ClauseProxy])
+    val msg = CallExternal(cast, c)                        // TODO proof obligation
+    allScriptAgents foreach {a => Blackboard().send(msg, a)}
+  }
 }
 
 /**
  * A Script agent to execute a external theorem prover
  * and scans the output for the SZS status and inserts it into the Blackboard.
  */
-class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+class SZSScriptAgent(cmd : String)(encodeOutput : Set[ClauseProxy] => Seq[String])(reinterpreteResult : StatusSZS => StatusSZS) extends ScriptAgent(cmd) {
+
+  override def register() = {
+    super.register()
+    SZSScriptAgent.h.synchronized(SZSScriptAgent.h.put(cmd, this))
+  }
+
+  override def unregister() = {
+    super.unregister()
+    SZSScriptAgent.h.synchronized(SZSScriptAgent.h.remove(cmd))
+  }
+
   override val name = s"SZSScriptAgent ($cmd)"
 
-  override def encode(fs : Set[FormulaStore]) : Seq[String] = encodeOutput(fs)
+  override def encode(fs : Set[ClauseProxy]) : Seq[String] = encodeOutput(fs)
 
   /**
    * Scans the `input` Stream for an SZS status.
@@ -38,7 +91,7 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
    * @param errno - The return value.
    * @return
    */
-  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int): Result = {
+  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int, fs : Set[ClauseProxy]): Result = {
     val context = c   // TODO Fix
     val it = input
     val b = new StringBuilder
@@ -47,16 +100,17 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
       val line = it.next()
       b.append("  Out: "+line+"\n")
       getSZS(line) match {
-        case Some(status) =>
-          context.close()
-          Out.info(s"[$name]: Got ${status.output} from the external prover.")
-          return Result().insert(StatusType)(SZSStore(reinterpreteResult(status), context))
+        case Some(status) if status == SZS_Theorem =>     // TODO Salvage other information
+          Out.info(s"[$name]: Got positive ${status.output} from the external prover.")
+          var r =  Result()
+            .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
+            if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(cmd), fs), ClauseAnnotation.PropNoProp))
+          return r
         case None         => ()
       }
     }
-    Out.info(s"[$name]: No SZS status returned in\n${b.toString}")
-    context.close()
-    Result().insert(StatusType)(SZSStore(SZS_GaveUp, context))
+    Out.info(s"[$name]: No positive SZS status returned in\n${b.toString}")
+    Result()
   }
 
   /**
@@ -68,20 +122,23 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
   override def filter(event: Event): Iterable[Task] = event match {
-    case SZSScriptMessage(f,c) => createTask(f,c)
+    case SZSScriptMessage(f,c) =>
+      createTask(f,c)
+    case CallExternal(clauses, c) =>
+      val ts = List(new ScriptTask(cmd, clauses, c, this))
+      ts
     case _                   => List()
   }
 
-  private def createTask(f : FormulaStore, c : Context) : Iterable[Task] = {
-    Out.trace(s"[$name]: Got a task.")
-    val conj = Store(negateClause(f.clause), Role_Conjecture, f.context, f.status)
-    val context : Set[FormulaStore] = FormulaDataStore.getAll(f.context){bf => bf.name != f.name}.toSet[FormulaStore]
-    return List(new ScriptTask(cmd, context + conj, c, this))
+  private def createTask(f : ClauseProxy, c : Context) : Iterable[Task] = {
+    val conj : ClauseProxy = AnnotatedClause(negateClause(f.cl), Role_Conjecture, f.annotation, f.properties)
+    val context : Set[ClauseProxy] = FormulaDataStore.getAll(c){ bf => bf.id != f.id}.toSet[ClauseProxy]
+    List(new ScriptTask(cmd, context + conj, c, this))
   }
 
   private def negateClause(c : Clause) : Clause = {
     val lit : Literal = Literal(orLit(c.lits),false)
-    return Clause.mkClause(List(lit), Derived)
+    Clause.mkClause(List(lit), Derived)
   }
 
   private def orLit(l : Seq[Literal]) : Term = l match {
@@ -99,31 +156,13 @@ class SZSScriptAgent(cmd : String)(encodeOutput : Set[FormulaStore] => Seq[Strin
 
 /**
  * A message with f (the to be conjecture)
+ *
  * @param f
  */
-private class SZSScriptMessage(val f : FormulaStore, val c : Context) extends Message {}
+case class SZSScriptMessage(f: ClauseProxy, c : Context) extends Message
 
-/**
- * Object to create and deconstruct messages to the SZSScriptAgent.
- */
-object SZSScriptMessage {
-  /**
-   * Creates a new Message to the SZSScriptAgent. The formula `f` will
-   * be transformed into the conjecture for the external agent.
-   *
-   * @param f - The conjecture
-   * @return Message for the SZSScriptAgent.
-   */
-  def apply(f : FormulaStore)(c : Context) : Message = new SZSScriptMessage(f,c)
+case class CallExternal(clauses : Set[ClauseProxy], c : Context) extends Message
 
-  /**
-   * Deconstructs an Event, if it is a Message to the SZSScriptAgent.
-   *
-   * @param m
-   * @return
-   */
-  def unapply(m : Event) : Option[(FormulaStore, Context)] = m match {
-    case m : SZSScriptMessage => Some((m.f,m.c))
-    case _                    => None
-  }
+case class ExternalRule(prover : String) extends CalculusRule {
+  override def name: String = s"external($prover)"
 }

@@ -24,6 +24,8 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PROOFOBJECT = "p"
   private val PARAM_HELP = "h"
   private val PARAM_COUNTERSAT = "c"
+  private val PARAM_SOS_SHORT = "s"
+  private val PARAM_SOS_LONG = "sos"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -33,7 +35,8 @@ object Configuration extends DefaultConfiguration {
       'p' -> ("", "", "Display proof output"),
       't' -> ("", "N", "Timeout in seconds"),
       'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
-      'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof")
+      'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
+      's' -> ("sos", "", "Use SOS heuristic search strategy")
     )
   }
 
@@ -52,6 +55,7 @@ object Configuration extends DefaultConfiguration {
       PROOF_OBJECT
       VERBOSITY
       COUNTER_SAT
+      SOS
       ()
     }
     case _ => ()
@@ -90,7 +94,7 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
-
+  lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   import leo.datastructures.{Precedence,TermOrdering,ClauseOrdering,LitWeight_TermSize,Orderings}
@@ -102,7 +106,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
-  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder_UnaryFirst
+  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
   // more to come ...
 

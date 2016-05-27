@@ -1,9 +1,11 @@
 package leo.modules.external
 
 import java.io.{PrintWriter, File}
+import java.util.concurrent.TimeUnit
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.tools.nsc.CompileServer
 
 /**
   *
@@ -131,4 +133,16 @@ protected class AExternalResult(exec : Seq[String]) extends ExternalResult{
       process.kill
     }
   }
+
+  /**
+    *
+    * Waits for timeout[unit] time for the process to finish.
+    * Returns true, if the process has finished, false otherwise.
+    *
+    * @param timeout The amount of time to wait for the process to finish
+    * @param unit   The unit of the time waiting
+    * @return true iff the process has successfully terminated
+    */
+  @throws[InterruptedException]
+  override def waitFor(timeout: Long, unit: TimeUnit): Boolean = process.waitFor(timeout, unit)
 }

@@ -1,17 +1,20 @@
 package leo.modules.parsers
 
+import leo.datastructures.ClauseAnnotation.NoAnnotation
+import leo.datastructures.context.Context
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.Signature
-
-import leo.modules.Utility
+import leo.modules.{Parsing, Utility}
 
 /**
  * This suite tests the parsing and input processing of all the TPTP dialects except for CNF.
  * The suite is based on the SYN000-files that cover basic and advanced syntax features for all
  * dialects.
- * @author Alexander Steen
+  *
+  * @author Alexander Steen
  * @since 09.02.2015
  */
 class InputTestSuite extends LeoTestSuite {
@@ -34,7 +37,7 @@ class InputTestSuite extends LeoTestSuite {
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
-      Utility.load(source + "/" +  p._1 + ".p")
+      var fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       println("Success!")
       println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${FormulaDataStore.getFormulas.size} formulae added to blackboard.")
       println()

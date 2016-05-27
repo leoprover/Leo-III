@@ -1,5 +1,7 @@
 package leo.modules.external
 
+import java.util.concurrent.TimeUnit
+
 import scala.sys.process.ProcessIO
 
 /**
@@ -26,24 +28,42 @@ trait ExternalCall {
   *
   */
 trait ExternalResult {
+
+  /**
+    *
+    * Waits for timeout[unit] time for the process to finish.
+    * Returns true, if the process has finished, false otherwise.
+    *
+    * @param timout The amount of time to wait for the process to finish
+    * @param unit The unit of the time waiting
+    * @return true iff the process has successfully terminated
+    */
+  @throws[InterruptedException]
+  def waitFor(timout : Long, unit : TimeUnit) : Boolean
+
   /**
     * Is the exitValue of the started Programm
  *
     * @return
     */
+  @throws[InterruptedException]
   def exitValue : Int
 
   /**
     * Blocks until the outputs has been received.
+    *
     * @return
     */
+  @throws[InterruptedException]
   def out : Iterator[String]
 
   /**
     *
     * Blocks until the error stream has been received
+    *
     * @return
     */
+  @throws[InterruptedException]
   def error : Iterator[String]
 
   /**

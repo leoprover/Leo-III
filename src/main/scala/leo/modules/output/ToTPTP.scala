@@ -6,7 +6,7 @@ import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
 import scala.annotation.tailrec
-import leo.datastructures.blackboard.FormulaStore
+import leo.datastructures.AnnotatedClause
 
 
 /**
@@ -15,28 +15,40 @@ import leo.datastructures.blackboard.FormulaStore
  * Translation can be done directly into a string by method `output`
  * or indirect into a `Output` object by the apply method.
  *
- * @see [[Term]], [[leo.datastructures.blackboard.FormulaStore]]
- *
+ * @see [[Term]], [[leo.datastructures.AnnotatedClause]]
  * @author Alexander Steen
  * @since 07.11.2014
  */
-object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Clause, Role, Output] {
+object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clause, Role, Output] {
 
   /** Return an `Output` object that contains the TPTP representation of the given
     * `FormulaStore`.*/
-  def apply(f: FormulaStore): Output = new Output {
-    def output = toTPTP(f.name, f.clause.term, f.role)
+
+  def apply(f: ClauseProxy): Output = new Output {
+    def output = toTPTP(f.id.toString, f.cl.term, f.role)
   }
   /** Return an `Output` object that contains the TPTP representation of the given
     * information triple.*/
-  def apply(name: String, t: Clause, role: Role): Output = new Output {
-    def output = toTPTP(name, t.term, role)
+  def apply(name: String, c: Clause, role: Role): Output = new Output {
+    val t : Term = if(role == Role_Definition) definitionToTerm(c) else c.term
+    def output = toTPTP(name, t, role)
   }
+  private def definitionToTerm(c : Clause) : Term = {
+    if(c.lits.size != 1) return c.term
+    val l = c.lits.head
+    if(!l.polarity) return c.term
+    if(!l.left.isAtom) {
+      ===(l.right, l.left)
+    } else {
+      ===(l.left, l.right)
+    }
+  }
+
   def apply(name: String, t: Term, role: Role): Output = new Output {
     def output = toTPTP(name, t, role)
   }
 
-  def apply(formulas : Set[FormulaStore]) : Seq[Output] = {
+  def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
     var out: List[Output] = List.empty[Output]
     var defn : List[Output] = List.empty[Output]
     Signature.get.allUserConstants foreach { k =>
@@ -51,7 +63,10 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
 
   def withAnnotation(cl: ClauseProxy): Output = new Output {
-    def output = toTPTP(cl.id, cl.cl.term, cl.role, cl.annotation)
+    def output = {
+      val normclause = leo.modules.calculus.Simp(cl.cl)
+      toTPTP(cl.id.toString, normclause.term, cl.role, cl.annotation)
+    }
   }
 
   /**
@@ -88,7 +103,7 @@ object ToTPTP extends Function1[FormulaStore, Output] with Function3[String, Cla
   }
 
   /** Translate the `FormulaStore` into a TPTP String in THF format. */
-  def output(cl: ClauseProxy) = toTPTP(cl.id, cl.cl.term, cl.role)
+  def output(cl: ClauseProxy) = toTPTP(cl.id.toString, cl.cl.term, cl.role)
   /** Translate the term information triple into a TPTP String. */
   def output(name: String, t: Clause, role: Role) = toTPTP(name, t.term, role)
 

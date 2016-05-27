@@ -1,7 +1,7 @@
 package leo.datastructures.context
 package impl
 
-import scala.collection.{Set, Iterable, mutable}
+import scala.collection.{Iterable, Iterator, Set, mutable}
 
 /**
  * Ordered variant of [[TreeContextSet]].
@@ -59,17 +59,45 @@ class TreeOrderedContextSet[A <: Ordered[A]] extends OrderedContextSet[A]{
    * @param c - The context in which it is removed
    * @return true, iff deletion was successful
    */
-  override def remove(a: A, c: Context): Boolean = synchronized {
+  override def remove(a: A, c: Context): Boolean = {
     val p = Context.getPath(c).iterator
 
     while(p.hasNext) {
       val n = p.next()
       contextSets.get(n) match {
-        case Some(s) => if(s.contains(a)) {s.remove(a); return true}
+        case Some(s) =>
+          if(s.contains(a)) {
+            s.remove(a)
+            distributeAlongPath(n, p, a)
+            // Removed from the context, BUT distribute to the other contexts
+            return true
+          }
         case None  => ()
       }
     }
     return false
+  }
+
+  /**
+    * Inserts the Element a into all childrens of c, that are not p[0] and rekurses into p[0] with the tail p[1..n].
+    */
+  private def distributeAlongPath(c : Context, p : Iterator[Context], a : A) : Unit = {
+    if(p.hasNext){
+      // If we are on the path, then we push the element to the sides
+      val nc = p.next()
+      c.childContext.foreach{cc =>
+        if(cc != nc){
+          contextSets.get(cc) match {
+            case Some(s) =>
+              s.add(a)
+            case None => val s = mutable.SortedSet[A]()
+              contextSets.put(cc,s)
+              s.add(a)
+          }
+        }
+      }
+      distributeAlongPath(nc, p, a)
+    }
   }
 
   /**
@@ -126,7 +154,7 @@ class TreeOrderedContextSet[A <: Ordered[A]] extends OrderedContextSet[A]{
    * @return set of all elements smaller or equal a.
    */
   override def getSmaller(a: A, c : Context): Set[A] = synchronized {
-    Context.getPath(c).map{c1 => contextSets.get(c1).fold(Set[A]()){s : mutable.SortedSet[A] => s.to(a).toSet}}.flatten.toSet
+    Context.getPath(c).flatMap{c1 => contextSets.get(c1).fold(Set[A]()){s : mutable.SortedSet[A] => s.to(a).toSet}}.toSet
   }
 
   /**
@@ -136,6 +164,6 @@ class TreeOrderedContextSet[A <: Ordered[A]] extends OrderedContextSet[A]{
    * @return set of all elements smaller or equal a
    */
   override def getBigger(a: A, c : Context): Set[A] = synchronized {
-    Context.getPath(c).map{c1 => contextSets.get(c1).fold(Set[A]()){s : mutable.SortedSet[A] => s.from(a).toSet}}.flatten.toSet
+    Context.getPath(c).flatMap{c1 => contextSets.get(c1).fold(Set[A]()){s : mutable.SortedSet[A] => s.from(a).toSet}}.toSet
   }
 }

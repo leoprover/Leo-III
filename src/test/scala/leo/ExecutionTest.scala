@@ -2,12 +2,11 @@ package leo
 
 import leo.datastructures.impl.Signature
 import leo.datastructures.{=== => EQUALS, _}
-import Term.{mkTermApp => ap,mkAtom}
+import Term.{mkAtom, mkTermApp => ap}
+import leo.modules.Numerals
+import Numerals.fromInt
+import leo.modules.preprocessing.Simplification
 
-import leo.modules.churchNumerals.Numerals
-import leo.modules.churchNumerals.Numerals.fromInt
-
-import leo.modules.normalization.Simplification
 
 /**
  * Created by lex on 11.06.14.
@@ -62,7 +61,7 @@ class ExecutionTest extends LeoTestSuite {
     //println(test3.pretty)
 
     println("Simplification ...")
-    val test4 = Simplification.normalize(Clause.mkClause(List(Literal(test3,true)),Derived))
+    val test4 = Simplification(Clause.mkClause(List(Literal(test3,true)),Derived))
 
     println(" (Resulting term: " + test4.pretty + " )")
     test4.lits.head.term

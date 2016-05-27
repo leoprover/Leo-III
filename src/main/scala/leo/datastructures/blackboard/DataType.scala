@@ -18,7 +18,7 @@ trait DataType {}
 /**
  * The FormulaType marks any formula data for the blackboard.
  */
-case object FormulaType extends DataType {}
+case object ClauseType extends DataType {}
 
 
 /**

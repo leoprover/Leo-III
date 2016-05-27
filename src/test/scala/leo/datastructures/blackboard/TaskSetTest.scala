@@ -16,8 +16,8 @@ class TaskSetTest extends LeoTestSuite {
 
     assert(taskSet.containsAgent(AgentB), "AgentB was not added to the taskSet")
     assert(taskSet.containsAgent(AgentD), "AgentD was not added to the taskSet")
-    assert(!taskSet.dependOn(AgentB,AgentD), "There should be no dependencies")
-    assert(!taskSet.dependOn(AgentD,AgentB), "There should be no dependencies")
+//    assert(!taskSet.dependOn(AgentB,AgentD), "There should be no dependencies")
+//    assert(!taskSet.dependOn(AgentD,AgentB), "There should be no dependencies")
   }
 
   test("insertAgents_WithDep."){
@@ -26,7 +26,7 @@ class TaskSetTest extends LeoTestSuite {
     taskSet.addAgent(AgentA)
     taskSet.addAgent(AgentB)
 
-    assert(taskSet.dependOn(AgentA, AgentB), "AgentA should be executed before AgentB")
+//    assert(taskSet.dependOn(AgentA, AgentB), "AgentA should be executed before AgentB")
   }
 
   test("Task with no dependencies and no intersection."){
@@ -37,8 +37,8 @@ class TaskSetTest extends LeoTestSuite {
     val t1 = new DummyTask("task1", Set(1), Set(2), AgentB)
     val t2 = new DummyTask("task2", Set(3),Set(4), AgentD)
 
-    taskSet.submit(AgentB, t1)
-    taskSet.submit(AgentD, t2)
+    taskSet.submit(t1)
+    taskSet.submit(t2)
 
     val exec = taskSet.executableTasks.toSet
     //println(exec.mkString(", "))
@@ -54,8 +54,8 @@ class TaskSetTest extends LeoTestSuite {
     val t1 = new DummyTask("task1", Set(1), Set(2), AgentB)
     val t2 = new DummyTask("task2", Set(1),Set(3), AgentD)
 
-    taskSet.submit(AgentB, t1)
-    taskSet.submit(AgentD, t2)
+    taskSet.submit(t1)
+    taskSet.submit(t2)
 
     val exec = taskSet.executableTasks.toSet
     //println(exec.mkString(", "))
@@ -71,8 +71,8 @@ class TaskSetTest extends LeoTestSuite {
     val t1 = new DummyTask("task1", Set(1), Set(2), AgentB)
     val t2 = new DummyTask("task2", Set(3),Set(4), AgentD)
 
-    taskSet.submit(AgentB, t1)
-    taskSet.submit(AgentD, t2)
+    taskSet.submit(t1)
+    taskSet.submit(t2)
 
     val exec = taskSet.executableTasks.toSet
     //println(exec.mkString(", "))
@@ -88,8 +88,8 @@ class TaskSetTest extends LeoTestSuite {
     val t1 = new DummyTask("task1", Set(1), Set(2), AgentA)
     val t2 = new DummyTask("task2", Set(1),Set(3), AgentB)
 
-    taskSet.submit(AgentA, t1)
-    taskSet.submit(AgentB, t2)
+    taskSet.submit(t1)
+    taskSet.submit(t2)
 
     val exec = taskSet.executableTasks.toSet
     //println(exec.mkString(", "))
@@ -108,17 +108,17 @@ class TaskSetTest extends LeoTestSuite {
     val t2 = new DummyTask("task2", Set(1),Set(3), AgentB)
     val t3 = new DummyTask("task3", Set(4),Set(1), AgentC)
 
-    taskSet.submit(AgentC, t3)
+    taskSet.submit(t3)
     val exec1 = taskSet.executableTasks.toSet
 
     assert(exec1.contains(t3), "Only task should be able to be executed")
 
-    taskSet.submit(AgentB, t2)
+    taskSet.submit(t2)
     val exec2 = taskSet.executableTasks.toSet
 
     assert(exec2.contains(t2), "Task2 should be executed first")
 
-    taskSet.submit(AgentA, t1)
+    taskSet.submit(t1)
     val exec3 = taskSet.executableTasks.toSet
 
     assert(exec3.contains(t1), "Task1 should be executed first")
@@ -133,8 +133,8 @@ class TaskSetTest extends LeoTestSuite {
     val t1 =  new DummyTask("task1", Set(3), Set(1), AgentA)
     val t2 = new DummyTask("task2", Set(1), Set(2), AgentB)
 
-    taskSet.submit(AgentA, t1)
-    taskSet.submit(AgentB, t2)
+    taskSet.submit(t1)
+    taskSet.submit(t2)
 
     val exec1 = taskSet.executableTasks.toSet
 
@@ -157,11 +157,11 @@ class TaskSetTest extends LeoTestSuite {
     val t1 =  new DummyTask("task1", Set(3), Set(1), AgentA)
     val t2 = new DummyTask("task2", Set(1), Set(2), AgentA)
 
-    taskSet.submit(AgentA, t1)
+    taskSet.submit(t1)
 
     taskSet.commit(Set(t1))
 
-    taskSet.submit(AgentA, t2)
+    taskSet.submit(t2)
 
     taskSet.finish(t1)
 
@@ -179,11 +179,11 @@ class TaskSetTest extends LeoTestSuite {
     val t1 =  new DummyTask("task1", Set(1), Set(3), AgentA)
     val t2 = new DummyTask("task2", Set(1), Set(2), AgentA)
 
-    taskSet.submit(AgentA, t1)
+    taskSet.submit(t1)
 
     taskSet.commit(Set(t1))
 
-    taskSet.submit(AgentA, t2)
+    taskSet.submit(t2)
 
     taskSet.finish(t1)
 
@@ -200,11 +200,11 @@ class TaskSetTest extends LeoTestSuite {
     val t1 =  new DummyTask("task1", Set(1), Set(3), AgentB)
     val t2 = new DummyTask("task2", Set(1), Set(2), AgentD)
 
-    taskSet.submit(AgentB, t1)
+    taskSet.submit(t1)
 
     taskSet.commit(Set(t1))
 
-    taskSet.submit(AgentD, t2)
+    taskSet.submit(t2)
 
     taskSet.finish(t1)
 

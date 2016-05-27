@@ -1,13 +1,11 @@
 package leo.modules.normalization
 
+import leo.modules.preprocessing.NegationNormal
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
-import leo.datastructures.impl.Signature
 
 
-import scala.collection.immutable.HashMap
 import Term._
-import org.scalatest.FunSuite
 
 /**
  * Created by ryu on 6/12/14.
@@ -33,7 +31,7 @@ class NegationNormalTestSuite extends LeoTestSuite {
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     test("Negation Test:"+t.pretty, Checked) {
-      val st = NegationNormal.normalize(termToClause(t)).lits.head.term
+      val st = NegationNormal(termToClause(t)).lits.head.term
       println("Negation: '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
       assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }

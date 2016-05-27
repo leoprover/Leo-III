@@ -1,9 +1,9 @@
 package leo.agents
 package impl
 
-import leo.datastructures.blackboard
+import leo.datastructures.{ClauseProxy, blackboard}
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{DataType, FormulaStore, Result, FormulaType}
+import leo.datastructures.blackboard.{DataType, Result, ClauseType}
 import java.io.{PrintWriter, File}
 import leo.modules.external.{ExternalCall, ExternalResult}
 import leo.modules.output.{ToTPTP, Output}
@@ -30,10 +30,11 @@ import java.io.IOException
  * @since 11/10/14
  */
 abstract class ScriptAgent(path : String) extends Agent {
+  override val interest : Option[Seq[DataType]] = None
 
-  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int): blackboard.Result
+  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
 
-  def encode(fs: Set[FormulaStore]): Seq[String]
+  def encode(fs: Set[ClauseProxy]): Seq[String]
 
   /**
     *
@@ -59,14 +60,14 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
 
-  final case class ScriptTask(script : String, fs: Set[FormulaStore], c: Context, a : ScriptAgent) extends Task {
-    override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (FormulaType -> fs.asInstanceOf[Set[Any]])
+  final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
+    override val readSet: Map[DataType, Set[Any]] = Map()
 
-    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override val writeSet: Map[DataType, Set[Any]] = Map()
 
     override def bid: Double = 1 // TODO Better value
 
-    override val pretty: String = "ScriptTask (BIG)"
+    override val pretty: String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
     override val name: String = "Script Call"
 
     override val getAgent : ScriptAgent = a
@@ -75,14 +76,16 @@ abstract class ScriptAgent(path : String) extends Agent {
       * This function runs the specific agent on the registered Blackboard.
       */
     override def run: Result = {
-      val process : ExternalResult = ExternalCall.run(script, encode(fs))
+      val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
 
       val retValue = process.exitValue
       val out = process.out
       val err = process.error
-      a.handle(c, out, err, retValue)
+      a.handle(c, out, err, retValue, fs)
     }
+
+    override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
   }
 
 }

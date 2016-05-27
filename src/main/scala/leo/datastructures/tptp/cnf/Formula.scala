@@ -7,15 +7,25 @@ import leo.datastructures.tptp.Commons._
  */
 case class Formula(literals: List[Literal]) {
   override def toString = literals.mkString(" | ")
+
+  val function_symbols: Set[String] = literals.toSet[Literal].flatMap(l => l.function_symbols)
 }
 
-sealed abstract class Literal
+sealed abstract class Literal {
+  def function_symbols : Set[String]
+}
 case class Positive(formula: AtomicFormula) extends Literal {
   override def toString = formula.toString
+
+  override val function_symbols: Set[String] = formula.function_symbols
 }
 case class Negative(formula: AtomicFormula) extends Literal {
   override def toString = "~ " + formula.toString
+
+  override val function_symbols: Set[String] = formula.function_symbols
 }
 case class Inequality(left: Term, right: Term) extends Literal {
   override def toString = left.toString + " != " + right.toString
+
+  override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
 }
