@@ -44,6 +44,8 @@ object NegationNormal extends Normalization{
     nnf(rmEq(t, 1)).betaNormalize
   }
 
+  def normalizeNonExt(t: Term): Term = nnf(t)
+
   private def pol(b : Boolean) : Int = if(b) 1 else -1
 
   private def rmEq(formula : Term, pol : Int) : Term = formula match {
@@ -90,6 +92,10 @@ object NegationNormal extends Normalization{
       val s1 = nnf(s)
       val t1 = nnf(t)
       |||(nnf(Not(s1)),t1)
+//    case Impl(s,t)              =>
+//      val s1 = nnf(s)
+//      val t1 = nnf(t)
+//      Impl(s1,t1)
     case Not(Not(t))            => nnf(t)
 
     case s@Symbol(_)            => s

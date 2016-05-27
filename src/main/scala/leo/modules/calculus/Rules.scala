@@ -149,7 +149,8 @@ object PreUni extends CalculusRule {
       val updatedOtherLits = otherLits.map(_.substitute(subst))
       Set((Clause(updatedOtherLits ++ newLiterals),subst))
     } else {
-      Set((cl, Subst.id))
+      Set()
+      //Set((cl, Subst.id))
     }
   }
 }
