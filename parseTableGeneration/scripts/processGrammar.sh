@@ -32,7 +32,7 @@ EOF
 
 # -----------------------------------------------------------------------------------
 # term
-INPUT="1/2"
+INPUT="output/1/2"
 OUTPUT_DIR="./output/term"
 LOGS="$OUTPUT_DIR/log"
 START_SYMBOL="term"
@@ -55,7 +55,7 @@ EOF
 
 # -----------------------------------------------------------------------------------
 # thf_formula (term as terminal)
-INPUT="1/2"
+INPUT="output/1/2"
 OUTPUT_DIR="./output/thf_formula_termAsTerminal"
 LOGS="$OUTPUT_DIR/log"
 START_SYMBOL="thf_formula"
@@ -80,7 +80,7 @@ EOF
 
 # -----------------------------------------------------------------------------------
 # TPTP_input (term and thf_formula as terminals)
-INPUT="1/2"
+INPUT="output/1/2"
 OUTPUT_DIR="./output/TPTP_input_formulaAsTerminal"
 LOGS="$OUTPUT_DIR/log"
 START_SYMBOL="TPTP_input"
@@ -108,7 +108,7 @@ EOF
 
 # -----------------------------------------------------------------------------------
 # thf_formula
-INPUT="1/2"
+INPUT="output/1/2"
 OUTPUT_DIR="./output/thf_formula"
 LOGS="$OUTPUT_DIR/log"
 START_SYMBOL="thf_formula"
@@ -131,7 +131,7 @@ EOF
 
 # -----------------------------------------------------------------------------------
 # TPTP_input
-INPUT="1/2"
+INPUT="output/1/2"
 OUTPUT_DIR="./output/TPTP_input"
 LOGS="$OUTPUT_DIR/log"
 START_SYMBOL="TPTP_input"
