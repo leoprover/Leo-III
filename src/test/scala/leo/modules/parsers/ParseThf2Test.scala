@@ -98,7 +98,7 @@ class ParseThf2Test
 
   //val parsed = TPTP.parseFile(new CharArrayReader(fromFile(source + "/" +  p._1 + ".p").toArray))
 
-  test("compare parsers", Checked) {
+  test("compareParserOutput", Checked) {
     Out.output("comparing the output of both parsers...")
     for (p <- problems) {
       Out.output(s"testing with problem file ${p}")

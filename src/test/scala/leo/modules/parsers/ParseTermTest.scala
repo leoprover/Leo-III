@@ -41,12 +41,12 @@ class ParseTermTest
     }
 
     for{
-    //_ <- 0 to 100
       length <- 10 to 500 by 10
+      //_ <- 0 to 100
     } {
 
       val term = GenerateTerm(length)
-      println(s"length: ${length}, parsing term: ${term}")
+      Out.output(s"length: ${length}, parsing term: ${term}")
       val tokStream = parser.tokenize(term)
       //println(s"tokens: ${tokStream}")
 
@@ -105,13 +105,16 @@ class ParseTermTest
     }
   }
 
-  test("original parser (based on scala parser combinators):", Checked) {
+  test("oldTermParser", Checked) {
+    Out.output("testing OLD parser on random generated terms")
     testParser(TermParser0Wrapper)
   }
-  test("new functional TermParser", Checked) {
+  test("newFunctionalTermParser", Ignored) {
+    Out.output("testing COMBINATORS BASED parser on random generated terms")
     testParser(TermParserFunctional)
   }
-  test("new TermParser", Checked) {
+  test("newTermParser", Checked) {
+    Out.output("testing NEW parser on random generated terms")
     testParser(TermParser2)
   }
 

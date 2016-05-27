@@ -43,62 +43,48 @@ class ParseTHFBenchmark
     }
   }
 
-  test("benchmark both parsers", Checked) {
-
+  test("oldParser", Checked) {
     for (p <- problems) {
-      Out.output(s"testing with problem file ${p}")
-      /*
-      def parseWithOld: TPTPInput = {
-        import scala.util.parsing.input.CharArrayReader
-        val stream = Source.fromFile(getClass.getResource(source).getPath() + "/" + p._1 + ".p")
-        val res = OldParser.parse(new CharArrayReader(stream.toArray), OldParser.tptpFile).get
-        stream.close()
-        res
-      }
-      */
-      def parseWithOld= {
-        Out.output(s"testing old parser ${p}")
-        import scala.util.parsing.input.CharArrayReader
-        val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
-        val inputAsString = Source.fromInputStream(stream).mkString
-        val charArrayReader = new CharArrayReader(inputAsString.toCharArray)
+      Out.output(s"testing OLD parser with problem file ${p}")
+      import scala.util.parsing.input.CharArrayReader
+      val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
+      val inputAsString = Source.fromInputStream(stream).mkString
+      val charArrayReader = new CharArrayReader(inputAsString.toCharArray)
 
-        val numRuns = 10;
-        {
-          var dt: Long = 0
-          for (_ <- 0 to numRuns) {
-            val t0 = System.nanoTime
-            val res = OldParser.parse(charArrayReader, OldParser.tptpFile).get
-            val t1 = System.nanoTime
-            dt = (t1 - t0)
-            res
-          }
-          println(s"length of the input: ${inputAsString.length}, parsing time: ${(dt / numRuns) / 1e6}ms")
+      val numRuns = 10;
+      {
+        var dt: Long = 0
+        for (_ <- 0 to numRuns) {
+          val t0 = System.nanoTime
+          val res = OldParser.parse(charArrayReader, OldParser.tptpFile).get
+          val t1 = System.nanoTime
+          dt = (t1 - t0)
+          res
         }
-        stream.close()
+        Out.output(s"length of the input: ${inputAsString.length}, parsing time: ${(dt / numRuns) / 1e6}ms")
       }
+      stream.close()
+    }
+  }
 
-      def parseWithNew= {
-        Out.output(s"testing new parser ${p}")
-        val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
-        val inputAsString = Source.fromInputStream(stream).mkString
-        val numRuns = 10;
-        {
-          var dt: Long = 0
-          for (_ <- 0 to numRuns) {
-            val t0 = System.nanoTime
-            val res = TPTPParser2.parse(inputAsString).right.get._1
-            val t1 = System.nanoTime
-            dt = (t1 - t0)
-            res
-          }
-          println(s"length of the input: ${inputAsString.length}, parsing time: ${(dt / numRuns) / 1e6}ms")
+  test("newParser", Checked) {
+    for (p <- problems) {
+      Out.output(s"testing NEW parser with problem file ${p}")
+      val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
+      val inputAsString = Source.fromInputStream(stream).mkString
+      val numRuns = 10;
+      {
+        var dt: Long = 0
+        for (_ <- 0 to numRuns) {
+          val t0 = System.nanoTime
+          val res = TPTPParser2.parse(inputAsString).right.get._1
+          val t1 = System.nanoTime
+          dt = (t1 - t0)
+          res
         }
-        stream.close()
+        Out.output(s"length of the input: ${inputAsString.length}, parsing time: ${(dt / numRuns) / 1e6}ms")
       }
-
-      parseWithOld
-      parseWithNew
+      stream.close()
     }
   }
 }

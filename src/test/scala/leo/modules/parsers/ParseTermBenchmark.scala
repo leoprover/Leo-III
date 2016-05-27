@@ -2,10 +2,11 @@ package leo.modules.parsers
 
 import leo.modules.parsers.utils.GenerateTerm
 import leo.modules.parsers.syntactical.{TPTPParsers => TermParser0}
-import leo.modules.parsers.syntactical_new.termParser_functional.{TermParser => TermParser1}
+import leo.modules.parsers.syntactical_new.termParser_functional.{TermParser => TermParserFunctional}
 import leo.modules.parsers.syntactical_new.termParser2.{TermParser2 => TermParser2}
 import leo.datastructures.tptp.Commons._
-import leo.{Checked, LeoTestSuite}
+import leo.{Checked, Ignored, LeoTestSuite}
+import leo.modules.output.logger.Out
 
 //import leo.modules.parsers.lexical.TPTPTokens
 
@@ -45,13 +46,16 @@ class ParseTermBenchmark
       println(s"length: ${length}, time: ${(dt/numRuns)/1e6}ms")
     }
   }
-  test("benchmark Parser0", Checked) {
+  test("oldTermParser", Checked) {
+    Out.output("benchmarking OLD parser on random generated terms")
     testParser(Parser0Wrapper)
   }
-  test("benchmark Parser1", Checked) {
-    testParser(TermParser1)
+  test("newFunctionalTermParser", Ignored) {
+    Out.output("benchmarking COMBINATORS BASED parser on random generated terms")
+    testParser(TermParserFunctional)
   }
-  test("benchmark Parser2", Checked) {
+  test("newTermParser", Checked) {
+    Out.output("benchmarking NEW parser on random generated terms")
     testParser(TermParser2)
   }
   /*
