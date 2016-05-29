@@ -531,7 +531,8 @@ package inferenceControl {
 
       val lit = cl.cl.lits.head
       val term = lit.left
-      val resultterm = Skolemization.apply(term, s)
+//      val resultterm = Skolemization.apply(term, s)
+      val resultterm = Skolemization.miniscope(term)
       val result = if (term != resultterm)
           AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Skolemization, Set(cl)), cl.properties)
         else

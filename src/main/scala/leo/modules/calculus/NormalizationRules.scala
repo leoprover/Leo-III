@@ -450,7 +450,6 @@ object Skolemization extends CalculusRule {
   val name = "skolemize"
 
   def apply(t: Term, s: Signature): Term = {
-    Out.finest(s"miniscope: ${miniscope(t).pretty}")
     apply0(miniscope(t), s, Seq())
   }
 
@@ -460,9 +459,6 @@ object Skolemization extends CalculusRule {
         val skConst = Term.mkAtom(s.freshSkolemVar(Type.mkFunType(fvs.map(_.ty), ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
         val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
-        Out.finest(s"inner: ${inner.pretty}")
-
-        Out.finest(s"body2: ${body2.pretty}")
         apply0(body2, s, fvs)
       }
       case Forall(ty :::> body) => {
