@@ -14,28 +14,62 @@ object TermParser
   extends ParserInterface[Term]
   with Combinators
 {
-
   val lexical: TPTPLexical = new TPTPLexical
-
   type Token = lexical.Token
-
   import lexical._
 
+  override type TokenStream[T] = ParserInterface[Term]#TokenStream[T]
+
   def tokenize(input: String): Seq[Token] = {
-    var scanner = new lexical.Scanner(input)
-    var tokStream: Seq[Token] = List[Token]()
-    while(!scanner.atEnd) {
-      tokStream = tokStream :+ scanner.first
-      scanner = scanner.rest
-    }
-    tokStream
+    new Iterator[Token]{
+      var scanner = new lexical.Scanner(input)
+      def hasNext = !scanner.atEnd
+      def next(): Token = {
+        val ret = scanner.first
+        scanner = scanner.rest
+        ret
+      }
+    }.toStream
   }
 
+  def tokenStreamFromSource(src: io.Source): TokenStream[Token] = {
+    import util.parsing.input._
+    tokenizeFromScanner(
+      new lexical.Scanner(
+        new Reader[Char]{
+          def atEnd: Boolean = !src.hasNext
+          def first: Char = src.next()
+          def pos = new Position{
+            def column: Int = 1
+            def line: Int = 1
+            def lineContents: String = "<>"
+          }
+          def rest: Reader[Char] =
+            this
+        }
+      )
+    )
+  }
+
+  private def tokenizeFromScanner(scanner: lexical.Scanner): TokenStream[Token] = {
+    new Iterator[Token]{
+      var scannerCopy = scanner
+      def hasNext = !scannerCopy.atEnd
+      def next(): Token = {
+        val ret = scannerCopy.first
+        scannerCopy = scannerCopy.rest
+        ret
+      }
+    }.toStream
+  }
+
+  /*
   def parse(input: String): Either[ParserError,(Term, Seq[Token])] = {
     parse(
       tokenize(input)
     )
   }
+  */
 
   def parse(tokens: Seq[Token]): Either[ParserError,(Term, Seq[Token])] =
     z0(List.empty)(tokens).right flatMap {

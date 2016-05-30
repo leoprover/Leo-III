@@ -8,10 +8,13 @@ object TermParser2
   extends TermParser2
   with ParserInterface[Term]
 {
-  def parse(input: String): Either[ParserError,(Term, Seq[Token])] =
+  override type TokenStream[T] = ParserInterface[Term]#TokenStream[T]
+  /*
+  def parse(input: String): Either[ParserError,(Term, TokenStream[Token])] =
     parseTerm(input)
+  */
 
-  def parse(tokens: Seq[Token]): Either[ParserError,(Term, Seq[Token])] =
+  def parse(tokens: TokenStream[Token]): Either[ParserError,(Term, TokenStream[Token])] =
     parseTerm(tokens)
 
 }
@@ -52,6 +55,7 @@ class TermParser2
 
   }
   type ParserError = String
+  //type TokenStream[T] = Seq[T]
   type TokenStream[T] = Seq[T]
 
   import Private._
@@ -59,20 +63,53 @@ class TermParser2
   import scala.reflect.ClassTag
 
   def tokenize(input: String): TokenStream[Token] = {
-    var scanner = new lexical.Scanner(input)
-    var tokStream: Seq[Token] = List[Token]()
-    while(!scanner.atEnd) {
-      tokStream = tokStream :+ scanner.first
-      //tokStream = tokStream :+ (scanner.first.asInstanceOf[Token])
-      scanner = scanner.rest
-    }
-    tokStream
+    tokenizeFromScanner(new lexical.Scanner(input))
+    /*
+    new Iterator[Token]{
+      var scanner = new lexical.Scanner(input)
+      def hasNext = !scanner.atEnd
+      def next(): Token = {
+        val ret = scanner.first
+        scanner = scanner.rest
+        ret
+      }
+    }.toStream
+    */
   }
 
-  def parseTerm(input: String): Either[ParserError,(Term, TokenStream[Token])] = {
-    parseTerm(
-      tokenize(input)
+  // TODO: find more efficient solution
+  def tokenStreamFromSource(src: io.Source): TokenStream[Token] = {
+    import util.parsing.input._
+    tokenizeFromScanner(
+      new lexical.Scanner(
+        new CharArrayReader(src.toArray)  // <- quick and dirty solution, to be improved!
+        /*
+        new Reader[Char]{
+          def atEnd: Boolean = !src.hasNext
+          def first: Char = src.next()
+          def pos = new Position{
+            def column: Int = 1
+            def line: Int = 1
+            def lineContents: String = "<>"
+          }
+          def rest: Reader[Char] =
+            this
+        }
+        */
+      )
     )
+  }
+
+  private def tokenizeFromScanner(scanner: lexical.Scanner): TokenStream[Token] = {
+    new Iterator[Token]{
+      var scannerCopy = scanner
+      def hasNext = !scannerCopy.atEnd
+      def next(): Token = {
+        val ret = scannerCopy.first
+        scannerCopy = scannerCopy.rest
+        ret
+      }
+    }.toStream
   }
 
   def parseTerm(tokens: TokenStream[Token]): Either[ParserError,(Term, TokenStream[Token])] =
@@ -91,7 +128,7 @@ class TermParser2
 
     def lookupRule: Option[Seq[RHSEntry]] = {
       input match {
-        case sym :: rest =>
+        case sym #:: rest =>
           rulesMap.get((currentState, Some(sym.getClass))) match {
             case None =>
               rulesMap.get((currentState, None))

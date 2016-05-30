@@ -33,70 +33,30 @@ class ParseThf2Test
     //"SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
   )
 
-  val specialProblemFormula = "(g: ( $i * $i ) > $i )"
-
-  val ite_formula =
-    """! [Z: $i] :
-     $ite_f(
-        ? [X: $i] : ( p @ X)
-      , ! [X: $i] : (q @ X @ X)
-      , ( q @ Z @ $ite_f(! [X: $i] : ( p @ X), ( f @ a), ( f@ Z))) )"""
-
-  val connective_terms =
-    """(
-    ! [P: $o,C: $i] :
-      ( ( & @ ( p @ C ) @ P )
-      = ( ~ @ ( ~& @ ( p @ C ) @ P ) ) ) )
-     """
-  val source_test =
-    """thf(source,axiom,(
-      p ),
-    file('SYN000-1.p')).
-    """.stripMargin
-
-
-  val source_inference_with_bind_test =
-    """thf(source_inference_with_bind,axiom,
-    ( p @ a ),
-  inference(magic,[status(thm)],[theory(equality),source_unknown:[bind(X,$fot(a))]]))."""
-
   /*
-  test("specialTPTPTest", Checked) {
-    var tokens = TPTPParser2.tokenize(source_inference_with_bind_test)
-    Out.output(s"parsing: ${tokens.take(5)} ...")
-    var parsed = TPTPParser2.parseAnnotatedFormulaOrInclude(tokens)
-      if (parsed.isLeft) {
-        fail(s"FAILED. Cause: ${parsed.left.get}")
-      } else {
-        val res = parsed.right.get
-        Out.output(s"parse result: ${res._1}")
-        tokens = res._2
-        //Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
+  test("temp", Checked) {
+    val stream = new Iterator[Int]{
+      var temp = Range(1,100).toIterator
+      def hasNext = temp.hasNext
+      def next() = {
+        temp.next()
       }
-  }
-
-  test("specialThfTest", Checked) {
-    var tokens = ThfParser.tokenize(connective_terms)
-    Out.output(s"parsing: ${tokens.take(5)} ...")
-    var parsed = ThfParser.parse(tokens)
-      if (parsed.isLeft) {
-        fail(s"FAILED. Cause: ${parsed.left.get}")
-      } else {
-        val res = parsed.right.get
-        Out.output(s"parse result: ${res._1}")
-        tokens = res._2
-        //Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
-      }
+    }.toStream
+    println(stream.take(10))
+    println(stream)
   }
   */
-
-
   /*
-  val tokensOld = OldParser.tokens( inputString )
-  var parsedOld = OldParser.tptpFile(tokensOld)
+  test("temp", Checked) {
+    for (p <- problems) {
+      Out.output(s"testing with problem file ${p}")
+      val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
+      val res = TPTPParser2.tokenize(Source.fromInputStream(stream).mkString)
+      println(res.take(10).toList)
+      stream.close()
+    }
+  }
   */
-
-  //val parsed = TPTP.parseFile(new CharArrayReader(fromFile(source + "/" +  p._1 + ".p").toArray))
 
   test("compareParserOutput", Checked) {
     Out.output("comparing the output of both parsers...")
@@ -111,17 +71,14 @@ class ParseThf2Test
       }
       def parseWithNew: TPTPInput = {
         val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
-        val res = TPTPParser2.parse(Source.fromInputStream(stream).mkString).right.get._1
+        val res = TPTPParser2.parseSource(Source.fromInputStream(stream)).right.get._1
         stream.close()
         res
       }
       var oldRes = parseWithOld.inputs
       var newRes = parseWithNew.inputs
 
-      //assert( oldRes == newRes )
-
       var countSuccess = 0
-
       while(
         (!oldRes.isEmpty)
         ||
@@ -144,40 +101,5 @@ class ParseThf2Test
       //println(s"res: ${res}")
     }
   }
-
-  /*
-  test("parse with new parser", Checked) {
-    for (p <- problems) {
-      val stream = getClass.getResourceAsStream(source+ "/" + p._1 + ".p")
-      val res = TPTPParser2.parse(Source.fromInputStream(stream).mkString)
-      println(s"res: ${res}")
-    }
-  }
-  */
-
-  /*
-  for (p <- problems) {
-    Out.output(s"testing ${p._2}")
-    val stream = getClass().getResourceAsStream(source + "/" + p._1 + ".p")
-    val input = Source.fromInputStream( stream )
-    var tokens = TPTPParser2.tokenize(input.mkString)
-
-    while( ! tokens.isEmpty ) {
-
-      Out.output(s"parsing: ${tokens.take(5)} ...")
-      var parsed = TPTPParser2.parseAnnotatedFormulaOrInclude(tokens)
-      if (parsed.isLeft) {
-        fail(s"FAILED. Cause: ${parsed.left.get}")
-      } else {
-        val res = parsed.right.get
-        Out.output(s"parse result: ${res._1}")
-        tokens = res._2
-        //Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
-      }
-
-    }
-    input.close()
-  }
-  */
 
 }

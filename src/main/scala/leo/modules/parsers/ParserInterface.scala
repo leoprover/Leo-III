@@ -18,8 +18,19 @@ trait ParserInterface[Output]
   //type TokenPI = lexical.Token
   //Self: TPTPTokens =>
   //type TokenPI = Token
-  def tokenize(input: String): Seq[Token]
-  def parse(input: String): Either[String,(Output, Seq[Token])]
-  def parse(input: Seq[Token]): Either[String,(Output, Seq[Token])]
 
+  type TokenStream[T] = Seq[T]
+
+  def tokenize(input: String): TokenStream[Token]
+  def parse(input: String): Either[String,(Output, TokenStream[Token])] =
+    parse(
+      tokenize(input)
+    )
+  def parse(input: TokenStream[Token]): Either[String,(Output, TokenStream[Token])]
+
+  def tokenStreamFromSource(src: io.Source): TokenStream[Token]
+  def parseSource(src: io.Source): Either[String,(Output, TokenStream[Token])] =
+    parse(
+      tokenStreamFromSource(src)
+    )
 }

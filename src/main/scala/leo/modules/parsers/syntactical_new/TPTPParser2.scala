@@ -14,11 +14,13 @@ object TPTPParser2
   extends TPTPParser2
   with ParserInterface[TPTPInput]
 {
-
-  def parse(input: String): Either[ParserError,(TPTPInput, Seq[Token])] =
+  override type TokenStream[T] = ParserInterface[TPTPInput]#TokenStream[T]
+  /*
+  def parse(input: String): Either[ParserError,(TPTPInput, TokenStream[Token])] =
     parseTPTPInput(input)
+  */
 
-  def parse(tokens: Seq[Token]): Either[ParserError,(TPTPInput, Seq[Token])] =
+  def parse(tokens: TokenStream[Token]): Either[ParserError,(TPTPInput, TokenStream[Token])] =
     parseTPTPInput(tokens)
 }
 
@@ -83,12 +85,14 @@ class TPTPParser2
   import PrivateTypes._
   import scala.reflect.ClassTag
 
-  def parseTPTPInput(input: String): Either[ParserError,(ReturnType, Seq[Token])] =
+  /*
+  def parseTPTPInput(input: String): Either[ParserError,(ReturnType, TokenStream[Token])] =
     parseTPTPInput(
       tokenize(input)
     )
+  */
 
-  def parseTPTPInput(tokens: Seq[Token]): Either[ParserError,(TPTPInput, Seq[Token])] = {
+  def parseTPTPInput(tokens: TokenStream[Token]): Either[ParserError,(TPTPInput, TokenStream[Token])] = {
     var stream = tokens
     var resList = Seq[Either[AnnotatedFormula, Include]]()
     while (!stream.isEmpty) {
@@ -104,12 +108,14 @@ class TPTPParser2
     Right(TPTPInput(resList), stream)
   }
 
-  def parseAnnotatedFormulaOrInclude(input: String): Either[ParserError,(Either[AnnotatedFormula, Include], Seq[Token])] =
+  /*
+  def parseAnnotatedFormulaOrInclude(input: String): Either[ParserError,(Either[AnnotatedFormula, Include], TokenStream[Token])] =
     parseAnnotatedFormulaOrInclude(
       tokenize(input)
     )
+  */
 
-  def parseAnnotatedFormulaOrInclude(tokens: Seq[Token]): Either[ParserError,(Either[AnnotatedFormula, Include], Seq[Token])] =
+  def parseAnnotatedFormulaOrInclude(tokens: TokenStream[Token]): Either[ParserError,(Either[AnnotatedFormula, Include], TokenStream[Token])] =
     zParser('z0, List.empty, tokens, 0).right flatMap {
       case (TPTPEntry(tptp) :: Nil, restTokens) =>
         Right ((tptp, restTokens) )
@@ -151,7 +157,7 @@ class TPTPParser2
             }
           case RHSMatch(TokenByType(tokClassId)) =>
             input match {
-              case head :: tail if head.getClass == tokClassId =>
+              case head #:: tail if head.getClass == tokClassId =>
                 stack = TokenEntry(head) :: stack
                 input = tail
               case head :: _
@@ -159,7 +165,7 @@ class TPTPParser2
             }
           case RHSMatch(SpecificToken(t)) =>
             input match {
-              case head :: tail if head == t =>
+              case head #:: tail if head == t =>
                 stack = TokenEntry(head) :: stack
                 input = tail
               case head :: _
@@ -228,7 +234,7 @@ class TPTPParser2
 
   private def lookupRule(currentState: ZSymbol, input: TokenStream[Token]): Set[Seq[RHSEntry]] = {
     input match {
-      case sym :: rest =>
+      case sym #:: _ =>
         val key = SpecificToken(sym)
         rulesMap.get(currentState, key).getOrElse{
           {

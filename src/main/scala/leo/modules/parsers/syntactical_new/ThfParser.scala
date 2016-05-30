@@ -42,10 +42,13 @@ object ThfParser
   extends ThfParser
   with ParserInterface[Formula]
 {
-  def parse(input: String): Either[ParserError,(Formula, Seq[Token])] =
+  override type TokenStream[T] = ParserInterface[Formula]#TokenStream[T]
+  /*
+  def parse(input: String): Either[ParserError,(Formula, TokenStream[Token])] =
     parseThfFormula(input)
+  */
 
-  def parse(tokens: Seq[Token]): Either[ParserError,(Formula, Seq[Token])] =
+  def parse(tokens: TokenStream[Token]): Either[ParserError,(Formula, TokenStream[Token])] =
     parseThfFormula(tokens)
 }
 
@@ -110,12 +113,14 @@ class ThfParser
   import PrivateTypes._
   import scala.reflect.ClassTag
 
-  def parseThfFormula(input: String): Either[ParserError,(ReturnType, Seq[Token])] =
+  /*
+  def parseThfFormula(input: String): Either[ParserError,(ReturnType, TokenStream[Token])] =
     parseThfFormula(
       tokenize(input)
     )
+  */
 
-  def parseThfFormula(tokens: Seq[Token]): Either[ParserError,(ReturnType, Seq[Token])] =
+  def parseThfFormula(tokens: TokenStream[Token]): Either[ParserError,(ReturnType, TokenStream[Token])] =
     zParser('z0, List.empty, tokens, 0).right flatMap {
       case (FormulaEntry(f) :: Nil, restTokens) =>
         Right ((f, restTokens) )
@@ -176,7 +181,7 @@ class ThfParser
             }
           case RHSMatch(TokenByType(tokClassId)) =>
             input match {
-              case head :: tail if head.getClass == tokClassId =>
+              case head #:: tail if head.getClass == tokClassId =>
                 stack = TokenEntry(head) :: stack
                 input = tail
               case head :: _
@@ -184,7 +189,7 @@ class ThfParser
             }
           case RHSMatch(SpecificToken(t)) =>
             input match {
-              case head :: tail if head == t =>
+              case head #:: tail if head == t =>
                 stack = TokenEntry(head) :: stack
                 input = tail
               case head :: _
@@ -244,7 +249,7 @@ class ThfParser
 
   private def lookupRule(currentState: ZSymbol, input: TokenStream[Token]): Set[Seq[RHSEntry]] = {
     input match {
-      case sym :: rest =>
+      case sym #:: _ =>
         val key = SpecificToken(sym)
         rulesMap.get(currentState, key).getOrElse{
           {

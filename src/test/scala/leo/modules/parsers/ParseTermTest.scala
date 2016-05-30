@@ -69,21 +69,37 @@ class ParseTermTest
     override val lexical = TermParser0.lexical
     type Token = TermParser0.lexical.Token
 
-    def tokenize(input: String): Seq[Token] = {
-      var scanner = new TermParser0.lexical.Scanner(input)
-      var tokStream: Seq[Token] = List[Token]()
-      while(!scanner.atEnd) {
-        tokStream = tokStream :+ scanner.first
-        scanner = scanner.rest
-      }
-      tokStream
+    def tokenize(input: String): TokenStream[Token] = {
+      new Iterator[Token]{
+        var scanner = new TermParser0.lexical.Scanner(input)
+        def hasNext = !scanner.atEnd
+        def next(): Token = {
+          val ret = scanner.first
+          scanner = scanner.rest
+          ret
+        }
+      }.toStream
     }
-    def parse(input: String): Either[String,(Term, Seq[Token])] = {
-      TermParser0.parse(input, TermParser0.term) match {
-        case TermParser0.Success(x,rest) => Right((x, Seq()))
-        case _ => Left("parser failed!")
-      }
+
+    def tokenStreamFromSource(src: io.Source): TokenStream[Token] = {
+      import util.parsing.input._
+      tokenizeFromScanner(
+        new TermParser0.lexical.Scanner(
+          new Reader[Char]{
+            def atEnd: Boolean = !src.hasNext
+            def first: Char = src.next()
+            def pos = new Position{
+              def column: Int = 1
+              def line: Int = 1
+              def lineContents: String = ""
+            }
+            def rest: Reader[Char] =
+              this
+          }
+        )
+      )
     }
+
     def parse(input: Seq[Token]): Either[String,(Term, Seq[Token])] = {
       import util.parsing.input.Reader
       class TokenReader(data: Seq[Token])
@@ -103,6 +119,19 @@ class ParseTermTest
         case _ => Left("parser failed!")
       }
     }
+
+    private def tokenizeFromScanner(scanner: TermParser0.lexical.Scanner): TokenStream[Token] = {
+      new Iterator[Token]{
+        var scannerCopy = scanner
+        def hasNext = !scannerCopy.atEnd
+        def next(): Token = {
+          val ret = scannerCopy.first
+          scannerCopy = scannerCopy.rest
+          ret
+        }
+      }.toStream
+    }
+
   }
 
   test("oldTermParser", Checked) {
