@@ -1,7 +1,7 @@
 package leo
 
 import leo.datastructures.ClauseProxy
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{Blackboard, DoneEvent}
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
@@ -32,6 +32,26 @@ object TestMain {
     }
 
     val startTime : Long = System.currentTimeMillis()
+
+
+
+    val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
+
+    val TimeOutProcess = new DeferredKill(timeout, timeout)
+    TimeOutProcess.start()
+
+    val interval = 10
+    val config = {
+      val sb = new StringBuilder()
+      sb.append(s"problem(${Configuration.PROBLEMFILE}),")
+      sb.append(s"time(${Configuration.TIMEOUT}),")
+      sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
+      sb.append(s"sos(${Configuration.SOS}),")
+      // TBA ...
+      sb.init.toString()
+    }
+    Out.comment(s"Configuration: $config")
+
 
     val loadphase = new LoadPhase(Configuration.PROBLEMFILE)
     val filterphase = new FilterPhase()
@@ -76,6 +96,7 @@ object TestMain {
       return
     }
 
+    TimeOutProcess.kill()
     val endTime = System.currentTimeMillis()
     val time = System.currentTimeMillis() - startTime
     Scheduler().killAll()
@@ -104,5 +125,59 @@ object TestMain {
     Out.debug(" ########################")
     Out.debug(s" Starting Phase ${p.name}")
     Out.debug(p.description)
+  }
+
+
+  /**
+    * Thread to kill leo.
+    *
+    *
+    * @param interval
+    * @param timeout
+    */
+  private class DeferredKill(interval : Double, timeout : Double) extends Thread {
+
+    var remain : Double = timeout
+    var exit : Boolean = false
+
+    private var finished = false
+
+    def isFinished = synchronized(finished)
+
+    def kill() : Unit = {
+      synchronized{
+        exit = true
+        this.interrupt()
+        Out.info("Scheduler killed before timeout.")
+      }
+    }
+
+    override def run(): Unit = {
+      //      println("Init delay kill.")
+      synchronized{
+        while(remain > 0 && !exit) {
+          try {
+            val w : Double = if (remain > interval) interval else remain
+            wait((w * 1000).toInt)
+          } catch {
+            case e: InterruptedException => if(exit) return else Thread.interrupted()
+            case _: Throwable => ()
+          } finally {
+            if(!exit) {
+              Scheduler().signal()
+              //agentStatus()
+              remain -= interval
+              Out.info(s"Leo-III is still working. (Remain=$remain)")
+            }
+          }
+        }
+        SZSDataStore.forceStatus(Context())(SZS_Timeout)
+        Out.info(s"Timeout: Killing all Processes.")
+        finished = true
+        //TODO: Better mechanism
+        Blackboard().filterAll(_.filter(DoneEvent()))
+        Scheduler().killAll()
+      }
+    }
   }
 }
