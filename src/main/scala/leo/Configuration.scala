@@ -36,7 +36,8 @@ object Configuration extends DefaultConfiguration {
       't' -> ("", "N", "Timeout in seconds"),
       'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
-      's' -> ("sos", "", "Use SOS heuristic search strategy")
+      's' -> ("sos", "", "Use SOS heuristic search strategy"),
+      'a' -> ("atp", "name=call", "Addition of external provers")
     )
   }
 
@@ -56,6 +57,7 @@ object Configuration extends DefaultConfiguration {
       VERBOSITY
       COUNTER_SAT
       SOS
+      ATPS
       ()
     }
     case _ => ()
@@ -107,6 +109,28 @@ object Configuration extends DefaultConfiguration {
   lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
+
+  lazy val ATPS : Seq[(String, String)] = {
+    val a = valueOf("a")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1))
+      }
+    }
+    else {
+      val b = valueOf("atp")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1))
+        }
+      }
+      else Seq()
+    }
+  }
 
   // more to come ...
 

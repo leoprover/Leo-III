@@ -8,6 +8,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
+import leo.Configuration
 
 import scala.io.Source
 
@@ -24,18 +25,12 @@ class MultiSearchPhase(proofProcedure: ProofProcedure*) extends CompletePhase {
   override def name: String = "multi-search"
 
   /**
-    * Place of the external provers
-    */
-  final val PROVER_CONFIG = "ext_config"
-
-  /**
     * A list of all agents to be started.
     *
     * @return
     */
   override protected val agents: Seq[TAgent] = {
-    val names = extFromFile(PROVER_CONFIG)
-    val ext = names.map{case (name, prover) => SZSScriptAgent(name, prover)}.toSeq
+    val ext = Configuration.ATPS.map{case (name, prover) => SZSScriptAgent(name, prover)}
     proofProcedure.map(proc => new DoItYourSelfAgent(proc)) ++: ext
   }
 
@@ -47,19 +42,5 @@ class MultiSearchPhase(proofProcedure: ProofProcedure*) extends CompletePhase {
     }
 //    val fs = FormulaDataStore.getFormulas.toSet
 //    SZSScriptAgent.execute(fs, Context())
-  }
-
-  protected def extFromFile(file : String) : Iterator[(String, String)] = {
-    try {
-      val lines: Iterator[String] = scala.io.Source.fromFile(file).getLines()
-      lines.map{s =>
-        val provers = s.split("=",2)
-        (provers(0),provers(1))
-      }
-    } catch {
-      case _:Exception =>
-        leo.Out.comment(s"Error in the configuration file $PROVER_CONFIG.\nStarting without external support.")
-        Iterator()
-    }
   }
 }

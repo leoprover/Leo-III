@@ -162,27 +162,10 @@ object MultiSeqPProc extends ProofProcedure {
       } else {
         // Should an external Call be made?
         sinceLastExternal += 1
-        if(sinceLastExternal >= externalCallIteration){
+        if(Configuration.ATPS.nonEmpty && sinceLastExternal > externalCallIteration){
+          sinceLastExternal = 0
           SZSScriptAgent.execute(state.processed, c)
-          sinceLastExternal=0
-          return (SZS_GaveUp, None) // TODO : Remove after testing Test, why does wait not work???
-        }
-        // No cancel, do reasoning step
-        if (Configuration.isSet("ec") && state.noProcessedCl % 20 == 0 && !test) {
-          test = true
-          Out.debug(s"($proc) CALL LEO-II")
-          val returnszs = Control.callExternalLeoII(state.processed)
-          Out.debug(s"${returnszs.pretty}")
-
-          if (returnszs == SZS_Theorem) {
-            loop = false
-            state.setSZSStatus(SZS_Theorem)
-            val resultcl = AnnotatedClause(Clause(Seq()), InferredFrom(CallLeo, state.processed))
-            state.setDerivationClause(resultcl)
-          }
-
         } else {
-          test = false
           var cur = state.nextUnprocessed
           // cur is the current AnnotatedClause
           Out.debug(s"($proc) Taken: ${cur.pretty}")
@@ -359,10 +342,8 @@ object MultiSeqPProc extends ProofProcedure {
       case e: NoSuchElementException => false
     }
   }
-  object CallLeo extends leo.modules.calculus.CalculusRule {
-    val name = "call_leo2"
-    override val inferenceStatus = Some(SZS_Theorem)
-  }
+
+
   final def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
     case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
     case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")

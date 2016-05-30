@@ -25,6 +25,13 @@ object SZSDataStore extends DataStore {
    */
   def forceStatus(c: Context)(s: StatusSZS): Unit = szsSet.synchronized(szsSet.put(c,SZSStore(s,c)))
 
+
+  def setIfEmpty(c : Context)(s : StatusSZS) : Unit = szsSet.synchronized{
+    if(szsSet.get(c).isEmpty){
+      szsSet.put(c, SZSStore(s,c))
+    }
+  }
+
   /**
    * Returns to a given context the set status.
    * None if no status was previously set.
