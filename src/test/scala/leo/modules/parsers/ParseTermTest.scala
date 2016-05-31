@@ -85,7 +85,8 @@ class ParseTermTest
       import util.parsing.input._
       tokenizeFromScanner(
         new TermParser0.lexical.Scanner(
-          new Reader[Char]{
+          new CharArrayReader(src.toArray)  // <- quick and dirty solution, to be improved!
+          /*new Reader[Char]{
             def atEnd: Boolean = !src.hasNext
             def first: Char = src.next()
             def pos = new Position{
@@ -96,6 +97,7 @@ class ParseTermTest
             def rest: Reader[Char] =
               this
           }
+          */
         )
       )
     }
