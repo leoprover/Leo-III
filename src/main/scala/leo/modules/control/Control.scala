@@ -263,6 +263,25 @@ package inferenceControl {
                 val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)), cl.properties | ClauseAnnotation.PropNeedsUnification)
                 res = res + result
               }
+              // If equation is oriented, we still need to look at the side-switched version
+              // of otherLit, since our iterator does not give us this test. It will give us this test
+              // if otherLit is not oriented.
+              if (otherLit.oriented) {
+                val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, !otherLitSide)
+                val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
+                val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
+                Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
+                Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+                if (test1 && test2) {
+                  val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
+                  //                val resultprop = if (leo.datastructures.isPropSet(ClauseAnnotation.PropSOS,cl.properties))
+                  //                  ClauseAnnotation.PropSOS
+                  //                else ClauseAnnotation.PropNoProp
+
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  res = res + result
+                }
+              }
             } else {
               // Exactly one is flexhead and negative
               // attach not to not-flex literal
