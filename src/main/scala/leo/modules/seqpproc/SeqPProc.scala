@@ -33,7 +33,7 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = Control.expandDefinitions(cw)
     cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-//    cw = Control.skolemize(cw, Signature.get)
+    cw = Control.skolemize(cw, Signature.get)
 
 
     // Exhaustively CNF
@@ -107,7 +107,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.debug(s"# Process: ${cur.pretty}")
       val processed = preprocess(cur)
       Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
-      var preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
+      val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }

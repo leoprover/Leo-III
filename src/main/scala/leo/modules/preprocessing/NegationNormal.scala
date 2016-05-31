@@ -3,6 +3,7 @@ package leo.modules.preprocessing
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.impl.Signature
+import leo.modules.output.SZS_Theorem
 
 /**
  * Calculates the Negation Normal Form (NNF) of a term.
@@ -11,6 +12,7 @@ import leo.datastructures.impl.Signature
  * @since 6/12/14
  */
 object NegationNormal extends Normalization{
+  override val inferenceStatus = Some(SZS_Theorem)
   override val name : String = "negation_normal"
   /**
    * Normalizes a formula corresponding to the object.
