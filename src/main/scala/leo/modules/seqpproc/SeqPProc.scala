@@ -39,7 +39,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // Exhaustively CNF
     result = Control.cnf(cw)
     // Remove defined equalities as far as possible
-//    result = result union Control.convertDefinedEqualities2(result)
+    result = result union Control.convertDefinedEqualities(result)
 
     // To equation if possible and then apply func ext
     // AC Simp if enabled, then Simp.
