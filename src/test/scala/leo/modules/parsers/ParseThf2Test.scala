@@ -33,31 +33,6 @@ class ParseThf2Test
     //"SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
   )
 
-  /*
-  test("temp", Checked) {
-    val stream = new Iterator[Int]{
-      var temp = Range(1,100).toIterator
-      def hasNext = temp.hasNext
-      def next() = {
-        temp.next()
-      }
-    }.toStream
-    println(stream.take(10))
-    println(stream)
-  }
-  */
-  /*
-  test("temp", Checked) {
-    for (p <- problems) {
-      Out.output(s"testing with problem file ${p}")
-      val stream = getClass.getResourceAsStream(source + "/" + p._1 + ".p")
-      val res = TPTPParser2.tokenize(Source.fromInputStream(stream).mkString)
-      println(res.take(10).toList)
-      stream.close()
-    }
-  }
-  */
-
   test("compareParserOutput", Checked) {
     Out.output("comparing the output of both parsers...")
     for (p <- problems) {

@@ -10,10 +10,6 @@ import leo.modules.output.logger.Out
 
 import scala.util.parsing.input.Position
 
-//import leo.modules.parsers.syntactical_new.termParser._
-
-//import leo.modules.parsers.lexical.TPTPLexical
-
 /**
   * Created by samuel on 08.03.16.
   */
@@ -149,14 +145,4 @@ class ParseTermTest
     testParser(TermParser2)
   }
 
-  /*
-  test("testUntypedParsing", Checked) {
-    //println("parser 0")
-    //testParser(TermParser0Wrapper)
-    println("parser 1")
-    testParser(TermParserFunctional)
-    println("parser 2")
-    testParser(TermParser2)
-  }
-  */
 }

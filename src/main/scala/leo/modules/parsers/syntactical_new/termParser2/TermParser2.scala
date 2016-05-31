@@ -9,10 +9,6 @@ object TermParser2
   with ParserInterface[Term]
 {
   override type TokenStream[T] = ParserInterface[Term]#TokenStream[T]
-  /*
-  def parse(input: String): Either[ParserError,(Term, TokenStream[Token])] =
-    parseTerm(input)
-  */
 
   def parse(tokens: TokenStream[Token]): Either[ParserError,(Term, TokenStream[Token])] =
     parseTerm(tokens)
@@ -64,17 +60,6 @@ class TermParser2
 
   def tokenize(input: String): TokenStream[Token] = {
     tokenizeFromScanner(new lexical.Scanner(input))
-    /*
-    new Iterator[Token]{
-      var scanner = new lexical.Scanner(input)
-      def hasNext = !scanner.atEnd
-      def next(): Token = {
-        val ret = scanner.first
-        scanner = scanner.rest
-        ret
-      }
-    }.toStream
-    */
   }
 
   // TODO: find more efficient solution

@@ -15,10 +15,6 @@ object TPTPParser2
   with ParserInterface[TPTPInput]
 {
   override type TokenStream[T] = ParserInterface[TPTPInput]#TokenStream[T]
-  /*
-  def parse(input: String): Either[ParserError,(TPTPInput, TokenStream[Token])] =
-    parseTPTPInput(input)
-  */
 
   def parse(tokens: TokenStream[Token]): Either[ParserError,(TPTPInput, TokenStream[Token])] =
     parseTPTPInput(tokens)
@@ -85,13 +81,6 @@ class TPTPParser2
   import PrivateTypes._
   import scala.reflect.ClassTag
 
-  /*
-  def parseTPTPInput(input: String): Either[ParserError,(ReturnType, TokenStream[Token])] =
-    parseTPTPInput(
-      tokenize(input)
-    )
-  */
-
   def parseTPTPInput(tokens: TokenStream[Token]): Either[ParserError,(TPTPInput, TokenStream[Token])] = {
     var stream = tokens
     var resList = Seq[Either[AnnotatedFormula, Include]]()
@@ -107,13 +96,6 @@ class TPTPParser2
     }
     Right(TPTPInput(resList), stream)
   }
-
-  /*
-  def parseAnnotatedFormulaOrInclude(input: String): Either[ParserError,(Either[AnnotatedFormula, Include], TokenStream[Token])] =
-    parseAnnotatedFormulaOrInclude(
-      tokenize(input)
-    )
-  */
 
   def parseAnnotatedFormulaOrInclude(tokens: TokenStream[Token]): Either[ParserError,(Either[AnnotatedFormula, Include], TokenStream[Token])] =
     zParser('z0, List.empty, tokens, 0).right flatMap {

@@ -43,10 +43,6 @@ object ThfParser
   with ParserInterface[Formula]
 {
   override type TokenStream[T] = ParserInterface[Formula]#TokenStream[T]
-  /*
-  def parse(input: String): Either[ParserError,(Formula, TokenStream[Token])] =
-    parseThfFormula(input)
-  */
 
   def parse(tokens: TokenStream[Token]): Either[ParserError,(Formula, TokenStream[Token])] =
     parseThfFormula(tokens)
@@ -127,25 +123,6 @@ class ThfParser
       case (s, _) =>
         Left(s"Stack is not empty: ${s}")
     }
-    /*
-    tokens match {
-      case THF :: LeftParenthesis :: _ :: Comma :: _ :: Comma :: formulaInput =>
-        zParser('z0, List.empty, formulaInput, 0).right flatMap {
-          case (FormulaEntry(f) :: Nil, restTokens) =>
-            restTokens match {
-              case RightParenthesis :: Dot :: restTokens =>
-                Right ((f, restTokens) )
-              case _ => Left(s"missing ${RightParenthesis.chars} after formula")
-            }
-          case (s, _) =>
-            Left(s"Stack is not empty: ${s}")
-        }
-        /*
-      case Include :: rest =>
-        dbgPrint("skipping include...")
-      */
-    }
-    */
 
   private val rulesMap: ParseTableType = initMap
 
