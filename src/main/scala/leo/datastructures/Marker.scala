@@ -146,7 +146,9 @@ object AnnotatedClause {
     apply(cl, Role_Plain, annotation, propFlag)
 }
 
-abstract sealed class ClauseAnnotation extends Pretty
+abstract sealed class ClauseAnnotation extends Pretty {
+  def fromRule: Option[leo.modules.calculus.CalculusRule]
+}
 
 object ClauseAnnotation {
   case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Set[(A, Output)]) extends ClauseAnnotation {
@@ -154,10 +156,12 @@ object ClauseAnnotation {
       cws.map { case (cw, add) => if (add == null) {
         cw.id
       } else {
-        cw.id + ":[" + add.output + "]"
+        cw.id // + ":[" + add.output + "]"
       }
       }.mkString(",")
     }])"
+
+    val fromRule = Some(rule)
   }
   object InferredFrom {
     def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Set[A]): ClauseAnnotation =
@@ -169,9 +173,11 @@ object ClauseAnnotation {
 
   case object NoAnnotation extends ClauseAnnotation {
     val pretty: String = ""
+    val fromRule = None
   }
   case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
     def pretty = s"file('$fileName',$formulaName)"
+    val fromRule = None
   }
 
   type ClauseProp = Int
@@ -179,12 +185,14 @@ object ClauseAnnotation {
   final val PropUnified: ClauseProp = 1
   final val PropBoolExt: ClauseProp = 2
   final val PropSOS: ClauseProp = 4
+  final val PropNeedsUnification: ClauseProp = 8
 
   final def prettyProp(prop: ClauseProp): String = {
     val sb = new StringBuilder
     if (isPropSet(PropUnified, prop)) sb.append(" U ")
     if (isPropSet(PropBoolExt, prop)) sb.append(" BE ")
     if (isPropSet(PropSOS, prop)) sb.append(" SOS ")
+    if (isPropSet(PropNeedsUnification, prop)) sb.append(" NU ")
     sb.toString()
   }
 }

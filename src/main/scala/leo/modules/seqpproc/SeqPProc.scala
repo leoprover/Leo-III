@@ -31,7 +31,10 @@ object SeqPProc extends Function1[Long, Unit]{
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
+    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
+    cw = Control.skolemize(cw, Signature.get)
+
 
     // Exhaustively CNF
     result = Control.cnf(cw)
@@ -43,7 +46,7 @@ object SeqPProc extends Function1[Long, Unit]{
     result = result.map { cl =>
       var result = cl
       result = Control.liftEq(result)
-      result = Control.funcext(result)
+      result = Control.funcext(result) // Maybe comment out? why?
       result = Control.acSimp(result)
       Control.simp(result)
     }
@@ -92,6 +95,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // transform into equational literals if possible
     val state: State[AnnotatedClause] = State.fresh(Signature.get)
     Out.debug("## Preprocess Neg.Conjecture BEGIN")
+    Out.trace(s"Neg. conjecture: ${negatedConjecture.pretty}")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
     Out.debug("## Preprocess Neg.Conjecture END")
@@ -103,7 +107,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.debug(s"# Process: ${cur.pretty}")
       val processed = preprocess(cur)
       Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
-      var preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
+      val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }
@@ -338,7 +342,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
-    newclauses = Control.preunifySet(newclauses)
+    newclauses = Control.preunifyNewClauses(newclauses)
 
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
