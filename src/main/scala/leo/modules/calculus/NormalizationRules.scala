@@ -32,8 +32,8 @@ object PolaritySwitch extends CalculusRule {
   def apply(l: Literal): Literal = if (l.equational) {
     (l.left, l.right) match {
       case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity)
-      case (Not(l2), _) => Literal(l2, l.right, !l.polarity)
-      case (_, Not(r2)) => Literal(l.left, r2, !l.polarity)
+//      case (Not(l2), _) => Literal(l2, l.right, !l.polarity)
+//      case (_, Not(r2)) => Literal(l.left, r2, !l.polarity) // FIXME: This is sound but we lose information, right?
       case _ => l
     }
   } else {
