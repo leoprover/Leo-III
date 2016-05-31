@@ -357,22 +357,24 @@ package inferenceControl {
           val fromRule = cl.annotation.fromRule.get
           if (fromRule == OrderedParamod || fromRule == OrderedEqFac) {
             val unificationLit = cl.cl.lits.last
-            assert(unificationLit.equational && !unificationLit.polarity)
-            val unificationEq = (unificationLit.left, unificationLit.right)
-            val nc = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, Seq(unificationEq), cl.cl.lits.init)
-            val results = if (nc.isEmpty) Set(cl) else nc.flatMap {case (res, subst) =>
-              val (ca, ul, ol) = PreUni.canApply(res)
-              if (ca) {
-                PreUni(leo.modules.calculus.freshVarGen(res), res, ul, ol).map {
-                  case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+            if (unificationLit.uni) {
+              assert(unificationLit.equational && !unificationLit.polarity)
+              val unificationEq = (unificationLit.left, unificationLit.right)
+              val nc = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, Seq(unificationEq), cl.cl.lits.init)
+              val results = if (nc.isEmpty) Set(cl) else nc.flatMap {case (res, subst) =>
+                val (ca, ul, ol) = PreUni.canApply(res)
+                if (ca) {
+                  PreUni(leo.modules.calculus.freshVarGen(res), res, ul, ol).map {
+                    case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
 
-                } + AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst)))),
-                  leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
-              } else
-                Set(AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified)))
+                  } + AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst)))),
+                    leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+                } else
+                  Set(AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified)))
+              }
+              Out.trace(s"Uni result:\n\t${results.map(_.pretty).mkString("\n\t")}")
+              resultSet = resultSet union results
             }
-            Out.trace(s"Uni result:\n\t${results.map(_.pretty).mkString("\n\t")}")
-            resultSet = resultSet union results
           } else {
             val (ca, ul, ol) = PreUni.canApply(cl.cl)
             if (ca) {
