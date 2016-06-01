@@ -12,8 +12,30 @@ object FVIndex {
   }
   def asTrie: FixedLengthTrie[ClauseFeature, Clause] = fvTrie
 
-  @inline final def posLitsFeature(cl: Clause): Int = cl.posLits.size
-  @inline final def negLitsFeature(cl: Clause): Int = cl.negLits.size
+  @inline final def posLitsFeature(cl: Clause): Int = {
+    val litIt = cl.lits.iterator
+    var n = 0
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (!lit.flexHead) {
+        if (lit.polarity)
+          n = n + 1
+      }
+    }
+    n
+  }
+  @inline final def negLitsFeature(cl: Clause): Int = {
+    val litIt = cl.lits.iterator
+    var n = 0
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (!lit.flexHead) {
+        if (!lit.polarity)
+          n = n + 1
+      }
+    }
+    n
+  }
   @inline final def posLitsSymbolCountFeature(symb: Signature#Key, cl: Clause): Int = countSymbol(symb, cl.posLits)
   @inline final def negLitsSymbolCountFeature(symb: Signature#Key, cl: Clause): Int = countSymbol(symb, cl.negLits)
   @inline final def posLitsSymbolDepthFeature(symb: Signature#Key, cl: Clause): Int = maxDepthOfSymbol(symb, cl.posLits)
