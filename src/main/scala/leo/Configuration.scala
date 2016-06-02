@@ -58,6 +58,7 @@ object Configuration extends DefaultConfiguration {
       COUNTER_SAT
       SOS
       ATPS
+      HELP
       ()
     }
     case _ => ()

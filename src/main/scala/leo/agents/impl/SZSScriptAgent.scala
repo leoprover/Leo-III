@@ -101,7 +101,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
       b.append("  Out: "+line+"\n")
       getSZS(line) match {
         case Some(status) if status == SZS_Theorem =>     // TODO Salvage other information
-          Out.info(s"[$name]: Got positive ${status.output} from the external prover.")
+          Out.debug(s"[$name]: Got positive ${status.output} from the external prover.")
           var r =  Result()
             .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
             if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
@@ -109,7 +109,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
         case None         => ()
       }
     }
-    Out.info(s"[$name]: No positive SZS status returned in\n${b.toString}")
+    Out.debug(s"[$name]: No positive SZS status returned in\n${b.toString}")
     Result()
   }
 

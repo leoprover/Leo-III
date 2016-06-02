@@ -26,9 +26,13 @@ object TestMain {
       Configuration.init(new CLParameterParser(args))
     } catch {
       case e: IllegalArgumentException => {
-        Out.severe(e.getMessage)
+        Configuration.help()
         return
       }
+    }
+    if ((args(0) == "-h") || Configuration.HELP){
+      Configuration.help()
+      return
     }
 
     val startTime : Long = System.currentTimeMillis()
@@ -103,6 +107,7 @@ object TestMain {
       printPhase(loadphase)
       if (!loadphase.execute()) {
         Scheduler().killAll()
+        TimeOutProcess.kill()
         unexpectedEnd(System.currentTimeMillis() - startTime)
         return
       }
@@ -113,17 +118,18 @@ object TestMain {
       printPhase(filterphase)
       if (!filterphase.execute()) {
         Scheduler().killAll()
+        TimeOutProcess.kill()
         unexpectedEnd(System.currentTimeMillis() - startTime)
         return
       }
 
       val timeForFilter: Long = System.currentTimeMillis() - afterParsing
-      leo.Out.info(s"Filter Time : ${timeForFilter}ms")
+      leo.Out.finest(s"Filter Time : ${timeForFilter}ms")
 
-      leo.Out.info("Used :")
-      leo.Out.info(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
-      leo.Out.info("Unused : ")
-      leo.Out.info(PreFilterSet.getFormulas.mkString("\n"))
+      leo.Out.debug("Used :")
+      leo.Out.debug(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
+      leo.Out.debug("Unused : ")
+      leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
 
       val searchPhase = new MultiSearchPhase(MultiSeqPProc)
@@ -131,6 +137,7 @@ object TestMain {
       printPhase(searchPhase)
       if (!searchPhase.execute()) {
         Scheduler().killAll()
+        TimeOutProcess.kill()
         unexpectedEnd(System.currentTimeMillis() - startTime)
         return
       }
@@ -140,7 +147,7 @@ object TestMain {
       val time = System.currentTimeMillis() - startTime
       Scheduler().killAll()
 
-      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout: StatusSZS) { x => x }
+      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
       Out.output("")
       Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${endTime - afterParsing} ms w/o parsing"))
 
@@ -187,7 +194,7 @@ object TestMain {
       synchronized{
         exit = true
         this.interrupt()
-        Out.info("Scheduler killed before timeout.")
+        Out.finest("Scheduler killed before timeout.")
       }
     }
 
@@ -206,12 +213,12 @@ object TestMain {
               Scheduler().signal()
               //agentStatus()
               remain -= interval
-              Out.info(s"Leo-III is still working. (Remain=$remain)")
+              Out.finest(s"Leo-III is still working. (Remain=$remain)")
             }
           }
         }
         SZSDataStore.setIfEmpty(Context())(SZS_Timeout)
-        Out.info(s"Timeout: Killing all Processes.")
+        Out.finest(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism
         Blackboard().filterAll(_.filter(DoneEvent()))

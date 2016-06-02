@@ -1,13 +1,15 @@
 package leo.modules
 
+import java.io.FileNotFoundException
+
 import leo.datastructures.impl.Signature
-import leo.datastructures.{Term, Clause, Role}
+import leo.datastructures.{Clause, Role, Term}
 import leo.datastructures.tptp.Commons
-import leo.modules.parsers.{TPTP, InputProcessing}
-import leo.modules.output.{SZS_SyntaxError, SZS_InputError}
+import leo.modules.parsers.{InputProcessing, TPTP}
+import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
 
 import scala.io.Source
-import java.nio.file.{Path, Paths, Files}
+import java.nio.file.{Files, Path, Paths}
 
 /**
  * This facade object publishes some convenience methods
@@ -54,18 +56,18 @@ object Parsing {
         // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
 
         val pIncludes = includes.map{case (inc, _) =>
-          val next = canonicalFile.getParent.resolve(inc)
-          val nfile =
-          if(Files.exists(next))
-            next.toString
-          else {
-            val tnext = tptpHome.resolve(inc)
-            if(Files.exists(tnext))
-              tnext.toString
-            else
-              throw new SZSException(SZS_InputError, s"The file ${inc} does not exist.")
+          try {
+            val next = canonicalFile.getParent.resolve(inc)
+            readProblem(next.toString, assumeRead + canonicalFile)
+          } catch {
+            case _ : Exception =>
+              try {
+                val tnext = tptpHome.resolve(inc)
+                readProblem(tnext.toString, assumeRead + canonicalFile)
+              } catch {
+                case _ : Exception => throw new SZSException(SZS_InputError, s"The file ${inc} does not exist.")
+              }
           }
-          readProblem(next.toString, assumeRead + canonicalFile)
         }
         pIncludes.flatten ++ p.getFormulae
       } else {

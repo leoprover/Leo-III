@@ -158,6 +158,7 @@ object MultiSeqPProc extends ProofProcedure {
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
     while (loop && !prematureCancel(state.noProcessedCl)) {
       if (state.unprocessed.isEmpty) {
+        SZSScriptAgent.execute(state.processed, c)
         loop = false
       } else {
         // Should an external Call be made?

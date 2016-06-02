@@ -78,7 +78,6 @@ abstract class ScriptAgent(path : String) extends Agent {
     override def run: Result = {
       val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
-
       val retValue = process.exitValue
       val out = process.out
       val err = process.error
