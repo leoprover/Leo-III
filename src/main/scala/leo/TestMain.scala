@@ -97,7 +97,7 @@ object TestMain {
 
 
       val loadphase = new LoadPhase(Configuration.PROBLEMFILE)
-      val filterphase = new FilterPhase()
+      val filterphase = new SeqFilterPhase()
 
 
       Blackboard().addDS(FormulaDataStore)
@@ -132,7 +132,17 @@ object TestMain {
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
 
-      val searchPhase = new MultiSearchPhase(new MultiSeqPProc(20), new MultiSeqPProc(5))
+      val atpFreq : Int = try{
+        val s = Configuration.valueOf("atpfreq").get
+        val h = s.head
+        h.toInt
+      } catch {
+        case _: Exception => 30
+      }
+
+      val msproc = new MultiSeqPProc(atpFreq)
+      val s = Scheduler()
+      val searchPhase = new MultiSearchPhase(msproc)
 
       printPhase(searchPhase)
       if (!searchPhase.execute()) {
