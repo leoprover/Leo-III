@@ -80,8 +80,8 @@ trait Term extends Pretty {
     symbols.filter({i => sig(i)._ty == ty})
   }
   // Functions for FV-Indexing
-  def symbolFreqOf(symbol: Signature#Key): Int
-  def symbolDepthOf(symbol: Signature#Key): Int
+  def fvi_symbolFreqOf(symbol: Signature#Key): Int
+  def fvi_symbolDepthOf(symbol: Signature#Key): Int
 
   // Substitutions and replacements
   /** Replace every occurrence of `what` in `this` by `by`. */

@@ -59,8 +59,8 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   final protected[impl] def fuseSymbolMap(map1: Map[Signature#Key, (Count, Depth)], map2: Map[Signature#Key, (Count, Depth)]): Map[Signature#Key, (Count, Depth)] = mergeMapsBy(map1,map2, fuseSymbolMapFunction)(0,0)
 
   @inline final def symbols: Set[Signature#Key] = symbolMap.keySet
-  @inline final def symbolFreqOf(symbol: Signature#Key): Int = symbolMap.getOrElse(symbol, (0,0))._1
-  @inline final def symbolDepthOf(symbol: Signature#Key): Int = symbolMap.getOrElse(symbol, (0,0))._2
+  @inline final def fvi_symbolFreqOf(symbol: Signature#Key): Int = symbolMap.getOrElse(symbol, (0,0))._1
+  @inline final def fvi_symbolDepthOf(symbol: Signature#Key): Int = symbolMap.getOrElse(symbol, (0,0))._2
 }
 
 /////////////////////////////////////////////////
@@ -134,18 +134,18 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case _             => args.freeVars
   }
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = {
-    val hdMap: Map[Signature#Key, (Count, Depth)] = hd match {
-      case Atom(key)             => Map(key -> (1,1))
-      case HeadClosure(Atom(key), _) => Map(key -> (1,1))
+    hd match {
+      case BoundIndex(_,_) => Map()
+      case Atom(key)             =>  fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.mapValues {case (c,d) => (c,d+1)})
+      case HeadClosure(Atom(key), _) => fuseSymbolMap(Map(key -> (1,1)), args.symbolMap.mapValues {case (c,d) => (c,d+1)})
       case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
         case BoundFront(_) => Map()
-        case TermFront(t) => t.asInstanceOf[TermImpl].symbolMap
+        case TermFront(t) => fuseSymbolMap(t.asInstanceOf[TermImpl].symbolMap, args.symbolMap.mapValues {case (c,d) => (c,d+1)})
         case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
       }
-      case HeadClosure(HeadClosure(h, s2), s1) => HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbolMap
+      case HeadClosure(HeadClosure(h, s2), s1) => fuseSymbolMap(HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbolMap, args.symbolMap.mapValues {case (c,d) => (c,d+1)})
       case _ => Map()
     }
-    fuseSymbolMap(hdMap, args.symbolMap.mapValues {case (c,d) => (c,d+1)})
   }
 //  lazy val symbolFrequency: Map[Signature#Key, Int] = {
 //  val hdMap: Map[Signature#Key, Int] = hd match {
