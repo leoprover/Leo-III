@@ -34,10 +34,11 @@ object Control {
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Redundancy
-  @inline final def indexedForwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Boolean = ???
+  @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumption(cl, processed)
   // Indexing
-  final def fvIndexInit(initClauses: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.init(initClauses)
-  final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
+  @inline final def fvIndexInit(initClauses: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.init(initClauses)
+  @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
+  @inline final def fvIndexInsert(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.insert(cls)
   // External prover call
   @inline final def callExternalLeoII(clauses: Set[AnnotatedClause]) = externalProverControl.ExternalLEOIIControl.call(clauses)
 }
@@ -777,8 +778,10 @@ package inferenceControl {
 }
 
 package redundancyControl {
-  object Subsumption {
-    def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Boolean = ???
+  object SubsumptionControl {
+    import leo.modules.calculus.Subsumption
+
+    def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
   }
 }
 
@@ -817,17 +820,26 @@ package indexingControl {
       this.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
       initialized = true
 
-      val initIt = initClauses.iterator
-      while (initIt.hasNext) {
-        val initCl = initIt.next()
-        insert(initCl)
-      }
+//      val initIt = initClauses.iterator
+//      while (initIt.hasNext) {
+//        val initCl = initIt.next()
+//        insert(initCl)
+//      }
     }
 
     final def insert(cl: AnnotatedClause): Unit = {
       assert(initialized)
       val featureVector = features.map(_(cl.cl))
       FVIndex.add(cl.cl, featureVector)
+    }
+
+    final def insert(cls: Set[AnnotatedClause]): Unit = {
+      assert(initialized)
+      val clIt = cls.iterator
+      while(clIt.hasNext) {
+        val cl = clIt.next()
+        insert(cl)
+      }
     }
   }
 }

@@ -94,10 +94,12 @@ object SeqPProc extends Function1[Long, Unit]{
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     val state: State[AnnotatedClause] = State.fresh(Signature.get)
+    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet)
     Out.debug("## Preprocess Neg.Conjecture BEGIN")
     Out.trace(s"Neg. conjecture: ${negatedConjecture.pretty}")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
+    Control.fvIndexInsert(conjecture_preprocessed)
     Out.debug("## Preprocess Neg.Conjecture END")
 
     Out.debug("## Preprocess BEGIN")
@@ -109,6 +111,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
+      Control.fvIndexInsert(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug("## Preprocess END\n\n")
@@ -121,7 +124,6 @@ object SeqPProc extends Function1[Long, Unit]{
     }
     Out.finest(s"################")
     val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
-    Control.fvIndexInit(state.unprocessed.toSet union conjecture_preprocessed)
     var loop = true
 
     // Init loop for conjecture-derived clauses
@@ -145,12 +147,13 @@ object SeqPProc extends Function1[Long, Unit]{
           state.setDerivationClause(cur)
         } else {
           // Subsumption
-          if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+          val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+          if (subsumed.isEmpty) {
             mainLoopInferences(cur, state)
           } else {
             Out.debug("clause subsumbed, skipping.")
             state.incForwardSubsumedCl()
-            Out.trace(s"Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+            Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
           }
         }
       }
@@ -202,12 +205,13 @@ object SeqPProc extends Function1[Long, Unit]{
             state.setDerivationClause(cur)
           } else {
             // Subsumption
-            if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+            if (subsumed.isEmpty) {
               mainLoopInferences(cur, state)
             } else {
               Out.debug("clause subsumbed, skipping.")
               state.incForwardSubsumedCl()
-              Out.trace(s"Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+              Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
             }
           }
         }
@@ -361,6 +365,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
+        Control.fvIndexInsert(newCl)
       } else {
         Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
       }
@@ -380,17 +385,17 @@ object SeqPProc extends Function1[Long, Unit]{
     val name = "call_leo2"
     override val inferenceStatus = Some(SZS_Theorem)
   }
-  final def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
-    case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
-    case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
-    case a@InferredFrom(_, parents) => {
-      sb.append("\n");
-      sb.append(" | "*indent);
-      sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
-      if (parents.size == 1) {
-        makeDerivation(parents.head._1,sb,indent)
-      } else parents.foreach {case (parent, _) => makeDerivation(parent,sb,indent+1)}
-      sb
-    }
-  }
+//  final def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
+//    case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
+//    case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
+//    case a@InferredFrom(_, parents) => {
+//      sb.append("\n");
+//      sb.append(" | "*indent);
+//      sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
+//      if (parents.size == 1) {
+//        makeDerivation(parents.head._1,sb,indent)
+//      } else parents.foreach {case (parent, _) => makeDerivation(parent,sb,indent+1)}
+//      sb
+//    }
+//  }
 }
