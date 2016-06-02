@@ -135,6 +135,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def clear() : Unit = {
     pause()
+    Blackboard().forceCheck()
     curExec.clear()
     AgentWork.executingAgents() foreach(_.kill())
     AgentWork.clear()
@@ -283,7 +284,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class GenAgent(a : TAgent, t : Task) extends Runnable{
     override def run()  { // TODO catch error and move outside or at least recover
       try {
-        ExecTask.put(t.run, t, a)
+        val res = t.run
+        ExecTask.put(res, t, a)
         AgentWork.dec(a)
       } catch {
         case e : InterruptedException => throw e

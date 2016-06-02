@@ -9,10 +9,15 @@ import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.impl.Signature
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules.calculus.Subsumption
 import leo.modules.output._
 import leo.modules.Utility
+
+object MultiSeqPProc {
+  private[seqpproc] var counter : AtomicInteger = new AtomicInteger()
+}
 
 /**
   *
@@ -22,9 +27,7 @@ import leo.modules.Utility
   * @author Max Wisniewski, Alexander Steen
   * @since 5/24/16
   */
-object MultiSeqPProc extends ProofProcedure {
-
-  val externalCallIteration = 3
+class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
 
 
   final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
@@ -61,8 +64,6 @@ object MultiSeqPProc extends ProofProcedure {
 
 
   ///////////////////////////////////////////////////////////
-  private var counter : AtomicInteger = new AtomicInteger()
-
   /* Main function containing proof loop */
   /**
     * Executes a sequential proof procedure.
@@ -77,7 +78,7 @@ object MultiSeqPProc extends ProofProcedure {
     *         clause should be returned (containing the proof).
     */
   override def execute(cs: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
-    val proc = counter.incrementAndGet()
+    val proc = MultiSeqPProc.counter.incrementAndGet()
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up
@@ -156,7 +157,7 @@ object MultiSeqPProc extends ProofProcedure {
     /////////////////////////////////////////
     var sinceLastExternal : Int = 0
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
-    while (loop && !prematureCancel(state.noProcessedCl)) {
+    while (loop && !prematureCancel(state.noProcessedCl) && !Scheduler().isTerminated) {
       if (state.unprocessed.isEmpty) {
         SZSScriptAgent.execute(state.processed, c)
         loop = false
@@ -359,5 +360,5 @@ object MultiSeqPProc extends ProofProcedure {
     }
   }
 
-  override def name: String = "MultiSeqProc"
+  override val name: String = s"MultiSeqProc($externalCallIteration)"
 }

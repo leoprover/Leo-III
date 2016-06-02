@@ -136,11 +136,11 @@ trait CompletePhase extends Phase {
   protected class CompleteWait extends Agent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType]] = None
+    override def interest : Option[Seq[DataType]] = Some(Seq(StatusType))
     override def filter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
-      case DataEvent(SZSStore(s,c), StatusType) if c.parentContext == null && c.isClosed => // The root context was closed
+      case DataEvent(SZSStore(s,c), StatusType)  =>
         synchronized{finish = true; notifyAll()};List()
       case _ => List()
     }

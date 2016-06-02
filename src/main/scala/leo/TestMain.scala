@@ -132,7 +132,7 @@ object TestMain {
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
 
-      val searchPhase = new MultiSearchPhase(MultiSeqPProc)
+      val searchPhase = new MultiSearchPhase(new MultiSeqPProc(20), new MultiSeqPProc(5))
 
       printPhase(searchPhase)
       if (!searchPhase.execute()) {

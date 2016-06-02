@@ -81,7 +81,9 @@ abstract class ScriptAgent(path : String) extends Agent {
       val retValue = process.exitValue
       val out = process.out
       val err = process.error
-      a.handle(c, out, err, retValue, fs)
+      val res = a.handle(c, out, err, retValue, fs)
+      extSet.synchronized(extSet.remove(process))
+      res
     }
 
     override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
