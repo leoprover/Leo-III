@@ -9,10 +9,15 @@ import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.impl.Signature
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules.calculus.Subsumption
 import leo.modules.output._
 import leo.modules.Utility
+
+object MultiSeqPProc {
+  private[seqpproc] var counter : AtomicInteger = new AtomicInteger()
+}
 
 /**
   *
@@ -22,9 +27,7 @@ import leo.modules.Utility
   * @author Max Wisniewski, Alexander Steen
   * @since 5/24/16
   */
-object MultiSeqPProc extends ProofProcedure {
-
-  val externalCallIteration = 3
+class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
 
 
   final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
@@ -61,8 +64,6 @@ object MultiSeqPProc extends ProofProcedure {
 
 
   ///////////////////////////////////////////////////////////
-  private var counter : AtomicInteger = new AtomicInteger()
-
   /* Main function containing proof loop */
   /**
     * Executes a sequential proof procedure.
@@ -77,7 +78,7 @@ object MultiSeqPProc extends ProofProcedure {
     *         clause should be returned (containing the proof).
     */
   override def execute(cs: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
-    val proc = counter.incrementAndGet()
+    val proc = MultiSeqPProc.counter.incrementAndGet()
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up
@@ -156,33 +157,17 @@ object MultiSeqPProc extends ProofProcedure {
     /////////////////////////////////////////
     var sinceLastExternal : Int = 0
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
-    while (loop && !prematureCancel(state.noProcessedCl)) {
+    while (loop && !prematureCancel(state.noProcessedCl) && !Scheduler().isTerminated) {
       if (state.unprocessed.isEmpty) {
+        SZSScriptAgent.execute(state.processed, c)
         loop = false
       } else {
         // Should an external Call be made?
         sinceLastExternal += 1
-        if(sinceLastExternal >= externalCallIteration){
+        if(Configuration.ATPS.nonEmpty && sinceLastExternal > externalCallIteration){
+          sinceLastExternal = 0
           SZSScriptAgent.execute(state.processed, c)
-          sinceLastExternal=0
-          return (SZS_GaveUp, None) // TODO : Remove after testing Test, why does wait not work???
-        }
-        // No cancel, do reasoning step
-        if (Configuration.isSet("ec") && state.noProcessedCl % 20 == 0 && !test) {
-          test = true
-          Out.debug(s"($proc) CALL LEO-II")
-          val returnszs = Control.callExternalLeoII(state.processed)
-          Out.debug(s"${returnszs.pretty}")
-
-          if (returnszs == SZS_Theorem) {
-            loop = false
-            state.setSZSStatus(SZS_Theorem)
-            val resultcl = AnnotatedClause(Clause(Seq()), InferredFrom(CallLeo, state.processed))
-            state.setDerivationClause(resultcl)
-          }
-
         } else {
-          test = false
           var cur = state.nextUnprocessed
           // cur is the current AnnotatedClause
           Out.debug(s"($proc) Taken: ${cur.pretty}")
@@ -359,10 +344,8 @@ object MultiSeqPProc extends ProofProcedure {
       case e: NoSuchElementException => false
     }
   }
-  object CallLeo extends leo.modules.calculus.CalculusRule {
-    val name = "call_leo2"
-    override val inferenceStatus = Some(SZS_Theorem)
-  }
+
+
   final def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
     case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
     case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
@@ -377,5 +360,5 @@ object MultiSeqPProc extends ProofProcedure {
     }
   }
 
-  override def name: String = "MultiSeqProc"
+  override val name: String = s"MultiSeqProc($externalCallIteration)"
 }

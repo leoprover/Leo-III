@@ -8,7 +8,11 @@ import leo.datastructures.blackboard._
 
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable
-import java.util.concurrent.{RejectedExecutionException, Executors}
+import java.util.concurrent.{Executors, RejectedExecutionException}
+
+import leo.datastructures.blackboard.impl.SZSDataStore
+import leo.datastructures.context.Context
+import leo.modules.SZSException
 
 
 /**
@@ -131,6 +135,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def clear() : Unit = {
     pause()
+    Blackboard().forceCheck()
     curExec.clear()
     AgentWork.executingAgents() foreach(_.kill())
     AgentWork.clear()
@@ -279,16 +284,23 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   private class GenAgent(a : TAgent, t : Task) extends Runnable{
     override def run()  { // TODO catch error and move outside or at least recover
       try {
-        ExecTask.put(t.run, t, a)
+        val res = t.run
+        ExecTask.put(res, t, a)
         AgentWork.dec(a)
       } catch {
         case e : InterruptedException => throw e
+        case e : SZSException =>
+          SZSDataStore.forceStatus(Context())(e.status)
+          Out.severe(e.getMessage)
+          Blackboard().filterAll(_.filter(DoneEvent()))
+          Scheduler().killAll()
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
           if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }
+          Blackboard().filterAll(_.filter(DoneEvent()))
           Scheduler().killAll()
       }
     }
@@ -301,9 +313,16 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val ts = a.filter(DataEvent(newD, t))
         Blackboard().submitTasks(a, ts.toSet)
       } catch {
+        case e : SZSException =>
+          SZSDataStore.forceStatus(Context())(e.status)
+          Out.severe(e.getMessage)
+          Blackboard().filterAll(_.filter(DoneEvent()))
+          Scheduler().killAll()
         case e : Exception =>
+          Blackboard().filterAll(_.filter(DoneEvent()))
           leo.Out.warn(e.getMessage)
           leo.Out.finest(e.getCause.toString)
+          Scheduler().killAll()
       }
       ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
       Blackboard().forceCheck()

@@ -33,6 +33,8 @@ class Result {
   private var prio : Int = 5
 
 
+  def isEmpty : Boolean = insertM.isEmpty && updateM.isEmpty && removeM.isEmpty
+
   /**
    * Inserts given data d of type t into
    * the registered data structures.

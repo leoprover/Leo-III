@@ -52,7 +52,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
     }
     r
   }
-  override def bid: Double = 1
+  override def bid: Double = 0.3
 
   override val pretty: String = a.procedure.name+"Task("+c.contextID+")"
 }

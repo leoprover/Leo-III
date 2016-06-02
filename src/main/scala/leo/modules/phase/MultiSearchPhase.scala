@@ -1,10 +1,16 @@
 package leo.modules.phase
+import java.io.File
+import java.nio.file.Files
+
 import leo.agents.impl.SZSScriptAgent
 import leo.agents.{DoItYourSelfAgent, DoItYourSelfMessage, ProofProcedure, TAgent}
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
+import leo.Configuration
+
+import scala.io.Source
 
 
 /**
@@ -24,10 +30,8 @@ class MultiSearchPhase(proofProcedure: ProofProcedure*) extends CompletePhase {
     * @return
     */
   override protected val agents: Seq[TAgent] = {
-    proofProcedure.map(proc => new DoItYourSelfAgent(proc)) ++: Seq[TAgent](
-      //TODO As input or from Configurations
-      SZSScriptAgent("leo")
-    )
+    val ext = Configuration.ATPS.map{case (name, prover) => SZSScriptAgent(name, prover)}
+    proofProcedure.map(proc => new DoItYourSelfAgent(proc)) ++: ext
   }
 
   override protected def init() = {

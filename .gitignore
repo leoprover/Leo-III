@@ -25,3 +25,4 @@ project/*
 # Save Formats
 *.swp
 *~
+ext_config

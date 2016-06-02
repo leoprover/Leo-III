@@ -25,7 +25,11 @@ object ExternalProverPhase extends CompletePhase {
     * @return
     */
   override protected def agents: Seq[TAgent] = Seq(Aggregate_SZS, scriptAgent)
-  private val scriptAgent : TAgent = SZSScriptAgent("leo", fs => ToTPTP(fs).map(_.output), x => x)
+  private val scriptAgent : TAgent = {
+    // Read the external provers from file
+
+    SZSScriptAgent("leo2", "leo", fs => ToTPTP(fs).map(_.output), x => x)
+  }
 
   override protected def init() : Unit = {
     super.init()
@@ -37,4 +41,6 @@ object ExternalProverPhase extends CompletePhase {
       Blackboard().send(SZSScriptMessage(trueC, c), scriptAgent)
     }
   }
+
+
 }
