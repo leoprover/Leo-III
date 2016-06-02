@@ -34,7 +34,7 @@ object Control {
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Redundancy
-  @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumption(cl, processed)
+  @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
   // Indexing
   @inline final def fvIndexInit(initClauses: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.init(initClauses)
   @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
@@ -848,7 +848,7 @@ package indexingControl {
       var i = 0
       while (featureFunctionIt.hasNext) {
         val cff = featureFunctionIt.next()
-        val res = initClauses.map {case cw => {Out.finest(s"$i feature of ${cw.pretty} = ${cff(cw.cl)}");cff(cw.cl)}}
+        val res = initClauses.map {case cw => {cff(cw.cl)}}
         initFeatures = res +: initFeatures
         i = i+1
       }

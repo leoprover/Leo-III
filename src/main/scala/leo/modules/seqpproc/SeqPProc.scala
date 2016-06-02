@@ -94,7 +94,7 @@ object SeqPProc extends Function1[Long, Unit]{
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     val state: State[AnnotatedClause] = State.fresh(Signature.get)
-//    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
+    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
     Out.debug("## Preprocess Neg.Conjecture BEGIN")
     Out.trace(s"Neg. conjecture: ${negatedConjecture.pretty}")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
@@ -292,7 +292,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Subsumption */
     state.setProcessed(state.processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)))
     state.addProcessed(cur)
-//    Control.fvIndexInsert(cur)
+    Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
     if (Clause.rewriteRule(cur.cl)) {
       state.addRewriteRule(cur)
