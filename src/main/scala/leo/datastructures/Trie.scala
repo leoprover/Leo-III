@@ -24,6 +24,9 @@ trait Trie[Key, Value] {
 
   /** Returns the subtrie that is located at position `prefix` */
   def subTrie(prefix: Seq[Key]): Option[Trie[Key, Value]]
+
+  /** Returns true iff the trie has no subtrees */
+  def isLeaf: Boolean
 }
 
 object Trie {

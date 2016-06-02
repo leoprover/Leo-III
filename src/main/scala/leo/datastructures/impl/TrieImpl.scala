@@ -49,6 +49,8 @@ protected[datastructures] abstract class HashMapTrieImpl[K,V] extends leo.datast
   def getPrefix(prefix: Seq[K]): Set[V] = subTrie(prefix).fold(Set[V]())(_.getAll)
 
   def isEmpty: Boolean = valueSet.isEmpty && subTrieMap.isEmpty
+
+  def isLeaf: Boolean = subTrieMap.isEmpty
 }
 
 // #################################

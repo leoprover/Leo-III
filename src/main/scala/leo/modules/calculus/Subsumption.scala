@@ -11,11 +11,11 @@ trait Subsumption extends PolyadicCalculusRule[Unit] {
 
 object Subsumption extends Subsumption {
   val impl = TrivialSubsumption
-
+  var subsumptiontests = 0
   def canApply(cl: Clause, cls: Set[Clause]) = impl.canApply(cl, cls)
   def apply(cl: Clause, cls: Set[Clause]) = impl(cl, cls)
   def name = impl.name
-  def subsumes(cl1: Clause, cl2: Clause) = impl.subsumes(cl1, cl2)
+  def subsumes(cl1: Clause, cl2: Clause) = {subsumptiontests += 1; impl.subsumes(cl1, cl2)}
 }
 
 object TrivialSubsumption extends Subsumption {

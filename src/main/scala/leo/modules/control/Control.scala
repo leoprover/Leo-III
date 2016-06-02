@@ -778,10 +778,46 @@ package inferenceControl {
 }
 
 package redundancyControl {
+
+  import leo.modules.seqpproc.indexingControl.FVIndexControl
+
   object SubsumptionControl {
     import leo.modules.calculus.Subsumption
+    import leo.modules.indexing.{ClauseFeature, FVIndex, FeatureVector}
+    import leo.datastructures.FixedLengthTrie
 
-    def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+    final def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+
+    final def testForwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
+      val index = FVIndexControl.index
+      val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
+      testForwardSubsumptionFVI0(index, clFV, 0, cl)
+    }
+
+    final private def testForwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
+                                                 clauseFeature: FeatureVector,
+                                                 featureIndex: Int,
+                                                 cl: AnnotatedClause): Set[AnnotatedClause] = {
+      if (index.isLeaf) {
+        index.valueSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+      } else {
+        var curFeatureValue = 0
+        val clFeatureValue = clauseFeature(featureIndex)
+        while (curFeatureValue <= clFeatureValue) {
+          val subtrie = index.subTrie(Seq(curFeatureValue))
+          if (subtrie.isDefined) {
+            val subtrie0 = subtrie.get.asInstanceOf[FixedLengthTrie[ClauseFeature, AnnotatedClause]]
+            val result = testForwardSubsumptionFVI0(subtrie0, clauseFeature, featureIndex+1, cl)
+            if (result.nonEmpty)
+              return result
+          }
+          curFeatureValue += 1
+        }
+        Set()
+      }
+    }
+
+
   }
 }
 
@@ -793,9 +829,11 @@ package indexingControl {
     import leo.datastructures.Clause
     import leo.modules.indexing.{CFF, FVIndex}
 
-    val maxFeatures: Int = 150
-    var initialized = false
-    var features: Seq[CFF] = Seq()
+    private val maxFeatures: Int = 100
+    private var initialized = false
+    private var features: Seq[CFF] = Seq()
+    final protected[modules] val index = FVIndex()
+    def clauseFeatures: Seq[CFF] = features
 
     final def init(initClauses: Set[AnnotatedClause]): Unit = {
       assert(!initialized)
@@ -829,8 +867,8 @@ package indexingControl {
 
     final def insert(cl: AnnotatedClause): Unit = {
       assert(initialized)
-      val featureVector = features.map(_(cl.cl))
-      FVIndex.add(cl.cl, featureVector)
+      val featureVector = FVIndex.featureVector(features, cl)
+      index.insert(featureVector, cl)
     }
 
     final def insert(cls: Set[AnnotatedClause]): Unit = {

@@ -94,12 +94,11 @@ object SeqPProc extends Function1[Long, Unit]{
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     val state: State[AnnotatedClause] = State.fresh(Signature.get)
-    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet)
+//    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
     Out.debug("## Preprocess Neg.Conjecture BEGIN")
     Out.trace(s"Neg. conjecture: ${negatedConjecture.pretty}")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
-    Control.fvIndexInsert(conjecture_preprocessed)
     Out.debug("## Preprocess Neg.Conjecture END")
 
     Out.debug("## Preprocess BEGIN")
@@ -111,7 +110,6 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
-      Control.fvIndexInsert(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug("## Preprocess END\n\n")
@@ -245,6 +243,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
+    Out.debug(s"subsumption tests: ${Subsumption.subsumptiontests}")
 
     Out.finest("#########################")
     Out.finest("units")
@@ -293,7 +292,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Subsumption */
     state.setProcessed(state.processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)))
     state.addProcessed(cur)
-    Control.fvIndexInsert(cur)
+//    Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
     if (Clause.rewriteRule(cur.cl)) {
       state.addRewriteRule(cur)
@@ -365,7 +364,6 @@ object SeqPProc extends Function1[Long, Unit]{
 
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
-        Control.fvIndexInsert(newCl)
       } else {
         Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
       }
