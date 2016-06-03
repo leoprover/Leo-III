@@ -6,7 +6,7 @@ package modules.parsers
   * Created by samuel on 03.04.16.
   */
 
-import leo.datastructures.tptp.Commons.TPTPInput
+import leo.datastructures.tptp.Commons.{AnnotatedFormula, Include, TPTPInput}
 import leo.modules.parsers.syntactical_new.{TPTPParser2, ThfParser}
 import leo.modules.parsers.syntactical.{TPTPParsers => OldParser}
 import leo.{Checked, LeoTestSuite}

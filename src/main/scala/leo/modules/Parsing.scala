@@ -39,7 +39,7 @@ object Parsing {
       val p = shallowReadProblem(file)
       val includes = p.getIncludes
 
-      val pIncludes = includes.map{case (inc, _) => readProblem(canonicalFile.getParent.resolve(inc).toString,assumeRead + canonicalFile)}
+      val pIncludes = includes.map{case (inc, _) => readProblem(canonicalFile.getParent.getParent.getParent.resolve(inc).toString,assumeRead + canonicalFile)}
       pIncludes.flatten ++ p.getFormulae
     } else {
       Seq()

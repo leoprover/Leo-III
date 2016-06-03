@@ -20,6 +20,17 @@ object TPTPParser2
     parseTPTPInput(tokens)
 }
 
+object StatementParser2
+  extends TPTPParser2
+    with ParserInterface[Either[AnnotatedFormula, Include]]
+{
+  type ReturnType = Either[AnnotatedFormula, Include]
+  override type TokenStream[T] = ParserInterface[ReturnType]#TokenStream[T]
+
+  def parse(tokens: TokenStream[Token]): Either[ParserError,(ReturnType, TokenStream[Token])] =
+    parseAnnotatedFormulaOrInclude(tokens)
+}
+
 class TPTPParser2
   extends ThfParser
 {
