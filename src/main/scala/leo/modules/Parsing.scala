@@ -185,7 +185,7 @@ object Parsing {
       * Note that the return value is a sequence of `(FormulaId, Term, Role)` since
       * all includes are automatically parsed and converted exhaustively.
       * If `file` is a relative path, it is assumed to be equivalent to the path
-      * `user.dir`/file. 
+      * `user.dir`/file.
       *
       * SIDE-EFFECTS: Type declarations and definitions within `problem` are added to the signature.
       *
