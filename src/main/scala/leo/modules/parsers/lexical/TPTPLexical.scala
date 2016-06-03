@@ -117,7 +117,7 @@ class TPTPLexical extends Lexical with TPTPTokens {
   }
 
   protected def fraction: Parser[Real] = unsignedInteger ~ '.' ~ digit ~ rep(digit) ^^ {
-    case i ~ '.' ~ d0 ~ ds => Real((i.toString ++ "." ++ (d0 :: ds).mkString("")).toDouble, 1)
+    case i ~ '.' ~ d0 ~ ds => Real((i.toString ++ "." ++ (d0 :: ds).mkString("")).toDouble, 0)
   }
 
   protected def exponent: Parser[Real] = (unsignedInteger ||| fraction) ~ (elem('E') | elem('e')) ~ integer ^^ {

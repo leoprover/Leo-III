@@ -31,6 +31,32 @@ object Parsing {
     }
   }
 
+//  /**
+//   * Reads the file located at `file` and parses it recursively using the `TPTP` parser.
+//   * Note that the return value is a sequence of [[Commons.AnnotatedFormula]] since
+//   * all includes are automatically parsed exhaustively.
+//   * If `file` is a relative path, it is assumed to be equivalent to the path
+//   * [[Utility.wd]]/file where `Utility.wd` is the working directory `user.dir`.
+//   *
+//   * @param file  The absolute or relative path to the problem file.
+//   * @param assumeRead Implicitly assume that the problem files in this parameter
+//   *                   have already been read. Hence, recursive parsing will skip this
+//   *                   includes.
+//   * @return The sequence of annotated TPTP formulae.
+//   */
+//  def readProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
+//    val canonicalFile = canonicalPath(file)
+//    if (!assumeRead.contains(canonicalFile)) {
+//      val p = shallowReadProblem(file)
+//      val includes = p.getIncludes
+//
+//      val pIncludes = includes.map{case (inc, _) => readProblem(canonicalFile.getParent.resolve(inc).toString,assumeRead + canonicalFile)}
+//      pIncludes.flatten ++ p.getFormulae
+//    } else {
+//      Seq()
+//    }
+//  }
+
 
     // Functions that go from file/string to unprocessed internal TPTP-syntax
     // "String -> TPTP"
@@ -39,7 +65,7 @@ object Parsing {
       * Note that the return value is a sequence of [[Commons.AnnotatedFormula]] since
       * all includes are automatically parsed exhaustively.
       * If `file` is a relative path, it is assumed to be equivalent to the path
-      * [[Utility.wd]]/file where `Utility.wd` is the working directory `user.dir`.
+      * `user.dir`/file.
       *
       * @param file  The absolute or relative path to the problem file.
       * @param assumeRead Implicitly assume that the problem files in this parameter
@@ -96,7 +122,7 @@ object Parsing {
       * Note that include statements are NOT recursively parsed but returned in internal TPTP
       * syntax instead. For recursive parsing of include statements, use [[readProblem()]].
       * If `file` is a relative path, it is assumed to be equivalent to the path
-      * [[Utility.wd]]/file where `Utility.wd` is the working directory `user.dir`.
+      * `user.dir`/file.
       *
       * @param file The absolute or relative path to the problem file.
       * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
@@ -159,7 +185,7 @@ object Parsing {
       * Note that the return value is a sequence of `(FormulaId, Term, Role)` since
       * all includes are automatically parsed and converted exhaustively.
       * If `file` is a relative path, it is assumed to be equivalent to the path
-      * [[Utility.wd]]/file where `Utility.wd` is the working directory `user.dir`.
+      * `user.dir`/file. 
       *
       * SIDE-EFFECTS: Type declarations and definitions within `problem` are added to the signature.
       *
@@ -200,14 +226,17 @@ object Parsing {
     def canonicalPath(path: String): Path = Paths.get(path).toAbsolutePath.normalize()
 
 
-    private def read0(absolutePath: Path): String = {
+  private def read0(absolutePath: Path): io.Source = {
     if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
       throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist.")
     } else {
+        Source.fromFile(absolutePath.toFile)
+        /*
         val s = Source.fromFile(absolutePath.toFile)
         val res = s.getLines() mkString "\n"
         s.close()
         res
+        */
     }
   }
 

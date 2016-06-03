@@ -33,7 +33,7 @@ class ParserTestSuite extends LeoTestSuite {
       printHeading(s"Parsing test for ${p._2}")
       Out.output(s"## Parsing ${p._1} ...")
 
-      val parsed = TPTP.parseFile(new CharArrayReader(fromFile(source + "/" +  p._1 + ".p").toArray))
+      val parsed = TPTP.parseFile(fromFile(source + "/" +  p._1 + ".p"))
       if (parsed.isLeft) {
         fail(s"FAILED. Cause: ${parsed.left.get}")
       } else {
