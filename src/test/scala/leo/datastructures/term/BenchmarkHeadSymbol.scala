@@ -50,8 +50,8 @@ object BenchmarkHeadSymbol {
     if (!loadedSet(fileAbs)) {
       try {
         val source = scala.io.Source.fromFile(fileAbs, "utf-8")
-        val input = new CharArrayReader(source.toArray)
-        val parsed = TPTP.parseFile(input)
+        //val input = new CharArrayReader(source.toArray)
+        val parsed = TPTP.parseFile(source)
         source.close()    // Close at this point. Otherwise we would have many files open with many includes.
 
         parsed match {
