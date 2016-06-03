@@ -99,7 +99,8 @@
           <scalaVersion>${scala.version}</scalaVersion>
           <recompileMode>incremental</recompileMode>
           <args>
-            <arg>"-Xelide-below 699"</arg>
+            <arg>-Xelide-below</arg>
+            <arg>699</arg>
           </args>
         </configuration>
       </plugin>
