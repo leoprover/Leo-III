@@ -7,7 +7,7 @@ import leo.datastructures.{Clause, ClauseAnnotation, AnnotatedClause, ClauseProx
 import ClauseAnnotation._
 import leo.modules.output._
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
-import leo.modules.calculus.{CalculusRule, Subsumption}
+import leo.modules.calculus.{CalculusRule}
 
 
 import scala.collection.SortedSet
@@ -234,6 +234,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+    Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
     Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
@@ -243,7 +244,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
-    Out.debug(s"subsumption tests: ${Subsumption.subsumptiontests}")
+    Out.debug(s"subsumption tests: ${leo.modules.calculus.Subsumption.subsumptiontests}")
 
     Out.finest("#########################")
     Out.finest("units")
@@ -290,7 +291,10 @@ object SeqPProc extends Function1[Long, Unit]{
     // TODO: à la E: direct descendant criterion, etc.
     /////////////////////////////////////////
     /* Subsumption */
-    state.setProcessed(state.processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)))
+    val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
+    state.incBackwardSubsumedCl(backSubsumedClauses.size)
+    state.setProcessed(state.processed -- backSubsumedClauses)
+    Control.fvIndexRemove(backSubsumedClauses)
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
