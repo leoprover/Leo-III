@@ -1,6 +1,6 @@
 package leo.modules.calculus
 
-import leo.datastructures.{Term, Type, Subst}
+import leo.datastructures.{Subst, Term, Type}
 import leo.modules.output.SZS_EquiSatisfiable
 
 trait Unification extends CalculusRule {
@@ -84,12 +84,12 @@ object HuetsPreUnification extends Unification {
     val s = s1.etaExpand
 
     // returns a stream whose head is a pre-unifier and whose body computes the next unifiers
-    new NDStream[UnificationResult](new MyConfiguration(Seq((t,s)), Seq()), new MyFun(vargen)) with BFSAlgorithm
+    new NDStream[UnificationResult](new MyConfiguration(Seq((t,s)), Seq(), 0), new MyFun(vargen)) with BFSAlgorithm
   }
 
   override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
     val expandedContraints = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand)).sortWith(sort)
-    new NDStream[UnificationResult](new MyConfiguration(expandedContraints, Seq()), new MyFun(vargen)) with BFSAlgorithm
+    new NDStream[UnificationResult](new MyConfiguration(expandedContraints, Seq(), 0), new MyFun(vargen)) with BFSAlgorithm
   }
 
   protected def isVariable(t: Term): Boolean = Bound.unapply(t).isDefined
@@ -351,11 +351,12 @@ object HuetsPreUnification extends Unification {
    */
   private def simplifyArguments(l: Seq[Either[Term,Type]]): Seq[Term] = l.filter(_.isLeft).map(_.left.get)
 
+  private final val dontcaredepth = -1
   // the state of the search space
-  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[UnificationResult], val isTerminal: Boolean)
+  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[UnificationResult], val isTerminal: Boolean, val searchDepth: Int)
     extends Configuration[UnificationResult] {
-    def this(result: Option[UnificationResult]) = this(Seq(), Seq(), result, true) // for success
-    def this(l: Seq[UEq], s: Seq[UEq]) = this(l, s, None, false) // for in node
+    def this(result: Option[UnificationResult]) = this(Seq(), Seq(), result, true, dontcaredepth) // for success
+    def this(l: Seq[UEq], s: Seq[UEq], unificationDepth: Int) = this(l, s, None, false, unificationDepth) // for in node
     override def toString  = "{" + uproblems.flatMap(x => ("<"+x._1.pretty+", "+ x._2.pretty+">")) + "}"
   }
 
@@ -372,6 +373,7 @@ object HuetsPreUnification extends Unification {
       leo.Out.trace(s"Finished detExhaust")
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {
+        leo.Out.debug(s"Unification finished.")
         Seq(new MyConfiguration(Some(Tuple2(computeSubst(sproblems),Seq()))))
       }
       // else consider top equation
@@ -379,24 +381,25 @@ object HuetsPreUnification extends Unification {
         val (t,s) = uproblems.head
         leo.Out.finest(s"selected: ${t.pretty} = ${s.pretty}")
         // if it is rigid-rigid -> fail
-        if (!isFlexible(t) && !isFlexible(s)) Seq()
+        if (!isFlexible(t) && !isFlexible(s)) {
+          leo.Out.debug("Unification failed. "); Seq()}
         else {
           // Changed: Do not compute default sub, but rather return substitution from
           // solved equations and return list of unsolved ones directly.
           // if it is flex-flex -> all equations are flex-flex
           if (isFlexible(t) && isFlexible(s)) {
-            leo.Out.finest(s"Flex-flex")
+            leo.Out.finest(s"Unification finished with Flex-flex")
             Seq(new MyConfiguration(Some((computeSubst(sproblems),uproblems))))
           } else {
-            leo.Out.finest(s"flex-rigid")
+            leo.Out.finest(s"flex-rigid at depth ${conf.searchDepth}")
             // else we have a flex-rigid and we cannot apply bind
 
             val lb = new ListBuffer[MyConfiguration]
             // compute the imitate partial binding and add the new configuration
-            if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(vargen, (t,s))+:uproblems, sproblems))
+            if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(vargen, (t,s))+:uproblems, sproblems, conf.searchDepth+1))
 
             // compute all the project partial bindings and add them to the return list
-            ProjectRule(vargen, (t,s)).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems)))
+            ProjectRule(vargen, (t,s)).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems, conf.searchDepth+1)))
 
             lb.toList
           }
@@ -418,20 +421,21 @@ package util.executionModels {
   trait Configuration[S] {
     def result: Option[S]
     def isTerminal: Boolean // terminal nodes are not added to the configuration queue
+    def searchDepth: Int // depth of unification node (number of applied flex-rigid cases)
   }
 
   //mutable, non deterministic, stream
   abstract class NDStream[S /*result type*/ ]( val initial: Configuration[S], val myFun: Configuration[S] => Iterable[Configuration[S]] ) extends Iterable[S] with SearchAlgorithm {
 
-    protected var MAX_DEPTH : Int = 60  // TODO Load from Configurations
+    protected var MAX_DEPTH : Int = leo.Configuration.UNIFICATION_DEPTH
 
-    type T = (Configuration[S], Int)  // Configuration and Depth in the search
+    type T = Configuration[S]
     private val results: mutable.Queue[S] = new mutable.Queue[S]()
     protected var hd: Option[S] = None
     protected val hdFunc: () => Option[S] = () => nextVal
     protected var terminal: Boolean = false
     protected def initDS: Unit = {
-      add( (initial, 0) )
+      add(initial)
       hd = hdFunc()
     }
 
@@ -446,19 +450,16 @@ package util.executionModels {
       } else {
         val conf = get
         if ( conf == None ) None
-        else if (conf.get._2 < MAX_DEPTH) {
-          val confs: Iterable[Configuration[S]] = { myFun( conf.get._1 )}
+        else {
+          val confs: Iterable[Configuration[S]] = { myFun( conf.get )}
           confs.foreach( x => {
             if ( x.result != None )
               results.enqueue( x.result.get )
-            if ( !x.isTerminal ) {
-              //println("New configuration in Depth "+conf.get._2)
-              add((x, conf.get._2 + 1))
+            if ( !x.isTerminal && conf.get.searchDepth < MAX_DEPTH) {
+              add(x)
             }
           } )
           nextVal
-        } else {
-          None
         }
       }
     }
