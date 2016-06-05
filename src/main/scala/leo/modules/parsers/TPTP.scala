@@ -1,7 +1,11 @@
 package leo.modules.parsers
 
+import leo.datastructures.tptp.Commons.{AnnotatedFormula, TPTPInput}
 import leo.datastructures.tptp._
 import syntactical.TPTPParsers._
+
+import syntactical_new.{StatementParser2, TPTPParser2}
+
 import scala.util.parsing.input.Reader
 
 /**
@@ -22,7 +26,41 @@ object TPTP {
    * @param input A [[scala.util.parsing.input.Reader]] wrapping the TPTP input
    * @return A representation of the in file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
    */
-  def parseFile(input: Reader[Char])= extract(parse(input, tptpFile))
+  def parseFile(src: io.Source) =
+    TPTPParser2.parseSource(src).right map (_._1)
+
+  /**
+   * Convenience method for parsing. Same as `parseFile(input: Reader[Char])`, just that
+   * it takes a string instead of a [[scala.util.parsing.input.Reader]].
+   *
+   * @param input The String that is to be parsed
+   * @return A representation of the input file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
+   */
+  def parseFile(input: String): Either[String, TPTPInput] =
+    TPTPParser2.parse(input).right map (_._1)
+
+  def parseFormula(input: String): Either[String, AnnotatedFormula] =
+    parseTHF(input)
+  //def parseFOF(input: String) =
+  def parseTHF(input: String) =
+    StatementParser2.parse(input).right map (x => x._1 match {
+      case Left( f ) => f
+      case Right( include ) => throw new Exception("annotated formula expected, but include statement found")
+    })
+  //def parseTFF(input: String) =
+  //def parseCNF(input: String) =
+  //def parseTPI(input: String) =
+
+  /*
+  def parseFile(src: io.Source) = {
+    //val input = src.getLines mkString "\n"
+    val input = new CharArrayReader(src.toArray)
+    extract(parse(input, tptpFile))
+  }
+  /*
+  def parseFile(input: Reader[Char])=
+    extract(parse(input, tptpFile))
+  */
 
   /**
    * Convenience method for parsing. Same as `parseFile(input: Reader[Char])`, just that
@@ -48,4 +86,5 @@ object TPTP {
       case noSu: NoSuccess => Left(noSu.msg)
     }
   }
+  */
 }

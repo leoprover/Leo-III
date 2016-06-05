@@ -35,7 +35,7 @@ object Control {
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Redundancy
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
-  @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cla m)
+  @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
   // Indexing
   @inline final def fvIndexInit(initClauses: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.init(initClauses)
   @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
