@@ -205,9 +205,11 @@ object TestMain {
         exit = true
         this.interrupt()
         Out.finest("Scheduler killed before timeout.")
+        Blackboard().filterAll(_.filter(DoneEvent()))
+        Scheduler().killAll()
       }
     }
-
+    // TODO Check NUM800^1, NUM818^5, NUM819^5, SET597^5, NUM824^5
     override def run(): Unit = {
       //      println("Init delay kill.")
       synchronized{
