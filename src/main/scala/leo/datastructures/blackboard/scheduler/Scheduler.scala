@@ -8,7 +8,7 @@ import leo.datastructures.blackboard._
 
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable
-import java.util.concurrent.{Executors, RejectedExecutionException}
+import java.util.concurrent.{Executors, RejectedExecutionException, ThreadFactory, TimeUnit}
 
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.context.Context
@@ -87,7 +87,7 @@ trait Scheduler {
 protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Scheduler {
   import leo.agents._
 
-  private var exe = Executors.newFixedThreadPool(numberOfThreads)
+  private var exe = Executors.newFixedThreadPool(numberOfThreads, MyThreadFactory)
   private val s : SchedulerRun = new SchedulerRun()
   private val w : Writer = new Writer()
 
@@ -114,7 +114,11 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def killAll() : Unit = s.synchronized{
     endFlag = true
     pauseFlag = false
+    exe.shutdown()
     exe.shutdownNow()
+    if(!exe.awaitTermination(30, TimeUnit.MILLISECONDS)) {
+      MyThreadFactory.killAll()
+    }
     AgentWork.executingAgents() foreach(_.kill())
     Blackboard().filterAll(a => a.filter(DoneEvent()))
     curExec.clear()
@@ -125,6 +129,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     curExec.clear()
 //    Scheduler.s = null
   }
+
 
   var pauseFlag = true
   var endFlag = false
@@ -288,20 +293,27 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         ExecTask.put(res, t, a)
         AgentWork.dec(a)
       } catch {
-        case e : InterruptedException => throw e
+        case e : InterruptedException => {
+          throw e
+        }
         case e : SZSException =>
-          SZSDataStore.forceStatus(Context())(e.status)
+//          SZSDataStore.forceStatus(Context())(e.status)  TODO comment in after CASC
           Out.severe(e.getMessage)
-          Blackboard().filterAll(_.filter(DoneEvent()))
-          Scheduler().killAll()
+          LockSet.releaseTask(t)
+          Blackboard().finishTask(t)
+          ActiveTracker.decAndGet(s"${a.name} killed with exception.")
+//          Blackboard().filterAll(_.filter(DoneEvent()))
+//          Scheduler().killAll()
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
           if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
+          LockSet.releaseTask(t)
+          Blackboard().finishTask(t)
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }
-          Blackboard().filterAll(_.filter(DoneEvent()))
-          Scheduler().killAll()
+//          Blackboard().filterAll(_.filter(DoneEvent()))  TODO comment in after CASC
+//          Scheduler().killAll()
       }
     }
   }
@@ -314,15 +326,15 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         Blackboard().submitTasks(a, ts.toSet)
       } catch {
         case e : SZSException =>
-          SZSDataStore.forceStatus(Context())(e.status)
+//          SZSDataStore.forceStatus(Context())(e.status) TODO comment in after CASC
           Out.severe(e.getMessage)
-          Blackboard().filterAll(_.filter(DoneEvent()))
-          Scheduler().killAll()
+//          Blackboard().filterAll(_.filter(DoneEvent()))
+//          Scheduler().killAll()
         case e : Exception =>
-          Blackboard().filterAll(_.filter(DoneEvent()))
+//          Blackboard().filterAll(_.filter(DoneEvent())) // TODO comment in after Casc
           leo.Out.warn(e.getMessage)
           leo.Out.finest(e.getCause.toString)
-          Scheduler().killAll()
+//          Scheduler().killAll()
       }
       ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
       Blackboard().forceCheck()
@@ -417,6 +429,28 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
     override def pretty: String = "Exit Task"
     override def getAgent : TAgent = null
+  }
+
+  private object MyThreadFactory extends ThreadFactory {
+
+    private var threads : scala.collection.mutable.Set[Thread] = scala.collection.mutable.HashSet[Thread]()
+
+    def killAll() : Unit = threads.synchronized {
+      threads.foreach{t =>
+        t.interrupt()
+        try {
+          t.stop()
+        } catch {
+          case _ => () // TODO FIX. IMPORTANT. DO NOT USE FURTHER ON
+        }
+        }
+    }
+
+    override def newThread(r: Runnable): Thread = {
+      val t = Executors.defaultThreadFactory().newThread(r)
+      threads.synchronized{threads.add(t)}
+      t
+    }
   }
 }
 
