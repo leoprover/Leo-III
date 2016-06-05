@@ -11,7 +11,7 @@ import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
-import leo.modules.calculus.Subsumption
+import leo.modules.calculus.CalculusRule
 import leo.modules.output._
 import leo.modules.Utility
 
@@ -95,11 +95,11 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     val state: State[AnnotatedClause] = State.fresh(Signature.get)
-    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet)
+    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# ($proc) Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
-    Control.fvIndexInsert(conjecture_preprocessed)
+//    Control.fvIndexInsert(conjecture_preprocessed)
     Out.debug(s"## ($proc)Preprocess Neg.Conjecture END")
 
     Out.debug(s"## ($proc) Preprocess BEGIN")
@@ -111,7 +111,7 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
       Out.debug(s"# ($proc) Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
-      Control.fvIndexInsert(preprocessed)
+//      Control.fvIndexInsert(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug(s"## ($proc)Preprocess END\n\n")
@@ -215,6 +215,7 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     Out.comment(s"($proc) No. of processed clauses: ${state.noProcessedCl}")
     Out.comment(s"($proc) No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"($proc) No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+    Out.comment(s"($proc) No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"($proc) No. of units in store: ${state.rewriteRules.size}")
     Out.debug(s"($proc) literals processed: ${state.processed.flatMap(_.cl.lits).size}")
     Out.debug(s"($proc) -thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
@@ -224,6 +225,7 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     Out.debug(s"($proc) oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"($proc) unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"($proc) oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
+    Out.debug(s"subsumption tests: ${leo.modules.calculus.Subsumption.subsumptiontests}")
 
     Out.finest(s"($proc) #########################")
     Out.finest(s"($proc) units")
@@ -263,7 +265,10 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     // TODO: à la E: direct descendant criterion, etc.
     /////////////////////////////////////////
     /* Subsumption */
-    state.setProcessed(state.processed.filterNot(cw => Subsumption.subsumes(cur.cl, cw.cl)))
+    val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
+    state.incBackwardSubsumedCl(backSubsumedClauses.size)
+    state.setProcessed(state.processed -- backSubsumedClauses)
+    Control.fvIndexRemove(backSubsumedClauses)
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
@@ -337,12 +342,12 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
 
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
-        Control.fvIndexInsert(newCl)
-      } else {
+//        Control.fvIndexInsert(newCl)
+      } else
         Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
       }
     }
-  }
+
 
   @inline final def prematureCancel(counter: Int): Boolean = {
     try {
