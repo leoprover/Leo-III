@@ -41,6 +41,30 @@ object IdComparison extends Unification{
     else Stream.empty
 }
 
+
+/**
+  * First-order unification
+  *
+  * @author Alexander Steen <a.steen@fu-berlin.de>
+  * @since June 2016
+  */
+object FOUnification extends Unification {
+
+  @inline override final def unify(varGen: FreshVarGen, t: Term, s: Term): Iterable[UnificationResult] =
+    unify0(varGen, Seq((t,s)))
+
+  @inline override final def unifyAll(varGen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
+    unify0(varGen, constraints)
+
+  private final def unify0(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] = {
+    val (unsolved, solved) = HuetsPreUnification.detExhaust(vargen, constraints, Seq())
+    if (  unsolved.isEmpty) {
+      Stream((HuetsPreUnification.computeSubst(solved), Seq()))
+    } else Stream.empty
+  }
+
+}
+
 // Look for TODO, TOFIX (and TOTEST in the corresponding test file)
 // TODO: change List into a data structure more sutiable to sorting, etc.
 /**
@@ -90,7 +114,7 @@ object HuetsPreUnification extends Unification {
     (isFlexible(e2._1) && isFlexible(e2._2))
 
   // computes the substitution from the solved problems
-  protected def computeSubst(sproblems: Seq[UEq]): Subst = {
+  protected[calculus] def computeSubst(sproblems: Seq[UEq]): Subst = {
     // Alex: Added check on empty sproblems list. That is correct, is it?
     if (sproblems.isEmpty) Subst.id
     else {
@@ -110,7 +134,7 @@ object HuetsPreUnification extends Unification {
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
-  protected def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
+  protected[calculus] def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
     leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
     // apply delete
     val ind1 = uproblems.indexWhere(DeleteRule.canApply)
