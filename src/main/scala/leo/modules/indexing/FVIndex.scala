@@ -1,16 +1,20 @@
 package leo.modules.indexing
 
-import leo.datastructures.{Clause, Literal, FixedLengthTrie}
+import leo.datastructures.{AnnotatedClause, Literal, FixedLengthTrie, Clause}
 import leo.datastructures.impl.Signature
 /**
   * Created by lex on 28.02.16.
   */
 object FVIndex {
-  final private val fvTrie: FixedLengthTrie[ClauseFeature, Clause] = FixedLengthTrie()
-  def add(cl: Clause, featureVector: FeatureVector): Unit = {
-    fvTrie.insert(featureVector, cl)
-  }
-  def asTrie: FixedLengthTrie[ClauseFeature, Clause] = fvTrie
+//  final private val fvTrie: FixedLengthTrie[ClauseFeature, Clause] = FixedLengthTrie()
+//  def add(cl: Clause, featureVector: FeatureVector): Unit = {
+//    fvTrie.insert(featureVector, cl)
+//  }
+//  def asTrie: FixedLengthTrie[ClauseFeature, Clause] = fvTrie
+
+  def apply(): FixedLengthTrie[ClauseFeature, AnnotatedClause] = FixedLengthTrie()
+
+  def featureVector(features: Seq[CFF], cl: AnnotatedClause): FeatureVector = features.map(_.apply(cl.cl))
 
   /** Returns the number of non-flex positive literals in clause `cl`. */
   @inline final def posLitsFeature(cl: Clause): Int = {

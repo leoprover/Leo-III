@@ -34,8 +34,10 @@ abstract class State[T <: ClauseProxy] extends Pretty {
   def incTrivialCl(): Unit
   def noTrivialCl: Int
   def incForwardSubsumedCl(): Unit
+  def incForwardSubsumedCl(n: Int): Unit
   def noForwardSubsumedCl: Int
   def incBackwardSubsumedCl(): Unit
+  def incBackwardSubsumedCl(n: Int): Unit
   def noBackwardSubsumedCl: Int
   def incGeneratedCl(by: Int): Unit
   def noGeneratedCl: Int
@@ -99,6 +101,8 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   override def incFactor(by: Int): Unit = {factorCount += by}
   override def incForwardSubsumedCl(): Unit = {forwardSubsumedCount += 1}
   override def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
+  override def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
+  override def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
 
   // Pretty
   override def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: ${noProcessedCl}"

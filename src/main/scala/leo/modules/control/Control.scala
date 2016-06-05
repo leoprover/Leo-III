@@ -34,11 +34,14 @@ object Control {
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Redundancy
-  @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumption(cl, processed)
+  @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
+  @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cla m)
   // Indexing
   @inline final def fvIndexInit(initClauses: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.init(initClauses)
   @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
   @inline final def fvIndexInsert(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.insert(cls)
+  @inline final def fvIndexRemove(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.remove(cl)
+  @inline final def fvIndexRemove(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.remove(cls)
   // External prover call
   @inline final def callExternalLeoII(clauses: Set[AnnotatedClause]) = externalProverControl.ExternalLEOIIControl.call(clauses)
 }
@@ -778,10 +781,79 @@ package inferenceControl {
 }
 
 package redundancyControl {
+
+  import leo.modules.seqpproc.indexingControl.FVIndexControl
+
   object SubsumptionControl {
     import leo.modules.calculus.Subsumption
+    import leo.modules.indexing.{ClauseFeature, FVIndex, FeatureVector}
+    import leo.datastructures.FixedLengthTrie
 
-    def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+    final def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+
+    final def testForwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
+      val index = FVIndexControl.index
+      val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
+      testForwardSubsumptionFVI0(index, clFV, 0, cl)
+    }
+
+    final private def testForwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
+                                                 clauseFeatures: FeatureVector,
+                                                 featureIndex: Int,
+                                                 cl: AnnotatedClause): Set[AnnotatedClause] = {
+      if (index.isLeaf) {
+        testForwardSubsumption(cl, index.valueSet)
+      } else {
+        var curFeatureValue = 0
+        val clFeatureValue = clauseFeatures(featureIndex)
+        while (curFeatureValue <= clFeatureValue) {
+          val subtrie = index.subTrie(Seq(curFeatureValue))
+          if (subtrie.isDefined) {
+            val subtrie0 = subtrie.get.asInstanceOf[FixedLengthTrie[ClauseFeature, AnnotatedClause]]
+            val result = testForwardSubsumptionFVI0(subtrie0, clauseFeatures, featureIndex+1, cl)
+            if (result.nonEmpty)
+              return result
+          }
+          curFeatureValue += 1
+        }
+        Set()
+      }
+    }
+
+
+    final def testBackwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
+      withSet.filter(cw => Subsumption.subsumes(cl.cl, cw.cl))
+
+
+    final def testBackwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
+      val index = FVIndexControl.index
+      val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
+      testBackwardSubsumptionFVI0(index, clFV, 0, cl)
+    }
+
+    final private def testBackwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
+                                                  clauseFeatures: FeatureVector,
+                                                  featureIndex: Int,
+                                                  cl: AnnotatedClause): Set[AnnotatedClause] = {
+      if (index.isLeaf) {
+        testBackwardSubsumption(cl, index.valueSet)
+      } else {
+        var result: Set[AnnotatedClause] = Set()
+        var curFeatureValue = clauseFeatures(featureIndex)
+        val maxFeatureValue = index.keySet.max
+        while (curFeatureValue <= maxFeatureValue) {
+          val subtrie = index.subTrie(Seq(curFeatureValue))
+          if (subtrie.isDefined) {
+            val subtrie0 = subtrie.get.asInstanceOf[FixedLengthTrie[ClauseFeature, AnnotatedClause]]
+            val localresult = testBackwardSubsumptionFVI0(subtrie0, clauseFeatures, featureIndex+1, cl)
+            result = result union localresult
+          }
+          curFeatureValue += 1
+        }
+        result
+      }
+    }
+
   }
 }
 
@@ -793,9 +865,11 @@ package indexingControl {
     import leo.datastructures.Clause
     import leo.modules.indexing.{CFF, FVIndex}
 
-    val maxFeatures: Int = 150
-    var initialized = false
-    var features: Seq[CFF] = Seq()
+    private val maxFeatures: Int = 100
+    private var initialized = false
+    private var features: Seq[CFF] = Seq()
+    final protected[modules] val index = FVIndex()
+    def clauseFeatures: Seq[CFF] = features
 
     final def init(initClauses: Set[AnnotatedClause]): Unit = {
       assert(!initialized)
@@ -810,7 +884,7 @@ package indexingControl {
       var i = 0
       while (featureFunctionIt.hasNext) {
         val cff = featureFunctionIt.next()
-        val res = initClauses.map {case cw => {Out.finest(s"$i feature of ${cw.pretty} = ${cff(cw.cl)}");cff(cw.cl)}}
+        val res = initClauses.map {case cw => {cff(cw.cl)}}
         initFeatures = res +: initFeatures
         i = i+1
       }
@@ -829,8 +903,8 @@ package indexingControl {
 
     final def insert(cl: AnnotatedClause): Unit = {
       assert(initialized)
-      val featureVector = features.map(_(cl.cl))
-      FVIndex.add(cl.cl, featureVector)
+      val featureVector = FVIndex.featureVector(features, cl)
+      index.insert(featureVector, cl)
     }
 
     final def insert(cls: Set[AnnotatedClause]): Unit = {
@@ -839,6 +913,21 @@ package indexingControl {
       while(clIt.hasNext) {
         val cl = clIt.next()
         insert(cl)
+      }
+    }
+
+    final def remove(cl: AnnotatedClause): Unit = {
+      assert(initialized)
+      val featureVector = FVIndex.featureVector(features, cl)
+      index.remove(featureVector, cl)
+    }
+
+    final def remove(cls: Set[AnnotatedClause]): Unit = {
+      assert(initialized)
+      val clIt = cls.iterator
+      while(clIt.hasNext) {
+        val cl = clIt.next()
+        remove(cl)
       }
     }
   }

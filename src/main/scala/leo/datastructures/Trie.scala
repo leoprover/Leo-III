@@ -8,6 +8,8 @@ package leo.datastructures
 trait Trie[Key, Value] {
   /** Insert an element `entry` unter path described by `key`. */
   def insert(key: Seq[Key],  entry: Value): Unit
+  /** Removes an element with given key **/
+  def remove(key: Seq[Key], entry: Value): Unit
   /** Get the set of values that is saved at position `key`. */
   def get(key: Seq[Key]): Set[Value]
   /** Get the set of values that is saved at positions that have prefix `prefix`. */
@@ -16,6 +18,8 @@ trait Trie[Key, Value] {
   def getAll: Set[Value]
   /** Get all elements that are saved at the root position of this trie. */
   def valueSet: Set[Value]
+  /** Get all the keys that are associated with sub tries */
+  def keySet: Set[Key]
   /** Returns `true` iff there is no element at any position. */
   def isEmpty: Boolean
 
@@ -24,6 +28,9 @@ trait Trie[Key, Value] {
 
   /** Returns the subtrie that is located at position `prefix` */
   def subTrie(prefix: Seq[Key]): Option[Trie[Key, Value]]
+
+  /** Returns true iff the trie has no subtrees */
+  def isLeaf: Boolean
 }
 
 object Trie {
