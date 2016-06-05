@@ -40,7 +40,9 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
+    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
+    cw = Control.skolemize(cw, Signature.get)
 
     // Exhaustively CNF
     result = Control.cnf(cw)
@@ -93,9 +95,11 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     val state: State[AnnotatedClause] = State.fresh(Signature.get)
+    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# ($proc) Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
+    Control.fvIndexInsert(conjecture_preprocessed)
     Out.debug(s"## ($proc)Preprocess Neg.Conjecture END")
 
     Out.debug(s"## ($proc) Preprocess BEGIN")
@@ -105,8 +109,9 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
       Out.debug(s"# ($proc) Process: ${cur.pretty}")
       val processed = preprocess(cur)
       Out.debug(s"# ($proc) Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
-      var preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
+      val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
+      Control.fvIndexInsert(preprocessed)
       if (inputIt.hasNext) Out.trace("--------------------")
     }
     Out.debug(s"## ($proc)Preprocess END\n\n")
@@ -119,7 +124,6 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     }
     Out.finest(s"################")
 //    val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
-    Control.fvIndexInit(state.unprocessed.toSet union conjecture_preprocessed)
     var loop = true
 
     // Init loop for conjecture-derived clauses
@@ -139,12 +143,14 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
         state.setDerivationClause(cur)
       } else {
         // Subsumption
-        if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+
+        val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+        if (subsumed.isEmpty) {
           mainLoopInferences(cur, state)
         } else {
           Out.debug(s"($proc) clause subsumbed, skipping.")
           state.incForwardSubsumedCl()
-          Out.trace(s"($proc) Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+          Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
         }
       }
     }
@@ -184,12 +190,14 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
             state.setDerivationClause(cur)
           } else {
             // Subsumption
-            if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+            //if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
+            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+            if (subsumed.isEmpty) {
               mainLoopInferences(cur, state)
             } else {
               Out.debug(s"($proc)clause subsumbed, skipping.")
               state.incForwardSubsumedCl()
-              Out.trace(s"($proc) Subsumed by:\n\t${state.processed.filter(cw => Subsumption.subsumes(cw.cl, cur.cl)).map(_.pretty).mkString("\n\t")}")
+              Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
             }
           }
         }
@@ -310,7 +318,7 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
-    newclauses = Control.preunifySet(newclauses)
+    newclauses = Control.preunifyNewClauses(newclauses)
 
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
@@ -329,6 +337,7 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
 
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
+        Control.fvIndexInsert(newCl)
       } else {
         Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
       }
@@ -345,20 +354,6 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     }
   }
 
-
-  final def makeDerivation(cw: ClauseProxy, sb: StringBuilder = new StringBuilder(), indent: Int = 0): StringBuilder = cw.annotation match {
-    case NoAnnotation => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}).")
-    case a@FromFile(_, _) => sb.append("\n"); sb.append(" ` "*indent); sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
-    case a@InferredFrom(_, parents) => {
-      sb.append("\n");
-      sb.append(" | "*indent);
-      sb.append(s"thf(${cw.id}, ${cw.role}, ${cw.cl.pretty}, ${a.pretty}).")
-      if (parents.size == 1) {
-        makeDerivation(parents.head._1,sb,indent)
-      } else parents.foreach {case (parent, _) => makeDerivation(parent,sb,indent+1)}
-      sb
-    }
-  }
 
   override val name: String = s"MultiSeqProc($externalCallIteration)"
 }

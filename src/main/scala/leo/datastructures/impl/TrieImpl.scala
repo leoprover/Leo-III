@@ -12,6 +12,7 @@ protected[datastructures] abstract class HashMapTrieImpl[K,V] extends leo.datast
 
   protected[this] def apply(keyLength: Int): HashMapTrieImpl[K,V]
   protected[this] def addValue(entry: V): Unit
+  protected[this] def removeValue(entry: V): Unit
 
   def insert(key: Seq[K], entry: V): Unit = {
     if (key.isEmpty) {
@@ -28,9 +29,24 @@ protected[datastructures] abstract class HashMapTrieImpl[K,V] extends leo.datast
     }
   }
 
+  def remove(key: Seq[K], entry: V): Unit = {
+    if (key.isEmpty) {
+      removeValue(entry)
+    } else {
+      val (hd, tail) = (key.head, key.tail)
+      if (subTrieMap.contains(hd)) {
+        subTrieMap(hd).remove(tail, entry)
+      } else {
+        leo.Out.warn(s"Tried to remove entry from Trie with non-existing key.")
+      }
+    }
+  }
+
   def get(key: Seq[K]): Set[V] = subTrie(key).fold(Set[V]())(_.valueSet)
 
   def getAll: Set[V] = valueSet ++ subTrieMap.values.flatMap(_.getAll)
+
+  def keySet: Set[K] = subTrieMap.keySet
 
   def subTrie(prefix: Seq[K]): Option[Trie[K, V]] = {
     if (prefix.isEmpty) Some(this)
@@ -63,6 +79,9 @@ protected[datastructures] class DefaultHashMapTrieImpl[K,V] extends HashMapTrieI
   protected[this] def addValue(entry: V): Unit = {
     values = values + entry
   }
+  protected[this] def removeValue(entry: V): Unit = {
+    values = values - entry
+  }
   def valueSet: Set[V] = values
 }
 
@@ -76,6 +95,7 @@ protected[datastructures] class FixedLengthHashMapTrieImpl[K,V] extends HashMapT
   }
 
   protected[this] def addValue(entry: V): Unit = throw new IllegalArgumentException
+  protected[this] def removeValue(entry: V): Unit = throw new IllegalArgumentException
   def valueSet: Set[V] = Set.empty
 
 
@@ -87,6 +107,9 @@ protected[datastructures] class FixedLengthHashMapTrieImpl[K,V] extends HashMapT
 
     override protected[this] def apply(keyLength: Int): HashMapTrieImpl[K, V] = throw new IllegalArgumentException
     override protected[this] def addValue(entry: V): Unit = {values = values + entry}
+    override protected[this] def removeValue(entry: V): Unit = {
+      values = values - entry
+    }
 
 
     override def insert(key: Seq[K], entry: V): Unit = {
