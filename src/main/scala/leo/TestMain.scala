@@ -141,11 +141,25 @@ object TestMain {
         case _: Exception => 30
       }
 
+      val mode : Int = try {
+        val s = Configuration.valueOf("mode").get
+        val h = s.head
+        h.toInt
+      } catch {
+        case _ : Exception => 0
+      }
+
       val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
       val msproc2 = new MultiSeqPProc(atpFreq, x => x)
       val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))
       val s = Scheduler()
-      val searchPhase = new MultiSearchPhase(msproc, msproc2, msproc3)
+      val searchPhase = mode match {
+        case 0 => new MultiSearchPhase(msproc2)
+        case 1 => new MultiSearchPhase(msproc, msproc2)
+        case 2 => new MultiSearchPhase(msproc, msproc2, msproc3)
+        case _ => new MultiSearchPhase(msproc2)
+      }
+
 
       printPhase(searchPhase)
       if (!searchPhase.execute()) {

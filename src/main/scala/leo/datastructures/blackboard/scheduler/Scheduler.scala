@@ -204,7 +204,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           }
         }
       } catch {
-        case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now."); return
+        case e : InterruptedException => Out.trace("Scheduler interrupted. Quiting now."); return
       }
     }
   }
