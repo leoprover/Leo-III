@@ -26,6 +26,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_COUNTERSAT = "c"
   private val PARAM_SOS_SHORT = "s"
   private val PARAM_SOS_LONG = "sos"
+  private val PARAM_UNIFICATIONDEPTH = "ud"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -97,6 +98,7 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
+  lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
@@ -226,4 +228,5 @@ trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
   val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
+  val DEFAULT_UNIFICATIONDEPTH = 7
 }

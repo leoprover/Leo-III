@@ -73,8 +73,8 @@ class UnificationTestSuite extends LeoTestSuite {
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
-    // should have inf many unifiers
-    for( a <- 1 to 50) {
+    // should have inf many unifiers, we limit here to 5 since standard unification depth is quite low
+    for( a <- 1 to 5) {
       val (sb, _) = result.next
       assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
     }
@@ -96,7 +96,8 @@ class UnificationTestSuite extends LeoTestSuite {
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
     // Does it have only 6 unifiers?!
-    for( a <- 1 to 5) { // the 7th substitutions fails from some reason
+    for( a <- 1 to 1) { // the 7th substitutions fails from some reason
+      // reduced to one because of low standard unification depth
     val (sb, _) = result.next
       assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
     }
@@ -118,8 +119,9 @@ class UnificationTestSuite extends LeoTestSuite {
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
-    for( a <- 1 to 5) { // fails for 30 pre-unifiers!
-    val (sb, _) = result.next
+    for( a <- 1 to 2) { // fails for 30 pre-unifiers!
+      //reduced to two because of low standard unification depth
+      val (sb, _) = result.next
       assert (t1.substitute(sb).betaNormalize.equals(t2.substitute(sb).betaNormalize))
     }
   }
