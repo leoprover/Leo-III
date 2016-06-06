@@ -25,11 +25,7 @@ object SZSScriptAgent {
   def apply(name : String, cmd : String) : TAgent = apply(name, cmd, encodeStd, x => x)
 
   def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
-    val cons = in filter (p => p.role == Role_NegConjecture)
-    val ins =
-      (if(cons.isEmpty){
-      in ++ cons.map{c => AnnotatedClause(c.cl, Role_Axiom, c.annotation, c.properties)}
-    } else in) + AnnotatedClause(Clause(Seq(Literal(LitTrue, false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
+    val ins = in.map{c => AnnotatedClause(c.cl, Role_Axiom, ClauseAnnotation.NoAnnotation, c.properties)}+ AnnotatedClause(Clause(Seq(Literal(LitTrue, false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
     ToTPTP(ins).map(_.output)
   }
 
@@ -104,9 +100,10 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
           Out.debug(s"[$name]: Got positive ${status.output} from the external prover.")
           var r =  Result()
             .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
-            if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
+            .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
           return r
-        case Some(_)      => ()
+        case Some(status)      =>
+          ()
         case None         => ()
       }
     }

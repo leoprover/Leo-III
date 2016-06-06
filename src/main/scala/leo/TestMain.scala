@@ -77,6 +77,8 @@ object TestMain {
         Scheduler().killAll()
         System.exit(0)
       }
+    } else if(Configuration.isSet("exttest")){
+      testExternalProvers()
     } else {
 
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
@@ -203,6 +205,12 @@ object TestMain {
     Out.debug(p.description)
   }
 
+  private def testExternalProvers(): Unit ={
+    Configuration.ATPS foreach { case (name, cmd) =>
+      val r = ExternalCall.exec(cmd+" "+Configuration.PROBLEMFILE)
+        println(s"Output ($name) ${r.out.mkString("\n")}\n\n Error ($name)\n ${r.error.mkString("\n")}")
+    }
+  }
 
   /**
     * Thread to kill leo.
