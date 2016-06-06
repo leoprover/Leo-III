@@ -28,6 +28,23 @@ class MatchingTestSuite extends LeoTestSuite {
     assertResult(true)(result)
   }
 
+  test("f(x,x) = f(a,a) unifier", Checked){
+    val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a",s.i))
+    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+
+    val vargen = freshVarGenFromBlank
+    val x = vargen(s.i)
+    val t1 : Term = mkTermApp(f , Seq(x,x))
+    val t2 : Term = mkTermApp(f , Seq(a,a))
+
+    val expectedSubst: Subst = Subst.fromMap(Map(1 -> a))
+    val result = FOMatching.matches(t1, t2)
+
+    assertResult(true)(result.isDefined)
+    assertResult(expectedSubst)(result.get)
+  }
+
   test("x(a) = f(a,a)", Checked){
     val s = getFreshSignature
 
@@ -58,6 +75,26 @@ class MatchingTestSuite extends LeoTestSuite {
     val result = FOMatching.decideMatch(t1, t2)
 
     assertResult(true)(result)
+  }
+
+  test("f(x,g(y)) = f(a,g(f(a))) unifier", Checked){
+    val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a",s.i))
+    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+
+    val vargen = freshVarGenFromBlank
+    val x = vargen(s.i)
+    val y = vargen(s.i)
+
+    val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
+    val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, a))))
+
+    val expectedSubst: Subst = Subst.fromMap(Map(1 -> a, 2 -> mkTermApp(f, a)))
+    val result = FOMatching.matches(t1, t2)
+
+    assertResult(true)(result.isDefined)
+    assertResult(expectedSubst)(result.get)
   }
 
   test("f(x,g(x)) = f(a,g(f(a)))", Checked){
@@ -95,6 +132,27 @@ class MatchingTestSuite extends LeoTestSuite {
     val result = FOMatching.decideMatch(t1, t2)
 
     assertResult(true)(result)
+  }
+
+  test("f(x,g(y)) = f(a,g(f(z))) unifier", Checked){
+    val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a",s.i))
+    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+
+    val vargen = freshVarGenFromBlank
+    val x = vargen(s.i)
+    val y = vargen(s.i)
+    val z = vargen(s.i)
+
+    val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
+    val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, z))))
+
+    val expectedSubst: Subst = Subst.fromMap(Map(1 -> a, 2 -> mkTermApp(f, z)))
+    val result = FOMatching.matches(t1, t2)
+
+    assertResult(true)(result.isDefined)
+    assertResult(expectedSubst)(result.get)
   }
 
   test("f(x,g(a)) = f(a,g(z))", Checked){

@@ -18,9 +18,13 @@ package matching {
     import leo.datastructures.{Term, Type, Subst}
     import Term.{Bound, ∙}
 
+    // #################
+    // Exported functions
+    // #################
 
     /**
       * `s` matches `t` iff there exists a substitution sigma such that `s[sigma] = t`.
+      * Returns true if such a substitution exists.
       *
       * @param s A term.
       * @param t The term to be matched against (i.e. the term that may be an instance of `s`)
@@ -28,6 +32,64 @@ package matching {
       */
     final def decideMatch(s: Term, t: Term, fv:  Seq[(Int, Type)] = Seq()): Boolean = decideMatch0(Vector((s,t)), fv)
 
+    /**
+      * `s` matches `t` iff there exists a substitution sigma such that `s[sigma] = t`.
+      * Returns such a substitution if existent, None otherwise.
+      *
+      * @param s A term.
+      * @param t The term to be matched against (i.e. the term that may be an instance of `s`)
+      * @param fv If used in clausal context, specify the set of free variables. Used for extensionality treatment.
+      */
+    final def matches(s: Term, t: Term, fv: Seq[(Int, Type)] = Seq()): Option[Subst] = matches0(Seq((s,t)), Seq(), fv)
+
+
+    // #################
+    // Internal functions
+    // #################
+
+    // apply exaustively delete, comp and bind on the set. If at the end uproblems is empty,
+    // we succeeded, else we fail.
+    // Invariant: UEq (l,r) always never swapper to (r',l') where r',l' originate from r,l, respectively.
+    @tailrec
+    final private def matches0(uproblems: Seq[UEq], sproblems: Seq[UEq], fv:  Seq[(Int, Type)]): Option[Subst]  = {
+      leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+      // apply delete
+      val ind1 = uproblems.indexWhere(DeleteRule.canApply)
+      if (ind1 > -1) {
+        leo.Out.finest("Apply Delete")
+        matches0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems, fv)
+        // apply decomp
+      } else {
+        val ind2 = uproblems.indexWhere(DecompRule.canApply)
+        if (ind2 > -1) {
+          leo.Out.finest("Apply Decomp")
+          matches0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1), sproblems, fv)
+          // apply bind
+        } else {
+          val ind3 = uproblems.indexWhere(BindRule.canApply)
+          if (ind3 > -1) {
+            leo.Out.finest("Apply Bind")
+            leo.Out.finest(s"Bind on " +
+              s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
+            val be = BindRule(uproblems(ind3))
+            leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
+            val sb = computeSubst(be)
+            matches0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be, fv)
+          } else {
+            val ind4 = uproblems.indexWhere(FuncRule.canApply)
+            if (ind4 > -1) {
+              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
+              matches0((uproblems.take(ind4) :+ FuncRule(fv, uproblems(ind4))) ++ uproblems.drop(ind4 + 1), sproblems, fv)
+            } else {
+              if (uproblems.isEmpty) {
+                Some(computeSubst(sproblems))
+              } else
+                None
+            }
+          }
+        }
+      }
+    }
 
     // apply exaustively delete, comp and bind on the set. If at the end uproblems is empty,
     // we succeeded, else we fail.
@@ -74,6 +136,12 @@ package matching {
       assert(isVariable(t))
       val (_, idx) = Bound.unapply(t).get
       Subst.singleton(idx, s)
+    }
+
+    private final def computeSubst(eqns: Seq[UEq]): Subst = {
+      assert(eqns.forall(eqn => isVariable(eqn._1)))
+      val eqns2 = eqns.map {case (l,r) => (Bound.unapply(l).get._2, r)}
+      Subst.fromSeq(eqns2)
     }
 
     private final def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
