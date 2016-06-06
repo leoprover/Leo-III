@@ -173,7 +173,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           try {
             this.wait()
           } catch {
-            case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now."); return
+            case e : InterruptedException => Out.trace("Scheduler interrupted. Quiting now."); return
           }
           Out.trace("Scheduler is commencing.")
         }
