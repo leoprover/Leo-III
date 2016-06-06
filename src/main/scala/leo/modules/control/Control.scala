@@ -624,11 +624,12 @@ package inferenceControl {
     final def simpSet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
 
     final def rewriteSimp(cw: AnnotatedClause, rules: Set[AnnotatedClause]): AnnotatedClause = {
+      Out.trace(s"Rewrite simp on ${cw.id}")
       val sim = simp(cw)
       val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), sim.cl)
       // TODO: simpl to be simplification by rewriting à la E etc
-      if (rewriteSimp != cw.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
-      else cw
+      if (rewriteSimp != sim.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
+      else sim
     }
   }
 

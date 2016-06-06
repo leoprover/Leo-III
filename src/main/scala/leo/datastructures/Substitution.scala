@@ -45,6 +45,13 @@ sealed abstract class Subst extends Pretty {
   /** Return all fronts as linear list */
   def fronts: Seq[Front]
 
+  override def equals(o: Any) = o match {
+    case ot : Subst => {
+      shiftedBy == ot.shiftedBy && fronts == ot.fronts
+    }
+    case _ => false
+  }
+
 //  /** Convecience method: Convert all fronts in substitution to terms (if not a type substitution) */
 //  def terms: Seq[Term] = {
 //    fronts.map {
