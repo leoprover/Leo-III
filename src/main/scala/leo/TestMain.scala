@@ -152,11 +152,13 @@ object TestMain {
       val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
       val msproc2 = new MultiSeqPProc(atpFreq, x => x)
       val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))
+      val msproc4 = new MultiSeqPProc(atpFreq, x => Preprocess.argumentExtraction(Preprocess.equalityExtraction(x)))
       val s = Scheduler()
       val searchPhase = mode match {
         case 0 => new MultiSearchPhase(msproc2)
         case 1 => new MultiSearchPhase(msproc, msproc2)
         case 2 => new MultiSearchPhase(msproc, msproc2, msproc3)
+        case 3 => new MultiSearchPhase(msproc2, msproc4)
         case _ => new MultiSearchPhase(msproc2)
       }
 
