@@ -25,11 +25,11 @@ object SZSScriptAgent {
   def apply(name : String, cmd : String) : TAgent = apply(name, cmd, encodeStd, x => x)
 
   def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
+    val cons = in filter (p => p.role == Role_NegConjecture)
     val ins =
-    if(!in.exists(_.role == Role_Conjecture)){
-      //TODO Change Role of Neg_Conjecture to Plain?
-      in + AnnotatedClause(Clause(Seq(Literal(LitTrue, true))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
-    } else in
+      (if(cons.isEmpty){
+      in ++ cons.map{c => AnnotatedClause(c.cl, Role_Axiom, c.annotation, c.properties)}
+    } else in) + AnnotatedClause(Clause(Seq(Literal(LitTrue, false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
     ToTPTP(ins).map(_.output)
   }
 
@@ -106,6 +106,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
             .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
             if(status == SZS_Theorem) r.insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
           return r
+        case Some(_)      => ()
         case None         => ()
       }
     }
