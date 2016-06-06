@@ -28,9 +28,8 @@ package matching {
       *
       * @param s A term.
       * @param t The term to be matched against (i.e. the term that may be an instance of `s`)
-      * @param fv If used in clausal context, specify the set of free variables. Used for extensionality treatment.
       */
-    final def decideMatch(s: Term, t: Term, fv:  Seq[(Int, Type)] = Seq()): Boolean = decideMatch0(Vector((s,t)), fv)
+    final def decideMatch(s: Term, t: Term): Boolean = decideMatch0(Vector((s,t)))
 
     /**
       * `s` matches `t` iff there exists a substitution sigma such that `s[sigma] = t`.
@@ -38,9 +37,8 @@ package matching {
       *
       * @param s A term.
       * @param t The term to be matched against (i.e. the term that may be an instance of `s`)
-      * @param fv If used in clausal context, specify the set of free variables. Used for extensionality treatment.
       */
-    final def matches(s: Term, t: Term, fv: Seq[(Int, Type)] = Seq()): Option[Subst] = matches0(Seq((s,t)), Seq(), fv)
+    final def matches(s: Term, t: Term): Option[Subst] = matches0(Seq((s,t)), Seq())
 
 
     // #################
@@ -51,19 +49,19 @@ package matching {
     // we succeeded, else we fail.
     // Invariant: UEq (l,r) always never swapper to (r',l') where r',l' originate from r,l, respectively.
     @tailrec
-    final private def matches0(uproblems: Seq[UEq], sproblems: Seq[UEq], fv:  Seq[(Int, Type)]): Option[Subst]  = {
+    final private def matches0(uproblems: Seq[UEq], sproblems: Seq[UEq]): Option[Subst]  = {
       leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
       // apply delete
       val ind1 = uproblems.indexWhere(DeleteRule.canApply)
       if (ind1 > -1) {
         leo.Out.finest("Apply Delete")
-        matches0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems, fv)
+        matches0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems)
         // apply decomp
       } else {
         val ind2 = uproblems.indexWhere(DecompRule.canApply)
         if (ind2 > -1) {
           leo.Out.finest("Apply Decomp")
-          matches0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1), sproblems, fv)
+          matches0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1), sproblems)
           // apply bind
         } else {
           val ind3 = uproblems.indexWhere(BindRule.canApply)
@@ -74,12 +72,12 @@ package matching {
             val be = BindRule(uproblems(ind3))
             leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
             val sb = computeSubst(be)
-            matches0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be, fv)
+            matches0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
           } else {
             val ind4 = uproblems.indexWhere(FuncRule.canApply)
             if (ind4 > -1) {
               leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-              matches0((uproblems.take(ind4) :+ FuncRule(fv, uproblems(ind4))) ++ uproblems.drop(ind4 + 1), sproblems, fv)
+              matches0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))) ++ uproblems.drop(ind4 + 1), sproblems)
             } else {
               if (uproblems.isEmpty) {
                 Some(computeSubst(sproblems))
@@ -95,19 +93,19 @@ package matching {
     // we succeeded, else we fail.
     // Invariant: UEq (l,r) always never swapper to (r',l') where r',l' originate from r,l, respectively.
     @tailrec
-    final private def decideMatch0(uproblems: Seq[UEq], fv:  Seq[(Int, Type)]): Boolean  = {
+    final private def decideMatch0(uproblems: Seq[UEq]): Boolean  = {
       leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
       // apply delete
       val ind1 = uproblems.indexWhere(DeleteRule.canApply)
       if (ind1 > -1) {
         leo.Out.finest("Apply Delete")
-        decideMatch0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), fv)
+        decideMatch0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1))
         // apply decomp
       } else {
         val ind2 = uproblems.indexWhere(DecompRule.canApply)
         if (ind2 > -1) {
           leo.Out.finest("Apply Decomp")
-          decideMatch0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1), fv)
+          decideMatch0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1))
           // apply bind
         } else {
           val ind3 = uproblems.indexWhere(BindRule.canApply)
@@ -118,12 +116,12 @@ package matching {
             val be = BindRule(uproblems(ind3))
             leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
             val sb = computeSubst(be)
-            decideMatch0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), fv)
+            decideMatch0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)))
           } else {
             val ind4 = uproblems.indexWhere(FuncRule.canApply)
             if (ind4 > -1) {
               leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-              decideMatch0((uproblems.take(ind4) :+ FuncRule(fv, uproblems(ind4))) ++ uproblems.drop(ind4 + 1), fv)
+              decideMatch0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))) ++ uproblems.drop(ind4 + 1))
             } else
               uproblems.isEmpty
           }
@@ -197,17 +195,28 @@ package matching {
         case _ => throw new IllegalArgumentException("impossible")
       }
       def canApply(e: UEq) = e match {
-        case (hd1 ∙ _, hd2 ∙ _) if (hd1 == hd2) && !isFlexible(hd1) => true
+        case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 => {
+          if (isFlexible(hd1)) false
+          else {
+            if (hd1.ty.isPolyType) {
+              assert(hd2.ty.isPolyType)
+              val tyArgs1 = args1.takeWhile(_.isRight).map(_.right.get)
+              val tyArgs2 = args2.takeWhile(_.isRight).map(_.right.get)
+              tyArgs1 == tyArgs2
+            } else
+              true
+          }
+        }
         case _ => false
       }
     }
 
     private object FuncRule {
 
-      def apply(freevars:  Seq[(Int, Type)], e: UEq): UEq = {
+      def apply(e: UEq): UEq = {
         leo.Out.trace(s"Apply Func on ${e._1.pretty} = ${e._2.pretty}")
         val funArgTys = e._1.ty.funParamTypes
-        val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, freevars))
+        val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, Seq())) // TODO: Check if this is ok (no free vars)
         (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
       }
 
