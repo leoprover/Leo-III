@@ -10,6 +10,7 @@ import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard.{Blackboard, ClauseType}
 import leo.datastructures.blackboard.impl.SZSDataStore
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.agent.relevance_filter.AnnotatedFormulaType
@@ -25,37 +26,54 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    val file = problemfile
-    try {
-      val prob = Configuration.PROBLEMFILE
+    val run = new LoadRun
+    val f = Scheduler().submitIndependent(run)
+    f.get()
+    run.ret_def && !Scheduler().isTerminated
+  }
 
-      val it : Iterator[AnnotatedFormula] = {
-        if (Files.exists(Parsing.canonicalPath(prob)))
-          Parsing.readProblem(prob).iterator
-        else {
-          val tptpFile = Parsing.tptpHome.resolve(prob)
-          if(Files.exists(tptpFile)) {
-            Parsing.readProblem(Parsing.tptpHome.resolve(prob).toString).iterator
-          } else {
-            throw new SZSException(SZS_InputError, s"The file ${prob} does not exist.")
+  private class LoadRun extends Runnable{
+
+    var ret_def : Boolean = false
+
+    override def run(): Unit = {
+      val file = problemfile
+      try {
+        val prob = Configuration.PROBLEMFILE
+
+        val it : Iterator[AnnotatedFormula] = {
+          if (Files.exists(Parsing.canonicalPath(prob)))
+            Parsing.readProblem(prob).iterator
+          else {
+            val tptpFile = Parsing.tptpHome.resolve(prob)
+            if(Files.exists(tptpFile)) {
+              Parsing.readProblem(Parsing.tptpHome.resolve(prob).toString).iterator
+            } else {
+              throw new SZSException(SZS_InputError, s"The file ${prob} does not exist.")
+            }
           }
         }
+        while(it.hasNext){
+          val form = it.next()
+          Blackboard().addData(AnnotatedFormulaType)(form)
+        }
+      } catch {
+        case e : SZSException =>
+          SZSDataStore.forceStatus(Context())(e.status)
+          Out.severe(e.getMessage)
+          ret_def =  false
+          return
+        case e : ThreadDeath =>
+          ret_def = false
+          return
+        case e : Throwable =>
+          Out.severe("Unexpected Exception")
+          e.printStackTrace()
+          SZSDataStore.forceStatus(Context())(SZS_Error)
+          ret_def =  false
+          return
       }
-      while(it.hasNext){
-        val form = it.next()
-        Blackboard().addData(AnnotatedFormulaType)(form)
-      }
-    } catch {
-      case e : SZSException =>
-        SZSDataStore.forceStatus(Context())(e.status)
-        Out.severe(e.getMessage)
-        return false
-      case e : Throwable =>
-        Out.severe("Unexpected Exception")
-        e.printStackTrace()
-        SZSDataStore.forceStatus(Context())(SZS_Error)
-        return false
+      ret_def = true
     }
-    return true
   }
 }

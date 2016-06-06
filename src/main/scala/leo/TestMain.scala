@@ -15,6 +15,7 @@ import leo.modules.output._
 import leo.modules.phase._
 import leo.datastructures.impl.Signature
 import leo.modules.Utility._
+import leo.modules.preprocessing.Preprocess
 import leo.modules.seqpproc.MultiSeqPProc
 
 /**
@@ -140,9 +141,11 @@ object TestMain {
         case _: Exception => 30
       }
 
-      val msproc = new MultiSeqPProc(atpFreq)
+      val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
+      val msproc2 = new MultiSeqPProc(atpFreq, x => x)
+      val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))
       val s = Scheduler()
-      val searchPhase = new MultiSearchPhase(msproc)
+      val searchPhase = new MultiSearchPhase(msproc, msproc2, msproc3)
 
       printPhase(searchPhase)
       if (!searchPhase.execute()) {

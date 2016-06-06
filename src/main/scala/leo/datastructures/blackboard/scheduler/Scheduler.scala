@@ -8,7 +8,7 @@ import leo.datastructures.blackboard._
 
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable
-import java.util.concurrent.{Executors, RejectedExecutionException, ThreadFactory, TimeUnit}
+import java.util.concurrent.{Executors, RejectedExecutionException, ThreadFactory, TimeUnit, Future}
 
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.context.Context
@@ -68,6 +68,8 @@ trait Scheduler {
   protected[scheduler] def start()
 
   def openTasks : Int
+
+  def submitIndependent(r : Runnable) : Future[_]
 }
 
 
@@ -99,6 +101,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def openTasks : Int = synchronized(curExec.size)
 
   override def isTerminated : Boolean = endFlag
+
+  override def submitIndependent(r : Runnable) : Future[_] = {
+    exe.submit(r)
+  }
 
   def signal() : Unit = s.synchronized{
     pauseFlag = false

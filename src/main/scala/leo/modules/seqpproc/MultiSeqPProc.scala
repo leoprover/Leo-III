@@ -27,7 +27,7 @@ object MultiSeqPProc {
   * @author Max Wisniewski, Alexander Steen
   * @since 5/24/16
   */
-class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
+class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[AnnotatedClause] => Set[AnnotatedClause]) extends ProofProcedure {
 
 
   final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
@@ -75,12 +75,13 @@ class MultiSeqPProc(externalCallIteration : Int) extends ProofProcedure {
     * <li>The remaining proof obligations.<br />The obligation should contain the empty clause, if a proof was found</li>
     * </ol>
     *
-    * @param cs The set of formulas we want to proof a contradiction.
+    * @param cs1 The set of formulas we want to proof a contradiction.
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  override def execute(cs: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
+  override def execute(cs1: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
     val proc = MultiSeqPProc.counter.incrementAndGet()
+    val cs = addPreprocessing(cs1.toSet)
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up
