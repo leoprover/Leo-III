@@ -268,6 +268,11 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
       Out.comment(Utility.userDefinedSignatureAsString) // TODO: Adjust for state
     }
+
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
+      Out.comment("Clauses at the end of the loop:")
+      Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty).mkString("\n\t"))
+    }
     // FIXME: Count axioms used in proof:
     //    if (derivationClause != null)
     //      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
@@ -292,9 +297,15 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
-    state.incBackwardSubsumedCl(backSubsumedClauses.size)
-    state.setProcessed(state.processed -- backSubsumedClauses)
-    Control.fvIndexRemove(backSubsumedClauses)
+
+    if (backSubsumedClauses.nonEmpty) {
+      Out.trace(s"#### backward subsumed")
+      state.incBackwardSubsumedCl(backSubsumedClauses.size)
+      Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty).mkString("\n\t")}")
+      state.setProcessed(state.processed -- backSubsumedClauses)
+      Control.fvIndexRemove(backSubsumedClauses)
+    }
+
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
