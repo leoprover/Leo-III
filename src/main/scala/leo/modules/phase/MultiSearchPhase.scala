@@ -9,6 +9,7 @@ import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.Configuration
+import leo.datastructures.blackboard.scheduler.Scheduler
 
 import scala.io.Source
 
@@ -40,7 +41,23 @@ class MultiSearchPhase(proofProcedure: ProofProcedure*) extends CompletePhase {
     agents foreach {a =>
       Blackboard().send(DoItYourSelfMessage(Context()), a)
     }
-//    val fs = FormulaDataStore.getFormulas.toSet
-//    SZSScriptAgent.execute(fs, Context())
+    Scheduler().submitIndependentFree(DelayedRun)
+  }
+
+  private object DelayedRun extends Runnable {
+    override def run(): Unit = {
+      try{
+//        println("Before sleep ()")
+        Thread.sleep((Configuration.TIMEOUT * 600))
+//        println("After sleep")
+        val fs = FormulaDataStore.getFormulas.toSet
+        SZSScriptAgent.allScriptAgents.foreach(a => a.kill())
+        SZSScriptAgent.execute(fs, Context())
+      } catch {
+        case e : ThreadDeath => return
+        case e : InterruptedException => return
+        case _ : Throwable => leo.Out.trace("Unexpected Exception in delayed External Run.")
+      }
+    }
   }
 }

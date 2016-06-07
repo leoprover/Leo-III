@@ -70,6 +70,8 @@ trait Scheduler {
   def openTasks : Int
 
   def submitIndependent(r : Runnable) : Future[_]
+
+  def submitIndependentFree(r : Runnable) : Unit
 }
 
 
@@ -98,12 +100,20 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
 
+  protected val freeThreads : mutable.Set[Thread] = new mutable.HashSet[Thread]()
+
   def openTasks : Int = synchronized(curExec.size)
 
   override def isTerminated : Boolean = endFlag
 
   override def submitIndependent(r : Runnable) : Future[_] = {
     exe.submit(r)
+  }
+
+  override def submitIndependentFree(r : Runnable) : Unit = {
+    val t = new Thread(r)
+    t.start()
+    synchronized(freeThreads.add(t))
   }
 
   def signal() : Unit = s.synchronized{
@@ -125,6 +135,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     if(!exe.awaitTermination(30, TimeUnit.MILLISECONDS)) {
       MyThreadFactory.killAll()
     }
+    synchronized(freeThreads foreach {t => t.interrupt(); t.stop()})
     AgentWork.executingAgents() foreach(_.kill())
     Blackboard().filterAll(a => a.filter(DoneEvent()))
     curExec.clear()
