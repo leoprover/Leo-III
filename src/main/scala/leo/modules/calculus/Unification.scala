@@ -341,7 +341,18 @@ object HuetsPreUnification extends Unification {
       case _ => throw new IllegalArgumentException("impossible")
     }
     def canApply(e: UEq) = e match {
-      case (hd1 ∙ _, hd2 ∙ _) if (hd1.equals(hd2)) && !isFlexible(hd1) => true
+      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 => {
+        if (isFlexible(hd1)) false
+        else {
+          if (hd1.ty.isPolyType) {
+            assert(hd2.ty.isPolyType)
+            val tyArgs1 = args1.takeWhile(_.isRight).map(_.right.get)
+            val tyArgs2 = args2.takeWhile(_.isRight).map(_.right.get)
+            tyArgs1 == tyArgs2
+          } else
+            true
+        }
+      }
       case _ => false
     }
   }
