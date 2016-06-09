@@ -261,20 +261,20 @@ object RewriteSimp extends CalculusRule {
 
   /**
     * Apply a rewrite using `rewriteRule` on a specific literal in `ìntoClause`.
-    * @param rewriteRule The rewrite rule (literal) to be used
+    * @param replaceBy The term which is placed at `intoPosition`
     * @param intoClause The clause the rewrite is applied on
     * @param intoIndex The literal index, at which the rewrite is performed
     * @param intoSide The side of the literal what is rewritten
     * @param intoPosition The position of the subterm in the literal which is rewritten
-    * @param intoSubterm the subterm that is rewritten
     */
-  def apply(rewriteRule: Literal,
-            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term): Clause = {
-    assert(rewriteRule.polarity && rewriteRule.oriented)
+  def apply(replaceBy: Term,
+            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position): Clause = {
     assert(intoClause.lits.isDefinedAt(intoIndex))
     val lit = intoClause.lits(intoIndex)
-    val (searchFor, replaceBy) = (rewriteRule.left, rewriteRule.right)
-    ???
+    val (replaceIn, otherSide) = Literal.getSidesOrdered(lit, intoSide)
+    val replaced = replaceIn.replaceAt(intoPosition, replaceBy)
+    val newLit = Literal(replaced, otherSide, lit.polarity)
+    Clause(intoClause.lits.updated(intoIndex, newLit))
   }
 
   def apply(rule: Literal, simplify: Clause): Clause = {
