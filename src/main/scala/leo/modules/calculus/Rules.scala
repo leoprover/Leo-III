@@ -162,7 +162,7 @@ object PreUni extends CalculusRule {
 ////////// Inferences
 ////////////////////////////////////////////////////////////////
 
-class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
+object PrimSubst extends CalculusRule {
   val name = "prim_subst"
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
@@ -183,7 +183,7 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
     (can, flexheads)
   }
 
-  def apply(cl: Clause, flexHeads: FlexHeads): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
+  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term]): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map { case hd =>
 //      println(s"${hd.pretty} - ${hd.fv.head._1}")
 //      println(s"max fv: ${cl.maxImplicitlyBound}")
@@ -197,7 +197,6 @@ class PrimSubst(hdSymbs: Set[Term]) extends CalculusRule {
   }
 }
 
-object StdPrimSubst extends PrimSubst(Set(Not, LitFalse, LitTrue, |||))
 
 object OrderedEqFac extends CalculusRule {
   final val name = "eqfactor_ordered"
