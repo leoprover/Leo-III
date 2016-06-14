@@ -4,6 +4,7 @@ package object leo {
 
   type TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive.type
   type ClauseOrdering = Ordering[Clause]
+  type ClauseProxyOrdering = Ordering[ClauseProxy]
   type LiteralOrdering = Ordering[Literal]
 
   type ClauseWeight = Weight[Clause]

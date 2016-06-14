@@ -56,12 +56,17 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var current_rewriterules: Set[T] = Set()
   private var derivationCl: Option[T] = None
 
+  private val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
+  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
+
   override def signature: IsSignature = sig
   override def szsStatus: StatusSZS = current_szs
   override def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
   override def unprocessed: SortedSet[T] = current_unprocessed
   override def nextUnprocessed: T = {
+
+
     val next = current_unprocessed.head
     current_unprocessed = current_unprocessed.tail
     next

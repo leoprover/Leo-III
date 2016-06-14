@@ -2,8 +2,7 @@ package leo
 package datastructures
 
 import leo.datastructures.impl.Signature
-
-import Term.{:::>, TypeLambda,∙,Symbol, Bound}
+import Term.{:::>, Bound, Symbol, TypeLambda, ∙}
 
 import scala.annotation.tailrec
 
@@ -142,6 +141,12 @@ object ClauseOrdering {
   import leo.datastructures.impl.orderings._
   /** Lexicographic clause ordering on the 3-tuple (clause weight, clause age, clause origin) */
   final val lex_WeightAgeOrigin: ClauseOrdering = CLO_Lex_WeightAgeOrigin
+}
+
+object ClauseProxyOrderings {
+  import leo.datastructures.impl.orderings._
+
+  final val fifo: ClauseProxyOrdering = CLPO_FIFO
 }
 
 ///////////////////////

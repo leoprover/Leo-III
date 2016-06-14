@@ -286,7 +286,7 @@ object RewriteSimp extends CalculusRule {
   type IntoConfiguration = Map[Literal.Side, Set[(Position, Term)]]
 
   /**
-    * Replace all occurences
+    * Replace all occurrences
     *
     * @param intoClause The clause in which the rewrite takes place
     * @param intoConfigurations The configuration of the rewrite procedure: See [[IntoConfiguration]] for details and important restrictions.
