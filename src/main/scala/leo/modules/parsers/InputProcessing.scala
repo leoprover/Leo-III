@@ -95,7 +95,7 @@ object InputProcessing {
   //////////////////////////
 
   def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = {
-    println(input.formula.toString)
+//    println(input.formula.toString)
     import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term}
 
     input.formula match {
@@ -149,10 +149,24 @@ object InputProcessing {
   }
 
   protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): Term = {
-    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let}
+    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let, App => THFApp}
 
     input match {
       case Typed(f, ty) => processTHF0(sig)(f,replaces) // TODO: What to do with type information?
+      case Binary(left, conn, right) if conn == THFApp => {
+        val processedLeft = processTHF0(sig)(left, replaces)
+        import leo.datastructures.Term.{mkTermApp, mkTypeApp}
+        if (processedLeft.ty.isPolyType) {
+          val processedRight = convertTHFType(sig)(right, replaces)
+          if (processedRight.isLeft)
+            mkTypeApp(processedLeft, processedRight.left.get)
+          else
+            throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+        }
+        else
+          mkTermApp(processedLeft, processTHF0(sig)(right, replaces))
+
+      }
       case Binary(left, conn, right) => processTHFBinaryConn(conn).apply(processTHF0(sig)(left, replaces),processTHF0(sig)(right, replaces))
       case Unary(conn, f) => processTHFUnaryConn(conn).apply(processTHF0(sig)(f, replaces))
       case Quantified(q, vars, matrix) => {
