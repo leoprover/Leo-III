@@ -206,7 +206,7 @@ object ReplaceLeibnizEq extends CalculusRule {
   }
 
   def apply(cl: Clause, bindings: Map[Int, Term]): (Clause, Subst) = {
-    val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t, Term.mkBound(t.ty, 1))))
+    val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1))))
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
     (Clause((newLits)), subst)
