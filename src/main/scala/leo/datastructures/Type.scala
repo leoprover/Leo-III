@@ -159,12 +159,6 @@ object Type {
   /** Represents the type of kinds. Only needed internally so that we can type kinds correctly */
   val superKind: Kind = SuperKind
 
-
-  /** Build kind k1 -> k2
-    * @deprecated Not needed yet, there are no terms that can produce this type
-    */
-  def mkFunKind(in: Kind, out: Kind): Kind = ???
-
   implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
 
 
@@ -221,4 +215,20 @@ abstract class Kind extends Pretty {
   val isTypeKind: Boolean
   val isFunKind: Boolean
   val isSuperKind: Boolean
+
+  def arity: Int
+}
+
+object Kind {
+  /** Build kind k1 -> k2  */
+  def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
+  /** Build kind `in1 -> in2 -> in3 -> ... -> out`. */
+  def mkFunKind(in: Seq[Kind], out: Kind): Kind = in match {
+    case Seq()           => out
+    case Seq(x, xs @ _*) => mkFunKind(x, mkFunKind(xs, out))
+  }
+  def mkFunKind(in: Seq[Kind]): Kind = in match {
+    case Seq(ty)            => ty
+    case Seq(ty, tys @ _*)  => mkFunKind(ty, mkFunKind(tys))
+  }
 }

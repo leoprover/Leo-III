@@ -96,6 +96,7 @@ object InputProcessing {
   //////////////////////////
 
   def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = {
+    println(input.formula.toString)
     import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term}
 
     input.formula match {
@@ -299,9 +300,15 @@ object InputProcessing {
         }
       }
       case Term(t) => {
+        println(t.toString)
         t match {
-          case Func(ty, List()) => mkType(sig(ty).key) // Base type
-//          case Func(ty, args)   => ???
+          case Func(ty, List()) => mkType(sig(ty).key) // Base type fix: ty needs to be a registered type
+          case Func(k, args)   => {
+            assert(sig(k).hasKind, "Application of types only allowed on kind symbols.")
+            assert(sig(k)._kind.isFunKind, "Application of types only allowed on fun kinds.")
+            assert(sig(k)._kind.arity == args.size, "Only full application of types allowed on fun kinds.")
+            typeKind
+          }
           case DefinedFunc(ty, List()) if ty == "$tType" =>  typeKind // kind *
           case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type
           case SystemFunc(ty, List()) =>  mkType(sig(ty).key) // system type
@@ -314,9 +321,16 @@ object InputProcessing {
         binTy match {
           case ->(tys) => {
             val converted = tys.map(convertTHFType(sig)(_, replaces))
-            // as for TFF, we consider only types here. this may change in future
-            require(converted.forall(_.isLeft), "Function constructor only applicable on types at the moment")
-            mkFunType(converted.map(_.left.get))
+            //require(converted.forall(_.isLeft) || converted.forall(_.isRight), "Function constructor only applicable on types at the moment")
+            if (converted.forall(_.isLeft)) {
+              // Function type
+              mkFunType(converted.map(_.left.get))
+            } else if (converted.forall(_.isRight)) {
+              // Function kind
+              Kind.mkFunKind(converted.map(_.right.get))
+            } else {
+              throw new IllegalArgumentException(s"mixed types and kinds in function constructor: ${converted.map(_.fold(_.pretty, _.pretty)).mkString(" > ")}")
+            }
           }
           case *(tys) => {
             val converted = tys.map(convertTHFType(sig)(_, replaces))

@@ -283,7 +283,20 @@ protected[datastructures] case object TypeKind extends Kind {
   val isTypeKind = true
   val isSuperKind = false
   val isFunKind = false
+
+  val arity = 0
 }
+
+protected[datastructures] case class FunKind(from: Kind, to: Kind) extends Kind {
+  def pretty = from.pretty + " > " + to.pretty
+
+  val isTypeKind = false
+  val isSuperKind = false
+  val isFunKind = true
+
+  lazy val arity = 1 + to.arity
+}
+
 /** Artificial kind that models the type of `*` (i.e. []) */
 protected[datastructures] case object SuperKind extends Kind {
   def pretty = "#"
@@ -291,6 +304,8 @@ protected[datastructures] case object SuperKind extends Kind {
   val isTypeKind = false
   val isSuperKind = true
   val isFunKind = false
+
+  val arity = 0
 }
 
 
