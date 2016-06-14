@@ -8,26 +8,23 @@ import scala.language.implicitConversions
  * Abstract type for modeling types.
  * At the moment, types are constructed by:
  *
- * t1, t2 ::= a | t1 -> t2 | t1 * t2 | t1 + t2 | forall a. t1
- * with a = some set of base type symbols containing i (type of individuals)
- * and o (type of truth values).
+ * t1, t2 ::= s (ti) | t1 -> t2 | t1 * t2 | t1 + t2 | forall a. t1
+ * with s is a sort from a set S of sort symbols. If s is of kind * -> ... -> * (n times)
+ * then the ti is a sequence of (n-1) type arguments. If s is of kind *, then s is
+ * called base type.
  *
  * Kinds are created by
- * k := * | #
+ * k := * | k -> k | #
  * where * is the kind of types and # the kind of kinds (for internal use only).
  *
- * It is planned to further enhance the type system, e.g. with
- * 1. type classes
- * 2. type constructors
- * 3. subtyping
  *
  * @author Alexander Steen
  * @since 30.04.2014
  * @note Updated 15.05.2014 (Re-Re-organized structure of classes for types: abstract type with
  *       companion object here [without explicit interfaces], implementation in extra file.
- *       Type language is now fixed: System F (omega).
  * @note Updated 30.06.2014 Inserted type constructors for product types (*) and union types (+). These
- *       will be removed from the type language as soon as it is expressive enough for general type constructors.
+ *       will be removed from the type language as soon as it is expressive enough for general type constructors. Probably. Or not. We'll see.
+ * @note Updated 14.06.2016 Introduced sort symbols to support TH1
  */
 abstract class Type extends Pretty {
 
@@ -109,7 +106,9 @@ object Type {
   type Impl = Type // fix by introducing super-type on types TODO
 
   /** Create type with name `identifier`. */
-  def mkType(identifier: Signature#Key): Type = BaseTypeNode(identifier)
+  def mkType(identifier: Signature#Key): Type = GroundTypeNode(identifier, Seq())
+  /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
+  def mkType(identifier: Signature#Key, args: Seq[Type]): Type = GroundTypeNode(identifier, args)
   /** Build type `in -> out`. */
   def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
@@ -168,7 +167,14 @@ object Type {
 
   object BaseType {
     def unapply(ty: Type): Option[Signature#Key] = ty match {
-      case BaseTypeNode(id) => Some(id)
+      case GroundTypeNode(id, args) if args.isEmpty => Some(id)
+      case _ => None
+    }
+  }
+
+  object ComposedType {
+    def unapply(ty: Type): Option[(Signature#Key, Seq[Type])] = ty match {
+      case GroundTypeNode(id, args) if args.nonEmpty => Some((id, args))
       case _ => None
     }
   }

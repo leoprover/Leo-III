@@ -12,7 +12,7 @@ import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
 import leo.datastructures.impl.Signature
 
 import leo.modules.SZSException
-import leo.modules.output.SZS_InputError
+import leo.modules.output.{SZS_InputError,SZS_TypeError}
 
 
 /**
@@ -22,7 +22,6 @@ import leo.modules.output.SZS_InputError
   *
   * @author Alexander Steen
   * @since 18.06.2014
-  *
   * @todo - Cannot handle implicit quantified variables in FOF dialect
   * @todo - Cannot handle CNF and TPI
   */
@@ -300,14 +299,17 @@ object InputProcessing {
         }
       }
       case Term(t) => {
-        println(t.toString)
         t match {
-          case Func(ty, List()) => mkType(sig(ty).key) // Base type fix: ty needs to be a registered type
-          case Func(k, args)   => {
-            assert(sig(k).hasKind, "Application of types only allowed on kind symbols.")
-            assert(sig(k)._kind.isFunKind, "Application of types only allowed on fun kinds.")
-            assert(sig(k)._kind.arity == args.size, "Only full application of types allowed on fun kinds.")
-            typeKind
+          case Func(k, args) => {
+            if (sig(k).hasKind)
+              if (sig(k)._kind.arity == args.length) {
+                val converted = args.map(x => convertTHFType(sig)(Term(x), replaces))
+                if (converted.forall(_.isLeft))
+                  mkType(sig(k).key, converted.map(_.left.get))
+                else throw new SZSException(SZS_TypeError)
+              } else throw new SZSException(SZS_TypeError, s"Arity of sort symbol does not match argument count: ${t.toString}")
+            else
+              throw new SZSException(SZS_TypeError, s"Using term constant inside type: ${t.toString}")
           }
           case DefinedFunc(ty, List()) if ty == "$tType" =>  typeKind // kind *
           case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type

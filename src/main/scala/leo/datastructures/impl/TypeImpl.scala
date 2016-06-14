@@ -3,42 +3,47 @@ package leo.datastructures.impl
 import leo.datastructures.{Kind, Subst, Type}
 
 /** Literal type, i.e. `$o` */
-protected[datastructures] case class BaseTypeNode(id: Signature#Key) extends Type {
+protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends Type {
   // Pretty printing
   import Signature.{get => signature}
-  def pretty = signature.meta(id).name
+  lazy val pretty = {
+    if (args.isEmpty)
+      signature.meta(id).name
+    else
+      signature.meta(id).name +"(" + args.map(_.pretty).mkString(",") + ")"
+  }
 
   // Predicates on types
-  override val isBaseType         = true
+  override val isBaseType         = args.isEmpty
   def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  def typeVars = Set.empty
+  def typeVars = args.flatMap(_.typeVars).toSet
 
-  val funDomainType   = None
-  val codomainType = this
-  val arity = 0
+  val funDomainType = None
+  val codomainType  = this
+  val arity         = 0
   val funParamTypesWithResultType = Seq(this)
-  val order = 0
+  val order         = 0
   val polyPrefixArgsCount = 0
 
   val scopeNumber = 0
 
   def occurs(ty: Type) = ty match {
-    case BaseTypeNode(key) if key == id => true
-    case _                              => false
+    case GroundTypeNode(key, args2) if key == id => args == args2
+    case _ => args.exists(_.occurs(ty))
   }
 
   // Substitutions
-  def substitute(what: Type, by: Type) = what match {
-    case BaseTypeNode(key) if key == id => by
-    case _ => this
+  def substitute(what: Type, by: Type) = {
+    if (what == this) by
+    else GroundTypeNode(id, args.map(_.substitute(what, by)))
   }
-  def substitute(subst: Subst) = this
+  def substitute(subst: Subst) = GroundTypeNode(id, args.map(_.substitute(subst)))
   def instantiate(by: Type) = this
 
   // Other operations
-  def foldRight[A](baseFunc: Signature#Key => A)
+  def foldRight[A](baseFunc: Signature#Key => A) // FIXME
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
