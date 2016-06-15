@@ -6,6 +6,7 @@ import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
 import leo.datastructures.blackboard.{Blackboard, ClauseType}
 import leo.datastructures.blackboard.impl.SZSDataStore
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures.tptp.Commons.AnnotatedFormula
@@ -26,39 +27,50 @@ class SeqFilterPhase extends Phase {
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    var res : Seq[ClauseProxy] = Seq()
-    var taken : Iterable[AnnotatedFormula] = Seq()
+    val f = Scheduler().submitIndependent(new FilterRun)
 
-    taken = PreFilterSet.getFormulas.filter{f => f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty}
+    f.get()
+    !Scheduler().isTerminated
+  }
 
-    var round : Int = 0;
-    while(taken.nonEmpty){
+  private class FilterRun extends Runnable {
 
-      // Take all formulas (save the newly touched symbols
-      val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
+    override def run(): Unit = try {
+      var res : Seq[ClauseProxy] = Seq()
+      var taken : Iterable[AnnotatedFormula] = Seq()
 
-      // Translate all taken formulas to clauses
-      taken.foreach{f =>
-        val (name, term, role) = InputProcessing.process(Signature.get)(f)
-        val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
+      taken = PreFilterSet.getFormulas.filter{f => f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty}
+
+      var round : Int = 0
+      while(taken.nonEmpty){
+
+        // Take all formulas (save the newly touched symbols
+        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
+
+        // Translate all taken formulas to clauses
+        taken.foreach{f =>
+          val (name, term, role) = InputProcessing.process(Signature.get)(f)
+          val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
             negateConjecture(name, term, role)
           else
             AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)
-        res = nc +: res
+          res = nc +: res
+        }
+
+        // Obtain all formulas, that have a
+        val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
+
+        // Take the new formulas
+        taken = possibleCandidates.filter(f => RelevanceFilter(round)(f))
+
+        round += 1
       }
 
-      // Obtain all formulas, that have a
-      val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
-
-      // Take the new formulas
-      taken = possibleCandidates.filter(f => RelevanceFilter(round)(f))
-
-      round += 1
+      res foreach {form => Blackboard().addData(ClauseType)(form) }
+    } catch {
+      case e : ThreadDeath => return
+      case _ : Throwable => return
     }
-
-    res foreach {form => Blackboard().addData(ClauseType)(form) }
-
-    return true
   }
 
   private def negateConjecture(name : String, term : Term, role : Role) : ClauseProxy = {
