@@ -142,12 +142,7 @@ object Main {
         Out.trace(Utility.userDefinedSignatureAsString)
       }
       case e:Throwable => {
-        if (e.getMessage != null) {
-          Out.info(e.getMessage)
-          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.getMessage))
-        } else {
-          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE))
-        }
+        Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
           Out.trace("Caused by: " + e.getCause.getMessage)
