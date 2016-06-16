@@ -22,7 +22,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   }
   private final def toProxyOrdering(ord: Ordering[A]): Ordering[ObjectProxy] = {
     new Ordering[ObjectProxy] {
-      def compare(x: ObjectProxy, y: ObjectProxy): OrderingKey = ord.compare(x.get, y.get)
+      @inline final def compare(x: ObjectProxy, y: ObjectProxy): OrderingKey = ord.compare(x.get, y.get)
     }
   }
 
@@ -34,7 +34,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     val queues = priorityQueues.size
     var i = 0
     val op = new ObjectProxy(x)
-    while (i <= queues) {
+    while (i < queues) {
       priorityQueues(i).enqueue(op)
       i = i+1
     }
