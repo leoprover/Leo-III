@@ -57,22 +57,37 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var derivationCl: Option[T] = None
 
   private val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
+  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
+  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[T]])
+  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
+
 
   override def signature: IsSignature = sig
   override def szsStatus: StatusSZS = current_szs
   override def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
   override def unprocessed: SortedSet[T] = current_unprocessed
+
+  val prios = mpq.priorities - 1 // == 3 -1
+  val prio_weights = Seq(8,1,2,2)
+  var cur_prio = 0
+  var cur_weight = 0
   override def nextUnprocessed: T = {
-
-
-    val next = current_unprocessed.head
-    current_unprocessed = current_unprocessed.tail
-    next
+    leo.Out.debug(s"[###] Selecting with priority ${cur_prio}: element ${cur_weight}")
+    if (cur_weight >= prio_weights(cur_prio)) {
+      cur_weight = 0
+      cur_prio = (cur_prio + 1) % (prios+1)
+    }
+    val result = mpq.dequeue(cur_prio)
+    cur_weight = cur_weight+1
+    result
+//    val next = current_unprocessed.head
+//    current_unprocessed = current_unprocessed.tail
+//    next
   }
-  override def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl}
-  override def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls}
+  override def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl; mpq.insert(cl)}
+  override def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls; mpq.insert(cls)}
   override def processed: Set[T] = current_processed
   override def setProcessed(c: Set[T]): Unit = {current_processed = c}
   override def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
