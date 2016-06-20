@@ -26,6 +26,7 @@ trait MultiPriorityQueue[A] {
     }
   }
   def addPriority(p: Ordering[A]): OrderingKey
+  def priorities: Int
 
   def isEmpty: Boolean
   def size: Int

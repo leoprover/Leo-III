@@ -22,7 +22,10 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   }
   private final def toProxyOrdering(ord: Ordering[A]): Ordering[ObjectProxy] = {
     new Ordering[ObjectProxy] {
-      @inline final def compare(x: ObjectProxy, y: ObjectProxy): OrderingKey = ord.compare(x.get, y.get)
+      @inline final def compare(x: ObjectProxy, y: ObjectProxy): OrderingKey =
+        if (x.get == null) -1
+        else if (y.get == null) -1
+        else ord.compare(x.get, y.get)
     }
   }
 
@@ -48,6 +51,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     priorityQueues = priorityQueues :+ newPrioQueue
     key
   }
+  def priorities = priorityQueues.size
 
   def dequeue(k: OrderingKey): A = {
     if (priorityQueues.size-1 < k) throw new NoSuchElementException
