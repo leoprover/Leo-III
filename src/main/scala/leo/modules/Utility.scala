@@ -14,23 +14,16 @@ import leo.modules.output._
 import scala.collection.immutable.HashSet
 
 /**
- * Stuff to do smth.
+ * Utility methods for printing debug and similar information
  *
- * @author Max Wisniewski
+ * @author Max Wisniewski, Alexander Steen
  * @since 12/1/14
  */
 object Utility {
 
-
-  private final def singleTermToClause(t: Term, role: Role): Clause = {
-    Clause.mkClause(Seq(Literal.mkPos(t, LitTrue)), roleToClauseOrigin(role))
-  }
-  private final def roleToClauseOrigin(role: Role): ClauseOrigin = role match {
-    case Role_Conjecture => FromConjecture
-    case Role_NegConjecture => FromConjecture
-    case _ => FromAxiom
-  }
-
+  /////////////////////////////////////////////////////////////
+  /// Signature queries
+  /////////////////////////////////////////////////////////////
 
   def printSignature(): Unit = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
@@ -87,9 +80,92 @@ object Utility {
     sb.toString()
   }
 
+  def userConstantsForProof(sig: Signature): String = {
+    val sb: StringBuilder = new StringBuilder()
+    sig.allUserConstants.foreach { case key =>
+      val name = sig.apply(key).name
+      sb.append(ToTPTP(name + "_type", key).output)
+        sb.append("\n")
+    }
+    sb.dropRight(1).toString()
+  }
+
+  def userSignatureToTPTP(constants: Set[Signature#Key])(implicit sig: Signature): String = {
+    val sb: StringBuilder = new StringBuilder()
+    sig.allUserConstants.intersect(constants).foreach { case key =>
+      val name = sig.apply(key).name
+      sb.append(ToTPTP(name + "_type", key).output)
+      sb.append("\n")
+    }
+    sb.dropRight(1).toString()
+  }
+
+  /////////////////////////////////////////////////////////////
+  /// Proof printing and associated methods
+  /////////////////////////////////////////////////////////////
+  type Proof = Seq[ClauseProxy]
+
+  final def proofOf(cl: ClauseProxy): Proof = {
+    var sf : Set[ClauseProxy] = new HashSet[ClauseProxy]
+    var proof : Proof = Vector()
+
+    def derivationProof(f: ClauseProxy): Unit = {
+      if (!sf.exists(c => c.id == f.id)) {
+        sf = sf + f
+        f.annotation match {
+          case InferredFrom(_, fs) =>
+            fs.foreach(f => derivationProof(f._1))
+              proof = f +: proof
+          case _ =>
+              proof = f +: proof
+        }
+      }
+    }
+    derivationProof(cl)
+    proof.reverse
+  }
+
+  final def proofToTPTP(proof: Proof): String = {
+    if (Configuration.isSet("DEBUG"))
+      proof.map(_.pretty).mkString("\n")
+    else
+      proof.map(mkTPTP).mkString("\n")
+  }
+
+  private def mkTPTP(cl : ClauseProxy) : String = {
+    try{
+      ToTPTP.withAnnotation(cl).output
+    } catch {
+      case e : Throwable => cl.pretty
+    }
+  }
+
+  final def symbolsInProof(p: Proof): Set[Signature#Key] = {
+    p.flatMap(cl => cl.cl.lits.flatMap(l => l.left.symbols ++ l.right.symbols)).toSet
+  }
+
+  final def axiomsInProof(p: Proof): Set[ClauseProxy] = {
+    p.filter(_.role == Role_Axiom).toSet
+  }
+
+
+  /////////////////////////////////////////////////////////////
+  /// Other stuff.
+  /////////////////////////////////////////////////////////////
+
+  def stackTraceAsString(e: Throwable): String = {
+    val sw = new StringWriter()
+    e.printStackTrace(new PrintWriter(sw))
+    sw.toString
+  }
+
+  /////////////////////////////////////////////////////////////
+  /// Old, unused and should soon get deleted or moved to a reasonable location:
+  /////////////////////////////////////////////////////////////
+
   /**
-   * Shows all formulas in the current context.
-   */
+    * Shows all formulas in the current context.
+    */
   def context(): Unit = {
     println("Signature:")
     printSignature()
@@ -144,83 +220,6 @@ object Utility {
         form2.foreach(x => println(" " * maxNameSize + " | " + " " * maxRoleSize + " | "  + x))
     }
     println()
-  }
-
-
-//  def printDerivation(cl: ClauseProxy) : Unit = Out.output(derivationString(new HashSet[Int](), 0, cl, new StringBuilder()).toString())
-//
-//
-//  private def derivationString(origin: Set[Int], indent : Int, cl: ClauseProxy, sb : StringBuilder) : StringBuilder = {
-//    cl.annotation match {
-//      case FromFile(_, _) => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
-//      case InferredFrom(_, fs) => fs.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")){case (cls, sbu) => derivationString(origin.+(indent), indent+1,cls._1,sbu)}
-//      case _ => sb.append(downList(origin, indent)).append(mkTPTP(cl)).append("\n")
-//    }
-////    f.origin.foldRight(sb.append(downList(origin, indent)).append(mkTPTP(f)).append("\t"*6+"("+f.reason+")").append("\n")){case (fs, sbu) => derivationString(origin.+(indent), indent+1,fs,sbu)}
-//  }
-
-  def userConstantsForProof(sig: Signature): String = {
-    val sb: StringBuilder = new StringBuilder()
-    sig.allUserConstants.foreach { case key =>
-      val name = sig.apply(key).name
-      sb.append(ToTPTP(name + "_type", key).output)
-        sb.append("\n")
-    }
-    sb.dropRight(1).toString()
-  }
-
-  def printProof(cl: ClauseProxy) : Unit = {
-
-    var sf : Set[ClauseProxy] = new HashSet[ClauseProxy]
-    var proof : Seq[String] = Seq()
-
-    def derivationProof(f: ClauseProxy)
-    {
-      if (!sf.exists(c => c.id == f.id)) {
-        sf = sf + f
-        f.annotation match {
-          case InferredFrom(_, fs) =>
-            fs.foreach(f => derivationProof(f._1))
-            if (!Configuration.isSet("DEBUG"))
-              proof = mkTPTP(f) +: proof
-            else
-              proof = f.pretty +: proof
-          case _ =>
-            if (!Configuration.isSet("DEBUG"))
-              proof = mkTPTP(f) +: proof
-            else
-              proof = f.pretty +: proof
-        }
-      }
-    }
-
-    derivationProof(cl)
-    Out.output(proof.reverse.mkString("\n"))
-  }
-
-  private def mkTPTP(cl : ClauseProxy) : String = {
-    try{
-      ToTPTP.withAnnotation(cl).output
-    } catch {
-      case e : Throwable => cl.pretty
-    }
-  }
-
-  private def downList(origin: Set[Int], indent : Int) : String = {
-    val m = if(origin.isEmpty) 0 else origin.max
-    List.range(0, indent).map { x => origin.contains(x) match {
-      case true if x < m => " | "
-      case true => " |-"
-      case false if m < x => "---"
-      case false => "   "
-    }}.foldRight(""){(a,b) => a+b}
-  }
-
-
-  def stackTraceAsString(e: Throwable): String = {
-    val sw = new StringWriter()
-    e.printStackTrace(new PrintWriter(sw))
-    sw.toString
   }
 
 }

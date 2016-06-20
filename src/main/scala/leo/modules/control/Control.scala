@@ -476,7 +476,7 @@ package inferenceControl {
         val new_ps_pre2 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
         val new_ps_pre3 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
         val new_ps_pre4 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(Signature.get.uninterpretedSymbols.map(Term.mkAtom(_)), h.ty.funParamTypes)))
-        val pre = new_ps_pre ++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
+        val pre = new_ps_pre //++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
         val new_ps = pre.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst)))), cw.properties)}
         Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
         return new_ps
