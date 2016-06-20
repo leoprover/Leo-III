@@ -15,6 +15,7 @@ import leo.modules.output._
 import leo.modules.phase._
 import leo.datastructures.impl.Signature
 import leo.modules.Utility._
+import leo.modules.preprocessing.Preprocess
 import leo.modules.seqpproc.MultiSeqPProc
 
 /**
@@ -76,6 +77,8 @@ object TestMain {
         Scheduler().killAll()
         System.exit(0)
       }
+    } else if(Configuration.isSet("exttest")){
+      testExternalProvers()
     } else {
 
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
@@ -140,9 +143,27 @@ object TestMain {
         case _: Exception => 30
       }
 
-      val msproc = new MultiSeqPProc(atpFreq)
+      val mode : Int = try {
+        val s = Configuration.valueOf("mode").get
+        val h = s.head
+        h.toInt
+      } catch {
+        case _ : Exception => 0
+      }
+
+      val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
+      val msproc2 = new MultiSeqPProc(atpFreq, x => x)
+      val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))
+      val msproc4 = new MultiSeqPProc(atpFreq, x => Preprocess.argumentExtraction(Preprocess.equalityExtraction(x)))
       val s = Scheduler()
-      val searchPhase = new MultiSearchPhase(msproc)
+      val searchPhase = mode match {
+        case 0 => new MultiSearchPhase(msproc2)
+        case 1 => new MultiSearchPhase(msproc, msproc2)
+        case 2 => new MultiSearchPhase(msproc, msproc2, msproc3)
+        case 3 => new MultiSearchPhase(msproc2, msproc4)
+        case _ => new MultiSearchPhase(msproc2)
+      }
+
 
       printPhase(searchPhase)
       if (!searchPhase.execute()) {
@@ -166,7 +187,7 @@ object TestMain {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
         Out.output(Utility.userConstantsForProof(Signature.get))
-        Utility.printProof(proof.get)
+        Out.output(Utility.proofToTPTP(Utility.proofOf(proof.get)))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     }
@@ -184,6 +205,12 @@ object TestMain {
     Out.debug(p.description)
   }
 
+  private def testExternalProvers(): Unit ={
+    Configuration.ATPS foreach { case (name, cmd) =>
+      val r = ExternalCall.exec(cmd+" "+Configuration.PROBLEMFILE)
+        println(s"Output ($name) ${r.out.mkString("\n")}\n\n Error ($name)\n ${r.error.mkString("\n")}")
+    }
+  }
 
   /**
     * Thread to kill leo.

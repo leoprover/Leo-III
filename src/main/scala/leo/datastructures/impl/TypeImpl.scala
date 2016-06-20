@@ -18,7 +18,8 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
   def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  def typeVars = args.flatMap(_.typeVars).toSet
+  val typeVars = args.flatMap(_.typeVars).toSet
+  val symbols = Set(id)
 
   val funDomainType = None
   val codomainType  = this
@@ -63,7 +64,8 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
   def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  def typeVars: Set[Type] = Set(this)
+  val typeVars: Set[Type] = Set(this)
+  val symbols = Set[Signature#Key]()
 
   val funDomainType   = None
   val codomainType = this
@@ -115,7 +117,8 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   def isApplicableWith(arg: Type) = arg == in
 
   // Queries on types
-  def typeVars = in.typeVars ++ out.typeVars
+  lazy val typeVars = in.typeVars ++ out.typeVars
+  lazy val symbols = in.symbols ++ out.symbols
 
   lazy val funDomainType   = Some(in)
   lazy val codomainType = out
@@ -154,7 +157,8 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  def typeVars = l.typeVars ++ r.typeVars
+  lazy val typeVars = l.typeVars ++ r.typeVars
+  lazy val symbols = l.symbols ++ r.symbols
 
   val funDomainType   = None
   val codomainType = this
@@ -195,7 +199,8 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  def typeVars = l.typeVars ++ r.typeVars
+  lazy val typeVars = l.typeVars ++ r.typeVars
+  lazy val symbols = l.symbols ++ r.symbols
 
   val funDomainType   = None
   val codomainType = this
@@ -241,7 +246,8 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
   }
 
   // Queries on types
-  def typeVars = body.typeVars
+  val typeVars = body.typeVars
+  val symbols = body.symbols
 
   val funDomainType   = None
   val codomainType = this

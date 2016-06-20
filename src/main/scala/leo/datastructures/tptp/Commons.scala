@@ -130,9 +130,13 @@ object Commons {
   type Variable = String
 
   sealed abstract class Number
-  case class IntegerNumber(value: Integer) extends Number
+  case class IntegerNumber(value: Integer) extends Number {
+    override def toString = value.toString
+  }
   case class DoubleNumber(value: Double) extends Number
-  case class RationalNumber(p: Integer, q: Integer) extends Number
+  case class RationalNumber(p: Integer, q: Integer) extends Number {
+    override def toString = p.toString + "/" + q.toString
+  }
 
   // System terms
 

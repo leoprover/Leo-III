@@ -39,6 +39,7 @@ abstract class Type extends Pretty {
 
   // Queries on types
   def typeVars: Set[Type]
+  def symbols: Set[Signature#Key]
 
   def funDomainType: Option[Type]
   def _funDomainType: Type = funDomainType.get

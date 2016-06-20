@@ -231,6 +231,9 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
+    val proof = if (state.derivationClause.isDefined) Utility.proofOf(state.derivationClause.get) else null
+    if (proof != null)
+      Out.comment(s"No. of axioms used: ${Utility.axiomsInProof(proof).size}")
     Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
@@ -273,16 +276,13 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment("Clauses at the end of the loop:")
       Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty).mkString("\n\t"))
     }
-    // FIXME: Count axioms used in proof:
-    //    if (derivationClause != null)
-    //      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+
 
     /* Print proof object if possible and requested. */
-    if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && state.derivationClause.isDefined) {
+    if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Out.output(Utility.userConstantsForProof(Signature.get))
-      Utility.printProof(state.derivationClause.get)
+      Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(Signature.get))
+      Out.output(Utility.proofToTPTP(proof))
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }

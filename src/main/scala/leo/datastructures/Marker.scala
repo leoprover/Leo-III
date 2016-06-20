@@ -156,7 +156,7 @@ object ClauseAnnotation {
       cws.map { case (cw, add) => if (add == null) {
         cw.id
       } else {
-        cw.id // + ":[" + add.output + "]"
+        cw.id  + ":[" + add.output + "]"
       }
       }.mkString(",")
     }])"
