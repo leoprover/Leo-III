@@ -149,6 +149,7 @@ object ClauseProxyOrderings {
   final val fifo: ClauseProxyOrdering = CLPO_FIFO
   final val lex_weightAge = CLPO_Lex_WeightAge
   final val goalsfirst = CLPO_GoalsFirst
+  final val nongoalsfirst = CLPO_NonGoalsFirst
 }
 
 ///////////////////////
