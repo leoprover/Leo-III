@@ -447,13 +447,37 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
 
+    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)
+    def eqBindings(tys: Seq[Type]): Set[Term] = {
+      if (tys.size == 2) {
+        val (ty1, ty2) = (tys.head, tys.tail.head)
+        if (ty1 == ty2) {
+          Set(
+            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))),
+            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))))
+          )
+        } else Set()
+      } else Set()
+    }
+    def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
+      if (typs.size == 1) {
+        val typ = typs.head
+        val compatibleTerms = terms.filter(_.ty == typ)
+        compatibleTerms.map(t => Term.λ(typ)(Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.substitute(Subst.shift(1)), Term.mkBound(typ, 1)))))
+      } else Set()
+    }
+
     final def primSubst(cw: AnnotatedClause): Set[AnnotatedClause] = {
       // TODO: Read from configuration thorougness of prim subst.
-      val (cA_ps, ps_vars) = StdPrimSubst.canApply(cw.cl)
+      val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
       if (cA_ps) {
         Out.debug(s"Prim subst on: ${cw.id}")
-        val new_ps_pre = StdPrimSubst(cw.cl, ps_vars)
-        val new_ps = new_ps_pre.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(StdPrimSubst, Set((cw,ToTPTP(subst)))), cw.properties)}
+        val new_ps_pre = PrimSubst(cw.cl, ps_vars, standardbindings)
+        val new_ps_pre2 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
+        val new_ps_pre3 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+        val new_ps_pre4 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(Signature.get.uninterpretedSymbols.map(Term.mkAtom(_)), h.ty.funParamTypes)))
+        val pre = new_ps_pre //++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
+        val new_ps = pre.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst)))), cw.properties)}
         Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
         return new_ps
       }
@@ -626,7 +650,7 @@ package inferenceControl {
     final def rewriteSimp(cw: AnnotatedClause, rules: Set[AnnotatedClause]): AnnotatedClause = {
       Out.trace(s"Rewrite simp on ${cw.id}")
       val sim = simp(cw)
-      val rewriteSimp = RewriteSimp.apply(rules.map(_.cl), sim.cl)
+      val rewriteSimp = sim.cl //RewriteSimp.apply(rules.map(_.cl), sim.cl)
       // TODO: simpl to be simplification by rewriting à la E etc
       if (rewriteSimp != sim.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
       else sim

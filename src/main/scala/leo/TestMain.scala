@@ -187,7 +187,7 @@ object TestMain {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
         Out.output(Utility.userConstantsForProof(Signature.get))
-        Utility.printProof(proof.get)
+        Out.output(Utility.proofToTPTP(Utility.proofOf(proof.get)))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     }

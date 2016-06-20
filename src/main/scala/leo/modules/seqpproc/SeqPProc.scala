@@ -231,6 +231,9 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
+    val proof = if (state.derivationClause.isDefined) Utility.proofOf(state.derivationClause.get) else null
+    if (proof != null)
+      Out.comment(s"No. of axioms used: ${Utility.axiomsInProof(proof).size}")
     Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
@@ -268,16 +271,18 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
       Out.comment(Utility.userDefinedSignatureAsString) // TODO: Adjust for state
     }
-    // FIXME: Count axioms used in proof:
-    //    if (derivationClause != null)
-    //      Out.output(s" No. of axioms used: ${axiomsUsed(derivationClause)}")
+
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
+      Out.comment("Clauses at the end of the loop:")
+      Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty).mkString("\n\t"))
+    }
+
 
     /* Print proof object if possible and requested. */
-    if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && state.derivationClause.isDefined) {
+    if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Out.output(Utility.userConstantsForProof(Signature.get))
-      Utility.printProof(state.derivationClause.get)
+      Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(Signature.get))
+      Out.output(Utility.proofToTPTP(proof))
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
@@ -292,9 +297,15 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
-    state.incBackwardSubsumedCl(backSubsumedClauses.size)
-    state.setProcessed(state.processed -- backSubsumedClauses)
-    Control.fvIndexRemove(backSubsumedClauses)
+
+    if (backSubsumedClauses.nonEmpty) {
+      Out.trace(s"#### backward subsumed")
+      state.incBackwardSubsumedCl(backSubsumedClauses.size)
+      Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty).mkString("\n\t")}")
+      state.setProcessed(state.processed -- backSubsumedClauses)
+      Control.fvIndexRemove(backSubsumedClauses)
+    }
+
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */

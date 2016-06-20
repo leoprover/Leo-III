@@ -206,7 +206,7 @@ object ReplaceLeibnizEq extends CalculusRule {
   }
 
   def apply(cl: Clause, bindings: Map[Int, Term]): (Clause, Subst) = {
-    val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t, Term.mkBound(t.ty, 1))))
+    val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1))))
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
     (Clause((newLits)), subst)
@@ -257,31 +257,67 @@ object RewriteSimp extends CalculusRule {
   val name = "rewrite"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(rewriteRules: Set[Clause], simplify: Clause): Clause = simplify
+//  /**
+//    * Apply a rewrite using `rewriteRule` on a specific literal in `ìntoClause`.
+//    * @param replaceBy The term which is placed at `intoPosition`
+//    * @param intoClause The clause the rewrite is applied on
+//    * @param intoIndex The literal index, at which the rewrite is performed
+//    * @param intoSide The side of the literal what is rewritten
+//    * @param intoPosition The position of the subterm in the literal which is rewritten
+//    */
+//  def apply(replaceBy: Term,
+//            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position): Clause = {
+//    assert(intoClause.lits.isDefinedAt(intoIndex))
+//    val lit = intoClause.lits(intoIndex)
+//    val (replaceIn, otherSide) = Literal.getSidesOrdered(lit, intoSide)
+//    val replaced = replaceIn.replaceAt(intoPosition, replaceBy)
+//    val newLit = Literal(replaced, otherSide, lit.polarity)
+//    Clause(intoClause.lits.updated(intoIndex, newLit))
+//  }
 
 
-  def apply(rule: Literal, simplify: Clause): Clause = {
-    assert(rule.oriented)
-    val toFind = rule.left
-    val replaceBy = rule.right
+  /**
+    * An IntoConfiguration assigns a side of a literal `l` a pair (p,t) which denotes that at positions p in the respective side
+    * of `l` a rewrite takes place, replacing `s` by `t`, where `s` is the subterm of the respective side of `l` at position p.
+    *
+    * We assume that the set P = {(p_i,t_i)} only contains non-overlapping most general positions in the sense
+    * that if P constains an element (p,_) then there is no element (p',_) in P such that p' is a sub position of p.
+    */
+  type IntoConfiguration = Map[Literal.Side, Set[(Position, Term)]]
 
-    val simpLitIt = simplify.lits.iterator
-    while (simpLitIt.hasNext) {
-      val lit = simpLitIt.next()
-      ???
+  /**
+    * Replace all occurrences
+    *
+    * @param intoClause The clause in which the rewrite takes place
+    * @param intoConfigurations The configuration of the rewrite procedure: See [[IntoConfiguration]] for details and important restrictions.
+    *                           For each literal at index i that is rewritten, an entry i -> conf is required in `intoConfiguration`.
+    */
+  def apply(intoClause: Clause, intoConfigurations: Map[Int, IntoConfiguration] ): Clause = {
+    var lits = intoClause.lits
+    val litIndices = intoConfigurations.keySet
+    val litIndicesIt = litIndices.iterator
+    while (litIndicesIt.hasNext) {
+      val litIndex = litIndicesIt.next()
+      val lit = intoClause.lits(litIndex)
+      val confs = intoConfigurations(litIndex)
+      // assume that all positions do not intersect, we only have most general positions  in this set
+      val (left,right) = (lit.left, lit.right)
 
+      // (1) left normalization
+      val leftConfs = confs.getOrElse(Literal.leftSide, Set())
+      val newLeft = leftConfs.foldLeft(left) {case (curTerm, (pos, replaceBy)) => curTerm.replaceAt(pos, replaceBy)}
+
+      // (2) right normalization
+      val rightConfs = confs.getOrElse(Literal.rightSide, Set())
+      val newRight = rightConfs.foldLeft(right) {case (curTerm, (pos, replaceBy)) => curTerm.replaceAt(pos, replaceBy)}
+
+      val newLit = Literal(newLeft, newRight, lit.polarity)
+      lits = lits.updated(litIndex, newLit)
     }
 
-    ???
+    Clause(lits)
   }
 
-  def apply(rule: Literal, negLiteral: Literal): Literal = {
-    assert(!negLiteral.polarity)
-    assert(rule.oriented)
-
-
-    negLiteral
-  }
 }
 
 object ACSimp extends CalculusRule {

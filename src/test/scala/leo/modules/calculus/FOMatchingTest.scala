@@ -192,4 +192,21 @@ class MatchingTestSuite extends LeoTestSuite {
 
     assertResult(true)(result)
   }
+
+  test("(p(a) = true) = (f(a) = g(a))", Checked){
+    import leo.datastructures.{=== => EQ}
+
+    val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a",s.i))
+    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    val p = mkAtom(s.addUninterpreted("p", s.i ->: s.o))
+
+    val t1 : Term = EQ(mkTermApp(p , a), LitTrue)
+    val t2 : Term = EQ(mkTermApp(f , a), mkTermApp(g, a))
+
+    val result = FOMatching.decideMatch(t1, t2)
+
+    assertResult(false)(result)
+  }
 }
