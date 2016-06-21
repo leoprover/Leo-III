@@ -30,6 +30,8 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
 
   val scopeNumber = 0
 
+  def app(ty: Type): Type = GroundTypeNode(id, args :+ ty)
+
   def occurs(ty: Type) = ty match {
     case GroundTypeNode(key, args2) if key == id => args == args2
     case _ => args.exists(_.occurs(ty))
@@ -75,6 +77,8 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
   val polyPrefixArgsCount = 0
 
   val scopeNumber = -scope
+
+  def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to type variable")
 
   def occurs(ty: Type) = false
 
@@ -129,6 +133,8 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
 
   val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
 
+  def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to abstraction type")
+
   def occurs(ty: Type) = in.occurs(ty) || out.occurs(ty)
 
   // Substitutions
@@ -168,6 +174,8 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   val polyPrefixArgsCount = 0
 
   val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
+
+  def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to product type")
 
   def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
@@ -210,6 +218,8 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   val polyPrefixArgsCount = 0
 
   val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
+
+  def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to union type")
 
   def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
@@ -257,6 +267,8 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
   lazy val polyPrefixArgsCount = 1 + body.polyPrefixArgsCount
 
   val scopeNumber = body.scopeNumber + 1
+
+  def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to type abstraction") //TODO: refine, since its basically beta reduction
 
   def occurs(ty: Type) = body.occurs(ty)
 

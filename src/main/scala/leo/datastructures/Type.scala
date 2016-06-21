@@ -85,6 +85,9 @@ abstract class Type extends Pretty {
   def *(ty: Type) = Type.mkProdType(this, ty)
   /** Create union type `this + ty`*/
   def +(ty: Type) = Type.mkUnionType(this, ty)
+  /** Create type application: If `this` is a sort symbol t = `s` of non-zero arity (or not fully applied type t = `s a1 a2 ...`)
+    * the, it creates the type application t @ ty. Otherwise, it fails. */
+  def app(ty: Type): Type
 
   val numberOfComponents: Int = 1
   def order: Int
