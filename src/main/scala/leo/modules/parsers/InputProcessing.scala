@@ -175,7 +175,7 @@ object InputProcessing {
 
         // Fold through the variables to propagate bindings trough variable list
         // and save bindings to `newReplaces` for body conversion
-        val processedVars = vars.map(_ match {
+        val processedVars = vars.map(_ match { // FIXME: fold like I said two years ago, not map!
           case (name, None) => {
             termMapping(newReplaces).get(name) match {
               case None => newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
@@ -277,7 +277,7 @@ object InputProcessing {
   }
 
   protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
-    import leo.datastructures.tptp.thf.{Quantified, Term, BinType}
+    import leo.datastructures.tptp.thf.{Quantified, Term, BinType, Binary, App}
 
     typ match {
       case Quantified(q, vars, matrix) => {
@@ -309,22 +309,23 @@ object InputProcessing {
             // TODO: better error treating
           }
           case THFTyExists => ???
-          case _ => throw new IllegalArgumentException("Illegal quantifier on type level: " + typ.toString)
+          case _ => throw new SZSException(SZS_InputError, "Illegal quantifier on type level: " + typ.toString)
         }
       }
       case Term(t) => {
         t match {
-          case Func(k, args) => {
-            if (sig(k).hasKind)
-              if (sig(k)._kind.arity == args.length) {
-                val converted = args.map(x => convertTHFType(sig)(Term(x), replaces))
-                if (converted.forall(_.isLeft))
-                  mkType(sig(k).key, converted.map(_.left.get))
-                else throw new SZSException(SZS_TypeError)
-              } else throw new SZSException(SZS_TypeError, s"Arity of sort symbol does not match argument count: ${t.toString}")
-            else
-              throw new SZSException(SZS_TypeError, s"Using term constant inside type: ${t.toString}")
-          }
+//          case Func(k, args) => {
+//            if (sig(k).hasKind)
+//              if (sig(k)._kind.arity == args.length) {
+//                val converted = args.map(x => convertTHFType(sig)(Term(x), replaces))
+//                if (converted.forall(_.isLeft))
+//                  mkType(sig(k).key, converted.map(_.left.get))
+//                else throw new SZSException(SZS_TypeError)
+//              } else throw new SZSException(SZS_TypeError, s"Arity of sort symbol does not match argument count: ${t.toString}")
+//            else
+//              throw new SZSException(SZS_TypeError, s"Using term constant inside type: ${t.toString}")
+//          }
+          case Func(ty, List()) => mkType(sig(ty).key)
           case DefinedFunc(ty, List()) if ty == "$tType" =>  typeKind // kind *
           case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type
           case SystemFunc(ty, List()) =>  mkType(sig(ty).key) // system type
@@ -362,6 +363,13 @@ object InputProcessing {
           }
         }
       } //arrow type etc
+      case Binary(l, App, r) => {
+        val leftTy = convertTHFType(sig)(l, replaces)
+        val rightty = convertTHFType(sig)(r, replaces)
+        if(leftTy.isLeft && rightty.isLeft) {
+          leftTy.left.get.app(rightty.left.get)
+        } else throw new SZSException(SZS_InputError)
+      }
       case _ => throw new IllegalArgumentException("malformed type expression: "+typ.toString)
     }
   }
