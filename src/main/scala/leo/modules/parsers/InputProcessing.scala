@@ -40,6 +40,7 @@ object InputProcessing {
   def noRep: Replaces = ((Map.empty, 0), (Map.empty, 0))
 
   type TypeOrKind = Either[Type, Kind]
+  type TermOrType = Either[Term , Type]
   type ProcessedVar = (Variable, TypeOrKind)
   /**
    * Assumptions:
@@ -103,9 +104,12 @@ object InputProcessing {
         processTHFDef(sig)(lf) match {
           case None => {
             Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.")
-            val role = processRole("axiom");
-//            Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
-            Some((input.name, processTHF0(sig)(lf, noRep), role))
+            val role = processRole("axiom")
+            val res = processTHF0(sig)(lf, noRep)
+            if (res.isLeft)
+              Some((input.name, res.left.get, role))
+            else
+              throw new SZSException(SZS_InputError)
           }
           case Some((defName, defDef)) => {
             if (sig.exists(defName)) {
@@ -133,8 +137,12 @@ object InputProcessing {
                                                         }
                                                         None
                                                       }
-//      case Logical(lf)                               => val role = processRole(input.role); Some((input.name, singleTermToClause(processTHF0(sig)(lf, noRep), role), role))
-      case Logical(lf)                               => val role = processRole(input.role); Some((input.name, processTHF0(sig)(lf, noRep), role))
+      case Logical(lf)                               => val role = processRole(input.role)
+                                                        val res = processTHF0(sig)(lf, noRep)
+                                                        if (res.isLeft)
+                                                          Some((input.name, res.left.get, role))
+                                                        else
+                                                          throw new SZSException(SZS_InputError)
       case Sequent(_,_)                              => throw new IllegalArgumentException("Processing of THF sequents not implemented")
     }
   }
@@ -143,32 +151,57 @@ object InputProcessing {
   protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, Term)] = {
     import leo.datastructures.tptp.thf.{Binary, Term, Eq}
     input match {
-      case Binary(Term(Func(name, Seq())), Eq, right) => Some(name, processTHF0(sig)(right, noRep))
+      case Binary(Term(Func(name, Seq())), Eq, right) => {
+        val res = processTHF0(sig)(right, noRep)
+        if (res.isLeft)
+          Some(name, res.left.get)
+        else
+          throw new SZSException(SZS_InputError, "Type detected on right side of definition statement.")
+      }
       case _                                        => None
     }
   }
 
-  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): Term = {
+  protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): TermOrType = {
     import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let, App => THFApp}
 
     input match {
       case Typed(f, ty) => processTHF0(sig)(f,replaces) // TODO: What to do with type information?
       case Binary(left, conn, right) if conn == THFApp => {
         val processedLeft = processTHF0(sig)(left, replaces)
-        import leo.datastructures.Term.{mkTermApp, mkTypeApp}
-        if (processedLeft.ty.isPolyType) {
-          val processedRight = convertTHFType(sig)(right, replaces)
-          if (processedRight.isLeft)
-            mkTypeApp(processedLeft, processedRight.left.get)
-          else
-            throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
-        }
-        else
-          mkTermApp(processedLeft, processTHF0(sig)(right, replaces))
+        if (processedLeft.isLeft) {
+          val processedLeft2 = processedLeft.left.get
+          import leo.datastructures.Term.{mkTermApp, mkTypeApp}
+          if (processedLeft2.ty.isPolyType) {
+            val processedRight = convertTHFType(sig)(right, replaces)
+            if (processedRight.isLeft)
+              mkTypeApp(processedLeft2, processedRight.left.get)
+            else
+              throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+          }
+          else {
+            val res = processTHF0(sig)(right, replaces)
+            if (res.isLeft)
+              mkTermApp(processedLeft2, res.left.get)
+            else
+              mkTypeApp(processedLeft2, res.right.get)
+              //throw new SZSException(SZS_InputError, "type on non-poly left side found.")
+          }
+
+        } else
+          throw new SZSException(SZS_InputError, "THFAPP left side type.")
 
       }
-      case Binary(left, conn, right) => processTHFBinaryConn(conn).apply(processTHF0(sig)(left, replaces),processTHF0(sig)(right, replaces))
-      case Unary(conn, f) => processTHFUnaryConn(conn).apply(processTHF0(sig)(f, replaces))
+      case Binary(left, conn, right) => try {
+        processTHFBinaryConn(conn).apply(processTHF0(sig)(left, replaces).left.get,processTHF0(sig)(right, replaces).left.get)
+        } catch {
+          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString)
+        }
+      case Unary(conn, f) => try {
+        processTHFUnaryConn(conn).apply(processTHF0(sig)(f, replaces).left.get)
+        } catch {
+        case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString)
+        }
       case Quantified(q, vars, matrix) => {
         val quantifier = processTHFUnaryConn(q)
         var newReplaces = replaces
@@ -201,16 +234,35 @@ object InputProcessing {
           }
 
           })
-
-        mkPolyQuantified(quantifier, processedVars, processTHF0(sig)(matrix, newReplaces))
+        val intermediateRes = processTHF0(sig)(matrix, newReplaces)
+        if (intermediateRes.isLeft)
+          mkPolyQuantified(quantifier, processedVars, intermediateRes.left.get)
+        else
+          throw new SZSException(SZS_InputError)
       }
-      case Connective(c) => c.fold(processTHFBinaryConn(_),processTHFUnaryConn(_))
+      case Connective(c) => {
+        c.fold(cc => Left(processTHFBinaryConn(cc)),cc => Left(processTHFUnaryConn(cc)))
+      }
+      case Term(Var(name)) => termMapping(replaces).get(name) match {
+        case None => typeMapping(replaces).get(name) match {
+          case Some((k, scope))  => Type.mkVarType(scope)
+          case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
+        }
+        case Some((ty, scope)) => {
+          assert(typeMapping(replaces).get(name).isEmpty)
+          mkBound(ty, termMapping(replaces).size + termOffset(replaces) - scope +1)
+        }
+      }
       case Term(t) => processTerm(sig)(t, replaces, false)
       case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
       case Subtype(left,right) => ???
       case Cond(c, thn, els) => {
         import leo.datastructures.IF_THEN_ELSE
-        IF_THEN_ELSE(processTHF0(sig)(c, replaces),processTHF0(sig)(thn, replaces),processTHF0(sig)(els, replaces))
+        try {
+          IF_THEN_ELSE(processTHF0(sig)(c, replaces).left.get, processTHF0(sig)(thn, replaces).left.get, processTHF0(sig)(els, replaces).left.get)
+        } catch {
+          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError,e.toString)
+        }
       }
       case Let(binding, in) => Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
     }
@@ -562,6 +614,8 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
 
   implicit def kindToTypeOrKind(k: Kind): Either[Type, Kind] = Right(k)
   implicit def typeToTypeOrKind(ty: Type): Either[Type, Kind] = Left(ty)
+  implicit def termToTermOrType(t: Term): TermOrType = Left(t)
+  implicit def typeToTermOrType(ty: Type): TermOrType = Right(ty)
 
   //////////////////////////
   // FOF Formula processing
@@ -763,8 +817,14 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       mkTermApp(mkAtom(sig(name).key), converted)
     }
     case Var(name) => termMapping(replace).get(name) match {
-      case None => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
-      case Some((ty, scope)) => mkBound(ty, termMapping(replace).size + termOffset(replace) - scope +1)
+      case None => typeMapping(replace).get(name) match {
+        case Some((k, scope))  => ???
+        case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
+      }
+      case Some((ty, scope)) => {
+        assert(typeMapping(replace).get(name).isEmpty)
+        mkBound(ty, termMapping(replace).size + termOffset(replace) - scope +1)
+      }
     }
 
     case NumberTerm(value) => value match {
