@@ -556,7 +556,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   val scopeNumber = (body.scopeNumber._1, body.scopeNumber._2+1)
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
-  lazy val feasibleOccurences = ??? // TODO
+  lazy val feasibleOccurences = body.feasibleOccurences // FIXME
 
   // Other operations
   lazy val typeCheck = body.typeCheck
