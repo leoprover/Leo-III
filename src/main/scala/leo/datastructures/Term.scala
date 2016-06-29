@@ -66,6 +66,7 @@ trait Term extends Pretty {
   // TODO END
 
   def fv: Set[(Int, Type)]
+  def tyFV: Set[Int]
   def occurrences: Map[Term, Set[Position]]
   def feasibleOccurences: Map[Term, Set[Position]]
   def headSymbol: Term

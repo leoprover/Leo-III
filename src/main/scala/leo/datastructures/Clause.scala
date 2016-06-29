@@ -18,6 +18,9 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The types of the implicitly universally quantified variables. */
   def implicitlyBound: Seq[(Int, Type)]
   def maxImplicitlyBound: Int
+  /** The implicitly (universally) quantified type variables.
+    * It is assumed that we are in rank-1 polymorphism. */
+  def typeVars: Set[Int]
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 

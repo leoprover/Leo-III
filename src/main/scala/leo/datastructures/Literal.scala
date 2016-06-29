@@ -53,6 +53,8 @@ trait Literal extends Pretty {
 
   /** Returns the set of free variables from `s = t` regarded as term. */
   @inline final lazy val fv: Set[(Int, Type)] = left.fv ++ right.fv
+  /** Returns the set of free variables from `s = t` regarded as term. */
+  @inline final lazy val tyFV: Set[Int] = left.tyFV union right.tyFV
   /** Returns true iff the equation `s = t` is ground. */
   @inline final lazy val ground: Boolean = left.ground && right.ground
 

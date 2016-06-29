@@ -3,8 +3,7 @@ package leo.datastructures.impl
 import leo.datastructures._
 
 
-// TODO
-// Keep meta vars, transform to bound? transform bound to meta?
+// TODO FVs are computed every time anew (from the literals), could be given as parameter
 /**
  * Preliminary implementation of clauses using indexed linear sequences (vectors).
  *
@@ -18,6 +17,8 @@ import leo.datastructures._
     fvs.toSeq.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
   }
   @inline final def maxImplicitlyBound: Int = if (implicitlyBound.isEmpty) 0 else implicitlyBound.head._1
+
+  @inline final def typeVars: Set[Int] = lits.flatMap(_.tyFV).distinct.toSet
 
   /** Those literals in `lits` that are positive. */
   @inline final val posLits: Seq[Literal] = lits.filter(_.polarity)
