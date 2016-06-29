@@ -134,6 +134,7 @@ package inferenceControl {
         val intoConfigurationIt = intoConfigurationIterator(intoClause)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
+          leo.Out.output(s"check with ${withTerm.pretty}, into: ${intoTerm.pretty}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
           assert(!intoLit.flexflex)
           if (intoPos == Position.root &&
             ((intoClause.id == withClause.id && intoIndex == withIndex) ||
