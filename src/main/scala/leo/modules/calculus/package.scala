@@ -139,7 +139,11 @@ package object calculus {
 
   final protected def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
     if (s == t) return true
-    if (s.ty != t.ty) return false // FIXME: What to do with polymorphic terms here?
+    if (s.ty.typeVars.isEmpty && t.ty.typeVars.isEmpty) {
+      if (s.ty != t.ty) return false
+    } else {
+      if (!mayUnify(s.ty, t.ty)) return false
+    }
     if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?
     if (depth <= 0) return true
 //    if (s.headSymbol.ty != t.headSymbol.ty) return false
@@ -167,6 +171,19 @@ package object calculus {
 
   /** Checks whether the types `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the types are not unifiable, otherwise they may be. */
-  @inline final def mayUnify(s: Type, t: Type): Boolean = s == t // FIXME: This is of course not right
+  @inline final def mayUnify(s: Type, t: Type): Boolean = {
+    import leo.datastructures.Type._
+    (s,t) match {
+      case (BaseType(id1), BaseType(id2)) => id1 == id2
+      case (a -> b, c -> d) => mayUnify(a,c) && mayUnify(b,d)
+      case (a * b, c * d) => mayUnify(a,c) && mayUnify(b,d)
+      case (a + b, c + d) => mayUnify(a,c) && mayUnify(b,d)
+      case (∀(a), ∀(b)) => mayUnify(a,b)
+      case (BoundType(_), _) => true
+      case (_, BoundType(_)) => true
+      case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayUnify(ts._1, ts._2))
+      case _ => false
+    }
+  }
 
 }
