@@ -76,9 +76,9 @@ package object calculus {
   }
 
   /** Create a [[FreshVarGen]] with the free var context of the clause `cl`. */
-  final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.maxImplicitlyBound)
+  @inline final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.maxImplicitlyBound)
   /** Create a [[FreshVarGen]] without any so-far registered free vars. */
-  final def freshVarGenFromBlank: FreshVarGen = freshVarGen0(Seq(), 0)
+  @inline final def freshVarGenFromBlank: FreshVarGen = freshVarGen0(Seq(), 0)
 
   final private def freshVarGen0(variables:  Seq[(Int, Type)], curVar: Int): FreshVarGen = new FreshVarGen {
     private var cur = curVar
@@ -156,9 +156,9 @@ package object calculus {
       case (TypeLambda(s2), TypeLambda(t2)) => mayUnify0(s2, t2, depth)
       case (Bound(_,_) ∙ _, _) => true //flex-head, need to assume that it works
       case (_, Bound(_,_) ∙ _) => true // ditto
-      case (f1 ∙ args1, f2 ∙ args2) if mayUnify0(f1.ty, f2.ty) && args1.length == args2.length => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+      case (f1 ∙ args1, f2 ∙ args2) if mayUnify(f1.ty, f2.ty) && args1.length == args2.length => mayUnify0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
         case (Left(t1), Left(t2)) => mayUnify0(t1, t2, depth -1)
-        case (Right(ty1), Right(ty2)) => mayUnify0(ty1,ty2)
+        case (Right(ty1), Right(ty2)) => mayUnify(ty1,ty2)
         case _ => false
       } }
       case _ => false
@@ -167,6 +167,6 @@ package object calculus {
 
   /** Checks whether the types `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the types are not unifiable, otherwise they may be. */
-  @inline final def mayUnify0(s: Type, t: Type): Boolean = s == t // FIXME: This is of course not right
+  @inline final def mayUnify(s: Type, t: Type): Boolean = s == t // FIXME: This is of course not right
 
 }
