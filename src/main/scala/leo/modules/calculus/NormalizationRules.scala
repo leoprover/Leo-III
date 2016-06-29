@@ -1,10 +1,10 @@
 package leo.modules.calculus
 
 import leo._
-import leo.datastructures.Term.:::>
+import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, HOLBinaryConnective, Subst, Type, _}
 import leo.datastructures.impl.Signature
-import leo.modules.output.{SZS_Theorem, SZS_EquiSatisfiable}
+import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 import leo.modules.preprocessing.Simplification
 
 /**
@@ -14,6 +14,8 @@ import leo.modules.preprocessing.Simplification
 ////////////////////////////////////////////////////////////////
 ////////// Normalization
 ////////////////////////////////////////////////////////////////
+// TODO: Encode origin of boolext clauses so that they are not paramodulated
+// with its ancestor clause.
 
 object PolaritySwitch extends CalculusRule {
   val name = "polarity_switch"
@@ -60,6 +62,7 @@ object FullCNF extends CalculusRule {
       //      case s <=> t => true
       case Forall(ty :::> t) => true
       case Exists(ty :::> t) => true
+      case TypeLambda(t) => true
       case _ => false
     }
   } else false
@@ -96,6 +99,7 @@ object FullCNF extends CalculusRule {
       case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, false))
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
+      case TypeLambda(t) if l.polarity => apply(vargen, Literal(t, true))
       case _ => Seq(Seq(l))
     }
   } else {
