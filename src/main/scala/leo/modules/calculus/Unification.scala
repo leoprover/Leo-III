@@ -1,5 +1,6 @@
 package leo.modules.calculus
 
+import leo.datastructures.Type.BoundType
 import leo.datastructures.{Subst, Term, Type}
 import leo.modules.output.SZS_EquiSatisfiable
 
@@ -7,11 +8,20 @@ trait Unification extends CalculusRule {
   val name = "pre_uni_full"
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
-  /** `UEq`s are unsolved equations. */
-  type UEq = Tuple2[Term,Term]
+  /** A `UEq` is an unsolved equation. */
+  type UEq = (Term, Term)
+  /** A `SEq` is a solved equation. */
+  type SEq = UEq
+
+  /** `UTEq` is an unsolved type equation. */
+  type UTEq = (Type, Type)
+  /** `STEq` is a solved type equation. */
+  type STEq = UTEq
+
   type TermSubst = Subst
   type TypeSubst = Subst
   type ResultSubst = (TermSubst, TypeSubst)
+
   type UnificationResult = (ResultSubst, Seq[UEq])
 
   /**
@@ -29,7 +39,7 @@ trait Unification extends CalculusRule {
     * are hereby all flex-flex unification constraints that are postponed. The result stream
     * is empty, if the equation `t = s` is not unifiable.
     */
-  def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult]
+  def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
 }
 
 /**
@@ -39,7 +49,7 @@ object IdComparison extends Unification{
   override def unify(vargen: FreshVarGen, t: Term, s: Term) : Iterable[UnificationResult] =
     if (s == t) Stream(((Subst.id, Subst.id), Seq())) else Stream.empty
 
-  override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] =
+  override def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
     if (constraints.forall(eq => eq._1 == eq._2)) Stream(((Subst.id, Subst.id), Seq()))
     else Stream.empty
 }
@@ -59,8 +69,9 @@ object FOUnification extends Unification {
   @inline override final def unifyAll(varGen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
     unify0(varGen, constraints)
 
+  //FIXME: Does not respect type substitution/equations.
   private final def unify0(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] = {
-    val (unsolved, solved) = HuetsPreUnification.detExhaust(vargen, constraints, Seq())
+    val (unsolved, solved, _, _) = HuetsPreUnification.detExhaust(vargen, constraints, Seq(), Seq(), Seq())
     if (  unsolved.isEmpty) {
       Stream(((HuetsPreUnification.computeSubst(solved), Subst.id), Seq()))
     } else Stream.empty
@@ -77,7 +88,7 @@ object FOUnification extends Unification {
 object HuetsPreUnification extends Unification {
 
   import Term._
-  import leo.datastructures.TermFront
+  import leo.datastructures.{TermFront, TypeFront}
   import leo.datastructures.BoundFront
   import leo.modules.calculus.util.executionModels._
   import annotation.tailrec
@@ -90,7 +101,7 @@ object HuetsPreUnification extends Unification {
     new NDStream[UnificationResult](new MyConfiguration(Seq((t,s)), Seq(), 0), new MyFun(vargen)) with BFSAlgorithm
   }
 
-  override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
+  override def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] = {
     val expandedContraints = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand)).sortWith(sort)
     new NDStream[UnificationResult](new MyConfiguration(expandedContraints, Seq(), 0), new MyFun(vargen)) with BFSAlgorithm
   }
@@ -117,7 +128,7 @@ object HuetsPreUnification extends Unification {
     (isFlexible(e2._1) && isFlexible(e2._2))
 
   // computes the substitution from the solved problems
-  protected[calculus] def computeSubst(sproblems: Seq[UEq]): Subst = {
+  protected[calculus] def computeSubst(sproblems: Seq[SEq]): Subst = {
     // Alex: Added check on empty sproblems list. That is correct, is it?
     if (sproblems.isEmpty) Subst.id
     else {
@@ -132,44 +143,93 @@ object HuetsPreUnification extends Unification {
     }
   }
 
-  private def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
-    l.map(e => (e._1.substitute(s),e._2.substitute(s)))
+  protected[calculus] def computeTySubst(sTyProblems: Seq[STEq]): Subst = {
+    if (sTyProblems.isEmpty) Subst.id
+    else {
+      val maxIdx: Int = BoundType.unapply(sTyProblems.maxBy(e => BoundType.unapply(e._1).get)._1).get
+      var sub = Subst.shift(maxIdx)
+      for (i <- 1 to maxIdx)
+        sTyProblems.find(e => BoundType.unapply(e._1).get == maxIdx - i + 1) match {
+          case Some((_,t)) => sub = sub.cons(TypeFront(t))
+          case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
+        }
+      sub
+    }
+  }
+
+  private def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq]): Seq[UEq] =
+    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst)))
+  private def applySubstToTyList(typeSubst: Subst, l: Seq[UTEq]): Seq[UTEq] =
+    l.map(e => (e._1.substitute(typeSubst),e._2.substitute(typeSubst)))
+
+  /** To shorten the type signature: `EqState` just collects all term- and type equations. */
+  type EqState = (Seq[UEq], Seq[SEq], Seq[UTEq], Seq[STEq])
 
   // apply exaustively delete, comp and bind on the set and sort it at the end
   @tailrec
-  protected[calculus] def detExhaust(vargen: FreshVarGen, uproblems: Seq[UEq], sproblems: Seq[UEq]): Tuple2[Seq[UEq], Seq[UEq]]  = {
-    leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    // apply delete
-    val ind1 = uproblems.indexWhere(DeleteRule.canApply)
-    if (ind1 > -1) {
-    leo.Out.finest("Apply Delete")
-    detExhaust(vargen, uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems)
-    // apply decomp
+  protected[calculus] def detExhaust(vargen: FreshVarGen,
+                                     uproblems: Seq[UEq], sproblems: Seq[SEq],
+                                     uTyProblems: Seq[UTEq], sTyProlems: Seq[STEq]): EqState = {
+    leo.Out.trace(s"Unsolved (term eqs): ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+    leo.Out.trace(s"Unsolved (type eqs): ${uTyProblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+
+
+    /////// Type operations
+    val tind1 = uTyProblems.indexWhere(TyDeleteRule.canApply)
+    if (tind1 > -1) {
+      leo.Out.finest(s"Apply type delete")
+      detExhaust(vargen, uproblems, sproblems, uTyProblems.take(tind1) ++ uTyProblems.drop(tind1 + 1), sTyProlems)
     } else {
-      val ind2 = uproblems.indexWhere(DecompRule.canApply)
-      if (ind2 > -1) {
-        leo.Out.finest("Apply Decomp")
-        detExhaust(vargen, (DecompRule(vargen, uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1)).sortWith(sort), sproblems)
-        // apply bind
+      val tind2 = uTyProblems.indexWhere(TyBindRule.canApply)
+      if (tind2 > -1) {
+        leo.Out.finest(s"Apply type bind")
+        val be = TyBindRule(uTyProblems(tind2))
+        val sb = computeTySubst(Seq(be))
+        leo.Out.finest(s"type bind substitution: ${sb.pretty}")
+        detExhaust(vargen, applySubstToList(Subst.id, sb, uproblems), applySubstToList(Subst.id, sb, sproblems),
+          applySubstToTyList(sb, uTyProblems), applySubstToTyList(sb, sTyProlems))
       } else {
-        val ind3 = uproblems.indexWhere(BindRule.canApply)
-        if (ind3 > -1) {
-          leo.Out.finest("Apply Bind")
-          leo.Out.finest(s"Bind on " +
-            s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
-          val be = BindRule(vargen, uproblems(ind3))
-          leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
-          val sb = computeSubst(List(be))
-          detExhaust(vargen, applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
+
+        /////// Term operations
+        // apply delete
+        val ind1 = uproblems.indexWhere(DeleteRule.canApply)
+        if (ind1 > -1) {
+          leo.Out.finest("Apply Delete")
+          detExhaust(vargen, uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems, uTyProblems, sTyProlems)
+          // apply decomp
         } else {
-          // apply Func /* by Alex */
-          val ind4 = uproblems.indexWhere(FuncRule.canApply)
-          if (ind4 > -1) {
-            leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-            detExhaust(vargen, (uproblems.take(ind4) :+ FuncRule(vargen, uproblems(ind4))) ++ uproblems.drop(ind4 + 1), sproblems)}
-          else {
-            // none is applicable, do nothing
-            (uproblems, sproblems)
+          val ind2 = uproblems.indexWhere(DecompRule.canApply)
+          if (ind2 > -1) {
+            leo.Out.finest("Apply Decomp")
+            val (uproblemsNew, uTyProblemsNew) = DecompRule(vargen, uproblems(ind2))
+
+            detExhaust(vargen, (uproblemsNew ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1)).sortWith(sort),
+              sproblems, uTyProblemsNew ++ uTyProblems, sTyProlems)
+            // apply bind
+          } else {
+            val ind3 = uproblems.indexWhere(BindRule.canApply)
+            if (ind3 > -1) {
+              leo.Out.finest("Apply Bind")
+              leo.Out.finest(s"Bind on " +
+                s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
+              val be = BindRule(vargen, uproblems(ind3))
+              leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
+              val sb = computeSubst(List(be))
+              detExhaust(vargen, applySubstToList(sb, Subst.id, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)),
+                applySubstToList(sb, Subst.id, sproblems) :+ be, uTyProblems, sTyProlems)
+            } else {
+              // apply Func /* by Alex */
+              val ind4 = uproblems.indexWhere(FuncRule.canApply)
+              if (ind4 > -1) {
+                leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
+                detExhaust(vargen, (uproblems.take(ind4) :+ FuncRule(vargen, uproblems(ind4))) ++ uproblems.drop(ind4 + 1),
+                  sproblems, uTyProblems, sTyProlems)
+              }
+              else {
+                // none is applicable, do nothing
+                (uproblems, sproblems, uTyProblems, sTyProlems)
+              }
+            }
           }
         }
       }
@@ -322,6 +382,21 @@ object HuetsPreUnification extends Unification {
     }
   }
 
+  object TyBindRule {
+    def apply(e: UTEq): STEq  = {
+      if (e._1.isBoundTypeVar) (e._1, e._2) else (e._2, e._1)
+    }
+
+    def canApply(e: UTEq): Boolean = {
+      val (l,r) = if (e._1.isBoundTypeVar) (e._1, e._2) else (e._2, e._1)
+      if (!l.isBoundTypeVar) false
+      else {
+        val x = BoundType.unapply(l).get
+        !r.typeVars.contains(x)
+      }
+    }
+  }
+
   /**
    * 1
    * returns true if the equation can be deleted
@@ -335,42 +410,48 @@ object HuetsPreUnification extends Unification {
   }
 
   /**
-   * 2
-   * returns the list of equations if the head symbols are the same function symbol.
-   */
-  object DecompRule extends HuetsRule[Seq[UEq]] {
-    def apply(vargen: FreshVarGen, e: UEq) = e match {
-      case (_ ∙ sq1, _ ∙ sq2) => (simplifyArguments(sq1)).zip(simplifyArguments(sq2))
-      case _ => throw new IllegalArgumentException("impossible")
-    }
-    def canApply(e: UEq) = e match {
-      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 => {
-        if (isFlexible(hd1)) false
-        else {
-          if (hd1.ty.isPolyType) {
-            assert(hd2.ty.isPolyType)
-            val tyArgs1 = args1.takeWhile(_.isRight).map(_.right.get)
-            val tyArgs2 = args2.takeWhile(_.isRight).map(_.right.get)
-            tyArgs1 == tyArgs2
-          } else
-            true
-        }
-      }
-      case _ => false
+    * delete rule for types
+    * returns true if the equation can be deleted
+    */
+  object TyDeleteRule {
+    def canApply(e: UTEq) = {
+      val (t,s) = e
+      t.equals(s)
     }
   }
 
   /**
-   * Alex advices we can ignore all types in the list (for now)
+   * 2
+   * returns the list of equations if the head symbols are the same function symbol.
    */
-  private def simplifyArguments(l: Seq[Either[Term,Type]]): Seq[Term] = l.filter(_.isLeft).map(_.left.get)
+  object DecompRule extends HuetsRule[(Seq[UEq], Seq[UTEq])] {
+    def apply(vargen: FreshVarGen, e: UEq): (Seq[UEq], Seq[UTEq]) = e match {
+      case (_ ∙ sq1, _ ∙ sq2) => zipArguments(sq1, sq2)
+      case _ => throw new IllegalArgumentException("impossible")
+    }
+    def canApply(e: UEq) = e match {
+      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 => !isFlexible(hd1)
+      case _ => false
+    }
+  }
+
+  private final def zipArguments(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]]): (Seq[UEq], Seq[UTEq]) = {
+    (l,r) match {
+      case (Seq(), Seq()) => (Seq(), Seq())
+      case (Left(t1) +: rest1, Left(t2) +: rest2) => val rec = zipArguments(rest1, rest2)
+        ((t1,t2) +: rec._1, rec._2)
+      case (Right(ty1) +: rest1, Right(ty2) +: rest2) => val rec = zipArguments(rest1, rest2)
+        (rec._1, (ty1, ty2) +: rec._2)
+      case _ => throw new IllegalArgumentException("Mixed type/term arguments for equal head symbol. Decomp Failing.")
+    }
+  }
 
   private final val dontcaredepth = -1
   // the state of the search space
-  protected class MyConfiguration(val uproblems: Seq[UEq], val sproblems: Seq[UEq], val result: Option[UnificationResult], val isTerminal: Boolean, val searchDepth: Int)
+  protected case class MyConfiguration(uproblems: Seq[UEq], sproblems: Seq[SEq], uTyProblems: Seq[UTEq], sTyProblems: Seq[STEq], result: Option[UnificationResult], isTerminal: Boolean, searchDepth: Int)
     extends Configuration[UnificationResult] {
-    def this(result: Option[UnificationResult]) = this(Seq(), Seq(), result, true, dontcaredepth) // for success
-    def this(l: Seq[UEq], s: Seq[UEq], unificationDepth: Int) = this(l, s, None, false, unificationDepth) // for in node
+    def this(result: Option[UnificationResult]) = this(Seq(), Seq(), Seq(), Seq(), result, true, dontcaredepth) // for success
+    def this(l: Seq[UEq], s: Seq[UEq], unificationDepth: Int) = this(l, s, Seq(), Seq(), None, false, unificationDepth) // for in node
     override def toString  = "{" + uproblems.flatMap(x => ("<"+x._1.pretty+", "+ x._2.pretty+">")) + "}"
   }
 
@@ -383,7 +464,7 @@ object HuetsPreUnification extends Unification {
     override def apply(conf2: Configuration[UnificationResult]): Seq[Configuration[UnificationResult]] = {
       val conf = conf2.asInstanceOf[MyConfiguration]
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
-      val (uproblems, sproblems) = detExhaust(vargen, conf.uproblems,conf.sproblems)
+      val (uproblems, sproblems, uTyProblems, sTyProblems) = detExhaust(vargen, conf.uproblems,conf.sproblems, conf.uTyProblems, conf.sTyProblems)
       leo.Out.trace(s"Finished detExhaust")
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {

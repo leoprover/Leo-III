@@ -42,8 +42,9 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
 
   lazy val topEtaContract: Term = this
 
-  def closure(subst: Subst) = TermClos(this, (subst, Subst.id))
-  def tyClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
+  def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
+  def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
+  def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
 //    this.normalize(subst, Subst.id)
 
   // Substitutions

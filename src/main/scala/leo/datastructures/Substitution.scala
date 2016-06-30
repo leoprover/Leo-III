@@ -297,7 +297,7 @@ case class BoundFront(n: Int) extends Front {
   override def pretty = s"$n"
 }
 case class TermFront(term: Term) extends Front {
-  def substitute(subst: Subst) = TermFront(term.closure((subst)))
+  def substitute(subst: Subst) = TermFront(term.termClosure((subst)))
 
   /** Pretty */
   override def pretty = term.pretty

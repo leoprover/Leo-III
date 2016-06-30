@@ -92,14 +92,16 @@ trait Term extends Pretty {
   /** Apply substitution `subst` to underlying term.
     * I.e. each free variable `i` (NOT meta-vars!) occurring within `this` is replaced by `subst(i)`,
     * The term is then beta normalized */
-  def substitute(subst: Subst): Term = closure(subst).betaNormalize
+  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
 
+  /** Explicitly create a closure, i.e. a postponed (simultaneous) substitution (of types and terms) */
+  def closure(termSubst: Subst, typeSubst: Subst): Term
   /** Explicitly create a term closure, i.e. a postponed substitution */
-  def closure(subst: Subst): Term
+  def termClosure(subst: Subst): Term
   /** Explicitly create a term closure with underlying type substitution `tySubst`. */
-  def tyClosure(subst: Subst): Term
+  def typeClosure(subst: Subst): Term
 
   // Other operations
   def compareTo(that: Term): CMP_Result = Configuration.TERM_ORDERING.compare(this, that)
