@@ -143,11 +143,11 @@ object PreUni extends CalculusRule {
     val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
     if (result.hasNext) {
       val uniResult = result.next()
-      val subst = uniResult._1
+      val (termSubst, typeSubst) = uniResult._1
       val flexflexPairs = uniResult._2
       val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2))
-      val updatedOtherLits = otherLits.map(_.substitute(subst))
-      Set((Clause(updatedOtherLits ++ newLiterals),subst))
+      val updatedOtherLits = otherLits.map(_.substitute(termSubst))
+      Set((Clause(updatedOtherLits ++ newLiterals),termSubst))
     } else {
       Set()
       //Set((cl, Subst.id))

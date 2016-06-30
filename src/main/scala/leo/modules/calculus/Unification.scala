@@ -9,7 +9,10 @@ trait Unification extends CalculusRule {
 
   /** `UEq`s are unsolved equations. */
   type UEq = Tuple2[Term,Term]
-  type UnificationResult = (Subst, Seq[UEq])
+  type TermSubst = Subst
+  type TypeSubst = Subst
+  type ResultSubst = (TermSubst, TypeSubst)
+  type UnificationResult = (ResultSubst, Seq[UEq])
 
   /**
     * Generates a stream of `UnificationResult`s (tuples of substitutions and unsolved equations)
@@ -34,10 +37,10 @@ trait Unification extends CalculusRule {
  */
 object IdComparison extends Unification{
   override def unify(vargen: FreshVarGen, t: Term, s: Term) : Iterable[UnificationResult] =
-    if (s == t) Stream((Subst.id, Seq())) else Stream.empty
+    if (s == t) Stream(((Subst.id, Subst.id), Seq())) else Stream.empty
 
   override def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] =
-    if (constraints.forall(eq => eq._1 == eq._2)) Stream((Subst.id, Seq()))
+    if (constraints.forall(eq => eq._1 == eq._2)) Stream(((Subst.id, Subst.id), Seq()))
     else Stream.empty
 }
 
@@ -59,7 +62,7 @@ object FOUnification extends Unification {
   private final def unify0(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] = {
     val (unsolved, solved) = HuetsPreUnification.detExhaust(vargen, constraints, Seq())
     if (  unsolved.isEmpty) {
-      Stream((HuetsPreUnification.computeSubst(solved), Seq()))
+      Stream(((HuetsPreUnification.computeSubst(solved), Subst.id), Seq()))
     } else Stream.empty
   }
 
@@ -385,7 +388,7 @@ object HuetsPreUnification extends Unification {
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {
         leo.Out.debug(s"Unification finished.")
-        Seq(new MyConfiguration(Some(Tuple2(computeSubst(sproblems),Seq()))))
+        Seq(new MyConfiguration(Some(Tuple2((computeSubst(sproblems), Subst.id),Seq()))))
       }
       // else consider top equation
       else {
@@ -400,7 +403,7 @@ object HuetsPreUnification extends Unification {
           // if it is flex-flex -> all equations are flex-flex
           if (isFlexible(t) && isFlexible(s)) {
             leo.Out.finest(s"Unification finished with Flex-flex")
-            Seq(new MyConfiguration(Some((computeSubst(sproblems),uproblems))))
+            Seq(new MyConfiguration(Some(((computeSubst(sproblems), Subst.id),uproblems))))
           } else {
             leo.Out.finest(s"flex-rigid at depth ${conf.searchDepth}")
             // else we have a flex-rigid and we cannot apply bind
