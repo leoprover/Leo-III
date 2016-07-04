@@ -3,7 +3,7 @@ import java.io.File
 import java.nio.file.Files
 
 import leo.agents.impl.SZSScriptAgent
-import leo.agents.{DoItYourSelfAgent, DoItYourSelfMessage, ProofProcedure, TAgent}
+import leo.agents.{DoItYourSelfAgent, DoItYourSelfMessage, ProofProcedure, Agent}
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.impl.FormulaDataStore
@@ -30,7 +30,7 @@ class MultiSearchPhase(proofProcedure: ProofProcedure*) extends CompletePhase {
     *
     * @return
     */
-  override protected val agents: Seq[TAgent] = {
+  override protected val agents: Seq[Agent] = {
     val ext = Configuration.ATPS.map{case (name, prover) => SZSScriptAgent(name, prover)}
     proofProcedure.map(proc => new DoItYourSelfAgent(proc)) ++: ext
   }

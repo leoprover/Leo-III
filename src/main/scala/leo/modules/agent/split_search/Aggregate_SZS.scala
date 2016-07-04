@@ -1,6 +1,6 @@
 package leo.modules.agent.split_search
 
-import leo.agents.{Agent, TAgent, Task}
+import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.blackboard.impl.SZSStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
@@ -15,7 +15,7 @@ import leo.datastructures.context._
   * @since 4/13/16
   * @author Max Wisniewski
   */
-object Aggregate_SZS extends Agent {
+object Aggregate_SZS extends AbstractAgent {
   override def name: String = "bubble_szs"
   override val interest : Option[Seq[DataType]] = Some(Seq(StatusType))
 
@@ -39,9 +39,9 @@ object Aggregate_SZS extends Agent {
   }
 }
 
-case class Aggregate_SZSTask(szs : StatusSZS, c : Context, a : TAgent) extends Task {
+case class Aggregate_SZSTask(szs : StatusSZS, c : Context, a : Agent) extends Task {
   override def name: String = "bubble_szs"
-  override def getAgent: TAgent = a
+  override def getAgent: Agent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map()
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = Result().insert(StatusType)(SZSStore(szs, c))

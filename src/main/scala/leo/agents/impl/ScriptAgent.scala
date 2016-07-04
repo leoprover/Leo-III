@@ -29,7 +29,7 @@ import java.io.IOException
  * @author Max Wisniewski
  * @since 11/10/14
  */
-abstract class ScriptAgent(path : String) extends Agent {
+abstract class ScriptAgent(path : String) extends AbstractAgent {
   override val interest : Option[Seq[DataType]] = None
 
   def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result

@@ -1,6 +1,6 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{Agent, TAgent, Task}
+import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
 import leo.datastructures._
 import leo.datastructures.blackboard._
@@ -11,9 +11,9 @@ import leo.modules.preprocessing.ArgumentExtraction
 /**
   * Created by mwisnie on 3/7/16.
   */
-class ArgumentExtractionAgent(cs : Context*) extends Agent {
+class ArgumentExtractionAgent(cs : Context*) extends AbstractAgent {
   override def name: String = "argument_extraction_agent"
-  override val after : Set[TAgent] = Set(EqualityReplaceAgent)
+  override val after : Set[Agent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent((cl : ClauseProxy), ClauseType) => commonFilter(cl, Context())
@@ -33,10 +33,10 @@ class ArgumentExtractionAgent(cs : Context*) extends Agent {
   }
 }
 
-class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Term)], c : Context, a : TAgent) extends Task {
+class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Term)], c : Context, a : Agent) extends Task {
   import leo.datastructures.Role_Definition
   override val name: String = "argument_extraction_task"
-  override val getAgent: TAgent = a
+  override val getAgent: Agent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map(ClauseType -> Set(cl))
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {

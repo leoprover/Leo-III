@@ -15,7 +15,7 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
  * </p>
  * @param a is the Agent to be controlled.
  */
-abstract class AgentController(a : Agent) extends TAgent {
+abstract class AgentController(a : AbstractAgent) extends Agent {
   val name : String = a.name
 
   def openTasks : Int
@@ -56,6 +56,6 @@ abstract class AgentController(a : Agent) extends TAgent {
 
   def taskChoosen(t : Task) : Unit = {}
 
-  override val after : Set[TAgent] = Set.empty
-  override val before : Set[TAgent] = Set.empty
+  override val after : Set[Agent] = Set.empty
+  override val before : Set[Agent] = Set.empty
 }

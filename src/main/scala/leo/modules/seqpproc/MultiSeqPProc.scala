@@ -92,6 +92,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     assert(conjecture.size == 1)
     val negatedConjecture : AnnotatedClause = conjecture.head  // TODO no conjecture?
     val effectiveInputWithoutConjecture : Iterable[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
+
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible

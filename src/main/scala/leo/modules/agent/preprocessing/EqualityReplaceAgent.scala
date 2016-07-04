@@ -1,6 +1,6 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{Agent, TAgent, Task}
+import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures._
 import leo.datastructures.blackboard._
@@ -10,7 +10,7 @@ import leo.modules.calculus.{ReplaceAndrewsEq, ReplaceLeibnizEq}
 /**
   * Created by mwisnie on 3/7/16.
   */
-object EqualityReplaceAgent extends Agent{
+object EqualityReplaceAgent extends AbstractAgent{
   override def name: String = "equality_replace_agent"
   override val interest = Some(Seq(ClauseType))
   override def filter(event: Event): Iterable[Task] = event match {
@@ -34,9 +34,9 @@ object EqualityReplaceAgent extends Agent{
   }
 }
 
-abstract class EqualityReplaceTask(cl : ClauseProxy, a : TAgent) extends Task {
+abstract class EqualityReplaceTask(cl : ClauseProxy, a : Agent) extends Task {
   override val name: String = "equality_replace_task"
-  override def getAgent: TAgent = a
+  override def getAgent: Agent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map(ClauseType -> Set(cl))
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override val bid: Double = 0.1
@@ -47,7 +47,7 @@ abstract class EqualityReplaceTask(cl : ClauseProxy, a : TAgent) extends Task {
 /**
   * Replaces Leibnitzequality and then andrew equality.
   */
-class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
+class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c : Context, a : Agent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceLeibnizEq(clause, map)
     val (can, map2) = ReplaceAndrewsEq.canApply(nc)
@@ -63,7 +63,7 @@ class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c 
 /**
   * Replaces only Andrew Equality
   */
-class AndrewEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], c : Context, a : TAgent) extends EqualityReplaceTask(cl, a){
+class AndrewEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], c : Context, a : Agent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceAndrewsEq(clause, map)
     Result().update(ClauseType)((cl, c))((AnnotatedClause(nc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp), c))

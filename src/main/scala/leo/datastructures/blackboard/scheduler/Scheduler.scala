@@ -303,7 +303,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     * @param a - Agent that will be executed
    * @param t - Task on which the agent runs.
    */
-  private class GenAgent(a : TAgent, t : Task) extends Runnable{
+  private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  { // TODO catch error and move outside or at least recover
       try {
         val res = t.run
@@ -335,7 +335,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
   }
 
-  private class GenFilter(a : TAgent, t : DataType, newD : Any, from : Task) extends Runnable{
+  private class GenFilter(a : Agent, t : DataType, newD : Any, from : Task) extends Runnable{
     override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
       try {
@@ -367,9 +367,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private var results : Map[Int, Seq[(Result,Task, TAgent)]] = TreeMap[Int, Seq[(Result,Task, TAgent)]]()
+    private var results : Map[Int, Seq[(Result,Task, Agent)]] = TreeMap[Int, Seq[(Result,Task, Agent)]]()
 
-    def get() : (Result,Task,TAgent) = this.synchronized {
+    def get() : (Result,Task,Agent) = this.synchronized {
       while (true) {
         try {
            while(results.keys.isEmpty) {this.wait()}
@@ -388,9 +388,9 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       null  // Should never be reached
     }
 
-    def put(r : Result, t : Task, a : TAgent) {
+    def put(r : Result, t : Task, a : Agent) {
       this.synchronized{
-        val s : Seq[(Result,Task,TAgent)] = results.get(r.priority).fold(Seq[(Result,Task,TAgent)]()){x => x}
+        val s : Seq[(Result,Task,Agent)] = results.get(r.priority).fold(Seq[(Result,Task,Agent)]()){ x => x}
         results = results + (r.priority -> (s :+ ((r,t,a))))        // Must not be synchronized, but maybe it should
         this.notifyAll()
       }
@@ -398,7 +398,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   }
 
   private object AgentWork {
-    protected val agentWork : mutable.Map[TAgent, Int] = new mutable.HashMap[TAgent, Int]()
+    protected val agentWork : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
 
     /**
      * Increases the amount of work of an agent by 1.
@@ -406,18 +406,18 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
      * @param a - Agent that executes a task
      * @return the updated number of task of the agent.
      */
-    def inc(a : TAgent) : Int = synchronized(agentWork.get(a) match {
+    def inc(a : Agent) : Int = synchronized(agentWork.get(a) match {
       case Some(v)  => agentWork.update(a,v+1); return v+1
       case None     => agentWork.put(a,1); return 1
     })
 
-    def dec(a : TAgent) : Int = synchronized(agentWork.get(a) match {
+    def dec(a : Agent) : Int = synchronized(agentWork.get(a) match {
       case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
       case Some(v)  if v == 1 => agentWork.remove(a); return 0
       case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
     })
 
-    def executingAgents() : Iterable[TAgent] = synchronized(agentWork.keys)
+    def executingAgents() : Iterable[Agent] = synchronized(agentWork.keys)
 
     def clear() = synchronized(agentWork.clear())
 
@@ -445,7 +445,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
 
     override def pretty: String = "Exit Task"
-    override def getAgent : TAgent = null
+    override def getAgent : Agent = null
   }
 
   private object MyThreadFactory extends ThreadFactory {

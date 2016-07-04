@@ -10,7 +10,7 @@ import leo.datastructures.context.Context
   * An Agent to run on its own an return only its final result (hopefully [])
   * and the SZS status.
   */
-class DoItYourSelfAgent(val procedure : ProofProcedure) extends Agent{
+class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
   override def name: String = procedure.name
   override val interest : Option[Seq[DataType]] = None
 
@@ -35,7 +35,7 @@ case class DoItYourSelfMessage(c : Context) extends Message
 
 class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Context) extends Task{
   override val name: String = a.procedure.name+"Task"
-  override val getAgent: TAgent = a
+  override val getAgent: Agent = a
   override val writeSet: Map[DataType, Set[Any]] = Map.empty
   override val readSet: Map[DataType, Set[Any]] = Map.empty
   override def run: Result = {

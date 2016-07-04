@@ -7,9 +7,9 @@ import leo.datastructures.blackboard.{ActiveTracker, TaskSet}
 import scala.collection.mutable
 
 /**
-  * Set to hold all [[leo.agents.Task]] commited by the [[leo.agents.TAgent]].
+  * Set to hold all [[leo.agents.Task]] commited by the [[leo.agents.Agent]].
   * <p>
-  * Upon call of the scheduler each active [[leo.agents.TAgent]]
+  * Upon call of the scheduler each active [[leo.agents.Agent]]
   * supports a prefix of his sorted [[leo.agents.Task]].
   * </p>
   * <p>
@@ -17,7 +17,7 @@ import scala.collection.mutable
   * <ol>
   *   <li>For every [[leo.agents.Task]] `i` contained in this list, there exist no [[leo.agents.Task]] `j` in this TaskSet, with `j.before contains i` or
   *   `i.after contains j`</li>
-  *   <li> For every [[leo.agents.TAgent]] `a1` containing a task in this list, there exist no [[leo.agents.TAgent]] `a2` that has a task  and (`a.before contains a2`
+  *   <li> For every [[leo.agents.Agent]] `a1` containing a task in this list, there exist no [[leo.agents.Agent]] `a2` that has a task  and (`a.before contains a2`
   *   or `a2.after contains a`) holds.</li>
   * </ol>
   * </p>
@@ -35,7 +35,7 @@ class TaskSelectionSet extends TaskSet{
   /**
     * Set of all tasks (Node) with in degree of 0. Stored by agent to preselect tasks (sorted)
     */
-  private val zero : mutable.Map[TAgent, AgentTaskQueue] = new mutable.HashMap[TAgent, AgentTaskQueue]()
+  private val zero : mutable.Map[Agent, AgentTaskQueue] = new mutable.HashMap[Agent, AgentTaskQueue]()
 
 
   private val depSet : DependencySet = new DependencySetImpl()
@@ -43,9 +43,11 @@ class TaskSelectionSet extends TaskSet{
   /**
     * Stores the tasks for an agent, that has turned passive
     */
-  private val passiveTasks : mutable.Map[TAgent, Iterable[Task]] = new mutable.HashMap[TAgent, Iterable[Task]]()
+  private val passiveTasks : mutable.Map[Agent, Iterable[Task]] = new mutable.HashMap[Agent, Iterable[Task]]()
 
   private val currentlyExecution : mutable.Set[Task] = new mutable.HashSet[Task]()
+
+  private val executingNumber : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
 
 
   /* ----------------------------------------------------------------------------------
@@ -56,30 +58,32 @@ class TaskSelectionSet extends TaskSet{
    */
 
   /**
-    * Adds a new [[leo.agents.TAgent]] to the TaskGraph.
+    * Adds a new [[leo.agents.Agent]] to the TaskGraph.
     *
     * @param a The agent to be added
     */
-  def addAgent(a : TAgent) : Unit = synchronized {
+  def addAgent(a : Agent) : Unit = synchronized {
     depSet.addAgent(a)
+    executingNumber.put(a, 0)
   }
 
   /**
-    * Removes a [[leo.agents.TAgent]] from the TaskGraph
+    * Removes a [[leo.agents.Agent]] from the TaskGraph
     *
     * @param a The agent to be removed
     */
-  def removeAgent(a : TAgent) : Unit = synchronized {
+  def removeAgent(a : Agent) : Unit = synchronized {
     depSet.rmAgent(a)
     passiveTasks.remove(a)
     zero.remove(a)
+    executingNumber.remove(a)
   }
 
-  def containsAgent(a : TAgent) : Boolean = synchronized {
+  def containsAgent(a : Agent) : Boolean = synchronized {
     depSet.containsAgent(a)
   }
 
-  def dependOn(before : TAgent, after : TAgent) = synchronized {
+  def dependOn(before : Agent, after : Agent) = synchronized {
     depSet.dependAgent(before, after)
   }
 
@@ -96,7 +100,7 @@ class TaskSelectionSet extends TaskSet{
     *
     * @param a The agent to be turned passive
     */
-  def passive(a : TAgent) : Unit = synchronized {
+  def passive(a : Agent) : Unit = synchronized {
     // Fixme Recalculate the dependecy
     passiveTasks.put(a, zero.get(a).fold(Iterable.empty[Task])(_.clear))
     zero.remove(a)
@@ -107,13 +111,15 @@ class TaskSelectionSet extends TaskSet{
     *
     * @param a The agent to be turned active
     */
-  def active(a : TAgent) : Unit = synchronized {
+  def active(a : Agent) : Unit = synchronized {
     // Fixme Recalculate the dependency
     val ats = new AgentTaskQueue()
     passiveTasks.remove(a).foreach(_.foreach(ats.add))
     if(!ats.isEmpty)
       zero.put(a, ats)
   }
+
+  override def executingTasks(a : Agent) : Int = synchronized(executingNumber.getOrElse(a, 0))
 
   /**
     * Submits a new task created by an agent to the scheduler.
@@ -154,6 +160,7 @@ class TaskSelectionSet extends TaskSet{
     * @param t the newly finished task
     */
   def finish(t : Task) : Unit = synchronized {
+    executingNumber.put(t.getAgent, executingNumber.getOrElse(t.getAgent, 1)-1)
     currentlyExecution.remove(t)
     depSet.rm(t).foreach{t1 =>
       val a1 = t1.getAgent
@@ -170,6 +177,7 @@ class TaskSelectionSet extends TaskSet{
     */
   def commit(ts : scala.collection.immutable.Set[Task]) : Unit = synchronized {
     ts.foreach{t =>
+      executingNumber.put(t.getAgent, executingNumber.getOrElse(t.getAgent, 0)+1)   // TODO group by agent
       leo.Out.finest(s"Selected for execution: $t ")
       currentlyExecution.add(t)
       zero.get(t.getAgent).foreach{ta => ta.rm(t)}
@@ -184,7 +192,7 @@ class TaskSelectionSet extends TaskSet{
   }
 
   /**
-    * Checks through all [[leo.agents.Task]] and [[leo.agents.TAgent]] for
+    * Checks through all [[leo.agents.Task]] and [[leo.agents.Agent]] for
     * executable tasks, after dependency check.
     *
     * @return true, iff there exist executable task
@@ -201,7 +209,7 @@ class TaskSelectionSet extends TaskSet{
     * <ol>
     *   <li>For every [[leo.agents.Task]] `i` contained in this list, there exist no [[leo.agents.Task]] `j` in this TaskSet, with `j.before contains i` or
     *   `i.after contains j`</li>
-    *   <li> For every [[leo.agents.TAgent]] `a1` containing a task in this list, there exist no [[leo.agents.TAgent]] `a2` that has a task  and (`a.before contains a2`
+    *   <li> For every [[leo.agents.Agent]] `a1` containing a task in this list, there exist no [[leo.agents.Agent]] `a2` that has a task  and (`a.before contains a2`
     *   or `a2.after contains a`) holds.</li>
     * </ol>
     * </p>
@@ -226,14 +234,14 @@ trait DependencySet {
     *
     * @param a The new agent.
     */
-  def addAgent(a : TAgent)
+  def addAgent(a : Agent)
 
   /**
     * Removes an agent from the dependecy set
     *
     * @param a The agent to be removed
     */
-  def rmAgent(a : TAgent)
+  def rmAgent(a : Agent)
 
   /**
     * Returns true, iff the agent is currently added
@@ -241,7 +249,7 @@ trait DependencySet {
     * @param a - The added agent
     * @return Returns true, if the agent was added
     */
-  def containsAgent(a : TAgent) : Boolean
+  def containsAgent(a : Agent) : Boolean
 
   /**
     * Checks if two agents depent on each other
@@ -250,7 +258,7 @@ trait DependencySet {
     * @param after the agent has to be executed last
     * @return true if the order supports the statement
     */
-  def dependAgent(before : TAgent, after : TAgent) : Boolean
+  def dependAgent(before : Agent, after : Agent) : Boolean
 
   /**
     * Adds a new Task / Node to the dependecy set.
@@ -301,6 +309,7 @@ trait DependencySet {
 
   /**
     * A list of all registered Tasks
+ *
     * @return all registered Tasks
     */
   def getAllTasks : Seq[Task]
@@ -309,16 +318,16 @@ trait DependencySet {
 
 class DependencySetImpl extends DependencySet {
 
-  private val allAgents : mutable.Set[TAgent] = new mutable.HashSet[TAgent]
+  private val allAgents : mutable.Set[Agent] = new mutable.HashSet[Agent]
 
-  private val in : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
+  private val in : mutable.Map[Agent, scala.collection.immutable.Set[Agent]] = new mutable.HashMap[Agent, scala.collection.immutable.Set[Agent]]()
 
-  private val out : mutable.Map[TAgent, scala.collection.immutable.Set[TAgent]] = new mutable.HashMap[TAgent, scala.collection.immutable.Set[TAgent]]()
+  private val out : mutable.Map[Agent, scala.collection.immutable.Set[Agent]] = new mutable.HashMap[Agent, scala.collection.immutable.Set[Agent]]()
 
   // TODO split another map (nonintersection) for data types
-  private val write : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
+  private val write : mutable.Map[Agent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
 
-  private val read : mutable.Map[TAgent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
+  private val read : mutable.Map[Agent, mutable.Map[Any, mutable.Set[Task]]] = new mutable.HashMap()
 
   private val allTasks : mutable.Set[Task] = new mutable.HashSet[Task]()
 
@@ -333,11 +342,11 @@ class DependencySetImpl extends DependencySet {
   override def getAllTasks : Seq[Task] = allTasks.toSeq
 
   // TODO Hier funktioniert das symmetrisch machen noch nicht!
-  override def addAgent(a: TAgent): Unit = {
+  override def addAgent(a: Agent): Unit = {
     write.put(a, write.getOrElse(a,new mutable.HashMap[Any, mutable.Set[Task]]()))   // Initialize write and read
     read.put(a, read.getOrElse(a,new mutable.HashMap[Any, mutable.Set[Task]]()))
 
-    var ins : scala.collection.immutable.Set[TAgent] = scala.collection.immutable.Set.empty[TAgent]
+    var ins : scala.collection.immutable.Set[Agent] = scala.collection.immutable.Set.empty[Agent]
     allAgents.foreach{a1 =>
       if((a1.before contains a) || (a.after contains a1)) {
         ins += a1
@@ -347,7 +356,7 @@ class DependencySetImpl extends DependencySet {
     in.put(a, ins)
 
 
-    var outs : scala.collection.immutable.Set[TAgent] = scala.collection.immutable.Set.empty[TAgent]
+    var outs : scala.collection.immutable.Set[Agent] = scala.collection.immutable.Set.empty[Agent]
     allAgents.foreach{a1 =>
       if((a1.after contains a) || (a.before contains a1)) {
         outs += a1
@@ -359,7 +368,7 @@ class DependencySetImpl extends DependencySet {
   }
 
 
-  override def rmAgent(a: TAgent): Unit = {
+  override def rmAgent(a: Agent): Unit = {
     write.remove(a)
     read.remove(a)
 
@@ -375,16 +384,16 @@ class DependencySetImpl extends DependencySet {
     allAgents.remove(a)
   }
 
-  override def containsAgent(a : TAgent) : Boolean = {
+  override def containsAgent(a: Agent) : Boolean = {
     write.contains(a)
   }
 
-  private def getColliding(t : Task)(as : scala.collection.immutable.Set[TAgent]) = {
+  private def getColliding(t : Task)(as : scala.collection.immutable.Set[Agent]) = {
     val ws = t.writeSet().flatMap(_._2).toSet
     val rs = t.readSet().flatMap(_._2).toSet
     val empty = scala.collection.immutable.Set.empty[Task]
 
-    val a : TAgent = t.getAgent
+    val a: Agent = t.getAgent
     as.flatMap{a1 =>
       // Collect all Task colliding of the agent
       write.get(a1).fold(empty){wsa1 =>
@@ -490,7 +499,7 @@ class DependencySetImpl extends DependencySet {
     * @param after the agent has to be executed last
     * @return true if the order supports the statement
     */
-  override def dependAgent(before: TAgent, after: TAgent): Boolean = {
+  override def dependAgent(before: Agent, after: Agent): Boolean = {
     out.get(before).fold[Boolean](false){as => as.contains(after)}
   }
 }

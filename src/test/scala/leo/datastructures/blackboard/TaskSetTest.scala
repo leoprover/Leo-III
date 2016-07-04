@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard
 
 import leo.LeoTestSuite
-import leo.agents.{Task, TAgent}
+import leo.agents.{Task, Agent}
 import leo.datastructures.blackboard.impl.TaskSelectionSet
 
 /**
@@ -216,7 +216,7 @@ class TaskSetTest extends LeoTestSuite {
 
 // Dummy Agents for dependencies
 
-object AgentA extends TAgent {
+object AgentA extends Agent {
   override val name: String = "DummyA"
 
   override def filter(event: Event): Iterable[Task] = Iterable.empty
@@ -227,11 +227,11 @@ object AgentA extends TAgent {
   override def taskFinished(t: Task): Unit = ()
 
 
-  override def before: Set[TAgent] = Set(AgentB)
-  override def after: Set[TAgent] = Set.empty
+  override def before: Set[Agent] = Set(AgentB)
+  override def after: Set[Agent] = Set.empty
 }
 
-object AgentB extends TAgent {
+object AgentB extends Agent {
   override val name: String = "DummyB"
 
   override def filter(event: Event): Iterable[Task] = Iterable.empty
@@ -241,11 +241,11 @@ object AgentB extends TAgent {
   override def taskChoosen(t: Task): Unit = ()
   override def taskFinished(t: Task): Unit = ()
 
-  override def before: Set[TAgent] = Set.empty
-  override def after: Set[TAgent] = Set.empty
+  override def before: Set[Agent] = Set.empty
+  override def after: Set[Agent] = Set.empty
 }
 
-object AgentC extends TAgent {
+object AgentC extends Agent {
   override val name: String = "DummyC"
 
   override def filter(event: Event): Iterable[Task] = Iterable.empty
@@ -255,11 +255,11 @@ object AgentC extends TAgent {
   override def taskChoosen(t: Task): Unit = ()
   override def taskFinished(t: Task): Unit = ()
 
-  override def before: Set[TAgent] = Set.empty
-  override def after: Set[TAgent] = Set(AgentB)
+  override def before: Set[Agent] = Set.empty
+  override def after: Set[Agent] = Set(AgentB)
 }
 
-object AgentD extends TAgent {
+object AgentD extends Agent {
   override val name: String = "DummyD"
 
   override def filter(event: Event): Iterable[Task] = Iterable.empty
@@ -269,11 +269,11 @@ object AgentD extends TAgent {
   override def taskChoosen(t: Task): Unit = ()
   override def taskFinished(t: Task): Unit = ()
 
-  override def before: Set[TAgent] = Set.empty
-  override def after: Set[TAgent] = Set.empty
+  override def before: Set[Agent] = Set.empty
+  override def after: Set[Agent] = Set.empty
 }
 
-class DummyTask(val name : String, writeData : Set[Any], readData : Set[Any], a : TAgent) extends Task{
+class DummyTask(val name : String, writeData : Set[Any], readData : Set[Any], a : Agent) extends Task{
   override def writeSet(): Map[DataType, Set[Any]] = Map(AnyType -> writeData)
   override def readSet(): Map[DataType, Set[Any]] = Map(AnyType -> readData)
   override def run: Result = Result()
@@ -281,7 +281,7 @@ class DummyTask(val name : String, writeData : Set[Any], readData : Set[Any], a 
 
   override def pretty: String = s"name :\n  write: ${writeData.mkString(",")}\n  read : ${readData.mkString(",")}"
   override def toString : String = name
-  override def getAgent: TAgent = a
+  override def getAgent: Agent = a
 }
 
 case object AnyType extends DataType {}

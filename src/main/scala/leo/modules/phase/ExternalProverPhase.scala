@@ -1,6 +1,6 @@
 
 package leo.modules.phase
-import leo.agents.TAgent
+import leo.agents.Agent
 import leo.agents.impl.{SZSScriptAgent, SZSScriptMessage}
 import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures._
@@ -24,8 +24,8 @@ object ExternalProverPhase extends CompletePhase {
     *
     * @return
     */
-  override protected def agents: Seq[TAgent] = Seq(Aggregate_SZS, scriptAgent)
-  private val scriptAgent : TAgent = {
+  override protected def agents: Seq[Agent] = Seq(Aggregate_SZS, scriptAgent)
+  private val scriptAgent : Agent = {
     // Read the external provers from file
 
     SZSScriptAgent("leo2", "leo", fs => ToTPTP(fs).map(_.output), x => x)

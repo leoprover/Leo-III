@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard.scheduler
 
 import leo.LeoTestSuite
-import leo.agents.{Task, Agent, TAgent}
+import leo.agents.{Task, AbstractAgent, Agent}
 import leo.datastructures.blackboard._
 
 /**
@@ -27,7 +27,7 @@ object SchedulerRunTest {
 
 case object AnyType extends DataType
 
-object EndAgent extends Agent {
+object EndAgent extends AbstractAgent {
   import leo.datastructures.blackboard.DoneEvent
   override def name : String = "EndAgent"
   override def filter(event: Event): Iterable[Task] = event match {
@@ -39,7 +39,7 @@ object EndAgent extends Agent {
   }
 }
 
-object AgentA extends Agent {
+object AgentA extends AbstractAgent {
   override def name: String = "AgentA"
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent(s : String, AnyType) =>
@@ -55,7 +55,7 @@ object AgentA extends Agent {
 
 case class TaskA(in : String, out : String) extends Task {
   override val name: String = "TaskA"
-  override def getAgent: TAgent = AgentA
+  override def getAgent: Agent = AgentA
   override def writeSet(): Map[DataType, Set[Any]] = Map(AnyType -> Set(in))
   override def readSet(): Map[DataType, Set[Any]] = Map.empty
   override def run: Result = {
@@ -67,7 +67,7 @@ case class TaskA(in : String, out : String) extends Task {
   override def pretty: String = s"TaskA($in -> $out)"
 }
 
-object AgentB extends Agent {
+object AgentB extends AbstractAgent {
   override def name: String = "AgentB"
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent(s : String, AnyType) =>
@@ -82,7 +82,7 @@ object AgentB extends Agent {
 
 case class TaskB(in : String, out : String) extends Task {
   override val name: String = "TaskB"
-  override def getAgent: TAgent = AgentB
+  override def getAgent: Agent = AgentB
   override def writeSet(): Map[DataType, Set[Any]] = Map.empty
   override def readSet(): Map[DataType, Set[Any]] = Map(AnyType -> Set(in))
   override def run: Result = {

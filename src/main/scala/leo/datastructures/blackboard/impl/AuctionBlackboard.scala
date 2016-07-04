@@ -1,9 +1,11 @@
 package leo.datastructures.blackboard.impl
 
 
-import leo.agents.{TAgent, AgentController, Task}
+import leo.agents.{AgentController, Agent, Task}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
+
+import scala.collection.immutable.HashMap
 import scala.collection.mutable
 
 /**
@@ -18,14 +20,15 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
   /**
    * Register a new Handler for Formula adding Handlers.
+ *
    * @param a - The Handler that is to register
    */
-  override def registerAgent(a : TAgent) : Unit = {
+  override def registerAgent(a: Agent) : Unit = {
     TaskSet.addAgent(a)
     freshAgent(a)
   }
 
-  override def unregisterAgent(a: TAgent): Unit = {
+  override def unregisterAgent(a: Agent): Unit = {
     TaskSet.removeAgent(a)
   }
 
@@ -34,7 +37,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @return Not yet executed Task
    */
-  override def getTask: Iterable[(TAgent,Task)] = TaskSet.getTask
+  override def getTask: Iterable[(Agent,Task)] = TaskSet.getTask
 
   override def clear() : Unit = {
     dsset.foreach(_.clear())
@@ -47,13 +50,13 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  override def filterAll(t: (TAgent) => Unit): Unit = {
+  override def filterAll(t: (Agent) => Unit): Unit = {
     TaskSet.agents.foreach{ a =>
       t(a)
     }
   }
 
-  override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
+  override def submitTasks(a: Agent, ts : Set[Task]) : Unit = {
     TaskSet.synchronized(TaskSet.taskSet.submit(ts))
     signalTask()
   }
@@ -69,7 +72,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @param a - New Agent.
    */
-  override protected[blackboard] def freshAgent(a: TAgent): Unit = {
+  override protected[blackboard] def freshAgent(a: Agent): Unit = {
     a.interest match {
       case None => ()
       case Some(xs) =>
@@ -92,7 +95,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @return all registered agents
    */
-  override def getAgents(): Iterable[(TAgent,Double)] = TaskSet.regAgents.toSeq
+  override def getAgents(): Iterable[(Agent,Double)] = TaskSet.regAgents.toSeq
 
   /**
    * Sends a message to an agent.
@@ -102,7 +105,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  override def send(m: Message, to: TAgent): Unit = {
+  override def send(m: Message, to: Agent): Unit = {
     val ts = to.filter(m)
     submitTasks(to, ts.toSet)
   }
@@ -152,15 +155,14 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
 private object TaskSet {
 
-  val regAgents = mutable.HashMap[TAgent,Double]()
+  val regAgents = mutable.HashMap[Agent,Double]()
   //protected[impl] val execTasks = new mutable.HashSet[Task]
 
   /**
     * The set containing all dependencies on agents
     */
   val taskSet : TaskSet = new SimpleTaskSet()
-
-  private val AGENT_SALARY : Double = 5
+  private val AGENT_SALARY : Double = 5   // TODO changeable
 
   /**
    * Notifies process waiting in 'getTask', that there is a new task available.
@@ -175,17 +177,17 @@ private object TaskSet {
     }
   }
 
-  def addAgent(a : TAgent) {
+  def addAgent(a: Agent) {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
     this.synchronized(taskSet.addAgent(a))
   }
 
-  def removeAgent(a : TAgent): Unit = this.synchronized{
+  def removeAgent(a: Agent): Unit = this.synchronized{
     this.synchronized(regAgents.remove(a))
     this.synchronized(taskSet.removeAgent(a))
   }
 
-  def agents : List[TAgent] = this.synchronized(regAgents.toList.map(_._1))
+  def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
 
 
   /**
@@ -198,7 +200,7 @@ private object TaskSet {
    *
    * @return
    */
-  def getTask : Iterable[(TAgent,Task)] = {
+  def getTask : Iterable[(Agent,Task)] = {
 
     while(!Scheduler().isTerminated) {
       try {
@@ -208,9 +210,9 @@ private object TaskSet {
           //
           // 1. Get all Tasks the Agents want to bid on during the auction with their current money
           //
-          var r: List[(Double, TAgent, Task)] = Nil
+          var r: List[(Double, Agent, Task)] = Nil
           while (r.isEmpty) {
-            val ts = taskSet.executableTasks
+            val ts = taskSet.executableTasks    // TODO Filter if no one can execute (simple done)
             ts.foreach { case t =>
               val a = t.getAgent
               val budget = regAgents.getOrElse(a, 0.0)
@@ -233,22 +235,26 @@ private object TaskSet {
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: List[(Double, TAgent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }
+          val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }
+          var taken : Map[Agent, Int] = HashMap[Agent, Int]()
 
           //        println("Sorted tasks.")
 
           // 3. Take from beginning to front only the non colliding tasks
           // Check the currenlty executing tasks too.
-          var newTask: List[(TAgent, Task)] = Nil
+          var newTask: List[(Agent, Task)] = Nil
           for ((price, a, t) <- queue) {
-            if (LockSet.isExecutable(t)) {
-              val budget = regAgents.apply(a)     //TODO Lock regAgents, got error during phase switch
+            // Check if the agent can execute another task
+            val open : Boolean = a.maxParTasks.fold(true)(n => n - taskSet.executingTasks(a) + taken.getOrElse(a, 0) > 0)
+            if (open & LockSet.isExecutable(t)) {
+              val budget = regAgents.getOrElse(a, 0.0)     //TODO Lock regAgents, got error during phase switch
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
                 newTask = (a, t) :: newTask
                 LockSet.lockTask(t)
                 a.taskChoosen(t)
                 regAgents.put(a, budget - price)
+                taken = taken + (a -> (taken.getOrElse(a,0)+1))
               }
             }
           }

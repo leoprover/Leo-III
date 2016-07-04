@@ -20,9 +20,9 @@ object SZSScriptAgent {
    * @param reinterpreteResult - May transform the result depending on the status of the current Context (in a CounterSAT case Theorem will prover CounterSatisfiyability)
    * @return An agent to run an external prover on the specified translation.
    */
-  def apply(name : String, cmd : String, encodeOutput : Set[ClauseProxy] => Seq[String], reinterpreteResult : StatusSZS => StatusSZS) : TAgent = new SZSScriptAgent(name, cmd)(encodeOutput)(reinterpreteResult)
+  def apply(name : String, cmd : String, encodeOutput : Set[ClauseProxy] => Seq[String], reinterpreteResult : StatusSZS => StatusSZS) : Agent = new SZSScriptAgent(name, cmd)(encodeOutput)(reinterpreteResult)
 
-  def apply(name : String, cmd : String) : TAgent = apply(name, cmd, encodeStd, x => x)
+  def apply(name : String, cmd : String) : Agent = apply(name, cmd, encodeStd, x => x)
 
   def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
     val ins = in.map{c => AnnotatedClause(c.cl, Role_Axiom, ClauseAnnotation.NoAnnotation, c.properties)}+ AnnotatedClause(Clause(Seq(Literal(LitTrue, false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
@@ -33,6 +33,7 @@ object SZSScriptAgent {
 
   /**
     * A list of all registered script agents
+ *
     * @return All SZSScriptAgents registered in the Blackbaord
     */
   def allScriptAgents : Iterable[SZSScriptAgent] = h.synchronized(h.values)

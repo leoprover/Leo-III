@@ -1,6 +1,6 @@
 package leo.modules.phase
 
-import leo.agents.TAgent
+import leo.agents.Agent
 import leo.modules.agent.relevance_filter.RelevanceFilterAgent
 
 /**
@@ -8,5 +8,5 @@ import leo.modules.agent.relevance_filter.RelevanceFilterAgent
   */
 class FilterPhase extends CompletePhase {
   override def name: String = "relevance_filter_phase"
-  override protected val agents: Seq[TAgent] = Seq(RelevanceFilterAgent)
+  override protected val agents: Seq[Agent] = Seq(RelevanceFilterAgent)
 }

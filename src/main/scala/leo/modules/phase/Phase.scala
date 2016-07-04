@@ -23,8 +23,8 @@ object Phase {
    * @param dagents - Agents to be used in this phase.
    * @return - A phase executing all agents until nothing is left to do.
    */
-  def apply(dname : String, dagents : Seq[TAgent]) : Phase = new CompletePhase {
-    override protected def agents: Seq[TAgent] = dagents
+  def apply(dname : String, dagents : Seq[Agent]): Phase = new CompletePhase {
+    override protected def agents: Seq[Agent] = dagents
     override def name: String = dname
   }
 }
@@ -45,6 +45,7 @@ trait Phase {
 
   /**
    * Returns the name of the phase.
+ *
    * @return
    */
   def name : String
@@ -59,9 +60,10 @@ trait Phase {
 
   /**
    * A list of all agents to be started.
+ *
    * @return
    */
-  protected def agents : Seq[TAgent]
+  protected def agents : Seq[Agent]
 
   /**
    * Method to start the agents, defined in `agents`
@@ -133,7 +135,7 @@ trait CompletePhase extends Phase {
     return true
   }
 
-  protected class CompleteWait extends Agent {
+  protected class CompleteWait extends AbstractAgent {
     var finish = false
     var scedKill = false
     override def interest : Option[Seq[DataType]] = Some(Seq(StatusType))

@@ -1,6 +1,6 @@
 package leo.modules.agent.preprocessing
 
-import leo.agents.{Agent, TAgent, Task}
+import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, ClauseProxy}
 import leo.datastructures.blackboard._
@@ -11,9 +11,9 @@ import leo.modules.preprocessing._
 /**
   * Created by mwisnie on 3/7/16.
   */
-class NormalizationAgent(cs : Context*) extends Agent {
+class NormalizationAgent(cs : Context*) extends AbstractAgent {
   override def name: String = "normalization_agent"
-  override val after : Set[TAgent] = Set(EqualityReplaceAgent)
+  override val after : Set[Agent] = Set(EqualityReplaceAgent)
   val norms : Seq[Normalization] = Seq(Simplification, DefExpSimp, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
 
   override def filter(event: Event): Iterable[Task] = event match {
@@ -38,9 +38,9 @@ class NormalizationAgent(cs : Context*) extends Agent {
   }
 }
 
-class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalization], c : Context, a : TAgent) extends Task{
+class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalization], c : Context, a : Agent) extends Task{
   override def name: String = "normalization_task"
-  override def getAgent: TAgent = a
+  override def getAgent: Agent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map(ClauseType -> Set(cl))
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {

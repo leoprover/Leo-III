@@ -1,7 +1,7 @@
 package leo.modules.agent.relevance_filter
 
 import leo.Configuration
-import leo.agents.{Agent, TAgent, Task}
+import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard._
@@ -18,7 +18,7 @@ import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
   * [[leo.modules.relevance_filter.RelevanceFilter]]
   * to the set of prefilters.
   */
-object RelevanceFilterAgent extends Agent {
+object RelevanceFilterAgent extends AbstractAgent {
   override def name: String = "relevance_filter_agent"
   override val interest : Option[Seq[DataType]] = Some(Seq(FormulaTakenType, AnnotatedFormulaType))
 
@@ -45,9 +45,9 @@ object RelevanceFilterAgent extends Agent {
   }
 }
 
-class RelevanceTask(form : AnnotatedFormula, round : Int, a : TAgent) extends Task {
+class RelevanceTask(form : AnnotatedFormula, round : Int, a : Agent) extends Task {
   override def name: String = "relevance_task"
-  override def getAgent: TAgent = a
+  override def getAgent: Agent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map(AnnotatedFormulaType -> Set(form))
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
