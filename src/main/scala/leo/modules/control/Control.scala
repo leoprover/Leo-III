@@ -134,7 +134,7 @@ package inferenceControl {
         val intoConfigurationIt = intoConfigurationIterator(intoClause)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-          leo.Out.output(s"check with ${withTerm.pretty}, into: ${intoTerm.pretty}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
+          leo.Out.finest(s"check with ${withTerm.pretty}, into: ${intoTerm.pretty}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
           assert(!intoLit.flexflex)
           if (intoPos == Position.root &&
             ((intoClause.id == withClause.id && intoIndex == withIndex) ||
@@ -379,7 +379,7 @@ package inferenceControl {
           Out.debug(s"Clause ${cl.id} needs unification. Working on it ...")
           assert(cl.annotation.fromRule.isDefined)
           val fromRule = cl.annotation.fromRule.get
-          if (fromRule == OrderedParamod || fromRule == OrderedEqFac) {
+          if (fromRule == OrderedParamod || fromRule == OrderedEqFac) { // FIXME: No direct inheritance
             val unificationLit = cl.cl.lits.last
             if (unificationLit.uni) {
               assert(unificationLit.equational && !unificationLit.polarity)

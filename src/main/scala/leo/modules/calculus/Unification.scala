@@ -98,12 +98,12 @@ object HuetsPreUnification extends Unification {
     val s = s1.etaExpand
 
     // returns a stream whose head is a pre-unifier and whose body computes the next unifiers
-    new NDStream[UnificationResult](new MyConfiguration(Seq((t,s)), Seq(), 0), new MyFun(vargen)) with BFSAlgorithm
+    new NDStream[UnificationResult](new MyConfiguration(Vector((t,s)), Vector(), 0), new MyFun(vargen)) with BFSAlgorithm
   }
 
   override def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] = {
     val expandedContraints = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand)).sortWith(sort)
-    new NDStream[UnificationResult](new MyConfiguration(expandedContraints, Seq(), 0), new MyFun(vargen)) with BFSAlgorithm
+    new NDStream[UnificationResult](new MyConfiguration(expandedContraints.toVector, Vector(), 0), new MyFun(vargen)) with BFSAlgorithm
   }
 
   protected def isVariable(t: Term): Boolean = Bound.unapply(t).isDefined
@@ -187,7 +187,7 @@ object HuetsPreUnification extends Unification {
         val sb = computeTySubst(Seq(be))
         leo.Out.finest(s"type bind substitution: ${sb.pretty}")
         detExhaust(vargen, applySubstToList(Subst.id, sb, uproblems), applySubstToList(Subst.id, sb, sproblems),
-          applySubstToTyList(sb, uTyProblems), applySubstToTyList(sb, sTyProlems))
+          applySubstToTyList(sb, uTyProblems), applySubstToTyList(sb, sTyProlems) :+ be)
       } else {
 
         /////// Term operations
@@ -268,7 +268,7 @@ object HuetsPreUnification extends Unification {
     def apply(varGen: FreshVarGen, e: UEq): UEq = {
       leo.Out.trace(s"Apply Func on ${e._1.pretty} = ${e._2.pretty}")
       val funArgTys = e._1.ty.funParamTypes
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, varGen.existingVars))
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, varGen.existingVars, varGen.existingTyVars))
       (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
     }
 
@@ -468,8 +468,12 @@ object HuetsPreUnification extends Unification {
       leo.Out.trace(s"Finished detExhaust")
       // if uproblems is empty, then succeeds
       if (uproblems.isEmpty) {
-        leo.Out.debug(s"Unification finished.")
-        Seq(new MyConfiguration(Some(Tuple2((computeSubst(sproblems), Subst.id),Seq()))))
+        val termSubst = computeSubst(sproblems)
+        val typeSubst = computeTySubst(sTyProblems)
+        leo.Out.debug(s"Unification finished, with")
+        leo.Out.debug(s"Term substitution ${termSubst.pretty}")
+        leo.Out.debug(s"Type substitution ${typeSubst.pretty}")
+        Seq(new MyConfiguration(Some(Tuple2((termSubst, typeSubst),Seq()))))
       }
       // else consider top equation
       else {
@@ -484,7 +488,7 @@ object HuetsPreUnification extends Unification {
           // if it is flex-flex -> all equations are flex-flex
           if (isFlexible(t) && isFlexible(s)) {
             leo.Out.finest(s"Unification finished with Flex-flex")
-            Seq(new MyConfiguration(Some(((computeSubst(sproblems), Subst.id),uproblems))))
+            Seq(new MyConfiguration(Some(((computeSubst(sproblems), computeTySubst(sTyProblems)),uproblems))))
           } else {
             leo.Out.finest(s"flex-rigid at depth ${conf.searchDepth}")
             // else we have a flex-rigid and we cannot apply bind

@@ -975,7 +975,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     Reductions.tick()
-    cons(Right(hd), tail.normalize(termSubst, typeSubst))
+    cons(Right(hd.substitute(typeSubst)), tail.normalize(termSubst, typeSubst))
   }
   lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
 
@@ -1247,7 +1247,7 @@ object TermImpl extends TermBank {
   def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
   def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
-  def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = func match {
+  def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
       case Root(h, SNil) => mkRoot(h, mkTySpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args))

@@ -69,6 +69,9 @@ package object calculus {
       *          `f.existingVars == cl.implicitlyBound`
       *          he list of all free variables of a clause*/
     def existingVars: Seq[(Int, Type)]
+    /** Return all already used type variable of the generator, e.g.
+      * all implicitly universally quantified of the clause's context. */
+    def existingTyVars: Seq[Int]
     /**
       * Returns a copy of the underlying FreshVarGen
       */
@@ -76,13 +79,14 @@ package object calculus {
   }
 
   /** Create a [[FreshVarGen]] with the free var context of the clause `cl`. */
-  @inline final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.maxImplicitlyBound)
+  @inline final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.typeVars.toSeq, cl.maxImplicitlyBound)
   /** Create a [[FreshVarGen]] without any so-far registered free vars. */
-  @inline final def freshVarGenFromBlank: FreshVarGen = freshVarGen0(Seq(), 0)
+  @inline final def freshVarGenFromBlank: FreshVarGen = freshVarGen0(Seq(), Seq(), 0)
 
-  final private def freshVarGen0(variables:  Seq[(Int, Type)], curVar: Int): FreshVarGen = new FreshVarGen {
+  final private def freshVarGen0(variables:  Seq[(Int, Type)], tyVariables: Seq[Int], curVar: Int): FreshVarGen = new FreshVarGen {
     private var cur = curVar
     private var vars: Seq[(Int, Type)] = variables
+    private val tyVars: Seq[Int] = tyVariables
 
     override final def next(ty: Type): (Int, Type) = {
       cur = cur + 1
@@ -91,7 +95,8 @@ package object calculus {
     }
 
     override final def existingVars: Seq[(Int, Type)] = vars
-    override final def copy: FreshVarGen = freshVarGen0(vars, cur)
+    override final def existingTyVars: Seq[Int] = tyVars
+    override final def copy: FreshVarGen = freshVarGen0(vars, tyVars, cur)
   }
 
   // Adopted from tomer's code:
@@ -128,10 +133,14 @@ package object calculus {
     aterm.etaExpand
   }
 
-  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)]): Term = {
-    val skFunc = Signature.get.freshSkolemVar(Type.mkFunType(fvs.map(_._2), goalTy))
-    Term.mkTermApp(Term.mkAtom(skFunc), fvs.map {case (i,t) => Term.mkBound(t,i)})
+  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int]): Term = {
+    val skFunc = Signature.get.freshSkolemVar(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
+    val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
+    Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }
+
+  final private def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
+  else Type.mkPolyType(mkPolyTyAbstractionType(count-1, body))
 
   /** Checks whether the terms `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the terms are not unifiable, otherwise they may be. */

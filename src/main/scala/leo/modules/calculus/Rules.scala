@@ -45,7 +45,7 @@ object FuncExt extends CalculusRule {
       val newVars = funArgTys.map {case ty => vargen(ty)}
       Literal(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)
     } else {
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV)) //initFV: We only use the
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)) //initFV: We only use the
       // free vars that were existent at the very beginning, i.e. simulating
       // that we applies func_ext to all negative literals first
       // in order to minimize the FVs inside the sk-term
@@ -145,8 +145,8 @@ object PreUni extends CalculusRule {
       val uniResult = result.next()
       val (termSubst, typeSubst) = uniResult._1
       val flexflexPairs = uniResult._2
-      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2))
-      val updatedOtherLits = otherLits.map(_.substitute(termSubst))
+      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2)) // TODO DO they need to be substituted also?
+      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
       Set((Clause(updatedOtherLits ++ newLiterals),termSubst))
     } else {
       Set()

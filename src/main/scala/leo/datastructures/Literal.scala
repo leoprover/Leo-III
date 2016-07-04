@@ -89,7 +89,7 @@ trait Literal extends Pretty {
       Literal(left,right,true)
   }
 
-  @inline final def substitute(s : Subst) : Literal = termMap {case (l,r) => (l.termClosure(s).betaNormalize,r.termClosure(s).betaNormalize)}
+  @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
 

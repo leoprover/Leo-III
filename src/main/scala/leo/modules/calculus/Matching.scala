@@ -216,7 +216,7 @@ package matching {
       def apply(e: UEq): UEq = {
         leo.Out.trace(s"Apply Func on ${e._1.pretty} = ${e._2.pretty}")
         val funArgTys = e._1.ty.funParamTypes
-        val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, Seq())) // TODO: Check if this is ok (no free vars)
+        val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, Seq(), Seq())) // TODO: Check if this is ok (no free vars)
         (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
       }
 
