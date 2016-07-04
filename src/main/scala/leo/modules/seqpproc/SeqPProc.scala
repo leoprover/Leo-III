@@ -57,6 +57,17 @@ object SeqPProc extends Function1[Long, Unit]{
   }
 
 
+  final def typeCheck(input: Seq[(Parsing.FormulaId, Term, Role)]): Set[(Parsing.FormulaId, Term, Role)] = {
+    var returnSet:Set[(Parsing.FormulaId, Term, Role)] = Set()
+    val inputIt = input.iterator
+    while(inputIt.hasNext) {
+      val i = inputIt.next()
+      if (!i._2.typeCheck) returnSet = returnSet + i
+    }
+
+    returnSet
+  }
+
   ///////////////////////////////////////////////////////////
 
   /* Main function containing proof loop */
@@ -70,6 +81,13 @@ object SeqPProc extends Function1[Long, Unit]{
     // Read problem
     val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
     val startTimeWOParsing = System.currentTimeMillis()
+
+    val tyCheckSet = typeCheck(input)
+    if (tyCheckSet.nonEmpty) {
+      leo.Out.severe(s"Input problem did not pass type check.")
+      throw new SZSException(SZS_TypeError, s"Type error in formulas: ${tyCheckSet.map(_._1).mkString(",")}")
+    }
+
     // Filter out inputs that were produced by definitions and type declarations
     val filteredInput = input.filterNot(i => i._3 == Role_Definition || i._3 == Role_Type)
     // Negate conjecture
@@ -355,13 +373,14 @@ object SeqPProc extends Function1[Long, Unit]{
 //    newclauses = Control.simpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
+
+    /* Pre-unify new clauses */
+    newclauses = Control.preunifyNewClauses(newclauses)
+
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
-    /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
-
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
