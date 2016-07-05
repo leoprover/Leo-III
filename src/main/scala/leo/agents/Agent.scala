@@ -104,7 +104,19 @@ trait Agent extends Dependency[Agent] {
    */
   def taskFinished(t : Task) : Unit
 
+  /**
+    * Method called, when a task is choosen for execution.
+    *
+    * @param t
+    */
   def taskChoosen(t : Task) : Unit
+
+  /**
+    * Method called, when a task cannot be executed
+    * and is removed from the task set.
+    * @param t
+    */
+  def taskCanceled(t : Task) : Unit // TODO link to the task set!!
 }
 
 
