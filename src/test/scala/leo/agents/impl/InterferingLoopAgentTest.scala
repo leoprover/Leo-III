@@ -1,23 +1,33 @@
 package leo.agents.impl
 
 import leo.LeoTestSuite
-import leo.agents.{InterferingLoop, InterferingLoopAgent, OperationState}
+import leo.agents._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.blackboard.{Blackboard, DataStore, DataType, Result}
+import leo.datastructures.blackboard._
 
 /**
   * Testing a simple loop like program
   */
 class InterferingLoopAgentTest extends LeoTestSuite {
 
-  test("Count to 10"){
+  test("Count to 100"){
+    val self = this
     NumberStore.clear()
     Blackboard().addDS(NumberStore)
-    val incAgent = (new InterferingLoopAgent[LoopState](new IncrementLoop(10)))
+    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(100))
     incAgent.register()
+    new AbstractAgent {
+      override val interest : Option[Seq[DataType]] = None
+      override def filter(event: Event): Iterable[Task] = event match{
+        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case _ => Seq()
+      }
+
+      override def name: String = "termination"
+    }.register()
 
     Scheduler().signal()
-    Thread.sleep(5000)
+    self.synchronized(self.wait())
   }
 
 }
