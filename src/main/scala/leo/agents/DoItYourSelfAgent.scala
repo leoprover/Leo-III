@@ -29,6 +29,14 @@ class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
       Seq(new DoItYourSelfTask(this, forms, c))
     case _ => Iterable()
   }
+
+  /**
+    * Method called, when a task cannot be executed
+    * and is removed from the task set.
+    *
+    * @param t
+    */
+  override def taskCanceled(t: Task): Unit = {}
 }
 
 case class DoItYourSelfMessage(c : Context) extends Message

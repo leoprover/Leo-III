@@ -145,6 +145,14 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
     case l1 +: Seq()  => if(l1.polarity) l1.term else Not(l1.term)
     case l1 +: ls   => if(l1.polarity) |||(l1.term, orLit(ls)) else |||(Not(l1.term), orLit(ls))
   }
+
+  /**
+    * Method called, when a task cannot be executed
+    * and is removed from the task set.
+    *
+    * @param t
+    */
+  override def taskCanceled(t: Task): Unit = {}
 }
 
 

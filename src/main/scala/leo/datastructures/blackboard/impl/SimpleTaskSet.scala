@@ -60,8 +60,12 @@ class SimpleTaskSet extends TaskSet{
     *
     * @return a set of non dependent [[leo.agents.Task]], ready for selection.
     */
-  override def executableTasks: Iterable[Task] = registeredTasks.filter{t => val a = t.getAgent; a.maxParTasks.fold(true)(n => n > agentExec.getOrElse(a, 0))}
-
+  override def executableTasks: Iterable[Task] = synchronized {
+    val rTasks = agentTasks.values
+    val rTasks2 = rTasks.flatten
+    rTasks2.filter{t => val a = t.getAgent; a.maxParTasks.fold(true)(n => n > agentExec.getOrElse(a, 0))}
+  }
+  // TODO not call registered tasks. compute it on its own.
   override def containsAgent(a: Agent): Boolean = synchronized(agentTasks.contains(a))
 
   override def executingTasks(a: Agent) : Int = synchronized(agentExec.getOrElse(a, 0))
@@ -114,7 +118,7 @@ class SimpleTaskSet extends TaskSet{
     *
     * @return true, iff there exist executable task
     */
-  override def existExecutable: Boolean = synchronized(agentTasks.exists { case (a, set) => set.nonEmpty && (a.maxParTasks.fold(true)(n => n > agentExec.getOrElse(a, 0)))})
+  override def existExecutable: Boolean = synchronized(agentTasks.exists { case (a, set) => set.nonEmpty && a.maxParTasks.fold(true)(n => n > agentExec.getOrElse(a, 0))})
 
   /**
     * Submits a new task created by an agent to the scheduler.
@@ -122,11 +126,13 @@ class SimpleTaskSet extends TaskSet{
     * @param t The task the agent `a` wants to execute.
     */
   override def submit(t: Task): Unit = synchronized {
+//    println(s"Try submitting Task:\n  ${t.pretty}")
     val s : Option[mutable.Set[Task]] = agentTasks.get(t.getAgent)
     val set = s.get
     if(set.contains(t)) return  // If already existent, then nothing happens
     set.add(t)
     ActiveTracker.incAndGet(s"Submitted Task:\n  ${t.pretty}")
+//    println(s"Submitted Task:\n  ${t.pretty}")
   }
 
   /**

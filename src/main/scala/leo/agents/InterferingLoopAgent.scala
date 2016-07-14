@@ -28,10 +28,19 @@ import leo.datastructures.blackboard._
   */
 class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) extends Agent {
   override val name: String = loop.name
+  override val maxParTasks : Option[Int] = Some(1)
   private val self = this
 
   private var taskExisting = false
   private var firstAttempt = true // Used to not trigger the [[NextIteration]] every time
+  private var active : Boolean = true
+
+  override def register() : Unit = {
+    super.register()
+    Blackboard().send(NextIteration, this)
+    ActiveTracker.incAndGet(s"${name}: Loop Started and not yet tested.")
+    active = true
+  }
 
   /**
     * This method should be called, whenever a formula is added to the blackboard.
@@ -45,10 +54,21 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
     case NextIteration if !taskExisting && firstAttempt =>    // Case of no real result
       firstAttempt = false
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
+      if(r.isEmpty && active){
+        ActiveTracker.decAndGet(s"${name}: Loop condition turned negative.")
+      } else if (r.nonEmpty && !active) {
+        ActiveTracker.incAndGet(s"${name}: Loop condition turned positive.")
+      }
       taskExisting = r.nonEmpty
       r
     case _ if !taskExisting =>                // Case of a cancel and no other possible match
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
+      if(r.isEmpty && active){
+        ActiveTracker.decAndGet(s"${name}: Loop condition turned negative.")
+      } else if (r.nonEmpty && !active) {
+        ActiveTracker.incAndGet(s"${name}: Loop condition turned positive.")
+      }
+      firstAttempt = false    // Race condition
       taskExisting = r.nonEmpty
       r
     case _ => Nil
@@ -88,6 +108,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
     * @param t The comletely finished task
     */
   override def taskFinished(t: Task): Unit = synchronized{
+//    println(s"Task finished ${t.pretty}")
     taskExisting = false
     firstAttempt = true
     Blackboard().send(NextIteration, this)
@@ -124,7 +145,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
   }
 
   class InterferringLoopTask(opState : A) extends Task {
-    override lazy val name: String = loop.name + "-task"
+    override lazy val name: String = loop.name+ s"(${opState.toString})" + "-task"
     override lazy val getAgent: Agent = self
     override lazy val writeSet : Map[DataType, Set[Any]] = opState.write
     override lazy val readSet : Map[DataType, Set[Any]] = opState.read

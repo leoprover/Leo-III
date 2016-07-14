@@ -229,6 +229,7 @@ object AgentA extends Agent {
 
   override def before: Set[Agent] = Set(AgentB)
   override def after: Set[Agent] = Set.empty
+  override def taskCanceled(t: Task): Unit = {}
 }
 
 object AgentB extends Agent {
@@ -240,6 +241,7 @@ object AgentB extends Agent {
   override def maxMoney: Double = 0
   override def taskChoosen(t: Task): Unit = ()
   override def taskFinished(t: Task): Unit = ()
+  override def taskCanceled(t: Task): Unit = {}
 
   override def before: Set[Agent] = Set.empty
   override def after: Set[Agent] = Set.empty
@@ -254,6 +256,7 @@ object AgentC extends Agent {
   override def maxMoney: Double = 0
   override def taskChoosen(t: Task): Unit = ()
   override def taskFinished(t: Task): Unit = ()
+  override def taskCanceled(t: Task): Unit = {}
 
   override def before: Set[Agent] = Set.empty
   override def after: Set[Agent] = Set(AgentB)
@@ -268,6 +271,7 @@ object AgentD extends Agent {
   override def maxMoney: Double = 0
   override def taskChoosen(t: Task): Unit = ()
   override def taskFinished(t: Task): Unit = ()
+  override def taskCanceled(t: Task): Unit = {}
 
   override def before: Set[Agent] = Set.empty
   override def after: Set[Agent] = Set.empty

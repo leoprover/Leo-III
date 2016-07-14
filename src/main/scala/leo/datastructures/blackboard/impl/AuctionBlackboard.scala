@@ -57,12 +57,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
   }
 
   override def submitTasks(a: Agent, ts : Set[Task]) : Unit = {
-    TaskSet.synchronized(TaskSet.taskSet.submit(ts))
-    signalTask()
+    TaskSet.taskSet.submit(ts)  // TODO Synchronizing?
+    signalTask()      // WHO HAS THE LOCK?=????
   }
 
   override def finishTask(t : Task) : Unit = {
-    TaskSet.synchronized(TaskSet.taskSet.finish(t))
+    TaskSet.taskSet.finish(t)     // TODO synchronizing?
     LockSet.releaseTask(t)        // TODO Still necessary?
   }
 
@@ -106,8 +106,11 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param to   - The recipient
    */
   override def send(m: Message, to: Agent): Unit = {
+//    println(s"Called send to ${to.name}: $m")
     val ts = to.filter(m)
+//    println(s"Filtered message to ${to.name}: ${ts.map(_.pretty).mkString("\n")}")
     submitTasks(to, ts.toSet)
+//    println(s"Done submitting")
   }
 
   /**
@@ -167,7 +170,11 @@ private object TaskSet {
   /**
    * Notifies process waiting in 'getTask', that there is a new task available.
    */
-  protected[blackboard] def signalTask() : Unit = this.synchronized(this.notifyAll())
+  protected[blackboard] def signalTask() : Unit = {
+//    println("In signal. Before")
+    this.synchronized{this.notifyAll()}
+//    println("In signal. After")
+  }
 
   def clear() : Unit = {
     this.synchronized {
@@ -188,6 +195,14 @@ private object TaskSet {
   }
 
   def agents : List[Agent] = this.synchronized(regAgents.toList.map(_._1))
+
+  private def sendDoneEvents() : Unit = {
+    val agents = regAgents.toList.map(_._1).toIterator
+    while(agents.hasNext){
+      val a = agents.next()
+      taskSet.submit(a.filter(DoneEvent()))
+    }
+  }
 
 
   /**
@@ -213,22 +228,28 @@ private object TaskSet {
           var r: List[(Double, Agent, Task)] = Nil
           while (r.isEmpty) {
             val ts = taskSet.executableTasks    // TODO Filter if no one can execute (simple done)
+//            println(s"ts = ${ts.map(_.pretty).mkString(", ")}")
             ts.foreach { case t =>
               val a = t.getAgent
               val budget = regAgents.getOrElse(a, 0.0)
               r = (t.bid * budget, a, t) :: r  }
+//            println("Obtained and budgeted set.")
             if (r.isEmpty) {
               if (ActiveTracker.get <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
-                Blackboard().filterAll { a => a.filter(DoneEvent())}
+//                println("Send Done events.")
+                // Problems with filter all due to race conditions
+                sendDoneEvents()
+//                println("Finished Done events.")
               }
               //leo.Out.comment("Going to wait for new Tasks.")
+//              println(s"Waiting now")
               TaskSet.wait()
               regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
           }
 
-          //        println("Got tasks and ready to auction.")
+          // println("Got tasks and ready to auction.")
           //
           // 2. Bring the Items in Order (sqrt (m) - Approximate Combinatorical Auction, with m - amount of colliding writes).
           //
