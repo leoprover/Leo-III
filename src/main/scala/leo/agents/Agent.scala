@@ -183,13 +183,32 @@ abstract class Task extends Pretty  {
     if(t1 eq t2) return true
     val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)  // Restrict to the datatypes both tasks use.
     if(sharedTypes.isEmpty) return false  // Empty case
-    !sharedTypes.exists{d =>        // There exist no datatype
+    sharedTypes.exists{d =>        // There exist datatype, where one of the sets intersects
       val r1 : Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
       val w1 : Set[Any] = t1.writeSet().getOrElse(d, Set.empty[Any])
       val r2 : Set[Any] = t2.readSet().getOrElse(d, Set.empty[Any])
       val w2 : Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
 
       (r1 & w2).nonEmpty || (r2 & w1).nonEmpty || (w1 & w2).nonEmpty
+    }
+  }
+
+  /**
+    *
+    * Tests if this blocks the execution of t2,
+    * that is this.readSet & t2.writeSet is not empty
+    *
+    * @param t2 The task, that blocks t2
+    * @return true iff this blocks t2
+    */
+  def blockes(t2 : Task) : Boolean = {
+    val t1 = this
+    val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)
+    if(sharedTypes.isEmpty) return false
+    sharedTypes.exists { d =>
+      val r1: Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
+      val w2: Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
+      (r1 & w2).nonEmpty
     }
   }
 

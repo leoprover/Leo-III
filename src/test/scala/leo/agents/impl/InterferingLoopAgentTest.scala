@@ -10,6 +10,50 @@ import leo.datastructures.blackboard._
   */
 class InterferingLoopAgentTest extends LeoTestSuite {
 
+  test("Count to 10"){
+    val self = this
+    NumberStore.clear()
+    Blackboard().addDS(NumberStore)
+    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(10))
+    incAgent.register()
+    new AbstractAgent {
+      override val interest : Option[Seq[DataType]] = None
+      override def filter(event: Event): Iterable[Task] = event match{
+        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case _ => Seq()
+      }
+
+      override def name: String = "termination"
+    }.register()
+
+    Scheduler().signal()
+    self.synchronized(self.wait())
+    assert(NumberStore.getNumber == 10, "Incrementing to 10 should hold 10.")
+  }
+
+  test("Ripple count to 10"){
+    val self = this
+    NumberStore.clear()
+    Blackboard().addDS(NumberStore)
+    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(10))
+    incAgent.register()
+    AnoyingAgent.register()
+    new AbstractAgent {
+      override val interest : Option[Seq[DataType]] = None
+      override def filter(event: Event): Iterable[Task] = event match{
+        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case _ => Seq()
+      }
+
+      override def name: String = "termination"
+    }.register()
+
+    Scheduler().signal()
+    self.synchronized(self.wait())
+    val n = NumberStore.getNumber
+    assert(n == 10 || n == 11 || n == 14, "Incrementing to 10 should hold 10.")
+  }
+
   test("Count to 100"){
     val self = this
     NumberStore.clear()
@@ -28,11 +72,29 @@ class InterferingLoopAgentTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
+    assert(NumberStore.getNumber == 100, "Incrementing to 100 should hold 100.")
   }
+
 
 }
 
+object AnoyingAgent extends AbstractAgent {
+  override def name: String = "AnoyingAgent"
+  override def filter(event: Event): Iterable[Task] = event match {
+    case DataEvent(n : Int, NumberType) if n % 3 == 0 => List(new AnoyingTask(n))
+    case _ => Seq()
+  }
 
+  class AnoyingTask(n : Int) extends Task {
+    override def name: String = s"anoy"
+    override def run: Result = Result().update(NumberType)(n)(n+5)
+    override def readSet(): Map[DataType, Set[Any]] = Map.empty
+    override def writeSet(): Map[DataType, Set[Any]] = Map(NumberType -> Set(n))
+    override def bid: Double = 1
+    override def getAgent: Agent = AnoyingAgent
+    override def pretty: String = s"anoy(${n} --> ${n+5})"
+  }
+}
 
 class IncrementLoop(maxNumber : Int) extends InterferingLoop [LoopState] {
   override def name: String = "IncrementingLoop"
@@ -75,8 +137,10 @@ object NumberStore extends DataStore {
         println(s"Num set to ${n1}")
         num = n1
         true
-      } else
+      } else {
+        println(s"Writing on old data (${o1} --> $n1).")
         false
+      }
     case _ => false
   }}
   override def insert(n: Any): Boolean = synchronized(n match {

@@ -220,7 +220,6 @@ private object TaskSet {
     while(!Scheduler().isTerminated) {
       try {
         this.synchronized {
-          //        println("Beginning to get items for the auction.")
 
           //
           // 1. Get all Tasks the Agents want to bid on during the auction with their current money
@@ -233,17 +232,11 @@ private object TaskSet {
               val a = t.getAgent
               val budget = regAgents.getOrElse(a, 0.0)
               r = (t.bid * budget, a, t) :: r  }
-//            println("Obtained and budgeted set.")
             if (r.isEmpty) {
               if (ActiveTracker.get <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
-//                println("Send Done events.")
-                // Problems with filter all due to race conditions
                 sendDoneEvents()
-//                println("Finished Done events.")
               }
-              //leo.Out.comment("Going to wait for new Tasks.")
-//              println(s"Waiting now")
               TaskSet.wait()
               regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
@@ -256,10 +249,10 @@ private object TaskSet {
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }
+          val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }.reverse    // TODO Order in reverse directly
+          //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
           var taken : Map[Agent, Int] = HashMap[Agent, Int]()
 
-          //        println("Sorted tasks.")
 
           // 3. Take from beginning to front only the non colliding tasks
           // Check the currenlty executing tasks too.

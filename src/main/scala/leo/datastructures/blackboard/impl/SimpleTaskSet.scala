@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard.impl
 
 import leo.agents.{Agent, Task}
-import leo.datastructures.blackboard.{ActiveTracker, Blackboard, TaskSet}
+import leo.datastructures.blackboard.{ActiveTracker, Blackboard, LockSet, TaskSet}
 
 import scala.collection.mutable
 
@@ -130,9 +130,9 @@ class SimpleTaskSet extends TaskSet{
     val s : Option[mutable.Set[Task]] = agentTasks.get(t.getAgent)
     val set = s.get
     if(set.contains(t)) return  // If already existent, then nothing happens
+    if(LockSet.isOutdated(t)) return
     set.add(t)
     ActiveTracker.incAndGet(s"Submitted Task:\n  ${t.pretty}")
-//    println(s"Submitted Task:\n  ${t.pretty}")
   }
 
   /**
@@ -146,8 +146,29 @@ class SimpleTaskSet extends TaskSet{
     val it = ts.toIterator
     while (it.hasNext){
       val task = it.next
-      agentTasks.get(task.getAgent).foreach{set => set.remove(task)}
+      agentTasks.get(task.getAgent).foreach{set => set.remove(task)}  // Remove itself
+      agentTasks.foreach{case (_, set) =>
+        // Remove all colliding
+        val rmSet = set.filter(isObsolete(task,_))
+        rmSet.foreach{t =>
+          ActiveTracker.decAndGet(s"Obsolete Task:\n  ${t.pretty}")
+          t.getAgent.taskCanceled(t)
+          set.remove(t)
+        }
+      }
+      task.getAgent.taskChoosen(task)
       agentExec.put(task.getAgent, agentExec.getOrElse(task.getAgent, 0)+1) // TODO group by agent and update
+    }
+  }
+
+  private def isObsolete(takeTask : Task, obsoleteTask : Task) : Boolean = {
+    val sharedTypes = takeTask.lockedTypes.intersect(obsoleteTask.lockedTypes)
+    if(sharedTypes.isEmpty) return false
+    sharedTypes.exists { d =>
+      val w1: Set[Any] = takeTask.writeSet().getOrElse(d, Set.empty[Any])
+      val r2 : Set[Any] = obsoleteTask.readSet().getOrElse(d, Set.empty[Any])
+      val w2: Set[Any] = obsoleteTask.writeSet().getOrElse(d, Set.empty[Any])
+      (w1 & w2).nonEmpty || (w1 & r2).nonEmpty
     }
   }
 }
