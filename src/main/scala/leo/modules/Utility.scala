@@ -136,7 +136,7 @@ object Utility {
     try{
       ToTPTP.withAnnotation(cl).output
     } catch {
-      case e : Throwable => cl.pretty
+      case e : Throwable => leo.Out.warn(s"Could not translate: ${cl.pretty}.\n Error: ${e.toString}"); cl.pretty
     }
   }
 

@@ -185,7 +185,9 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
                        val newBVars = makeBVarList(bVarTys, bVars.length)
                        s"^ [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
-      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
+      case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
+                            s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: " + toTPTP0(body, bVars)
+      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${arg.fold(toTPTP0(_, bVars), toTPTP(_))})"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
     }
@@ -197,13 +199,26 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
 
 
   private def toTPTP(ty: Type): String = ty match {
+    case ∀(t) => val (tyAbsCount, bodyTy) = collectTyForalls(0, ty)
+      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + toTPTP0(bodyTy)
+    case _ => toTPTP0(ty)
+  }
+  private def toTPTP0(ty: Type): String = ty match {
     case BaseType(id) => Signature.get(id).name
-    case BoundType(scope) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
+    case BoundType(scope) => "T" + intToName(scope- 1)
     case t1 -> t2 => s"(${toTPTP(t1)} > ${toTPTP(t2)})"
     case t1 * t2 => s"(${toTPTP(t1)} * ${toTPTP(t2)})"
     case t1 + t2 => s"(${toTPTP(t1)} + ${toTPTP(t2)})"
-    case ∀(t) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
+    case ∀(t) => throw new IllegalArgumentException("Polytype should have been caught before")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
+  }
+
+  @tailrec
+  private final def collectTyForalls(count: Int, ty: Type): (Int, Type) = {
+    ty match {
+      case ∀(t) => collectTyForalls(count+1, t)
+      case _ => (count, ty)
+    }
   }
 
 
@@ -245,6 +260,14 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
     t match {
       case ty :::> b => collectLambdas0(vars :+ ty, b)
       case _ => (vars, t)
+    }
+  }
+
+  @tailrec
+  private final def collectTyLambdas(count: Int, t: Term): (Int, Term) = {
+    t match {
+      case TypeLambda(body) => collectTyLambdas(count+1, body)
+      case _ => (count, t)
     }
   }
 
