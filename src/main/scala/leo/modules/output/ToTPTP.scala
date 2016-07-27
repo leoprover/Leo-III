@@ -6,170 +6,193 @@ import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
 import scala.annotation.tailrec
-import leo.datastructures.AnnotatedClause
-
 
 /**
  * Translation module that takes internal terms or types and translates them
  * to a TPTP representation (in THF format).
- * Translation can be done directly into a string by method `output`
- * or indirect into a `Output` object by the apply method.
+ * Translation can be done directly into a string by methods `toString`
+ * or indirect into an `Output` object by the `output` method.
  *
- * @see [[Term]], [[leo.datastructures.AnnotatedClause]]
+ * @see [[Term]], [[leo.datastructures.ClauseProxy]], [[leo.modules.output.Output]]
  * @author Alexander Steen
  * @since 07.11.2014
  */
-object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clause, Role, Output] {
+object ToTPTP {
+  ///////////////////////
+  // Methods on ClauseProxys
+  ///////////////////////
 
-  /** Return an `Output` object that contains the TPTP representation of the given
-    * `FormulaStore`.*/
-
-  def apply(f: ClauseProxy): Output = new Output {
-    def output = toTPTP(f.id.toString, f.cl.term, f.role)
-  }
-  /** Return an `Output` object that contains the TPTP representation of the given
-    * information triple.*/
-  def apply(name: String, c: Clause, role: Role): Output = new Output {
-    val t : Term = if(role == Role_Definition) definitionToTerm(c) else c.term
-    def output = toTPTP(name, t, role)
-  }
-  private def definitionToTerm(c : Clause) : Term = {
-    if(c.lits.size != 1) return c.term
-    val l = c.lits.head
-    if(!l.polarity) return c.term
-    if(!l.left.isAtom) {
-      ===(l.right, l.left)
-    } else {
-      ===(l.left, l.right)
-    }
+  /** Return a textual representation of `f` in THF, i.e. returns
+    * "thf(id, term, role)." where
+    * `id` equals `f.cl.id`, `term` is a representation of `f.cl` as term,
+    * `role` equals `f.role.pretty`. */
+  final def toString(f: ClauseProxy): String = toTPTP(f.id.toString, f.cl, f.role)
+  /** See toString(ClauseProxy).
+    * The textual representation is returned as an `Output` object. */
+  final def output(f: ClauseProxy): Output = new Output {
+    def apply = toTPTP(f.id.toString, f.cl, f.role)
   }
 
-  def apply(name: String, t: Term, role: Role): Output = new Output {
-    def output = toTPTP(name, t, role)
+  /**
+    * Return a textual representation of `f` with (optional) annotation in THF, i.e. returns
+    * "thf(id, term, role, annotation)." where
+    * `id` equals `f.cl.id`, `term` is a representation of `f.cl` as term,
+    * `role` equals `f.role.pretty`, `annotation` equals a representation of `f.annotation`. */
+  final def withAnnotation(cl: ClauseProxy): String = {
+      //      val normclause = leo.modules.calculus.Simp(cl.cl)
+      toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)
+  }
+  /** See withAnnotation(ClauseProxy).
+    * The textual representation is returned as an `Output` object. */
+  final def outputWithAnnotation(cl: ClauseProxy): Output = new Output {
+    def apply = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)
   }
 
+  ///////////////////////
+  // Methods on other term inputs
+  ///////////////////////
+
+  // TODO: Check if ordering is important (i.e. all types before definitions)
   def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
-    var out: List[Output] = List.empty[Output]
-    var defn : List[Output] = List.empty[Output]
+    var out: Seq[Output] = Seq()
     Signature.get.allUserConstants foreach { k =>
-      val (t,d) = constantToTPTP(k)
-      out = t :: out
-      d.fold(()){d1 => defn = d1 :: defn}
+      val constDecl = output(k)
+      out = constDecl +: out
     }
-    out = defn ++ out           // Important, since the definition has to be made after the type declaration
     formulas foreach {formula =>
-      out = ToTPTP(formula) :: out}
+      out = ToTPTP.output(formula) +: out}
     out.reverse
   }
 
-  def withAnnotation(cl: ClauseProxy): Output = new Output {
-    def output = {
-      val normclause = leo.modules.calculus.Simp(cl.cl)
-      toTPTP(cl.id.toString, normclause.term, cl.role, cl.annotation)
-    }
-  }
+  //TODO END
 
-  /**
-   * Returns a TPTP conform definition of a constant. The type is always
-   * returned and, if existant, also the definition.
-   *
-   * @param k is the Key of the constant
-   * @return A definition for the constant.
-   */
-  private def constantToTPTP(k : Signature#Key) : (Output, Option[Output]) = {
+  ///////////////////////
+  // Methods on symbols/definitions
+  ///////////////////////
+
+  final def apply(k: Signature#Key): String = {
     val constant = Signature.get.apply(k)
-    (constant.defn) match {
-      case Some(defn) => (ToTPTP(s"${constant.name}_type", k), Some(ToTPTP(s"${constant.name}_def", ===(mkAtom(k),defn), Role_Definition)))
-      case (None) => (ToTPTP(s"${constant.name}_type", k), None)
+    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
+      "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+    } else {
+      constant.name
+    }
+    if (constant.hasType) {
+      // Its a term constant or a definition
+      // Print out type declaration (needed in all cases)
+      val tyDecl = s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)})."
+      // If its a definition, also print definition afterwards
+      if (constant.hasDefn) {
+        tyDecl + s"\nthf(${cname}_def, definition, $cname = ${toTPTP0(constant._defn)})."
+      } else
+        tyDecl
+    } else {
+      // Its a type constant
+      assert(constant.hasKind)
+      s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
     }
   }
-
-  /**
-   * Returns an Output suitable in a type definition.
-   */
-  def apply(name : String, key : Signature#Key) : Output = new Output {
-    def output : String = {
-      val constant = Signature.get.apply(key)
-      val cname = {if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
-        "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
-      } else {
-        constant.name
-      }}
-      if(constant.ty.isEmpty)
-        return (s"thf($name, ${Role_Type.pretty}, ${cname}: "+"$tType).")
-      else
-        return s"thf(${name}, ${Role_Type.pretty}, ${cname}: ${toTPTP(constant._ty)})."
-    }
+  final def output(k: Signature#Key): Output = new Output {
+    final def apply() = ToTPTP(k)
   }
 
-  /** Translate the `FormulaStore` into a TPTP String in THF format. */
-  def output(cl: ClauseProxy) = toTPTP(cl.id.toString, cl.cl.term, cl.role)
-  /** Translate the term information triple into a TPTP String. */
-  def output(name: String, t: Clause, role: Role) = toTPTP(name, t.term, role)
-
-  // Extra output function for types only (not sure if needed somewhere)
-  /** Return an `Output` object that contains the TPTP representation of the given type.*/
-  def apply(ty: Type): Output = new Output {
-    def output = toTPTP(ty)
-  }
-  /** Translate the type to a TPTP String in THF format. */
-  def output(ty: Type) = toTPTP(ty)
 
   ///////////////////////////////
   // Translation of other data structures
   ///////////////////////////////
 
   def apply(subst: Subst): Output = new Output {
-    override def output: String = {
+    override def apply: String = {
       if (subst.length == 0) {
         ""
       } else {
         val sb = new StringBuilder
         var i = 1
-        var max = subst.length
+        val max = subst.length
         while (i < max) {
           val erg = subst.substBndIdx(i)
-          sb.append(s"bind(${i}, $$thf(${erg.pretty})),")
+          sb.append(s"bind($i, $$thf(${erg.pretty})),")
           i = i+1
         }
-        sb.append(s"bind(${max}, $$thf(${subst.substBndIdx(max).pretty}))")
+        sb.append(s"bind($max, $$thf(${subst.substBndIdx(max).pretty}))")
         sb.toString()
       }
     }
   }
 
   ///////////////////////////////
-  // Translation of THF formula
+  // Translation of clause to THF formula
   ///////////////////////////////
-  // TODO: Fixme write translation from clause
-  private def toTPTP(name: String, t: Term, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): String = clauseAnnotation match {
-    case ClauseAnnotation.NoAnnotation => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}))."
-    case other => s"thf($name, ${role.pretty}, (${toTPTP0(t, Seq.empty)}),${other.pretty})."
+  private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): String = {
+    val sb = new StringBuffer()
+    if (cl.implicitlyBound.nonEmpty) {
+      // make universal quantification and then print term
+      val (prefix, bVarMap) = clauseImplicitsToTPTPQuantifierList(cl.implicitlyBound)
+      sb.append(s"! [$prefix]: (")
+      sb.append(clauseToTPTP(cl, bVarMap))
+      sb.append(")")
+    } else {
+      // only print term
+      sb.append(clauseToTPTP(cl, Map()))
+    }
+
+    // Output whole tptp thf statement
+    if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
+      s"thf($name,${role.pretty},(${sb.toString}))."
+    else
+      s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
+  }
+  // #new vars - index + #oldvars
+  private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String]): String = {
+    val sb = new StringBuilder
+    if (cl.lits.isEmpty) {
+      sb.append(toTPTP0(LitFalse))
+    } else {
+      val litIt = cl.lits.iterator
+      while (litIt.hasNext) {
+        val lit = litIt.next()
+        sb.append("(")
+        if (lit.equational) {
+          val (left,right) = (lit.left, lit.right)
+          if (lit.polarity)
+            sb.append(toTPTP0(===(left,right), bVarMap))
+          else
+            sb.append(toTPTP0(Not(===(left,right)), bVarMap))
+        } else {
+          val term = lit.left
+          if (lit.polarity)
+            sb.append(toTPTP0(term,bVarMap))
+          else
+            sb.append(toTPTP0(Not(term), bVarMap))
+        }
+        sb.append(")")
+        if (litIt.hasNext) sb.append(" | ")
+      }
+    }
+    sb.toString()
   }
 
-  private def toTPTP0(t: Term, bVars: Seq[(String, Type)]): String = "("+{
+  private def toTPTP0(t: Term, bVars: Map[Int,String] = Map()): String = "("+{
     val sig = Signature.get
     t match {
       // Constant symbols
-      case Symbol(id) => {
-        val name = sig(id).name
+      case Symbol(id) => val name = sig(id).name
         if (name.startsWith("'") && name.endsWith("'")) {
           "'" + name.substring(1, name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
         } else {
           name
         }
-      }
       // Give Bound variables names
-      case m@MetaVar(_,scope) => "sV"+scope
-      case Bound(ty, scope) => bVars(scope-1)._1
+      case m@MetaVar(_,scope) => "mv"+scope
+      case Bound(ty, scope) => bVars(scope)
       // Unary connectives
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"
       case Forall(_) => val (bVarTys, body) = collectForall(t)
-                        val newBVars = makeBVarList(bVarTys, bVars.length)
-                        s"${sig(Forall.key).name} [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
+                        val newBVars = makeBVarList(bVarTys, bVars.size)
+                        s"! [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
       case Exists(_) => val (bVarTys, body) = collectExists(t)
-                        val newBVars = makeBVarList(bVarTys, bVars.length)
-                        s"${sig(Exists.key).name} [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
+                        val newBVars = makeBVarList(bVarTys, bVars.size)
+                        s"? [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
       // Binary connectives
       case t1 ||| t2 => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
       case t1 === t2 => s"${toTPTP0(t1, bVars)} ${sig(===.key).name} ${toTPTP0(t2, bVars)}"
@@ -183,8 +206,8 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
       case t1 !=== t2 => s"${toTPTP0(t1, bVars)} ${sig(!===.key).name} ${toTPTP0(t2, bVars)}"
       // General structure
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
-                       val newBVars = makeBVarList(bVarTys, bVars.length)
-                       s"^ [${newBVars.map({case (s,t) => s"$s:${toTPTP(t)}"}).mkString(",")}]: (${toTPTP0(body, newBVars.reverse ++ bVars)})"
+                       val newBVars = makeBVarList(bVarTys, bVars.size)
+                       s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
       case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
@@ -204,6 +227,17 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
     case t1 + t2 => s"(${toTPTP(t1)} + ${toTPTP(t2)})"
     case ∀(t) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
+  }
+
+  private def toTPTP(k: Kind): String = {
+    import leo.datastructures.Kind.->
+    k match {
+      case Kind.typeKind => "$tType"
+      case k1 -> k2 => if (k1.isTypeKind)
+        s"$$tType > ${toTPTP(k2)}"
+      else
+        s"(${toTPTP(k1)}) > ${toTPTP(k2)}"
+    }
   }
 
 
@@ -236,7 +270,8 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
     }
   }
 
-  /** Gather consecutive lambda-abstractions (nameless). */
+  /** Gather consecutive lambda-abstractions (nameless).
+    * Returns [t1, t2, ..., tn] where t1 is the outermost type */
   private def collectLambdas(t: Term): (Seq[Type], Term) = {
     collectLambdas0(Seq.empty, t)
   }
@@ -248,8 +283,31 @@ object ToTPTP extends Function1[ClauseProxy, Output] with Function3[String, Clau
     }
   }
 
-  private def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = Stream.from(offset).zip(tys).map({case (i,t) => (intToName(i), t)})
+  private def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = tys.zipWithIndex.map {case (ty, idx) => (intToName(idx+offset), ty)}
+  private def fusebVarListwithMap(bvarList: Seq[(String, Type)], oldbvarMap: Map[Int,String]): Map[Int, String] = {
+    val newVarCount = bvarList.size
+    val newVarsAsMap = bvarList.zipWithIndex.map {case ((name, ty),idx) => (newVarCount - idx, name)}
+    oldbvarMap.map {case (k,v) => (k+newVarCount.size, v)} ++ Map(newVarsAsMap:_*)
+  }
+  private def clauseImplicitsToTPTPQuantifierList(implicitlyQuantified: Seq[(Int, Type)]): (String, Map[Int, String]) = {
+    val count = implicitlyQuantified.size
+    val sb = new StringBuilder
+    var resultBindingMap: Map[Int, String] = Map()
 
+    var curImplicitlyQuantified = implicitlyQuantified
+    var i = 0
+    while(i < count) {
+      val (scope,ty) = curImplicitlyQuantified.head
+      curImplicitlyQuantified = curImplicitlyQuantified.tail
+      val name = intToName(i)
+      sb.append(s"$name: ${toTPTP(ty)}")
+      resultBindingMap = resultBindingMap + (scope -> name)
+      i = i + 1
+      if (i < count) sb.append(",")
+    }
+
+    (sb.toString(), resultBindingMap)
+  }
 
   // Convert i-th variable to a variable name corresponding to ASCII transformation `intToName`
   // 0 ---> "A"
