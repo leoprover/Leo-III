@@ -274,7 +274,7 @@ object HuetsPreUnification extends Unification {
 
     def canApply(e: UEq) = {
       // we can apply it if the sides of the equation have functional type
-      assert(e._1.ty == e._2.ty, s"Func Rule: Both UEq sides have not-matching type:\n\t${e._1.pretty}\n\t${e._1.ty.pretty}\n\t${e._2.pretty}\n\t${e._2.ty.pretty}")
+      assert(((e._1.ty == e._2.ty) || (e._1.tyFV.nonEmpty || e._2.tyFV.nonEmpty)), s"Func Rule: Both UEq sides have not-matching type:\n\t${e._1.pretty}\n\t${e._1.ty.pretty}\n\t${e._2.pretty}\n\t${e._2.ty.pretty}")
       e._1.ty.isFunType
     }
   }
