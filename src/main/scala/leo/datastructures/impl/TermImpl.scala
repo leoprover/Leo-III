@@ -203,7 +203,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     Map(this.asInstanceOf[Term] -> Set(Position.root))
   else
     fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root), headToTerm(hd) -> Set(Position.root.headPos)), args.feasibleOccurences)
-  val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
+  lazy val scopeNumber = (Math.min(hd.scopeNumber._1, args.scopeNumber._1),Math.min(hd.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 2 + args.size
 
   // Other operations
@@ -358,7 +358,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
     body.headSymbol
   }
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
-  val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
+  lazy val scopeNumber = (Math.min(body.scopeNumber._1, args.scopeNumber._1),Math.min(body.scopeNumber._2, args.scopeNumber._2))
   lazy val size = 1 + body.size + args.size
   lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
   lazy val feasibleOccurences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
@@ -413,7 +413,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 
 
   /** Pretty */
-  lazy val pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
+  lazy val pretty = s"#REDEX#[${body.pretty}] ⋅ (${args.pretty})"
 }
 
 
@@ -442,7 +442,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val ty = typ ->: body.ty
   lazy val fv: Set[(Int, Type)] = body.fv.map{case (i,t) => (i-1,t)}.filter(_._1 > 0)
   lazy val tyFV: Set[Int] = body.tyFV
-  val freeVars = {
+  lazy val freeVars = {
     import leo.datastructures.Term.Bound
     body.freeVars.map{_ match {
       case Bound(ty, scope) => Term.mkBound(ty, scope-1)
@@ -453,7 +453,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
     }
     }
   }
-  val boundVars = body.boundVars
+  lazy val boundVars = body.boundVars
   lazy val looseBounds = body.looseBounds.map(_ - 1).filter(_ > 0)
   lazy val metaVars = body.metaVars
   lazy val symbols: Set[Signature#Key] = body.symbols
@@ -463,7 +463,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
     body.headSymbol
   }
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
-  val scopeNumber = (body.scopeNumber._1 + 1,Math.min(typ.scopeNumber,body.scopeNumber._2))
+  lazy val scopeNumber = (body.scopeNumber._1 + 1,Math.min(typ.scopeNumber,body.scopeNumber._2))
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
   lazy val feasibleOccurences = body.occurrences.filterNot {case oc => oc._1.looseBounds.contains(1)}.mapValues(_.map(_.prependAbstrPos))
@@ -546,8 +546,8 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val ty = ∀(body.ty)
   lazy val fv: Set[(Int, Type)] = body.fv
   lazy val tyFV: Set[Int] = body.tyFV.map(_ - 1).filter(_ > 0)
-  val freeVars = body.freeVars
-  val boundVars = body.boundVars
+  lazy val freeVars = body.freeVars
+  lazy val boundVars = body.boundVars
   lazy val looseBounds = body.looseBounds
   lazy val metaVars = body.metaVars
   lazy val symbols: Set[Signature#Key] = body.symbols
@@ -558,7 +558,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   }
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
 
-  val scopeNumber = (body.scopeNumber._1, body.scopeNumber._2+1)
+  lazy val scopeNumber = (body.scopeNumber._1, body.scopeNumber._2+1)
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
   lazy val feasibleOccurences = body.feasibleOccurences // FIXME
@@ -627,8 +627,8 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = this.betaNormalize.asInstanceOf[TermImpl].symbolMap
   lazy val headSymbol = ???
   lazy val headSymbolDepth = 1 + term.headSymbolDepth
-  val scopeNumber = term.scopeNumber
-  val occurrences = Map[Term, Set[Position]]()
+  lazy val scopeNumber = term.scopeNumber
+  lazy val occurrences = Map[Term, Set[Position]]()
   lazy val feasibleOccurences = Map[Term, Set[Position]]() // TODO
 //    term.headSymbol match {
 //    case Root(head, SNil) => head match {
@@ -920,13 +920,13 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   // Queries
   lazy val fv: Set[(Int, Type)] = hd.fv union tail.fv
   lazy val tyFV: Set[Int] = hd.tyFV union tail.tyFV
-  val freeVars = hd.freeVars ++ tail.freeVars
-  val boundVars = hd.boundVars ++ tail.boundVars
+  lazy val freeVars = hd.freeVars ++ tail.freeVars
+  lazy val boundVars = hd.boundVars ++ tail.boundVars
   lazy val looseBounds = hd.looseBounds ++ tail.looseBounds
   lazy val metaVars = hd.metaVars ++ tail.metaVars
   lazy val symbols = hd.symbols ++ tail.symbols
   lazy val symbolMap: Map[Signature#Key, (Int, Int)] = hd.asInstanceOf[TermImpl].fuseSymbolMap(hd.asInstanceOf[TermImpl].symbolMap, tail.symbolMap)
-  val length = 1 + tail.length
+  lazy val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
   lazy val scopeNumber = (Math.min(hd.scopeNumber._1, tail.scopeNumber._1),Math.min(hd.scopeNumber._2, tail.scopeNumber._2))
   lazy val size = 1+ hd.size + tail.size
@@ -987,13 +987,13 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Queries
   lazy val fv: Set[(Int, Type)] = tail.fv
   lazy val tyFV: Set[Int] = tail.tyFV union hd.typeVars.map(BoundType.unapply(_).get)
-  val freeVars = tail.freeVars
-  val boundVars = tail.boundVars
+  lazy val freeVars = tail.freeVars
+  lazy val boundVars = tail.boundVars
   lazy val looseBounds = tail.looseBounds
   lazy val metaVars = tail.metaVars
   lazy val symbols = hd.symbols ++ tail.symbols
   lazy val symbolMap: Map[Signature#Key, (Int, Int)] = tail.symbolMap
-  val length = 1 + tail.length
+  lazy val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
   lazy val scopeNumber = (tail.scopeNumber._1,Math.min(hd.scopeNumber, tail.scopeNumber._2))
   lazy val size = 1 + tail.size
