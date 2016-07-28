@@ -51,7 +51,7 @@ object PolaritySwitch extends CalculusRule {
   */
 object FullCNF extends CalculusRule {
   override def name: String = "cnf"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
   final def canApply(l: Literal): Boolean = if (!l.equational) {
     l.left match {
