@@ -8,15 +8,17 @@ import leo.datastructures._
 import scala.annotation.tailrec
 
 /**
- * Translation module that takes internal terms or types and translates them
- * to a TPTP representation (in THF format).
- * Translation can be done directly into a string by methods `toString`
- * or indirect into an `Output` object by the `output` method.
- *
- * @see [[Term]], [[leo.datastructures.ClauseProxy]], [[leo.modules.output.Output]]
- * @author Alexander Steen
- * @since 07.11.2014
- */
+  * Translation module that takes internal terms or types and translates them
+  * to a TPTP representation (in THF format).
+  * Translation can be done directly into a string by methods `toString`
+  * or indirect into an `Output` object by the `output` method.
+  *
+  * @see [[Term]], [[leo.datastructures.ClauseProxy]], [[leo.modules.output.Output]]
+  * @author Alexander Steen
+  * @since 07.11.2014
+  * @todo Merge lambda and type lambda in backward translation, can we?
+  * @todo Check if ordering is important (i.e. all types before definitions), see apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output]
+  */
 object ToTPTP {
   ///////////////////////
   // Methods on ClauseProxys
@@ -52,8 +54,11 @@ object ToTPTP {
   // Methods on other term inputs
   ///////////////////////
 
-  // TODO: Check if ordering is important (i.e. all types before definitions)
-  def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
+  /**
+    * Translate the whole package: Take all constants from signature (types, uninterpreted symbols, definitions)
+    * and the formulas in `formulas`. The output sequence contains first the constants from signature, then the formulas.
+    */
+  final def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
     var out: Seq[Output] = Seq()
     Signature.get.allUserConstants foreach { k =>
       val constDecl = output(k)
@@ -63,8 +68,6 @@ object ToTPTP {
       out = ToTPTP.output(formula) +: out}
     out.reverse
   }
-
-  //TODO END
 
   ///////////////////////
   // Methods on symbols/definitions
@@ -101,8 +104,9 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
-  def apply(subst: Subst): Output = new Output {
+  final def apply(subst: Subst): Output = new Output {
     override def apply: String = {
+      return ""
       if (subst.length == 0) {
         ""
       } else {
@@ -123,7 +127,7 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of clause to THF formula
   ///////////////////////////////
-  private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): String = {
+  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): String = {
     val sb = new StringBuffer()
     if (cl.implicitlyBound.nonEmpty) {
       // make universal quantification and then print term
@@ -142,8 +146,8 @@ object ToTPTP {
     else
       s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
   }
-  // #new vars - index + #oldvars
-  private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String]): String = {
+
+  final private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String]): String = {
     val sb = new StringBuilder
     if (cl.lits.isEmpty) {
       sb.append(toTPTP0(LitFalse))
@@ -151,28 +155,51 @@ object ToTPTP {
       val litIt = cl.lits.iterator
       while (litIt.hasNext) {
         val lit = litIt.next()
-        sb.append("(")
         if (lit.equational) {
           val (left,right) = (lit.left, lit.right)
           if (lit.polarity)
-            sb.append(toTPTP0(===(left,right), bVarMap))
+            left match {
+              case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
+                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)} = ${toTPTP0(right,bVarMap)})")
+                case _ => sb.append(s"(${toTPTP0(left,bVarMap)} = (${toTPTP0(right,bVarMap)}))")
+              }
+              case _ => right match {
+                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)}) = ${toTPTP0(right,bVarMap)})")
+                case _ => sb.append(s"((${toTPTP0(left,bVarMap)}) = (${toTPTP0(right,bVarMap)}))")
+              }
+            }
           else
-            sb.append(toTPTP0(Not(===(left,right)), bVarMap))
+            left match {
+              case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
+                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"~ (${toTPTP0(left,bVarMap)} = ${toTPTP0(right,bVarMap)})")
+                case _ => sb.append(s"~ (${toTPTP0(left,bVarMap)} = (${toTPTP0(right,bVarMap)}))")
+              }
+              case _ => right match {
+                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"~ ((${toTPTP0(left,bVarMap)}) = ${toTPTP0(right,bVarMap)})")
+                case _ => sb.append(s"~ ((${toTPTP0(left,bVarMap)}) = (${toTPTP0(right,bVarMap)}))")
+              }
+            }
         } else {
           val term = lit.left
-          if (lit.polarity)
-            sb.append(toTPTP0(term,bVarMap))
-          else
-            sb.append(toTPTP0(Not(term), bVarMap))
+          term match {
+            case Bound(_,_) | MetaVar(_,_) | Symbol(_) => if (lit.polarity)
+                sb.append(toTPTP0(term,bVarMap))
+              else
+                sb.append(s"${Signature.get(Not.key).name} (${toTPTP0(term, bVarMap)})")
+            case _ => if (lit.polarity)
+                sb.append(s"(${toTPTP0(term,bVarMap)})")
+              else
+                sb.append(s"(${Signature.get(Not.key).name} (${toTPTP0(term, bVarMap)}))")
+          }
+
         }
-        sb.append(")")
         if (litIt.hasNext) sb.append(" | ")
       }
     }
     sb.toString()
   }
 
-  private def toTPTP0(t: Term, bVars: Map[Int,String] = Map()): String = "("+{
+  final private def toTPTP0(t: Term, bVars: Map[Int,String] = Map()): String = {
     val sig = Signature.get
     t match {
       // Constant symbols
@@ -189,47 +216,110 @@ object ToTPTP {
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"
       case Forall(_) => val (bVarTys, body) = collectForall(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
-                        s"! [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+        body match {
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))}"
+          case _ => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+        }
+
       case Exists(_) => val (bVarTys, body) = collectExists(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
-                        s"? [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+        body match {
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))}"
+          case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+        }
+
       // Binary connectives
-      case t1 ||| t2 => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 === t2 => s"${toTPTP0(t1, bVars)} ${sig(===.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 & t2 => s"${toTPTP0(t1, bVars)} ${sig(&.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 Impl t2 => s"${toTPTP0(t1, bVars)} ${sig(Impl.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 <= t2  => s"${toTPTP0(t1, bVars)} ${sig(<=.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 <=> t2 => s"${toTPTP0(t1, bVars)} ${sig(<=>.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 ~& t2 => s"${toTPTP0(t1, bVars)} ${sig(~&.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 ~||| t2 => s"${toTPTP0(t1, bVars)} ${sig(~|||.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 <~> t2 => s"${toTPTP0(t1, bVars)} ${sig(<~>.key).name} ${toTPTP0(t2, bVars)}"
-      case t1 !=== t2 => s"${toTPTP0(t1, bVars)} ${sig(!===.key).name} ${toTPTP0(t2, bVars)}"
+      case t1 ||| t2 => t1 match {
+        case _ ||| _| Not(_) | Forall(_) | Exists(_) => t2 match {
+          case _ ||| _ | Not(_) | Forall(_) | Exists(_) => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
+          case _ => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} (${toTPTP0(t2, bVars)})"
+        }
+        case _ => t2 match {
+          case _ ||| _ | Not(_) | Forall(_) | Exists(_) => s"(${toTPTP0(t1, bVars)}) ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
+          case _ => s"(${toTPTP0(t1, bVars)}) ${sig(|||.key).name} (${toTPTP0(t2, bVars)})"
+        }
+      }
+      case t1 & t2 => t1 match {
+        case _ & _| Not(_) | Forall(_) | Exists(_) => t2 match {
+          case _ & _ | Not(_) | Forall(_) | Exists(_) => s"${toTPTP0(t1, bVars)} ${sig(&.key).name} ${toTPTP0(t2, bVars)}"
+          case _ => s"${toTPTP0(t1, bVars)} ${sig(&.key).name} (${toTPTP0(t2, bVars)})"
+        }
+        case _ => t2 match {
+          case _ & _ | Not(_) | Forall(_) | Exists(_) => s"(${toTPTP0(t1, bVars)}) ${sig(&.key).name} ${toTPTP0(t2, bVars)}"
+          case _ => s"(${toTPTP0(t1, bVars)}) ${sig(&.key).name} (${toTPTP0(t2, bVars)})"
+        }
+      }
+      case left === right => left match {
+        case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
+          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)} ${sig(===.key).name} ${toTPTP0(right,bVars)}"
+          case _ => s"${toTPTP0(left,bVars)} ${sig(===.key).name} (${toTPTP0(right,bVars)})"
+        }
+        case _ => right match {
+          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)}) ${sig(===.key).name} ${toTPTP0(right,bVars)}"
+          case _ => s"(${toTPTP0(left,bVars)}) ${sig(===.key).name} (${toTPTP0(right,bVars)})"
+        }
+      }
+      case left !=== right => left match {
+        case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
+          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)} ${sig(!===.key).name} ${toTPTP0(right,bVars)}"
+          case _ => s"${toTPTP0(left,bVars)} ${sig(!===.key).name} (${toTPTP0(right,bVars)})"
+        }
+        case _ => right match {
+          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)}) ${sig(!===.key).name} ${toTPTP0(right,bVars)}"
+          case _ => s"(${toTPTP0(left,bVars)}) ${sig(!===.key).name} (${toTPTP0(right,bVars)})"
+        }
+      }
+      case t1 Impl t2 => s"(${toTPTP0(t1, bVars)}) ${sig(Impl.key).name} (${toTPTP0(t2, bVars)})"
+      case t1 <= t2  => s"(${toTPTP0(t1, bVars)}) ${sig(<=.key).name} (${toTPTP0(t2, bVars)})"
+      case t1 <=> t2 => s"(${toTPTP0(t1, bVars)}) ${sig(<=>.key).name} (${toTPTP0(t2, bVars)})"
+      case t1 ~& t2 => s"(${toTPTP0(t1, bVars)}) ${sig(~&.key).name} (${toTPTP0(t2, bVars)})"
+      case t1 ~||| t2 => s"(${toTPTP0(t1, bVars)}) ${sig(~|||.key).name} (${toTPTP0(t2, bVars)})"
+      case t1 <~> t2 => s"(${toTPTP0(t1, bVars)}) ${sig(<~>.key).name} (${toTPTP0(t2, bVars)})"
       // General structure
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
                        val newBVars = makeBVarList(bVarTys, bVars.size)
-                       s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
-      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"($str @ ${toTPTP0(arg.fold(identity, _ => throw new IllegalArgumentException), bVars)})"})
+        body match {
+          case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))}"
+          case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+        }
+      case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
+        s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, bVars)})"
+      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"$str @ ${arg.fold(
+        //Translate terms as arguments
+        {
+          case termArg@(Bound(_,_) | Symbol(_) | MetaVar(_,_)) => toTPTP0(termArg, bVars)
+          case termArg => "("+toTPTP0(termArg, bVars)+")"
+        },
+        //Translate types as arguments
+        tyArg =>
+          "("+toTPTP0(tyArg)+")"
+      )}"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
     }
-  }+")"
+  }
 
   ///////////////////////////////
   // Translation of THF types
   ///////////////////////////////
 
 
-  private def toTPTP(ty: Type): String = ty match {
+  final private def toTPTP(ty: Type): String = ty match {
+    case ∀(t) => val (tyAbsCount, bodyTy) = collectTyForalls(0, ty)
+      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + toTPTP0(bodyTy)
+    case _ => toTPTP0(ty)
+  }
+  final private def toTPTP0(ty: Type): String = ty match {
     case BaseType(id) => Signature.get(id).name
-    case BoundType(scope) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
+    case BoundType(scope) => "T" + intToName(scope- 1)
     case t1 -> t2 => s"(${toTPTP(t1)} > ${toTPTP(t2)})"
     case t1 * t2 => s"(${toTPTP(t1)} * ${toTPTP(t2)})"
     case t1 + t2 => s"(${toTPTP(t1)} + ${toTPTP(t2)})"
-    case ∀(t) => throw new IllegalArgumentException("TPTP THF backward translation of polymorphic types not supported yet")
+    case ∀(t) => throw new IllegalArgumentException("Polytype should have been caught before")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
   }
 
-  private def toTPTP(k: Kind): String = {
+  final private def toTPTP(k: Kind): String = {
     import leo.datastructures.Kind.->
     k match {
       case Kind.typeKind => "$tType"
@@ -240,29 +330,37 @@ object ToTPTP {
     }
   }
 
-
   ///////////////////////////////
   // Utility methods
   ///////////////////////////////
 
   /** Gather consecutive all-quantifications (nameless). */
-  private def collectForall(t: Term): (Seq[Type], Term) = {
+  final private def collectForall(t: Term): (Seq[Type], Term) = {
     collectForall0(Seq.empty, t)
   }
   @tailrec
-  private def collectForall0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
+  @inline final private def collectForall0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case Forall(ty :::> b) => collectForall0(vars :+ ty, b)
       case Forall(_) => throw new IllegalArgumentException("Unexcepted body term in all quantification decomposition.")
       case _ => (vars, t)
     }
   }
+
+  @tailrec
+  private final def collectTyForalls(count: Int, ty: Type): (Int, Type) = {
+    ty match {
+      case ∀(t) => collectTyForalls(count+1, t)
+      case _ => (count, ty)
+    }
+  }
+
   /** Gather consecutive exist-quantifications (nameless). */
-  private def collectExists(t: Term): (Seq[Type], Term) = {
+  final private def collectExists(t: Term): (Seq[Type], Term) = {
     collectExists0(Seq.empty, t)
   }
   @tailrec
-  private def collectExists0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
+  @inline final private def collectExists0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case Exists(ty :::> b) => collectExists0(vars :+ ty, b)
       case Exists(_) => throw new IllegalArgumentException("Unexcepted body term in existsl quantification decomposition.")
@@ -272,26 +370,39 @@ object ToTPTP {
 
   /** Gather consecutive lambda-abstractions (nameless).
     * Returns [t1, t2, ..., tn] where t1 is the outermost type */
-  private def collectLambdas(t: Term): (Seq[Type], Term) = {
+  final private def collectLambdas(t: Term): (Seq[Type], Term) = {
     collectLambdas0(Seq.empty, t)
   }
   @tailrec
-  private def collectLambdas0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
+  @inline final private def collectLambdas0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case ty :::> b => collectLambdas0(vars :+ ty, b)
       case _ => (vars, t)
     }
   }
 
-  private def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = tys.zipWithIndex.map {case (ty, idx) => (intToName(idx+offset), ty)}
-  private def fusebVarListwithMap(bvarList: Seq[(String, Type)], oldbvarMap: Map[Int,String]): Map[Int, String] = {
-    val newVarCount = bvarList.size
-    val newVarsAsMap = bvarList.zipWithIndex.map {case ((name, ty),idx) => (newVarCount - idx, name)}
-    oldbvarMap.map {case (k,v) => (k+newVarCount.size, v)} ++ Map(newVarsAsMap:_*)
+  @tailrec
+  private final def collectTyLambdas(count: Int, t: Term): (Int, Term) = {
+    t match {
+      case TypeLambda(body) => collectTyLambdas(count+1, body)
+      case _ => (count, t)
+    }
   }
-  private def clauseImplicitsToTPTPQuantifierList(implicitlyQuantified: Seq[(Int, Type)]): (String, Map[Int, String]) = {
+
+
+  private final def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = {
+    val tysCount = tys.size
+    tys.zipWithIndex.map {case (ty, idx) => (intToName(offset + idx), ty)}
+  }
+  private final def fusebVarListwithMap(bvarList: Seq[(String, Type)], oldbvarMap: Map[Int,String]): Map[Int, String] = {
+    val newVarCount = bvarList.size
+    val newVarsAsKeyValueList = bvarList.zipWithIndex.map {case ((name, ty),idx) => (newVarCount - idx, name)}
+    oldbvarMap.map {case (k,v) => (k+newVarCount, v)} ++ Map(newVarsAsKeyValueList:_*)
+  }
+
+  final private def clauseImplicitsToTPTPQuantifierList(implicitlyQuantified: Seq[(Int, Type)]): (String, Map[Int, String]) = {
     val count = implicitlyQuantified.size
-    val sb = new StringBuilder
+    var sb: Seq[String] = Seq()
     var resultBindingMap: Map[Int, String] = Map()
 
     var curImplicitlyQuantified = implicitlyQuantified
@@ -299,35 +410,36 @@ object ToTPTP {
     while(i < count) {
       val (scope,ty) = curImplicitlyQuantified.head
       curImplicitlyQuantified = curImplicitlyQuantified.tail
-      val name = intToName(i)
-      sb.append(s"$name: ${toTPTP(ty)}")
+      val name = intToName(count - i - 1)
+      sb = s"$name: ${toTPTP(ty)}" +: sb
       resultBindingMap = resultBindingMap + (scope -> name)
       i = i + 1
-      if (i < count) sb.append(",")
     }
-
-    (sb.toString(), resultBindingMap)
+    (sb.mkString(","), resultBindingMap)
   }
 
-  // Convert i-th variable to a variable name corresponding to ASCII transformation `intToName`
-  // 0 ---> "A"
-  // 1 ---> "B"
-  // 25 ---> "Z"
-  // 26 ---> "ZA"
-  // etc.
 
-  private val asciiA = 65
-  private val asciiZ = 90
-  private val range = asciiZ - asciiA // range 0,1,....
+  ///////////////////////////////
+  // Naming of variables
+  ///////////////////////////////
 
-  private def intToName(i: Int): String = i match {
+  @inline final private val asciiA = 65
+  @inline final private val asciiZ = 90
+  @inline final private val range = asciiZ - asciiA // range 0,1,....
+
+  /**
+    * Convert index i (variable in de-bruijn format) to a variable name corresponding to ASCII transformation as follows:
+    * 0 ---> "A",
+    * 1 ---> "B",
+    * 25 ---> "Z",
+    * 26 ---> "ZA", ... etc.
+    */
+  final private def intToName(i: Int): String = i match {
     case n if n <= range => s"${intToChar(i)}"
     case n if n > range => s"Z${intToName(i-range-1)}"
   }
-
-  private def intToChar(i: Int): Char = i match {
+  final private def intToChar(i: Int): Char = i match {
     case n if n <= range => (n + asciiA).toChar
     case _ => throw new IllegalArgumentException
   }
-
 }
