@@ -980,7 +980,7 @@ package  externalProverControl {
         }
       }
       val submitClauses: Set[AnnotatedClause] = modifyClauses + AnnotatedClause(Clause(Literal(LitFalse(), true)), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
-      val send = ToTPTP(submitClauses).map(_.output)
+      val send = ToTPTP(submitClauses).map(_.apply)
       Out.finest(s"LEO input:")
       Out.finest(s"${send.mkString("\n")}")
       Out.finest("LEO INPUT END")
