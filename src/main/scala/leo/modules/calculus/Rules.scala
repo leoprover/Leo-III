@@ -62,7 +62,7 @@ object FuncExt extends CalculusRule {
 
 object BoolExt extends CalculusRule {
   val name = "bool_ext"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  override val inferenceStatus = Some(SZS_Theorem)
 
   def canApply(l: Literal): Boolean = l.equational && l.left.ty == Signature.get.o
   type ExtLits = Seq[Literal]
@@ -270,18 +270,19 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"withLits_without_withLiteral: \n\t${(withLits_without_withLiteral).map(_.pretty).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
-    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound))) // TOFIX reordering done
+    val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.max
+    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar))) // TOFIX reordering done
     Out.finest(s"IntoLits: ${intoClause.lits.map(_.pretty).mkString("\n\t")}")
     Out.finest(s"shiftedIntoLits: ${shiftedIntoLits.map(_.pretty).mkString("\n\t")}")
 
     // val intoLiteral = shiftedIntoLits(intoIndex) // FIXME Avoid reordering
     val intoLiteral = intoClause.lits(intoIndex)
     val (findWithin, otherSide) = if (intoSide == Literal.leftSide)
-      (intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound)),
-        intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound)))
+      (intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)),
+        intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
     else
-      (intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound)),
-        intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound)))
+      (intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)),
+        intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
 
 
     Out.finest(s"findWithin: ${findWithin.pretty}")
@@ -294,7 +295,7 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty}")
     Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty}")
-    val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount)))
+    val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount), Subst.shift(withMaxTyVar)))
 
     Out.finest(s"unificationLit: ${unificationLit.pretty}")
 
