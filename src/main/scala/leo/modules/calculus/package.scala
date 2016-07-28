@@ -181,6 +181,7 @@ package object calculus {
   /** Checks whether the types `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the types are not unifiable, otherwise they may be. */
   @inline final def mayUnify(s: Type, t: Type): Boolean = {
+    if (s == t) return true
     import leo.datastructures.Type._
     (s,t) match {
       case (BaseType(id1), BaseType(id2)) => id1 == id2
