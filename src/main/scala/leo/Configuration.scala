@@ -198,10 +198,10 @@ object Configuration extends DefaultConfiguration {
   }
 
   protected def multiDefOutput(paramName: String): Output = new Output {
-    val output = s"Parameter $paramName was defined multiple times. First occurrence is used, the rest is ignored."
+    val apply = s"Parameter $paramName was defined multiple times. First occurrence is used, the rest is ignored."
   }
   protected def intExpectedOutput(paramName: String, actual: String): Output = new Output {
-    val output = s"Parameter $paramName expects an Integer value, but '$actual' was given. Default value is used."
+    val apply = s"Parameter $paramName expects an Integer value, but '$actual' was given. Default value is used."
   }
   protected def safeStrToInt(str: String): Option[Int] = try {
     Some(str.toInt)

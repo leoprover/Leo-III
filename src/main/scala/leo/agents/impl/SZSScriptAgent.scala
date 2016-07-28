@@ -26,13 +26,14 @@ object SZSScriptAgent {
 
   def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
     val ins = in.map{c => AnnotatedClause(c.cl, Role_Axiom, ClauseAnnotation.NoAnnotation, c.properties)}+ AnnotatedClause(Clause(Seq(Literal(LitTrue, false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
-    ToTPTP(ins).map(_.output)
+    ToTPTP(ins).map(_.apply)
   }
 
   protected[agents] val h : scala.collection.mutable.Map[String, SZSScriptAgent] = new scala.collection.mutable.HashMap[String, SZSScriptAgent]
 
   /**
     * A list of all registered script agents
+ *
     * @return All SZSScriptAgents registered in the Blackbaord
     */
   def allScriptAgents : Iterable[SZSScriptAgent] = h.synchronized(h.values)
@@ -97,7 +98,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
       b.append("  Out: "+line+"\n")
       getSZS(line) match {
         case Some(status) if status == SZS_Theorem =>     // TODO Salvage other information
-          Out.debug(s"[$name]: Got positive ${status.output} from the external prover.")
+          Out.debug(s"[$name]: Got positive ${status.apply} from the external prover.")
           var r =  Result()
             .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
             .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
