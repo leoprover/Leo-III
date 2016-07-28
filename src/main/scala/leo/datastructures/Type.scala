@@ -230,6 +230,9 @@ abstract class Kind extends Pretty {
 }
 
 object Kind {
+
+  val typeKind: Kind = TypeKind
+
   /** Build kind k1 -> k2  */
   def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
   /** Build kind `in1 -> in2 -> in3 -> ... -> out`. */
@@ -240,5 +243,11 @@ object Kind {
   def mkFunKind(in: Seq[Kind]): Kind = in match {
     case Seq(ty)            => ty
     case Seq(ty, tys @ _*)  => mkFunKind(ty, mkFunKind(tys))
+  }
+  object -> {
+    def unapply(k: Kind): Option[(Kind, Kind)] = k match {
+      case FunKind(l,r) => Some((l,r))
+      case _ => None
+    }
   }
 }

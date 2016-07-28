@@ -84,7 +84,7 @@ object Utility {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.foreach { case key =>
       val name = sig.apply(key).name
-      sb.append(ToTPTP(name + "_type", key).output)
+      sb.append(ToTPTP(key))
         sb.append("\n")
     }
     sb.dropRight(1).toString()
@@ -94,7 +94,7 @@ object Utility {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.intersect(constants).foreach { case key =>
       val name = sig.apply(key).name
-      sb.append(ToTPTP(name + "_type", key).output)
+      sb.append(ToTPTP(key))
       sb.append("\n")
     }
     sb.dropRight(1).toString()
@@ -134,7 +134,7 @@ object Utility {
 
   private def mkTPTP(cl : ClauseProxy) : String = {
     try{
-      ToTPTP.withAnnotation(cl).output
+      ToTPTP.withAnnotation(cl)
     } catch {
       case e : Throwable => leo.Out.warn(s"Could not translate: ${cl.pretty}.\n Error: ${e.toString}"); cl.pretty
     }
@@ -227,9 +227,9 @@ object Utility {
 class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
 case class SZSOutput(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
-  override def output: String = if (furtherInfo == "") {
-    s"% SZS status ${status.output} for $problem"
+  override def apply: String = if (furtherInfo == "") {
+    s"% SZS status ${status.apply} for $problem"
   } else {
-    s"% SZS status ${status.output} for $problem : $furtherInfo"
+    s"% SZS status ${status.apply} for $problem : $furtherInfo"
   }
 }

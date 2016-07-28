@@ -47,6 +47,6 @@ case class Aggregate_SZSTask(szs : StatusSZS, c : Context, a : TAgent) extends T
   override def run: Result = Result().insert(StatusType)(SZSStore(szs, c))
   override def bid: Double = 0.5
 
-  override val pretty: String = s"$name(${szs.output} -> ${c.contextID})"
-  override val toString: String = s"$name(${szs.output} -> ${c.contextID})"
+  override val pretty: String = s"$name(${szs.apply} -> ${c.contextID})"
+  override val toString: String = s"$name(${szs.apply} -> ${c.contextID})"
 }
