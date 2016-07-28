@@ -47,30 +47,30 @@ class DomainConstrainedSplittingTest extends FunSuite{
   test("Cardinality FormulaStore 1", Ignored){
     val ax = DomainConstrainedSplitting.cardinalityAxioms(1)(Signature.get.o)
     Out.output("\nCardinality 1 Test:")
-    Out.output((ax map {t => Out.output(ToTPTP(t).output)}).mkString("\n"))
+    Out.output((ax map {t => Out.output(ToTPTP.output(t))}).mkString("\n"))
   }
 
   test("Cardinality FormulaStore 2", Ignored){
     Out.output("\nCardinality 2 Test:")
     val ax = DomainConstrainedSplitting.cardinalityAxioms(2)(Signature.get.o)
-    Out.output((ax map {t => Out.output(ToTPTP(t).output)}).mkString("\n"))
+    Out.output((ax map {t => Out.output(ToTPTP.output(t))}).mkString("\n"))
   }
 
   test("Cardinality FormulaStore 3", Ignored){
     Out.output("\nCardinality 3 Test:")
     val ax = DomainConstrainedSplitting.cardinalityAxioms(3)(Signature.get.o)
-    Out.output((ax map {t => Out.output(ToTPTP(t).output)}).mkString("\n"))
+    Out.output((ax map {t => Out.output(ToTPTP.output(t))}).mkString("\n"))
   }
 
   test("Cardinality FormulaStore 4", Ignored){
     Out.output("\nCardinality 4 Test:")
     val ax = DomainConstrainedSplitting.cardinalityAxioms(4)(Signature.get.o)
-    Out.output((ax map {t => Out.output(ToTPTP(t).output)}).mkString("\n"))
+    Out.output((ax map {t => Out.output(ToTPTP.output(t))}).mkString("\n"))
   }
 
   test("Cardinality FormulaStore 5", Ignored){
     Out.output("\nCardinality 5 Test:")
     val ax = DomainConstrainedSplitting.cardinalityAxioms(5)(Signature.get.o)
-    Out.output((ax map {t => Out.output(ToTPTP(t).output)}).mkString("\n"))
+    Out.output((ax map {t => Out.output(ToTPTP.output(t))}).mkString("\n"))
   }
 }
