@@ -21,9 +21,9 @@ import leo.datastructures._
   @inline final lazy val typeVars: Set[Int] = lits.flatMap(_.tyFV).distinct.toSet
 
   /** Those literals in `lits` that are positive. */
-  @inline final val posLits: Seq[Literal] = lits.view.filter(_.polarity)
+  @inline final lazy val posLits: Seq[Literal] = lits.filter(_.polarity)
   /** Those literals in `lits` that are negative. */
-  @inline final val negLits: Seq[Literal] = lits.view.filter(!_.polarity)
+  @inline final lazy val negLits: Seq[Literal] = lits.filter(!_.polarity)
 
   /** True iff this clause is ground. */
   @inline final val ground: Boolean = lits.view.forall(_.ground)
