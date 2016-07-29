@@ -65,6 +65,7 @@ package object calculus {
       *  wrt. the context of this generator. */
     def next(ty: Type): (Int, Type)
     /** Return all already used variables within the context of this generator.
+      * The "newest" variable is the head of the list.
       * @example If `f` is a FreshVarGen for clause `cl`, then
       *          `f.existingVars == cl.implicitlyBound`
       *          he list of all free variables of a clause*/
