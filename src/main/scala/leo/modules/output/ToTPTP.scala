@@ -106,7 +106,6 @@ object ToTPTP {
 
   final def apply(subst: Subst): Output = new Output {
     override def apply: String = {
-      return ""
       if (subst.length == 0) {
         ""
       } else {
