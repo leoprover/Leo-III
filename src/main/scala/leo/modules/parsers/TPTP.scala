@@ -21,16 +21,16 @@ import scala.util.parsing.input.Reader
  * @note Updated last on 22.04.2014
  */
 object TPTP {
-//  /**
-//   * Parses a complete TPTP file yielding a [[leo.datastructures.tptp.Commons.TPTPInput]] value if succeeded.
-//   * On success, the result is wrapped in an instance of [[scala.util.Right]]; on failure
-//   * a [[scala.util.Left]] containing an error message is returned.
-//   *
-//   * @param input A [[scala.util.parsing.input.Reader]] wrapping the TPTP input
-//   * @return A representation of the in file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
-//   */
-//  def parseFile(src: io.Source) =
-//    TPTPParser2.parseSource(src).right map (_._1)
+  /**
+   * Parses a complete TPTP file yielding a [[leo.datastructures.tptp.Commons.TPTPInput]] value if succeeded.
+   * On success, the result is wrapped in an instance of [[scala.util.Right]]; on failure
+   * a [[scala.util.Left]] containing an error message is returned.
+   *
+   * @param src A [[scala.util.parsing.input.Reader]] wrapping the TPTP input
+   * @return A representation of the in file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
+   */
+  def parseFile(src: io.Source) =
+    TPTPParser2.parseSource(src).right map (_._1)
 //
 //  /**
 //   * Convenience method for parsing. Same as `parseFile(input: Reader[Char])`, just that
@@ -55,11 +55,11 @@ object TPTP {
   //def parseTPI(input: String) =
 
 
-  def parseFile(src: io.Source) = {
-    val input = src.getLines mkString "\n"
-//    val input = new CharArrayReader(src.toArray)
-    extract(parse(input, tptpFile))
-  }
+//  def parseFile(src: io.Source) = {
+//    val input = src.getLines mkString "\n"
+////    val input = new CharArrayReader(src.toArray)
+//    extract(parse(input, tptpFile))
+//  }
 //
 //  def parseFile(input: Reader[Char])=
 //    extract(parse(input, tptpFile))
