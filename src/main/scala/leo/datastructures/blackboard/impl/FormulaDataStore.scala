@@ -109,7 +109,7 @@ object FormulaDataStore extends DataStore {
   def addNewFormula(formula : ClauseProxy, context: Context) : Boolean = {
     // TODO: Implement Sets to check containment of Clauses.
     if(Clause.trivial(formula.cl)) return false
-    if (FormulaSet.getAll(context).exists(c => c.cl.cong(formula.cl)))
+    if (FormulaSet.getAll(context).exists(c => c.cl == formula.cl))
       false
     else {
       FormulaSet.add(formula, context)
