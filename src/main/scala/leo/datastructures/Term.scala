@@ -186,6 +186,14 @@ object Term extends TermBank {
   }}
 
   // Further utility functions
+  final def mkDisjunction(terms: Seq[Term]): Term = terms match {
+    case Seq() => LitFalse()
+    case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
+  }
+  final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
+    bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
+  }
+
   /** Convert tuple (i,ty) to according de-Bruijn index */
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   /** Convert tuple (i,j) to according de-Bruijn index (where j is a type-de-Bruijn index) */
