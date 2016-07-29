@@ -32,15 +32,6 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   def maxLitsMap: Map[LitMaxFlag, Seq[Literal]]
 
-  /** True iff this clause is ground. */
-  def ground: Boolean
-  /** True iff this clause is purely positive. i.e.
-    * if all literals are positive. */
-  def positive: Boolean
-  /** True iff this clause is purely negative. i.e.
-    * if all literals are negative. */
-  def negative: Boolean
-
   @inline final def maxLits: Seq[Literal] = maxLitsMap(LitMax)
   @inline final def strictlyMaxLits: Seq[Literal] = maxLitsMap(LitStrictlyMax)
 
@@ -98,6 +89,15 @@ object Clause {
     * (1) one literal always evaluates to true, or
     * (2) it contains two literals that are equal except for their polarity. */
   final def trivial(c: Clause): Boolean = c.lits.exists(Literal.isTrue) || c.posLits.exists(l => c.negLits.exists(l2 => l.unsignedEquals(l2)))
+
+  /** True iff this clause is ground. */
+  @inline final def ground(c: Clause): Boolean = c.lits.forall(_.ground)
+  /** True iff this clause is purely positive. i.e.
+    * if all literals are positive. */
+  @inline final def positive(c: Clause): Boolean = c.negLits.isEmpty
+  /** True iff this clause is purely negative. i.e.
+    * if all literals are negative. */
+  @inline final def negative(c: Clause): Boolean = c.posLits.isEmpty
 
   /** True iff this clause is horn. */
   @inline final def horn(c: Clause): Boolean = c.posLits.length <= 1

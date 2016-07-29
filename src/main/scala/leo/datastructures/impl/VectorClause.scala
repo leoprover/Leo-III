@@ -24,15 +24,6 @@ import leo.datastructures._
   @inline final lazy val posLits: Seq[Literal] = lits.filter(_.polarity)
   /** Those literals in `lits` that are negative. */
   @inline final lazy val negLits: Seq[Literal] = lits.filter(!_.polarity)
-
-  /** True iff this clause is ground. */
-  @inline final val ground: Boolean = lits.view.forall(_.ground)
-  /** True iff this clause is purely positive. i.e.
-    * if all literals are positive. */
-  @inline final val positive: Boolean = negLits.isEmpty
-  /** True iff this clause is purely negative. i.e.
-    * if all literals are negative. */
-  @inline final val negative: Boolean = posLits.isEmpty
 }
 
 object VectorClause {
