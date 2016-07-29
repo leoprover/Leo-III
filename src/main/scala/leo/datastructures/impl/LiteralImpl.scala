@@ -5,7 +5,7 @@ import leo.datastructures.{LitFalse, LitTrue, Term, Literal}
 
 protected[impl] sealed abstract class LiteralImpl extends Literal {
   @inline final protected def printPol(pol: Boolean): String = if (pol) "t" else "f"
-  override def pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
+  override lazy val pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
 }
 
 object LiteralImpl {

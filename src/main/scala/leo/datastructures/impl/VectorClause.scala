@@ -18,12 +18,12 @@ import leo.datastructures._
   }
   @inline final def maxImplicitlyBound: Int = if (implicitlyBound.isEmpty) 0 else implicitlyBound.head._1
 
-  @inline final def typeVars: Set[Int] = lits.flatMap(_.tyFV).distinct.toSet
+  @inline final lazy val typeVars: Set[Int] = lits.flatMap(_.tyFV).distinct.toSet
 
   /** Those literals in `lits` that are positive. */
-  @inline final val posLits: Seq[Literal] = lits.filter(_.polarity)
+  @inline final val posLits: Seq[Literal] = lits.view.filter(_.polarity)
   /** Those literals in `lits` that are negative. */
-  @inline final val negLits: Seq[Literal] = lits.filter(!_.polarity)
+  @inline final val negLits: Seq[Literal] = lits.view.filter(!_.polarity)
 
   /** True iff this clause is ground. */
   @inline final val ground: Boolean = lits.view.forall(_.ground)
