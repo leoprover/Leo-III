@@ -413,7 +413,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 
 
   /** Pretty */
-  lazy val pretty = s"#REDEX#[${body.pretty}] ⋅ (${args.pretty})"
+  lazy val pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
 }
 
 
