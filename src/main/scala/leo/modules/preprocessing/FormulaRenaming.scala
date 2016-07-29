@@ -58,8 +58,8 @@ object FormulaRenaming extends CalculusRule{
     assert(c.lits.size == 1, "The conjecture should contain exactly one clause.")
     if(c.lits.size > 1) return (c, Seq())
     val lit = c.lits.head
-    val (nLit, units) = apply(lit.flipPolarity, delta)
-    (Clause(nLit.flipPolarity), units)
+    val (nLit, units) = apply(Literal.flipPolarity(lit), delta)
+    (Clause(Literal.flipPolarity(nLit)), units)
   }
 
 
