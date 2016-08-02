@@ -5,6 +5,8 @@ import leo.datastructures.impl.Signature
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
+import leo.modules.SZSException
+
 import scala.annotation.tailrec
 
 /**
@@ -110,23 +112,33 @@ object ToTPTP {
         ""
       } else {
         val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)
+        val varmapMaxKey = if (varmap.nonEmpty) varmap.keySet.max else 0
+        val varmapSize = varmap.size
         val sb = new StringBuilder
         var i = 1
         val max = subst.length
         while (i <= max) {
-          val erg = subst.substBndIdx(i)
-          erg match {
-//            case TermFront(t) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, varmap)}))")
-            case TermFront(t) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${t.pretty}))")
-//            case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(j, varmap)}))")
-            case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${j}))")
-            case _ => ???
+          if (varmap.keySet.contains(i)) {
+            val erg = subst.substBndIdx(i)
+            try {
+              erg match {
+                case TermFront(t) => {
+                  val newVars = t.looseBounds.map(k => (k, intToName(varmapSize + k - varmapMaxKey - 1)))
+                  val varmap2 = varmap ++ newVars
+                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, varmap2)}))")
+                }
+                case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${intToName(varmapSize + j - varmapMaxKey - 1)}))")
+                case _ => throw new SZSException(SZS_Error, "Types in term substitution")
+              }
+            } catch {
+              case e: Exception => leo.Out.warn(s"Could not translate substitution entry to TPTP format, Exception raised:\n${e.toString}")
+                sb.append(s"bind($i, $$thf(${erg.pretty}))")
+            }
+            sb.append(",")
           }
-          i = i+1
-          if (i <= max) sb.append(",")
+          i = i + 1
         }
-        //sb.append(s"bind($max, $$thf(${subst.substBndIdx(max).pretty}))")
-        sb.toString()
+        sb.init.toString()
       }
     }
   }
@@ -178,12 +190,12 @@ object ToTPTP {
           else
             left match {
               case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"~ (${toTPTP0(left,bVarMap)} = ${toTPTP0(right,bVarMap)})")
-                case _ => sb.append(s"~ (${toTPTP0(left,bVarMap)} = (${toTPTP0(right,bVarMap)}))")
+                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)} != ${toTPTP0(right,bVarMap)})")
+                case _ => sb.append(s"(${toTPTP0(left,bVarMap)} != (${toTPTP0(right,bVarMap)}))")
               }
               case _ => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"~ ((${toTPTP0(left,bVarMap)}) = ${toTPTP0(right,bVarMap)})")
-                case _ => sb.append(s"~ ((${toTPTP0(left,bVarMap)}) = (${toTPTP0(right,bVarMap)}))")
+                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)}) != ${toTPTP0(right,bVarMap)})")
+                case _ => sb.append(s"((${toTPTP0(left,bVarMap)}) != (${toTPTP0(right,bVarMap)}))")
               }
             }
         } else {
