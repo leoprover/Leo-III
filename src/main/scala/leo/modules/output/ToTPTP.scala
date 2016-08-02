@@ -104,20 +104,28 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
-  final def apply(subst: Subst): Output = new Output {
+  final def apply(subst: Subst, implicitlyBound: Seq[(Int, Type)]): Output = new Output {
     override def apply: String = {
       if (subst.length == 0) {
         ""
       } else {
+        val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)
         val sb = new StringBuilder
         var i = 1
         val max = subst.length
-        while (i < max) {
+        while (i <= max) {
           val erg = subst.substBndIdx(i)
-          sb.append(s"bind($i, $$thf(${erg.pretty})),")
+          erg match {
+//            case TermFront(t) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, varmap)}))")
+            case TermFront(t) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${t.pretty}))")
+//            case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(j, varmap)}))")
+            case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${j}))")
+            case _ => ???
+          }
           i = i+1
+          if (i <= max) sb.append(",")
         }
-        sb.append(s"bind($max, $$thf(${subst.substBndIdx(max).pretty}))")
+        //sb.append(s"bind($max, $$thf(${subst.substBndIdx(max).pretty}))")
         sb.toString()
       }
     }
@@ -390,7 +398,6 @@ object ToTPTP {
 
 
   private final def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = {
-    val tysCount = tys.size
     tys.zipWithIndex.map {case (ty, idx) => (intToName(offset + idx), ty)}
   }
   private final def fusebVarListwithMap(bvarList: Seq[(String, Type)], oldbvarMap: Map[Int,String]): Map[Int, String] = {
