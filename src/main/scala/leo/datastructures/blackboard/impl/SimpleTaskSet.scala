@@ -21,6 +21,8 @@ import scala.collection.mutable
   */
 class SimpleTaskSet extends TaskSet{
 
+  // TODO Save blocked tasks in extra queue (no unnecessary looping in scheduler)
+
   private val agentTasks : mutable.Map[Agent, mutable.Set[Task]] = mutable.HashMap[Agent, mutable.Set[Task]]()
   private val agentExec : mutable.Map[Agent, Int] = mutable.HashMap[Agent, Int]()
 
@@ -80,6 +82,7 @@ class SimpleTaskSet extends TaskSet{
     */
   override def finish(t: Task): Unit = synchronized {
     agentExec.put(t.getAgent, agentExec.getOrElse(t.getAgent, 1)-1)
+    LockSet.releaseTask(t)
     if(ActiveTracker.decAndGet(s"Finished:\n  ${t.pretty}") <= 0)
       Blackboard().forceCheck()
   }
