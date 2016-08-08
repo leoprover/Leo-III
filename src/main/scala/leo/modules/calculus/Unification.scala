@@ -4,10 +4,32 @@ import leo.datastructures.Type.BoundType
 import leo.datastructures.{Subst, Term, Type}
 import leo.modules.output.SZS_EquiSatisfiable
 
+/**
+  * TODO plan:
+
+unif ( newproblems, unsolved, solved, ...)
+          ^           ^ after detexhaust
+          initial: Set[Term=Term]
+          preprocessed: Set[(Term=Term,Depth)] --sorted set?
+
+          von newproblems -> preprocessed
+              lambdas abnehmen
+              detExhaust (delete, bind, decomp)
+                                     ^---^ nach newproblems
+
+          unsolved: wie üblich (rigid-rigid > flex-rigid > flex-flex)
+            if rigid-rigid, fail
+            if flex-flex (--> all flex-flex), done
+            else flex-rigid
+
+  */
+
 trait Unification extends CalculusRule {
   val name = "pre_uni_full"
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
+  /** The Depth is the number of lambda abstractions under which a term is nested.*/
+  type Depth = Int
   /** A `UEq` is an unsolved equation. */
   type UEq = (Term, Term)
   /** A `SEq` is a solved equation. */
@@ -218,14 +240,15 @@ object HuetsPreUnification extends Unification {
               detExhaust(vargen, applySubstToList(sb, Subst.id, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)),
                 applySubstToList(sb, Subst.id, sproblems) :+ be, uTyProblems, sTyProlems)
             } else {
-              // apply Func /* by Alex */
-              val ind4 = uproblems.indexWhere(FuncRule.canApply)
-              if (ind4 > -1) {
-                leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-                detExhaust(vargen, (uproblems.take(ind4) :+ FuncRule(vargen, uproblems(ind4))) ++ uproblems.drop(ind4 + 1),
-                  sproblems, uTyProblems, sTyProlems)
-              }
-              else {
+//              // apply Func /* by Alex */
+//              val ind4 = uproblems.indexWhere(FuncRule.canApply)
+//              if (ind4 > -1) {
+//                leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
+//                detExhaust(vargen, (uproblems.take(ind4) :+ FuncRule(vargen, uproblems(ind4))) ++ uproblems.drop(ind4 + 1),
+//                  sproblems, uTyProblems, sTyProlems)
+//              }
+//              else
+              {
                 // none is applicable, do nothing
                 (uproblems, sproblems, uTyProblems, sTyProlems)
               }
@@ -448,7 +471,10 @@ object HuetsPreUnification extends Unification {
 
   private final val dontcaredepth = -1
   // the state of the search space
-  protected case class MyConfiguration(uproblems: Seq[UEq], sproblems: Seq[SEq], uTyProblems: Seq[UTEq], sTyProblems: Seq[STEq], result: Option[UnificationResult], isTerminal: Boolean, searchDepth: Int)
+  protected case class MyConfiguration(uproblems: Seq[UEq], sproblems: Seq[SEq],
+                                       uTyProblems: Seq[UTEq], sTyProblems: Seq[STEq],
+                                       result: Option[UnificationResult], isTerminal: Boolean,
+                                       searchDepth: Int)
     extends Configuration[UnificationResult] {
     def this(result: Option[UnificationResult]) = this(Seq(), Seq(), Seq(), Seq(), result, true, dontcaredepth) // for success
     def this(l: Seq[UEq], s: Seq[UEq], unificationDepth: Int) = this(l, s, Seq(), Seq(), None, false, unificationDepth) // for in node
