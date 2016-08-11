@@ -27,3 +27,6 @@ project/target/*
 *.swp
 *~
 ext_config
+
+# PicoSAT
+src/native/picosat-965
