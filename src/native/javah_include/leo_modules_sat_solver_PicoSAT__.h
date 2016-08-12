@@ -23,14 +23,6 @@ JNIEXPORT jstring JNICALL Java_leo_modules_sat_1solver_PicoSAT_00024_picosat_1ve
 JNIEXPORT jint JNICALL Java_leo_modules_sat_1solver_PicoSAT_00024_picosat_1api_1version
   (JNIEnv *, jobject);
 
-/*
- * Class:     leo_modules_sat_solver_PicoSAT__
- * Method:    picosat_init
- * Signature: ()J
- */
-JNIEXPORT jlong JNICALL Java_leo_modules_sat_1solver_PicoSAT_00024_picosat_1init
-  (JNIEnv *, jobject);
-
 #ifdef __cplusplus
 }
 #endif

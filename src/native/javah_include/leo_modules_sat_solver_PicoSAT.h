@@ -58,10 +58,10 @@ JNIEXPORT jint JNICALL Java_leo_modules_sat_1solver_PicoSAT_picosat_1add
 /*
  * Class:     leo_modules_sat_solver_PicoSAT
  * Method:    picosat_sat
- * Signature: (J)I
+ * Signature: (JI)I
  */
 JNIEXPORT jint JNICALL Java_leo_modules_sat_1solver_PicoSAT_picosat_1sat
-  (JNIEnv *, jobject, jlong);
+  (JNIEnv *, jobject, jlong, jint);
 
 #ifdef __cplusplus
 }

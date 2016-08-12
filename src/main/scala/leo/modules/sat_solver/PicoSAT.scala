@@ -42,8 +42,8 @@ class PicoSAT private (enableTracing: Boolean) {
     addClause(lits)
   }
 
-  def solve : State= {
-    State(picosat_sat(context))
+  def solve() : State= {
+    State(picosat_sat(context, -1))
   }
 
   override def finalize(): Unit = picosat_reset(context)
@@ -54,14 +54,12 @@ class PicoSAT private (enableTracing: Boolean) {
   @native def picosat_res(context: Long) : Int
   @native def picosat_inc_max_var(context: Long) : Int
   @native def picosat_add(context: Long, lit: Int) : Int
-  @native def picosat_sat(context: Long) : Int
+  @native def picosat_sat(context: Long, decision_limit: Int) : Int
 }
 
 @nativeLoader("picosat0")
 object PicoSAT {
   def apply(enableTracing: Boolean = false) : PicoSAT = {
-    if(!libraryLoaded)
-      loadLibrary
     new PicoSAT(enableTracing)
   }
 
@@ -86,19 +84,6 @@ object PicoSAT {
   case object SAT extends State(10)
   case object UNSAT extends State(20)
 
-  private var libraryLoaded = false
-
-  private def loadLibrary = {
-    //System.loadLibrary("picosat")
-
-    if (apiVersion > version)
-      throw new UnsupportedOperationException
-        ("PicoSAT version " + version  + " too old. At least version " + apiVersion + " is needed.")
-
-    libraryLoaded = true;
-  }
-
 	@native def picosat_version() : String
 	@native def picosat_api_version() : Int
-  @native def picosat_init() : Long
 }
