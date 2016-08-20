@@ -6,23 +6,23 @@ import leo.modules.output.SZS_EquiSatisfiable
 
 /**
   * TODO plan:
-
-unif ( newproblems, unsolved, solved, ...)
-          ^           ^ after detexhaust
-          initial: Set[Term=Term]
-          preprocessed: Set[(Term=Term,Depth)] --sorted set?
-
-          von newproblems -> preprocessed
-              lambdas abnehmen
-              detExhaust (delete, bind, decomp)
-                                     ^---^ nach newproblems
-
-          unsolved: wie üblich (rigid-rigid > flex-rigid > flex-flex)
-            if rigid-rigid, fail
-            if flex-flex (--> all flex-flex), done
-            else flex-rigid
-
-  */
+  **
+  *unif ( newproblems, unsolved, solved, ...)
+  *^           ^ after detexhaust
+  *initial: Set[Term=Term]
+  *preprocessed: Set[(Term=Term,Depth)] --sorted set?
+  **
+  *von newproblems -> preprocessed
+  *lambdas abnehmen
+  *detExhaust (delete, bind, decomp)
+  *^---^ nach newproblems
+  **
+  *unsolved: wie üblich (rigid-rigid > flex-rigid > flex-flex)
+  *if rigid-rigid, fail
+  *if flex-flex (--> all flex-flex), done
+  *else flex-rigid
+  *
+ */
 
 trait Unification extends CalculusRule {
   val name = "pre_uni_full"
@@ -61,7 +61,7 @@ trait Unification extends CalculusRule {
     * are hereby all flex-flex unification constraints that are postponed. The result stream
     * is empty, if the equation `t = s` is not unifiable.
     */
-  def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
+  def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult]
 }
 
 /**
@@ -101,6 +101,329 @@ object FOUnification extends Unification {
 
 }
 
+/**
+  * Implementation of Huets unification procedure. Flex-flex pairs are returned (not instantiated)
+  * together with a substitution (unifier).
+  *
+  * @author Tomer Libal <shaolintl@gmail.com>
+  *           Alexander Steen <a.steen@fu-berlin.de>
+  * @since 4/15/15
+  * @note Alex: Overhaul of the previous implementation (August '16) to use multiple lists
+  *       (for prevent sorting) and correctly handle bound/free variables in terms.
+  */
+object HuetsPreUnification2 extends Unification {
+  import scala.annotation.tailrec
+  import leo.datastructures.{Configuration, NDStream, BFSAlgorithm}
+
+  /** A `UEq` is an unsolved equation. */
+  override type UEq = (Term, Term, Depth)
+  /** A `SEq` is a solved equation. */
+  override type SEq = (Term, Term)
+
+  /** Maximal unification search depth (i.e. number of flex-rigid rules on search path). */
+  final lazy val MAX_DEPTH = leo.Configuration.UNIFICATION_DEPTH
+
+
+  /////////////////////////////////////
+  // the state of the search space
+  /////////////////////////////////////
+  protected case class MyConfiguration(unprocessed: Seq[UEq],
+                                       rigidRigid: Seq[UEq], flexRigid: Seq[UEq], flexFlex: Seq[UEq],
+                                       solved: Seq[SEq], solvedTy: Seq[STEq],
+                                       result: Option[UnificationResult], searchDepth: Int)
+    extends Configuration[UnificationResult] {
+    def this(result: UnificationResult) = this(null, null, null, null, null, null, Some(result), Int.MaxValue) // for success
+    def this(unprocessed: Seq[UEq],
+             rigidRigid: Seq[UEq], flexRigid: Seq[UEq], flexFlex: Seq[UEq],
+             solved: Seq[SEq], solvedTy: Seq[STEq],
+             searchDepth: Int) = this(unprocessed, rigidRigid, flexRigid, flexFlex, solved, solvedTy, None, searchDepth) // for in node
+
+    override final def isTerminal: Boolean = searchDepth >= MAX_DEPTH
+    override def toString  = s"{${unprocessed.map(x => s"<${x._1},${x._2}>").mkString}}"
+  }
+
+
+  /////////////////////////////////////
+  // Unifier search starts with these methods
+  /////////////////////////////////////
+  final def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[UnificationResult] = {
+    // returns a stream whose head is a pre-unifier and whose body computes the next unifiers
+    val t = t1.etaExpand
+    val s = s1.etaExpand
+    new NDStream[UnificationResult](new MyConfiguration(Seq((t,s,0)), Seq(), Seq(), Seq(), Seq(), Seq(), 0), new EnumUnifier(vargen)) with BFSAlgorithm
+  }
+
+  final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
+    val constraints0 = constraints.map(eq => (eq._1.etaExpand, eq._2.etaExpand, 0))
+    new NDStream[UnificationResult](new MyConfiguration(constraints0, Seq(), Seq(), Seq(), Seq(), Seq(), 0), new EnumUnifier(vargen)) with BFSAlgorithm
+  }
+
+
+  /////////////////////////////////////
+  // Internal search functions
+  /////////////////////////////////////
+  /** the transition function in the search space (returned list containing more than one element -> ND step, no element -> failed branch) */
+  protected class EnumUnifier(vargen: FreshVarGen) extends Function1[Configuration[UnificationResult], Seq[Configuration[UnificationResult]]] {
+
+    // Huets procedure is defined here
+    override def apply(conf2: Configuration[UnificationResult]): Seq[Configuration[UnificationResult]] = {
+      val conf = conf2.asInstanceOf[MyConfiguration]
+      // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
+      val (rigidRigid, flexRigid, flexFlex, solved, uTyProblems, sTyProblems) = detExhaust(vargen,
+                                                                                          conf.unprocessed, conf.rigidRigid,
+                                                                                          conf.flexRigid, conf.flexFlex,
+                                                                                          conf.solved, Seq(), conf.solvedTy)
+      leo.Out.finest(s"Finished detExhaust")
+      // if uTyProblems is non-empty fail
+      if (uTyProblems.nonEmpty) {
+        leo.Out.debug(s"Unification failed (2).")
+        Seq()
+      } else {
+        // if there is no unsolved equation (other than flex-flex), then succeed
+        if (rigidRigid.isEmpty && flexRigid.isEmpty) {
+          val termSubst: Subst = ???
+          val typeSubst: Subst = ???
+          leo.Out.debug(s"Unification finished")
+          leo.Out.debug(s"\tTerm substitution ${termSubst.pretty}")
+          leo.Out.debug(s"\tType substitution ${typeSubst.pretty}")
+          Seq(new MyConfiguration(((termSubst, typeSubst), flexFlex)))
+        }
+        // else check for rigid-rigid first
+        else if (rigidRigid.nonEmpty) {
+          leo.Out.debug(s"Unification failed (1).")
+          Seq()
+        }
+        // else do flex-rigid cases
+        else {
+          assert(rigidRigid.isEmpty)
+          assert(flexRigid.nonEmpty)
+          leo.Out.finest(s"flex-rigid at depth ${conf.searchDepth}")
+
+//          import  scala.collection.mutable.ListBuffer
+//          val lb = new ListBuffer[MyConfiguration]
+//          // compute the imitate partial binding and add the new configuration
+//          if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(vargen, (t,s))+:uproblems, sproblems, conf.searchDepth+1))
+//
+//          // compute all the project partial bindings and add them to the return list
+//          ProjectRule(vargen, (t,s)).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems, conf.searchDepth+1)))
+//
+//          lb.toList
+
+          Seq()
+        }
+      }
+    }
+  }
+
+  /** Exhaustively apply delete, comp and bind on the set  of unprocessed equations. */
+  @tailrec
+  protected[calculus] def detExhaust(vargen: FreshVarGen,
+                                     unprocessed: Seq[UEq],
+                                     rigidRigid: Seq[UEq], flexRigid: Seq[UEq], flexFlex: Seq[UEq],
+                                     solved: Seq[SEq],
+                                     uTyProblems: Seq[UTEq], sTyProlems: Seq[STEq]):
+                                    (Seq[UEq], Seq[UEq], Seq[UEq], Seq[SEq], Seq[UTEq], Seq[STEq]) = {
+    if (uTyProblems.nonEmpty) {
+      val head = uTyProblems.head
+      // Try all type rules
+      if (TyDeleteRule.canApply(head)) detExhaust(vargen, unprocessed, rigidRigid, flexRigid, flexFlex,
+        solved, uTyProblems.tail, sTyProlems)
+      else if (TyDecompRule.canApply(head)) {
+        val newUnsolved = TyDecompRule.apply(head)
+        detExhaust(vargen, unprocessed, rigidRigid, flexRigid, flexFlex,
+          solved, newUnsolved ++ uTyProblems.tail, sTyProlems)
+      } else if (TyBindRule.canApply(head)) {
+        val bindResult = TyBindRule.apply(head)
+        val subst = Subst.singleton(BoundType.unapply(bindResult._1).get, bindResult._2)
+        leo.Out.finest(s"Ty Bind ${bindResult._1.pretty} on ${bindResult._2.pretty}")
+        detExhaust(vargen, applySubstToList(Subst.id, subst, unprocessed), applySubstToList(Subst.id, subst, rigidRigid),
+          applySubstToList(Subst.id, subst, flexRigid), applySubstToList(Subst.id, subst, flexFlex),
+          applySubstToSolved(Subst.id, subst, solved), uTyProblems.tail, sTyProlems)
+      }
+      else // No ty rule applicable for head, so it's a fail, just return the state with non-empty uTyProblems
+        (rigidRigid, flexRigid, flexFlex, solved, uTyProblems, sTyProlems)
+    } else {
+      // check unprocessed
+      if (unprocessed.nonEmpty) {
+        val head = unprocessed.head
+        
+        // Try all term rules
+        if (DeleteRule.canApply(head)) detExhaust(vargen, unprocessed.tail, rigidRigid, flexRigid, flexFlex,
+          solved, uTyProblems, sTyProlems)
+        else if (DecompRule.canApply(head)) {
+          val (newUnsolvedTermEqs, newUnsolvedTypeEqs) = DecompRule.apply(head)
+          detExhaust(vargen, newUnsolvedTermEqs ++ unprocessed.tail, rigidRigid, flexRigid, flexFlex,
+            solved, newUnsolvedTypeEqs ++ uTyProblems, sTyProlems)
+        } else if (BindRule.canApply(head)) {
+          import leo.datastructures.Term.Bound
+          val bindResult = BindRule.apply(head)
+          leo.Out.finest(s"Bind ${bindResult._1.pretty} on ${bindResult._2.pretty}")
+          val subst = Subst.singleton(Bound.unapply(bindResult._1).get._2, bindResult._2)
+          detExhaust(vargen, applySubstToList(subst, Subst.id, flexFlex ++ unprocessed.tail), applySubstToList(subst, Subst.id, rigidRigid),
+            applySubstToList(subst, Subst.id, flexRigid), Seq(),
+            bindResult +: applySubstToSolved(subst, Subst.id, solved), uTyProblems, sTyProlems)
+        } else {
+          // ... move to according list if nothing applies
+          if (flexflex(head))
+            detExhaust(vargen, unprocessed.tail, rigidRigid, flexRigid, head +: flexFlex,
+              solved, uTyProblems, sTyProlems)
+          else if (flexrigid(head))
+            detExhaust(vargen, unprocessed.tail, rigidRigid, head +: flexRigid, flexFlex,
+              solved, uTyProblems, sTyProlems)
+          else {
+            assert(rigidrigid(head))
+            detExhaust(vargen, unprocessed.tail, head +: rigidRigid, flexRigid, flexFlex,
+              solved, uTyProblems, sTyProlems)
+          }
+        }
+      } else {
+        // no unprocessed left, return unprocessed sets
+        (rigidRigid, flexRigid, flexFlex, solved, uTyProblems, sTyProlems)
+      }
+    }
+  }
+
+
+  /////////////////////////////////////
+  // Huets rules
+  /////////////////////////////////////
+  /**
+    * Delete rule for types
+    * canApply(s,t) iff the equation (s = t) can be deleted
+    */
+  object TyDeleteRule {
+    final def canApply(e: UTEq): Boolean = e._1 == e._2
+  }
+
+  object TyDecompRule {
+    import leo.datastructures.Type.ComposedType
+    final def apply(e: UTEq): Seq[UTEq] = {
+      val args1 = ComposedType.unapply(e._1).get._2
+      val args2 = ComposedType.unapply(e._2).get._2
+      args1.zip(args2)
+    }
+
+    final def canApply(e: UTEq): Boolean = e match {
+      case (ComposedType(head1, arg1), ComposedType(head2, args2)) => head1 == head2 // Heads cannot be flexible,
+        // since in TH1 only small types/proper types can be quantified, not type operators
+      case _ => false
+    }
+  }
+
+  /**
+    * Bind rule for type equations.
+    * canApply(s,t) iff either s or t is a type variable and not a subtype of the other one.
+    */
+  object TyBindRule {
+    final def apply(e: UTEq): STEq  = if (e._1.isBoundTypeVar) (e._1, e._2) else (e._2, e._1)
+
+    final def canApply(e: UTEq): Boolean = {
+      val (l,r) = if (e._1.isBoundTypeVar) (e._1, e._2) else (e._2, e._1)
+      if (!l.isBoundTypeVar) false
+      // l is a type variable ...
+      else {
+        val x = BoundType.unapply(l).get
+        !r.typeVars.contains(x) // ... and not a subtype of r
+      }
+    }
+  }
+
+  /**
+    * 1
+    * returns true if the equation can be deleted
+    */
+  object DeleteRule {
+    def canApply(e: UEq) = e._1 == e._2
+  }
+
+  /**
+    * 2
+    * returns the list of equations if the head symbols are the same function symbol.
+    */
+  object DecompRule {
+    import leo.datastructures.Term.∙
+    final def apply(e: UEq): (Seq[UEq], Seq[UTEq]) = e match {
+      case (_ ∙ sq1, _ ∙ sq2, depth) => zipArguments(sq1, sq2, depth)
+      case _ => throw new IllegalArgumentException("impossible")
+    }
+    final def canApply(e: UEq) = e match {
+      case (hd1 ∙ _, hd2 ∙ _, depth) if hd1 == hd2 => !isFlexible(hd1, depth)
+      case _ => false
+    }
+  }
+
+  /**
+    * 3
+    * BindRule tells if Bind is applicable
+    * equation is not oriented
+    * return an equation (x,s) substitution is computed from this equation later
+    */
+  object BindRule {
+    import leo.datastructures.Term.Bound
+    def apply(e: UEq) = {
+      // orienting the equation
+      // FIXME: See FIXME a few lines below
+      val (t,s) = if (isVariable(e._1, e._3)) (e._1,e._2) else (e._2, e._1)
+      // getting flexible head
+      (t.headSymbol,s)
+    }
+    def canApply(e: UEq) = {
+      // orienting the equation
+      // FIXME: Bind rule needs to have a variable on the left side. isFlexible did not
+      // order that correctly if both sides were flex-head but right one was the only one
+      // that was indeed a variable
+      val depth = e._3
+      val (t,s) = if (isVariable(e._1, depth)) (e._1,e._2) else (e._2, e._1)
+      //      leo.Out.finest(s"isVariable(e._1): ${isFlexible(e._1)}")
+      //      leo.Out.finest(s"isVariable(e._2): ${isFlexible(e._2)}")
+      //      leo.Out.finest(s"Can apply bind:\n\t${t.pretty}\n\t${s.pretty}")
+      // check head is flexible
+      if (!isFlexible(t, depth)) false
+      // getting flexible head
+      else {
+        //        leo.Out.finest("isflexible(t)")
+        val (_,x) = Bound.unapply(t.headSymbol).get
+        //        leo.Out.finest(s"bound index: $x")
+        //        leo.Out.finest(s"t.headSymbol.etaExpand.equals(t): ${t.headSymbol.etaExpand.equals(t)}")
+        //        leo.Out.finest(s"t.equals(t.headSymbol): ${t.equals(t.headSymbol)}")
+        //        leo.Out.finest(s"s.looseBounds.contains(x): ${s.looseBounds.contains(x)}")
+        // check t is eta equal to x
+        if (!t.headSymbol.etaExpand.equals(t) && !t.equals(t.headSymbol)) false
+        // check it doesnt occur in s
+        else !s.looseBounds.contains(x)
+      }
+    }
+  }
+
+  /////////////////////////////////////
+  // Internal utility functions
+  /////////////////////////////////////
+  private final def flexflex(e: UEq): Boolean = ???
+  private final def flexrigid(e: UEq): Boolean = ???
+  private final def rigidrigid(e: UEq): Boolean = ???
+  private final def isFlexible(t: Term, depth: Int): Boolean = ???
+  private final def isVariable(t: Term, depth: Int): Boolean = ???
+
+  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq]): Seq[UEq] =
+    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst), e._3))
+  private final def applySubstToSolved(termSubst: Subst, typeSubst: Subst, l: Seq[(Term, Term)]): Seq[(Term, Term)] =
+    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst)))
+  private final def applySubstToTyList(typeSubst: Subst, l: Seq[UTEq]): Seq[UTEq] =
+    l.map(e => (e._1.substitute(typeSubst),e._2.substitute(typeSubst)))
+
+  private final def zipArguments(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]], depth: Int): (Seq[UEq], Seq[UTEq]) = {
+    (l,r) match {
+      case (Seq(), Seq()) => (Seq(), Seq())
+      case (Left(t1) +: rest1, Left(t2) +: rest2) => val rec = zipArguments(rest1, rest2, depth)
+        ((t1,t2, depth) +: rec._1, rec._2)
+      case (Right(ty1) +: rest1, Right(ty2) +: rest2) => val rec = zipArguments(rest1, rest2, depth)
+        (rec._1, (ty1, ty2) +: rec._2)
+      case _ => throw new IllegalArgumentException("Mixed type/term arguments for equal head symbol. Decomp Failing.")
+    }
+  }
+}
+
+
 // Look for TODO, TOFIX (and TOTEST in the corresponding test file)
 // TODO: change List into a data structure more sutiable to sorting, etc.
 /**
@@ -112,8 +435,10 @@ object HuetsPreUnification extends Unification {
   import Term._
   import leo.datastructures.{TermFront, TypeFront}
   import leo.datastructures.BoundFront
-  import leo.modules.calculus.util.executionModels._
+  import leo.datastructures.{Configuration, NDStream, BFSAlgorithm}
   import annotation.tailrec
+
+  final lazy val MAX_DEPTH = leo.Configuration.UNIFICATION_DEPTH
 
   override def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[UnificationResult] = {
     val t = t1.etaExpand
@@ -258,26 +583,6 @@ object HuetsPreUnification extends Unification {
       }
     }
   }
-
-  /*// n is arity of variable
-  // m is arity of head
-  // hdSymb is head
-  // y1,..,yn are new bound variable
-  // x1,..,xm are new free variables
-  protected[modules] def partialBinding(typ: Type, hdSymb: Term) = {
-    val ys = typ.funParamTypes.zip(List.range(1,typ.arity+1)).map(p => Term.mkBound(p._1,p._2))
-    val xs =
-      if (ys.isEmpty)
-        hdSymb.ty.funParamTypes.map(p => Term.mkFreshMetaVar(p))
-      else {
-        val ysTyp = Type.mkFunType(ys.map(_.ty))
-        hdSymb.ty.funParamTypes.map(p => Term.mkTermApp(Term.mkFreshMetaVar(Type.mkFunType(ysTyp,p)), ys))
-      }
-    val t = Term.mkTermApp(hdSymb,xs)
-
-    val aterm = Term.λ(ys.map(_.ty))(t)
-    aterm.etaExpand
-  }*/
 
   // Huets rules
   trait HuetsRule[R] extends Function2[FreshVarGen,UEq, R] {
@@ -477,7 +782,7 @@ object HuetsPreUnification extends Unification {
                                        searchDepth: Int)
     extends Configuration[UnificationResult] {
     def this(result: Option[UnificationResult]) = this(Seq(), Seq(), Seq(), Seq(), result, true, dontcaredepth) // for success
-    def this(l: Seq[UEq], s: Seq[UEq], unificationDepth: Int) = this(l, s, Seq(), Seq(), None, false, unificationDepth) // for in node
+    def this(l: Seq[UEq], s: Seq[UEq], unificationDepth: Int) = this(l, s, Seq(), Seq(), None, searchDepth < MAX_DEPTH, unificationDepth) // for in node
     override def toString  = "{" + uproblems.flatMap(x => ("<"+x._1.pretty+", "+ x._2.pretty+">")) + "}"
   }
 
@@ -534,112 +839,3 @@ object HuetsPreUnification extends Unification {
   }
 }
 
-// TODO: The next stuff should be stored in some general util package
-/**
- * created on: 15/04/2015
- * author: Tomer Libal
- */
-package util.executionModels {
-  import collection.mutable
-  import annotation.tailrec
-
-  trait Configuration[S] {
-    def result: Option[S]
-    def isTerminal: Boolean // terminal nodes are not added to the configuration queue
-    def searchDepth: Int // depth of unification node (number of applied flex-rigid cases)
-  }
-
-  //mutable, non deterministic, stream
-  abstract class NDStream[S /*result type*/ ]( val initial: Configuration[S], val myFun: Configuration[S] => Iterable[Configuration[S]] ) extends Iterable[S] with SearchAlgorithm {
-
-    protected var MAX_DEPTH : Int = leo.Configuration.UNIFICATION_DEPTH
-
-    type T = Configuration[S]
-    private val results: mutable.Queue[S] = new mutable.Queue[S]()
-    protected var hd: Option[S] = None
-    protected val hdFunc: () => Option[S] = () => nextVal
-    protected var terminal: Boolean = false
-    protected def initDS: Unit = {
-      add(initial)
-      hd = hdFunc()
-    }
-
-
-
-    @tailrec
-    protected final def nextVal: Option[S] = {
-      val res = results.headOption
-      if ( res != None ) {
-        results.dequeue
-        res
-      } else {
-        val conf = get
-        if ( conf == None ) None
-        else {
-          val confs: Iterable[Configuration[S]] = { myFun( conf.get )}
-          confs.foreach( x => {
-            if ( x.result != None )
-              results.enqueue( x.result.get )
-            if ( !x.isTerminal && conf.get.searchDepth < MAX_DEPTH) {
-              add(x)
-            }
-          } )
-          nextVal
-        }
-      }
-    }
-
-    // TOFIX: iterator can only be called once right now as the ndstream is mutable!
-    var wasCalled = false
-    def iterator: Iterator[S] =
-      if (!wasCalled) new Iterator[S] {
-        wasCalled = true
-        def next: S = {
-          if (hd.isEmpty && terminal) throw new NoSuchElementException("Stream is empty")
-          else {
-            if (hd.isEmpty) {hd = hdFunc(); if (hd.isEmpty) {terminal = true;throw new NoSuchElementException("Stream is empty")} }
-            val ret = hd.get
-            hd = None
-            ret
-          }
-        }
-        def hasNext: Boolean = {
-          if (hd.isEmpty) {
-            if (terminal) false
-            else {
-              hd = hdFunc()
-              if (hd.isEmpty) {
-                terminal = true
-                false
-              } else
-                true
-            }
-          }
-          else true
-        }
-    }
-    else throw new UnsupportedOperationException("iterator for NDStream can right now be called only once!")
-  }
-
-import collection.mutable.{ Queue => MQueue }
-import collection.immutable.Queue
-import scala.math.Ordering.Implicits._
-
-  trait SearchAlgorithm {
-    type T
-    protected def initDS: Unit // called by the algorithm and implemented by some object using it as the object is initialized before the trait
-    protected def add( t: T ): Unit
-    protected def get: Option[T]
-  }
-
-  trait BFSAlgorithm extends SearchAlgorithm {
-    private val ds: MQueue[T] = new MQueue[T]()
-    initDS // if the object requires the ds to be already existing, then it will not fail now
-    protected def add( conf: T ): Unit = ds += conf
-    protected def get: Option[T] = {
-      val res = ds.headOption
-      if ( res != None ) ds.dequeue
-      res
-    }
-  }
-}

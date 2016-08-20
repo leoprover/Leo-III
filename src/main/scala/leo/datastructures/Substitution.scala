@@ -85,6 +85,12 @@ object Subst {
 //    TermFront(by) +: s
   }
 
+  def singleton(what: Int, by: Type): Subst = {
+    var i = 1
+    var subst: Vector[Front] = Range(1, what).map(BoundFront(_)).toVector
+    new SubstImpl(what,subst :+ TypeFront(by))
+  }
+
   def fromMap(map: Map[Int, Term]): Subst = {
     if (map.isEmpty) {
       Subst.id
