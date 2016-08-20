@@ -153,6 +153,86 @@ class PicoSAT private (enableTracing: Boolean) {
   }
 
   /**
+    * Pre allocate space for maxIdx variables.
+    *
+    * This can be used as a small optimization. Allocates variables this function behaves
+    * like [[PicoSAT.freshVariable]].
+    *
+    * @param maxIdx Estimate for the highest variable index appearing in the CNF.
+   */
+  def adjust(maxIdx : Int) = {
+    picosat_adjust(context, maxIdx)
+  }
+
+  /** Number of used variables. */
+  def numVariables = {
+    picosat_variables(context)
+  }
+
+  /** Number of user added clauses. */
+  def numAddedClauses = {
+    picosat_added_original_clauses(context)
+  }
+
+  def maxBytesAllocated = {
+    picosat_max_bytes_allocated(context)
+  }
+
+  def propagations = {
+    picosat_propagations(context)
+  }
+
+  def decisions = {
+    picosat_decisions(context)
+  }
+
+  def visits = {
+    picosat_visits(context)
+  }
+
+  /**
+    * @return The total time spend by PicoSAT in calls to [[PicoSAT.solve()]].
+    */
+  def timeSpendSolving = {
+    picosat_seconds(context)
+  }
+
+  /**
+    * Adds a temporary assumption.
+    *
+    * Adding assumptions is conceptually simmilar to adding unit clauses containing only the assumed literal. The
+    * assumptions however stay only valid for one call to [[PicoSAT.solve()]] and will be removed before the subsequent
+    * call to [[PicoSAT.solve()]], expect when assumed again.
+    *
+    * @param lit The literal to assume.
+    */
+  def assume(lit : Int) = {
+    picosat_assume(context, lit)
+  }
+
+  /**
+    * Returns a satisfying variable assignment.
+    *
+    * If the state is SAT this function will return the value assigned to a variable in the found satisfying
+    * assignment, or '''None''' if the assignment is unknown (don't care). If the stat is not not SAT '''None''' is
+    * returned.
+    *
+    * @param lit The variable the assignment is for.
+    * @return A satisfying assignment or None
+    */
+  def getAssignment(lit: Int) : Option[Boolean] = {
+    if(state != PicoSAT.SAT)
+      None
+    else {
+       picosat_deref(context, lit) match {
+         case v if v > 0 => Some(true)
+         case v if v < 0 => Some(false)
+         case _ => None
+       }
+    }
+  }
+
+  /**
     * @return True if the CNF is unsatisfiable becose the empty clause was added or derived.
     */
   def inconsistent = {
@@ -175,6 +255,16 @@ class PicoSAT private (enableTracing: Boolean) {
   @native def picosat_remove_learned(context: Long, percentage: Int) : Unit
   @native def picosat_set_more_important_lit(context: Long, lit: Int) : Unit
   @native def picosat_set_less_important_lit(context: Long, lit: Int) : Unit
+  @native def picosat_adjust(context: Long, maxIdx : Int) : Unit
+  @native def picosat_variables(context: Long) : Int
+  @native def picosat_added_original_clauses(context: Long) : Int
+  @native def picosat_max_bytes_allocated(context: Long) : BigInt
+  @native def picosat_propagations(context: Long) : BigInt
+  @native def picosat_decisions(context: Long) : BigInt
+  @native def picosat_visits(context: Long) : BigInt
+  @native def picosat_seconds(context: Long) : Double
+  @native def picosat_assume(context: Long, lit: Int) : Unit
+  @native def picosat_deref(context: Long lit: Int) : Int
   @native def picosat_inconsistent(context: Long) : Int
 }
 
