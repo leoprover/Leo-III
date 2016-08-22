@@ -47,6 +47,7 @@ abstract class Type extends Pretty {
   def arity: Int
   def funParamTypesWithResultType: Seq[Type]
   def funParamTypes: Seq[Type] = funParamTypesWithResultType.init
+  def splitFunParamTypesAt(n: Int): (Seq[Type], Type)
 
   def scopeNumber: Int
 

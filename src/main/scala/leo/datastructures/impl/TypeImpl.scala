@@ -2,8 +2,17 @@ package leo.datastructures.impl
 
 import leo.datastructures.{Kind, Subst, Type}
 
+protected[datastructures] abstract class TypeImpl extends Type {
+  def splitFunParamTypesAt(n: Int): (Seq[Type], Type) = splitFunParamTypesAt0(n, Seq())
+  protected def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
+    throw new UnsupportedOperationException("splitFunParamTypesAt0 with non-zero n on non-Function type")
+  // to be overridden by abstraction type below
+
+  def closure(subst: Subst) = substitute(subst)
+}
+
 /** Literal type, i.e. `$o` */
-protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends Type {
+protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
   import Signature.{get => signature}
   lazy val pretty = {
@@ -52,12 +61,10 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = baseFunc(id)
-
-  def closure(subst: Subst) = substitute(subst)
 }
 
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
-protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
+protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl {
   // Pretty printing
   def pretty = scope.toString
 
@@ -104,12 +111,10 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = boundFunc(scope)
-
-  def closure(subst: Subst) = substitute(subst)
 }
 
 /** Function type `in -> out` */
-protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) extends Type {
+protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) extends TypeImpl {
   // Pretty printing
   def pretty = in match {
     case funTy:AbstractionTypeNode => "(" + funTy.pretty + ") -> " + out.pretty
@@ -131,6 +136,9 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   lazy val order = Math.max(1+in.order,out.order)
   val polyPrefixArgsCount = 0
 
+  override protected def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
+    out.asInstanceOf[TypeImpl].splitFunParamTypesAt0(n-1, in +: acc)
+
   val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
 
   def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to abstraction type")
@@ -149,12 +157,10 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = absFunc(in.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),out.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
-
-  def closure(subst: Subst) = substitute(subst)
 }
 
 /** Product type `l * r` */
-protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends Type {
+protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends TypeImpl {
   // Pretty printing
   def pretty = "(" + l.pretty + " * " + r.pretty + ")"
 
@@ -192,13 +198,11 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = prodFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
 
-  def closure(subst: Subst) = substitute(subst)
-
   override val numberOfComponents: Int = 1 + l.numberOfComponents
 }
 
 /** Product type `l + r` */
-protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Type {
+protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends TypeImpl {
   // Pretty printing
   def pretty = "(" + l.pretty + " + " + r.pretty + ")"
 
@@ -236,15 +240,13 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = unionFunc(l.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc),r.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
-
-  def closure(subst: Subst) = substitute(subst)
 }
 
 /**
  * Type of a polymorphic function
  * @param body The type in which a type variable is now bound to this binder
  */
-protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
+protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl {
   // Pretty printing
   def pretty = "∀. " + body.pretty
 
@@ -288,8 +290,6 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends Type {
                   (prodFunc: (A,A) => A)
                   (unionFunc: (A,A) => A)
                   (forAllFunc: A => A) = forAllFunc(body.foldRight(baseFunc)(boundFunc)(absFunc)(prodFunc)(unionFunc)(forAllFunc))
-
-  def closure(subst: Subst) = substitute(subst)
 }
 
 
