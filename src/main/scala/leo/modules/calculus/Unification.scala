@@ -182,9 +182,9 @@ object HuetsPreUnification2 extends Unification {
         // if there is no unsolved equation (other than flex-flex), then succeed
         if (flexRigid.isEmpty) {
           leo.Out.debug(s"Unification finished")
-          leo.Out.debug(s"\tTerm substitution ${partialUnifier.pretty}")
-          leo.Out.debug(s"\tType substitution ${partialTyUnifier.pretty}")
-          Seq(new MyConfiguration(((partialUnifier, initialTypeSubst.comp(partialTyUnifier)), flexFlex)))
+          leo.Out.debug(s"\tTerm substitution ${partialUnifier.normalize.pretty}")
+          leo.Out.debug(s"\tType substitution ${partialTyUnifier.normalize.pretty}")
+          Seq(new MyConfiguration(((partialUnifier.normalize, initialTypeSubst.comp(partialTyUnifier).normalize), flexFlex)))
         }
         // else do flex-rigid cases
         else {
@@ -284,24 +284,27 @@ object HuetsPreUnification2 extends Unification {
             val (newUnsolvedTermEqs, newUnsolvedTypeEqs) = DecompRule.apply((leftBody, rightBody), leftAbstractions)
             detExhaust(newUnsolvedTermEqs ++ unprocessed.tail, flexRigid, flexFlex,
               solved, newUnsolvedTypeEqs ++ uTyProblems, solvedTy)
-          } else if (BindRule.canApply(head0, abstractionCount)) {
-            val subst = BindRule.apply(head0, abstractionCount)
-            leo.Out.finest(s"Bind: ${subst.pretty}")
-            detExhaust(
-              applySubstToList(subst, Subst.id, flexRigid.map(e => (e._1, e._2)) ++ flexFlex ++ unprocessed.tail),
-              Seq(), Seq(),
-              solved.comp(subst), uTyProblems, solvedTy)
           } else {
-            // ... move to according list if nothing applies
-            if (flexflex(head0, abstractionCount))
-              detExhaust(unprocessed.tail, flexRigid, head0 +: flexFlex,
-                solved, uTyProblems, solvedTy)
-            else if (rigidrigid(head0, abstractionCount))
-              (true, flexRigid, flexFlex, solved, solvedTy) // fail
-            else {
-              assert(flexrigid(head0, abstractionCount))
-              detExhaust(unprocessed.tail, (left, right, abstractionCount) +: flexRigid, flexFlex,
-                solved, uTyProblems, solvedTy)
+            val bindHint = BindRule.canApply(head0,abstractionCount)
+            if (bindHint != BindRule.CANNOT_APPLY) {
+              val subst = BindRule.apply(head0, abstractionCount, bindHint)
+              leo.Out.finest(s"Bind: ${subst.pretty}")
+              detExhaust(
+                applySubstToList(subst, Subst.id, flexRigid.map(e => (e._1, e._2)) ++ flexFlex ++ unprocessed.tail),
+                Seq(), Seq(),
+                solved.comp(subst), uTyProblems, solvedTy)
+            } else {
+              // ... move to according list if nothing applies
+              if (flexflex(head0, abstractionCount))
+                detExhaust(unprocessed.tail, flexRigid, head0 +: flexFlex,
+                  solved, uTyProblems, solvedTy)
+              else if (rigidrigid(head0, abstractionCount))
+                (true, flexRigid, flexFlex, solved, solvedTy) // fail
+              else {
+                assert(flexrigid(head0, abstractionCount))
+                detExhaust(unprocessed.tail, (left, right, abstractionCount) +: flexRigid, flexFlex,
+                  solved, uTyProblems, solvedTy)
+              }
             }
           }
         }
@@ -434,41 +437,35 @@ object HuetsPreUnification2 extends Unification {
     * return an equation (x,s) substitution is computed from this equation later
     */
   object BindRule {
+    final val CANNOT_APPLY = -1
+    final val LEFT_IS_VAR = 0
+    final val RIGHT_IS_VAR = 1
+
     // FIXME canApply and apply does not respect eta long forms of variables
     import leo.datastructures.Term.Bound
-    final def apply(e: UEq, depth: Int): Subst = {
-      // orienting the equation
-      val leftIsVariable = isVariable(e._1, depth)
-      val variable = if (leftIsVariable) Bound.unapply(e._1.headSymbol).get else Bound.unapply(e._2.headSymbol).get
-      val otherTerm = if (leftIsVariable) e._2 else e._1
+    final def apply(e: UEq, depth: Int, hint: Int): Subst = {
+      assert(hint != CANNOT_APPLY)
+      val variable = if (hint == LEFT_IS_VAR) Bound.unapply(e._1.headSymbol).get
+        else Bound.unapply(e._2.headSymbol).get
+      val otherTerm = if (hint == LEFT_IS_VAR) e._2
+        else e._1
       // getting flexible head
-      Subst.singleton(variable._2, otherTerm)
+      Subst.singleton(variable._2 - depth, otherTerm)
     }
 
-    final def canApply(e: UEq, depth: Int): Boolean = {
+    final def canApply(e: UEq, depth: Int): Int = {
       // orienting the equation
-      val (t,s) = if (isVariable(e._1, depth)) (e._1,e._2) else (e._2, e._1)
-            leo.Out.finest(s"isVariable(e._1): ${isVariable(e._1, depth)}")
-            leo.Out.finest(s"isVariable(e._2): ${isVariable(e._2, depth)}")
-      // check head is flexible
-      if (!isFlexible(t, depth)) false
-      // getting flexible head
+      val leftIsVar = isVariable(e._1)
+      val potentialVariable = if (leftIsVar) e._1 else e._2
+      val otherTerm = if (leftIsVar) e._2 else e._1
+
+      if (!isVariable(potentialVariable)) CANNOT_APPLY
       else {
-                leo.Out.finest("isflexible(t)")
-        val (ty,scope) = Bound.unapply(t.headSymbol).get
-        val variable = Term.mkBound(ty, scope-depth)
-                leo.Out.finest(s"original index: $scope")
-                leo.Out.finest(s"lifted index: ${scope-depth}")
-                leo.Out.finest(s"t: ${t.pretty}")
-                leo.Out.finest(s"variable: ${variable.pretty}")
-                leo.Out.finest(s"variable.etaExpand: ${variable.etaExpand.pretty}")
-                leo.Out.finest(s"variable.etaExpand.equals(t): ${variable.etaExpand.equals(t)}")
-                leo.Out.finest(s"t.equals(variable): ${t.equals(variable)}")
-                leo.Out.finest(s"s.looseBounds.contains(liftedIndex): ${s.looseBounds.contains(scope -depth)}")
-        // check t is eta equal to x
-        if (!variable.etaExpand.equals(t) && !t.equals(variable)) false
-        // check it doesnt occur in s
-        else !s.looseBounds.contains(scope-depth)
+        val (_, scope) = Bound.unapply(potentialVariable.headSymbol).get
+        if (!otherTerm.looseBounds.contains(scope - depth)) {
+          if (leftIsVar) LEFT_IS_VAR
+          else RIGHT_IS_VAR
+        } else CANNOT_APPLY
       }
     }
   }
@@ -553,13 +550,40 @@ object HuetsPreUnification2 extends Unification {
   @inline private final def flexflex(e: UEq, depth: Int): Boolean = isFlexible(e._1, depth) && isFlexible(e._2, depth)
   @inline private final def flexrigid(e: UEq, depth: Int): Boolean = (isFlexible(e._1, depth) && !isFlexible(e._2, depth)) || (!isFlexible(e._1, depth) && isFlexible(e._2, depth))
   @inline private final def rigidrigid(e: UEq, depth: Int): Boolean = !isFlexible(e._1, depth) && !isFlexible(e._2, depth)
-  @inline private final def isFlexible(t: Term, depth: Int): Boolean = isVariable(t.headSymbol, depth)
-  private final def isVariable(t: Term, depth: Int): Boolean = {
+  @inline private final def isFlexible(t: Term, depth: Int): Boolean = {
     import leo.datastructures.Term.Bound
-    t match {
-      case Bound(_, scope) => scope > depth
+        t.headSymbol match {
+          case Bound(_, scope) => scope > depth
+          case _ => false
+        }
+  }
+  /** Checks whether the term is a free variable (eta-expanded). */
+  private final def isVariable(t: Term): Boolean = {
+    import leo.datastructures.Term.{Bound, TermApp}
+    val (body, bound) = collectLambdas(t)
+    body match {
+      case TermApp(head, args) => if (args.size == bound.size)
+        boundVarsMatch(args, bound)
+      else false
       case _ => false
     }
+  }
+  private final def boundVarsMatch(args: Seq[Term], abstractions: Seq[Type]): Boolean = {
+    import leo.datastructures.Term.Bound
+    if (args.nonEmpty){
+      val curArg = args.head
+      val curArgAsBound = Bound.unapply(curArg)
+      if (curArgAsBound.isDefined) {
+        val (ty, scope) = curArgAsBound.get
+        if (ty == abstractions.head && scope == args.length)
+          boundVarsMatch(args.tail, abstractions.tail)
+        else false
+      } else false
+    } else {
+      assert(abstractions.isEmpty)
+      true
+    }
+
   }
 
 //  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
