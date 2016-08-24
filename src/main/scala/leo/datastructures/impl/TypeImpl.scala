@@ -4,7 +4,7 @@ import leo.datastructures.{Kind, Subst, Type}
 
 protected[datastructures] abstract class TypeImpl extends Type {
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type) = splitFunParamTypesAt0(n, Seq())
-  protected def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
+  protected[impl] def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
     throw new UnsupportedOperationException("splitFunParamTypesAt0 with non-zero n on non-Function type")
   // to be overridden by abstraction type below
 
@@ -136,7 +136,7 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   lazy val order = Math.max(1+in.order,out.order)
   val polyPrefixArgsCount = 0
 
-  override protected def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
+  override protected[impl] def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
     out.asInstanceOf[TypeImpl].splitFunParamTypesAt0(n-1, in +: acc)
 
   val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
