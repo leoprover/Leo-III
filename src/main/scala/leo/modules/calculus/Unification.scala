@@ -190,18 +190,18 @@ object HuetsPreUnification2 extends Unification {
         else {
           assert(flexRigid.nonEmpty)
           leo.Out.finest(s"flex-rigid at depth ${conf.searchDepth}")
+          val head = flexRigid.head
+          import  scala.collection.mutable.ListBuffer
+          val lb = new ListBuffer[MyConfiguration]
+          // compute the imitate partial binding and add the new configuration
+          if (ImitateRule.canApply(head)) lb.append(new MyConfiguration(Seq(ImitateRule(vargen, head)), flexRigid, flexFlex,
+            partialUnifier, partialTyUnifier, conf.searchDepth+1))
 
-//          import  scala.collection.mutable.ListBuffer
-//          val lb = new ListBuffer[MyConfiguration]
-//          // compute the imitate partial binding and add the new configuration
-//          if (ImitateRule.canApply(t,s)) lb.append(new MyConfiguration(ImitateRule(vargen, (t,s))+:uproblems, sproblems, conf.searchDepth+1))
-//
-//          // compute all the project partial bindings and add them to the return list
-//          ProjectRule(vargen, (t,s)).foreach (e => lb.append(new MyConfiguration(e+:uproblems, sproblems, conf.searchDepth+1)))
-//
-//          lb.toList
+          // compute all the project partial bindings and add them to the return list
+          ProjectRule(vargen, head).foreach (e => lb.append(new MyConfiguration(Seq(e), flexRigid, flexFlex,
+            partialUnifier, partialTyUnifier, conf.searchDepth+1)))
 
-          Seq()
+          lb.toList
         }
       }
     }
@@ -265,7 +265,7 @@ object HuetsPreUnification2 extends Unification {
       // check unprocessed
       if (unprocessed.nonEmpty) {
         val head0 = unprocessed.head
-
+        leo.Out.finest(s"detExhaust on: ${head0._1.pretty} = ${head0._2.pretty}")
         // Try all term rules
         if (DeleteRule.canApply(head0)) {
           leo.Out.finest("Apply delete")
@@ -434,6 +434,7 @@ object HuetsPreUnification2 extends Unification {
     * return an equation (x,s) substitution is computed from this equation later
     */
   object BindRule {
+    // FIXME canApply and apply does not respect eta long forms of variables
     import leo.datastructures.Term.Bound
     final def apply(e: UEq, depth: Int): Subst = {
       // orienting the equation
@@ -453,16 +454,21 @@ object HuetsPreUnification2 extends Unification {
       if (!isFlexible(t, depth)) false
       // getting flexible head
       else {
-        //        leo.Out.finest("isflexible(t)")
-        val (_,x) = Bound.unapply(t.headSymbol).get
-        //        leo.Out.finest(s"bound index: $x")
-        //        leo.Out.finest(s"t.headSymbol.etaExpand.equals(t): ${t.headSymbol.etaExpand.equals(t)}")
-        //        leo.Out.finest(s"t.equals(t.headSymbol): ${t.equals(t.headSymbol)}")
-        //        leo.Out.finest(s"s.looseBounds.contains(x): ${s.looseBounds.contains(x)}")
+                leo.Out.finest("isflexible(t)")
+        val (ty,scope) = Bound.unapply(t.headSymbol).get
+        val variable = Term.mkBound(ty, scope-depth)
+                leo.Out.finest(s"original index: $scope")
+                leo.Out.finest(s"lifted index: ${scope-depth}")
+                leo.Out.finest(s"t: ${t.pretty}")
+                leo.Out.finest(s"variable: ${variable.pretty}")
+                leo.Out.finest(s"variable.etaExpand: ${variable.etaExpand.pretty}")
+                leo.Out.finest(s"variable.etaExpand.equals(t): ${variable.etaExpand.equals(t)}")
+                leo.Out.finest(s"t.equals(variable): ${t.equals(variable)}")
+                leo.Out.finest(s"s.looseBounds.contains(liftedIndex): ${s.looseBounds.contains(scope -depth)}")
         // check t is eta equal to x
-        if (!t.headSymbol.etaExpand.equals(t) && !t.equals(t.headSymbol)) false
+        if (!variable.etaExpand.equals(t) && !t.equals(variable)) false
         // check it doesnt occur in s
-        else !s.looseBounds.contains(x)
+        else !s.looseBounds.contains(scope-depth)
       }
     }
   }
@@ -493,7 +499,7 @@ object HuetsPreUnification2 extends Unification {
       else
         s.headSymbol
       val variable = Bound.unapply(t.headSymbol).get
-      val liftedVar = Term.mkBound(variable._1, variable._2 - depth)
+      val liftedVar = Term.mkBound(variable._1, variable._2 - depth).etaExpand
       val res = (liftedVar, partialBinding(vargen, t.headSymbol.ty,  s0))
       leo.Out.finest(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
       res
@@ -532,7 +538,7 @@ object HuetsPreUnification2 extends Unification {
       val funBVars = bvars.filter(bvar => t.headSymbol.ty.funParamTypesWithResultType.endsWith(bvar.ty.funParamTypesWithResultType))
       leo.Out.finest(s"compatible type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
       val variable = Bound.unapply(t.headSymbol).get
-      val liftedVar = Term.mkBound(variable._1, variable._2 - depth)
+      val liftedVar = Term.mkBound(variable._1, variable._2 - depth).etaExpand
       val res = funBVars.map(bvar => (liftedVar, partialBinding(vargen, t.headSymbol.ty, bvar)))
 
       leo.Out.finest(s"Result of Project:\n\t${res.map(eq => eq._1.pretty ++ " = " ++ eq._2.pretty).mkString("\n\t")}")
