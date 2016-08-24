@@ -285,7 +285,8 @@ object HuetsPreUnification2 extends Unification {
             detExhaust(newUnsolvedTermEqs ++ unprocessed.tail, flexRigid, flexFlex,
               solved, newUnsolvedTypeEqs ++ uTyProblems, solvedTy)
           } else {
-            val bindHint = BindRule.canApply(head0,abstractionCount)
+            val bindHint = BindRule.canApply(head0,
+              leftBody, leftAbstractions, rightBody, rightAbstractions, abstractionCount)
             if (bindHint != BindRule.CANNOT_APPLY) {
               val subst = BindRule.apply(head0, abstractionCount, bindHint)
               leo.Out.finest(s"Bind: ${subst.pretty}")
@@ -440,8 +441,7 @@ object HuetsPreUnification2 extends Unification {
     final val CANNOT_APPLY = -1
     final val LEFT_IS_VAR = 0
     final val RIGHT_IS_VAR = 1
-
-    // FIXME canApply and apply does not respect eta long forms of variables
+    
     import leo.datastructures.Term.Bound
     final def apply(e: UEq, depth: Int, hint: Int): Subst = {
       assert(hint != CANNOT_APPLY)
@@ -453,19 +453,20 @@ object HuetsPreUnification2 extends Unification {
       Subst.singleton(variable._2 - depth, otherTerm)
     }
 
-    final def canApply(e: UEq, depth: Int): Int = {
+    final def canApply(e: UEq, leftBody: Term, leftAbstractions: Seq[Type],
+                       rightBody: Term, rightAbstractions: Seq[Type], depth: Int): Int = {
       // orienting the equation
-      val leftIsVar = isVariable(e._1)
-      val potentialVariable = if (leftIsVar) e._1 else e._2
-      val otherTerm = if (leftIsVar) e._2 else e._1
-
-      if (!isVariable(potentialVariable)) CANNOT_APPLY
-      else {
-        val (_, scope) = Bound.unapply(potentialVariable.headSymbol).get
-        if (!otherTerm.looseBounds.contains(scope - depth)) {
-          if (leftIsVar) LEFT_IS_VAR
-          else RIGHT_IS_VAR
-        } else CANNOT_APPLY
+      val leftIsVar = isVariable(leftBody, leftAbstractions)
+      if (leftIsVar) {
+        val (_, scope) = Bound.unapply(e._1.headSymbol).get
+        if (!e._2.looseBounds.contains(scope - depth)) LEFT_IS_VAR else CANNOT_APPLY
+      } else {
+        val rightIsVar = isVariable(rightBody, rightAbstractions)
+        if (rightIsVar) {
+          val (_, scope) = Bound.unapply(e._2.headSymbol).get
+          if (!e._1.looseBounds.contains(scope - depth)) RIGHT_IS_VAR else CANNOT_APPLY
+        }
+        else CANNOT_APPLY
       }
     }
   }
@@ -558,13 +559,18 @@ object HuetsPreUnification2 extends Unification {
         }
   }
   /** Checks whether the term is a free variable (eta-expanded). */
-  private final def isVariable(t: Term): Boolean = {
+  private final def isVariable(body: Term, bound: Seq[Type]): Boolean = {
     import leo.datastructures.Term.{Bound, TermApp}
-    val (body, bound) = collectLambdas(t)
+//    val (body, bound) = collectLambdas(t)
+    leo.Out.finest(s"isVariable body: ${body.pretty}")
+    leo.Out.finest(s"isVariable bound: ${bound.toString}")
     body match {
-      case TermApp(head, args) => if (args.size == bound.size)
-        boundVarsMatch(args, bound)
-      else false
+      case TermApp(head, args) => head match {
+        case Bound(_, scope) if scope > bound.size => if (args.size == bound.size)
+          boundVarsMatch(args, bound)
+        else false
+        case _ => false
+      }
       case _ => false
     }
   }
