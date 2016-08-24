@@ -1,8 +1,6 @@
 package leo.datastructures
 
-import leo.Configuration
-import leo.datastructures.impl.{TermImpl, Signature}
-
+import leo.datastructures.impl.Signature
 
 import scala.language.implicitConversions
 
@@ -36,6 +34,7 @@ trait Term extends Pretty {
   def isTermAbs: Boolean
   def isTypeAbs: Boolean
   def isApp: Boolean
+  def flexHead: Boolean
 
   // Locality/Indexing properties of terms
   def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
@@ -104,7 +103,7 @@ trait Term extends Pretty {
   def typeClosure(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): CMP_Result = Configuration.TERM_ORDERING.compare(this, that)
+  def compareTo(that: Term): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
   /** Return the β-nf of the term */
@@ -128,7 +127,7 @@ trait Term extends Pretty {
 /**
  * Term Factory object. Only this class is used to create new terms.
  *
- * Current default term implementation: [[TermImpl]]
+ * Current default term implementation: [[impl.TermImpl]]
  */
 object Term extends TermBank {
   import impl.TermImpl

@@ -26,6 +26,9 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   def isLocal = _locality == LOCAL
   def locality = _locality
 
+  final def flexHead: Boolean = flexHead0(0)
+  protected[impl] def flexHead0(depth: Int): Boolean
+
   lazy val betaNormalize: Term = {
     val erg = normalize(Subst.id, Subst.id)
     if (isGlobal)
@@ -78,6 +81,10 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = args != SNil
+  protected[impl] def flexHead0(depth: Int): Boolean = hd match {
+    case BoundIndex(_, scope) => scope > depth
+    case _ => false
+  }
 
   // Handling def. expansion
   lazy val δ_expandable = hd.δ_expandable || args.δ_expandable
@@ -320,6 +327,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = true
+  protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable || args.δ_expandable
@@ -428,6 +436,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   val isTermAbs = true
   val isTypeAbs = false
   val isApp = false
+  protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth+1)
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable
@@ -532,6 +541,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   val isTermAbs = false
   val isTypeAbs = true
   val isApp = false
+  protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
   lazy val δ_expandable = body.δ_expandable
@@ -605,6 +615,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   val isTermAbs = false
   val isTypeAbs = false
   val isApp = false
+  protected[impl] def flexHead0(depth: Int): Boolean = this.betaNormalize.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
   lazy val δ_expandable = false // TODO
