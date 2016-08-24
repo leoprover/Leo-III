@@ -71,7 +71,7 @@ object LiteralImpl {
     /** Returns true iff the literal is an unification constraint. */
     val uni: Boolean = !polarity
     /** Returns true iff the literal is a flex-flex unification constraint, */
-    val flexflex: Boolean = uni && (left.isApp || left.isAtom) && (right.isApp || right.isAtom) && left.headSymbol.isVariable && right.headSymbol.isVariable
+    val flexflex: Boolean = uni && left.flexHead && right.flexHead
     /** Returns true iff the literal has a flexible head. */
     val flexHead: Boolean = false
 
