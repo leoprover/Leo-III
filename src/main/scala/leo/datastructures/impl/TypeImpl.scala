@@ -9,6 +9,8 @@ protected[datastructures] abstract class TypeImpl extends Type {
   // to be overridden by abstraction type below
 
   def closure(subst: Subst) = substitute(subst)
+
+  def monomorphicBody: Type = this
 }
 
 /** Literal type, i.e. `$o` */
@@ -267,6 +269,8 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
   val funParamTypesWithResultType = Seq(this)
   val order = 0
   lazy val polyPrefixArgsCount = 1 + body.polyPrefixArgsCount
+
+  override lazy val monomorphicBody: Type = body.monomorphicBody
 
   val scopeNumber = body.scopeNumber + 1
 

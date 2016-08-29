@@ -100,6 +100,9 @@ abstract class Type extends Pretty {
    * @return
    */
   def polyPrefixArgsCount: Int
+  /* Return the body of the type without any prefix-type abstractions, e.g.
+  * for /\./\. c 1 2 return (c 1 2). */
+  def monomorphicBody: Type
 
   protected[datastructures] def closure(subst: Subst): Type
 }
