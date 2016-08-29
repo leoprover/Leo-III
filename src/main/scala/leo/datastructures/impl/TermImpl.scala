@@ -223,31 +223,64 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   }
 
   lazy val etaExpand0: Term = {
-    if (!hd.ty.isFunType) {
-      this
-    } else {
+    if (hd.ty.isFunType) {
       val hdFunParamTypes = hd.ty.funParamTypes
       if (args.length < hdFunParamTypes.length) {
-        // Introduce new lambda binders
+        // Introduce new lambda binders, number = missing #args
         var missing = hdFunParamTypes.length - args.length
+        // Lift head if it is a variable (lift by number of new lambdas)
         val newHead = hd match {
           case BoundIndex(t, sc) => BoundIndex(t, sc + missing)
           case _ => hd
         }
-        val newargs = args.normalize(Subst.shift(missing), Subst.id).etaExpand
-
-
+        // Lift arguments and eta expand recursively
+        val liftedArgs = args.normalize(Subst.shift(missing), Subst.id).etaExpand
+        // produce new list of bound variables (decreasing index)
         val newTypes = hdFunParamTypes.drop(args.length)
         val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
-        val newSpine = newargs ++ newSpineSuffix
-//        println(s"${Root(hd, newSpine).pretty} missing ${hdFunParamTypes.length - args.length}")
+        val newSpine = liftedArgs ++ newSpineSuffix
+        // combine and prefix with lambdas
         val liftedBody: Term = Root(newHead, newSpine)
-//        println(s"${liftedBody.pretty}")
         newTypes.foldRight(liftedBody){case (ty, t) => TermAbstr(ty, t)}
       } else {
         Root(hd, args.etaExpand)
       }
-
+    }
+    else if (hd.ty.isPolyType) {
+      // drop all prefix-type arguments, get rest
+      val (tyArgs, restArgs) = getFirstNTyArgs(args, hd.ty.polyPrefixArgsCount)
+      assert(tyArgs.size == hd.ty.polyPrefixArgsCount)
+      // Now do the same as above for function types, but with typeBody as functional type
+      // and with restArgs as Args to count/expand
+      val typeBody = hd.ty.monomorphicBody
+      val hdFunParamTypes = typeBody.funParamTypes
+      if (restArgs.length < hdFunParamTypes.length) {
+        // Introduce new lambda binders, number = missing #args
+        var missing = hdFunParamTypes.length - restArgs.length
+        // Lift head if it is a variable (lift by number of new lambdas)
+        val newHead = hd match {
+          case BoundIndex(t, sc) => BoundIndex(t, sc + missing)
+          case _ => hd
+        }
+        // Lift arguments and eta expand recursively
+        val liftedArgs = args.normalize(Subst.shift(missing), Subst.id).etaExpand
+        // produce new list of bound variables (decreasing index)
+        val newTypes = hdFunParamTypes.drop(restArgs.length)
+        val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
+        val newSpine = liftedArgs ++ newSpineSuffix
+        // combine and prefix with lambdas
+        val liftedBody: Term = Root(newHead, newSpine)
+        newTypes.foldRight(liftedBody){case (ty, t) => TermAbstr(ty, t)}
+      } else
+        Root(hd, args.etaExpand)
+    } else this
+  }
+  private final def getFirstNTyArgs(sp: Spine, n: Int): (Seq[Type], Spine) = getFirstNTyArgs0(sp, n, Seq())
+  private final def getFirstNTyArgs0(sp: Spine, n: Int, acc: Seq[Type]): (Seq[Type], Spine) = n match {
+    case 0 => (acc.reverse, sp)
+    case _ => sp match {
+      case TyApp(typ, tail) => getFirstNTyArgs0(tail, n-1, typ +: acc)
+      case _ => throw new IllegalArgumentException
     }
   }
 
