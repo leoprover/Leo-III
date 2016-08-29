@@ -386,8 +386,11 @@ package inferenceControl {
               val unificationEq = (unificationLit.left, unificationLit.right)
               val nc = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, Seq(unificationEq), cl.cl.lits.init)
               val results = if (nc.isEmpty) Set(cl) else nc.flatMap {case (res, subst) =>
+                Out.finest(s"unify again?")
+                Out.finest(s"Previous result: ${res.pretty}")
                 val (ca, ul, ol) = PreUni.canApply(res)
                 if (ca) {
+                  Out.finest(s"unify again!")
                   PreUni(leo.modules.calculus.freshVarGen(res), res, ul, ol).map {
                     case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b, cl.cl.implicitlyBound)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
 
@@ -448,7 +451,7 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)
+    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||) //, Term.mkTypeApp(Forall, Signature.get.i))
     def eqBindings(tys: Seq[Type]): Set[Term] = {
       if (tys.size == 2) {
         val (ty1, ty2) = (tys.head, tys.tail.head)
