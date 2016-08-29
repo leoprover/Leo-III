@@ -140,7 +140,7 @@ object PreUni extends CalculusRule {
 
   def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
     Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
+    val result = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
     if (result.hasNext) {
       val uniResult = result.next()
       val (termSubst, typeSubst) = uniResult._1
@@ -152,6 +152,18 @@ object PreUni extends CalculusRule {
       Set()
       //Set((cl, Subst.id))
     }
+    // Alternative:
+//    val resultStream = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
+//    var result: Set[(Clause, Subst)] = Set()
+//    while (resultStream.hasNext) {
+//      val uniResult = resultStream.next()
+//      val (termSubst, typeSubst) = uniResult._1
+//      val flexflexPairs = uniResult._2
+//      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2)) // TODO DO they need to be substituted also?
+//      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
+//      result = result + ((Clause(updatedOtherLits ++ newLiterals),termSubst))
+//    }
+//    result
   }
 }
 
@@ -204,8 +216,8 @@ object OrderedEqFac extends CalculusRule {
 
   final def apply(cl: Clause, maxLitIndex: Int, maxLitSide: Side,
                   withLitIndex: Int, withLitSide: Side): Clause = {
-    assert(cl.lits.isDefinedAt(maxLitIndex));
-    assert(cl.lits.isDefinedAt(withLitIndex));
+    assert(cl.lits.isDefinedAt(maxLitIndex))
+    assert(cl.lits.isDefinedAt(withLitIndex))
 
     val maxLit = cl.lits(maxLitIndex)
     val withLit = cl.lits(withLitIndex)
@@ -267,7 +279,7 @@ object OrderedParamod extends CalculusRule {
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * i.e. it is lated eliminated using Simp. */
     val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false))
-    Out.finest(s"withLits_without_withLiteral: \n\t${(withLits_without_withLiteral).map(_.pretty).mkString("\n\t")}")
+    Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
     val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.max
