@@ -441,7 +441,7 @@ object HuetsPreUnification2 extends Unification {
     final val CANNOT_APPLY = -1
     final val LEFT_IS_VAR = 0
     final val RIGHT_IS_VAR = 1
-    
+
     import leo.datastructures.Term.Bound
     final def apply(e: UEq, depth: Int, hint: Int): Subst = {
       assert(hint != CANNOT_APPLY)
@@ -477,11 +477,12 @@ object HuetsPreUnification2 extends Unification {
     * not to forget that the approximations must be in eta-long-form
     */
   object ImitateRule {
-    import leo.datastructures.Term.∙
+    import leo.datastructures.Term.{∙, :::>}
 
     private final def takePrefixTypeArguments(t: Term): Seq[Type] = {
       t match {
         case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
+        case _ :::> body  => takePrefixTypeArguments(body)
         case _ => Seq()
       }
     }
@@ -489,13 +490,16 @@ object HuetsPreUnification2 extends Unification {
     final def apply(vargen: FreshVarGen, e: UEq0): UEq = {
       import leo.datastructures.Term.Bound
       leo.Out.finest(s"Apply Imitate")
+      leo.Out.finest(s"on ${e._1.pretty} = ${e._2.pretty}")
       val depth : Int = e._3
       // orienting the equation
       val (t,s) = if (isFlexible(e._1, depth)) (e._1,e._2) else (e._2, e._1)
-      val s0 = if (s.headSymbol.ty.isPolyType)
-        Term.mkTypeApp(s.headSymbol, takePrefixTypeArguments(s))
+      val s0 = if (s.headSymbol.ty.isPolyType) {
+        leo.Out.finest(s"head symbol is polymorphic")
+        Term.mkTypeApp(s.headSymbol, takePrefixTypeArguments(s))}
       else
         s.headSymbol
+      leo.Out.finest(s"chose head symbol to be ${s0.pretty}, type: ${s0.ty.pretty}")
       val variable = Bound.unapply(t.headSymbol).get
       val liftedVar = Term.mkBound(variable._1, variable._2 - depth).etaExpand
       val res = (liftedVar, partialBinding(vargen, t.headSymbol.ty,  s0))
