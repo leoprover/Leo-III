@@ -4,10 +4,13 @@ lazy val commonSettings = Seq(
 
     organization := "org.leo",
     test in assembly := {}
+
+    logLevel := Level.Warn
 )
 
 
 lazy val leo = (project in file(".")).
+  enablePlugins(JniNative).
   settings(commonSettings:_*).
   settings(
     name := "Leo III",
@@ -28,10 +31,12 @@ lazy val leo = (project in file(".")).
     javaOptions += "-Xss4m",
     
     parallelExecution in Test := false,
-    
-    logLevel := Level.Warn,
 
     scalacOptions ++= Seq("-Xelide-below","401"),
     
     exportJars := true
+    // options for native bindings
+    target in javah := (sourceDirectory in nativeCompile).value / "javah_include"
   )
+
+
