@@ -9,7 +9,9 @@ import ch.jodersky.jni.nativeLoader
   * Objects of this class represent independent PicoSAT contexts. Since PicoSAT is an iterative solver the
   * contexts are stateful. After solving additional clauses can be added.
   * Most of the methods of this object map directly to functions of the PicoSAT C API. See the picosat.h file
-  * for an exact documentation of the function behavior.
+  * for an exact documentation of the function behavior. Functions starting with '''picosat_''' are the
+  * internally used native functions and should not be used by users of this API. They are currently exposed,
+  * because some Scala versions do not support private native functions.
   *
   * @author Hans-Jörg Schurr
   * @since 7/27/16.
@@ -38,15 +40,15 @@ class PicoSAT private (enableTracing: Boolean) {
     * Resets the solver contexts by deleting the current one and creating a new one. If tracing was previously enabled
     * it will be enabled again.
     */
-  def reset = {
+  def reset() = {
     picosat_reset(context)
     context = picosat_init()
     if(tracing)
       picosat_enable_trace_generation(context)
   }
 
-  /** Allocates a new, yet unused, variable. For subsequent calls to functions on this context thread this variable
-    * as if it has been used.
+  /** Allocates a new and unused variable. For subsequent calls to functions on this context this variable
+    * is threaten as if it has been used.
     *
     * @return Returns a new unused variable.
     */
@@ -153,7 +155,7 @@ class PicoSAT private (enableTracing: Boolean) {
   }
 
   /**
-    * Pre allocate space for maxIdx variables.
+    * Pre allocate space for '''maxIdx''' variables.
     *
     * This can be used as a small optimization. Allocates variables this function behaves
     * like [[PicoSAT.freshVariable]].
@@ -174,41 +176,13 @@ class PicoSAT private (enableTracing: Boolean) {
     picosat_added_original_clauses(context)
   }
 
-  def maxBytesAllocated = {
-    picosat_max_bytes_allocated(context)
-  }
-
-  def propagations = {
-    picosat_propagations(context)
-  }
-
-  def decisions = {
-    picosat_decisions(context)
-  }
-
-  def visits = {
-    picosat_visits(context)
-  }
-
   /**
-    * @return The total time spend by PicoSAT in calls to [[PicoSAT.solve()]].
+    * @return The total time spend by PicoSAT in calls to [[PicoSAT.solve()]] in seconds.
     */
   def timeSpendSolving = {
     picosat_seconds(context)
   }
 
-  /**
-    * Adds a temporary assumption.
-    *
-    * Adding assumptions is conceptually simmilar to adding unit clauses containing only the assumed literal. The
-    * assumptions however stay only valid for one call to [[PicoSAT.solve()]] and will be removed before the subsequent
-    * call to [[PicoSAT.solve()]], expect when assumed again.
-    *
-    * @param lit The literal to assume.
-    */
-  def assume(lit : Int) = {
-    picosat_assume(context, lit)
-  }
 
   /**
     * Returns a satisfying variable assignment.
@@ -218,7 +192,7 @@ class PicoSAT private (enableTracing: Boolean) {
     * returned.
     *
     * @param lit The variable the assignment is for.
-    * @return A satisfying assignment or None
+    * @return A satisfying assignment or None.
     */
   def getAssignment(lit: Int) : Option[Boolean] = {
     if(state != PicoSAT.SAT)
@@ -233,10 +207,121 @@ class PicoSAT private (enableTracing: Boolean) {
   }
 
   /**
-    * @return True if the CNF is unsatisfiable becose the empty clause was added or derived.
+    * Returns a satisfying variable assignment if the variable was forced at the toplevel.
+    *
+    * This function the same as [[PicoSAT.getAssignment(lit)]], but only returns a truth value if the literal is forced
+    * to this value at the toplevel. Does not require that [[PicoSAT.solve()]]  was called.
+    *
+    * @param lit The variable the assignment is for.
+    * @return An assignment.
+    */
+  def getAssignmentToplevel(lit: Int) : Option[Boolean] = {
+    picosat_deref_toplevel(context, lit) match {
+         case v if v > 0 => Some(true)
+         case v if v < 0 => Some(false)
+         case _ => None
+    }
+  }
+
+  /**
+    * @return True if the CNF is unsatisfiable because the empty clause was added or derived.
     */
   def inconsistent = {
     picosat_inconsistent(context) != 0
+  }
+
+  /**
+    * Adds a temporary assumption.
+    *
+    * Adding assumptions is conceptually similar to adding unit clauses containing only the assumed literal. The
+    * assumptions however stay only valid for one call to [[PicoSAT.solve()]] and will be removed before the subsequent
+    * call to [[PicoSAT.solve()]], expect when assumed again.
+    *
+    * @param lit The literal to assume.
+    */
+  def assume(lit : Int) = {
+    picosat_assume(context, lit)
+  }
+
+  /**
+    * Tests if an assumption is a failed assumption.
+    *
+    * Returns true if the assumption has been used to derive unsatisfiability. Calling this function therefore
+    * only makes sense if the state is UNSAT. This is an overapproximation  of the literals necessary to
+    * derive unsatisfiability, but as accurate as generating core literals. This function, however, is much
+    * more efficient, since tracing is not needed. This should only be called while the assumption is valid.
+    * See [[PicoSAT.assume(lit)]] for details.
+    *
+    * @param lit The assumed literal.
+    * @return True if the literal is a failed  assumption.
+    */
+  def failedAssumption(lit: Int) = {
+    picosat_failed_assumption(context, lit) != 0
+  }
+
+  /**
+    * Returns an array of failed assumptions. See [[PicoSAT.failedAssumption(lit)]] for details.
+    *
+    * @return An array of failed assumption.
+    */
+  def failedAssumptions = {
+    picosat_failed_assumptions(context)
+  }
+
+  /**
+    * Test if the satisfying assumption did not change.
+    *
+    * Assume that the state was SAT then clauses were added and after calling [[PicoSAT.solve()]] the
+    * state was still SAT. Now [[PicoSAT.changed]] returns '''false''' if the assignment to the old
+    * variables did not change. The result is only valid until additional clauses or assumptions are
+    * added, or [[PicoSAT.solve()]] is called again.
+    *
+    * @return False if satisfying assignment did not change.
+    */
+  def changed = {
+    picosat_changed(context) != 0
+  }
+
+  /**
+    *  Returns true if the clause with index '''clauseIdx''' is in the clause core. This function needs
+    *  tracing to be enabled.
+    *
+    *  Note: According to the PicoSAT documentation usage of this function has not been tested in
+    *  incremental mode with failed assumptions.
+    *
+    * @param clauseIdx The clause index starting at 0 increasing in the order the clauses have been added.
+    * @return True if the clause is in the core.
+    */
+  def coreClause(clauseIdx: Int) = {
+    if (tracing)
+      picosat_coreclause(context, clauseIdx) != 0
+    else
+      false
+  }
+
+  /**
+    * Allows to query the variable core. Those are the variables used in the resolution to derive the empty
+    * clause if the state is UNSAT. This function needs tracing to be enabled.
+    *
+    * @param lit The literal in question.
+    * @return True if the literal was used to derive the empty clause.
+    */
+  def coreLiteral(lit: Int) = {
+    if(tracing)
+      picosat_corelit(context, lit) != 0
+    else
+      false
+  }
+
+  /**
+    * Over approximation of [[PicoSAT.coreLiteral(lit)]]. A literal is a 'used' literal, if it was involved to
+    * derive any learned clause. This does not need tracing.
+    *
+    * @param lit The literal in question.
+    * @return True if the literal was used.
+    */
+  def usedLiteral(lit: Int) = {
+      picosat_usedlit(context, lit) != 0
   }
 
   override def finalize(): Unit = picosat_reset(context)
@@ -258,14 +343,17 @@ class PicoSAT private (enableTracing: Boolean) {
   @native def picosat_adjust(context: Long, maxIdx : Int) : Unit
   @native def picosat_variables(context: Long) : Int
   @native def picosat_added_original_clauses(context: Long) : Int
-  @native def picosat_max_bytes_allocated(context: Long) : BigInt
-  @native def picosat_propagations(context: Long) : BigInt
-  @native def picosat_decisions(context: Long) : BigInt
-  @native def picosat_visits(context: Long) : BigInt
   @native def picosat_seconds(context: Long) : Double
   @native def picosat_assume(context: Long, lit: Int) : Unit
-  @native def picosat_deref(context: Long lit: Int) : Int
+  @native def picosat_deref(context: Long, lit: Int) : Int
+  @native def picosat_deref_toplevel(context: Long, lit: Int) : Int
   @native def picosat_inconsistent(context: Long) : Int
+  @native def picosat_failed_assumption(context: Long, lit: Int) : Int
+  @native def picosat_failed_assumptions(context: Long) : Array[Int]
+  @native def picosat_changed(context: Long) : Int
+  @native def picosat_coreclause(context: Long, clauseIdx: Int) : Int
+  @native def picosat_corelit(context: Long, lit: Int) : Int
+  @native def picosat_usedlit(context: Long, lit: Int) : Int
 }
 
 /*
