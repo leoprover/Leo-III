@@ -14,7 +14,7 @@ class PrenexTestSuite extends LeoTestSuite {
 
   val s = getFreshSignature
 
-  val skVar = mkAtom(s.freshSkolemVar(s.o))
+  val skVar = mkAtom(s.freshSkolemConst(s.o))
 
   val toNorm : Map[Term,Term] = Map[Term, Term](
     (&(Forall(\(s.o)(mkBound(s.o,1))), skVar), Forall(\(s.o)(&(mkBound(s.o,1), skVar)))),

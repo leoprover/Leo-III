@@ -240,9 +240,9 @@ trait IsSignature {
   ///////////////////////////////
 
   /** Create fresh uninterpreted symbol of type `ty` */
-  def freshSkolemVar(ty: Type): Key
+  def freshSkolemConst(ty: Type): Key
   /** Create fresh base type symbol */
-  def freshTypeVar: Key
+  def freshSkolemTypeConst: Key
 }
 
 object IsSignature {

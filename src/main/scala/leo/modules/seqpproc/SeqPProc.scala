@@ -32,7 +32,6 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = Control.switchPolarity(cw)
     cw = Control.skolemize(cw, Signature.get)
 
-
     // Exhaustively CNF
     result = Control.cnf(cw)
     // Remove defined equalities as far as possible
@@ -156,7 +155,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
     val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
     var loop = true
-    
+
     /////////////////////////////////////////
     // Init loop for conjecture-derived clauses
     /////////////////////////////////////////

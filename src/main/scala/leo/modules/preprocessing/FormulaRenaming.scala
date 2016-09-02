@@ -166,7 +166,7 @@ object FormulaRenaming extends CalculusRule{
         val newArgs = t.freeVars.toSeq // Arguments passed to the function to define
         val argtypes = newArgs.map(_.ty)
 
-        val c = s.freshSkolemVar(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
+        val c = s.freshSkolemConst(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
         val ct = Term.mkTermApp(Term.mkAtom(c), newArgs).betaNormalize
         us.put(t, ct)
         ct
