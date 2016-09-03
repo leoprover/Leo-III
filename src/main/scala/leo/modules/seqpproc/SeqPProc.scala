@@ -119,15 +119,20 @@ object SeqPProc extends Function1[Long, Unit]{
         remainingInput = remainingInput + formulaClause
       }
     }
-    // Initialize feature vector index
+    // Initialize indexes
     if (state.negConjecture != null) Control.fvIndexInit(remainingInput + state.negConjecture)
     else Control.fvIndexInit(remainingInput)
+    Control.foIndexInit()
+
     // Preprocessing
-    Out.debug("## Preprocess Neg.Conjecture BEGIN")
-    Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty}")
-    val conjecture_preprocessed = preprocess(state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
-    Out.debug(s"# Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
-    Out.trace("## Preprocess Neg.Conjecture END")
+    val conjecture_preprocessed = if (state.negConjecture != null) {
+      Out.debug("## Preprocess Neg.Conjecture BEGIN")
+      Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty}")
+      val result = preprocess(state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
+      Out.debug(s"# Result:\n\t${result.map {_.pretty}.mkString("\n\t")}")
+      Out.trace("## Preprocess Neg.Conjecture END")
+      result
+    } else Set[AnnotatedClause]()
 
     Out.debug("## Preprocess BEGIN")
     val preprocessIt = remainingInput.iterator
@@ -172,7 +177,7 @@ object SeqPProc extends Function1[Long, Unit]{
         if (Clause.effectivelyEmpty(cur.cl)) {
           loop = false
           if (state.conjecture == null) {
-            state.setSZSStatus(SZS_ContradictoryAxioms)
+            state.setSZSStatus(SZS_Unsatisfiable)
           } else {
             state.setSZSStatus(SZS_Theorem)
           }
@@ -227,7 +232,7 @@ object SeqPProc extends Function1[Long, Unit]{
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
             if (state.conjecture == null) {
-              state.setSZSStatus(SZS_ContradictoryAxioms)
+              state.setSZSStatus(SZS_Unsatisfiable)
             } else {
               state.setSZSStatus(SZS_Theorem)
             }
@@ -307,6 +312,10 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment("Clauses at the end of the loop:")
       Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty).mkString("\n\t"))
     }
+    if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
+      Out.finest("TFF clauses at the end:")
+      Out.finest("\t" + Control.foIndex.iterator.toSeq.map(leo.modules.output.ToTFF.apply).mkString("\n\t"))
+    }
 
 
     /* Print proof object if possible and requested. */
@@ -350,7 +359,9 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     // Simplifying (mofifying inferences) END
     /////////////////////////////////////////
-
+    leo.Out.finest(s"XX ${cur.pretty}")
+    leo.Out.finest(s"XX ${leo.modules.indexing.FOIndex.typedFirstOrder(cur)}")
+    Control.foIndex.insert(cur)
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
