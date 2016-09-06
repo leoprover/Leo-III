@@ -3,7 +3,7 @@ lazy val commonSettings = Seq(
     scalaVersion := "2.11.7",
 
     organization := "org.leo",
-    test in assembly := {}
+    test in assembly := {},
 
     logLevel := Level.Warn
 )
@@ -34,7 +34,7 @@ lazy val leo = (project in file(".")).
 
     scalacOptions ++= Seq("-Xelide-below","401"),
     
-    exportJars := true
+    exportJars := true,
     // options for native bindings
     target in javah := (sourceDirectory in nativeCompile).value / "javah_include"
   )

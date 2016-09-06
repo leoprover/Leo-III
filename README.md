@@ -40,8 +40,9 @@ Alternative, Scala can be downloaded at [Scala-lang.org](http://scala-lang.org/d
 Building the project (SBT)
 ----------------
 
-[SBT](http://www.scala-sbt.org/) is now the preferred build system. To compile
-and run Leo-III at least SBT 0.13.6 and Java 8 is required. 
+[SBT](http://www.scala-sbt.org/) is now the preferred 
+build system. To compile and run Leo-III at least SBT 0.13.6 
+and Java 8 is required. 
 
 To build Leo-III run:
 
@@ -59,26 +60,51 @@ To run the unit tests call
 
     > sbt test
 
-It is possible to generate a standalone `.jar` file which contains all
-dependencies required by Leo-III.
+It is possible to generate a standalone `.jar` file which 
+contains all dependencies required by Leo-III.
 
     > sbt assembly
     > java -jar target/scala-2.11/Leo\ III-assembly-0.1.jar 
 
-Occasionally it might happen that multiple versions of Java are installed. The
-command line argument `-java-home` can be used to select a specific one. For
-example:
+Occasionally it might happen that multiple versions of Java are 
+installed. The command line argument `-java-home` can be used 
+to select a specific one. For example:
 
     > sbt -java-home /usr/lib/jvm/java-8-openjdk-amd64/ compile
+    
+Many Linux distributions offer a native method to select the
+Java version. This often works better then selecting the Java 
+home via the command line switch. On Ubuntu this is called
+`update-alternatives`.
+
+### Building the PicoSAT bindings
+
+To build the PicoSAT bindings `cmake` and a recent `gcc` is 
+required. 
+
+First download PicoSAT version 965 from the 
+[PicoSAT homepage](http://fmv.jku.at/picosat/) and 
+extract the archive into `./src/native/` creating a folder 
+`./src/native/picosat-965`.
+
+Then use the folloing command to compile PicoSAT and the
+bindings:
+
+    > sbt nativeCompile
+    
+To test the bindings run:
+
+    > sbt "testOnly leo.modules.sat_solver.PicoSATTestSuite"
 
 
 Building the project (Maven)
 ----------------
 
-Alternatively [Maven](http://maven.apache.org/) can be used to build Leo-III.
-This option is now deprecated and will be removed in the future. 
-Information about downloading and installing Maven can be found at [the download
-section of the maven website](http://maven.apache.org/download.cgi).
+Alternatively [Maven](http://maven.apache.org/) can be 
+used to build Leo-III. This option is now deprecated and will be 
+removed in the future. Information about downloading and 
+installing Maven can be found at [the download section of 
+the maven website](http://maven.apache.org/download.cgi).
 
 The project is compiled and built into an executable `.jar` file using
 
