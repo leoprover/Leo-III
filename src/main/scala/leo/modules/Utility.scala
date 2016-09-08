@@ -92,7 +92,7 @@ object Utility {
 
   def userSignatureToTPTP(constants: Set[Signature#Key])(implicit sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder()
-    sig.allUserConstants.intersect(constants).foreach { case key =>
+    sig.allUserConstants.intersect(constants.union(sig.typeSymbols)).foreach { case key =>
       val name = sig.apply(key).name
       sb.append(ToTPTP(key))
       sb.append("\n")

@@ -216,7 +216,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   val skolemVarPrefix = "sk"
   /** Returns a fresh uninterpreted symbol of type `ty`. That symbol will be
     * named `SKi` where i is some positive number. */
-  def freshSkolemVar(ty: Type): Key = synchronized {      // TODO Whole Signature thread save
+  def freshSkolemConst(ty: Type): Key = synchronized {      // TODO Whole Signature thread save
     while(exists(skolemVarPrefix + (skolemVarCounter +1).toString)) {
       skolemVarCounter += 1
     }
@@ -227,8 +227,8 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   var typeVarCounter = 0
   val typeVarPrefix = "tv"
   /** Returns a fresh base type symbol. That symbol will be
-    * named `TVi` where i is some positive number. */
-  def freshTypeVar: Key = {
+    * named `tvi` where i is some positive number. */
+  def freshSkolemTypeConst: Key = {
     while(exists(typeVarPrefix + (typeVarCounter + 1).toString)) {
       typeVarCounter += 1
     }

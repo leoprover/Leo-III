@@ -103,7 +103,8 @@ object FullCNF extends CalculusRule {
       case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, false))
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize, false))
-      case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true))
+      case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
+      case term@TypeLambda(t) if !l.polarity => val sko = leo.datastructures.impl.Signature.get.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
       case _ => Seq(Seq(l))
     }
   } else {
@@ -500,7 +501,7 @@ object Skolemization extends CalculusRule {
   private def apply0(t: Term, s: Signature, fvs: Seq[Term]): Term = {
     t match {
       case Exists(inner@(ty :::> body)) => {
-        val skConst = Term.mkAtom(s.freshSkolemVar(Type.mkFunType(fvs.map(_.ty), ty)))
+        val skConst = Term.mkAtom(s.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
         val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
         apply0(body2, s, fvs)

@@ -9,7 +9,11 @@ import scala.collection.SortedSet
 /**
   * Created by lex on 20.02.16.
   */
-abstract class State[T <: ClauseProxy] extends Pretty {
+trait State[T <: ClauseProxy] extends Pretty {
+  def conjecture: T
+  def negConjecture: T
+  def setConjecture(conj: T): Unit
+  def setNegConjecture(negConj: T): Unit
 
   def signature: IsSignature
   def szsStatus: StatusSZS
@@ -49,6 +53,8 @@ abstract class State[T <: ClauseProxy] extends Pretty {
 
 protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: IsSignature)
                                                      (implicit unprocessedOrdering: Ordering[T]) extends State[T] {
+  private var conjecture0: T = null.asInstanceOf[T]
+  private var negConjecture0: T = null.asInstanceOf[T]
   private var current_szs = initSZS
   private val sig: IsSignature = initSignature
   private var current_unprocessed: SortedSet[T] = SortedSet()(unprocessedOrdering)
@@ -63,18 +69,27 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
 
 
-  override def signature: IsSignature = sig
-  override def szsStatus: StatusSZS = current_szs
-  override def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+  final def conjecture: T = conjecture0
+  final def setConjecture(conj: T): Unit = {
+    conjecture0 = conj
+  }
+  final def negConjecture: T = negConjecture0
+  final def setNegConjecture(negConj: T): Unit = {
+    negConjecture0 = negConj
+  }
 
-  override def unprocessed: SortedSet[T] = current_unprocessed
+  final def signature: IsSignature = sig
+  final def szsStatus: StatusSZS = current_szs
+  final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+
+  final def unprocessed: SortedSet[T] = current_unprocessed
 
   val prios = mpq.priorities - 1 // == 3 -1
   val prio_weights = Seq(8,1,2,2)
   var cur_prio = 0
   var cur_weight = 0
   override def nextUnprocessed: T = {
-    leo.Out.debug(s"[###] Selecting with priority ${cur_prio}: element ${cur_weight}")
+    leo.Out.debug(s"[###] Selecting with priority $cur_prio: element $cur_weight")
     if (cur_weight >= prio_weights(cur_prio)) {
       cur_weight = 0
       cur_prio = (cur_prio + 1) % (prios+1)
@@ -86,17 +101,17 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 //    current_unprocessed = current_unprocessed.tail
 //    next
   }
-  override def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl; mpq.insert(cl)}
-  override def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls; mpq.insert(cls)}
-  override def processed: Set[T] = current_processed
-  override def setProcessed(c: Set[T]): Unit = {current_processed = c}
-  override def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
+  final def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl; mpq.insert(cl)}
+  final def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls; mpq.insert(cls)}
+  final def processed: Set[T] = current_processed
+  final def setProcessed(c: Set[T]): Unit = {current_processed = c}
+  final def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
 
-  override def rewriteRules: Set[T] = current_rewriterules
-  override def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}
+  final def rewriteRules: Set[T] = current_rewriterules
+  final def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}
 
-  override def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
-  override def derivationClause: Option[T] = derivationCl
+  final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
+  final def derivationClause: Option[T] = derivationCl
 
   // Statistics
   private var generatedCount: Int = 0
@@ -107,25 +122,25 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var factorCount: Int = 0
   private var paramodCount: Int = 0
 
-  override def noProcessedCl: Int = processed.size
-  override def noGeneratedCl: Int = generatedCount
-  override def noTrivialCl: Int = trivialCount
-  override def noParamod: Int = paramodCount
-  override def noFactor: Int = factorCount
-  override def noForwardSubsumedCl: Int = forwardSubsumedCount
-  override def noBackwardSubsumedCl: Int = backwardSubsumedCount
+  final def noProcessedCl: Int = processed.size
+  final def noGeneratedCl: Int = generatedCount
+  final def noTrivialCl: Int = trivialCount
+  final def noParamod: Int = paramodCount
+  final def noFactor: Int = factorCount
+  final def noForwardSubsumedCl: Int = forwardSubsumedCount
+  final def noBackwardSubsumedCl: Int = backwardSubsumedCount
 
-  override def incGeneratedCl(by: Int): Unit = {generatedCount += by}
-  override def incTrivialCl(): Unit = {trivialCount += 1}
-  override def incParamod(by: Int): Unit = {paramodCount += by}
-  override def incFactor(by: Int): Unit = {factorCount += by}
-  override def incForwardSubsumedCl(): Unit = {forwardSubsumedCount += 1}
-  override def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
-  override def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
-  override def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
+  final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
+  final def incTrivialCl(): Unit = {trivialCount += 1}
+  final def incParamod(by: Int): Unit = {paramodCount += by}
+  final def incFactor(by: Int): Unit = {factorCount += by}
+  final def incForwardSubsumedCl(): Unit = {forwardSubsumedCount += 1}
+  final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
+  final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
+  final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
 
   // Pretty
-  override def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: ${noProcessedCl}"
+  final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"
 }
 
 object State {

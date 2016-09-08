@@ -42,6 +42,8 @@ object Control {
   @inline final def fvIndexInsert(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.insert(cls)
   @inline final def fvIndexRemove(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.remove(cl)
   @inline final def fvIndexRemove(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.remove(cls)
+  @inline final def foIndexInit(): Unit = indexingControl.FOIndexControl.foIndexInit()
+  @inline final def foIndex: modules.indexing.FOIndex = indexingControl.FOIndexControl.index
   // External prover call
   @inline final def callExternalLeoII(clauses: Set[AnnotatedClause]) = externalProverControl.ExternalLEOIIControl.call(clauses)
 }
@@ -451,7 +453,7 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||) //, Term.mkTypeApp(Forall, Signature.get.i))
+    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)//, Term.mkTypeApp(Forall, Signature.get.i))
     def eqBindings(tys: Seq[Type]): Set[Term] = {
       if (tys.size == 2) {
         val (ty1, ty2) = (tys.head, tys.tail.head)
@@ -480,7 +482,7 @@ package inferenceControl {
         val new_ps_pre2 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
         val new_ps_pre3 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
         val new_ps_pre4 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(Signature.get.uninterpretedSymbols.map(Term.mkAtom(_)), h.ty.funParamTypes)))
-        val pre = new_ps_pre //++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
+        val pre = new_ps_pre // ++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
         val new_ps = pre.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
         Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
         return new_ps
@@ -959,6 +961,17 @@ package indexingControl {
         remove(cl)
       }
     }
+  }
+
+  object FOIndexControl {
+    import leo.modules.indexing.FOIndex
+    private var foIndex: FOIndex = null
+
+    final def foIndexInit(): Unit  = {
+      if (foIndex == null) foIndex = FOIndex()
+    }
+
+    final def index: FOIndex = foIndex
   }
 }
 

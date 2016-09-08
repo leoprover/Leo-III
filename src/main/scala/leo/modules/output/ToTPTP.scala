@@ -330,6 +330,7 @@ object ToTPTP {
   }
   final private def toTPTP0(ty: Type): String = ty match {
     case BaseType(id) => Signature.get(id).name
+    case ComposedType(id, args) => s"${Signature.get(id).name} @ ${args.map(toTPTP0).mkString(" @ ")}"
     case BoundType(scope) => "T" + intToName(scope- 1)
     case t1 -> t2 => s"(${toTPTP(t1)} > ${toTPTP(t2)})"
     case t1 * t2 => s"(${toTPTP(t1)} * ${toTPTP(t2)})"

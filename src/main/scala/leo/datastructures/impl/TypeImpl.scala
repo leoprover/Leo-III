@@ -26,11 +26,12 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
 
   // Predicates on types
   override val isBaseType         = args.isEmpty
+  override val isComposedType     = args.nonEmpty
   def isApplicableWith(arg: Type) = false
 
   // Queries on types
-  val typeVars = args.flatMap(_.typeVars).toSet
-  val symbols = Set(id)
+  lazy val typeVars = args.flatMap(_.typeVars).toSet
+  lazy val symbols = Set(id)
 
   val funDomainType = None
   val codomainType  = this

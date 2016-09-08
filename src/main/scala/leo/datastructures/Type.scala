@@ -30,6 +30,7 @@ abstract class Type extends Pretty {
 
   // Predicates on types
   val isBaseType: Boolean = false
+  val isComposedType: Boolean = false
   val isFunType: Boolean = false
   val isProdType: Boolean = false
   val isUnionType: Boolean = false

@@ -135,7 +135,7 @@ package object calculus {
   }
 
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int]): Term = {
-    val skFunc = Signature.get.freshSkolemVar(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
+    val skFunc = Signature.get.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }
@@ -150,8 +150,10 @@ package object calculus {
   final protected def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
     if (s == t) return true
     if (s.ty.typeVars.isEmpty && t.ty.typeVars.isEmpty) {
+      leo.Out.finest(s"mayUnify0: typevars isEmpty")
       if (s.ty != t.ty) return false
     } else {
+      leo.Out.finest(s"mayUnify0: typevars not isEmpty")
       if (!mayUnify(s.ty, t.ty)) return false
     }
     if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?
