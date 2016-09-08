@@ -20,9 +20,13 @@ src/main/resources/META-INF/
 
 # Compile specific
 out/*
-project/*
+project/project/*
+project/target/*
 
 # Save Formats
 *.swp
 *~
 ext_config
+
+# PicoSAT
+src/native/picosat-965
