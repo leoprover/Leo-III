@@ -5,11 +5,10 @@ import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard._
-import leo.datastructures.context.Context
 import leo.datastructures.impl.Signature
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.{SZS_CounterTheorem, SZS_Theorem}
+import leo.modules.output.SZS_CounterTheorem
 import leo.modules.parsers.InputProcessing
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
@@ -22,6 +21,22 @@ object RelevanceFilterAgent extends AbstractAgent {
   override def name: String = "relevance_filter_agent"
   override val interest : Option[Seq[DataType]] = Some(Seq(FormulaTakenType, AnnotatedFormulaType))
 
+  override def init(): Iterable[Task] = {
+    val insNew = PreFilterSet.getFormulas.toIterator
+
+    var tasks : Seq[Task] = Seq()
+
+    while(insNew.nonEmpty){
+      val form = insNew.next()
+      if (form.role == Role_Conjecture.pretty || form.role == Role_NegConjecture.pretty || form.function_symbols.isEmpty) {
+        // Initially we takethe conjecture and prinzipels
+        leo.Out.debug(s"$form : \n  ${if (form.function_symbols.isEmpty) "rule format" else "goal"}\n taken")
+        tasks = new RelevanceTask(form, -1, this) +: tasks
+      }
+    }
+    tasks
+  }
+
   /**
     * This method should be called, whenever a formula is added to the blackboard.
     *
@@ -32,15 +47,18 @@ object RelevanceFilterAgent extends AbstractAgent {
     */
   override def filter(event: Event): Iterable[Task] = event match {
       // TODO define own factors and passmark
-    case DataEvent(form : AnnotatedFormula, AnnotatedFormulaType)
-      if form.role == Role_Conjecture.pretty || form.role == Role_NegConjecture.pretty || form.function_symbols.isEmpty =>  // Initially we takethe conjecture and prinzipels
-        leo.Out.debug(s"$form : \n  ${if(form.function_symbols.isEmpty) "rule format" else "goal"}\n taken")
-        Seq(new RelevanceTask(form, -1, this))
-    case DataEvent((form : AnnotatedFormula, round : Int), FormulaTakenType) =>
-      // New round.
-      val touched : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(form.function_symbols)
-      val filter_pass : Iterable[AnnotatedFormula] = touched.filter(f => RelevanceFilter(round+1)(f))
-      filter_pass.map(f => new RelevanceTask(f, round+1, this))
+    case r : Result =>
+      val insTaken = (r.inserts(FormulaTakenType) ++ r.updates(FormulaTakenType).map(_._2)).toIterator
+
+      var tasks: Seq[Task] = Seq[Task]()
+
+      while(insTaken.nonEmpty){
+        val (form,round) = insTaken.next().asInstanceOf[(AnnotatedFormula, Int)]
+        val touched : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(form.function_symbols)
+        val filter_pass : Iterable[AnnotatedFormula] = touched.filter(f => RelevanceFilter(round+1)(f))
+        tasks = tasks ++ filter_pass.map(f => new RelevanceTask(f, round+1, this))
+      }
+      tasks
     case _ => Seq()
   }
 }

@@ -48,11 +48,11 @@ class MultiSearchPhase(proofProcedure: ProofProcedure*) extends CompletePhase {
     override def run(): Unit = {
       try{
 //        println("Before sleep ()")
-        Thread.sleep((Configuration.TIMEOUT * 600))
+        Thread.sleep(Configuration.TIMEOUT * 600)
 //        println("After sleep")
         val fs = FormulaDataStore.getFormulas.toSet
         SZSScriptAgent.allScriptAgents.foreach(a => a.kill())
-        SZSScriptAgent.execute(fs, Context())
+        SZSScriptAgent.execute(fs)
       } catch {
         case e : ThreadDeath => return
         case e : InterruptedException => return

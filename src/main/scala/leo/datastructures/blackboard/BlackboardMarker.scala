@@ -19,25 +19,25 @@ trait Event {
 trait Message extends Event {
 
 }
-
-/**
- * Capsules a Formula that was recently added or modified in the blackboard.
- * @param f - Modified formula
- */
-private class DataEvent(val f : Any, val dataType: DataType) extends Event {}
+//
+///**
+// * Capsules a Formula that was recently added or modified in the blackboard.
+// * @param f - Modified formula
+// */
+//private class DataEvent(val f : Any, val dataType: DataType) extends Event {}
 
 /**
  * Creates and deconstructs an Event containing a single formula
  */
-object DataEvent {
-
-  def apply(f : Any, d : DataType) : Event = new DataEvent(f,d)
-
-  def unapply(e : Event) : Option[(Any,DataType)] = e match {
-    case f : DataEvent  => Some((f.f, f.dataType))
-    case _                => None
-  }
-}
+//object DataEvent {
+//
+//  def apply(f : Any, d : DataType) : Event = new DataEvent(f,d)
+//
+//  def unapply(e : Event) : Option[(Any,DataType)] = e match {
+//    case f : DataEvent  => Some((f.f, f.dataType))
+//    case _                => None
+//  }
+//}
 //
 //private class ContextEvent(c : Context) extends Event {
 //  def getC : Context = c

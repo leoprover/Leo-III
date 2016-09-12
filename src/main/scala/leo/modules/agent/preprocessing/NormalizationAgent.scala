@@ -13,18 +13,31 @@ import leo.modules.preprocessing._
   */
 class NormalizationAgent(cs : Context*) extends AbstractAgent {
   override def name: String = "normalization_agent"
-  override val after : Set[Agent] = Set(EqualityReplaceAgent)
   val norms : Seq[Normalization] = Seq(Simplification, DefExpSimp, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
 
+
+  override def init(): Iterable[Task] = Seq()
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case r : Result  =>
+      val ins = r.inserts(ClauseType).iterator
+      val ups = r.updates(ClauseType).iterator
+
+      var tasks = Seq[Task]()
+      while(ins.nonEmpty){
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      while(ups.nonEmpty){
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      null
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
+  private def commonFilter(cl : ClauseProxy) : Task = {
     var openNorm : Seq[Normalization] = norms
-    val toInsertContext = ((if(cs exists (ce => Context.isAncestor(ce)(c))) Seq(c) else Seq()) ++ (cs filter Context.isAncestor(c))).toSet
     var clause = cl.cl
     while(openNorm.nonEmpty && cl.cl == clause){
       val norm = openNorm.head
@@ -32,13 +45,13 @@ class NormalizationAgent(cs : Context*) extends AbstractAgent {
       clause = norm(clause)
     }
     if(cl.cl == clause)
-      Seq()
+      null
     else
-      toInsertContext map (ci => new NormalizationTask(cl, clause, openNorm, ci, this))
+      new NormalizationTask(cl, clause, openNorm,this)
   }
 }
 
-class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalization], c : Context, a : Agent) extends Task{
+class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalization],  a : Agent) extends Task{
   override def name: String = "normalization_task"
   override def getAgent: Agent = a
   override def writeSet(): Map[DataType, Set[Any]] = Map(ClauseType -> Set(cl))
@@ -46,7 +59,7 @@ class NormalizationTask(cl : ClauseProxy, nc : Clause, openNorm : Seq[Normalizat
   override def run: Result = {
     val clause = openNorm.foldRight(nc){(norm, c) => norm(c)}
     val cp = AnnotatedClause(clause, cl.role, InferredFrom(NormalizationRule, cl), ClauseAnnotation.PropNoProp)
-    Result().update(ClauseType)((cl, c))((cp, c))
+    Result().update(ClauseType)(cl)(cp)
   }
   override def bid: Double = 0.1
 

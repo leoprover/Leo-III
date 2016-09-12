@@ -18,6 +18,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     incAgent.register()
     new AbstractAgent {
       override val interest : Option[Seq[DataType]] = None
+      override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
         case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
@@ -40,6 +41,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     AnoyingAgent.register()
     new AbstractAgent {
       override val interest : Option[Seq[DataType]] = None
+      override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
         case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
@@ -62,6 +64,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     incAgent.register()
     new AbstractAgent {
       override val interest : Option[Seq[DataType]] = None
+      override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
         case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
@@ -80,8 +83,23 @@ class InterferingLoopAgentTest extends LeoTestSuite {
 
 object AnoyingAgent extends AbstractAgent {
   override def name: String = "AnoyingAgent"
+  override def init(): Iterable[Task] = {
+    val n = NumberStore.getNumber
+    if(n % 3 == 0){
+      Seq(new AnoyingTask(n))
+    } else
+      Seq()
+  }
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(n : Int, NumberType) if n % 3 == 0 => List(new AnoyingTask(n))
+    case r : Result =>
+      val inV = r.inserts(NumberType) ++ r.updates(NumberType).map(_._2)
+      if(inV.nonEmpty){
+        val n = inV.head.asInstanceOf[Int]
+        if( n % 3 == 0)
+          return List(new AnoyingTask(n))
+      }
+      return Seq()
     case _ => Seq()
   }
 
@@ -131,25 +149,15 @@ object NumberStore extends DataStore {
   private var num : Int = 0
   def getNumber : Int = synchronized(num)
   override val storedTypes: Seq[DataType] = Seq(NumberType)
-  override def update(o: Any, n: Any): Boolean = synchronized {(o,n) match {
-    case (o1 : Int,n1 : Int) =>
-      if(o1 == num) {
-        println(s"Num set to ${n1}")
-        num = n1
-        true
-      } else {
-        println(s"Writing on old data (${o1} --> $n1).")
-        false
-      }
-    case _ => false
-  }}
-  override def insert(n: Any): Boolean = synchronized(n match {
-    case n1 : Int if num == 0 =>
-      num = n1
-      true
-    case _ => false
-  })
+  override def updateResult(r: Result): Boolean = {
+    val ups = r.updates(NumberType)
+    if(ups.nonEmpty){
+      val (_, u) = ups.head.asInstanceOf[(Int, Int)]
+      num = u
+    }
+    true
+  }
+
   override def clear(): Unit = synchronized {num = 0}
   override def all(t: DataType): Set[Any] = synchronized(if(t == NumberType) Set(num) else Set())
-  override def delete(d: Any): Unit = synchronized {num = 0}
 }

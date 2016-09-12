@@ -256,7 +256,7 @@ object TestMain {
             }
           }
         }
-        SZSDataStore.setIfEmpty(Context())(SZS_Timeout)
+        SZSDataStore.setIfEmpty(SZS_Timeout)
         Out.finest(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism

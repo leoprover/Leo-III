@@ -160,7 +160,7 @@ trait DataBlackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  protected[blackboard] def getDS(d : DataType) : Seq[DataStore]
+  protected[blackboard] def getDS(d : Set[DataType]) : Iterable[DataStore]
 
 
   /**
@@ -172,10 +172,11 @@ trait DataBlackboard {
     * @return true if sucessfully added. false if already existing or could no be added
     */
   def addData(dataType : DataType)(d : Any) : Boolean = {
-    val isNew = getDS(dataType) exists (ds => ds.insert(d)) // TODO forall or exist?
+    val result = Result().insert(dataType)(d)
+    val isNew = getDS(Set(dataType)) exists (ds => ds.updateResult(result)) // TODO forall or exist?
     if(isNew)
       Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(DataEvent(d, dataType)).toSet)
+        Blackboard().submitTasks(a, a.filter(result).toSet)
       }
     isNew
   }
@@ -190,10 +191,11 @@ trait DataBlackboard {
     * @return true if sucessfully been updated. false if already existing or could no be added
     */
   def updateData(dataType: DataType)(d1 : Any)(d2 : Any) : Boolean = {
-    val isNew = getDS(dataType) exists {ds => ds.delete(d1); ds.insert(d2)} // TODO forall or exist?
+    val result = Result().update(dataType)(d1)(d2)
+    val isNew = getDS(Set(dataType)) exists {ds => ds.updateResult(result)} // TODO forall or exist?
     if(isNew)
       Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(DataEvent(d2, dataType)).toSet)
+        Blackboard().submitTasks(a, a.filter(result).toSet)
       }
     isNew
   }
@@ -206,7 +208,12 @@ trait DataBlackboard {
     * @param d the value to be deleted
     */
   def removeData(dataType: DataType)(d : Any) : Unit = {
-    getDS(dataType) foreach { d => d.delete(d) }
+    val result = Result().remove(dataType)(d)
+    val wasDel = getDS(Set(dataType)) exists {d => d.updateResult(result) }
+    if(wasDel)
+      Blackboard().filterAll{a =>
+        Blackboard().submitTasks(a, a.filter(result).toSet)
+      }
   }
 }
 

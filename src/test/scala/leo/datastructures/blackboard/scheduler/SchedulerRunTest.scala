@@ -13,11 +13,11 @@ object SchedulerRunTest {
   def main(args : Array[String]) {
     Blackboard().addDS(Store)
 
+    Blackboard().addData(AnyType)("ping")
+
     AgentA.register()
     AgentB.register()
     EndAgent.register()
-
-    Blackboard().addData(AnyType)("ping")
 
 
     Scheduler().signal()
@@ -30,6 +30,7 @@ case object AnyType extends DataType
 object EndAgent extends AbstractAgent {
   import leo.datastructures.blackboard.DoneEvent
   override def name : String = "EndAgent"
+  override def init(): Iterable[Task] = Seq()
   override def filter(event: Event): Iterable[Task] = event match {
     case d : DoneEvent =>
       println("Terminating"+" store="+Store.v.mkString(","))
@@ -41,13 +42,25 @@ object EndAgent extends AbstractAgent {
 
 object AgentA extends AbstractAgent {
   override def name: String = "AgentA"
+  override def init(): Iterable[Task] = {
+    if(Store.v.contains("ping")){
+      return Seq(TaskA("ping", "pong"))
+    } else
+      Seq()
+  }
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(s : String, AnyType) =>
-      if(s == "ping") {
-        println("New Task")
-        Seq(TaskA("ping", "pong"))
-      }
-      else
+    case r : Result =>
+      val up = r.updates(AnyType)
+      if(up.nonEmpty){
+        val s = up.head._2.toString
+        if(s == "ping") {
+          println("New Task")
+          return Seq(TaskA("ping", "pong"))
+        }
+        else
+          Seq()
+      } else
         Seq()
     case _ => Iterable.empty
   }
@@ -69,12 +82,25 @@ case class TaskA(in : String, out : String) extends Task {
 
 object AgentB extends AbstractAgent {
   override def name: String = "AgentB"
+  override def init(): Iterable[Task] = {
+    if(Store.v.contains("pong")){
+      return Seq(TaskA("pong", "ping"))
+    } else
+      Seq()
+  }
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(s : String, AnyType) =>
-      if(s == "pong") {
-        Seq(TaskB("pong", "ping"))
-      }
-      else
+    case r : Result =>
+      val up = r.updates(AnyType)
+      if(up.nonEmpty){
+        val s = up.head._2.toString
+        if(s == "pong") {
+          println("New Task")
+          return Seq(TaskA(s, "ping"))
+        }
+        else
+          Seq()
+      } else
         Seq()
     case _ => Iterable.empty
   }
@@ -103,29 +129,21 @@ object Store extends DataStore {
   val v : mutable.Set[String] = mutable.Set.empty
 
   override val storedTypes: Seq[DataType] = Seq(AnyType)
-  override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (os : String, on : String) =>
-      v.remove(os)
-      if(v.contains(on)) false
-      else {
-        v.add(on)
-        true
-      }
-    case _ => false
+  override def updateResult(r: Result): Boolean = {
+    val ins = r.inserts(AnyType).toIterator
+    val ups = r.updates(AnyType).toIterator
+    while(ins.nonEmpty){
+      val i = ins.next().toString
+      v.add(i)
+    }
+    while(ups.nonEmpty){
+      val (o,u) = ups.next().asInstanceOf[(String, String)]
+      v.remove(o)
+      v.add(u)
+    }
+    true
   }
-  override def insert(n: Any): Boolean = n match {
-    case on :String =>
-      if(v.contains(on)) false
-      else {
-        v.add(on)
-        true
-      }
-    case _ => false
-  }
+
   override def clear(): Unit = v.clear()
   override protected[blackboard] def all(t: DataType): Set[Any] = v.toSeq.toSet
-  override def delete(d: Any): Unit = d match {
-    case s : String => v.remove(s)
-    case _ => ()
-  }
 }

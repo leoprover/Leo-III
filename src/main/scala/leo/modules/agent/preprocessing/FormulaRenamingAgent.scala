@@ -13,26 +13,39 @@ import leo.modules.preprocessing.FormulaRenaming
   */
 class FormulaRenamingAgent(cs : Context*) extends AbstractAgent {
   override def name: String = "formula_renaming_agent"
-  override val after : Set[Agent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
+
+  override def init(): Iterable[Task] = Seq()
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case r : Result  =>
+      val ins = r.inserts(ClauseType).iterator
+      val ups = r.updates(ClauseType).iterator
+
+      var tasks = Seq[Task]()
+      while(ins.nonEmpty){
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      while(ups.nonEmpty){
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      null
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
+  private def commonFilter(cl : ClauseProxy) : Task = {
     val (nc, defs) = FormulaRenaming(cl.cl)
-    val toInsertContext = cs filter Context.isAncestor(c)
     if(defs.nonEmpty){
-      toInsertContext map (ci => new FormulaRenamingTask(cl, nc, defs , ci, this))
+      new FormulaRenamingTask(cl, nc, defs , this)
     } else {
-      Seq()
+      null
     }
   }
 }
 
-class FormulaRenamingTask(cl : ClauseProxy, clause : Clause, defs : Seq[Clause], c : Context, a : Agent) extends Task {
+class FormulaRenamingTask(cl : ClauseProxy, clause : Clause, defs : Seq[Clause], a : Agent) extends Task {
 
   override def name: String = "formula_renaming_task"
   override def getAgent: Agent = a
@@ -41,11 +54,11 @@ class FormulaRenamingTask(cl : ClauseProxy, clause : Clause, defs : Seq[Clause],
   override def run: Result = {
     var r : Result= Result()
     val defn : Set[ClauseProxy] = (defs map {d => AnnotatedClause(d, Role_Definition, NoAnnotation, ClauseAnnotation.PropNoProp)}).toSet
-    r = r.update(ClauseType)((cl, c))((AnnotatedClause(clause, cl.role, InferredFrom(FormulaRenaming, defn + cl), ClauseAnnotation.PropNoProp)))
+    r = r.update(ClauseType)(cl)(AnnotatedClause(clause, cl.role, InferredFrom(FormulaRenaming, defn + cl), ClauseAnnotation.PropNoProp))
     val it = defn.iterator
     while(it.hasNext) {
       val d = it.next()
-      r= r.insert(ClauseType)((d, c))
+      r= r.insert(ClauseType)(d)
     }
     r
   }

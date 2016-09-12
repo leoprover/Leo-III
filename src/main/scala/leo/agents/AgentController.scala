@@ -55,7 +55,4 @@ abstract class AgentController(a : AbstractAgent) extends Agent {
   def taskFinished(t : Task) : Unit = {}
 
   def taskChoosen(t : Task) : Unit = {}
-
-  override val after : Set[Agent] = Set.empty
-  override val before : Set[Agent] = Set.empty
 }

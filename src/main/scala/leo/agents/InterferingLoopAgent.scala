@@ -35,11 +35,30 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
   private var firstAttempt = true // Used to not trigger the [[NextIteration]] every time
   private var active : Boolean = true
 
+
+  /**
+    * Searches the Blackboard for possible tasks on initialization.
+    *
+    * @return All initial available tasks
+    */
+  override def init(): Iterable[Task] = {
+    active = true
+    firstAttempt = false
+    val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
+    if(r.isEmpty && active){
+      active = false
+      unregister()
+      ActiveTracker.decAndGet(s"$name: Loop condition initially negative")
+    } else if (r.nonEmpty && !active) {
+      active = true
+      ActiveTracker.incAndGet(s"$name: Loop condition initially positive.")
+    }
+    taskExisting = r.nonEmpty
+    r
+  }
+
   override def register() : Unit = {
     super.register()
-    Blackboard().send(NextIteration, this)
-    ActiveTracker.incAndGet(s"${name}: Loop Started and not yet tested.")
-    active = true
   }
 
   /**
@@ -57,10 +76,10 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       if(r.isEmpty && active){
         active = false
         unregister()
-        ActiveTracker.decAndGet(s"${name}: Loop condition turned negative.")
+        ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
       } else if (r.nonEmpty && !active) {
         active = true
-        ActiveTracker.incAndGet(s"${name}: Loop condition turned positive.")
+        ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
       }
       taskExisting = r.nonEmpty
       r
@@ -69,10 +88,10 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       if(r.isEmpty && active){
         active = false
         unregister()
-        ActiveTracker.decAndGet(s"${name}: Loop condition turned negative.")
+        ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
       } else if (r.nonEmpty && !active) {
         active = true
-        ActiveTracker.incAndGet(s"${name}: Loop condition turned positive.")
+        ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
       }
       firstAttempt = false    // Race condition
       taskExisting = r.nonEmpty
@@ -120,19 +139,6 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
     Blackboard().send(NextIteration, this)
   }
 
-  /**
-    * A set of all data, that should be executed after this object.
-    *
-    * @return all data to be executed afterwards
-    */
-  override val after: Set[Agent] = Set()
-
-  /**
-    * A set of all data, that should be executed before this object.
-    *
-    * @return all data to be executed before
-    */
-  override val before: Set[Agent] = Set()
 
   /**
     * This method is called, whenever the program is forcefully stopped.

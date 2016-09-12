@@ -52,10 +52,10 @@ object SZSScriptAgent {
     *
     * @param clauses The clauses to run the script on.
     */
-  def execute[A <: ClauseProxy](clauses : Set[A], c : Context) : Unit = {
+  def execute[A <: ClauseProxy](clauses : Set[A]) : Unit = {
     // TODO Too much time. In for the translation ...
     val cast : Set[ClauseProxy] = clauses.map(_.asInstanceOf[ClauseProxy])
-    val msg = CallExternal(cast, c)                        // TODO proof obligation
+    val msg = CallExternal(cast)                        // TODO proof obligation
     allScriptAgents foreach {a => Blackboard().send(msg, a)}
   }
 }
@@ -88,8 +88,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
    * @param errno - The return value.
    * @return
    */
-  override def handle(c : Context, input: Iterator[String], err: Iterator[String], errno: Int, fs : Set[ClauseProxy]): Result = {
-    val context = c   // TODO Fix
+  override def handle(input: Iterator[String], err: Iterator[String], errno: Int, fs : Set[ClauseProxy]): Result = {
     val it = input
     val b = new StringBuilder
 
@@ -100,7 +99,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
         case Some(status) if status == SZS_Theorem =>     // TODO Salvage other information
           Out.debug(s"[$name]: Got positive ${status.output} from the external prover.")
           var r =  Result()
-            .insert(StatusType)(SZSStore(reinterpreteResult(status), context))
+            .insert(StatusType)(SZSStore(reinterpreteResult(status)))
             .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
           return r
         case Some(status)      =>
@@ -121,18 +120,18 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
   def getSZS(line : String) : Option[StatusSZS] = StatusSZS.answerLine(line)
 
   override def filter(event: Event): Iterable[Task] = event match {
-    case SZSScriptMessage(f,c) =>
-      createTask(f,c)
-    case CallExternal(clauses, c) =>
-      val ts = List(new ScriptTask(cmd, clauses, c, this))
+    case SZSScriptMessage(f) =>
+      createTask(f)
+    case CallExternal(clauses) =>
+      val ts = List(new ScriptTask(cmd, clauses, this))
       ts
     case _                   => List()
   }
 
-  private def createTask(f : ClauseProxy, c : Context) : Iterable[Task] = {
+  private def createTask(f : ClauseProxy) : Iterable[Task] = {
     val conj : ClauseProxy = AnnotatedClause(negateClause(f.cl), Role_Conjecture, f.annotation, f.properties)
-    val context : Set[ClauseProxy] = FormulaDataStore.getAll(c){ bf => bf.id != f.id}.toSet[ClauseProxy]
-    List(new ScriptTask(cmd, context + conj, c, this))
+    val context : Set[ClauseProxy] = FormulaDataStore.getAll{ bf => bf.id != f.id}.toSet[ClauseProxy]
+    List(new ScriptTask(cmd, context + conj, this))
   }
 
   private def negateClause(c : Clause) : Clause = {
@@ -166,9 +165,9 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
  *
  * @param f
  */
-case class SZSScriptMessage(f: ClauseProxy, c : Context) extends Message
+case class SZSScriptMessage(f: ClauseProxy) extends Message
 
-case class CallExternal(clauses : Set[ClauseProxy], c : Context) extends Message
+case class CallExternal(clauses : Set[ClauseProxy]) extends Message
 
 case class ExternalRule(prover : String) extends CalculusRule {
   override def name: String = s"external($prover)"

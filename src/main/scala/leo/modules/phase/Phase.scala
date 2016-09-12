@@ -139,11 +139,15 @@ trait CompletePhase extends Phase {
     var finish = false
     var scedKill = false
     override def interest : Option[Seq[DataType]] = Some(Seq(StatusType))
+    @inline override val init: Iterable[Task] = Seq()
     override def filter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
-      case DataEvent(SZSStore(s,c), StatusType)  =>
-        synchronized{finish = true; notifyAll()};List()
+      case r : Result =>
+        if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty){
+          synchronized{finish = true; notifyAll()}
+        }
+        List()
       case _ => List()
     }
     override def name: String = s"${getName}Terminator"

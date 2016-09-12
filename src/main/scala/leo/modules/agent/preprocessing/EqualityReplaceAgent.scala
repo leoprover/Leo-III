@@ -13,22 +13,37 @@ import leo.modules.calculus.{ReplaceAndrewsEq, ReplaceLeibnizEq}
 object EqualityReplaceAgent extends AbstractAgent{
   override def name: String = "equality_replace_agent"
   override val interest = Some(Seq(ClauseType))
+
+  override def init(): Iterable[Task] = Seq()
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case r : Result  =>
+      val ins = r.inserts(ClauseType).iterator
+      val ups = r.updates(ClauseType).iterator
+
+      var tasks = Seq[Task]()
+      while(ins.nonEmpty){
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      while(ups.nonEmpty){
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      null
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
+  private def commonFilter(cl : ClauseProxy) : Task = {
     val (can1, map) = ReplaceLeibnizEq.canApply(cl.cl)
     if(can1){
-      Seq(new LeibnitzEQTask(cl, cl.cl, map, c, this))
+      new LeibnitzEQTask(cl, cl.cl, map, this)
     } else {
       val (can2, map2) = ReplaceAndrewsEq.canApply(cl.cl)
       if(can2){
-        Seq(new AndrewEQTask(cl, cl.cl, map2, c, this))
+        new AndrewEQTask(cl, cl.cl, map2,this)
       } else {
-        Seq()
+        null
       }
     }
   }
@@ -47,7 +62,7 @@ abstract class EqualityReplaceTask(cl : ClauseProxy, a : Agent) extends Task {
 /**
   * Replaces Leibnitzequality and then andrew equality.
   */
-class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c : Context, a : Agent) extends EqualityReplaceTask(cl, a){
+class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], a : Agent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceLeibnizEq(clause, map)
     val (can, map2) = ReplaceAndrewsEq.canApply(nc)
@@ -56,16 +71,16 @@ class LeibnitzEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Term], c 
     } else {
       nc
     }
-    Result().update(ClauseType)((cl, c))((AnnotatedClause(fc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp), c))
+    Result().update(ClauseType)(cl)(AnnotatedClause(fc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp))
   }
 }
 
 /**
   * Replaces only Andrew Equality
   */
-class AndrewEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], c : Context, a : Agent) extends EqualityReplaceTask(cl, a){
+class AndrewEQTask(cl : ClauseProxy, clause : Clause, map : Map[Int, Type], a : Agent) extends EqualityReplaceTask(cl, a){
   override def run: Result = {
     val (nc, _) = ReplaceAndrewsEq(clause, map)
-    Result().update(ClauseType)((cl, c))((AnnotatedClause(nc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp), c))
+    Result().update(ClauseType)(cl)(AnnotatedClause(nc, cl.role, InferredFrom(ReplaceAndrewsEq, cl), ClauseAnnotation.PropNoProp))
   }
 }

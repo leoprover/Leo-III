@@ -73,19 +73,10 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param a - New Agent.
    */
   override protected[blackboard] def freshAgent(a: Agent): Unit = {
-    a.interest match {
-      case None => ()
-      case Some(xs) =>
-        val ts = if(xs.nonEmpty) xs else dsmap.keys.toList
-        ts.foreach{t =>
-          dsmap.getOrElse(t, Set.empty).foreach{ds =>
-            ds.all(t).foreach{d =>
-              val ts : Iterable[Task] = a.filter(DataEvent(d,t))
-              //ts.foreach(t => ActiveTracker.incAndGet(s"Inserted Task\n  ${t.pretty}"))
-              submitTasks(a, ts.toSet)
-            }
-        }}
-        forceCheck()
+    val initTasks = a.init()
+    if(initTasks.nonEmpty) {
+      submitTasks(a, initTasks.toSet) // Todo Synchronizing with completion of tasks in the blackboard
+      forceCheck()  // TODO return value whether to check?
     }
   }
 
@@ -149,7 +140,9 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  override protected[blackboard] def getDS(d: DataType): Seq[DataStore] = dsmap.getOrElse(d, Set.empty).toSeq
+  override protected[blackboard] def getDS(d: Set[DataType]): Iterable[DataStore] = {
+    dsmap.filterKeys(k => d.contains(k)).values.flatten
+  }
 }
 
 

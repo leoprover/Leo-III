@@ -8,7 +8,7 @@ import leo.datastructures.blackboard._
 
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable
-import java.util.concurrent.{Executors, RejectedExecutionException, ThreadFactory, TimeUnit, Future}
+import java.util.concurrent.{Executors, Future, RejectedExecutionException, ThreadFactory, TimeUnit}
 
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.context.Context
@@ -233,33 +233,11 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       if(curExec.contains(task)) {
         work = true
 
-//        Out.comment("[Writer] : Got task and begin to work.")
-        // Update blackboard
-        val newD : Map[DataType, Seq[Any]] = result.keys.map {t =>
-          (t,result.inserts(t).filter{d =>            //TODO should not be lazy, Otherwise it could generate problems
-            var add : Boolean = false
-            Blackboard().getDS(t).foreach{ds => add |= ds.insert(d)}  // More elegant without risk of lazy skipping of updating ds?
-            doneSmth |= add
-            add
-          })
-        }.toMap
-
-        val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
-          (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
-            var add : Boolean = false
-
-            Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
-            doneSmth |= add
-            add
-          }.map(_._2))    // Only catch the new ones
-        }.toMap
-
-        result.keys.foreach {t =>
-          (t,result.removes(t).foreach{d =>
-            Blackboard().getDS(t).foreach{ds =>ds.delete(d)}
-          })
+        val dsIT = Blackboard().getDS(result.keys).iterator
+        while(dsIT.hasNext){
+          val ds = dsIT.next()
+          ds.updateResult(result)
         }
-
 
         // Data Written, Release Locks before filtering
         LockSet.releaseTask(task) // TODO right position?
@@ -267,20 +245,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         curExec.remove(task)
         agent.taskFinished(task)
 
-//        if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
-
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
             a.interest match {
-              case None => ()
-              case Some(xs) =>
-                val ts = if (xs.isEmpty) result.keys else xs
-                ts.foreach { t =>
-                  // Queuing for filtering on the existing threads
-                  newD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter new data ($d)\n\t\tin Agent ${a.name}" ); exe.submit(new GenFilter(a, t, d, task)) } //a.filter(DataEvent(d,t))}
-                  updateD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter update to ($d)\n\t\tin Agent ${a.name}"); exe.submit(new GenFilter(a, t, d, task)) } //a.filter(DataEvent(d,t))}
-                  // TODO look at not written data,,,
-                }
+              case Some(xs) if xs.isEmpty || (xs.toSet & result.keys).nonEmpty=>
+                ActiveTracker.incAndGet(s"Filter new data ($result)\n\t\tin Agent ${a.name}")
+                exe.submit(new GenFilter(a, result, task))
+              case _ => ()
             }
           }
         } catch {
@@ -288,7 +259,6 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           case _ : Exception => Out.severe("Problem occured while filtering new tasks.")
         }
       }
-//      Out.comment(s"[Writer]: Gone through all.")
 
 
       Scheduler().signal()  // Get new task
@@ -314,13 +284,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           throw e
         }
         case e : SZSException =>
-//          SZSDataStore.forceStatus(Context())(e.status)  TODO comment in after CASC
+          SZSDataStore.forceStatus(e.status)
           Out.severe(e.getMessage)
           LockSet.releaseTask(t)
           Blackboard().finishTask(t)
           ActiveTracker.decAndGet(s"${a.name} killed with exception.")
-//          Blackboard().filterAll(_.filter(DoneEvent()))
-//          Scheduler().killAll()
+          Blackboard().filterAll(_.filter(DoneEvent()))
+          Scheduler().killAll()
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
           if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
@@ -329,17 +299,17 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }
-//          Blackboard().filterAll(_.filter(DoneEvent()))  TODO comment in after CASC
-//          Scheduler().killAll()
+          Blackboard().filterAll(_.filter(DoneEvent()))
+          Scheduler().killAll()
       }
     }
   }
 
-  private class GenFilter(a : Agent, t : DataType, newD : Any, from : Task) extends Runnable{
+  private class GenFilter(a : Agent, r : Result, from : Task) extends Runnable{
     override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
       try {
-        val ts = a.filter(DataEvent(newD, t))
+        val ts = a.filter(r)
         Blackboard().submitTasks(a, ts.toSet)
       } catch {
         case e : SZSException =>
@@ -353,7 +323,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           leo.Out.finest(e.getCause.toString)
 //          Scheduler().killAll()
       }
-      ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
+      ActiveTracker.decAndGet(s"Done Filtering data (${r})\n\t\t from ${from.getAgent}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
       Blackboard().forceCheck()
 
       //Release sync

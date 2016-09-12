@@ -69,7 +69,5 @@ abstract class AbstractAgent extends Agent {
   override def taskFinished(t: Task): Unit = {}
   override def taskCanceled(t : Task) : Unit = {}
   override def maxMoney: Double = 10000
-  override def after : Set[Agent] = Set.empty
-  override val before : Set[Agent] = Set.empty
 }
 

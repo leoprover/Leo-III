@@ -59,7 +59,7 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         }
       } catch {
         case e : SZSException =>
-          SZSDataStore.forceStatus(Context())(e.status)
+          SZSDataStore.forceStatus(e.status)
           Out.severe(e.getMessage)
           ret_def =  false
           return
@@ -69,7 +69,7 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         case e : Throwable =>
           Out.severe("Unexpected Exception")
           e.printStackTrace()
-          SZSDataStore.forceStatus(Context())(SZS_Error)
+          SZSDataStore.forceStatus(SZS_Error)
           ret_def =  false
           return
       }

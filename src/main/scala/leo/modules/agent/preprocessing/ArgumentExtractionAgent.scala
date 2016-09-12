@@ -11,29 +11,42 @@ import leo.modules.preprocessing.ArgumentExtraction
 /**
   * Created by mwisnie on 3/7/16.
   */
-class ArgumentExtractionAgent(cs : Context*) extends AbstractAgent {
+class ArgumentExtractionAgent extends AbstractAgent {
   override def name: String = "argument_extraction_agent"
-  override val after : Set[Agent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
+
+  override def init(): Iterable[Task] = Seq()
+
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent((cl : ClauseProxy), ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case r : Result =>
+      val ins = r.inserts(ClauseType).iterator
+      val ups = r.updates(ClauseType).iterator
+
+      var tasks = Seq[Task]()
+      while(ins.nonEmpty){
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      while(ups.nonEmpty){
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        if(t != null) tasks = t +: tasks
+      }
+      null
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
+  private def commonFilter(cl : ClauseProxy) : Task = {
     // TODO If the signature is split look out for using the same definitions
     val (nc, defs) : (Clause, Set[(Term, Term)]) = ArgumentExtraction(cl.cl)
-    val toInsertContext = cs filter Context.isAncestor(c)
     if(defs.isEmpty){
-      Iterable()
+      null
     } else{
-      toInsertContext map (ci =>new ArgumentExtractionTask(cl, nc, defs, ci, this))
+     new ArgumentExtractionTask(cl, nc, defs, this)
     }
   }
 }
 
-class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Term)], c : Context, a : Agent) extends Task {
+class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Term)], a : Agent) extends Task {
   import leo.datastructures.Role_Definition
   override val name: String = "argument_extraction_task"
   override val getAgent: Agent = a
@@ -42,11 +55,11 @@ class ArgumentExtractionTask(cl : ClauseProxy, nc : Clause, defs : Set[(Term, Te
   override def run: Result = {
     var r : Result= Result()
     val defn : Set[ClauseProxy] = defs map {case (t1, t2) => AnnotatedClause(Clause(Literal(t1, t2, true)), Role_Definition, NoAnnotation, ClauseAnnotation.PropNoProp)}
-    r = r.update(ClauseType)((cl, c))((AnnotatedClause(nc, cl.role, InferredFrom(ArgumentExtraction, defn + cl), ClauseAnnotation.PropNoProp), c))
+    r = r.update(ClauseType)(cl)(AnnotatedClause(nc, cl.role, InferredFrom(ArgumentExtraction, defn + cl), ClauseAnnotation.PropNoProp))
     val it = defn.iterator
     while(it.hasNext) {
       val d = it.next()
-      r= r.insert(ClauseType)((d, c))
+      r= r.insert(ClauseType)(d)
     }
     r
   }

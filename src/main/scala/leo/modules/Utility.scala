@@ -182,7 +182,7 @@ object Utility {
     println(s"Formulas in Context(id=${c.contextID})")
     println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula (in nameless spine representation)")
     println("-"*maxSize)
-    FormulaDataStore.getFormulas(c).foreach {
+    FormulaDataStore.getFormulas.foreach {
       x =>
         val name = x.id.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)

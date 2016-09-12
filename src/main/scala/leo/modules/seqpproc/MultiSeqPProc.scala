@@ -79,7 +79,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  override def execute(cs1: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
+  override def execute(cs1: Iterable[AnnotatedClause]): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
     val proc = MultiSeqPProc.counter.incrementAndGet()
     val cs = addPreprocessing(cs1.toSet)
     /////////////////////////////////////////
@@ -167,14 +167,14 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
     while (loop && !prematureCancel(state.noProcessedCl) && !Scheduler().isTerminated) {
       if (state.unprocessed.isEmpty) {
-        SZSScriptAgent.execute(state.processed, c)
+        SZSScriptAgent.execute(state.processed)
         loop = false
       } else {
         // Should an external Call be made?
         sinceLastExternal += 1
         if(Configuration.ATPS.nonEmpty && sinceLastExternal > externalCallIteration){
           sinceLastExternal = 0
-          SZSScriptAgent.execute(state.processed, c)
+          SZSScriptAgent.execute(state.processed)
         } else {
           var cur = state.nextUnprocessed
           // cur is the current AnnotatedClause

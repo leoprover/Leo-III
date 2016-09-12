@@ -12,7 +12,7 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
  *  <li> Support the selection mechanism of tasks for the blackboard </li>
  * </ul>
  */
-trait Agent extends Dependency[Agent] {
+trait Agent {
   def name : String
 
   private var _isActive : Boolean = true
@@ -51,7 +51,7 @@ trait Agent extends Dependency[Agent] {
    *         Some(Nil) -> The agent registers for all data changes. <br />
    *         Some(xs) -> The agent registers only for data changes for any type in xs.
    */
-  def interest : Option[Seq[DataType]]
+  def interest : Option[Seq[DataType]]    // TODO Swap None and Some(Nil)
 
   /**
     * Flags the maximal number of parallel executed tasks
@@ -79,6 +79,13 @@ trait Agent extends Dependency[Agent] {
    * @param event - Newly added or updated formula
    */
   def filter(event : Event) : Iterable[Task]
+
+  /**
+    * Searches the Blackboard for possible tasks on initialization.
+    *
+    * @return All initial available tasks
+    */
+  def init() : Iterable[Task]
 
   /**
    * Each task can define a maximum amount of money, they
