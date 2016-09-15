@@ -1,7 +1,8 @@
 package leo.modules.interleavingproc
 
 import leo.datastructures.blackboard.{DataStore, DataType, Result}
-import leo.datastructures.{ClauseProxy, IsSignature}
+import leo.datastructures.{Clause, ClauseProxy, IsSignature}
+import leo.modules.output.StatusSZS
 import leo.modules.output.logger.Out
 import leo.modules.seqpproc.State
 
@@ -14,12 +15,65 @@ import leo.modules.seqpproc.State
 class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore {
   val apply : State[T] = state
 
-  override def storedTypes: Seq[DataType] = ???
+  // Store the next unprocessed, until the task was really executed (Result is written)
+  var nextUnprocessed : Option[T] = None  // TODO ClauseProxy inherits AnyRef for null reference
+  var nextUnprocessedSet : Boolean = false
+
+  def getNextUnprocessed : T = synchronized{
+    if(!nextUnprocessedSet){
+      nextUnprocessed = Some(state.nextUnprocessed)
+      nextUnprocessedSet = true
+    }
+    nextUnprocessed.get
+  }
+
+  override val storedTypes: Seq[DataType] = Seq(UnprocessedClause, ProcessedClause, RewriteRule, SZSStatus, DerivedClause, StatisticType)
   override def clear(): Unit = {
     Out.info("Could not clear the state. Not yet implemented.")
   }
   override def all(t: DataType): Set[Any] = ???
-  override def updateResult(r: Result): Boolean = ???
+  override def updateResult(r: Result): Boolean = synchronized {
+    // Unprocessed can only be added
+    val newUnprocessed = r.inserts(UnprocessedClause).iterator
+    while(newUnprocessed.nonEmpty){
+      state.addProcessed(newUnprocessed.next().asInstanceOf[T])
+    }
+    // Processed should only be one and should correspond to the variable [[nextUnprocessed]]
+    val newProcessed = r.inserts(ProcessedClause).iterator
+    if(newProcessed.nonEmpty){
+      val n = newProcessed.next().asInstanceOf[T]
+      assert(newProcessed.isEmpty && nextUnprocessedSet, "Wrong size or no next Unprocessed Set")
+      nextUnprocessedSet = false
+      state.addProcessed(n)
+    }
+    // Adding new rewrite Rules
+    val newRewrite = r.inserts(RewriteRule).iterator
+    while(newRewrite.nonEmpty){
+      val nR = newRewrite.next().asInstanceOf[T]
+      state.addRewriteRule(nR)
+    }
+    // Backward Subsumption TODO implement in state
+    val subsumed = r.removes(ProcessedClause).iterator
+    if(subsumed.nonEmpty){
+      Out.info("Got a backward subsumptionm but is not supported.")
+    }
+    // Check for a found Result
+    val status = r.inserts(SZSStatus).iterator
+    if(status.nonEmpty){
+      val s =status.next().asInstanceOf[StatusSZS]
+      state.setSZSStatus(s)
+      // If a result is found, check for a proof
+      val derivedClauses = r.inserts(DerivedClause).iterator
+      if(derivedClauses.nonEmpty){
+        val dC = derivedClauses.next().asInstanceOf[T]
+        state.setDerivationClause(dC)
+      }
+    }
+
+    // TODO Statistic
+
+    true
+  }
 }
 
 
@@ -29,3 +83,38 @@ object BlackboardState {
     new BlackboardState[T](State.fresh[T](sig)(unprocessedOrdering))
   }
 }
+
+/**
+  * Type for unprocessed clauses in the state.
+  */
+case object UnprocessedClause extends DataType {}
+/**
+  * Type for processed clauses in the state
+  */
+case object ProcessedClause extends DataType {}
+
+/**
+  * Type for rewrite rules
+  */
+case object RewriteRule extends DataType {}
+/**
+  * Setting the SZS status
+  */
+case object SZSStatus extends DataType {}
+/**
+  * Setting the Derived Clause (contains the proof tree in the derived empty clause)
+  */
+case object DerivedClause extends DataType {}
+
+/**
+  * Type for statistical information
+  */
+case object StatisticType extends DataType {}
+
+
+case class Statistic(generatedClauses : Int,
+                     trivialClauses : Int,
+                     paramodClauses : Int,
+                     factorClauses : Int,
+                     forwardSubsumedClauses : Int,
+                     backwardSubsumedClauses : Int)
