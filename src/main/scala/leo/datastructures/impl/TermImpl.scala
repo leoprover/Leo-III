@@ -1157,7 +1157,7 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
 
   // primitive symbols (heads)
-  protected[impl] def mkAtom0(id: Signature#Key): Head = // Atom(id)
+  final protected[impl] def mkAtom0(id: Signature#Key): Head = // Atom(id)
     symbolAtoms.get(id) match {
       case Some(hd) => hd
       case None     => val hd = Atom(id)
@@ -1165,7 +1165,7 @@ object TermImpl extends TermBank {
                        hd
   }
 
-  protected[impl] def mkBoundAtom(t: Type, scope: Int): Head = //BoundIndex(t,scope)
+  final protected[impl] def mkBoundAtom(t: Type, scope: Int): Head = //BoundIndex(t,scope)
     boundAtoms.get(t) match {
     case Some(inner) => inner.get(scope) match {
       case Some(hd)   => hd
@@ -1178,7 +1178,7 @@ object TermImpl extends TermBank {
                         hd
   }
 
-  protected[impl] def mkMetaVar0(t: Type, scope: Int): Head = //MetaIndex(t,scope)
+  final protected[impl] def mkMetaVar0(t: Type, scope: Int): Head = //MetaIndex(t,scope)
     metaVars.get(t) match {
       case Some(inner) => inner.get(scope) match {
         case Some(hd)   => hd
@@ -1192,7 +1192,7 @@ object TermImpl extends TermBank {
     }
 
   // composite terms
-  protected[impl] def mkRoot(hd: Head, args: Spine): TermImpl = //Root(hd, args)
+  final protected[impl] def mkRoot(hd: Head, args: Spine): TermImpl = //Root(hd, args)
     global(roots.get(hd) match {
     case Some(inner) => inner.get(args) match {
       case Some(root)  => root
@@ -1204,7 +1204,7 @@ object TermImpl extends TermBank {
                         roots += ((hd, Map((args, root))))
                         root
   })
-  protected[impl] def mkRedex(left: Term, args: Spine): Redex = //Redex(left, args)
+  final protected[impl] def mkRedex(left: Term, args: Spine): Redex = //Redex(left, args)
     global(redexes.get(left) match {
     case Some(inner) => inner.get(args) match {
       case Some(redex) => redex
@@ -1216,7 +1216,7 @@ object TermImpl extends TermBank {
                         redexes += ((left, Map((args, redex))))
                         redex
   })
-  protected[impl] def mkTermAbstr(t: Type, body: Term): TermImpl = //TermAbstr(t, body)
+  final protected[impl] def mkTermAbstr(t: Type, body: Term): TermImpl = //TermAbstr(t, body)
     global(termAbstractions.get(body) match {
     case Some(inner) => inner.get(t) match {
       case Some(abs)   => abs
@@ -1228,7 +1228,7 @@ object TermImpl extends TermBank {
                         termAbstractions += ((body, Map((t, abs))))
                         abs
   })
-  protected[impl] def mkTypeAbstr(body: Term): TermImpl = //TypeAbstr(body)
+  final protected[impl] def mkTypeAbstr(body: Term): TermImpl = //TypeAbstr(body)
     global(typeAbstractions.get(body) match {
     case Some(abs) => abs
     case None      => val abs = TypeAbstr(body)
@@ -1237,8 +1237,8 @@ object TermImpl extends TermBank {
   })
 
   // Spines
-  protected[impl] def mkSpineNil: Spine = SNil
-  protected[impl] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine = //term.fold(App(_, tail),TyApp(_, tail))
+  final protected[impl] def mkSpineNil: Spine = SNil
+  final protected[impl] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine = //term.fold(App(_, tail),TyApp(_, tail))
     spines.get(term) match {
     case Some(inner) => inner.get(tail) match {
       case Some(sp)   => sp
@@ -1251,19 +1251,19 @@ object TermImpl extends TermBank {
                        sp
   }
 
-  private def global[A <: TermImpl](t: A): A = {
+  final private def global[A <: TermImpl](t: A): A = {
     t._locality = GLOBAL
     t
   }
 
-  private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Left(t),sp)})
-  private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Right(t),sp)})
-  private def mkGenSpine(args: Seq[Either[Term,Type]]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(t,sp)})
+  final private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Left(t),sp)})
+  final private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Right(t),sp)})
+  final private def mkGenSpine(args: Seq[Either[Term,Type]]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(t,sp)})
 
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
-  val local = new TermFactory {
+  final val local = new TermFactory {
     def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
     def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
     def mkMetaVar(t: Type, id: Int): Term = Root(MetaIndex(t, id), SNil)
@@ -1277,30 +1277,30 @@ object TermImpl extends TermBank {
   }
 
 
-  def mkAtom(id: Signature#Key): TermImpl = mkRoot(mkAtom0(id), SNil)
-  def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
-  def mkMetaVar(typ: Type, id: Int): TermImpl = mkRoot(mkMetaVar0(typ, id), SNil)
+  final def mkAtom(id: Signature#Key): TermImpl = mkRoot(mkAtom0(id), SNil)
+  final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
+  final def mkMetaVar(typ: Type, id: Int): TermImpl = mkRoot(mkMetaVar0(typ, id), SNil)
 
-  def mkTermApp(func: Term, arg: Term): TermImpl = mkTermApp(func, Seq(arg))
-  def mkTermApp(func: Term, args: Seq[Term]): TermImpl = func match {
+  final def mkTermApp(func: Term, arg: Term): TermImpl = mkTermApp(func, Seq(arg))
+  final def mkTermApp(func: Term, args: Seq[Term]): TermImpl = func match {
       case Root(h, SNil) => mkRoot(h, mkSpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args))
       case other       => mkRedex(other, mkSpine(args))
     }
-  def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
+  final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
-  def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
-  def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
+  final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
+  final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
       case Root(h, SNil) => mkRoot(h, mkTySpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args))
       case other       => mkRedex(other, mkTySpine(args))
     }
 
-  def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
+  final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
 
-  def mkApp(func: Term, args: Seq[Either[Term, Type]]): TermImpl  = func match {
+  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): TermImpl  = func match {
       case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))
@@ -1311,9 +1311,9 @@ object TermImpl extends TermBank {
   // Further TermBank methods
   /////////////////////////////////////////////
 
-  def contains(term: Term): Boolean = terms.contains(term)
+  final def contains(term: Term): Boolean = terms.contains(term)
 
-  def insert(term: Term): Term = {
+  final def insert(term: Term): Term = {
     val t = if (term.isLocal)
       insert0(term)
     else
@@ -1323,7 +1323,7 @@ object TermImpl extends TermBank {
     t
   }
 
-  protected[TermImpl] def insert0(localTerm: Term): TermImpl = {
+  final protected[TermImpl] def insert0(localTerm: Term): TermImpl = {
     localTerm match {
       case Root(h, sp) => val sp2 = insertSpine0(sp)
         val h2 = h match {
@@ -1348,7 +1348,7 @@ object TermImpl extends TermBank {
     }
   }
 
-  protected def insertSpine0(sp: Spine): Spine = {
+  final protected def insertSpine0(sp: Spine): Spine = {
     sp match {
       case SNil => mkSpineNil
       case App(hd, tail) => val hd2 = insert0(hd)
@@ -1360,7 +1360,7 @@ object TermImpl extends TermBank {
     }
   }
 
-  def reset() = {
+  final def reset() = {
     boundAtoms = Map.empty
     symbolAtoms = Map.empty
 
@@ -1374,6 +1374,45 @@ object TermImpl extends TermBank {
    spines = Map.empty
   }
 
+  /////////////////////////////////////////////
+  // type checking
+  /////////////////////////////////////////////
+  /** Checks if a term is well-typed. Does does check whether free variables
+    * are consistently typed. */
+  final protected[datastructures] def wellTyped(t: TermImpl): Boolean = wellTyped0(t, Map())
+
+  final private def wellTyped0(t: TermImpl, boundVars: Map[Int, Type]): Boolean = {
+    t match {
+      case Root(hd, args) => hd match {
+        case BoundIndex(typ0, scope) => if (boundVars(scope) == typ0) {
+          // Bound indices cannot be polymorphic, and we assume that if they
+          // contain type variables, they have been instantitated further above
+          val argLength = args.length
+          if (argLength != 0) {
+            val boundVarParamTypes = typ0.funParamTypes
+            if (boundVarParamTypes.nonEmpty) {
+              // TODO recursively check arguments and check number of arguments
+            } else leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not take" +
+              s"take parameters, but arguments are applied."); false
+          } else true
+        } else leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not correspond" +
+          s"to its type declaration of the original binder."); false
+        case t0@Atom(key) => // atoms type can be polymorphic
+          if (t0.ty.isPolyType) {
+
+          } else {
+            
+          }
+        case _ => ???
+      }
+      case Redex(hd, args) => ???
+      case TermAbstr(ty, body) => wellTyped0(body.asInstanceOf[TermImpl],
+        boundVars.map {case (scope, ty0) => (scope + 1, ty0) } + ((1, ty)))
+      case TypeAbstr(body) => wellTyped0(body.asInstanceOf[TermImpl], boundVars)
+      case TermClos(body, sub) => wellTyped0(t.betaNormalize.asInstanceOf[TermImpl], boundVars)
+    }
+  }
+
 
   ////////////////////////////////////////////
   // TermImpl Deconstructors
@@ -1381,28 +1420,28 @@ object TermImpl extends TermBank {
   // we use these functions for referencing approriate unapply methods
   // for the extractor objects in class Term
 
-  protected[datastructures] def boundMatcher(t: Term): Option[(Type, Int)] = t match {
+  final protected[datastructures] def boundMatcher(t: Term): Option[(Type, Int)] = t match {
     case Root(BoundIndex(ty, scope), SNil) => Some((ty, scope))
     case _ => None
   }
-  protected[datastructures] def metaVariableMatcher(t: Term): Option[(Type, Int)] = t match {
+  final protected[datastructures] def metaVariableMatcher(t: Term): Option[(Type, Int)] = t match {
     case Root(MetaIndex(ty, scope), SNil) => Some((ty, scope))
     case _ => None
   }
-  protected[datastructures] def symbolMatcher(t: Term): Option[Signature#Key] = t match {
+  final protected[datastructures] def symbolMatcher(t: Term): Option[Signature#Key] = t match {
     case Root(Atom(k),SNil) => Some(k)
     case _ => None
   }
-  protected[datastructures] def appMatcher(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
+  final protected[datastructures] def appMatcher(t: Term): Option[(Term, Seq[Either[Term, Type]])] = t match {
     case Root(h, sp) => Some((headToTerm(h), sp.asTerms))
     case Redex(expr, sp) => Some((expr, sp.asTerms))
     case _ => None
   }
-  protected[datastructures] def termAbstrMatcher(t: Term): Option[(Type,Term)] = t match {
+  final protected[datastructures] def termAbstrMatcher(t: Term): Option[(Type,Term)] = t match {
     case TermAbstr(ty, body)      => Some((ty, body))
     case _ => None
   }
-  protected[datastructures] def typeAbstrMatcher(t: Term): Option[Term] = t match {
+  final protected[datastructures] def typeAbstrMatcher(t: Term): Option[Term] = t match {
     case TypeAbstr(body)      => Some(body)
     case _ => None
   }
@@ -1411,7 +1450,7 @@ object TermImpl extends TermBank {
   ////////////////////////////////////////////
   // Utility, night be removed in the future
   ////////////////////////////////////////////
-  implicit def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
+  implicit final def headToTerm(hd: Head): TermImpl = mkRoot(hd, mkSpineNil)
 
   /**
    * Statistics type. Components and meanings:
@@ -1425,7 +1464,7 @@ object TermImpl extends TermBank {
    */
   type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
 
-  def statistics: TermBankStatistics = {
+  final def statistics: TermBankStatistics = {
     val numberOfTerms = terms.size +1
 
     val parentNodeCountMap: Map[Int, Int] = Map.empty
