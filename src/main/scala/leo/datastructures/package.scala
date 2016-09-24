@@ -25,7 +25,7 @@ package object datastructures {
     * @author Tomer Libal <shaolintl@gmail.com>
     * @since 15/04/2015
     */
-  trait Configuration[S] {
+  trait SearchConfiguration[S] {
     def result: Option[S]
     def isTerminal: Boolean // terminal nodes are not added to the configuration queue
   }
@@ -36,10 +36,10 @@ package object datastructures {
     * @author Tomer Libal <shaolintl@gmail.com>
     * @since 15/04/2015
     */
-  abstract class NDStream[S /*result type*/ ]( val initial: Configuration[S], val myFun: Configuration[S] => Iterable[Configuration[S]] ) extends Iterable[S] with SearchAlgorithm {
+  abstract class NDStream[S /*result type*/ ](val initial: SearchConfiguration[S], val myFun: SearchConfiguration[S] => Iterable[SearchConfiguration[S]] ) extends Iterable[S] with SearchAlgorithm {
     import scala.collection.mutable
 
-    type T = Configuration[S]
+    type T = SearchConfiguration[S]
     private val results: mutable.Queue[S] = new mutable.Queue[S]()
     protected var hd: Option[S] = None
     protected val hdFunc: () => Option[S] = () => nextVal
@@ -59,7 +59,7 @@ package object datastructures {
         val conf = get
         if (conf.isEmpty) None
         else {
-          val confs: Iterable[Configuration[S]] = { myFun( conf.get )}
+          val confs: Iterable[SearchConfiguration[S]] = { myFun( conf.get )}
           confs.foreach( x => {
             if (x.result.isDefined)
               results.enqueue( x.result.get )

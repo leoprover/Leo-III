@@ -86,7 +86,7 @@ object FOUnification extends Unification {
   */
 object HuetsPreUnification2 extends Unification {
   import scala.annotation.tailrec
-  import leo.datastructures.{Configuration, NDStream, BFSAlgorithm}
+  import leo.datastructures.{SearchConfiguration, NDStream, BFSAlgorithm}
 
   /** The Depth is the number of lambda abstractions under which a term is nested.*/
   type Depth = Int
@@ -114,7 +114,7 @@ object HuetsPreUnification2 extends Unification {
                                        flexRigid: Seq[UEq0], flexFlex: Seq[UEq],
                                        solved: TermSubst, solvedTy: TypeSubst,
                                        result: Option[UnificationResult], searchDepth: Int)
-    extends Configuration[UnificationResult] {
+    extends SearchConfiguration[UnificationResult] {
     def this(result: UnificationResult) = this(null, null, null, null, null, Some(result), Int.MaxValue) // for success
     def this(unprocessed: Seq[UEq],
              flexRigid: Seq[UEq0], flexFlex: Seq[UEq],
@@ -164,10 +164,10 @@ object HuetsPreUnification2 extends Unification {
   // Internal search functions
   /////////////////////////////////////
   /** the transition function in the search space (returned list containing more than one element -> ND step, no element -> failed branch) */
-  protected class EnumUnifier(vargen: FreshVarGen, initialTypeSubst: TypeSubst) extends Function1[Configuration[UnificationResult], Seq[Configuration[UnificationResult]]] {
+  protected class EnumUnifier(vargen: FreshVarGen, initialTypeSubst: TypeSubst) extends Function1[SearchConfiguration[UnificationResult], Seq[SearchConfiguration[UnificationResult]]] {
 
     // Huets procedure is defined here
-    override def apply(conf2: Configuration[UnificationResult]): Seq[Configuration[UnificationResult]] = {
+    override def apply(conf2: SearchConfiguration[UnificationResult]): Seq[SearchConfiguration[UnificationResult]] = {
       val conf = conf2.asInstanceOf[MyConfiguration]
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (fail, flexRigid, flexFlex, partialUnifier, partialTyUnifier) = detExhaust(conf.unprocessed,
@@ -686,7 +686,7 @@ object HuetsPreUnification extends Unification {
   import Term._
   import leo.datastructures.{TermFront, TypeFront}
   import leo.datastructures.BoundFront
-  import leo.datastructures.{Configuration, NDStream, BFSAlgorithm}
+  import leo.datastructures.{SearchConfiguration, NDStream, BFSAlgorithm}
   import annotation.tailrec
 
   /** A `SEq` is a solved equation. */
@@ -1039,19 +1039,19 @@ object HuetsPreUnification extends Unification {
                                        uTyProblems: Seq[UTEq], sTyProblems: Seq[STEq],
                                        result: Option[UnificationResult], isTerminal: Boolean,
                                        searchDepth: Int)
-    extends Configuration[UnificationResult] {
+    extends SearchConfiguration[UnificationResult] {
     def this(result: Option[UnificationResult]) = this(Seq(), Seq(), Seq(), Seq(), result, true, dontcaredepth) // for success
     def this(l: Seq[UEq], s: Seq[UEq], searchDepth: Int) = this(l, s, Seq(), Seq(), None, searchDepth < MAX_DEPTH, searchDepth) // for in node
     override def toString  = "{" + uproblems.flatMap(x => ("<"+x._1.pretty+", "+ x._2.pretty+">")) + "}"
   }
 
   // the transition function in the search space (returned list containing more than one element -> ND step, no element -> failed branch)
-  protected class MyFun(vargen: FreshVarGen) extends Function1[Configuration[UnificationResult], Seq[Configuration[UnificationResult]]] {
+  protected class MyFun(vargen: FreshVarGen) extends Function1[SearchConfiguration[UnificationResult], Seq[SearchConfiguration[UnificationResult]]] {
 
     import  scala.collection.mutable.ListBuffer
 
     // Huets procedure is defined here
-    override def apply(conf2: Configuration[UnificationResult]): Seq[Configuration[UnificationResult]] = {
+    override def apply(conf2: SearchConfiguration[UnificationResult]): Seq[SearchConfiguration[UnificationResult]] = {
       val conf = conf2.asInstanceOf[MyConfiguration]
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (uproblems, sproblems, uTyProblems, sTyProblems) = detExhaust(vargen, conf.uproblems,conf.sproblems, conf.uTyProblems, conf.sTyProblems)
