@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
     version := "0.1",
-    scalaVersion := "2.11.7",
+    scalaVersion := "2.11.8",
 
     organization := "org.leo",
     test in assembly := {},
@@ -18,8 +18,8 @@ lazy val leo = (project in file(".")).
 
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-      "org.scala-lang" % "scala-compiler" % "2.11.7",
-      "org.scalatest" %% "scalatest" % "2.2.6" % Test),
+//    "org.scala-lang" % "scala-compiler" % "2.11.7",
+      "org.scalatest" %% "scalatest" % "3.0.0" % "test"),
     
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions += "-target:jvm-1.8",
