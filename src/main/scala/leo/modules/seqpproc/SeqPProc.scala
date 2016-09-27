@@ -58,7 +58,7 @@ object SeqPProc extends Function1[Long, Unit]{
     val inputIt = input.iterator
     while(inputIt.hasNext) {
       val i = inputIt.next()
-      if (!i._2.typeCheck) returnSet = returnSet + i
+      if (!Term.wellTyped(i._2)) returnSet = returnSet + i
     }
 
     returnSet

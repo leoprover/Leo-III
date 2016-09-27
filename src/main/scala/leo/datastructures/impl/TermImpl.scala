@@ -1379,38 +1379,56 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
   /** Checks if a term is well-typed. Does does check whether free variables
     * are consistently typed. */
-  final protected[datastructures] def wellTyped(t: TermImpl): Boolean = wellTyped0(t, Map())
+  @inline final protected[datastructures] def wellTyped(t: TermImpl): Boolean = wellTyped0(t, Map())
 
+  @tailrec
   final private def wellTyped0(t: TermImpl, boundVars: Map[Int, Type]): Boolean = {
     t match {
       case Root(hd, args) => hd match {
         case BoundIndex(typ0, scope) => if (boundVars(scope) == typ0) {
+          leo.Out.trace(boundVars.toString())
           // Bound indices cannot be polymorphic, and we assume that if they
-          // contain type variables, they have been instantitated further above
-          val argLength = args.length
-          if (argLength != 0) {
-            val boundVarParamTypes = typ0.funParamTypes
-            if (boundVarParamTypes.nonEmpty) {
-              // TODO recursively check arguments and check number of arguments
-            } else leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not take" +
-              s"take parameters, but arguments are applied."); false
-          } else true
+          // contain type variables, they have been instantiated further above
+          wellTypedArgCheck(t, typ0, args, boundVars, false)
         } else leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not correspond" +
           s"to its type declaration of the original binder."); false
         case t0@Atom(key) => // atoms type can be polymorphic
-          if (t0.ty.isPolyType) {
-
-          } else {
-            
-          }
-        case _ => ???
+          wellTypedArgCheck(t, t0.ty, args, boundVars, true)
+        case _ => throw new IllegalArgumentException("wellTyped0 on this head type currently not supported.")
       }
-      case Redex(hd, args) => ???
+      case Redex(hd, args) => wellTypedArgCheck(hd, hd.ty, args,boundVars, true) && wellTyped0(hd.asInstanceOf[TermImpl], boundVars)
       case TermAbstr(ty, body) => wellTyped0(body.asInstanceOf[TermImpl],
         boundVars.map {case (scope, ty0) => (scope + 1, ty0) } + ((1, ty)))
       case TypeAbstr(body) => wellTyped0(body.asInstanceOf[TermImpl], boundVars)
       case TermClos(body, sub) => wellTyped0(t.betaNormalize.asInstanceOf[TermImpl], boundVars)
     }
+  }
+
+  @tailrec
+  final private def wellTypedArgCheck(term: Term, functionType: Type, args: Spine, boundVars: Map[Int, Type], canBePolyFunc: Boolean): Boolean = args match {
+    case SNil => leo.Out.trace(s"snil");true
+    case App(hd,tail) if functionType.isFunType =>
+      if (functionType._funDomainType == hd.ty) {
+        if (wellTyped0(hd.asInstanceOf[TermImpl], boundVars)) {
+          wellTypedArgCheck(term, functionType.codomainType, tail, boundVars, canBePolyFunc)
+        } else {
+          leo.Out.trace(s"Application ${term.pretty} is ill-typed: The argument ${hd.pretty} is ill-typed.")
+          false
+        }
+      } else {
+        leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head's parameter type ${functionType._funDomainType.pretty}" +
+          s"does not correspond to the applied argument's type ${hd.ty.pretty}.")
+        false
+      }
+    case App(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take" +
+      s"parameters, but arguments are applied."); false
+    case TyApp(hd,tail) if functionType.isPolyType =>
+      if (canBePolyFunc)
+        wellTypedArgCheck(term, functionType.instantiate(hd), tail, boundVars, canBePolyFunc)
+      else false
+    case TyApp(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take type" +
+      s"parameters, but type arguments are applied."); false
+    case _ => leo.Out.trace(s"Application ${term.pretty} is ill-typed."); false
   }
 
 
