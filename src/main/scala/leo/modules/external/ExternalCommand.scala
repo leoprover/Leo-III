@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.tools.nsc.CompileServer
 
 /**
   *
