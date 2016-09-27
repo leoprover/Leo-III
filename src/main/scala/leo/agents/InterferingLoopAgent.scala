@@ -6,11 +6,15 @@ import leo.datastructures.blackboard._
   * An Agent that performs a loop like statement,
   * where the loop body is an atomar transaction.
   *
+  * INIT
+  *
   * while(BEDINGUNG):
   *   LOOP
   * end
   *
   * Will be translated into :
+  *   FILTER --> (First Time)
+  *     INIT
   *
   *   FILTER -->
   *   if (BEDINGUNG)
@@ -175,6 +179,12 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
   */
 trait InterferingLoop[A <: OperationState] {
   def name : String
+
+  /**
+    * Is executed the first time a
+    * @return
+    */
+  def init : Option[A]
 
   /**
     * Checks for applicability of the loop.

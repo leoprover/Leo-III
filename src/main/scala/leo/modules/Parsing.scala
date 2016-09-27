@@ -201,7 +201,7 @@ object Parsing {
       *         `(Id, Clause($true), Role)` with their respective identifier and role.
       */
     def parseProblem(file: String, assumeProcessed: Set[Path] = Set()): Seq[(FormulaId, Term, Role)] = {
-      processProblem(readProblem(file,assumeProcessed))
+      processProblem(readProblem(file, assumeProcessed))
     }
 
     /**

@@ -46,8 +46,8 @@ object SZSDataStore extends DataStore {
   override def updateResult(r: Result): Boolean = synchronized {
     val ins = r.inserts(StatusType)
     if(ins.nonEmpty & szs == null){
-      val value = ins.head.asInstanceOf[StatusSZS]
-      szs = value
+      val value = ins.head.asInstanceOf[SZSStore]
+      szs = value.szsStatus
       return true
     }
     val ups = r.updates(StatusType)

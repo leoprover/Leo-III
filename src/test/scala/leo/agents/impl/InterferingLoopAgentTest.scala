@@ -133,6 +133,8 @@ class IncrementLoop(maxNumber : Int) extends InterferingLoop [LoopState] {
     println("n = "+next)
     Result().update(NumberType)(n)(next)
   }
+
+  override def init: Option[LoopState] = canApply
 }
 
 case class LoopState(n : Int) extends OperationState {
