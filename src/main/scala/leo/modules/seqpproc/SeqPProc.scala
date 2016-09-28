@@ -417,6 +417,7 @@ object SeqPProc extends Function1[Long, Unit]{
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
+      assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
       // Simplify again, including rewriting etc.
       newCl = Control.rewriteSimp(newCl, state.rewriteRules)
 
