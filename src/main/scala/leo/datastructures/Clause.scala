@@ -107,5 +107,15 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
+  /** Returns true iff all literals are well-typed. */
+  final def wellTyped(c: Clause): Boolean = {
+    import leo.datastructures.Literal.{wellTyped => wt}
+    val litIt = c.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (!wt(lit)) return false
+    }
+    true
+  }
 }
 
