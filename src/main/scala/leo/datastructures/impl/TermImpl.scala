@@ -1386,12 +1386,11 @@ object TermImpl extends TermBank {
     t match {
       case Root(hd, args) => hd match {
         case BoundIndex(typ0, scope) => if (boundVars(scope) == typ0) {
-          leo.Out.trace(boundVars.toString())
           // Bound indices cannot be polymorphic, and we assume that if they
           // contain type variables, they have been instantiated further above
           wellTypedArgCheck(t, typ0, args, boundVars, false)
-        } else leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not correspond" +
-          s"to its type declaration of the original binder."); false
+        } else {leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not correspond" +
+          s"to its type declaration of the original binder."); false}
         case t0@Atom(key) => // atoms type can be polymorphic
           wellTypedArgCheck(t, t0.ty, args, boundVars, true)
         case _ => throw new IllegalArgumentException("wellTyped0 on this head type currently not supported.")
@@ -1406,7 +1405,7 @@ object TermImpl extends TermBank {
 
   @tailrec
   final private def wellTypedArgCheck(term: Term, functionType: Type, args: Spine, boundVars: Map[Int, Type], canBePolyFunc: Boolean): Boolean = args match {
-    case SNil => leo.Out.trace(s"snil");true
+    case SNil => true
     case App(hd,tail) if functionType.isFunType =>
       if (functionType._funDomainType == hd.ty) {
         if (wellTyped0(hd.asInstanceOf[TermImpl], boundVars)) {
@@ -1423,8 +1422,12 @@ object TermImpl extends TermBank {
     case App(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take" +
       s"parameters, but arguments are applied."); false
     case TyApp(hd,tail) if functionType.isPolyType =>
-      if (canBePolyFunc)
+      if (canBePolyFunc) {
+        val a = functionType
+        val b = functionType.instantiate(hd)
         wellTypedArgCheck(term, functionType.instantiate(hd), tail, boundVars, canBePolyFunc)
+      }
+
       else false
     case TyApp(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take type" +
       s"parameters, but type arguments are applied."); false
