@@ -14,11 +14,11 @@ class UnificationTestSuite extends LeoTestSuite {
   type UEq = Seq[(Term, Term)]
 
    //x(a) = f(a,a)
-  test("f(x,x) = f(a,a)", Checked){
+  test("f(x,x) = f(a,z)", Checked){
   val s = getFreshSignature
 
   val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
 
     val vargen = freshVarGenFromBlank
     val x = vargen(s.i)
@@ -26,7 +26,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(f , List(x,x))
     val t2 : Term = mkTermApp(f , List(a,z))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
     val ((termSub, typeSub), _) = result.next
     assert(!result.hasNext)
@@ -45,7 +45,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(vargen(s.i ->: s.i),a)
     val t2 : Term = mkTermApp(f , List(a,a))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
@@ -69,7 +69,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,a))
     val t2 : Term = mkTermApp(f,mkTermApp(x,a))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
@@ -91,7 +91,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,a)))
     val t2 : Term = mkTermApp(f,List(mkTermApp(x,a),mkTermApp(f, List(mkTermApp(f, List(a,a)),a))))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
@@ -115,7 +115,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,mkTermApp(g,List(a,a)))))
     val t2 : Term = mkTermApp(f,List(a,mkTermApp(g,List(mkTermApp(x,List(a)),a))))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
 
@@ -137,11 +137,11 @@ class UnificationTestSuite extends LeoTestSuite {
     val skX = mkAtom(s.addUninterpreted("skX", (s.i ->: s.o) ->: s.i))
 
     val t1 = mkTermApp(y, Seq(ey))
-    println(t1.pretty +" "+ t1.typeCheck)
+    println(t1.pretty +" "+ Term.wellTyped(t1))
     val t2 = Not(mkTermApp(sKf, Seq(mkTermApp(skX, y), ey)))
-    println(t2.pretty + " " + t2.typeCheck)
+    println(t2.pretty + " " + Term.wellTyped(t2))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
     assert(result.nonEmpty)
     // This unification task should be solvable, right?

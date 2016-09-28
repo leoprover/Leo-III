@@ -57,13 +57,13 @@ abstract class Type extends Pretty {
 
   // Substitutions
   /**
-   * Substitute (free) occurences of `what` by `by`, e.g.
+   * syntactical replacement of  `what` by `by`, e.g.
    * {{{
    *   (Type.o ->: Type.i).substitute(Type.o, Type.i ->: Type.i)
    * }}}
    * yields {{{(Type.i ->: Type.i) ->: Type.i}}}
    */
-  def substitute(what: Type, by: Type): Type
+  def replace(what: Type, by: Type): Type
   def substitute(subst: Subst): Type
 
   /** if `this` is a polymorphic type (i.e. a forall type), the method returns the abstracted type where all type parameters bound
