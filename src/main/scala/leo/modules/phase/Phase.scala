@@ -1,22 +1,11 @@
-/*
+
 package leo
 package modules.phase
 
-import leo.Configuration
 import leo.agents._
-//import leo.agents.impl.{FiniteHerbrandEnumerateAgent, _}
-import leo.datastructures._
 import leo.datastructures.blackboard._
-import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore, SZSStore}
+import leo.datastructures.blackboard.impl.{SZSStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.context.{BetaSplit, Context}
-import leo.datastructures.impl.Signature
-import leo.modules.{SZSException, Utility}
-//import leo.modules.normalization.{DefExpansion, NegationNormal, Simplification, Skolemization}
-import leo.modules.output._
-//import leo.modules.calculus.enumeration.SimpleEnum
-//import leo.modules.calculus.splitting.ClauseHornSplit
-//import leo.modules.calculus.{IdComparison, Paramodulation, PropParamodulation}
 
 
 object Phase {
@@ -34,8 +23,8 @@ object Phase {
    * @param dagents - Agents to be used in this phase.
    * @return - A phase executing all agents until nothing is left to do.
    */
-  def apply(dname : String, dagents : Seq[AgentController]) : Phase = new CompletePhase {
-    override protected def agents: Seq[AgentController] = dagents
+  def apply(dname : String, dagents : Seq[TAgent]) : Phase = new CompletePhase {
+    override protected def agents: Seq[TAgent] = dagents
     override def name: String = dname
   }
 }
@@ -72,7 +61,7 @@ trait Phase {
    * A list of all agents to be started.
    * @return
    */
-  protected def agents : Seq[AgentController]
+  protected def agents : Seq[TAgent]
 
   /**
    * Method to start the agents, defined in `agents`
@@ -98,19 +87,17 @@ trait Phase {
 trait CompletePhase extends Phase {
   private def getName = name
   protected var waitAgent : CompleteWait = null
-  private var wController : AgentController = null
 
 
   def initWait() : Unit = {
     waitAgent = new CompleteWait
-    wController = new FifoController(waitAgent)
-    wController.register()
+    waitAgent.register()
   }
 
   override def end() : Unit = {
     super.end()
-    wController.unregister()
-    wController = null
+    waitAgent.unregister()
+    waitAgent = null
     waitAgent = null
   }
 
@@ -149,16 +136,15 @@ trait CompletePhase extends Phase {
   protected class CompleteWait extends Agent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType]] = Some(List(StatusType))
-    override def toFilter(event: Event): Iterable[Task] = event match {
+    override def interest : Option[Seq[DataType]] = Some(Seq(StatusType))
+    override def filter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
-      case DataEvent(SZSStore(s,c), StatusType) if c.parentContext == null && c.isClosed => // The root context was closed
+      case DataEvent(SZSStore(s,c), StatusType)  =>
         synchronized{finish = true; notifyAll()};List()
       case _ => List()
     }
     override def name: String = s"${getName}Terminator"
-    override def run(t: Task): Result = Result()
     override def kill(): Unit = synchronized{
       Out.info(s"$name was killed.")
       scedKill = true
@@ -166,4 +152,4 @@ trait CompletePhase extends Phase {
       notifyAll()
     }
   }
-}*/
+}

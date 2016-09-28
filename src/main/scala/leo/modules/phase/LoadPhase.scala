@@ -1,58 +1,79 @@
-/*
+
 package leo.modules.phase
 
-import leo._
-import leo.agents.{Task, Agent, AgentController}
-import leo.datastructures.{ClauseAnnotation, Role_NegConjecture, Role_Conjecture}
-import leo.datastructures.blackboard._
-import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
-import leo.datastructures.context.Context
-import leo.modules.output.{SZS_CounterSatisfiable, SZS_Error}
-import leo.modules.calculus.CalculusRule
-import leo.modules.{SZSException, Utility}
+import java.nio.file.Files
 
-class LoadPhase(negateConjecture : Boolean, problemfile: String = Configuration.PROBLEMFILE) extends Phase{
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.TagName
+import leo._
+import leo.agents.{AgentController, TAgent}
+import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
+import leo.datastructures._
+import leo.datastructures.blackboard.{Blackboard, ClauseType}
+import leo.datastructures.blackboard.impl.SZSDataStore
+import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.context.Context
+import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.modules.agent.relevance_filter.AnnotatedFormulaType
+import leo.modules.calculus.CalculusRule
+import leo.modules.output.{SZS_Error, SZS_InputError, SZS_Theorem}
+import leo.modules.{Parsing, SZSException}
+
+class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   override val name = "LoadPhase"
 
-  override val agents : Seq[AgentController] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
+  override val agents : Seq[TAgent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    val file = problemfile
+    val run = new LoadRun
+    val f = Scheduler().submitIndependent(run)
+    f.get()
+    run.ret_def && !Scheduler().isTerminated
+  }
 
-    try {
-      Utility.load(file)
-    } catch {
-      case e : SZSException =>
-        // Out.output(SZSOutput(e.status))
-        SZSDataStore.forceStatus(Context())(e.status)
-        return false
-      case e : Throwable =>
-        Out.severe("Unexpected Exception")
-        e.printStackTrace()
-        SZSDataStore.forceStatus(Context())(SZS_Error)
-        //Out.output((SZSOutput(SZS_Error)))
-        return false
+  private class LoadRun extends Runnable{
+
+    var ret_def : Boolean = false
+
+    override def run(): Unit = {
+      val file = problemfile
+      try {
+        val prob = Configuration.PROBLEMFILE
+
+        val it : Iterator[AnnotatedFormula] = {
+          if (Files.exists(Parsing.canonicalPath(prob)))
+            Parsing.readProblem(prob).iterator
+          else {
+            val tptpFile = Parsing.tptpHome.resolve(prob)
+            if(Files.exists(tptpFile)) {
+              Parsing.readProblem(Parsing.tptpHome.resolve(prob).toString).iterator
+            } else {
+              throw new SZSException(SZS_InputError, s"The file ${prob} does not exist.")
+            }
+          }
+        }
+        while(it.hasNext){
+          val form = it.next()
+          Blackboard().addData(AnnotatedFormulaType)(form)
+        }
+      } catch {
+        case e : SZSException =>
+          SZSDataStore.forceStatus(Context())(e.status)
+          Out.severe(e.getMessage)
+          ret_def =  false
+          return
+        case e : ThreadDeath =>
+          ret_def = false
+          return
+        case e : Throwable =>
+          Out.severe("Unexpected Exception")
+          e.printStackTrace()
+          SZSDataStore.forceStatus(Context())(SZS_Error)
+          ret_def =  false
+          return
+      }
+      ret_def = true
     }
-    import leo.datastructures.blackboard.Store
-    if(negateConjecture) FormulaDataStore.getAll{NegConjRule.canApply(_)}.foreach{f => FormulaDataStore.removeFormula(f); FormulaDataStore.addNewFormula(NegConjRule.apply(f))}
-    return true
   }
-
-  private class Wait(lock : AnyRef) extends Agent{
-    override def toFilter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent => finish = true; lock.synchronized(lock.notifyAll());List()
-      case _ => List()
-    }
-    override def name: String = "PreprocessPhaseTerminator"
-    override def run(t: Task): Result = Result()
-  }
-
-  private object NegConjRule extends CalculusRule {
-    val name = "neg_conjecture"
-    override val inferenceStatus = Some(SZS_CounterSatisfiable)
-    def canApply(fs: FormulaStore) = fs.role == Role_Conjecture
-    def apply(fs: FormulaStore) = Store(fs.name + "_neg", fs.clause.mapLit(l => l.flipPolarity), Role_NegConjecture, fs.context, fs.status & ~7, ClauseAnnotation(this, fs)) // TODO: This is not generally not valid, fix me
-  }
-}*/
+}

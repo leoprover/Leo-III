@@ -2,8 +2,7 @@ package leo
 package datastructures
 
 import leo.datastructures.impl.Signature
-
-import Term.{:::>, TypeLambda,∙,Symbol, Bound}
+import Term.{:::>, Bound, Symbol, TypeLambda, ∙}
 
 import scala.annotation.tailrec
 
@@ -119,6 +118,7 @@ object Precedence {
   final val arity: Precedence = Prec_Arity
   final val arity_UnaryFirst: Precedence = Prec_Arity_UnaryFirst
   final val arityOrder: Precedence = Prec_ArityOrder
+  final val arityInvOrder: Precedence = Prec_ArityInvOrder
   final val arityOrder_UnaryFirst: Precedence = Prec_ArityOrder_UnaryFirst
   final val arityInvOrder_UnaryFirst: Precedence = Prec_ArityInvOrder_UnaryFirst
 }
@@ -141,6 +141,15 @@ object ClauseOrdering {
   import leo.datastructures.impl.orderings._
   /** Lexicographic clause ordering on the 3-tuple (clause weight, clause age, clause origin) */
   final val lex_WeightAgeOrigin: ClauseOrdering = CLO_Lex_WeightAgeOrigin
+}
+
+object ClauseProxyOrderings {
+  import leo.datastructures.impl.orderings._
+
+  final val fifo: ClauseProxyOrdering = CLPO_FIFO
+  final val lex_weightAge = CLPO_Lex_WeightAge
+  final val goalsfirst = CLPO_GoalsFirst
+  final val nongoalsfirst = CLPO_NonGoalsFirst
 }
 
 ///////////////////////

@@ -32,39 +32,39 @@ trait Logging {
   final def finest(msg: => String): Unit = if (log.isLoggable(FINEST)) log.finest(msg)
   /** Log ALL details for debug tracing, including verbose intermediate information. */
   @elidable(elidable.FINEST)
-  final def finest(msg: Output): Unit = if (log.isLoggable(FINEST)) log.finest(msg.output)
+  final def finest(msg: Output): Unit = if (log.isLoggable(FINEST)) log.finest(msg.apply)
   /** Log fine-grained debug trace information, i.e. small step messages with extensive information output. */
   @elidable(elidable.FINER)
   final def trace(msg: => String): Unit = if (log.isLoggable(FINER)) log.finer(msg)
   /** Log fine-grained debug trace information, i.e. small step messages with extensive information output. */
   @elidable(elidable.FINER)
-  final def trace(msg: Output): Unit = if (log.isLoggable(FINER)) log.finer(msg.output)
+  final def trace(msg: Output): Unit = if (log.isLoggable(FINER)) log.finer(msg.apply)
   /** Log coarse-grained debug messages that help tracing program flow. */
   @elidable(elidable.FINE)
   final def debug(msg: => String): Unit = if (log.isLoggable(FINE)) log.fine(msg)
   /** Log coarse-grained debug message Outputs that help tracing program flow. */
   @elidable(elidable.FINE)
-  final def debug(msg: Output): Unit = if (log.isLoggable(FINE)) log.fine(msg.output)
+  final def debug(msg: Output): Unit = if (log.isLoggable(FINE)) log.fine(msg.apply)
   /** Log important (static or run-time) configuration parameters, e.g. settings from command line. */
   @elidable(elidable.CONFIG)
   final def config(msg: => String): Unit = if (log.isLoggable(CONFIG)) log.config(msg)
   /** Log important (static or run-time) configuration parameters, e.g. settings from command line. */
   @elidable(elidable.CONFIG)
-  final def config(msg: Output): Unit = if (log.isLoggable(CONFIG)) log.config(msg.output)
+  final def config(msg: Output): Unit = if (log.isLoggable(CONFIG)) log.config(msg.apply)
   /** Log additional (run-time) information. */
   final def info(msg: => String): Unit  = if (log.isLoggable(INFO))  log.info(msg)
   /** Log additional (run-time) information. */
-  final def info(msg: Output): Unit  = if (log.isLoggable(INFO))  log.info(msg.output)
+  final def info(msg: Output): Unit  = if (log.isLoggable(INFO))  log.info(msg.apply)
   /** Log a warning. These events describe errors/circumstances that might lead
     * to counter intuitive system behaviour or should simply not occur (even if not leading to a severe error). */
   final def warn(msg: => String): Unit  = if (log.isLoggable(WARNING))  log.warning(msg)
   /** Log a warning Output. These events describe errors/circumstances that might lead
     * to counter intuitive system behaviour or should simply not occur (even if not leading to a severe error). */
-  final def warn(msg: Output): Unit  = if (log.isLoggable(WARNING))  log.warning(msg.output)
+  final def warn(msg: Output): Unit  = if (log.isLoggable(WARNING))  log.warning(msg.apply)
   /** Log a message as `severe` error. These errors are likely to break the system/certain functionality. */
   final def severe(msg: => String): Unit = if (log.isLoggable(SEVERE)) log.severe(msg)
   /** Log an Output as `severe` error. These errors are likely to break the system/certain functionality. */
-  final def severe(msg: Output): Unit = if (log.isLoggable(SEVERE)) log.severe(msg.output)
+  final def severe(msg: Output): Unit = if (log.isLoggable(SEVERE)) log.severe(msg.apply)
 
   import java.util.logging.Handler
 

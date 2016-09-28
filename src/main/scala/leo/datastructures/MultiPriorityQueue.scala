@@ -1,52 +1,39 @@
 package leo.datastructures
 
+import scala.annotation.tailrec
+import scala.collection.TraversableOnce
+
 /**
-  * Created by lex on 1/4/16.
+  * A multi-priority priority queue. Essentially a priority queue which operations
+  * are indexed by the priority that is to be assumed to that operation.
+  *
+  * @tparam A
   */
 trait MultiPriorityQueue[A] {
-  type CMP_Fun = A => A => CMP_Result
+  type OrderingKey = Int
 
-  def addQueue(cmp: CMP_Fun, gain: Int): Unit
-
-  def +(elem: A): Unit
-  def +(elem1: A, elem2: A, elems: A*): Unit
-  def ++(elems: Set[A]): Unit
-
+  def insert(x: A): Unit
+  def insert(xs: TraversableOnce[A]): Unit = {
+    @tailrec def loop(xs: scala.collection.LinearSeq[A]) {
+      if (xs.nonEmpty) {
+        this insert xs.head
+        loop(xs.tail)
+      }
+    }
+    xs match {
+      case xs: scala.collection.LinearSeq[_] => loop(xs)
+      case xs                                => xs foreach insert
+    }
+  }
+  def addPriority(p: Ordering[A]): OrderingKey
+  def priorities: Int
   def isEmpty: Boolean
   def size: Int
-
-  def pop(): A
+  def head(k: OrderingKey): A
+  def dequeue(k: OrderingKey): A
 }
+
 
 object MultiPriorityQueue {
-  def apply[A]: MultiPriorityQueue[A] = ???
-}
-
-protected[datastructures] class MPQImpl[A] extends MultiPriorityQueue[A] {
-  private[this] var queues: Map[CMP_Fun, Int] = Map()
-  private[this] var elements: Set[A] = Set()
-
-  def addQueue(cmp: CMP_Fun, gain: Int): Unit = {
-    queues = queues + (cmp -> gain)
-  }
-
-  def +(elem: A): Unit = {
-    elements = elements + elem
-  }
-  def +(elem1: A, elem2: A, elems: A*): Unit = {
-    elements = ((elements + elem1) + elem2) ++ elems
-  }
-  def ++(elems: Set[A]): Unit = {
-    elements = elements ++ elems
-  }
-
-  def isEmpty: Boolean = elements.isEmpty
-  def size: Int = elements.size
-
-  def pop(): A = {
-    assert(queues.nonEmpty, throw new IllegalArgumentException("No queue inserted yet"))
-
-    ???
-  }
-
+  def empty[A]: MultiPriorityQueue[A] = new leo.datastructures.impl.MultiPriorityQueueImpl[A]()
 }

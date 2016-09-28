@@ -25,6 +25,13 @@ object SZSDataStore extends DataStore {
    */
   def forceStatus(c: Context)(s: StatusSZS): Unit = szsSet.synchronized(szsSet.put(c,SZSStore(s,c)))
 
+
+  def setIfEmpty(c : Context)(s : StatusSZS) : Unit = szsSet.synchronized{
+    if(szsSet.get(c).isEmpty){
+      szsSet.put(c, SZSStore(s,c))
+    }
+  }
+
   /**
    * Returns to a given context the set status.
    * None if no status was previously set.
@@ -63,12 +70,7 @@ object SZSDataStore extends DataStore {
   }
 }
 
-class SZSStore (val szsStatus : StatusSZS, val context : Context) {}
-
-object SZSStore {
-  def apply(szsStatus : StatusSZS, context : Context) = new SZSStore(szsStatus, context)
-  def unapply(e : Any) : Option[(StatusSZS, Context)] = e match {
-    case s : SZSStore => Some((s.szsStatus, s.context))
-    case _ => None
-  }
+case class SZSStore (szsStatus : StatusSZS, context : Context) {
+  override val toString : String = s"SZSStore(${szsStatus.apply} -> ${context.contextID})"
 }
+

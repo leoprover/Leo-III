@@ -3,11 +3,13 @@ package datastructures
 
 import java.nio.file.Path
 
+import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
 import leo.datastructures.Type._
 import leo.datastructures.impl.Signature
-import leo.modules.{SZSException, Utility}
+import leo.modules.{Parsing, SZSException, Utility}
 import leo.modules.output.Output
 
 /**
@@ -47,9 +49,10 @@ class TermOrderingTestSuite extends LeoTestSuite {
    test(s"Ordering test for $p", Benchmark) {
       printHeading(s"Ordering test for $p")
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
-      try {
-        Utility.load(source + "/" + p + ".p")
-      } catch {
+     var fs : Seq[AnnotatedClause] = Seq()
+     try {
+       fs = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
+     } catch {
         case e: SZSException =>
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
           fail()
@@ -77,7 +80,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
 //     Out.output(s"## ${f1.name} w/ ${f2.name}")
 //     Out.output(TermCMPResult(a, b, res))
 
-     val fsIt = FormulaDataStore.getFormulas.iterator
+     val fsIt = fs.iterator
      while (fsIt.hasNext) {
        val f = fsIt.next()
 
@@ -85,7 +88,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
        while (fsIt2.hasNext) {
          val f2 = fsIt2.next()
          if (f != f2) {
-           val (a, b) = (f.clause.lits.head.term, f2.clause.lits.head.term)
+           val (a, b) = (f.cl.lits.head.term, f2.cl.lits.head.term)
            val res = TO_CPO_Naive.compare(a, b)
            res match {
              case CMP_EQ => eq += ((a, b))
@@ -145,7 +148,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
        }
      }
 
-     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(_.clause.lits.head.term).toSeq
+     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(_.cl.lits.head.term).toSeq
      import scala.util.Sorting
      def localLT(a: Term, b: Term): Boolean = TO_CPO_Naive.lt(a,b)
      val sorted = Sorting.stableSort[Term](terms, (a:Term,b:Term) => TO_CPO_Naive.lt(a,b) )
@@ -179,7 +182,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
 
 
   private case class TypeCMPResult(a: Type, b: Type) extends Output {
-    lazy val output = s"Comparing\t${a.pretty}\t with \t${b.pretty}\tResult: ${cmpResToStr(TO_CPO_Naive.compare(a,b))}"
+    lazy val apply = s"Comparing\t${a.pretty}\t with \t${b.pretty}\tResult: ${cmpResToStr(TO_CPO_Naive.compare(a,b))}"
 
     private final def cmpResToStr(cmpRes: CMP_Result): String = {
       cmpRes match {
@@ -191,7 +194,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
     }
   }
   private case class TermCMPResult(a: Term, b: Term, res: CMP_Result) extends Output {
-    lazy val output = s"Comparing\n\t${a.pretty}\n\t${b.pretty}\nResult: ${cmpResToStr(res)}"
+    lazy val apply = s"Comparing\n\t${a.pretty}\n\t${b.pretty}\nResult: ${cmpResToStr(res)}"
 
     private final def cmpResToStr(cmpRes: CMP_Result): String = {
       cmpRes match {

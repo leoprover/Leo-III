@@ -1,10 +1,11 @@
 package leo.agents
 package impl
 
-import leo.datastructures.blackboard
+import leo.datastructures.{ClauseProxy, blackboard}
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{DataType, FormulaStore, Result, FormulaType}
+import leo.datastructures.blackboard.{DataType, Result, ClauseType}
 import java.io.{PrintWriter, File}
+import leo.modules.external.{ExternalCall, ExternalResult}
 import leo.modules.output.{ToTPTP, Output}
 import leo.modules.output.logger._
 import scala.collection.mutable
@@ -29,10 +30,11 @@ import java.io.IOException
  * @since 11/10/14
  */
 abstract class ScriptAgent(path : String) extends Agent {
+  override val interest : Option[Seq[DataType]] = None
 
-  def handle(c: Context, input: Iterator[String], err: Iterator[String], errno: Int): blackboard.Result
+  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
 
-  def encode(fs: Set[FormulaStore]): Seq[String]
+  def encode(fs: Set[ClauseProxy]): Seq[String]
 
   /**
     *
@@ -40,85 +42,51 @@ abstract class ScriptAgent(path : String) extends Agent {
     */
   override def name: String = s"ScriptAgent {$path}"
 
-  private val extSet: mutable.Set[Process] = new mutable.HashSet[Process]()
-
-  private val exec: File = new File(path)
+  private val extSet: mutable.Set[ExternalResult] = new mutable.HashSet[ExternalResult]()
 
 
   /**
     * The script agent terminates all external processes if the kill command occures.
     */
   override def kill() = extSet.synchronized {
-    extSet foreach { p =>
-      p.destroy()
+    super.kill()
+    val it = extSet.iterator
+    while(it.hasNext){
+      val next = it.next()
+      next.kill()
     }
     extSet.clear()
-  };
-  super.kill()
+  }
 
 
-  final case class ScriptTask(fs: Set[FormulaStore], c: Context) extends Task {
-    override def readSet: Map[DataType, Set[Any]] = Map.empty[DataType, Set[Any]] + (FormulaType -> fs.asInstanceOf[Set[Any]])
 
-    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+  final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
+    override val readSet: Map[DataType, Set[Any]] = Map()
+
+    override val writeSet: Map[DataType, Set[Any]] = Map()
 
     override def bid: Double = 1 // TODO Better value
 
-    override val pretty: String = "ScriptTask (BIG)"
+    override val pretty: String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
     override val name: String = "Script Call"
+
+    override val getAgent : ScriptAgent = a
 
     /**
       * This function runs the specific agent on the registered Blackboard.
       */
     override def run: Result = {
-      // Writing the context into a temporary file
-      val file = File.createTempFile("remoteInvoke", ".p")
-      file.deleteOnExit()
-      val writer = new PrintWriter(file)
-      val b = new StringBuilder
-      try {
-        encode(fs) foreach { out =>
-          b.append(out + "\n")
-          writer.println(out)
-        }
-      } finally writer.close()
-      Out.trace(s"[$name]: Writing to temporary file:\n" + b.toString())
-      //Executing the prover
-      var success = true
-      Out.trace(s"[$name]: Executing $path on file ${file.getAbsolutePath}")
-
-      // -------------------------------------------------------------
-      //   Execution
-      // -------------------------------------------------------------
-      //val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath).lines
-      val res = Seq(s"${exec.getAbsolutePath}", file.getAbsolutePath)
-      val str: mutable.ListBuffer[String] = new ListBuffer[String]
-      val errstr: mutable.ListBuffer[String] = new ListBuffer[String]
-      val process = res.run(new ProcessIO(in => in.close(), // Input not used
-        stdout => try { {
-          scala.io.Source.fromInputStream(stdout).getLines().foreach { s => str.append(s) }; stdout.close()
-        }
-        } catch {
-          case e: IOException => stdout.close()
-        },
-        err => try { {
-          scala.io.Source.fromInputStream(err).getLines().foreach(errstr.append(_)); err.close()
-        }
-        } catch {
-          case e: IOException => err.close()
-        }
-      ))
+      val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
-      val exit = process.exitValue()
-      Out.trace(s"[$name]: Got result from external prover.")
-
-      val h = handle(c, str.toIterator, errstr.toIterator, exit)
-
-      // CLean up! I.e. process
+      val retValue = process.exitValue
+      val out = process.out
+      val err = process.error
+      val res = a.handle(c, out, err, retValue, fs)
       extSet.synchronized(extSet.remove(process))
-      process.destroy() // In case we finished early and did not read till the end.
-      return h
+      res
     }
+
+    override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
   }
 
 }

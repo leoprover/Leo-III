@@ -13,14 +13,7 @@ import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
  * </ul>
  */
 trait TAgent extends Dependency[TAgent] {
-  val name : String
-
-	/**
-	* Method to pinpoint the task, that can be currently executed.
-	* Most importantly an agent with >0 openTasks will prevent
-	* a [[leo.datastructures.blackboard.DoneEvent]] from beeing sent.
-	*/
-  def openTasks : Int
+  def name : String
 
   private var _isActive : Boolean = true
 
@@ -75,19 +68,7 @@ trait TAgent extends Dependency[TAgent] {
    *
    * @param event - Newly added or updated formula
    */
-  def filter(event : Event) : Unit
-
-
-  /**
-   *
-   * Returns a a list of Tasks, the Agent can afford with the given realtive budget..
-   */
-  def getTasks : Iterable[Task]
-
-  /**
-   * @return true if the agent has tasks, false otherwise
-   */
-  def hasTasks : Boolean
+  def filter(event : Event) : Iterable[Task]
 
   /**
    * Each task can define a maximum amount of money, they
@@ -99,26 +80,6 @@ trait TAgent extends Dependency[TAgent] {
    * @return maxMoney
    */
   def maxMoney : Double
-
-  /**
-   * As getTasks with an infinite budget.
-   *
-   * @return - All Tasks that the current agent wants to execute.
-   */
-  def getAllTasks : Iterable[Task]
-
-  /**
-   *
-   * Given a set of (newly) executing tasks, remove all colliding tasks.
-   *
-   * @param nExec - The newly executing tasks
-   */
-  def removeColliding(nExec : Iterable[Task]) : Unit
-
-  /**
-   * Removes all Tasks
-   */
-  def clearTasks() : Unit
 
   /**
    * <p>
@@ -185,7 +146,7 @@ abstract class Task extends Pretty  {
     *
     * @return all [[DataType]] contained in this task.
     */
-  val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
+  lazy val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
 
   /**
     * Checks for two tasks, if they are in conflict with each other.
@@ -197,7 +158,7 @@ abstract class Task extends Pretty  {
     val t1 = this
     if(t1 eq t2) return true
     val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)  // Restrict to the datatypes both tasks use.
-
+    if(sharedTypes.isEmpty) return false  // Empty case
     !sharedTypes.exists{d =>        // There exist no datatype
       val r1 : Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
       val w1 : Set[Any] = t1.writeSet().getOrElse(d, Set.empty[Any])
@@ -205,7 +166,6 @@ abstract class Task extends Pretty  {
       val w2 : Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
 
       (r1 & w2).nonEmpty || (r2 & w1).nonEmpty || (w1 & w2).nonEmpty
-      true
     }
   }
 
@@ -217,6 +177,12 @@ abstract class Task extends Pretty  {
     * @return - Possible profit, if the task is executed
     */
   def bid : Double
+
+  /**
+    * Returns the agent, that will execute this task.
+    * @return
+    */
+  def getAgent : TAgent
 }
 
 /**

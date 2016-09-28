@@ -24,6 +24,9 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PROOFOBJECT = "p"
   private val PARAM_HELP = "h"
   private val PARAM_COUNTERSAT = "c"
+  private val PARAM_SOS_SHORT = "s"
+  private val PARAM_SOS_LONG = "sos"
+  private val PARAM_UNIFICATIONDEPTH = "ud"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -33,7 +36,9 @@ object Configuration extends DefaultConfiguration {
       'p' -> ("", "", "Display proof output"),
       't' -> ("", "N", "Timeout in seconds"),
       'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
-      'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof")
+      'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
+      's' -> ("sos", "", "Use SOS heuristic search strategy"),
+      'a' -> ("atp", "name=call", "Addition of external provers")
     )
   }
 
@@ -52,6 +57,9 @@ object Configuration extends DefaultConfiguration {
       PROOF_OBJECT
       VERBOSITY
       COUNTER_SAT
+      SOS
+      ATPS
+      HELP
       ()
     }
     case _ => ()
@@ -84,10 +92,14 @@ object Configuration extends DefaultConfiguration {
     v
   }
 
-  lazy val TIMEOUT: Int = uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+  lazy val TIMEOUT: Int = {
+    if (configMap.get(PARAM_TIMEOUT).isEmpty) Out.info(s"No timeout was given, using default timeout -t ${DEFAULT_TIMEOUT}")
+    uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
+  }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
-
+  lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
+  lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   import leo.datastructures.{Precedence,TermOrdering,ClauseOrdering,LitWeight_TermSize,Orderings}
@@ -99,7 +111,29 @@ object Configuration extends DefaultConfiguration {
 
   lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
-  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder_UnaryFirst
+  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
+
+  lazy val ATPS : Seq[(String, String)] = {
+    val a = valueOf("a")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1))
+      }
+    }
+    else {
+      val b = valueOf("atp")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1))
+        }
+      }
+      else Seq()
+    }
+  }
 
   // more to come ...
 
@@ -164,10 +198,10 @@ object Configuration extends DefaultConfiguration {
   }
 
   protected def multiDefOutput(paramName: String): Output = new Output {
-    val output = s"Parameter $paramName was defined multiple times. First occurrence is used, the rest is ignored."
+    val apply = s"Parameter $paramName was defined multiple times. First occurrence is used, the rest is ignored."
   }
   protected def intExpectedOutput(paramName: String, actual: String): Output = new Output {
-    val output = s"Parameter $paramName expects an Integer value, but '$actual' was given. Default value is used."
+    val apply = s"Parameter $paramName expects an Integer value, but '$actual' was given. Default value is used."
   }
   protected def safeStrToInt(str: String): Option[Int] = try {
     Some(str.toInt)
@@ -192,6 +226,7 @@ object Configuration extends DefaultConfiguration {
 
 trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
-  val DEFAULT_VERBOSITY = java.util.logging.Level.WARNING
+  val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
+  val DEFAULT_UNIFICATIONDEPTH = 8
 }

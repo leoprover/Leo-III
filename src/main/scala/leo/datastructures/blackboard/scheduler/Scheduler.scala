@@ -8,7 +8,11 @@ import leo.datastructures.blackboard._
 
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable
-import java.util.concurrent.{RejectedExecutionException, Executors}
+import java.util.concurrent.{Executors, RejectedExecutionException, ThreadFactory, TimeUnit, Future}
+
+import leo.datastructures.blackboard.impl.SZSDataStore
+import leo.datastructures.context.Context
+import leo.modules.SZSException
 
 
 /**
@@ -22,7 +26,8 @@ object Scheduler {
   /**
    * Creates a Scheduler for 5 Threads or a get for the singleton,
    * if the scheduler already exists.
-   * @return
+    *
+    * @return
    */
   def apply() : Scheduler = {
     s
@@ -63,6 +68,8 @@ trait Scheduler {
   protected[scheduler] def start()
 
   def openTasks : Int
+
+  def submitIndependent(r : Runnable) : Future[_]
 }
 
 
@@ -75,13 +82,14 @@ trait Scheduler {
  * Central Object for coordinating the ThreadPool responsible for
  * executing the Agents
  * </p>
- * @author Max Wisniewski
+  *
+  * @author Max Wisniewski
  * @since 5/15/14
  */
 protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Scheduler {
   import leo.agents._
 
-  private var exe = Executors.newFixedThreadPool(numberOfThreads)
+  private var exe = Executors.newFixedThreadPool(numberOfThreads, MyThreadFactory)
   private val s : SchedulerRun = new SchedulerRun()
   private val w : Writer = new Writer()
 
@@ -93,6 +101,10 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def openTasks : Int = synchronized(curExec.size)
 
   override def isTerminated : Boolean = endFlag
+
+  override def submitIndependent(r : Runnable) : Future[_] = {
+    exe.submit(r)
+  }
 
   def signal() : Unit = s.synchronized{
     pauseFlag = false
@@ -108,8 +120,13 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
   def killAll() : Unit = s.synchronized{
     endFlag = true
     pauseFlag = false
+    exe.shutdown()
     exe.shutdownNow()
+    if(!exe.awaitTermination(30, TimeUnit.MILLISECONDS)) {
+      MyThreadFactory.killAll()
+    }
     AgentWork.executingAgents() foreach(_.kill())
+    Blackboard().filterAll(a => a.filter(DoneEvent()))
     curExec.clear()
     AgentWork.clear()
     ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
@@ -118,6 +135,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     curExec.clear()
 //    Scheduler.s = null
   }
+
 
   var pauseFlag = true
   var endFlag = false
@@ -128,6 +146,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   def clear() : Unit = {
     pause()
+    Blackboard().forceCheck()
     curExec.clear()
     AgentWork.executingAgents() foreach(_.kill())
     AgentWork.clear()
@@ -154,7 +173,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           try {
             this.wait()
           } catch {
-            case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now."); return
+            case e : InterruptedException => Out.trace("Scheduler interrupted. Quiting now."); return
           }
           Out.trace("Scheduler is commencing.")
         }
@@ -185,7 +204,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           }
         }
       } catch {
-        case e : InterruptedException => Out.info("Scheduler interrupted. Quiting now."); return
+        case e : InterruptedException => Out.trace("Scheduler interrupted. Quiting now."); return
       }
     }
   }
@@ -217,6 +236,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         val updateD : Map[DataType, Seq[Any]] = result.keys.map {t =>
           (t,result.updates(t).filter{case (d1,d2) =>            //TODO should not be lazy, Otherwise it could generate problems
             var add : Boolean = false
+
             Blackboard().getDS(t).foreach{ds => add |= ds.update(d1,d2)}  // More elegant without risk of lazy skipping of updating ds?
             doneSmth |= add
             add
@@ -229,6 +249,15 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           })
         }
 
+
+        // Data Written, Release Locks before filtering
+        LockSet.releaseTask(task) // TODO right position?
+        Blackboard().finishTask(task)
+        curExec.remove(task)
+        agent.taskFinished(task)
+
+//        if(ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") <= 0) Blackboard().forceCheck()
+
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
             a.interest match {
@@ -237,8 +266,8 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
                 val ts = if (xs.isEmpty) result.keys else xs
                 ts.foreach { t =>
                   // Queuing for filtering on the existing threads
-                  newD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter new data ($d)\n\t\tin Agent ${a.name}" ); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
-                  updateD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter update to ($d)\n\t\tin Agent ${a.name}"); exe.submit(new GenFilter(a, t, d)) } //a.filter(DataEvent(d,t))}
+                  newD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter new data ($d)\n\t\tin Agent ${a.name}" ); exe.submit(new GenFilter(a, t, d, task)) } //a.filter(DataEvent(d,t))}
+                  updateD.getOrElse(t, Nil).foreach { d => ActiveTracker.incAndGet(s"Filter update to ($d)\n\t\tin Agent ${a.name}"); exe.submit(new GenFilter(a, t, d, task)) } //a.filter(DataEvent(d,t))}
                   // TODO look at not written data,,,
                 }
             }
@@ -250,11 +279,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
       }
 //      Out.comment(s"[Writer]: Gone through all.")
 
-      LockSet.releaseTask(task)
-      curExec.remove(task)
-      agent.taskFinished(task)  // TODO maybe move after all filtering
-      val lockCount = if(doneSmth) ActiveTracker.decAndGet(s"Finished Task : ${task.pretty}") else ActiveTracker.decAndGet()
-      if(lockCount <= 0) Blackboard().forceCheck()
+
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -263,25 +288,63 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
 
   /**
    * The Generic Agent runs an agent on a task and writes the Result Back, such that it can be updated to the blackboard.
-   * @param a - Agent that will be executed
+    *
+    * @param a - Agent that will be executed
    * @param t - Task on which the agent runs.
    */
   private class GenAgent(a : TAgent, t : Task) extends Runnable{
-    override def run()  {
-      ExecTask.put(t.run,t, a)
-      AgentWork.dec(a)
-//      Out.comment("Executed :\n   "+t.toString+"\n  Agent: "+a.name)
+    override def run()  { // TODO catch error and move outside or at least recover
+      try {
+        val res = t.run
+        ExecTask.put(res, t, a)
+        AgentWork.dec(a)
+      } catch {
+        case e : InterruptedException => {
+          throw e
+        }
+        case e : SZSException =>
+//          SZSDataStore.forceStatus(Context())(e.status)  TODO comment in after CASC
+          Out.severe(e.getMessage)
+          LockSet.releaseTask(t)
+          Blackboard().finishTask(t)
+          ActiveTracker.decAndGet(s"${a.name} killed with exception.")
+//          Blackboard().filterAll(_.filter(DoneEvent()))
+//          Scheduler().killAll()
+        case e : Exception =>
+          if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
+          if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
+          LockSet.releaseTask(t)
+          Blackboard().finishTask(t)
+          if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
+            Blackboard().forceCheck()
+          }
+//          Blackboard().filterAll(_.filter(DoneEvent()))  TODO comment in after CASC
+//          Scheduler().killAll()
+      }
     }
   }
 
-  private class GenFilter(a : TAgent, t : DataType, newD : Any) extends Runnable{
-    override def run(): Unit = {
+  private class GenFilter(a : TAgent, t : DataType, newD : Any, from : Task) extends Runnable{
+    override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
+      try {
+        val ts = a.filter(DataEvent(newD, t))
+        Blackboard().submitTasks(a, ts.toSet)
+      } catch {
+        case e : SZSException =>
+//          SZSDataStore.forceStatus(Context())(e.status) TODO comment in after CASC
+          Out.severe(e.getMessage)
+//          Blackboard().filterAll(_.filter(DoneEvent()))
+//          Scheduler().killAll()
+        case e : Exception =>
+//          Blackboard().filterAll(_.filter(DoneEvent())) // TODO comment in after Casc
+          leo.Out.warn(e.getMessage)
+          leo.Out.finest(e.getCause.toString)
+//          Scheduler().killAll()
+      }
+      ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
+      Blackboard().forceCheck()
 
-      a.filter(DataEvent(newD,t))
-
-      if(ActiveTracker.decAndGet(s"Done Filtering data (${newD})\n\t\tin Agent ${a.name}") <= 0)
-        Blackboard().forceCheck()
       //Release sync
     }
   }
@@ -371,6 +434,29 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
     }
 
     override def pretty: String = "Exit Task"
+    override def getAgent : TAgent = null
+  }
+
+  private object MyThreadFactory extends ThreadFactory {
+
+    private var threads : scala.collection.mutable.Set[Thread] = scala.collection.mutable.HashSet[Thread]()
+
+    def killAll() : Unit = threads.synchronized {
+      threads.foreach{t =>
+        t.interrupt()
+        try {
+          t.stop()
+        } catch {
+          case _ => () // TODO FIX. IMPORTANT. DO NOT USE FURTHER ON
+        }
+        }
+    }
+
+    override def newThread(r: Runnable): Thread = {
+      val t = Executors.defaultThreadFactory().newThread(r)
+      threads.synchronized{threads.add(t)}
+      t
+    }
   }
 }
 

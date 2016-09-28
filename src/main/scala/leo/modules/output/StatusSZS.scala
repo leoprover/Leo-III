@@ -60,7 +60,7 @@ sealed abstract class SuccessSZS extends StatusSZS
  * - Possible dataforms are Proofs of C from Ax.
  */
 case object SZS_Theorem extends SuccessSZS {
-  val output = "Theorem"
+  val apply = "Theorem"
   val pretty = "THM"
 }
 
@@ -70,7 +70,7 @@ case object SZS_Theorem extends SuccessSZS {
  * - Possible dataforms are Proofs of ~C from Ax.
  */
 case object SZS_CounterTheorem extends SuccessSZS {
-  val output = "CounterTheorem"
+  val apply = "CounterTheorem"
   val pretty = "CTH"
 }
 
@@ -81,7 +81,7 @@ case object SZS_CounterTheorem extends SuccessSZS {
  * - Possible dataforms are Models of Ax | C.
  */
 case object SZS_Satisfiable extends SuccessSZS {
-  val output = "Satisfiable"
+  val apply = "Satisfiable"
   val pretty = "SAT"
 }
 
@@ -90,7 +90,7 @@ case object SZS_Satisfiable extends SuccessSZS {
  * (un)satisfiable iff C is (un)satisfiable.
  */
 case object SZS_EquiSatisfiable extends SuccessSZS {
-  val output = "EquiSatisfiable"
+  val apply = "EquiSatisfiable"
   val pretty = "ESA"
 }
 
@@ -101,7 +101,7 @@ case object SZS_EquiSatisfiable extends SuccessSZS {
  * - Possible dataforms are Models of Ax | ~C.
  */
 case object SZS_CounterSatisfiable extends SuccessSZS {
-  val output = "CounterSatisfiable"
+  val apply = "CounterSatisfiable"
   val pretty = "CSA"
 }
 
@@ -113,7 +113,7 @@ case object SZS_CounterSatisfiable extends SuccessSZS {
  * - Possible dataforms are Proofs of Ax and of C, and Refutations of F.
  */
 case object SZS_Unsatisfiable extends SuccessSZS {
-  val output = "Unsatisfiable"
+  val apply = "Unsatisfiable"
   val pretty = "UNS"
 }
 
@@ -123,7 +123,7 @@ case object SZS_Unsatisfiable extends SuccessSZS {
  * - Possible dataforms are Refutations of Ax.
  */
 case object SZS_ContradictoryAxioms extends SuccessSZS {
-  val output = "ContradictoryAxioms"
+  val apply = "ContradictoryAxioms"
   val pretty = "CAX"
 }
 
@@ -168,71 +168,71 @@ sealed abstract class NoSuccessSZS extends StatusSZS
 
 /** Software stopped due to an error. Please try to use more specific SZS status values if possible. */
 case object SZS_Error extends NoSuccessSZS {
-  val output = "Error"
+  val apply = "Error"
   val pretty = "ERR"
 }
 
 /** Software stopped due to an ATP system usage error. **/
 case object SZS_UsageError extends NoSuccessSZS {
-  val output = "UsageError"
+  val apply = "UsageError"
   val pretty = "USE"
 }
 
 case object SZS_InputError extends NoSuccessSZS {
-  val output = "InputError"
+  val apply = "InputError"
   val pretty = "INE"
 }
 
 /** Software stopped due to an input syntax error. */
 case object SZS_SyntaxError extends NoSuccessSZS {
-  val output = "SyntaxError"
+  val apply = "SyntaxError"
   val pretty = "SYE"
 }
 
 /** Software stopped due to an input type error (for typed logical data). */
 case object SZS_TypeError extends NoSuccessSZS {
-  val output = "TypeError"
+  val apply = "TypeError"
   val pretty = "TYE"
 }
 
 /** Software was forced to stop by an external force. */
 case object SZS_Forced extends NoSuccessSZS {
-  val output = "Forced"
+  val apply = "Forced"
   val pretty = "FOR"
 }
 
 /** Software was forced to stop by the user. */
 case object SZS_User extends NoSuccessSZS {
-  val output = "User"
+  val apply = "User"
   val pretty = "USR"
 }
 
 /** Software stopped because the CPU time limit ran out. */
 case object SZS_Timeout extends NoSuccessSZS {
-  val output = "Timeout"
+  val apply = "Timeout"
   val pretty = "TMO"
 }
 
 /** Software stopped because the memory limit ran out. */
 case object SZS_MemoryOut extends NoSuccessSZS {
-  val output = "MemoryOut"
+  val apply = "MemoryOut"
   val pretty = "MMO"
 }
 
 /** Software gave up of its own accord. */
 case object SZS_GaveUp extends NoSuccessSZS {
-  val output = "GaveUp"
+  val apply = "GaveUp"
   val pretty = "GUP"
 }
 
 /** Software gave up because it cannot process this type of data. */
 case object SZS_Inappropriate extends NoSuccessSZS {
-  val output = "Inappropriate"
+  val apply = "Inappropriate"
   val pretty = "IAP"
 }
 
 case object SZS_Unknown extends NoSuccessSZS {
-  val output = "Unknown"
+  val apply = "Unknown"
   val pretty = "UNK"
 }
 
@@ -250,22 +250,22 @@ object StatusSZS  {
   }
 
   def apply(name : String) : Option[StatusSZS] = name match {
-    case SZS_Theorem.output => Some(SZS_Theorem)
-    case SZS_Satisfiable.output => Some(SZS_Satisfiable)
-    case SZS_CounterSatisfiable.output => Some(SZS_CounterSatisfiable)
-    case SZS_Unsatisfiable.output => Some(SZS_Unsatisfiable)
-    case SZS_ContradictoryAxioms.output => Some(SZS_ContradictoryAxioms)
-    case SZS_Error.output => Some(SZS_Error)
-    case SZS_InputError.output => Some(SZS_InputError)
-    case SZS_SyntaxError.output => Some(SZS_SyntaxError)
-    case SZS_TypeError.output => Some(SZS_TypeError)
-    case SZS_Forced.output => Some(SZS_Forced)
-    case SZS_User.output => Some(SZS_User)
-    case SZS_Timeout.output => Some(SZS_Timeout)
-    case SZS_MemoryOut.output => Some(SZS_MemoryOut)
-    case SZS_GaveUp.output => Some(SZS_GaveUp)
-    case SZS_Inappropriate.output => Some(SZS_Inappropriate)
-    case SZS_Unknown.output => Some(SZS_Unknown)
+    case SZS_Theorem.`apply` => Some(SZS_Theorem)
+    case SZS_Satisfiable.`apply` => Some(SZS_Satisfiable)
+    case SZS_CounterSatisfiable.`apply` => Some(SZS_CounterSatisfiable)
+    case SZS_Unsatisfiable.`apply` => Some(SZS_Unsatisfiable)
+    case SZS_ContradictoryAxioms.`apply` => Some(SZS_ContradictoryAxioms)
+    case SZS_Error.`apply` => Some(SZS_Error)
+    case SZS_InputError.`apply` => Some(SZS_InputError)
+    case SZS_SyntaxError.`apply` => Some(SZS_SyntaxError)
+    case SZS_TypeError.`apply` => Some(SZS_TypeError)
+    case SZS_Forced.`apply` => Some(SZS_Forced)
+    case SZS_User.`apply` => Some(SZS_User)
+    case SZS_Timeout.`apply` => Some(SZS_Timeout)
+    case SZS_MemoryOut.`apply` => Some(SZS_MemoryOut)
+    case SZS_GaveUp.`apply` => Some(SZS_GaveUp)
+    case SZS_Inappropriate.`apply` => Some(SZS_Inappropriate)
+    case SZS_Unknown.`apply` => Some(SZS_Unknown)
     case _ => None
   }
 
@@ -282,12 +282,12 @@ object StatusSZS  {
 
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   private def mkOutput(szsStatus: StatusSZS, problemName: String, comment: String): Output = new Output {
-    final val output = comment match {
-      case null | "" => s"% SZS status ${szsStatus.output} for $problemName"
-      case _ => s"% SZS status ${szsStatus.output} for $problemName : $comment"
+    final val apply = comment match {
+      case null | "" => s"% SZS status ${szsStatus.apply} for $problemName"
+      case _ => s"% SZS status ${szsStatus.apply} for $problemName : $comment"
     }
   }
   /** Create an `Output` object containing a TPTP-valid SZS-Output string for the given parameters. */
   private def mkOutput(szsStatus: StatusSZS, problemName: String, comment: Output): Output =
-      mkOutput(szsStatus,problemName, comment.output)
+      mkOutput(szsStatus,problemName, comment.apply)
 }

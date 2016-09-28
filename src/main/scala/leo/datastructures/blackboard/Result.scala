@@ -33,6 +33,8 @@ class Result {
   private var prio : Int = 5
 
 
+  def isEmpty : Boolean = insertM.isEmpty && updateM.isEmpty && removeM.isEmpty
+
   /**
    * Inserts given data d of type t into
    * the registered data structures.
@@ -119,4 +121,45 @@ class Result {
    * @param prio sets the priority to max(min(prio,10),1)
    */
   def setPriority(prio : Int) : Result = {this.prio = prio.min(10).max(1); this}
+
+  final override def toString : String = {
+    val sb : mutable.StringBuilder = new mutable.StringBuilder()
+    sb.append("Result(\n")
+
+    sb.append(" Insert(\n")
+    insertM.keysIterator.foreach{dt =>
+      sb.append(s"   $dt ->\n")
+      insertM.get(dt).foreach{ds =>
+        ds.foreach{data =>
+          sb.append(s"     $data\n")
+        }
+      }
+    }
+    sb.append(" )\n")
+
+    sb.append(" Update(\n")
+    updateM.keysIterator.foreach{dt =>
+      sb.append(s"   $dt ->\n")
+      updateM.get(dt).foreach{ds =>
+        ds.foreach{case (d1,d2) =>
+          sb.append(s"      $d1\n   ->\n     $d2\n")
+        }
+      }
+    }
+    sb.append(" )\n")
+
+    sb.append(" Delete(\n")
+    removeM.keysIterator.foreach{dt =>
+      sb.append(s"   $dt ->\n")
+      removeM.get(dt).foreach{ds =>
+        ds.foreach{data =>
+          sb.append(s"     $data\n")
+        }
+      }
+    }
+    sb.append(" )\n")
+
+    sb.append(")")
+    sb.toString()
+  }
 }

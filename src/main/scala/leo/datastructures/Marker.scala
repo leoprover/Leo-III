@@ -1,6 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.blackboard.FormulaStore
+import leo.modules.output.Output
 
 
 /////////////////////////////////////////////
@@ -111,25 +111,90 @@ case object FromConjecture extends ClauseOrigin { val priority = 2 }
 case object Derived extends ClauseOrigin { val priority = 1 }
 
 
-abstract sealed class ClauseAnnotation extends Pretty
-case class InferredFrom(rule: leo.modules.calculus.CalculusRule, fs: Set[FormulaStore]) extends ClauseAnnotation {
-  def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status("+_.pretty.toLowerCase+")")}],[${fs.map(_.name).mkString(",")}])"
+
+
+trait ClauseProxy extends Pretty {
+  def id: Long
+  def cl: Clause
+  def role: Role
+  def annotation: ClauseAnnotation
+  def properties: ClauseAnnotation.ClauseProp
+
+  override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
 }
-case object NoAnnotation extends ClauseAnnotation {
-  val pretty: String = ""
+
+case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
+                           var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy with Ordered[AnnotatedClause] {
+  override def equals(o: Any): Boolean = o match {
+    case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
+    case _ => false
+  }
+  import leo.Configuration
+  override def compare(that: AnnotatedClause) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl)
+  override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
 }
-case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
-  def pretty = s"file('$fileName',$formulaName)"
+
+object AnnotatedClause {
+  private var counter: Long = 0
+
+  def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
+    counter += 1
+    AnnotatedClause(counter, cl, r, annotation, propFlag)
+  }
+
+  def apply(cl: Clause, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp = ClauseAnnotation.PropNoProp): AnnotatedClause =
+    apply(cl, Role_Plain, annotation, propFlag)
+}
+
+abstract sealed class ClauseAnnotation extends Pretty {
+  def fromRule: Option[leo.modules.calculus.CalculusRule]
 }
 
 object ClauseAnnotation {
-  def apply(rule: leo.modules.calculus.CalculusRule, cls: Set[FormulaStore]): ClauseAnnotation =
-    new InferredFrom(rule, cls)
+  case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Set[(A, Output)]) extends ClauseAnnotation {
+    def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status(" + _.pretty.toLowerCase + ")")}],[${
+      cws.map { case (cw, add) => if (add == null) {
+        cw.id
+      } else {
+        cw.id  + ":[" + add.apply + "]"
+      }
+      }.mkString(",")
+    }])"
 
-  def apply(rule: leo.modules.calculus.CalculusRule, cl: FormulaStore): ClauseAnnotation =
-    new InferredFrom(rule, Set(cl))
+    val fromRule = Some(rule)
+  }
+  object InferredFrom {
+    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Set[A]): ClauseAnnotation =
+      InferredFrom(rule, cs.map((_, null.asInstanceOf[Output])))
 
-  def apply(file: String, name: String): ClauseAnnotation = new FromFile(file, name)
+    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, c: A): ClauseAnnotation =
+      InferredFrom(rule, Set((c,null.asInstanceOf[Output])))
+  }
+
+  case object NoAnnotation extends ClauseAnnotation {
+    val pretty: String = ""
+    val fromRule = None
+  }
+  case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
+    def pretty = s"file('$fileName',$formulaName)"
+    val fromRule = None
+  }
+
+  type ClauseProp = Int
+  final val PropNoProp: ClauseProp = 0
+  final val PropUnified: ClauseProp = 1
+  final val PropBoolExt: ClauseProp = 2
+  final val PropSOS: ClauseProp = 4
+  final val PropNeedsUnification: ClauseProp = 8
+
+  final def prettyProp(prop: ClauseProp): String = {
+    val sb = new StringBuilder
+    if (isPropSet(PropUnified, prop)) sb.append(" U ")
+    if (isPropSet(PropBoolExt, prop)) sb.append(" BE ")
+    if (isPropSet(PropSOS, prop)) sb.append(" SOS ")
+    if (isPropSet(PropNeedsUnification, prop)) sb.append(" NU ")
+    sb.toString()
+  }
 }
 
 

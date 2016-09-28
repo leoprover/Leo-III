@@ -2,9 +2,8 @@ package leo.datastructures.context
 
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite, Configuration}
-import leo.datastructures.blackboard.FormulaStore
 import leo.modules.CLParameterParser
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.AnnotatedClause
 
 import leo.datastructures.context.impl._
 
@@ -14,13 +13,11 @@ import leo.datastructures.context.impl._
 class TreeContextSetTestSuite extends LeoTestSuite {
 
 //  Configuration.init(new CLParameterParser(Array("arg0", "-v", "4")))
-
-  val b : Context = Context()
   // b is root,
 
   test("One context",Checked){
-
-
+    Context.clear()
+    val b : Context = Context()
     b.split(BetaSplit, 2)
     val list = b.childContext.toList
     val l = list(0)
@@ -43,6 +40,9 @@ class TreeContextSetTestSuite extends LeoTestSuite {
   }
 
   test("Insertion Before Split",Checked) {
+    Context.clear()
+    val b : Context = Context()
+
     val s : ContextSet[Int] = new TreeContextSet[Int]()
     s.add(3,b)
 
@@ -57,12 +57,15 @@ class TreeContextSetTestSuite extends LeoTestSuite {
   }
 
   test("Empty get all",Checked) {
-    val s : ContextSet[FormulaStore] = new TreeContextSet[FormulaStore]()
+    val s : ContextSet[AnnotatedClause] = new TreeContextSet[AnnotatedClause]()
 
     assert(s.getAll.isEmpty, "Initial the context set is empty.")
   }
 
   test("Get All",Checked) {
+    Context.clear()
+    val b : Context = Context()
+
     val s : ContextSet[Int] = new TreeContextSet[Int]()
     s.add(3,b)
 
@@ -84,5 +87,27 @@ class TreeContextSetTestSuite extends LeoTestSuite {
     val a = FormulaDataStore.getFormulas
 
     assert(a.isEmpty, "All should be empty initial.")
+  }
+
+  test("Removal in subcontext"){
+    Context.clear()
+    val b : Context = Context()
+
+    val s : ContextSet[Int] = new TreeContextSet[Int]()
+
+    b.split(BetaSplit, 3)
+    val list = b.childContext.toList
+    val l = list(0)
+    val m = list(1)
+    val r = list(2)
+    s.add(5, b)
+    assert(s.contains(5, l), "Initially all contain the element")
+    assert(s.contains(5, m), "Initially all contain the element")
+    assert(s.contains(5, r), "Initially all contain the element")
+
+    s.remove(5, m)
+    assert(s.contains(5, l), "Left remains untouched")
+    assert(!s.contains(5, m), "The middel should no longer contain the element")
+    assert(s.contains(5, r), "Right remains untouched")
   }
 }

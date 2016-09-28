@@ -16,6 +16,9 @@ sealed abstract class Subst extends Pretty {
   def comp(other: Subst): Subst
   def o = comp(_)
 
+  /** If this is an substitution for terms, apply element-wise type substitution `typeSubst` to it, error otherwise. */
+  def applyTypeSubst(typeSubst: Subst): Subst
+
   /** Prepend `ft` to this substitution */
   def cons(ft: Front): Subst
   /** Prepend `ft` to this substitution */
@@ -44,6 +47,13 @@ sealed abstract class Subst extends Pretty {
   def substBndIdx(i: Int): Front
   /** Return all fronts as linear list */
   def fronts: Seq[Front]
+
+  override def equals(o: Any) = o match {
+    case ot : Subst => {
+      shiftedBy == ot.shiftedBy && fronts == ot.fronts
+    }
+    case _ => false
+  }
 
 //  /** Convecience method: Convert all fronts in substitution to terms (if not a type substitution) */
 //  def terms: Seq[Term] = {
@@ -76,6 +86,12 @@ object Subst {
 //    }
 //
 //    TermFront(by) +: s
+  }
+
+  def singleton(what: Int, by: Type): Subst = {
+    var i = 1
+    var subst: Vector[Front] = Range(1, what).map(BoundFront(_)).toVector
+    new SubstImpl(what,subst :+ TypeFront(by))
   }
 
   def fromMap(map: Map[Int, Term]): Subst = {
@@ -157,6 +173,12 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
     }
   }
 
+  def applyTypeSubst(typeSubst: Subst): Subst = new RASubst(shift, fts.map {
+    case TermFront(term) => TermFront(term.typeClosure(typeSubst))
+    case TypeFront(_) => throw new UnsupportedOperationException("applyTypeSubst on typeSubst")
+    case other => other
+  })
+
   def cons(ft: Front): Subst = new RASubst(shift, ft +: fts)
   lazy val sink: Subst = BoundFront(1) +: (this o new RASubst(1))
 
@@ -219,6 +241,7 @@ case class Shift(n: Int) extends AlgebraicSubst {
       case Cons(ft, s) => Shift(n-1).comp(s)
     }
   }
+  def applyTypeSubst(typeSubst: Subst): Subst = this
 
   def cons(ft: Front) = Cons(ft, this)
 
@@ -244,6 +267,12 @@ case class Cons(ft: Front, subst: Subst) extends AlgebraicSubst {
   def comp(other: Subst) = other match {
     case Shift(0) => this
     case s => Cons(ft.substitute(s), subst.comp(s))
+  }
+
+  def applyTypeSubst(typeSubst: Subst): Subst = ft match {
+    case TermFront(term) => Cons(TermFront(term.typeClosure(typeSubst)), subst.applyTypeSubst(typeSubst))
+    case TypeFront(_) => throw new UnsupportedOperationException("applyTypeSubst on type substitution")
+    case other => Cons(other, subst.applyTypeSubst(typeSubst))
   }
 
   def cons(ft: Front) = Cons(ft, this)
@@ -290,7 +319,7 @@ case class BoundFront(n: Int) extends Front {
   override def pretty = s"$n"
 }
 case class TermFront(term: Term) extends Front {
-  def substitute(subst: Subst) = TermFront(term.closure((subst)))
+  def substitute(subst: Subst) = TermFront(term.termClosure((subst)))
 
   /** Pretty */
   override def pretty = term.pretty

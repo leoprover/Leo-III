@@ -53,6 +53,16 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     }
   }
 
+  override def submitTasks(a : TAgent, ts : Set[Task]) : Unit = {
+    TaskSet.synchronized(TaskSet.taskSet.submit(ts))
+    signalTask()
+  }
+
+  override def finishTask(t : Task) : Unit = {
+    TaskSet.synchronized(TaskSet.taskSet.finish(t))
+    LockSet.releaseTask(t)        // TODO Still necessary?
+  }
+
   /**
    * Method that filters the whole Blackboard, if a new agent 'a' is added
    * to the context.
@@ -67,7 +77,9 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
         ts.foreach{t =>
           dsmap.getOrElse(t, Set.empty).foreach{ds =>
             ds.all(t).foreach{d =>
-              a.filter(DataEvent(d,t))
+              val ts : Iterable[Task] = a.filter(DataEvent(d,t))
+              //ts.foreach(t => ActiveTracker.incAndGet(s"Inserted Task\n  ${t.pretty}"))
+              submitTasks(a, ts.toSet)
             }
         }}
         forceCheck()
@@ -90,7 +102,10 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  override def send(m: Message, to: TAgent): Unit = to.filter(m)
+  override def send(m: Message, to: TAgent): Unit = {
+    val ts = to.filter(m)
+    submitTasks(to, ts.toSet)
+  }
 
   /**
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be
@@ -140,6 +155,11 @@ private object TaskSet {
   val regAgents = mutable.HashMap[TAgent,Double]()
   //protected[impl] val execTasks = new mutable.HashSet[Task]
 
+  /**
+    * The set containing all dependencies on agents
+    */
+  val taskSet : TaskSet = new SimpleTaskSet()
+
   private val AGENT_SALARY : Double = 5
 
   /**
@@ -149,18 +169,20 @@ private object TaskSet {
 
   def clear() : Unit = {
     this.synchronized {
-      regAgents.foreach(_._1.clearTasks())
       regAgents.clear()
       LockSet.clear()
+      this.taskSet.clear()
     }
   }
 
   def addAgent(a : TAgent) {
     this.synchronized(regAgents.put(a,AGENT_SALARY))
+    this.synchronized(taskSet.addAgent(a))
   }
 
   def removeAgent(a : TAgent): Unit = this.synchronized{
-    regAgents.remove(a)
+    this.synchronized(regAgents.remove(a))
+    this.synchronized(taskSet.removeAgent(a))
   }
 
   def agents : List[TAgent] = this.synchronized(regAgents.toList.map(_._1))
@@ -188,17 +210,19 @@ private object TaskSet {
           //
           var r: List[(Double, TAgent, Task)] = Nil
           while (r.isEmpty) {
-            //leo.Out.comment("Checking for new tasks.")
-            regAgents.foreach { case (a, budget) => if (a.isActive) a.getTasks.foreach { t => r = (t.bid * budget, a, t) :: r } }
+            val ts = taskSet.executableTasks
+            ts.foreach { case t =>
+              val a = t.getAgent
+              val budget = regAgents.getOrElse(a, 0.0)
+              r = (t.bid * budget, a, t) :: r  }
             if (r.isEmpty) {
-              if (ActiveTracker.isNotActive) {
+              if (ActiveTracker.get <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 Blackboard().filterAll { a => a.filter(DoneEvent())}
               }
-              // TODO increase budget or we will run into a endless loop
               //leo.Out.comment("Going to wait for new Tasks.")
               TaskSet.wait()
-              regAgents.foreach { case (a, budget) => regAgents.update(a, budget + AGENT_SALARY) }
+              regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
           }
 
@@ -209,7 +233,7 @@ private object TaskSet {
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: List[(Double, TAgent, Task)] = r.sortBy { case (b, a, t) => b * b / t.writeSet().size }
+          val queue: List[(Double, TAgent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }
 
           //        println("Sorted tasks.")
 
@@ -218,7 +242,7 @@ private object TaskSet {
           var newTask: List[(TAgent, Task)] = Nil
           for ((price, a, t) <- queue) {
             if (LockSet.isExecutable(t)) {
-              val budget = regAgents.apply(a)
+              val budget = regAgents.apply(a)     //TODO Lock regAgents, got error during phase switch
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
                 newTask = (a, t) :: newTask
@@ -229,6 +253,8 @@ private object TaskSet {
             }
           }
 
+          taskSet.commit(newTask.map(_._2).toSet)
+
           //        println("Choose optimal.")
 
           //
@@ -238,9 +264,7 @@ private object TaskSet {
             if (a.maxMoney - b > AGENT_SALARY) {
               regAgents.put(a, b + AGENT_SALARY)
             }
-            a.removeColliding(newTask.map(_._2))
           }
-
           //        println("Sending "+newTask.size+" tasks to scheduler.")
 
           return newTask

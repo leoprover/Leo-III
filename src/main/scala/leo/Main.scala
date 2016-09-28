@@ -1,6 +1,5 @@
 package leo
 
-import leo.agents.{FifoController}
 //import leo.agents.impl.{FormulaSelectionAgent, CounterContextControlAgent, ContextControlAgent}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.impl._
@@ -48,6 +47,16 @@ object Main {
 
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
       val interval = 10
+      val config = {
+        val sb = new StringBuilder()
+        sb.append(s"problem(${Configuration.PROBLEMFILE}),")
+        sb.append(s"time(${Configuration.TIMEOUT}),")
+        sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
+        sb.append(s"sos(${Configuration.SOS}),")
+        // TBA ...
+        sb.init.toString()
+      }
+      Out.comment(s"Configuration: $config")
 
       if (Configuration.isSet("seq")) {
         import leo.modules.seqpproc.SeqPProc
@@ -133,12 +142,7 @@ object Main {
         Out.trace(Utility.userDefinedSignatureAsString)
       }
       case e:Throwable => {
-        if (e.getMessage != null) {
-          Out.info(e.getMessage)
-          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.getMessage))
-        } else {
-          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE))
-        }
+        Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
           Out.trace("Caused by: " + e.getCause.getMessage)
@@ -147,7 +151,7 @@ object Main {
         Out.trace(Utility.userDefinedSignatureAsString)
       }
     } finally {
-      Scheduler().killAll()
+//      Scheduler().killAll()
       System.exit(0)
     }
   }
