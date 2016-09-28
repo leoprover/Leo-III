@@ -228,5 +228,5 @@ trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
   val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
-  val DEFAULT_UNIFICATIONDEPTH = 7
+  val DEFAULT_UNIFICATIONDEPTH = 8
 }
