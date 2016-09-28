@@ -104,8 +104,6 @@ trait Term extends Pretty {
 
   // Other operations
   def compareTo(that: Term): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)
-  /** Returns true iff the term is well-typed. */
-  def typeCheck: Boolean
   /** Return the β-nf of the term */
   def betaNormalize: Term
   /** Return the eta-long-nf of the term */

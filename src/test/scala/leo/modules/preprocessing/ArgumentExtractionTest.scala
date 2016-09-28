@@ -80,7 +80,7 @@ class ArgumentExtractionTest extends LeoTestSuite {
     val y = Term.mkBound(s.o, 2)
 
     val t = Term.mkTermAbs(s.o, Term.mkTermApp(p, Term.mkTermAbs(s.o, |||(x,y))))
-    println(t.typeCheck)
+    println(Term.wellTyped(t))
     val (t1, units) = ArgumentExtraction(t)
 
     println(s"Extract ${t.pretty}:\n  =>${t1.pretty}\n     ${units.map{case (x,y) =>x.pretty +"==" + y.pretty}.mkString("\n     ")}")

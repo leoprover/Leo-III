@@ -137,9 +137,9 @@ class UnificationTestSuite extends LeoTestSuite {
     val skX = mkAtom(s.addUninterpreted("skX", (s.i ->: s.o) ->: s.i))
 
     val t1 = mkTermApp(y, Seq(ey))
-    println(t1.pretty +" "+ t1.typeCheck)
+    println(t1.pretty +" "+ Term.wellTyped(t1))
     val t2 = Not(mkTermApp(sKf, Seq(mkTermApp(skX, y), ey)))
-    println(t2.pretty + " " + t2.typeCheck)
+    println(t2.pretty + " " + Term.wellTyped(t2))
 
     val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
