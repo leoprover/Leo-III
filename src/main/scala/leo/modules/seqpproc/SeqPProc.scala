@@ -18,7 +18,8 @@ object SeqPProc extends Function1[Long, Unit]{
     Clause.mkClause(Seq(Literal.mkLit(t, true)))
   }
 
-  final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
+  final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
+    implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cur.cl), "clause not unit")
@@ -83,7 +84,8 @@ object SeqPProc extends Function1[Long, Unit]{
       leo.Out.severe(s"Input problem did not pass type check.")
       throw new SZSException(SZS_TypeError, s"Type error in formulas: ${tyCheckSet.map(_._1).mkString(",")}")
     }
-    val state: State[AnnotatedClause] = State.fresh(SignatureImpl.get)
+    implicit val sig: Signature = SignatureImpl.get
+    val state: State[AnnotatedClause] = State.fresh(sig)
 
     // Iterate over all inputs (which are not type declarations and definitions)
     // and collect all non-conjectures and set conjecture in state
@@ -128,7 +130,7 @@ object SeqPProc extends Function1[Long, Unit]{
     val conjecture_preprocessed = if (state.negConjecture != null) {
       Out.debug("## Preprocess Neg.Conjecture BEGIN")
       Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty}")
-      val result = preprocess(state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
+      val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${result.map {_.pretty}.mkString("\n\t")}")
       Out.trace("## Preprocess Neg.Conjecture END")
       result
@@ -139,7 +141,7 @@ object SeqPProc extends Function1[Long, Unit]{
     while (preprocessIt.hasNext) {
       val cur = preprocessIt.next()
       Out.trace(s"# Process: ${cur.pretty}")
-      val processed = preprocess(cur)
+      val processed = preprocess(state, cur)
       Out.debug(s"# Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)

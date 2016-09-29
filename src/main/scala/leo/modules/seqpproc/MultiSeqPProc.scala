@@ -13,7 +13,6 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules.calculus.CalculusRule
 import leo.modules.output._
-import leo.modules.Utility
 
 object MultiSeqPProc {
   private[seqpproc] var counter : AtomicInteger = new AtomicInteger()
@@ -30,7 +29,8 @@ object MultiSeqPProc {
 class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[AnnotatedClause] => Set[AnnotatedClause]) extends ProofProcedure {
 
 
-  final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
+  final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
+    implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cur.cl), "clause not unit")
@@ -95,10 +95,11 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
-    val state: State[AnnotatedClause] = State.fresh(SignatureImpl.get)
+    implicit val sig: Signature = SignatureImpl.get
+    val state: State[AnnotatedClause] = State.fresh(sig)
     Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
-    val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
+    val conjecture_preprocessed = preprocess(state, negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# ($proc) Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
 //    Control.fvIndexInsert(conjecture_preprocessed)
     Out.debug(s"## ($proc)Preprocess Neg.Conjecture END")
@@ -108,7 +109,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     while (inputIt.hasNext) {
       val cur = inputIt.next()
       Out.debug(s"# ($proc) Process: ${cur.pretty}")
-      val processed = preprocess(cur)
+      val processed = preprocess(state, cur)
       Out.debug(s"# ($proc) Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
