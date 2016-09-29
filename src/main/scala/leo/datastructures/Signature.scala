@@ -9,7 +9,7 @@ package leo.datastructures
  * @since 29.04.2014
  * @note Updated 02.06.2014 Signature does not track variables names anymore, they are parsed to nameless terms instead
  */
-trait IsSignature {
+trait Signature {
   type Key
 
   type TypeOrKind = Either[Type, Kind]
@@ -22,7 +22,7 @@ trait IsSignature {
    * Entry base class for meta information saved along with symbols in the signature table.
    */
   abstract class Meta {
-    import IsSignature.SymbProp
+    import Signature.SymbProp
     // Key information about the symbol
     /** The name of the symbol (i.e. string representation of it) */
     def name: String
@@ -55,7 +55,7 @@ trait IsSignature {
 
     // Query functions
     /** Returns the status of the symbol, where 0 = mult, 1 = lex.*/
-    lazy val status: Int = if (isPropSet(IsSignature.PropStatus, flag)) IsSignature.lexStatus else IsSignature.multStatus
+    lazy val status: Int = if (isPropSet(Signature.PropStatus, flag)) Signature.lexStatus else Signature.multStatus
 
     /** Returns true iff the symbol has a type associated with it */
     @inline final def hasType: Boolean = ty.isDefined
@@ -64,30 +64,30 @@ trait IsSignature {
     /** Returns true iff the constant has a definition term associated with it */
     @inline final def hasDefn: Boolean = defn.isDefined
     /** Returns true iff the symbol has lex status. */
-    @inline final def hasLexStatus: Boolean = isPropSet(IsSignature.PropStatus, flag)
+    @inline final def hasLexStatus: Boolean = isPropSet(Signature.PropStatus, flag)
     /** Returns true iff the symbol has mult status. */
-    @inline final def hasMultStatus: Boolean = !isPropSet(IsSignature.PropStatus, flag)
+    @inline final def hasMultStatus: Boolean = !isPropSet(Signature.PropStatus, flag)
 
 
     /** Returns true iff the symbol is a primitive (interpreted) symbol provided by the system */
-    @inline final def isPrimitive: Boolean     = isPropSet(IsSignature.PropFixed, flag) && !hasDefn
+    @inline final def isPrimitive: Boolean     = isPropSet(Signature.PropFixed, flag) && !hasDefn
     /** Returns true iff the symbol is a symbol provided by the system */
-    @inline final def isFixedSymbol: Boolean  = isPropSet(IsSignature.PropFixed, flag)
+    @inline final def isFixedSymbol: Boolean  = isPropSet(Signature.PropFixed, flag)
     /** Returns true iff the symbol is a user provided symbol */
-    @inline final def isUserSymbol: Boolean    = !isPropSet(IsSignature.PropFixed, flag)
+    @inline final def isUserSymbol: Boolean    = !isPropSet(Signature.PropFixed, flag)
     /** Returns true iff the symbol is a defined symbol */
     @inline final def isDefined: Boolean          = hasDefn
     /** Returns true iff the symbol is an uninterpreted term symbol */
-    @inline final def isUninterpreted: Boolean    = !isPropSet(IsSignature.PropFixed, flag) && !hasDefn
+    @inline final def isUninterpreted: Boolean    = !isPropSet(Signature.PropFixed, flag) && !hasDefn
     /** Returns true iff the symbol refers to an external object */
-    @inline final def isExternal: Boolean    = isPropSet(IsSignature.PropExternal, flag)
+    @inline final def isExternal: Boolean    = isPropSet(Signature.PropExternal, flag)
 
     /** Returns true iff the symbol is associative */
-    @inline final def isASymbol: Boolean    = isPropSet(IsSignature.PropAssociative, flag)
+    @inline final def isASymbol: Boolean    = isPropSet(Signature.PropAssociative, flag)
     /** Returns true iff the symbol is commutative */
-    @inline final def isCSymbol: Boolean    = isPropSet(IsSignature.PropCommutative, flag)
+    @inline final def isCSymbol: Boolean    = isPropSet(Signature.PropCommutative, flag)
     /** Returns true iff the symbol is associative */
-    @inline final def isACSymbol: Boolean    = isPropSet(IsSignature.PropAssociative | IsSignature.PropCommutative, flag)
+    @inline final def isACSymbol: Boolean    = isPropSet(Signature.PropAssociative | Signature.PropCommutative, flag)
 
     /** Returns true iff the symbol is a term symbol */
     @inline final def isTermSymbol: Boolean             = hasType
@@ -245,7 +245,7 @@ trait IsSignature {
   def freshSkolemTypeConst: Key
 }
 
-object IsSignature {
+object Signature {
   type SymbProp = Int
   final val PropNoProp: SymbProp = 0
   final protected[datastructures] val PropStatus: SymbProp = 1 /* Lexstatus if set. Multstatus otherwise */

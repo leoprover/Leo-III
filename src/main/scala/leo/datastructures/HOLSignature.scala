@@ -43,9 +43,9 @@ trait HOLSignature {
 
   val letKey = HOLSignature.letKey
   val iteKey = HOLSignature.iteKey
-  import IsSignature.{lexStatus, multStatus}
-  val multProp = multStatus*IsSignature.PropStatus
-  val lexProp = lexStatus*IsSignature.PropStatus
+  import Signature.{lexStatus, multStatus}
+  val multProp = multStatus*Signature.PropStatus
+  val lexProp = lexStatus*Signature.PropStatus
 
   // Don't change the order of the elements in this lists.
   // If you do so, you may need to update the Signature implementation.
@@ -60,7 +60,7 @@ trait HOLSignature {
 
   // Fixed symbols
   import Type.{mkPolyType => forall}
-  import IsSignature.{PropAC => ac, PropAssociative => a, PropCommutative => c}
+  import Signature.{PropAC => ac, PropAssociative => a, PropCommutative => c}
   lazy val fixedConsts = List(
     ("$true",                         o, multProp), // Key 6
     ("$false",                        o, multProp), // Key 7

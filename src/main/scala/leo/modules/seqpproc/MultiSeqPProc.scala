@@ -258,7 +258,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
   }
 
   @inline private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
-    implicit val sig: IsSignature = state.signature
+    implicit val sig: Signature = state.signature
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 

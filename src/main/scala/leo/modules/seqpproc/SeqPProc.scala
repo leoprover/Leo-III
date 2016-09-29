@@ -328,7 +328,7 @@ object SeqPProc extends Function1[Long, Unit]{
   }
 
   private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
-    implicit val sig: IsSignature = state.signature
+    implicit val sig: Signature = state.signature
 
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()

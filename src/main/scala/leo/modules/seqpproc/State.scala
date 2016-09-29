@@ -13,7 +13,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def setConjecture(conj: T): Unit
   def setNegConjecture(negConj: T): Unit
 
-  def signature: IsSignature
+  def signature: Signature
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
@@ -53,10 +53,10 @@ trait StateStatistics {
 }
 
 object State {
-  def fresh[T <: ClauseProxy](sig: IsSignature): State[T] = new StateImpl[T](SZS_Unknown, sig)
+  def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](SZS_Unknown, sig)
 }
 
-protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: IsSignature) extends State[T] {
+protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
   private var conjecture0: T = _
   private var negConjecture0: T = _
   private var current_szs = initSZS
@@ -64,7 +64,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var current_rewriterules: Set[T] = Set()
   private var derivationCl: Option[T] = None
 
-  private final val sig: IsSignature = initSignature
+  private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
@@ -79,7 +79,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def negConjecture: T = negConjecture0
   final def setNegConjecture(negConj: T): Unit = { negConjecture0 = negConj }
 
-  final def signature: IsSignature = sig
+  final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 

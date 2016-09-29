@@ -1,7 +1,7 @@
 package leo
 package modules.seqpproc
 
-import leo.datastructures.{AnnotatedClause, IsSignature}
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.impl.SignatureImpl
 
 /**
@@ -12,7 +12,7 @@ import leo.datastructures.impl.SignatureImpl
   */
 object Control {
   // Generating inferences
-  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit sig: IsSignature): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
+  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
   @inline final def factor(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)
   @inline final def boolext(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)
   @inline final def primsubst(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)

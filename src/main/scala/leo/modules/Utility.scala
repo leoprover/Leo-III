@@ -26,7 +26,7 @@ object Utility {
   /////////////////////////////////////////////////////////////
 
   def printSignature(): Unit = {
-    import leo.datastructures.IsSignature.{lexStatus,multStatus}
+    import leo.datastructures.Signature.{lexStatus,multStatus}
     val s = SignatureImpl.get
     val sb = new StringBuilder()
     sb.append(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
@@ -56,7 +56,7 @@ object Utility {
     Out.output(userDefinedSignatureAsString)
   }
   def userDefinedSignatureAsString: String = {
-    import leo.datastructures.IsSignature.{lexStatus,multStatus}
+    import leo.datastructures.Signature.{lexStatus,multStatus}
     val s = SignatureImpl.get
     val sb = new StringBuilder()
     (s.allUserConstants).foreach { case c => {

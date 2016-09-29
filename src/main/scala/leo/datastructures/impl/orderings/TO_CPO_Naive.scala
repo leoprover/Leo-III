@@ -195,7 +195,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   ////////////////////////////////////
 
   @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int): Boolean = {
-    import leo.datastructures.IsSignature.{lexStatus,multStatus}
+    import leo.datastructures.Signature.{lexStatus,multStatus}
     if (status == lexStatus) {
       if (s.length > t.length){
         alleq(s,t,t.length)
