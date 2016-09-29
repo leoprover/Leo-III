@@ -2,13 +2,13 @@ package leo.modules.preprocessing
 
 import leo.datastructures._
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 /**
   * Created by mwisnie on 1/13/16.
   */
 class FormulaRenamingTest extends LeoTestSuite {
-  val s = Signature.get
+  val s = SignatureImpl.get
 
   test("CNF_Size Test 1", Checked){
     FormulaRenaming.clearUnitStore()

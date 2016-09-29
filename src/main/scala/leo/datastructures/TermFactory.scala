@@ -1,6 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 /**
  * Term creation factory.
@@ -11,8 +11,8 @@ import leo.datastructures.impl.Signature
  * @since 29.10.2014
  */
 trait TermFactory {
-  /** Create constant symbol term `c` where `c` is associated to identifier `id` in [[Signature]] */
-  def mkAtom(id: Signature#Key): Term
+  /** Create constant symbol term `c` where `c` is associated to identifier `id` in [[SignatureImpl]] */
+  def mkAtom(id: SignatureImpl#Key): Term
   /** Create bound index with de-Bruijn index `scope` and type `t` */
   def mkBound(t: Type, scope: Int): Term
 

@@ -3,13 +3,13 @@ package leo.modules.preprocessing
 import leo.datastructures.{&, |||, Term}
 import leo.modules.output.ToTPTP
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 /**
   * Created by mwisnie on 1/5/16.
   */
 class ArgumentExtractionTest extends LeoTestSuite {
-  val s = Signature.get
+  val s = SignatureImpl.get
 
   /* Extract
     f( g ( a /\ b) , a \/ b , a )

@@ -1,6 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 import scala.language.implicitConversions
 
@@ -47,7 +47,7 @@ trait Term extends Pretty {
   def δ_expandable: Boolean
   def partial_δ_expand(rep: Int): Term
   def full_δ_expand: Term
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term
+  def exhaustive_δ_expand_upTo(symbs: Set[SignatureImpl#Key]): Term
 
   def head_δ_expandable: Boolean
   def head_δ_expand: Term
@@ -74,14 +74,14 @@ trait Term extends Pretty {
   def size: Int
   def order: LangOrder
 
-  def symbols: Set[Signature#Key]
+  def symbols: Set[SignatureImpl#Key]
   final def symbolsOfType(ty: Type) = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     symbols.filter({i => sig(i)._ty == ty})
   }
   // Functions for FV-Indexing
-  def fvi_symbolFreqOf(symbol: Signature#Key): Int
-  def fvi_symbolDepthOf(symbol: Signature#Key): Int
+  def fvi_symbolFreqOf(symbol: SignatureImpl#Key): Int
+  def fvi_symbolDepthOf(symbol: SignatureImpl#Key): Int
 
   // Substitutions and replacements
   /** Replace every occurrence of `what` in `this` by `by`. */
@@ -131,7 +131,7 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  final def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
+  final def mkAtom(id: SignatureImpl#Key): Term = TermImpl.mkAtom(id)
   final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
   final def mkMetaVar(t: Type, id: Int): Term = TermImpl.mkMetaVar(t, id)
   final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
@@ -201,7 +201,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Symbol { def unapply(t: Term): Option[Signature#Key] = TermImpl.symbolMatcher(t) }
+  object Symbol { def unapply(t: Term): Option[SignatureImpl#Key] = TermImpl.symbolMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
@@ -291,24 +291,24 @@ object Term extends TermBank {
   // Obsolete stuff, check if removable
   //////////////////////////////////////
   /** Convert a signature key to its corresponding atomic term representation */
-  implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
+  implicit def keyToAtom(in: SignatureImpl#Key): Term = mkAtom(in)
 
   // Determine order-subsets of terms
 
   /** FOF-compatible (unsorted) first order logic subset. */
   def firstOrder(t: Term): Boolean = {
     val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
-    val tys = Set(Signature.get.i, Signature.get.o)
+    val tys = Set(SignatureImpl.get.i, SignatureImpl.get.o)
 
     t match {
-      case Forall(ty :::> body) => ty == Signature.get.i && firstOrder(body)
-      case Exists(ty :::> body) => ty == Signature.get.i && firstOrder(body)
-      case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get == Signature.get.i && sp.tail.forall(_.fold(t => t.ty == Signature.get.i && firstOrder(t),_ => false))
+      case Forall(ty :::> body) => ty == SignatureImpl.get.i && firstOrder(body)
+      case Exists(ty :::> body) => ty == SignatureImpl.get.i && firstOrder(body)
+      case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get == SignatureImpl.get.i && sp.tail.forall(_.fold(t => t.ty == SignatureImpl.get.i && firstOrder(t), _ => false))
       case h ∙ sp  => sp.forall(_.fold(t => tys.contains(t.ty) && firstOrder(t),_ => false))
       case ty :::> body => false
       case TypeLambda(_) => false
-      case Bound(ty, sc) => ty == Signature.get.i
-      case Symbol(key) => tys.contains(Signature.get(key)._ty)
+      case Bound(ty, sc) => ty == SignatureImpl.get.i
+      case Symbol(key) => tys.contains(SignatureImpl.get(key)._ty)
     }}
 
   /** Many sorted-first order logic subset. */
@@ -323,6 +323,6 @@ object Term extends TermBank {
       case ty :::> body => false
       case TypeLambda(_) => false
       case Bound(ty, sc) => ty.isBaseType
-      case Symbol(key) => Signature.get(key)._ty.isBaseType
+      case Symbol(key) => SignatureImpl.get(key)._ty.isBaseType
     }}
 }

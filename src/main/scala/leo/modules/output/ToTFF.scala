@@ -53,11 +53,11 @@ object ToTFF {
   private final def formulaToTFF(fvs: Seq[(Int, Type)], t: Term): String = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
     import leo.datastructures.{Forall, Exists, ===, !===}
-    import leo.datastructures.impl.Signature
+    import leo.datastructures.impl.SignatureImpl
 
-    if (t.ty != Signature.get.o) throw new IllegalArgumentException
+    if (t.ty != SignatureImpl.get.o) throw new IllegalArgumentException
 
-    val interpretedSymbols = Signature.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
+    val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
     t match {
       case Forall(_ :::> body) => {
@@ -73,7 +73,7 @@ object ToTFF {
       case TermApp(hd, args) => {
         hd match {
           case Symbol(id) => if (interpretedSymbols.contains(id)) {
-            val meta = Signature.get(id)
+            val meta = SignatureImpl.get(id)
             assert(meta.hasType)
             val argCount = meta._ty.arity
             assert(argCount <= 2)
@@ -90,7 +90,7 @@ object ToTFF {
             }
           } else {
             // start term level, uninterpreted symbol
-            val meta = Signature.get(id)
+            val meta = SignatureImpl.get(id)
             assert(meta.isUninterpreted)
             s"${meta.name}(${args.map(termToTFF(fvs, _)).mkString(",")})"
           }
@@ -102,20 +102,20 @@ object ToTFF {
   }
 
   private final def termToTFF(fvs: Seq[(Int, Type)], t: Term): String = {
-    if (t.ty == leo.datastructures.impl.Signature.get.o) throw new IllegalArgumentException
+    if (t.ty == leo.datastructures.impl.SignatureImpl.get.o) throw new IllegalArgumentException
 
     import leo.datastructures.Term.{TermApp, Symbol, Bound}
-    import leo.datastructures.impl.Signature
+    import leo.datastructures.impl.SignatureImpl
 
-    val interpretedSymbols = Signature.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
+    val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
     t match {
       case Bound(_, scope) => intToName(scope-1)
       case TermApp(hd, args) => {
         hd match {
           case Symbol(id) => if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
           else {
-            if (args.isEmpty) Signature.get(id).name
-            else s"${Signature.get(id).name}(${args.map(termToTFF(fvs, _)).mkString(",")})"
+            if (args.isEmpty) SignatureImpl.get(id).name
+            else s"${SignatureImpl.get(id).name}(${args.map(termToTFF(fvs, _)).mkString(",")})"
           }
           case _ => throw new IllegalArgumentException
         }
@@ -126,8 +126,8 @@ object ToTFF {
 
   final private def typeToTFF(ty: Type): String = {
     import leo.datastructures.Type._
-    import leo.datastructures.impl.Signature
-    val sig = Signature.get
+    import leo.datastructures.impl.SignatureImpl
+    val sig = SignatureImpl.get
     ty match {
       case BoundType(scope) => "T"+intToName(scope)
       case BaseType(id) => sig(id).name

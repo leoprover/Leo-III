@@ -1,6 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 /**
  * Term index data structure
@@ -10,7 +10,7 @@ import leo.datastructures.impl.Signature
  */
 object TermIndex {
   protected[TermIndex] var termset: Set[Term] = Set.empty
-  protected[TermIndex] var symbol_of: Map[Signature#Key, Set[Term]] = Map.empty
+  protected[TermIndex] var symbol_of: Map[SignatureImpl#Key, Set[Term]] = Map.empty
   protected[TermIndex] var headsymbol_of: Map[Term, Set[Term]] = Map.empty
   protected[TermIndex] var occurs_in: Map[Term, Set[(Term, Position)]] = Map.empty
   protected[TermIndex] var occurs_at: Map[Term, Map[Position, Set[Term]]] = Map.empty
@@ -50,7 +50,7 @@ object TermIndex {
   }
 
   def byHeadsymbol(head: Term): Set[Term] = headsymbol_of.getOrElse(head, Set())
-  def bySymbol(sym: Signature#Key): Set[Term] = symbol_of.getOrElse(sym, Set())
+  def bySymbol(sym: SignatureImpl#Key): Set[Term] = symbol_of.getOrElse(sym, Set())
 
   def bySubterm(subterm: Term): Set[(Term, Position)] = occurs_in.getOrElse(subterm, Set())
   def bySubtermAtPos(subterm: Term, pos: Position): Set[(Term)] = occurs_at.get(subterm) match {

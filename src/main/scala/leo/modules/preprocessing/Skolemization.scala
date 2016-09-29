@@ -2,7 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.Type._
 
 /**
@@ -59,15 +59,15 @@ object Skolemization extends Normalization{
    * @return
    */
   private def skolemize(formula : Term, univBounds: Seq[Term]) : Term = {
-    val s = Signature.get
+    val s = SignatureImpl.get
     formula match {
       //Remove exist quantifier
       // TODO: Raising Bound variables is borken. Fix it.
       case Exists(s@(ty :::> t))  =>
         val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
       val fv_types = fvs.map(_.ty)
-        import leo.datastructures.impl.Signature
-        val skConst = Term.mkAtom(Signature.get.freshSkolemConst(Type.mkFunType(fv_types, ty)))
+        import leo.datastructures.impl.SignatureImpl$
+        val skConst = Term.mkAtom(SignatureImpl.get.freshSkolemConst(Type.mkFunType(fv_types, ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
 
 

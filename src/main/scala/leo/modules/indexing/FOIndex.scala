@@ -1,7 +1,7 @@
 package leo.modules.indexing
 
 import leo.datastructures.ClauseProxy
-
+import leo.datastructures.impl.SignatureImpl
 
 class FOIndex {
   import scala.collection._
@@ -44,11 +44,11 @@ object FOIndex {
   private final def typedFirstOrderFormula(fvs: Seq[(Int, Type)], t: Term): Boolean = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
     import leo.datastructures.{Forall, Exists, ===, !===}
-    import leo.datastructures.impl.Signature
+    import leo.datastructures.impl.SignatureImpl$
 
-    if (t.ty != Signature.get.o) return false
+    if (t.ty != SignatureImpl.get.o) return false
 
-    val interpretedSymbols = Signature.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
+    val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
     t match {
       case Forall(_ :::> body) => typedFirstOrderFormula(fvs, body)
@@ -61,7 +61,7 @@ object FOIndex {
             args.forall(typedFirstOrderFormula(fvs, _))
           } else {
             // start term level, uninterpreted symbol
-            assert(Signature.get(id).isUninterpreted)
+            assert(SignatureImpl.get(id).isUninterpreted)
             args.forall(typedFirstOrderTerm(fvs, _))
           }
           case _ => false
@@ -72,13 +72,13 @@ object FOIndex {
   }
 
   private final def typedFirstOrderTerm(fvs: Seq[(Int, Type)], t: Term): Boolean = {
-    if (t.ty == leo.datastructures.impl.Signature.get.o) return false
+    if (t.ty == leo.datastructures.impl.SignatureImpl.get.o) return false
 
     import leo.datastructures.Term.{TermApp, Symbol, Bound}
     import leo.datastructures.{===, !===}
-    import leo.datastructures.impl.Signature
+    import leo.datastructures.impl.SignatureImpl$
 
-    val interpretedSymbols = Signature.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
+    val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
     t match {
       case Bound(_, _) => true
       case TermApp(hd, args) => {

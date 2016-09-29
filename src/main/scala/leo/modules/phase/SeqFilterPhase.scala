@@ -8,7 +8,7 @@ import leo.datastructures.blackboard.{Blackboard, ClauseType}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.{Parsing, SZSException}
 import leo.modules.agent.relevance_filter.{AnnotatedFormulaType, BlackboardPreFilterSet, RelevanceFilterAgent}
@@ -49,7 +49,7 @@ class SeqFilterPhase extends Phase {
 
         // Translate all taken formulas to clauses
         taken.foreach{f =>
-          val (name, term, role) = InputProcessing.process(Signature.get)(f)
+          val (name, term, role) = InputProcessing.process(SignatureImpl.get)(f)
           val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
             negateConjecture(name, term, role)
           else

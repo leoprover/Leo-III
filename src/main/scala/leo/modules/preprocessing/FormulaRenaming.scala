@@ -2,7 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.calculus.CalculusRule
 
 import scala.collection.mutable
@@ -161,7 +161,7 @@ object FormulaRenaming extends CalculusRule{
       if (us.contains(t))
         us.get(t).get
       else {
-        val s = Signature.get
+        val s = SignatureImpl.get
         // Term was no yet introduced
         val newArgs = t.freeVars.toSeq // Arguments passed to the function to define
         val argtypes = newArgs.map(_.ty)

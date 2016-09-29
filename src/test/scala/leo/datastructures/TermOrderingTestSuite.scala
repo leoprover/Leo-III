@@ -8,7 +8,7 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
 import leo.datastructures.Type._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl$
 import leo.modules.{Parsing, SZSException, Utility}
 import leo.modules.output.Output
 

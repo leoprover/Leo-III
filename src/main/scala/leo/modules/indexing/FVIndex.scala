@@ -1,7 +1,7 @@
 package leo.modules.indexing
 
 import leo.datastructures.{AnnotatedClause, Literal, FixedLengthTrie, Clause}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 /**
   * Created by lex on 28.02.16.
   */
@@ -43,16 +43,16 @@ object FVIndex {
     n
   }
   /** Returns the number of occurrences of symbol `symb` not occurring under variables in non-flex positive literals in clause `cl`. */
-  @inline final def posLitsSymbolCountFeature(symb: Signature#Key, cl: Clause): Int = countSymbol(symb, cl.posLits)
+  @inline final def posLitsSymbolCountFeature(symb: SignatureImpl#Key, cl: Clause): Int = countSymbol(symb, cl.posLits)
   /** Returns the number of occurrences of symbol `symb` not occurring under variables in non-flex negative literals in clause `cl`. */
-  @inline final def negLitsSymbolCountFeature(symb: Signature#Key, cl: Clause): Int = countSymbol(symb, cl.negLits)
+  @inline final def negLitsSymbolCountFeature(symb: SignatureImpl#Key, cl: Clause): Int = countSymbol(symb, cl.negLits)
   /** Returns the maximal depth of occurrences of symbol `symb` not occurring under variables in non-flex positive literals in clause `cl`. */
-  @inline final def posLitsSymbolDepthFeature(symb: Signature#Key, cl: Clause): Int = maxDepthOfSymbol(symb, cl.posLits)
+  @inline final def posLitsSymbolDepthFeature(symb: SignatureImpl#Key, cl: Clause): Int = maxDepthOfSymbol(symb, cl.posLits)
   /** Returns the maximal depth of occurrences of symbol `symb` not occurring under variables in non-flex negative literals in clause `cl`. */
-  @inline final def negLitsSymbolDepthFeature(symb: Signature#Key, cl: Clause): Int = maxDepthOfSymbol(symb, cl.negLits)
+  @inline final def negLitsSymbolDepthFeature(symb: SignatureImpl#Key, cl: Clause): Int = maxDepthOfSymbol(symb, cl.negLits)
 
 
-  final private def countSymbol(symb: Signature#Key, lits: Seq[Literal]): Int = {
+  final private def countSymbol(symb: SignatureImpl#Key, lits: Seq[Literal]): Int = {
     var count = 0
     val litsIt = lits.iterator
     while (litsIt.hasNext) {
@@ -62,7 +62,7 @@ object FVIndex {
     }
     count
   }
-  final private def maxDepthOfSymbol(symb: Signature#Key, lits: Seq[Literal]): Int = {
+  final private def maxDepthOfSymbol(symb: SignatureImpl#Key, lits: Seq[Literal]): Int = {
     var depth = 0
     val litsIt = lits.iterator
     while (litsIt.hasNext) {

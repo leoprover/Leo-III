@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.{Type, Term, Clause}
 import leo.modules.output.SuccessSZS
 
@@ -135,7 +135,7 @@ package object calculus {
   }
 
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int]): Term = {
-    val skFunc = Signature.get.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
+    val skFunc = SignatureImpl.get.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }

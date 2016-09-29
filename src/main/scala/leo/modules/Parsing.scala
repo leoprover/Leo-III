@@ -2,7 +2,7 @@ package leo.modules
 
 import java.io.FileNotFoundException
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.{Clause, Role, Term}
 import leo.datastructures.tptp.Commons
 import leo.modules.parsers.{InputProcessing, TPTP}
@@ -156,7 +156,7 @@ object Parsing {
       *         `(Id, Clause($true), Role)` with their respective identifier and role.
       */
     def processProblem(problem: Seq[Commons.AnnotatedFormula]): Seq[(FormulaId, Term, Role)] = {
-      InputProcessing.processAll(Signature.get)(problem)
+      InputProcessing.processAll(SignatureImpl.get)(problem)
     }
     /**
       * Convert the `formula` to internal term representation.
@@ -172,7 +172,7 @@ object Parsing {
       *         `(Id, Clause($true), Role)` with its respective identifier and role.
       */
     def processFormula(formula: Commons.AnnotatedFormula): (FormulaId, Term, Role) = {
-      InputProcessing.process(Signature.get)(formula)
+      InputProcessing.process(SignatureImpl.get)(formula)
     }
 
 

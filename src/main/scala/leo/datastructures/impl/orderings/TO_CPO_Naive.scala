@@ -3,7 +3,7 @@ package leo.datastructures.impl.orderings
 import leo.Configuration
 import leo.datastructures.{Term, Type}
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.output.logger.Out
 
 import scala.annotation.tailrec
@@ -74,12 +74,12 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   // ###############################################################################
 
   // well-founded ordering of symbols in signature
-  final private def precedence(s: Signature#Key, t: Signature#Key): CMP_Result = Configuration.PRECEDENCE.compare(s,t)
+  final private def precedence(s: SignatureImpl#Key, t: SignatureImpl#Key): CMP_Result = Configuration.PRECEDENCE.compare(s,t)
 
   // Well-founded ordering of base types (sort)
-  final private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
-  final private def ge_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = eq_baseType(bt1,bt2) || gt_baseType(bt1,bt2)
-  final private def eq_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 == bt2
+  final private def gt_baseType(bt1: SignatureImpl#Key, bt2: SignatureImpl#Key): Boolean = bt1 > bt2
+  final private def ge_baseType(bt1: SignatureImpl#Key, bt2: SignatureImpl#Key): Boolean = eq_baseType(bt1,bt2) || gt_baseType(bt1,bt2)
+  final private def eq_baseType(bt1: SignatureImpl#Key, bt2: SignatureImpl#Key): Boolean = bt1 == bt2
 
   ////////////////////////////////////
   // Comparisons of types
@@ -293,7 +293,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
                 case Symbol(idg) =>
                   /* case 2+3 */
                   if (precedence(idf, idg) == CMP_EQ) {
-                    return gt0Stat(s,fargList, gargList, x, Signature(idf).status)
+                    return gt0Stat(s,fargList, gargList, x, SignatureImpl(idf).status)
                   } else if (precedence(idf, idg) == CMP_GT) {
                     return gargList.forall(gt0(s, _, x))
                   } else {

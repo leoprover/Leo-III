@@ -40,7 +40,7 @@ abstract class Type extends Pretty {
 
   // Queries on types
   def typeVars: Set[Type]
-  def symbols: Set[Signature#Key]
+  def symbols: Set[SignatureImpl#Key]
 
   def funDomainType: Option[Type]
   def _funDomainType: Type = funDomainType.get
@@ -72,7 +72,7 @@ abstract class Type extends Pretty {
 
   // Other operation
   /** Right folding on types. This may change if the type system is changed. */
-  def foldRight[A](baseFunc: Signature#Key => A)
+  def foldRight[A](baseFunc: SignatureImpl#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
@@ -115,9 +115,9 @@ object Type {
   type Impl = Type // fix by introducing super-type on types TODO
 
   /** Create type with name `identifier`. */
-  def mkType(identifier: Signature#Key): Type = GroundTypeNode(identifier, Seq())
+  def mkType(identifier: SignatureImpl#Key): Type = GroundTypeNode(identifier, Seq())
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
-  def mkType(identifier: Signature#Key, args: Seq[Type]): Type = GroundTypeNode(identifier, args)
+  def mkType(identifier: SignatureImpl#Key, args: Seq[Type]): Type = GroundTypeNode(identifier, args)
   /** Build type `in -> out`. */
   def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
@@ -175,14 +175,14 @@ object Type {
   ///////////////////////////////
 
   object BaseType {
-    def unapply(ty: Type): Option[Signature#Key] = ty match {
+    def unapply(ty: Type): Option[SignatureImpl#Key] = ty match {
       case GroundTypeNode(id, args) if args.isEmpty => Some(id)
       case _ => None
     }
   }
 
   object ComposedType {
-    def unapply(ty: Type): Option[(Signature#Key, Seq[Type])] = ty match {
+    def unapply(ty: Type): Option[(SignatureImpl#Key, Seq[Type])] = ty match {
       case GroundTypeNode(id, args) if args.nonEmpty => Some((id, args))
       case _ => None
     }

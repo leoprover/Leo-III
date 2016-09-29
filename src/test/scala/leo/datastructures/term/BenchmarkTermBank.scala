@@ -2,7 +2,7 @@ package leo.datastructures.term
 
 import java.io.{File, FileNotFoundException}
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 
 /**
@@ -60,7 +60,7 @@ object BenchmarkTermBank {
             loadedSet += fileAbs
             x.getIncludes.foreach(x => formulae = formulae ++ loadRelative(x._1, path))
             //            println("Loaded " + fileAbs)
-            val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
+            val processed = InputProcessing.processAll(SignatureImpl.get)(x.getFormulae)
             //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
             //              benchmark(name, form, role)
             //            }
@@ -123,7 +123,7 @@ object BenchmarkTermBank {
   var times: Map[String, Seq[Long]] = Map()
 
   def doit(file: File) = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     print(s"${file.getName} \t ")
     val fs = load(file.getAbsolutePath)
     var localSize = 0
@@ -172,11 +172,11 @@ object BenchmarkTermBank {
 
   def main(args: Array[String]) {
     var all: Seq[(Int, Int, Int, Int, Int, Int)] = Seq.empty
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     // Files
     println("file \t #t \t avg/min/max s(t) \t #n \t #e \t density \t #n/#t \t sum(#t) \t #n/sum(#t)")
     for(f <- FILES) {
-      Signature.resetWithHOL(sig)
+      SignatureImpl.resetWithHOL(sig)
       loadedSet.clear()
       all = all :+ doit(f)
     }

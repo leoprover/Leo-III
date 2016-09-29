@@ -6,7 +6,7 @@ import leo.agents.ProofProcedure
 import leo.agents.impl.SZSScriptAgent
 import leo.{Configuration, Out}
 import leo.datastructures.ClauseAnnotation._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -42,7 +42,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     cw = Control.expandDefinitions(cw)
     cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw, Signature.get)
+    cw = Control.skolemize(cw, SignatureImpl.get)
 
     // Exhaustively CNF
     result = Control.cnf(cw)
@@ -95,7 +95,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
-    val state: State[AnnotatedClause] = State.fresh(Signature.get)
+    val state: State[AnnotatedClause] = State.fresh(SignatureImpl.get)
     Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
     val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
@@ -258,6 +258,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
   }
 
   @inline private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
+    implicit val sig: IsSignature = state.signature
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 

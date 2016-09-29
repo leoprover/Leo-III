@@ -1,7 +1,7 @@
 package leo.modules.output
 
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
@@ -62,7 +62,7 @@ object ToTPTP {
     */
   final def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
     var out: Seq[Output] = Seq()
-    Signature.get.allUserConstants foreach { k =>
+    SignatureImpl.get.allUserConstants foreach { k =>
       val constDecl = output(k)
       out = constDecl +: out
     }
@@ -75,8 +75,8 @@ object ToTPTP {
   // Methods on symbols/definitions
   ///////////////////////
 
-  final def apply(k: Signature#Key): String = {
-    val constant = Signature.get.apply(k)
+  final def apply(k: SignatureImpl#Key): String = {
+    val constant = SignatureImpl.get.apply(k)
     val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
       "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
     } else {
@@ -97,7 +97,7 @@ object ToTPTP {
       s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
     }
   }
-  final def output(k: Signature#Key): Output = new Output {
+  final def output(k: SignatureImpl#Key): Output = new Output {
     final def apply() = ToTPTP(k)
   }
 
@@ -204,11 +204,11 @@ object ToTPTP {
             case Bound(_,_) | MetaVar(_,_) | Symbol(_) => if (lit.polarity)
                 sb.append(toTPTP0(term,bVarMap))
               else
-                sb.append(s"${Signature.get(Not.key).name} (${toTPTP0(term, bVarMap)})")
+                sb.append(s"${SignatureImpl.get(Not.key).name} (${toTPTP0(term, bVarMap)})")
             case _ => if (lit.polarity)
                 sb.append(s"(${toTPTP0(term,bVarMap)})")
               else
-                sb.append(s"(${Signature.get(Not.key).name} (${toTPTP0(term, bVarMap)}))")
+                sb.append(s"(${SignatureImpl.get(Not.key).name} (${toTPTP0(term, bVarMap)}))")
           }
 
         }
@@ -219,7 +219,7 @@ object ToTPTP {
   }
 
   final private def toTPTP0(t: Term, bVars: Map[Int,String] = Map()): String = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     t match {
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
@@ -329,8 +329,8 @@ object ToTPTP {
     case _ => toTPTP0(ty)
   }
   final private def toTPTP0(ty: Type): String = ty match {
-    case BaseType(id) => Signature.get(id).name
-    case ComposedType(id, args) => s"${Signature.get(id).name} @ ${args.map(toTPTP0).mkString(" @ ")}"
+    case BaseType(id) => SignatureImpl.get(id).name
+    case ComposedType(id, args) => s"${SignatureImpl.get(id).name} @ ${args.map(toTPTP0).mkString(" @ ")}"
     case BoundType(scope) => "T" + intToName(scope- 1)
     case t1 -> t2 => s"(${toTPTP(t1)} > ${toTPTP(t2)})"
     case t1 * t2 => s"(${toTPTP(t1)} * ${toTPTP(t2)})"

@@ -13,7 +13,7 @@ import leo.modules._
 import leo.modules.external.ExternalCall
 import leo.modules.output._
 import leo.modules.phase._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.Utility._
 import leo.modules.preprocessing.Preprocess
 import leo.modules.seqpproc.MultiSeqPProc
@@ -186,7 +186,7 @@ object TestMain {
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(Utility.userConstantsForProof(Signature.get))
+        Out.output(Utility.userConstantsForProof(SignatureImpl.get))
         Out.output(Utility.proofToTPTP(Utility.proofOf(proof.get)))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }

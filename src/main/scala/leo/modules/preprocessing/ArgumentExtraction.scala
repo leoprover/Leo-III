@@ -1,7 +1,7 @@
 package leo.modules.preprocessing
 
 import leo.datastructures.Term._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 import leo.modules.calculus.CalculusRule
 import scala.collection.JavaConverters._
@@ -101,7 +101,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
   }
 
   private def extractOrRekurse(t : Term) : (Either[Term, Type], Set[(Term, Term)]) = {
-    val s  = Signature.get
+    val s  = SignatureImpl.get
     if(us.contains(t)){
       return (Left(us.get(t).get), Set())
     }
@@ -120,13 +120,13 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
     }
   }
 
-  private def isUser(k : Signature#Key) : Boolean = {
-    val s = Signature.get
+  private def isUser(k : SignatureImpl#Key) : Boolean = {
+    val s = SignatureImpl.get
     s.allUserConstants.contains(k)
   }
 
   private def shouldExtract(t : Term) : Boolean = {
-    val s = Signature.get
+    val s = SignatureImpl.get
     if(t.ty.funParamTypesWithResultType.last != s.o) return false
 
     if(t.isConstant) return false

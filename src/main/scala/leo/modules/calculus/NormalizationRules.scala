@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, HOLBinaryConnective, Subst, Type, _}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 import leo.modules.preprocessing.Simplification
 
@@ -104,7 +104,7 @@ object FullCNF extends CalculusRule {
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize, false))
       case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
-      case term@TypeLambda(t) if !l.polarity => val sko = leo.datastructures.impl.Signature.get.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
+      case term@TypeLambda(t) if !l.polarity => val sko = leo.datastructures.impl.SignatureImpl.get.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
       case _ => Seq(Seq(l))
     }
   } else {
@@ -348,7 +348,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(t: Term, acSymbols: Set[Signature#Key]): Term = {
+  def apply(t: Term, acSymbols: Set[SignatureImpl#Key]): Term = {
     acSymbols.foldLeft(t){case (term,symbol) => apply(term, symbol)}
   }
 
@@ -382,7 +382,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
+  def apply(lit: Literal, allACSymbols: Set[SignatureImpl#Key]): Literal = {
     val leftAC = lit.left.symbols intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
@@ -403,7 +403,7 @@ object ACSimp extends CalculusRule {
 
   }
 
-  def apply(cl: Clause, acSymbols: Set[Signature#Key]): Clause = {
+  def apply(cl: Clause, acSymbols: Set[SignatureImpl#Key]): Clause = {
     Clause(cl.lits.map(apply(_, acSymbols)))
   }
 }
@@ -494,11 +494,11 @@ object Skolemization extends CalculusRule {
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
   val name = "skolemize"
 
-  def apply(t: Term, s: Signature): Term = {
+  def apply(t: Term, s: SignatureImpl): Term = {
     apply0(miniscope(t), s, Seq())
   }
 
-  private def apply0(t: Term, s: Signature, fvs: Seq[Term]): Term = {
+  private def apply0(t: Term, s: SignatureImpl, fvs: Seq[Term]): Term = {
     t match {
       case Exists(inner@(ty :::> body)) => {
         val skConst = Term.mkAtom(s.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))

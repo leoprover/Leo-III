@@ -2,7 +2,7 @@ package leo.modules.calculus.enumeration
 
 import leo.datastructures.{Term, Type}
 import Term.mkAtom
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 /**
  * Very simple test enumeration class that simply
@@ -12,7 +12,7 @@ import leo.datastructures.impl.Signature
  */
 object SimpleEnum extends Enumeration {
   def enum(ty: Type): Iterable[Term] = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
 
     sig.constantsOfType(ty).filterNot(sig(_).isDefined).map(mkAtom(_))
   }

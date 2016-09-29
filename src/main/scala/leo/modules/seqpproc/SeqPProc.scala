@@ -2,8 +2,8 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures.impl.Signature
-import leo.datastructures.{Clause, ClauseAnnotation, AnnotatedClause, Literal, Role, Role_Axiom, Role_Conjecture, Role_Definition, Role_NegConjecture, Role_Unknown, Role_Plain, Role_Type, Term}
+import leo.datastructures.impl.SignatureImpl
+import leo.datastructures._
 import ClauseAnnotation._
 import leo.modules.output._
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
@@ -30,7 +30,7 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = Control.expandDefinitions(cw)
     cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw, Signature.get)
+    cw = Control.skolemize(cw, SignatureImpl.get)
 
     // Exhaustively CNF
     result = Control.cnf(cw)
@@ -83,7 +83,7 @@ object SeqPProc extends Function1[Long, Unit]{
       leo.Out.severe(s"Input problem did not pass type check.")
       throw new SZSException(SZS_TypeError, s"Type error in formulas: ${tyCheckSet.map(_._1).mkString(",")}")
     }
-    val state: State[AnnotatedClause] = State.fresh(Signature.get)
+    val state: State[AnnotatedClause] = State.fresh(SignatureImpl.get)
 
     // Iterate over all inputs (which are not type declarations and definitions)
     // and collect all non-conjectures and set conjecture in state
@@ -321,13 +321,15 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Print proof object if possible and requested. */
     if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(Signature.get))
+      Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(SignatureImpl.get))
       Out.output(Utility.proofToTPTP(proof))
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }
   }
 
   private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
+    implicit val sig: IsSignature = state.signature
+
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 

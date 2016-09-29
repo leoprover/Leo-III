@@ -1,7 +1,7 @@
 package leo.modules.preprocessing
 
 import leo.datastructures.{Clause, Literal, Term}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.calculus.Simp
 import leo.modules.output.SZS_Theorem
 
@@ -12,8 +12,8 @@ import leo.modules.output.SZS_Theorem
     override val name = "defexp_and_simp_and_etaexpand"
     override val inferenceStatus = Some(SZS_Theorem)
     def apply(t: Term): Term = {
-      val sig = Signature.get
-      val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
+      val sig = SignatureImpl.get
+      val symb: Set[SignatureImpl#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
       Simplification.normalize(t.exhaustive_δ_expand_upTo(symb).betaNormalize.etaExpand)
     }
 

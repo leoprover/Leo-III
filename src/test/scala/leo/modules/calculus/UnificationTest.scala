@@ -2,7 +2,7 @@ package leo.modules.calculus
 
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl$
 import scala.collection.immutable.HashMap
 import Term._
 

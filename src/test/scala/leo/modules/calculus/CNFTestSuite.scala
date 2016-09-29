@@ -1,6 +1,6 @@
 package leo.modules.calculus
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl$
 import leo.{Ignored, LeoTestSuite, Out, TestUtility}
 import leo.datastructures.{Clause, Literal}
 import leo.modules.Parsing

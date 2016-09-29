@@ -8,7 +8,7 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.output._
 
 import scala.collection.immutable.HashSet
@@ -27,7 +27,7 @@ object Utility {
 
   def printSignature(): Unit = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
-    val s = Signature.get
+    val s = SignatureImpl.get
     val sb = new StringBuilder()
     sb.append(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
     (s.allConstants).foreach { case c => {
@@ -57,7 +57,7 @@ object Utility {
   }
   def userDefinedSignatureAsString: String = {
     import leo.datastructures.IsSignature.{lexStatus,multStatus}
-    val s = Signature.get
+    val s = SignatureImpl.get
     val sb = new StringBuilder()
     (s.allUserConstants).foreach { case c => {
       val c1 = s(c)
@@ -80,7 +80,7 @@ object Utility {
     sb.toString()
   }
 
-  def userConstantsForProof(sig: Signature): String = {
+  def userConstantsForProof(sig: SignatureImpl): String = {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.foreach { case key =>
       val name = sig.apply(key).name
@@ -90,7 +90,7 @@ object Utility {
     sb.dropRight(1).toString()
   }
 
-  def userSignatureToTPTP(constants: Set[Signature#Key])(implicit sig: Signature): String = {
+  def userSignatureToTPTP(constants: Set[SignatureImpl#Key])(implicit sig: SignatureImpl): String = {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.intersect(constants.union(sig.typeSymbols)).foreach { case key =>
       val name = sig.apply(key).name
@@ -140,7 +140,7 @@ object Utility {
     }
   }
 
-  final def symbolsInProof(p: Proof): Set[Signature#Key] = {
+  final def symbolsInProof(p: Proof): Set[SignatureImpl#Key] = {
     p.flatMap(cl => cl.cl.lits.flatMap(l => l.left.symbols ++ l.right.symbols)).toSet
   }
 

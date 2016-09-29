@@ -13,9 +13,9 @@ class TermTestSuite extends LeoTestSuite {
   // Meta variable instantiation test
   import Term.{λ, intToBoundVar, mkMetaVar, mkAtom}
   import leo.Checked
-  import impl.Signature
+  import impl.SignatureImpl
 
-  val sig = Signature.get
+  val sig = SignatureImpl.get
   val o = sig.o
   val i = sig.i
 

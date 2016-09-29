@@ -2,7 +2,7 @@ package leo.modules.normalization
 
 import leo.modules.preprocessing.PrenexNormal
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl$
 import leo.datastructures._
 
 import Term._

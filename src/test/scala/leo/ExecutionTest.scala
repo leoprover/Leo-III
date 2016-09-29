@@ -1,6 +1,6 @@
 package leo
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.{=== => EQUALS, _}
 import Term.{mkAtom, mkTermApp => ap}
 import leo.modules.Numerals
@@ -12,7 +12,7 @@ import leo.modules.preprocessing.Simplification
  * Created by lex on 11.06.14.
  */
 class ExecutionTest extends LeoTestSuite {
-  val sig = Signature.get
+  val sig = SignatureImpl.get
 
   Numerals() // include numerals in signature
 

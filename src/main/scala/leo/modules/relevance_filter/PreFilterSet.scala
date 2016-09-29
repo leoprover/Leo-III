@@ -1,6 +1,6 @@
 package leo.modules.relevance_filter
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.tptp.tff.Atomic
 import leo.datastructures.{Role_Type, Role_Definition}
 import leo.datastructures.tptp.Commons._
@@ -51,7 +51,7 @@ object PreFilterSet {
     */
   def addNewFormula(formula : AnnotatedFormula) : Unit = synchronized {
     if(formula.role == Role_Type.pretty){
-      InputProcessing.process(Signature.get)(formula)
+      InputProcessing.process(SignatureImpl.get)(formula)
     } else {
       isDefinition(formula) match {
         // TODO Not immediatly add new typ definitions, but postpone
@@ -100,7 +100,7 @@ object PreFilterSet {
     while(it.hasNext){
       val s = it.next
       usedSymbs.add(s)
-      defn.get(s).foreach(defi => InputProcessing.process(Signature.get)(defi))
+      defn.get(s).foreach(defi => InputProcessing.process(SignatureImpl.get)(defi))
     }
     newSymbs
   }

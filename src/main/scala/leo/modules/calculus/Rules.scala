@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 
 ////////////////////////////////////////////////////////////////
@@ -64,7 +64,7 @@ object BoolExt extends CalculusRule {
   val name = "bool_ext"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty == Signature.get.o
+  def canApply(l: Literal): Boolean = l.equational && l.left.ty == SignatureImpl.get.o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
 
@@ -98,7 +98,7 @@ object BoolExt extends CalculusRule {
 
   def apply(l: Literal): (ExtLits, ExtLits) = {
     assert(l.equational, "Trying to apply bool ext on non-eq literal")
-    assert(l.term.ty == Signature.get.o, "Trying to apply bool ext on non-bool literal")
+    assert(l.term.ty == SignatureImpl.get.o, "Trying to apply bool ext on non-bool literal")
 
     if (l.polarity) {
        (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, true)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, false)))

@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.Term.{intToBoundVar, intsToBoundVar, Λ, λ, mkTermApp => ap, mkTypeApp => tyAp}
 import leo.datastructures.Type.{typeVarToType, ∀}
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.{Term, Type}
 
 import scala.language.implicitConversions
@@ -101,7 +101,7 @@ object Numerals {
   }
 
   def apply(): Unit = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     sig.addDefined("zero", zero, zero.ty)
     sig.addDefined("succ", succ, succ.ty)
     sig.addDefined("add", add, add.ty)

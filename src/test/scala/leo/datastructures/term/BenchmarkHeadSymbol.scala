@@ -3,7 +3,7 @@ package leo.datastructures.term
 import java.io.{File, FileNotFoundException}
 
 import leo.datastructures._
-import leo.datastructures.impl.{Reductions, Signature}
+import leo.datastructures.impl.{Reductions, SignatureImpl}
 import Term.{mkTermApp => ap, mkTypeApp => tyAp}
 import leo.datastructures.{Clause, Role, Role_Definition, Role_Type, Role_Unknown}
 
@@ -62,7 +62,7 @@ object BenchmarkHeadSymbol {
             loadedSet += fileAbs
             x.getIncludes.foreach(x => loadRelative(x._1, path))
             //            println("Loaded " + fileAbs)
-            val processed = InputProcessing.processAll(Signature.get)(x.getFormulae)
+            val processed = InputProcessing.processAll(SignatureImpl.get)(x.getFormulae)
             //            processed foreach { case (name, form, role) => if(role != "definition" && role != "type")
             //              benchmark(name, form, role)
             //            }
@@ -124,7 +124,7 @@ object BenchmarkHeadSymbol {
   var times: Map[String, Seq[Long]] = Map()
 
   def doit(file: File): Long = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     print(s"${file.getName} : ")
     val fs = load(file.getAbsolutePath)
 
@@ -186,10 +186,10 @@ object BenchmarkHeadSymbol {
 
   def main(args: Array[String]) {
     var all: Long = 0
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     // Files
         for(f <- FILES) {
-          Signature.resetWithHOL(sig)
+          SignatureImpl.resetWithHOL(sig)
           loadedSet.clear()
           all += doit(f)
         }

@@ -6,7 +6,7 @@ import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.modules.{Parsing, Utility}
 
 /**
@@ -33,7 +33,7 @@ class InputTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
     test(p._2, Checked) {
-      val sig = Signature.get
+      val sig = SignatureImpl.get
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 

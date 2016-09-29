@@ -1,8 +1,8 @@
 package leo
 package modules.seqpproc
 
-import leo.datastructures.AnnotatedClause
-import leo.datastructures.impl.Signature
+import leo.datastructures.{AnnotatedClause, IsSignature}
+import leo.datastructures.impl.SignatureImpl
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -12,7 +12,7 @@ import leo.datastructures.impl.Signature
   */
 object Control {
   // Generating inferences
-  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
+  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit sig: IsSignature): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
   @inline final def factor(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)
   @inline final def boolext(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)
   @inline final def primsubst(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)
@@ -22,7 +22,7 @@ object Control {
   @inline final def cnf(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)
   @inline final def expandDefinitions(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)
   @inline final def nnf(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.nnf(cl)
-  @inline final def skolemize(cl: AnnotatedClause, s: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl,s)
+  @inline final def skolemize(cl: AnnotatedClause, s: SignatureImpl): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl,s)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)
   @inline final def funcext(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)
@@ -481,7 +481,7 @@ package inferenceControl {
         val new_ps_pre = PrimSubst(cw.cl, ps_vars, standardbindings)
         val new_ps_pre2 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
         val new_ps_pre3 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
-        val new_ps_pre4 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(Signature.get.uninterpretedSymbols.map(Term.mkAtom(_)), h.ty.funParamTypes)))
+        val new_ps_pre4 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(SignatureImpl.get.uninterpretedSymbols.map(Term.mkAtom(_)), h.ty.funParamTypes)))
         val pre = new_ps_pre // ++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
         val new_ps = pre.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
         Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
@@ -578,7 +578,7 @@ package inferenceControl {
       } else cl
     }
 
-    final def skolemize(cl: AnnotatedClause, s: Signature): AnnotatedClause = {
+    final def skolemize(cl: AnnotatedClause, s: SignatureImpl): AnnotatedClause = {
       import leo.modules.calculus.Skolemization
 
       assert(Clause.unit(cl.cl))
@@ -629,9 +629,9 @@ package inferenceControl {
     }
 
     final def acSimp(cl: AnnotatedClause): AnnotatedClause = {
-      import leo.datastructures.impl.Signature
+      import leo.datastructures.impl.SignatureImpl$
       if (Configuration.isSet("acsimp")) {
-        val acSymbols = Signature.get.acSymbols
+        val acSymbols = SignatureImpl.get.acSymbols
         Out.trace(s"AC Simp on ${cl.pretty}")
         val pre_result = ACSimp.apply(cl.cl,acSymbols)
         val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, Set(cl)), cl.properties)
@@ -890,7 +890,7 @@ package redundancyControl {
 
 package indexingControl {
 
-  import leo.datastructures.impl.Signature
+  import leo.datastructures.impl.SignatureImpl$
 
   object FVIndexControl {
     import leo.datastructures.Clause
@@ -905,7 +905,7 @@ package indexingControl {
     final def init(initClauses: Set[AnnotatedClause]): Unit = {
       assert(!initialized)
 
-      val symbs = Signature.get.allUserConstants.toVector
+      val symbs = SignatureImpl.get.allUserConstants.toVector
       val featureFunctions: Seq[CFF] = Vector(FVIndex.posLitsFeature(_), FVIndex.negLitsFeature(_)) ++
         symbs.flatMap {case symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
           FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}

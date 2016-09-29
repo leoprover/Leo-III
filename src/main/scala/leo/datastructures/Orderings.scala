@@ -1,7 +1,7 @@
 package leo
 package datastructures
 
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import Term.{:::>, Bound, Symbol, TypeLambda, ∙}
 
 import scala.annotation.tailrec
@@ -98,7 +98,7 @@ object Orderings {
 
 trait Precedence {
   import leo.datastructures.Orderings._
-  type Const = Signature#Key
+  type Const = SignatureImpl#Key
   def compare(x: Const, y: Const): CMP_Result
   def gt(x: Const, y: Const): Boolean = compare(x,y) == CMP_GT
   def ge(x: Const, y: Const): Boolean = compare(x,y) == CMP_GT || compare(x,y) == CMP_EQ

@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 
 /**
  *
@@ -23,7 +23,7 @@ class DotGraph {
 
   /** Inserts the given term `t` to the underlying graph. */
   def insertTerm(t: Term): String = {
-    val sig = Signature.get
+    val sig = SignatureImpl.get
     t match {
       case Symbol(id)            => append(node(id.toString, sig(id).name))
                                     append(node("bottom", bottomLabel))

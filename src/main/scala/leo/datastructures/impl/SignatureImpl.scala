@@ -13,7 +13,7 @@ import leo.datastructures.{HOLSignature, IsSignature, Kind, Type, Term}
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-abstract sealed class Signature extends IsSignature with HOLSignature with Function1[Int, IsSignature#Meta] {
+abstract sealed class SignatureImpl extends IsSignature with HOLSignature with Function1[Int, IsSignature#Meta] {
   override type Key = Int
 
   protected var curConstKey = 0
@@ -244,27 +244,27 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 }
 
 
-object Signature {
-  private case class Nil() extends Signature
+object SignatureImpl {
+  private case class Nil() extends SignatureImpl
 
   /** Create an empty signature */
-  def empty: Signature = Nil()
+  def empty: SignatureImpl = Nil()
 
   protected val globalSignature = withHOL(empty)
   def get = globalSignature
 
-  def resetWithHOL(sig: Signature): Signature = {
+  def resetWithHOL(sig: SignatureImpl): SignatureImpl = {
     sig.empty
     sig.skolemVarCounter=0
     sig.typeVarCounter=0
     withHOL(sig)
   }
 
-  def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
-  def apply(symbol: String): Signature#Meta = get.meta(symbol)
+  def apply(symbol: SignatureImpl#Key): SignatureImpl#Meta = get.meta(symbol)
+  def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
 
   /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
-  def withHOL(sig: Signature): Signature = {
+  def withHOL(sig: SignatureImpl): SignatureImpl = {
     for ((name, k) <- sig.types) {
       sig.addFixedTypeConstructor(name, k)
     }
