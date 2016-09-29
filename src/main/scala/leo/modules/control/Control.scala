@@ -12,23 +12,23 @@ import leo.datastructures.impl.SignatureImpl
   */
 object Control {
   // Generating inferences
-  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
-  @inline final def factor(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)
-  @inline final def boolext(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)
-  @inline final def primsubst(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)
-  @inline final def preunifyNewClauses(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PreUniControl.preunifyNewClauses(clSet)
-  @inline final def preunifySet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PreUniControl.preunifySet(clSet)
+  @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)
+  @inline final def factor(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)
+  @inline final def boolext(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)(sig)
+  @inline final def primsubst(cl: AnnotatedClause): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)
+  @inline final def preunifyNewClauses(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.PreUniControl.preunifyNewClauses(clSet)
+  @inline final def preunifySet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.PreUniControl.preunifySet(clSet)
   // simplification inferences
-  @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)
-  @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)
-  @inline final def nnf(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.nnf(cl)
-  @inline final def skolemize(cl: AnnotatedClause, s: SignatureImpl)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl,s)
-  @inline final def switchPolarity(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
+  @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
+  @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
+  @inline final def nnf(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.nnf(cl)
+  @inline final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl)(sig)
+  @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)
   @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)
-  @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)
-  @inline final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)
-  @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)
+  @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
+  @inline final def simp(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)
+  @inline final def simpSet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
@@ -65,16 +65,16 @@ package inferenceControl {
   protected[modules] object CNFControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
-    final def cnf(cl: AnnotatedClause): Set[AnnotatedClause] = {
+    final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
       Out.trace(s"CNF of ${cl.id}")
-      val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl).toSet
+      val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
         Out.trace(s"CNF result:\n\t${cl.pretty}")
         Set(cl)
       } else {
         val cnfsimp = cnfresult.map(Simp.shallowSimp)
-        val result = cnfresult.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
         Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
         result
       }
@@ -425,7 +425,7 @@ package inferenceControl {
   protected[modules] object BoolExtControl {
     import leo.datastructures.ClauseAnnotation._
 
-    final def boolext(cw: AnnotatedClause): Set[AnnotatedClause] = {
+    final def boolext(cw: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
       var res: Set[AnnotatedClause] = Set()
       if (!Configuration.isSet("nbe")) {
         if (!leo.datastructures.isPropSet(PropBoolExt, cw.properties)) {
@@ -437,7 +437,7 @@ package inferenceControl {
 
             res = boolExt_cws.flatMap(cw => {
               Out.finest(s"#\ncnf of ${cw.pretty}:\n\t")
-              FullCNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)
+              FullCNF(leo.modules.calculus.freshVarGen(cw.cl), cw.cl)(sig)
             }.map(c => {
               Out.finest(s"${c.pretty}\n\t")
               AnnotatedClause(c, InferredFrom(FullCNF, Set(cw)), cw.properties)
@@ -578,7 +578,7 @@ package inferenceControl {
       } else cl
     }
 
-    final def skolemize(cl: AnnotatedClause, s: SignatureImpl): AnnotatedClause = {
+    final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       import leo.modules.calculus.Skolemization
 
       assert(Clause.unit(cl.cl))
@@ -597,11 +597,11 @@ package inferenceControl {
     }
 
 
-    final def expandDefinitions(cl: AnnotatedClause): AnnotatedClause = {
+    final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       assert(Clause.unit(cl.cl))
       val lit = cl.cl.lits.head
       assert(!lit.equational)
-      val newleft = leo.modules.preprocessing.DefExpSimp(lit.left)
+      val newleft = leo.modules.preprocessing.DefExpSimp(lit.left)(sig)
       val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(leo.modules.preprocessing.DefExpSimp, Set(cl)), cl.properties)
       Out.trace(s"Def expansion: ${result.pretty}")
       result
@@ -617,7 +617,7 @@ package inferenceControl {
         cl
     }
 
-    final def funcext(cl: AnnotatedClause): AnnotatedClause = {
+    final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty}")
@@ -628,10 +628,9 @@ package inferenceControl {
         cl
     }
 
-    final def acSimp(cl: AnnotatedClause): AnnotatedClause = {
-      import leo.datastructures.impl.SignatureImpl$
+    final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       if (Configuration.isSet("acsimp")) {
-        val acSymbols = SignatureImpl.get.acSymbols
+        val acSymbols = sig.acSymbols
         Out.trace(s"AC Simp on ${cl.pretty}")
         val pre_result = ACSimp.apply(cl.cl,acSymbols)
         val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, Set(cl)), cl.properties)

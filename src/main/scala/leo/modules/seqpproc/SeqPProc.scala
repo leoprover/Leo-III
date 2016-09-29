@@ -31,7 +31,7 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = Control.expandDefinitions(cw)
     cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw, SignatureImpl.get)
+    cw = Control.skolemize(cw)
 
     // Exhaustively CNF
     result = Control.cnf(cw)

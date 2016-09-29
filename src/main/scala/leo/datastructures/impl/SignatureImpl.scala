@@ -233,12 +233,6 @@ abstract sealed class SignatureImpl extends Signature with HOLSignature with Fun
     typeVarCounter += 1
     addBaseType(typeVarPrefix + typeVarCounter.toString)
   }
-
-  ////////////////////////////////
-  // Sugar methods
-  ////////////////////////////////
-  def apply(symbol: String) = meta(symbol)
-  def apply(key: Key) = meta(key)
 }
 
 

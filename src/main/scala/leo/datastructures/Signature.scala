@@ -152,6 +152,10 @@ trait Signature {
     * into a defined symbol with definition `defn`.*/
   def addDefinition(key: Key, defn: Term): Key
 
+  /** Shorthand for meta */
+  final def apply(identifier: String): Meta = meta(identifier)
+  /** Shorthand for meta */
+  final def apply(identifier: Key): Meta = meta(identifier)
   /** Returns the meta information stored under key `key`*/
   def meta(identifier: Key): Meta
   /** Returns the meta information stored with symbol with id `identifier`

@@ -3,7 +3,6 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, HOLBinaryConnective, Subst, Type, _}
-import leo.datastructures.impl.SignatureImpl
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 import leo.modules.preprocessing.Simplification
 
@@ -68,13 +67,13 @@ object FullCNF extends CalculusRule {
     }
   } else false
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause): Seq[Clause] = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause)(implicit sig: Signature): Seq[Clause] = {
     val lits = cl.lits
     val normLits = apply(vargen, lits)
     normLits.map{ls => Clause(ls)}
   }
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal]) : (Seq[Seq[Literal]]) = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal])(implicit sig: Signature): (Seq[Seq[Literal]]) = {
     var acc : Seq[Seq[Literal]] = Seq(Seq())
     val it : Iterator[Literal] = l.iterator
     while(it.hasNext){
@@ -87,10 +86,10 @@ object FullCNF extends CalculusRule {
     acc
   }
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l)
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal)(implicit sig: Signature): Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l)
 
   @inline
-  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = if(!l.equational){
+  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal)(implicit sig: Signature): Seq[Seq[Literal]] = if(!l.equational){
     l.left match {
       case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity))
       case &(lt,rt) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,true))
@@ -104,7 +103,7 @@ object FullCNF extends CalculusRule {
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize, false))
       case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
-      case term@TypeLambda(t) if !l.polarity => val sko = leo.datastructures.impl.SignatureImpl.get.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
+      case term@TypeLambda(t) if !l.polarity => val sko = sig.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
       case _ => Seq(Seq(l))
     }
   } else {
@@ -494,25 +493,25 @@ object Skolemization extends CalculusRule {
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
   val name = "skolemize"
 
-  def apply(t: Term, s: SignatureImpl): Term = {
-    apply0(miniscope(t), s, Seq())
+  def apply(t: Term)(implicit sig: Signature): Term = {
+    apply0(miniscope(t), Seq())(sig)
   }
 
-  private def apply0(t: Term, s: SignatureImpl, fvs: Seq[Term]): Term = {
+  private def apply0(t: Term,fvs: Seq[Term])(implicit sig: Signature): Term = {
     t match {
       case Exists(inner@(ty :::> body)) => {
-        val skConst = Term.mkAtom(s.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
+        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
         val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
-        apply0(body2, s, fvs)
+        apply0(body2, fvs)(sig)
       }
       case Forall(ty :::> body) => {
         val newFvs = fvs.map(_.substitute(Subst.shift)) :+ Term.mkBound(ty, 1)
-        val body2 = apply0(body, s, newFvs)
+        val body2 = apply0(body, newFvs)(sig)
         Forall(λ(ty)(body2))
       }
-      case (a & b) => &(apply0(a, s, fvs), apply0(b, s, fvs))
-      case (a ||| b) => |||(apply0(a, s, fvs), apply0(b, s, fvs))
+      case (a & b) => &(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
+      case (a ||| b) => |||(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
       case _ => t
     }
   }

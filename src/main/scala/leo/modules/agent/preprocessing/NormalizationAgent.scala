@@ -14,7 +14,7 @@ import leo.modules.preprocessing._
 class NormalizationAgent(cs : Context*) extends Agent {
   override def name: String = "normalization_agent"
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
-  val norms : Seq[Normalization] = Seq(Simplification, DefExpSimp, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
+  val norms : Seq[Normalization] = Seq() //FIXME What to do with this: Simplification, DefExpSimp, NegationNormal, Skolemization, PrenexNormal) // TODO variable?
 
   override def filter(event: Event): Iterable[Task] = event match {
     case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())

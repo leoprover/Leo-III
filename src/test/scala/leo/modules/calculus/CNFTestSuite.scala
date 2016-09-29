@@ -1,8 +1,8 @@
 package leo.modules.calculus
 
-import leo.datastructures.impl.SignatureImpl$
+import leo.datastructures.impl.SignatureImpl
 import leo.{Ignored, LeoTestSuite, Out, TestUtility}
-import leo.datastructures.{Clause, Literal}
+import leo.datastructures.{Clause, Literal, Signature}
 import leo.modules.Parsing
 import leo.modules.preprocessing.{StepCNF}
 
@@ -27,6 +27,7 @@ class CNFTestSuite extends LeoTestSuite {
     test(s"Test : ($p)"){
       val (_,l,_) = Parsing.parseFormula(p)
       val s : StringBuilder = new StringBuilder
+      implicit val sig: Signature = SignatureImpl.get
       s.append("CNF on\n  ")
       val pc = Clause(Literal(l,true))
       s.append(pc.pretty)
