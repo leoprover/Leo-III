@@ -86,4 +86,6 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
       }
     }
   }
+
+  def toSet: Set[A] = if (priorityQueues.isEmpty) Set() else priorityQueues.head.view.filterNot(_.get == null).map(_.get).toSet
 }

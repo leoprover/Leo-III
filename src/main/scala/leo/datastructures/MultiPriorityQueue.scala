@@ -31,6 +31,7 @@ trait MultiPriorityQueue[A] {
   def size: Int
   def head(k: OrderingKey): A
   def dequeue(k: OrderingKey): A
+  def toSet: Set[A]
 }
 
 
