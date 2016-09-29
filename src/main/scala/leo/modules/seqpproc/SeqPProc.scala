@@ -205,7 +205,7 @@ object SeqPProc extends Function1[Long, Unit]{
       if (System.currentTimeMillis() - startTime > 1000*Configuration.TIMEOUT) {
         loop = false
         state.setSZSStatus(SZS_Timeout)
-      } else if (state.unprocessed.isEmpty) {
+      } else if (!state.unprocessedLeft) {
         loop = false
       } else {
         // No cancel, do reasoning step
