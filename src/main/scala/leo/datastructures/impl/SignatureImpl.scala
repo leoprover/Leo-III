@@ -14,8 +14,6 @@ import leo.datastructures.{HOLSignature, Signature, Kind, Type, Term}
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
 abstract sealed class SignatureImpl extends Signature with HOLSignature with Function1[Int, Signature#Meta] {
-  override type Key = Int
-
   protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
@@ -260,7 +258,7 @@ object SignatureImpl {
     withHOL(sig)
   }
 
-  def apply(symbol: SignatureImpl#Key): SignatureImpl#Meta = get.meta(symbol)
+  def apply(symbol: Signature#Key): SignatureImpl#Meta = get.meta(symbol)
   def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
 
   /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */

@@ -2,7 +2,6 @@ package leo.datastructures
 
 import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ,Symbol,∙}
 import Type.{superKind, typeKind, typeVarToType}
-import leo.datastructures.impl.SignatureImpl
 
 import scala.language.implicitConversions
 
@@ -60,7 +59,7 @@ trait HOLSignature {
 
   // Fixed symbols
   import Type.{mkPolyType => forall}
-  import Signature.{PropAC => ac, PropAssociative => a, PropCommutative => c}
+  import Signature.{PropAC => ac, PropCommutative => c}
   lazy val fixedConsts = List(
     ("$true",                         o, multProp), // Key 6
     ("$false",                        o, multProp), // Key 7
@@ -252,7 +251,7 @@ object HOLSignature {
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
 trait HOLBinaryConnective extends Function2[Term, Term, Term] {
-  protected[HOLBinaryConnective] val key: SignatureImpl#Key
+  protected[HOLBinaryConnective] val key: Signature#Key
 
   /** Create the term that is constructed by applying two arguments to the binary connective. */
   override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key), Seq(left, right))
@@ -279,7 +278,7 @@ trait PolyBinaryConnective extends HOLBinaryConnective {
 
 /** Trait for unary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
 trait HOLUnaryConnective extends Function1[Term, Term] {
-  protected[HOLUnaryConnective] val key: SignatureImpl#Key
+  protected[HOLUnaryConnective] val key: Signature#Key
 
   /** Create the term that is constructed by applying an argument to the unary connective. */
   override def apply(arg: Term): Term = mkTermApp(mkAtom(key), arg)
@@ -306,7 +305,7 @@ trait PolyUnaryConnective extends HOLUnaryConnective {
 
 /** Trait for nullary symbols (constants) within HOL. */
 trait HOLConstant extends Function0[Term] {
-  protected[HOLConstant] val key: SignatureImpl#Key
+  protected[HOLConstant] val key: Signature#Key
 
   /** Create the term that is represented by the object */
   override def apply(): Term = mkAtom(key)

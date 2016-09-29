@@ -10,7 +10,7 @@ package leo.datastructures
  * @note Updated 02.06.2014 Signature does not track variables names anymore, they are parsed to nameless terms instead
  */
 trait Signature {
-  type Key
+  type Key = Int
 
   type TypeOrKind = Either[Type, Kind]
 

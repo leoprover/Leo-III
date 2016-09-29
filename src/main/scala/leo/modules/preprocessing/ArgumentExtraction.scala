@@ -120,7 +120,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
     }
   }
 
-  private def isUser(k : SignatureImpl#Key) : Boolean = {
+  private def isUser(k : Signature#Key) : Boolean = {
     val s = SignatureImpl.get
     s.allUserConstants.contains(k)
   }

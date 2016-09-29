@@ -90,7 +90,7 @@ object Utility {
     sb.dropRight(1).toString()
   }
 
-  def userSignatureToTPTP(constants: Set[SignatureImpl#Key])(implicit sig: SignatureImpl): String = {
+  def userSignatureToTPTP(constants: Set[Signature#Key])(implicit sig: SignatureImpl): String = {
     val sb: StringBuilder = new StringBuilder()
     sig.allUserConstants.intersect(constants.union(sig.typeSymbols)).foreach { case key =>
       val name = sig.apply(key).name
@@ -140,7 +140,7 @@ object Utility {
     }
   }
 
-  final def symbolsInProof(p: Proof): Set[SignatureImpl#Key] = {
+  final def symbolsInProof(p: Proof): Set[Signature#Key] = {
     p.flatMap(cl => cl.cl.lits.flatMap(l => l.left.symbols ++ l.right.symbols)).toSet
   }
 

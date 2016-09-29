@@ -348,7 +348,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(t: Term, acSymbols: Set[SignatureImpl#Key]): Term = {
+  def apply(t: Term, acSymbols: Set[Signature#Key]): Term = {
     acSymbols.foldLeft(t){case (term,symbol) => apply(term, symbol)}
   }
 
@@ -382,7 +382,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(lit: Literal, allACSymbols: Set[SignatureImpl#Key]): Literal = {
+  def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
     val leftAC = lit.left.symbols intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
@@ -403,7 +403,7 @@ object ACSimp extends CalculusRule {
 
   }
 
-  def apply(cl: Clause, acSymbols: Set[SignatureImpl#Key]): Clause = {
+  def apply(cl: Clause, acSymbols: Set[Signature#Key]): Clause = {
     Clause(cl.lits.map(apply(_, acSymbols)))
   }
 }

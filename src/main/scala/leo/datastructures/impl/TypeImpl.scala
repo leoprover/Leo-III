@@ -1,6 +1,6 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{Kind, Subst, Type, TypeFront}
+import leo.datastructures.{Kind, Subst, Type, TypeFront, Signature}
 
 protected[datastructures] abstract class TypeImpl extends Type {
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type) = splitFunParamTypesAt0(n, Seq())
@@ -14,7 +14,7 @@ protected[datastructures] abstract class TypeImpl extends Type {
 }
 
 /** Literal type, i.e. `$o` */
-protected[datastructures] case class GroundTypeNode(id: SignatureImpl#Key, args: Seq[Type]) extends TypeImpl {
+protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
   import SignatureImpl.{get => signature}
   lazy val pretty = {
@@ -57,7 +57,7 @@ protected[datastructures] case class GroundTypeNode(id: SignatureImpl#Key, args:
   def instantiate(by: Type) = this
 
   // Other operations
-  def foldRight[A](baseFunc: SignatureImpl#Key => A) // FIXME
+  def foldRight[A](baseFunc: Signature#Key => A) // FIXME
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
@@ -76,7 +76,7 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl 
 
   // Queries on types
   val typeVars: Set[Type] = Set(this)
-  val symbols = Set[SignatureImpl#Key]()
+  val symbols = Set[Signature#Key]()
 
   val funDomainType   = None
   val codomainType = this
@@ -104,7 +104,7 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl 
   def instantiate(by: Type) = this
 
   // Other operations
-  def foldRight[A](baseFunc: SignatureImpl#Key => A)
+  def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
@@ -151,7 +151,7 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   def instantiate(by: Type) = this
 
   // Other operations
-  def foldRight[A](baseFunc: SignatureImpl#Key => A)
+  def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
@@ -192,7 +192,7 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   def instantiate(by: Type) = this
 
   // Other operations
-  def foldRight[A](baseFunc: SignatureImpl#Key => A)
+  def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
@@ -236,7 +236,7 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   def instantiate(by: Type) = this
 
   // Other operations
-  def foldRight[A](baseFunc: SignatureImpl#Key => A)
+  def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)
@@ -286,7 +286,7 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
   def instantiate(by: Type) = body.substitute(TypeFront(by) +: Subst.id )
 
   // Other operations
-  def foldRight[A](baseFunc: SignatureImpl#Key => A)
+  def foldRight[A](baseFunc: Signature#Key => A)
                   (boundFunc: Int => A)
                   (absFunc: (A,A) => A)
                   (prodFunc: (A,A) => A)

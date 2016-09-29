@@ -75,7 +75,7 @@ object ToTPTP {
   // Methods on symbols/definitions
   ///////////////////////
 
-  final def apply(k: SignatureImpl#Key): String = {
+  final def apply(k: Signature#Key): String = {
     val constant = SignatureImpl.get.apply(k)
     val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
       "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
@@ -97,7 +97,7 @@ object ToTPTP {
       s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
     }
   }
-  final def output(k: SignatureImpl#Key): Output = new Output {
+  final def output(k: Signature#Key): Output = new Output {
     final def apply() = ToTPTP(k)
   }
 

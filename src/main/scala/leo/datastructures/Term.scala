@@ -47,7 +47,7 @@ trait Term extends Pretty {
   def δ_expandable: Boolean
   def partial_δ_expand(rep: Int): Term
   def full_δ_expand: Term
-  def exhaustive_δ_expand_upTo(symbs: Set[SignatureImpl#Key]): Term
+  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term
 
   def head_δ_expandable: Boolean
   def head_δ_expand: Term
@@ -74,14 +74,14 @@ trait Term extends Pretty {
   def size: Int
   def order: LangOrder
 
-  def symbols: Set[SignatureImpl#Key]
+  def symbols: Set[Signature#Key]
   final def symbolsOfType(ty: Type) = {
     val sig = SignatureImpl.get
     symbols.filter({i => sig(i)._ty == ty})
   }
   // Functions for FV-Indexing
-  def fvi_symbolFreqOf(symbol: SignatureImpl#Key): Int
-  def fvi_symbolDepthOf(symbol: SignatureImpl#Key): Int
+  def fvi_symbolFreqOf(symbol: Signature#Key): Int
+  def fvi_symbolDepthOf(symbol: Signature#Key): Int
 
   // Substitutions and replacements
   /** Replace every occurrence of `what` in `this` by `by`. */
@@ -131,7 +131,7 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  final def mkAtom(id: SignatureImpl#Key): Term = TermImpl.mkAtom(id)
+  final def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
   final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
   final def mkMetaVar(t: Type, id: Int): Term = TermImpl.mkMetaVar(t, id)
   final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
@@ -201,7 +201,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Symbol { def unapply(t: Term): Option[SignatureImpl#Key] = TermImpl.symbolMatcher(t) }
+  object Symbol { def unapply(t: Term): Option[Signature#Key] = TermImpl.symbolMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
@@ -291,7 +291,7 @@ object Term extends TermBank {
   // Obsolete stuff, check if removable
   //////////////////////////////////////
   /** Convert a signature key to its corresponding atomic term representation */
-  implicit def keyToAtom(in: SignatureImpl#Key): Term = mkAtom(in)
+  implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
 
   // Determine order-subsets of terms
 
