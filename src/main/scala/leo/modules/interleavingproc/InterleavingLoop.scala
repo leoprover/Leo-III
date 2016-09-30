@@ -154,6 +154,14 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
 
     newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
 
+    newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
+    /* exhaustively CNF new clauses */
+    newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+    /* Replace eq symbols on top-level by equational literals. */
+    newclauses = newclauses.map(Control.liftEq)
+    /* Pre-unify new clauses */
+    newclauses = Control.preunifyNewClauses(newclauses)
+
 
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
