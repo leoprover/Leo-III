@@ -120,10 +120,10 @@ class IncrementLoop(maxNumber : Int) extends InterferingLoop [LoopState] {
     val n = NumberStore.getNumber
     println(s"Test $n < $maxNumber")
     if(n < maxNumber) {
-//      println(s"Create task Increment(${n})")
+      println(s"Create task Increment(${n})")   // TODO not executed
       Some(new LoopState(NumberStore.getNumber))
     } else{
-//      println("Created no task.")
+      println("Created no task.")
       None
     }
   }

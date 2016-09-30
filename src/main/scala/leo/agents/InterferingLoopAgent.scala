@@ -46,14 +46,11 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
     * @return All initial available tasks
     */
   override def init(): Iterable[Task] = {
-    active = true
     firstAttempt = false
     val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
-    if(r.isEmpty && active){
+    if(r.isEmpty){
       active = false
-      unregister()
-      ActiveTracker.decAndGet(s"$name: Loop condition initially negative")
-    } else if (r.nonEmpty && !active) {
+    } else if (r.nonEmpty) {
       active = true
       ActiveTracker.incAndGet(s"$name: Loop condition initially positive.")
     }
@@ -79,7 +76,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
       if(r.isEmpty && active){
         active = false
-        unregister()
+        unregister()      // TODO End the run???
         ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
       } else if (r.nonEmpty && !active) {
         active = true
@@ -91,7 +88,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
       if(r.isEmpty && active){
         active = false
-        unregister()
+        unregister()    // TODO End the run???
         ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
       } else if (r.nonEmpty && !active) {
         active = true

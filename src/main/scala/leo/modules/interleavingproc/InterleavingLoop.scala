@@ -16,7 +16,7 @@ object InterleavingLoop {
   * Implementation of @[[leo.modules.seqpproc.SeqPProc]] with interleavable
   * loop parts.
   *
-  * Assumes all clauses have initially have been preprocessed
+  * Assumes all clauses have initially have been preprocessed and inserted into the fvIndex
   *
   * TODO Preprocess Clauses and Initialize FVIndex before this agent works or put it into the init
   *
@@ -30,7 +30,8 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
 
   override def name: String = "interleaving-seq-loop"
   override def init: Option[StateView[InterleavingLoop.A]] = {
-    val n : InterleavingLoop.A = state.conjecture.fold(state.getNextUnprocessed)(c => c)
+   // val n : InterleavingLoop.A = state.conjecture.fold(state.getNextUnprocessed)(c => c)
+    val n = state.getNextUnprocessed
     commonFilter(n)
   }
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
@@ -77,8 +78,6 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
     // Check backward subsumption
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
     val considerClauses = state.processed -- backSubsumedClauses
-    // TODO Move into writing      Control.fvIndexRemove(backSubsumedClauses)
-    // TODO Move into writing      Control.fvIndexInsert(cur)
 
     cur = Control.funcext(cur)
     cur = Control.liftEq(cur)
@@ -149,7 +148,6 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
         result.insert(UnprocessedClause)(newCl)
       }
     }
-
 
     result
   }
