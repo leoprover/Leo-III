@@ -1,6 +1,8 @@
 package leo
 package datastructures.blackboard
 
+import leo.datastructures.Pretty
+
 import scala.collection.mutable
 
 /**
@@ -130,8 +132,10 @@ class Result extends Event {
     insertM.keysIterator.foreach{dt =>
       sb.append(s"   $dt ->\n")
       insertM.get(dt).foreach{ds =>
-        ds.foreach{data =>
-          sb.append(s"     $data\n")
+        ds.foreach{_ match {
+          case p : Pretty => sb.append(s"     ${p.pretty}\n")
+          case data => sb.append(s"     ${data}\n")
+        }
         }
       }
     }
@@ -141,8 +145,12 @@ class Result extends Event {
     updateM.keysIterator.foreach{dt =>
       sb.append(s"   $dt ->\n")
       updateM.get(dt).foreach{ds =>
-        ds.foreach{case (d1,d2) =>
-          sb.append(s"      $d1\n   ->\n     $d2\n")
+        ds.foreach{
+          _ match {
+            case p : Pretty => sb.append(s"     ${p.pretty}\n")
+            case (d1,d2) =>
+              sb.append(s"      $d1\n   ->\n     $d2\n")
+          }
         }
       }
     }
@@ -152,8 +160,10 @@ class Result extends Event {
     removeM.keysIterator.foreach{dt =>
       sb.append(s"   $dt ->\n")
       removeM.get(dt).foreach{ds =>
-        ds.foreach{data =>
-          sb.append(s"     $data\n")
+        ds.foreach{_ match {
+          case p : Pretty => sb.append(s"     ${p.pretty}\n")
+          case data => sb.append(s"     ${data}\n")
+        }
         }
       }
     }

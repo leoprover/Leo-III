@@ -38,17 +38,22 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
     // Unprocessed can only be added
     val newUnprocessed = r.inserts(UnprocessedClause).iterator
     while(newUnprocessed.nonEmpty){
-      state.addProcessed(newUnprocessed.next().asInstanceOf[T])
+      state.addUnprocessed(newUnprocessed.next().asInstanceOf[T])
+    }
+    val rmUnprocessed = r.removes(UnprocessedClause).iterator
+    while(rmUnprocessed.nonEmpty){
+      val rm = rmUnprocessed.next().asInstanceOf[T]
+      if(nextUnprocessed.nonEmpty & nextUnprocessed.get == rm){
+        nextUnprocessedSet = false
+      }
     }
     // Processed should only be one and should correspond to the variable [[nextUnprocessed]]
     val newProcessed = r.inserts(ProcessedClause).iterator
     if(newProcessed.nonEmpty){
       val n = newProcessed.next().asInstanceOf[T]
-      assert(nextUnprocessedSet, "Wrong size or no next Unprocessed Set")
       state.addProcessed(n)
       if(n.isInstanceOf[AnnotatedClause]) Control.fvIndexInsert(n.asInstanceOf[AnnotatedClause])
     }
-    nextUnprocessedSet = false  // TODO This removes the previously selected Formula, maybe allow for a non implicit deletion
 
     // Adding new rewrite Rules
     val newRewrite = r.inserts(RewriteRule).iterator

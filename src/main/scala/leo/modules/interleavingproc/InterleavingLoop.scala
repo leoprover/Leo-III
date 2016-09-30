@@ -31,14 +31,30 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
   override def name: String = "interleaving-seq-loop"
   override def init: Option[StateView[InterleavingLoop.A]] = {
    // val n : InterleavingLoop.A = state.conjecture.fold(state.getNextUnprocessed)(c => c)
+    println("Init called!")
     val n = state.getNextUnprocessed
     commonFilter(n)
   }
+
+  private val maxRound = 20
+  private var actRound = 1
+
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
+    if(actRound > maxRound && maxRound > 0) {
+      println("Finished Rounds")
+      println(s"Unprocessed:\n  ${state.state.unprocessed.map(_.pretty).mkString("\n  ")}")
+      println(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}")
+      return None
+    }
+    println(s"Round: ${actRound}")
+    actRound += 1
+    println(s"Unprocessed:\n  ${state.state.unprocessed.map(_.pretty).mkString("\n  ")}")
+    println(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}")
     if(state.state.unprocessed.isEmpty) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
-
+    println(s"Select next Unprocessed:\n  >  ${select.pretty}")
+    println()
     // The normal loop from seqpproc
     commonFilter(select)
   }

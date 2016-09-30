@@ -15,8 +15,10 @@ import leo.modules.output._
 import leo.modules.phase._
 import leo.datastructures.impl.Signature
 import leo.modules.Utility._
+import leo.modules.interleavingproc.{BlackboardState, InterleavingLoop, StateView}
+import leo.agents.InterferingLoopAgent
 import leo.modules.preprocessing.Preprocess
-import leo.modules.seqpproc.MultiSeqPProc
+import leo.modules.seqpproc.{MultiSeqPProc, State}
 
 /**
   * Created by mwisnie on 3/7/16.
@@ -134,55 +136,41 @@ object TestMain {
       leo.Out.debug("Unused : ")
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
+      val state = BlackboardState.fresh[InterleavingLoop.A](Signature.get)
+      val iLoop : InterleavingLoop = new InterleavingLoop(state)
+      val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state)
 
-      val atpFreq : Int = try{
-        val s = Configuration.valueOf("atpfreq").get
-        val h = s.head
-        h.toInt
-      } catch {
-        case _: Exception => 30
-      }
+      Blackboard().addDS(state)
 
-      val mode : Int = try {
-        val s = Configuration.valueOf("mode").get
-        val h = s.head
-        h.toInt
-      } catch {
-        case _ : Exception => 0
-      }
-
-      val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
-      val msproc2 = new MultiSeqPProc(atpFreq, x => x)
-      val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))
-      val msproc4 = new MultiSeqPProc(atpFreq, x => Preprocess.argumentExtraction(Preprocess.equalityExtraction(x)))
-      val s = Scheduler()
-      val searchPhase = mode match {
-        case 0 => new MultiSearchPhase(msproc2)
-        case 1 => new MultiSearchPhase(msproc, msproc2)
-        case 2 => new MultiSearchPhase(msproc, msproc2, msproc3)
-        case 3 => new MultiSearchPhase(msproc2, msproc4)
-        case _ => new MultiSearchPhase(msproc2)
-      }
-
-
-      printPhase(searchPhase)
-      if (!searchPhase.execute()) {
+      printPhase(iPhase)
+      if(!iPhase.execute()){
         Scheduler().killAll()
-        TimeOutProcess.kill()
-        unexpectedEnd(System.currentTimeMillis() - startTime)
-        return
+          TimeOutProcess.kill()
+          unexpectedEnd(System.currentTimeMillis() - startTime)
+          return
       }
+//
+//      printPhase(searchPhase)
+//      if (!searchPhase.execute()) {
+//        Scheduler().killAll()
+//        TimeOutProcess.kill()
+//        unexpectedEnd(System.currentTimeMillis() - startTime)
+//        return
+//      }
 
       TimeOutProcess.kill()
       val endTime = System.currentTimeMillis()
       val time = System.currentTimeMillis() - startTime
       Scheduler().killAll()
 
-      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+//      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+      val szsStatus  = state.state.szsStatus
       Out.output("")
       Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${endTime - afterParsing} ms w/o parsing"))
 
-      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+//      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+      val proof = state.state.derivationClause
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
@@ -236,7 +224,7 @@ object TestMain {
         Scheduler().killAll()
       }
     }
-    // TODO Check NUM800^1, NUM818^5, NUM819^5, SET597^5, NUM824^5
+
     override def run(): Unit = {
       //      println("Init delay kill.")
       synchronized{
