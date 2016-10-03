@@ -6,9 +6,9 @@ import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.context._
+import leo.modules.HOLSignature.LitTrue
 import leo.modules.agent.split_search.Aggregate_SZS
 import leo.modules.output.ToTPTP
-import leo.modules.parsers.TPTP
 
 
 object ExternalProverPhase extends CompletePhase {

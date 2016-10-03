@@ -3,6 +3,7 @@ package leo.modules.calculus
 import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
+import leo.modules.HOLSignature.{o, LitTrue}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 
 ////////////////////////////////////////////////////////////////
@@ -41,7 +42,7 @@ object FuncExt extends CalculusRule {
     if (lit.polarity) {
       // TODO: Maybe set implicitly quantified variables manually? Otherwise the whole terms is
       // traversed again and again
-      val newVars = funArgTys.map {case ty => vargen(ty)}
+      val newVars = funArgTys.map {ty => vargen(ty)}
       Literal(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)
     } else {
       val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)) //initFV: We only use the
@@ -63,7 +64,7 @@ object BoolExt extends CalculusRule {
   val name = "bool_ext"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty == HOLSignature.o
+  def canApply(l: Literal): Boolean = l.equational && l.left.ty == o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
 
@@ -97,7 +98,7 @@ object BoolExt extends CalculusRule {
 
   def apply(l: Literal): (ExtLits, ExtLits) = {
     assert(l.equational, "Trying to apply bool ext on non-eq literal")
-    assert(l.term.ty == HOLSignature.o, "Trying to apply bool ext on non-bool literal")
+    assert(l.term.ty == o, "Trying to apply bool ext on non-bool literal")
 
     if (l.polarity) {
        (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, true)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, false)))
@@ -195,7 +196,7 @@ object PrimSubst extends CalculusRule {
   }
 
   def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term]): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
-    flexHeads.map { case hd =>
+    flexHeads.map {hd =>
 //      println(s"${hd.pretty} - ${hd.fv.head._1}")
 //      println(s"max fv: ${cl.maxImplicitlyBound}")
       val vargen = leo.modules.calculus.freshVarGen(cl)

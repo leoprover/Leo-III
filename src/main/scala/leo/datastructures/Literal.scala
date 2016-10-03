@@ -234,7 +234,7 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   final def trivial(l: Literal): Boolean = l.left == l.right
   /** If the method returns true both sides of the underlying equation are different/distinct. */
   final def distinctSides(l: Literal): Boolean = (l.left, l.right) match {
-    case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= HOLSignature.lastId && idr <= HOLSignature.lastId
+    case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= leo.modules.HOLSignature.lastId && idr <= leo.modules.HOLSignature.lastId
       // TODO: Extend to 'distinct symbols' from TPTP
     case _ => false
   }
@@ -247,9 +247,10 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   /** Returns whether the literal is well-typed, i.e. if the underlying terms are well-typed and have the same type. */
   final def wellTyped(l: Literal): Boolean = {
     import leo.datastructures.Term.{wellTyped => wt}
+    import leo.modules.HOLSignature.o
     if (l.equational) {
       wt(l.left) && wt(l.right) && l.left.ty == l.right.ty
-    } else wt(l.left) && l.left.ty == HOLSignature.o
+    } else wt(l.left) && l.left.ty == o
   }
 }
 

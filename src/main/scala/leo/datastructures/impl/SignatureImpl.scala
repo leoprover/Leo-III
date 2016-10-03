@@ -2,7 +2,8 @@ package leo.datastructures.impl
 
 import scala.collection.immutable.{BitSet, HashMap, IntMap}
 
-import leo.datastructures.{HOLSignature, Signature, Kind, Type, Term}
+import leo.datastructures.{Signature, Kind, Type, Term}
+import leo.modules.HOLSignature
 
 /**
  * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
@@ -255,7 +256,7 @@ object SignatureImpl {
   def apply(symbol: Signature#Key): SignatureImpl#Meta = get.meta(symbol)
   def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
 
-  /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
+  /** Enriches the given signature with predefined symbols as described by [[leo.modules.HOLSignature]] */
   def withHOL(sig: SignatureImpl): SignatureImpl = {
     for ((name, k) <- HOLSignature.types) {
       sig.addFixedTypeConstructor(name, k)

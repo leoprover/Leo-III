@@ -2,6 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
+import leo.modules.HOLSignature.{LitTrue, LitFalse, &, |||, Forall}
 
 /**
  * Computes for a Skolemized Term the Prenex Normal Form

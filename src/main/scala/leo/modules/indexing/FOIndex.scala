@@ -1,6 +1,6 @@
 package leo.modules.indexing
 
-import leo.datastructures.{ClauseProxy, HOLSignature}
+import leo.datastructures.ClauseProxy
 import leo.datastructures.impl.SignatureImpl
 
 class FOIndex {
@@ -43,9 +43,9 @@ object FOIndex {
 
   private final def typedFirstOrderFormula(fvs: Seq[(Int, Type)], t: Term): Boolean = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
-    import leo.datastructures.{Forall, Exists, ===, !===}
+    import leo.modules.HOLSignature.{o, Forall, Exists, ===, !===}
 
-    if (t.ty != HOLSignature.o) return false
+    if (t.ty != o) return false
 
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
@@ -54,8 +54,7 @@ object FOIndex {
       case Exists(_ :::> body) => typedFirstOrderFormula(fvs, body)
       case (l === r) => typedFirstOrderTerm(fvs, l) && typedFirstOrderTerm(fvs, r)
       case (l !=== r) => typedFirstOrderTerm(fvs, l) && typedFirstOrderTerm(fvs, r)
-      case TermApp(hd, args) => {
-        hd match {
+      case TermApp(hd, args) => hd match {
           case Symbol(id) => if (interpretedSymbols.contains(id)) {
             args.forall(typedFirstOrderFormula(fvs, _))
           } else {
@@ -65,27 +64,25 @@ object FOIndex {
           }
           case _ => false
         }
-      }
       case _ => false
     }
   }
 
   private final def typedFirstOrderTerm(fvs: Seq[(Int, Type)], t: Term): Boolean = {
-    if (t.ty == HOLSignature.o) return false
+    import leo.modules.HOLSignature.o
+    if (t.ty == o) return false
 
     import leo.datastructures.Term.{TermApp, Symbol, Bound}
-    import leo.datastructures.{===, !===}
 
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
     t match {
       case Bound(_, _) => true
-      case TermApp(hd, args) => {
+      case TermApp(hd, args) =>
         hd match {
           case Symbol(id) => if (interpretedSymbols.contains(id)) false
           else args.forall(typedFirstOrderTerm(fvs, _))
           case _ => false
         }
-      }
       case _ => false
     }
   }

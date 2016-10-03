@@ -1,7 +1,7 @@
 package leo.modules.calculus.resolution
 
 import leo.datastructures._
-
+import leo.modules.HOLSignature.{LitFalse, Not, |||, &}
 /**
  * This Class supports methods for the resolution calculus.
  *

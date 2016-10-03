@@ -4,6 +4,7 @@ package modules.calculus.splitting
 import leo.datastructures.Clause
 import leo.datastructures.context.{NoSplit, BetaSplit, AlphaSplit, SplitKind}
 import leo.datastructures._
+import leo.modules.HOLSignature.{<=>, Impl, &, Not}
 
 /**
  *

@@ -5,13 +5,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import leo.agents.ProofProcedure
 import leo.agents.impl.SZSScriptAgent
 import leo.{Configuration, Out}
-import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
-import leo.modules.calculus.CalculusRule
+import leo.modules.control.Control
 import leo.modules.output._
 
 object MultiSeqPProc {

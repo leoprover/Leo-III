@@ -1,7 +1,7 @@
 package leo
 package modules.calculus.splitting
 
-import leo.datastructures.HOLSignature.{i,o}
+import leo.modules.HOLSignature.o
 import leo.modules.output.ToTPTP
 import org.scalatest.FunSuite
 

@@ -4,6 +4,7 @@ import java.io.{File, FileNotFoundException}
 
 import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
+import leo.modules.HOLSignature.LitTrue
 
 /**
  * Created by lex on 19.09.14.

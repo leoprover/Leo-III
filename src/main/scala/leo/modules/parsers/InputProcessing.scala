@@ -26,6 +26,8 @@ import leo.modules.output.{SZS_InputError,SZS_TypeError}
   * @todo - Cannot handle CNF and TPI
   */
 object InputProcessing {
+  import leo.modules.HOLSignature.{i,o, rat, int, real, LitTrue, IF_THEN_ELSE, HOLUnaryConnective, HOLBinaryConnective}
+
   // (Formula name, Term, Formula Role)
   type Result = (String, Term, Role)
 
@@ -211,10 +213,10 @@ object InputProcessing {
         val processedVars = vars.map(_ match { // FIXME: fold like I said two years ago, not map!
           case (name, None) => {
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
             }
-            (name, Left(HOLSignature.i))
+            (name, Left(i))
           }
           case (name, Some(ty)) => convertTHFType(sig)(ty, newReplaces) match {
             case Left(t) => {
@@ -257,7 +259,6 @@ object InputProcessing {
       case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
       case Subtype(left,right) => ???
       case Cond(c, thn, els) => {
-        import leo.datastructures.IF_THEN_ELSE
         try {
           IF_THEN_ELSE(processTHF0(sig)(c, replaces).left.get, processTHF0(sig)(thn, replaces).left.get, processTHF0(sig)(els, replaces).left.get)
         } catch {
@@ -278,7 +279,7 @@ object InputProcessing {
   import leo.datastructures.tptp.thf.{BinaryConnective => THFBinaryConnective}
   protected[parsers] def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
     import leo.datastructures.tptp.thf.{Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
-    import leo.datastructures.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
+    import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
 
     conn match {
       case THFEq => ===
@@ -298,7 +299,7 @@ object InputProcessing {
   import leo.datastructures.tptp.thf.{UnaryConnective => THFUnaryConnective}
   protected[parsers] def processTHFUnaryConn(conn: THFUnaryConnective): HOLUnaryConnective = {
     import leo.datastructures.tptp.thf.{~ => THFNot, !! => THFAllComb, ?? => THFExistsComb}
-    import leo.datastructures.{Not => not, Forall => forall, Exists => exists}
+    import leo.modules.HOLSignature.{Not => not, Forall => forall, Exists => exists}
 
     conn match {
       case THFNot => not
@@ -310,7 +311,7 @@ object InputProcessing {
   import leo.datastructures.tptp.thf.{Quantifier => THFQuantifier}
   protected[parsers] def processTHFUnaryConn(conn: THFQuantifier): HOLUnaryConnective = {
     import leo.datastructures.tptp.thf.{! => THFAll, ? => THFExists, ^ => THFLambda, @+ => THFChoice, @- => THFDesc}
-    import leo.datastructures.{Forall, Exists, Choice, Description}
+    import leo.modules.HOLSignature.{Forall, Exists, Choice, Description}
 
     conn match {
       case THFAll => Forall
@@ -483,10 +484,10 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         val processedVars = vars.map(_ match {
           case (name, None) => {
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
             }
-            (name, Left(HOLSignature.i))
+            (name, Left(i))
           }
           case (name, Some(ty)) => convertTFFType(sig)(ty, newReplaces) match {
             case Left(t) => {
@@ -511,12 +512,11 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
       case Inequality(left, right) => {
         val (l,r) = (processTerm(sig)(left, replaces, false),processTerm(sig)(right, replaces, false))
-        import leo.datastructures.Not
+        import leo.modules.HOLSignature.{Not, ===}
         Not(===(l,r))
       }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces, false)
       case Cond(cond, thn, els) => {
-        import leo.datastructures.IF_THEN_ELSE
         IF_THEN_ELSE(processTFF0(sig)(cond, replaces),processTFF0(sig)(thn, replaces),processTFF0(sig)(els, replaces))
       }
       case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
@@ -526,7 +526,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.tff.{BinaryConnective => TFFBinaryConnective}
   protected[parsers] def processTFFBinaryConn(conn: TFFBinaryConnective): HOLBinaryConnective = {
     import leo.datastructures.tptp.tff.{<=> => TFFEquiv, Impl => TFFImpl, <= => TFFIf, | => TFFOr, & => TFFAnd, ~| => TFFNor, ~& => TFFNand, <~> => TFFNiff}
-    import leo.datastructures.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
+    import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
 
     conn match {
       case TFFEquiv => equiv
@@ -543,7 +543,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.tff.{UnaryConnective => TFFUnaryConnective}
   protected[parsers] def processTFFUnary(conn: TFFUnaryConnective): HOLUnaryConnective = {
     import leo.datastructures.tptp.tff.{Not => TFFNot}
-    import leo.datastructures.{Not => not}
+    import leo.modules.HOLSignature.{Not => not}
 
     conn match {
       case TFFNot => not
@@ -553,7 +553,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.tff.{Quantifier => TFFQuantifier}
   protected[parsers] def processTFFUnary(conn: TFFQuantifier): HOLUnaryConnective = {
     import leo.datastructures.tptp.tff.{! => TFFAll, ? => TFFAny}
-    import leo.datastructures.{Forall => forall, Exists => exists}
+    import leo.modules.HOLSignature.{Forall => forall, Exists => exists}
 
     conn match {
       case TFFAll => forall
@@ -651,7 +651,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case Unary(conn, f) => processFOFUnary(conn).apply(processFOF0(sig)(f, replaces))
       case Quantified(q, varList, matrix) => {
         val quantifier = processFOFUnary(q)
-        val processedVars = varList.map((_, HOLSignature.i))
+        val processedVars = varList.map((_, i))
         val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
           case (name, ty) => termMapping(repl).get(name) match {
             case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
@@ -663,7 +663,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Inequality(left,right) => {
         val (l,r) = (processTermArgs(sig)(left, replaces),processTermArgs(sig)(right, replaces))
-        !===(l,r)
+        leo.modules.HOLSignature.!===(l,r)
       }
     }
   }
@@ -671,7 +671,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.fof.{BinaryConnective => FOFBinaryConnective}
   protected[parsers] def processFOFBinaryConn(conn: FOFBinaryConnective): HOLBinaryConnective = {
     import leo.datastructures.tptp.fof.{<=> => FOFEquiv, Impl => FOFImpl, <= => FOFIf, | => FOFOr, & => FOFAnd, ~| => FOFNor, ~& => FOFNand, <~> => FOFNiff}
-    import leo.datastructures.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
+    import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff}
 
     conn match {
       case FOFEquiv => equiv
@@ -688,7 +688,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.fof.{UnaryConnective => FOFUnaryConnective}
   protected[parsers] def processFOFUnary(conn: FOFUnaryConnective): HOLUnaryConnective = {
     import leo.datastructures.tptp.fof.{Not => FOFNot}
-    import leo.datastructures.{Not => not}
+    import leo.modules.HOLSignature.{Not => not}
 
     conn match {
       case FOFNot => not
@@ -698,7 +698,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.fof.{Quantifier => FOFQuantifier}
   protected[parsers] def processFOFUnary(conn: FOFQuantifier): HOLUnaryConnective = {
     import leo.datastructures.tptp.fof.{! => FOFAll, ? => FOFAny}
-    import leo.datastructures.{Forall => forall, Exists => exists}
+    import leo.modules.HOLSignature.{Forall => forall, Exists => exists}
 
     conn match {
       case FOFAll => forall
@@ -744,7 +744,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       if (sig.exists(name) || !adHocDefs) {
         mkTermApp(mkAtom(sig(name).key), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => HOLSignature.i), HOLSignature.i))), converted)
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), i))), converted)
       }
     }
     case other => processTerm(sig)(other, replace, adHocDefs)
@@ -756,11 +756,15 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       if (sig.exists(name) || !adHocDefs) {
         mkTermApp(mkAtom(sig(name).key), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => HOLSignature.i), HOLSignature.o))), converted)
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), o))), converted)
       }
 
     }
     case DefinedFunc(name, vars) => {
+      import leo.modules.HOLSignature.{HOLUnaryMinus, HOLFloor, HOLCeiling, HOLTruncate, HOLRound, HOLToInt, HOLToRat, HOLToReal}
+      import leo.modules.HOLSignature.{HOLIsRat, HOLIsInt, HOLLess, HOLLessEq, HOLGreater, HOLGreaterEq, HOLSum, HOLDifference}
+      import leo.modules.HOLSignature.{HOLProduct, HOLQuotient, HOLQuotientE, HOLQuotientF, HOLQuotientT, HOLRemainderE}
+      import leo.modules.HOLSignature.{HOLRemainderF, HOLRemainderT}
       if (sig(name)._ty.isPolyType) {
         val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
         // converted only contains terms
@@ -837,9 +841,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
           // languages use ad-hoc definitions of symbols
           // Here, we must use type $i for numbers of all kinds
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, HOLSignature.i))
+            mkAtom(sig.addUninterpreted(constName, i))
           } else {
-            mkAtom(sig.addUninterpreted(constName, HOLSignature.int))
+            mkAtom(sig.addUninterpreted(constName, int))
           }
 
         }
@@ -851,9 +855,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         } else {
           // See note above
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, HOLSignature.i))
+            mkAtom(sig.addUninterpreted(constName, i))
           } else {
-            mkAtom(sig.addUninterpreted(constName, HOLSignature.real))
+            mkAtom(sig.addUninterpreted(constName, real))
           }
         }
       }
@@ -864,9 +868,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         } else {
           // See note above
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, HOLSignature.i))
+            mkAtom(sig.addUninterpreted(constName, i))
           } else {
-            mkAtom(sig.addUninterpreted(constName, HOLSignature.rat))
+            mkAtom(sig.addUninterpreted(constName, rat))
           }
         }
       }
@@ -875,10 +879,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
                             if (sig.exists("\""+data+"\"")) {
                               mkAtom(sig.apply("\""+data+"\"").key)
                             } else {
-                              mkAtom(sig.addUninterpreted("\""+data+"\"", HOLSignature.i))
+                              mkAtom(sig.addUninterpreted("\""+data+"\"", i))
                             }
     case Cond(cond, thn, els) => {
-      import leo.datastructures.IF_THEN_ELSE
       IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace, adHocDefs),processTerm(sig)(els, replace, adHocDefs))
     }
     case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
@@ -889,7 +892,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
     case DefinedPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case SystemPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case Equality(left,right) => {
-      import leo.datastructures.===
+      import leo.modules.HOLSignature.===
       ===(processTermArgs(sig)(left, replace, adHocDefs),processTermArgs(sig)(right, replace, adHocDefs))
     }
   }

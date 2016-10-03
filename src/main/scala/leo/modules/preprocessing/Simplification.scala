@@ -1,9 +1,8 @@
 package leo.modules.preprocessing
 
-import leo.Configuration
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.SignatureImpl$
+import leo.modules.HOLSignature.{Not, ===, LitFalse, LitTrue, &, |||, <=>, Impl, Forall, Exists}
 
 /**
   * Created by mwisnie on 1/5/16.

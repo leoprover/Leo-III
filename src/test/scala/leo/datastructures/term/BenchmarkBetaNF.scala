@@ -5,6 +5,7 @@ import java.io.{File, FileNotFoundException}
 import leo.datastructures._
 import leo.datastructures.impl.{Reductions, SignatureImpl}
 import Term.{mkTermApp => ap, mkTypeApp => tyAp}
+import leo.modules.HOLSignature.LitTrue
 
 /**
  * Created by lex on 13.08.14.

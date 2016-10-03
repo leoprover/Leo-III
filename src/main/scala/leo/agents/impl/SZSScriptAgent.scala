@@ -6,6 +6,7 @@ import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
 import leo.datastructures.context.Context
 import leo.datastructures._
 import leo.datastructures.blackboard._
+import leo.modules.HOLSignature.{LitTrue, Not, |||}
 import leo.modules.calculus.CalculusRule
 import leo.modules.output._
 import leo.modules.output.logger.Out

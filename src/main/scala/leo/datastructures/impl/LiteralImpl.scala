@@ -1,6 +1,7 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{LitFalse, LitTrue, Term, Literal}
+import leo.datastructures.{Term, Literal}
+import leo.modules.HOLSignature.{LitFalse, LitTrue}
 
 
 protected[impl] sealed abstract class LiteralImpl extends Literal {
@@ -56,7 +57,7 @@ object LiteralImpl {
       *         where `s ≡ left and t ≡ right`. If `!equational` the equality may
       *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ true`). */
     lazy val term: Term = {
-      import leo.datastructures.{=== => EQ, Not}
+      import leo.modules.HOLSignature.{=== => EQ, Not}
       if (polarity) EQ(left,right) else Not(EQ(left,right))
     }
 
@@ -92,7 +93,7 @@ object LiteralImpl {
       *         where `s ≡ left and t ≡ right`. If `!equational` the equality may
       *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ true`). */
     lazy val term: Term = {
-      import leo.datastructures.Not
+      import leo.modules.HOLSignature.Not
       if (polarity) left else Not(left)
     }
 

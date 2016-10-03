@@ -3,6 +3,7 @@ package leo.modules.preprocessing
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.impl.SignatureImpl
+import leo.modules.HOLSignature.{LitFalse, LitTrue, Forall, Exists, &, |||, Not, Impl}
 import leo.modules.calculus.CalculusRule
 
 import scala.collection.mutable

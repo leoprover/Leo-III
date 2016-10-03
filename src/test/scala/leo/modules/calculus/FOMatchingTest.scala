@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import Term._
-import HOLSignature.{i,o}
+import leo.modules.HOLSignature.{i,o, LitTrue}
 
 /**
   * Created by lex on 6/6/16.
@@ -175,7 +175,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("(f(a) = x) = (f(a) = g(a))", Checked){
-    import leo.datastructures.{=== => EQ}
+    import leo.modules.HOLSignature.{=== => EQ}
 
     val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
@@ -194,7 +194,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("(p(a) = true) = (f(a) = g(a))", Checked){
-    import leo.datastructures.{=== => EQ}
+    import leo.modules.HOLSignature.{=== => EQ}
 
     val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))

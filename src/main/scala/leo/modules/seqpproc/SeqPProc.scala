@@ -6,6 +6,7 @@ import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 import ClauseAnnotation._
 import leo.modules.output._
+import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
 
 

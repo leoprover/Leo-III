@@ -9,8 +9,8 @@ import leo.LeoTestSuite
  */
 class TermTestSuite extends LeoTestSuite {
   // Meta variable instantiation test
-  import Term.{λ, intToBoundVar, mkMetaVar, mkAtom}
-  import HOLSignature.{i,o}
+  import Term.{λ, intToBoundVar, mkAtom}
+  import leo.modules.HOLSignature.{i,o}
   import leo.Checked
   import impl.SignatureImpl
 

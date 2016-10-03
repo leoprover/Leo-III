@@ -4,7 +4,7 @@ import leo.modules.preprocessing.PrenexNormal
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import Term._
-import HOLSignature.o
+import leo.modules.HOLSignature.{o, Forall, &}
 
 /**
  * Created by ryu on 6/17/14.

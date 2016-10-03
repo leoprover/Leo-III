@@ -297,23 +297,25 @@ object Term extends TermBank {
 
   /** FOF-compatible (unsorted) first order logic subset. */
   def firstOrder(t: Term): Boolean = {
-    val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
-    val tys = Set(HOLSignature.i, HOLSignature.o)
+    import leo.modules.HOLSignature.{===, !===, i, o, Forall, Exists}
+    val polyOps = Set(===.key, !===.key)
+    val tys = Set(i, o)
 
     t match {
-      case Forall(ty :::> body) => ty == HOLSignature.i && firstOrder(body)
-      case Exists(ty :::> body) => ty == HOLSignature.i && firstOrder(body)
-      case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get == HOLSignature.i && sp.tail.forall(_.fold(t => t.ty == HOLSignature.i && firstOrder(t), _ => false))
+      case Forall(ty :::> body) => ty == i && firstOrder(body)
+      case Exists(ty :::> body) => ty == i && firstOrder(body)
+      case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get == i && sp.tail.forall(_.fold(t => t.ty == i && firstOrder(t), _ => false))
       case h ∙ sp  => sp.forall(_.fold(t => tys.contains(t.ty) && firstOrder(t),_ => false))
       case ty :::> body => false
       case TypeLambda(_) => false
-      case Bound(ty, sc) => ty == HOLSignature.i
+      case Bound(ty, sc) => ty == i
       case Symbol(key) => tys.contains(SignatureImpl.get(key)._ty)
     }}
 
   /** Many sorted-first order logic subset. */
   def manySortedFirstOrder(t: Term): Boolean = {
-    val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
+    import leo.modules.HOLSignature.{===, !===, Forall, Exists}
+    val polyOps = Set(===.key, !===.key)
 
     t match {
       case Forall(ty :::> body) => ty.isBaseType && manySortedFirstOrder(body)

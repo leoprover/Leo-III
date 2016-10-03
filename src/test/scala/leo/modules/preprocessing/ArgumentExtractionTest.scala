@@ -1,8 +1,8 @@
 package leo.modules.preprocessing
 
-import leo.datastructures.{&, |||, Term}
+import leo.datastructures.Term
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.HOLSignature.{i,o}
+import leo.modules.HOLSignature.{i,o, &, |||}
 
 /**
   * Created by mwisnie on 1/5/16.

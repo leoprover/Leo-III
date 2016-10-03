@@ -1,6 +1,6 @@
 package leo.modules.output
 
-import leo.datastructures.{ClauseProxy, HOLSignature}
+import leo.datastructures.ClauseProxy
 
 /**
   * Created by lex on 03.09.16.
@@ -52,10 +52,10 @@ object ToTFF {
 
   private final def formulaToTFF(fvs: Seq[(Int, Type)], t: Term): String = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
-    import leo.datastructures.{Forall, Exists}
     import leo.datastructures.impl.SignatureImpl
+    import leo.modules.HOLSignature.{o, Forall, Exists}
 
-    if (t.ty != HOLSignature.o) throw new IllegalArgumentException
+    if (t.ty != o) throw new IllegalArgumentException
 
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
@@ -99,7 +99,8 @@ object ToTFF {
   }
 
   private final def termToTFF(fvs: Seq[(Int, Type)], t: Term): String = {
-    if (t.ty == HOLSignature.o) throw new IllegalArgumentException
+    import leo.modules.HOLSignature.o
+    if (t.ty == o) throw new IllegalArgumentException
 
     import leo.datastructures.Term.{TermApp, Symbol, Bound}
     import leo.datastructures.impl.SignatureImpl

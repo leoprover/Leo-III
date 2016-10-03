@@ -3,7 +3,7 @@ package leo.modules.normalization
 import leo.modules.preprocessing.NegationNormal
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
-import HOLSignature.{i,o}
+import leo.modules.HOLSignature.{o, Not, Impl, <=>, &, |||, Forall, Exists}
 import Term._
 
 /**

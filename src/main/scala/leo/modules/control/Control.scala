@@ -1,6 +1,6 @@
-package leo
-package modules.seqpproc
+package leo.modules.control
 
+import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.impl.SignatureImpl
 
@@ -43,7 +43,7 @@ object Control {
   @inline final def fvIndexRemove(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.remove(cl)
   @inline final def fvIndexRemove(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.remove(cls)
   @inline final def foIndexInit(): Unit = indexingControl.FOIndexControl.foIndexInit()
-  @inline final def foIndex: modules.indexing.FOIndex = indexingControl.FOIndexControl.index
+  @inline final def foIndex: leo.modules.indexing.FOIndex = indexingControl.FOIndexControl.index
   // External prover call
   @inline final def callExternalLeoII(clauses: Set[AnnotatedClause]) = externalProverControl.ExternalLEOIIControl.call(clauses)
 }
@@ -452,6 +452,7 @@ package inferenceControl {
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
+    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
 
     val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)//, Term.mkTypeApp(Forall, Signature.get.i))
     def eqBindings(tys: Seq[Type]): Set[Term] = {
@@ -532,6 +533,7 @@ package inferenceControl {
 
   protected[modules] object SimplificationControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
+    import leo.modules.HOLSignature.Not
 
     final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = {
       val litsIt = cl.cl.lits.iterator
@@ -812,7 +814,7 @@ package inferenceControl {
 
 package redundancyControl {
 
-  import leo.modules.seqpproc.indexingControl.FVIndexControl
+  import leo.modules.control.indexingControl.FVIndexControl
 
   object SubsumptionControl {
     import leo.modules.calculus.Subsumption
@@ -888,8 +890,6 @@ package redundancyControl {
 }
 
 package indexingControl {
-
-  import leo.datastructures.impl.SignatureImpl$
 
   object FVIndexControl {
     import leo.datastructures.Clause
@@ -980,6 +980,7 @@ package  externalProverControl {
 
   import leo.datastructures.ClauseAnnotation.NoAnnotation
   import leo.datastructures._
+  import leo.modules.HOLSignature.LitFalse
   import leo.modules.external._
   import leo.modules.output._
 

@@ -5,7 +5,7 @@ import leo.datastructures._
 
 import leo.modules.preprocessing.Simplification
 import Term._
-import HOLSignature.o
+import leo.modules.HOLSignature.{o, Not, LitFalse, LitTrue, &, |||, <=>, Forall, Exists, Impl}
 
 /**
  * Created by Max Wisniewski on 6/10/14.

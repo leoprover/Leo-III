@@ -203,13 +203,17 @@ package object datastructures {
   }
   @inline final def addMaps[A](map1: Map[A, Int], map2: Map[A, Int]): Map[A, Int] = mergeMapsBy(map1,map2,(a:Int,b:Int) => a+b)(0)
 
-  import leo.datastructures.Term.λ
   // Further utility functions
-  final def mkDisjunction(terms: Seq[Term]): Term = terms match {
-    case Seq() => LitFalse()
-    case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
+  final def mkDisjunction(terms: Seq[Term]): Term = {
+    import leo.modules.HOLSignature.{LitFalse, |||}
+    terms match {
+      case Seq() => LitFalse()
+      case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
+    }
   }
   final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
+    import leo.datastructures.Term.λ
+    import leo.modules.HOLSignature.Forall
     bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
   }
 }

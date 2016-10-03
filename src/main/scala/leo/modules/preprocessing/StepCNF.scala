@@ -2,6 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term.:::>
 import leo.datastructures._
+import leo.modules.HOLSignature.{Not, |||, &, Impl, Forall, Exists}
 import leo.modules.calculus._
 import leo.modules.output.SZS_Theorem
 

@@ -4,8 +4,8 @@ import leo._
 import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures.impl.orderings.TO_CPO_Naive
 import leo.modules.output.Output
-import leo.datastructures.Term.{:::>}
-import leo.datastructures.{=== => EQ}
+import leo.datastructures.Term.:::>
+import leo.modules.HOLSignature.{=== => EQ, Forall, Exists, LitTrue}
 import leo.modules.{Parsing, SZSException, Utility}
 
 /**

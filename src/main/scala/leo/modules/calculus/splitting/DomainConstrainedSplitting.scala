@@ -7,7 +7,7 @@ import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures._
 import Term._
 import leo.datastructures._
-import leo.datastructures.context.Context
+import leo.modules.HOLSignature.{===, |||, Forall, &, Not, Exists}
 
 /**
  *

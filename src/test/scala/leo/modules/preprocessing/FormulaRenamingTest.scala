@@ -3,7 +3,7 @@ package leo.modules.preprocessing
 import leo.datastructures._
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.impl.SignatureImpl
-import leo.datastructures.HOLSignature.o
+import leo.modules.HOLSignature.{o, |||, <=>, &}
 
 /**
   * Created by mwisnie on 1/13/16.

@@ -252,7 +252,7 @@ trait Signature {
 object Signature {
   type SymbProp = Int
   final val PropNoProp: SymbProp = 0
-  final protected[datastructures] val PropStatus: SymbProp = 1 /* Lexstatus if set. Multstatus otherwise */
+  final val PropStatus: SymbProp = 1 /* Lexstatus if set. Multstatus otherwise */
   final val PropAssociative: SymbProp = 2
   final val PropCommutative: SymbProp = 4
   final val PropAC: SymbProp = PropAssociative | PropCommutative

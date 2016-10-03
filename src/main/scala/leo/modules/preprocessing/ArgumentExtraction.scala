@@ -3,8 +3,8 @@ package leo.modules.preprocessing
 import leo.datastructures.Term._
 import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
+import leo.modules.HOLSignature.o
 import leo.modules.calculus.CalculusRule
-import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 
@@ -127,7 +127,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
 
   private def shouldExtract(t : Term) : Boolean = {
     val s = SignatureImpl.get
-    if(t.ty.funParamTypesWithResultType.last != HOLSignature.o) return false
+    if(t.ty.funParamTypesWithResultType.last != o) return false
 
     if(t.isConstant) return false
 

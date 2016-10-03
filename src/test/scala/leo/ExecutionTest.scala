@@ -1,6 +1,7 @@
 package leo
 
-import leo.datastructures.{=== => EQUALS, _}
+import leo.modules.HOLSignature.{=== => EQUALS, _}
+import leo.datastructures.{Signature, Term, Clause, Literal, Derived}
 import Term.{mkAtom, mkTermApp => ap}
 import leo.modules.Numerals
 import Numerals.fromInt

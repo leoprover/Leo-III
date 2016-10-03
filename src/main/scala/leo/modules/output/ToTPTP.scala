@@ -5,6 +5,7 @@ import leo.datastructures.impl.SignatureImpl
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
+import leo.modules.HOLSignature.{LitTrue, LitFalse, |||, &, Not, Forall, Exists, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec

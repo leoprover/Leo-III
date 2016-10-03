@@ -9,8 +9,8 @@ import leo.datastructures.ClauseAnnotation.NoAnnotation
 
 import leo.datastructures.context.Context
 import leo.modules._
-import leo.datastructures.Term.{:::>}
-import leo.datastructures.{=== => EQ}
+import leo.datastructures.Term.:::>
+import leo.modules.HOLSignature.{=== => EQ, Forall, Exists, LitTrue}
 
 /**
  * Created by lex on 10/27/15.

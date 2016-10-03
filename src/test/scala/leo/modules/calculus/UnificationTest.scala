@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import Term._
-import HOLSignature.{i,o}
+import leo.modules.HOLSignature.{i,o, Not}
 
 /**
  * TOTEST all huets rules
