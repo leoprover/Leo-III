@@ -8,7 +8,8 @@ import leo.{Checked, LeoTestSuite}
  * @author Alexander Steen
  * @since 05.05.2014
  */
-class HOLSignatureTest extends LeoTestSuite with HOLSignature {
+class HOLSignatureTest extends LeoTestSuite {
+  import leo.datastructures.HOLSignature._
   test("Cardinality of fixed symbols",Checked) {
     assertResult(36)(fixedConsts.length)
   }

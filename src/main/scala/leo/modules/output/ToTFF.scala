@@ -1,6 +1,6 @@
 package leo.modules.output
 
-import leo.datastructures.ClauseProxy
+import leo.datastructures.{ClauseProxy, HOLSignature}
 
 /**
   * Created by lex on 03.09.16.
@@ -52,25 +52,23 @@ object ToTFF {
 
   private final def formulaToTFF(fvs: Seq[(Int, Type)], t: Term): String = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
-    import leo.datastructures.{Forall, Exists, ===, !===}
+    import leo.datastructures.{Forall, Exists}
     import leo.datastructures.impl.SignatureImpl
 
-    if (t.ty != SignatureImpl.get.o) throw new IllegalArgumentException
+    if (t.ty != HOLSignature.o) throw new IllegalArgumentException
 
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
     t match {
-      case Forall(_ :::> body) => {
+      case Forall(_ :::> body) =>
         val bodyRes = formulaToTFF(fvs, body)
         s"!" // TODO
         throw new IllegalArgumentException
-      }
-      case Exists(_ :::> body) => {
+      case Exists(_ :::> body) =>
         val bodyRes = formulaToTFF(fvs, body)
         s"?" // TODO
         throw new IllegalArgumentException
-      }
-      case TermApp(hd, args) => {
+      case TermApp(hd, args) =>
         hd match {
           case Symbol(id) => if (interpretedSymbols.contains(id)) {
             val meta = SignatureImpl.get(id)
@@ -78,7 +76,7 @@ object ToTFF {
             val argCount = meta._ty.arity
             assert(argCount <= 2)
             assert(argCount == args.size)
-            if (args.size == 0) {
+            if (args.isEmpty) {
               meta.name
             } else if (args.size == 1) {
               s"${meta.name} (${formulaToTFF(fvs,args.head)})"
@@ -96,13 +94,12 @@ object ToTFF {
           }
           case _ => throw new IllegalArgumentException
         }
-      }
       case _ => throw new IllegalArgumentException
     }
   }
 
   private final def termToTFF(fvs: Seq[(Int, Type)], t: Term): String = {
-    if (t.ty == leo.datastructures.impl.SignatureImpl.get.o) throw new IllegalArgumentException
+    if (t.ty == HOLSignature.o) throw new IllegalArgumentException
 
     import leo.datastructures.Term.{TermApp, Symbol, Bound}
     import leo.datastructures.impl.SignatureImpl
@@ -110,7 +107,7 @@ object ToTFF {
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
     t match {
       case Bound(_, scope) => intToName(scope-1)
-      case TermApp(hd, args) => {
+      case TermApp(hd, args) =>
         hd match {
           case Symbol(id) => if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
           else {
@@ -119,7 +116,6 @@ object ToTFF {
           }
           case _ => throw new IllegalArgumentException
         }
-      }
       case _ => throw new IllegalArgumentException
     }
   }
@@ -131,11 +127,10 @@ object ToTFF {
     ty match {
       case BoundType(scope) => "T"+intToName(scope)
       case BaseType(id) => sig(id).name
-      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF(_)).mkString(",")})"
-      case _ -> _ => {
+      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF).mkString(",")})"
+      case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
         s"((${paramTypes.init.map(typeToTFF).mkString(" * ")}) > ${typeToTFF(paramTypes.last)})"
-      }
       case _ => throw new IllegalArgumentException
     }
   }

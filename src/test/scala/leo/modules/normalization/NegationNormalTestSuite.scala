@@ -3,8 +3,7 @@ package leo.modules.normalization
 import leo.modules.preprocessing.NegationNormal
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
-
-
+import HOLSignature.{i,o}
 import Term._
 
 /**
@@ -13,8 +12,8 @@ import Term._
 class NegationNormalTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 
-  val p = mkAtom(s.addUninterpreted("r", s.o))
-  val q = mkAtom(s.addUninterpreted("s", s.o))
+  val p = mkAtom(s.addUninterpreted("r", o))
+  val q = mkAtom(s.addUninterpreted("s", o))
 
   val toNorm : Map[Term,Term] = Map[Term, Term](
     (Not(Not(p)), p),
@@ -23,8 +22,8 @@ class NegationNormalTestSuite extends LeoTestSuite {
     (<=>(p,q), &(|||(Not(p),q),|||(Not(q),p))),
     (Not(&(p,q)), |||(Not(p),Not(q))),
     (Not(|||(p,q)), &(Not(p),Not(q))),
-    (Not(Forall(mkTermAbs(s.o, p))), Exists(mkTermAbs(s.o, Not(p)))),
-    (Not(Exists(mkTermAbs(s.o, p))), Forall(mkTermAbs(s.o, Not(p))))
+    (Not(Forall(mkTermAbs(o, p))), Exists(mkTermAbs(o, Not(p)))),
+    (Not(Exists(mkTermAbs(o, p))), Forall(mkTermAbs(o, Not(p))))
   )
 
 //  println("\n------------------\nNegation Normalform Test.\n---------------------")

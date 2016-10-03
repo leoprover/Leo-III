@@ -127,7 +127,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
 
   private def shouldExtract(t : Term) : Boolean = {
     val s = SignatureImpl.get
-    if(t.ty.funParamTypesWithResultType.last != s.o) return false
+    if(t.ty.funParamTypesWithResultType.last != HOLSignature.o) return false
 
     if(t.isConstant) return false
 

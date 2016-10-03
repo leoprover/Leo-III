@@ -13,7 +13,7 @@ import leo.datastructures.{HOLSignature, Signature, Kind, Type, Term}
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-abstract sealed class SignatureImpl extends Signature with HOLSignature with Function1[Int, Signature#Meta] {
+abstract sealed class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
   protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
@@ -257,15 +257,15 @@ object SignatureImpl {
 
   /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
   def withHOL(sig: SignatureImpl): SignatureImpl = {
-    for ((name, k) <- sig.types) {
+    for ((name, k) <- HOLSignature.types) {
       sig.addFixedTypeConstructor(name, k)
     }
 
-    for ((name, ty, flag) <- sig.fixedConsts) {
+    for ((name, ty, flag) <- HOLSignature.fixedConsts) {
       sig.addFixed(name, ty, None, flag | Signature.PropFixed)
     }
 
-    for ((name, fed, ty, flag) <- sig.definedConsts) {
+    for ((name, fed, ty, flag) <- HOLSignature.definedConsts) {
       sig.addFixed(name, ty, Some(fed), flag | Signature.PropFixed)
     }
    sig

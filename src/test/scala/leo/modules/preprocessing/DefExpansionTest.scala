@@ -1,6 +1,6 @@
 package leo.modules.preprocessing
 
-import leo.datastructures.{<=>, Term}
+import leo.datastructures.{<=>, HOLSignature, Term}
 import leo.datastructures.impl.SignatureImpl
 import leo.{Checked, LeoTestSuite}
 
@@ -10,8 +10,8 @@ import leo.{Checked, LeoTestSuite}
 class DefExpansionTest extends LeoTestSuite{
   implicit val s = SignatureImpl.get
   test("DefExpansion Equivalenz", Checked) {
-    val a = Term.mkAtom(s.addUninterpreted("a",s.o))
-    val b = Term.mkAtom(s.addUninterpreted("b",s.o))
+    val a = Term.mkAtom(s.addUninterpreted("a",HOLSignature.o))
+    val b = Term.mkAtom(s.addUninterpreted("b",HOLSignature.o))
 
     val t = <=>(a,b)
 

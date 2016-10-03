@@ -5,13 +5,13 @@ import Type.{superKind, typeKind, typeVarToType}
 
 import scala.language.implicitConversions
 
-/** This type can be mixed-in to supply standard higher-order logic symbol definitions, including
+/** HOL supplies standard higher-order logic symbol definitions, including
  *
  *  1. Fixed (interpreted) symbols
  *  2. Defined symbols
  *  3. Standard base types
  *
- * These symbols must be inserted into the signature before all other symbols and in the order described below.
+ * These symbols must be inserted into the signature for all HOL reasoning aspects to work.
  *
  * Details:
  * It defines eight fixed symbols ($true, $false, #box, #diamond, ~, !, |, =),
@@ -19,29 +19,75 @@ import scala.language.implicitConversions
  * @author Alexander Steen
  * @since 02.05.2014
  * @note Updated 24.June 2014: Added remaining connectives from TPTP: ~|,~&, <~>
-  *                            Added trait for binary/unary connectives
+ *                            Added trait for binary/unary connectives
+ * @note Oct. 2016: Reworked to object
  */
-trait HOLSignature {
-  ////////////////////////////////
-  // Hard wired fixed keys
-  ////////////////////////////////
-  val oKey = 1
-  val o = Type.mkType(oKey)
+object HOLSignature {
+  ////////////////////
+  // Systematic enumeration f signature symbols for easier changes later on
+  ////////////////////
+  private[datastructures] final val oKey = 1
+  private[datastructures] final val iKey = 2
+  private[datastructures] final val realKey = 3
+  private[datastructures] final val ratKey = 4
+  private[datastructures] final val intKey = 5
+  private[datastructures] final val trueKey = 6
+  private[datastructures] final val falseKey = trueKey + 1
+  private[datastructures] final val boxKey = falseKey + 1
+  private[datastructures] final val diamondKey = boxKey + 1
+  private[datastructures] final val notKey = diamondKey + 1
+  private[datastructures] final val forallKey = notKey + 1
+  private[datastructures] final val orKey = forallKey + 1
+  private[datastructures] final val eqKey = orKey + 1
+  private[datastructures] final val letKey = eqKey + 1
+  private[datastructures] final val iteKey = letKey + 1
+  private[datastructures] final val lessKey = iteKey + 1
+  private[datastructures] final val lessEqKey = lessKey + 1
+  private[datastructures] final val greaterKey =  lessEqKey + 1
+  private[datastructures] final val greaterEqKey = greaterKey + 1
+  private[datastructures] final val choiceKey = greaterEqKey + 1
+  private[datastructures] final val descKey = choiceKey + 1
 
-  val iKey = 2
-  val i = Type.mkType(iKey)
+  private[datastructures] final val uminusKey = descKey + 1
+  private[datastructures] final val sumKey = uminusKey + 1
+  private[datastructures] final val diffKey = sumKey + 1
+  private[datastructures] final val prodKey = diffKey + 1
+  private[datastructures] final val quotKey = prodKey + 1
+  private[datastructures] final val quotEKey = quotKey + 1
+  private[datastructures] final val quotTKey = quotEKey + 1
+  private[datastructures] final val quotFKey = quotTKey + 1
+  private[datastructures] final val remainderEKey = quotFKey + 1
+  private[datastructures] final val remainderTKey = remainderEKey + 1
+  private[datastructures] final val remainderFKey = remainderTKey +1
+  private[datastructures] final val floorKey = remainderFKey + 1
+  private[datastructures] final val ceilKey = floorKey + 1
+  private[datastructures] final val truncateKey = ceilKey +1
+  private[datastructures] final val roundKey = truncateKey + 1
+  private[datastructures] final val toIntKey = roundKey + 1
+  private[datastructures] final val toRatKey = toIntKey +1
+  private[datastructures] final val toRealKey = toRatKey + 1
+  private[datastructures] final val isRatKey = toRealKey + 1
+  private[datastructures] final val isIntKey = isRatKey + 1
 
-  val realKey = 3
-  val real = Type.mkType(realKey)
+  private[datastructures] final val existsKey = isIntKey + 1
+  private[datastructures] final val andKey = existsKey + 1
+  private[datastructures] final val implKey = andKey + 1
+  private[datastructures] final val ifKey = implKey + 1
+  private[datastructures] final val iffKey = ifKey + 1
+  private[datastructures] final val nandKey = iffKey + 1
+  private[datastructures] final val norKey = nandKey + 1
+  private[datastructures] final val niffKey = norKey + 1
+  private[datastructures] final val neqKey = niffKey + 1
 
-  val ratKey = 4
-  val rat = Type.mkType(ratKey)
+  /** The last id that was used by predefined HOL symbols. Keep up to date!*/
+  val lastId = neqKey
 
-  val intKey = 5
-  val int = Type.mkType(intKey)
+  final val o = Type.mkType(oKey)
+  final val i = Type.mkType(iKey)
+  final val real = Type.mkType(realKey)
+  final val rat = Type.mkType(ratKey)
+  final val int = Type.mkType(intKey)
 
-  val letKey = HOLSignature.letKey
-  val iteKey = HOLSignature.iteKey
   import Signature.{lexStatus, multStatus}
   val multProp = multStatus*Signature.PropStatus
   val lexProp = lexStatus*Signature.PropStatus
@@ -50,7 +96,7 @@ trait HOLSignature {
   // If you do so, you may need to update the Signature implementation.
 
   // Built-in types
-  val types = List(("$tType", superKind), // Key 0
+  final val types = List(("$tType", superKind), // Key 0
     ("$o", typeKind), // Key 1
     ("$i", typeKind), // Key 2
     ("$real", typeKind), // key 3
@@ -95,8 +141,8 @@ trait HOLSignature {
     ("$to_int",      forall(1 ->: int), multProp), // Key 37
     ("$to_rat",      forall(1 ->: rat), multProp), // Key 38
     ("$to_real",      forall(1 ->: real), multProp), // Key 39
-      ("$is_rat",      forall(1 ->: o), multProp), // Key 40
-      ("$is_int",      forall(1 ->: o), multProp) // Key 41
+    ("$is_rat",      forall(1 ->: o), multProp), // Key 40
+    ("$is_int",      forall(1 ->: o), multProp) // Key 41
   )
 
   // Standard defined symbols
@@ -117,13 +163,13 @@ trait HOLSignature {
   //////////////////////
 
   // Shorthands for later definitions
-  private def not = mkAtom(HOLSignature.notKey)
-  private def all = mkAtom(HOLSignature.forallKey)
-  private def disj = mkAtom(HOLSignature.orKey)
-  private def conj = mkAtom(HOLSignature.andKey)
-  private def impl = mkAtom(HOLSignature.implKey)
-  private def lpmi = mkAtom(HOLSignature.ifKey)
-  private def eq = mkAtom(HOLSignature.eqKey)
+  private final val not = mkAtom(notKey)
+  private final val all = mkAtom(forallKey)
+  private final val disj = mkAtom(orKey)
+  private final val conj = mkAtom(andKey)
+  private final val impl = mkAtom(implKey)
+  private final val lpmi = mkAtom(ifKey)
+  private final val eq = mkAtom(eqKey)
 
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
@@ -190,63 +236,7 @@ trait HOLSignature {
           mkTermApp(
             mkTermApp(Term.mkTypeApp(eq, 1),
               (2, 1)),
-              (1, 1))))))
-}
-
-object HOLSignature {
-  ////////////////////
-  // Systematic enumeration f signature symbols for easier changes later on
-  ////////////////////
-  private[datastructures] val trueKey = 6
-  private[datastructures] val falseKey = trueKey + 1
-  private[datastructures] val boxKey = falseKey + 1
-  private[datastructures] val diamondKey = boxKey + 1
-  private[datastructures] val notKey = diamondKey + 1
-  private[datastructures] val forallKey = notKey + 1
-  private[datastructures] val orKey = forallKey + 1
-  private[datastructures] val eqKey = orKey + 1
-  private[datastructures] val letKey = eqKey + 1
-  private[datastructures] val iteKey = letKey + 1
-  private[datastructures] val lessKey = iteKey + 1
-  private[datastructures] val lessEqKey = lessKey + 1
-  private[datastructures] val greaterKey =  lessEqKey + 1
-  private[datastructures] val greaterEqKey = greaterKey + 1
-  private[datastructures] val choiceKey = greaterEqKey + 1
-  private[datastructures] val descKey = choiceKey + 1
-
-  private[datastructures] val uminusKey = descKey + 1
-  private[datastructures] val sumKey = uminusKey + 1
-  private[datastructures] val diffKey = sumKey + 1
-  private[datastructures] val prodKey = diffKey + 1
-  private[datastructures] val quotKey = prodKey + 1
-  private[datastructures] val quotEKey = quotKey + 1
-  private[datastructures] val quotTKey = quotEKey + 1
-  private[datastructures] val quotFKey = quotTKey + 1
-  private[datastructures] val remainderEKey = quotFKey + 1
-  private[datastructures] val remainderTKey = remainderEKey + 1
-  private[datastructures] val remainderFKey = remainderTKey +1
-  private[datastructures] val floorKey = remainderFKey + 1
-  private[datastructures] val ceilKey = floorKey + 1
-  private[datastructures] val truncateKey = ceilKey +1
-  private[datastructures] val roundKey = truncateKey + 1
-  private[datastructures] val toIntKey = roundKey + 1
-  private[datastructures] val toRatKey = toIntKey +1
-  private[datastructures] val toRealKey = toRatKey + 1
-  private[datastructures] val isRatKey = toRealKey + 1
-  private[datastructures] val isIntKey = isRatKey + 1
-
-  private[datastructures] val existsKey = isIntKey + 1
-  private[datastructures] val andKey = existsKey + 1
-  private[datastructures] val implKey = andKey + 1
-  private[datastructures] val ifKey = implKey + 1
-  private[datastructures] val iffKey = ifKey + 1
-  private[datastructures] val nandKey = iffKey + 1
-  private[datastructures] val norKey = nandKey + 1
-  private[datastructures] val niffKey = norKey + 1
-  private[datastructures] val neqKey = niffKey + 1
-
-  /** The last id that was used by predefined HOL symbols. Keep up to date!*/
-  val lastId = neqKey
+            (1, 1))))))
 }
 
 /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */

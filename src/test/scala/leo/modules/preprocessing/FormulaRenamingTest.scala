@@ -3,6 +3,7 @@ package leo.modules.preprocessing
 import leo.datastructures._
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.impl.SignatureImpl
+import leo.datastructures.HOLSignature.o
 
 /**
   * Created by mwisnie on 1/13/16.
@@ -12,9 +13,9 @@ class FormulaRenamingTest extends LeoTestSuite {
 
   test("CNF_Size Test 1", Checked){
     FormulaRenaming.clearUnitStore()
-    val ka = s.addUninterpreted("a", s.o)
+    val ka = s.addUninterpreted("a", o)
     val a = Term.mkAtom(ka)
-    val kb = s.addUninterpreted("b", s.o)
+    val kb = s.addUninterpreted("b", o)
     val b = Term.mkAtom(kb)
 
     val t = |||(|||(|||(a,b),|||(a,b)), a)
@@ -25,9 +26,9 @@ class FormulaRenamingTest extends LeoTestSuite {
 
   test("CNF_Size Test 2", Checked){
     FormulaRenaming.clearUnitStore()
-    val ka = s.addUninterpreted("a", s.o)
+    val ka = s.addUninterpreted("a", o)
     val a = Term.mkAtom(ka)
-    val kb = s.addUninterpreted("b", s.o)
+    val kb = s.addUninterpreted("b", o)
     val b = Term.mkAtom(kb)
 
     val t = |||(&(|||(a,b),|||(a,b)), &(a,b))
@@ -38,9 +39,9 @@ class FormulaRenamingTest extends LeoTestSuite {
 
   test("CNF_Size Test 3", Checked){
     FormulaRenaming.clearUnitStore()
-    val ka = s.addUninterpreted("a", s.o)
+    val ka = s.addUninterpreted("a", o)
     val a = Term.mkAtom(ka)
-    val kb = s.addUninterpreted("b", s.o)
+    val kb = s.addUninterpreted("b", o)
     val b = Term.mkAtom(kb)
 
     val t = <=>(a,b)

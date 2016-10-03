@@ -2,10 +2,9 @@ package leo.modules.normalization
 
 import leo.modules.preprocessing.PrenexNormal
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.impl.SignatureImpl$
 import leo.datastructures._
-
 import Term._
+import HOLSignature.o
 
 /**
  * Created by ryu on 6/17/14.
@@ -14,12 +13,12 @@ class PrenexTestSuite extends LeoTestSuite {
 
   val s = getFreshSignature
 
-  val skVar = mkAtom(s.freshSkolemConst(s.o))
+  val skVar = mkAtom(s.freshSkolemConst(o))
 
   val toNorm : Map[Term,Term] = Map[Term, Term](
-    (&(Forall(\(s.o)(mkBound(s.o,1))), skVar), Forall(\(s.o)(&(mkBound(s.o,1), skVar)))),
-    (&(skVar,Forall(\(s.o)(mkBound(s.o,1)))), Forall(\(s.o)(&(skVar,mkBound(s.o,1))))),
-    (&(Forall(\(s.o)(mkBound(s.o,1))),Forall(\(s.o)(mkBound(s.o,1)))), Forall(\(s.o)(Forall(\(s.o)(&(mkBound(s.o,2),mkBound(s.o,1)))))))
+    (&(Forall(\(o)(mkBound(o,1))), skVar), Forall(\(o)(&(mkBound(o,1), skVar)))),
+    (&(skVar,Forall(\(o)(mkBound(o,1)))), Forall(\(o)(&(skVar,mkBound(o,1))))),
+    (&(Forall(\(o)(mkBound(o,1))),Forall(\(o)(mkBound(o,1)))), Forall(\(o)(Forall(\(o)(&(mkBound(o,2),mkBound(o,1)))))))
   )
 
 //  println("\n----------------------\nPrenexNormalform Test.\n--------------------")

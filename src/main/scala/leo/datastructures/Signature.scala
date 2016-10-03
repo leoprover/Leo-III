@@ -262,4 +262,13 @@ object Signature {
 
   final val multStatus: Int = 0
   final val lexStatus: Int = 1
+
+  ////////////////////
+  // Default implementation, SignatureImpl
+  ///////////////////
+  import leo.datastructures.impl.{SignatureImpl => Impl}
+
+  final def fresh(): Signature = Impl.empty
+  final def freshWithHOL(): Signature = Impl.get
+
 }

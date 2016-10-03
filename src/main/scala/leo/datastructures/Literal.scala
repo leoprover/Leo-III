@@ -190,7 +190,7 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
 
   /** Compare two literals of same polarity*/
   private final def cmpSamePol(a: Literal, b: Literal): CMP_Result = {
-    assert(a.polarity == b.polarity);
+    assert(a.polarity == b.polarity)
     assert(a != b) // This should have been catched in `compare`
     // TODO: Improve if oriented
     val (al,ar) = (a.left,a.right)
@@ -246,11 +246,10 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity) else apply(l.left, !l.polarity)
   /** Returns whether the literal is well-typed, i.e. if the underlying terms are well-typed and have the same type. */
   final def wellTyped(l: Literal): Boolean = {
-    import leo.datastructures.impl.SignatureImpl
     import leo.datastructures.Term.{wellTyped => wt}
     if (l.equational) {
       wt(l.left) && wt(l.right) && l.left.ty == l.right.ty
-    } else wt(l.left) && l.left.ty == SignatureImpl.get.o
+    } else wt(l.left) && l.left.ty == HOLSignature.o
   }
 }
 

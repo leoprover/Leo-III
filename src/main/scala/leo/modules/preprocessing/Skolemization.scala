@@ -3,7 +3,6 @@ package leo.modules.preprocessing
 import leo.datastructures.Term._
 import leo.datastructures._
 import leo.datastructures.impl.SignatureImpl
-import leo.datastructures.Type._
 
 /**
  *
@@ -66,7 +65,6 @@ object Skolemization extends Normalization{
       case Exists(s@(ty :::> t))  =>
         val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
       val fv_types = fvs.map(_.ty)
-        import leo.datastructures.impl.SignatureImpl$
         val skConst = Term.mkAtom(SignatureImpl.get.freshSkolemConst(Type.mkFunType(fv_types, ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
 
@@ -83,7 +81,7 @@ object Skolemization extends Normalization{
         skolemize(norm, univBounds)
       case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))
 
-      case Symbol(k) ∙ args if !s.allUserConstants.contains(k) && s(k).ty.fold(false){ty => ty == s.o ->: s.o || ty == s.o ->: s.o ->: s.o}
+      case Symbol(k) ∙ args if !s.allUserConstants.contains(k) && s(k).ty.fold(false){ty => ty == HOLSignature.o ->: HOLSignature.o || ty == HOLSignature.o ->: HOLSignature.o ->: HOLSignature.o}
         => // The symbol is a boolean connective, not defined by the user.
         Term.mkApp(Term.mkAtom(k), args.map(_.fold({t => Left(skolemize(t, univBounds))},Right(_))))
 

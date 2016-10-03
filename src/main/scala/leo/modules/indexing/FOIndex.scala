@@ -1,6 +1,6 @@
 package leo.modules.indexing
 
-import leo.datastructures.ClauseProxy
+import leo.datastructures.{ClauseProxy, HOLSignature}
 import leo.datastructures.impl.SignatureImpl
 
 class FOIndex {
@@ -44,9 +44,8 @@ object FOIndex {
   private final def typedFirstOrderFormula(fvs: Seq[(Int, Type)], t: Term): Boolean = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
     import leo.datastructures.{Forall, Exists, ===, !===}
-    import leo.datastructures.impl.SignatureImpl$
 
-    if (t.ty != SignatureImpl.get.o) return false
+    if (t.ty != HOLSignature.o) return false
 
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
@@ -72,11 +71,10 @@ object FOIndex {
   }
 
   private final def typedFirstOrderTerm(fvs: Seq[(Int, Type)], t: Term): Boolean = {
-    if (t.ty == leo.datastructures.impl.SignatureImpl.get.o) return false
+    if (t.ty == HOLSignature.o) return false
 
     import leo.datastructures.Term.{TermApp, Symbol, Bound}
     import leo.datastructures.{===, !===}
-    import leo.datastructures.impl.SignatureImpl$
 
     val interpretedSymbols = SignatureImpl.get.fixedSymbols // Also contains fixed type ids, but doesnt matter here
     t match {

@@ -211,10 +211,10 @@ object InputProcessing {
         val processedVars = vars.map(_ match { // FIXME: fold like I said two years ago, not map!
           case (name, None) => {
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
             }
-            (name, Left(sig.i))
+            (name, Left(HOLSignature.i))
           }
           case (name, Some(ty)) => convertTHFType(sig)(ty, newReplaces) match {
             case Left(t) => {
@@ -483,10 +483,10 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         val processedVars = vars.map(_ match {
           case (name, None) => {
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(sig.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(HOLSignature.i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
             }
-            (name, Left(sig.i))
+            (name, Left(HOLSignature.i))
           }
           case (name, Some(ty)) => convertTFFType(sig)(ty, newReplaces) match {
             case Left(t) => {
@@ -651,7 +651,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case Unary(conn, f) => processFOFUnary(conn).apply(processFOF0(sig)(f, replaces))
       case Quantified(q, varList, matrix) => {
         val quantifier = processFOFUnary(q)
-        val processedVars = varList.map((_, sig.i))
+        val processedVars = varList.map((_, HOLSignature.i))
         val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
           case (name, ty) => termMapping(repl).get(name) match {
             case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
@@ -744,7 +744,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       if (sig.exists(name) || !adHocDefs) {
         mkTermApp(mkAtom(sig(name).key), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.i))), converted)
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => HOLSignature.i), HOLSignature.i))), converted)
       }
     }
     case other => processTerm(sig)(other, replace, adHocDefs)
@@ -756,7 +756,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       if (sig.exists(name) || !adHocDefs) {
         mkTermApp(mkAtom(sig(name).key), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => sig.i), sig.o))), converted)
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => HOLSignature.i), HOLSignature.o))), converted)
       }
 
     }
@@ -837,9 +837,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
           // languages use ad-hoc definitions of symbols
           // Here, we must use type $i for numbers of all kinds
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, sig.i))
+            mkAtom(sig.addUninterpreted(constName, HOLSignature.i))
           } else {
-            mkAtom(sig.addUninterpreted(constName, sig.int))
+            mkAtom(sig.addUninterpreted(constName, HOLSignature.int))
           }
 
         }
@@ -851,9 +851,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         } else {
           // See note above
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, sig.i))
+            mkAtom(sig.addUninterpreted(constName, HOLSignature.i))
           } else {
-            mkAtom(sig.addUninterpreted(constName, sig.real))
+            mkAtom(sig.addUninterpreted(constName, HOLSignature.real))
           }
         }
       }
@@ -864,9 +864,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         } else {
           // See note above
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, sig.i))
+            mkAtom(sig.addUninterpreted(constName, HOLSignature.i))
           } else {
-            mkAtom(sig.addUninterpreted(constName, sig.rat))
+            mkAtom(sig.addUninterpreted(constName, HOLSignature.rat))
           }
         }
       }
@@ -875,7 +875,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
                             if (sig.exists("\""+data+"\"")) {
                               mkAtom(sig.apply("\""+data+"\"").key)
                             } else {
-                              mkAtom(sig.addUninterpreted("\""+data+"\"", sig.i))
+                              mkAtom(sig.addUninterpreted("\""+data+"\"", HOLSignature.i))
                             }
     case Cond(cond, thn, els) => {
       import leo.datastructures.IF_THEN_ELSE
@@ -905,7 +905,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case (_, Right(_))        => throw new IllegalArgumentException("Formalization of kinds other than * not yet implemented.")
     }
 
-    varList.foldRight(body)(mkPolyHelper(_,_))
+    varList.foldRight(body)(mkPolyHelper)
   }
 
   protected[parsers] def mkPolyQuantifiedFOF(q: HOLUnaryConnective, varList: Seq[(Variable, Type)], body: Term): Term = {
@@ -913,7 +913,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   }
 
   protected[parsers] def mkITE(sig: SignatureImpl)(cond: Term, thn: Term, els: Term): Term = {
-      mkTermApp( mkAtom(sig.iteKey), List(thn,els))
+      IF_THEN_ELSE(cond,thn,els)
   }
 }
 

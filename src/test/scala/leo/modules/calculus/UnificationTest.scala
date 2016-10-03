@@ -2,9 +2,8 @@ package leo.modules.calculus
 
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
-import leo.datastructures.impl.SignatureImpl$
-import scala.collection.immutable.HashMap
 import Term._
+import HOLSignature.{i,o}
 
 /**
  * TOTEST all huets rules
@@ -17,12 +16,12 @@ class UnificationTestSuite extends LeoTestSuite {
   test("f(x,x) = f(a,z)", Checked){
   val s = getFreshSignature
 
-  val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
+  val a = mkAtom(s.addUninterpreted("a", i))
+  val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val z = vargen(s.i)
+    val x = vargen(i)
+    val z = vargen(i)
     val t1 : Term = mkTermApp(f , List(x,x))
     val t2 : Term = mkTermApp(f , List(a,z))
 
@@ -39,15 +38,15 @@ class UnificationTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
-  val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
+  val a = mkAtom(s.addUninterpreted("a",i))
+  val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
 
-    val t1 : Term = mkTermApp(vargen(s.i ->: s.i),a)
+    val t1 : Term = mkTermApp(vargen(i ->: i),a)
     val t2 : Term = mkTermApp(f , List(a,a))
 
     val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
-    val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
+    val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
     // should have 4 unifiers, we need to check they are different from each other
     for( a <- 1 to 4) {
@@ -62,16 +61,16 @@ class UnificationTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
-  val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-  val x = vargen(s.i ->: s.i)
+  val a = mkAtom(s.addUninterpreted("a",i))
+  val f = mkAtom(s.addUninterpreted("f", i ->: i))
+  val x = vargen(i ->: i)
 
     val t1 : Term = mkTermApp(x,mkTermApp(f,a))
     val t2 : Term = mkTermApp(f,mkTermApp(x,a))
 
     val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
-    val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
+    val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
     // should have inf many unifiers, we limit here to 5 since standard unification depth is quite low
     for( a <- 1 to 5) {
@@ -84,16 +83,16 @@ class UnificationTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
-  val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
-  val x = vargen(s.i ->: s.i)
+  val a = mkAtom(s.addUninterpreted("a",i))
+  val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
+  val x = vargen(i ->: i)
 
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,a)))
     val t2 : Term = mkTermApp(f,List(mkTermApp(x,a),mkTermApp(f, List(mkTermApp(f, List(a,a)),a))))
 
     val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
-    val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
+    val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
     // Does it have only 6 unifiers?!
     for( a <- 1 to 1) { // the 7th substitutions fails from some reason
@@ -107,17 +106,17 @@ class UnificationTestSuite extends LeoTestSuite {
   val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
-  val a = mkAtom(s.addUninterpreted("a",s.i))
-  val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
-  val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i ->: s.i))
-  val x = vargen(s.i ->: s.i)
+  val a = mkAtom(s.addUninterpreted("a",i))
+  val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
+  val g = mkAtom(s.addUninterpreted("g", i ->: i ->: i))
+  val x = vargen(i ->: i)
 
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,mkTermApp(g,List(a,a)))))
     val t2 : Term = mkTermApp(f,List(a,mkTermApp(g,List(mkTermApp(x,List(a)),a))))
 
     val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
 
-    val res1 : Term = \(s.i)(mkTermApp(f,List(mkBound(s.i,1), mkBound(s.i,1))))
+    val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
     for( a <- 1 to 2) { // fails for 30 pre-unifiers!
       //reduced to two because of low standard unification depth
@@ -130,11 +129,11 @@ class UnificationTestSuite extends LeoTestSuite {
     val s = getFreshSignature
 
     val vargen = freshVarGenFromBlank
-    val y = vargen(s.i ->: s.o)
-    val ey = vargen(s.i)
+    val y = vargen(i ->: o)
+    val ey = vargen(i)
 
-    val sKf = mkAtom(s.addUninterpreted("skf", s.i ->: s.i ->: s.o))
-    val skX = mkAtom(s.addUninterpreted("skX", (s.i ->: s.o) ->: s.i))
+    val sKf = mkAtom(s.addUninterpreted("skf", i ->: i ->: o))
+    val skX = mkAtom(s.addUninterpreted("skX", (i ->: o) ->: i))
 
     val t1 = mkTermApp(y, Seq(ey))
     println(t1.pretty +" "+ Term.wellTyped(t1))
