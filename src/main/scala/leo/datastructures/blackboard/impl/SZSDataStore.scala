@@ -69,6 +69,6 @@ object SZSDataStore extends DataStore {
 }
 
 case class SZSStore (szsStatus : StatusSZS) {
-  override val toString : String = s"SZSStore(${szsStatus.output})"
+  override val toString : String = s"SZSStore(${szsStatus()})"
 }
 
