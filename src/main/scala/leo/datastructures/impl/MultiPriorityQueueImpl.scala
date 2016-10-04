@@ -1,11 +1,9 @@
 package leo.datastructures.impl
 
 import java.util.NoSuchElementException
-
 import leo.datastructures.MultiPriorityQueue
-
 import scala.collection.mutable
-import scala.ref.Reference
+
 /**
   * Created by lex on 13.06.16.
   */

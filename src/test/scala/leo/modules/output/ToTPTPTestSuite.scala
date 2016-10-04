@@ -42,12 +42,12 @@ class ToTPTPTestSuite extends LeoTestSuite {
       println("Success!")
       Utility.printUserDefinedSignature()
       for (fs <- fos) {
-        val toTPTP = ToTPTP(fs)
+        val toTPTP = ToTPTP.output(fs)
         println("## Back translation ... success!")
-        println(toTPTP.output)
+        println(toTPTP.apply)
         println("## Reparsing of backward translation ...")
 
-        val parseRes = TPTP.parseTHF(toTPTP.output)
+        val parseRes = TPTP.parseTHF(toTPTP.apply)
         if (parseRes.isLeft) {
           println("Failed!")
           fail(parseRes.left.get)

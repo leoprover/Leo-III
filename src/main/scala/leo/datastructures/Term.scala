@@ -1,8 +1,6 @@
 package leo.datastructures
 
-import leo.Configuration
-import leo.datastructures.impl.{TermImpl, Signature}
-
+import leo.datastructures.impl.Signature
 
 import scala.language.implicitConversions
 
@@ -36,6 +34,7 @@ trait Term extends Pretty {
   def isTermAbs: Boolean
   def isTypeAbs: Boolean
   def isApp: Boolean
+  def flexHead: Boolean
 
   // Locality/Indexing properties of terms
   def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
@@ -66,6 +65,7 @@ trait Term extends Pretty {
   // TODO END
 
   def fv: Set[(Int, Type)]
+  def tyFV: Set[Int]
   def occurrences: Map[Term, Set[Position]]
   def feasibleOccurences: Map[Term, Set[Position]]
   def headSymbol: Term
@@ -91,17 +91,19 @@ trait Term extends Pretty {
   /** Apply substitution `subst` to underlying term.
     * I.e. each free variable `i` (NOT meta-vars!) occurring within `this` is replaced by `subst(i)`,
     * The term is then beta normalized */
-  def substitute(subst: Subst): Term = closure(subst).betaNormalize
+  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
 
+  /** Explicitly create a closure, i.e. a postponed (simultaneous) substitution (of types and terms) */
+  def closure(termSubst: Subst, typeSubst: Subst): Term
   /** Explicitly create a term closure, i.e. a postponed substitution */
-  def closure(subst: Subst): Term
+  def termClosure(subst: Subst): Term
   /** Explicitly create a term closure with underlying type substitution `tySubst`. */
-  def tyClosure(subst: Subst): Term
+  def typeClosure(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): CMP_Result = Configuration.TERM_ORDERING.compare(this, that)
+  def compareTo(that: Term): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)
   /** Returns true iff the term is well-typed. */
   def typeCheck: Boolean
   /** Return the β-nf of the term */
@@ -125,7 +127,7 @@ trait Term extends Pretty {
 /**
  * Term Factory object. Only this class is used to create new terms.
  *
- * Current default term implementation: [[TermImpl]]
+ * Current default term implementation: [[impl.TermImpl]]
  */
 object Term extends TermBank {
   import impl.TermImpl
@@ -183,6 +185,14 @@ object Term extends TermBank {
   }}
 
   // Further utility functions
+  final def mkDisjunction(terms: Seq[Term]): Term = terms match {
+    case Seq() => LitFalse()
+    case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
+  }
+  final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
+    bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
+  }
+
   /** Convert tuple (i,ty) to according de-Bruijn index */
   implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   /** Convert tuple (i,j) to according de-Bruijn index (where j is a type-de-Bruijn index) */

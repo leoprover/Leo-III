@@ -182,7 +182,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
 
 
   private case class TypeCMPResult(a: Type, b: Type) extends Output {
-    lazy val output = s"Comparing\t${a.pretty}\t with \t${b.pretty}\tResult: ${cmpResToStr(TO_CPO_Naive.compare(a,b))}"
+    lazy val apply = s"Comparing\t${a.pretty}\t with \t${b.pretty}\tResult: ${cmpResToStr(TO_CPO_Naive.compare(a,b))}"
 
     private final def cmpResToStr(cmpRes: CMP_Result): String = {
       cmpRes match {
@@ -194,7 +194,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
     }
   }
   private case class TermCMPResult(a: Term, b: Term, res: CMP_Result) extends Output {
-    lazy val output = s"Comparing\n\t${a.pretty}\n\t${b.pretty}\nResult: ${cmpResToStr(res)}"
+    lazy val apply = s"Comparing\n\t${a.pretty}\n\t${b.pretty}\nResult: ${cmpResToStr(res)}"
 
     private final def cmpResToStr(cmpRes: CMP_Result): String = {
       cmpRes match {

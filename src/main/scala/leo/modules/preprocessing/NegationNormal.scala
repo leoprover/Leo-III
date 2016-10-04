@@ -28,7 +28,7 @@ object NegationNormal extends Normalization{
           (nnf(rmEq(t1, 1)).betaNormalize, nnf(rmEq(t2, 1)).betaNormalize)
         }
         }
-        if (li.polarity) l1 else l1.flipPolarity
+        if (li.polarity) l1 else Literal.flipPolarity(l1)
       } else li
     }
   }
@@ -39,7 +39,7 @@ object NegationNormal extends Normalization{
       val (t1,t2) = if (literal.polarity) (l,r) else (Not(l), r)
       (nnf(rmEq(t1, 1)).betaNormalize,nnf(rmEq(t2, 1)).betaNormalize)
     } }
-    if(literal.polarity) l1 else l1.flipPolarity
+    if(literal.polarity) l1 else Literal.flipPolarity(l1)
   }
 
   def normalize(t: Term): Term = {

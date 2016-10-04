@@ -37,7 +37,7 @@ object Out extends Logging {
     }
   )
 
-  def output(msg: Output): Unit = { println(msg.output) }
+  def output(msg: Output): Unit = { println(msg.apply) }
   def output(msg: String): Unit = { println(msg) }
   def comment(msg: String): Unit = {println(msg.linesWithSeparators.map(str => "% "+str).mkString(""))}
 

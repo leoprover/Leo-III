@@ -44,8 +44,8 @@ object StepCNF extends CalculusRule {
       case Impl(lt,rt) if l.polarity => Beta(Literal(lt,false), Literal(rt, true))
       case Impl(lt,rt) if !l.polarity => Alpha(Literal(lt,true), Literal(rt,false))
       case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
-      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
-      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
       case _ => None(l)
     }

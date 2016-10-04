@@ -58,8 +58,8 @@ object FormulaRenaming extends CalculusRule{
     assert(c.lits.size == 1, "The conjecture should contain exactly one clause.")
     if(c.lits.size > 1) return (c, Seq())
     val lit = c.lits.head
-    val (nLit, units) = apply(lit.flipPolarity, delta)
-    (Clause(nLit.flipPolarity), units)
+    val (nLit, units) = apply(Literal.flipPolarity(lit), delta)
+    (Clause(Literal.flipPolarity(nLit)), units)
   }
 
 
@@ -166,7 +166,7 @@ object FormulaRenaming extends CalculusRule{
         val newArgs = t.freeVars.toSeq // Arguments passed to the function to define
         val argtypes = newArgs.map(_.ty)
 
-        val c = s.freshSkolemVar(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
+        val c = s.freshSkolemConst(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
         val ct = Term.mkTermApp(Term.mkAtom(c), newArgs).betaNormalize
         us.put(t, ct)
         ct

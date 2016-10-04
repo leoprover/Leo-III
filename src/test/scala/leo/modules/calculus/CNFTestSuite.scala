@@ -49,6 +49,6 @@ class CNFTestSuite extends LeoTestSuite {
     }
 
   private def eq(c1 : Seq[Clause], c2 : Seq[Clause]) = {
-    (c1 forall (c11 => c2 exists (c22 => c11.cong(c22)))) && (c2 forall (c11 => c1 exists (c22 => c11.cong(c22))))
+    (c1 forall (c11 => c2.contains(c11))) && (c2 forall (c11 => c1.contains(c11)))
   }
 }

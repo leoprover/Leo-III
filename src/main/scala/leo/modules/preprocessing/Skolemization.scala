@@ -67,7 +67,7 @@ object Skolemization extends Normalization{
         val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
       val fv_types = fvs.map(_.ty)
         import leo.datastructures.impl.Signature
-        val skConst = Term.mkAtom(Signature.get.freshSkolemVar(Type.mkFunType(fv_types, ty)))
+        val skConst = Term.mkAtom(Signature.get.freshSkolemConst(Type.mkFunType(fv_types, ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
 
 
@@ -78,7 +78,7 @@ object Skolemization extends Normalization{
           sub = sub + (b+1 -> b)
         }
 
-        val norm = t.closure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
+        val norm = t.termClosure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
 
         skolemize(norm, univBounds)
       case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))

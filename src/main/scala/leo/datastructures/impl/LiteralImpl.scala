@@ -5,7 +5,7 @@ import leo.datastructures.{LitFalse, LitTrue, Term, Literal}
 
 protected[impl] sealed abstract class LiteralImpl extends Literal {
   @inline final protected def printPol(pol: Boolean): String = if (pol) "t" else "f"
-  override def pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
+  override lazy val pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
 }
 
 object LiteralImpl {
@@ -71,7 +71,7 @@ object LiteralImpl {
     /** Returns true iff the literal is an unification constraint. */
     val uni: Boolean = !polarity
     /** Returns true iff the literal is a flex-flex unification constraint, */
-    val flexflex: Boolean = uni && (left.isApp || left.isAtom) && (right.isApp || right.isAtom) && left.headSymbol.isVariable && right.headSymbol.isVariable
+    val flexflex: Boolean = uni && left.flexHead && right.flexHead
     /** Returns true iff the literal has a flexible head. */
     val flexHead: Boolean = false
 

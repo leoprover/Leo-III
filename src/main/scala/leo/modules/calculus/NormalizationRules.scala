@@ -1,10 +1,10 @@
 package leo.modules.calculus
 
 import leo._
-import leo.datastructures.Term.:::>
+import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, HOLBinaryConnective, Subst, Type, _}
 import leo.datastructures.impl.Signature
-import leo.modules.output.{SZS_Theorem, SZS_EquiSatisfiable}
+import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 import leo.modules.preprocessing.Simplification
 
 /**
@@ -14,6 +14,8 @@ import leo.modules.preprocessing.Simplification
 ////////////////////////////////////////////////////////////////
 ////////// Normalization
 ////////////////////////////////////////////////////////////////
+// TODO: Encode origin of boolext clauses so that they are not paramodulated
+// with its ancestor clause.
 
 object PolaritySwitch extends CalculusRule {
   val name = "polarity_switch"
@@ -49,17 +51,19 @@ object PolaritySwitch extends CalculusRule {
   */
 object FullCNF extends CalculusRule {
   override def name: String = "cnf"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  type FVs = Seq[(Int, Type)]
+  type TyFVS = Seq[Int]
 
   final def canApply(l: Literal): Boolean = if (!l.equational) {
     l.left match {
-      case Not(t) => true
-      case s ||| t => true
-      case s & t => true
-      case s Impl t => true
-      //      case s <=> t => true
-      case Forall(ty :::> t) => true
-      case Exists(ty :::> t) => true
+      case Not(_) => true
+      case _ ||| _ => true
+      case _ & _ => true
+      case _ Impl _ => true
+      case Forall(_ :::> _) => true
+      case Exists(_ :::> _) => true
+      case TypeLambda(_) => true
       case _ => false
     }
   } else false
@@ -70,32 +74,37 @@ object FullCNF extends CalculusRule {
     normLits.map{ls => Clause(ls)}
   }
 
-  final def apply(vargen : leo.modules.calculus.FreshVarGen, l : Seq[Literal]) : (Seq[Seq[Literal]]) = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal]) : (Seq[Seq[Literal]]) = {
     var acc : Seq[Seq[Literal]] = Seq(Seq())
     val it : Iterator[Literal] = l.iterator
     while(it.hasNext){
       val nl = it.next()
       apply(vargen, nl) match {
-        case Seq(Seq(l)) => acc = acc.map{normLits => l +: normLits}
+        case Seq(Seq(lit)) => acc = acc.map{normLits => lit +: normLits}
         case norms =>  acc = multiply(norms, acc)
       }
     }
     acc
   }
 
-  final def apply(vargen : leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = if(!l.equational){
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l)
+
+  @inline
+  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = if(!l.equational){
     l.left match {
-      case Not(t) => apply(vargen, Literal(t, !l.polarity))
-      case &(lt,rt) if l.polarity => apply(vargen,Literal(lt,true)) ++ apply(vargen, Literal(rt,true))
-      case &(lt,rt) if !l.polarity => multiply(apply(vargen, Literal(lt,false)), apply(vargen, Literal(rt, false)))
-      case |||(lt,rt) if l.polarity => multiply(apply(vargen, Literal(lt,true)), apply(vargen, Literal(rt, true)))
-      case |||(lt,rt) if !l.polarity => apply(vargen,Literal(lt,false)) ++ apply(vargen, Literal(rt,false))
-      case Impl(lt,rt) if l.polarity => multiply(apply(vargen, Literal(lt,false)), apply(vargen, Literal(rt, true)))
-      case Impl(lt,rt) if !l.polarity => apply(vargen,Literal(lt,true)) ++ apply(vargen, Literal(rt,false))
-      case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
-      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, false))
-      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars); apply(vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
-      case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); apply(vargen, Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
+      case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity))
+      case &(lt,rt) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,true))
+      case &(lt,rt) if !l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false)), apply0(fvs, tyFVs, vargen, Literal(rt, false)))
+      case |||(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,true)), apply0(fvs, tyFVs, vargen, Literal(rt, true)))
+      case |||(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,false)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
+      case Impl(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false)), apply0(fvs, tyFVs, vargen, Literal(rt, true)))
+      case Impl(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
+      case Forall(a@(ty :::> t)) if l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize, false))
+      case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
+      case term@TypeLambda(t) if !l.polarity => val sko = leo.datastructures.impl.Signature.get.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
       case _ => Seq(Seq(l))
     }
   } else {
@@ -492,7 +501,7 @@ object Skolemization extends CalculusRule {
   private def apply0(t: Term, s: Signature, fvs: Seq[Term]): Term = {
     t match {
       case Exists(inner@(ty :::> body)) => {
-        val skConst = Term.mkAtom(s.freshSkolemVar(Type.mkFunType(fvs.map(_.ty), ty)))
+        val skConst = Term.mkAtom(s.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
         val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
         apply0(body2, s, fvs)

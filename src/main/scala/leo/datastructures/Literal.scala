@@ -53,6 +53,8 @@ trait Literal extends Pretty {
 
   /** Returns the set of free variables from `s = t` regarded as term. */
   @inline final lazy val fv: Set[(Int, Type)] = left.fv ++ right.fv
+  /** Returns the set of free variables from `s = t` regarded as term. */
+  @inline final lazy val tyFV: Set[Int] = left.tyFV union right.tyFV
   /** Returns true iff the equation `s = t` is ground. */
   @inline final lazy val ground: Boolean = left.ground && right.ground
 
@@ -79,15 +81,8 @@ trait Literal extends Pretty {
   @inline final def rightTermMap[A](f: Term => Term): Literal = termMap {case (l,r) => (l, f(r))}
   @inline final def newLeft(newLeft: Term): Literal = termMap {case (l,r) => (newLeft,r)}
   @inline final def newRight(newRight: Term): Literal = termMap {case (l,r) => (l,newRight)}
-  /** Returns a new literal with the same equation as this one, only with polarity flipped.*/
-  @inline final lazy val flipPolarity: Literal = {
-    if (polarity)
-      Literal(left,right,false)
-    else
-      Literal(left,right,true)
-  }
 
-  @inline final def substitute(s : Subst) : Literal = termMap {case (l,r) => (l.closure(s).betaNormalize,r.closure(s).betaNormalize)}
+  @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
 
@@ -235,13 +230,19 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   }
 
   // Utility methods
+  /** Returns true iff the literal is trivial (i.e. l.left is syntactically equal to l.right). */
   final def trivial(l: Literal): Boolean = l.left == l.right
+  /** If the method returns true both sides of the underlying equation are different/distinct. */
   final def distinctSides(l: Literal): Boolean = (l.left, l.right) match {
     case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= HOLSignature.lastId && idr <= HOLSignature.lastId
       // TODO: Extend to 'distinct symbols' from TPTP
     case _ => false
   }
+  /** Returns true iff the literal is trivially semantically equal to $true. */
   final def isTrue(l: Literal): Boolean = if (l.polarity) trivial(l) else distinctSides(l)
+  /** Returns true iff the literal is trivially semantically equal to $false. */
   final def isFalse(l: Literal): Boolean = if (!l.polarity) trivial(l) else distinctSides(l)
+  /** Returns a new literal with the same equation as this one, only with polarity flipped.*/
+  final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity) else apply(l.left, !l.polarity)
 }
 

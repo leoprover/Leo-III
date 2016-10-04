@@ -25,7 +25,7 @@ object ExternalProverPhase extends CompletePhase {
   private val scriptAgent : Agent = {
     // Read the external provers from file
 
-    SZSScriptAgent("leo2", "leo", fs => ToTPTP(fs).map(_.output), x => x)
+    SZSScriptAgent("leo2", "leo", fs => ToTPTP(fs).map(_.apply), x => x)
   }
 
   override protected def init() : Unit = {

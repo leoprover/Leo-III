@@ -10,7 +10,7 @@ import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
+trait Clause extends Ordered[Clause] with Pretty {
   /** The unique, increasing clause number. */
   def id: Int
   /** The underlying sequence of literals. */
@@ -18,6 +18,9 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   /** The types of the implicitly universally quantified variables. */
   def implicitlyBound: Seq[(Int, Type)]
   def maxImplicitlyBound: Int
+  /** The implicitly (universally) quantified type variables.
+    * It is assumed that we are in rank-1 polymorphism. */
+  def typeVars: Set[Int]
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
@@ -28,22 +31,6 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
   def negLits: Seq[Literal]
 
   def maxLitsMap: Map[LitMaxFlag, Seq[Literal]]
-
-  /** True iff this clause is ground. */
-  def ground: Boolean
-  /** True iff this clause is purely positive. i.e.
-    * if all literals are positive. */
-  def positive: Boolean
-  /** True iff this clause is purely negative. i.e.
-    * if all literals are negative. */
-  def negative: Boolean
-
-  /** Returns a term representation of this clause.
-    * @return Term `[l1] || [l2] || ... || [ln]` where `[.]` is the term representation of a literal,
-    * and li are the literals in `lits`, `n = lits.length`.
-    * FIXME: Only works if there are no gaps in implicitly bound variables.
-    */
-  final lazy val term: Term = mkPolyUnivQuant(implicitlyBound.map(_._2), mkDisjunction(lits.map(_.term)))
 
   @inline final def maxLits: Seq[Literal] = maxLitsMap(LitMax)
   @inline final def strictlyMaxLits: Seq[Literal] = maxLitsMap(LitStrictlyMax)
@@ -64,36 +51,11 @@ trait Clause extends Ordered[Clause] with Pretty with HasCongruence[Clause] {
 
   // System function adaptions
   override final def equals(obj : Any): Boolean = obj match {
-    case co : Clause =>
-      cong(co)
+    case co : Clause => (lits forall {co.lits.contains}) && (co.lits forall {lits.contains})
     case _ => false
   }
   override final def hashCode(): Int = if (lits.isEmpty) 0
   else lits.tail.foldLeft(lits.head.hashCode()){case (h,l) => h^l.hashCode()}
-
-  // TODO: Do we still need this?
-  // TODO: Optimized on sorted Literals.
-  def cong(that : Clause) : Boolean =
-    (lits forall { l1 =>
-      that.lits exists { l2 =>
-        l1 == l2
-      }
-    })&&(
-      that.lits forall { l1 =>
-        lits exists { l2 =>
-          l1 == l2
-        }
-      })
-
-  // TODO: Maybe move this to "utilities"?
-  private def mkDisjunction(terms: Seq[Term]): Term = terms match {
-    case Seq() => LitFalse()
-    case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
-  }
-  private def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
-    import Term.λ
-    bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
-  }
 }
 
 object Clause {
@@ -127,6 +89,15 @@ object Clause {
     * (1) one literal always evaluates to true, or
     * (2) it contains two literals that are equal except for their polarity. */
   final def trivial(c: Clause): Boolean = c.lits.exists(Literal.isTrue) || c.posLits.exists(l => c.negLits.exists(l2 => l.unsignedEquals(l2)))
+
+  /** True iff this clause is ground. */
+  @inline final def ground(c: Clause): Boolean = c.lits.forall(_.ground)
+  /** True iff this clause is purely positive. i.e.
+    * if all literals are positive. */
+  @inline final def positive(c: Clause): Boolean = c.negLits.isEmpty
+  /** True iff this clause is purely negative. i.e.
+    * if all literals are negative. */
+  @inline final def negative(c: Clause): Boolean = c.posLits.isEmpty
 
   /** True iff this clause is horn. */
   @inline final def horn(c: Clause): Boolean = c.posLits.length <= 1

@@ -151,7 +151,7 @@ object Main {
         Out.trace(Utility.userDefinedSignatureAsString)
       }
     } finally {
-      Scheduler().killAll()
+//      Scheduler().killAll()
       System.exit(0)
     }
   }
