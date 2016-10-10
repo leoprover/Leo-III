@@ -77,7 +77,7 @@ Occasionally it might happen that multiple versions of Java are
 installed. To enforce to correct version of Jave, overwrite
 `JAVA_HOME` and `PATH`:
 
-    > export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre
+    > export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
     > export PATH=$JAVA_HOME/bin:$PATH
     > sbt compile
     > sbt nativeCompile
