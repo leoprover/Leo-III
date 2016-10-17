@@ -48,7 +48,7 @@ object FOIndex {
 
     val interpretedSymbols = sig.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
-    t match {
+    t match { // FIXME: Check type of abstraction, or not?
       case Forall(_ :::> body) => typedFirstOrderFormula(fvs, body)(sig)
       case Exists(_ :::> body) => typedFirstOrderFormula(fvs, body)(sig)
       case (l === r) => typedFirstOrderTerm(fvs, l)(sig) && typedFirstOrderTerm(fvs, r)(sig)

@@ -177,30 +177,30 @@ object ToTPTP {
           val (left,right) = (lit.left, lit.right)
           if (lit.polarity)
             left match {
-              case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} = ${toTPTP0(right,bVarMap)(sig)})")
+              case Bound(_,_) | Symbol(_) => right match {
+                case Bound(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} = ${toTPTP0(right,bVarMap)(sig)})")
                 case _ => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} = (${toTPTP0(right,bVarMap)(sig)}))")
               }
               case _ => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) = ${toTPTP0(right,bVarMap)(sig)})")
+                case Bound(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) = ${toTPTP0(right,bVarMap)(sig)})")
                 case _ => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) = (${toTPTP0(right,bVarMap)(sig)}))")
               }
             }
           else
             left match {
-              case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} != ${toTPTP0(right,bVarMap)(sig)})")
+              case Bound(_,_) | Symbol(_) => right match {
+                case Bound(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} != ${toTPTP0(right,bVarMap)(sig)})")
                 case _ => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} != (${toTPTP0(right,bVarMap)(sig)}))")
               }
               case _ => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) != ${toTPTP0(right,bVarMap)(sig)})")
+                case Bound(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) != ${toTPTP0(right,bVarMap)(sig)})")
                 case _ => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) != (${toTPTP0(right,bVarMap)(sig)}))")
               }
             }
         } else {
           val term = lit.left
           term match {
-            case Bound(_,_) | MetaVar(_,_) | Symbol(_) => if (lit.polarity)
+            case Bound(_,_) | Symbol(_) => if (lit.polarity)
                 sb.append(toTPTP0(term,bVarMap)(sig))
               else
                 sb.append(s"${sig(Not.key).name} (${toTPTP0(term, bVarMap)(sig)})")
@@ -227,7 +227,6 @@ object ToTPTP {
           name
         }
       // Give Bound variables names
-      case m@MetaVar(_,scope) => "mv"+scope
       case Bound(ty, scope) => bVars(scope)
       // Unary connectives
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)(sig)})"
@@ -267,22 +266,22 @@ object ToTPTP {
         }
       }
       case left === right => left match {
-        case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)(sig)} ${sig(===.key).name} ${toTPTP0(right,bVars)(sig)}"
+        case Bound(_,_) | Symbol(_) => right match {
+          case Bound(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)(sig)} ${sig(===.key).name} ${toTPTP0(right,bVars)(sig)}"
           case _ => s"${toTPTP0(left,bVars)(sig)} ${sig(===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
         case _ => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)(sig)}) ${sig(===.key).name} ${toTPTP0(right,bVars)(sig)}"
+          case Bound(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)(sig)}) ${sig(===.key).name} ${toTPTP0(right,bVars)(sig)}"
           case _ => s"(${toTPTP0(left,bVars)(sig)}) ${sig(===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
       }
       case left !=== right => left match {
-        case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)(sig)} ${sig(!===.key).name} ${toTPTP0(right,bVars)(sig)}"
+        case Bound(_,_) | Symbol(_) => right match {
+          case Bound(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)(sig)} ${sig(!===.key).name} ${toTPTP0(right,bVars)(sig)}"
           case _ => s"${toTPTP0(left,bVars)(sig)} ${sig(!===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
         case _ => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)(sig)}) ${sig(!===.key).name} ${toTPTP0(right,bVars)(sig)}"
+          case Bound(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)(sig)}) ${sig(!===.key).name} ${toTPTP0(right,bVars)(sig)}"
           case _ => s"(${toTPTP0(left,bVars)(sig)}) ${sig(!===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
       }
@@ -304,7 +303,7 @@ object ToTPTP {
       case f ∙ args => args.foldLeft(toTPTP0(f, bVars)(sig))({case (str, arg) => s"$str @ ${arg.fold(
         //Translate terms as arguments
         {
-          case termArg@(Bound(_,_) | Symbol(_) | MetaVar(_,_)) => toTPTP0(termArg, bVars)(sig)
+          case termArg@(Bound(_,_) | Symbol(_)) => toTPTP0(termArg, bVars)(sig)
           case termArg => "("+toTPTP0(termArg, bVars)(sig)+")"
         },
         //Translate types as arguments

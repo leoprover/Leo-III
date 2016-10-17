@@ -134,7 +134,7 @@ package object calculus {
   }
 
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
-    val skFunc = sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
+    val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy))))
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }

@@ -271,6 +271,7 @@ object InputProcessing {
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
   final object @@@ extends HOLBinaryConnective {
     val key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
+    val ty = ???
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
   //////
@@ -318,6 +319,7 @@ object InputProcessing {
       case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
                                                  // this is because the mkPolyQuantified will apply a new abstraction
         val key: Signature#Key = Integer.MIN_VALUE // just for fun!
+        val ty = ???
         override def apply(arg: Term) = arg
       }
 
@@ -741,9 +743,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
-        mkTermApp(mkAtom(sig(name).key), converted)
+        mkTermApp(mkAtom(sig(name).key)(sig), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), i))), converted)
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), i)))(sig), converted)
       }
     }
     case other => processTerm(sig)(other, replace, adHocDefs)
@@ -753,9 +755,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
-        mkTermApp(mkAtom(sig(name).key), converted)
+        mkTermApp(mkAtom(sig(name).key)(sig), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), o))), converted)
+        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), o)))(sig), converted)
       }
 
     }
@@ -812,12 +814,12 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
 
       } else {
         val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
-        mkTermApp(mkAtom(sig(name).key), converted)
+        mkTermApp(mkAtom(sig(name).key)(sig), converted)
       }
     }
     case SystemFunc(name, vars) => {
       val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
-      mkTermApp(mkAtom(sig(name).key), converted)
+      mkTermApp(mkAtom(sig(name).key)(sig), converted)
     }
     case Var(name) => termMapping(replace).get(name) match {
       case None => typeMapping(replace).get(name) match {
@@ -834,15 +836,15 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case IntegerNumber(value) => {
         val constName = "$$int(" + value.toString + ")"
         if (sig.exists(constName)) {
-          mkAtom(sig(constName).key)
+          mkAtom(sig(constName).key)(sig)
         } else {
           // Note: that this is a hack, we use the fact that untyped
           // languages use ad-hoc definitions of symbols
           // Here, we must use type $i for numbers of all kinds
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, i))
+            mkAtom(sig.addUninterpreted(constName, i))(sig)
           } else {
-            mkAtom(sig.addUninterpreted(constName, int))
+            mkAtom(sig.addUninterpreted(constName, int))(sig)
           }
 
         }
@@ -850,35 +852,35 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       case DoubleNumber(value) => {
         val constName = "$$real(" + value.toString + ")"
         if (sig.exists(constName)) {
-          mkAtom(sig(constName).key)
+          mkAtom(sig(constName).key)(sig)
         } else {
           // See note above
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, i))
+            mkAtom(sig.addUninterpreted(constName, i))(sig)
           } else {
-            mkAtom(sig.addUninterpreted(constName, real))
+            mkAtom(sig.addUninterpreted(constName, real))(sig)
           }
         }
       }
       case RationalNumber(p,q) =>  {
         val constName = "$$rational(" + p.toString + "/" + q.toString +")"
         if (sig.exists(constName)) {
-          mkAtom(sig(constName).key)
+          mkAtom(sig(constName).key)(sig)
         } else {
           // See note above
           if (adHocDefs) {
-            mkAtom(sig.addUninterpreted(constName, i))
+            mkAtom(sig.addUninterpreted(constName, i))(sig)
           } else {
-            mkAtom(sig.addUninterpreted(constName, rat))
+            mkAtom(sig.addUninterpreted(constName, rat))(sig)
           }
         }
       }
     }
     case Distinct(data) => // NOTE: Side-effects may occur if this is the first occurence of '"data"'
                             if (sig.exists("\""+data+"\"")) {
-                              mkAtom(sig.apply("\""+data+"\"").key)
+                              mkAtom(sig.apply("\""+data+"\"").key)(sig)
                             } else {
-                              mkAtom(sig.addUninterpreted("\""+data+"\"", i))
+                              mkAtom(sig.addUninterpreted("\""+data+"\"", i))(sig)
                             }
     case Cond(cond, thn, els) => {
       IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace, adHocDefs),processTerm(sig)(els, replace, adHocDefs))

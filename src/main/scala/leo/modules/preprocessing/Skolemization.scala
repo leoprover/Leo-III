@@ -65,7 +65,7 @@ object Skolemization extends Normalization{
       case Exists(s@(ty :::> t))  =>
         val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
       val fv_types = fvs.map(_.ty)
-        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fv_types, ty)))
+        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fv_types, ty)))(sig)
         val skTerm = Term.mkTermApp(skConst, fvs)
 
 
@@ -83,7 +83,7 @@ object Skolemization extends Normalization{
 
       case Symbol(k) ∙ args if !sig.allUserConstants.contains(k) && sig(k).ty.fold(false){ty => ty == o ->: o || ty == o ->: o ->: o}
         => // The symbol is a boolean connective, not defined by the user.
-        Term.mkApp(Term.mkAtom(k), args.map(_.fold({t => Left(skolemize(t, univBounds)(sig))},Right(_))))
+        Term.mkApp(Term.mkAtom(k)(sig), args.map(_.fold({t => Left(skolemize(t, univBounds)(sig))},Right(_))))
 
       // Reaching any non boolean connective we will stop, since we can no longer distinquish positive from negative equalities
       case term      => term

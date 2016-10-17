@@ -14,10 +14,10 @@ class UnificationTestSuite extends LeoTestSuite {
 
    //x(a) = f(a,a)
   test("f(x,x) = f(a,z)", Checked){
-  val s = getFreshSignature
+    implicit val s = getFreshSignature
 
-  val a = mkAtom(s.addUninterpreted("a", i))
-  val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
 
     val vargen = freshVarGenFromBlank
     val x = vargen(i)
@@ -35,7 +35,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
   // x(a) = f(a,a)
   test("x(a) = f(a,a)", Checked){
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
   val a = mkAtom(s.addUninterpreted("a",i))
@@ -58,7 +58,7 @@ class UnificationTestSuite extends LeoTestSuite {
 
   // x(f(a)) = f(x(a)) -> inf # of unifiers
   test("x(f(a)) = f(x(a))", Checked){
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
   val a = mkAtom(s.addUninterpreted("a",i))
@@ -80,7 +80,7 @@ class UnificationTestSuite extends LeoTestSuite {
   }
 
   test("x(f(a,a)) = f(x(a),f(f(a,a),a))", Checked){
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
   val a = mkAtom(s.addUninterpreted("a",i))
@@ -103,7 +103,7 @@ class UnificationTestSuite extends LeoTestSuite {
   }
 
   test("x(f(a,g(a,a))) = f(a,g(x(a),a))", Checked){
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val vargen = freshVarGenFromBlank
   val a = mkAtom(s.addUninterpreted("a",i))
@@ -126,7 +126,7 @@ class UnificationTestSuite extends LeoTestSuite {
   }
 
   test("y(ey) = ~ (sKf(skX(y), ey))", Checked) {
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
 
     val vargen = freshVarGenFromBlank
     val y = vargen(i ->: o)

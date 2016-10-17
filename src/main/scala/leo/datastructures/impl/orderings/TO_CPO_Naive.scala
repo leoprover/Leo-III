@@ -256,7 +256,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
   final private def gt0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
-    import leo.datastructures.Term.{:::>, Bound, MetaVar, Symbol, TypeLambda, ∙,mkApp}
+    import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙,mkApp}
 
     if (s == t) return false
     if (s.isVariable) return false

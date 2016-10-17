@@ -14,7 +14,7 @@ class MatchingTestSuite extends LeoTestSuite {
   import leo.modules.calculus.matching.FOMatching
 
   test("f(x,x) = f(a,a)", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
 
@@ -29,7 +29,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,x) = f(a,a) unifier", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
 
@@ -46,7 +46,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("x(a) = f(a,a)", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
 
     val vargen = freshVarGenFromBlank
     val a = mkAtom(s.addUninterpreted("a", i))
@@ -60,7 +60,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(a)))", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -78,7 +78,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(a))) unifier", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -98,7 +98,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(x)) = f(a,g(f(a)))", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -116,7 +116,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(z)))", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -135,7 +135,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(z))) unifier", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -156,7 +156,7 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(a)) = f(a,g(z))", Checked){
-    val s = getFreshSignature
+    implicit  val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -177,7 +177,7 @@ class MatchingTestSuite extends LeoTestSuite {
   test("(f(a) = x) = (f(a) = g(a))", Checked){
     import leo.modules.HOLSignature.{=== => EQ}
 
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))
@@ -196,7 +196,7 @@ class MatchingTestSuite extends LeoTestSuite {
   test("(p(a) = true) = (f(a) = g(a))", Checked){
     import leo.modules.HOLSignature.{=== => EQ}
 
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))
     val f = mkAtom(s.addUninterpreted("f", i ->: i))
     val g = mkAtom(s.addUninterpreted("g", i ->: i))

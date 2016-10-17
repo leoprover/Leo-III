@@ -116,7 +116,6 @@ object Simplification extends Normalization {
     // Pass through unimportant structures
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s@MetaVar(_,_)         => s
     case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))

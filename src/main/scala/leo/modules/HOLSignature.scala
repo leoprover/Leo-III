@@ -34,9 +34,7 @@ object HOLSignature {
   private final val intKey = 5
   private final val trueKey = 6
   private final val falseKey = trueKey + 1
-  private final val boxKey = falseKey + 1
-  private final val diamondKey = boxKey + 1
-  private final val notKey = diamondKey + 1
+  private final val notKey = falseKey + 1
   private final val forallKey = notKey + 1
   private final val orKey = forallKey + 1
   private final val eqKey = orKey + 1
@@ -89,90 +87,14 @@ object HOLSignature {
   final val rat = Type.mkType(ratKey)
   final val int = Type.mkType(intKey)
 
-  import Signature.{lexStatus, multStatus}
-
-  val multProp = multStatus * Signature.PropStatus
-  val lexProp = lexStatus * Signature.PropStatus
-
-  // Don't change the order of the elements in this lists.
-  // If you do so, you may need to update the Signature implementation.
-
-  // Built-in types
-  final val types = List(("$tType", superKind), // Key 0
-    ("$o", typeKind), // Key 1
-    ("$i", typeKind), // Key 2
-    ("$real", typeKind), // key 3
-    ("$rat", typeKind), // Key 4
-    ("$int", typeKind)) // Key 5
-
-  // Fixed symbols
-  import Type.{mkPolyType => forall}
-  import Signature.{PropAC => ac, PropCommutative => c}
-
-  lazy val fixedConsts = List(
-    ("$true", o, multProp), // Key 6
-    ("$false", o, multProp), // Key 7
-    ("#box", o ->: o, multProp), // Key 8
-    ("#diamond", o ->: o, multProp), // Key 9
-    ("~", o ->: o, multProp), // Key 10
-    ("!", forall((1 ->: o) ->: o), multProp), // Key 11
-    ("|", o ->: o ->: o, multProp | ac), // Key 12
-    ("=", forall(1 ->: 1 ->: o), multProp | c), // Key 13
-    ("$$let", forall(forall(2 ->: 1 ->: 1)), multProp), // Key 14
-    ("$$ite", forall(o ->: 1 ->: 1 ->: 1), multProp), // Key 15
-    ("$less", forall(1 ->: 1 ->: o), lexProp), // Key 16
-    ("$lesseq", forall(1 ->: 1 ->: o), lexProp), // Key 17
-    ("$greater", forall(1 ->: 1 ->: o), lexProp), // Key 18
-    ("$greatereq", forall(1 ->: 1 ->: o), lexProp), // Key 19
-    ("@+", forall((1 ->: o) ->: 1), multProp), // Key 20
-    ("@-", forall((1 ->: o) ->: 1), multProp), // Key 21
-    ("$uminus", forall(1 ->: 1), multProp), // Key 22
-    ("$sum", forall(1 ->: 1 ->: 1), multProp | ac), // Key 23
-    ("$difference", forall(1 ->: 1 ->: 1), lexProp), // Key 24
-    ("$product", forall(1 ->: 1 ->: 1), multProp | ac), // Key 25
-    ("$quotient", forall(1 ->: 1 ->: 1), lexProp), // Key 26
-    ("$quotient_e", forall(1 ->: 1 ->: 1), lexProp), // Key 27
-    ("$quotient_t", forall(1 ->: 1 ->: 1), lexProp), // key 28
-    ("$quotient_f", forall(1 ->: 1 ->: 1), lexProp), // Key 29
-    ("$remainder_e", forall(1 ->: 1 ->: 1), lexProp), // Key 30
-    ("$remainder_t", forall(1 ->: 1 ->: 1), lexProp), // key 31
-    ("$remainder_f", forall(1 ->: 1 ->: 1), lexProp), // Key 32
-    ("$floor", forall(1 ->: 1), multProp), // Key 33
-    ("$ceiling", forall(1 ->: 1), multProp), // Key 34
-    ("$truncate", forall(1 ->: 1), multProp), // Key 35
-    ("$round", forall(1 ->: 1), multProp), // Key 36
-    ("$to_int", forall(1 ->: int), multProp), // Key 37
-    ("$to_rat", forall(1 ->: rat), multProp), // Key 38
-    ("$to_real", forall(1 ->: real), multProp), // Key 39
-    ("$is_rat", forall(1 ->: o), multProp), // Key 40
-    ("$is_int", forall(1 ->: o), multProp) // Key 41
-  )
-
-  // Standard defined symbols
-  lazy val definedConsts = List(
-    ("?", existsDef, forall((1 ->: o) ->: o), multProp), // Key 42
-    ("&", andDef, o ->: o ->: o, multProp | ac), // Key 43
-    ("=>", implDef, o ->: o ->: o, lexProp), // Key 44
-    ("<=", ifDef, o ->: o ->: o, lexProp), // Key 45
-    ("<=>", iffDef, o ->: o ->: o, multProp | ac), // Key 46
-    ("~&", nandDef, o ->: o ->: o, multProp), // Key 47
-    ("~|", norDef, o ->: o ->: o, multProp), // Key 48
-    ("<~>", niffDef, o ->: o ->: o, multProp), // Key 49
-    ("!=", neqDef, forall(1 ->: 1 ->: o), multProp)) // Key 50
-
-
-  //////////////////////
-  // enum end
-  //////////////////////
-
   // Shorthands for later definitions
-  private final val not = mkAtom(notKey)
-  private final val all = mkAtom(forallKey)
-  private final val disj = mkAtom(orKey)
-  private final val conj = mkAtom(andKey)
-  private final val impl = mkAtom(implKey)
-  private final val lpmi = mkAtom(ifKey)
-  private final val eq = mkAtom(eqKey)
+  private final val not = mkAtom(notKey, Not.ty)
+  private final val all = mkAtom(forallKey, Forall.ty)
+  private final val disj = mkAtom(orKey, |||.ty)
+  private final val conj = mkAtom(andKey, &.ty)
+  private final val impl = mkAtom(implKey, Impl.ty)
+  private final val lpmi = mkAtom(ifKey, <=.ty)
+  private final val eq = mkAtom(eqKey, ===.ty)
 
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
@@ -243,10 +165,11 @@ object HOLSignature {
 
   /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
   trait HOLBinaryConnective extends Function2[Term, Term, Term] {
-    protected[HOLBinaryConnective] val key: Signature#Key
+    val key: Signature#Key
+    val ty: Type
 
     /** Create the term that is constructed by applying two arguments to the binary connective. */
-    override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key), Seq(left, right))
+    override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key,ty), Seq(left, right))
 
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case Symbol(`key`) ∙ Seq(Left(t1), Left(t2)) => Some((t1,t2))
@@ -255,12 +178,12 @@ object HOLSignature {
   }
   object HOLBinaryConnective {
     /** Return the term corresponding to the connective the object represents */
-    implicit def toTerm(conn: HOLBinaryConnective): Term = mkAtom(conn.key)
+    implicit def toTerm(conn: HOLBinaryConnective): Term = mkAtom(conn.key, conn.ty)
   }
 
   // For polymorphic (e.g. arithmetic) binary symbols, provide traits for apply/unapply standard prenex-polymorphic symbols
   trait PolyBinaryConnective extends HOLBinaryConnective {
-    override def apply(left: Term, right: Term): Term = mkApp(mkAtom(key), Seq(Right(left.ty), Left(left), Left(right)))
+    override def apply(left: Term, right: Term): Term = mkApp(mkAtom(key, ty), Seq(Right(left.ty), Left(left), Left(right)))
 
     override def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2))) => Some((t1, t2))
@@ -270,10 +193,11 @@ object HOLSignature {
 
   /** Trait for unary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
   trait HOLUnaryConnective extends Function1[Term, Term] {
-    protected[HOLUnaryConnective] val key: Signature#Key
+    val key: Signature#Key
+    val ty: Type
 
     /** Create the term that is constructed by applying an argument to the unary connective. */
-    override def apply(arg: Term): Term = mkTermApp(mkAtom(key), arg)
+    override def apply(arg: Term): Term = mkTermApp(mkAtom(key,ty), arg)
 
     def unapply(t: Term): Option[Term] = t match {
       case Symbol(`key`) ∙ Seq(Left(t1)) => Some(t1)
@@ -282,12 +206,12 @@ object HOLSignature {
   }
   object HOLUnaryConnective {
     /** Return the term corresponding to the connective the object represents */
-    implicit def toTerm(conn: HOLUnaryConnective): Term = mkAtom(conn.key)
+    implicit def toTerm(conn: HOLUnaryConnective): Term = mkAtom(conn.key, conn.ty)
   }
 
   // For polymorphic (e.g. arithmetic) unary symbols, provide traits for apply/unapply standard prenex-polymorphic symbols
   trait PolyUnaryConnective extends HOLUnaryConnective {
-    override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty), Left(arg)))
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case Symbol(`key`) ∙ Seq(Right(_), Left(t1)) => Some(t1)
@@ -297,10 +221,11 @@ object HOLSignature {
 
   /** Trait for nullary symbols (constants) within HOL. */
   trait HOLConstant extends Function0[Term] {
-    protected[HOLConstant] val key: Signature#Key
+    val key: Signature#Key
+    val ty: Type
 
     /** Create the term that is represented by the object */
-    override def apply(): Term = mkAtom(key)
+    override def apply(): Term = mkAtom(key,ty)
 
     def unapply(t: Term): Boolean = t match {
       case Symbol(`key`) => true
@@ -309,37 +234,45 @@ object HOLSignature {
   }
   object HOLConstant {
     /** Return the term corresponding to the connective the object represents */
-    implicit def toTerm(c: HOLConstant): Term = mkAtom(c.key)
+    implicit def toTerm(c: HOLConstant): Term = mkAtom(c.key, c.ty)
   }
 
   ////////////////////////////////////////
   // Objects representing HOL connectives
   ////////////////////////////////////////
+  private final val oo = o ->: o
+  private final val ooo = o ->: o ->: o
+  import Type.{mkPolyType => forall}
+  private final val aao = forall(1 ->: 1 ->: o)
+  private final val aoo = forall((1 ->: o) ->: o)
+  private final val aa = forall(1 ->: 1)
+  private final val aaa = forall(1 ->: 1 ->: 1)
+
   /** HOL disjunction */
-  object ||| extends HOLBinaryConnective  { val key = orKey }
+  object ||| extends HOLBinaryConnective  { val key = orKey; val ty = ooo }
   /** HOL equality */
-  object === extends PolyBinaryConnective  { val key = eqKey }
+  object === extends PolyBinaryConnective  { val key = eqKey; val ty = aao }
   /** HOL conjunction */
-  object & extends HOLBinaryConnective    { val key = andKey }
+  object & extends HOLBinaryConnective    { val key = andKey; val ty = ooo }
   /** HOL implication */
-  object Impl extends HOLBinaryConnective { val key = implKey }
+  object Impl extends HOLBinaryConnective { val key = implKey; val ty = ooo }
   /** HOL if (reverse implication) */
-  object <= extends HOLBinaryConnective   { val key = ifKey }
+  object <= extends HOLBinaryConnective   { val key = ifKey; val ty = ooo }
   /** HOL iff */
-  object <=> extends HOLBinaryConnective  { val key = iffKey }
+  object <=> extends HOLBinaryConnective  { val key = iffKey; val ty = ooo }
   /** HOL negated conjunction */
-  object ~& extends HOLBinaryConnective   { val key = nandKey }
+  object ~& extends HOLBinaryConnective   { val key = nandKey; val ty = ooo }
   /** HOL negated disjunction */
-  object ~||| extends HOLBinaryConnective { val key = norKey }
+  object ~||| extends HOLBinaryConnective { val key = norKey; val ty = ooo }
   /** HOL negated iff */
-  object <~> extends HOLBinaryConnective  { val key = niffKey }
+  object <~> extends HOLBinaryConnective  { val key = niffKey; val ty = ooo }
   /** HOL negated equality */
-  object !=== extends PolyBinaryConnective  { val key = neqKey }
+  object !=== extends PolyBinaryConnective  { val key = neqKey; val ty = aao }
   /** HOL negation */
-  object Not extends HOLUnaryConnective    { val key = notKey }
+  object Not extends HOLUnaryConnective    { val key = notKey; val ty = oo }
   /** HOL forall */
-  object Forall extends HOLUnaryConnective { val key = forallKey
-    override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
+  object Forall extends HOLUnaryConnective { val key = forallKey; val ty = aoo
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -347,8 +280,8 @@ object HOLSignature {
     }
   }
   /** HOL exists */
-  object Exists extends HOLUnaryConnective { val key = existsKey
-    override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
+  object Exists extends HOLUnaryConnective { val key = existsKey; val ty = aoo
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -357,8 +290,8 @@ object HOLSignature {
   }
 
   /** HOL choice @+ */
-  object Choice extends HOLUnaryConnective { val key = choiceKey
-    override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
+  object Choice extends HOLUnaryConnective { val key = choiceKey; val ty = forall((1 ->: o) ->: 1)
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -366,8 +299,8 @@ object HOLSignature {
     }
   }
   /** HOL description @- */
-  object Description extends HOLUnaryConnective { val key = descKey
-    override def apply(arg: Term): Term = mkApp(mkAtom(key), Seq(Right(arg.ty._funDomainType), Left(arg)))
+  object Description extends HOLUnaryConnective { val key = descKey; val ty = forall((1 ->: o) ->: 1)
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -376,22 +309,22 @@ object HOLSignature {
   }
 
   /** HOL frue constant */
-  object LitTrue extends HOLConstant      { val key = trueKey }
+  object LitTrue extends HOLConstant      { val key = trueKey; val ty = o }
   /** HOL false constant */
-  object LitFalse extends HOLConstant     { val key = falseKey }
+  object LitFalse extends HOLConstant     { val key = falseKey; val ty = o }
 
   ///////////////////
   // other HOL defined constants
   ///////////////////
 
   /** $less */
-  object HOLLess extends PolyBinaryConnective { val key = lessKey }
+  object HOLLess extends PolyBinaryConnective { val key = lessKey; val ty = aao }
   /** $lesseq */
-  object HOLLessEq extends PolyBinaryConnective { val key = lessEqKey }
+  object HOLLessEq extends PolyBinaryConnective { val key = lessEqKey; val ty = aao }
   /** $greater */
-  object HOLGreater extends PolyBinaryConnective { val key = greaterKey }
+  object HOLGreater extends PolyBinaryConnective { val key = greaterKey; val ty = aao }
   /** $greatereq */
-  object HOLGreaterEq extends PolyBinaryConnective { val key = greaterEqKey }
+  object HOLGreaterEq extends PolyBinaryConnective { val key = greaterEqKey; val ty = aao }
   // Further TF with arithmetic constants
   /** $uminus | $sum | $difference | $product |
      $quotient | $quotient_e | $quotient_t | $quotient_f |
@@ -399,36 +332,107 @@ object HOLSignature {
      $floor | $ceiling | $truncate | $round |
      $to_int | $to_rat | $to_real
     */
-  object HOLUnaryMinus extends PolyUnaryConnective { val key = uminusKey}
-  object HOLFloor extends PolyUnaryConnective { val key = floorKey}
-  object HOLCeiling extends PolyUnaryConnective { val key = ceilKey}
-  object HOLTruncate extends PolyUnaryConnective { val key = truncateKey}
-  object HOLRound extends PolyUnaryConnective { val key = roundKey}
-  object HOLToInt extends PolyUnaryConnective { val key = toIntKey}
-  object HOLToRat extends PolyUnaryConnective { val key = toRatKey}
-  object HOLToReal extends PolyUnaryConnective { val key = toRealKey}
-  object HOLIsRat extends PolyUnaryConnective { val key = isRatKey}
-  object HOLIsInt extends PolyUnaryConnective { val key = isIntKey}
-  object HOLSum extends PolyBinaryConnective { val key = sumKey}
-  object HOLDifference extends PolyBinaryConnective { val key = diffKey}
-  object HOLProduct extends PolyBinaryConnective { val key = prodKey}
-  object HOLQuotient extends PolyBinaryConnective { val key = quotKey}
-  object HOLQuotientE extends PolyBinaryConnective { val key = quotEKey}
-  object HOLQuotientT extends PolyBinaryConnective { val key = quotTKey}
-  object HOLQuotientF extends PolyBinaryConnective { val key = quotFKey}
-  object HOLRemainderE extends PolyBinaryConnective { val key = remainderEKey}
-  object HOLRemainderT extends PolyBinaryConnective { val key = remainderTKey}
-  object HOLRemainderF extends PolyBinaryConnective { val key = remainderFKey}
+  object HOLUnaryMinus extends PolyUnaryConnective { val key = uminusKey; val ty = aa}
+  object HOLFloor extends PolyUnaryConnective { val key = floorKey; val ty = aa}
+  object HOLCeiling extends PolyUnaryConnective { val key = ceilKey; val ty = aa}
+  object HOLTruncate extends PolyUnaryConnective { val key = truncateKey; val ty = aa}
+  object HOLRound extends PolyUnaryConnective { val key = roundKey; val ty = aa}
+  object HOLToInt extends PolyUnaryConnective { val key = toIntKey; val ty = forall(1 ->: int)}
+  object HOLToRat extends PolyUnaryConnective { val key = toRatKey; val ty = forall(1 ->: rat)}
+  object HOLToReal extends PolyUnaryConnective { val key = toRealKey; val ty = forall(1 ->: real)}
+  object HOLIsRat extends PolyUnaryConnective { val key = isRatKey; val ty = forall(1 ->: o)}
+  object HOLIsInt extends PolyUnaryConnective { val key = isIntKey; val ty = forall(1 ->: o)}
+  object HOLSum extends PolyBinaryConnective { val key = sumKey; val ty = aaa}
+  object HOLDifference extends PolyBinaryConnective { val key = diffKey; val ty = aaa}
+  object HOLProduct extends PolyBinaryConnective { val key = prodKey; val ty = aaa}
+  object HOLQuotient extends PolyBinaryConnective { val key = quotKey; val ty = aaa}
+  object HOLQuotientE extends PolyBinaryConnective { val key = quotEKey; val ty = aaa}
+  object HOLQuotientT extends PolyBinaryConnective { val key = quotTKey; val ty = aaa}
+  object HOLQuotientF extends PolyBinaryConnective { val key = quotFKey; val ty = aaa}
+  object HOLRemainderE extends PolyBinaryConnective { val key = remainderEKey; val ty = aaa}
+  object HOLRemainderT extends PolyBinaryConnective { val key = remainderTKey; val ty = aaa}
+  object HOLRemainderF extends PolyBinaryConnective { val key = remainderFKey; val ty = aaa}
 
   /** If-Then-Else combinator */
   object IF_THEN_ELSE extends Function3[Term, Term, Term, Term] {
-    protected[IF_THEN_ELSE] val key = iteKey
+    val key = iteKey
+    val ty = forall(o ->: 1 ->: 1 ->: 1)
 
-    override def apply(cond: Term, thn: Term, els: Term): Term = mkApp(mkAtom(key), Seq(Right(thn.ty), Left(cond), Left(thn), Left(els)))
+    override def apply(cond: Term, thn: Term, els: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(thn.ty), Left(cond), Left(thn), Left(els)))
 
     def unapply(t: Term): Option[(Term,Term, Term)] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2), Left(t3))) => Some((t1,t2,t3))
       case _ => None
     }
   }
+
+  import Signature.{lexStatus, multStatus}
+
+  val multProp = multStatus * Signature.PropStatus
+  val lexProp = lexStatus * Signature.PropStatus
+
+  // Built-in types
+  final val types = List(("$tType", superKind),
+    ("$o", typeKind),
+    ("$i", typeKind),
+    ("$real", typeKind),
+    ("$rat", typeKind),
+    ("$int", typeKind))
+
+  // Fixed symbols
+  import Signature.{PropAC => ac, PropCommutative => c}
+
+  lazy val fixedConsts = List(
+    ("$true", LitTrue.ty, multProp),
+    ("$false", LitFalse.ty, multProp),
+    ("~", Not.ty, multProp),
+    ("!", Forall.ty, multProp),
+    ("|", |||.ty, multProp | ac),
+    ("=", ===.ty, multProp | c),
+    ("$$let", forall(forall(2 ->: 1 ->: 1)), multProp),
+    ("$$ite", IF_THEN_ELSE.ty, multProp),
+    ("$less", HOLLess.ty, lexProp),
+    ("$lesseq", HOLLessEq.ty, lexProp),
+    ("$greater", HOLGreater.ty, lexProp),
+    ("$greatereq", HOLGreaterEq.ty, lexProp),
+    ("@+", forall((1 ->: o) ->: 1), multProp),
+    ("@-", forall((1 ->: o) ->: 1), multProp),
+    ("$uminus", HOLUnaryMinus.ty, multProp),
+    ("$sum", HOLSum.ty, multProp | ac),
+    ("$difference", HOLDifference.ty, lexProp),
+    ("$product", HOLProduct.ty, multProp | ac),
+    ("$quotient", HOLQuotient.ty, lexProp),
+    ("$quotient_e", HOLQuotientE.ty, lexProp),
+    ("$quotient_t", HOLQuotientT.ty, lexProp),
+    ("$quotient_f", HOLQuotientF.ty, lexProp),
+    ("$remainder_e", HOLRemainderE.ty, lexProp),
+    ("$remainder_t", HOLRemainderT.ty, lexProp),
+    ("$remainder_f", HOLRemainderF.ty, lexProp),
+    ("$floor", HOLFloor.ty, multProp),
+    ("$ceiling", HOLCeiling.ty, multProp),
+    ("$truncate", HOLTruncate.ty, multProp),
+    ("$round", HOLRound.ty, multProp),
+    ("$to_int", HOLToInt.ty, multProp),
+    ("$to_rat", HOLToRat.ty, multProp),
+    ("$to_real", HOLToReal.ty, multProp),
+    ("$is_rat", HOLIsInt.ty, multProp),
+    ("$is_int", HOLIsRat.ty, multProp)
+  )
+
+  // Standard defined symbols
+  lazy val definedConsts = List(
+    ("?", existsDef, Exists.ty, multProp),
+    ("&", andDef, &.ty, multProp | ac),
+    ("=>", implDef, Impl.ty, lexProp),
+    ("<=", ifDef, <=.ty, lexProp),
+    ("<=>", iffDef, <=>.ty, multProp | ac),
+    ("~&", nandDef, ~&.ty, multProp),
+    ("~|", norDef, ~|||.ty, multProp),
+    ("<~>", niffDef, <~>.ty, multProp),
+    ("!=", neqDef, !===.ty, multProp))
+
+
+  //////////////////////
+  // enum end
+  //////////////////////
 }

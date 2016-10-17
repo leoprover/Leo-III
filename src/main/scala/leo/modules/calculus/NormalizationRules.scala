@@ -351,31 +351,36 @@ object ACSimp extends CalculusRule {
     acSymbols.foldLeft(t){case (term,symbol) => apply(term, symbol)}
   }
 
-  def apply(t: Term, acSymbol: Term): Term = {
-    import leo.datastructures.Term.{:::>, TermApp, TypeLambda, ∙}
+  def apply(t: Term, acSymbol: Signature#Key): Term = {
+    import leo.datastructures.Term.{:::>, TermApp, TypeLambda, ∙, Symbol}
     t match {
       case (ty :::> body) => Term.mkTermAbs(ty, apply(body, acSymbol))
       case TypeLambda(body) => Term.mkTypeAbs(apply(body, acSymbol))
-      case TermApp(f, args) if f == acSymbol => {
-        val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
+      case TermApp(f, args) => {
+        f match {
+          case Symbol(id) if id == acSymbol =>
+            val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
 
-        val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(acSymbol, Seq(arg, term))}
-        //        Term.mkTermApp(f, newArgs)
-        newArgs
+            val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Seq(arg, term))}
+            //        Term.mkTermApp(f, newArgs)
+            newArgs
+          case _ => t
+        }
+
       }
       case (f ∙ args) => Term.mkApp(f, args.map {case arg => arg.fold({case t => Left(apply(t, acSymbol))}, {case ty => Right(ty)})})
       case _ => t
     }
   }
 
-  def apply0(symbolArgs: Seq[Term], acSymbol: Term, collectedArgs: Set[Term]): Set[Term] = {
-    import leo.datastructures.Term.TermApp
+  def apply0(symbolArgs: Seq[Term], acSymbol: Signature#Key, collectedArgs: Set[Term]): Set[Term] = {
+    import leo.datastructures.Term.{TermApp, Symbol}
 
     if (symbolArgs.isEmpty) collectedArgs
     else {
       val (hdArg, restArgs) = (symbolArgs.head, symbolArgs.tail)
       hdArg match {
-        case TermApp(f, moreArgs) if f == acSymbol => apply0(restArgs, acSymbol, collectedArgs ++ apply0(moreArgs, acSymbol, Set()))
+        case TermApp(Symbol(id), moreArgs) if id == acSymbol => apply0(restArgs, acSymbol, collectedArgs ++ apply0(moreArgs, acSymbol, Set()))
         case a => apply0(restArgs, acSymbol, collectedArgs + a)
       }
     }

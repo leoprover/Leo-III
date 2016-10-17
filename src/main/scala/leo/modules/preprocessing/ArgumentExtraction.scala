@@ -109,7 +109,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends CalculusRule{
       val argtypes = newArgs.map(_.ty)
 
       val c = s.freshSkolemConst(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
-      val ct = Term.mkTermApp(Term.mkAtom(c), newArgs).betaNormalize       // Head symbol + variables
+      val ct = Term.mkTermApp(Term.mkAtom(c)(s), newArgs).betaNormalize       // Head symbol + variables
       us.put(t, ct)
       (Left(ct), Set((t, ct)))
     } else {

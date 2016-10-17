@@ -2,7 +2,6 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 import ClauseAnnotation._
 import leo.modules.output._
