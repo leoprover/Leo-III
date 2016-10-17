@@ -76,7 +76,6 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
       if(r.isEmpty && active){
         active = false
-        unregister()      // TODO End the run???
         ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
       } else if (r.nonEmpty && !active) {
         active = true
@@ -88,7 +87,6 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
       if(r.isEmpty && active){
         active = false
-        unregister()    // TODO End the run???
         ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
       } else if (r.nonEmpty && !active) {
         active = true

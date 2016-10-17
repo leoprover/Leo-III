@@ -29,6 +29,10 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
     nextUnprocessed.get
   }
 
+  @inline def hasNextUnprocessed : Boolean = synchronized {
+    state.nextUnprocessedLeft
+  }
+
   override val storedTypes: Seq[DataType] = Seq(UnprocessedClause, ProcessedClause, RewriteRule, SZSStatus, DerivedClause, StatisticType)
   override def clear(): Unit = {
     Out.info("Could not clear the state. Not yet implemented.")
@@ -64,7 +68,6 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
     // Backward Subsumption TODO implement in state
     val subsumed = r.removes(ProcessedClause)
     if(subsumed.nonEmpty){
-      Out.info("Got a backward subsumptionm but is not supported.")
       val subsumedCast : Set[T] = subsumed.map(_.asInstanceOf[T]).toSet
       state.setProcessed(state.processed -- subsumedCast)
       if(subsumedCast.isInstanceOf[Set[AnnotatedClause]]) Control.fvIndexRemove(subsumedCast.asInstanceOf[Set[AnnotatedClause]])

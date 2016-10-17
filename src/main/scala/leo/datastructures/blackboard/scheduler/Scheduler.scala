@@ -72,6 +72,8 @@ trait Scheduler {
   def submitIndependent(r : Runnable) : Future[_]
 
   def submitIndependentFree(r : Runnable) : Unit
+
+  def numberOfThreads : Int
 }
 
 
@@ -88,7 +90,7 @@ trait Scheduler {
   * @author Max Wisniewski
  * @since 5/15/14
  */
-protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Scheduler {
+protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Scheduler {
   import leo.agents._
 
   private var exe = Executors.newFixedThreadPool(numberOfThreads, MyThreadFactory)
@@ -239,17 +241,19 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           ds.updateResult(result)
         }
 
+        ActiveTracker.incAndGet(s"Start Filter after finished ${task.name}")
         // Data Written, Release Locks before filtering
         LockSet.releaseTask(task) // TODO right position?
         Blackboard().finishTask(task)
         curExec.remove(task)
         agent.taskFinished(task)
 
+
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
             a.interest match {
               case Some(xs) if xs.isEmpty || (xs.toSet & result.keys).nonEmpty=>
-                ActiveTracker.incAndGet(s"Filter new data ($result)\n\t\tin Agent ${a.name}")
+                ActiveTracker.incAndGet(s"Filter new data\n\t\tin Agent ${a.name}\n\t\tfrom Task ${task.name}")
                 exe.submit(new GenFilter(a, result, task))
               case _ => ()
             }
@@ -260,7 +264,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
         }
       }
 
-
+      ActiveTracker.decAndGet(s"Start Filter after finished ${task.name}")
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -323,7 +327,7 @@ protected[scheduler] class SchedulerImpl (numberOfThreads : Int) extends Schedul
           leo.Out.finest(e.getCause.toString)
 //          Scheduler().killAll()
       }
-      ActiveTracker.decAndGet(s"Done Filtering data (${r})\n\t\t from ${from.getAgent}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
+      ActiveTracker.decAndGet(s"Done Filtering data \n\t\t from ${from.name}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
       Blackboard().forceCheck()
 
       //Release sync

@@ -21,6 +21,7 @@ trait State[T <: ClauseProxy] extends Pretty {
 
   def unprocessed: SortedSet[T]
   def nextUnprocessed: T
+  def nextUnprocessedLeft : Boolean
   def addUnprocessed(unprocessed: T): Unit
   def addUnprocessed(unprocessed: Set[T]): Unit
   def processed: Set[T]
@@ -101,6 +102,11 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 //    current_unprocessed = current_unprocessed.tail
 //    next
   }
+
+  final def nextUnprocessedLeft : Boolean = {
+    !mpq.isEmpty
+  }
+
   final def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl; mpq.insert(cl)}
   final def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls; mpq.insert(cls)}
   final def processed: Set[T] = current_processed

@@ -5,7 +5,7 @@ import java.nio.file.Files
 
 import com.sun.xml.internal.bind.v2.runtime.unmarshaller.TagName
 import leo._
-import leo.agents.{AgentController, Agent}
+import leo.agents.Agent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard.{Blackboard, ClauseType}

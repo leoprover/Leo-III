@@ -15,7 +15,7 @@ import leo.modules.output._
 import leo.modules.phase._
 import leo.datastructures.impl.Signature
 import leo.modules.Utility._
-import leo.modules.interleavingproc.{BlackboardState, InterleavingLoop, StateView}
+import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
 import leo.modules.preprocessing.Preprocess
 import leo.modules.seqpproc.{MultiSeqPProc, State}
@@ -137,11 +137,16 @@ object TestMain {
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
       val state = BlackboardState.fresh[InterleavingLoop.A](Signature.get)
-      val iLoop : InterleavingLoop = new InterleavingLoop(state)
+      val uniStore = new UnificationStore[InterleavingLoop.A]()
+      val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore)
       val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
-      val iPhase = new InterleavableLoopPhase(iLoopAgent, state)
+      val uniAgent = new DelayedUnificationAgent(uniStore, state)
+
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, uniAgent)
+
 
       Blackboard().addDS(state)
+      Blackboard().addDS(uniStore)
 
       printPhase(iPhase)
       if(!iPhase.execute()){

@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard.impl
 
 
-import leo.agents.{AgentController, Agent, Task}
+import leo.agents.{Agent, Task}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
 
@@ -151,6 +151,9 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
 private object TaskSet {
 
+  // Number of tasks to queue in the scheduler = taskTakenFactor * ThreadCount
+  val taskTakenFactor : Int = 2
+
   val regAgents = mutable.HashMap[Agent,Double]()
   //protected[impl] val execTasks = new mutable.HashSet[Task]
 
@@ -197,6 +200,7 @@ private object TaskSet {
     }
   }
 
+  private val waitForAll : Boolean = true
 
   /**
    * Gets from any active agent the set of tasks, he wants to execute with his current budget.
@@ -218,6 +222,8 @@ private object TaskSet {
           // 1. Get all Tasks the Agents want to bid on during the auction with their current money
           //
           var r: List[(Double, Agent, Task)] = Nil
+          while(waitForAll & Scheduler().openTasks > 0)
+            TaskSet.wait()
           while (r.isEmpty) {
             val ts = taskSet.executableTasks    // TODO Filter if no one can execute (simple done)
 //            println(s"ts = ${ts.map(_.pretty).mkString(", ")}")
@@ -242,22 +248,24 @@ private object TaskSet {
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: List[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }.reverse    // TODO Order in reverse directly
+          val queue: Iterator[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }.reverse.toIterator    // TODO Order in reverse directly
           //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
           var taken : Map[Agent, Int] = HashMap[Agent, Int]()
 
-
+          var openSlots = Scheduler().numberOfThreads * taskTakenFactor - Scheduler().openTasks
           // 3. Take from beginning to front only the non colliding tasks
           // Check the currenlty executing tasks too.
-          var newTask: List[(Agent, Task)] = Nil
-          for ((price, a, t) <- queue) {
+          var newTask: Seq[(Agent, Task)] = Nil
+          while(queue.hasNext && openSlots > 0){
+            val (price, a, t) = queue.next()
             // Check if the agent can execute another task
             val open : Boolean = a.maxParTasks.fold(true)(n => n - taskSet.executingTasks(a) + taken.getOrElse(a, 0) > 0)
             if (open & LockSet.isExecutable(t)) {
               val budget = regAgents.getOrElse(a, 0.0)     //TODO Lock regAgents, got error during phase switch
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
-                newTask = (a, t) :: newTask
+                openSlots -= 1
+                newTask = (a, t) +: newTask
                 LockSet.lockTask(t)
                 a.taskChoosen(t)
                 regAgents.put(a, budget - price)

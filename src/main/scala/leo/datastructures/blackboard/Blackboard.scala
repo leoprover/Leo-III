@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard
 
-import leo.agents.{Agent, AgentController, Task}
+import leo.agents.{Agent, Task}
 
 // Singleton Blackboards
 object Blackboard {

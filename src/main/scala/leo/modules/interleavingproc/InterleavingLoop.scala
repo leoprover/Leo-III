@@ -1,11 +1,11 @@
 package leo.modules.interleavingproc
 
-import leo._
 import leo.agents.{InterferingLoop, OperationState}
-import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, ClauseProxy}
 import leo.datastructures.blackboard.{DataType, Result}
-import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem, StatusSZS}
+import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem, SZS_Unknown, StatusSZS}
 import leo.modules.seqpproc.{Control, State}
+import scala.collection.mutable
 
 object InterleavingLoop {
   type A = AnnotatedClause
@@ -23,7 +23,7 @@ object InterleavingLoop {
   * @author Max Wisniewski
   * @since 7/18/16
   */
-class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends InterferingLoop[StateView[InterleavingLoop.A]] {
+class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification : UnificationStore[InterleavingLoop.A]) extends InterferingLoop[StateView[InterleavingLoop.A]] {
 
   @inline private final val forwardSubsumed = true
   @inline private final val notForwardSubsumed = false
@@ -33,28 +33,41 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
    // val n : InterleavingLoop.A = state.conjecture.fold(state.getNextUnprocessed)(c => c)
     println("Init called!")
     val n = state.getNextUnprocessed
+    movedToProcessed.add(n.id)
     commonFilter(n)
   }
 
   private val maxRound = 20
   private var actRound = 1
 
+  //TODO Remove after merge with alex
+  private val movedToProcessed : mutable.Set[Long] = new mutable.HashSet[Long]
+
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
+    val sb = new StringBuilder("\n")
     if(actRound > maxRound && maxRound > 0) {
-      println("Finished Rounds")
-      println(s"Unprocessed:\n  ${state.state.unprocessed.map(_.pretty).mkString("\n  ")}")
-      println(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}")
+      sb.append("-----------------------------------------------------\n")
+      sb.append("Finished Rounds\n")
+      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty).mkString("\n  ")}\n")
+      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty).mkString("\n  ")}\n")
+      sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}\n")
+      sb.append("-----------------------------------------------------\n")
+      leo.Out.info(sb.toString())
       return None
     }
-    println(s"Round: ${actRound}")
+    sb.append(s" --------------- Round: ${actRound}-------------------\n")
     actRound += 1
-    println(s"Unprocessed:\n  ${state.state.unprocessed.map(_.pretty).mkString("\n  ")}")
-    println(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}")
-    if(state.state.unprocessed.isEmpty) return None
+    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty).mkString("\n  ")}\n")
+    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty).mkString("\n  ")}\n")
+    sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}\n")
+    if(!state.hasNextUnprocessed) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
-    println(s"Select next Unprocessed:\n  >  ${select.pretty}")
-    println()
+    movedToProcessed.add(select.id)
+    sb.append(s"Select next Unprocessed:\n  >  ${select.pretty}\n")
+    sb.append("-----------------------------------------------------\n\n")
+    leo.Out.info(sb.toString())
+    if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
     // The normal loop from seqpproc
     commonFilter(select)
   }
@@ -108,7 +121,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
 
 
 
-  override def apply(opState: StateView[InterleavingLoop.A]): Result = {
+  @inline override def apply(opState: StateView[InterleavingLoop.A]): Result = {
     val result = Result()
 
     // First check for empty clause
@@ -159,8 +172,20 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
+
+    // Split unifiable and non-unifiable clauses
+    val cIt = newclauses.iterator
+    newclauses = Set.empty
+    while(cIt.hasNext){
+      val ncl = cIt.next()
+      if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
+        result.insert(OpenUnification)(ncl) // TODO Simp and Triv?
+      } else {
+        newclauses += ncl
+      }
+    }
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+//    newclauses = Control.preunifyNewClauses(newclauses)
 
 
     val newIt = newclauses.iterator
@@ -188,6 +213,9 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A]) extends Inte
   * @tparam T Type of the AnnotatedClauses
   */
 case class StateView[T <: ClauseProxy](select : T, processedSelect : T, paramodPartners : Set[T] = Set(), subsumed : Set[T] = Set(), closed : Option[(StatusSZS, Option[T])] = None, forwardSubsumption : Boolean = false, actRewrite : Set[T] = Set[T]()) extends OperationState {
+
+  override val toString: String = s"processed = ${select.pretty}"
+
   override def datatypes: Iterable[DataType] = Seq(ProcessedClause, UnprocessedClause)
   override def readData(ty: DataType): Set[Any] = if(ty == UnprocessedClause) (/*paramodPartners + */Set(select)).asInstanceOf[Set[Any]] else Set()
   override def writeData(ty: DataType): Set[Any] = if(ty == ProcessedClause) subsumed.asInstanceOf[Set[Any]] else Set() // TODO type check?
