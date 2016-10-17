@@ -19,7 +19,7 @@ object PrenexNormal extends Normalization {
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  def apply(formula : Clause) : Clause = {
+  def apply(formula : Clause)(implicit sig: Signature) : Clause = {
     var maxBound = formula.maxImplicitlyBound
     formula.mapLit(lit => lit.termMap {case (l,r) =>
       (internalNormalize(l).betaNormalize,internalNormalize(r).betaNormalize) match {

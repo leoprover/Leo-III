@@ -14,13 +14,13 @@ object EqualityReplaceAgent extends Agent{
   override def name: String = "equality_replace_agent"
   override val interest = Some(Seq(ClauseType))
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context(), SignatureBlackboard.get)
+    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c, SignatureBlackboard.get)
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
-    val (can1, map) = ReplaceLeibnizEq.canApply(cl.cl)
+  private def commonFilter(cl : ClauseProxy, c : Context, sig: Signature) : Iterable[Task] = {
+    val (can1, map) = ReplaceLeibnizEq.canApply(cl.cl)(sig)
     if(can1){
       Seq(new LeibnitzEQTask(cl, cl.cl, map, c, this))
     } else {

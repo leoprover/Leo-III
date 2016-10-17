@@ -269,6 +269,21 @@ object Signature {
   import leo.datastructures.impl.{SignatureImpl => Impl}
 
   final def fresh(): Signature = Impl.empty
-  final def freshWithHOL(): Signature = Impl.get
+  final def freshWithHOL(): Signature = {
+    import leo.modules.HOLSignature
+    val sig = Impl.empty
+    for ((name, k) <- HOLSignature.types) {
+      sig.addFixedTypeConstructor(name, k)
+    }
+
+    for ((name, ty, flag) <- HOLSignature.fixedConsts) {
+      sig.addFixed(name, ty, None, flag | Signature.PropFixed)
+    }
+
+    for ((name, fed, ty, flag) <- HOLSignature.definedConsts) {
+      sig.addFixed(name, ty, Some(fed), flag | Signature.PropFixed)
+    }
+    sig
+  }
 
 }

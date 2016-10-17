@@ -80,7 +80,7 @@ object NaiveSplitting extends Split {
     val maxLit = c.lits.max(Orderings.simple(LitWeight_FIFO))
     val rLits = c.lits.filterNot(_ != maxLit)   // Remove maximal Literal
 
-    maxLit.term match {
+    Literal.asTerm(maxLit) match { // TODO: These matches never apply?!
       case (a <=> b) if maxLit.polarity =>
         val left = Impl(a,b)
         val right = Impl(b,a)

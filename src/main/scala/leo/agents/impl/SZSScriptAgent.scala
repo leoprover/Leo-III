@@ -27,7 +27,7 @@ object SZSScriptAgent {
 
   def encodeStd(in : Set[ClauseProxy]) : Seq[String] = {
     val ins = in.map{c => AnnotatedClause(c.cl, Role_Axiom, ClauseAnnotation.NoAnnotation, c.properties)}+ AnnotatedClause(Clause(Seq(Literal(LitTrue, false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
-    ToTPTP(ins).map(_.apply)
+    ToTPTP(ins)(SignatureBlackboard.get).map(_.apply)
   }
 
   protected[agents] val h : scala.collection.mutable.Map[String, SZSScriptAgent] = new scala.collection.mutable.HashMap[String, SZSScriptAgent]
@@ -141,10 +141,11 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
     Clause.mkClause(List(lit), Derived)
   }
 
+  // TODO: This method inverts the polarity, this is illegal, isnt it?
   private def orLit(l : Seq[Literal]) : Term = l match {
     case Seq()        => LitTrue
-    case l1 +: Seq()  => if(l1.polarity) l1.term else Not(l1.term)
-    case l1 +: ls   => if(l1.polarity) |||(l1.term, orLit(ls)) else |||(Not(l1.term), orLit(ls))
+    case l1 +: Seq()  => ???
+    case l1 +: ls   => ???
   }
 }
 

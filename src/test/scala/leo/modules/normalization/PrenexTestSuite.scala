@@ -11,7 +11,7 @@ import leo.modules.HOLSignature.{o, Forall, &}
  */
 class PrenexTestSuite extends LeoTestSuite {
 
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val skVar = mkAtom(s.freshSkolemConst(o))
 
@@ -25,7 +25,7 @@ class PrenexTestSuite extends LeoTestSuite {
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     test("Prenex Test:"+t.pretty, Checked) {
-      val st = PrenexNormal(termToClause(t)).lits.head.term
+      val st = Literal.asTerm(PrenexNormal(termToClause(t)).lits.head)
       println("Prenex: The Term '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
       assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }

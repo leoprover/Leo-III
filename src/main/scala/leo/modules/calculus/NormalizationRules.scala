@@ -177,7 +177,7 @@ object ReplaceLeibnizEq extends CalculusRule {
   type Polarity = Boolean
 
 
-  def canApply(cl: Clause): (Boolean, Map[Int, Term]) = {
+  def canApply(cl: Clause)(implicit sig: Signature): (Boolean, Map[Int, Term]) = {
     import leo.datastructures.Term.{Bound, TermApp}
     var gbTermMap: Map[Int, Term] = Map()
     var flexHeadSet: Set[Int] = Set()
@@ -196,7 +196,7 @@ object ReplaceLeibnizEq extends CalculusRule {
             } else {
               if (gbTermMap contains headIndex) {
                 val curEntry = gbTermMap(headIndex)
-                if (arg.compareTo(curEntry) == CMP_LT) {
+                if (arg.compareTo(curEntry)(sig) == CMP_LT) {
                   gbTermMap = gbTermMap + (headIndex -> arg)
                 }
               } else {

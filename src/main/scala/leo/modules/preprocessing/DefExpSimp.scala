@@ -12,7 +12,7 @@ import leo.modules.output.SZS_Theorem
     override val inferenceStatus = Some(SZS_Theorem)
     def apply(t: Term)(implicit sig: Signature): Term = {
       val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
-      Simplification.normalize(t.exhaustive_δ_expand_upTo(symb).betaNormalize.etaExpand)
+      Simplification.normalize(t.δ_expand_upTo(symb).betaNormalize.etaExpand)
     }
 
     def apply(cl: Clause)(implicit sig: Signature): Clause = {

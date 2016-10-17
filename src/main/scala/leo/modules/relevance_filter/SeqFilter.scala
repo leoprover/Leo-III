@@ -13,7 +13,7 @@ import leo.modules.parsers.InputProcessing
   * Clauses, considered for the RelevanceFiltering
   */
 object SeqFilter {
-  def apply(formulas : Iterable[AnnotatedFormula]) : Iterable[ClauseProxy] = {
+  def apply(formulas : Iterable[AnnotatedFormula])(implicit sig: Signature) : Iterable[ClauseProxy] = {
     var res : Seq[ClauseProxy] = Seq()
     var taken : Iterable[AnnotatedFormula] = Seq()
 
@@ -34,7 +34,7 @@ object SeqFilter {
 
       // Translate all taken formulas to clauses
       taken.foreach{f =>
-        val (name, term, role) = InputProcessing.process(SignatureImpl.get)(f)
+        val (name, term, role) = InputProcessing.process(sig)(f)
         val nc : ClauseProxy = AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)
         res = nc +: res
       }

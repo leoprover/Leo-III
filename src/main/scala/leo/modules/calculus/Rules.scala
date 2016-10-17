@@ -34,7 +34,7 @@ object FuncExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)]): Literal = {
+  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
     assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
     assert(lit.equational, "Trying to apply func ext on non-eq literal")
 
@@ -45,7 +45,7 @@ object FuncExt extends CalculusRule {
       val newVars = funArgTys.map {ty => vargen(ty)}
       Literal(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)
     } else {
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)) //initFV: We only use the
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)(sig)) //initFV: We only use the
       // free vars that were existent at the very beginning, i.e. simulating
       // that we applies func_ext to all negative literals first
       // in order to minimize the FVs inside the sk-term
@@ -53,9 +53,9 @@ object FuncExt extends CalculusRule {
     }
   }
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal]): Seq[Literal] = {
+  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     val initFV = vargen.existingVars
-    lits.map(apply(_,vargen, initFV))
+    lits.map(apply(_,vargen, initFV)(sig))
   }
 
 }
@@ -98,7 +98,7 @@ object BoolExt extends CalculusRule {
 
   def apply(l: Literal): (ExtLits, ExtLits) = {
     assert(l.equational, "Trying to apply bool ext on non-eq literal")
-    assert(l.term.ty == o, "Trying to apply bool ext on non-bool literal")
+    assert(l.left.ty == o && l.right.ty == o, "Trying to apply bool ext on non-bool literal")
 
     if (l.polarity) {
        (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, true)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, false)))
@@ -140,7 +140,7 @@ object PreUni extends CalculusRule {
 
   def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
     Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    val result = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
+    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
     if (result.hasNext) {
       val uniResult = result.next()
       val (termSubst, typeSubst) = uniResult._1

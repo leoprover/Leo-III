@@ -14,7 +14,7 @@ class TermTestSuite extends LeoTestSuite {
   import leo.Checked
   import impl.SignatureImpl
 
-  val sig = SignatureImpl.get
+  implicit val sig = getFreshSignature
 
   test("etaExpand - all binders of type i", Checked) {
     val s = getFreshSignature

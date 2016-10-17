@@ -20,7 +20,7 @@ object Simplification extends Normalization {
     case (l,r)  => Literal(l,r, lit.polarity)
   }
 
-  override def apply(formula : Clause) : Clause = {
+  override def apply(formula : Clause)(implicit sig: Signature) : Clause = {
     formula.mapLit(apply(_))
   }
 

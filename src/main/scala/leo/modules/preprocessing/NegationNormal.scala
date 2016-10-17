@@ -20,7 +20,7 @@ object NegationNormal extends Normalization{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  def apply(formula: Clause): Clause = {
+  def apply(formula: Clause)(implicit sig: Signature): Clause = {
     formula.mapLit { li =>
       if(li.left.ty == o) {
         val l1 = li.termMap { case (l, r) => {

@@ -16,13 +16,13 @@ class FormulaRenamingAgent(cs : Context*) extends Agent {
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case DataEvent(cl : ClauseProxy, ClauseType) => commonFilter(cl, Context())(SignatureBlackboard.get)
+    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)(SignatureBlackboard.get)
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
-    val (nc, defs) = FormulaRenaming(cl.cl)
+  private def commonFilter(cl : ClauseProxy, c : Context)(sig: Signature) : Iterable[Task] = {
+    val (nc, defs) = FormulaRenaming(cl.cl)(sig)
     val toInsertContext = cs filter Context.isAncestor(c)
     if(defs.nonEmpty){
       toInsertContext map (ci => new FormulaRenamingTask(cl, nc, defs , ci, this))

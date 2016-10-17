@@ -33,6 +33,7 @@ class LitOrderingTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
     test(s"Ordering test for $p", Benchmark) {
+      implicit val sig = getFreshSignature
       printHeading(s"Ordering test for $p")
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
       var fs : Seq[AnnotatedClause] = Seq()
@@ -43,7 +44,7 @@ class LitOrderingTestSuite extends LeoTestSuite {
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
           fail()
       }
-      Utility.printSignature()
+      Utility.printSignature(sig)
 
       printHeading("Parsed terms")
       val fsIt = fs.iterator

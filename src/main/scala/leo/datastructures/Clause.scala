@@ -30,11 +30,6 @@ trait Clause extends Ordered[Clause] with Pretty {
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
 
-  def maxLitsMap: Map[LitMaxFlag, Seq[Literal]]
-
-  @inline final def maxLits: Seq[Literal] = maxLitsMap(LitMax)
-  @inline final def strictlyMaxLits: Seq[Literal] = maxLitsMap(LitStrictlyMax)
-
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
 

@@ -10,7 +10,7 @@ import Term._
  * Created by ryu on 6/12/14.
  */
 class NegationNormalTestSuite extends LeoTestSuite {
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val p = mkAtom(s.addUninterpreted("r", o))
   val q = mkAtom(s.addUninterpreted("s", o))
@@ -30,7 +30,7 @@ class NegationNormalTestSuite extends LeoTestSuite {
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     test("Negation Test:"+t.pretty, Checked) {
-      val st = NegationNormal(termToClause(t)).lits.head.term
+      val st = Literal.asTerm(NegationNormal(termToClause(t)).lits.head)
       println("Negation: '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
       assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }

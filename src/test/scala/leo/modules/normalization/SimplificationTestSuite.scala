@@ -11,7 +11,7 @@ import leo.modules.HOLSignature.{o, Not, LitFalse, LitTrue, &, |||, <=>, Forall,
  * Created by Max Wisniewski on 6/10/14.
  */
 class SimplificationTestSuite extends LeoTestSuite {
-  val s = getFreshSignature
+  implicit val s = getFreshSignature
 
   val p = mkAtom(s.addUninterpreted("p", o))
   val q = mkAtom(s.addUninterpreted("q", o))
@@ -43,7 +43,7 @@ class SimplificationTestSuite extends LeoTestSuite {
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
     test("Simplification Test: "+t.pretty, Checked) {
-      val st = Simplification(termToClause(t)).lits.head.term
+      val st = Literal.asTerm(Simplification(termToClause(t)).lits.head)
       println("Simplicifcation: '" + t.pretty + "' was simplified to '" + st.pretty)
       assert(st == t1, "\nThe simplified Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
     }

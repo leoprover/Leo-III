@@ -30,12 +30,6 @@ trait Literal extends Pretty {
   /** Whether the equation could have been oriented wrt. a term ordering `>`. */
   def oriented: Boolean
 
-  /** Returns a term representation of the literal.
-    * @return Term `s = t` if `polarity`; term `!(s = t)` if `!polarity`,
-    *         where `s ≡ left and t ≡ right`. If `!equational` the equality may
-    *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ true`).*/
-  def term: Term
-
   // Further properties
   /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` with
     * `t != $true` and `t != $false`.*/
@@ -67,7 +61,7 @@ trait Literal extends Pretty {
     * `mc(l) ≡ {{s},{t}}` if `l.polarity` and `mc(l) ≡ {{s,t}}` if `!l.polarity`,
     * and `(s,t) ≡ (l.left,l.right)`.
     * */
-  @inline final def compare(that: Literal): CMP_Result = Literal.compare(this, that)
+  @inline final def compare(that: Literal)(implicit sig: Signature): CMP_Result = Literal.compare(this, that)(sig)
 
 
   // Utility functions
@@ -107,22 +101,45 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
   @inline final def mkLit(t1: Term, t2: Term, pol: Boolean): Literal = LitImpl.mkLit(t1,t2,pol)
+  /** Creates a new (equational) literal of the two terms t1 and t2
+    * and polarity `polarity`. During construction, the method
+    * tries to order the two terms into and ordered equation left=right,
+    * where left >= right wrt. term ordering. If this fails,
+    * t1 will be used as left and t2 as right.
+    * Note that the resulting literal is only
+    * equational if both terms t1 and t2 and not equivalent to $true/$false. */
+  @inline final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = LitImpl.mkOrdered(t1,t2,pol)(sig)
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
   @inline final def mkLit(t: Term, pol: Boolean): Literal = LitImpl.mkLit(t,pol)
 
   // Convenience methods
-  /** Create new (equational) literal with equation `left = right`
+  /** Create new unordered (equational) literal with equation `left = right`
     * and positive polarity. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
   @inline final def mkPos(t1: Term, t2: Term): Literal = mkLit(t1,t2,true)
-  /** Create new (equational) literal with equation `left = right`
+  /** Create new unordered (equational) literal with equation `left = right`
     * and negative polarity. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`.*/
   @inline final def mkNeg(t1: Term, t2: Term): Literal = mkLit(t1,t2,false)
-
-  // Apply method redirections
   /** Create new (equational) literal with equation `left = right`
+    * and positive polarity. During construction, the method
+    * tries to order the two terms into and ordered equation left=right,
+    * where left >= right wrt. term ordering. If this fails,
+    * t1 will be used as left and t2 as right.
+    * Note that the resulting literal is only
+    * equational if neither `left` nor `right` are `$true/$false`. */
+  @inline final def mkPosOrdered(t1: Term, t2: Term)(implicit sig: Signature): Literal = mkOrdered(t1,t2,true)(sig)
+  /** Create new (equational) literal with equation `left = right`
+    * and negative polarity. During construction, the method
+    * tries to order the two terms into and ordered equation left=right,
+    * where left >= right wrt. term ordering. If this fails,
+    * t1 will be used as left and t2 as right.
+    * Note that the resulting literal is only
+    * equational if neither `left` nor `right` are `$true/$false`.*/
+  @inline final def mkNegOrdered(t1: Term, t2: Term)(implicit sig: Signature): Literal = mkOrdered(t1,t2,false)(sig)
+  // Apply method redirections
+  /** Create new unordered (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
   @inline override final def apply(t1: Term, t2: Term, pol: Boolean) = mkLit(t1,t2,pol)
@@ -147,13 +164,13 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   case object LitStrictlyMax extends LitMaxFlag
   case object LitMax extends LitMaxFlag
 
-  final def compare(a: Literal, b: Literal): CMP_Result = {
+  final def compare(a: Literal, b: Literal)(implicit sig: Signature): CMP_Result = {
     if (a == b) CMP_EQ
-    else if (a.polarity == b.polarity) cmpSamePol(a,b)
-    else if (a.polarity) cmpDiffPol(a,b)
-    else Orderings.invCMPRes(cmpDiffPol(b,a))
+    else if (a.polarity == b.polarity) cmpSamePol(a,b)(sig)
+    else if (a.polarity) cmpDiffPol(a,b)(sig)
+    else Orderings.invCMPRes(cmpDiffPol(b,a)(sig))
   }
-  final def maximalityOf(lits: Seq[Literal]): Map[LitMaxFlag, Seq[Literal]] = {
+  final def maximalityOf(lits: Seq[Literal])(implicit sig: Signature): Map[LitMaxFlag, Seq[Literal]] = {
     var notmax: Seq[Literal] = Seq()
     var notstrictMax: Seq[Literal] = Seq()
 
@@ -164,7 +181,7 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
       var j = i+1
       while (j <= maxIdx) {
         val l2 = lits(j)
-        val cmp = l1.compare(l2)
+        val cmp = l1.compare(l2)(sig)
         if (cmp == CMP_GT) {
           notmax = notmax :+ l2
           notstrictMax = notstrictMax :+ l2
@@ -185,21 +202,21 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
     }
     Map(LitStrictlyMax -> lits.diff(notstrictMax), LitMax -> lits.diff(notmax))
   }
-  final def maxOf(lits: Seq[Literal]): Seq[Literal] = maximalityOf(lits)(LitMax)
-  final def strictlyMaxOf(lits: Seq[Literal]): Seq[Literal] = maximalityOf(lits)(LitStrictlyMax)
+  final def maxOf(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = maximalityOf(lits)(sig)(LitMax)
+  final def strictlyMaxOf(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = maximalityOf(lits)(sig)(LitStrictlyMax)
 
   /** Compare two literals of same polarity*/
-  private final def cmpSamePol(a: Literal, b: Literal): CMP_Result = {
+  private final def cmpSamePol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
     assert(a.polarity == b.polarity)
     assert(a != b) // This should have been catched in `compare`
     // TODO: Improve if oriented
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 
-    val albl = al.compareTo(bl)
-    val albr = al.compareTo(br)
-    val arbl = ar.compareTo(bl)
-    val arbr = ar.compareTo(br)
+    val albl = al.compareTo(bl)(sig)
+    val albr = al.compareTo(br)(sig)
+    val arbl = ar.compareTo(bl)(sig)
+    val arbr = ar.compareTo(br)(sig)
 
     if ((albl == CMP_GT && albr == CMP_GT) ||
         (isGE(albl) && isGE(arbr)) ||
@@ -214,16 +231,16 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
 
   /** Compare two literals of different polarity.
     * `a` must have positive polarity, `b` must have negative polarity.*/
-  private final def cmpDiffPol(a: Literal, b: Literal): CMP_Result = {
+  private final def cmpDiffPol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
     assert(a.polarity); assert(!b.polarity)
     // TODO: Improve if oriented
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 
-    val albl = al.compareTo(bl)
-    val albr = al.compareTo(br)
-    val arbl = ar.compareTo(bl)
-    val arbr = ar.compareTo(br)
+    val albl = al.compareTo(bl)(sig)
+    val albr = al.compareTo(br)(sig)
+    val arbl = ar.compareTo(bl)(sig)
+    val arbr = ar.compareTo(br)(sig)
     if ((albl == CMP_GT && albr == CMP_GT) || (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
     else if ((isLE(albl) || isLE(albr)) && (isLE(arbl) || isLE(arbr))) CMP_LT
     else CMP_NC
@@ -237,6 +254,18 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
     case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= leo.modules.HOLSignature.lastId && idr <= leo.modules.HOLSignature.lastId
       // TODO: Extend to 'distinct symbols' from TPTP
     case _ => false
+  }
+  /** Returns a term representation of the literal.
+    * @return Term `s = t` if `polarity`; term `!(s = t)` if `!polarity`,
+    *         where `s ≡ left and t ≡ right`. If `!equational` the equality may
+    *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ false`).*/
+  final def asTerm(l: Literal): Term = {
+    import leo.modules.HOLSignature.{=== => EQ, Not}
+    if (l.equational) {
+      if (l.polarity) EQ(l.left, l.right) else Not(EQ(l.left, l.right))
+    } else {
+      if (l.polarity) l.left else Not(l.left)
+    }
   }
   /** Returns true iff the literal is trivially semantically equal to $true. */
   final def isTrue(l: Literal): Boolean = if (l.polarity) trivial(l) else distinctSides(l)

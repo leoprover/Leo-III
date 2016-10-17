@@ -33,7 +33,7 @@ object LitWeight_FIFO extends LiteralWeight {
 
 /** Literal weighting that uses the enclosed term's size as weight. */
 object LitWeight_TermSize extends LiteralWeight {
-  def weightOf[A <: Literal](lit: A) = lit.term.size
+  def weightOf[A <: Literal](lit: A) = Literal.asTerm(lit).size
 }
 
 // more to come ...

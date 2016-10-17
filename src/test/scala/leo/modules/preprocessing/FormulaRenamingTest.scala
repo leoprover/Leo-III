@@ -9,7 +9,7 @@ import leo.modules.HOLSignature.{o, |||, <=>, &}
   * Created by mwisnie on 1/13/16.
   */
 class FormulaRenamingTest extends LeoTestSuite {
-  val s = SignatureImpl.get
+  implicit val s = getFreshSignature
 
   test("CNF_Size Test 1", Checked){
     FormulaRenaming.clearUnitStore()

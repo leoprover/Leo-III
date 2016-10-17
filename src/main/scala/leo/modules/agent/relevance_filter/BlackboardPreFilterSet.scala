@@ -1,6 +1,6 @@
 package leo.modules.agent.relevance_filter
 
-import leo.datastructures.blackboard.{DataType, DataStore}
+import leo.datastructures.blackboard.{DataStore, DataType, SignatureBlackboard}
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.relevance_filter.PreFilterSet
 
@@ -15,10 +15,10 @@ object BlackboardPreFilterSet extends DataStore{
   }
   override def insert(n: Any): Boolean = n match {
     case (form : AnnotatedFormula) => // New formula
-      PreFilterSet.addNewFormula(form)
+      PreFilterSet.addNewFormula(form)(SignatureBlackboard.get)
       true
     case (form : AnnotatedFormula, round : Int) => // Taken Formula
-      PreFilterSet.useFormula(form)
+      PreFilterSet.useFormula(form)(SignatureBlackboard.get)
       true
   }
   override def clear(): Unit = PreFilterSet.clear()

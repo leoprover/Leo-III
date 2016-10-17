@@ -13,7 +13,6 @@ import leo.modules._
 import leo.modules.external.ExternalCall
 import leo.modules.output._
 import leo.modules.phase._
-import leo.datastructures.impl.SignatureImpl
 import leo.modules.Utility._
 import leo.modules.preprocessing.Preprocess
 import leo.modules.seqpproc.MultiSeqPProc
@@ -57,7 +56,7 @@ object TestMain {
             Out.trace("Caused by: " + e.getCause.getMessage)
             Out.trace("at: " + e.getCause.getStackTrace.toString)
           }
-          Out.trace(Utility.userDefinedSignatureAsString)
+//          Out.trace(Utility.userDefinedSignatureAsString)
         }
         case e:Throwable => {
           if (e.getMessage != null) {
@@ -71,7 +70,7 @@ object TestMain {
             Out.trace("Caused by: " + e.getCause.getMessage)
             Out.trace("at: " + e.getCause.getStackTrace.toString)
           }
-          Out.trace(Utility.userDefinedSignatureAsString)
+//          Out.trace(Utility.userDefinedSignatureAsString)
         }
       } finally {
         Scheduler().killAll()
@@ -80,7 +79,9 @@ object TestMain {
     } else if(Configuration.isSet("exttest")){
       testExternalProvers()
     } else {
+      import leo.datastructures.Signature
 
+      implicit val sig: Signature = Signature.freshWithHOL()
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
       val TimeOutProcess = new DeferredKill(timeout, timeout)
@@ -186,7 +187,7 @@ object TestMain {
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(Utility.userConstantsForProof(SignatureImpl.get))
+        Out.output(Utility.userConstantsForProof(sig))
         Out.output(Utility.proofToTPTP(Utility.proofOf(proof.get)))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }

@@ -75,45 +75,32 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   import TermImpl.{headToTerm, mkRedex, mkRoot}
 
   // Predicates on terms
-  val isAtom = args == SNil
-  val isConstant = isAtom && hd.isConstant
-  val isVariable = isAtom && (hd.isBound || hd.isMetaVariable)
-  val isTermAbs = false
-  val isTypeAbs = false
-  val isApp = args != SNil
-  protected[impl] def flexHead0(depth: Int): Boolean = hd match {
+  final val isAtom = args == SNil
+  final val isConstant = isAtom && hd.isConstant
+  final val isVariable = isAtom && (hd.isBound || hd.isMetaVariable)
+  final val isTermAbs = false
+  final val isTypeAbs = false
+  final val isApp = args != SNil
+
+  final protected[impl] def flexHead0(depth: Int): Boolean = hd match {
     case BoundIndex(_, scope) => scope > depth
     case _ => false
   }
 
   // Handling def. expansion
-  lazy val δ_expandable = hd.δ_expandable || args.δ_expandable
-  def partial_δ_expand(rep: Int) = mkRedex(hd.partial_δ_expand(rep), args.partial_δ_expand(rep))
-//    hd.partial_δ_expand(rep) match {
-//    case Root(h, SNil) => Root(h, args.partial_δ_expand(rep))
-//    case Root(h, sp)   => Root(h, sp ++ args.partial_δ_expand(rep))
-//    case other         => Redex(other, args.partial_δ_expand(rep))
-//  }
-  def full_δ_expand = δ_expandable match {
-    case true => mkRedex(hd.full_δ_expand, args.full_δ_expand)
-    case false => this
-  }
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = hd match {
+  final def δ_expandable(implicit sig: Signature) = hd.δ_expandable(sig) || args.δ_expandable(sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature) = mkRedex(hd.δ_expand(rep)(sig), args.δ_expand(rep)(sig))
+  final def δ_expand(implicit sig: Signature) = mkRedex(hd.δ_expand(sig), args.δ_expand(sig))
+  final def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term = hd match {
     case Atom(key) if !symbs.contains(key) => {
-      val meta = SignatureImpl(key)
+      val meta = sig(key)
       if (meta.hasDefn) {
-        mkRedex(meta._defn.exhaustive_δ_expand_upTo(symbs), args.exhaustive_δ_expand_upTo(symbs))
+        mkRedex(meta._defn.δ_expand_upTo(symbs)(sig), args.δ_expand_upTo(symbs)(sig))
       } else {
-        mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
+        mkRoot(hd, args.δ_expand_upTo(symbs)(sig))
       }
     }
-    case _ => mkRoot(hd, args.exhaustive_δ_expand_upTo(symbs))
-  }
-
-  lazy val head_δ_expandable = hd.δ_expandable
-  def head_δ_expand = hd.δ_expandable match {
-    case true => mkRedex(hd.partial_δ_expand(1), args)
-    case false => this
+    case _ => mkRoot(hd, args.δ_expand_upTo(symbs)(sig))
   }
 
   // Queries on terms
@@ -346,23 +333,19 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   import TermImpl.mkRedex
 
   // Predicates on terms
-  val isAtom = false
-  val isConstant = false
-  val isVariable = false
-  val isTermAbs = false
-  val isTypeAbs = false
-  val isApp = true
+  @inline final val isAtom = false
+  @inline final val isConstant = false
+  @inline final val isVariable = false
+  @inline final val isTermAbs = false
+  @inline final val isTypeAbs = false
+  @inline final val isApp = true
   protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
-  lazy val δ_expandable = body.δ_expandable || args.δ_expandable
-  def partial_δ_expand(rep: Int) = mkRedex(body.partial_δ_expand(rep), args.partial_δ_expand(rep))
-  def full_δ_expand = mkRedex(body.full_δ_expand, args.full_δ_expand)
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = mkRedex(body.exhaustive_δ_expand_upTo(symbs), args.exhaustive_δ_expand_upTo(symbs))
-
-
-  lazy val head_δ_expandable = headSymbol.δ_expandable
-  def head_δ_expand = mkRedex(body.head_δ_expand, args)
+  final def δ_expandable(implicit sig: Signature) = body.δ_expandable(sig) || args.δ_expandable(sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature) = mkRedex(body.δ_expand(rep)(sig), args.δ_expand(rep)(sig))
+  final def δ_expand(implicit sig: Signature) = mkRedex(body.δ_expand(sig), args.δ_expand(sig))
+  final def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term = mkRedex(body.δ_expand_upTo(symbs)(sig), args.δ_expand_upTo(symbs)(sig))
 
   // Queries on terms
   lazy val ty = ty0(body.ty, args)
@@ -447,22 +430,19 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   import TermImpl.mkTermAbstr
 
   // Predicates on terms
-  val isAtom = false
-  val isConstant = false
-  val isVariable = false
-  val isTermAbs = true
-  val isTypeAbs = false
-  val isApp = false
+  @inline final val isAtom = false
+  @inline final val isConstant = false
+  @inline final val isVariable = false
+  @inline final val isTermAbs = true
+  @inline final val isTypeAbs = false
+  @inline final val isApp = false
   protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth+1)
 
   // Handling def. expansion
-  lazy val δ_expandable = body.δ_expandable
-  def partial_δ_expand(rep: Int) = mkTermAbstr(typ, body.partial_δ_expand(rep))
-  def full_δ_expand = mkTermAbstr(typ, body.full_δ_expand)
-
-  lazy val head_δ_expandable = headSymbol.δ_expandable
-  def head_δ_expand = mkTermAbstr(typ, body.head_δ_expand)
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = mkTermAbstr(typ, body.exhaustive_δ_expand_upTo(symbs))
+  final def δ_expandable(implicit sig: Signature) = body.δ_expandable(sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature) = mkTermAbstr(typ, body.δ_expand(rep)(sig))
+  final def δ_expand(implicit sig: Signature) = mkTermAbstr(typ, body.δ_expand(sig))
+  final def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term = mkTermAbstr(typ, body.δ_expand_upTo(symbs)(sig))
 
   // Queries on terms
   lazy val ty = typ ->: body.ty
@@ -559,13 +539,10 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   protected[impl] def flexHead0(depth: Int): Boolean = body.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
-  lazy val δ_expandable = body.δ_expandable
-  def partial_δ_expand(rep: Int) = mkTypeAbstr(body.partial_δ_expand(rep))
-  def full_δ_expand = mkTypeAbstr(body.full_δ_expand)
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = mkTypeAbstr(body.exhaustive_δ_expand_upTo(symbs))
-
-  lazy val head_δ_expandable = headSymbol.δ_expandable
-  def head_δ_expand = mkTypeAbstr(body.head_δ_expand)
+  final def δ_expandable(implicit sig: Signature) = body.δ_expandable(sig)
+  final def δ_expand(rep: Int)(implicit sig: Signature) = mkTypeAbstr(body.δ_expand(rep)(sig))
+  final def δ_expand(implicit sig: Signature) = mkTypeAbstr(body.δ_expand(sig))
+  final def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term = mkTypeAbstr(body.δ_expand_upTo(symbs)(sig))
 
   // Queries on terms
   lazy val ty = ∀(body.ty)
@@ -622,22 +599,19 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   // Closure should never be handed to the outside
 
   // Predicates on terms
-  val isAtom = false
-  val isConstant = false
-  val isVariable = false
-  val isTermAbs = false
-  val isTypeAbs = false
-  val isApp = false
+  @inline final val isAtom = false
+  @inline final val isConstant = false
+  @inline final val isVariable = false
+  @inline final val isTermAbs = false
+  @inline final val isTypeAbs = false
+  @inline final val isApp = false
   protected[impl] def flexHead0(depth: Int): Boolean = this.betaNormalize.asInstanceOf[TermImpl].flexHead0(depth)
 
   // Handling def. expansion
-  lazy val δ_expandable = false // TODO
-  def partial_δ_expand(rep: Int) = ???
-  def full_δ_expand = ???
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term = ???
-
-  lazy val head_δ_expandable = ???
-  def head_δ_expand = ???
+  def δ_expandable(implicit sig: Signature) = false // TODO
+  def δ_expand(rep: Int)(implicit sig: Signature) = ???
+  def δ_expand(implicit sig: Signature) = ???
+  def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term = ???
 
   // Queries on terms
   lazy val ty = term.ty
@@ -713,105 +687,101 @@ protected[impl] sealed abstract class Head extends Pretty {
                                               None
 
   // Handling def. expansion
-  val δ_expandable: Boolean
-  def partial_δ_expand(rep: Int): Term
-  def full_δ_expand: Term
+  def δ_expandable(sig: Signature): Boolean
+  def δ_expand(rep: Int)(sig: Signature): Term
+  def δ_expand(sig: Signature): Term
 }
 
 protected[impl] case class BoundIndex(typ: Type, scope: Int) extends Head {
   // Predicates
-  val isBound = true
-  val isConstant = false
-  val isMetaVariable = false
+  @inline final val isBound = true
+  @inline final val isConstant = false
+  @inline final val isMetaVariable = false
 
   // Queries
-  val ty = typ
-  val scopeNumber = (-scope, typ.scopeNumber)
+  final val ty = typ
+  final val scopeNumber = (-scope, typ.scopeNumber)
 
   // Handling def. expansion
-  val δ_expandable = false
-  def partial_δ_expand(rep: Int) = full_δ_expand
-  def full_δ_expand = TermImpl.headToTerm(this)
+  @inline final def δ_expandable(sig: Signature) = false
+  @inline final def δ_expand(rep: Int)(sig: Signature) = δ_expand(sig)
+  @inline final def δ_expand(sig: Signature) = TermImpl.headToTerm(this)
 
   // Pretty printing
   override lazy val pretty = s"$scope:${typ.pretty}"
 
   // Local definitions
-  def substitute(s: Subst) = s.substBndIdx(scope)
+  final def substitute(s: Subst) = s.substBndIdx(scope)
 }
 
 protected[impl] case class MetaIndex(typ: Type, id: Int) extends Head {
   // Predicates
-  val isBound = false
-  val isConstant = false
-  val isMetaVariable = true
+  @inline final val isBound = false
+  @inline final val isConstant = false
+  @inline final val isMetaVariable = true
 
   // Queries
-  val ty = typ
-  val scopeNumber = (0,0)
+  final val ty = typ
+  final val scopeNumber = (0,0)
 
   // Handling def. expansion
-  val δ_expandable = false
-  def partial_δ_expand(rep: Int) = full_δ_expand
-  def full_δ_expand = TermImpl.headToTerm(this)
+  @inline final def δ_expandable(sig: Signature) = false
+  @inline final def δ_expand(rep: Int)(sig: Signature) = δ_expand(sig)
+  @inline final def δ_expand(sig: Signature) = TermImpl.headToTerm(this)
 
   // Pretty printing
   override val pretty = s"sV$id"
 }
 
 protected[impl] case class Atom(id: Signature#Key) extends Head {
-  private lazy val meta = SignatureImpl.get(id)
 
   // Predicates
-  val isBound = false
-  val isConstant = true
-  val isMetaVariable = false
+  @inline final val isBound = false
+  @inline final val isConstant = true
+  @inline final val isMetaVariable = false
 
   // Queries
-  lazy val ty = meta._ty
-  val scopeNumber = (0,0)
+  lazy val ty = ??? //meta._ty
+  final val scopeNumber = (0,0)
 
   // Handling def. expansion
-  lazy val δ_expandable = meta.hasDefn
-  def partial_δ_expand(rep: Int) = rep match {
-    case 0 => TermImpl.headToTerm(this)
-    case -1 => meta.hasDefn match {
-      case false => TermImpl.headToTerm(this)
-      case true => meta._defn.partial_δ_expand(rep)
-    }
-    case n => meta.hasDefn match {
-      case false => TermImpl.headToTerm(this)
-      case true => meta._defn.partial_δ_expand(rep-1)
-    }
+  @inline final def δ_expandable(sig: Signature) = sig(id).hasDefn
+  final def δ_expand(rep: Int)(sig: Signature) = if (rep == 0) TermImpl.headToTerm(this)
+  else if (rep > 0) {
+    val meta = sig(id)
+    if (meta.hasDefn) meta._defn.δ_expand(rep-1)(sig)
+    else TermImpl.headToTerm(this)
+  } else {
+    //rep  < 0
+    val meta = sig(id)
+    if (meta.hasDefn) meta._defn.δ_expand(rep)(sig)
+    else TermImpl.headToTerm(this)
   }
-  def full_δ_expand = partial_δ_expand(-1)
+  @inline final def δ_expand(sig: Signature) = δ_expand(-1)(sig)
 
   // Pretty printing
-  override lazy val pretty = s"${meta.name}"
+  override lazy val pretty = s"$id"
 }
 
 
 protected[impl] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends Head {
   // Predicates
-  val isBound = false
-  val isConstant = false
-  val isMetaVariable = false
+  @inline final val isBound = false
+  @inline final val isConstant = false
+  @inline final val isMetaVariable = false
 
   // Queries
   lazy val ty = ???
   lazy val scopeNumber = hd.scopeNumber
 
   // Handling def. expansion
-  lazy val δ_expandable = ???
-  def partial_δ_expand(rep: Int) = ???
-  def full_δ_expand = ???
+  final def δ_expandable(sig: Signature) = ???
+  final def δ_expand(rep: Int)(sig: Signature) = ???
+  final def δ_expand(sig: Signature) = ???
 
   // Pretty printing
   override def pretty = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
 }
-
-
-
 
 
 /////////////////////////////////////////////////
@@ -828,10 +798,10 @@ protected[impl] sealed abstract class Spine extends Pretty {
   def etaExpand: Spine
 
   // Handling def. expansion
-  def δ_expandable: Boolean
-  def partial_δ_expand(rep: Int): Spine
-  def full_δ_expand: Spine
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Spine
+  def δ_expandable(sig: Signature): Boolean
+  def δ_expand(rep: Int)(sig: Signature): Spine
+  def δ_expand(sig: Signature): Spine
+  def δ_expand_upTo(symbs: Set[Signature#Key])(sig: Signature): Spine
 
   // Queries
   def length: Int
@@ -878,45 +848,45 @@ protected[impl] case object SNil extends Spine {
     Reductions.tick()
     nil
   }
-  val etaExpand: Spine = this
+  final val etaExpand: Spine = this
 
   // Handling def. expansion
-  val δ_expandable = false
-  def partial_δ_expand(rep: Int) = SNil
-  val full_δ_expand = SNil
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = SNil
+  @inline final def δ_expandable(sig: Signature) = false
+  @inline final def δ_expand(rep: Int)(sig: Signature) = SNil
+  @inline final def δ_expand(sig: Signature) = SNil
+  @inline final def δ_expand_upTo(symbs: Set[Signature#Key])(sig: Signature) = SNil
 
   // Queries
-  val fv: Set[(Int, Type)] = Set()
-  val tyFV: Set[Int] = Set()
-  val freeVars = Set[Term]()
-  val boundVars = Set[Term]()
-  val looseBounds = Set[Int]()
-  val metaVars = Set[(Type, Int)]()
-  val symbols = Set[Signature#Key]()
-  val symbolMap: Map[Signature#Key, (Int, Int)] = Map.empty
-  val length = 0
-  val asTerms = Seq()
-  val scopeNumber = (0, 0)
-  val size = 1
-  def occurrences0(pos: Int) = Map()
-  def feasibleOccurrences0(pos: Int) = Map()
+  final val fv: Set[(Int, Type)] = Set()
+  final val tyFV: Set[Int] = Set()
+  final val freeVars = Set[Term]()
+  final val boundVars = Set[Term]()
+  final val looseBounds = Set[Int]()
+  final val metaVars = Set[(Type, Int)]()
+  final val symbols = Set[Signature#Key]()
+  final val symbolMap: Map[Signature#Key, (Int, Int)] = Map.empty
+  final val length = 0
+  final val asTerms = Seq()
+  final val scopeNumber = (0, 0)
+  final val size = 1
+  final def occurrences0(pos: Int) = Map()
+  final def feasibleOccurrences0(pos: Int) = Map()
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = SpineClos(sp, spSubst)
-  def ++(sp: Spine) = sp
+  final def ++(sp: Spine) = sp
 
-  def drop(n: Int) = n match {
+  final def drop(n: Int) = n match {
     case 0 => SNil
     case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
   }
 
-  def last = throw new IllegalArgumentException("Trying to access last element of Nil")
-  def init = throw new IllegalArgumentException("Trying to access init of Nil")
-  def replace(what: Term, by: Term): Spine = SNil
-  def replaceAt0(pos: Int, tail: Position, by: Term): Spine = SNil
+  final def last = throw new IllegalArgumentException("Trying to access last element of Nil")
+  final def init = throw new IllegalArgumentException("Trying to access init of Nil")
+  final def replace(what: Term, by: Term): Spine = SNil
+  final def replaceAt0(pos: Int, tail: Position, by: Term): Spine = SNil
 
-  def substitute(subst: Subst): Spine = SNil
+  final def substitute(subst: Subst): Spine = SNil
   // Pretty printing
   override val pretty = "⊥"
 }
@@ -936,10 +906,10 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   lazy val etaExpand: Spine = App(hd.etaExpand,  tail.etaExpand)
 
   // Handling def. expansion
-  lazy val δ_expandable = hd.δ_expandable || tail.δ_expandable
-  def partial_δ_expand(rep: Int) = cons(Left(hd.partial_δ_expand(rep)), tail.partial_δ_expand(rep))
-  lazy val full_δ_expand = cons(Left(hd.full_δ_expand), tail.full_δ_expand)
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = cons(Left(hd.exhaustive_δ_expand_upTo(symbs)), tail.exhaustive_δ_expand_upTo(symbs))
+  @inline final def δ_expandable(sig: Signature) = hd.δ_expandable(sig) || tail.δ_expandable(sig)
+  @inline final def δ_expand(rep: Int)(sig: Signature) = cons(Left(hd.δ_expand(rep)(sig)), tail.δ_expand(rep)(sig))
+  @inline final def δ_expand(sig: Signature) = cons(Left(hd.δ_expand(sig)), tail.δ_expand(sig))
+  @inline final def δ_expand_upTo(symbs: Set[Signature#Key])(sig: Signature) = cons(Left(hd.δ_expand_upTo(symbs)(sig)), tail.δ_expand_upTo(symbs)(sig))
 
   // Queries
   lazy val fv: Set[(Int, Type)] = hd.fv union tail.fv
@@ -962,7 +932,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = App(TermClos(hd, subst), tail.merge(subst, sp, spSubst))
   def ++(sp: Spine) = cons(Left(hd), tail ++ sp)
 
-  def drop(n: Int) = n match {
+  final def drop(n: Int) = n match {
     case 0 => this
     case _ => tail.drop(n-1)
   }
@@ -976,18 +946,18 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
     case _ => App(hd, tail.init)
   }
 
-  def replace(what: Term, by: Term): Spine = if (hd == what)
+  final def replace(what: Term, by: Term): Spine = if (hd == what)
                                               App(by, tail.replace(what,by))
                                              else
                                               App(hd.replace(what,by), tail.replace(what,by))
 
-  def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
+  final def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
     case 1 if posTail == Position.root => App(by, tail)
     case 1 => App(hd.replaceAt(posTail, by), tail)
     case _ => App(hd, tail.replaceAt0(pos-1, posTail, by))
   }
 
-  def substitute(subst: Subst): Spine = App(hd.substitute(subst), tail.substitute(subst))
+  final def substitute(subst: Subst): Spine = App(hd.substitute(subst), tail.substitute(subst))
 
 
   // Pretty printing
@@ -1004,10 +974,11 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
 
   // Handling def. expansion
-  lazy val δ_expandable = tail.δ_expandable
-  def partial_δ_expand(rep: Int) = cons(Right(hd), tail.partial_δ_expand(rep))
-  lazy val full_δ_expand = cons(Right(hd), tail.full_δ_expand)
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = cons(Right(hd), tail.exhaustive_δ_expand_upTo(symbs))
+  @inline final def δ_expandable(sig: Signature) = tail.δ_expandable(sig)
+  @inline final def δ_expand(rep: Int)(sig: Signature) = cons(Right(hd), tail.δ_expand(rep)(sig))
+  @inline final def δ_expand(sig: Signature) = cons(Right(hd), tail.δ_expand(sig))
+  @inline final def δ_expand_upTo(symbs: Set[Signature#Key])(sig: Signature) = cons(Right(hd), tail.δ_expand_upTo(symbs)(sig))
+
   // Queries
   lazy val fv: Set[(Int, Type)] = tail.fv
   lazy val tyFV: Set[Int] = tail.tyFV union hd.typeVars.map(BoundType.unapply(_).get)
@@ -1021,14 +992,14 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val asTerms = Right(hd) +: tail.asTerms
   lazy val scopeNumber = (tail.scopeNumber._1,Math.min(hd.scopeNumber, tail.scopeNumber._2))
   lazy val size = 1 + tail.size
-  def occurrences0(pos: Int) = tail.occurrences0(pos+1)
-  def feasibleOccurrences0(pos: Int) = tail.feasibleOccurrences0(pos+1)
+  final def occurrences0(pos: Int) = tail.occurrences0(pos+1)
+  final def feasibleOccurrences0(pos: Int) = tail.feasibleOccurrences0(pos+1)
 
   // Misc
   def merge(subst: (Subst, Subst), sp: Spine, spSubst: (Subst, Subst)) = TyApp(hd.substitute(subst._2), tail.merge(subst, sp, spSubst))
   def ++(sp: Spine) = cons(Right(hd), tail ++ sp)
 
-  def drop(n: Int) = n match {
+  final def drop(n: Int) = n match {
     case 0 => this
     case _ => tail.drop(n-1)
   }
@@ -1042,13 +1013,13 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
     case TyApp(_,SNil) => TyApp(hd, SNil)
     case _ => TyApp(hd, tail.init)
   }
-  def replace(what: Term, by: Term): Spine = TyApp(hd, tail.replace(what,by))
-  def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
+  final def replace(what: Term, by: Term): Spine = TyApp(hd, tail.replace(what,by))
+  final def replaceAt0(pos: Int, posTail: Position, by: Term): Spine = pos match {
     case 1 => throw new IllegalArgumentException("Trying to replace term inside of type.")
     case _ => TyApp(hd, tail.replaceAt0(pos-1, posTail, by))
   }
 
-  def substitute(subst: Subst): Spine = TyApp(hd, tail.substitute(subst))
+  final def substitute(subst: Subst): Spine = TyApp(hd, tail.substitute(subst))
 
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
@@ -1065,10 +1036,10 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   lazy val etaExpand: Spine = ???
 
   // Handling def. expansion
-  lazy val δ_expandable = false // TODO
-  def partial_δ_expand(rep: Int) = ???
-  lazy val full_δ_expand = ???
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]) = ???
+  final def δ_expandable(sig: Signature) = false // TODO
+  final def δ_expand(rep: Int)(sig: Signature) = ???
+  final def δ_expand(sig: Signature) = ???
+  final def δ_expand_upTo(symbs: Set[Signature#Key])(sig: Signature) = ???
   // Queries
   lazy val fv: Set[(Int, Type)] = ???
   lazy val tyFV: Set[Int] = ???

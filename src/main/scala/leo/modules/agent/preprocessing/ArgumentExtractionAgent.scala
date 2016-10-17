@@ -5,7 +5,6 @@ import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.modules.calculus.CalculusRule
 import leo.modules.preprocessing.ArgumentExtraction
 
 /**
@@ -16,14 +15,14 @@ class ArgumentExtractionAgent(cs : Context*) extends Agent {
   override val after : Set[TAgent] = Set(EqualityReplaceAgent)
   override val interest = Some(Seq(ClauseType))
   override def filter(event: Event): Iterable[Task] = event match {
-    case DataEvent((cl : ClauseProxy), ClauseType) => commonFilter(cl, Context())
-    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)
+    case DataEvent((cl : ClauseProxy), ClauseType) => commonFilter(cl, Context())(SignatureBlackboard.get)
+    case DataEvent((cl : ClauseProxy, c : Context), ClauseType) => commonFilter(cl, c)(SignatureBlackboard.get)
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy, c : Context) : Iterable[Task] = {
+  private def commonFilter(cl : ClauseProxy, c : Context)(sig: Signature) : Iterable[Task] = {
     // TODO If the signature is split look out for using the same definitions
-    val (nc, defs) : (Clause, Set[(Term, Term)]) = ArgumentExtraction(cl.cl)
+    val (nc, defs) : (Clause, Set[(Term, Term)]) = ArgumentExtraction(cl.cl)(sig)
     val toInsertContext = cs filter Context.isAncestor(c)
     if(defs.isEmpty){
       Iterable()

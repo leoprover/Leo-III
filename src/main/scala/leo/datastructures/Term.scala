@@ -1,9 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.impl.SignatureImpl
-
 import scala.language.implicitConversions
-
 
 /**
  * Abstract interface for terms and operations on them that can be
@@ -43,16 +40,26 @@ trait Term extends Pretty {
   def isLocal: Boolean
   def isGlobal: Boolean = !isLocal
 
+  //////////////////////////
   // Handling def. expansion
-  def δ_expandable: Boolean
-  def partial_δ_expand(rep: Int): Term
-  def full_δ_expand: Term
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term
+  //////////////////////////
 
-  def head_δ_expandable: Boolean
-  def head_δ_expand: Term
+  /** Returns true iff any subterm of this term can be expanded by its definition. */
+  def δ_expandable(implicit sig: Signature): Boolean
+  /** Exhaustively expands all defined subterms (i.e. defined symbols) by its definitions.
+    * This may not terminate for recursively defined symbols. */
+  def δ_expand(implicit sig: Signature): Term
+  /** Expands defined subterms as `δ_expand` but with at most `rep` recursive replacements. */
+  def δ_expand(rep: Int)(implicit sig: Signature): Term
+  /** Exhaustively expands all symbols except for those in `symbs` which are
+    * defined by its definitions.
+    * This may not terminate for recursively defined symbols. */
+  def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term
 
+  //////////////////////////
   // Queries on terms
+  //////////////////////////
+
   def ty: Type
   def ground: Boolean = freeVars.isEmpty
 
@@ -75,8 +82,7 @@ trait Term extends Pretty {
   def order: LangOrder
 
   def symbols: Set[Signature#Key]
-  final def symbolsOfType(ty: Type) = {
-    val sig = SignatureImpl.get
+  final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
     symbols.filter({i => sig(i)._ty == ty})
   }
   // Functions for FV-Indexing
@@ -103,7 +109,7 @@ trait Term extends Pretty {
   def typeClosure(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)
+  def compareTo(that: Term)(implicit sig: Signature): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)(sig)
   /** Return the β-nf of the term */
   def betaNormalize: Term
   /** Return the eta-long-nf of the term */
@@ -296,7 +302,7 @@ object Term extends TermBank {
   // Determine order-subsets of terms
 
   /** FOF-compatible (unsorted) first order logic subset. */
-  def firstOrder(t: Term): Boolean = {
+  def firstOrder(t: Term)(implicit sig: Signature): Boolean = {
     import leo.modules.HOLSignature.{===, !===, i, o, Forall, Exists}
     val polyOps = Set(===.key, !===.key)
     val tys = Set(i, o)
@@ -309,11 +315,11 @@ object Term extends TermBank {
       case ty :::> body => false
       case TypeLambda(_) => false
       case Bound(ty, sc) => ty == i
-      case Symbol(key) => tys.contains(SignatureImpl.get(key)._ty)
+      case Symbol(key) => tys.contains(sig(key)._ty)
     }}
 
   /** Many sorted-first order logic subset. */
-  def manySortedFirstOrder(t: Term): Boolean = {
+  def manySortedFirstOrder(t: Term)(implicit sig: Signature): Boolean = {
     import leo.modules.HOLSignature.{===, !===, Forall, Exists}
     val polyOps = Set(===.key, !===.key)
 
@@ -325,6 +331,6 @@ object Term extends TermBank {
       case ty :::> body => false
       case TypeLambda(_) => false
       case Bound(ty, sc) => ty.isBaseType
-      case Symbol(key) => SignatureImpl.get(key)._ty.isBaseType
+      case Symbol(key) => sig(key)._ty.isBaseType
     }}
 }

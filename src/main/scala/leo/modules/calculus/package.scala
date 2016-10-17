@@ -1,7 +1,6 @@
 package leo.modules
 
-import leo.datastructures.impl.SignatureImpl
-import leo.datastructures.{Type, Term, Clause}
+import leo.datastructures.{Type, Term, Clause, Signature}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -134,8 +133,8 @@ package object calculus {
     aterm.etaExpand
   }
 
-  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int]): Term = {
-    val skFunc = SignatureImpl.get.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
+  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
+    val skFunc = sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }

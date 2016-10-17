@@ -33,7 +33,7 @@ class InputTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
     test(p._2, Checked) {
-      val sig = SignatureImpl.get
+      implicit val sig = getFreshSignature
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
@@ -43,7 +43,7 @@ class InputTestSuite extends LeoTestSuite {
       println()
       println("## Problem signature:")
       printLongHLine()
-      Utility.printSignature()
+      Utility.printSignature(sig)
       println()
       println("## Formulae converted to internal representation:")
       printLongHLine()

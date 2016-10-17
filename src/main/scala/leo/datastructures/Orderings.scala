@@ -92,11 +92,11 @@ object Orderings {
 
 trait Precedence {
   type Const = Signature#Key
-  def compare(x: Const, y: Const): CMP_Result
-  def gt(x: Const, y: Const): Boolean = compare(x,y) == CMP_GT
-  def ge(x: Const, y: Const): Boolean = compare(x,y) == CMP_GT || compare(x,y) == CMP_EQ
-  def lt(x: Const, y: Const): Boolean = compare(x,y) == CMP_LT
-  def le(x: Const, y: Const): Boolean = compare(x,y) == CMP_LT || compare(x,y) == CMP_EQ
+  def compare(x: Const, y: Const)(implicit sig: Signature): CMP_Result
+  def gt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_GT
+  def ge(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_GT || compare(x,y)(sig) == CMP_EQ
+  def lt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_LT
+  def le(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_LT || compare(x,y)(sig) == CMP_EQ
 
   protected final def intToCMPRes(x: Int, y: Int): CMP_Result = {
     if (x > y) CMP_GT

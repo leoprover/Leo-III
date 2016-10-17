@@ -1,7 +1,6 @@
 package leo
 
-import leo.datastructures.Term
-import leo.datastructures.impl.SignatureImpl
+import leo.datastructures.{Term, Signature}
 import org.scalatest.Tag
 
 /**
@@ -21,10 +20,8 @@ trait TestUtility {
   }
 
 
-  def getFreshSignature: SignatureImpl = {
-    val sig = SignatureImpl.get
-    SignatureImpl.resetWithHOL(sig)
-    sig
+  def getFreshSignature: Signature = {
+    Signature.freshWithHOL()
   }
 
   def resetTermBank: Unit = {Term.reset()}

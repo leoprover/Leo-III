@@ -8,12 +8,13 @@ import leo.modules.HOLSignature.{i,o, &, |||}
   * Created by mwisnie on 1/5/16.
   */
 class ArgumentExtractionTest extends LeoTestSuite {
-  val s = getFreshSignature
+
 
   /* Extract
     f( g ( a /\ b) , a \/ b , a )
    */
   test("Extraction Test 1 (Term Level)", Checked){
+    implicit val s = getFreshSignature
     ArgumentExtraction.clearUnitStore()
     val kf = s.addUninterpreted("f", i ->: o ->: o ->: o)
     val f = Term.mkAtom(kf)
@@ -34,6 +35,7 @@ class ArgumentExtractionTest extends LeoTestSuite {
     f( g ( a /\ b) , a \/ b , a )
    */
   test("Extraction Test 2 (Term Level)", Checked){
+    implicit val s = getFreshSignature
     ArgumentExtraction.clearUnitStore()
     val kf = s.addUninterpreted("f", i ->: o ->: o ->: o)
     val f = Term.mkAtom(kf)
@@ -54,6 +56,7 @@ class ArgumentExtractionTest extends LeoTestSuite {
     f( g ( X /\ Y) , X \/ Y , X )
    */
   test("Extraction Test 3 (Term Level)", Checked){
+    implicit val s = getFreshSignature
     ArgumentExtraction.clearUnitStore()
     val kf = s.addUninterpreted("f", i ->: o ->: o ->: o)
     val f = Term.mkAtom(kf)
@@ -72,6 +75,7 @@ class ArgumentExtractionTest extends LeoTestSuite {
     \Y . p ( \X . X /\ Y )
    */
   test("Extraction Test 4 (Term Level)", Checked){
+    implicit val s = getFreshSignature
     ArgumentExtraction.clearUnitStore()
     val kp = s.addUninterpreted("p", (o ->: o) ->: i)
     val p = Term.mkAtom(kp)

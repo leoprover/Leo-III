@@ -75,6 +75,9 @@ object SeqPProc extends Function1[Long, Unit]{
     // Read Problem, preprocessing, state set-up, etc.
     /////////////////////////////////////////
     var test = false
+    implicit val sig: Signature = Signature.freshWithHOL()
+    val state: State[AnnotatedClause] = State.fresh(sig)
+
     // Read problem
     val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
     val startTimeWOParsing = System.currentTimeMillis()
@@ -85,9 +88,6 @@ object SeqPProc extends Function1[Long, Unit]{
       leo.Out.severe(s"Input problem did not pass type check.")
       throw new SZSException(SZS_TypeError, s"Type error in formulas: ${tyCheckSet.map(_._1).mkString(",")}")
     }
-    implicit val sig: Signature = SignatureImpl.get
-    val state: State[AnnotatedClause] = State.fresh(sig)
-
     // Iterate over all inputs (which are not type declarations and definitions)
     // and collect all non-conjectures and set conjecture in state
     val inputIt = input.iterator
@@ -156,7 +156,7 @@ object SeqPProc extends Function1[Long, Unit]{
       for (c <- state.unprocessed union conjecture_preprocessed) {
         Out.finest(s"Clause ${c.pretty}")
         Out.finest(s"Maximal literal(s):")
-        Out.finest(s"\t${c.cl.maxLits.map(_.pretty).mkString("\n\t")}")
+        Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty).mkString("\n\t")}")
       }
     }
     Out.finest(s"################")
@@ -279,9 +279,9 @@ object SeqPProc extends Function1[Long, Unit]{
     Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
-    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
+    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
     Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size/state.processed.size.toDouble}")
-    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(_.cl.maxLits).size/state.processed.size.toDouble}")
+    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size/state.processed.size.toDouble}")
     Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
@@ -308,7 +308,7 @@ object SeqPProc extends Function1[Long, Unit]{
     if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
       Out.comment("Signature extension used:")
       Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-      Out.comment(Utility.userDefinedSignatureAsString) // TODO: Adjust for state
+      Out.comment(Utility.userDefinedSignatureAsString(sig)) // TODO: Adjust for state
     }
 
     if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
@@ -324,7 +324,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Print proof object if possible and requested. */
     if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(SignatureImpl.get))
+      Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(sig))
       Out.output(Utility.proofToTPTP(proof))
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
     }

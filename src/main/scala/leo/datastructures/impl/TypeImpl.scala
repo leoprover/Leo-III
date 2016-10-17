@@ -16,12 +16,11 @@ protected[datastructures] abstract class TypeImpl extends Type {
 /** Literal type, i.e. `$o` */
 protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
-  import SignatureImpl.{get => signature}
   lazy val pretty = {
     if (args.isEmpty)
-      signature.meta(id).name
+      id.toString
     else
-      signature.meta(id).name +"(" + args.map(_.pretty).mkString(",") + ")"
+      id.toString +"(" + args.map(_.pretty).mkString(",") + ")"
   }
 
   // Predicates on types

@@ -94,7 +94,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
-    implicit val sig: Signature = SignatureImpl.get
+    implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
@@ -121,7 +121,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     for (c <- state.unprocessed union conjecture_preprocessed)  {
       Out.finest(s"($proc) Clause ${c.pretty}")
       Out.finest(s"($proc) Maximal literal(s):")
-      Out.finest(s"\t${c.cl.maxLits.map(_.pretty).mkString("\n\t")}")
+      Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty).mkString("\n\t")}")
     }
     Out.finest(s"################")
 //    val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
@@ -219,9 +219,9 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     Out.comment(s"($proc) No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"($proc) No. of units in store: ${state.rewriteRules.size}")
     Out.debug(s"($proc) literals processed: ${state.processed.flatMap(_.cl.lits).size}")
-    Out.debug(s"($proc) -thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
+    Out.debug(s"($proc) -thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
     Out.debug(s"($proc) avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size/state.processed.size.toDouble}")
-    Out.debug(s"($proc) avg. max. literals per clause: ${state.processed.flatMap(_.cl.maxLits).size/state.processed.size.toDouble}")
+    Out.debug(s"($proc) avg. max. literals per clause: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size/state.processed.size.toDouble}")
     Out.debug(s"($proc) unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"($proc) oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"($proc) unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")

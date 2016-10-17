@@ -25,7 +25,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(f , List(x,x))
     val t2 : Term = mkTermApp(f , List(a,z))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
     val ((termSub, typeSub), _) = result.next
     assert(!result.hasNext)
@@ -44,7 +44,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(vargen(i ->: i),a)
     val t2 : Term = mkTermApp(f , List(a,a))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -68,7 +68,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,a))
     val t2 : Term = mkTermApp(f,mkTermApp(x,a))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -90,7 +90,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,a)))
     val t2 : Term = mkTermApp(f,List(mkTermApp(x,a),mkTermApp(f, List(mkTermApp(f, List(a,a)),a))))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -114,7 +114,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,mkTermApp(g,List(a,a)))))
     val t2 : Term = mkTermApp(f,List(a,mkTermApp(g,List(mkTermApp(x,List(a)),a))))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -140,7 +140,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t2 = Not(mkTermApp(sKf, Seq(mkTermApp(skX, y), ey)))
     println(t2.pretty + " " + Term.wellTyped(t2))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification2.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
 
     assert(result.nonEmpty)
     // This unification task should be solvable, right?

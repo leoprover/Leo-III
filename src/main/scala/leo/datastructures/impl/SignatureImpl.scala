@@ -142,7 +142,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   def exists(identifier: String): Boolean = keyMap.contains(identifier)
 
   /** Adds a term symbol to the signature that is then marked as system symbol type */
-  protected def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: Signature.SymbProp): Unit = {
+  protected[datastructures] def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: Signature.SymbProp): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
@@ -161,7 +161,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   }
 
   /** Adds a type contructor symbol to the signature that is then marked as system symbol type */
-  protected def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
+  protected[datastructures] def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
@@ -244,7 +244,7 @@ object SignatureImpl {
   def empty: SignatureImpl = Nil()
 
   protected val globalSignature = withHOL(empty)
-  def get = globalSignature
+//  def get = globalSignature
 
   def resetWithHOL(sig: SignatureImpl): SignatureImpl = {
     sig.empty
@@ -252,9 +252,9 @@ object SignatureImpl {
     sig.typeVarCounter=0
     withHOL(sig)
   }
-
-  def apply(symbol: Signature#Key): SignatureImpl#Meta = get.meta(symbol)
-  def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
+//
+//  def apply(symbol: Signature#Key): SignatureImpl#Meta = get.meta(symbol)
+//  def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
 
   /** Enriches the given signature with predefined symbols as described by [[leo.modules.HOLSignature]] */
   def withHOL(sig: SignatureImpl): SignatureImpl = {

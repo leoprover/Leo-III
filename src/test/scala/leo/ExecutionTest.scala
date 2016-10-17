@@ -12,7 +12,7 @@ import leo.modules.preprocessing.Simplification
  * Created by lex on 11.06.14.
  */
 class ExecutionTest extends LeoTestSuite {
-  val sig = Signature.freshWithHOL()
+  implicit val sig = Signature.freshWithHOL()
 
   Numerals(sig) // include numerals in signature
 
@@ -53,7 +53,7 @@ class ExecutionTest extends LeoTestSuite {
     println("As term: " + term.pretty)
     println()
     println("Definition expansion ...")
-    val test2 = term.full_δ_expand
+    val test2 = term.δ_expand
     //println(test2.pretty)
 
     println("Beta normalizing ...")
@@ -64,6 +64,6 @@ class ExecutionTest extends LeoTestSuite {
     val test4 = Simplification(Clause.mkClause(List(Literal(test3,true)),Derived))
 
     println(" (Resulting term: " + test4.pretty + " )")
-    test4.lits.head.term
+    Literal.asTerm(test4.lits.head)
   }
 }

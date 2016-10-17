@@ -4,7 +4,7 @@ import leo._
 import leo.agents.TAgent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
-import leo.datastructures.blackboard.{Blackboard, ClauseType}
+import leo.datastructures.blackboard.{Blackboard, ClauseType, SignatureBlackboard}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
@@ -45,11 +45,11 @@ class SeqFilterPhase extends Phase {
       while(taken.nonEmpty){
 
         // Take all formulas (save the newly touched symbols
-        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
+        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f)(SignatureBlackboard.get))
 
         // Translate all taken formulas to clauses
         taken.foreach{f =>
-          val (name, term, role) = InputProcessing.process(SignatureImpl.get)(f)
+          val (name, term, role) = InputProcessing.process(SignatureBlackboard.get)(f)
           val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
             negateConjecture(name, term, role)
           else

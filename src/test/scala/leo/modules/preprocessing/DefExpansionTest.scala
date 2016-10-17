@@ -9,7 +9,7 @@ import leo.{Checked, LeoTestSuite}
   * Created by mwisnie on 1/14/16.
   */
 class DefExpansionTest extends LeoTestSuite{
-  implicit val s = SignatureImpl.get
+  implicit val s = getFreshSignature
   test("DefExpansion Equivalenz", Checked) {
     val a = Term.mkAtom(s.addUninterpreted("a",o))
     val b = Term.mkAtom(s.addUninterpreted("b",o))

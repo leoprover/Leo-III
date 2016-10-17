@@ -1,9 +1,6 @@
 package leo.modules
 
-import java.io.FileNotFoundException
-
-import leo.datastructures.impl.SignatureImpl
-import leo.datastructures.{Clause, Role, Term}
+import leo.datastructures.{Signature, Role, Term}
 import leo.datastructures.tptp.Commons
 import leo.modules.parsers.{InputProcessing, TPTP}
 import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
@@ -91,7 +88,7 @@ object Parsing {
                 val tnext = tptpHome.resolve(inc)
                 readProblem(tnext.toString, assumeRead + canonicalFile)
               } catch {
-                case _ : Exception => throw new SZSException(SZS_InputError, s"The file ${inc} does not exist.")
+                case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
               }
           }
         }
@@ -155,8 +152,8 @@ object Parsing {
       *         Note that formulae with role `definition` or `type` are returned as triples
       *         `(Id, Clause($true), Role)` with their respective identifier and role.
       */
-    def processProblem(problem: Seq[Commons.AnnotatedFormula]): Seq[(FormulaId, Term, Role)] = {
-      InputProcessing.processAll(SignatureImpl.get)(problem)
+    def processProblem(problem: Seq[Commons.AnnotatedFormula])(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
+      InputProcessing.processAll(sig)(problem)
     }
     /**
       * Convert the `formula` to internal term representation.
@@ -171,8 +168,8 @@ object Parsing {
       *         Note that a formula with role `definition` or `type` is returned as a triple
       *         `(Id, Clause($true), Role)` with its respective identifier and role.
       */
-    def processFormula(formula: Commons.AnnotatedFormula): (FormulaId, Term, Role) = {
-      InputProcessing.process(SignatureImpl.get)(formula)
+    def processFormula(formula: Commons.AnnotatedFormula)(implicit sig: Signature): (FormulaId, Term, Role) = {
+      InputProcessing.process(sig)(formula)
     }
 
 
@@ -200,8 +197,8 @@ object Parsing {
       *         Note that formulae with role `definition` or `type` are returned as triples
       *         `(Id, Clause($true), Role)` with their respective identifier and role.
       */
-    def parseProblem(file: String, assumeProcessed: Set[Path] = Set()): Seq[(FormulaId, Term, Role)] = {
-      processProblem(readProblem(file,assumeProcessed))
+    def parseProblem(file: String, assumeProcessed: Set[Path] = Set())(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
+      processProblem(readProblem(file,assumeProcessed))(sig)
     }
 
     /**
@@ -217,8 +214,8 @@ object Parsing {
       *         Note that a formula with role `definition` or `type` is returned as a triple
       *         `(Id, Clause($true), Role)` with its respective identifier and role.
       */
-    def parseFormula(formula: String): (FormulaId, Term, Role) = {
-      processFormula(readFormula(formula))
+    def parseFormula(formula: String)(implicit sig: Signature): (FormulaId, Term, Role) = {
+      processFormula(readFormula(formula))(sig)
     }
 
 
@@ -231,12 +228,6 @@ object Parsing {
       throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist.")
     } else {
         Source.fromFile(absolutePath.toFile)
-        /*
-        val s = Source.fromFile(absolutePath.toFile)
-        val res = s.getLines() mkString "\n"
-        s.close()
-        res
-        */
     }
   }
 

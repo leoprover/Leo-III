@@ -9,6 +9,11 @@ import scala.annotation.tailrec
   */
 package object datastructures {
 
+  trait Pretty {
+    def pretty: String
+  }
+
+
   @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
   @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
 
