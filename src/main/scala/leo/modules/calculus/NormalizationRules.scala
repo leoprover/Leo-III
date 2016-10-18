@@ -33,9 +33,7 @@ object PolaritySwitch extends CalculusRule {
 
   def apply(l: Literal): Literal = if (l.equational) {
     (l.left, l.right) match {
-      case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity)
-//      case (Not(l2), _) => Literal(l2, l.right, !l.polarity)
-//      case (_, Not(r2)) => Literal(l.left, r2, !l.polarity) // FIXME: This is sound but we lose information, right?
+      case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity, l.oriented)
       case _ => l
     }
   } else {
@@ -154,17 +152,17 @@ object LiftEq extends CalculusRule {
     }
     (can, liftLits, otherLits)
   }
-  def apply(liftLits: LiftLits, otherLits: OtherLits): Seq[Literal] = {
-    liftLits.map(l => apply(l.left, l.polarity)) ++ otherLits
+  def apply(liftLits: LiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
+    liftLits.map(l => apply(l.left, l.polarity)(sig)) ++ otherLits
   }
 
 
-  def apply(left: Term, polarity: Boolean): Literal = {
+  def apply(left: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
     val (l,r) = ===.unapply(left).get
     if (polarity) {
-      Literal(l,r,true)
+      Literal.mkOrdered(l,r,true)(sig)
     } else {
-      Literal(l,r,false)
+      Literal.mkOrdered(l,r,false)(sig)
     }
   }
 
@@ -300,7 +298,7 @@ object RewriteSimp extends CalculusRule {
     * @param intoConfigurations The configuration of the rewrite procedure: See [[IntoConfiguration]] for details and important restrictions.
     *                           For each literal at index i that is rewritten, an entry i -> conf is required in `intoConfiguration`.
     */
-  def apply(intoClause: Clause, intoConfigurations: Map[Int, IntoConfiguration] ): Clause = {
+  def apply(intoClause: Clause, intoConfigurations: Map[Int, IntoConfiguration])(implicit sig: Signature): Clause = {
     var lits = intoClause.lits
     val litIndices = intoConfigurations.keySet
     val litIndicesIt = litIndices.iterator
@@ -319,7 +317,7 @@ object RewriteSimp extends CalculusRule {
       val rightConfs = confs.getOrElse(Literal.rightSide, Set())
       val newRight = rightConfs.foldLeft(right) {case (curTerm, (pos, replaceBy)) => curTerm.replaceAt(pos, replaceBy)}
 
-      val newLit = Literal(newLeft, newRight, lit.polarity)
+      val newLit = Literal.mkOrdered(newLeft, newRight, lit.polarity)(sig)
       lits = lits.updated(litIndex, newLit)
     }
 
@@ -393,7 +391,7 @@ object ACSimp extends CalculusRule {
       val rightAC = lit.right.symbols intersect allACSymbols
       val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
       if (newLeft == lit.left && newRight == lit.right) lit
-      else Literal(newLeft, newRight, lit.polarity)
+      else Literal(newLeft, newRight, lit.polarity) // TODO: Orient?
     } else {
       if (leftAC.isEmpty) lit
       else {
@@ -416,7 +414,7 @@ object Simp extends CalculusRule {
   val name = "simp"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(lit: Literal): Literal = if (lit.equational) {
+  def apply(lit: Literal): Literal = if (lit.equational) { // TODO: Orient?
     PolaritySwitch(eqSimp(Literal(Simplification.normalize(lit.left), Simplification.normalize(lit.right), lit.polarity)))
   } else {
     PolaritySwitch(Literal(Simplification.normalize(lit.left), lit.polarity))

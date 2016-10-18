@@ -14,10 +14,10 @@ object Simplification extends Normalization {
   def polarityNorm(formula : Clause) : Clause = formula.mapLit(polarityNorm(_))
 
   def polarityNorm(lit : Literal) : Literal = (lit.left, lit.right) match {
-    case (Not(l),Not(r))  => Literal(l,r, lit.polarity)
+    case (Not(l),Not(r))  => Literal(l,r, lit.polarity, lit.oriented)
     case (Not(l),r) => Literal(l,r, !lit.polarity)
     case (l, Not(r)) => Literal(l,r, !lit.polarity)
-    case (l,r)  => Literal(l,r, lit.polarity)
+    case (l,r)  => lit
   }
 
   override def apply(formula : Clause)(implicit sig: Signature) : Clause = {

@@ -16,7 +16,7 @@ object LiteralImpl {
     * and polarity `polarity` which is unordered.
     * Note that the resulting literal is only
     * equational if `left/right != $true/$false`. */
-  final def mkLit(left: Term, right: Term, pol: Boolean): Literal = {
+  final def mkLit(left: Term, right: Term, pol: Boolean, oriented: Boolean = false): Literal = {
     litCounter += 1
 
     if (left == LitFalse()) {
@@ -27,7 +27,7 @@ object LiteralImpl {
       NonEqLiteral(litCounter, right, pol)
     } else if (right == LitTrue()) {
       NonEqLiteral(litCounter, left, pol)
-    } else EqLiteral(litCounter,left,right,pol,false)
+    } else EqLiteral(litCounter,left,right,pol,oriented)
   }
 
   /** Creates a new (equational) literal of the two terms t1 and t2

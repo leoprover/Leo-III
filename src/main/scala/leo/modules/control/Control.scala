@@ -24,8 +24,8 @@ object Control {
   @inline final def nnf(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.nnf(cl)
   @inline final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
-  @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)
-  @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)
+  @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
+  @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)(sig)
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
   @inline final def simp(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)
   @inline final def simpSet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)
@@ -149,7 +149,7 @@ package inferenceControl {
             Out.finest(s"into: ${intoClause.pretty}")
             Out.finest(s"intoside: ${intoSide.toString}")
             val newCl = OrderedParamod(withClause, withIndex, withSide,
-              intoClause, intoIndex, intoSide, intoPos, intoTerm)
+              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
 
             val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
             Out.finest(s"Result: ${newClWrapper.pretty}")
@@ -610,10 +610,10 @@ package inferenceControl {
       result
     }
 
-    final def liftEq(cl: AnnotatedClause): AnnotatedClause = {
+    final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, lift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(lift, lift_other)), InferredFrom(LiftEq, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(LiftEq(lift, lift_other)(sig)), InferredFrom(LiftEq, Set(cl)), cl.properties)
         Out.trace(s"to_eq: ${result.pretty}")
         result
       } else

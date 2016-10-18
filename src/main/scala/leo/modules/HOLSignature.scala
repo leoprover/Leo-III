@@ -87,6 +87,14 @@ object HOLSignature {
   final val rat = Type.mkType(ratKey)
   final val int = Type.mkType(intKey)
 
+  private final val oo = o ->: o
+  private final val ooo = o ->: o ->: o
+  import Type.{mkPolyType => forall}
+  private final val aao = forall(1 ->: 1 ->: o)
+  private final val aoo = forall((1 ->: o) ->: o)
+  private final val aa = forall(1 ->: 1)
+  private final val aaa = forall(1 ->: 1 ->: 1)
+
   // Shorthands for later definitions
   private final val not = mkAtom(notKey, Not.ty)
   private final val all = mkAtom(forallKey, Forall.ty)
@@ -240,13 +248,7 @@ object HOLSignature {
   ////////////////////////////////////////
   // Objects representing HOL connectives
   ////////////////////////////////////////
-  private final val oo = o ->: o
-  private final val ooo = o ->: o ->: o
-  import Type.{mkPolyType => forall}
-  private final val aao = forall(1 ->: 1 ->: o)
-  private final val aoo = forall((1 ->: o) ->: o)
-  private final val aa = forall(1 ->: 1)
-  private final val aaa = forall(1 ->: 1 ->: 1)
+
 
   /** HOL disjunction */
   object ||| extends HOLBinaryConnective  { val key = orKey; val ty = ooo }

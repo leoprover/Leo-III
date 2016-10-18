@@ -67,16 +67,30 @@ trait Literal extends Pretty {
   // Utility functions
   @inline final def fold[A](f: (Term, Term, Boolean) => A): A = f(left,right,polarity)
 
+  /** Creates a new literal with same polarity but with terms modified according to `f`.
+    * Note that the literal is not oriented afterwards. */
   @inline final def termMap[A](f: (Term, Term) => (Term, Term)): Literal = {
     val (nl,nr) = f(left,right)
     Literal(nl,nr, polarity)
   }
+  /** Creates a new literal with same polarity but with `left` modified according to `f`.
+    * Note that the literal is not oriented afterwards. */
   @inline final def leftTermMap[A](f: Term => Term): Literal = termMap {case (l,r) => (f(l), r)}
+  /** Creates a new literal with same polarity but with `right` modified according to `f`.
+    * Note that the literal is not oriented afterwards. */
   @inline final def rightTermMap[A](f: Term => Term): Literal = termMap {case (l,r) => (l, f(r))}
-  @inline final def newLeft(newLeft: Term): Literal = termMap {case (l,r) => (newLeft,r)}
-  @inline final def newRight(newRight: Term): Literal = termMap {case (l,r) => (l,newRight)}
-
+  /** Apply substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
+    * Result it beta-normalized.
+    * Note that the literal is __not oriented__ afterwards. If you want to orient the result,
+    * use [[substituteOrdered]] instead. */
   @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+  /** Apply substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
+    * Result it beta-normalized and oriented if possible. */
+  @inline final def substituteOrdered(termSubst : Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature) : Literal = {
+    val lsubst = left.substitute(termSubst, typeSubst)
+    val rsubst = right.substitute(termSubst, typeSubst)
+    Literal.mkOrdered(left,right,polarity)
+  }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
 
@@ -91,7 +105,7 @@ trait Literal extends Pretty {
   }
 }
 
-object Literal extends Function3[Term, Term, Boolean, Literal] {
+object Literal {
   import leo.datastructures.impl.{LiteralImpl => LitImpl}
   import leo.datastructures.Term.Symbol
   import leo.datastructures.Orderings._
@@ -100,7 +114,7 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   /** Create new (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def mkLit(t1: Term, t2: Term, pol: Boolean): Literal = LitImpl.mkLit(t1,t2,pol)
+  @inline final def mkLit(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = LitImpl.mkLit(t1,t2,pol,oriented)
   /** Creates a new (equational) literal of the two terms t1 and t2
     * and polarity `polarity`. During construction, the method
     * tries to order the two terms into and ordered equation left=right,
@@ -117,11 +131,11 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   /** Create new unordered (equational) literal with equation `left = right`
     * and positive polarity. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def mkPos(t1: Term, t2: Term): Literal = mkLit(t1,t2,true)
+  @inline final def mkPos(t1: Term, t2: Term, oriented: Boolean = false): Literal = mkLit(t1,t2,true, oriented)
   /** Create new unordered (equational) literal with equation `left = right`
     * and negative polarity. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`.*/
-  @inline final def mkNeg(t1: Term, t2: Term): Literal = mkLit(t1,t2,false)
+  @inline final def mkNeg(t1: Term, t2: Term, oriented: Boolean = false): Literal = mkLit(t1,t2,false, oriented)
   /** Create new (equational) literal with equation `left = right`
     * and positive polarity. During construction, the method
     * tries to order the two terms into and ordered equation left=right,
@@ -142,7 +156,7 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   /** Create new unordered (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline override final def apply(t1: Term, t2: Term, pol: Boolean) = mkLit(t1,t2,pol)
+  @inline final def apply(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false) = mkLit(t1,t2,pol, oriented)
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
   @inline final def apply(left: Term, pol: Boolean) = mkLit(left, pol)
@@ -271,8 +285,9 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   final def isTrue(l: Literal): Boolean = if (l.polarity) trivial(l) else distinctSides(l)
   /** Returns true iff the literal is trivially semantically equal to $false. */
   final def isFalse(l: Literal): Boolean = if (!l.polarity) trivial(l) else distinctSides(l)
-  /** Returns a new literal with the same equation as this one, only with polarity flipped.*/
-  final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity) else apply(l.left, !l.polarity)
+  /** Returns a new literal with the same equation as this one, only with polarity flipped.
+    * It is also oriented, if the original was oriented. */
+  final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity, l.oriented) else apply(l.left, !l.polarity)
   /** Returns whether the literal is well-typed, i.e. if the underlying terms are well-typed and have the same type. */
   final def wellTyped(l: Literal): Boolean = {
     import leo.datastructures.Term.{wellTyped => wt}

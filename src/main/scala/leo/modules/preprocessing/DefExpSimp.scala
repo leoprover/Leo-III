@@ -21,7 +21,7 @@ import leo.modules.output.SZS_Theorem
       while (litsIt.hasNext) {
         val lit = litsIt.next()
         if (lit.equational) {
-          newLits = newLits :+ Simp(Literal(apply(lit.left), apply(lit.right), lit.polarity))
+          newLits = newLits :+ Simp(Literal.mkOrdered(apply(lit.left), apply(lit.right), lit.polarity)(sig))
         } else {
           newLits = newLits :+ Simp(Literal(apply(lit.left), lit.polarity))
         }

@@ -43,7 +43,6 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
-
   // System function adaptions
   override final def equals(obj : Any): Boolean = obj match {
     case co : Clause => (lits forall {co.lits.contains}) && (co.lits forall {lits.contains})

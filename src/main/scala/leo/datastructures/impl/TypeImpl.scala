@@ -18,9 +18,9 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
   // Pretty printing
   lazy val pretty = {
     if (args.isEmpty)
-      id.toString
+      s"ty($id)"
     else
-      id.toString +"(" + args.map(_.pretty).mkString(",") + ")"
+      s"ty($id)" +"(" + args.map(_.pretty).mkString(",") + ")"
   }
 
   // Predicates on types
