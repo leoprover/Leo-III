@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.{Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Event, Result, SignatureBlackboard}
-import leo.modules.output.SZS_Theorem
 import leo.modules.control.Control
 
 /**
@@ -46,6 +45,10 @@ class DelayedUnificationTask(ac : InterleavingLoop.A, a : DelayedUnificationAgen
 
 
     val newIt = newclauses.iterator
+    if(newIt.isEmpty){
+      // Not unifiable. Insert Result
+      result.insert(UnprocessedClause)(ac)
+    }
     while (newIt.hasNext) {
       var newCl = newIt.next()
       newCl = Control.rewriteSimp(newCl, rewrite)(sig)
