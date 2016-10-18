@@ -102,10 +102,9 @@ object Configuration extends DefaultConfiguration {
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
-  import leo.datastructures.{Precedence,TermOrdering,ClauseOrdering,LitWeight_TermSize,Orderings}
+  import leo.datastructures.{Precedence,LitWeight_TermSize}
 
   lazy val CLAUSE_WEIGHTING: ClauseWeight = ClWeight_LitCount
-  lazy val CLAUSE_ORDERING: ClauseOrdering = ClauseOrdering.lex_WeightAgeOrigin
 
   lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
 

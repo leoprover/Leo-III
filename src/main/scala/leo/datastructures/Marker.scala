@@ -124,13 +124,11 @@ trait ClauseProxy extends Pretty {
 }
 
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
-                           var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy with Ordered[AnnotatedClause] {
+                           var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
   override def equals(o: Any): Boolean = o match {
     case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
     case _ => false
   }
-  import leo.Configuration
-  override def compare(that: AnnotatedClause) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl)
   override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
 }
 

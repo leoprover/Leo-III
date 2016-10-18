@@ -10,7 +10,7 @@ import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Ordered[Clause] with Pretty {
+trait Clause extends Pretty {
   /** The unique, increasing clause number. */
   def id: Int
   /** The underlying sequence of literals. */
@@ -39,7 +39,6 @@ trait Clause extends Ordered[Clause] with Pretty {
 
   /** The clause's weight. */
   @inline final def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
-  @inline final def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
 
   final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 

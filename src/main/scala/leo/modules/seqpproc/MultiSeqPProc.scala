@@ -128,7 +128,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     var loop = true
 
     // Init loop for conjecture-derived clauses
-    val conjectureProcessedIt = conjecture_preprocessed.toSeq.sorted.iterator
+    val conjectureProcessedIt = conjecture_preprocessed.toSeq.iterator
     Out.debug(s"## ($proc)Pre-reasoning loop BEGIN")
     while(conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
       var cur = conjectureProcessedIt.next()

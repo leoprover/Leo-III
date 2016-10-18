@@ -61,7 +61,6 @@ object SeqPProc extends Function1[Long, Unit]{
       val i = inputIt.next()
       if (!Term.wellTyped(i._2)) returnSet = returnSet + i
     }
-
     returnSet
   }
 
@@ -77,7 +76,6 @@ object SeqPProc extends Function1[Long, Unit]{
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     try {
-
       // Read problem
       val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()
@@ -87,8 +85,7 @@ object SeqPProc extends Function1[Long, Unit]{
         leo.Out.severe(s"Input problem did not pass type check.")
         throw new SZSException(SZS_TypeError, s"Type error in formulas: ${tyCheckSet.map(_._1).mkString(",")}")
       }
-
-      Utility.printSignature(sig)
+      Out.info(s"Parsing finished. Searching refutation ...")
       // Iterate over all inputs (which are not type declarations and definitions)
       // and collect all non-conjectures and set conjecture in state
       val inputIt = input.iterator
@@ -177,7 +174,7 @@ object SeqPProc extends Function1[Long, Unit]{
       /////////////////////////////////////////
       // Init loop for conjecture-derived clauses
       /////////////////////////////////////////
-      val conjectureProcessedIt = conjecture_preprocessed.toSeq.sorted.iterator
+      val conjectureProcessedIt = conjecture_preprocessed.toSeq.iterator
       Out.debug("## Pre-reasoning loop BEGIN")
       while (conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
         if (System.currentTimeMillis() - startTime > 1000 * Configuration.TIMEOUT) {
