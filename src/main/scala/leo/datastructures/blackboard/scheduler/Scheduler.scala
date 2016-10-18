@@ -74,6 +74,14 @@ trait Scheduler {
   def submitIndependentFree(r : Runnable) : Unit
 
   def numberOfThreads : Int
+
+  /**
+    * In comparrisson to [[openTasks]] which will return the
+    * amount of tasks currently executed, this will return
+    * tasks and filters
+    * @return
+    */
+  def getCurrentWork : Int
 }
 
 
@@ -99,12 +107,15 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
 
   private var sT : Thread = null
   private var sW : Thread = null
+  private val workCount : AtomicInteger = new AtomicInteger(0)
 
   protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
 
   protected val freeThreads : mutable.Set[Thread] = new mutable.HashSet[Thread]()
 
   def openTasks : Int = synchronized(curExec.size)
+
+  override def getCurrentWork: Int = workCount.get
 
   override def isTerminated : Boolean = endFlag
 
@@ -213,6 +224,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
             if (!exe.isShutdown) {
               AgentWork.inc(a)
               exe.submit(new GenAgent(a, t))
+              workCount.incrementAndGet()
             }
           }
         }
@@ -255,6 +267,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
               case Some(xs) if xs.isEmpty || (xs.toSet & result.keys).nonEmpty=>
                 ActiveTracker.incAndGet(s"Filter new data\n\t\tin Agent ${a.name}\n\t\tfrom Task ${task.name}")
                 exe.submit(new GenFilter(a, result, task))
+                workCount.incrementAndGet()
               case _ => ()
             }
           }
@@ -264,7 +277,8 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
         }
       }
 
-      ActiveTracker.decAndGet(s"Start Filter after finished ${task.name}")
+      ActiveTracker.decAndGet(s"End Filter after finished ${task.name}")
+      workCount.decrementAndGet()
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -328,6 +342,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
 //          Scheduler().killAll()
       }
       ActiveTracker.decAndGet(s"Done Filtering data \n\t\t from ${from.name}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
+      workCount.decrementAndGet()
       Blackboard().forceCheck()
 
       //Release sync

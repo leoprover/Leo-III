@@ -1,10 +1,12 @@
 package leo.modules.interleavingproc
 
+import leo.Configuration
 import leo.agents.{InterferingLoop, OperationState}
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, ClauseProxy}
 import leo.datastructures.blackboard.{DataType, Result}
 import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem, SZS_Unknown, StatusSZS}
 import leo.modules.seqpproc.{Control, State}
+
 import scala.collection.mutable
 
 object InterleavingLoop {
@@ -28,16 +30,18 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
   @inline private final val forwardSubsumed = true
   @inline private final val notForwardSubsumed = false
 
+  override def terminated : Boolean = synchronized(terminatedFlag)
+  private var terminatedFlag: Boolean = false
+
   override def name: String = "interleaving-seq-loop"
   override def init: Option[StateView[InterleavingLoop.A]] = {
    // val n : InterleavingLoop.A = state.conjecture.fold(state.getNextUnprocessed)(c => c)
-    println("Init called!")
     val n = state.getNextUnprocessed
     movedToProcessed.add(n.id)
     commonFilter(n)
   }
 
-  private val maxRound = 20
+  private val maxRound = try {Configuration.valueOf("ll").get.head.toInt} catch {case e : Exception => -1}
   private var actRound = 1
 
   //TODO Remove after merge with alex
@@ -45,6 +49,9 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
 
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
+    if(unification.getOpenUni.nonEmpty) {
+      return None
+    }
     val sb = new StringBuilder("\n")
     if(actRound > maxRound && maxRound > 0) {
       sb.append("-----------------------------------------------------\n")
@@ -53,7 +60,8 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
       sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty).mkString("\n  ")}\n")
       sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}\n")
       sb.append("-----------------------------------------------------\n")
-      leo.Out.info(sb.toString())
+      leo.Out.debug(sb.toString())
+      terminatedFlag = true
       return None
     }
     sb.append(s" --------------- Round: ${actRound}-------------------\n")
@@ -66,8 +74,8 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     movedToProcessed.add(select.id)
     sb.append(s"Select next Unprocessed:\n  >  ${select.pretty}\n")
     sb.append("-----------------------------------------------------\n\n")
-    leo.Out.info(sb.toString())
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
+    leo.Out.debug(sb.toString())
     // The normal loop from seqpproc
     commonFilter(select)
   }
@@ -165,25 +173,34 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     val factor_result = Control.factor(cur)
     newclauses = newclauses union factor_result
 
+    /* Prim subst */
+    val primSubst_result = Control.primsubst(cur)
+    newclauses = newclauses union primSubst_result
+
     newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
 
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
-    /* exhaustively CNF new clauses */
-    newclauses = newclauses.flatMap(cw => Control.cnf(cw))
-    /* Replace eq symbols on top-level by equational literals. */
-    newclauses = newclauses.map(Control.liftEq)
 
     // Split unifiable and non-unifiable clauses
     val cIt = newclauses.iterator
     newclauses = Set.empty
     while(cIt.hasNext){
-      val ncl = cIt.next()
-      if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
-        result.insert(OpenUnification)(ncl) // TODO Simp and Triv?
-      } else {
-        newclauses += ncl
+      var ncl = cIt.next()
+      ncl = Control.rewriteSimp(ncl, rewrite)
+      if(!Clause.trivial(ncl.cl)) {
+        if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
+          result.insert(OpenUnification)(ncl)
+        } else {
+          newclauses += ncl
+        }
       }
     }
+
+    /* exhaustively CNF new clauses */
+    newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+    /* Replace eq symbols on top-level by equational literals. */
+    newclauses = newclauses.map(Control.liftEq)
+
     /* Pre-unify new clauses */
 //    newclauses = Control.preunifyNewClauses(newclauses)
 

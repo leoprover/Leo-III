@@ -1,8 +1,11 @@
 package leo.modules.interleavingproc
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import leo.agents.{AbstractAgent, Agent, Task}
-import leo.datastructures.{Clause}
+import leo.datastructures.Clause
 import leo.datastructures.blackboard.{DataType, Event, Result}
+import leo.modules.output.SZS_Theorem
 import leo.modules.seqpproc.Control
 
 /**
@@ -18,7 +21,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
 
   override def filter(event: Event): Iterable[Task] = event match {
     case result : Result =>
-      val ins = result.inserts(OpenUnification)
+      val ins = result.inserts(OpenUnification).filter{case a : InterleavingLoop.A => unificationStore.containsUni(a)}
       val rew = state.state.rewriteRules
       val tasks =  ins.map{case a : InterleavingLoop.A => new DelayedUnificationTask(a, this, rew)}
       return tasks
@@ -40,7 +43,7 @@ class DelayedUnificationTask(ac : InterleavingLoop.A, a : DelayedUnificationAgen
     result.remove(OpenUnification)(ac)
     val newclauses = Control.preunifyNewClauses(Set(ac))
     val sb = new StringBuilder("\n")
-    sb.append(s">>Unified Clause:\n>>   ${ac.pretty}\n>> to")
+
 
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
@@ -48,12 +51,12 @@ class DelayedUnificationTask(ac : InterleavingLoop.A, a : DelayedUnificationAgen
       newCl = Control.rewriteSimp(newCl, rewrite)
 
       if (!Clause.trivial(newCl.cl)) {
-        sb.append(s"\n>>   ${newCl.pretty}")
+        sb.append(s"Unified Clause:\n>>   ${ac.pretty}\n>> to\n++> simp  ${newCl.pretty}")
         result.insert(UnprocessedClause)(newCl)
       }
     }
     sb.append("\n")
-    leo.Out.info(sb.toString())
+    leo.Out.debug(sb.toString())
     result
 
   }

@@ -222,8 +222,9 @@ private object TaskSet {
           // 1. Get all Tasks the Agents want to bid on during the auction with their current money
           //
           var r: List[(Double, Agent, Task)] = Nil
-          while(waitForAll & Scheduler().openTasks > 0)
+          while(waitForAll && Scheduler().getCurrentWork > 0) {
             TaskSet.wait()
+          }
           while (r.isEmpty) {
             val ts = taskSet.executableTasks    // TODO Filter if no one can execute (simple done)
 //            println(s"ts = ${ts.map(_.pretty).mkString(", ")}")
@@ -232,7 +233,7 @@ private object TaskSet {
               val budget = regAgents.getOrElse(a, 0.0)
               r = (t.bid * budget, a, t) :: r  }
             if (r.isEmpty) {
-              if (ActiveTracker.get <= 0) {
+              if (ActiveTracker.get <= 0 && Scheduler().getCurrentWork <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 sendDoneEvents()
               }
@@ -240,6 +241,7 @@ private object TaskSet {
               regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
           }
+
 
           // println("Got tasks and ready to auction.")
           //
@@ -287,7 +289,6 @@ private object TaskSet {
             }
           }
           //        println("Sending "+newTask.size+" tasks to scheduler.")
-
           return newTask
         }
         //Lastly interrupt recovery

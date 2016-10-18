@@ -55,6 +55,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       ActiveTracker.incAndGet(s"$name: Loop condition initially positive.")
     }
     taskExisting = r.nonEmpty
+    if(loop.terminated) unregister()
     r
   }
 
@@ -82,6 +83,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
         ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
       }
       taskExisting = r.nonEmpty
+      if(loop.terminated) unregister()
       r
     case _ if !taskExisting =>                // Case of a cancel and no other possible match
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
@@ -94,6 +96,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       }
       firstAttempt = false    // Race condition
       taskExisting = r.nonEmpty
+      if(loop.terminated) unregister()
       r
     case _ => Nil
   })
@@ -174,6 +177,12 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
   */
 trait InterferingLoop[A <: OperationState] {
   def name : String
+
+  /**
+    * Is set to true, if the loop should not be executed further
+    * @return
+    */
+  def terminated : Boolean = false
 
   /**
     * Is executed the first time a

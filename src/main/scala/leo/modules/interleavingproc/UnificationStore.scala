@@ -15,8 +15,13 @@ import scala.collection.mutable
 class UnificationStore[T <: AnnotatedClause] extends DataStore{
 
   private val openUnifications : mutable.Set[T] = new mutable.HashSet[T]()
+  private val openUnificationsID : mutable.Set[Long] = new mutable.HashSet[Long]()
 
-  def getOpenUni : Seq[T] = openUnifications.toSeq
+  def getOpenUni : Seq[T] = synchronized(openUnifications.toSeq)
+
+  def containsUni(c : T) = synchronized(openUnificationsID.contains(c.id))
+
+  def openUni : Boolean = synchronized(openUnifications.nonEmpty)
 
   /**
     * This method returns all Types stored by this data structure.
@@ -35,14 +40,20 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     val itr = r.removes(OpenUnification).iterator
     while(itr.hasNext){
       val r = itr.next().asInstanceOf[T]
-      openUnifications.remove(r)
+      if(openUnificationsID.contains(r.id)){
+        openUnificationsID.remove(r.id)
+        openUnifications.remove(r)
+      }
     }
     val iti = r.inserts(OpenUnification).iterator
     while(iti.hasNext){
       val i = iti.next().asInstanceOf[T]
-      openUnifications.add(i)
+      if(!openUnifications.contains(i)){
+//      if(!openUnifications.exists(x => x.cl == i.cl)) {
+        openUnifications.add(i)
+        openUnificationsID.add(i.id)
+      }
     }
-
     iti.nonEmpty    // TODO Check in loop for already existence
   }
 

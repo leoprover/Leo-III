@@ -154,7 +154,7 @@ class SimpleTaskSet extends TaskSet{
         // Remove all colliding
         val rmSet = set.filter(isObsolete(task,_))
         rmSet.foreach{t =>
-          ActiveTracker.decAndGet(s"Obsolete Task:\n  ${t.pretty}")
+          ActiveTracker.decAndGet(s"Obsolete Task:\n  Remove ${t.pretty}\n  by ${task.pretty}")
           t.getAgent.taskCanceled(t)
           set.remove(t)
         }
