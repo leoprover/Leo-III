@@ -2,7 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.modules.HOLSignature.{LitFalse, LitTrue, Forall, Exists, &, |||, Not, Impl}
 import leo.modules.calculus.CalculusRule
 
 import scala.collection.mutable
@@ -46,7 +46,7 @@ object FormulaRenaming extends CalculusRule{
     * @param delta    A difference in generated clauses, compared to the original.
     * @return
     */
-  def apply(c: Clause, delta: Int = 1): (Clause, Seq[Clause]) = {
+  def apply(c: Clause, delta: Int = 1)(implicit sig: Signature): (Clause, Seq[Clause]) = {
     val lits = c.lits
     val apps = lits.map(f => apply(f,delta))
     val nlits = apps.map(_._1)
@@ -54,7 +54,7 @@ object FormulaRenaming extends CalculusRule{
     (Clause(nlits), cs)
   }
 
-  def applyConjecture(c : Clause, delta: Int = 1) : (Clause, Seq[Clause]) = {
+  def applyConjecture(c : Clause, delta: Int = 1)(implicit sig: Signature) : (Clause, Seq[Clause]) = {
     assert(c.lits.size == 1, "The conjecture should contain exactly one clause.")
     if(c.lits.size > 1) return (c, Seq())
     val lit = c.lits.head
@@ -73,7 +73,7 @@ object FormulaRenaming extends CalculusRule{
     * @param delta    A difference in generated clauses, compared to the original.
     * @return
     */
-  def apply(l: Literal, delta: Int): (Literal, Seq[Clause]) = {
+  def apply(l: Literal, delta: Int)(implicit sig: Signature): (Literal, Seq[Clause]) = {
 
     if(l.right == LitTrue() || l.right == LitFalse()) {
       val pol = if (l.polarity) 1 else -1
@@ -84,7 +84,7 @@ object FormulaRenaming extends CalculusRule{
   }
 
 
-  def apply(t: Term, polarity: Int, delta: Int): (Term, Seq[Clause]) = t match {
+  def apply(t: Term, polarity: Int, delta: Int)(implicit sig: Signature): (Term, Seq[Clause]) = t match {
     case |||(l, r) =>
       val (l_rename, c1s) = apply(l, polarity, delta)
       val (r_rename, c2s) = apply(r, polarity, delta)
@@ -156,12 +156,11 @@ object FormulaRenaming extends CalculusRule{
     //    case _  => formula
   }
 
-  protected[preprocessing] def introduce_definition(t: Term, pol: Boolean): (Term, Clause) = {
+  protected[preprocessing] def introduce_definition(t: Term, pol: Boolean)(implicit s: Signature): (Term, Clause) = {
     val definition =
       if (us.contains(t))
         us.get(t).get
       else {
-        val s = Signature.get
         // Term was no yet introduced
         val newArgs = t.freeVars.toSeq // Arguments passed to the function to define
         val argtypes = newArgs.map(_.ty)

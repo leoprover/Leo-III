@@ -24,19 +24,19 @@ class FormulaRenamingAgent(cs : Context*) extends AbstractAgent {
 
       var tasks = Seq[Task]()
       while(ins.nonEmpty){
-        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])(SignatureBlackboard.get)
         if(t != null) tasks = t +: tasks
       }
       while(ups.nonEmpty){
-        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])(SignatureBlackboard.get)
         if(t != null) tasks = t +: tasks
       }
-      null
+      tasks
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy) : Task = {
-    val (nc, defs) = FormulaRenaming(cl.cl)
+  private def commonFilter(cl : ClauseProxy)(sig : Signature) : Task = {
+    val (nc, defs) = FormulaRenaming(cl.cl)(sig)
     if(defs.nonEmpty){
       new FormulaRenamingTask(cl, nc, defs , this)
     } else {

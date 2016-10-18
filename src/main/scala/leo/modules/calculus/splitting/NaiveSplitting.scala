@@ -4,6 +4,7 @@ package modules.calculus.splitting
 import leo.datastructures.Clause
 import leo.datastructures.context.{NoSplit, BetaSplit, AlphaSplit, SplitKind}
 import leo.datastructures._
+import leo.modules.HOLSignature.{<=>, Impl, &, Not}
 
 /**
  *
@@ -76,10 +77,10 @@ object NaiveSplitting extends Split {
    * @return Some(cs) with
    */
   override def split(c : Clause) : Option[(Seq[Seq[Clause]],SplitKind)] = {
-    val maxLit = c.lits.max(Orderings.simple(LitWeight_FIFO))
+    val maxLit = c.lits.max(Orderings.simple(LiteralWeights.fifo))
     val rLits = c.lits.filterNot(_ != maxLit)   // Remove maximal Literal
 
-    maxLit.term match {
+    Literal.asTerm(maxLit) match { // TODO: These matches never apply?!
       case (a <=> b) if maxLit.polarity =>
         val left = Impl(a,b)
         val right = Impl(b,a)

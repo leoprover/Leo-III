@@ -1,9 +1,6 @@
 package leo.datastructures
 
-import leo.datastructures.impl.Signature
-
 import scala.language.implicitConversions
-
 
 /**
  * Abstract interface for terms and operations on them that can be
@@ -25,7 +22,6 @@ import scala.language.implicitConversions
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
 trait Term extends Pretty {
-
   // Predicates on terms
   /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
   def isAtom: Boolean
@@ -36,32 +32,41 @@ trait Term extends Pretty {
   def isApp: Boolean
   def flexHead: Boolean
 
-  // Locality/Indexing properties of terms
+  // Locality/Indexing properties of terms, TODO: Obsolete, what to do with it?
   def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
   def isIndexed: Boolean = TermIndex.contains(this)
   def locality: Locality
   def isLocal: Boolean
   def isGlobal: Boolean = !isLocal
 
+  //////////////////////////
   // Handling def. expansion
-  def δ_expandable: Boolean
-  def partial_δ_expand(rep: Int): Term
-  def full_δ_expand: Term
-  def exhaustive_δ_expand_upTo(symbs: Set[Signature#Key]): Term
+  //////////////////////////
 
-  def head_δ_expandable: Boolean
-  def head_δ_expand: Term
+  /** Returns true iff any subterm of this term can be expanded by its definition. */
+  def δ_expandable(implicit sig: Signature): Boolean
+  /** Exhaustively expands all defined subterms (i.e. defined symbols) by its definitions.
+    * This may not terminate for recursively defined symbols. */
+  def δ_expand(implicit sig: Signature): Term
+  /** Expands defined subterms as `δ_expand` but with at most `rep` recursive replacements. */
+  def δ_expand(rep: Int)(implicit sig: Signature): Term
+  /** Exhaustively expands all symbols except for those in `symbs` which are
+    * defined by its definitions.
+    * This may not terminate for recursively defined symbols. */
+  def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term
 
+  //////////////////////////
   // Queries on terms
+  //////////////////////////
+  /** Returns the type of the term */
   def ty: Type
-  def ground: Boolean = freeVars.isEmpty
+  /** true iff the term does not contain any free variables. */
+  final def ground: Boolean = freeVars.isEmpty
 
   // TODO: REMOVE OLD FUNCTIONS SUCH AS
   def freeVars: Set[Term] // TODO: Clarify that this does ...
   def boundVars: Set[Term]
   def looseBounds: Set[Int]  // TODO ..as opposed to this
-  def metaVars: Set[(Type, Int)]
-  def metaIndices: Set[Int] = metaVars.map(x => x._2)
   // TODO END
 
   def fv: Set[(Int, Type)]
@@ -70,13 +75,10 @@ trait Term extends Pretty {
   def feasibleOccurences: Map[Term, Set[Position]]
   def headSymbol: Term
   def headSymbolDepth: Int
-  def scopeNumber: (Int,Int)
   def size: Int
-  def order: LangOrder
 
   def symbols: Set[Signature#Key]
-  final def symbolsOfType(ty: Type) = {
-    val sig = Signature.get
+  final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
     symbols.filter({i => sig(i)._ty == ty})
   }
   // Functions for FV-Indexing
@@ -103,9 +105,7 @@ trait Term extends Pretty {
   def typeClosure(subst: Subst): Term
 
   // Other operations
-  def compareTo(that: Term): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)
-  /** Returns true iff the term is well-typed. */
-  def typeCheck: Boolean
+  def compareTo(that: Term)(implicit sig: Signature): CMP_Result = leo.Configuration.TERM_ORDERING.compare(this, that)(sig)
   /** Return the β-nf of the term */
   def betaNormalize: Term
   /** Return the eta-long-nf of the term */
@@ -133,76 +133,38 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  def mkAtom(id: Signature#Key): Term = TermImpl.mkAtom(id)
-  def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
-  def mkMetaVar(t: Type, id: Int): Term = TermImpl.mkMetaVar(t, id)
-  def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
-  def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
-  def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
-  def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
-  def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
-  def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
-  def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
+  final def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
+  final def mkAtom(id: Signature#Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
+  final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
+  final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
+  final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
+  final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
+  final def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
+  final def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
+  final def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
+  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
 
   // Term bank method delegation
-  val local = TermImpl.local
-  def insert(term: Term): Term = TermImpl.insert(term)
-  def contains(term: Term): Boolean = TermImpl.contains(term)
-  def reset(): Unit = TermImpl.reset()
+  final val local = TermImpl.local
+  final def insert(term: Term): Term = TermImpl.insert(term)
+  final def contains(term: Term): Boolean = TermImpl.contains(term)
+  final def reset(): Unit = TermImpl.reset()
 
+  // Utility
+  /** Checks if a term is well-typed. Does does check whether free variables
+    * are consistently typed. */
+  final def wellTyped(t: Term): Boolean = TermImpl.wellTyped(t.asInstanceOf[TermImpl])
 
-  // Determine order-subsets of terms
-
-  /** FOF-compatible (unsorted) first order logic subset. */
-  def firstOrder(t: Term): Boolean = {
-    val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
-    val tys = Set(Signature.get.i, Signature.get.o)
-
-    t match {
-      case Forall(ty :::> body) => ty == Signature.get.i && firstOrder(body)
-      case Exists(ty :::> body) => ty == Signature.get.i && firstOrder(body)
-      case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get == Signature.get.i && sp.tail.forall(_.fold(t => t.ty == Signature.get.i && firstOrder(t),_ => false))
-      case h ∙ sp  => sp.forall(_.fold(t => tys.contains(t.ty) && firstOrder(t),_ => false))
-      case ty :::> body => false
-      case TypeLambda(_) => false
-      case Bound(ty, sc) => ty == Signature.get.i
-      case Symbol(key) => tys.contains(Signature.get(key)._ty)
-    }}
-
-  /** Many sorted-first order logic subset. */
-  def manySortedFirstOrder(t: Term): Boolean = {
-    val polyOps = Set(HOLSignature.eqKey, HOLSignature.neqKey)
-
-    t match {
-    case Forall(ty :::> body) => ty.isBaseType && manySortedFirstOrder(body)
-    case Exists(ty :::> body) => ty.isBaseType && manySortedFirstOrder(body)
-    case Symbol(key) ∙ sp if polyOps contains key  => sp.head.right.get.isBaseType && sp.tail.forall(_.fold(t => t.ty.isBaseType && manySortedFirstOrder(t),_ => false))
-    case h ∙ sp  => sp.forall(_.fold(t => t.ty.isBaseType && manySortedFirstOrder(t),_ => false))
-    case ty :::> body => false
-    case TypeLambda(_) => false
-    case Bound(ty, sc) => ty.isBaseType
-    case Symbol(key) => Signature.get(key)._ty.isBaseType
-  }}
-
-  // Further utility functions
-  final def mkDisjunction(terms: Seq[Term]): Term = terms match {
-    case Seq() => LitFalse()
-    case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t) => |||(disj, t)})
-  }
-  final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
-    bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
-  }
-
+  // Conversions
   /** Convert tuple (i,ty) to according de-Bruijn index */
-  implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
+  final implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   /** Convert tuple (i,j) to according de-Bruijn index (where j is a type-de-Bruijn index) */
-  implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
-  /** Convert a signature key to its corresponding atomic term representation */
-  implicit def keyToAtom(in: Signature#Key): Term = mkAtom(in)
+  final implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
+
 
   // Legacy functions type types for statistics, like to be reused sometime
   type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
-  def statistics: TermBankStatistics = TermImpl.statistics
+  final def statistics: TermBankStatistics = TermImpl.statistics
 
 
   //////////////////////////////////////////
@@ -219,18 +181,6 @@ object Term extends TermBank {
    * }}}
    */
   object Bound { def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
-
-  /**
-   * Pattern for matching meta variable symbols in terms. Usage:
-   * {{{
-   * t match {
-   *  case MetaVar(ty,id) => println("Matched meta var symbol with id "
-   *                                  + id.toString + " with type "+ ty.pretty)
-   *  case _               => println("something else")
-   * }
-   * }}}
-   */
-  object MetaVar { def unapply(t: Term): Option[(Type, Int)] = TermImpl.metaVariableMatcher(t) }
 
   /**
    * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:

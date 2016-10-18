@@ -10,9 +10,7 @@ import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Ordered[Clause] with Pretty {
-  /** The unique, increasing clause number. */
-  def id: Int
+trait Clause extends Pretty {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
@@ -30,11 +28,6 @@ trait Clause extends Ordered[Clause] with Pretty {
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
 
-  def maxLitsMap: Map[LitMaxFlag, Seq[Literal]]
-
-  @inline final def maxLits: Seq[Literal] = maxLitsMap(LitMax)
-  @inline final def strictlyMaxLits: Seq[Literal] = maxLitsMap(LitStrictlyMax)
-
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
 
@@ -42,12 +35,7 @@ trait Clause extends Ordered[Clause] with Pretty {
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
   @inline final def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replaceAll(what, by)))
 
-  /** The clause's weight. */
-  @inline final def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
-  @inline final def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
-
   final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
-
 
   // System function adaptions
   override final def equals(obj : Any): Boolean = obj match {
@@ -77,9 +65,6 @@ object Clause {
   /** The empty clause. */
   @inline final val empty = mkClause(Seq.empty)
 
-  /** Returns the last clause id that has been issued. */
-  @inline final def lastClauseId: Int = ClauseImpl.lastClauseId
-
   // Utility
   /** Returns true iff clause `c` is empty. */
   @inline final def empty(c: Clause): Boolean = c.lits.isEmpty
@@ -107,5 +92,15 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
+  /** Returns true iff all literals are well-typed. */
+  final def wellTyped(c: Clause): Boolean = {
+    import leo.datastructures.Literal.{wellTyped => wt}
+    val litIt = c.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (!wt(lit)) return false
+    }
+    true
+  }
 }
 

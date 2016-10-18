@@ -8,7 +8,7 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.context.Context
 import leo.datastructures.impl.orderings.TO_CPO_Naive
 import leo.datastructures.Type._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl$
 import leo.modules.{Parsing, SZSException, Utility}
 import leo.modules.output.Output
 
@@ -47,6 +47,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
    test(s"Ordering test for $p", Benchmark) {
+     implicit val sig = getFreshSignature
       printHeading(s"Ordering test for $p")
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
      var fs : Seq[AnnotatedClause] = Seq()
@@ -57,7 +58,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
           fail()
       }
-     Utility.printSignature()
+     Utility.printSignature(sig)
 
 //     val pc = Term.mkAtom(Signature("p").key)
 //     val h = Term.mkAtom(Signature("h").key)
@@ -88,7 +89,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
        while (fsIt2.hasNext) {
          val f2 = fsIt2.next()
          if (f != f2) {
-           val (a, b) = (f.cl.lits.head.term, f2.cl.lits.head.term)
+           val (a, b) = (Literal.asTerm(f.cl.lits.head), Literal.asTerm(f2.cl.lits.head))
            val res = TO_CPO_Naive.compare(a, b)
            res match {
              case CMP_EQ => eq += ((a, b))
@@ -148,7 +149,7 @@ class TermOrderingTestSuite extends LeoTestSuite {
        }
      }
 
-     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(_.cl.lits.head.term).toSeq
+     val terms: Seq[Term] = FormulaDataStore.getFormulas.map(c => Literal.asTerm(c.cl.lits.head)).toSeq
      import scala.util.Sorting
      def localLT(a: Term, b: Term): Boolean = TO_CPO_Naive.lt(a,b)
      val sorted = Sorting.stableSort[Term](terms, (a:Term,b:Term) => TO_CPO_Naive.lt(a,b) )

@@ -1,6 +1,6 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{Kind, Subst, Type}
+import leo.datastructures.{Kind, Subst, Type, TypeFront, Signature}
 
 protected[datastructures] abstract class TypeImpl extends Type {
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type) = splitFunParamTypesAt0(n, Seq())
@@ -16,12 +16,11 @@ protected[datastructures] abstract class TypeImpl extends Type {
 /** Literal type, i.e. `$o` */
 protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
-  import Signature.{get => signature}
   lazy val pretty = {
     if (args.isEmpty)
-      signature.meta(id).name
+      s"ty($id)"
     else
-      signature.meta(id).name +"(" + args.map(_.pretty).mkString(",") + ")"
+      s"ty($id)" +"(" + args.map(_.pretty).mkString(",") + ")"
   }
 
   // Predicates on types
@@ -50,10 +49,9 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
   }
 
   // Substitutions
-  def substitute(what: Type, by: Type) = {
-    if (what == this) by
-    else GroundTypeNode(id, args.map(_.substitute(what, by)))
-  }
+  def replace(what: Type, by: Type) = if (what == this) by
+    else GroundTypeNode(id, args.map(_.replace(what, by)))
+
   def substitute(subst: Subst) = GroundTypeNode(id, args.map(_.substitute(subst)))
   def instantiate(by: Type) = this
 
@@ -93,10 +91,7 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl 
   def occurs(ty: Type) = false
 
   // Substitutions
-  def substitute(what: Type, by: Type) = what match {
-    case BoundTypeNode(i) if i == scope => by
-    case _ => this
-  }
+  def replace(what: Type, by: Type) = if (what == this) by else this
   import leo.datastructures.{BoundFront, TypeFront}
   def substitute(subst: Subst) = subst.substBndIdx(scope) match {
     case BoundFront(j) => BoundTypeNode(j)
@@ -149,7 +144,8 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   def occurs(ty: Type) = in.occurs(ty) || out.occurs(ty)
 
   // Substitutions
-  def substitute(what: Type, by: Type) = AbstractionTypeNode(in.substitute(what,by), out.substitute(what,by))
+  def replace(what: Type, by: Type) = if (what == this) by
+  else AbstractionTypeNode(in.replace(what,by), out.replace(what,by))
   def substitute(subst: Subst) = AbstractionTypeNode(in.substitute(subst), out.substitute(subst))
   def instantiate(by: Type) = this
 
@@ -189,7 +185,8 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
   // Substitutions
-  def substitute(what: Type, by: Type) = ProductTypeNode(l.substitute(what,by), r.substitute(what,by))
+  def replace(what: Type, by: Type) = if (what == this) by
+  else ProductTypeNode(l.replace(what,by), r.replace(what,by))
   def substitute(subst: Subst) = ProductTypeNode(l.substitute(subst), r.substitute(subst))
   def instantiate(by: Type) = this
 
@@ -231,7 +228,8 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
   // Substitutions
-  def substitute(what: Type, by: Type) = UnionTypeNode(l.substitute(what,by), r.substitute(what,by))
+  def replace(what: Type, by: Type) = if (what == this) by
+  else UnionTypeNode(l.replace(what,by), r.replace(what,by))
   def substitute(subst: Subst) = UnionTypeNode(l.substitute(subst), r.substitute(subst))
 
   def instantiate(by: Type) = this
@@ -280,13 +278,11 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
   def occurs(ty: Type) = body.occurs(ty)
 
   // Substitutions
-  def substitute(what: Type, by: Type) = what match {
-    case BoundTypeNode(i) => ForallTypeNode(body.substitute(BoundTypeNode(i+1), by))
-    case _ => ForallTypeNode(body.substitute(what,by))
-  }
+  def replace(what: Type, by: Type) = if (what == this) by
+  else ForallTypeNode(body.replace(what, by))
   def substitute(subst: Subst) = ForallTypeNode(body.substitute(subst.sink))
 
-  def instantiate(by: Type) = body.substitute(BoundTypeNode(1), by)
+  def instantiate(by: Type) = body.substitute(TypeFront(by) +: Subst.id )
 
   // Other operations
   def foldRight[A](baseFunc: Signature#Key => A)

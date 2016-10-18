@@ -1,9 +1,8 @@
 package leo.modules.preprocessing
 
-import leo.Configuration
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.modules.HOLSignature.{Not, ===, LitFalse, LitTrue, &, |||, <=>, Impl, Forall, Exists}
 
 /**
   * Created by mwisnie on 1/5/16.
@@ -15,13 +14,13 @@ object Simplification extends Normalization {
   def polarityNorm(formula : Clause) : Clause = formula.mapLit(polarityNorm(_))
 
   def polarityNorm(lit : Literal) : Literal = (lit.left, lit.right) match {
-    case (Not(l),Not(r))  => Literal(l,r, lit.polarity)
+    case (Not(l),Not(r))  => Literal(l,r, lit.polarity, lit.oriented)
     case (Not(l),r) => Literal(l,r, !lit.polarity)
     case (l, Not(r)) => Literal(l,r, !lit.polarity)
-    case (l,r)  => Literal(l,r, lit.polarity)
+    case (l,r)  => lit
   }
 
-  override def apply(formula : Clause) : Clause = {
+  override def apply(formula : Clause)(implicit sig: Signature) : Clause = {
     formula.mapLit(apply(_))
   }
 
@@ -117,7 +116,6 @@ object Simplification extends Normalization {
     // Pass through unimportant structures
     case s@Symbol(_)            => s
     case s@Bound(_,_)           => s
-    case s@MetaVar(_,_)         => s
     case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
     case ty :::> s  => Term.mkTermAbs(ty, norm(s))
     case TypeLambda(t) => Term.mkTypeAbs(norm(t))

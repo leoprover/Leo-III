@@ -23,19 +23,19 @@ object EqualityReplaceAgent extends AbstractAgent{
 
       var tasks = Seq[Task]()
       while(ins.nonEmpty){
-        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy], SignatureBlackboard.get)
         if(t != null) tasks = t +: tasks
       }
       while(ups.nonEmpty){
-        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy], SignatureBlackboard.get)
         if(t != null) tasks = t +: tasks
       }
-      null
+      tasks
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy) : Task = {
-    val (can1, map) = ReplaceLeibnizEq.canApply(cl.cl)
+  private def commonFilter(cl : ClauseProxy, sig : Signature) : Task = {
+    val (can1, map) = ReplaceLeibnizEq.canApply(cl.cl)(sig)
     if(can1){
       new LeibnitzEQTask(cl, cl.cl, map, this)
     } else {

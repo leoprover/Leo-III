@@ -27,19 +27,11 @@ import leo.datastructures._
 }
 
 object VectorClause {
-  private var clauseCounter : Int = 0
-
   final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = {
-    clauseCounter += 1
-    new VectorClause0(clauseCounter, lits, origin)
+    new VectorClause0(lits, origin)
   }
 
-  @inline final def lastClauseId = clauseCounter
-
-  private final class VectorClause0(val id: Int, literals: Iterable[Literal], val origin: ClauseOrigin) extends VectorClause {
+  private final class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin) extends VectorClause {
     lazy val lits = literals.toVector
-    import leo.datastructures.Literal.{LitMaxFlag, LitStrictlyMax, LitMax}
-
-    lazy val maxLitsMap: Map[LitMaxFlag, Seq[Literal]] = Literal.maximalityOf(lits)
   }
 }

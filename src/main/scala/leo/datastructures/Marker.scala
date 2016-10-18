@@ -118,20 +118,19 @@ trait ClauseProxy extends Pretty {
   def cl: Clause
   def role: Role
   def annotation: ClauseAnnotation
+  @inline lazy val weight: Int = leo.Configuration.CLAUSEPROXY_WEIGHTING.weightOf(this)
   def properties: ClauseAnnotation.ClauseProp
 
   override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
 }
 
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
-                           var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy with Ordered[AnnotatedClause] {
+                           var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
   override def equals(o: Any): Boolean = o match {  // TODO IMPORTANT, Clause Equivalence checks for set inclusion, multiplicity not checked in hashCode()
     case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
     case _ => false
   }
 
-  import leo.Configuration
-  override def compare(that: AnnotatedClause) = Configuration.CLAUSE_ORDERING.compare(this.cl, that.cl)
   override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
 }
 

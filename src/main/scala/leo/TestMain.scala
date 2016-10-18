@@ -1,7 +1,7 @@
 package leo
 
 import leo.datastructures.ClauseProxy
-import leo.datastructures.blackboard.{Blackboard, DoneEvent}
+import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard}
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
@@ -13,7 +13,6 @@ import leo.modules._
 import leo.modules.external.ExternalCall
 import leo.modules.output._
 import leo.modules.phase._
-import leo.datastructures.impl.Signature
 import leo.modules.Utility._
 import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
@@ -59,7 +58,7 @@ object TestMain {
             Out.trace("Caused by: " + e.getCause.getMessage)
             Out.trace("at: " + e.getCause.getStackTrace.toString)
           }
-          Out.trace(Utility.userDefinedSignatureAsString)
+//          Out.trace(Utility.userDefinedSignatureAsString)
         }
         case e:Throwable => {
           if (e.getMessage != null) {
@@ -73,7 +72,7 @@ object TestMain {
             Out.trace("Caused by: " + e.getCause.getMessage)
             Out.trace("at: " + e.getCause.getStackTrace.toString)
           }
-          Out.trace(Utility.userDefinedSignatureAsString)
+//          Out.trace(Utility.userDefinedSignatureAsString)
         }
       } finally {
         Scheduler().killAll()
@@ -82,7 +81,10 @@ object TestMain {
     } else if(Configuration.isSet("exttest")){
       testExternalProvers()
     } else {
+      import leo.datastructures.Signature
 
+      implicit val sig: Signature = Signature.freshWithHOL()
+      SignatureBlackboard.set(sig)
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
       val TimeOutProcess = new DeferredKill(timeout, timeout)
@@ -136,9 +138,9 @@ object TestMain {
       leo.Out.debug("Unused : ")
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
-      val state = BlackboardState.fresh[InterleavingLoop.A](Signature.get)
+      val state = BlackboardState.fresh[InterleavingLoop.A](sig)
       val uniStore = new UnificationStore[InterleavingLoop.A]()
-      val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore)
+      val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
       val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
       val uniAgent = new DelayedUnificationAgent(uniStore, state)
 
@@ -179,7 +181,7 @@ object TestMain {
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(Utility.userConstantsForProof(Signature.get))
+        Out.output(Utility.userConstantsForProof(sig))
         Out.output(Utility.proofToTPTP(Utility.proofOf(proof.get)))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }

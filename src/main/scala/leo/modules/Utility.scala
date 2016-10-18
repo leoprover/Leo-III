@@ -1,14 +1,12 @@
 package leo
 package modules
 
-import java.io.{PrintWriter, StringWriter, FileNotFoundException, File}
+import java.io.{PrintWriter, StringWriter}
 
 import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures._
-import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.datastructures.impl.Signature
 import leo.modules.output._
 
 import scala.collection.immutable.HashSet
@@ -25,17 +23,25 @@ object Utility {
   /// Signature queries
   /////////////////////////////////////////////////////////////
 
-  def printSignature(): Unit = {
-    import leo.datastructures.IsSignature.{lexStatus,multStatus}
-    val s = Signature.get
+  def printSignature(s: Signature): Unit = {
+    Out.output(signatureAsString(s))
+  }
+
+  def printUserDefinedSignature(sig: Signature): Unit = {
+    Out.output(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+    Out.output(userDefinedSignatureAsString(sig))
+  }
+
+  def signatureAsString(s: Signature): String = {
+    import leo.datastructures.Signature.{lexStatus,multStatus}
     val sb = new StringBuilder()
     sb.append(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-    (s.allConstants).foreach { case c => {
+    s.allConstants.foreach { c => {
       val c1 = s(c)
       sb.append(s"${c1.name}\t|\t")
       sb.append(s"${c1.key}\t|\t")
-      c1.ty foreach { case ty => sb.append(s"${ty.pretty}\t|\t")}
-      c1.kind foreach { case kind => sb.append(s"${kind.pretty}\t|\t")}
+      c1.ty foreach { ty => sb.append(s"${ty.pretty}\t|\t")}
+      c1.kind foreach { kind => sb.append(s"${kind.pretty}\t|\t")}
       if (c1.hasDefn)
         sb.append(s"${c1._defn.pretty}\t|\t")
       else
@@ -48,23 +54,18 @@ object Utility {
       sb.append("\n")
     }
     }
-    Out.output(sb.toString())
+    sb.toString()
   }
 
-  def printUserDefinedSignature(): Unit = {
-    Out.output(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-    Out.output(userDefinedSignatureAsString)
-  }
-  def userDefinedSignatureAsString: String = {
-    import leo.datastructures.IsSignature.{lexStatus,multStatus}
-    val s = Signature.get
+  def userDefinedSignatureAsString(s: Signature): String = {
+    import leo.datastructures.Signature.{lexStatus,multStatus}
     val sb = new StringBuilder()
-    (s.allUserConstants).foreach { case c => {
+    s.allUserConstants.foreach { c => {
       val c1 = s(c)
       sb.append(s"${c1.name}\t|\t")
       sb.append(s"${c1.key}\t|\t")
-      c1.ty foreach { case ty => sb.append(s"${ty.pretty}\t|\t")}
-      c1.kind foreach { case kind => sb.append(s"${kind.pretty}\t|\t")}
+      c1.ty foreach { ty => sb.append(s"${ty.pretty}\t|\t")}
+      c1.kind foreach { kind => sb.append(s"${kind.pretty}\t|\t")}
       if (c1.hasDefn)
         sb.append(s"${c1._defn.pretty}\t|\t")
       else
@@ -82,9 +83,9 @@ object Utility {
 
   def userConstantsForProof(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder()
-    sig.allUserConstants.foreach { case key =>
+    sig.allUserConstants.foreach { key =>
       val name = sig.apply(key).name
-      sb.append(ToTPTP(key))
+      sb.append(ToTPTP(key)(sig))
         sb.append("\n")
     }
     sb.dropRight(1).toString()
@@ -92,7 +93,7 @@ object Utility {
 
   def userSignatureToTPTP(constants: Set[Signature#Key])(implicit sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder()
-    sig.allUserConstants.intersect(constants.union(sig.typeSymbols)).foreach { case key =>
+    sig.allUserConstants.intersect(constants.union(sig.typeSymbols)).foreach { key =>
       val name = sig.apply(key).name
       sb.append(ToTPTP(key))
       sb.append("\n")
@@ -125,16 +126,16 @@ object Utility {
     proof.reverse
   }
 
-  final def proofToTPTP(proof: Proof): String = {
+  final def proofToTPTP(proof: Proof)(implicit sig: Signature): String = {
     if (Configuration.isSet("DEBUG"))
       proof.map(_.pretty).mkString("\n")
     else
-      proof.map(mkTPTP).mkString("\n")
+      proof.map(mkTPTP(_)(sig)).mkString("\n")
   }
 
-  private def mkTPTP(cl : ClauseProxy) : String = {
+  private def mkTPTP(cl : ClauseProxy)(sig: Signature) : String = {
     try{
-      ToTPTP.withAnnotation(cl)
+      ToTPTP.withAnnotation(cl)(sig)
     } catch {
       case e : Throwable => leo.Out.warn(s"Could not translate: ${cl.pretty}.\n Error: ${e.toString}"); cl.pretty
     }
@@ -166,9 +167,9 @@ object Utility {
   /**
     * Shows all formulas in the current context.
     */
-  def context(): Unit = {
+  def context(sig: Signature): Unit = {
     println("Signature:")
-    printSignature()
+    printSignature(sig)
     println("Blackboard context:")
     formulaContext()
   }

@@ -2,7 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.modules.HOLSignature.{o, Not, <=>, Impl, &, |||, ===, !===, Forall, Exists}
 import leo.modules.output.SZS_Theorem
 
 /**
@@ -20,9 +20,9 @@ object NegationNormal extends Normalization{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  def apply(formula: Clause): Clause = {
+  def apply(formula: Clause)(implicit sig: Signature): Clause = {
     formula.mapLit { li =>
-      if(li.left.ty == Signature.get.o) {
+      if(li.left.ty == o) {
         val l1 = li.termMap { case (l, r) => {
           val (t1, t2) = if (li.polarity) (l, r) else (Not(l), r)
           (nnf(rmEq(t1, 1)).betaNormalize, nnf(rmEq(t2, 1)).betaNormalize)
@@ -34,7 +34,7 @@ object NegationNormal extends Normalization{
   }
 
   def apply(literal : Literal) : Literal = {
-    if(literal.left.ty != Signature.get.o) return literal
+    if(literal.left.ty != o) return literal
     val l1 = literal.termMap { case (l,r) => {
       val (t1,t2) = if (literal.polarity) (l,r) else (Not(l), r)
       (nnf(rmEq(t1, 1)).betaNormalize,nnf(rmEq(t2, 1)).betaNormalize)
@@ -53,13 +53,13 @@ object NegationNormal extends Normalization{
   private def rmEq(formula : Term, pol : Int) : Term = formula match {
     case (s <=> t) if pol == 1    => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
     case (s <=> t) if pol == -1   => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
-    case (s === t) if pol == 1 && s.ty == Signature.get.o
+    case (s === t) if pol == 1 && s.ty == o
             => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
-    case (s === t) if pol == -1 && s.ty == Signature.get.o
+    case (s === t) if pol == -1 && s.ty == o
             => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
-    case (s !=== t) if pol == -1 && s.ty == Signature.get.o
+    case (s !=== t) if pol == -1 && s.ty == o
           => &(Impl(rmEq(s,-1),rmEq(t,1)),Impl(rmEq(t,-1),rmEq(s,1)))
-    case (s !=== t) if pol == 1 && s.ty == Signature.get.o
+    case (s !=== t) if pol == 1 && s.ty == o
           => |||(&(rmEq(s,-1),rmEq(t,-1)),&(Not(rmEq(s,1)),Not(rmEq(t,1))))
 
     case Impl(s,t)               => Impl(rmEq(s,(-1)*pol),rmEq(t,pol))

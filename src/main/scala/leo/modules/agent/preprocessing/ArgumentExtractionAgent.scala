@@ -5,7 +5,6 @@ import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.modules.calculus.CalculusRule
 import leo.modules.preprocessing.ArgumentExtraction
 
 /**
@@ -24,20 +23,20 @@ class ArgumentExtractionAgent extends AbstractAgent {
 
       var tasks = Seq[Task]()
       while(ins.nonEmpty){
-        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])
+        val t = commonFilter(ins.next().asInstanceOf[ClauseProxy])(SignatureBlackboard.get)
         if(t != null) tasks = t +: tasks
       }
       while(ups.nonEmpty){
-        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])
+        val t = commonFilter(ups.next()._2.asInstanceOf[ClauseProxy])(SignatureBlackboard.get)
         if(t != null) tasks = t +: tasks
       }
-      null
+      tasks
     case _ => Seq()
   }
 
-  private def commonFilter(cl : ClauseProxy) : Task = {
+  private def commonFilter(cl : ClauseProxy)(sig : Signature) : Task = {
     // TODO If the signature is split look out for using the same definitions
-    val (nc, defs) : (Clause, Set[(Term, Term)]) = ArgumentExtraction(cl.cl)
+    val (nc, defs) : (Clause, Set[(Term, Term)]) = ArgumentExtraction(cl.cl)(sig)
     if(defs.isEmpty){
       null
     } else{

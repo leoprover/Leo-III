@@ -3,25 +3,23 @@ package leo.modules.seqpproc
 import leo.datastructures._
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 
-import scala.collection.SortedSet
-
 
 /**
   * Created by lex on 20.02.16.
   */
-trait State[T <: ClauseProxy] extends Pretty {
+trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def conjecture: T
   def negConjecture: T
   def setConjecture(conj: T): Unit
   def setNegConjecture(negConj: T): Unit
 
-  def signature: IsSignature
+  def signature: Signature
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
-  def unprocessed: SortedSet[T]
+  def unprocessedLeft: Boolean
+  def unprocessed: Set[T]
   def nextUnprocessed: T
-  def nextUnprocessedLeft : Boolean
   def addUnprocessed(unprocessed: T): Unit
   def addUnprocessed(unprocessed: Set[T]): Unit
   def processed: Set[T]
@@ -33,7 +31,9 @@ trait State[T <: ClauseProxy] extends Pretty {
 
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
+}
 
+trait StateStatistics {
   // Statistics
   def noProcessedCl: Int
   def incTrivialCl(): Unit
@@ -52,63 +52,56 @@ trait State[T <: ClauseProxy] extends Pretty {
   def noFactor: Int
 }
 
-protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: IsSignature)
-                                                     (implicit unprocessedOrdering: Ordering[T]) extends State[T] {
-  private var conjecture0: T = null.asInstanceOf[T]
-  private var negConjecture0: T = null.asInstanceOf[T]
+object State {
+  def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](SZS_Unknown, sig)
+}
+
+protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
+  private var conjecture0: T = _
+  private var negConjecture0: T = _
   private var current_szs = initSZS
-  private val sig: IsSignature = initSignature
-  private var current_unprocessed: SortedSet[T] = SortedSet()(unprocessedOrdering)
   private var current_processed: Set[T] = Set()
   private var current_rewriterules: Set[T] = Set()
   private var derivationCl: Option[T] = None
 
-  private val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
+  private final val sig: Signature = initSignature
+  private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[T]])
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
-
+  final private val prio_weights = Seq(8,1,2,2)
+  private var cur_prio = 0
+  private var cur_weight = 0
 
   final def conjecture: T = conjecture0
-  final def setConjecture(conj: T): Unit = {
-    conjecture0 = conj
-  }
+  final def setConjecture(conj: T): Unit = { conjecture0 = conj }
   final def negConjecture: T = negConjecture0
-  final def setNegConjecture(negConj: T): Unit = {
-    negConjecture0 = negConj
-  }
+  final def setNegConjecture(negConj: T): Unit = { negConjecture0 = negConj }
 
-  final def signature: IsSignature = sig
+  final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
-  final def unprocessed: SortedSet[T] = current_unprocessed
-
-  val prios = mpq.priorities - 1 // == 3 -1
-  val prio_weights = Seq(8,1,2,2)
-  var cur_prio = 0
-  var cur_weight = 0
-  override def nextUnprocessed: T = {
+  final def unprocessedLeft: Boolean = !mpq.isEmpty
+  final def unprocessed: Set[T] = {
+    if (mpq == null) leo.Out.comment("MPQ null")
+    mpq.toSet
+  }
+  final def nextUnprocessed: T = {
     leo.Out.debug(s"[###] Selecting with priority $cur_prio: element $cur_weight")
     if (cur_weight >= prio_weights(cur_prio)) {
       cur_weight = 0
-      cur_prio = (cur_prio + 1) % (prios+1)
+      cur_prio = (cur_prio + 1) % mpq.priorities
     }
     val result = mpq.dequeue(cur_prio)
     cur_weight = cur_weight+1
     result
-//    val next = current_unprocessed.head
-//    current_unprocessed = current_unprocessed.tail
-//    next
   }
 
-  final def nextUnprocessedLeft : Boolean = {
-    !mpq.isEmpty
-  }
+  final def addUnprocessed(cl: T): Unit = {mpq.insert(cl)}
+  final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
 
-  final def addUnprocessed(cl: T): Unit = {current_unprocessed = current_unprocessed + cl; mpq.insert(cl)}
-  final def addUnprocessed(cls: Set[T]): Unit = {current_unprocessed = current_unprocessed union cls; mpq.insert(cls)}
   final def processed: Set[T] = current_processed
   final def setProcessed(c: Set[T]): Unit = {current_processed = c}
   final def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
@@ -147,9 +140,4 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   // Pretty
   final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"
-}
-
-object State {
-  def fresh[T <: ClauseProxy](sig: IsSignature)(implicit unprocessedOrdering: Ordering[T]): State[T] =
-    new StateImpl[T](SZS_Unknown, sig)(unprocessedOrdering)
 }

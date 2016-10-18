@@ -139,7 +139,6 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
-        Out.trace(Utility.userDefinedSignatureAsString)
       }
       case e:Throwable => {
         Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
@@ -148,7 +147,6 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
-        Out.trace(Utility.userDefinedSignatureAsString)
       }
     } finally {
 //      Scheduler().killAll()

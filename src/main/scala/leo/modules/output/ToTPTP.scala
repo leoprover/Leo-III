@@ -1,10 +1,10 @@
 package leo.modules.output
 
 import leo.datastructures._
-import leo.datastructures.impl.Signature
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
+import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec
@@ -30,11 +30,11 @@ object ToTPTP {
     * "thf(id, term, role)." where
     * `id` equals `f.cl.id`, `term` is a representation of `f.cl` as term,
     * `role` equals `f.role.pretty`. */
-  final def toString(f: ClauseProxy): String = toTPTP(f.id.toString, f.cl, f.role)
+  final def toString(f: ClauseProxy)(implicit sig: Signature): String = toTPTP(f.id.toString, f.cl, f.role)(sig)
   /** See toString(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
-  final def output(f: ClauseProxy): Output = new Output {
-    def apply = toTPTP(f.id.toString, f.cl, f.role)
+  final def output(f: ClauseProxy)(implicit sig: Signature): Output = new Output {
+    def apply = toTPTP(f.id.toString, f.cl, f.role)(sig)
   }
 
   /**
@@ -42,14 +42,14 @@ object ToTPTP {
     * "thf(id, term, role, annotation)." where
     * `id` equals `f.cl.id`, `term` is a representation of `f.cl` as term,
     * `role` equals `f.role.pretty`, `annotation` equals a representation of `f.annotation`. */
-  final def withAnnotation(cl: ClauseProxy): String = {
+  final def withAnnotation(cl: ClauseProxy)(implicit sig: Signature): String = {
       //      val normclause = leo.modules.calculus.Simp(cl.cl)
-      toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)
+      toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
   }
   /** See withAnnotation(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
-  final def outputWithAnnotation(cl: ClauseProxy): Output = new Output {
-    def apply = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)
+  final def outputWithAnnotation(cl: ClauseProxy)(implicit sig: Signature): Output = new Output {
+    def apply = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
   }
 
   ///////////////////////
@@ -60,9 +60,9 @@ object ToTPTP {
     * Translate the whole package: Take all constants from signature (types, uninterpreted symbols, definitions)
     * and the formulas in `formulas`. The output sequence contains first the constants from signature, then the formulas.
     */
-  final def apply[A <: ClauseProxy](formulas : Set[A]): Seq[Output] = {
+  final def apply[A <: ClauseProxy](formulas : Set[A])(implicit sig: Signature): Seq[Output] = {
     var out: Seq[Output] = Seq()
-    Signature.get.allUserConstants foreach { k =>
+    sig.allUserConstants foreach { k =>
       val constDecl = output(k)
       out = constDecl +: out
     }
@@ -75,8 +75,8 @@ object ToTPTP {
   // Methods on symbols/definitions
   ///////////////////////
 
-  final def apply(k: Signature#Key): String = {
-    val constant = Signature.get.apply(k)
+  final def apply(k: Signature#Key)(implicit sig: Signature): String = {
+    val constant = sig.apply(k)
     val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
       "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
     } else {
@@ -85,10 +85,10 @@ object ToTPTP {
     if (constant.hasType) {
       // Its a term constant or a definition
       // Print out type declaration (needed in all cases)
-      val tyDecl = s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)})."
+      val tyDecl = s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
       if (constant.hasDefn) {
-        tyDecl + s"\nthf(${cname}_def, definition, $cname = ${toTPTP0(constant._defn)})."
+        tyDecl + s"\nthf(${cname}_def, definition, $cname = ${toTPTP0(constant._defn)(sig)})."
       } else
         tyDecl
     } else {
@@ -97,8 +97,8 @@ object ToTPTP {
       s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
     }
   }
-  final def output(k: Signature#Key): Output = new Output {
-    final def apply() = ToTPTP(k)
+  final def output(k: Signature#Key)(implicit sig: Signature): Output = new Output {
+    final def apply() = ToTPTP(k)(sig)
   }
 
 
@@ -106,12 +106,12 @@ object ToTPTP {
   // Translation of other data structures
   ///////////////////////////////
 
-  final def apply(subst: Subst, implicitlyBound: Seq[(Int, Type)]): Output = new Output {
+  final def apply(subst: Subst, implicitlyBound: Seq[(Int, Type)])(implicit sig: Signature): Output = new Output {
     override def apply: String = {
       if (subst.length == 0) {
         ""
       } else {
-        val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)
+        val (_,varmap) = clauseImplicitsToTPTPQuantifierList(implicitlyBound)(sig)
         val varmapMaxKey = if (varmap.nonEmpty) varmap.keySet.max else 0
         val varmapSize = varmap.size
         val sb = new StringBuilder
@@ -122,11 +122,10 @@ object ToTPTP {
             val erg = subst.substBndIdx(i)
             try {
               erg match {
-                case TermFront(t) => {
+                case TermFront(t) =>
                   val newVars = t.looseBounds.map(k => (k, intToName(varmapSize + k - varmapMaxKey - 1)))
                   val varmap2 = varmap ++ newVars
-                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, varmap2)}))")
-                }
+                  sb.append(s"bind(${varmap.apply(i)}, $$thf(${toTPTP0(t, varmap2)(sig)}))")
                 case BoundFront(j) => sb.append(s"bind(${varmap.apply(i)}, $$thf(${intToName(varmapSize + j - varmapMaxKey - 1)}))")
                 case _ => throw new SZSException(SZS_Error, "Types in term substitution")
               }
@@ -146,17 +145,17 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of clause to THF formula
   ///////////////////////////////
-  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation): String = {
+  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation)(sig: Signature): String = {
     val sb = new StringBuffer()
     if (cl.implicitlyBound.nonEmpty) {
       // make universal quantification and then print term
-      val (prefix, bVarMap) = clauseImplicitsToTPTPQuantifierList(cl.implicitlyBound)
+      val (prefix, bVarMap) = clauseImplicitsToTPTPQuantifierList(cl.implicitlyBound)(sig)
       sb.append(s"! [$prefix]: (")
-      sb.append(clauseToTPTP(cl, bVarMap))
+      sb.append(clauseToTPTP(cl, bVarMap)(sig))
       sb.append(")")
     } else {
       // only print term
-      sb.append(clauseToTPTP(cl, Map()))
+      sb.append(clauseToTPTP(cl, Map())(sig))
     }
 
     // Output whole tptp thf statement
@@ -166,10 +165,10 @@ object ToTPTP {
       s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
   }
 
-  final private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String]): String = {
+  final private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String])(sig: Signature): String = {
     val sb = new StringBuilder
     if (cl.lits.isEmpty) {
-      sb.append(toTPTP0(LitFalse))
+      sb.append(toTPTP0(LitFalse)(sig))
     } else {
       val litIt = cl.lits.iterator
       while (litIt.hasNext) {
@@ -178,37 +177,37 @@ object ToTPTP {
           val (left,right) = (lit.left, lit.right)
           if (lit.polarity)
             left match {
-              case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)} = ${toTPTP0(right,bVarMap)})")
-                case _ => sb.append(s"(${toTPTP0(left,bVarMap)} = (${toTPTP0(right,bVarMap)}))")
+              case Bound(_,_) | Symbol(_) => right match {
+                case Bound(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} = ${toTPTP0(right,bVarMap)(sig)})")
+                case _ => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} = (${toTPTP0(right,bVarMap)(sig)}))")
               }
               case _ => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)}) = ${toTPTP0(right,bVarMap)})")
-                case _ => sb.append(s"((${toTPTP0(left,bVarMap)}) = (${toTPTP0(right,bVarMap)}))")
+                case Bound(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) = ${toTPTP0(right,bVarMap)(sig)})")
+                case _ => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) = (${toTPTP0(right,bVarMap)(sig)}))")
               }
             }
           else
             left match {
-              case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)} != ${toTPTP0(right,bVarMap)})")
-                case _ => sb.append(s"(${toTPTP0(left,bVarMap)} != (${toTPTP0(right,bVarMap)}))")
+              case Bound(_,_) | Symbol(_) => right match {
+                case Bound(_,_) | Symbol(_) => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} != ${toTPTP0(right,bVarMap)(sig)})")
+                case _ => sb.append(s"(${toTPTP0(left,bVarMap)(sig)} != (${toTPTP0(right,bVarMap)(sig)}))")
               }
               case _ => right match {
-                case Bound(_,_) | MetaVar(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)}) != ${toTPTP0(right,bVarMap)})")
-                case _ => sb.append(s"((${toTPTP0(left,bVarMap)}) != (${toTPTP0(right,bVarMap)}))")
+                case Bound(_,_) | Symbol(_) => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) != ${toTPTP0(right,bVarMap)(sig)})")
+                case _ => sb.append(s"((${toTPTP0(left,bVarMap)(sig)}) != (${toTPTP0(right,bVarMap)(sig)}))")
               }
             }
         } else {
           val term = lit.left
           term match {
-            case Bound(_,_) | MetaVar(_,_) | Symbol(_) => if (lit.polarity)
-                sb.append(toTPTP0(term,bVarMap))
+            case Bound(_,_) | Symbol(_) => if (lit.polarity)
+                sb.append(toTPTP0(term,bVarMap)(sig))
               else
-                sb.append(s"${Signature.get(Not.key).name} (${toTPTP0(term, bVarMap)})")
+                sb.append(s"${sig(Not.key).name} (${toTPTP0(term, bVarMap)(sig)})")
             case _ => if (lit.polarity)
-                sb.append(s"(${toTPTP0(term,bVarMap)})")
+                sb.append(s"(${toTPTP0(term,bVarMap)(sig)})")
               else
-                sb.append(s"(${Signature.get(Not.key).name} (${toTPTP0(term, bVarMap)}))")
+                sb.append(s"(${sig(Not.key).name} (${toTPTP0(term, bVarMap)(sig)}))")
           }
 
         }
@@ -218,8 +217,7 @@ object ToTPTP {
     sb.toString()
   }
 
-  final private def toTPTP0(t: Term, bVars: Map[Int,String] = Map()): String = {
-    val sig = Signature.get
+  final private def toTPTP0(t: Term, bVars: Map[Int,String] = Map())(sig: Signature): String = {
     t match {
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
@@ -229,89 +227,88 @@ object ToTPTP {
           name
         }
       // Give Bound variables names
-      case m@MetaVar(_,scope) => "mv"+scope
       case Bound(ty, scope) => bVars(scope)
       // Unary connectives
-      case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)})"
+      case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2, bVars)(sig)})"
       case Forall(_) => val (bVarTys, body) = collectForall(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
         body match {
-          case Forall(_) | Exists(_) | Not(_) => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))}"
-          case _ => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)}"
+          case _ => s"${sig(Forall.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)})"
         }
 
       case Exists(_) => val (bVarTys, body) = collectExists(t)
                         val newBVars = makeBVarList(bVarTys, bVars.size)
         body match {
-          case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))}"
-          case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)}"
+          case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)})"
         }
 
       // Binary connectives
       case t1 ||| t2 => t1 match {
         case _ ||| _| Not(_) | Forall(_) | Exists(_) => t2 match {
-          case _ ||| _ | Not(_) | Forall(_) | Exists(_) => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
-          case _ => s"${toTPTP0(t1, bVars)} ${sig(|||.key).name} (${toTPTP0(t2, bVars)})"
+          case _ ||| _ | Not(_) | Forall(_) | Exists(_) => s"${toTPTP0(t1, bVars)(sig)} ${sig(|||.key).name} ${toTPTP0(t2, bVars)(sig)}"
+          case _ => s"${toTPTP0(t1, bVars)(sig)} ${sig(|||.key).name} (${toTPTP0(t2, bVars)(sig)})"
         }
         case _ => t2 match {
-          case _ ||| _ | Not(_) | Forall(_) | Exists(_) => s"(${toTPTP0(t1, bVars)}) ${sig(|||.key).name} ${toTPTP0(t2, bVars)}"
-          case _ => s"(${toTPTP0(t1, bVars)}) ${sig(|||.key).name} (${toTPTP0(t2, bVars)})"
+          case _ ||| _ | Not(_) | Forall(_) | Exists(_) => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(|||.key).name} ${toTPTP0(t2, bVars)(sig)}"
+          case _ => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(|||.key).name} (${toTPTP0(t2, bVars)(sig)})"
         }
       }
       case t1 & t2 => t1 match {
         case _ & _| Not(_) | Forall(_) | Exists(_) => t2 match {
-          case _ & _ | Not(_) | Forall(_) | Exists(_) => s"${toTPTP0(t1, bVars)} ${sig(&.key).name} ${toTPTP0(t2, bVars)}"
-          case _ => s"${toTPTP0(t1, bVars)} ${sig(&.key).name} (${toTPTP0(t2, bVars)})"
+          case _ & _ | Not(_) | Forall(_) | Exists(_) => s"${toTPTP0(t1, bVars)(sig)} ${sig(&.key).name} ${toTPTP0(t2, bVars)(sig)}"
+          case _ => s"${toTPTP0(t1, bVars)(sig)} ${sig(&.key).name} (${toTPTP0(t2, bVars)(sig)})"
         }
         case _ => t2 match {
-          case _ & _ | Not(_) | Forall(_) | Exists(_) => s"(${toTPTP0(t1, bVars)}) ${sig(&.key).name} ${toTPTP0(t2, bVars)}"
-          case _ => s"(${toTPTP0(t1, bVars)}) ${sig(&.key).name} (${toTPTP0(t2, bVars)})"
+          case _ & _ | Not(_) | Forall(_) | Exists(_) => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(&.key).name} ${toTPTP0(t2, bVars)(sig)}"
+          case _ => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(&.key).name} (${toTPTP0(t2, bVars)(sig)})"
         }
       }
       case left === right => left match {
-        case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)} ${sig(===.key).name} ${toTPTP0(right,bVars)}"
-          case _ => s"${toTPTP0(left,bVars)} ${sig(===.key).name} (${toTPTP0(right,bVars)})"
+        case Bound(_,_) | Symbol(_) => right match {
+          case Bound(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)(sig)} ${sig(===.key).name} ${toTPTP0(right,bVars)(sig)}"
+          case _ => s"${toTPTP0(left,bVars)(sig)} ${sig(===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
         case _ => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)}) ${sig(===.key).name} ${toTPTP0(right,bVars)}"
-          case _ => s"(${toTPTP0(left,bVars)}) ${sig(===.key).name} (${toTPTP0(right,bVars)})"
+          case Bound(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)(sig)}) ${sig(===.key).name} ${toTPTP0(right,bVars)(sig)}"
+          case _ => s"(${toTPTP0(left,bVars)(sig)}) ${sig(===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
       }
       case left !=== right => left match {
-        case Bound(_,_) | MetaVar(_,_) | Symbol(_) => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)} ${sig(!===.key).name} ${toTPTP0(right,bVars)}"
-          case _ => s"${toTPTP0(left,bVars)} ${sig(!===.key).name} (${toTPTP0(right,bVars)})"
+        case Bound(_,_) | Symbol(_) => right match {
+          case Bound(_,_) | Symbol(_) => s"${toTPTP0(left,bVars)(sig)} ${sig(!===.key).name} ${toTPTP0(right,bVars)(sig)}"
+          case _ => s"${toTPTP0(left,bVars)(sig)} ${sig(!===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
         case _ => right match {
-          case Bound(_,_) | MetaVar(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)}) ${sig(!===.key).name} ${toTPTP0(right,bVars)}"
-          case _ => s"(${toTPTP0(left,bVars)}) ${sig(!===.key).name} (${toTPTP0(right,bVars)})"
+          case Bound(_,_) | Symbol(_) => s"(${toTPTP0(left,bVars)(sig)}) ${sig(!===.key).name} ${toTPTP0(right,bVars)(sig)}"
+          case _ => s"(${toTPTP0(left,bVars)(sig)}) ${sig(!===.key).name} (${toTPTP0(right,bVars)(sig)})"
         }
       }
-      case t1 Impl t2 => s"(${toTPTP0(t1, bVars)}) ${sig(Impl.key).name} (${toTPTP0(t2, bVars)})"
-      case t1 <= t2  => s"(${toTPTP0(t1, bVars)}) ${sig(<=.key).name} (${toTPTP0(t2, bVars)})"
-      case t1 <=> t2 => s"(${toTPTP0(t1, bVars)}) ${sig(<=>.key).name} (${toTPTP0(t2, bVars)})"
-      case t1 ~& t2 => s"(${toTPTP0(t1, bVars)}) ${sig(~&.key).name} (${toTPTP0(t2, bVars)})"
-      case t1 ~||| t2 => s"(${toTPTP0(t1, bVars)}) ${sig(~|||.key).name} (${toTPTP0(t2, bVars)})"
-      case t1 <~> t2 => s"(${toTPTP0(t1, bVars)}) ${sig(<~>.key).name} (${toTPTP0(t2, bVars)})"
+      case t1 Impl t2 => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(Impl.key).name} (${toTPTP0(t2, bVars)(sig)})"
+      case t1 <= t2  => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(<=.key).name} (${toTPTP0(t2, bVars)(sig)})"
+      case t1 <=> t2 => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(<=>.key).name} (${toTPTP0(t2, bVars)(sig)})"
+      case t1 ~& t2 => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(~&.key).name} (${toTPTP0(t2, bVars)(sig)})"
+      case t1 ~||| t2 => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(~|||.key).name} (${toTPTP0(t2, bVars)(sig)})"
+      case t1 <~> t2 => s"(${toTPTP0(t1, bVars)(sig)}) ${sig(<~>.key).name} (${toTPTP0(t2, bVars)(sig)})"
       // General structure
       case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
                        val newBVars = makeBVarList(bVarTys, bVars.size)
         body match {
-          case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))}"
-          case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))})"
+          case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)}"
+          case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)})"
         }
       case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
-        s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, bVars)})"
-      case f ∙ args => args.foldLeft(toTPTP0(f, bVars))({case (str, arg) => s"$str @ ${arg.fold(
+        s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, bVars)(sig)})"
+      case f ∙ args => args.foldLeft(toTPTP0(f, bVars)(sig))({case (str, arg) => s"$str @ ${arg.fold(
         //Translate terms as arguments
         {
-          case termArg@(Bound(_,_) | Symbol(_) | MetaVar(_,_)) => toTPTP0(termArg, bVars)
-          case termArg => "("+toTPTP0(termArg, bVars)+")"
+          case termArg@(Bound(_,_) | Symbol(_)) => toTPTP0(termArg, bVars)(sig)
+          case termArg => "("+toTPTP0(termArg, bVars)(sig)+")"
         },
         //Translate types as arguments
         tyArg =>
-          "("+toTPTP0(tyArg)+")"
+          "("+toTPTP0(tyArg)(sig)+")"
       )}"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")
@@ -323,18 +320,18 @@ object ToTPTP {
   ///////////////////////////////
 
 
-  final private def toTPTP(ty: Type): String = ty match {
+  final private def toTPTP(ty: Type)(sig: Signature): String = ty match {
     case ∀(t) => val (tyAbsCount, bodyTy) = collectTyForalls(0, ty)
-      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + toTPTP0(bodyTy)
-    case _ => toTPTP0(ty)
+      "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + toTPTP0(bodyTy)(sig)
+    case _ => toTPTP0(ty)(sig)
   }
-  final private def toTPTP0(ty: Type): String = ty match {
-    case BaseType(id) => Signature.get(id).name
-    case ComposedType(id, args) => s"${Signature.get(id).name} @ ${args.map(toTPTP0).mkString(" @ ")}"
+  final private def toTPTP0(ty: Type)(sig: Signature): String = ty match {
+    case BaseType(id) => sig(id).name
+    case ComposedType(id, args) => s"${sig(id).name} @ ${args.map(toTPTP0(_)(sig)).mkString(" @ ")}"
     case BoundType(scope) => "T" + intToName(scope- 1)
-    case t1 -> t2 => s"(${toTPTP(t1)} > ${toTPTP(t2)})"
-    case t1 * t2 => s"(${toTPTP(t1)} * ${toTPTP(t2)})"
-    case t1 + t2 => s"(${toTPTP(t1)} + ${toTPTP(t2)})"
+    case t1 -> t2 => s"(${toTPTP(t1)(sig)} > ${toTPTP(t2)(sig)})"
+    case t1 * t2 => s"(${toTPTP(t1)(sig)} * ${toTPTP(t2)(sig)})"
+    case t1 + t2 => s"(${toTPTP(t1)(sig)} + ${toTPTP(t2)(sig)})"
     case ∀(t) => throw new IllegalArgumentException("Polytype should have been caught before")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
   }
@@ -419,7 +416,7 @@ object ToTPTP {
     oldbvarMap.map {case (k,v) => (k+newVarCount, v)} ++ Map(newVarsAsKeyValueList:_*)
   }
 
-  final private def clauseImplicitsToTPTPQuantifierList(implicitlyQuantified: Seq[(Int, Type)]): (String, Map[Int, String]) = {
+  final private def clauseImplicitsToTPTPQuantifierList(implicitlyQuantified: Seq[(Int, Type)])(sig: Signature): (String, Map[Int, String]) = {
     val count = implicitlyQuantified.size
     var sb: Seq[String] = Seq()
     var resultBindingMap: Map[Int, String] = Map()
@@ -430,7 +427,7 @@ object ToTPTP {
       val (scope,ty) = curImplicitlyQuantified.head
       curImplicitlyQuantified = curImplicitlyQuantified.tail
       val name = intToName(count - i - 1)
-      sb = s"$name: ${toTPTP(ty)}" +: sb
+      sb = s"$name: ${toTPTP(ty)(sig)}" +: sb
       resultBindingMap = resultBindingMap + (scope -> name)
       i = i + 1
     }

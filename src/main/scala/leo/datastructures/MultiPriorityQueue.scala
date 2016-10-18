@@ -27,12 +27,11 @@ trait MultiPriorityQueue[A] {
   }
   def addPriority(p: Ordering[A]): OrderingKey
   def priorities: Int
-
   def isEmpty: Boolean
   def size: Int
-
   def head(k: OrderingKey): A
   def dequeue(k: OrderingKey): A
+  def toSet: Set[A]
 }
 
 

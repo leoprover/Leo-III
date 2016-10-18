@@ -1,11 +1,11 @@
 package leo.modules.phase
 import leo.agents.{Agent, InterferingLoopAgent}
-import leo.datastructures.blackboard.Blackboard
-import leo.datastructures.{AnnotatedClause, ClauseProxy, Role_Conjecture, Role_NegConjecture}
+import leo.datastructures.blackboard.{Blackboard, SignatureBlackboard}
+import leo.datastructures.{AnnotatedClause, Role_Conjecture, Role_NegConjecture}
 import leo.datastructures.blackboard.impl.FormulaDataStore
-import leo.modules.Utility
 import leo.modules.interleavingproc.{BlackboardState, StateView, UnprocessedClause}
-import leo.modules.seqpproc.{Control, MultiSeqPProc, SeqPProc}
+import leo.modules.seqpproc.SeqPProc
+import leo.modules.control.Control
 
 /**
   * Created by mwisnie on 9/28/16.
@@ -39,13 +39,13 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
       startTheIndex = nForm +: startTheIndex
 
       if(nForm.role == Role_Conjecture || nForm.role == Role_NegConjecture) state.conjecture = Some(nForm)  // Set there exists a conjecture
-      val it = SeqPProc.preprocess(nForm).iterator
+      val it = SeqPProc.preprocess(state.state, nForm).iterator
       while(it.nonEmpty){
         val processForm = it.next()
         Blackboard().addData(UnprocessedClause)(processForm)  // Write a method to bundle the writing
       }
     }
-    Control.fvIndexInit(startTheIndex.toSet)
+    Control.fvIndexInit(startTheIndex.toSet)(SignatureBlackboard.get)
 
     super.execute()
   }

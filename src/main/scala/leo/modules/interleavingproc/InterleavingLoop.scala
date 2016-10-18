@@ -2,10 +2,11 @@ package leo.modules.interleavingproc
 
 import leo.Configuration
 import leo.agents.{InterferingLoop, OperationState}
-import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, ClauseProxy}
+import leo.datastructures._
 import leo.datastructures.blackboard.{DataType, Result}
 import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem, SZS_Unknown, StatusSZS}
-import leo.modules.seqpproc.{Control, State}
+import leo.modules.seqpproc.State
+import leo.modules.control.Control
 
 import scala.collection.mutable
 
@@ -25,10 +26,12 @@ object InterleavingLoop {
   * @author Max Wisniewski
   * @since 7/18/16
   */
-class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification : UnificationStore[InterleavingLoop.A]) extends InterferingLoop[StateView[InterleavingLoop.A]] {
+class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification : UnificationStore[InterleavingLoop.A], sig : Signature) extends InterferingLoop[StateView[InterleavingLoop.A]] {
 
   @inline private final val forwardSubsumed = true
   @inline private final val notForwardSubsumed = false
+
+  implicit val signature = sig
 
   override def terminated : Boolean = synchronized(terminatedFlag)
   private var terminatedFlag: Boolean = false

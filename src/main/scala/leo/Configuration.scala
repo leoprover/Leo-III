@@ -2,7 +2,6 @@ package leo
 
 import java.util.logging.Level
 
-import leo.datastructures.{ClWeight_LitCount, Literal}
 import leo.modules.CLParameterParser
 import leo.modules.output.Output
 
@@ -16,7 +15,7 @@ import leo.modules.output.Output
  * @since 13.11.2014
  */
 object Configuration extends DefaultConfiguration {
-  private var configMap: Map[String, Seq[String]] = null
+  private var configMap: Map[String, Seq[String]] = _
 
   private val PARAM_THREADCOUNT = "n"
   private val PARAM_VERBOSITY = "v"
@@ -48,7 +47,7 @@ object Configuration extends DefaultConfiguration {
     case null => {
       configMap = Map()
       for(param <- parameterParser.getParameters) {
-        configMap += (param)
+        configMap += param
       }
       // Force computation of lazy values for early error output
       PROBLEMFILE
@@ -83,9 +82,9 @@ object Configuration extends DefaultConfiguration {
     val v = configMap.get(PARAM_VERBOSITY) match {
       case None => DEFAULT_VERBOSITY
       case Some(arg :: Nil) => processLevel(arg)
-      case Some(arg :: _) => Out.warn(multiDefOutput(PARAM_VERBOSITY));
+      case Some(arg :: _) => Out.warn(multiDefOutput(PARAM_VERBOSITY))
                              processLevel(arg)
-      case Some(_) => Out.warn(intExpectedOutput(PARAM_VERBOSITY,"None"));
+      case Some(_) => Out.warn(intExpectedOutput(PARAM_VERBOSITY,"None"))
                       DEFAULT_VERBOSITY
     }
     Out.setLogLevel(v)
@@ -93,7 +92,7 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val TIMEOUT: Int = {
-    if (configMap.get(PARAM_TIMEOUT).isEmpty) Out.info(s"No timeout was given, using default timeout -t ${DEFAULT_TIMEOUT}")
+    if (configMap.get(PARAM_TIMEOUT).isEmpty) Out.info(s"No timeout was given, using default timeout -t $DEFAULT_TIMEOUT")
     uniqueIntFor(PARAM_TIMEOUT, DEFAULT_TIMEOUT)
   }
 
@@ -102,12 +101,11 @@ object Configuration extends DefaultConfiguration {
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
-  import leo.datastructures.{Precedence,TermOrdering,ClauseOrdering,LitWeight_TermSize,Orderings}
+  import leo.datastructures.{Precedence,ClauseProxyWeights,LiteralWeights}
 
-  lazy val CLAUSE_WEIGHTING: ClauseWeight = ClWeight_LitCount
-  lazy val CLAUSE_ORDERING: ClauseOrdering = ClauseOrdering.lex_WeightAgeOrigin
+  lazy val CLAUSEPROXY_WEIGHTING: ClauseProxyWeight = ClauseProxyWeights.litCount
 
-  lazy val LITERAL_WEIGHTING: LiteralWeight = LitWeight_TermSize
+  lazy val LITERAL_WEIGHTING: LiteralWeight = LiteralWeights.termsize
 
   lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
 
@@ -175,20 +173,19 @@ object Configuration extends DefaultConfiguration {
     case Some(4) => Level.FINE
     case Some(5) => Level.FINER
     case Some(6) => Level.FINEST
-    case _ => {
+    case _ =>
       Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 6 (including).");
-      DEFAULT_VERBOSITY}
+      DEFAULT_VERBOSITY
   }
 
   protected def uniqueIntFor(param: String, default: Int): Int = if (configMap == null) default
     else configMap.get(param) match {
     case None => default
     case Some(arg :: Nil) => processIntFor(param, arg, default)
-    case Some(arg :: _) => {
+    case Some(arg :: _) =>
       Out.warn(multiDefOutput(param))
       processIntFor(param, arg, default)
-    }
-    case Some(_) => Out.warn(intExpectedOutput(param, "None"));
+    case Some(_) => Out.warn(intExpectedOutput(param, "None"))
       default
   }
   protected def processIntFor(param: String, actual: String, default: Int): Int = {
@@ -228,5 +225,5 @@ trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
   val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
-  val DEFAULT_UNIFICATIONDEPTH = 7
+  val DEFAULT_UNIFICATIONDEPTH = 8
 }

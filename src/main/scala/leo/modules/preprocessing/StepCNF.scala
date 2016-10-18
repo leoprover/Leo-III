@@ -2,6 +2,7 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term.:::>
 import leo.datastructures._
+import leo.modules.HOLSignature.{Not, |||, &, Impl, Forall, Exists}
 import leo.modules.calculus._
 import leo.modules.output.SZS_Theorem
 
@@ -34,7 +35,7 @@ object StepCNF extends CalculusRule {
 
   final def canApply(ls : Seq[Literal]) : Boolean = ls exists canApply
 
-  final def apply(vargen : leo.modules.calculus.FreshVarGen,l : Literal) : CNF = if(!l.equational){
+  final def apply(vargen : leo.modules.calculus.FreshVarGen,l : Literal)(implicit sig: Signature) : CNF = if(!l.equational){
     l.left match {
       case Not(t) => One(Literal(t, !l.polarity))
       case &(lt,rt) if l.polarity => Alpha(Literal(lt,true), Literal(rt,true))
@@ -44,18 +45,18 @@ object StepCNF extends CalculusRule {
       case Impl(lt,rt) if l.polarity => Beta(Literal(lt,false), Literal(rt, true))
       case Impl(lt,rt) if !l.polarity => Alpha(Literal(lt,true), Literal(rt,false))
       case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
-      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
-      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars)(sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars)(sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
       case _ => None(l)
     }
   } else None(l)
 
 
-  final def step(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Literal]) : Seq[Seq[Literal]] = {
+  final def step(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Literal])(implicit sig: Signature) : Seq[Seq[Literal]] = {
     val (norm, l+:rest) = ls.span(l => !canApply(l))
     val c = norm ++ rest
-    apply(vargen, l) match {
+    apply(vargen, l)(sig) match {
       case Alpha(a,b) =>  Seq(a +: c, b +: c)
       case Beta(a,b)  => Seq(a +: b +: c)
       case One(a)     => Seq(a +: c)
@@ -70,19 +71,19 @@ object StepCNF extends CalculusRule {
     * @param ls Sequence of clauses
     * @return A sequence of the same clauses, where one literal was applied with cnf
     */
-  final def apply(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Seq[Literal]]) : Seq[Seq[Literal]] = {
+  final def apply(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Seq[Literal]])(implicit sig: Signature) : Seq[Seq[Literal]] = {
     val (norm, rest) = ls.span(ls1 => !canApply(ls1))
     rest match {
       case Seq()  => ls
-      case (a +: c) => (c ++ step(vargen,a)) ++ norm
+      case (a +: c) => (c ++ step(vargen,a)(sig)) ++ norm
     }
   }
 
-  final def exhaust(c : Clause) : Seq[Clause] = {
+  final def exhaust(c : Clause)(implicit sig: Signature) : Seq[Clause] = {
     var ls = Seq(c.lits)
     val vargen = freshVarGen(c)
     while(ls exists canApply){
-      ls = apply(vargen, ls)
+      ls = apply(vargen, ls)(sig)
     }
     ls.map(ls1 => Clause(ls1))
   }

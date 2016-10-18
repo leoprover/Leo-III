@@ -3,10 +3,10 @@ package leo.modules.interleavingproc
 import java.util.concurrent.atomic.AtomicInteger
 
 import leo.agents.{AbstractAgent, Agent, Task}
-import leo.datastructures.Clause
-import leo.datastructures.blackboard.{DataType, Event, Result}
+import leo.datastructures.{Clause, Signature}
+import leo.datastructures.blackboard.{DataType, Event, Result, SignatureBlackboard}
 import leo.modules.output.SZS_Theorem
-import leo.modules.seqpproc.Control
+import leo.modules.control.Control
 
 /**
   *
@@ -23,7 +23,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
     case result : Result =>
       val ins = result.inserts(OpenUnification).filter{case a : InterleavingLoop.A => unificationStore.containsUni(a)}
       val rew = state.state.rewriteRules
-      val tasks =  ins.map{case a : InterleavingLoop.A => new DelayedUnificationTask(a, this, rew)}
+      val tasks =  ins.map{case a : InterleavingLoop.A => new DelayedUnificationTask(a, this, rew, SignatureBlackboard.get)}
       return tasks
     case _ => Seq()
   }
@@ -31,24 +31,24 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
   override def init(): Iterable[Task] = {
     val ins = unificationStore.getOpenUni
     val rew = state.state.rewriteRules
-    ins.map{a => new DelayedUnificationTask(a, this, rew)}
+    ins.map{a => new DelayedUnificationTask(a, this, rew, SignatureBlackboard.get)}
   }
 }
 
-class DelayedUnificationTask(ac : InterleavingLoop.A, a : DelayedUnificationAgent, rewrite : Set[InterleavingLoop.A]) extends Task {
+class DelayedUnificationTask(ac : InterleavingLoop.A, a : DelayedUnificationAgent, rewrite : Set[InterleavingLoop.A], sig : Signature) extends Task {
   override val name: String = "delayedUnification"
 
   override def run: Result = {
     val result = Result()
     result.remove(OpenUnification)(ac)
-    val newclauses = Control.preunifyNewClauses(Set(ac))
+    val newclauses = Control.preunifyNewClauses(Set(ac))(sig)
     val sb = new StringBuilder("\n")
 
 
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
-      newCl = Control.rewriteSimp(newCl, rewrite)
+      newCl = Control.rewriteSimp(newCl, rewrite)(sig)
 
       if (!Clause.trivial(newCl.cl)) {
         sb.append(s"Unified Clause:\n>>   ${ac.pretty}\n>> to\n++> simp  ${newCl.pretty}")

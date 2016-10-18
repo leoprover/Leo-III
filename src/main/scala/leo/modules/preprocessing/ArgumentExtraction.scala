@@ -1,10 +1,9 @@
 package leo.modules.preprocessing
 
 import leo.datastructures.Term._
-import leo.datastructures.impl.Signature
 import leo.datastructures._
+import leo.modules.HOLSignature.o
 import leo.modules.calculus.CalculusRule
-import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 
@@ -17,7 +16,7 @@ object ArgumentExtraction extends ArgumentExtraction(_ => true)
   *
   * @param filter Defines a filter on the arguments, that can be extracted.
   */
-class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Clause, Set[(Term, Term)])] with CalculusRule{
+class ArgumentExtraction(filter : Term => Boolean) extends CalculusRule{
 
   override val name : String = "argument_extraction"
 
@@ -47,18 +46,18 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
     * @param c The clause to be extracted
     * @return The clause with extracted arguments and a Map of unit equations
     */
-  def apply(c : Clause) : (Clause, Set[(Term, Term)]) = {
+  def apply(c : Clause)(implicit sig: Signature) : (Clause, Set[(Term, Term)]) = {
     val (lits, rewrites) : (Seq[Literal], Seq[Set[(Term, Term)]]) = c.map(apply(_)).unzip
     (Clause(lits), rewrites.flatten.toSet)
   }
 
-  def apply(l : Literal) : (Literal, Set[(Term, Term)]) = {
+  def apply(l : Literal)(implicit sig: Signature) : (Literal, Set[(Term, Term)]) = {
     val (lt, unitsL) = apply(l.left)
     val (rt, unitsR) = apply(l.right)
     (l.termMap{ (_,_) => (lt,rt)}, unitsL union unitsR)
   }
 
-  def apply(t : Term) : (Term, Set[(Term,Term)]) = {
+  def apply(t : Term)(implicit sig: Signature) : (Term, Set[(Term,Term)]) = {
     t match {
       case s@Symbol(_) => (s, Set())
       case s@Bound(_, _) => (s, Set())
@@ -70,8 +69,8 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
 //        val (t1, units) = apply(===(l,r))
 //        (Not(t1),units)
       case (h@Symbol(k)) ∙ args =>
-        if (isUser(k)) {
-          handleApp(h, args)
+        if (isUser(k)(sig)) {
+          handleApp(h, args)(sig)
         } else {
           val mapRes = args.map(_.fold({
             at =>
@@ -81,7 +80,7 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
             , aty => (Right(aty), Set[(Term, Term)]())))
           (Term.mkApp(h, mapRes.map(_._1)), mapRes.flatMap(_._2).toSet)
         }
-      case (h@Bound(_, _)) ∙ args => handleApp(h, args)
+      case (h@Bound(_, _)) ∙ args => handleApp(h, args)(sig)
       case ty :::> s =>
         val (t1, units) = apply(s)
         (Term.mkTermAbs(ty, t1), units)
@@ -91,43 +90,40 @@ class ArgumentExtraction(filter : Term => Boolean) extends Function1[Clause, (Cl
     }
   }
 
-  private def handleApp(h : Term, args : Seq[Either[Term,Type]]) : (Term, Set[(Term, Term)]) = {
+  private def handleApp(h : Term, args : Seq[Either[Term,Type]])(sig: Signature) : (Term, Set[(Term, Term)]) = {
     val mapRes : Seq[(Either[Term,Type], Set[(Term, Term)])] = args.map{a =>
       a.fold(at =>
-        extractOrRekurse(at), aty => (Right(aty), Set[(Term,Term)]()))}
+        extractOrRekurse(at)(sig), aty => (Right(aty), Set[(Term,Term)]()))}
     val units = mapRes.flatMap(_._2)
     val args1 = mapRes.map(_._1)
     (Term.mkApp(h,args1), units.toSet)
   }
 
-  private def extractOrRekurse(t : Term) : (Either[Term, Type], Set[(Term, Term)]) = {
-    val s  = Signature.get
+  private def extractOrRekurse(t : Term)(s: Signature) : (Either[Term, Type], Set[(Term, Term)]) = {
     if(us.contains(t)){
       return (Left(us.get(t).get), Set())
     }
-    if(shouldExtract(t) && filter(t)) {
+    if(shouldExtract(t)(s) && filter(t)) {
 
       val newArgs = t.freeVars.toSeq  // Arguments passed to the function to define
       val argtypes = newArgs.map(_.ty)
 
       val c = s.freshSkolemConst(Type.mkFunType(argtypes, t.ty)) // TODO other name (extra function in Signature)
-      val ct = Term.mkTermApp(Term.mkAtom(c), newArgs).betaNormalize       // Head symbol + variables
+      val ct = Term.mkTermApp(Term.mkAtom(c)(s), newArgs).betaNormalize       // Head symbol + variables
       us.put(t, ct)
       (Left(ct), Set((t, ct)))
     } else {
-      val (t1, units) = apply(t)
+      val (t1, units) = apply(t)(s)
       (Left(t1), units)
     }
   }
 
-  private def isUser(k : Signature#Key) : Boolean = {
-    val s = Signature.get
+  private final def isUser(k : Signature#Key)(s: Signature) : Boolean = {
     s.allUserConstants.contains(k)
   }
 
-  private def shouldExtract(t : Term) : Boolean = {
-    val s = Signature.get
-    if(t.ty.funParamTypesWithResultType.last != s.o) return false
+  private def shouldExtract(t : Term)(s: Signature) : Boolean = {
+    if(t.ty.funParamTypesWithResultType.last != o) return false
 
     if(t.isConstant) return false
 

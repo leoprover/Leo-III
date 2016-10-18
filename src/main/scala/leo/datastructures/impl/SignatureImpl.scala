@@ -2,7 +2,8 @@ package leo.datastructures.impl
 
 import scala.collection.immutable.{BitSet, HashMap, IntMap}
 
-import leo.datastructures.{HOLSignature, IsSignature, Kind, Type, Term}
+import leo.datastructures.{Signature, Kind, Type, Term}
+import leo.modules.HOLSignature
 
 /**
  * Implementation of the Leo III signature table. When created with `Signature.createWithHOL`
@@ -13,9 +14,7 @@ import leo.datastructures.{HOLSignature, IsSignature, Kind, Type, Term}
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-abstract sealed class Signature extends IsSignature with HOLSignature with Function1[Int, IsSignature#Meta] {
-  override type Key = Int
-
+abstract sealed class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
   protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
@@ -39,7 +38,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   protected[impl] case class TypeMeta(name: String,
                                           key: Key,
                                           k:  Kind,
-                                          flag: IsSignature.SymbProp) extends Meta {
+                                          flag: Signature.SymbProp) extends Meta {
     val ty: Option[Type] = None
     val kind: Option[Kind] = Some(k)
     val defn: Option[Term] = None
@@ -50,7 +49,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   protected[impl] case class UninterpretedMeta(name: String,
                                                    key: Key,
                                                    typ: Type,
-                                                   flag: IsSignature.SymbProp) extends Meta {
+                                                   flag: Signature.SymbProp) extends Meta {
     val ty: Option[Type] = Some(typ)
     val kind: Option[Kind] = None
     val defn: Option[Term] = None
@@ -61,7 +60,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
                                              key: Key,
                                              typ: Type,
                                              definition: Term,
-                                             flag: IsSignature.SymbProp) extends Meta {
+                                             flag: Signature.SymbProp) extends Meta {
     val ty: Option[Type] = Some(typ)
     val kind: Option[Kind] = None
     val defn: Option[Term] = Some(definition)
@@ -84,12 +83,12 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       case None => { // Uninterpreted or type
         typ match {
           case Right(k:Kind) => { // Type
-          val meta = TypeMeta(identifier, key, k, IsSignature.PropNoProp)
+          val meta = TypeMeta(identifier, key, k, Signature.PropNoProp)
             metaMap += ((key, meta))
             typeSet += key
           }
           case Left(t:Type) => { // Uninterpreted symbol
-          val meta = UninterpretedMeta(identifier, key, t, status*IsSignature.PropStatus)
+          val meta = UninterpretedMeta(identifier, key, t, status*Signature.PropStatus)
             metaMap += ((key, meta))
             uiSet += key
             // TODO: AC sets
@@ -99,7 +98,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
 
       case Some(fed) => { // Defined
         val ty = typ.left.get
-        val meta = DefinedMeta(identifier, key, ty, fed, status*IsSignature.PropStatus)
+        val meta = DefinedMeta(identifier, key, ty, fed, status*Signature.PropStatus)
           metaMap += ((key, meta))
           definedSet += key
         }
@@ -143,7 +142,7 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
   def exists(identifier: String): Boolean = keyMap.contains(identifier)
 
   /** Adds a term symbol to the signature that is then marked as system symbol type */
-  protected def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: IsSignature.SymbProp): Unit = {
+  protected[datastructures] def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: Signature.SymbProp): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
@@ -157,16 +156,16 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
       metaMap += ((key, meta))
     }
     fixedSet += key
-    if (leo.datastructures.isPropSet(IsSignature.PropAssociative, flag)) aSet += key
-    if (leo.datastructures.isPropSet(IsSignature.PropCommutative, flag)) cSet += key
+    if (leo.datastructures.isPropSet(Signature.PropAssociative, flag)) aSet += key
+    if (leo.datastructures.isPropSet(Signature.PropCommutative, flag)) cSet += key
   }
 
   /** Adds a type contructor symbol to the signature that is then marked as system symbol type */
-  protected def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
+  protected[datastructures] def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
     val key = curConstKey
     curConstKey += 1
     keyMap += ((identifier, key))
-    val meta = TypeMeta(identifier, key, kind, IsSignature.PropFixed)
+    val meta = TypeMeta(identifier, key, kind, Signature.PropFixed)
     metaMap += ((key, meta))
     fixedSet += key // since its system-provided
     typeSet += key // since its a type constructor
@@ -235,46 +234,40 @@ abstract sealed class Signature extends IsSignature with HOLSignature with Funct
     typeVarCounter += 1
     addBaseType(typeVarPrefix + typeVarCounter.toString)
   }
-
-  ////////////////////////////////
-  // Sugar methods
-  ////////////////////////////////
-  def apply(symbol: String) = meta(symbol)
-  def apply(key: Key) = meta(key)
 }
 
 
-object Signature {
-  private case class Nil() extends Signature
+object SignatureImpl {
+  private case class Nil() extends SignatureImpl
 
   /** Create an empty signature */
-  def empty: Signature = Nil()
+  def empty: SignatureImpl = Nil()
 
   protected val globalSignature = withHOL(empty)
-  def get = globalSignature
+//  def get = globalSignature
 
-  def resetWithHOL(sig: Signature): Signature = {
+  def resetWithHOL(sig: SignatureImpl): SignatureImpl = {
     sig.empty
     sig.skolemVarCounter=0
     sig.typeVarCounter=0
     withHOL(sig)
   }
+//
+//  def apply(symbol: Signature#Key): SignatureImpl#Meta = get.meta(symbol)
+//  def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
 
-  def apply(symbol: Signature#Key): Signature#Meta = get.meta(symbol)
-  def apply(symbol: String): Signature#Meta = get.meta(symbol)
-
-  /** Enriches the given signature with predefined symbols as described by [[HOLSignature]] */
-  def withHOL(sig: Signature): Signature = {
-    for ((name, k) <- sig.types) {
+  /** Enriches the given signature with predefined symbols as described by [[leo.modules.HOLSignature]] */
+  def withHOL(sig: SignatureImpl): SignatureImpl = {
+    for ((name, k) <- HOLSignature.types) {
       sig.addFixedTypeConstructor(name, k)
     }
 
-    for ((name, ty, flag) <- sig.fixedConsts) {
-      sig.addFixed(name, ty, None, flag | IsSignature.PropFixed)
+    for ((name, ty, flag) <- HOLSignature.fixedConsts) {
+      sig.addFixed(name, ty, None, flag | Signature.PropFixed)
     }
 
-    for ((name, fed, ty, flag) <- sig.definedConsts) {
-      sig.addFixed(name, ty, Some(fed), flag | IsSignature.PropFixed)
+    for ((name, fed, ty, flag) <- HOLSignature.definedConsts) {
+      sig.addFixed(name, ty, Some(fed), flag | Signature.PropFixed)
     }
    sig
   }

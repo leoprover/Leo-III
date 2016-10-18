@@ -1,6 +1,6 @@
 package leo.modules.calculus
 
-import leo.datastructures.Clause
+import leo.datastructures.{Clause, Literal}
 
 /**
  * Created by lex on 25.05.15.
@@ -28,7 +28,7 @@ object TrivialSubsumption extends Subsumption {
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {
     val (lits1, lits2) = (cl1.lits, cl2.lits)
     if (lits1.length <= lits2.length) {
-      lits1.forall(l1 => lits2.exists(l2 => l1.polarity == l2.polarity && l1.term == l2.term))
+      lits1.forall(l1 => lits2.exists(l2 => l1.polarity == l2.polarity && Literal.asTerm(l1) == Literal.asTerm(l2)))
     } else {
       false
     }
@@ -61,7 +61,7 @@ object FOMatchingSubsumption extends Subsumption {
         val (hd1, tail1) = (lits1.head, lits1.tail)
         val (hd2, tail2) = (lits2.head, lits2.tail)
         if (hd1.polarity == hd2.polarity) {
-          val (term1, term2) = (hd1.term, hd2.term)
+          val (term1, term2) = (Literal.asTerm(hd1), Literal.asTerm(hd2))
           val matchingResult = FOMatching.matches(term1, term2)
           if (matchingResult.isDefined) {
             val subst = matchingResult.get

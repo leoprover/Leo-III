@@ -1,10 +1,11 @@
 package leo.modules.interleavingproc
 
 import leo.datastructures.blackboard.{DataStore, DataType, Result}
-import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy, IsSignature}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy, Signature}
 import leo.modules.output.StatusSZS
 import leo.modules.output.logger.Out
-import leo.modules.seqpproc.{Control, State}
+import leo.modules.seqpproc.State
+import leo.modules.control.Control
 
 /**
   *
@@ -30,7 +31,7 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
   }
 
   @inline def hasNextUnprocessed : Boolean = synchronized {
-    state.nextUnprocessedLeft
+    state.unprocessedLeft
   }
 
   override val storedTypes: Seq[DataType] = Seq(UnprocessedClause, ProcessedClause, RewriteRule, SZSStatus, DerivedClause, StatisticType)
@@ -104,8 +105,8 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
 
 
 object BlackboardState {
-  def fresh[T <: ClauseProxy](sig: IsSignature)(implicit unprocessedOrdering: Ordering[T]) : BlackboardState[T] = {
-    new BlackboardState[T](State.fresh[T](sig)(unprocessedOrdering))
+  def fresh[T <: ClauseProxy](sig: Signature) : BlackboardState[T] = {
+    new BlackboardState[T](State.fresh[T](sig))
   }
 }
 

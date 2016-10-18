@@ -2,8 +2,8 @@ package leo.modules.calculus
 
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
-import leo.datastructures.{Clause, HOLBinaryConnective, Subst, Type, _}
-import leo.datastructures.impl.Signature
+import leo.datastructures.{Clause, Subst, Type, _}
+import leo.modules.HOLSignature.{Not, |||, Forall, Exists, &, Impl, ===, LitFalse, LitTrue}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 import leo.modules.preprocessing.Simplification
 
@@ -33,9 +33,7 @@ object PolaritySwitch extends CalculusRule {
 
   def apply(l: Literal): Literal = if (l.equational) {
     (l.left, l.right) match {
-      case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity)
-//      case (Not(l2), _) => Literal(l2, l.right, !l.polarity)
-//      case (_, Not(r2)) => Literal(l.left, r2, !l.polarity) // FIXME: This is sound but we lose information, right?
+      case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity, l.oriented)
       case _ => l
     }
   } else {
@@ -68,13 +66,13 @@ object FullCNF extends CalculusRule {
     }
   } else false
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause): Seq[Clause] = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause)(implicit sig: Signature): Seq[Clause] = {
     val lits = cl.lits
     val normLits = apply(vargen, lits)
     normLits.map{ls => Clause(ls)}
   }
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal]) : (Seq[Seq[Literal]]) = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal])(implicit sig: Signature): (Seq[Seq[Literal]]) = {
     var acc : Seq[Seq[Literal]] = Seq(Seq())
     val it : Iterator[Literal] = l.iterator
     while(it.hasNext){
@@ -87,10 +85,10 @@ object FullCNF extends CalculusRule {
     acc
   }
 
-  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l)
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal)(implicit sig: Signature): Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l)
 
   @inline
-  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal) : Seq[Seq[Literal]] = if(!l.equational){
+  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal)(implicit sig: Signature): Seq[Seq[Literal]] = if(!l.equational){
     l.left match {
       case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity))
       case &(lt,rt) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,true))
@@ -104,7 +102,7 @@ object FullCNF extends CalculusRule {
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize, false))
       case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
-      case term@TypeLambda(t) if !l.polarity => val sko = leo.datastructures.impl.Signature.get.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
+      case term@TypeLambda(t) if !l.polarity => val sko = sig.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize, false))
       case _ => Seq(Seq(l))
     }
   } else {
@@ -131,9 +129,8 @@ object LiftEq extends CalculusRule {
   val name = "lifteq"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  import leo.datastructures.{=== => EQ}
   def canApply(t: Term): Boolean = t match {
-    case EQ(_,_) => true
+    case ===(_,_) => true
     case _ => false
   }
   def canApply(lit: Literal): Boolean = !lit.equational && canApply(lit.left)
@@ -155,17 +152,17 @@ object LiftEq extends CalculusRule {
     }
     (can, liftLits, otherLits)
   }
-  def apply(liftLits: LiftLits, otherLits: OtherLits): Seq[Literal] = {
-    liftLits.map(l => apply(l.left, l.polarity)) ++ otherLits
+  def apply(liftLits: LiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
+    liftLits.map(l => apply(l.left, l.polarity)(sig)) ++ otherLits
   }
 
 
-  def apply(left: Term, polarity: Boolean): Literal = {
-    val (l,r) = EQ.unapply(left).get
+  def apply(left: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
+    val (l,r) = ===.unapply(left).get
     if (polarity) {
-      Literal(l,r,true)
+      Literal.mkOrdered(l,r,true)(sig)
     } else {
-      Literal(l,r,false)
+      Literal.mkOrdered(l,r,false)(sig)
     }
   }
 
@@ -178,7 +175,7 @@ object ReplaceLeibnizEq extends CalculusRule {
   type Polarity = Boolean
 
 
-  def canApply(cl: Clause): (Boolean, Map[Int, Term]) = {
+  def canApply(cl: Clause)(implicit sig: Signature): (Boolean, Map[Int, Term]) = {
     import leo.datastructures.Term.{Bound, TermApp}
     var gbTermMap: Map[Int, Term] = Map()
     var flexHeadSet: Set[Int] = Set()
@@ -197,7 +194,7 @@ object ReplaceLeibnizEq extends CalculusRule {
             } else {
               if (gbTermMap contains headIndex) {
                 val curEntry = gbTermMap(headIndex)
-                if (arg.compareTo(curEntry) == CMP_LT) {
+                if (arg.compareTo(curEntry)(sig) == CMP_LT) {
                   gbTermMap = gbTermMap + (headIndex -> arg)
                 }
               } else {
@@ -218,7 +215,7 @@ object ReplaceLeibnizEq extends CalculusRule {
     val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1))))
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
-    (Clause((newLits)), subst)
+    (Clause(newLits), subst)
   }
 }
 
@@ -255,10 +252,10 @@ object ReplaceAndrewsEq extends CalculusRule {
   }
 
   def apply(cl: Clause, vars: Map[Int, Type]): (Clause, Subst) = {
-    val gbMap = vars.mapValues {case ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
+    val gbMap = vars.mapValues {ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
     val subst = Subst.fromMap(gbMap)
     val newLits = cl.lits.map(_.substitute(subst))
-    (Clause((newLits)), subst)
+    (Clause(newLits), subst)
   }
 }
 
@@ -301,7 +298,7 @@ object RewriteSimp extends CalculusRule {
     * @param intoConfigurations The configuration of the rewrite procedure: See [[IntoConfiguration]] for details and important restrictions.
     *                           For each literal at index i that is rewritten, an entry i -> conf is required in `intoConfiguration`.
     */
-  def apply(intoClause: Clause, intoConfigurations: Map[Int, IntoConfiguration] ): Clause = {
+  def apply(intoClause: Clause, intoConfigurations: Map[Int, IntoConfiguration])(implicit sig: Signature): Clause = {
     var lits = intoClause.lits
     val litIndices = intoConfigurations.keySet
     val litIndicesIt = litIndices.iterator
@@ -320,7 +317,7 @@ object RewriteSimp extends CalculusRule {
       val rightConfs = confs.getOrElse(Literal.rightSide, Set())
       val newRight = rightConfs.foldLeft(right) {case (curTerm, (pos, replaceBy)) => curTerm.replaceAt(pos, replaceBy)}
 
-      val newLit = Literal(newLeft, newRight, lit.polarity)
+      val newLit = Literal.mkOrdered(newLeft, newRight, lit.polarity)(sig)
       lits = lits.updated(litIndex, newLit)
     }
 
@@ -352,31 +349,36 @@ object ACSimp extends CalculusRule {
     acSymbols.foldLeft(t){case (term,symbol) => apply(term, symbol)}
   }
 
-  def apply(t: Term, acSymbol: Term): Term = {
-    import leo.datastructures.Term.{:::>, TermApp, TypeLambda, ∙}
+  def apply(t: Term, acSymbol: Signature#Key): Term = {
+    import leo.datastructures.Term.{:::>, TermApp, TypeLambda, ∙, Symbol}
     t match {
       case (ty :::> body) => Term.mkTermAbs(ty, apply(body, acSymbol))
       case TypeLambda(body) => Term.mkTypeAbs(apply(body, acSymbol))
-      case TermApp(f, args) if f == acSymbol => {
-        val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
+      case TermApp(f, args) => {
+        f match {
+          case Symbol(id) if id == acSymbol =>
+            val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
 
-        val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(acSymbol, Seq(arg, term))}
-        //        Term.mkTermApp(f, newArgs)
-        newArgs
+            val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Seq(arg, term))}
+            //        Term.mkTermApp(f, newArgs)
+            newArgs
+          case _ => t
+        }
+
       }
       case (f ∙ args) => Term.mkApp(f, args.map {case arg => arg.fold({case t => Left(apply(t, acSymbol))}, {case ty => Right(ty)})})
       case _ => t
     }
   }
 
-  def apply0(symbolArgs: Seq[Term], acSymbol: Term, collectedArgs: Set[Term]): Set[Term] = {
-    import leo.datastructures.Term.TermApp
+  def apply0(symbolArgs: Seq[Term], acSymbol: Signature#Key, collectedArgs: Set[Term]): Set[Term] = {
+    import leo.datastructures.Term.{TermApp, Symbol}
 
     if (symbolArgs.isEmpty) collectedArgs
     else {
       val (hdArg, restArgs) = (symbolArgs.head, symbolArgs.tail)
       hdArg match {
-        case TermApp(f, moreArgs) if f == acSymbol => apply0(restArgs, acSymbol, collectedArgs ++ apply0(moreArgs, acSymbol, Set()))
+        case TermApp(Symbol(id), moreArgs) if id == acSymbol => apply0(restArgs, acSymbol, collectedArgs ++ apply0(moreArgs, acSymbol, Set()))
         case a => apply0(restArgs, acSymbol, collectedArgs + a)
       }
     }
@@ -389,7 +391,7 @@ object ACSimp extends CalculusRule {
       val rightAC = lit.right.symbols intersect allACSymbols
       val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
       if (newLeft == lit.left && newRight == lit.right) lit
-      else Literal(newLeft, newRight, lit.polarity)
+      else Literal(newLeft, newRight, lit.polarity) // TODO: Orient?
     } else {
       if (leftAC.isEmpty) lit
       else {
@@ -412,7 +414,7 @@ object Simp extends CalculusRule {
   val name = "simp"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(lit: Literal): Literal = if (lit.equational) {
+  def apply(lit: Literal): Literal = if (lit.equational) { // TODO: Orient?
     PolaritySwitch(eqSimp(Literal(Simplification.normalize(lit.left), Simplification.normalize(lit.right), lit.polarity)))
   } else {
     PolaritySwitch(Literal(Simplification.normalize(lit.left), lit.polarity))
@@ -444,7 +446,7 @@ object Simp extends CalculusRule {
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        return (newLits.map(_.substitute(subst)))
+        return newLits.map(_.substitute(subst))
       }
     }
     newLits
@@ -494,25 +496,25 @@ object Skolemization extends CalculusRule {
   override val inferenceStatus = Some(SZS_EquiSatisfiable)
   val name = "skolemize"
 
-  def apply(t: Term, s: Signature): Term = {
-    apply0(miniscope(t), s, Seq())
+  def apply(t: Term)(implicit sig: Signature): Term = {
+    apply0(miniscope(t), Seq())(sig)
   }
 
-  private def apply0(t: Term, s: Signature, fvs: Seq[Term]): Term = {
+  private def apply0(t: Term,fvs: Seq[Term])(implicit sig: Signature): Term = {
     t match {
       case Exists(inner@(ty :::> body)) => {
-        val skConst = Term.mkAtom(s.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
+        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
         val skTerm = Term.mkTermApp(skConst, fvs)
         val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
-        apply0(body2, s, fvs)
+        apply0(body2, fvs)(sig)
       }
       case Forall(ty :::> body) => {
         val newFvs = fvs.map(_.substitute(Subst.shift)) :+ Term.mkBound(ty, 1)
-        val body2 = apply0(body, s, newFvs)
+        val body2 = apply0(body, newFvs)(sig)
         Forall(λ(ty)(body2))
       }
-      case (a & b) => &(apply0(a, s, fvs), apply0(b, s, fvs))
-      case (a ||| b) => |||(apply0(a, s, fvs), apply0(b, s, fvs))
+      case (a & b) => &(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
+      case (a ||| b) => |||(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
       case _ => t
     }
   }

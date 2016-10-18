@@ -13,9 +13,9 @@ import leo.modules.Utility
 class SignatureTest extends LeoTestSuite {
 
   test("HOL signature creation", Checked) {
-
+    val sig = getFreshSignature
     printHeading("HOL Signature creation")
-    Utility.printSignature()
+    Utility.printSignature(sig)
     printHLine()
     Out.output("Signature creation successful.")
     printLongHLine()

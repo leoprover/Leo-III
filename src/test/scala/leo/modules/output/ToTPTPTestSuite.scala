@@ -33,14 +33,14 @@ class ToTPTPTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
     test(p._2, Ignored){
-      val sig = getFreshSignature
+      implicit val sig = getFreshSignature
       Blackboard().clear()
 
       printHeading(s"Forward/Backward translation test for ${p._2}")
       print(s"## Parsing and processing ${p._1} ...")
       var fos : Seq[AnnotatedClause] = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       println("Success!")
-      Utility.printUserDefinedSignature()
+      Utility.printUserDefinedSignature(sig)
       for (fs <- fos) {
         val toTPTP = ToTPTP.output(fs)
         println("## Back translation ... success!")
@@ -62,7 +62,7 @@ class ToTPTPTestSuite extends LeoTestSuite {
 //            println(s"Equivalent names: ${name == fs.id}")
             println(s"Equivalent roles: ${role == fs.role}")
 
-            val (oldFormula, newFormula) = (fs.cl.lits.head.term, form)
+            val (oldFormula, newFormula) = (Literal.asTerm(fs.cl.lits.head), form)
             println(s"Equivalent formula: ${oldFormula == newFormula}")
 
             if ((role != fs.role) || (oldFormula != newFormula)) {

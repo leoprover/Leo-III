@@ -9,12 +9,15 @@ package object matching {
 
 package matching {
 
+  import leo.datastructures.Signature
+
   import scala.annotation.tailrec
 
   /**
     * Created by lex on 6/4/16.
     */
   object FOMatching {
+    // FIXME Old implementation, most likely broken
     import leo.datastructures.{Term, Type, Subst}
     import Term.{Bound, ∙}
 
@@ -73,17 +76,17 @@ package matching {
             leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
             val sb = computeSubst(be)
             matches0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
-          } else {
-            val ind4 = uproblems.indexWhere(FuncRule.canApply)
-            if (ind4 > -1) {
-              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-              matches0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))) ++ uproblems.drop(ind4 + 1), sproblems)
-            } else {
+          } else { // TODO: Rework matching as done in unification without dealing with extensionality.
+//            val ind4 = uproblems.indexWhere(FuncRule.canApply)
+//            if (ind4 > -1) {
+//              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
+//              matches0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))(sig)) ++ uproblems.drop(ind4 + 1), sproblems)(sig)
+//            } else {
               if (uproblems.isEmpty) {
                 Some(computeSubst(sproblems))
               } else
                 None
-            }
+//            }
           }
         }
       }
@@ -118,11 +121,11 @@ package matching {
             val sb = computeSubst(be)
             decideMatch0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)))
           } else {
-            val ind4 = uproblems.indexWhere(FuncRule.canApply)
-            if (ind4 > -1) {
-              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-              decideMatch0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))) ++ uproblems.drop(ind4 + 1))
-            } else
+//            val ind4 = uproblems.indexWhere(FuncRule.canApply)
+//            if (ind4 > -1) {
+//              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
+//              decideMatch0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))(sig)) ++ uproblems.drop(ind4 + 1))(sig)
+//            } else
               uproblems.isEmpty
           }
         }
@@ -191,7 +194,7 @@ package matching {
       */
     private object DecompRule {
       def apply(e: UEq) = e match {
-        case (_ ∙ sq1, _ ∙ sq2) => (simplifyArguments(sq1)).zip(simplifyArguments(sq2))
+        case (_ ∙ sq1, _ ∙ sq2) => simplifyArguments(sq1).zip(simplifyArguments(sq2))
         case _ => throw new IllegalArgumentException("impossible")
       }
       def canApply(e: UEq) = e match {
@@ -213,10 +216,10 @@ package matching {
 
     private object FuncRule {
 
-      def apply(e: UEq): UEq = {
+      def apply(e: UEq)(sig: Signature): UEq = {
         leo.Out.trace(s"Apply Func on ${e._1.pretty} = ${e._2.pretty}")
         val funArgTys = e._1.ty.funParamTypes
-        val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, Seq(), Seq())) // TODO: Check if this is ok (no free vars)
+        val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, Seq(), Seq())(sig)) // TODO: Check if this is ok (no free vars)
         (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
       }
 

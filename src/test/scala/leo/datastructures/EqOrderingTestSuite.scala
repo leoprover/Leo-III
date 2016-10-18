@@ -4,14 +4,15 @@ import leo._
 import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.datastructures.impl.orderings.TO_CPO_Naive
 import leo.modules.output.Output
-import leo.datastructures.Term.{:::>}
-import leo.datastructures.{=== => EQ}
+import leo.datastructures.Term.:::>
+import leo.modules.HOLSignature.{=== => EQ, Forall, Exists, LitTrue}
 import leo.modules.{Parsing, SZSException, Utility}
 
 /**
  * Created by lex on 10/27/15.
  */
 class EqOrderingTestSuite extends LeoTestSuite {
+
   val source = "/home/lex/TPTP/Problems/GRP/"
   val problem_suffix = ".p"
   val problems = Seq( "GRP660+3")//, "COM003_1", "KRS003_1", "SYN000^1" )
@@ -27,6 +28,7 @@ class EqOrderingTestSuite extends LeoTestSuite {
 
   for (p <- problems) {
     test(s"Ordering test for $p", Benchmark) {
+      implicit val sig = getFreshSignature
       printHeading(s"Ordering test for $p")
       var (eq,gt,lt,nc): (Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)],Set[(Term,Term)]) = (Set(), Set(), Set(), Set())
       var fs : Seq[AnnotatedClause] = Seq()
@@ -37,7 +39,7 @@ class EqOrderingTestSuite extends LeoTestSuite {
           Out.output(s"Loading $p failed\n   Status=${e.status}\n   Msg=${e.getMessage}\n   DbgMsg=${e.debugMessage}")
           fail()
       }
-      Utility.printSignature()
+      Utility.printSignature(sig)
 
       printHeading("Parsed terms")
       val fsIt = fs.iterator

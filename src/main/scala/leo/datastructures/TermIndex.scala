@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.impl.Signature
-
 /**
  * Term index data structure
  *

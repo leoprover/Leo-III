@@ -2,8 +2,8 @@ package leo.modules.preprocessing
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
-import leo.datastructures.Type._
+import leo.datastructures.impl.SignatureImpl
+import leo.modules.HOLSignature.{LitFalse, LitTrue, Forall, o, Exists, |||, &}
 
 /**
  *
@@ -26,26 +26,26 @@ object Skolemization extends Normalization{
    * @param formula - A annotated formula
    * @return a normalized formula
    */
-  override def apply(formula : Clause) : Clause = {
+  override def apply(formula : Clause)(implicit sig: Signature) : Clause = {
     val fv: Set[Term] = formula.implicitlyBound.map{case (v,ty) => Term.mkBound(ty,v)}.toSet
     formula.mapLit(_.termMap {case (l,r) => (l,r) match {
-      case (l1, LitTrue())  => (internalNormalize(l1,fv), LitTrue())
-      case (l1, LitFalse()) => (internalNormalize(l1,fv), LitFalse())
+      case (l1, LitTrue())  => (internalNormalize(l1,fv)(sig), LitTrue())
+      case (l1, LitFalse()) => (internalNormalize(l1,fv)(sig), LitFalse())
       case _  => (l,r)
     }})
   }
 
-  def apply(literal : Literal) : Literal = {
-    apply(Clause(literal)).lits.head
+  def apply(literal : Literal)(implicit sig: Signature) : Literal = {
+    apply(Clause(literal))(sig).lits.head
   }
 
-  def normalize(t: Term): Term = {val fv: Set[Term] = Set() // TODO FIXME
-    internalNormalize(t, fv)
+  def normalize(t: Term)(implicit sig: Signature): Term = {val fv: Set[Term] = Set() // TODO FIXME
+    internalNormalize(t, fv)(sig)
   }
 
-  private def internalNormalize(formula: Term, fV: Set[Term]): Term = {
+  private def internalNormalize(formula: Term, fV: Set[Term])(sig: Signature): Term = {
     val mini = miniscope(formula)
-    val r = skolemize(mini, fV.toSeq)
+    val r = skolemize(mini, fV.toSeq)(sig)
     r.betaNormalize
   }
 
@@ -58,16 +58,14 @@ object Skolemization extends Normalization{
    * @param formula
    * @return
    */
-  private def skolemize(formula : Term, univBounds: Seq[Term]) : Term = {
-    val s = Signature.get
+  private def skolemize(formula : Term, univBounds: Seq[Term])(sig: Signature) : Term = {
     formula match {
       //Remove exist quantifier
       // TODO: Raising Bound variables is borken. Fix it.
       case Exists(s@(ty :::> t))  =>
         val fvs = univBounds //(s.freeVars diff looseBounds).toSeq
       val fv_types = fvs.map(_.ty)
-        import leo.datastructures.impl.Signature
-        val skConst = Term.mkAtom(Signature.get.freshSkolemConst(Type.mkFunType(fv_types, ty)))
+        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fv_types, ty)))(sig)
         val skTerm = Term.mkTermApp(skConst, fvs)
 
 
@@ -80,12 +78,12 @@ object Skolemization extends Normalization{
 
         val norm = t.termClosure(Subst.fromMaps(Map(1 -> skTerm),sub)).betaNormalize
 
-        skolemize(norm, univBounds)
-      case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))))
+        skolemize(norm, univBounds)(sig)
+      case Forall(ty :::> t) => Forall(mkTermAbs(ty,skolemize(t, univBounds.map{case Bound(ty, sc) => mkBound(ty, sc+1)} :+ mkBound(ty, 1))(sig)))
 
-      case Symbol(k) ∙ args if !s.allUserConstants.contains(k) && s(k).ty.fold(false){ty => ty == s.o ->: s.o || ty == s.o ->: s.o ->: s.o}
+      case Symbol(k) ∙ args if !sig.allUserConstants.contains(k) && sig(k).ty.fold(false){ty => ty == o ->: o || ty == o ->: o ->: o}
         => // The symbol is a boolean connective, not defined by the user.
-        Term.mkApp(Term.mkAtom(k), args.map(_.fold({t => Left(skolemize(t, univBounds))},Right(_))))
+        Term.mkApp(Term.mkAtom(k)(sig), args.map(_.fold({t => Left(skolemize(t, univBounds)(sig))},Right(_))))
 
       // Reaching any non boolean connective we will stop, since we can no longer distinquish positive from negative equalities
       case term      => term
