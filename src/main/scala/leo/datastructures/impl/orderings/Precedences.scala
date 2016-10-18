@@ -1,7 +1,8 @@
-package leo.datastructures.impl.precedences
+package leo.datastructures.impl.orderings
 
-import leo.datastructures._
+import leo.datastructures.{Precedence, Signature, _}
 import leo.modules.output.logger.Out
+
 
 object Prec_SigInduced extends Precedence {
   final def compare(x: Const, y: Const)(implicit sig: Signature) = intToCMPRes(x,y)
@@ -94,4 +95,3 @@ object Prec_ArityInvOrder_UnaryFirst extends Precedence {
     } else intToCMPRes(metaY._ty.order,metaX._ty.order)
   }
 }
-

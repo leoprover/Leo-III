@@ -162,7 +162,7 @@ package object datastructures {
   }
 
   object Precedence {
-    import leo.datastructures.impl.precedences._
+    import leo.datastructures.impl.orderings._
 
     final val sigInduced: Precedence = Prec_SigInduced
     final val arity: Precedence = Prec_Arity
