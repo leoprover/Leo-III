@@ -77,7 +77,7 @@ object NaiveSplitting extends Split {
    * @return Some(cs) with
    */
   override def split(c : Clause) : Option[(Seq[Seq[Clause]],SplitKind)] = {
-    val maxLit = c.lits.max(Orderings.simple(LitWeight_FIFO))
+    val maxLit = c.lits.max(Orderings.simple(LiteralWeights.fifo))
     val rLits = c.lits.filterNot(_ != maxLit)   // Remove maximal Literal
 
     Literal.asTerm(maxLit) match { // TODO: These matches never apply?!

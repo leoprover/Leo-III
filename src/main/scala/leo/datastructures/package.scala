@@ -17,6 +17,42 @@ package object datastructures {
   @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
   @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
 
+  /**
+    * Interface for weighting objects such as clauses or literals.
+    * A smaller weight means that the object should have "more priority" depending
+    * on the current context.
+    * Every weight defines an ordering by `x <= y :<=> x.weight <= y.weight`,
+    * this can be obtained by using the `SimpleOrdering`.
+    *
+    * @author Alexander Steen
+    * @since 25.11.2014
+    */
+  trait Weight[What] {
+    def weightOf[A <: What](w: A): Int
+  }
+
+  object ClauseProxyWeights {
+    import impl.orderings._
+    /** Weighting that gives a higher ('worse') weight for newer clauses. */
+    final val fifo: ClauseProxyWeight = CPW_FIFO
+    /** Clause weighting that assigns the number of literals in the clause as weight. */
+    final val litCount: ClauseProxyWeight = CPW_LitCount
+    /** Clause weighting that assigns the maximum of all literals weights as weight. */
+    final val maxLitWeight: ClauseProxyWeight = CPW_MaxLitWeight
+    /** Clause weighting that assigns the sum of all literals weights as weight. */
+    final val litWeightSum: ClauseProxyWeight = CPW_LitWeightSum
+  }
+
+  object LiteralWeights {
+    import impl.orderings._
+    /** Simple weighting function that gives every literal the same weight. */
+    final val const: LiteralWeight = LW_Constant
+    /** Literal weighting that gives preference (i.e. gives lower weight) to older literals. */
+    final val fifo: LiteralWeight = LW_FIFO
+    /** Literal weighting that uses the enclosed term's size as weight. */
+    final val termsize: LiteralWeight = LW_TermSize
+  }
+
   type CMP_Result = Byte
   final val CMP_EQ: CMP_Result = 0.toByte
   final val CMP_LT: CMP_Result = 1.toByte
@@ -127,6 +163,7 @@ package object datastructures {
 
   object Precedence {
     import leo.datastructures.impl.precedences._
+
     final val sigInduced: Precedence = Prec_SigInduced
     final val arity: Precedence = Prec_Arity
     final val arity_UnaryFirst: Precedence = Prec_Arity_UnaryFirst
@@ -136,18 +173,16 @@ package object datastructures {
     final val arityInvOrder_UnaryFirst: Precedence = Prec_ArityInvOrder_UnaryFirst
   }
 
-
   /////////////////////
   // Clause proxy orderings for clause selection
   /////////////////////
-
   object ClauseProxyOrderings {
-    import leo.datastructures.impl.orderings._
+    import impl.orderings._
 
-    final val fifo: ClauseProxyOrdering = CLPO_FIFO
-    final val lex_weightAge = CLPO_Lex_WeightAge
-    final val goalsfirst = CLPO_GoalsFirst
-    final val nongoalsfirst = CLPO_NonGoalsFirst
+    final val fifo: ClauseProxyOrdering = CPO_FIFO
+    final val lex_weightAge: ClauseProxyOrdering = CPO_WeightAge
+    final val goalsfirst: ClauseProxyOrdering = CPO_GoalsFirst
+    final val nongoalsfirst: ClauseProxyOrdering = CPO_NonGoalsFirst
   }
 
   ///////////////////////

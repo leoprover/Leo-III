@@ -11,8 +11,6 @@ import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
  * @since 07.11.2014
  */
 trait Clause extends Pretty {
-  /** The unique, increasing clause number. */
-  def id: Int
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
@@ -36,9 +34,6 @@ trait Clause extends Pretty {
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
   @inline final def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replaceAll(what, by)))
-
-  /** The clause's weight. */
-  @inline final def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
 
   final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
 
@@ -69,9 +64,6 @@ object Clause {
 
   /** The empty clause. */
   @inline final val empty = mkClause(Seq.empty)
-
-  /** Returns the last clause id that has been issued. */
-  @inline final def lastClauseId: Int = ClauseImpl.lastClauseId
 
   // Utility
   /** Returns true iff clause `c` is empty. */

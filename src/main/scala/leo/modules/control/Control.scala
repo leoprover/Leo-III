@@ -139,7 +139,7 @@ package inferenceControl {
           leo.Out.finest(s"check with ${withTerm.pretty}, into: ${intoTerm.pretty}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
           assert(!intoLit.flexflex)
           if (intoPos == Position.root &&
-            ((intoClause.id == withClause.id && intoIndex == withIndex) ||
+            ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
               (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
           } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
