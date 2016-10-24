@@ -113,15 +113,15 @@ case object Derived extends ClauseOrigin { val priority = 1 }
 
 
 
-trait ClauseProxy extends Pretty {
+trait ClauseProxy extends Pretty with Prettier {
   def id: Long
   def cl: Clause
   def role: Role
   def annotation: ClauseAnnotation
   @inline lazy val weight: Int = leo.Configuration.CLAUSEPROXY_WEIGHTING.weightOf(this)
   def properties: ClauseAnnotation.ClauseProp
-
-  override def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
+  override final def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
+  override final def pretty(sig: Signature): String = s"[$id]:\t${cl.pretty(sig)}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
 }
 
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,

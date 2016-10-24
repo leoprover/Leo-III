@@ -10,7 +10,7 @@ import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Pretty {
+trait Clause extends Pretty with Prettier {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
@@ -35,7 +35,8 @@ trait Clause extends Pretty {
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
   @inline final def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replaceAll(what, by)))
 
-  final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
+  final def pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
+  final def pretty(sig: Signature) = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
 
   // System function adaptions
   override final def equals(obj : Any): Boolean = obj match {

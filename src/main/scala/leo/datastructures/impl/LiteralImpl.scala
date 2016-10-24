@@ -7,6 +7,7 @@ import leo.modules.HOLSignature.{LitFalse, LitTrue}
 protected[impl] sealed abstract class LiteralImpl extends Literal {
   @inline final private def printPol(pol: Boolean): String = if (pol) "t" else "f"
   override lazy val pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
+  final def pretty(sig: Signature): String = s"[${left.pretty(sig)} ≈ ${right.pretty(sig)}]^${printPol(polarity)}"
 }
 
 object LiteralImpl {

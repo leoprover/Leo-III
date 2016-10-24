@@ -11,7 +11,7 @@ import leo.Configuration
  * @since 07.11.2014
  * @note Oct. 2015: Substantially updated (literals as equations)
  */
-trait Literal extends Pretty {
+trait Literal extends Pretty with Prettier {
   /** The unique, increasing literal number. */
   def id: Int
   /** The left side of the literal's equation.

@@ -21,7 +21,7 @@ package object datastructures {
     * objects (e.g. terms, types). */
   trait Prettier {
     /** Pretty representation of the underlying object as string. */
-    def prettier(implicit sig: Signature): String
+    def pretty(sig: Signature): String
   }
 
   /////////////////////////////////
