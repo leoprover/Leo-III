@@ -734,7 +734,7 @@ object PatternUnification extends Unification {
       else {
         if (!isPattern0(t.left.get, depth))
           false /* fail fast if any argument
-              is not a pettern */
+              is not a pattern */
         else allPattern(ts.tail, depth)
       }
     }
