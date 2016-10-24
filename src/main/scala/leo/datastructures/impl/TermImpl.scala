@@ -675,7 +675,7 @@ protected[impl] case class BoundIndex(ty: Type, scope: Int) extends Head {
 
   // Pretty printing
   override lazy val pretty = s"$scope:${ty.pretty}"
-  final def pretty(sig: Signature) = s"$scope:${ty.pretty}"
+  final def pretty(sig: Signature) = s"$scope:${ty.pretty(sig)}"
 
   // Local definitions
   final def substitute(s: Subst) = s.substBndIdx(scope)
