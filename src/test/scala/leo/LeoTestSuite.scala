@@ -11,9 +11,8 @@ import org.scalatest.{BeforeAndAfter, FunSuite}
 abstract class LeoTestSuite extends FunSuite with BeforeAndAfter with TestUtility {
 
   before {
-//    resetBlackBoard
-//    resetTermBank
-//    getFreshSignature
+    resetBlackBoard
+    resetTermBank
   }
 
 }
