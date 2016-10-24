@@ -747,26 +747,24 @@ object PatternUnification extends Unification{
       case _ :::> body => checkForExpandedBound0(body, depth, extraAbstractions+1)
       case TermApp(Bound(_,idx),args) if idx > extraAbstractions && idx <= depth + extraAbstractions =>
         /*Head is bound outside of original arg */
-        if(args.size == extraAbstractions && etaArgs(args)) idx-extraAbstractions
+        if(args.size == extraAbstractions && etaArgs(args, depth+extraAbstractions)) idx-extraAbstractions
         else -1
       case _ => -1
     }
   }
 
-  // FIXME: Must this also be an eta-expanded check?
-  /** Returns true iff args is the sequence of arguments (n) (n-1) ... (1) */
+  /** Returns true iff args is the sequence of arguments (n) (n-1) ... (1) or eta-equivalent */
   @tailrec
-  final private def etaArgs(args: Seq[Term]): Boolean = {
+  final private def etaArgs(args: Seq[Term], depth: Int): Boolean = {
     import leo.datastructures.Term.Bound
     if (args.isEmpty) true
     else {
       val hd = args.head
-      val isBound = Bound.unapply(hd)
-      if (isBound.isEmpty) false
-      else {
-        val idx = isBound.get._2
-        if (idx == args.size) etaArgs(args.tail)
-        else false
+      hd match {
+        case Bound(_, idx) if idx == args.size => etaArgs(args.tail, depth)
+        case _ => val possiblyBoundVar = checkForExpandedBound(hd, depth)
+          if (possiblyBoundVar == args.size) etaArgs(args.tail, depth)
+          else false
       }
     }
   }
