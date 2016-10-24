@@ -4,6 +4,7 @@ import leo.Configuration
 import leo.Out
 import leo.datastructures._
 import ClauseAnnotation._
+import leo.modules.calculus.PatternUnification
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
@@ -129,11 +130,11 @@ object SeqPProc extends Function1[Long, Unit]{
       // Preprocessing
       val conjecture_preprocessed = if (state.negConjecture != null) {
         Out.debug("## Preprocess Neg.Conjecture BEGIN")
-        Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty}")
+        Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
         val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
         Out.debug(s"# Result:\n\t${
           result.map {
-            _.pretty
+            _.pretty(sig)
           }.mkString("\n\t")
         }")
         Out.trace("## Preprocess Neg.Conjecture END")
@@ -144,11 +145,11 @@ object SeqPProc extends Function1[Long, Unit]{
       val preprocessIt = remainingInput.iterator
       while (preprocessIt.hasNext) {
         val cur = preprocessIt.next()
-        Out.trace(s"# Process: ${cur.pretty}")
+        Out.trace(s"# Process: ${cur.pretty(sig)}")
         val processed = preprocess(state, cur)
         Out.debug(s"# Result:\n\t${
           processed.map {
-            _.pretty
+            _.pretty(sig)
           }.mkString("\n\t")
         }")
         val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
@@ -161,9 +162,9 @@ object SeqPProc extends Function1[Long, Unit]{
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest(s"Clauses and maximal literals of them:")
         for (c <- state.unprocessed union conjecture_preprocessed) {
-          Out.finest(s"Clause ${c.pretty}")
+          Out.finest(s"Clause ${c.pretty(sig)}")
           Out.finest(s"Maximal literal(s):")
-          Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty).mkString("\n\t")}")
+          Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
         }
       }
       Out.finest(s"################")
@@ -182,7 +183,7 @@ object SeqPProc extends Function1[Long, Unit]{
           state.setSZSStatus(SZS_Timeout)
         } else {
           var cur = conjectureProcessedIt.next()
-          Out.debug(s"Taken: ${cur.pretty}")
+          Out.debug(s"Taken: ${cur.pretty(sig)}")
           cur = Control.rewriteSimp(cur, state.rewriteRules)
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
@@ -200,7 +201,7 @@ object SeqPProc extends Function1[Long, Unit]{
             } else {
               Out.debug("clause subsumbed, skipping.")
               state.incForwardSubsumedCl()
-              Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
+              Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
             }
           }
         }
@@ -236,7 +237,7 @@ object SeqPProc extends Function1[Long, Unit]{
             test = false
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
-            Out.debug(s"Taken: ${cur.pretty}")
+            Out.debug(s"Taken: ${cur.pretty(sig)}")
 
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             if (Clause.effectivelyEmpty(cur.cl)) {
@@ -255,7 +256,7 @@ object SeqPProc extends Function1[Long, Unit]{
               } else {
                 Out.debug("clause subsumbed, skipping.")
                 state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
+                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
               }
             }
           }
@@ -297,18 +298,18 @@ object SeqPProc extends Function1[Long, Unit]{
 
       Out.finest("#########################")
       Out.finest("units")
-      Out.finest(state.rewriteRules.map(_.pretty).mkString("\n\t"))
+      Out.finest(state.rewriteRules.map(cl => s"(${PatternUnification.isPattern(cl.cl.lits.head.left)}/${PatternUnification.isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("Processed unoriented")
       Out.finest("#########################")
-      Out.finest(state.processed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty).mkString("\n\t"))
+      Out.finest(state.processed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("Unprocessed unoriented")
-      Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty).mkString("\n\t"))
+      Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
       Out.finest("#########################")
 
 
@@ -320,7 +321,7 @@ object SeqPProc extends Function1[Long, Unit]{
 
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.comment("Clauses at the end of the loop:")
-        Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty).mkString("\n\t"))
+        Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
       }
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest("TFF clauses at the end:")
@@ -356,7 +357,7 @@ object SeqPProc extends Function1[Long, Unit]{
     if (backSubsumedClauses.nonEmpty) {
       Out.trace(s"#### backward subsumed")
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
-      Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty).mkString("\n\t")}")
+      Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       state.setProcessed(state.processed -- backSubsumedClauses)
       Control.fvIndexRemove(backSubsumedClauses)
     }
@@ -374,7 +375,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     // Simplifying (mofifying inferences) END
     /////////////////////////////////////////
-    leo.Out.finest(s"XX ${cur.pretty}")
+    leo.Out.finest(s"XX ${cur.pretty(sig)}")
     leo.Out.finest(s"XX ${leo.modules.indexing.FOIndex.typedFirstOrder(cur)}")
     Control.foIndex.insert(cur)
     /////////////////////////////////////////
@@ -439,7 +440,7 @@ object SeqPProc extends Function1[Long, Unit]{
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
       } else {
-        Out.trace(s"Trivial, hence dropped: ${newCl.pretty}")
+        Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
   }
