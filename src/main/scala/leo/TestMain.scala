@@ -142,9 +142,9 @@ object TestMain {
       val uniStore = new UnificationStore[InterleavingLoop.A]()
       val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
       val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
-      val uniAgent = new DelayedUnificationAgent(uniStore, state)
+      val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
 
-      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, uniAgent)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent)
 
 
       Blackboard().addDS(state)

@@ -1,7 +1,7 @@
 package leo.modules.phase
 import leo.agents.{Agent, InterferingLoopAgent}
-import leo.datastructures.blackboard.{Blackboard, SignatureBlackboard}
-import leo.datastructures.{AnnotatedClause, Role_Conjecture, Role_NegConjecture}
+import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.{AnnotatedClause, Role_Conjecture, Role_NegConjecture, Signature}
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.modules.interleavingproc.{BlackboardState, StateView, UnprocessedClause}
 import leo.modules.seqpproc.SeqPProc
@@ -10,7 +10,7 @@ import leo.modules.control.Control
 /**
   * Created by mwisnie on 9/28/16.
   */
-class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]], state : BlackboardState[AnnotatedClause], interleavingAgents : Agent*) extends CompletePhase {
+class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]], state : BlackboardState[AnnotatedClause], sig : Signature, interleavingAgents : Agent*) extends CompletePhase {
   /**
     * Returns the name of the phase.
     *
@@ -45,7 +45,7 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
         Blackboard().addData(UnprocessedClause)(processForm)  // Write a method to bundle the writing
       }
     }
-    Control.fvIndexInit(startTheIndex.toSet)(SignatureBlackboard.get)
+    Control.fvIndexInit(startTheIndex.toSet)(sig)
 
     super.execute()
   }
