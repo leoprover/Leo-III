@@ -21,7 +21,7 @@ import scala.language.implicitConversions
  * @note Updated 02.06.2014 Cleaned up method set, lambda terms always have types
  * @note Updated 09.06.2014 Added pattern matcher for terms, added definition expansion
  */
-trait Term extends Pretty {
+trait Term extends Pretty with Prettier {
   // Predicates on terms
   /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
   def isAtom: Boolean

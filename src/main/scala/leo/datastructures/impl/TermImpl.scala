@@ -317,6 +317,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 
   /** Pretty */
   lazy val pretty = s"${hd.pretty} ⋅ (${args.pretty})"
+  final def pretty(sig: Signature): String =  s"${hd.pretty(sig)} ⋅ (${args.pretty(sig)})"
 }
 
 
@@ -413,6 +414,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 
   /** Pretty */
   lazy val pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
+  final def pretty(sig: Signature): String =  s"[${body.pretty(sig)}] ⋅ (${args.pretty(sig)})"
 }
 
 
@@ -511,6 +513,8 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
   /** Pretty */
   lazy val pretty = s"λ[${typ.pretty}]. (${body.pretty})"
+  final def pretty(sig: Signature): String =  s"λ[${typ.pretty(sig)}]. (${body.pretty(sig)})"
+
 }
 
 
@@ -579,6 +583,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
 
   /** Pretty */
   lazy val pretty = s"Λ. (${body.pretty})"
+  final def pretty(sig: Signature): String =   s"Λ. (${body.pretty(sig)})"
 }
 
 
@@ -628,6 +633,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 
   /** Pretty */
   final def pretty = s"${term.pretty}[${σ._1.pretty}/${σ._2.pretty}]"
+  final def pretty(sig: Signature): String =   s"${term.pretty(sig)}[${σ._1.pretty}/${σ._2.pretty}]"
 }
 
 
@@ -639,7 +645,7 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 // Implementation of head symbols
 /////////////////////////////////////////////////
 
-protected[impl] sealed abstract class Head extends Pretty {
+protected[impl] sealed abstract class Head extends Pretty with Prettier {
   // Predicates
   def isBound: Boolean
   def isConstant: Boolean
@@ -669,6 +675,7 @@ protected[impl] case class BoundIndex(ty: Type, scope: Int) extends Head {
 
   // Pretty printing
   override lazy val pretty = s"$scope:${ty.pretty}"
+  final def pretty(sig: Signature) = s"$scope:${ty.pretty}"
 
   // Local definitions
   final def substitute(s: Subst) = s.substBndIdx(scope)
@@ -698,6 +705,7 @@ protected[impl] case class Atom(id: Signature#Key, ty: Type) extends Head {
 
   // Pretty printing
   override lazy val pretty = s"const($id)"
+  final def pretty(sig: Signature) = sig(id).name
 }
 
 
@@ -716,6 +724,7 @@ protected[impl] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends 
 
   // Pretty printing
   override def pretty = s"${hd.pretty}[${subst._1.pretty}/${subst._2.pretty}}]"
+  final def pretty(sig: Signature) = s"${hd.pretty(sig)}[${subst._1.pretty}/${subst._2.pretty}}]"
 }
 
 
@@ -726,7 +735,7 @@ protected[impl] case class HeadClosure(hd: Head, subst: (Subst, Subst)) extends 
 /**
  * // TODO Documentation
  */
-protected[impl] sealed abstract class Spine extends Pretty {
+protected[impl] sealed abstract class Spine extends Pretty with Prettier {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst): Spine
@@ -820,6 +829,7 @@ protected[impl] case object SNil extends Spine {
   final def substitute(subst: Subst): Spine = SNil
   // Pretty printing
   override val pretty = "⊥"
+  final def pretty(sig: Signature) = "⊥"
 }
 
 protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
@@ -891,6 +901,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
 
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
+  final def pretty(sig: Signature) = s"${hd.pretty(sig)};${tail.pretty(sig)}"
 }
 
 protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
@@ -950,6 +961,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
 
   // Pretty printing
   override lazy val pretty = s"${hd.pretty};${tail.pretty}"
+  final def pretty(sig: Signature) = s"${hd.pretty(sig)};${tail.pretty(sig)}"
 }
 
 
@@ -996,6 +1008,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
 
   // Pretty printing
   override def pretty = s"(${sp.pretty}[${s._1.pretty}/${s._2.pretty}])"
+  final def pretty(sig: Signature) = s"(${sp.pretty(sig)}[${s._1.pretty}/${s._2.pretty}])"
 }
 
 

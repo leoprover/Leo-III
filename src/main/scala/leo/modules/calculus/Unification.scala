@@ -3,6 +3,8 @@ package leo.modules.calculus
 import leo.datastructures.Type.BoundType
 import leo.datastructures.{Subst, Term, Type}
 
+import scala.annotation.tailrec
+
 
 trait Unification extends CalculusRule {
   import leo.modules.output.SZS_Theorem
@@ -653,6 +655,122 @@ object HuetsPreUnification extends Unification {
     }
   }
 }
+
+
+object PatternUnification extends Unification{
+  final val name = "uni_pattern"
+
+  override final def unify(vargen: FreshVarGen, s: Term, t: Term) : Iterable[UnificationResult] =
+    throw new UnsupportedOperationException
+
+  override def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
+    throw new UnsupportedOperationException
+
+  /** Returns true iff `t` is a higher-order pattern. Input must be in beta-normal form. */
+  final def isPattern(t: Term): Boolean = isPattern0(t, 0)
+
+  @tailrec
+  final private def isPattern0(t: Term, depth: Int): Boolean = {
+    import leo.datastructures.Term.{:::>, TypeLambda, Bound, ∙}
+    t match {
+      case _ :::> body => isPattern0(body, depth+1)
+      case TypeLambda(body) => isPattern0(body, depth)
+      case head ∙ args => head match {
+        case Bound(_, idx) if idx > depth => /* head is free var, check args */
+          checkDistinctBound(args, depth)
+        case _ => /* head is not a free var, recurse on args */
+          allPattern(args, depth)
+      }
+      case _ => true
+    }
+  }
+
+  @tailrec
+  final private def allPattern(ts: Seq[Either[Term, Type]], depth: Int): Boolean = {
+    if (ts.isEmpty) true
+    else {
+      val t = ts.head
+      if (t.isRight) allPattern(ts.tail, depth) /* TODO ignore type argument? */
+      else {
+        if (!isPattern0(t.left.get, depth))
+          false /* fail fast if any argument
+              is not a pettern */
+        else allPattern(ts.tail, depth)
+      }
+    }
+  }
+
+  /** Check if all terms in args are distinct bound variables. Bound if scope <= depth
+    * (or eta-equivalent). */
+  final private def checkDistinctBound(args: Seq[Either[Term, Type]], depth: Int): Boolean =
+    checkDistinctBound0(args, depth, Set())
+
+  @tailrec
+  final private def checkDistinctBound0(args: Seq[Either[Term, Type]], depth: Int, used: Set[Int]): Boolean = {
+    import leo.datastructures.Term.{Bound, :::>}
+    if (args.isEmpty) true
+    else {
+      val arg = args.head
+      if (arg.isRight) false /*FIXME: What to do you type variables? */
+      else {
+        val termArg = arg.left.get
+        termArg match {
+          case Bound(_, idx) if idx <= depth => /* Simple bound variable */
+            if (!used.contains(idx))
+              checkDistinctBound0(args.tail, depth, used + idx)
+            else false
+          case _ :::> _ => /* Maybe eta expanded bound variable */
+            val possiblyBoundVar = checkForExpandedBound(termArg, depth)
+            if (possiblyBoundVar <= 0) /* error, not a bound variable */
+              false
+            else {
+              if (!used.contains(possiblyBoundVar))
+                checkDistinctBound0(args.tail, depth, used + possiblyBoundVar)
+              else false
+            }
+          case _ => false
+        }
+      }
+    }
+  }
+
+  /** Checks if arg is a eta-expanded bound variable. If so, it returns the scope of it,
+    * else -1. */
+  final private def checkForExpandedBound(arg: Term, depth: Int): Int = {
+    checkForExpandedBound0(arg, depth, 0)
+  }
+
+  @tailrec
+  final private def checkForExpandedBound0(arg: Term, depth: Int, extraAbstractions: Int): Int = {
+    import leo.datastructures.Term.{TermApp,:::>, Bound}
+    arg match {
+      case _ :::> body => checkForExpandedBound0(body, depth, extraAbstractions+1)
+      case TermApp(Bound(_,idx),args) if idx > extraAbstractions && idx <= depth + extraAbstractions =>
+        /*Head is bound outside of original arg */
+        if(args.size == extraAbstractions && etaArgs(args, depth+extraAbstractions)) idx-extraAbstractions
+        else -1
+      case _ => -1
+    }
+  }
+
+  /** Returns true iff args is the sequence of arguments (n) (n-1) ... (1) or eta-equivalent */
+  @tailrec
+  final private def etaArgs(args: Seq[Term], depth: Int): Boolean = {
+    import leo.datastructures.Term.Bound
+    if (args.isEmpty) true
+    else {
+      val hd = args.head
+      hd match {
+        case Bound(_, idx) if idx == args.size => etaArgs(args.tail, depth)
+        case _ => val possiblyBoundVar = checkForExpandedBound(hd, depth)
+          if (possiblyBoundVar == args.size) etaArgs(args.tail, depth)
+          else false
+      }
+    }
+  }
+}
+
+
 
 ///**
 //  * First-order unification

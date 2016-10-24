@@ -148,9 +148,6 @@ object Main {
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
       }
-    } finally {
-//      Scheduler().killAll()
-      System.exit(0)
     }
   }
 

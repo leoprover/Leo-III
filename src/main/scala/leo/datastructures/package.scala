@@ -8,15 +8,25 @@ import scala.annotation.tailrec
   * @since 01/06/15
   */
 package object datastructures {
+  /////////////////////////////////
+  // More or less general traits used throughout the project
+  /////////////////////////////////
 
+  /** Supplement trait for custom toString methods. */
   trait Pretty {
+    /** Pretty representation of the underlying object as string. */
     def pretty: String
   }
+  /** Another supplement trait for custom toString methods for signature-dependent
+    * objects (e.g. terms, types). */
+  trait Prettier {
+    /** Pretty representation of the underlying object as string. */
+    def pretty(sig: Signature): String
+  }
 
-
-  @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
-  @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
-
+  /////////////////////////////////
+  // Weighting of literals/clauses
+  /////////////////////////////////
   /**
     * Interface for weighting objects such as clauses or literals.
     * A smaller weight means that the object should have "more priority" depending
@@ -53,10 +63,17 @@ package object datastructures {
     final val termsize: LiteralWeight = LW_TermSize
   }
 
+  /////////////////////////////////
+  // Ordering related library functions
+  /////////////////////////////////
   type CMP_Result = Byte
+  /** Comparison result: Equal */
   final val CMP_EQ: CMP_Result = 0.toByte
+  /** Comparison result: Less-than */
   final val CMP_LT: CMP_Result = 1.toByte
+  /** Comparison result: Greater-than */
   final val CMP_GT: CMP_Result = 2.toByte
+  /** Comparison result: Not-comparable (unknown) */
   final val CMP_NC: CMP_Result = 3.toByte
 
   /**
@@ -65,10 +82,6 @@ package object datastructures {
     * @author Alexander Steen
     * @since 20.08.14
     */
-  /////////////////////
-  // Ordering related library functions
-  /////////////////////
-
   object Orderings {
     @inline final def isComparable(x: CMP_Result): Boolean = (x & ~CMP_EQ) != 0
     @inline final def isGE(x: CMP_Result): Boolean = (x & (CMP_EQ | CMP_GT)) != 0
@@ -192,6 +205,9 @@ package object datastructures {
 
 
 
+  /////////////////////////////////
+  // Further data structures/traits
+  /////////////////////////////////
   /**
     * Configuration (i.e. state) for NDStream.
     *
@@ -387,6 +403,9 @@ package object datastructures {
   ///////////////////////////////
   // Utility functions
   ///////////////////////////////
+  @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
+  @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
+
   final def fuseMaps[A,B](map1: Map[A,Set[B]], map2: Map[A,Set[B]]): Map[A, Set[B]] = {
     map2.foldLeft(map1)({case (intermediateMap, (k,v)) =>
       if (!intermediateMap.contains(k))
