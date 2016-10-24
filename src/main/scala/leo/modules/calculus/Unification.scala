@@ -190,7 +190,7 @@ object HuetsPreUnification extends Unification {
   }
 
   @tailrec
-  private def tyDetExhaust(uTyProblems: Seq[UTEq], unifier: TypeSubst): Option[TypeSubst] = {
+  final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UTEq], unifier: TypeSubst): Option[TypeSubst] = {
     if (uTyProblems.nonEmpty) {
       val head = uTyProblems.head
 
@@ -212,7 +212,7 @@ object HuetsPreUnification extends Unification {
 
   /** Exhaustively apply delete, comp and bind on the set  of unprocessed equations. */
   @tailrec
-  private def detExhaust(unprocessed: Seq[UEq],
+  final protected[calculus] def detExhaust(unprocessed: Seq[UEq],
                          flexRigid: Seq[UEq0], flexFlex: Seq[UEq],
                          solved: TermSubst,
                          uTyProblems: Seq[UTEq], solvedTy: TypeSubst):
@@ -657,14 +657,54 @@ object HuetsPreUnification extends Unification {
 }
 
 
-object PatternUnification extends Unification{
+object PatternUnification extends Unification {
   final val name = "uni_pattern"
+  import HuetsPreUnification.{tyDetExhaust, detExhaust}
 
-  override final def unify(vargen: FreshVarGen, s: Term, t: Term) : Iterable[UnificationResult] =
-    throw new UnsupportedOperationException
+    /////////////////////////////////////
+  // Unifier search starts with these methods
+  /////////////////////////////////////
+  final def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[UnificationResult] = {
+    // 1. check if types are unifiable
+    val t_ty = t1.ty
+    val s_ty = t1.ty
+    val initialTypeSubst = tyDetExhaust(Seq((t_ty, s_ty)), Subst.id)
+    // 2. Continue only if types are unifiable
+    if (initialTypeSubst.isEmpty)
+      Iterable.empty
+    else {
+      val initialTypeSubst0 = initialTypeSubst.get
+      val t = t1.substitute(Subst.id, initialTypeSubst0).etaExpand
+      val s = s1.substitute(Subst.id, initialTypeSubst0).etaExpand
+      val unifyResult = unify0(Seq((t,s)),initialTypeSubst0, vargen)
+      if (unifyResult.isDefined) Seq(unifyResult.get)
+      else Iterable.empty
+    }
+  }
 
-  override def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
-    throw new UnsupportedOperationException
+  final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
+    // 1. check if types are unifiable
+    val initialTypeSubst = tyDetExhaust(constraints.map(e => (e._1.ty, e._2.ty)), Subst.id)
+    // 2. Continue only if types are unifiable
+    if (initialTypeSubst.isEmpty)
+      Iterable.empty
+    else {
+      val initialTypeSubst0 = initialTypeSubst.get
+      val constraints0 = constraints.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
+      val unifyResult = unify0(constraints0,initialTypeSubst0, vargen)
+      if (unifyResult.isDefined) Seq(unifyResult.get)
+      else Iterable.empty
+    }
+  }
+
+
+  private final def unify0(ueqs: Seq[UEq], initialTySubst: TypeSubst, vargen: FreshVarGen): Option[UnificationResult] = {
+    ???
+  }
+
+  ///////////////////////////////////////
+  // Pattern predicate
+  ///////////////////////////////////////
 
   /** Returns true iff `t` is a higher-order pattern. Input must be in beta-normal form. */
   final def isPattern(t: Term): Boolean = isPattern0(t, 0)
