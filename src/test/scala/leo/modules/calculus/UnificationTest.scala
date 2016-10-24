@@ -10,8 +10,6 @@ import leo.modules.HOLSignature.{i,o, Not}
  * TODO create a test suite for the utilities and test them
  */
 class UnificationTestSuite extends LeoTestSuite {
-  type UEq = Seq[(Term, Term)]
-
    //x(a) = f(a,a)
   test("f(x,x) = f(a,z)", Checked){
     implicit val s = getFreshSignature
@@ -150,4 +148,86 @@ class UnificationTestSuite extends LeoTestSuite {
 
     println(result.hasNext)
   }
+}
+
+class PatternUnificationTestSuite extends LeoTestSuite {
+  test("Is pattern: λx.c x", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val c = mkAtom(s.addUninterpreted("c", i ->: i))
+    val t = \(i)(mkTermApp(c, mkBound(i,1)))
+
+    println(t.pretty + " " + Term.wellTyped(t))
+    assert(PatternUnification.isPattern(t))
+  }
+
+  test("Is pattern: F (free variable)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = mkBound(i ->: i, 10)
+
+    println(F.pretty + " " + Term.wellTyped(F))
+    assert(PatternUnification.isPattern(F))
+  }
+
+  test("Is pattern: λx.F (λz.x z)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = mkBound(i ->: i, 10)
+    val t = \(i)(mkTermApp(F,\(i)(mkTermApp(mkBound(i ->: i,2), mkBound(i,1)))))
+
+    println(t.pretty + " " + Term.wellTyped(t))
+    assert(PatternUnification.isPattern(t))
+  }
+
+
+  test("Is pattern: λx,y.F y x", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = mkBound(i ->: i ->: i, 10)
+    val t = \(i)(\(i)(mkTermApp(F, Seq(mkBound(i,2), mkBound(i,1)))))
+
+    println(t.pretty + " " + Term.wellTyped(t))
+    assert(PatternUnification.isPattern(t))
+  }
+
+  test("Is not pattern: F c", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = mkBound(i ->: i, 10)
+    val c = mkAtom(s.addUninterpreted("c", i))
+    val t = mkTermApp(F, c)
+
+    println(t.pretty + " " + Term.wellTyped(t))
+    assert(!PatternUnification.isPattern(t))
+  }
+
+  test("Is not pattern: λx.F x x", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = mkBound(i ->: i ->: i, 10)
+    val t = \(i)(mkTermApp(F, Seq(mkBound(i,1), mkBound(i,1))))
+
+    println(t.pretty + " " + Term.wellTyped(t))
+    assert(!PatternUnification.isPattern(t))
+
+  }
+  test("Is not pattern: λx.F (F x)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = mkBound(i ->: i, 10)
+    val t = \(i)(mkTermApp(F, mkTermApp(F, mkBound(i,1))))
+
+    println(t.pretty + " " + Term.wellTyped(t))
+    assert(!PatternUnification.isPattern(t))
+  }
+
+
 }
