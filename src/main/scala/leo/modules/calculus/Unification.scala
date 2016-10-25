@@ -534,10 +534,10 @@ object HuetsPreUnification extends Unification {
   /////////////////////////////////////
   // Internal utility functions
   /////////////////////////////////////
-  @inline private final def flexflex(e: UEq, depth: Int): Boolean = isFlexible(e._1, depth) && isFlexible(e._2, depth)
-  @inline private final def flexrigid(e: UEq, depth: Int): Boolean = (isFlexible(e._1, depth) && !isFlexible(e._2, depth)) || (!isFlexible(e._1, depth) && isFlexible(e._2, depth))
-  @inline private final def rigidrigid(e: UEq, depth: Int): Boolean = !isFlexible(e._1, depth) && !isFlexible(e._2, depth)
-  @inline private final def isFlexible(t: Term, depth: Int): Boolean = {
+  @inline protected[calculus] final def flexflex(e: UEq, depth: Int): Boolean = isFlexible(e._1, depth) && isFlexible(e._2, depth)
+  @inline protected[calculus] final def flexrigid(e: UEq, depth: Int): Boolean = (isFlexible(e._1, depth) && !isFlexible(e._2, depth)) || (!isFlexible(e._1, depth) && isFlexible(e._2, depth))
+  @inline protected[calculus] final def rigidrigid(e: UEq, depth: Int): Boolean = !isFlexible(e._1, depth) && !isFlexible(e._2, depth)
+  @inline protected[calculus] final def isFlexible(t: Term, depth: Int): Boolean = {
     import leo.datastructures.Term.Bound
         t.headSymbol match {
           case Bound(_, scope) => scope > depth
@@ -645,7 +645,7 @@ object HuetsPreUnification extends Unification {
     }
   }
 
-  private final def collectLambdas(t: Term): (Term, Seq[Type]) = collectLambdas0(t, Seq())
+  protected[calculus] final def collectLambdas(t: Term): (Term, Seq[Type]) = collectLambdas0(t, Seq())
   @tailrec
   private final def collectLambdas0(t: Term, abstractions: Seq[Type]): (Term, Seq[Type]) = {
     import leo.datastructures.Term.:::>
@@ -656,10 +656,15 @@ object HuetsPreUnification extends Unification {
   }
 }
 
-
+/**
+  * Pattern unification taken from Nipkow: Functional Unification of HO Pattern
+  * and slightly adopted.
+  * The unify methods only return an mgu if the argument are HO patterns,
+  * else the unifiers will be any arbitrary unifier (if existent).
+  */
 object PatternUnification extends Unification {
   final val name = "uni_pattern"
-  import HuetsPreUnification.{tyDetExhaust, detExhaust}
+  import HuetsPreUnification.{tyDetExhaust, collectLambdas}
 
     /////////////////////////////////////
   // Unifier search starts with these methods
@@ -697,10 +702,158 @@ object PatternUnification extends Unification {
     }
   }
 
-
-  private final def unify0(ueqs: Seq[UEq], initialTySubst: TypeSubst, vargen: FreshVarGen): Option[UnificationResult] = {
-    ???
+  /** Wrap up the unification result with the initial type substition and return as Option. */
+  private final def unify0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[UnificationResult] = {
+    val unifier = unify1(ueqs, vargen, Subst.id, Subst.id)
+    if (unifier.isDefined)
+      Some((unifier.get._1.normalize, initialTypeSubst.comp(unifier.get._2).normalize), Seq())
+    else
+      None
   }
+
+  type PartialUniResult = (TermSubst, TypeSubst)
+
+  /** Main unification method: Solve head equations subsequently by applying the according rules. */
+  @tailrec
+  private final def unify1(ueqs: Seq[UEq], vargen: FreshVarGen, partialUnifier: TermSubst, partialTyUnifier: TypeSubst): Option[PartialUniResult] = {
+    import leo.datastructures.Term.{TermApp, Symbol, Bound}
+    if (ueqs.isEmpty)
+      Some((partialUnifier, partialTyUnifier))
+    else {
+      val (l0,r0) = ueqs.head
+      val l = l0.substitute(partialUnifier, partialTyUnifier)
+      val r = r0.substitute(partialUnifier, partialTyUnifier)
+
+      // take off the lambdas
+      val (leftBody, leftAbstractions) = collectLambdas(l)
+      val (rightBody, rightAbstractions) = collectLambdas(r)
+      assert(leftAbstractions == rightAbstractions)
+      val abstractionCount = leftAbstractions.size
+
+      (leftBody, rightBody) match {
+        case (TermApp(hd1,args1), TermApp(hd2, args2)) => (hd1, hd2) match {
+          case (Bound(ty1, idx1), Bound(ty2, idx2))
+            if idx1 > abstractionCount && idx2 > abstractionCount => /* flex-flex */
+            val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen)
+            unify1(ueqs.tail, vargen, partialUnifier.comp(partialUniResult._1), partialTyUnifier.comp(partialUniResult._2))
+          case (Bound(_, idx1), _) if idx1 > abstractionCount => /* flex-rigid */
+            val partialUniResult = flexrigid(idx1-abstractionCount, args1, rightBody, vargen)
+            if (partialUniResult == null) None
+            else unify1(ueqs.tail, vargen, partialUnifier.comp(partialUniResult._1), partialTyUnifier.comp(partialUniResult._2))
+          case (_, Bound(_, idx2)) if idx2 > abstractionCount=> /* rigid-flex */
+            val partialUniResult = flexrigid(idx2-abstractionCount, args2, leftBody, vargen)
+            if (partialUniResult == null) None
+            else unify1(ueqs.tail, vargen, partialUnifier.comp(partialUniResult._1), partialTyUnifier.comp(partialUniResult._2))
+          case _ => /* rigid-rigid */
+            if (hd1 == hd2) {
+              val newUeqs = args1.zip(args2) // FIXME: Abstractions
+              unify1(newUeqs ++ ueqs, vargen, partialUnifier, partialTyUnifier)
+            } else None
+
+        }
+        case _ => assert(false); None
+      }
+    }
+  }
+
+  /** unification of flex-flex equation. Never fails. */
+  private final def flexflex(idx1: Int, ty1: Type, args1: Seq[Term], idx2: Int, ty2: Type, args2: Seq[Term], vargen: FreshVarGen): PartialUniResult = {
+    import leo.datastructures.Term.{λ, mkTermApp, mkBound}
+    import leo.datastructures.Type.mkFunType
+    if (idx1 == idx2) {
+      // flexflex1
+      if (args1 == args2) {
+        (Subst.id, Subst.id)
+      } else {
+        assert(args1.map(_.ty) == args2.map(_.ty))
+        assert(ty1 == ty2)
+        assert(args1.size == args2.size)
+        // Collect all types of argument in order to reconstruct type of fresh
+        // free variable H:
+        // tys are the types of the actraction
+        val tys = args1.map(_.ty)
+        // posArgs are those are which are applied to H (argument that match)
+        val posArgs = pos(args1, args2)
+        // H has type posArgs1 -> posArgs2 -> .... -> ty1
+        val freshVar = vargen.next(mkFunType(posArgs.map(_.ty), ty1))
+        // lift fresh var to respect lambda abstractions built around below
+        val liftedFreshVar = mkBound(freshVar._2, freshVar._1+tys.size)
+        // binding is idx1 -> lamdas(H(posArgs))
+        val binding = λ(tys)(mkTermApp(liftedFreshVar, posArgs))
+        (Subst.singleton(idx1, binding), Subst.id)
+      }
+    } else {
+      // flexflex2
+      if (subset(args1, args2)) {
+        val tys = args2.map(_.ty)
+        val liftedVar = mkBound(ty1, idx1+tys.size)
+        // binding is idx2 -> lamdas(idx1(args1))
+        val binding = λ(tys)(mkTermApp(liftedVar, args1))
+        (Subst.singleton(idx2, binding), Subst.id)
+      } else if (subset(args2, args1)) {
+        val tys = args1.map(_.ty)
+        val liftedVar = mkBound(ty2, idx2+tys.size)
+        // binding is idx1 -> lamdas(idx2(args2))
+        val binding = λ(tys)(mkTermApp(liftedVar, args2))
+        (Subst.singleton(idx1, binding), Subst.id)
+      } else {
+        assert(ty1 == ty2)
+        val sameArgs = args1.intersect(args2)
+        val tys1 = args1.map(_.ty)
+        val tys2 = args2.map(_.ty)
+        // H has type sameArgs1 -> sameArgs2 -> .... -> ty1
+        val freshVar = vargen.next(mkFunType(sameArgs.map(_.ty), ty1))
+        // lift fresh var to respect lambda abstractions built around below
+        val liftedFreshVar1 = mkBound(freshVar._2, freshVar._1+tys1.size)
+        val liftedFreshVar2 = mkBound(freshVar._2, freshVar._1+tys2.size)
+        // binding1 is idx1 -> lamdas(H(sameArgs))
+        val binding1 = λ(tys1)(mkTermApp(liftedFreshVar1, args2))
+        // binding2 is idx2 -> lamdas'(H(sameArgs))
+        val binding2 = λ(tys2)(mkTermApp(liftedFreshVar2, args2))
+        (Subst.fromMap(Map(idx1 -> binding1, idx2 -> binding2)), Subst.id)
+      }
+    }
+  }
+  /** Return argument positions that have matching arguments. */
+  private final def pos(args1: Seq[Term], args2: Seq[Term]): Seq[Term] = {
+    import leo.datastructures.Term.mkBound
+    if (args1.isEmpty) {
+      assert(args2.isEmpty)
+      Nil
+    } else {
+      val hd1 = args1.head
+      val hd2 = args2.head
+      assert(hd1.ty == hd2.ty)
+      if (hd1 == hd2) {
+        mkBound(hd1.ty, args1.size) +: pos(args1.tail, args2.tail)
+      } else pos(args1.tail, args2.tail)
+    }
+  }
+  @tailrec
+  private final def subset[A](xs: Seq[A], ys: Seq[A]): Boolean = {
+    if (xs.isEmpty) true
+    else {
+      val hd = xs.head
+      if (ys.contains(hd)) {
+        subset(xs.tail, ys)
+      } else false
+    }
+  }
+
+  /** Flex-rigid rule: May fail, return null of not sucessful. */
+  private final def flexrigid(idx1: Int, args1: Seq[Term], rigid: Term, vargen: FreshVarGen): PartialUniResult = {
+    if (rigid.looseBounds.contains(idx1)) null
+    else {
+      import leo.datastructures.Term.{λ, mkTermApp, mkBound}
+      import leo.datastructures.Type.mkFunType
+
+      val tys = args1.map(_.ty)
+      val binding = λ(tys)(rigid)
+      val subst = Subst.singleton(idx1, binding)
+      ???
+    }
+  }
+
 
   ///////////////////////////////////////
   // Pattern predicate
