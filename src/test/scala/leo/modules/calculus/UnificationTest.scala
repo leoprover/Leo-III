@@ -229,5 +229,26 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     assert(!PatternUnification.isPattern(t))
   }
 
+  test("unify λx y.F(x) = λx y.c(G(y,x))", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i)
+    val G = vargen(i ->: i ->: i)
+    val c = mkAtom(s.addUninterpreted("c",i ->: i))
+
+    val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 2)))
+    val r = λ(i,i)(mkTermApp(c, mkTermApp(G.lift(2), Seq(mkBound(i, 1),mkBound(i, 2)))))
+
+    println(s"${l.pretty(s)} = ${r.pretty(s)} (Well-typed: ${Term.wellTyped(l)}/${Term.wellTyped(r)})")
+    assert(PatternUnification.isPattern(l))
+    assert(PatternUnification.isPattern(r))
+    val res = PatternUnification.unify(vargen, l,r)
+    println(res.toString)
+    assert(res.nonEmpty)
+    val unifier = res.head
+    println(s"Unifier: ${unifier._1._1.pretty}")
+  }
+
 
 }
