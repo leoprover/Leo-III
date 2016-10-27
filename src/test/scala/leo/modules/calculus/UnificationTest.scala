@@ -166,7 +166,8 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
-    val F = mkBound(i ->: i, 10)
+    val (f_num, f_t) = vargen.next(i ->: i)
+    val F = mkBound(f_t, f_num)
 
     println(F.pretty + " " + Term.wellTyped(F))
     assert(PatternUnification.isPattern(F))
@@ -176,8 +177,8 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
-    val F = mkBound(i ->: i, 10)
-    val t = \(i)(mkTermApp(F,\(i)(mkTermApp(mkBound(i ->: i,2), mkBound(i,1)))))
+    val (f_num, f_t) = vargen.next(i ->: i)
+    val t = \(i)(mkTermApp(mkBound(f_t, f_num + 1),\(i)(mkTermApp(mkBound(i ->: i,2), mkBound(i,1)))))
 
     println(t.pretty + " " + Term.wellTyped(t))
     assert(PatternUnification.isPattern(t))
@@ -188,8 +189,8 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
-    val F = mkBound(i ->: i ->: i, 10)
-    val t = \(i)(\(i)(mkTermApp(F, Seq(mkBound(i,2), mkBound(i,1)))))
+    val (f_num, f_t) = vargen.next(i ->: i ->: i)
+    val t = \(i)(\(i)(mkTermApp(mkBound(f_t, f_num + 2), Seq(mkBound(i,2), mkBound(i,1)))))
 
     println(t.pretty + " " + Term.wellTyped(t))
     assert(PatternUnification.isPattern(t))
@@ -199,9 +200,9 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
-    val F = mkBound(i ->: i, 10)
+    val (f_num, f_t) = vargen.next(i ->: i)
     val c = mkAtom(s.addUninterpreted("c", i))
-    val t = mkTermApp(F, c)
+    val t = mkTermApp(mkBound(f_t, f_num), c)
 
     println(t.pretty + " " + Term.wellTyped(t))
     assert(!PatternUnification.isPattern(t))
@@ -211,8 +212,9 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
-    val F = mkBound(i ->: i ->: i, 10)
-    val t = \(i)(mkTermApp(F, Seq(mkBound(i,1), mkBound(i,1))))
+    val (f_num, f_t) = vargen.next(i ->: i ->: i)
+    val t = \(i)(mkTermApp(mkBound(f_t, f_num+1),
+      Seq(mkBound(i,1), mkBound(i,1))))
 
     println(t.pretty + " " + Term.wellTyped(t))
     assert(!PatternUnification.isPattern(t))
@@ -222,8 +224,8 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
-    val F = mkBound(i ->: i, 10)
-    val t = \(i)(mkTermApp(F, mkTermApp(F, mkBound(i,1))))
+    val (f_num, f_t) = vargen.next(i ->: i)
+    val t = \(i)(mkTermApp(mkBound(f_t, f_num+1), mkTermApp(mkBound(f_t, f_num+1), mkBound(i,1))))
 
     println(t.pretty + " " + Term.wellTyped(t))
     assert(!PatternUnification.isPattern(t))
