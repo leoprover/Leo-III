@@ -247,6 +247,12 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     println(res.toString)
     assert(res.nonEmpty)
     val unifier = res.head
+    val lsubst = l.substitute(unifier._1._1, unifier._1._2)
+    val rsubst = r.substitute(unifier._1._1, unifier._1._2)
+    println(s"lsubst = ${(lsubst).pretty(s)}")
+    println(s"rsubst = ${rsubst.pretty(s)}")
+    println(s"welltyped lsubst = ${Term.wellTyped(lsubst)}")
+    println(s"welltyped rsubst = ${Term.wellTyped(rsubst)}")
     println(s"Unifier: ${unifier._1._1.pretty}")
   }
 
