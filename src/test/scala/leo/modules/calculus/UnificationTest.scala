@@ -255,6 +255,7 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     println(s"rsubst = ${rsubst.pretty(s)}")
     println(s"welltyped lsubst = ${Term.wellTyped(lsubst)}")
     println(s"welltyped rsubst = ${Term.wellTyped(rsubst)}")
+    assert(lsubst == rsubst)
     println(s"Unifier: ${unifier._1._1.pretty}")
   }
 
