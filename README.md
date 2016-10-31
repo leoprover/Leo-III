@@ -48,8 +48,11 @@ are used to compile PicoSAT and should therefor be present too.
 First download PicoSAT version 965 from the
 [PicoSAT homepage](http://fmv.jku.at/picosat/) and
 extract the archive into `./src/native/` creating a folder
-`./src/native/picosat-965`.
+`./src/native/picosat-965`. The following commands do this autmatically:
 
+    > wget http://fmv.jku.at/picosat/picosat-965.tar.gz
+    > tar -xf picosat-965.tar.gz -C src/native
+    
 To build Leo-III run:
 
     > sbt compile
