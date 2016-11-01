@@ -59,9 +59,9 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     if(actRound > maxRound && maxRound > 0) {
       sb.append("-----------------------------------------------------\n")
       sb.append("Finished Rounds\n")
-      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty).mkString("\n  ")}\n")
-      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty).mkString("\n  ")}\n")
-      sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}\n")
+      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty(sig)).mkString("\n  ")}\n")
+      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty(sig)).mkString("\n  ")}\n")
+      sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty(sig)).mkString("\n  ")}\n")
       sb.append("-----------------------------------------------------\n")
       leo.Out.debug(sb.toString())
       terminatedFlag = true
@@ -69,13 +69,13 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     }
     sb.append(s" --------------- Round: ${actRound}-------------------\n")
     actRound += 1
-    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty).mkString("\n  ")}\n")
-    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty).mkString("\n  ")}\n")
-    sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty).mkString("\n  ")}\n")
+    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty(sig)).mkString("\n  ")}\n")
     if(!state.hasNextUnprocessed) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
     movedToProcessed.add(select.id)
-    sb.append(s"Select next Unprocessed:\n  >  ${select.pretty}\n")
+    sb.append(s"Select next Unprocessed:\n  >  ${select.pretty(sig)}\n")
     sb.append("-----------------------------------------------------\n\n")
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
     leo.Out.debug(sb.toString())

@@ -53,7 +53,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
         newCl = Control.rewriteSimp(newCl, rewrite)(sig)
 
         if (!Clause.trivial(newCl.cl)) {
-          sb.append(s"Unified Clause:\n>>   ${ac.pretty}\n>> to\n++> simp  ${newCl.pretty}")
+          sb.append(s"Unified Clause:\n>>   ${ac.pretty(sig)}\n>> to\n++> simp  ${newCl.pretty(sig)}")
           result.insert(UnprocessedClause)(newCl)
         }
       }
@@ -68,7 +68,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
     override lazy val bid: Double = 0.1
     override val getAgent: Agent = a
 
-    override val pretty: String = s"delayedUnification(${ac.pretty})"
+    override val pretty: String = s"delayedUnification(${ac.pretty(sig)})"
   }
 }
 

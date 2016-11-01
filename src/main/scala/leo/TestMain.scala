@@ -134,7 +134,7 @@ object TestMain {
       leo.Out.finest(s"Filter Time : ${timeForFilter}ms")
 
       leo.Out.debug("Used :")
-      leo.Out.debug(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
+      leo.Out.debug(FormulaDataStore.getFormulas.map(_.pretty(sig)).mkString("\n"))
       leo.Out.debug("Unused : ")
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
@@ -157,14 +157,6 @@ object TestMain {
           unexpectedEnd(System.currentTimeMillis() - startTime)
           return
       }
-//
-//      printPhase(searchPhase)
-//      if (!searchPhase.execute()) {
-//        Scheduler().killAll()
-//        TimeOutProcess.kill()
-//        unexpectedEnd(System.currentTimeMillis() - startTime)
-//        return
-//      }
 
       TimeOutProcess.kill()
       val endTime = System.currentTimeMillis()
