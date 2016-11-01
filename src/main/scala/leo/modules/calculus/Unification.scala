@@ -820,20 +820,41 @@ object PatternUnification extends Unification {
     } else {
       // flexflex2: Flexhead are the different
       if (subset(args1, args2)) { // subset optimizations from paper
+        leo.Out.output(s"flexflex2: subset1")
         val tys = args2.map(_.ty)
         val liftedVar = mkBound(ty1, idx1+tys.size)
-        // binding is idx2 -> lamdas(idx1(args1))
-        val binding = λ(tys)(mkTermApp(liftedVar, args1)) //FIXME Ordering of bound vars wrong
+
+        val argIdx = args1.zipWithIndex.toMap
+        val argCount = argIdx.size
+        val newArgs = args1.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
+        // binding is idx2 -> lamdas(idx1(args1'))
+        val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
+        leo.Out.output(s"flexflex2: subst: ${Subst.singleton(idx2, binding).pretty}")
         (Subst.singleton(idx2, binding), Subst.id)
       } else if (subset(args2, args1)) { // ditto
+        leo.Out.output(s"flexflex2: subset2")
         val tys = args1.map(_.ty)
         val liftedVar = mkBound(ty2, idx2+tys.size)
+
+        val argIdx = args2.zipWithIndex.toMap
+        val argCount = argIdx.size
+        val newArgs = args2.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
         // binding is idx1 -> lamdas(idx2(args2))
-        val binding = λ(tys)(mkTermApp(liftedVar, args2)) //FIXME Ordering of bound vars wrong
+        val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
+        leo.Out.output(s"flexflex2: subst: ${Subst.singleton(idx1, binding).pretty}")
         (Subst.singleton(idx1, binding), Subst.id)
       } else { // two bindings
         assert(ty1 == ty2)
+        leo.Out.output(s"flexflex2: no subset")
         val sameArgs = args1.intersect(args2)
+
+        val arg1Idx = args1.zipWithIndex.toMap
+        val arg1Count = arg1Idx.size
+        val arg2Idx = args2.zipWithIndex.toMap
+        val arg2Count = arg2Idx.size
+        val newArgs1 = sameArgs.map(t => Term.mkBound(t.ty, arg1Count - arg1Idx(t)))
+        val newArgs2 = sameArgs.map(t => Term.mkBound(t.ty, arg2Count - arg2Idx(t)))
+
         val tys1 = args1.map(_.ty)
         val tys2 = args2.map(_.ty)
         // H has type sameArgs1 -> sameArgs2 -> .... -> ty1
@@ -841,14 +862,15 @@ object PatternUnification extends Unification {
         // lift fresh var to respect lambda abstractions built around below
         val liftedFreshVar1 = mkBound(freshVar._2, freshVar._1+tys1.size)
         val liftedFreshVar2 = mkBound(freshVar._2, freshVar._1+tys2.size)
-        // binding1 is idx1 -> lamdas(H(sameArgs))//FIXME Ordering of bound vars wrong
-        val binding1 = λ(tys1)(mkTermApp(liftedFreshVar1, args2))
+        // binding1 is idx1 -> lamdas(H(sameArgs))
+        val binding1 = λ(tys1)(mkTermApp(liftedFreshVar1, newArgs1))
         // binding2 is idx2 -> lamdas'(H(sameArgs))
-        val binding2 = λ(tys2)(mkTermApp(liftedFreshVar2, args2))
+        val binding2 = λ(tys2)(mkTermApp(liftedFreshVar2, newArgs2))
         (Subst.fromMap(Map(idx1 -> binding1, idx2 -> binding2)), Subst.id)
       }
     }
   }
+
   /** Return argument positions that have matching arguments. */
   private final def pos(args1: Seq[Term], args2: Seq[Term]): Seq[Term] = {
     import leo.datastructures.Term.mkBound
@@ -875,7 +897,7 @@ object PatternUnification extends Unification {
     }
   }
 
-  /** Flex-rigid rule: May fail, returns null of not sucessful. */
+  /** Flex-rigid rule: May fail, returns null of not sucessful. *///FIXME Ordering of bound vars wrong
   private final def flexrigid(idx1: Int, ty1: Type, args1: Seq[Term], rigidHd: Term, rigidArgs: Seq[Term], rigidAsTerm: Term, vargen: FreshVarGen, depth: Seq[Type]): (PartialUniResult, Seq[UEq]) = {
     import leo.datastructures.Term.{λ, mkTermApp, mkBound}
     import leo.datastructures.Type.mkFunType
@@ -890,10 +912,14 @@ object PatternUnification extends Unification {
       val binding = partialBinding(vargen, ty1, rigidHd)
       val varsAfter = vargen.existingVars
       val subst = Subst.singleton(idx1, binding)
+      leo.Out.output(s"flexrigid subst: ${subst.pretty}")
       // new equations:
       val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
+      leo.Out.output(s"flexrigid newVars: ${newVars.map(_.toString()).mkString(",")}")
       assert(newVars.size == rigidArgs.size)
-      ((subst, Subst.id), newUEqs(newVars, args1, rigidArgs, depth))
+      val newueqs = newUEqs(newVars, args1, rigidArgs, depth)
+      leo.Out.output(s"new ueqs: ${newueqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString(",")}")
+      ((subst, Subst.id), newueqs)
 //    }
   }
   private final def newVarsFromGenerator(oldVars: Seq[(Int, Type)], newVars: Seq[(Int, Type)]): Seq[(Int, Type)] = {
