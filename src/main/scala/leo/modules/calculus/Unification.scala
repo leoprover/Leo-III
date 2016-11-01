@@ -820,7 +820,6 @@ object PatternUnification extends Unification {
     } else {
       // flexflex2: Flexhead are the different
       if (subset(args1, args2)) { // subset optimizations from paper
-        leo.Out.output(s"flexflex2: subset1")
         val tys = args2.map(_.ty)
         val liftedVar = mkBound(ty1, idx1+tys.size)
 
@@ -829,10 +828,8 @@ object PatternUnification extends Unification {
         val newArgs = args1.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
         // binding is idx2 -> lamdas(idx1(args1'))
         val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
-        leo.Out.output(s"flexflex2: subst: ${Subst.singleton(idx2, binding).pretty}")
         (Subst.singleton(idx2, binding), Subst.id)
       } else if (subset(args2, args1)) { // ditto
-        leo.Out.output(s"flexflex2: subset2")
         val tys = args1.map(_.ty)
         val liftedVar = mkBound(ty2, idx2+tys.size)
 
@@ -841,11 +838,9 @@ object PatternUnification extends Unification {
         val newArgs = args2.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
         // binding is idx1 -> lamdas(idx2(args2))
         val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
-        leo.Out.output(s"flexflex2: subst: ${Subst.singleton(idx1, binding).pretty}")
         (Subst.singleton(idx1, binding), Subst.id)
       } else { // two bindings
         assert(ty1 == ty2)
-        leo.Out.output(s"flexflex2: no subset")
         val sameArgs = args1.intersect(args2)
 
         val arg1Idx = args1.zipWithIndex.toMap
@@ -897,7 +892,7 @@ object PatternUnification extends Unification {
     }
   }
 
-  /** Flex-rigid rule: May fail, returns null of not sucessful. *///FIXME Ordering of bound vars wrong
+  /** Flex-rigid rule: May fail, returns null of not sucessful. *///TODO Ordering of bound vars wrong ?
   private final def flexrigid(idx1: Int, ty1: Type, args1: Seq[Term], rigidHd: Term, rigidArgs: Seq[Term], rigidAsTerm: Term, vargen: FreshVarGen, depth: Seq[Type]): (PartialUniResult, Seq[UEq]) = {
     import leo.datastructures.Term.{λ, mkTermApp, mkBound}
     import leo.datastructures.Type.mkFunType
@@ -912,13 +907,10 @@ object PatternUnification extends Unification {
       val binding = partialBinding(vargen, ty1, rigidHd)
       val varsAfter = vargen.existingVars
       val subst = Subst.singleton(idx1, binding)
-      leo.Out.output(s"flexrigid subst: ${subst.pretty}")
       // new equations:
       val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
-      leo.Out.output(s"flexrigid newVars: ${newVars.map(_.toString()).mkString(",")}")
       assert(newVars.size == rigidArgs.size)
       val newueqs = newUEqs(newVars, args1, rigidArgs, depth)
-      leo.Out.output(s"new ueqs: ${newueqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString(",")}")
       ((subst, Subst.id), newueqs)
 //    }
   }

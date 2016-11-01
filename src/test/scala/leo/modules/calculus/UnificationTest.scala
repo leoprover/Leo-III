@@ -246,19 +246,45 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     assert(PatternUnification.isPattern(l))
     assert(PatternUnification.isPattern(r))
     val res = PatternUnification.unify(vargen, l,r)
-    println(res.toString)
-    assert(res.nonEmpty)
+    assert(res.nonEmpty, "No unifier found although it should be unifiable")
     val unifier = res.head
     val lsubst = l.substitute(unifier._1._1, unifier._1._2)
     val rsubst = r.substitute(unifier._1._1, unifier._1._2)
-    println(s"lsubst = ${(lsubst).pretty(s)}")
-    println(s"rsubst = ${rsubst.pretty(s)}")
-    println(s"welltyped lsubst = ${Term.wellTyped(lsubst)}")
-    println(s"welltyped rsubst = ${Term.wellTyped(rsubst)}")
-    println(s"Unifier: ${unifier._1._1.pretty}")
-    assert(lsubst == rsubst)
+    assert(Term.wellTyped(lsubst), "Left result not well typed")
+    assert(Term.wellTyped(rsubst), "Right result not well typed")
+    assert(lsubst == rsubst, "Substitution is no unifier")
 
+    println(s"Unifier: ${unifier._1._1.pretty}")
   }
 
+
+  test("unify λx y.F(y) = λx y.c(G(y,x))", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i)
+    val G = vargen(i ->: i ->: i)
+    val c = mkAtom(s.addUninterpreted("c",i ->: i))
+
+    val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 1)))
+    val r = λ(i,i)(mkTermApp(c, mkTermApp(G.lift(2), Seq(mkBound(i, 1),mkBound(i, 2)))))
+
+    println(s"${l.pretty(s)} = ${r.pretty(s)} (Well-typed: ${Term.wellTyped(l)}/${Term.wellTyped(r)})")
+    assert(PatternUnification.isPattern(l))
+    assert(PatternUnification.isPattern(r))
+    val res = PatternUnification.unify(vargen, l,r)
+    assert(res.nonEmpty, "No unifier found although it should be unifiable")
+    val unifier = res.head
+    val lsubst = l.substitute(unifier._1._1, unifier._1._2)
+    val rsubst = r.substitute(unifier._1._1, unifier._1._2)
+    println(lsubst.pretty(s))
+    println(rsubst.pretty(s))
+    println(s"Unifier: ${unifier._1._1.pretty}")
+    assert(Term.wellTyped(lsubst), "Left result not well typed")
+    assert(Term.wellTyped(rsubst), "Right result not well typed")
+    assert(lsubst == rsubst, "Substitution is no unifier")
+
+    println(s"Unifier: ${unifier._1._1.pretty}")
+  }
 
 }
