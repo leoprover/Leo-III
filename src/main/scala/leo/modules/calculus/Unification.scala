@@ -754,7 +754,7 @@ object PatternUnification extends Unification {
             /* rigid-flex */
             if (l.looseBounds.contains(idx2 - abstractionCount)) None
             else {
-              val result = flexrigid(idx2 - abstractionCount, ty2, args2, hd2, args2, rightBody, vargen, leftAbstractions)
+              val result = flexrigid(idx2 - abstractionCount, ty2, args2, hd1, args1, leftBody, vargen, leftAbstractions)
               if (result == null) None
               else {
                 val partialUniResult = result._1
