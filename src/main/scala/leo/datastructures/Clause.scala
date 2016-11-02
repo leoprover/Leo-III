@@ -1,8 +1,5 @@
 package leo.datastructures
 
-import leo.Configuration
-import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
-
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
  * The `id` of a clause is unique and is monotonously increasing.
@@ -49,7 +46,6 @@ trait Clause extends Pretty with Prettier {
 
 object Clause {
   import impl.{VectorClause => ClauseImpl}
-  import Literal.{LitMax, LitStrictlyMax}
 
   /** Create a unit clause containing only literal `lit` with origin `Derived`. */
   def apply(lit: Literal): Clause = mkUnit(lit)

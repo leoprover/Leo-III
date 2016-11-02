@@ -96,6 +96,8 @@ trait Term extends Pretty with Prettier {
   def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
+  /** Apply a shifting substitution by `by`, i.e. return this.substitute(Subst.shift(by)).betanormalize*/
+  def lift(by: Int): Term = substitute(Subst.shift(by)).betaNormalize
 
   /** Explicitly create a closure, i.e. a postponed (simultaneous) substitution (of types and terms) */
   def closure(termSubst: Subst, typeSubst: Subst): Term
