@@ -410,7 +410,7 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
-//    newclauses = Control.simpSet(newclauses)
+//    newclauses = Control.shallowSimpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
 
@@ -434,9 +434,7 @@ object SeqPProc extends Function1[Long, Unit]{
     while (newIt.hasNext) {
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
-      // Simplify again, including rewriting etc.
-      newCl = Control.rewriteSimp(newCl, state.rewriteRules)
-
+      newCl = Control.simp(newCl)
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
       } else {

@@ -414,18 +414,14 @@ object Simp extends CalculusRule {
   val name = "simp"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(lit: Literal): Literal = if (lit.equational) { // TODO: Orient?
-    PolaritySwitch(eqSimp(Literal(Simplification.normalize(lit.left), Simplification.normalize(lit.right), lit.polarity)))
-  } else {
-    PolaritySwitch(Literal(Simplification.normalize(lit.left), lit.polarity))
-  }
+  def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
-  def apply(lits: Seq[Literal]): Seq[Literal] = {
+  final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Seq()
     val litIt = lits.iterator
     while (litIt.hasNext) {
-      val lit = apply(litIt.next())
+      val lit = apply(litIt.next())(sig)
       //      val lit = litIt.next()
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
@@ -452,18 +448,18 @@ object Simp extends CalculusRule {
     newLits
   }
 
-  def apply(cl: Clause): Clause  = Clause(apply(cl.lits))
+  final def apply(cl: Clause)(implicit sig: Signature): Clause  = Clause(apply(cl.lits)(sig))
 
-  def shallowSimp(cl: Clause): Clause = {
-    Clause(shallowSimp0(cl))
+  final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
+    Clause(shallowSimp0(cl)(sig))
   }
 
-  def shallowSimp0(cl: Clause): Seq[Literal] = {
+  private final def shallowSimp0(cl: Clause)(sig: Signature): Seq[Literal] = {
     var newLits: Seq[Literal] = Seq()
     val litIt = cl.lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
-      val normLit = eqSimp(lit)
+      val normLit = eqSimp(lit)(sig)
       if (!Literal.isFalse(normLit)) {
         if (!newLits.contains(normLit)) {
           newLits = newLits :+ normLit
@@ -473,11 +469,15 @@ object Simp extends CalculusRule {
     newLits
   }
 
-  def eqSimp(l: Literal): Literal = {
-    if (!l.equational) l
-    else (l.left, l.right) match {
-      case (a,b) if a == b => Literal(LitTrue(), l.polarity)
-      case (a,b) => l
+  def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
+    if (!l.equational) Literal(Simplification.normalize(l.left), l.polarity)
+    else {
+      val normLeft = Simplification.normalize(l.left)
+      val normRight = Simplification.normalize(l.right)
+      (normLeft, normRight) match {
+        case (a,b) if a == b => Literal(LitTrue(), l.polarity)
+        case (a,b) => Literal.mkOrdered(normLeft, normRight, l.polarity)
+      }
     }
   }
 

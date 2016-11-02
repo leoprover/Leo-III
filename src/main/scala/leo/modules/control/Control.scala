@@ -27,9 +27,10 @@ object Control {
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
   @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)(sig)
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
-  @inline final def simp(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)
-  @inline final def simpSet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)
-  @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)
+  @inline final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(sig)
+  @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(sig)
+  @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
+  @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
@@ -643,7 +644,7 @@ package inferenceControl {
         cl
     }
 
-    final def simp(cl: AnnotatedClause): AnnotatedClause = {
+    final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"Simp on ${cl.id}")
       val simpresult = Simp(cl.cl)
       val result = if (simpresult != cl.cl)
@@ -653,9 +654,21 @@ package inferenceControl {
       Out.finest(s"Simp result: ${result.pretty}")
       result
     }
-    final def simpSet(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
+    final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(simp)
 
-    final def rewriteSimp(cw: AnnotatedClause, rules: Set[AnnotatedClause]): AnnotatedClause = {
+    final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
+      Out.trace(s"Shallow Simp on ${cl.id}")
+      val simpresult = Simp.shallowSimp(cl.cl)
+      val result = if (simpresult != cl.cl)
+        AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+      else
+        cl
+      Out.finest(s"Shallow Simp result: ${result.pretty}")
+      result
+    }
+    final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
+
+    final def rewriteSimp(cw: AnnotatedClause, rules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"Rewrite simp on ${cw.id}")
       val sim = simp(cw)
       val rewriteSimp = sim.cl //RewriteSimp.apply(rules.map(_.cl), sim.cl)

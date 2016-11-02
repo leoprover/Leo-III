@@ -234,7 +234,7 @@ object OrderedEqFac extends CalculusRule {
     val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
 
     val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
-    val newlitsSimp = Simp(newlits)
+    val newlitsSimp = Simp(newlits)(sig)
 
     Clause(newlitsSimp)
   }
