@@ -841,10 +841,7 @@ object PatternUnification extends Unification {
         val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
         (Subst.singleton(idx1, binding), Subst.id)
       } else { // two bindings
-        leo.Out.output(s"flexflex: non common")
-//        assert(ty1 == ty2)
         val sameArgs = args1.intersect(args2)
-        leo.Out.output(s"sameArgs: ${sameArgs.map(_.pretty).mkString(",")}")
 
         val arg1Idx = args1.zipWithIndex.toMap
         val arg1Count = arg1Idx.size

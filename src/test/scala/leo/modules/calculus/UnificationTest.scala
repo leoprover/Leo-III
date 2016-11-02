@@ -243,8 +243,11 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     val res = PatternUnification.unify(vargen, l,r)
     assert(res.nonEmpty, "No unifier found although it should be unifiable")
     val unifier = res.head
+    println(s"unifier: ${unifier._1._1.pretty}")
     val lsubst = l.substitute(unifier._1._1, unifier._1._2)
     val rsubst = r.substitute(unifier._1._1, unifier._1._2)
+    println(s"lsubst: ${lsubst.pretty(s)}")
+    println(s"rsubst: ${rsubst.pretty(s)}")
     assert(Term.wellTyped(lsubst), "Left result not well typed")
     assert(Term.wellTyped(rsubst), "Right result not well typed")
     assert(lsubst == rsubst, "Substitution is no unifier")
@@ -304,7 +307,7 @@ class PatternUnificationTestSuite extends LeoTestSuite {
 
     checkUnifier(l,r,s,vargen)
   }
-  test("unify λx y z.F(y z x) = λx y.F(x z y)", Checked) {
+  test("unify λx y z.F(y z x) = λx y z.F(x z y)", Checked) {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
 
@@ -312,6 +315,22 @@ class PatternUnificationTestSuite extends LeoTestSuite {
 
     val l = λ(i,i,i)(mkTermApp(F.lift(3), Seq(mkBound(i, 2), mkBound(i, 1), mkBound(i, 3))))
     val r = λ(i,i,i)(mkTermApp(F.lift(3), Seq(mkBound(i, 3), mkBound(i, 1), mkBound(i, 2))))
+
+    checkUnifier(l,r,s,vargen)
+  }
+
+  test("unify λx y z.c(F(y z x)), G(x)) = λx y z.H(x z y)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i ->: i ->: i)
+    val G = vargen(i ->: i)
+    val H = vargen(i ->: i ->: i ->: i)
+    val c = mkAtom(s.addUninterpreted("c",i ->: i ->: i))
+
+
+    val l = λ(i,i,i)(mkTermApp(c, Seq(mkTermApp(F.lift(3), Seq(mkBound(i, 2), mkBound(i, 1), mkBound(i, 3))), mkTermApp(G.lift(3), mkBound(i, 3)))))
+    val r = λ(i,i,i)(mkTermApp(H.lift(3), Seq(mkBound(i, 3), mkBound(i, 1), mkBound(i, 2))))
 
     checkUnifier(l,r,s,vargen)
   }
