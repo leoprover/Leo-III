@@ -231,6 +231,25 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     assert(!PatternUnification.isPattern(t))
   }
 
+
+  /////////////////////
+  // Pattern unifier checks
+  /////////////////////
+  final private def checkUnifier(l: Term, r: Term, s: Signature, vargen: FreshVarGen): Unit = {
+    assert(Term.wellTyped(l), "Left not well typed")
+    assert(Term.wellTyped(r), "Right not well typed")
+    assert(PatternUnification.isPattern(l), "Left is not a pattern")
+    assert(PatternUnification.isPattern(r), "Right is not a pattern")
+    val res = PatternUnification.unify(vargen, l,r)
+    assert(res.nonEmpty, "No unifier found although it should be unifiable")
+    val unifier = res.head
+    val lsubst = l.substitute(unifier._1._1, unifier._1._2)
+    val rsubst = r.substitute(unifier._1._1, unifier._1._2)
+    assert(Term.wellTyped(lsubst), "Left result not well typed")
+    assert(Term.wellTyped(rsubst), "Right result not well typed")
+    assert(lsubst == rsubst, "Substitution is no unifier")
+  }
+
   test("unify λx y.F(x) = λx y.c(G(y,x))", Checked) {
     implicit val s  = getFreshSignature
     val vargen = freshVarGenFromBlank
@@ -242,19 +261,7 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 2)))
     val r = λ(i,i)(mkTermApp(c, mkTermApp(G.lift(2), Seq(mkBound(i, 1),mkBound(i, 2)))))
 
-    println(s"${l.pretty(s)} = ${r.pretty(s)} (Well-typed: ${Term.wellTyped(l)}/${Term.wellTyped(r)})")
-    assert(PatternUnification.isPattern(l))
-    assert(PatternUnification.isPattern(r))
-    val res = PatternUnification.unify(vargen, l,r)
-    assert(res.nonEmpty, "No unifier found although it should be unifiable")
-    val unifier = res.head
-    val lsubst = l.substitute(unifier._1._1, unifier._1._2)
-    val rsubst = r.substitute(unifier._1._1, unifier._1._2)
-    assert(Term.wellTyped(lsubst), "Left result not well typed")
-    assert(Term.wellTyped(rsubst), "Right result not well typed")
-    assert(lsubst == rsubst, "Substitution is no unifier")
-
-    println(s"Unifier: ${unifier._1._1.pretty}")
+    checkUnifier(l,r,s,vargen)
   }
 
 
@@ -269,22 +276,44 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 1)))
     val r = λ(i,i)(mkTermApp(c, mkTermApp(G.lift(2), Seq(mkBound(i, 1),mkBound(i, 2)))))
 
-    println(s"${l.pretty(s)} = ${r.pretty(s)} (Well-typed: ${Term.wellTyped(l)}/${Term.wellTyped(r)})")
-    assert(PatternUnification.isPattern(l))
-    assert(PatternUnification.isPattern(r))
-    val res = PatternUnification.unify(vargen, l,r)
-    assert(res.nonEmpty, "No unifier found although it should be unifiable")
-    val unifier = res.head
-    val lsubst = l.substitute(unifier._1._1, unifier._1._2)
-    val rsubst = r.substitute(unifier._1._1, unifier._1._2)
-    println(lsubst.pretty(s))
-    println(rsubst.pretty(s))
-    println(s"Unifier: ${unifier._1._1.pretty}")
-    assert(Term.wellTyped(lsubst), "Left result not well typed")
-    assert(Term.wellTyped(rsubst), "Right result not well typed")
-    assert(lsubst == rsubst, "Substitution is no unifier")
+    checkUnifier(l,r,s,vargen)
+  }
 
-    println(s"Unifier: ${unifier._1._1.pretty}")
+  test("unify λx y.F(y) = λx y.c(G(x))", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i)
+    val G = vargen(i ->: i)
+    val c = mkAtom(s.addUninterpreted("c",i ->: i))
+
+    val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 1)))
+    val r = λ(i,i)(mkTermApp(c, mkTermApp(G.lift(2), Seq(mkBound(i, 2)))))
+
+    checkUnifier(l,r,s,vargen)
+  }
+
+  test("unify λx y.F(y) = λx y.F(x)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i)
+
+    val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 1)))
+    val r = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 2)))
+
+    checkUnifier(l,r,s,vargen)
+  }
+  test("unify λx y z.F(y z x) = λx y.F(x z y)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i ->: i ->: i)
+
+    val l = λ(i,i,i)(mkTermApp(F.lift(3), Seq(mkBound(i, 2), mkBound(i, 1), mkBound(i, 3))))
+    val r = λ(i,i,i)(mkTermApp(F.lift(3), Seq(mkBound(i, 3), mkBound(i, 1), mkBound(i, 2))))
+
+    checkUnifier(l,r,s,vargen)
   }
 
 }

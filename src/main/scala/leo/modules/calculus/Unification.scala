@@ -735,7 +735,8 @@ object PatternUnification extends Unification {
           case (Bound(ty1, idx1), Bound(ty2, idx2))
             if idx1 > abstractionCount && idx2 > abstractionCount =>
             /* flex-flex */
-            val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen)
+            assert(leftBody.ty == rightBody.ty)
+            val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen, leftBody.ty)
             unify1(ueqs.tail, vargen, partialUnifier.comp(partialUniResult._1), partialTyUnifier.comp(partialUniResult._2))
           case (Bound(ty1, idx1), _) if idx1 > abstractionCount =>
             /* flex-rigid */
@@ -792,7 +793,7 @@ object PatternUnification extends Unification {
   }
 
   /** unification of flex-flex equation. Never fails. */
-  private final def flexflex(idx1: Int, ty1: Type, args1: Seq[Term], idx2: Int, ty2: Type, args2: Seq[Term], vargen: FreshVarGen): PartialUniResult = {
+  private final def flexflex(idx1: Int, ty1: Type, args1: Seq[Term], idx2: Int, ty2: Type, args2: Seq[Term], vargen: FreshVarGen, ty: Type): PartialUniResult = {
     import leo.datastructures.Term.{λ, mkTermApp, mkBound}
     import leo.datastructures.Type.mkFunType
     if (idx1 == idx2) {
@@ -809,8 +810,8 @@ object PatternUnification extends Unification {
         val tys = args1.map(_.ty)
         // posArgs are those are which are applied to H (argument that match)
         val posArgs = pos(args1, args2)
-        // H has type posArgs1 -> posArgs2 -> .... -> ty1
-        val freshVar = vargen.next(mkFunType(posArgs.map(_.ty), ty1))
+        // H has type posArgs1 -> posArgs2 -> .... -> ty
+        val freshVar = vargen.next(mkFunType(posArgs.map(_.ty), ty))
         // lift fresh var to respect lambda abstractions built around below
         val liftedFreshVar = mkBound(freshVar._2, freshVar._1+tys.size)
         // binding is idx1 -> lamdas(H(posArgs))
@@ -823,7 +824,7 @@ object PatternUnification extends Unification {
         val tys = args2.map(_.ty)
         val liftedVar = mkBound(ty1, idx1+tys.size)
 
-        val argIdx = args1.zipWithIndex.toMap
+        val argIdx = args2.zipWithIndex.toMap
         val argCount = argIdx.size
         val newArgs = args1.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
         // binding is idx2 -> lamdas(idx1(args1'))
@@ -833,15 +834,17 @@ object PatternUnification extends Unification {
         val tys = args1.map(_.ty)
         val liftedVar = mkBound(ty2, idx2+tys.size)
 
-        val argIdx = args2.zipWithIndex.toMap
+        val argIdx = args1.zipWithIndex.toMap
         val argCount = argIdx.size
         val newArgs = args2.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
         // binding is idx1 -> lamdas(idx2(args2))
         val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
         (Subst.singleton(idx1, binding), Subst.id)
       } else { // two bindings
-        assert(ty1 == ty2)
+        leo.Out.output(s"flexflex: non common")
+//        assert(ty1 == ty2)
         val sameArgs = args1.intersect(args2)
+        leo.Out.output(s"sameArgs: ${sameArgs.map(_.pretty).mkString(",")}")
 
         val arg1Idx = args1.zipWithIndex.toMap
         val arg1Count = arg1Idx.size
@@ -852,8 +855,8 @@ object PatternUnification extends Unification {
 
         val tys1 = args1.map(_.ty)
         val tys2 = args2.map(_.ty)
-        // H has type sameArgs1 -> sameArgs2 -> .... -> ty1
-        val freshVar = vargen.next(mkFunType(sameArgs.map(_.ty), ty1))
+        // H has type sameArgs1 -> sameArgs2 -> .... -> ty
+        val freshVar = vargen.next(mkFunType(sameArgs.map(_.ty), ty))
         // lift fresh var to respect lambda abstractions built around below
         val liftedFreshVar1 = mkBound(freshVar._2, freshVar._1+tys1.size)
         val liftedFreshVar2 = mkBound(freshVar._2, freshVar._1+tys2.size)
