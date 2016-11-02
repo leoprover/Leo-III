@@ -44,7 +44,7 @@ object Configuration extends DefaultConfiguration {
   /////////////////////////
 
   def init(parameterParser: CLParameterParser): Unit = configMap match {
-    case null => {
+    case null =>
       configMap = Map()
       for(param <- parameterParser.getParameters) {
         configMap += param
@@ -60,7 +60,6 @@ object Configuration extends DefaultConfiguration {
       ATPS
       HELP
       ()
-    }
     case _ => ()
   }
 
@@ -98,6 +97,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
+  lazy val UNIFIER_COUNT: Int = DEFAULT_UNIFIERCOUNT
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
@@ -174,7 +174,7 @@ object Configuration extends DefaultConfiguration {
     case Some(5) => Level.FINER
     case Some(6) => Level.FINEST
     case _ =>
-      Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 6 (including).");
+      Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 6 (including).")
       DEFAULT_VERBOSITY
   }
 
@@ -217,7 +217,7 @@ object Configuration extends DefaultConfiguration {
     case rest => rest
   }
   def isSetTo(param: String, arg: String): Boolean =
-    configMap.get(param).fold(false)(args => args.length == 1 && args(0) == arg)
+    configMap.get(param).fold(false)(args => args.length == 1 && args.head == arg)
 
 }
 
@@ -226,4 +226,5 @@ trait DefaultConfiguration {
   val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
   val DEFAULT_UNIFICATIONDEPTH = 8
+  val DEFAULT_UNIFIERCOUNT = 1
 }
