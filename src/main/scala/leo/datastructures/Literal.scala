@@ -89,7 +89,7 @@ trait Literal extends Pretty with Prettier {
   @inline final def substituteOrdered(termSubst : Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature) : Literal = {
     val lsubst = left.substitute(termSubst, typeSubst)
     val rsubst = right.substitute(termSubst, typeSubst)
-    Literal.mkOrdered(left,right,polarity)
+    Literal.mkOrdered(lsubst,rsubst,polarity)
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
