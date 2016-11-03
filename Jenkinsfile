@@ -4,6 +4,8 @@ node {
     stage 'Checkout'
 
     checkout scm
+    sh "git submodule update --init"
+
     echo "Downloading PicoSAT"
     sh "wget http://fmv.jku.at/picosat/picosat-965.tar.gz"
     sh "tar -xf picosat-965.tar.gz -C src/native"
@@ -30,6 +32,11 @@ node {
     step([$class: 'JUnitResultArchiver', testResults: 'target/test-reports/*.xml', fingerprint: true])
 
 
+    stage 'Soundness Check'
+
+    env.TPTP = tool name: 'TPTP'
+
     stage 'Small Benchmark'
+
 
 }
