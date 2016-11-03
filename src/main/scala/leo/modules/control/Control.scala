@@ -29,6 +29,7 @@ object Control {
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
   @inline final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(sig)
   @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(sig)
+  @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
@@ -74,7 +75,7 @@ package inferenceControl {
         Out.trace(s"CNF result:\n\t${cl.pretty}")
         Set(cl)
       } else {
-        val cnfsimp = cnfresult.map(Simp.shallowSimp)
+        val cnfsimp = cnfresult //.map(Simp.shallowSimp)
         val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
         Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
         result
@@ -391,7 +392,7 @@ package inferenceControl {
             if (unificationLit.uni) {
               assert(unificationLit.equational && !unificationLit.polarity)
               val unificationEq = (unificationLit.left, unificationLit.right)
-              if (PatternUni.canApply(unificationLit)) {
+              if (false /*PatternUni.canApply(unificationLit)*/) {
                 // Pattern
                 val uniResult = PatternUni.apply(leo.modules.calculus.freshVarGen(cl.cl), Seq(unificationEq), cl.cl.lits.init)
                 if (uniResult.isEmpty) {
@@ -673,7 +674,7 @@ package inferenceControl {
       Out.trace(s"Simp on ${cl.id}")
       val simpresult = Simp(cl.cl)
       val result = if (simpresult != cl.cl)
-        AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+        AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
       Out.finest(s"Simp result: ${result.pretty}")
@@ -685,7 +686,7 @@ package inferenceControl {
       Out.trace(s"Shallow Simp on ${cl.id}")
       val simpresult = Simp.shallowSimp(cl.cl)
       val result = if (simpresult != cl.cl)
-        AnnotatedClause(Simp(cl.cl), InferredFrom(Simp, Set(cl)), cl.properties)
+        AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
       Out.finest(s"Shallow Simp result: ${result.pretty}")

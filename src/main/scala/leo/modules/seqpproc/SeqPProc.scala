@@ -76,7 +76,6 @@ object SeqPProc extends Function1[Long, Unit]{
     var test = false
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    try {
       // Read problem
       val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()
@@ -336,9 +335,6 @@ object SeqPProc extends Function1[Long, Unit]{
         Out.output(Utility.proofToTPTP(proof))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
-    } catch {
-      case e:Throwable => throw new SZSException(SZS_Error, e.toString, Utility.signatureAsString(sig))
-    }
   }
 
   private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
@@ -434,7 +430,7 @@ object SeqPProc extends Function1[Long, Unit]{
     while (newIt.hasNext) {
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
-      newCl = Control.simp(newCl)
+      newCl = Control.shallowSimp(newCl)
       if (!Clause.trivial(newCl.cl)) {
         state.addUnprocessed(newCl)
       } else {
