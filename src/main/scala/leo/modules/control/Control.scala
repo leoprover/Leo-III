@@ -363,11 +363,14 @@ package inferenceControl {
         Out.debug("Unification tasks found. Working on it...")
         resultSet = otherClauses
         uniClauses.foreach { case (cw, ul, ol) =>
-          Out.debug(s"Unification task from clause ${cw.pretty}")
+          Out.debug(s"Unification task from clause ${cw.pretty(sig)}")
           Out.debug(s"Free vars: ${cw.cl.implicitlyBound.toString}")
-          val nc = PreUni(leo.modules.calculus.freshVarGen(cw.cl), cw.cl, ul, ol).map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst, cw.cl.implicitlyBound)(sig)))), cw.properties | ClauseAnnotation.PropUnified)}
-          Out.trace(s"Uni result:\n\t${nc.map(_.pretty).mkString("\n\t")}")
-          resultSet = resultSet union nc
+          val uniResultIterator = PreUni(leo.modules.calculus.freshVarGen(cw.cl), cw.cl, ul, ol)
+          val uniResult = uniResultIterator.take(Configuration.UNIFIER_COUNT).toSet
+          val result = uniResult.map {case (cl,subst) =>
+            AnnotatedClause(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst._1, cw.cl.implicitlyBound)(sig)))), cw.properties | ClauseAnnotation.PropUnified)}
+          Out.trace(s"Uni result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+          resultSet = resultSet union result
         }
 
       }
@@ -388,33 +391,40 @@ package inferenceControl {
             if (unificationLit.uni) {
               assert(unificationLit.equational && !unificationLit.polarity)
               val unificationEq = (unificationLit.left, unificationLit.right)
-              val nc = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, Seq(unificationEq), cl.cl.lits.init)
-              val results = if (nc.isEmpty) Set(cl) else nc.flatMap {case (res, subst) =>
-                Out.finest(s"unify again?")
-                Out.finest(s"Previous result: ${res.pretty}")
-                val (ca, ul, ol) = PreUni.canApply(res)
-                if (ca) {
-                  Out.finest(s"unify again!")
-                  PreUni(leo.modules.calculus.freshVarGen(res), res, ul, ol).map {
-                    case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
-
-                  } + AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)))),
-                    leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
-                } else
-                  Set(AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified)))
+              val uniResultIterator = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, Seq(unificationEq), cl.cl.lits.init)
+              if (uniResultIterator.isEmpty) {
+                resultSet = resultSet + cl
+              } else {
+                val uniResult = uniResultIterator.take(Configuration.UNIFIER_COUNT).toSet
+                val results = uniResult.flatMap {case (res, subst) =>
+                    Out.finest(s"unify again?")
+                    Out.finest(s"Previous result: ${res.pretty(sig)}")
+                    val (ca, ul, ol) = PreUni.canApply(res)
+                    if (ca) {
+                      Out.finest(s"unify again!")
+                      val uniResultIterator2 = PreUni(leo.modules.calculus.freshVarGen(res), res, ul, ol)
+                      val uniResult2 = uniResultIterator2.take(Configuration.UNIFIER_COUNT).toSet
+                      uniResult2.map {
+                        case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+                      } + AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst._1, cl.cl.implicitlyBound)(sig)))),
+                        leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+                    } else
+                      Set(AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified)))
+                  }
+                Out.trace(s"Uni result:\n\t${results.map(_.pretty(sig)).mkString("\n\t")}")
+                resultSet = resultSet union results
               }
-              Out.trace(s"Uni result:\n\t${results.map(_.pretty).mkString("\n\t")}")
-              resultSet = resultSet union results
             }
           } else {
             val (ca, ul, ol) = PreUni.canApply(cl.cl)
             if (ca) {
-              val nc = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, ul, ol)
-              val result = if (nc.isEmpty) Set(cl) else nc.map {
-                case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b, cl.cl.implicitlyBound)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+              val uniResultIterator = PreUni(leo.modules.calculus.freshVarGen(cl.cl), cl.cl, ul, ol)
+              val uniResult = uniResultIterator.take(Configuration.UNIFIER_COUNT).toSet
+              val result = if (uniResultIterator.isEmpty) Set(cl) else uniResult.map {
+                case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b._1, cl.cl.implicitlyBound)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
               }
               resultSet = resultSet union result
-            }
+            } else resultSet = resultSet + cl // TODO: Flags?
           }
         } else
           resultSet = resultSet + cl

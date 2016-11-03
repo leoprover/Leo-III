@@ -114,7 +114,7 @@ object BoolExt extends CalculusRule {
 ////////////////////////////////////////////////////////////////
 object PreUni extends CalculusRule {
   val name = "pre_uni"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  override val inferenceStatus = Some(SZS_Theorem)
   type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
 
@@ -137,34 +137,46 @@ object PreUni extends CalculusRule {
     (can, uniLits, otherLits)
   }
 
-
-  def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause, uniLits: UniLits, otherLits: OtherLits)(implicit sig: Signature): Set[(Clause, Subst)] = {
+  def apply(vargen: FreshVarGen, cl: Clause,
+            uniLits: UniLits, otherLits: OtherLits)(implicit sig: Signature): Iterator[(Clause, (Unification#TermSubst, Unification#TypeSubst))] = {
     Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
     val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
-    if (result.hasNext) {
-      val uniResult = result.next()
-      val (termSubst, typeSubst) = uniResult._1
-      val flexflexPairs = uniResult._2
-      val newLiterals = flexflexPairs.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig)) // TODO DO they need to be substituted also?
-      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
-      Set((Clause(updatedOtherLits ++ newLiterals),termSubst))
-    } else {
-      Set()
-      //Set((cl, Subst.id))
+    result.map {case (subst, flexflex) =>
+      val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
+      val resultClause = Clause(updatedOtherLits ++ newLiteralsFromFlexFlex)
+      (resultClause, subst)
     }
-    // Alternative:
-//    val resultStream = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
-//    var result: Set[(Clause, Subst)] = Set()
-//    while (resultStream.hasNext) {
-//      val uniResult = resultStream.next()
+  }
+
+
+//  def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause, uniLits: UniLits, otherLits: OtherLits)(implicit sig: Signature): Set[(Clause, Subst)] = {
+//    Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+//    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
+//    if (result.hasNext) {
+//      val uniResult = result.next()
 //      val (termSubst, typeSubst) = uniResult._1
 //      val flexflexPairs = uniResult._2
 //      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2)) // TODO DO they need to be substituted also?
-//      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
-//      result = result + ((Clause(updatedOtherLits ++ newLiterals),termSubst))
+//      val updatedOtherLits = otherLits.map(_.substituteOrdered(termSubst, typeSubst)(sig))
+//      Set((Clause(updatedOtherLits ++ newLiterals),termSubst))
+//    } else {
+//      Set()
+//      //Set((cl, Subst.id))
 //    }
-//    result
-  }
+//    // Alternative:
+////    val resultStream = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
+////    var result: Set[(Clause, Subst)] = Set()
+////    while (resultStream.hasNext) {
+////      val uniResult = resultStream.next()
+////      val (termSubst, typeSubst) = uniResult._1
+////      val flexflexPairs = uniResult._2
+////      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2)) // TODO DO they need to be substituted also?
+////      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
+////      result = result + ((Clause(updatedOtherLits ++ newLiterals),termSubst))
+////    }
+////    result
+//  }
 }
 
 
