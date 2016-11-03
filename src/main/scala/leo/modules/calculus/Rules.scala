@@ -119,7 +119,7 @@ protected[calculus] abstract class AnyUni extends CalculusRule {
   type OtherLits = Seq[Literal]
   type UniResult = (Clause, (Unification#TermSubst, Unification#TypeSubst))
 
-  final def canApply(l: Literal): Boolean = l.uni
+  def canApply(l: Literal): Boolean
 
   final def canApply(cl: Clause): (Boolean, UniLits, OtherLits) = {
     var can = false
@@ -142,6 +142,8 @@ protected[calculus] abstract class AnyUni extends CalculusRule {
 object PreUni extends AnyUni {
   final val name = "pre_uni"
 
+  final def canApply(l: Literal): Boolean = l.uni
+
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
     Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
@@ -157,6 +159,9 @@ object PreUni extends AnyUni {
 
 object PatternUni extends AnyUni {
   final val name = "pattern_uni"
+
+  final def canApply(l: Literal): Boolean =
+    l.uni && PatternUnification.isPattern(l.left) && PatternUnification.isPattern(l.right)
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
