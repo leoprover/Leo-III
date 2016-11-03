@@ -114,7 +114,7 @@ object BoolExt extends CalculusRule {
 ////////////////////////////////////////////////////////////////
 object PreUni extends CalculusRule {
   val name = "pre_uni"
-  override val inferenceStatus = Some(SZS_Theorem)
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
   type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
 
