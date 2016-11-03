@@ -6,11 +6,7 @@ import leo.datastructures.{Subst, Term, Type}
 import scala.annotation.tailrec
 
 
-trait Unification extends CalculusRule {
-  import leo.modules.output.SZS_Theorem
-
-  override val inferenceStatus = Some(SZS_Theorem)
-
+trait Unification {
   /** A `UEq` is an unsolved equation. */
   type UEq = (Term, Term)
 
@@ -42,9 +38,6 @@ trait Unification extends CalculusRule {
  * Tests solely for equality
  */
 object IdComparison extends Unification{
-
-  val name = "id_comparison"
-
   override def unify(vargen: FreshVarGen, t: Term, s: Term) : Iterable[UnificationResult] =
     if (s == t) Stream(((Subst.id, Subst.id), Seq())) else Stream.empty
 
@@ -67,8 +60,6 @@ object IdComparison extends Unification{
 object HuetsPreUnification extends Unification {
   import scala.annotation.tailrec
   import leo.datastructures.{SearchConfiguration, NDStream, BFSAlgorithm}
-
-  val name = "pre_uni_full"
 
   /** The Depth is the number of lambda abstractions under which a term is nested.*/
   type Depth = Int
@@ -663,7 +654,6 @@ object HuetsPreUnification extends Unification {
   * else the unifiers will be any arbitrary unifier (if existent).
   */
 object PatternUnification extends Unification {
-  final val name = "uni_pattern"
   import HuetsPreUnification.{tyDetExhaust, collectLambdas}
 
     /////////////////////////////////////
@@ -716,7 +706,7 @@ object PatternUnification extends Unification {
   /** Main unification method: Solve head equations subsequently by applying the according rules. */
   @tailrec
   private final def unify1(ueqs: Seq[UEq], vargen: FreshVarGen, partialUnifier: TermSubst, partialTyUnifier: TypeSubst): Option[PartialUniResult] = {
-    import leo.datastructures.Term.{TermApp, Symbol, Bound}
+    import leo.datastructures.Term.{TermApp, Bound}
     if (ueqs.isEmpty)
       Some((partialUnifier, partialTyUnifier))
     else {
