@@ -451,12 +451,12 @@ object Simp extends CalculusRule {
   final def apply(cl: Clause)(implicit sig: Signature): Clause  = Clause(apply(cl.lits)(sig))
 
   final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
-    Clause(shallowSimp0(cl)(sig))
+    Clause(shallowSimp(cl.lits)(sig))
   }
 
-  private final def shallowSimp0(cl: Clause)(sig: Signature): Seq[Literal] = {
+  final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     var newLits: Seq[Literal] = Seq()
-    val litIt = cl.lits.iterator
+    val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
       val normLit = eqSimp(lit)(sig)

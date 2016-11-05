@@ -387,7 +387,9 @@ package inferenceControl {
           Out.debug(s"Clause ${cl.id} needs unification. Working on it ...")
           assert(cl.annotation.fromRule.isDefined)
           val fromRule = cl.annotation.fromRule.get
-          if (fromRule == OrderedParamod || fromRule == OrderedEqFac) { // FIXME: No direct inheritance
+          if (fromRule == OrderedParamod || fromRule == OrderedEqFac) {
+            // FIXME: No direct inheritance
+            if (cl.cl.lits.nonEmpty) {
             val unificationLit = cl.cl.lits.last
             if (unificationLit.uni) {
               assert(unificationLit.equational && !unificationLit.polarity)
@@ -401,7 +403,7 @@ package inferenceControl {
                   val (uniResultClause, uniResultSubst) = uniResult.get
                   Out.finest(s"unify again?")
                   Out.finest(s"Previous result: ${uniResultClause.pretty(sig)}")
-                  val resultClause = Set(AnnotatedClause(uniResultClause, InferredFrom(PatternUni, Set((cl, ToTPTP(uniResultSubst._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified)))
+                  val resultClause = Set(AnnotatedClause(uniResultClause, InferredFrom(PatternUni, Set((cl, ToTPTP(uniResultSubst._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification, cl.properties | ClauseAnnotation.PropUnified)))
                   resultSet = resultSet union preunifyNewClauses(resultClause)(sig)
                 }
               } else {
@@ -411,7 +413,7 @@ package inferenceControl {
                   resultSet = resultSet + cl
                 } else {
                   val uniResult = uniResultIterator.take(Configuration.UNIFIER_COUNT).toSet
-                  val results = uniResult.flatMap {case (res, subst) =>
+                  val results = uniResult.flatMap { case (res, subst) =>
                     Out.finest(s"unify again?")
                     Out.finest(s"Previous result: ${res.pretty(sig)}")
                     val (ca, ul, ol) = PreUni.canApply(res)
@@ -420,17 +422,18 @@ package inferenceControl {
                       val uniResultIterator2 = PreUni(leo.modules.calculus.freshVarGen(res), ul, ol)
                       val uniResult2 = uniResultIterator2.take(Configuration.UNIFIER_COUNT).toSet
                       uniResult2.map {
-                        case (a,b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+                        case (a, b) => AnnotatedClause(a, InferredFrom(PreUni, Set((cl, ToTPTP(b._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification, cl.properties | ClauseAnnotation.PropUnified))
                       } + AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst._1, cl.cl.implicitlyBound)(sig)))),
-                        leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified))
+                        leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification, cl.properties | ClauseAnnotation.PropUnified))
                     } else
-                      Set(AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl.properties | ClauseAnnotation.PropUnified)))
+                      Set(AnnotatedClause(res, InferredFrom(PreUni, Set((cl, ToTPTP(subst._1, cl.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification, cl.properties | ClauseAnnotation.PropUnified)))
                   }
                   Out.trace(s"Uni result:\n\t${results.map(_.pretty(sig)).mkString("\n\t")}")
                   resultSet = resultSet union results
                 }
               }
-            }
+            } else resultSet = resultSet + cl
+          } else resultSet = resultSet + cl
           } else {
             val (ca, ul, ol) = PreUni.canApply(cl.cl)
             if (ca) {

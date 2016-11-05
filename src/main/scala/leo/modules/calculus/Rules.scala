@@ -243,7 +243,7 @@ object OrderedEqFac extends CalculusRule {
     val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
 
     val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
-    val newlitsSimp = Simp(newlits)(sig)
+    val newlitsSimp = Simp.shallowSimp(newlits)(sig)
 
     Clause(newlitsSimp)
   }
@@ -321,7 +321,7 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"unificationLit: ${unificationLit.pretty}")
 
     val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
-    val newlits_simp = newlits // Simp.apply(newlits)
+    val newlits_simp = Simp.shallowSimp(newlits)(sig)
     val resultingClause = Clause(newlits_simp)
 
     resultingClause

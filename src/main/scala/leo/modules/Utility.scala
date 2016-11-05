@@ -128,7 +128,7 @@ object Utility {
 
   final def proofToTPTP(proof: Proof)(implicit sig: Signature): String = {
     if (Configuration.isSet("DEBUG"))
-      proof.map(_.pretty).mkString("\n")
+      proof.map(_.pretty(sig)).mkString("\n")
     else
       proof.map(mkTPTP(_)(sig)).mkString("\n")
   }
