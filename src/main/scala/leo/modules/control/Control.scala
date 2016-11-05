@@ -2,7 +2,6 @@ package leo.modules.control
 
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
-import leo.datastructures.impl.SignatureImpl
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -32,7 +31,7 @@ object Control {
   @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
-  @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)
+  @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Redundancy
@@ -179,8 +178,8 @@ package inferenceControl {
       var litIndex = 0
       var lits = cl.lits
       var side = leftSide
-      var curSubterms: Set[Term] = null
-      var curPositions: Set[Position] = null
+      var curSubterms: Set[Term] = _
+      var curPositions: Set[Position] = _
 
       def hasNext: Boolean = if (lits.isEmpty) false
       else {
@@ -743,7 +742,7 @@ package inferenceControl {
       val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(cl.cl)(sig)
       if (cA_leibniz) {
         Out.trace(s"Replace Leibniz equalities in ${cl.id}")
-        val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)
+        val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"Result: ${res.pretty}")
         res
@@ -760,7 +759,7 @@ package inferenceControl {
       val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cl.cl)
       if (cA_Andrews) {
         Out.trace(s"Replace Andrews equalities in ${cl.id}")
-        val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)
+        val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"Result: ${res.pretty}")
         res
@@ -921,7 +920,7 @@ package indexingControl {
 
       val symbs = sig.allUserConstants.toVector
       val featureFunctions: Seq[CFF] = Vector(FVIndex.posLitsFeature(_), FVIndex.negLitsFeature(_)) ++
-        symbs.flatMap {case symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
+        symbs.flatMap {symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
           FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}
 
       var initFeatures: Seq[Set[Int]] = Seq()
@@ -929,7 +928,7 @@ package indexingControl {
       var i = 0
       while (featureFunctionIt.hasNext) {
         val cff = featureFunctionIt.next()
-        val res = initClauses.map {case cw => {cff(cw.cl)}}
+        val res = initClauses.map {cw => {cff(cw.cl)}}
         initFeatures = res +: initFeatures
         i = i+1
       }
@@ -979,7 +978,7 @@ package indexingControl {
 
   object FOIndexControl {
     import leo.modules.indexing.FOIndex
-    private var foIndex: FOIndex = null
+    private var foIndex: FOIndex = _
 
     final def foIndexInit(): Unit  = {
       if (foIndex == null) foIndex = FOIndex()

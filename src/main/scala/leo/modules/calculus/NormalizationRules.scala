@@ -211,10 +211,10 @@ object ReplaceLeibnizEq extends CalculusRule {
     (resMap.nonEmpty, resMap)
   }
 
-  def apply(cl: Clause, bindings: Map[Int, Term]): (Clause, Subst) = {
+  def apply(cl: Clause, bindings: Map[Int, Term])(implicit sig: Signature): (Clause, Subst) = {
     val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1))))
     val subst = Subst.fromMap(gbMap)
-    val newLits = cl.lits.map(_.substitute(subst))
+    val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
     (Clause(newLits), subst)
   }
 }
@@ -251,10 +251,10 @@ object ReplaceAndrewsEq extends CalculusRule {
     (varMap.nonEmpty, varMap)
   }
 
-  def apply(cl: Clause, vars: Map[Int, Type]): (Clause, Subst) = {
+  def apply(cl: Clause, vars: Map[Int, Type])(implicit sig: Signature): (Clause, Subst) = {
     val gbMap = vars.mapValues {ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
     val subst = Subst.fromMap(gbMap)
-    val newLits = cl.lits.map(_.substitute(subst))
+    val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
     (Clause(newLits), subst)
   }
 }
@@ -442,7 +442,7 @@ object Simp extends CalculusRule {
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        return newLits.map(_.substitute(subst))
+        return newLits.map(_.substituteOrdered(subst)(sig))
       }
     }
     newLits

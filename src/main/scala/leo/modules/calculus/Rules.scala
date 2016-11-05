@@ -204,7 +204,7 @@ object PrimSubst extends CalculusRule {
     (can, flexheads)
   }
 
-  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term]): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
+  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map {hd =>
 //      println(s"${hd.pretty} - ${hd.fv.head._1}")
 //      println(s"max fv: ${cl.maxImplicitlyBound}")
@@ -213,7 +213,7 @@ object PrimSubst extends CalculusRule {
       val subst = Subst.singleton(hd.fv.head._1, binding)
 //      println(s"${subst.pretty}")
 //      println(Literal(Term.mkBound(hd.fv.head._2, hd.fv.head._1), true).substitute(subst).pretty)
-      (cl.substitute(subst),subst)
+      (cl.substituteOrdered(subst)(sig),subst)
     }
   }
 }

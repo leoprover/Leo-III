@@ -27,6 +27,7 @@ trait Clause extends Pretty with Prettier {
 
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
+  def substituteOrdered(s : Subst)(implicit sig: Signature) : Clause = Clause.mkClause(lits.map(_.substituteOrdered(s)(sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
