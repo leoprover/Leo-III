@@ -251,7 +251,9 @@ object SeqPProc extends Function1[Long, Unit]{
               // Subsumption
               val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
               if (subsumed.isEmpty) {
-                mainLoopInferences(cur, state)
+                if(mainLoopInferences(cur, state)) {
+                  loop = false
+                }
               } else {
                 Out.debug("clause subsumbed, skipping.")
                 state.incForwardSubsumedCl()
@@ -337,7 +339,7 @@ object SeqPProc extends Function1[Long, Unit]{
       }
   }
 
-  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
+  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Boolean = {
     implicit val sig: Signature = state.signature
 
     var cur: AnnotatedClause = cl
@@ -395,6 +397,8 @@ object SeqPProc extends Function1[Long, Unit]{
 
     /* Replace defined equalities */
     newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
+    /* Replace eq symbols on top-level by equational literals. */
+    newclauses = newclauses.map(Control.liftEq)
 
     /* TODO: Choice */
     /////////////////////////////////////////
@@ -431,12 +435,23 @@ object SeqPProc extends Function1[Long, Unit]{
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
       newCl = Control.shallowSimp(newCl)
-      if (!Clause.trivial(newCl.cl)) {
-        state.addUnprocessed(newCl)
+      if (Clause.effectivelyEmpty(newCl.cl)) {
+        if (state.conjecture == null) {
+          state.setSZSStatus(SZS_Unsatisfiable)
+        } else {
+          state.setSZSStatus(SZS_Theorem)
+        }
+        state.setDerivationClause(newCl)
+        return true
       } else {
-        Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
+        if (!Clause.trivial(newCl.cl)) {
+          state.addUnprocessed(newCl)
+        } else {
+          Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
+        }
       }
     }
+    false
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {
