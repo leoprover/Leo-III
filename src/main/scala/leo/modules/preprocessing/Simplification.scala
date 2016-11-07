@@ -122,31 +122,15 @@ object Simplification extends Normalization {
   }
 
   /**
-    * Returns a List with deBrujin Indizes, that are free at this level.
-    *
-    * @param formula
-    * @return
-    */
-  protected[preprocessing] def freeVariables(formula : Term) : List[(Int,Type)] = formula match {
-    case Bound(t,scope) => List((scope,t))
-    case Symbol(id)     => List()
-    case f ∙ args       => freeVariables(f) ++ args.flatMap(_.fold(freeVariables(_), _ => List()))
-    case ty :::> s      => (freeVariables(s) map {case (a:Int,b:Type) => (a-1,b)}) filter {case (a:Int,b:Type) => a>=1}
-    case TypeLambda(t)  => freeVariables(t)
-  }
-
-  /**
     * Gets the body of an abstraction and returns true, if the (deBrujin) variable
     * occures in this context.
     *
     * TODO: Move to a package, where it is usefull
     *
-    * @param formula - Body of an abstraction
+    * @param f - Body of an abstraction
     * @return true, iff the deBrujin Index occurs in the body
     */
-  protected[preprocessing] def isBound(formula : Term) : Boolean = {
-    freeVariables(formula).filter {case (a,b) => a == 1}.nonEmpty
-  }
+  final def isBound(f: Term): Boolean = f.looseBounds.contains(1)
 
 
   /**

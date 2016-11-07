@@ -114,9 +114,6 @@ trait Term extends Pretty with Prettier {
   def etaExpand: Term
   /** Eta-contract term on root level if possible */
   def topEtaContract: Term
-
-  /// Hidden definitions
-  protected[datastructures] def normalize(termSubst: Subst, typeSubst: Subst): Term
 }
 
 

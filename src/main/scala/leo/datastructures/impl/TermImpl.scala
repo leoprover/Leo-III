@@ -20,7 +20,9 @@ import scala.language.implicitConversions
  * @author Alexander Steen
  * @since 04.08.2014
  */
-protected[datastructures] sealed abstract class TermImpl(private var _locality: Locality) extends Term {
+protected[datastructures] sealed abstract class TermImpl(private var _locality: Locality,
+                                                         private var normal: Boolean = false,
+                                                         private var etanormal: Boolean = false) extends Term {
 
   // Predicates on terms
   def isLocal = _locality == LOCAL
@@ -29,19 +31,33 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   final def flexHead: Boolean = flexHead0(0)
   protected[impl] def flexHead0(depth: Int): Boolean
 
-  lazy val betaNormalize: Term = {
-    val erg = normalize(Subst.id, Subst.id)
-    if (isGlobal)
-     TermImpl.insert0(erg)
-    else
-     erg
+
+  protected[datastructures] def normalize(termSubst: Subst, typeSubst: Subst): TermImpl
+  final def betaNormalize: Term = {
+    if (normal) this
+    else {
+      val erg = normalize(Subst.id, Subst.id)
+      erg.normal = true
+      if (isGlobal)
+        TermImpl.insert0(erg)
+      else
+        erg
+    }
+
   }
 
-  lazy val etaExpand: Term = {
-    val betanf = this.betaNormalize.asInstanceOf[TermImpl]
-    betanf.etaExpand0
+  final def etaExpand: Term = {
+    if (etanormal) this
+    else {
+      val betanf = this.betaNormalize.asInstanceOf[TermImpl]
+      val res = betanf.etaExpand0
+      res.etanormal = true
+      res.normal = true
+      res
+    }
+
   }
-  def etaExpand0: Term
+  protected[datastructures] def etaExpand0: TermImpl
 
   lazy val topEtaContract: Term = this
 
@@ -179,7 +195,6 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case _ => args.looseBounds
   }
   lazy val headSymbol = {
-    Reductions.tick()
     Root(hd, SNil)
   }
   val headSymbolDepth = 0
@@ -194,7 +209,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   lazy val size = 2 + args.size
 
   // Other operations
-  lazy val etaExpand0: Term = {
+  lazy val etaExpand0: TermImpl = {
     if (hd.ty.isFunType) {
       val hdFunParamTypes = hd.ty.funParamTypes
       if (args.length < hdFunParamTypes.length) {
@@ -212,7 +227,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
         val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
         val newSpine = liftedArgs ++ newSpineSuffix
         // combine and prefix with lambdas
-        val liftedBody: Term = Root(newHead, newSpine)
+        val liftedBody: TermImpl = Root(newHead, newSpine)
         newTypes.foldRight(liftedBody){case (ty, t) => TermAbstr(ty, t)}
       } else {
         Root(hd, args.etaExpand)
@@ -241,7 +256,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
         val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
         val newSpine = liftedArgs ++ newSpineSuffix
         // combine and prefix with lambdas
-        val liftedBody: Term = Root(newHead, newSpine)
+        val liftedBody: TermImpl = Root(newHead, newSpine)
         newTypes.foldRight(liftedBody){case (ty, t) => TermAbstr(ty, t)}
       } else
         Root(hd, args.etaExpand)
@@ -281,8 +296,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 //  }
 
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
+  final def normalize(termSubst: Subst, typeSubst: Subst) = {
     val termSubstNF = termSubst //.normalize
     val typeSubstNF = typeSubst //.normalize
 
@@ -300,7 +314,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
           case TermFront(t) => Redex(t, args).normalize0(Subst.id, Subst.id, termSubst, typeSubst)
           case _ => throw new IllegalArgumentException("type front found where it was not expected")
         }
-        case HeadClosure(h3, (termSubst3, typeSubst3)) => Root(HeadClosure(h3, (termSubst3 o termSubst2, typeSubst3 o typeSubst2)), args).normalize(termSubst, typeSubst)
+        case HeadClosure(h3, (termSubst3, typeSubst3)) => Root(HeadClosure(h3, (termSubst3 o termSubst2, typeSubst3 o typeSubst2)), args).asInstanceOf[TermImpl].normalize(termSubst, typeSubst)
       }
     }
   }
@@ -316,7 +330,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   private def normalizeSpine(sp: Spine, termSubst: Subst, typeSubst: Subst): Spine = sp.normalize(termSubst, typeSubst)
 
   /** Pretty */
-  lazy val pretty = s"${hd.pretty} ⋅ (${args.pretty})"
+  final def pretty = s"${hd.pretty} ⋅ (${args.pretty})"
   final def pretty(sig: Signature): String =  s"${hd.pretty(sig)} ⋅ (${args.pretty(sig)})"
 }
 
@@ -363,7 +377,6 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val symbols: Set[Signature#Key] = body.symbols ++ args.symbols
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = fuseSymbolMap(body.asInstanceOf[TermImpl].symbolMap, args.symbolMap.mapValues{case (c,d) => (c,d+1)})
   lazy val headSymbol = {
-    Reductions.tick()
     body.headSymbol
   }
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -371,7 +384,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
   lazy val feasibleOccurences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
   // Other operations
-  def etaExpand0: Term = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
+  def etaExpand0: TermImpl = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
 
   final def replace(what: Term, by: Term): Term = if (this == what)
                                               by
@@ -387,14 +400,13 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 
 //  def substitute(subst: Subst): Term = Redex(body.substitute(subst), args.substitute(subst))
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
+  final def normalize(termSubst: Subst, typeSubst: Subst) = {
     normalize0(termSubst, typeSubst, termSubst, typeSubst)
   }
 
   @tailrec
-  protected[impl] final def normalize0(headTermSubst: Subst, headTypeSubst: Subst, spineTermSubst: Subst, spineTypeSubst: Subst): Term = args match {
-    case SNil => body.normalize(headTermSubst, headTypeSubst)
+  protected[impl] final def normalize0(headTermSubst: Subst, headTypeSubst: Subst, spineTermSubst: Subst, spineTypeSubst: Subst): TermImpl = args match {
+    case SNil => body.asInstanceOf[TermImpl].normalize(headTermSubst, headTypeSubst)
     case SpineClos(sp2, (spTermSubst, spTypeSubst)) => Redex(body, sp2).normalize0(headTermSubst, headTypeSubst, spTermSubst o spineTermSubst, spTypeSubst o spineTypeSubst)
     case other => body match {
       case TermAbstr(t,b) => other match {
@@ -413,7 +425,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 
 
   /** Pretty */
-  lazy val pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
+  final def pretty = s"[${body.pretty}] ⋅ (${args.pretty})"
   final def pretty(sig: Signature): String =  s"[${body.pretty(sig)}] ⋅ (${args.pretty(sig)})"
 }
 
@@ -457,7 +469,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val symbols: Set[Signature#Key] = body.symbols
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
   lazy val headSymbol = {
-    Reductions.tick()
     body.headSymbol
   }
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -466,7 +477,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val feasibleOccurences = body.occurrences.filterNot {case oc => oc._1.looseBounds.contains(1)}.mapValues(_.map(_.prependAbstrPos))
 
   // Other operations
-  lazy val etaExpand0: Term = {
+  lazy val etaExpand0: TermImpl = {
     TermAbstr(typ, body.asInstanceOf[TermImpl].etaExpand0)
   }
 
@@ -481,12 +492,11 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
 //  def substitute(subst: Subst): Term = TermAbstr(typ, body.substitute(subst))
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
+  final def normalize(termSubst: Subst, typeSubst: Subst) = {
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
 //      ???
 //    } else {
-      TermAbstr(typ.substitute(typeSubst), body.normalize((termSubst.sink), typeSubst))
+      TermAbstr(typ.substitute(typeSubst), body.asInstanceOf[TermImpl].normalize((termSubst.sink), typeSubst))
 //    }
 
   }
@@ -512,7 +522,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
 
 
   /** Pretty */
-  lazy val pretty = s"λ[${typ.pretty}]. (${body.pretty})"
+  final def pretty = s"λ[${typ.pretty}]. (${body.pretty})"
   final def pretty(sig: Signature): String =  s"λ[${typ.pretty(sig)}]. (${body.pretty(sig)})"
 
 }
@@ -547,7 +557,6 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val symbols: Set[Signature#Key] = body.symbols
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
   lazy val headSymbol = {
-    Reductions.tick()
     body.headSymbol
   }
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -557,7 +566,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val feasibleOccurences = body.feasibleOccurences // FIXME
 
   // Other operations
-  lazy val etaExpand0: Term = {
+  lazy val etaExpand0: TermImpl = {
     TypeAbstr(body.asInstanceOf[TermImpl].etaExpand0)
   }
 
@@ -572,17 +581,16 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
 
 //  def substitute(subst: Subst): Term = TypeAbstr(body.substitute(subst))
 
-  def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
+  final def normalize(termSubst: Subst, typeSubst: Subst) = {
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
 //      ???
 //    } else {
-      TypeAbstr(body.normalize(termSubst, typeSubst.sink))
+      TypeAbstr(body.asInstanceOf[TermImpl].normalize(termSubst, typeSubst.sink))
 //    }
   }
 
   /** Pretty */
-  lazy val pretty = s"Λ. (${body.pretty})"
+  final def pretty = s"Λ. (${body.pretty})"
   final def pretty(sig: Signature): String =   s"Λ. (${body.pretty(sig)})"
 }
 
@@ -621,14 +629,13 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val size = term.size // this might not be reasonable, but will never occur when used properly
 
   // Other operations
-  def etaExpand0: Term = betaNormalize.asInstanceOf[TermImpl].etaExpand0
+  final def etaExpand0: TermImpl = betaNormalize.asInstanceOf[TermImpl].etaExpand0
 
   final def replace(what: Term, by: Term): Term = betaNormalize.replace(what, by)
   final def replaceAt(at: Position, by: Term): Term = betaNormalize.replaceAt(at, by)
 
   final def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
-    term.normalize(σ._1 o termSubst, σ._2 o typeSubst)
+    term.asInstanceOf[TermImpl].normalize(σ._1 o termSubst, σ._2 o typeSubst)
   }
 
   /** Pretty */
@@ -787,7 +794,6 @@ protected[impl] case object SNil extends Spine {
   import TermImpl.{mkSpineNil => nil}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
     nil
   }
   final val etaExpand: Spine = this
@@ -836,11 +842,10 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
 //      ???
 //    } else {
-    cons(Left(hd.normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
+    cons(Left(hd.asInstanceOf[TermImpl].normalize((termSubst), (typeSubst))), tail.normalize(termSubst, typeSubst))
 //    }
   }
 
@@ -908,7 +913,6 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
     cons(Right(hd.substitute(typeSubst)), tail.normalize(termSubst, typeSubst))
   }
   lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
@@ -969,7 +973,6 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   import TermImpl.{mkSpineCons => cons}
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
-    Reductions.tick()
     sp.normalize(s._1 o termSubst, s._2 o typeSubst)
   }
   lazy val etaExpand: Spine = ???
