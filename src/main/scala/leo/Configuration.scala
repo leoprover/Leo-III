@@ -25,7 +25,10 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_COUNTERSAT = "c"
   private val PARAM_SOS_SHORT = "s"
   private val PARAM_SOS_LONG = "sos"
-  private val PARAM_UNIFICATIONDEPTH = "ud"
+  private val PARAM_UNIFICATIONDEPTH = "unidepth"
+  private val PARAM_UNIFIERCOUNT = "unifiers"
+  private val PARAM_PRIMSUBST = "primsubst"
+  private val PARAM_PRE_PRIMSUBST = "preprimsubst"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -96,8 +99,13 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
+
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
-  lazy val UNIFIER_COUNT: Int = DEFAULT_UNIFIERCOUNT
+  lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
+
+  lazy val PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRIMSUBST, DEFAULT_PRIMSUBST)
+  lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
+
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
@@ -227,4 +235,6 @@ trait DefaultConfiguration {
   val DEFAULT_TIMEOUT = 60
   val DEFAULT_UNIFICATIONDEPTH = 8
   val DEFAULT_UNIFIERCOUNT = 1
+  val DEFAULT_PRIMSUBST = 1
+  val DEFAULT_PRE_PRIMSUBST = 0
 }
