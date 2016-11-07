@@ -713,7 +713,7 @@ object PatternUnification extends Unification {
       val (l0,r0) = ueqs.head
       val l = l0.substitute(partialUnifier, partialTyUnifier)
       val r = r0.substitute(partialUnifier, partialTyUnifier)
-
+      leo.Out.debug(s"solve: ${l.pretty} = ${r.pretty}")
       // take off the lambdas
       val (leftBody, leftAbstractions) = collectLambdas(l)
       val (rightBody, rightAbstractions) = collectLambdas(r)
@@ -725,6 +725,7 @@ object PatternUnification extends Unification {
           case (Bound(ty1, idx1), Bound(ty2, idx2))
             if idx1 > abstractionCount && idx2 > abstractionCount =>
             /* flex-flex */
+            leo.Out.finest("Apply Flex-flex")
             assert(leftBody.ty == rightBody.ty)
             val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen, leftBody.ty)
             unify1(ueqs.tail, vargen, partialUnifier.comp(partialUniResult._1), partialTyUnifier.comp(partialUniResult._2))
@@ -732,6 +733,7 @@ object PatternUnification extends Unification {
             /* flex-rigid */
             if (r.looseBounds.contains(idx1 - abstractionCount)) None
             else {
+              leo.Out.finest("Apply Flex-rigid")
               val result = flexrigid(idx1 - abstractionCount, ty1, args1, hd2, args2, rightBody, vargen, leftAbstractions)
               if (result == null) None
               else {
@@ -744,6 +746,7 @@ object PatternUnification extends Unification {
             /* rigid-flex */
             if (l.looseBounds.contains(idx2 - abstractionCount)) None
             else {
+              leo.Out.finest("Apply Flex-rigid")
               val result = flexrigid(idx2 - abstractionCount, ty2, args2, hd1, args1, leftBody, vargen, leftAbstractions)
               if (result == null) None
               else {
@@ -754,7 +757,9 @@ object PatternUnification extends Unification {
             }
           case _ => /* rigid-rigid */
             if (hd1 == hd2) {
+              leo.Out.finest("Apply rigid-rigid")
               val newUeqs = zipArgumentsWithAbstractions(args1, args2, leftAbstractions)
+              leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
               unify1(newUeqs ++ ueqs.tail, vargen, partialUnifier, partialTyUnifier)
             } else None
 
@@ -912,7 +917,7 @@ object PatternUnification extends Unification {
     if (freeVars.isEmpty) Nil
     else {
       val hd = freeVars.head
-      (λ(depth)(mkTermApp(mkBound(hd._2, hd._1+depth.size), boundVarArgs)), λ(depth)(otherTermList.head)) +: newUEqs(freeVars.tail, boundVarArgs, otherTermList.tail, depth)
+      (λ(depth)(mkTermApp(mkBound(hd._2, hd._1+depth.size), boundVarArgs)).etaExpand, λ(depth)(otherTermList.head).etaExpand) +: newUEqs(freeVars.tail, boundVarArgs, otherTermList.tail, depth)
     }
   }
 
