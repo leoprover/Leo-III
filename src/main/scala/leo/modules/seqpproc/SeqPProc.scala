@@ -131,7 +131,7 @@ object SeqPProc extends Function1[Long, Unit]{
       if (state.negConjecture != null) Control.fvIndexInit(remainingInput + state.negConjecture)
       else Control.fvIndexInit(remainingInput)
       Control.foIndexInit()
-
+      Out.trace(s"Symbols in conjecture: ${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
       // Preprocessing
       val conjecture_preprocessed = if (state.negConjecture != null) {
         Out.debug("## Preprocess Neg.Conjecture BEGIN")

@@ -72,12 +72,12 @@ package inferenceControl {
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
-        Out.trace(s"CNF result:\n\t${cl.pretty}")
+        Out.trace(s"CNF result:\n\t${cl.pretty(sig)}")
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
         val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
-        Out.trace(s"CNF result:\n\t${result.map(_.pretty).mkString("\n\t")}")
+        Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       }
 
@@ -142,20 +142,20 @@ package inferenceControl {
         val (withIndex, withLit, withSide) = withConfigurationIt.next()
         val withTerm = if (withSide) withLit.left else withLit.right
 
-        assert(withClause.lits(withIndex) == withLit, s"$withIndex in ${withClause.pretty}\n lit = ${withLit.pretty}")
+        assert(withClause.lits(withIndex) == withLit, s"$withIndex in ${withClause.pretty(sig)}\n lit = ${withLit.pretty(sig)}")
         assert(withLit.polarity)
 
         val intoConfigurationIt = intoConfigurationIterator(intoClause)(sig)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-          leo.Out.finest(s"check with ${withTerm.pretty}, into: ${intoTerm.pretty}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
+          leo.Out.finest(s"check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
           assert(!intoLit.flexflex)
           if (intoPos == Position.root &&
             ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
               (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
           } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
-            Out.trace(s"May unify: ${withTerm.pretty} with ${intoTerm.pretty} (subterm at ${intoPos.pretty})")
+            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
             Out.finest(s"with: ${withClause.pretty}")
             Out.finest(s"withside: ${withSide.toString}")
             Out.finest(s"into: ${intoClause.pretty}")
@@ -164,7 +164,7 @@ package inferenceControl {
               intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
 
             val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-            Out.finest(s"Result: ${newClWrapper.pretty}")
+            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
             results = results + newClWrapper
           }
 
@@ -351,7 +351,7 @@ package inferenceControl {
         }
       }
 
-      Out.trace(s"Factor result:\n\t${res.map(_.pretty).mkString("\n\t")}")
+      Out.trace(s"Factor result:\n\t${res.map(_.pretty(sig)).mkString("\n\t")}")
       res
     }
   }
@@ -531,7 +531,7 @@ package inferenceControl {
             }
           }
           val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
-          Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty).mkString("\n\t")}")
+          Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty(sig)).mkString("\n\t")}")
           return newCl
         }
         Set()
@@ -641,7 +641,7 @@ package inferenceControl {
           AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Skolemization, Set(cl)), cl.properties)
         else
           cl
-      Out.trace(s"Skolemize Result: ${result.pretty}")
+      Out.trace(s"Skolemize Result: ${result.pretty(sig)}")
       result
     }
 
@@ -652,7 +652,7 @@ package inferenceControl {
       assert(!lit.equational)
       val newleft = leo.modules.preprocessing.DefExpSimp(lit.left)(sig)
       val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(leo.modules.preprocessing.DefExpSimp, Set(cl)), cl.properties)
-      Out.trace(s"Def expansion: ${result.pretty}")
+      Out.trace(s"Def expansion: ${result.pretty(sig)}")
       result
     }
 
@@ -660,7 +660,7 @@ package inferenceControl {
       val (cA_lift, lift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
         val result = AnnotatedClause(Clause(LiftEq(lift, lift_other)(sig)), InferredFrom(LiftEq, Set(cl)), cl.properties)
-        Out.trace(s"to_eq: ${result.pretty}")
+        Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
         cl
@@ -669,9 +669,9 @@ package inferenceControl {
     final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
-        Out.finest(s"Func Ext on: ${cl.pretty}")
+        Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
         val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cl)), cl.properties)
-        Out.finest(s"Func Ext result: ${result.pretty}")
+        Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else
         cl
@@ -680,10 +680,10 @@ package inferenceControl {
     final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       if (Configuration.isSet("acsimp")) {
         val acSymbols = sig.acSymbols
-        Out.trace(s"AC Simp on ${cl.pretty}")
+        Out.trace(s"AC Simp on ${cl.pretty(sig)}")
         val pre_result = ACSimp.apply(cl.cl,acSymbols)
         val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, Set(cl)), cl.properties)
-        Out.finest(s"AC Result: ${result.pretty}")
+        Out.finest(s"AC Result: ${result.pretty(sig)}")
         result
       } else
         cl
@@ -696,7 +696,7 @@ package inferenceControl {
         AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
-      Out.finest(s"Simp result: ${result.pretty}")
+      Out.finest(s"Simp result: ${result.pretty(sig)}")
       result
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(simp)
@@ -708,7 +708,7 @@ package inferenceControl {
         AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
-      Out.finest(s"Shallow Simp result: ${result.pretty}")
+      Out.finest(s"Shallow Simp result: ${result.pretty(sig)}")
       result
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
@@ -761,7 +761,7 @@ package inferenceControl {
         Out.trace(s"Replace Leibniz equalities in ${cl.id}")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
-        Out.finest(s"Result: ${res.pretty}")
+        Out.finest(s"Result: ${res.pretty(sig)}")
         res
       } else
         cl
@@ -778,7 +778,7 @@ package inferenceControl {
         Out.trace(s"Replace Andrews equalities in ${cl.id}")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
-        Out.finest(s"Result: ${res.pretty}")
+        Out.finest(s"Result: ${res.pretty(sig)}")
         res
       } else
         cl

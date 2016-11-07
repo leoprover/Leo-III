@@ -10,6 +10,7 @@ import leo.modules.output.{SZS_Unknown, StatusSZS}
 trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def conjecture: T
   def negConjecture: T
+  def symbolsInConjecture: Set[Signature#Key]
   def setConjecture(conj: T): Unit
   def setNegConjecture(negConj: T): Unit
 
@@ -74,10 +75,21 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var cur_prio = 0
   private var cur_weight = 0
 
+  private var symbolsInConjecture0: Set[Signature#Key] = Set()
   final def conjecture: T = conjecture0
-  final def setConjecture(conj: T): Unit = { conjecture0 = conj }
+  final def setConjecture(conj: T): Unit = {
+    conjecture0 = conj
+    val conjClauseIt = conj.cl.lits.iterator
+    while (conjClauseIt.hasNext) {
+      val lit = conjClauseIt.next()
+      symbolsInConjecture0 = symbolsInConjecture0 union lit.left.symbols
+      symbolsInConjecture0 = symbolsInConjecture0 union lit.right.symbols
+    }
+    symbolsInConjecture0 = symbolsInConjecture0 intersect signature.allUserConstants
+  }
   final def negConjecture: T = negConjecture0
   final def setNegConjecture(negConj: T): Unit = { negConjecture0 = negConj }
+  final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
 
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
