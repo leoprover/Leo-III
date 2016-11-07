@@ -34,8 +34,14 @@ object SeqPProc extends Function1[Long, Unit]{
     cw = Control.switchPolarity(cw)
     cw = Control.skolemize(cw)
 
-    // Exhaustively CNF
-    result = Control.cnf(cw)
+    // Introduce primsubst instantiations (if applicable)
+    // and then exhaustively CNF
+    result = if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
+      val primSubst_result = Control.primsubst(cur,Configuration.PRE_PRIMSUBST_LEVEL)
+      Out.trace(s"pre primsubst result: ${primSubst_result.map(_.pretty)}")
+      Control.cnfSet(primSubst_result + cw)
+    } else Control.cnf(cw)
+
     // Remove defined equalities as far as possible
     result = result union Control.convertDefinedEqualities(result)
 
@@ -392,7 +398,7 @@ object SeqPProc extends Function1[Long, Unit]{
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)
+    val primSubst_result = Control.primsubst(cur, Configuration.PRIMSUBST_LEVEL)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */

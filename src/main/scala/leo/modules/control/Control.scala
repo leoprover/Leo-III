@@ -14,11 +14,12 @@ object Control {
   @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(sig)
   @inline final def factor(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)(sig)
   @inline final def boolext(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)(sig)
-  @inline final def primsubst(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)(sig)
+  @inline final def primsubst(cl: AnnotatedClause, level: Int)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl, level)(sig)
   @inline final def preunifyNewClauses(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PreUniControl.preunifyNewClauses(clSet)(sig)
   @inline final def preunifySet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PreUniControl.preunifySet(clSet)(sig)
   // simplification inferences
   @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
+  @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(sig)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
   @inline final def nnf(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.nnf(cl)
   @inline final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl)(sig)
@@ -80,6 +81,16 @@ package inferenceControl {
         result
       }
 
+    }
+
+    final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
+      var result: Set[AnnotatedClause] = Set()
+      val clsIt = cls.iterator
+      while(clsIt.hasNext) {
+        val cl = clsIt.next()
+        result = result union cnf(cl)
+      }
+      result
     }
   }
 
@@ -393,7 +404,7 @@ package inferenceControl {
             if (unificationLit.uni) {
               assert(unificationLit.equational && !unificationLit.polarity)
               val unificationEq = (unificationLit.left, unificationLit.right)
-              if (false /*PatternUni.canApply(unificationLit)*/) {
+              if (PatternUni.canApply(unificationLit)) {
                 // Pattern
                 val uniResult = PatternUni.apply(leo.modules.calculus.freshVarGen(cl.cl), Seq(unificationEq), cl.cl.lits.init)
                 if (uniResult.isEmpty) {
@@ -504,21 +515,27 @@ package inferenceControl {
       } else Set()
     }
 
-    final def primSubst(cw: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-      // TODO: Read from configuration thorougness of prim subst.
-      val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
-      if (cA_ps) {
-        Out.debug(s"Prim subst on: ${cw.id}")
-        val new_ps_pre = PrimSubst(cw.cl, ps_vars, standardbindings)
-        val new_ps_pre2 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
-        val new_ps_pre3 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
-        val new_ps_pre4 = ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom(_)), h.ty.funParamTypes)))
-        val pre = new_ps_pre // ++ new_ps_pre2 ++ new_ps_pre3 ++ new_ps_pre4
-        val new_ps = pre.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
-        Out.trace(s"Prim subst result:\n\t${new_ps.map(_.pretty).mkString("\n\t")}")
-        return new_ps
-      }
-      Set()
+    final def primSubst(cw: AnnotatedClause, level: Int)(implicit sig: Signature): Set[AnnotatedClause] = {
+      if (level > 0) {
+        val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
+        if (cA_ps) {
+          Out.debug(s"Prim subst on: ${cw.id}")
+          var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
+          if (level > 1) {
+            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
+            if (level > 2) {
+              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+              if (level > 3) {
+                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+              }
+            }
+          }
+          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
+          Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty).mkString("\n\t")}")
+          return newCl
+        }
+        Set()
+      } else Set()
     }
   }
 
