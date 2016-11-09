@@ -33,4 +33,12 @@ class MultiSetTestSuite extends LeoTestSuite {
     assert(ms1 subset ms2)
     assert(ms2.forall(elem => ms2.multiplicity(elem) == 2*ms1.multiplicity(elem)))
   }
+
+  test("Multiset Test 3") {
+    val ms1 = Multiset[Int](Set(1,2,3))
+    println(ms1.toString)
+    val ms2 = Multiset[Int](Seq(3,2,1))
+    println(ms2.toString)
+    assert(ms1 == ms2)
+  }
 }
