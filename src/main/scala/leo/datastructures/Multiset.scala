@@ -1,5 +1,7 @@
 package leo.datastructures
 
+import scala.collection.GenTraversable
+
 /**
   * Multisets.
   *
@@ -72,4 +74,7 @@ trait Multiset[A]
 object Multiset {
   def empty[A]: Multiset[A] = impl.MultisetImpl.empty
   def apply[A](elem: A, elems: A*): Multiset[A] = impl.MultisetImpl.apply(elem, elems:_*)
+  def apply[A](coll: GenTraversable[A]): Multiset[A] = impl.MultisetImpl.apply(coll)
+
+  def fromMap[A](map: Map[A, Int]) = impl.MultisetImpl.fromMap(map)
 }

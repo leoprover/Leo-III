@@ -3,6 +3,8 @@ package leo.datastructures.impl
 
 import leo.datastructures.Multiset
 
+import scala.collection.GenTraversable
+
 /**
   * Created by lex on 11/9/16.
   */
@@ -113,4 +115,19 @@ object MultisetImpl {
     }
     new MultisetImpl(contents)
   }
+  def apply[A](coll: GenTraversable[A]): Multiset[A] = {
+    var contents: Map[A, Int] = Map()
+    var curColl = coll
+    while (curColl.nonEmpty) {
+      var e = curColl.head
+      if (contents.contains(e)) {
+        contents = contents + ((e, contents(e)+1))
+      } else {
+        contents = contents + ((e, 1))
+      }
+      curColl = curColl.tail
+    }
+    new MultisetImpl(contents)
+  }
+  def fromMap[A](map: Map[A, Int]): MultisetImpl[A] = new MultisetImpl(map)
 }
