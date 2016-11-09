@@ -113,7 +113,7 @@ object BoolExt extends CalculusRule {
 ////////// pre-Unification
 ////////////////////////////////////////////////////////////////
 protected[calculus] abstract class AnyUni extends CalculusRule {
-  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final override val inferenceStatus = Some(SZS_Theorem)
 
   type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
@@ -242,9 +242,9 @@ object OrderedEqFac extends CalculusRule {
     val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(sig)
     val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
 
-    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
-    val newlitsSimp = Simp.shallowSimp(newlits)(sig)
-
+//    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
+//    val newlitsSimp = Simp.shallowSimp(newlits)(sig)
+    val newlitsSimp = Simp.shallowSimp(lits_without_maxLit)(sig):+ unification_task1 :+ unification_task2
     Clause(newlitsSimp)
   }
 
@@ -320,8 +320,10 @@ object OrderedParamod extends CalculusRule {
 
     Out.finest(s"unificationLit: ${unificationLit.pretty}")
 
-    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
-    val newlits_simp = Simp.shallowSimp(newlits)(sig)
+//    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
+//    val newlits_simp = Simp.shallowSimp(newlits)(sig)
+
+    val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
     val resultingClause = Clause(newlits_simp)
 
     resultingClause

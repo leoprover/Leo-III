@@ -26,7 +26,6 @@ object SeqPProc extends Function1[Long, Unit]{
     assert(Clause.unit(cur.cl), "clause not unit")
     val lit = cur.cl.lits.head
     assert(!lit.equational, "initial literal equational")
-
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
@@ -351,6 +350,8 @@ object SeqPProc extends Function1[Long, Unit]{
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
+//    println(s"current clauses symbols: ${Clause.symbols(cl.cl).map(s => state.signature(s).name).mkString(",")}")
+
     /////////////////////////////////////////
     // Simplifying (mofifying inferences and backward subsumption) BEGIN
     // TODO: à la E: direct descendant criterion, etc.
@@ -421,7 +422,7 @@ object SeqPProc extends Function1[Long, Unit]{
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
 
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)
 
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))

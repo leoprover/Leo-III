@@ -325,7 +325,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)
 
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
