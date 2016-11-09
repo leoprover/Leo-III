@@ -43,9 +43,9 @@ class SimplificationTestSuite extends LeoTestSuite {
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
     test("Simplification Test: "+t.pretty, Checked) {
-      val st = Literal.asTerm(Simplification(termToClause(t)).lits.head)
-      println("Simplicifcation: '" + t.pretty + "' was simplified to '" + st.pretty)
-      assert(st == t1, "\nThe simplified Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
+      val st = Simplification.normalize(t)
+      println("Simplicifcation: '" + t.pretty(s) + "' was simplified to '" + st.pretty(s))
+      assert(st == t1, "\nThe simplified Term '" + t.pretty(s) + "' should be '" + t1.pretty(s) + "', but was '" + st.pretty(s) + "'.")
     }
   }
 

@@ -18,16 +18,16 @@ class PrenexTestSuite extends LeoTestSuite {
   val toNorm : Map[Term,Term] = Map[Term, Term](
     (&(Forall(\(o)(mkBound(o,1))), skVar), Forall(\(o)(&(mkBound(o,1), skVar)))),
     (&(skVar,Forall(\(o)(mkBound(o,1)))), Forall(\(o)(&(skVar,mkBound(o,1))))),
-    (&(Forall(\(o)(mkBound(o,1))),Forall(\(o)(mkBound(o,1)))), Forall(\(o)(Forall(\(o)(&(mkBound(o,2),mkBound(o,1)))))))
+    (&(Forall(\(o)(mkBound(o,1))),Forall(\(o)(mkBound(o,1)))), Forall(\(o)(Forall(\(o)(&(mkBound(o,1),mkBound(o,2)))))))
   )
 
 //  println("\n----------------------\nPrenexNormalform Test.\n--------------------")
   for ((t,t1) <- toNorm){
 //    println("('"+t.pretty+"' , '"+t1.pretty+"')")
     test("Prenex Test:"+t.pretty, Checked) {
-      val st = Literal.asTerm(PrenexNormal(termToClause(t)).lits.head)
-      println("Prenex: The Term '" + t.pretty + "' was normalized to '" + st.pretty + "'.")
-      assert(st == t1, "\nThe negation normalized Term '" + t.pretty + "' should be '" + t1.pretty + "', but was '" + st.pretty + "'.")
+      val st = Clause.asTerm(PrenexNormal(termToClause(t)))
+      println("Prenex: The Term '" + t.pretty(s) + "' was normalized to '" + st.pretty(s) + "'.")
+      assert(st == t1, "\nThe negation normalized Term '" + t.pretty(s) + "' should be '" + t1.pretty(s) + "', but was '" + st.pretty(s) + "'.")
     }
   }
 
