@@ -79,7 +79,7 @@ trait Term extends Pretty with Prettier {
   def headSymbolDepth: Int
   def size: Int
 
-  def symbols: Set[Signature#Key]
+  def symbols: Multiset[Signature#Key]
   final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
     symbols.filter({i => sig(i)._ty == ty})
   }

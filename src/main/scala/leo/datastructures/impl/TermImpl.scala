@@ -67,6 +67,9 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   // Substitutions
 
   // Other
+  final lazy val symbols: Multiset[Signature#Key] = {
+    Multiset.fromMap(symbolMap.mapValues(_._1))
+  }
 
   // FV Indexing utility
   type Count = Int
@@ -136,21 +139,6 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
     case _ => args.fv
   }
   lazy val tyFV: Set[Int] = args.tyFV
-  lazy val symbols: Set[Signature#Key] = {
-    val sym = hd match {
-      case BoundIndex(_,_) => Set()
-      case Atom(key,_)             =>  Set(key)
-      case HeadClosure(Atom(key,_), _) => Set(key)
-      case HeadClosure(BoundIndex(_, scope), subs) => subs._1.substBndIdx(scope) match {
-        case BoundFront(_) => Set()
-        case TermFront(t) => t.symbols
-        case TypeFront(_) => throw new IllegalArgumentException("Type substitute found in term substition") // This should never happen
-      }
-      case HeadClosure(HeadClosure(h, s2), s1) => HeadClosure(h, (s2._1 o s1._1, s2._2 o s1._2)).symbols
-      case _ => Set()
-    }
-    sym ++ args.symbols
-  }
 
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = {
     hd match {
@@ -357,7 +345,6 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   }
   lazy val fv: Set[(Int, Type)] = body.fv union args.fv
   lazy val tyFV: Set[Int] = body.tyFV union args.tyFV
-  lazy val symbols: Set[Signature#Key] = body.symbols ++ args.symbols
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = fuseSymbolMap(body.asInstanceOf[TermImpl].symbolMap, args.symbolMap.mapValues{case (c,d) => (c,d+1)})
   lazy val headSymbol = {
     body.headSymbol
@@ -436,7 +423,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val ty = typ ->: body.ty
   lazy val fv: Set[(Int, Type)] = body.fv.map{case (i,t) => (i-1,t)}.filter(_._1 > 0)
   lazy val tyFV: Set[Int] = body.tyFV
-  lazy val symbols: Set[Signature#Key] = body.symbols
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
   lazy val headSymbol = {
     body.headSymbol
@@ -501,7 +487,6 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val ty = ∀(body.ty)
   lazy val fv: Set[(Int, Type)] = body.fv
   lazy val tyFV: Set[Int] = body.tyFV.map(_ - 1).filter(_ > 0)
-  lazy val symbols: Set[Signature#Key] = body.symbols
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -560,7 +545,6 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   lazy val ty = term.ty
   final def fv: Set[(Int, Type)] = betaNormalize.fv
   final def tyFV: Set[Int] = betaNormalize.tyFV
-  final def symbols: Set[Signature#Key] = betaNormalize.symbols
   final def symbolMap: Map[Signature#Key, (Count, Depth)] = betaNormalize.asInstanceOf[TermImpl].symbolMap
   final def headSymbol = betaNormalize.headSymbol
   final def headSymbolDepth = 1 + term.headSymbolDepth
@@ -698,7 +682,6 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
   def length: Int
   def fv: Set[(Int, Type)]
   def tyFV: Set[Int]
-  def symbols: Set[Signature#Key]
   def symbolMap: Map[Signature#Key, (Int, Int)]
   def asTerms: Seq[Either[Term, Type]]
   def size: Int
@@ -740,7 +723,6 @@ protected[impl] case object SNil extends Spine {
   // Queries
   final val fv: Set[(Int, Type)] = Set()
   final val tyFV: Set[Int] = Set()
-  final val symbols = Set[Signature#Key]()
   final val symbolMap: Map[Signature#Key, (Int, Int)] = Map.empty
   final val length = 0
   final val asTerms = Seq()
@@ -791,7 +773,6 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   // Queries
   lazy val fv: Set[(Int, Type)] = hd.fv union tail.fv
   lazy val tyFV: Set[Int] = hd.tyFV union tail.tyFV
-  lazy val symbols = hd.symbols ++ tail.symbols
   lazy val symbolMap: Map[Signature#Key, (Int, Int)] = hd.asInstanceOf[TermImpl].fuseSymbolMap(hd.asInstanceOf[TermImpl].symbolMap, tail.symbolMap)
   lazy val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
@@ -852,7 +833,6 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   // Queries
   lazy val fv: Set[(Int, Type)] = tail.fv
   lazy val tyFV: Set[Int] = tail.tyFV union hd.typeVars.map(BoundType.unapply(_).get)
-  lazy val symbols = hd.symbols ++ tail.symbols
   lazy val symbolMap: Map[Signature#Key, (Int, Int)] = tail.symbolMap
   lazy val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
@@ -908,7 +888,6 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   // Queries
   lazy val fv: Set[(Int, Type)] = ???
   lazy val tyFV: Set[Int] = ???
-  lazy val symbols =  normalize(s._1,s._2).symbols
   lazy val symbolMap: Map[Signature#Key, (Int, Int)] = normalize(s._1,s._2).symbolMap
   lazy val length = sp.length
   lazy val asTerms = ???

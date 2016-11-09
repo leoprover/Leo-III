@@ -82,8 +82,8 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
     val conjClauseIt = conj.cl.lits.iterator
     while (conjClauseIt.hasNext) {
       val lit = conjClauseIt.next()
-      symbolsInConjecture0 = symbolsInConjecture0 union lit.left.symbols
-      symbolsInConjecture0 = symbolsInConjecture0 union lit.right.symbols
+      symbolsInConjecture0 = symbolsInConjecture0 union lit.left.symbols.distinct
+      symbolsInConjecture0 = symbolsInConjecture0 union lit.right.symbols.distinct
     }
     symbolsInConjecture0 = symbolsInConjecture0 intersect signature.allUserConstants
   }

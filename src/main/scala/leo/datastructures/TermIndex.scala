@@ -30,7 +30,7 @@ object TermIndex {
     t2.occurrences
 
     // insert to data structures
-    for (s <- t2.symbols) {
+    for (s <- t2.symbols.distinct) {
       symbol_of.get(s) match {
         case None => symbol_of += ((s,Set(t2)))
         case Some(set) => symbol_of += ((s, set + t2))

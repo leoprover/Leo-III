@@ -385,10 +385,10 @@ object ACSimp extends CalculusRule {
   }
 
   def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
-    val leftAC = lit.left.symbols intersect allACSymbols
+    val leftAC = lit.left.symbols.distinct intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
-      val rightAC = lit.right.symbols intersect allACSymbols
+      val rightAC = lit.right.symbols.distinct intersect allACSymbols
       val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
       if (newLeft == lit.left && newRight == lit.right) lit
       else Literal(newLeft, newRight, lit.polarity) // TODO: Orient?
