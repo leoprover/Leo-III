@@ -29,6 +29,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_UNIFIERCOUNT = "unifiers"
   private val PARAM_PRIMSUBST = "primsubst"
   private val PARAM_PRE_PRIMSUBST = "preprimsubst"
+  private val PARAM_RELEVANCEFILTER = "relevancefiltering"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -99,6 +100,8 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
+
+  lazy val RELEVANCE_FILTERING: Boolean = isSet(PARAM_RELEVANCEFILTER)
 
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
   lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
