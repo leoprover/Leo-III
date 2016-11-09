@@ -90,6 +90,8 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
+  /** Returns the multiset of symbols occuring in the clause. */
+  final def symbols(c: Clause): Multiset[Signature#Key] = c.lits.map(Literal.symbols).foldLeft(Multiset.empty[Signature#Key]){case (a,b) => a.sum(b)}
   /** Returns true iff all literals are well-typed. */
   final def wellTyped(c: Clause): Boolean = {
     import leo.datastructures.Literal.{wellTyped => wt}
