@@ -185,7 +185,7 @@ object PatternUni extends AnyUni {
 
 object PrimSubst extends CalculusRule {
   val name = "prim_subst"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  override val inferenceStatus = Some(SZS_Theorem)
 
   type FlexHeads = Set[Term]
 
