@@ -35,6 +35,8 @@ object Control {
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
+  // Choice
+  @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
   // Redundancy
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -569,28 +571,11 @@ package inferenceControl {
 
   protected[modules] object Choice {
 
-    import leo.datastructures.Term.{Bound, TermApp}
+    import leo.datastructures.Term.TermApp
     import leo.datastructures.Type.->
 
-    final def detectChoice(cw: AnnotatedClause): Boolean = {
-      val clause = cw.cl
-      if (clause.lits.size == 2) {
-        val lit1 = clause.lits(0)
-        val lit2 = clause.lits(1)
-        if (!lit1.equational && !lit2.equational) {
-          val term1 = lit1.left
-          val term2 = lit2.left
-
-          term1 match {
-            case TermApp(Bound(varTy, varIdx), Seq(Bound(ptherVarTy, otherVarIdx))) =>
-            case _ =>
-          }
-          ???
-        } else
-          false
-      } else
-        false
-
+    final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
+      leo.modules.calculus.Choice.detectChoice(cw.cl)
     }
 
     private final def findCandidate(t: Term): (Boolean, Term, Term) = {

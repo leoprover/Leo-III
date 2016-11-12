@@ -177,7 +177,40 @@ object PatternUni extends AnyUni {
   }
 }
 
+////////////////////////////////////////////////////////////////
+////////// Choice
+////////////////////////////////////////////////////////////////
 
+object Choice extends CalculusRule {
+  val name = "choice"
+  override val inferenceStatus = Some(SZS_Theorem)
+
+  final def detectChoice(clause: Clause): Option[Term] = {
+    import leo.datastructures.Term.TermApp
+    if (clause.lits.size == 2) {
+      val lit1 = clause.lits.head
+      val lit2 = clause.lits.tail.head
+
+      val posLit = if (lit1.polarity) lit1 else if (lit2.polarity) lit2 else null
+      val negLit = if (!lit1.polarity) lit1 else if (!lit2.polarity) lit2 else null
+      if (posLit == null || negLit == null || posLit.equational || negLit.equational) None
+      else {
+        val witnessTerm = negLit.left
+        val choiceTerm = posLit.left
+
+        witnessTerm match {
+          case TermApp(prop, Seq(witness)) if prop.isVariable && witness.isVariable =>
+            choiceTerm match {
+              case TermApp(`prop`, Seq(TermApp(f, Seq(`prop`)))) => Some(f)
+              case _ => None
+            }
+          case _ => None
+        }
+      }
+    } else
+      None
+  }
+}
 
 ////////////////////////////////////////////////////////////////
 ////////// Inferences

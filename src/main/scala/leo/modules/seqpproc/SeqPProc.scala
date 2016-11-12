@@ -198,14 +198,23 @@ object SeqPProc extends Function1[Long, Unit]{
             }
             state.setDerivationClause(cur)
           } else {
-            // Subsumption
-            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-            if (subsumed.isEmpty) {
-              mainLoopInferences(cur, state)
+            val choiceCandidate = Control.detectChoiceClause(cur)
+            if (choiceCandidate.isDefined) {
+              val choiceFun = choiceCandidate.get
+              state.addChoiceFunction(choiceFun)
+              leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              Out.debug("clause subsumbed, skipping.")
-              state.incForwardSubsumedCl()
-              Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+              // Subsumption
+              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+              if (subsumed.isEmpty) {
+                if(mainLoopInferences(cur, state)) {
+                  loop = false
+                }
+              } else {
+                Out.debug("clause subsumbed, skipping.")
+                state.incForwardSubsumedCl()
+                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+              }
             }
           }
         }
@@ -253,16 +262,23 @@ object SeqPProc extends Function1[Long, Unit]{
               }
               state.setDerivationClause(cur)
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                if(mainLoopInferences(cur, state)) {
-                  loop = false
-                }
+              val choiceCandidate = Control.detectChoiceClause(cur)
+              if (choiceCandidate.isDefined) {
+                val choiceFun = choiceCandidate.get
+                state.addChoiceFunction(choiceFun)
+                leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
               } else {
-                Out.debug("clause subsumbed, skipping.")
-                state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+                // Subsumption
+                val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+                if (subsumed.isEmpty) {
+                  if(mainLoopInferences(cur, state)) {
+                    loop = false
+                  }
+                } else {
+                  Out.debug("clause subsumbed, skipping.")
+                  state.incForwardSubsumedCl()
+                  Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+                }
               }
             }
           }
