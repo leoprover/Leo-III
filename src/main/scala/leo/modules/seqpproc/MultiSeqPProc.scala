@@ -39,9 +39,9 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
-    cw = Control.nnf(cw)
+//    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw)
+//    cw = Control.skolemize(cw)
 
     // Exhaustively CNF
     result = Control.cnf(cw)

@@ -2,7 +2,7 @@ package leo.modules.phase
 
 import leo.Configuration
 import leo.agents.TAgent
-import leo.modules.agent.preprocessing.{FormulaRenamingAgent, EqualityReplaceAgent, NormalizationAgent, ArgumentExtractionAgent}
+import leo.modules.agent.preprocessing.{FormulaRenamingAgent, EqualityReplaceAgent, ArgumentExtractionAgent}
 
 /**
   * Created by mwisnie on 3/7/16.

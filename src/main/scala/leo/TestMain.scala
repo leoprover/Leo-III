@@ -6,7 +6,7 @@ import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.agent.preprocessing.{ArgumentExtractionAgent, EqualityReplaceAgent, FormulaRenamingAgent, NormalizationAgent}
+import leo.modules.agent.preprocessing.{ArgumentExtractionAgent, EqualityReplaceAgent, FormulaRenamingAgent}
 import leo.modules.agent.relevance_filter.BlackboardPreFilterSet
 import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
 import leo.modules._
@@ -14,7 +14,6 @@ import leo.modules.external.ExternalCall
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.Utility._
-import leo.modules.preprocessing.Preprocess
 import leo.modules.seqpproc.MultiSeqPProc
 
 /**
@@ -151,7 +150,7 @@ object TestMain {
       } catch {
         case _ : Exception => 0
       }
-
+      import leo.modules.calculus.Preprocess
       val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
       val msproc2 = new MultiSeqPProc(atpFreq, x => x)
       val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))

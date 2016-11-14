@@ -29,9 +29,8 @@ object SeqPProc extends Function1[Long, Unit]{
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
-    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw)
+//    cw = Control.miniscope(cw)
 
     // Introduce primsubst instantiations (if applicable)
     // and then exhaustively CNF

@@ -1,9 +1,8 @@
-package leo.modules.preprocessing
+package leo.modules.calculus
 
 import leo.datastructures._
+import leo.modules.HOLSignature.{&, <=>, o, |||}
 import leo.{Checked, LeoTestSuite}
-import leo.datastructures.impl.SignatureImpl
-import leo.modules.HOLSignature.{o, |||, <=>, &}
 
 /**
   * Created by mwisnie on 1/13/16.

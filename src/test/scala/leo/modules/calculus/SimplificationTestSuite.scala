@@ -1,11 +1,9 @@
-package leo.modules.normalization
+package leo.modules.calculus
 
-import leo.{Checked, LeoTestSuite}
+import leo.datastructures.Term._
 import leo.datastructures._
-
-import leo.modules.preprocessing.Simplification
-import Term._
-import leo.modules.HOLSignature.{o, Not, LitFalse, LitTrue, &, |||, <=>, Forall, Exists, Impl}
+import leo.modules.HOLSignature._
+import leo.{Checked, LeoTestSuite}
 
 /**
  * Created by Max Wisniewski on 6/10/14.
@@ -43,7 +41,7 @@ class SimplificationTestSuite extends LeoTestSuite {
 //  println("\n-------------------\nSimplification Test.\n---------------------------")
   for ((t,t1) <- toSimpl){
     test("Simplification Test: "+t.pretty, Checked) {
-      val st = Simplification.normalize(t)
+      val st = Simp.normalize(t)
       println("Simplicifcation: '" + t.pretty(s) + "' was simplified to '" + st.pretty(s))
       assert(st == t1, "\nThe simplified Term '" + t.pretty(s) + "' should be '" + t1.pretty(s) + "', but was '" + st.pretty(s) + "'.")
     }

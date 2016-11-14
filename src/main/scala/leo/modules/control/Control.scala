@@ -21,7 +21,6 @@ object Control {
   @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(sig)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
-  @inline final def nnf(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.nnf(cl)
   @inline final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
@@ -634,28 +633,6 @@ package inferenceControl {
 
     }
 
-    /**
-      * PRE: Only called on clauses during preprocessing.
-      * It is assumed that each arguments clause is a unit
-      * and not equational.
-      *
-      * @param cl
-      * @return
-      */
-    final def nnf(cl: AnnotatedClause): AnnotatedClause = {
-      import leo.modules.preprocessing.NegationNormal
-      assert(Clause.unit(cl.cl))
-      assert(!cl.cl.lits.head.equational)
-
-      val lit = cl.cl.lits.head
-      val term = lit.left
-      val nnfterm = if (lit.polarity) NegationNormal.normalizeNonExt(term) else NegationNormal.normalizeNonExt(Not(term))
-      if (nnfterm != term) { // TODO: fails if negative polarity, i.e. for conjecture
-        val result = AnnotatedClause(Clause(Literal(nnfterm, true)), InferredFrom(NegationNormal, Set(cl)), cl.properties)
-        Out.trace(s"NNF: ${result.pretty}")
-        result
-      } else cl
-    }
 
     final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       import leo.modules.calculus.Skolemization
@@ -680,8 +657,8 @@ package inferenceControl {
       assert(Clause.unit(cl.cl))
       val lit = cl.cl.lits.head
       assert(!lit.equational)
-      val newleft = leo.modules.preprocessing.DefExpSimp(lit.left)(sig)
-      val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(leo.modules.preprocessing.DefExpSimp, Set(cl)), cl.properties)
+      val newleft = DefExpSimp(lit.left)(sig)
+      val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, Set(cl)), cl.properties)
       Out.trace(s"Def expansion: ${result.pretty(sig)}")
       result
     }
