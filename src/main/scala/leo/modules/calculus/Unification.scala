@@ -506,7 +506,8 @@ object HuetsPreUnification extends Unification {
       val depth = e._3
       // orienting the equation
       val (t,_) = if (isFlexible(e._1,depth)) (e._1,e._2) else (e._2, e._1)
-      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1).reverse).map(p => Term.mkBound(p._1,p._2)) // TODO
+      // FIXME: what to fix?
+      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1).reverse).map(p => Term.mkBound(p._1,p._2))
       leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
       //Take only those bound vars that are itself a type with result type == type of general binding
       val funBVars = bvars.filter(bvar => t.headSymbol.ty.funParamTypesWithResultType.endsWith(bvar.ty.funParamTypesWithResultType))
@@ -781,24 +782,6 @@ object PatternUnification extends Unification {
       }
     }
   }
-//  private final def zipArgumentsWithAbstractions(l: Seq[Term], r: Seq[Term],
-//                                                 abstractions: Seq[Type]): Seq[UEq] =
-//    zipArgumentsWithAbstractions0(l,r,abstractions, Seq())
-//
-//  @tailrec @inline
-//  private final def zipArgumentsWithAbstractions0(l: Seq[Term], r: Seq[Term],
-//                                                  abstractions: Seq[Type],
-//                                                  acc1: Seq[UEq]): Seq[UEq] = {
-//    import leo.datastructures.Term.λ
-//    if (l.isEmpty && r.isEmpty) acc1
-//    else if (l.nonEmpty && r.nonEmpty) {
-//        val leftTerm = λ(abstractions)(l.head)
-//        val rightTerm = λ(abstractions)(r.head)
-//        zipArgumentsWithAbstractions0(l.tail, r.tail, abstractions, (leftTerm, rightTerm) +: acc1)
-//    } else {
-//      throw new IllegalArgumentException("Decomp on differently sized arguments length. Decomp Failing.")
-//    }
-//  }
 
   /** unification of flex-flex equation. Fails if type arguments are applied (not pattern, is it?). */
   private final def flexflex(idx1: Int, ty1: Type, args01: Seq[Either[Term, Type]], idx2: Int, ty2: Type, args02: Seq[Either[Term, Type]], vargen: FreshVarGen, ty: Type): PartialUniResult = {
@@ -878,7 +861,7 @@ object PatternUnification extends Unification {
           }
         }
       } catch {
-      case e:NoSuchElementException => null
+      case _:NoSuchElementException => null
     }
   }
 
@@ -908,13 +891,11 @@ object PatternUnification extends Unification {
     }
   }
 
-  /** Flex-rigid rule: May fail, returns null of not sucessful. *///TODO Ordering of bound vars wrong ?
+  /** Flex-rigid rule: May fail, returns null of not sucessful. */
   private final def flexrigid(idx1: Int, ty1: Type, args1: Seq[Either[Term, Type]], rigidHd: Term, rigidArgs: Seq[Either[Term, Type]], rigidAsTerm: Term, vargen: FreshVarGen, depth: Seq[Type]): (PartialUniResult, Seq[UEq]) = {
-    import leo.datastructures.Term.{λ, mkTermApp, mkBound}
-    import leo.datastructures.Type.mkFunType
     try {
       val args10 = args1.map(_.left.get)
-      // TODO: This is a bit hacky: We need the new fresh variables
+      // This is a bit hacky: We need the new fresh variables
       // introduced by partialBinding(...), so we just take the
       // difference of vars in vargen (those have been introduced).
       // Maybe this should be done better...
@@ -996,7 +977,7 @@ object PatternUnification extends Unification {
     if (ts.isEmpty) true
     else {
       val t = ts.head
-      if (t.isRight) allPattern(ts.tail, depth) /* TODO ignore type argument? */
+      if (t.isRight) allPattern(ts.tail, depth)
       else {
         if (!isPattern0(t.left.get, depth))
           false /* fail fast if any argument
@@ -1017,7 +998,7 @@ object PatternUnification extends Unification {
     if (args.isEmpty) true
     else {
       val arg = args.head
-      if (arg.isRight) false /*FIXME: What to do you type variables? */
+      if (arg.isRight) false /*Free variable dont have type argument, do they? (rank-1 poly)*/
       else {
         val termArg = arg.left.get
         termArg match {
@@ -1075,29 +1056,3 @@ object PatternUnification extends Unification {
     }
   }
 }
-
-
-
-///**
-//  * First-order unification
-//  *
-//  * @author Alexander Steen <a.steen@fu-berlin.de>
-//  * @since June 2016
-//  */
-//object FOUnification extends Unification {
-//
-//  @inline override final def unify(varGen: FreshVarGen, t: Term, s: Term): Iterable[UnificationResult] =
-//    unify0(varGen, Seq((t,s)))
-//
-//  @inline override final def unifyAll(varGen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
-//    unify0(varGen, constraints)
-//
-//  //FIXME: Does not respect type substitution/equations.
-//  private final def unify0(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] = {
-//    val (unsolved, solved, _, _) = HuetsPreUnification.detExhaust(vargen, constraints, Seq(), Seq(), Seq())
-//    if (  unsolved.isEmpty) {
-//      Stream(((HuetsPreUnification.computeSubst(solved), Subst.id), Seq()))
-//    } else Stream.empty
-//  }
-//
-//}

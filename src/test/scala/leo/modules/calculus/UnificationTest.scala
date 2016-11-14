@@ -335,4 +335,21 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     checkUnifier(l,r,s,vargen)
   }
 
+  test("unify λx y z.c(F(y z x), G(x), H(y)) = λx y z.I(x z y)", Checked) {
+    implicit val s  = getFreshSignature
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i ->: i ->: i)
+    val G = vargen(i ->: i)
+    val H = vargen(i ->: i)
+    val I = vargen(i ->: i ->: i ->: i)
+    val c = mkAtom(s.addUninterpreted("c",i ->: i ->: i ->: i))
+
+
+    val l = λ(i,i,i)(mkTermApp(c, Seq(mkTermApp(F.lift(3), Seq(mkBound(i, 2), mkBound(i, 1), mkBound(i, 3))), mkTermApp(G.lift(3), mkBound(i, 3)), mkTermApp(H.lift(3), mkBound(i, 2)))))
+    val r = λ(i,i,i)(mkTermApp(I.lift(3), Seq(mkBound(i, 3), mkBound(i, 1), mkBound(i, 2))))
+
+    checkUnifier(l,r,s,vargen)
+  }
+
 }
