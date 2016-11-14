@@ -368,14 +368,14 @@ package inferenceControl {
 
     final def preunifySet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
       var resultSet: Set[AnnotatedClause] = clSet
-      val (uniClauses, otherClauses):(Set[(AnnotatedClause, PreUni.UniLits, PreUni.OtherLits)], Set[AnnotatedClause]) = clSet.foldLeft((Set[(AnnotatedClause, PreUni.UniLits, PreUni.OtherLits)](), Set[AnnotatedClause]())) {case ((uni,ot),cw) => {
+      val (uniClauses, otherClauses):(Set[(AnnotatedClause, PreUni.UniLits, PreUni.OtherLits)], Set[AnnotatedClause]) = clSet.foldLeft((Set[(AnnotatedClause, PreUni.UniLits, PreUni.OtherLits)](), Set[AnnotatedClause]())) {case ((uni,ot),cw) =>
         val (cA, ul, ol) = PreUni.canApply(cw.cl)
         if (cA) {
           (uni + ((cw, ul, ol)),ot)
         } else {
           (uni, ot + cw)
         }
-      }}
+      }
       if (uniClauses.nonEmpty) {
         Out.debug("Unification tasks found. Working on it...")
         resultSet = otherClauses
@@ -395,7 +395,6 @@ package inferenceControl {
     }
 
     // TODO: Flags, check for types in pattern unification
-    // TODO: Maybe reunify when done?
     final def unifyNewClauses(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
       var resultSet: Set[AnnotatedClause] = Set()
       val clsIt = cls.iterator
@@ -432,7 +431,15 @@ package inferenceControl {
       assert(cl.lits.nonEmpty)
       val uniLit = cl.lits.last
       assert(!uniLit.polarity)
-      doUnify0(cl0, freshVarGen, Seq((uniLit.left, uniLit.right)), cl.lits.init)(sig)
+      val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit.left, uniLit.right)), cl.lits.init)(sig)
+      // TODO: Try again to unify all possibly new unification constraints, is that useful?
+      var uniResult: Set[AnnotatedClause] = Set()
+      val uniResultIt = uniResult0.iterator
+      while (uniResultIt.hasNext) {
+        val uniRes = uniResultIt.next()
+        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+      }
+      uniResult
     }
 
     private final def factorUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
@@ -441,7 +448,15 @@ package inferenceControl {
       val uniLit1 = cl.lits.last
       val uniLit2 = cl.lits.init.last
       assert(!uniLit1.polarity && !uniLit2.polarity)
-      doUnify0(cl0, freshVarGen, Seq((uniLit1.left, uniLit1.right), (uniLit2.left, uniLit2.right)), cl.lits.init.init)(sig)
+      val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit1.left, uniLit1.right), (uniLit2.left, uniLit2.right)), cl.lits.init.init)(sig)
+      // Try again to unify all possibly new unification constraints
+      var uniResult: Set[AnnotatedClause] = Set()
+      val uniResultIt = uniResult0.iterator
+      while (uniResultIt.hasNext) {
+        val uniRes = uniResultIt.next()
+        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+      }
+      uniResult
     }
 
     private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
@@ -456,15 +471,17 @@ package inferenceControl {
           otherLits = lit +: otherLits
         }
       }
-      val uniResult = doUnify0(cl, freshVarGen, uniLits, otherLits)(sig)
-      // TODO: Discard those with no unifier here?
-      // i.e. either one of the two options below
-      // at the moment, i prefer (2)
-      // (1)
-//      uniResult
-      // (2)
-      if (uniResult.isEmpty) Set(cl)
-      else uniResult
+      if (uniLits.nonEmpty) {
+        val uniResult = doUnify0(cl, freshVarGen, uniLits, otherLits)(sig)
+        // TODO: Discard those with no unifier here?
+        // i.e. either one of the two options below
+        // at the moment, i prefer (2)
+        // (1)
+        //      uniResult
+        // (2)
+        if (uniResult.isEmpty) Set(cl)
+        else uniResult
+      } else Set(cl)
     }
 
 
