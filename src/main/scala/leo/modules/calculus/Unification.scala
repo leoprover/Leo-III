@@ -570,7 +570,7 @@ object HuetsPreUnification extends Unification {
 
 //  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
 //    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst), e._3))
-  @inline private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[(Term, Term)]): Seq[(Term, Term)] =
+  @inline protected[calculus] final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[(Term, Term)]): Seq[(Term, Term)] =
     l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst)))
   @inline private final def applyTySubstToList(typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
     l.map(e => (e._1.substitute(Subst.id, typeSubst),e._2.substitute(Subst.id, typeSubst), e._3))
@@ -653,7 +653,7 @@ object HuetsPreUnification extends Unification {
   * else the unifiers will be any arbitrary unifier (if existent).
   */
 object PatternUnification extends Unification {
-  import HuetsPreUnification.{tyDetExhaust, collectLambdas}
+  import HuetsPreUnification.{tyDetExhaust, collectLambdas, applySubstToList}
 
     /////////////////////////////////////
   // Unifier search starts with these methods
@@ -708,8 +708,12 @@ object PatternUnification extends Unification {
     import leo.datastructures.Term.{Bound, ∙}
     import HuetsPreUnification.zipArgumentsWithAbstractions
     if (uTyEqs.nonEmpty) {
-      // TODO
-      ???
+      val tyUnifier = tyDetExhaust(uTyEqs, partialTyUnifier)
+      if (tyUnifier.isDefined) {
+        val tyUnifier0 = tyUnifier.get
+        unify1(applySubstToList(Subst.id, tyUnifier0, ueqs), Seq(), vargen, partialUnifier.applyTypeSubst(tyUnifier0), partialTyUnifier.comp(tyUnifier0))
+      }
+      else None
     } else {
       if (ueqs.isEmpty)
         Some((partialUnifier, partialTyUnifier))
