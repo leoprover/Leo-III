@@ -36,10 +36,22 @@ object SeqPProc extends Function1[Long, Unit]{
     // Introduce primsubst instantiations (if applicable)
     // and then exhaustively CNF
     result = if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-      val primSubst_result = Control.primsubst(cur,Configuration.PRE_PRIMSUBST_LEVEL)
+      val primSubst_result = Control.primsubst(cw,Configuration.PRE_PRIMSUBST_LEVEL)
       Out.trace(s"pre primsubst result: ${primSubst_result.map(_.pretty)}")
       Control.cnfSet(primSubst_result + cw)
     } else Control.cnf(cw)
+//
+//    //Remove of instance of choice TODO
+//    val choiceCandidate = Control.detectChoiceClause(cw)
+//    if (choiceCandidate.isDefined) {
+//      val choiceFun = choiceCandidate.get
+//      state.addChoiceFunction(choiceFun)
+//      leo.Out.debug(s"Choice: function detected ${choiceFun.pretty(sig)}")
+//      leo.Out.debug(s"Choice: clause removed ${cw.id}")
+//      Set()
+//    } else {
+//
+//    }
 
     // Remove defined equalities as far as possible
     result = result union Control.convertDefinedEqualities(result)
@@ -308,6 +320,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
       Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
       Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
+      Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
       Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
       Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
       Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")

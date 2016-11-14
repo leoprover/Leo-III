@@ -32,6 +32,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions(ty: Type): Set[Term]
+  def choiceFunctionCount: Int
 
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
@@ -129,6 +130,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
     } else choiceFunctions0 = choiceFunctions0 + ((f.ty, Set(f)))
   }
   final def choiceFunctions(ty: Type): Set[Term] = {choiceFunctions0.getOrElse(ty,Set[Term]())}
+  final def choiceFunctionCount: Int = {choiceFunctions0.map {case (k,v) => v.size}.sum}
 
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
