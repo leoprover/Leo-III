@@ -5,8 +5,7 @@ import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
 import leo.datastructures._
 import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
-import leo.modules.calculus.CalculusRule
-import leo.modules.preprocessing.FormulaRenaming
+import leo.modules.calculus.FormulaRenaming
 
 /**
   * Created by mwisnie on 3/7/16.

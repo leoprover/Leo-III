@@ -88,7 +88,7 @@ object ToTPTP {
       val tyDecl = s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
       if (constant.hasDefn) {
-        tyDecl + s"\nthf(${cname}_def, definition, $cname = ${toTPTP0(constant._defn)(sig)})."
+        tyDecl + s"\nthf(${cname}_def, definition, ($cname = (${toTPTP0(constant._defn)(sig)})))."
       } else
         tyDecl
     } else {

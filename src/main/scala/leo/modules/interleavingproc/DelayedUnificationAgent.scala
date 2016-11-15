@@ -39,7 +39,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
     override def run: Result = {
       val result = Result()
       result.remove(OpenUnification)(ac)
-      val newclauses = Control.preunifyNewClauses(Set(ac))(sig)
+      val newclauses = Control.unifyNewClauses(Set(ac))(sig)
       val sb = new StringBuilder("\n")
 
 

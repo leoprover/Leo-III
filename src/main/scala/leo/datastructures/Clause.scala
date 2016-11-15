@@ -1,8 +1,5 @@
 package leo.datastructures
 
-import leo.Configuration
-import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
-
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
  * The `id` of a clause is unique and is monotonously increasing.
@@ -30,6 +27,7 @@ trait Clause extends Pretty with Prettier {
 
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
+  def substituteOrdered(s : Subst)(implicit sig: Signature) : Clause = Clause.mkClause(lits.map(_.substituteOrdered(s)(sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
@@ -49,7 +47,6 @@ trait Clause extends Pretty with Prettier {
 
 object Clause {
   import impl.{VectorClause => ClauseImpl}
-  import Literal.{LitMax, LitStrictlyMax}
 
   /** Create a unit clause containing only literal `lit` with origin `Derived`. */
   def apply(lit: Literal): Clause = mkUnit(lit)
@@ -93,6 +90,13 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
+  /** Returns the multiset of symbols occuring in the clause. */
+  final def symbols(c: Clause): Multiset[Signature#Key] = c.lits.map(Literal.symbols).foldLeft(Multiset.empty[Signature#Key]){case (a,b) => a.sum(b)}
+  /** Returns a representation of the clause `c` as term. */
+  final def asTerm(c: Clause): Term = {
+    val body = mkDisjunction(c.lits.map(Literal.asTerm))
+    mkPolyUnivQuant(c.implicitlyBound.map(_._2), body)
+  }
   /** Returns true iff all literals are well-typed. */
   final def wellTyped(c: Clause): Boolean = {
     import leo.datastructures.Literal.{wellTyped => wt}

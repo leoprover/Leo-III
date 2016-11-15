@@ -31,7 +31,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
   @inline private final val forwardSubsumed = true
   @inline private final val notForwardSubsumed = false
 
-  implicit val signature = sig
+  implicit val signature : Signature = sig
 
   override def terminated : Boolean = synchronized(terminatedFlag)
   private var terminatedFlag: Boolean = false
@@ -168,7 +168,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     val cur = opState.processedSelect
     val rewrite = opState.actRewrite
 
-    var newclauses = opState.paramodPartners // TODO Perform real paramod after splitting the step
+    var newclauses = opState.paramodPartners                    // TODO Perform real paramod after splitting the step
 
     val boolext_result = Control.boolext(cur)
     newclauses = newclauses union boolext_result
@@ -177,7 +177,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)
+    val primSubst_result = Control.primsubst(cur, 1)
     newclauses = newclauses union primSubst_result
 
     newclauses = newclauses union Control.convertDefinedEqualities(newclauses)

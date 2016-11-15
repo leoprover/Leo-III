@@ -5,7 +5,6 @@ import leo.datastructures.{Signature, Term, Clause, Literal, Derived}
 import Term.{mkAtom, mkTermApp => ap}
 import leo.modules.Numerals
 import Numerals.fromInt
-import leo.modules.preprocessing.Simplification
 
 
 /**
@@ -61,9 +60,9 @@ class ExecutionTest extends LeoTestSuite {
     //println(test3.pretty)
 
     println("Simplification ...")
-    val test4 = Simplification(Clause.mkClause(List(Literal(test3,true)),Derived))
+    val test4 = leo.modules.calculus.Simp.normalize(test3)
 
     println(" (Resulting term: " + test4.pretty + " )")
-    Literal.asTerm(test4.lits.head)
+    test4
   }
 }

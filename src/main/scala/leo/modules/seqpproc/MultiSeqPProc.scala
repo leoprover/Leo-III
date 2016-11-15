@@ -39,9 +39,9 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
-    cw = Control.nnf(cw)
+//    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw)
+//    cw = Control.skolemize(cw)
 
     // Exhaustively CNF
     result = Control.cnf(cw)
@@ -302,7 +302,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)
+    val primSubst_result = Control.primsubst(cur, 1)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */
@@ -326,7 +326,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)
 
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
