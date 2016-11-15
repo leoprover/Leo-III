@@ -586,24 +586,28 @@ package inferenceControl {
   }
 
   protected[modules] object Choice {
-
-    import leo.datastructures.Term.TermApp
-    import leo.datastructures.Type.->
-
+    import leo.modules.calculus.{Choice => ChoiceRule}
     final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
-      leo.modules.calculus.Choice.detectChoice(cw.cl)
+      ChoiceRule.detectChoice(cw.cl)
     }
 
-    private final def findCandidate(t: Term): (Boolean, Term, Term) = {
-      t match {
-        case TermApp(var1, Seq(TermApp(choiceSymb, Seq(var2)))) => {
-          choiceSymb.ty match {
-            case ((a -> b) -> c) => ???
-            case _ => (false, null, null)
-          }
+    final def instantiateChoice(cw: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(sig: Signature): Set[AnnotatedClause] = {
+      val cl = cw.cl
+      val candidates = ChoiceRule.canApply(cl)
+      if (candidates.nonEmpty) {
+        var results: Set[AnnotatedClause] = Set()
+        val candidateIt = candidates.iterator
+        while(candidateIt.hasNext) {
+          val cand = candidateIt.next()
+          val choiceInstance = ChoiceRule(cand, ???, freshVarGen(cl))
         }
-        case _ => ???
-      }
+        results
+      } else Set()
+    }
+
+    final def registerNewChoiceFunction(ty: Type)(sig: Signature): Term = {
+      val newSymb = sig.freshSkolemConst(ty, Signature.PropChoice)
+      Term.mkAtom(newSymb)(sig)
     }
   }
 

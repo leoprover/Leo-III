@@ -113,7 +113,7 @@ trait Signature {
     * @throws IllegalArgumentException if the symbol described by `identifier` already exists or a
     *                                  illegal typ/definition combination is supplied
     */
-  protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], status: Int): Key
+  protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], prop: Signature.SymbProp): Key
   /** Removes the symbol indexed by `key` it it exists; does nothing otherwise.
     * @return `true` if `key` was associated to a symbol (that got removed), false otherwise
     */
@@ -133,12 +133,12 @@ trait Signature {
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  final def addDefined(identifier: String, defn: Term, typ: Type, status: Int = 0): Key = addConstant0(identifier, Left(typ), Some(defn), status)
+  final def addDefined(identifier: String, defn: Term, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key = addConstant0(identifier, Left(typ), Some(defn), prop)
   /** Adds an uninterpreted constant with type `typ` to the signature,
     * multiset status is default, but can be overridden by `status` parameter.
     * @return The key the symbol is indexed by
     */
-  final def addUninterpreted(identifier: String, typ: Type, status: Int = 0): Key       = addConstant0(identifier, Left(typ), None, status)
+  final def addUninterpreted(identifier: String, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key       = addConstant0(identifier, Left(typ), None, prop)
   /** Adds an uninterpreted constant with kind `k` to the signature.
     * @return The key the symbol is indexed by
     */
@@ -244,7 +244,7 @@ trait Signature {
   ///////////////////////////////
 
   /** Create fresh uninterpreted symbol of type `ty` */
-  def freshSkolemConst(ty: Type): Key
+  def freshSkolemConst(ty: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key
   /** Create fresh base type symbol */
   def freshSkolemTypeConst: Key
 }
@@ -256,9 +256,10 @@ object Signature {
   final val PropAssociative: SymbProp = 2
   final val PropCommutative: SymbProp = 4
   final val PropAC: SymbProp = PropAssociative | PropCommutative
-  final protected[datastructures] val PropFixed: SymbProp = 8 /* Fixed term of type symbol of the system */
-  final protected[datastructures] val PropExternal: SymbProp = 16 /* Term or type symbol that refers to a external object */
-  final protected[datastructures] val PropSkolemConstant: SymbProp = 32 /* Term symbol that was introduced within skolemization */
+  final val PropFixed: SymbProp = 8 /* Fixed term of type symbol of the system */
+  final val PropExternal: SymbProp = 16 /* Term or type symbol that refers to a external object */
+  final val PropSkolemConstant: SymbProp = 32 /* Term symbol that was introduced within skolemization */
+  final val PropChoice: SymbProp = 64 /* The symbol is a choice function. */
 
   final val multStatus: Int = 0
   final val lexStatus: Int = 1

@@ -210,6 +210,17 @@ object Choice extends CalculusRule {
     } else
       None
   }
+
+
+  final def canApply(clause: Clause): Set[Term] = ???
+
+  final def apply(term: Term, choiceFun: Term, vargen: FreshVarGen): Clause = {
+    // lit1: [term y]^f
+    val lit1 = Literal.mkLit(Term.mkTermApp(term, vargen(???)), false)
+    // lit2: [term (choicefun term)]^t
+    val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)), true)
+    Clause(Seq(lit1, lit2))
+  }
 }
 
 ////////////////////////////////////////////////////////////////

@@ -70,7 +70,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   // Maintenance methods for the signature
   ///////////////////////////////
 
-  protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], status: Int): Key = {
+  protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], prop: Signature.SymbProp): Key = {
     if (keyMap.contains(identifier)) {
       throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
@@ -88,7 +88,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
             typeSet += key
           }
           case Left(t:Type) => { // Uninterpreted symbol
-          val meta = UninterpretedMeta(identifier, key, t, status*Signature.PropStatus)
+          val meta = UninterpretedMeta(identifier, key, t, prop)
             metaMap += ((key, meta))
             uiSet += key
             // TODO: AC sets
@@ -98,7 +98,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
 
       case Some(fed) => { // Defined
         val ty = typ.left.get
-        val meta = DefinedMeta(identifier, key, ty, fed, status*Signature.PropStatus)
+        val meta = DefinedMeta(identifier, key, ty, fed, prop)
           metaMap += ((key, meta))
           definedSet += key
         }
@@ -215,12 +215,12 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   val skolemVarPrefix = "sk"
   /** Returns a fresh uninterpreted symbol of type `ty`. That symbol will be
     * named `SKi` where i is some positive number. */
-  def freshSkolemConst(ty: Type): Key = synchronized {      // TODO Whole Signature thread save
+  def freshSkolemConst(ty: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key = synchronized {      // TODO Whole Signature thread save
     while(exists(skolemVarPrefix + (skolemVarCounter +1).toString)) {
       skolemVarCounter += 1
     }
     skolemVarCounter += 1
-    addUninterpreted(skolemVarPrefix + skolemVarCounter.toString, ty)
+    addUninterpreted(skolemVarPrefix + skolemVarCounter.toString, ty, prop | Signature.PropSkolemConstant)
   }
   // Skolem variables start with 'tv'
   var typeVarCounter = 0

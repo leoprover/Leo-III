@@ -50,6 +50,9 @@ object Utility {
       if (c1.status == multStatus) sb.append("mult,")
       if (c1.isASymbol) sb.append("A,")
       if (c1.isCSymbol) sb.append("C,")
+      if (isPropSet(Signature.PropSkolemConstant, c1.flag)) sb.append("SK, ")
+      if (isPropSet(Signature.PropFixed, c1.flag)) sb.append("Fix, ")
+      if (isPropSet(Signature.PropChoice, c1.flag)) sb.append("Choice fun, ")
       if (c1.isExternal) sb.append("Ext")
       sb.append("\n")
     }
@@ -74,6 +77,9 @@ object Utility {
       if (c1.status == multStatus) sb.append("mult,")
       if (c1.isASymbol) sb.append("A,")
       if (c1.isCSymbol) sb.append("C,")
+      if (isPropSet(Signature.PropSkolemConstant, c1.flag)) sb.append("SK, ")
+      if (isPropSet(Signature.PropFixed, c1.flag)) sb.append("Fix, ")
+      if (isPropSet(Signature.PropChoice, c1.flag)) sb.append("Choice fun, ")
       if (c1.isExternal) sb.append("Ext")
       sb.append("\n")
     }
