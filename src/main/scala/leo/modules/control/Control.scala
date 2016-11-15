@@ -21,7 +21,7 @@ object Control {
   @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(sig)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
-  @inline final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.skolemize(cl)(sig)
+  @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
   @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)(sig)
@@ -633,9 +633,9 @@ package inferenceControl {
 
     }
 
-
-    final def skolemize(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      import leo.modules.calculus.Skolemization
+    /** Pre: Is only called on initial clauses, i.e. clauses are not equaltional and unit. */
+    final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
+      import leo.modules.calculus.Miniscope
 
       assert(Clause.unit(cl.cl))
       assert(!cl.cl.lits.head.equational)
@@ -643,12 +643,12 @@ package inferenceControl {
       val lit = cl.cl.lits.head
       val term = lit.left
 //      val resultterm = Skolemization.apply(term, s)
-      val resultterm = Skolemization.miniscope(term)
+      val resultterm = Miniscope.apply(term, lit.polarity)
       val result = if (term != resultterm)
-          AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Skolemization, Set(cl)), cl.properties)
+          AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Miniscope, Set(cl)), cl.properties)
         else
           cl
-      Out.trace(s"Skolemize Result: ${result.pretty(sig)}")
+      Out.trace(s"Miniscope Result: ${result.pretty(sig)}")
       result
     }
 

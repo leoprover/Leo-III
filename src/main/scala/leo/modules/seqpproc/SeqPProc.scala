@@ -30,7 +30,7 @@ object SeqPProc extends Function1[Long, Unit]{
     var cw = cur
     cw = Control.expandDefinitions(cw)
     cw = Control.switchPolarity(cw)
-//    cw = Control.miniscope(cw)
+    cw = Control.miniscope(cw)
 
     // Introduce primsubst instantiations (if applicable)
     // and then exhaustively CNF

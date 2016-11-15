@@ -737,8 +737,8 @@ object Miniscope extends CalculusRule {
     */
   private def apply0(t : Term, pol : Boolean, quants : QUANT_LIST)(implicit sig : Signature): Term = {
     t match {
-      case Exists(ty :::> body) => apply0(body, pol, quants :+ (false, ty))
-      case Forall(ty :::> body) => apply0(body, pol, quants :+ (true, ty))
+      case Exists(ty :::> body) => apply0(body, pol, quants :+ (!pol, ty))
+      case Forall(ty :::> body) => apply0(body, pol, quants :+ (pol, ty))
       case Not(a) => Not(apply0(a, !pol, quants))
       case (a & b) =>
         val (rest, leftQ, leftSub, rightQ, rightSub) = pushQuants(a, b, quants, pol, pol)
@@ -830,125 +830,4 @@ object Miniscope extends CalculusRule {
     val realQuant = if(pol) quant else !quant
     if(realQuant) Forall else Exists
   }
-}
-
-/**
-  * Skolemization as preprocessing step.
-  * It is assumed that the term originates from a unit clause
-  * that has no implicitly quantified variables.
-  *
-  * Assumes that term is in NNF.
-  */
-object Skolemization extends CalculusRule {
-  import leo.datastructures.Term._
-
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
-  val name = "skolemize"
-
-  def apply(t: Term)(implicit sig: Signature): Term = {
-    apply0(miniscope(t), Seq())(sig)
-  }
-
-  private def apply0(t: Term,fvs: Seq[Term])(implicit sig: Signature): Term = {
-    t match {
-      case Exists(inner@(ty :::> body)) => {
-        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
-        val skTerm = Term.mkTermApp(skConst, fvs)
-        val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
-        apply0(body2, fvs)(sig)
-      }
-      case Forall(ty :::> body) => {
-        val newFvs = fvs.map(_.substitute(Subst.shift)) :+ Term.mkBound(ty, 1)
-        val body2 = apply0(body, newFvs)(sig)
-        Forall(λ(ty)(body2))
-      }
-      case (a & b) => &(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
-      case (a ||| b) => |||(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
-      case _ => t
-    }
-  }
-
-  /**
-    *
-    * Moves a quantifier inward, such that the computed skolemterm
-    * does only depend on the minimum amount of variables.
-    *
-    * @param formula - That will be skolemmized
-    * @return - The formula with quantifiers most inward
-    */
-  def miniscope(formula : Term) : Term = formula match {
-    case Exists (ty :::> t) => miniscope(t) match {
-      case (t1 & t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Exists(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        &(left,right)
-      case (t1 & t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Exists(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        &(left,right)
-      case (t1 ||| t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Exists(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        |||(left,right)
-      case (t1 ||| t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Exists(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        |||(left,right)
-      case (t1 ||| t2) =>
-        val left = miniscope(Exists(mkTermAbs(ty,t1)))
-        val right = miniscope(Exists(mkTermAbs(ty,t2)))
-        |||(left,right)
-      // In neither of the above cases, move inwards
-      case s@Symbol(_)            => s
-      case s@Bound(_,i)           => if(i == 1) LitTrue() else s
-      case f ∙ args   => Exists(λ(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},Right(_))))))
-      case ty2 :::> s  => Exists(λ(ty,ty2)(miniscope(s))) // TODO CHECK
-      case TypeLambda(t2) => Exists(λ(ty)(mkTypeAbs(miniscope(t2)))) // TODO CHECK
-      case _  => formula
-    }
-
-    //Same for Forall
-    case Forall (ty :::> t) => miniscope(t) match {
-      //First Case: Conjuction t1 & t2 and bound var not contained in one of the conjuncts
-      case (t1 & t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Forall(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        &(left,right)
-      case (t1 & t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Forall(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        &(left,right)
-      //Second Case, Disjunction t1 || t2 and bound var not contained in one of the disjuncts
-      case (t1 ||| t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Forall(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        |||(left,right)
-      case (t1 ||| t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Forall(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        |||(left,right)
-      // Both are bound, and it is a cunjunction
-      case (t1 & t2) =>
-        val left = miniscope(Forall(mkTermAbs(ty,t1)))
-        val right = miniscope(Forall(mkTermAbs(ty,t2)))
-        &(left,right)
-      // In neither of the above cases, move inwards
-      case s@Symbol(_)            => s
-      case s@Bound(_,i)           => if(i == 1) LitFalse() else s
-      case f ∙ args   => Forall(λ(ty)(mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},Right(_))))))
-      case ty2 :::> s  => Forall(λ(ty,ty2)(miniscope(s)))
-      case TypeLambda(t2) => Forall(λ(ty)(mkTypeAbs(miniscope(t2))))
-            case _  => formula
-    }
-
-    // In neither of the above cases, move inwards
-    case s@Symbol(_)            => s
-    case s@Bound(_,_)           => s
-    case f ∙ args   => Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},Right(_))))
-    case ty :::> s  => λ(ty)(miniscope(s))
-    case TypeLambda(t) => mkTypeAbs(miniscope(t))
-    //    case _  => formula
-
-  }
-  private val decreaseFVSubst: Subst = BoundFront(1) +: Subst.id
 }
