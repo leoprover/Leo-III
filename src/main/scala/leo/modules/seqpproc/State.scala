@@ -56,6 +56,8 @@ trait StateStatistics {
   def incFactor(by: Int): Unit
   def noFactor: Int
   def choiceFunctionCount: Int
+  def choiceInstantiations: Int
+  def incChoiceInstantiations(n: Int): Unit
 }
 
 object State {
@@ -146,6 +148,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var backwardSubsumedCount: Int = 0
   private var factorCount: Int = 0
   private var paramodCount: Int = 0
+  private var choiceInstantiations0: Int = 0
 
   final def noProcessedCl: Int = processed.size
   final def noGeneratedCl: Int = generatedCount
@@ -154,6 +157,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def noFactor: Int = factorCount
   final def noForwardSubsumedCl: Int = forwardSubsumedCount
   final def noBackwardSubsumedCl: Int = backwardSubsumedCount
+  final def choiceInstantiations: Int = choiceInstantiations0
 
   final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
   final def incTrivialCl(): Unit = {trivialCount += 1}
@@ -163,6 +167,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
   final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
   final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
+  final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
 
   // Pretty
   final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"

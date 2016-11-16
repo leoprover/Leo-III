@@ -212,11 +212,79 @@ object Choice extends CalculusRule {
   }
 
 
-  final def canApply(clause: Clause): Set[Term] = ???
+  final def canApply(clause: Clause, choiceFuns: Map[Type, Set[Term]]): Set[Term] = {
+    import leo.datastructures.Term.{Symbol, Bound,TermApp}
+    var result: Set[Term] = Set()
+    val litIt = clause.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
 
-  final def apply(term: Term, choiceFun: Term, vargen: FreshVarGen): Clause = {
+      val leftOcc = lit.left.feasibleOccurences
+      val leftOccIt = leftOcc.keysIterator
+      while (leftOccIt.hasNext) {
+        val occ = leftOccIt.next()
+        if (occ.isApp) {
+          occ match {
+            case TermApp(hd, Seq(arg)) if compatibleType(hd.ty) =>
+              hd match {
+                case Bound(_,idx) if idx > leftOcc(occ).head.abstractionCount =>
+                  result = result + arg
+                case Symbol(_) => val choiceType =hd.ty._funDomainType._funDomainType
+                  if (choiceFuns.contains(choiceType))
+                    if (choiceFuns(choiceType).contains(hd))
+                      result = result + arg
+                case _ => /* skip */
+              }
+            case _ => /* skip */
+          }
+        }
+      }
+
+
+      if (lit.equational) {
+        val rightOcc = lit.right.feasibleOccurences
+        val rightOccIt = rightOcc.keysIterator
+        while (rightOccIt.hasNext) {
+          val occ = rightOccIt.next()
+          if (occ.isApp) {
+            occ match {
+              case TermApp(hd, Seq(arg)) if compatibleType(hd.ty) =>
+                hd match {
+                  case Bound(_,idx) if idx > rightOcc(occ).head.abstractionCount =>
+                    result = result + arg
+                  case Symbol(_) => val choiceType =hd.ty._funDomainType._funDomainType
+                    if (choiceFuns.contains(choiceType))
+                      if (choiceFuns(choiceType).contains(hd))
+                        result = result + arg
+                  case _ => /* skip */
+                }
+              case _ => /* skip */
+            }
+          }
+        }
+      }
+    }
+
+    result
+  }
+
+  private final def compatibleType(ty: Type): Boolean = {
+    if (ty.isFunType) {
+      val domain = ty._funDomainType
+      val codomain = ty.codomainType
+      if (domain.isFunType)
+        if (domain._funDomainType == codomain && domain.codomainType == o) true
+        else false
+      else false
+    } else false
+  }
+
+  final def apply(term: Term, choiceFun: Term): Clause = {
+    // We dont need to adjust the free variables of `term` since there
+    // is no variable capture (we create a fresh clause).
+    val newVar: Term = Term.mkBound(term.ty._funDomainType, term.looseBounds.max + 1)
     // lit1: [term y]^f
-    val lit1 = Literal.mkLit(Term.mkTermApp(term, vargen(???)), false)
+    val lit1 = Literal.mkLit(Term.mkTermApp(term, newVar), false)
     // lit2: [term (choicefun term)]^t
     val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)), true)
     Clause(Seq(lit1, lit2))

@@ -320,6 +320,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
       Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
       Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
+      Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
       Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
       Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
       Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
@@ -435,7 +436,9 @@ object SeqPProc extends Function1[Long, Unit]{
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
 
-    /* TODO: Choice */
+    val choice_result = Control.instantiateChoice(cur, state.choiceFunctions)
+    state.incChoiceInstantiations(choice_result.size)
+    newclauses = newclauses union choice_result
     /////////////////////////////////////////
     // Generating inferences END
     /////////////////////////////////////////

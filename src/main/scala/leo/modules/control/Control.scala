@@ -35,6 +35,8 @@ object Control {
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Choice
+  import leo.datastructures.{Term, Type}
+  @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
   @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
   // Redundancy
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
@@ -55,6 +57,7 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
+  import leo.datastructures.ClauseAnnotation.InferredFrom
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -592,28 +595,54 @@ package inferenceControl {
     }
 
     final def instantiateChoice(cw: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(sig: Signature): Set[AnnotatedClause] = {
-      val cl = cw.cl
-      val candidates = ChoiceRule.canApply(cl)
-      if (candidates.nonEmpty) {
-        var results: Set[AnnotatedClause] = Set()
-        val candidateIt = candidates.iterator
-        while(candidateIt.hasNext) {
-          val cand = candidateIt.next()
-          val choiceInstance = ChoiceRule(cand, ???, freshVarGen(cl))
-        }
-        results
-      } else Set()
+      if (Configuration.NO_CHOICE) Set()
+      else {
+        val cl = cw.cl
+        Out.trace(s"[Choice] Searching for possible choice terms...")
+        val candidates = ChoiceRule.canApply(cl, choiceFuns)
+        if (candidates.nonEmpty) {
+          Out.trace(s"[Choice] Found possible choice term.")
+          var results: Set[AnnotatedClause] = Set()
+          val candidateIt = candidates.iterator
+          while(candidateIt.hasNext) {
+            val candPredicate = candidateIt.next()
+            // type is (alpha -> o), alpha is choice type
+            val choiceType: Type = candPredicate.ty._funDomainType
+
+            if (choiceFuns.contains(choiceType)) {
+              // Instantiate will all choice functions
+              val choiceFunsForChoiceType = choiceFuns(choiceType)
+              val choiceFunIt = choiceFunsForChoiceType.iterator
+              while (choiceFunIt.hasNext) {
+                val choiceFun = choiceFunIt.next()
+                val result0 = ChoiceRule(candPredicate, choiceFun)
+                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(cw)))
+                results = results + result
+              }
+            } else {
+              // No choice function registered, introduce one now
+              val choiceFun = registerNewChoiceFunction(choiceType)(sig)
+              val result0 = ChoiceRule(candPredicate, choiceFun)
+              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(cw)))
+              results = results + result
+            }
+          }
+          Out.trace(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
+          Out.trace(s"[Choice] Results: ${results.map(_.pretty(sig)).mkString(",")}")
+          results
+        } else Set()
+      }
     }
 
     final def registerNewChoiceFunction(ty: Type)(sig: Signature): Term = {
-      val newSymb = sig.freshSkolemConst(ty, Signature.PropChoice)
+      import leo.modules.HOLSignature.o
+      val newSymb = sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice)
       Term.mkAtom(newSymb)(sig)
     }
   }
 
   protected[modules] object SimplificationControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
-    import leo.modules.HOLSignature.Not
 
     final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = {
       val litsIt = cl.cl.lits.iterator
