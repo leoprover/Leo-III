@@ -57,7 +57,7 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
-  import leo.datastructures.ClauseAnnotation.InferredFrom
+  import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -591,6 +591,34 @@ package inferenceControl {
 
   protected[modules] object Choice {
     import leo.modules.calculus.{Choice => ChoiceRule}
+    private var acMap: Map[Type, AnnotatedClause] = Map()
+    final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
+
+    final def newACInstance(ty: Type): AnnotatedClause = {
+      import leo.modules.HOLSignature._
+      import leo.datastructures.Term.{mkBound,λ, mkTermApp}
+      val lit = Literal.mkLit(Exists(λ((ty ->: o) ->: ty)(
+        Forall(λ(ty ->: o)(
+          Impl(
+            Exists(λ(ty)(
+                mkTermApp(mkBound(ty ->: o, 2), mkBound(ty, 1))
+            )),
+            mkTermApp(
+              mkBound(ty ->: o, 1),
+              mkTermApp(
+                mkBound((ty ->: o) ->: ty, 2),
+                mkBound(ty ->: o, 1)
+              )
+            )
+          )
+        ))
+      )), true)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)
+      acMap = acMap + ((ty, res))
+      res
+    }
+
+
     final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
       ChoiceRule.detectChoice(cw.cl)
     }
@@ -617,14 +645,14 @@ package inferenceControl {
               while (choiceFunIt.hasNext) {
                 val choiceFun = choiceFunIt.next()
                 val result0 = ChoiceRule(candPredicate, choiceFun)
-                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(cw)))
+                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
                 results = results + result
               }
             } else {
               // No choice function registered, introduce one now
               val choiceFun = registerNewChoiceFunction(choiceType)(sig)
               val result0 = ChoiceRule(candPredicate, choiceFun)
-              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(cw)))
+              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
               results = results + result
             }
           }

@@ -185,7 +185,7 @@ object PatternUni extends AnyUni {
 
 object Choice extends CalculusRule {
   val name = "choice"
-  override val inferenceStatus = Some(SZS_Theorem)
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
   final def detectChoice(clause: Clause): Option[Term] = {
     import leo.datastructures.Term.TermApp
@@ -225,7 +225,7 @@ object Choice extends CalculusRule {
       val leftOccIt = leftOcc.keysIterator
       while (leftOccIt.hasNext) {
         val occ = leftOccIt.next()
-        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
+//        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
         val findResult = findChoice(occ, choiceFuns, leftOcc(occ).head)
         if (findResult != null)
           result = result + findResult
