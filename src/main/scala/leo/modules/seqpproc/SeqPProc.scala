@@ -262,6 +262,7 @@ object SeqPProc extends Function1[Long, Unit]{
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
             Out.debug(s"Taken: ${cur.pretty(sig)}")
+            Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
 
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             if (Clause.effectivelyEmpty(cur.cl)) {

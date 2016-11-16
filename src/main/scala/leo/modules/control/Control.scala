@@ -119,6 +119,7 @@ package inferenceControl {
           results = results ++ allParamods(cl, other)
         }
       }
+      if (results.nonEmpty) Out.trace(s"Paramod result: ${results.map(_.id).mkString(",")}")
       results
     }
 
@@ -599,7 +600,7 @@ package inferenceControl {
       else {
         val cl = cw.cl
         Out.trace(s"[Choice] Searching for possible choice terms...")
-        val candidates = ChoiceRule.canApply(cl, choiceFuns)
+        val candidates = ChoiceRule.canApply(cl, choiceFuns)(sig)
         if (candidates.nonEmpty) {
           Out.trace(s"[Choice] Found possible choice term.")
           var results: Set[AnnotatedClause] = Set()
@@ -748,7 +749,7 @@ package inferenceControl {
         AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
-      Out.finest(s"Shallow Simp result: ${result.pretty(sig)}")
+      Out.trace(s"Shallow Simp result: ${result.pretty(sig)}")
       result
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
