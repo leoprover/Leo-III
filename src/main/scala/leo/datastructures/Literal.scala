@@ -89,7 +89,7 @@ trait Literal extends Pretty with Prettier {
   @inline final def substituteOrdered(termSubst : Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature) : Literal = {
     val lsubst = left.substitute(termSubst, typeSubst)
     val rsubst = right.substitute(termSubst, typeSubst)
-    Literal.mkOrdered(left,right,polarity)
+    Literal.mkOrdered(lsubst,rsubst,polarity)
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
@@ -288,6 +288,8 @@ object Literal {
   /** Returns a new literal with the same equation as this one, only with polarity flipped.
     * It is also oriented, if the original was oriented. */
   final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity, l.oriented) else apply(l.left, !l.polarity)
+  /** Returns the multiset of symbols occuring in the literal `l`, */
+  final def symbols(l: Literal): Multiset[Signature#Key] = if (l.equational) l.left.symbols.sum(l.right.symbols) else l.left.symbols
   /** Returns whether the literal is well-typed, i.e. if the underlying terms are well-typed and have the same type. */
   final def wellTyped(l: Literal): Boolean = {
     import leo.datastructures.Term.{wellTyped => wt}

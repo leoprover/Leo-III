@@ -10,6 +10,7 @@ import leo.modules.output.{SZS_Unknown, StatusSZS}
 trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def conjecture: T
   def negConjecture: T
+  def symbolsInConjecture: Set[Signature#Key]
   def setConjecture(conj: T): Unit
   def setNegConjecture(negConj: T): Unit
 
@@ -28,6 +29,10 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def rewriteRules: Set[T]
   def addRewriteRule(cl: T): Unit
+
+  def addChoiceFunction(f: Term): Unit
+  def choiceFunctions(ty: Type): Set[Term]
+  def choiceFunctionCount: Int
 
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
@@ -74,10 +79,21 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var cur_prio = 0
   private var cur_weight = 0
 
+  private var symbolsInConjecture0: Set[Signature#Key] = Set()
   final def conjecture: T = conjecture0
-  final def setConjecture(conj: T): Unit = { conjecture0 = conj }
+  final def setConjecture(conj: T): Unit = {
+    conjecture0 = conj
+    val conjClauseIt = conj.cl.lits.iterator
+    while (conjClauseIt.hasNext) {
+      val lit = conjClauseIt.next()
+      symbolsInConjecture0 = symbolsInConjecture0 union lit.left.symbols.distinct
+      symbolsInConjecture0 = symbolsInConjecture0 union lit.right.symbols.distinct
+    }
+    symbolsInConjecture0 = symbolsInConjecture0 intersect signature.allUserConstants
+  }
   final def negConjecture: T = negConjecture0
   final def setNegConjecture(negConj: T): Unit = { negConjecture0 = negConj }
+  final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
 
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
@@ -98,14 +114,25 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
     cur_weight = cur_weight+1
     result
   }
+
   final def addUnprocessed(cl: T): Unit = {mpq.insert(cl)}
   final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
+
   final def processed: Set[T] = current_processed
   final def setProcessed(c: Set[T]): Unit = {current_processed = c}
   final def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
 
   final def rewriteRules: Set[T] = current_rewriterules
   final def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}
+
+  private var choiceFunctions0: Map[Type, Set[Term]] = Map()
+  final def addChoiceFunction(f: Term): Unit = {
+    if (choiceFunctions0.isDefinedAt(f.ty)) {
+      choiceFunctions0 = choiceFunctions0 + ((f.ty, choiceFunctions0(f.ty) + f))
+    } else choiceFunctions0 = choiceFunctions0 + ((f.ty, Set(f)))
+  }
+  final def choiceFunctions(ty: Type): Set[Term] = {choiceFunctions0.getOrElse(ty,Set[Term]())}
+  final def choiceFunctionCount: Int = {choiceFunctions0.map {case (k,v) => v.size}.sum}
 
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl

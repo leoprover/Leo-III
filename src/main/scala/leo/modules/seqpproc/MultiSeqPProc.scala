@@ -39,9 +39,9 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
-    cw = Control.nnf(cw)
+//    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw)
+//    cw = Control.skolemize(cw)
 
     // Exhaustively CNF
     result = Control.cnf(cw)
@@ -78,7 +78,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  override def execute(cs1: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
+  override def execute(cs1: Iterable[AnnotatedClause]): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
     val proc = MultiSeqPProc.counter.incrementAndGet()
     val cs = addPreprocessing(cs1.toSet)
     /////////////////////////////////////////
@@ -91,6 +91,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     assert(conjecture.size == 1)
     val negatedConjecture : AnnotatedClause = conjecture.head  // TODO no conjecture?
     val effectiveInputWithoutConjecture : Iterable[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
+
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
@@ -166,14 +167,14 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
     while (loop && !prematureCancel(state.noProcessedCl) && !Scheduler().isTerminated) {
       if (state.unprocessed.isEmpty) {
-        SZSScriptAgent.execute(state.processed, c)
+        SZSScriptAgent.execute(state.processed)
         loop = false
       } else {
         // Should an external Call be made?
         sinceLastExternal += 1
         if(Configuration.ATPS.nonEmpty && sinceLastExternal > externalCallIteration){
           sinceLastExternal = 0
-          SZSScriptAgent.execute(state.processed, c)
+          SZSScriptAgent.execute(state.processed)
         } else {
           var cur = state.nextUnprocessed
           // cur is the current AnnotatedClause
@@ -301,7 +302,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)
+    val primSubst_result = Control.primsubst(cur, 1)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */
@@ -325,7 +326,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)
 
     /////////////////////////////////////////
     // Simplification of newly generated clauses END

@@ -1,5 +1,3 @@
-#!groovy
-
 node {
     stage 'Checkout'
 
@@ -37,6 +35,4 @@ node {
     env.TPTP = tool name: 'TPTP'
 
     stage 'Small Benchmark'
-
-
 }

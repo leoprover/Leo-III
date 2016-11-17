@@ -319,7 +319,7 @@ object InputProcessing {
       case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
                                                  // this is because the mkPolyQuantified will apply a new abstraction
         val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-        val ty = ???
+        lazy val ty = ???
         override def apply(arg: Term) = arg
       }
 

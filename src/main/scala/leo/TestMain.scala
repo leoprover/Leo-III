@@ -1,12 +1,12 @@
 package leo
 
 import leo.datastructures.ClauseProxy
-import leo.datastructures.blackboard.{Blackboard, DoneEvent}
+import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard}
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.agent.preprocessing.{ArgumentExtractionAgent, EqualityReplaceAgent, FormulaRenamingAgent, NormalizationAgent}
+import leo.modules.agent.preprocessing.{ArgumentExtractionAgent, FormulaRenamingAgent}
 import leo.modules.agent.relevance_filter.BlackboardPreFilterSet
 import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
 import leo.modules._
@@ -14,8 +14,9 @@ import leo.modules.external.ExternalCall
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.Utility._
-import leo.modules.preprocessing.Preprocess
-import leo.modules.seqpproc.MultiSeqPProc
+import leo.modules.interleavingproc._
+import leo.agents.InterferingLoopAgent
+
 
 /**
   * Created by mwisnie on 3/7/16.
@@ -82,6 +83,7 @@ object TestMain {
       import leo.datastructures.Signature
 
       implicit val sig: Signature = Signature.freshWithHOL()
+      SignatureBlackboard.set(sig)
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
       val TimeOutProcess = new DeferredKill(timeout, timeout)
@@ -131,47 +133,28 @@ object TestMain {
       leo.Out.finest(s"Filter Time : ${timeForFilter}ms")
 
       leo.Out.debug("Used :")
-      leo.Out.debug(FormulaDataStore.getFormulas.map(_.pretty).mkString("\n"))
+      leo.Out.debug(FormulaDataStore.getFormulas.map(_.pretty(sig)).mkString("\n"))
       leo.Out.debug("Unused : ")
       leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
 
+      val state = BlackboardState.fresh[InterleavingLoop.A](sig)
+      val uniStore = new UnificationStore[InterleavingLoop.A]()
+      val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
+      val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
+      val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
 
-      val atpFreq : Int = try{
-        val s = Configuration.valueOf("atpfreq").get
-        val h = s.head
-        h.toInt
-      } catch {
-        case _: Exception => 30
-      }
-
-      val mode : Int = try {
-        val s = Configuration.valueOf("mode").get
-        val h = s.head
-        h.toInt
-      } catch {
-        case _ : Exception => 0
-      }
-
-      val msproc = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.equalityExtraction(x)))
-      val msproc2 = new MultiSeqPProc(atpFreq, x => x)
-      val msproc3 = new MultiSeqPProc(atpFreq, x => Preprocess.formulaRenaming(Preprocess.argumentExtraction(Preprocess.equalityExtraction(x))))
-      val msproc4 = new MultiSeqPProc(atpFreq, x => Preprocess.argumentExtraction(Preprocess.equalityExtraction(x)))
-      val s = Scheduler()
-      val searchPhase = mode match {
-        case 0 => new MultiSearchPhase(msproc2)
-        case 1 => new MultiSearchPhase(msproc, msproc2)
-        case 2 => new MultiSearchPhase(msproc, msproc2, msproc3)
-        case 3 => new MultiSearchPhase(msproc2, msproc4)
-        case _ => new MultiSearchPhase(msproc2)
-      }
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent)
 
 
-      printPhase(searchPhase)
-      if (!searchPhase.execute()) {
+      Blackboard().addDS(state)
+      Blackboard().addDS(uniStore)
+
+      printPhase(iPhase)
+      if(!iPhase.execute()){
         Scheduler().killAll()
-        TimeOutProcess.kill()
-        unexpectedEnd(System.currentTimeMillis() - startTime)
-        return
+          TimeOutProcess.kill()
+          unexpectedEnd(System.currentTimeMillis() - startTime)
+          return
       }
 
       TimeOutProcess.kill()
@@ -179,11 +162,13 @@ object TestMain {
       val time = System.currentTimeMillis() - startTime
       Scheduler().killAll()
 
-      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+//      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+      val szsStatus  = state.state.szsStatus
       Out.output("")
       Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${endTime - afterParsing} ms w/o parsing"))
 
-      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+//      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+      val proof = state.state.derivationClause
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
@@ -237,7 +222,7 @@ object TestMain {
         Scheduler().killAll()
       }
     }
-    // TODO Check NUM800^1, NUM818^5, NUM819^5, SET597^5, NUM824^5
+
     override def run(): Unit = {
       //      println("Init delay kill.")
       synchronized{
@@ -257,7 +242,7 @@ object TestMain {
             }
           }
         }
-        SZSDataStore.setIfEmpty(Context())(SZS_Timeout)
+        SZSDataStore.setIfEmpty(SZS_Timeout)
         Out.finest(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism

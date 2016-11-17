@@ -46,7 +46,8 @@ object LockSet {
    */
   def isExecutable(t : Task) : Boolean = {
     tasks forall {t1 =>
-      ! t1.collide(t)
+      val c =  t1.collide(t)
+      !c
     }
   }
 

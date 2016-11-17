@@ -25,7 +25,11 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_COUNTERSAT = "c"
   private val PARAM_SOS_SHORT = "s"
   private val PARAM_SOS_LONG = "sos"
-  private val PARAM_UNIFICATIONDEPTH = "ud"
+  private val PARAM_UNIFICATIONDEPTH = "unidepth"
+  private val PARAM_UNIFIERCOUNT = "unifiers"
+  private val PARAM_PRIMSUBST = "primsubst"
+  private val PARAM_PRE_PRIMSUBST = "preprimsubst"
+  private val PARAM_RELEVANCEFILTER = "relevancefiltering"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -44,7 +48,7 @@ object Configuration extends DefaultConfiguration {
   /////////////////////////
 
   def init(parameterParser: CLParameterParser): Unit = configMap match {
-    case null => {
+    case null =>
       configMap = Map()
       for(param <- parameterParser.getParameters) {
         configMap += param
@@ -60,7 +64,6 @@ object Configuration extends DefaultConfiguration {
       ATPS
       HELP
       ()
-    }
     case _ => ()
   }
 
@@ -97,7 +100,15 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
+
+  lazy val RELEVANCE_FILTERING: Boolean = isSet(PARAM_RELEVANCEFILTER)
+
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
+  lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
+
+  lazy val PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRIMSUBST, DEFAULT_PRIMSUBST)
+  lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
+
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
@@ -174,7 +185,7 @@ object Configuration extends DefaultConfiguration {
     case Some(5) => Level.FINER
     case Some(6) => Level.FINEST
     case _ =>
-      Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 6 (including).");
+      Out.warn(s"Allowed verbosity levels for parameter $PARAM_VERBOSITY are integers from 0 (including) to 6 (including).")
       DEFAULT_VERBOSITY
   }
 
@@ -217,7 +228,7 @@ object Configuration extends DefaultConfiguration {
     case rest => rest
   }
   def isSetTo(param: String, arg: String): Boolean =
-    configMap.get(param).fold(false)(args => args.length == 1 && args(0) == arg)
+    configMap.get(param).fold(false)(args => args.length == 1 && args.head == arg)
 
 }
 
@@ -226,4 +237,7 @@ trait DefaultConfiguration {
   val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
   val DEFAULT_TIMEOUT = 60
   val DEFAULT_UNIFICATIONDEPTH = 8
+  val DEFAULT_UNIFIERCOUNT = 1
+  val DEFAULT_PRIMSUBST = 1
+  val DEFAULT_PRE_PRIMSUBST = 0
 }
