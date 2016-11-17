@@ -60,16 +60,18 @@ trait Term extends Pretty with Prettier {
   //////////////////////////
   /** Returns the type of the term */
   def ty: Type
-  /** true iff the term does not contain any free variables. */
-  final def ground: Boolean = freeVars.isEmpty
 
-  // TODO: REMOVE OLD FUNCTIONS SUCH AS
-  def freeVars: Set[Term] // TODO: Clarify that this does ...
-  def boundVars: Set[Term]
-  def looseBounds: Set[Int]  // TODO ..as opposed to this
-  // TODO END
-
+  /** Returns the free occurences of variables as tuple (index, type). */
   def fv: Set[(Int, Type)]
+  /** Same as `fv`, just that it returns the free occurences of variables
+    * as terms. */
+  final def freeVars: Set[Term] = fv.map(v => Term.mkBound(v._2, v._1))
+  /** Same as `fv`, just that it returns the free occurences of variables
+    * as de-bruijn indices. */
+  final def looseBounds: Set[Int] = fv.map(_._1)
+  /** true iff the term does not contain any free variables. */
+  final def ground: Boolean = fv.isEmpty
+
   def tyFV: Set[Int]
   def occurrences: Map[Term, Set[Position]]
   def feasibleOccurences: Map[Term, Set[Position]]
@@ -77,7 +79,7 @@ trait Term extends Pretty with Prettier {
   def headSymbolDepth: Int
   def size: Int
 
-  def symbols: Set[Signature#Key]
+  def symbols: Multiset[Signature#Key]
   final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
     symbols.filter({i => sig(i)._ty == ty})
   }
@@ -96,6 +98,8 @@ trait Term extends Pretty with Prettier {
   def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
+  /** Apply a shifting substitution by `by`, i.e. return this.substitute(Subst.shift(by)).betanormalize*/
+  def lift(by: Int): Term = substitute(Subst.shift(by)).betaNormalize
 
   /** Explicitly create a closure, i.e. a postponed (simultaneous) substitution (of types and terms) */
   def closure(termSubst: Subst, typeSubst: Subst): Term
@@ -110,11 +114,6 @@ trait Term extends Pretty with Prettier {
   def betaNormalize: Term
   /** Return the eta-long-nf of the term */
   def etaExpand: Term
-  /** Eta-contract term on root level if possible */
-  def topEtaContract: Term
-
-  /// Hidden definitions
-  protected[datastructures] def normalize(termSubst: Subst, typeSubst: Subst): Term
 }
 
 

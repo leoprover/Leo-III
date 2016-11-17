@@ -1,7 +1,7 @@
 package leo.modules.phase
 
 import leo._
-import leo.agents.TAgent
+import leo.agents.Agent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
 import leo.datastructures.blackboard.{Blackboard, ClauseType, SignatureBlackboard}
@@ -22,7 +22,7 @@ import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter, SeqFilter}
   */
 class SeqFilterPhase extends Phase {
   override def name: String = "relevance_filter_phase"
-  override val agents : Seq[TAgent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
+  override val agents : Seq[Agent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 

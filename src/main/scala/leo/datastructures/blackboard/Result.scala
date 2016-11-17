@@ -1,6 +1,8 @@
 package leo
 package datastructures.blackboard
 
+import leo.datastructures.Pretty
+
 import scala.collection.mutable
 
 /**
@@ -25,7 +27,7 @@ object Result {
  * This is a <b>mutable</b> class. The manipulating operations return
  * the changed object for conviniece.
  */
-class Result {
+class Result extends Event {
 
   private val insertM : mutable.HashMap[DataType, Seq[Any]] = new mutable.HashMap[DataType, Seq[Any]]()
   private val updateM : mutable.HashMap[DataType, Seq[(Any,Any)]] = new mutable.HashMap[DataType, Seq[(Any,Any)]]()
@@ -79,7 +81,7 @@ class Result {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  protected[blackboard] def inserts(t : DataType) : Seq[Any] = insertM.getOrElse(t, Nil)
+  def inserts(t : DataType) : Seq[Any] = insertM.getOrElse(t, Nil)
 
   /**
    *
@@ -88,7 +90,7 @@ class Result {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  protected[blackboard] def updates(t : DataType) : Seq[(Any, Any)] = updateM.getOrElse(t,Nil)
+  def updates(t : DataType) : Seq[(Any, Any)] = updateM.getOrElse(t,Nil)
 
   /**
    *
@@ -97,14 +99,14 @@ class Result {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  protected[blackboard] def removes(t : DataType) : Seq[Any] = removeM.getOrElse(t,Nil)
+  def removes(t : DataType) : Seq[Any] = removeM.getOrElse(t,Nil)
 
   /**
    * Returns a sequence of all stored datatypes by this result.
    *
    * @return all stored datatypes
    */
-  protected[blackboard] def keys : Seq[DataType] = ((removeM.keySet union insertM.keySet) union updateM.keySet).toList
+  def keys : Set[DataType] = ((removeM.keySet union insertM.keySet) union updateM.keySet).toSet
 
   /**
    * Returns the priority of the Result.
@@ -130,8 +132,10 @@ class Result {
     insertM.keysIterator.foreach{dt =>
       sb.append(s"   $dt ->\n")
       insertM.get(dt).foreach{ds =>
-        ds.foreach{data =>
-          sb.append(s"     $data\n")
+        ds.foreach{_ match {
+          case p : Pretty => sb.append(s"     ${p.pretty}\n")
+          case data => sb.append(s"     ${data}\n")
+        }
         }
       }
     }
@@ -141,8 +145,12 @@ class Result {
     updateM.keysIterator.foreach{dt =>
       sb.append(s"   $dt ->\n")
       updateM.get(dt).foreach{ds =>
-        ds.foreach{case (d1,d2) =>
-          sb.append(s"      $d1\n   ->\n     $d2\n")
+        ds.foreach{
+          _ match {
+            case p : Pretty => sb.append(s"     ${p.pretty}\n")
+            case (d1,d2) =>
+              sb.append(s"      $d1\n   ->\n     $d2\n")
+          }
         }
       }
     }
@@ -152,8 +160,10 @@ class Result {
     removeM.keysIterator.foreach{dt =>
       sb.append(s"   $dt ->\n")
       removeM.get(dt).foreach{ds =>
-        ds.foreach{data =>
-          sb.append(s"     $data\n")
+        ds.foreach{_ match {
+          case p : Pretty => sb.append(s"     ${p.pretty}\n")
+          case data => sb.append(s"     ${data}\n")
+        }
         }
       }
     }

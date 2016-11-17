@@ -2,8 +2,6 @@ package leo.modules.external
 
 import java.util.concurrent.TimeUnit
 
-import scala.sys.process.ProcessIO
-
 /**
   *
   * Capsules a call to an external call to a

@@ -126,10 +126,11 @@ trait ClauseProxy extends Pretty with Prettier {
 
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
                            var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = o match {  // TODO IMPORTANT, Clause Equivalence checks for set inclusion, multiplicity not checked in hashCode()
     case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
     case _ => false
   }
+
   override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
 }
 

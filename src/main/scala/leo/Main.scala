@@ -197,7 +197,7 @@ object Main {
             }
           }
         }
-        SZSDataStore.forceStatus(Context())(SZS_Timeout)
+        SZSDataStore.forceStatus(SZS_Timeout)
         Out.info(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism

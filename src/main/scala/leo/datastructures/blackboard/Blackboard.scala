@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard
 
-import leo.agents.{TAgent, AgentController, Task}
+import leo.agents.{Agent, Task}
 
 // Singleton Blackboards
 object Blackboard {
@@ -52,7 +52,7 @@ trait TaskOrganize {
    *
    * @param t - Function that generates for each agent a set of tasks.
    */
-  def filterAll(t : TAgent => Unit) : Unit
+  def filterAll(t : Agent => Unit) : Unit
 
 
   /**
@@ -61,7 +61,7 @@ trait TaskOrganize {
    *
    * @param a - New Agent.
    */
-  protected[blackboard] def freshAgent(a : TAgent) : Unit
+  protected[blackboard] def freshAgent(a : Agent) : Unit
 
   /**
    *
@@ -73,7 +73,7 @@ trait TaskOrganize {
    *
    * @return Not yet executed noncolliding set of tasks
    */
-  protected[blackboard] def getTask : Iterable[(TAgent,Task)]
+  protected[blackboard] def getTask : Iterable[(Agent,Task)]
 
   /**
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be
@@ -91,7 +91,7 @@ trait TaskOrganize {
    *
    * @param a - the new agent
    */
-  def registerAgent(a : TAgent) : Unit
+  def registerAgent(a : Agent) : Unit
 
   /**
    * Removes an agent from the notification lists.
@@ -103,7 +103,7 @@ trait TaskOrganize {
    *
    * @param a the agent to be unregistered.
    */
-  def unregisterAgent(a : TAgent) : Unit
+  def unregisterAgent(a : Agent) : Unit
 
   /**
    *
@@ -111,14 +111,14 @@ trait TaskOrganize {
    *
    * @return all registered agents and their budget
    */
-  def getAgents : Iterable[(TAgent, Double)]
+  def getAgents : Iterable[(Agent, Double)]
 
   /**
     * Submits a new Task to the list of executable tasks.
     *
     * @param ts Set of new Tasks
     */
-  def submitTasks(a : TAgent, ts : Set[Task]) : Unit
+  def submitTasks(a : Agent, ts : Set[Task]) : Unit
 
   /**
     * Declares, that a task has been completely executed.
@@ -160,7 +160,7 @@ trait DataBlackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  protected[blackboard] def getDS(d : DataType) : Seq[DataStore]
+  protected[blackboard] def getDS(d : Set[DataType]) : Iterable[DataStore]
 
 
   /**
@@ -172,10 +172,11 @@ trait DataBlackboard {
     * @return true if sucessfully added. false if already existing or could no be added
     */
   def addData(dataType : DataType)(d : Any) : Boolean = {
-    val isNew = getDS(dataType) exists (ds => ds.insert(d)) // TODO forall or exist?
+    val result = Result().insert(dataType)(d)
+    val isNew = getDS(Set(dataType)) exists (ds => ds.updateResult(result)) // TODO forall or exist?
     if(isNew)
       Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(DataEvent(d, dataType)).toSet)
+        Blackboard().submitTasks(a, a.filter(result).toSet)
       }
     isNew
   }
@@ -190,10 +191,11 @@ trait DataBlackboard {
     * @return true if sucessfully been updated. false if already existing or could no be added
     */
   def updateData(dataType: DataType)(d1 : Any)(d2 : Any) : Boolean = {
-    val isNew = getDS(dataType) exists {ds => ds.delete(d1); ds.insert(d2)} // TODO forall or exist?
+    val result = Result().update(dataType)(d1)(d2)
+    val isNew = getDS(Set(dataType)) exists {ds => ds.updateResult(result)} // TODO forall or exist?
     if(isNew)
       Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(DataEvent(d2, dataType)).toSet)
+        Blackboard().submitTasks(a, a.filter(result).toSet)
       }
     isNew
   }
@@ -206,7 +208,12 @@ trait DataBlackboard {
     * @param d the value to be deleted
     */
   def removeData(dataType: DataType)(d : Any) : Unit = {
-    getDS(dataType) foreach { d => d.delete(d) }
+    val result = Result().remove(dataType)(d)
+    val wasDel = getDS(Set(dataType)) exists {d => d.updateResult(result) }
+    if(wasDel)
+      Blackboard().filterAll{a =>
+        Blackboard().submitTasks(a, a.filter(result).toSet)
+      }
   }
 }
 
@@ -220,5 +227,5 @@ trait MessageBlackboard {
    * @param m    - The message to send
    * @param to   - The recipient
    */
-  def send(m : Message, to : TAgent)
+  def send(m : Message, to : Agent)
 }

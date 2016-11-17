@@ -5,7 +5,6 @@ import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, Subst, Type, _}
 import leo.modules.HOLSignature.{Not, |||, Forall, Exists, &, Impl, ===, LitFalse, LitTrue}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
-import leo.modules.preprocessing.Simplification
 
 /**
   * Created by lex on 5/12/16.
@@ -14,6 +13,31 @@ import leo.modules.preprocessing.Simplification
 ////////////////////////////////////////////////////////////////
 ////////// Normalization
 ////////////////////////////////////////////////////////////////
+
+object DefExpSimp extends CalculusRule {
+  override val name = "defexp_and_simp_and_etaexpand"
+  override val inferenceStatus = Some(SZS_Theorem)
+  def apply(t: Term)(implicit sig: Signature): Term = {
+    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
+    Simp.normalize(t.δ_expand_upTo(symb).betaNormalize.etaExpand)
+  }
+
+  def apply(cl: Clause)(implicit sig: Signature): Clause = {
+    val litsIt = cl.lits.iterator
+    var newLits: Seq[Literal] = Seq()
+    while (litsIt.hasNext) {
+      val lit = litsIt.next()
+      if (lit.equational) {
+        newLits = newLits :+ Simp(Literal.mkOrdered(apply(lit.left), apply(lit.right), lit.polarity)(sig))
+      } else {
+        newLits = newLits :+ Simp(Literal(apply(lit.left), lit.polarity))
+      }
+    }
+    Clause(newLits)
+  }
+}
+
+
 // TODO: Encode origin of boolext clauses so that they are not paramodulated
 // with its ancestor clause.
 
@@ -41,6 +65,89 @@ object PolaritySwitch extends CalculusRule {
       case Not(l2) => Literal(l2, !l.polarity)
       case _ => l
     }
+  }
+}
+
+/**
+  * Created by mwisnie on 11.04.16.
+  */
+object  StepCNF extends CalculusRule {
+  override def name: String = "cnf"
+  final override val inferenceStatus = Some(SZS_Theorem)
+
+  trait CNF
+  case class Alpha(l : Literal, r : Literal) extends CNF
+  case class Beta(l : Literal, r : Literal) extends CNF
+  case class One(l : Literal) extends CNF
+  case class None(l : Literal) extends CNF
+
+
+  final def canApply(l: Literal): Boolean = if (!l.equational) {
+    l.left match {
+      case Not(t) => true
+      case s ||| t => true
+      case s & t => true
+      case s Impl t => true
+      //      case s <=> t => true
+      case Forall(ty :::> t) => true
+      case Exists(ty :::> t) => true
+      case _ => false
+    }
+  } else false
+
+  final def canApply(ls : Seq[Literal]) : Boolean = ls exists canApply
+  //FIXME: Do not duplicate free vars. See FullCNF for solution.
+  final def apply(vargen : leo.modules.calculus.FreshVarGen,l : Literal)(implicit sig: Signature) : CNF = if(!l.equational){
+    l.left match {
+      case Not(t) => One(Literal(t, !l.polarity))
+      case &(lt,rt) if l.polarity => Alpha(Literal(lt,true), Literal(rt,true))
+      case &(lt,rt) if !l.polarity => Beta(Literal(lt,false), Literal(rt, false))
+      case |||(lt,rt) if l.polarity => Beta(Literal(lt,true), Literal(rt, true))
+      case |||(lt,rt) if !l.polarity => Alpha(Literal(lt,false), Literal(rt,false))
+      case Impl(lt,rt) if l.polarity => Beta(Literal(lt,false), Literal(rt, true))
+      case Impl(lt,rt) if !l.polarity => Alpha(Literal(lt,true), Literal(rt,false))
+      case Forall(a@(ty :::> t)) if l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars)(sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, vargen.existingVars, vargen.existingTyVars)(sig); One(Literal(Term.mkTermApp(a, sko).betaNormalize, true))
+      case Exists(a@(ty :::> t)) if !l.polarity => val newVar = vargen(ty); One(Literal(Term.mkTermApp(a, newVar).betaNormalize, false))
+      case _ => None(l)
+    }
+  } else None(l)
+
+
+  final def step(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Literal])(implicit sig: Signature) : Seq[Seq[Literal]] = {
+    val (norm, l+:rest) = ls.span(l => !canApply(l))
+    val c = norm ++ rest
+    apply(vargen, l)(sig) match {
+      case Alpha(a,b) =>  Seq(a +: c, b +: c)
+      case Beta(a,b)  => Seq(a +: b +: c)
+      case One(a)     => Seq(a +: c)
+      case None(a)    => Seq(ls)
+    }
+  }
+
+  /**
+    * Searches the first Clause and the first Literal, that are not in cnf and applies one rule to them.
+    *
+    * @param vargen
+    * @param ls Sequence of clauses
+    * @return A sequence of the same clauses, where one literal was applied with cnf
+    */
+  final def apply(vargen : leo.modules.calculus.FreshVarGen, ls : Seq[Seq[Literal]])(implicit sig: Signature) : Seq[Seq[Literal]] = {
+    val (norm, rest) = ls.span(ls1 => !canApply(ls1))
+    rest match {
+      case Seq()  => ls
+      case (a +: c) => (c ++ step(vargen,a)(sig)) ++ norm
+    }
+  }
+
+  final def exhaust(c : Clause)(implicit sig: Signature) : Seq[Clause] = {
+    var ls = Seq(c.lits)
+    val vargen = freshVarGen(c)
+    while(ls exists canApply){
+      ls = apply(vargen, ls)(sig)
+    }
+    ls.map(ls1 => Clause(ls1))
   }
 }
 
@@ -211,10 +318,10 @@ object ReplaceLeibnizEq extends CalculusRule {
     (resMap.nonEmpty, resMap)
   }
 
-  def apply(cl: Clause, bindings: Map[Int, Term]): (Clause, Subst) = {
+  def apply(cl: Clause, bindings: Map[Int, Term])(implicit sig: Signature): (Clause, Subst) = {
     val gbMap = bindings.mapValues(t => Term.mkTermAbs(t.ty, ===(t.substitute(Subst.shift(1)), Term.mkBound(t.ty, 1))))
     val subst = Subst.fromMap(gbMap)
-    val newLits = cl.lits.map(_.substitute(subst))
+    val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
     (Clause(newLits), subst)
   }
 }
@@ -251,10 +358,10 @@ object ReplaceAndrewsEq extends CalculusRule {
     (varMap.nonEmpty, varMap)
   }
 
-  def apply(cl: Clause, vars: Map[Int, Type]): (Clause, Subst) = {
+  def apply(cl: Clause, vars: Map[Int, Type])(implicit sig: Signature): (Clause, Subst) = {
     val gbMap = vars.mapValues {ty => Term.λ(ty,ty)(===(Term.mkBound(ty,2), Term.mkBound(ty,1)))}
     val subst = Subst.fromMap(gbMap)
-    val newLits = cl.lits.map(_.substitute(subst))
+    val newLits = cl.lits.map(_.substituteOrdered(subst)(sig))
     (Clause(newLits), subst)
   }
 }
@@ -385,10 +492,10 @@ object ACSimp extends CalculusRule {
   }
 
   def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
-    val leftAC = lit.left.symbols intersect allACSymbols
+    val leftAC = lit.left.symbols.distinct intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
-      val rightAC = lit.right.symbols intersect allACSymbols
+      val rightAC = lit.right.symbols.distinct intersect allACSymbols
       val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
       if (newLeft == lit.left && newRight == lit.right) lit
       else Literal(newLeft, newRight, lit.polarity) // TODO: Orient?
@@ -414,18 +521,14 @@ object Simp extends CalculusRule {
   val name = "simp"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def apply(lit: Literal): Literal = if (lit.equational) { // TODO: Orient?
-    PolaritySwitch(eqSimp(Literal(Simplification.normalize(lit.left), Simplification.normalize(lit.right), lit.polarity)))
-  } else {
-    PolaritySwitch(Literal(Simplification.normalize(lit.left), lit.polarity))
-  }
+  def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
-  def apply(lits: Seq[Literal]): Seq[Literal] = {
+  final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Seq()
     val litIt = lits.iterator
     while (litIt.hasNext) {
-      val lit = apply(litIt.next())
+      val lit = apply(litIt.next())(sig)
       //      val lit = litIt.next()
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
@@ -446,24 +549,24 @@ object Simp extends CalculusRule {
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        return newLits.map(_.substitute(subst))
+        return newLits.map(_.substituteOrdered(subst)(sig))
       }
     }
     newLits
   }
 
-  def apply(cl: Clause): Clause  = Clause(apply(cl.lits))
+  final def apply(cl: Clause)(implicit sig: Signature): Clause  = Clause(apply(cl.lits)(sig))
 
-  def shallowSimp(cl: Clause): Clause = {
-    Clause(shallowSimp0(cl))
+  final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
+    Clause(shallowSimp(cl.lits)(sig))
   }
 
-  def shallowSimp0(cl: Clause): Seq[Literal] = {
+  final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     var newLits: Seq[Literal] = Seq()
-    val litIt = cl.lits.iterator
+    val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
-      val normLit = eqSimp(lit)
+      val normLit = eqSimp(lit)(sig)
       if (!Literal.isFalse(normLit)) {
         if (!newLits.contains(normLit)) {
           newLits = newLits :+ normLit
@@ -473,133 +576,258 @@ object Simp extends CalculusRule {
     newLits
   }
 
-  def eqSimp(l: Literal): Literal = {
-    if (!l.equational) l
-    else (l.left, l.right) match {
-      case (a,b) if a == b => Literal(LitTrue(), l.polarity)
-      case (a,b) => l
+  def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
+    if (!l.equational) Literal(internalNormalize(l.left), l.polarity)
+    else {
+      val normLeft = internalNormalize(l.left)
+      val normRight = internalNormalize(l.right)
+      (normLeft, normRight) match {
+        case (a,b) if a == b => Literal(LitTrue(), l.polarity)
+        case (a,b) => Literal.mkOrdered(normLeft, normRight, l.polarity)
+      }
     }
   }
 
+
+
+  //////////////////////////////////
+  //// Simplification implementation by Max
+  //////////////////////////////////
+  def normalize(t: Term): Term = internalNormalize(t)
+
+  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize).betaNormalize
+
+  import leo.datastructures.Term.{mkTermAbs, Symbol, Bound, ∙, mkBound, mkTermApp}
+  import leo.modules.HOLSignature.<=>
+  private def norm(formula : Term) : Term = formula match {
+    // First normalize, then match
+    case s === t =>
+      (norm(s), norm(t)) match {
+        case (s1,t1) if s1 == t1 => LitTrue
+        case (LitTrue(),t1) => t1
+        case (s1,LitTrue()) => s1
+        case (LitFalse(), t1) => Not(t1)
+        case (s1, LitFalse()) => Not(s1)
+        case (s1,t1)             => ===(s1,t1)
+      }
+    case s & t =>
+      (norm(s), norm(t)) match {
+        case (s1, t1) if s1 == t1     => s1
+        case (s1, Not(t1)) if s1 == t1  => LitFalse
+        case (Not(s1), t1) if s1 == t1  => LitFalse
+        case (s1, LitTrue())            => s1
+        case (LitTrue(), t1)            => t1
+        case (s1, LitFalse())           => LitFalse
+        case (LitFalse(), t1)           => LitFalse
+        case (s1, t1)                 => &(s1,t1)
+      }
+    case (s ||| t) =>
+      (norm(s),norm(t)) match {
+        case (s1,t1) if s1 == t1      => s1
+        case (s1, Not(t1)) if s1 == t1   => LitTrue
+        case (Not(s1),t1) if s1 == t1   => LitTrue
+        case (s1, LitTrue())            => LitTrue
+        case (LitTrue(), t1)            => LitTrue
+        case (s1, LitFalse())           => s1
+        case (LitFalse(), t1)           => t1
+        case (s1, t1)                 => |||(s1,t1)
+      }
+    case s <=> t =>
+      val (ns, nt) = (norm(s), norm(t))
+      val res : Term = (ns, nt) match {
+        case (s1, t1) if s1 == t1   => LitTrue
+        case (s1, LitTrue())        => s1
+        case (LitTrue(), t1)        => t1
+        case (s1, LitFalse())       => norm(Not(s1))
+        case (LitFalse(), t1)       => norm(Not(t1))
+        case (s1, t1)               => &(Impl(s1,t1),Impl(t1,s1))
+      }
+      return res
+    case s Impl t =>
+      (norm(s), norm(t)) match {
+        case (s1, t1) if s1 == t1 => LitTrue
+        case (s1, LitTrue())        => LitTrue
+        case (s1, LitFalse())       => norm(Not(s1))
+        case (LitTrue(), t1)        => t1
+        case (LitFalse(), t1)       => LitTrue
+        case (s1,t1)                => Impl(s1,t1)
+      }
+    case Not(s) => norm(s) match {
+      case LitTrue()    => LitFalse
+      case LitFalse()   => LitTrue
+      case Not(s1)      => s1
+      case s1           => Not(s1)
+    }
+    case Forall(t) => norm(t) match {
+      case ty :::> t1 =>
+        if (t1.looseBounds.contains(1))
+          Forall(mkTermAbs(ty, t1))
+        else
+          removeUnbound(mkTermAbs(ty,t1))
+      case t1         => Forall(t1)
+    }
+    case Exists(t) => norm(t) match {
+      case ty :::> t1 =>
+        if (t1.looseBounds.contains(1))
+          Exists(mkTermAbs(ty, t1))
+        else
+          removeUnbound(mkTermAbs(ty,t1))
+      case t1         => Exists(t1)
+    }
+
+    // Pass through unimportant structures
+    case s@Symbol(_)            => s
+    case s@Bound(_,_)           => s
+    case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
+    case ty :::> s  => Term.mkTermAbs(ty, norm(s))
+    case TypeLambda(t) => Term.mkTypeAbs(norm(t))
+  }
+
+  /**
+    * Removes the quantifier from a formula, that is free, by instantiating it
+    * and betanormalization.
+    *
+    * @param formula Abstraction with not bound variable.
+    * @return the term without the function.
+    */
+  private def removeUnbound(formula : Term) : Term = formula match {
+    case ty :::> t =>
+      //      println("Removed the abstraction in '"+formula.pretty+"'.")
+      mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
+    case _        => formula
+  }
 }
 
 /**
-  * Skolemization as preprocessing step.
-  * It is assumed that the term originates from a unit clause
-  * that has no implicitly quantified variables.
-  *
-  * Assumes that term is in NNF.
+  * Moves Quantifiers as far into the
+  * term as possible
   */
-object Skolemization extends CalculusRule {
+object Miniscope extends CalculusRule {
   import leo.datastructures.Term._
+  import leo.modules.HOLSignature._
 
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
-  val name = "skolemize"
+  type QUANT_LIST = Vector[(Boolean, Type)]
+  type QUANT_ITERATOR = Iterator[(Boolean, Type)]
 
-  def apply(t: Term)(implicit sig: Signature): Term = {
-    apply0(miniscope(t), Seq())(sig)
+  type PUSH_TYPE = Int
+  @inline final val BOTH : PUSH_TYPE = 3
+  @inline final val NONE : PUSH_TYPE = 0
+  @inline final val LEFT : PUSH_TYPE = 1
+  @inline final val RIGHT : PUSH_TYPE = 2
+
+  override val inferenceStatus = Some(SZS_Theorem)
+  val name = "miniscope"
+
+  def apply(t : Term, pol : Boolean)(implicit sig: Signature): Term = {
+    apply0(t, pol, Vector[(Boolean, Type)]())
   }
 
-  private def apply0(t: Term,fvs: Seq[Term])(implicit sig: Signature): Term = {
+  /**
+    *
+    * Performs miniscoping.
+    * quants is a stack of removed quantifiers, where
+    * (true, ty) --> Forall(\(ty)...)
+    * (false, ty) --> Exists(\(ty)...)
+    *
+    * @param t The term to miniscope
+    * @param pol The current polarity
+    * @param quants The current quantifier
+    * @param sig the signature
+    * @return a miniscoped term
+    */
+  private def apply0(t : Term, pol : Boolean, quants : QUANT_LIST)(implicit sig : Signature): Term = {
     t match {
-      case Exists(inner@(ty :::> body)) => {
-        val skConst = Term.mkAtom(sig.freshSkolemConst(Type.mkFunType(fvs.map(_.ty), ty)))
-        val skTerm = Term.mkTermApp(skConst, fvs)
-        val body2 = Term.mkTermApp(inner, skTerm).betaNormalize
-        apply0(body2, fvs)(sig)
-      }
-      case Forall(ty :::> body) => {
-        val newFvs = fvs.map(_.substitute(Subst.shift)) :+ Term.mkBound(ty, 1)
-        val body2 = apply0(body, newFvs)(sig)
-        Forall(λ(ty)(body2))
-      }
-      case (a & b) => &(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
-      case (a ||| b) => |||(apply0(a, fvs)(sig), apply0(b, fvs)(sig))
-      case _ => t
+      case Exists(ty :::> body) => apply0(body, pol, quants :+ (!pol, ty))
+      case Forall(ty :::> body) => apply0(body, pol, quants :+ (pol, ty))
+      case Not(a) => Not(apply0(a, !pol, quants))
+      case (a & b) =>
+        val (rest, leftQ, leftSub, rightQ, rightSub) = pushQuants(a, b, quants, pol, pol)
+        val amini = apply0(a.substitute(leftSub).betaNormalize, pol, leftQ)
+        val bmini = apply0(b.substitute(rightSub).betaNormalize, pol, rightQ)
+        prependQuantList(&(amini, bmini), pol, rest)
+      case (a ||| b) =>
+        val (rest, leftQ, leftSub, rightQ, rightSub) = pushQuants(a, b, quants, pol, !pol)
+        val amini = apply0(a.substitute(leftSub).betaNormalize, pol, leftQ)
+        val bmini = apply0(b.substitute(rightSub).betaNormalize, pol, rightQ)
+        prependQuantList(|||(amini, bmini), pol, rest)
+      case Impl(a, b) =>
+        val (rest, leftQ, leftSub, rightQ, rightSub) = pushQuants(a, b, quants, pol, !pol)
+        val amini = apply0(a.substitute(leftSub).betaNormalize, !pol, leftQ)
+        val bmini = apply0(b.substitute(rightSub).betaNormalize, pol, rightQ)
+        prependQuantList(Impl(amini, bmini), pol, rest)
+      case other =>
+        prependQuantList(other, pol, quants.reverseIterator)
     }
   }
 
   /**
     *
-    * Moves a quantifier inward, such that the computed skolemterm
-    * does only depend on the minimum amount of variables.
-    *
-    * @param formula - That will be skolemmized
-    * @return - The formula with quantifiers most inward
+    * @param left The left side of the operator
+    * @param right The right side of the operator
+    * @param quants The quantifiers seen to this point
+    * @param pol the current polarity
+    * @param and if(true) op = AND else op = OR
+    * @return
     */
-  def miniscope(formula : Term) : Term = formula match {
-    case Exists (ty :::> t) => miniscope(t) match {
-      case (t1 & t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Exists(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        &(left,right)
-      case (t1 & t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Exists(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        &(left,right)
-      case (t1 ||| t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Exists(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        |||(left,right)
-      case (t1 ||| t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Exists(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        |||(left,right)
-      case (t1 ||| t2) =>
-        val left = miniscope(Exists(mkTermAbs(ty,t1)))
-        val right = miniscope(Exists(mkTermAbs(ty,t2)))
-        |||(left,right)
-      // In neither of the above cases, move inwards
-      case s@Symbol(_)            => s
-      case s@Bound(_,i)           => if(i == 1) LitTrue() else s
-      case f ∙ args   => Exists(λ(ty)(Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},Right(_))))))
-      case ty2 :::> s  => Exists(λ(ty,ty2)(miniscope(s))) // TODO CHECK
-      case TypeLambda(t2) => Exists(λ(ty)(mkTypeAbs(miniscope(t2)))) // TODO CHECK
-      case _  => formula
+  @inline private final def pushQuants(left : Term, right : Term, quants : QUANT_LIST, pol : Boolean, and : Boolean) : (QUANT_ITERATOR, QUANT_LIST, Subst, QUANT_LIST, Subst) = {
+    val it = quants.reverseIterator
+    var leftQ : QUANT_LIST = Vector() // Quantifiers pushed left
+    var leftSubst : Seq[Int] = Seq()  // Substitution (reversed) removed Quants left
+    var rightQ : QUANT_LIST = Vector()  // Quantifiers pushed right
+    var rightSubst : Seq[Int] = Seq()  // Substitution (reversed) removed Quants right
+    var loop = 1
+    while(it.hasNext){
+      val q@(quant , ty) = it.next
+      val push = testPush(left, right, loop, quant, and)
+      if(push != 0) {
+        if ((push & LEFT) == LEFT) leftQ = q +: leftQ // Push the quantifier left if possible
+        leftSubst = leftQ.size +: leftSubst      // Update indizes
+
+        if((push & RIGHT) == RIGHT) rightQ = q +: rightQ
+        rightSubst = rightQ.size +: rightSubst
+      } else {
+        val lSub = revListToSubst(leftSubst, leftQ.size)
+        val rSub = revListToSubst(rightSubst, rightQ.size)
+        return (Iterator(q)++it, leftQ, lSub, rightQ, rSub)
+      }
+      loop += 1
     }
-
-    //Same for Forall
-    case Forall (ty :::> t) => miniscope(t) match {
-      //First Case: Conjuction t1 & t2 and bound var not contained in one of the conjuncts
-      case (t1 & t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Forall(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        &(left,right)
-      case (t1 & t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Forall(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        &(left,right)
-      //Second Case, Disjunction t1 || t2 and bound var not contained in one of the disjuncts
-      case (t1 ||| t2) if !t2.looseBounds.contains(1) =>
-        val left = miniscope(Forall(mkTermAbs(ty,t1)))
-        val right = miniscope(t2.substitute(decreaseFVSubst))
-        |||(left,right)
-      case (t1 ||| t2) if !t1.looseBounds.contains(1) =>
-        val right = miniscope(Forall(mkTermAbs(ty,t2)))
-        val left = miniscope(t1.substitute(decreaseFVSubst))
-        |||(left,right)
-      // Both are bound, and it is a cunjunction
-      case (t1 & t2) =>
-        val left = miniscope(Forall(mkTermAbs(ty,t1)))
-        val right = miniscope(Forall(mkTermAbs(ty,t2)))
-        &(left,right)
-      // In neither of the above cases, move inwards
-      case s@Symbol(_)            => s
-      case s@Bound(_,i)           => if(i == 1) LitFalse() else s
-      case f ∙ args   => Forall(λ(ty)(mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},Right(_))))))
-      case ty2 :::> s  => Forall(λ(ty,ty2)(miniscope(s)))
-      case TypeLambda(t2) => Forall(λ(ty)(mkTypeAbs(miniscope(t2))))
-            case _  => formula
-    }
-
-    // In neither of the above cases, move inwards
-    case s@Symbol(_)            => s
-    case s@Bound(_,_)           => s
-    case f ∙ args   => Term.mkApp(miniscope(f), args.map(_.fold({t => Left(miniscope(t))},Right(_))))
-    case ty :::> s  => λ(ty)(miniscope(s))
-    case TypeLambda(t) => mkTypeAbs(miniscope(t))
-    //    case _  => formula
-
+    return (it, leftQ, revListToSubst(leftSubst, leftQ.size), rightQ, revListToSubst(rightSubst, rightQ.size))
   }
-  private val decreaseFVSubst: Subst = BoundFront(1) +: Subst.id
+
+  @inline private final def revListToSubst(preSubst : Seq[Int], shift : Int) = {
+    var s : Subst = Subst.shift(shift)
+    val it = preSubst.iterator
+    while(it.hasNext){
+      s = BoundFront(it.next()) +: s
+    }
+    s
+  }
+
+  @inline private final def testPush(left : Term, right : Term, bound : Int, quant : Boolean, and : Boolean) : PUSH_TYPE = {
+    var result = 0
+    if (left.looseBounds.contains(bound)) result |= 1
+    if (right.looseBounds.contains(bound)) result |= 2
+
+    if((!quant && and || quant && !and) && result == 3) 0
+    else result
+  }
+
+
+  /**
+    * @param quants Reverse Iterator of the quantifier prefix
+    */
+  private def prependQuantList(t : Term, pol : Boolean, quants : QUANT_ITERATOR) : Term = {
+    var itTerm : Term = t
+    while(quants.hasNext){
+      val (q, ty) = quants.next()
+      itTerm = quantToTerm(q, pol)(\(ty)(itTerm))
+    }
+    itTerm
+  }
+
+  private def quantToTerm(quant : Boolean, pol : Boolean) : HOLUnaryConnective = {
+    val realQuant = if(pol) quant else !quant
+    if(realQuant) Forall else Exists
+  }
 }

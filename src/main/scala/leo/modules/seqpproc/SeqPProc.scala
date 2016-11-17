@@ -26,16 +26,32 @@ object SeqPProc extends Function1[Long, Unit]{
     assert(Clause.unit(cur.cl), "clause not unit")
     val lit = cur.cl.lits.head
     assert(!lit.equational, "initial literal equational")
-
     // Def expansion and simplification
     var cw = cur
     cw = Control.expandDefinitions(cw)
-    cw = Control.nnf(cw)
     cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw)
+    cw = Control.miniscope(cw)
 
-    // Exhaustively CNF
-    result = Control.cnf(cw)
+    // Introduce primsubst instantiations (if applicable)
+    // and then exhaustively CNF
+    result = if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
+      val primSubst_result = Control.primsubst(cw,Configuration.PRE_PRIMSUBST_LEVEL)
+      Out.trace(s"pre primsubst result: ${primSubst_result.map(_.pretty)}")
+      Control.cnfSet(primSubst_result + cw)
+    } else Control.cnf(cw)
+//
+//    //Remove of instance of choice TODO
+//    val choiceCandidate = Control.detectChoiceClause(cw)
+//    if (choiceCandidate.isDefined) {
+//      val choiceFun = choiceCandidate.get
+//      state.addChoiceFunction(choiceFun)
+//      leo.Out.debug(s"Choice: function detected ${choiceFun.pretty(sig)}")
+//      leo.Out.debug(s"Choice: clause removed ${cw.id}")
+//      Set()
+//    } else {
+//
+//    }
+
     // Remove defined equalities as far as possible
     result = result union Control.convertDefinedEqualities(result)
 
@@ -76,7 +92,6 @@ object SeqPProc extends Function1[Long, Unit]{
     var test = false
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    try {
       // Read problem
       val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()
@@ -126,7 +141,7 @@ object SeqPProc extends Function1[Long, Unit]{
       if (state.negConjecture != null) Control.fvIndexInit(remainingInput + state.negConjecture)
       else Control.fvIndexInit(remainingInput)
       Control.foIndexInit()
-
+      Out.trace(s"Symbols in conjecture: ${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
       // Preprocessing
       val conjecture_preprocessed = if (state.negConjecture != null) {
         Out.debug("## Preprocess Neg.Conjecture BEGIN")
@@ -194,14 +209,23 @@ object SeqPProc extends Function1[Long, Unit]{
             }
             state.setDerivationClause(cur)
           } else {
-            // Subsumption
-            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-            if (subsumed.isEmpty) {
-              mainLoopInferences(cur, state)
+            val choiceCandidate = Control.detectChoiceClause(cur)
+            if (choiceCandidate.isDefined) {
+              val choiceFun = choiceCandidate.get
+              state.addChoiceFunction(choiceFun)
+              leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              Out.debug("clause subsumbed, skipping.")
-              state.incForwardSubsumedCl()
-              Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+              // Subsumption
+              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+              if (subsumed.isEmpty) {
+                if(mainLoopInferences(cur, state)) {
+                  loop = false
+                }
+              } else {
+                Out.debug("clause subsumbed, skipping.")
+                state.incForwardSubsumedCl()
+                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+              }
             }
           }
         }
@@ -249,14 +273,23 @@ object SeqPProc extends Function1[Long, Unit]{
               }
               state.setDerivationClause(cur)
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                mainLoopInferences(cur, state)
+              val choiceCandidate = Control.detectChoiceClause(cur)
+              if (choiceCandidate.isDefined) {
+                val choiceFun = choiceCandidate.get
+                state.addChoiceFunction(choiceFun)
+                leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
               } else {
-                Out.debug("clause subsumbed, skipping.")
-                state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+                // Subsumption
+                val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
+                if (subsumed.isEmpty) {
+                  if(mainLoopInferences(cur, state)) {
+                    loop = false
+                  }
+                } else {
+                  Out.debug("clause subsumbed, skipping.")
+                  state.incForwardSubsumedCl()
+                  Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
+                }
               }
             }
           }
@@ -286,6 +319,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
       Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
       Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
+      Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
       Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
       Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
       Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
@@ -336,16 +370,15 @@ object SeqPProc extends Function1[Long, Unit]{
         Out.output(Utility.proofToTPTP(proof))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
-    } catch {
-      case e:Throwable => throw new SZSException(SZS_Error, e.toString, Utility.signatureAsString(sig))
-    }
   }
 
-  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
+  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Boolean = {
     implicit val sig: Signature = state.signature
 
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
+
+//    println(s"current clauses symbols: ${Clause.symbols(cl.cl).map(s => state.signature(s).name).mkString(",")}")
 
     /////////////////////////////////////////
     // Simplifying (mofifying inferences and backward subsumption) BEGIN
@@ -394,11 +427,13 @@ object SeqPProc extends Function1[Long, Unit]{
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)
+    val primSubst_result = Control.primsubst(cur, Configuration.PRIMSUBST_LEVEL)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */
     newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
+    /* Replace eq symbols on top-level by equational literals. */
+    newclauses = newclauses.map(Control.liftEq)
 
     /* TODO: Choice */
     /////////////////////////////////////////
@@ -410,12 +445,12 @@ object SeqPProc extends Function1[Long, Unit]{
     /////////////////////////////////////////
     state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
-//    newclauses = Control.simpSet(newclauses)
+//    newclauses = Control.shallowSimpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
 
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)
 
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
@@ -434,15 +469,24 @@ object SeqPProc extends Function1[Long, Unit]{
     while (newIt.hasNext) {
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
-      // Simplify again, including rewriting etc.
-      newCl = Control.rewriteSimp(newCl, state.rewriteRules)
-
-      if (!Clause.trivial(newCl.cl)) {
-        state.addUnprocessed(newCl)
+      newCl = Control.shallowSimp(newCl)
+      if (Clause.effectivelyEmpty(newCl.cl)) {
+        if (state.conjecture == null) {
+          state.setSZSStatus(SZS_Unsatisfiable)
+        } else {
+          state.setSZSStatus(SZS_Theorem)
+        }
+        state.setDerivationClause(newCl)
+        return true
       } else {
-        Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
+        if (!Clause.trivial(newCl.cl)) {
+          state.addUnprocessed(newCl)
+        } else {
+          Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
+        }
       }
     }
+    false
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {

@@ -128,7 +128,7 @@ object Utility {
 
   final def proofToTPTP(proof: Proof)(implicit sig: Signature): String = {
     if (Configuration.isSet("DEBUG"))
-      proof.map(_.pretty).mkString("\n")
+      proof.map(_.pretty(sig)).mkString("\n")
     else
       proof.map(mkTPTP(_)(sig)).mkString("\n")
   }
@@ -142,7 +142,7 @@ object Utility {
   }
 
   final def symbolsInProof(p: Proof): Set[Signature#Key] = {
-    p.flatMap(cl => cl.cl.lits.flatMap(l => l.left.symbols ++ l.right.symbols)).toSet
+    p.flatMap(cl => cl.cl.lits.flatMap(l => l.left.symbols.distinct ++ l.right.symbols.distinct)).toSet
   }
 
   final def axiomsInProof(p: Proof): Set[ClauseProxy] = {
@@ -183,7 +183,7 @@ object Utility {
     println(s"Formulas in Context(id=${c.contextID})")
     println("Name" + " "*(maxNameSize-4) +  " | " + "Role" + " " * (maxRoleSize -4)+" | Formula (in nameless spine representation)")
     println("-"*maxSize)
-    FormulaDataStore.getFormulas(c).foreach {
+    FormulaDataStore.getFormulas.foreach {
       x =>
         val name = x.id.toString.take(maxNameSize)
         val role = x.role.pretty.take(maxRoleSize)

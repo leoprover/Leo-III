@@ -29,12 +29,20 @@ import java.io.IOException
  * @author Max Wisniewski
  * @since 11/10/14
  */
-abstract class ScriptAgent(path : String) extends Agent {
+abstract class ScriptAgent(path : String) extends AbstractAgent {
   override val interest : Option[Seq[DataType]] = None
 
-  def handle(c: Context, input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
+  def handle(input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
 
   def encode(fs: Set[ClauseProxy]): Seq[String]
+
+
+  /**
+    * Searches the Blackboard for possible tasks on initialization.
+    *
+    * @return All initial available tasks
+    */
+  override def init(): Iterable[Task] = Seq()
 
   /**
     *
@@ -60,14 +68,14 @@ abstract class ScriptAgent(path : String) extends Agent {
 
 
 
-  final case class ScriptTask(script : String, fs: Set[ClauseProxy], c: Context, a : ScriptAgent) extends Task {
+  final case class ScriptTask(script : String, fs: Set[ClauseProxy], a : ScriptAgent) extends Task {
     override val readSet: Map[DataType, Set[Any]] = Map()
 
     override val writeSet: Map[DataType, Set[Any]] = Map()
 
     override def bid: Double = 1 // TODO Better value
 
-    override val pretty: String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
+    override val pretty: String = s"ScriptTask($script, numerOfClauses = ${fs.size})"
     override val name: String = "Script Call"
 
     override val getAgent : ScriptAgent = a
@@ -81,12 +89,12 @@ abstract class ScriptAgent(path : String) extends Agent {
       val retValue = process.exitValue
       val out = process.out
       val err = process.error
-      val res = a.handle(c, out, err, retValue, fs)
+      val res = a.handle(out, err, retValue, fs)
       extSet.synchronized(extSet.remove(process))
       res
     }
 
-    override val toString : String = s"ScriptTask($script, ${c.contextID}, numerOfClauses = ${fs.size})"
+    override val toString : String = s"ScriptTask($script,  numerOfClauses = ${fs.size})"
   }
 
 }

@@ -1,5 +1,3 @@
-#!groovy
-
 node {
     stage 'Checkout'
 
