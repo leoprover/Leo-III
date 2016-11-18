@@ -2,7 +2,8 @@ node {
     stage 'Checkout'
 
     checkout scm
-    sh "git submodule update --init"
+
+    sh "ls Benchmarks/"
 
     echo "Downloading PicoSAT"
     sh "wget http://fmv.jku.at/picosat/picosat-965.tar.gz"
