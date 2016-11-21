@@ -1,9 +1,8 @@
+#!groovy
 node {
     stage 'Checkout'
 
-    checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'SubmoduleOption', disableSubmodules: false, parentCredentials: true, recursiveSubmodules: true, reference: '', trackingSubmodules: false]], submoduleCfg: []])
-
-    sh "ls Benchmarks/"
+    checkout scm
 
     echo "Downloading PicoSAT"
     sh "wget http://fmv.jku.at/picosat/picosat-965.tar.gz"
@@ -34,6 +33,9 @@ node {
     stage 'Soundness Check'
 
     env.TPTP = tool name: 'TPTP'
+
+    def benchmark = tool name: 'Benchmark'
+    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -s ${benchmark}/Lists/csa_default"
 
     stage 'Small Benchmark'
 }
