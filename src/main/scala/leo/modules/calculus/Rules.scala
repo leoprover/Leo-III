@@ -3,8 +3,10 @@ package leo.modules.calculus
 import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
-import leo.modules.HOLSignature.{o, LitTrue}
+import leo.modules.HOLSignature.{LitTrue, o}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
+
+import scala.annotation.tailrec
 
 ////////////////////////////////////////////////////////////////
 ////////// Extensionality
@@ -183,7 +185,7 @@ object PatternUni extends AnyUni {
 
 object Choice extends CalculusRule {
   val name = "choice"
-  override val inferenceStatus = Some(SZS_Theorem)
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
 
   final def detectChoice(clause: Clause): Option[Term] = {
     import leo.datastructures.Term.TermApp
@@ -209,6 +211,96 @@ object Choice extends CalculusRule {
       }
     } else
       None
+  }
+
+
+  final def canApply(clause: Clause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[Term] = {
+    import leo.datastructures.Term.{Symbol, Bound,TermApp}
+    var result: Set[Term] = Set()
+    val litIt = clause.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+
+      val leftOcc = lit.left.feasibleOccurences
+      val leftOccIt = leftOcc.keysIterator
+      while (leftOccIt.hasNext) {
+        val occ = leftOccIt.next()
+//        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
+        val findResult = findChoice(occ, choiceFuns, leftOcc(occ).head)
+        if (findResult != null)
+          result = result + findResult
+      }
+      if (lit.equational) {
+        val rightOcc = lit.right.feasibleOccurences
+        val rightOccIt = rightOcc.keysIterator
+        while (rightOccIt.hasNext) {
+          val occ = rightOccIt.next()
+          val findResult = findChoice(occ, choiceFuns, rightOcc(occ).head)
+          if (findResult != null)
+            result = result + findResult
+        }
+      }
+    }
+    result
+  }
+  private final def findChoice(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position): Term =
+    findChoice0(occ, choiceFuns, occPos, 0)
+
+  @tailrec
+  private final def findChoice0(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position, depth: Int): Term = {
+    import leo.datastructures.Term.{Symbol, Bound,TermApp, :::>}
+    occ match {
+      case TermApp(hd, args) if compatibleType(hd.ty) && args.nonEmpty && etaArgs(args.tail, depth) =>
+        val arg = args.head
+        hd match {
+          case Bound(_,idx) if idx > occPos.abstractionCount+depth =>
+            arg
+          case Symbol(_) => val choiceType =hd.ty._funDomainType._funDomainType
+            if (choiceFuns.contains(choiceType))
+              if (choiceFuns(choiceType).contains(hd))
+                arg
+              else null
+            else null
+          case _ => null/* skip */
+        }
+      case _ :::> body => findChoice0(body, choiceFuns, occPos, depth+1)
+      case _ => null/* skip */
+    }
+  }
+
+  @tailrec
+  private final def etaArgs(args: Seq[Term], depth: Int): Boolean = {
+    import leo.datastructures.Term.Bound
+    if (args.isEmpty) depth == 0
+    else {
+      val hd = args.head
+      hd match {
+        case Bound(_, idx) if idx == depth => etaArgs(args.tail, depth-1)
+        case _ => false
+      }
+    }
+  }
+
+  private final def compatibleType(ty: Type): Boolean = {
+    if (ty.isFunType) {
+      val domain = ty._funDomainType
+      val codomain = ty.codomainType
+      if (domain.isFunType)
+        if (domain._funDomainType == codomain && domain.codomainType == o) true
+        else false
+      else false
+    } else false
+  }
+
+  final def apply(term: Term, choiceFun: Term): Clause = {
+    // We dont need to adjust the free variables of `term` since there
+    // is no variable capture (we create a fresh clause).
+    val newVar: Term = Term.mkBound(term.ty._funDomainType, term.looseBounds.max + 1)
+    // lit1: [term y]^f
+    val lit1 = Literal.mkLit(Term.mkTermApp(term, newVar).betaNormalize.etaExpand, false)
+    // lit2: [term (choicefun term)]^t
+    val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)).betaNormalize.etaExpand, true)
+    Clause(Seq(lit1, lit2))
   }
 }
 

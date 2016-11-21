@@ -55,14 +55,9 @@ object DomainConstrainedSplitting {
       case _ => (1 to (n-1)).toList.map{x => (x,n)} ::: mkPairs(n-1)
     }
 
-    def mkAnd(l : List[Term]) : Term = l match {
-      case t :: Nil => t
-      case t :: ts  => &(t,mkAnd(ts))
-    }
-
     val maximal : Term = mkExist(n)(t)(Forall(mkTermAbs(t, equalToFirst(n))))
     if (n == 1) return List(maximal)
-    val distinct : Term = mkExist(n)(t)(mkAnd(mkPairs(n).map{case (a,b) => Not(===(mkBound(t,a),mkBound(t,b)))}))
+    val distinct : Term = mkExist(n)(t)(mkConjunction(mkPairs(n).map{case (a,b) => Not(===(mkBound(t,a),mkBound(t,b)))}))
     return List(maximal,distinct)
   }
 

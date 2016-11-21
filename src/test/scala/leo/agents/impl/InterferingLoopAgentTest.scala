@@ -1,6 +1,6 @@
 package leo.agents.impl
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.agents._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard._
@@ -10,7 +10,7 @@ import leo.datastructures.blackboard._
   */
 class InterferingLoopAgentTest extends LeoTestSuite {
 
-  test("Count to 10"){
+  test("Count to 10", Checked){
     val self = this
     NumberStore.clear()
     Blackboard().addDS(NumberStore)
@@ -32,7 +32,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     assert(NumberStore.getNumber == 10, "Incrementing to 10 should hold 10.")
   }
 
-  test("Ripple count to 10"){
+  test("Ripple count to 10", Checked){
     val self = this
     NumberStore.clear()
     Blackboard().addDS(NumberStore)
@@ -56,7 +56,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     assert(n == 10 || n == 11 || n == 14, "Incrementing to 10 should hold 10.")
   }
 
-  test("Count to 100"){
+  test("Count to 100", Checked){
     val self = this
     NumberStore.clear()
     Blackboard().addDS(NumberStore)

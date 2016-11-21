@@ -35,6 +35,8 @@ object Control {
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Choice
+  import leo.datastructures.{Term, Type}
+  @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
   @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
   // Redundancy
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
@@ -55,6 +57,7 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
+  import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -116,6 +119,7 @@ package inferenceControl {
           results = results ++ allParamods(cl, other)
         }
       }
+      if (results.nonEmpty) Out.trace(s"Paramod result: ${results.map(_.id).mkString(",")}")
       results
     }
 
@@ -586,30 +590,88 @@ package inferenceControl {
   }
 
   protected[modules] object Choice {
+    import leo.modules.calculus.{Choice => ChoiceRule}
+    private var acMap: Map[Type, AnnotatedClause] = Map()
+    final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
 
-    import leo.datastructures.Term.TermApp
-    import leo.datastructures.Type.->
-
-    final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
-      leo.modules.calculus.Choice.detectChoice(cw.cl)
+    final def newACInstance(ty: Type): AnnotatedClause = {
+      import leo.modules.HOLSignature._
+      import leo.datastructures.Term.{mkBound,λ, mkTermApp}
+      val lit = Literal.mkLit(Exists(λ((ty ->: o) ->: ty)(
+        Forall(λ(ty ->: o)(
+          Impl(
+            Exists(λ(ty)(
+                mkTermApp(mkBound(ty ->: o, 2), mkBound(ty, 1))
+            )),
+            mkTermApp(
+              mkBound(ty ->: o, 1),
+              mkTermApp(
+                mkBound((ty ->: o) ->: ty, 2),
+                mkBound(ty ->: o, 1)
+              )
+            )
+          )
+        ))
+      )), true)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)
+      acMap = acMap + ((ty, res))
+      res
     }
 
-    private final def findCandidate(t: Term): (Boolean, Term, Term) = {
-      t match {
-        case TermApp(var1, Seq(TermApp(choiceSymb, Seq(var2)))) => {
-          choiceSymb.ty match {
-            case ((a -> b) -> c) => ???
-            case _ => (false, null, null)
+
+    final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
+      ChoiceRule.detectChoice(cw.cl)
+    }
+
+    final def instantiateChoice(cw: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(sig: Signature): Set[AnnotatedClause] = {
+      if (Configuration.NO_CHOICE) Set()
+      else {
+        val cl = cw.cl
+        Out.trace(s"[Choice] Searching for possible choice terms...")
+        val candidates = ChoiceRule.canApply(cl, choiceFuns)(sig)
+        if (candidates.nonEmpty) {
+          Out.trace(s"[Choice] Found possible choice term.")
+          var results: Set[AnnotatedClause] = Set()
+          val candidateIt = candidates.iterator
+          while(candidateIt.hasNext) {
+            val candPredicate = candidateIt.next()
+            // type is (alpha -> o), alpha is choice type
+            val choiceType: Type = candPredicate.ty._funDomainType
+
+            if (choiceFuns.contains(choiceType)) {
+              // Instantiate will all choice functions
+              val choiceFunsForChoiceType = choiceFuns(choiceType)
+              val choiceFunIt = choiceFunsForChoiceType.iterator
+              while (choiceFunIt.hasNext) {
+                val choiceFun = choiceFunIt.next()
+                val result0 = ChoiceRule(candPredicate, choiceFun)
+                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
+                results = results + result
+              }
+            } else {
+              // No choice function registered, introduce one now
+              val choiceFun = registerNewChoiceFunction(choiceType)(sig)
+              val result0 = ChoiceRule(candPredicate, choiceFun)
+              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
+              results = results + result
+            }
           }
-        }
-        case _ => ???
+          Out.trace(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
+          Out.trace(s"[Choice] Results: ${results.map(_.pretty(sig)).mkString(",")}")
+          results
+        } else Set()
       }
+    }
+
+    final def registerNewChoiceFunction(ty: Type)(sig: Signature): Term = {
+      import leo.modules.HOLSignature.o
+      val newSymb = sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice)
+      Term.mkAtom(newSymb)(sig)
     }
   }
 
   protected[modules] object SimplificationControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
-    import leo.modules.HOLSignature.Not
 
     final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = {
       val litsIt = cl.cl.lits.iterator
@@ -715,7 +777,7 @@ package inferenceControl {
         AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
-      Out.finest(s"Shallow Simp result: ${result.pretty(sig)}")
+      Out.trace(s"Shallow Simp result: ${result.pretty(sig)}")
       result
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
