@@ -1,6 +1,6 @@
 package leo.modules.calculus
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.datastructures.{Clause, Literal, Signature}
 import leo.modules.Parsing
 
@@ -22,7 +22,7 @@ class CNFTestSuite extends LeoTestSuite {
 
 
   for(p <- testProblems)
-    test(s"Test : ($p)"){
+    test(s"Test : ($p)", Checked) {
       implicit val sig: Signature = getFreshSignature
       val (_,l,_) = Parsing.parseFormula(p)
       val s : StringBuilder = new StringBuilder

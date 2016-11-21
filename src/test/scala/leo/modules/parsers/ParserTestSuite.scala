@@ -29,7 +29,7 @@ class ParserTestSuite extends LeoTestSuite {
   )
 
   for (p <- problems) {
-    test(p._2, Checked) {
+    test(p._2, Ignored) {
       printHeading(s"Parsing test for ${p._2}")
       Out.output(s"## Parsing ${p._1} ...")
 
