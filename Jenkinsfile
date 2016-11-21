@@ -35,7 +35,8 @@ node {
     env.TPTP = tool name: 'TPTP'
 
     def benchmark = tool name: 'Benchmark'
-    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -s ${benchmark}/Lists/csa_default"
+    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o soundness_logs -r soundness_results -s ${benchmark}/Lists/csa_default"
+    archiveArtifacts artifacts: 'soundness_*', fingerprint: true
 
     stage 'Small Benchmark'
 }
