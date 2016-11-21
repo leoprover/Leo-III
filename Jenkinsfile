@@ -24,7 +24,7 @@ node {
 
     stage 'Tests'
 
-    sh "sbt test || true"
+    sh "sbt \"testOnly -- -n Checked \" || true"
     step([$class: 'JUnitResultArchiver', testResults: 'target/test-reports/*.xml', fingerprint: true])
 
 
