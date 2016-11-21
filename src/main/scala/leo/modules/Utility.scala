@@ -40,16 +40,19 @@ object Utility {
       val c1 = s(c)
       sb.append(s"${c1.name}\t|\t")
       sb.append(s"${c1.key}\t|\t")
-      c1.ty foreach { ty => sb.append(s"${ty.pretty}\t|\t")}
+      c1.ty foreach { ty => sb.append(s"${ty.pretty(s)}\t|\t")}
       c1.kind foreach { kind => sb.append(s"${kind.pretty}\t|\t")}
       if (c1.hasDefn)
-        sb.append(s"${c1._defn.pretty}\t|\t")
+        sb.append(s"${c1._defn.pretty(s)}\t|\t")
       else
         sb.append(s"---\t|\t")
       if (c1.status == lexStatus) sb.append("lex,")
       if (c1.status == multStatus) sb.append("mult,")
       if (c1.isASymbol) sb.append("A,")
       if (c1.isCSymbol) sb.append("C,")
+      if (isPropSet(Signature.PropSkolemConstant, c1.flag)) sb.append("SK, ")
+      if (isPropSet(Signature.PropFixed, c1.flag)) sb.append("Fix, ")
+      if (isPropSet(Signature.PropChoice, c1.flag)) sb.append("Choice fun, ")
       if (c1.isExternal) sb.append("Ext")
       sb.append("\n")
     }
@@ -64,16 +67,19 @@ object Utility {
       val c1 = s(c)
       sb.append(s"${c1.name}\t|\t")
       sb.append(s"${c1.key}\t|\t")
-      c1.ty foreach { ty => sb.append(s"${ty.pretty}\t|\t")}
+      c1.ty foreach { ty => sb.append(s"${ty.pretty(s)}\t|\t")}
       c1.kind foreach { kind => sb.append(s"${kind.pretty}\t|\t")}
       if (c1.hasDefn)
-        sb.append(s"${c1._defn.pretty}\t|\t")
+        sb.append(s"${c1._defn.pretty(s)}\t|\t")
       else
         sb.append(s"---\t|\t")
       if (c1.status == lexStatus) sb.append("lex,")
       if (c1.status == multStatus) sb.append("mult,")
       if (c1.isASymbol) sb.append("A,")
       if (c1.isCSymbol) sb.append("C,")
+      if (isPropSet(Signature.PropSkolemConstant, c1.flag)) sb.append("SK, ")
+      if (isPropSet(Signature.PropFixed, c1.flag)) sb.append("Fix, ")
+      if (isPropSet(Signature.PropChoice, c1.flag)) sb.append("Choice fun, ")
       if (c1.isExternal) sb.append("Ext")
       sb.append("\n")
     }

@@ -433,6 +433,13 @@ package object datastructures {
       case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t2) => |||(disj, t2)})
     }
   }
+  final def mkConjunction(terms: Seq[Term]): Term = {
+    import leo.modules.HOLSignature.{LitTrue, &}
+    terms match {
+      case Seq() => LitTrue()
+      case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t2) => &(disj, t2)})
+    }
+  }
   final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
     import leo.datastructures.Term.λ
     import leo.modules.HOLSignature.Forall

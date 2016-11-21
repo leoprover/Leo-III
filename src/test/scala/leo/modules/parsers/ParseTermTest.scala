@@ -132,7 +132,7 @@ class ParseTermTest
 
   }
 
-  test("oldTermParser", Checked) {
+  test("oldTermParser", Ignored) {
     Out.output("testing OLD parser on random generated terms")
     testParser(TermParser0Wrapper)
   }
@@ -140,7 +140,7 @@ class ParseTermTest
     Out.output("testing COMBINATORS BASED parser on random generated terms")
     testParser(TermParserFunctional)
   }
-  test("newTermParser", Checked) {
+  test("newTermParser", Ignored) {
     Out.output("testing NEW parser on random generated terms")
     testParser(TermParser2)
   }

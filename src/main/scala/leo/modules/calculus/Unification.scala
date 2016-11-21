@@ -208,8 +208,8 @@ object HuetsPreUnification extends Unification {
                          uTyProblems: Seq[UTEq], solvedTy: TypeSubst):
                         (Boolean, Seq[UEq0], Seq[UEq], TermSubst, TypeSubst) = {
     //                  (fail, flexRigid, flexflex, solved, solvedTy)
-    leo.Out.trace(s"Unsolved (term eqs): ${unprocessed.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    leo.Out.trace(s"Unsolved (type eqs): ${uTyProblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+    leo.Out.finest(s"Unsolved (term eqs): ${unprocessed.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+    leo.Out.finest(s"Unsolved (type eqs): ${uTyProblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
     if (uTyProblems.nonEmpty) {
       val head = uTyProblems.head
 
@@ -724,7 +724,7 @@ object PatternUnification extends Unification {
         else {
           val l = l0.substitute(partialUnifier, partialTyUnifier)
           val r = r0.substitute(partialUnifier, partialTyUnifier)
-          leo.Out.debug(s"solve: ${l.pretty} = ${r.pretty}")
+          leo.Out.trace(s"solve: ${l.pretty} = ${r.pretty}")
           // take off the lambdas
           val (leftBody, leftAbstractions) = collectLambdas(l)
           val (rightBody, rightAbstractions) = collectLambdas(r)

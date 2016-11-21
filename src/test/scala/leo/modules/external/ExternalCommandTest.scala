@@ -1,13 +1,13 @@
 package leo.modules.external
 
-import leo.LeoTestSuite
+import leo.{Ignored, LeoTestSuite}
 
 /**
   * Created by mwisnie on 2/29/16.
   */
 class ExternalCommandTest extends LeoTestSuite {
 
-  test("Command Test Echo") {
+  test("Command Test Echo", Ignored) {
 
     val result = ExternalCall.exec("echo hallo a");
 
@@ -17,7 +17,7 @@ class ExternalCommandTest extends LeoTestSuite {
     assert(out.head == "hallo a", "'echo hallo a' should return 'hallo a'")
   }
 
-  test("Command Test Cat") {
+  test("Command Test Cat", Ignored) {
     val inputLines = Seq("eins","zwei","drei")
     val result = ExternalCall.exec("cat",inputLines)
 
@@ -28,7 +28,7 @@ class ExternalCommandTest extends LeoTestSuite {
     assert(out.tail.tail.head == "drei", "Third element should be 'drei'")
   }
 
-  test("Command Chain Test"){
+  test("Command Chain Test", Ignored){
     val result = ExternalCall.exec("echo hallo & echo main")
 
     result.exitValue
@@ -43,7 +43,7 @@ class ExternalCommandTest extends LeoTestSuite {
     }
   }
 
-  test("Termination Test") {
+  test("Termination Test", Ignored) {
     val t = System.currentTimeMillis()
     val result = ExternalCall.exec("sleep 100 & sleep 1000")
 

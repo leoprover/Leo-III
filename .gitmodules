@@ -1,3 +1,0 @@
-[submodule "Benchmarks"]
-	path = Benchmarks
-	url = git@github.com:cbenzmueller/Leo-III_Benchmarks.git
