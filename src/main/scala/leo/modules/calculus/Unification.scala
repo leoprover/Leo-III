@@ -846,7 +846,7 @@ object PatternUnification extends Unification {
       val subst = Subst.singleton(idx1, binding)
       // new equations:
       val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
-      assert(newVars.size == rigidArgs.size)
+      assert(newVars.size == rigidArgs0._2.size)
       val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
       ((subst, Subst.id), newueqs)
     } catch {
