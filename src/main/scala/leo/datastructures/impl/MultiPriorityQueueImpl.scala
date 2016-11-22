@@ -68,11 +68,27 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   def size: Int = {
     if (!initialized) throw new IllegalStateException
     else {
-      priorityQueues.head.size
+      priorityQueues.head.size // FIXME: ALso possibily counts the removed ones
     }
   }
 
-  def isEmpty: Boolean = size == 0
+  def isEmpty: Boolean = {
+    if (!initialized) throw new IllegalStateException
+    else {
+      val pq = priorityQueues.head
+      if (pq.isEmpty) true
+      else {
+        val result = pq.head
+        if (result.get == null) {
+          priorityQueues.head.dequeue()
+          isEmpty
+        } else {
+          false
+        }
+      }
+
+    }
+  }
 
   def head(k: OrderingKey): A = {
     if (priorityQueues.size-1 < k) throw new NoSuchElementException
