@@ -32,6 +32,7 @@ object Control {
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
+  @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // Choice
@@ -433,16 +434,17 @@ package inferenceControl {
       val cl = cl0.cl
       assert(cl.lits.nonEmpty)
       val uniLit = cl.lits.last
-      assert(!uniLit.polarity)
-      val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit.left, uniLit.right)), cl.lits.init)(sig)
-      // TODO: Try again to unify all possibly new unification constraints, is that useful?
-      var uniResult: Set[AnnotatedClause] = Set()
-      val uniResultIt = uniResult0.iterator
-      while (uniResultIt.hasNext) {
-        val uniRes = uniResultIt.next()
-        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
-      }
-      uniResult
+      if (!uniLit.polarity) {
+        val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit.left, uniLit.right)), cl.lits.init)(sig)
+        // TODO: Try again to unify all possibly new unification constraints, is that useful?
+        var uniResult: Set[AnnotatedClause] = Set()
+        val uniResultIt = uniResult0.iterator
+        while (uniResultIt.hasNext) {
+          val uniRes = uniResultIt.next()
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+        }
+        uniResult
+      } else Set(cl0)
     }
 
     private final def factorUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
@@ -587,6 +589,17 @@ package inferenceControl {
         Set()
       } else Set()
     }
+  }
+
+  protected[modules] object SpecialInstantiationControl {
+    final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
+//      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
+//
+//      }
+// TODO: shallow simp at end.
+      Set(cl)
+    }
+
   }
 
   protected[modules] object Choice {

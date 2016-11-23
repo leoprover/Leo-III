@@ -22,37 +22,41 @@ object SeqPProc extends Function1[Long, Unit]{
   final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
+    
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cur.cl), "clause not unit")
     val lit = cur.cl.lits.head
     assert(!lit.equational, "initial literal equational")
+
     // Def expansion and simplification
-    var cw = cur
-    cw = Control.expandDefinitions(cw)
-    cw = Control.switchPolarity(cw)
-    cw = Control.miniscope(cw)
+    val expanded = Control.expandDefinitions(cur)
+    val polarityswitchedAndExpanded = Control.switchPolarity(expanded)
+    // We may instantiate here special symbols for universal variables
+    // Its BEFORE miniscope because their are less quantifiers and maybe
+    // some universal quantification may vanish after extensional instantiation
+    // Run simp here again to eliminate connectives with true/false as operand due
+    // to ext. instantiation.
+    result = Control.specialInstances(polarityswitchedAndExpanded)
 
-    // Introduce primsubst instantiations (if applicable)
-    // and then exhaustively CNF
-    result = if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-      val primSubst_result = Control.primsubst(cw,Configuration.PRE_PRIMSUBST_LEVEL)
-      Out.trace(s"pre primsubst result: ${primSubst_result.map(_.pretty)}")
-      Control.cnfSet(primSubst_result + cw)
-    } else Control.cnf(cw)
-//
-//    //Remove of instance of choice TODO
-//    val choiceCandidate = Control.detectChoiceClause(cw)
-//    if (choiceCandidate.isDefined) {
-//      val choiceFun = choiceCandidate.get
-//      state.addChoiceFunction(choiceFun)
-//      leo.Out.debug(s"Choice: function detected ${choiceFun.pretty(sig)}")
-//      leo.Out.debug(s"Choice: clause removed ${cw.id}")
-//      Set()
-//    } else {
-//
-//    }
+    result = result.flatMap { cl =>
+      Control.cnf(Control.miniscope(cl))
+    }
 
-    // Remove defined equalities as far as possible
+    // TODO: Interplay between choice and defined equalities?
+    /*result = result.map {cl =>
+      val choiceCandidate = Control.detectChoiceClause(cl)
+      if (choiceCandidate.isDefined) {
+        val choiceFun = choiceCandidate.get
+        state.addChoiceFunction(choiceFun)
+        leo.Out.debug(s"Choice: function detected ${choiceFun.pretty(sig)}")
+        leo.Out.debug(s"Choice: clause removed ${cl.id}")
+        import leo.modules.HOLSignature.LitTrue
+        // replace formula by a trivial one: [[true]^t]
+        AnnotatedClause(Clause(Literal.mkLit(LitTrue, true)), NoAnnotation)
+      } else cl
+    }*/
+
+    // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
 
     // To equation if possible and then apply func ext
@@ -64,7 +68,7 @@ object SeqPProc extends Function1[Long, Unit]{
       result = Control.acSimp(result)
       Control.simp(result)
     }
-    // Pre-unify new clauses
+    // Pre-unify new clauses and remove trivial ones
     result = result union Control.preunifySet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
