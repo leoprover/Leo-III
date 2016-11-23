@@ -431,20 +431,25 @@ package inferenceControl {
     }
 
     private final def paramodUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
+      import leo.modules.HOLSignature.LitFalse
       val cl = cl0.cl
       assert(cl.lits.nonEmpty)
       val uniLit = cl.lits.last
-      if (!uniLit.polarity) {
-        val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit.left, uniLit.right)), cl.lits.init)(sig)
-        // TODO: Try again to unify all possibly new unification constraints, is that useful?
-        var uniResult: Set[AnnotatedClause] = Set()
-        val uniResultIt = uniResult0.iterator
-        while (uniResultIt.hasNext) {
-          val uniRes = uniResultIt.next()
-          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
-        }
-        uniResult
-      } else Set(cl0)
+
+      val uniEq = if (!uniLit.polarity) Seq((uniLit.left, uniLit.right)) /*standard case*/
+      else {
+        assert(!uniLit.equational)
+        Seq((uniLit.left, LitFalse.apply())) /* in case a False was substituted in paramod */
+      }
+      val uniResult0 = doUnify0(cl0, freshVarGen, uniEq, cl.lits.init)(sig)
+      // TODO: Try again to unify all possibly new unification constraints, is that useful?
+      var uniResult: Set[AnnotatedClause] = Set()
+      val uniResultIt = uniResult0.iterator
+      while (uniResultIt.hasNext) {
+        val uniRes = uniResultIt.next()
+        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+      }
+      uniResult
     }
 
     private final def factorUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
@@ -452,7 +457,7 @@ package inferenceControl {
       assert(cl.lits.size >= 2)
       val uniLit1 = cl.lits.last
       val uniLit2 = cl.lits.init.last
-      assert(!uniLit1.polarity && !uniLit2.polarity)
+      assert(!uniLit1.polarity && !uniLit2.polarity) //FIXME: Same fix as for paramodUnify above
       val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit1.left, uniLit1.right), (uniLit2.left, uniLit2.right)), cl.lits.init.init)(sig)
       // Try again to unify all possibly new unification constraints
       var uniResult: Set[AnnotatedClause] = Set()
@@ -717,7 +722,6 @@ package inferenceControl {
 
       val lit = cl.cl.lits.head
       val term = lit.left
-//      val resultterm = Skolemization.apply(term, s)
       val resultterm = Miniscope.apply(term, lit.polarity)
       val result = if (term != resultterm)
           AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Miniscope, Set(cl)), cl.properties)
