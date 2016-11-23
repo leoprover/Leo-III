@@ -38,8 +38,8 @@ node {
 
     stage 'Small Benchmark'
 
-    sh "rm benchmark_results"
-    sh "rm benchmark_logs"
+    sh "rm -f benchmark_results"
+    sh "rm -f benchmark_logs"
 
     def b = {l ->
       sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o ${l}_logs -r ${l}_results ${benchmark}/Lists/${l}"
