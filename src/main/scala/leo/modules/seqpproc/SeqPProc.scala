@@ -22,7 +22,7 @@ object SeqPProc extends Function1[Long, Unit]{
   final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
-    
+
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cur.cl), "clause not unit")
     val lit = cur.cl.lits.head
@@ -68,8 +68,8 @@ object SeqPProc extends Function1[Long, Unit]{
       result = Control.acSimp(result)
       Control.simp(result)
     }
-    // Pre-unify new clauses and remove trivial ones
-    result = result union Control.preunifySet(result)
+    // Pre-unify new clauses or treat them extensionally and remove trivial ones
+    result = Control.extPreprocessUnify(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }

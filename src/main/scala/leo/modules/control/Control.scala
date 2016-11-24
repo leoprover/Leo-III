@@ -17,7 +17,7 @@ object Control {
   @inline final def primsubst(cl: AnnotatedClause, level: Int)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl, level)(sig)
   @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(sig)
   @inline final def preunifySet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.UnificationControl.preunifySet(clSet)(sig)
-  // simplification inferences
+  // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(sig)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
@@ -25,6 +25,7 @@ object Control {
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
   @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)(sig)
+  @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(sig)
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
   @inline final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(sig)
   @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(sig)
@@ -761,6 +762,49 @@ package inferenceControl {
         result
       } else
         cl
+    }
+
+    final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
+      // 1. if unifiable literals (standard), add unifiers to resultset
+      // 2. if top-level equalities of booleam,
+
+      var result: Set[AnnotatedClause] = Set()
+      val clIt = cls.iterator
+      while(clIt.hasNext) {
+        val cl = clIt.next
+
+        var uniLits: Seq[Literal] = Seq()
+        var nonUniLits: Seq[Literal] = Seq()
+        var boolExtLits: Seq[Literal] = Seq()
+        var nonBoolExtLits: Seq[Literal] = Seq()
+
+        val litIt = cl.cl.lits.iterator
+
+        while(litIt.hasNext) {
+          val lit = litIt.next()
+          if (!lit.polarity && lit.equational) uniLits = lit +: uniLits
+          else nonUniLits = lit +: nonUniLits
+          if (BoolExt.canApply(lit)) boolExtLits = lit +: boolExtLits
+          else nonBoolExtLits = lit +: nonBoolExtLits
+        }
+
+        if (uniLits.isEmpty) {
+          if (boolExtLits.isEmpty) {
+            result = result + cl
+          } else {
+            val boolextres = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cl)),cl.properties | ClauseAnnotation.PropBoolExt))
+            val cnf = CNFControl.cnfSet(boolextres)
+            result = result union cnf
+            // do bool ext and insert the resulting terms in cnf
+          }
+        } else {
+          // unify and add
+          // check for
+        }
+
+      }
+
+      cls
     }
 
     final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
