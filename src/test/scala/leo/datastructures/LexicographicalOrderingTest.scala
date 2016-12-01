@@ -13,32 +13,41 @@ import leo.modules.HOLSignature._
  */
 class LexicographicalOrderingTest extends LeoTestSuite {
 
-  def gtType(a: Type, b: Type): Unit = {
-    assert(Type.LexicographicalOrdering.compare(a,b) > 0)
-    assert(Type.LexicographicalOrdering.compare(b,a) < 0)
+  def gt[T](a: T, b: T)(implicit o: Ordering[T]): Unit = {
+    assert(o.equiv(a,a))
+    assert(o.equiv(b,b))
+    assert(o.gt(a,b))
+    assert(o.lt(b,a))
   }
 
   def gtTerm(a: Term, b: Term): Unit = {
-    assert(Term.LexicographicalOrdering.compare(a,b) > 0)
-    assert(Term.LexicographicalOrdering.compare(b,a) < 0)
+    assert(Term.LexicographicalOrdering.equiv(a,a))
+    assert(Term.LexicographicalOrdering.equiv(b,b))
+    assert(Term.LexicographicalOrdering.gt(a,b))
+    assert(Term.LexicographicalOrdering.lt(b,a))
   }
 
   test("Comparision on base types",Checked) {
+    implicit  val ord = Type.LexicographicalOrdering
     assert(Type.LexicographicalOrdering.compare(o, o) == 0)
     assert(Type.LexicographicalOrdering.compare(i, i) == 0)
-    gtType(i, o)
+    gt(i, o)
   }
 
   test("Comparision on function types",Checked) {
+    implicit  val ord = Type.LexicographicalOrdering
+
     assert(Type.LexicographicalOrdering.compare(o ->: o, o ->: o) == 0)
-    gtType(o, o ->: o)
-    gtType(o ->: o, o ->: o ->: o)
-    gtType(i ->: o, o ->: o)
-    gtType(o ->: i, o ->: o)
+
+    gt(o, o ->: o)
+    gt(o ->: o, o ->: o ->: o)
+    gt(i ->: o, o ->: o)
+    gt(o ->: i, o ->: o)
   }
 
-  test("Comparison on terms", Checked) {
+  test("Comparison on terms: λx y.F(x) > λx y.c(G(y,x)) ", Checked) {
     implicit val s  = getFreshSignature
+    implicit val ord = Term.LexicographicalOrdering
     val vargen = freshVarGenFromBlank
 
     val F = vargen(i ->: i)
@@ -47,6 +56,38 @@ class LexicographicalOrderingTest extends LeoTestSuite {
 
     val l = λ(i,i)(mkTermApp(F.lift(2), mkBound(i, 2)))
     val r = λ(i,i)(mkTermApp(c, mkTermApp(G.lift(2), Seq(mkBound(i, 1),mkBound(i, 2)))))
-    gtTerm(l, r)
+    gt(l, r)
   }
+
+  test("Comparison on terms:  λx y z.c(F(y z x), G(x)) < λx y z.H(x z y)", Checked) {
+    implicit val s  = getFreshSignature
+    implicit val ord = Term.LexicographicalOrdering
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i ->: i ->: i)
+    val G = vargen(i ->: i)
+    val H = vargen(i ->: i ->: i ->: i)
+    val c = mkAtom(s.addUninterpreted("c",i ->: i ->: i))
+
+
+    val l = λ(i,i,i)(mkTermApp(c, Seq(mkTermApp(F.lift(3), Seq(mkBound(i, 2), mkBound(i, 1), mkBound(i, 3))), mkTermApp(G.lift(3), mkBound(i, 3)))))
+    val r = λ(i,i,i)(mkTermApp(H.lift(3), Seq(mkBound(i, 3), mkBound(i, 1), mkBound(i, 2))))
+
+    gt(r, l)
+  }
+
+  test("Comparison on terms: λx y.F(x) < λx.F(x)", Checked) {
+
+    implicit val s  = getFreshSignature
+    implicit val ord = Term.LexicographicalOrdering
+    val vargen = freshVarGenFromBlank
+
+    val F = vargen(i ->: i ->: i ->: i)
+
+    val r = λ(i,i,i)(mkTermApp(F.lift(2), Seq(mkBound(i, 1))))
+    val l = λ(i,i)(mkTermApp(F.lift(1), Seq(mkBound(i, 1))))
+
+    gt(l, r)
+  }
+
 }

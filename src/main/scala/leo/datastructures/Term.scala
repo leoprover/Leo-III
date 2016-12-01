@@ -275,7 +275,9 @@ object Term extends TermBank {
    */
   object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
 
-  /* lexicographical ordering */
+  /** A lexicographical ordering of terms. Its definition is arbitrary, but should form
+   * a total order on terms.
+   * */
   object LexicographicalOrdering extends Ordering[Term] {
 
       private def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
@@ -292,11 +294,16 @@ object Term extends TermBank {
         case (Nil, Nil) => 0
       }
 
+      // The order of the match is important because Bound and Symbol is a special case of Application.
       def compare(a: Term, b: Term): Int = (a, b) match {
         case (Bound(t1, s1), Bound(t2, s2)) =>
           val c = s1 compare s2
           if (c == 0) Type.LexicographicalOrdering.compare(t1, t2) else c
+        case (Bound(t, s), _) => 1
+        case (_, Bound(t, s)) => -1
         case (Symbol(t1), Symbol(t2)) => t1 compare t2
+        case (Symbol(t), _) => 1
+        case (_, Symbol(t)) => -1
         case (h1 ∙ a1, h2 ∙ a2) =>
           val c = this.compare(h1, h2)
           if (c == 0) compareApp(a1, a2) else c
@@ -305,10 +312,6 @@ object Term extends TermBank {
           if (c == 0) this.compare(s1, s2) else c
         case (TypeLambda(s1), TypeLambda(s2)) =>
           this.compare(s1, s2)
-        case (Bound(t, s), _) => 1
-        case (_, Bound(t, s)) => -1
-        case (Symbol(t), _) => 1
-        case (_, Symbol(t)) => -1
         case (h1 ∙ a1, _) => 1
         case (_, h2 ∙ a2) => -1
         case (t1 :::> s1, _) => 1

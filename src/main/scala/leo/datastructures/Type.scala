@@ -223,7 +223,9 @@ object Type {
     }
   }
 
-  /* lexicographical ordering */
+  /** A lexicographical ordering of types. Its definition is arbitrary, but should form
+   * a total order on types.
+   * */
   object LexicographicalOrdering extends Ordering[Type] {
     private def compareSeq(a : Seq[Type], b: Seq[Type]) : Int = (a,b) match {
       case (h1::t1, h2::t2) =>
