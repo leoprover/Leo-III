@@ -16,7 +16,6 @@ object Control {
   @inline final def boolext(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)(sig)
   @inline final def primsubst(cl: AnnotatedClause, level: Int)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl, level)(sig)
   @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(sig)
-  @inline final def preunifySet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.UnificationControl.preunifySet(clSet)(sig)
   // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(sig)
@@ -371,34 +370,6 @@ package inferenceControl {
     type OtherLits = Seq[Literal]
     type UniResult = (Clause, (Unification#TermSubst, Unification#TypeSubst))
 
-    final def preunifySet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
-      var resultSet: Set[AnnotatedClause] = clSet
-      val (uniClauses, otherClauses):(Set[(AnnotatedClause, PreUni.UniLits, PreUni.OtherLits)], Set[AnnotatedClause]) = clSet.foldLeft((Set[(AnnotatedClause, PreUni.UniLits, PreUni.OtherLits)](), Set[AnnotatedClause]())) {case ((uni,ot),cw) =>
-        val (cA, ul, ol) = PreUni.canApply(cw.cl)
-        if (cA) {
-          (uni + ((cw, ul, ol)),ot)
-        } else {
-          (uni, ot + cw)
-        }
-      }
-      if (uniClauses.nonEmpty) {
-        Out.debug("Unification tasks found. Working on it...")
-        resultSet = otherClauses
-        uniClauses.foreach { case (cw, ul, ol) =>
-          Out.debug(s"Unification task from clause ${cw.pretty(sig)}")
-          Out.debug(s"Free vars: ${cw.cl.implicitlyBound.toString}")
-          val uniResultIterator = PreUni(leo.modules.calculus.freshVarGen(cw.cl), ul, ol)
-          val uniResult = uniResultIterator.take(Configuration.UNIFIER_COUNT).toSet
-          val result = uniResult.map {case (cl,subst) =>
-            AnnotatedClause(cl, InferredFrom(PreUni, Set((cw, ToTPTP(subst._1, cw.cl.implicitlyBound)(sig)))), cw.properties | ClauseAnnotation.PropUnified)}
-          Out.trace(s"Uni result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
-          resultSet = resultSet union result
-        }
-
-      }
-      resultSet
-    }
-
     // TODO: Flags, check for types in pattern unification
     final def unifyNewClauses(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
       var resultSet: Set[AnnotatedClause] = Set()
@@ -496,7 +467,7 @@ package inferenceControl {
     }
 
 
-    private final def doUnify0(cl: AnnotatedClause, freshVarGen: FreshVarGen,
+    protected[control] final def doUnify0(cl: AnnotatedClause, freshVarGen: FreshVarGen,
                                uniLits: UniLits, otherLits: OtherLits)(sig: Signature):  Set[AnnotatedClause] = {
       if (isAllPattern(uniLits)) {
         val result = PatternUni.apply(freshVarGen, uniLits, otherLits)(sig)
@@ -765,15 +736,14 @@ package inferenceControl {
     }
 
     final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
-      // 1. if unifiable literals (standard), add unifiers to resultset
-      // 2. if top-level equalities of booleam,
-
+      import UnificationControl.doUnify0
       var result: Set[AnnotatedClause] = Set()
       val clIt = cls.iterator
+
       while(clIt.hasNext) {
         val cl = clIt.next
 
-        var uniLits: Seq[Literal] = Seq()
+        var uniLits: Seq[(Term, Term)] = Seq()
         var nonUniLits: Seq[Literal] = Seq()
         var boolExtLits: Seq[Literal] = Seq()
         var nonBoolExtLits: Seq[Literal] = Seq()
@@ -782,29 +752,28 @@ package inferenceControl {
 
         while(litIt.hasNext) {
           val lit = litIt.next()
-          if (!lit.polarity && lit.equational) uniLits = lit +: uniLits
+          if (!lit.polarity && lit.equational) uniLits = (lit.left, lit.right) +: uniLits
           else nonUniLits = lit +: nonUniLits
           if (BoolExt.canApply(lit)) boolExtLits = lit +: boolExtLits
           else nonBoolExtLits = lit +: nonBoolExtLits
         }
 
-        if (uniLits.isEmpty) {
-          if (boolExtLits.isEmpty) {
-            result = result + cl
-          } else {
-            val boolextres = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cl)),cl.properties | ClauseAnnotation.PropBoolExt))
-            val cnf = CNFControl.cnfSet(boolextres)
-            result = result union cnf
-            // do bool ext and insert the resulting terms in cnf
-          }
+        // (A) if unification literal is present, try to unify the set of unification literals as a whole
+        // and add it to the solutions
+        // (B) if also boolean extensionality literals present, add (BE/cnf) treated clause to result set, else
+        // insert the original clause.
+        if (uniLits.nonEmpty) result = result union doUnify0(cl, freshVarGen(cl.cl), uniLits, nonUniLits)(sig)
+
+        if (boolExtLits.isEmpty) {
+          result = result + cl
         } else {
-          // unify and add
-          // check for
+          leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
+          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cl)),cl.properties | ClauseAnnotation.PropBoolExt))
+          val cnf = CNFControl.cnfSet(boolExtResult)
+          result = result union cnf
         }
-
       }
-
-      cls
+      result
     }
 
     final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {

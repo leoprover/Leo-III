@@ -19,7 +19,7 @@ object SeqPProc extends Function1[Long, Unit]{
     Clause.mkClause(Seq(Literal.mkLit(t, true)))
   }
 
-  final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
+  protected[seqpproc] final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
 
