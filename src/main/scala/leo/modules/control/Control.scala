@@ -43,13 +43,16 @@ object Control {
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
   // Indexing
-  @inline final def fvIndexInit(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses)(sig)
+  @inline final def fvIndexInit(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses.toSet)(sig)
   @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
   @inline final def fvIndexInsert(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.insert(cls)
   @inline final def fvIndexRemove(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.remove(cl)
   @inline final def fvIndexRemove(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.remove(cls)
   @inline final def foIndexInit(): Unit = indexingControl.FOIndexControl.foIndexInit()
   @inline final def foIndex: leo.modules.indexing.FOIndex = indexingControl.FOIndexControl.index
+  // Relevance filtering
+  @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
+  @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
   @inline final def callExternalLeoII(clauses: Set[AnnotatedClause])(implicit sig: Signature) = externalProverControl.ExternalLEOIIControl.call(clauses)(sig)
 }
@@ -1101,6 +1104,40 @@ package indexingControl {
     }
 
     final def index: FOIndex = foIndex
+  }
+
+  object RelevanceFilterControl {
+    import leo.datastructures.tptp.Commons.AnnotatedFormula
+    import leo.modules.relevance_filter._
+
+    final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
+      if (Configuration.NO_AXIOM_SELECTION) input
+      else {
+        var result: Seq[AnnotatedFormula] = Seq()
+        var round : Int = 1
+
+        val conjSymbols = PreFilterSet.useFormula(conjecture)(sig)
+        val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
+        var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
+
+        while (taken.nonEmpty) {
+          // From SeqFilter:
+          // Take all formulas (save the newly touched symbols
+          val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f)(sig))
+          taken.foreach(f => result = f +: result)
+          // Obtain all formulas, that have a
+          val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
+          // Take the new formulas
+          taken = possibleCandidates.filter(f => RelevanceFilter(round)(f))
+          round += 1
+        }
+        result
+      }
+    }
+
+    final def relevanceFilterAdd(formula: AnnotatedFormula)(sig: Signature): Unit = {
+      PreFilterSet.addNewFormula(formula)(sig)
+    }
   }
 }
 

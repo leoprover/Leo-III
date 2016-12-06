@@ -55,14 +55,14 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     val conjecture : Iterable[AnnotatedClause] = cs.filter(x => x.role == Role_NegConjecture || x.role == Role_Conjecture)
     assert(conjecture.size == 1)
     val negatedConjecture : AnnotatedClause = conjecture.head  // TODO no conjecture?
-    val effectiveInputWithoutConjecture : Iterable[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
+    val effectiveInputWithoutConjecture : Set[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
 
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
+    Control.fvIndexInit((effectiveInputWithoutConjecture + negatedConjecture).toSeq)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
     val conjecture_preprocessed = preprocess(state, negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# ($proc) Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
