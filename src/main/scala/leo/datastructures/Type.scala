@@ -223,6 +223,50 @@ object Type {
     }
   }
 
+  /** A lexicographical ordering of types. Its definition is arbitrary, but should form
+   * a total order on types.
+   * */
+  object LexicographicalOrdering extends Ordering[Type] {
+    private def compareSeq(a : Seq[Type], b: Seq[Type]) : Int = (a,b) match {
+      case (h1::t1, h2::t2) =>
+        val c = this.compare(h1,h2)
+        if(c!=0) c else compareSeq(t1, t2)
+      case (h::t, Nil) => 1
+      case (Nil, h::t) => -1
+      case (Nil, Nil) => 0
+    }
+
+    private def compareTwo(x1: Type, y1: Type, x2: Type, y2: Type) : Int = {
+      val c = this.compare(x1, x2)
+      if(c != 0) c else this.compare(y1, y2)}
+
+    def compare(a : Type, b:Type) : Int = (a ,b) match {
+      case (BaseType(x), BaseType(y)) => x compare y
+      case (ComposedType(k1, t1), ComposedType(k2, t2)) =>
+        val c = k1 compare k2
+        if(c != 0) c else compareSeq(t1, t2)
+      case (BoundType(t1), BoundType(t2)) => t1 compare t2
+      case (->(h1,t1), ->(h2,t2)) => compareTwo(h1,t1, h2, t2)
+      case (*(h1,t1), *(h2,t2)) => compareTwo(h1,t1, h2, t2)
+      case (+(h1,t1), +(h2,t2)) => compareTwo(h1,t1, h2, t2)
+      case (∀(x), ∀(y)) => this.compare(x, y)
+      case (BaseType(x), _) => 1
+      case (_, BaseType(x)) => -1
+      case (ComposedType(k,t), _) => 1
+      case (_, ComposedType(k,t)) => -1
+      case (BoundType(x), _) => 1
+      case (_, BoundType(x)) => -1
+      case (->(k,t), _) => 1
+      case (_, ->(k,t)) => -1
+      case (*(k,t), _) => 1
+      case (_, *(k,t)) => -1
+      case (+(k,t), _) => 1
+      case (_, +(k,t)) => -1
+      case (∀(x), _) => 1
+      case (_, ∀(x)) => -1
+    }
+  }
+
 }
 
 
