@@ -3,6 +3,7 @@ package leo.modules.calculus
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import Term._
+import leo.modules.HOLSignature
 import leo.modules.HOLSignature._
 
 /**
@@ -362,5 +363,89 @@ class MiniscopingTest extends LeoTestSuite{
     val res = Miniscope(origin, true)
 
     assert(res == should, s"\n${origin.pretty(s)} should be miniscoped to\n  ${should.pretty(s)}\n but was\n  ${res.pretty(s)}")
+  }
+
+  test("?[N]: ![P]: N @ P <=> P (SYO043)") {
+    implicit val s = getFreshSignature
+    val one = mkBound(o, 1)
+    val two = mkBound(o,2)
+
+    val origin = Exists(\(o)(
+      Forall(\(o)(
+        <=>(mkTermApp(two, one), one)
+      ))
+    ))
+
+    val res = Miniscope(DefExpSimp(origin), false)    // Was conjecture
+
+    val should = Exists(\(o)(
+      &(Forall(\(o)(Impl(mkTermApp(two, one), one))),
+        Forall(\(o)(Impl(one, mkTermApp(two, one)))))
+    ))
+
+    assert(res == should, s"\n${origin.pretty(s)} should be miniscoped to\n  ${should.pretty(s)}\n but was\n  ${res.pretty(s)}")
+  }
+
+  test("SEU924^5"){
+    implicit val s = getFreshSignature
+
+    /*
+    thf(cTHM134_pme,conjecture,(
+    ! [Xz: $i,Xg: $i > $i] :
+      ( ! [Xp: ( $i > $i ) > $o] :
+          ( ( ( Xp
+              @ ^ [Xx: $i] : Xz )
+            & ! [Xj: $i > $i] :
+                ( ( Xp @ Xj )
+               => ( Xp
+                  @ ^ [Xx: $i] : Xz ) ) )
+         => ( Xp @ Xg ) )
+     => ! [Xx: $i] :
+          ( ( Xg @ Xx )
+          = Xz ) ) )).
+     */
+    val origin =
+      Forall(\(i)(Forall(\(i ->: i)(
+        Impl(
+          Forall(\((i ->: i) ->: o)(
+            Impl(
+              &(
+                mkTermApp(
+                  mkBound((i ->: i) ->: o,1)
+                ,
+                  \(i)(mkBound(i, 4))
+                )
+              ,
+                Forall(\(i ->: i)(
+                  Impl(
+                     mkTermApp(mkBound((i ->: i) ->: o, 2), mkBound(i ->: i, 1))
+                  ,
+                    mkTermApp(
+                      mkBound((i ->: i) ->: o, 2)
+                    ,
+                      \(i)(mkBound(i, 5))
+                    )
+                  )
+                ))
+              )
+            ,
+              mkTermApp(mkBound((i ->: i) ->: o, 1), mkBound(i ->: i, 2))
+            )
+          ))
+        ,
+          Forall(\(i)(
+            HOLSignature.===(
+              mkTermApp(mkBound(i ->: i, 2), mkBound(i, 1))
+            ,
+                mkBound(i, 3)
+            )
+          ))
+        )
+      ))))
+
+    val res = Miniscope(origin, false)
+
+    // TODO den Zielterm ausdenken
+    assert(true)
   }
 }

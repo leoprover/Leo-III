@@ -752,8 +752,8 @@ object Miniscope extends CalculusRule {
         prependQuantList(|||(amini, bmini), pol, rest)
       case Impl(a, b) =>
         val (rest, leftQ, leftSub, rightQ, rightSub) = pushQuants(a, b, quants, pol, !pol)
-        val amini = apply0(a.substitute(leftSub).betaNormalize, !pol, leftQ)
-        val bmini = apply0(b.substitute(rightSub).betaNormalize, pol, rightQ)
+        val amini = apply0(a.substitute(leftSub), !pol, leftQ)
+        val bmini = apply0(b.substitute(rightSub), pol, rightQ)
         prependQuantList(Impl(amini, bmini), pol, rest)
       case other =>
         prependQuantList(other, pol, quants.reverseIterator)
@@ -781,10 +781,12 @@ object Miniscope extends CalculusRule {
       val push = testPush(left, right, loop, quant, and)
       if(push != 0) {
         if ((push & LEFT) == LEFT) leftQ = q +: leftQ // Push the quantifier left if possible
-        leftSubst = leftQ.size +: leftSubst      // Update indizes
+        val nFrontl = leftQ.size
+        leftSubst = (if(nFrontl > 0) nFrontl else 1) +: leftSubst      // Update indizes
 
         if((push & RIGHT) == RIGHT) rightQ = q +: rightQ
-        rightSubst = rightQ.size +: rightSubst
+        val nFrontr = rightQ.size
+        rightSubst = (if(nFrontr > 0) nFrontr else 1)  +: rightSubst
       } else {
         val lSub = revListToSubst(leftSubst, leftQ.size)
         val rSub = revListToSubst(rightSubst, rightQ.size)
