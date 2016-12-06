@@ -445,4 +445,47 @@ package object datastructures {
     import leo.modules.HOLSignature.Forall
     bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
   }
+
+  /** if `term` is eta-equivalent to a (free or bound) variable, return true.
+    * False otherwise.
+    * @param depth Optionally assume that `term` had originally a prefix of `depth` lambdas. */
+  final def isVariableModuloEta(term: Term, depth: Int = 0): Boolean =
+    getVariableModuloEta(term, depth) > 0
+  /** if `term` is eta-equivalent to a (free or bound) variable, return the index,
+    * else returns a value <= 0. Note that the return value is adjusted (decremented)
+    * by the number of leading lambdas in `term`.
+    * @param depth Optionally assume that `term` had originally a prefix of `depth` lambdas. */
+  final def getVariableModuloEta(term: Term, depth: Int = 0): Int =
+    getVariableModuloEta0(term, depth)
+
+  @tailrec
+  private final def getVariableModuloEta0(term: Term, extraAbstractions: Int): Int = {
+    import leo.datastructures.Term.{Bound, TermApp,:::>}
+    term match {
+      case _ :::> body => getVariableModuloEta0(body, extraAbstractions+1)
+      case TermApp(Bound(_, idx), args) if idx > extraAbstractions =>
+        /* Head is bound outside of original `arg`*/
+        if (extraAbstractions == args.size && etaArgs(args)) {
+          idx-extraAbstractions
+        } else -1
+      case _ => -1
+    }
+  }
+
+  /** Returns true iff args is the sequence of arguments (n) (n-1) ... (1) or eta-equivalent */
+  @tailrec
+  final private def etaArgs(args: Seq[Term]): Boolean = {
+    import leo.datastructures.Term.Bound
+    if (args.isEmpty) true
+    else {
+      val hd = args.head
+      hd match {
+        case Bound(_, idx) if idx == args.size => etaArgs(args.tail)
+        case _ => val possiblyBoundVar = getVariableModuloEta(hd)
+          if (possiblyBoundVar == args.size) etaArgs(args.tail)
+          else false
+      }
+    }
+  }
+
 }

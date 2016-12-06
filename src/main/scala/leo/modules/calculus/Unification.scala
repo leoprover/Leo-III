@@ -257,8 +257,7 @@ object HuetsPreUnification extends Unification {
             detExhaust(newUnsolvedTermEqs ++ unprocessed.tail, flexRigid, flexFlex,
               solved, newUnsolvedTypeEqs ++ uTyProblems, solvedTy)
           } else {
-            val bindHint = BindRule.canApply(head0,
-              leftBody, leftAbstractions, rightBody, rightAbstractions, abstractionCount)
+            val bindHint = BindRule.canApply(leftBody, rightBody, abstractionCount)
             if (bindHint != BindRule.CANNOT_APPLY) {
               val subst = BindRule.apply(head0, abstractionCount, bindHint)
               leo.Out.finest(s"Bind: ${subst.pretty}")
@@ -410,6 +409,7 @@ object HuetsPreUnification extends Unification {
     * return an equation (x,s) substitution is computed from this equation later
     */
   object BindRule {
+    type Side  = Int
     final val CANNOT_APPLY = -1
     final val LEFT_IS_VAR = 0
     final val RIGHT_IS_VAR = 1
@@ -425,20 +425,19 @@ object HuetsPreUnification extends Unification {
       Subst.singleton(variable._2 - depth, otherTerm)
     }
 
-    final def canApply(e: UEq, leftBody: Term, leftAbstractions: Seq[Type],
-                       rightBody: Term, rightAbstractions: Seq[Type], depth: Int): Int = {
+    final def canApply(leftBody: Term, rightBody: Term, depth: Int): Int = {
+      import leo.datastructures.getVariableModuloEta
       // orienting the equation
-      val leftIsVar = isVariable(leftBody, leftAbstractions)
-      if (leftIsVar) {
-        val (_, scope) = Bound.unapply(e._1.headSymbol).get
-        if (!e._2.looseBounds.contains(scope - depth)) LEFT_IS_VAR else CANNOT_APPLY
+      val possiblyLeftVar = getVariableModuloEta(leftBody, depth)
+      if (possiblyLeftVar > 0) {
+        //left side is variable, do occurs check on right
+        if (rightBody.looseBounds.contains(possiblyLeftVar + depth)) CANNOT_APPLY else LEFT_IS_VAR
       } else {
-        val rightIsVar = isVariable(rightBody, rightAbstractions)
-        if (rightIsVar) {
-          val (_, scope) = Bound.unapply(e._2.headSymbol).get
-          if (!e._1.looseBounds.contains(scope - depth)) RIGHT_IS_VAR else CANNOT_APPLY
-        }
-        else CANNOT_APPLY
+        val possiblyRightVar = getVariableModuloEta(rightBody, depth)
+        if (possiblyRightVar > 0) {
+          //right side is variable, do occurs check left
+          if (leftBody.looseBounds.contains(possiblyRightVar + depth)) CANNOT_APPLY else RIGHT_IS_VAR
+        } else CANNOT_APPLY
       }
     }
   }
@@ -535,39 +534,6 @@ object HuetsPreUnification extends Unification {
           case _ => false
         }
   }
-  /** Checks whether the term is a free variable (eta-expanded). */
-  private final def isVariable(body: Term, bound: Seq[Type]): Boolean = {
-    import leo.datastructures.Term.{Bound, TermApp}
-//    val (body, bound) = collectLambdas(t)
-    leo.Out.finest(s"isVariable body: ${body.pretty}")
-    leo.Out.finest(s"isVariable bound: ${bound.toString}")
-    body match {
-      case TermApp(head, args) => head match {
-        case Bound(_, scope) if scope > bound.size => if (args.size == bound.size)
-          boundVarsMatch(args, bound)
-        else false
-        case _ => false
-      }
-      case _ => false
-    }
-  }
-  private final def boundVarsMatch(args: Seq[Term], abstractions: Seq[Type]): Boolean = {
-    import leo.datastructures.Term.Bound
-    if (args.nonEmpty){
-      val curArg = args.head
-      val curArgAsBound = Bound.unapply(curArg)
-      if (curArgAsBound.isDefined) {
-        val (ty, scope) = curArgAsBound.get
-        if (ty == abstractions.head && scope == args.length)
-          boundVarsMatch(args.tail, abstractions.tail)
-        else false
-      } else false
-    } else {
-      assert(abstractions.isEmpty)
-      true
-    }
-
-  }
 
 //  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
 //    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst), e._3))
@@ -575,39 +541,6 @@ object HuetsPreUnification extends Unification {
     l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst)))
   @inline private final def applyTySubstToList(typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
     l.map(e => (e._1.substitute(Subst.id, typeSubst),e._2.substitute(Subst.id, typeSubst), e._3))
-
-//  // computes the substitution from the solved problems
-//  protected[calculus] def computeSubst(sproblems: Seq[SEq]): Subst = {
-//    import leo.datastructures.Term.Bound
-//    import leo.datastructures.{TermFront, BoundFront}
-//    // Alex: Added check on empty sproblems list. That is correct, is it?
-//    if (sproblems.isEmpty) Subst.id
-//    else {
-//      val maxIdx: Int = Bound.unapply(sproblems.maxBy(e => Bound.unapply(e._1).get._2)._1).get._2
-//      var sub = Subst.shift(maxIdx)
-//      for (i <- 1 to maxIdx)
-//        sproblems.find(e => Bound.unapply(e._1).get._2 == maxIdx - i + 1) match {
-//          case Some((_,t)) => sub = sub.cons(TermFront(t))
-//          case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
-//        }
-//      sub
-//    }
-//  }
-//
-//  protected[calculus] def computeTySubst(sTyProblems: Seq[STEq]): Subst = {
-//    import leo.datastructures.{TypeFront, BoundFront}
-//    if (sTyProblems.isEmpty) Subst.id
-//    else {
-//      val maxIdx: Int = BoundType.unapply(sTyProblems.maxBy(e => BoundType.unapply(e._1).get)._1).get
-//      var sub = Subst.shift(maxIdx)
-//      for (i <- 1 to maxIdx)
-//        sTyProblems.find(e => BoundType.unapply(e._1).get == maxIdx - i + 1) match {
-//          case Some((_,t)) => sub = sub.cons(TypeFront(t))
-//          case _ => sub = sub.cons(BoundFront(maxIdx - i + 1))
-//        }
-//      sub
-//    }
-//  }
 
   protected[calculus] final def zipArgumentsWithAbstractions(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]],
                                                  abstractions: Seq[Type]): (Seq[UEq], Seq[UTEq]) =
@@ -913,7 +846,7 @@ object PatternUnification extends Unification {
       val subst = Subst.singleton(idx1, binding)
       // new equations:
       val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
-      assert(newVars.size == rigidArgs.size)
+      assert(newVars.size == rigidArgs0._2.size)
       val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
       ((subst, Subst.id), newueqs)
     } catch {
@@ -995,6 +928,7 @@ object PatternUnification extends Unification {
   @tailrec
   final private def checkDistinctBound0(args: Seq[Either[Term, Type]], depth: Int, used: Set[Int]): Boolean = {
     import leo.datastructures.Term.{Bound, :::>}
+    import leo.datastructures.getVariableModuloEta
     if (args.isEmpty) true
     else {
       val arg = args.head
@@ -1007,51 +941,15 @@ object PatternUnification extends Unification {
               checkDistinctBound0(args.tail, depth, used + idx)
             else false
           case _ :::> _ => /* Maybe eta expanded bound variable */
-            val possiblyBoundVar = checkForExpandedBound(termArg, depth)
-            if (possiblyBoundVar <= 0) /* error, not a bound variable */
+            val possiblyBoundVar = getVariableModuloEta(termArg)
+            if (possiblyBoundVar <= 0 || possiblyBoundVar > depth) /* error, not a bound variable */
               false
-            else {
+            else
               if (!used.contains(possiblyBoundVar))
                 checkDistinctBound0(args.tail, depth, used + possiblyBoundVar)
               else false
-            }
           case _ => false
         }
-      }
-    }
-  }
-
-  /** Checks if arg is a eta-expanded bound variable. If so, it returns the scope of it,
-    * else -1. */
-  final private def checkForExpandedBound(arg: Term, depth: Int): Int = {
-    checkForExpandedBound0(arg, depth, 0)
-  }
-
-  @tailrec
-  final private def checkForExpandedBound0(arg: Term, depth: Int, extraAbstractions: Int): Int = {
-    import leo.datastructures.Term.{TermApp,:::>, Bound}
-    arg match {
-      case _ :::> body => checkForExpandedBound0(body, depth, extraAbstractions+1)
-      case TermApp(Bound(_,idx),args) if idx > extraAbstractions && idx <= depth + extraAbstractions =>
-        /*Head is bound outside of original arg */
-        if(args.size == extraAbstractions && etaArgs(args, depth+extraAbstractions)) idx-extraAbstractions
-        else -1
-      case _ => -1
-    }
-  }
-
-  /** Returns true iff args is the sequence of arguments (n) (n-1) ... (1) or eta-equivalent */
-  @tailrec
-  final private def etaArgs(args: Seq[Term], depth: Int): Boolean = {
-    import leo.datastructures.Term.Bound
-    if (args.isEmpty) true
-    else {
-      val hd = args.head
-      hd match {
-        case Bound(_, idx) if idx == args.size => etaArgs(args.tail, depth)
-        case _ => val possiblyBoundVar = checkForExpandedBound(hd, depth)
-          if (possiblyBoundVar == args.size) etaArgs(args.tail, depth)
-          else false
       }
     }
   }

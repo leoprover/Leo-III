@@ -284,14 +284,14 @@ object InputProcessing {
     conn match {
       case THFEq => ===
       case THFNeq => !===
-      case THFEquiv => equiv
+      case THFEquiv => === //equiv
       case THFImpl  => impl
       case THFIf    => i_f
       case THFOr    => or
       case THFAnd   => and
       case THFNor   => nor
       case THFNand  => nand
-      case THFNiff  => niff
+      case THFNiff  => !=== //niff
       case THFApp   => @@@
     }
   }
