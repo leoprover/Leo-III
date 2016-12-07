@@ -426,7 +426,8 @@ object SeqPProc extends Function1[Long, Unit] {
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
-    if (Clause.rewriteRule(cur.cl)) {
+    if (Clause.rewriteRule(cur.cl) && Utility.isPattern(cur.cl)) {
+      Out.trace(s"Clause ${cur.id} added as (pattern) rewrite rule.")
       state.addRewriteRule(cur)
     }
     /* Functional Extensionality */

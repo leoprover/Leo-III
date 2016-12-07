@@ -815,13 +815,25 @@ package inferenceControl {
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
 
-    final def rewriteSimp(cw: AnnotatedClause, rules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
+    final def rewriteSimp(cw: AnnotatedClause, rules0: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"Rewrite simp on ${cw.id}")
-      val sim = simp(cw)
-      val rewriteSimp = sim.cl //RewriteSimp.apply(rules.map(_.cl), sim.cl)
-      // TODO: simpl to be simplification by rewriting à la E etc
-      if (rewriteSimp != sim.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
-      else sim
+      val plainSimp = Simp(cw.cl)
+      // get all rewrite rules as literals
+      val rules: Set[Literal] = rules0.map(_.cl.lits.head)
+      assert(rules.forall(_.oriented))
+
+      // search in all literals of cw for instances of a rule's left side
+      val lits = cw.cl.lits
+      val litIt = lits.iterator
+      while (litIt.hasNext) {
+        val lit = litIt.next()
+
+        
+      }
+
+      val rewriteSimp = RewriteSimp(plainSimp, ???)
+      if (rewriteSimp != cw.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
+      else cw
     }
   }
 

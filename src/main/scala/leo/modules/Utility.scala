@@ -164,6 +164,10 @@ object Utility {
     Clause.mkClause(Seq(Literal.mkLit(t, polarity)))
   }
 
+  @inline final def isPattern(t: Term): Boolean = modules.calculus.PatternUnification.isPattern(t)
+  @inline final def isPattern(l: Literal): Boolean = isPattern(l.left) && isPattern(l.right)
+  @inline final def isPattern(cl: Clause): Boolean = cl.lits.forall(isPattern)
+
   def stackTraceAsString(e: Throwable): String = {
     val sw = new StringWriter()
     e.printStackTrace(new PrintWriter(sw))
