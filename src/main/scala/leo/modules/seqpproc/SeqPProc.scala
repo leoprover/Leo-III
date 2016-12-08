@@ -345,7 +345,8 @@ object SeqPProc extends Function1[Long, Unit] {
       Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
       Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
       Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
-      Out.comment(s"No. of units in store: ${state.rewriteRules.size}")
+      Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
+    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
       Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
       Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
       Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
@@ -426,9 +427,14 @@ object SeqPProc extends Function1[Long, Unit] {
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
     /* Add rewrite rules to set */
-    if (Clause.rewriteRule(cur.cl) && Utility.isPattern(cur.cl)) {
-      Out.trace(s"Clause ${cur.id} added as (pattern) rewrite rule.")
-      state.addRewriteRule(cur)
+    if (Clause.unit(cur.cl) && Utility.isPattern(cur.cl)) {
+      if (Clause.rewriteRule(cur.cl)) {
+        Out.trace(s"Clause ${cur.id} added as rewrite rule.")
+        state.addRewriteRule(cur)
+      } else {
+        Out.trace(s"Clause ${cur.id} added as (non-rewrite) unit.")
+        state.addNonRewriteUnit(cur)
+      }
     }
     /* Functional Extensionality */
     cur = Control.funcext(cur)

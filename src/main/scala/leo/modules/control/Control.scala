@@ -828,6 +828,12 @@ package inferenceControl {
       while (litIt.hasNext) {
         val lit = litIt.next()
 
+        if (lit.polarity) {
+
+        } else {
+          
+
+        }
         
       }
 
