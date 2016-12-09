@@ -35,6 +35,8 @@ object Control {
   @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
 //  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
 //  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
+  // AC detection
+  @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
   import leo.datastructures.{Term, Type}
   @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
@@ -777,6 +779,44 @@ package inferenceControl {
         }
       }
       result
+    }
+
+    type ACSpec = Boolean
+    final val ACSpec_Associativity: ACSpec = false
+    final val ACSpec_Commutativity: ACSpec = true
+
+    final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = {
+      if (Clause.demodulator(cl.cl)) {
+        val lit = cl.cl.lits.head
+        // Check if lit is an specification for commutativity
+        if (lit.equational) {
+          import leo.datastructures.Term.{TermApp, Symbol, Bound}
+          val left = lit.left
+          val right = lit.right
+          left match {
+            case TermApp(f@Symbol(key), Seq(v1@Bound(_, _), v2@Bound(_, _))) if v1 != v2 => // C case
+              right match {
+                case TermApp(`f`, Seq(`v2`, `v1`)) => Some((key, ACSpec_Commutativity))
+                case _ => None
+              }
+            case TermApp(f@Symbol(key), Seq(TermApp(Symbol(key2), Seq(v1@Bound(_, _),v2@Bound(_, _))), v3@Bound(_, _)))
+              if key == key2  && v1 != v2 && v1 != v3 && v2 != v3 => // A case 1
+              right match {
+                case TermApp(`f`, Seq(`v1`,TermApp(`f`, Seq(`v2`,`v3`)))) =>
+                  Some((key, ACSpec_Associativity))
+                case _ => None
+              }
+            case TermApp(f@Symbol(key), Seq(v1@Bound(_, _), TermApp(Symbol(key2), Seq(v2@Bound(_, _),v3@Bound(_, _)))))
+              if key == key2  && v1 != v2 && v1 != v3 && v2 != v3 => // A case 1
+              right match {
+                case TermApp(`f`, Seq(TermApp(`f`, Seq(`v1`,`v2`)), `v3`)) =>
+                  Some((key, ACSpec_Associativity))
+                case _ => None
+              }
+            case _ => None
+          }
+        } else None
+      } else None
     }
 
     final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {

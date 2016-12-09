@@ -139,7 +139,6 @@ object SeqPProc extends Function1[Long, Unit] {
         AnnotatedClause(Clause(Literal.mkLit(LitTrue, true)), NoAnnotation)
       } else cl
     }*/
-
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
 
@@ -149,6 +148,20 @@ object SeqPProc extends Function1[Long, Unit] {
       var result = cl
       result = Control.liftEq(result)
       result = Control.funcext(result) // Maybe comment out? why?
+      val possiblyAC = Control.detectAC(result)
+      if (possiblyAC.isDefined) {
+        val symbol = possiblyAC.get._1
+        val spec = possiblyAC.get._2
+        val sig = state.signature
+        val oldProp = sig(symbol).flag
+        if (spec) {
+          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of commutativity")
+          sig(symbol).updateProp(addProp(Signature.PropCommutative, oldProp))
+        } else {
+          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of associativity")
+          sig(symbol).updateProp(addProp(Signature.PropAssociative, oldProp))
+        }
+      }
       result = Control.acSimp(result)
       Control.simp(result)
     }
