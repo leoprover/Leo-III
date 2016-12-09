@@ -93,7 +93,6 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
           val meta = UninterpretedMeta(identifier, key, t, prop)
             metaMap += ((key, meta))
             uiSet += key
-            // TODO: AC sets
         }
       case Some(fed) => // Defined
         val ty = typ.left.get

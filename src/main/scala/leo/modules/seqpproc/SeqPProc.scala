@@ -505,28 +505,22 @@ object SeqPProc extends Function1[Long, Unit] {
 
     /////////////////////////////////////////
     // At the end, for each generated clause apply simplification etc.
-    // and add to unprocessed
+    // and add to unprocessed, eagly look for the empty clause
+    // and return true if found.
     /////////////////////////////////////////
-
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
       newCl = Control.shallowSimp(newCl)
       if (Clause.effectivelyEmpty(newCl.cl)) {
-        if (state.conjecture == null) {
-          state.setSZSStatus(SZS_Unsatisfiable)
-        } else {
-          state.setSZSStatus(SZS_Theorem)
-        }
+        if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+        else state.setSZSStatus(SZS_Theorem)
         state.setDerivationClause(newCl)
         return true
       } else {
-        if (!Clause.trivial(newCl.cl)) {
-          state.addUnprocessed(newCl)
-        } else {
-          Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
-        }
+        if (!Clause.trivial(newCl.cl)) state.addUnprocessed(newCl)
+        else Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
     false
