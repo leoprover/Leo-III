@@ -221,7 +221,7 @@ object Choice extends CalculusRule {
     while (litIt.hasNext) {
       val lit = litIt.next()
 
-      val leftOcc = lit.left.feasibleOccurences
+      val leftOcc = lit.left.feasibleOccurrences
       val leftOccIt = leftOcc.keysIterator
       while (leftOccIt.hasNext) {
         val occ = leftOccIt.next()
@@ -231,7 +231,7 @@ object Choice extends CalculusRule {
           result = result + findResult
       }
       if (lit.equational) {
-        val rightOcc = lit.right.feasibleOccurences
+        val rightOcc = lit.right.feasibleOccurrences
         val rightOccIt = rightOcc.keysIterator
         while (rightOccIt.hasNext) {
           val occ = rightOccIt.next()

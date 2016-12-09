@@ -210,8 +210,8 @@ package inferenceControl {
           hasNext
         } else {
           if (curSubterms == null) {
-            curSubterms = selectSide(hd, side).feasibleOccurences.keySet
-            curPositions = selectSide(hd, side).feasibleOccurences(curSubterms.head)
+            curSubterms = selectSide(hd, side).feasibleOccurrences.keySet
+            curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
             true
           } else {
             if (curPositions.isEmpty) {
@@ -228,7 +228,7 @@ package inferenceControl {
                 curPositions = null
                 hasNext
               } else {
-                curPositions = selectSide(hd, side).feasibleOccurences(curSubterms.head)
+                curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
                 assert(hasNext)
                 true
               }

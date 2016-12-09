@@ -74,7 +74,7 @@ trait Term extends Pretty with Prettier {
 
   def tyFV: Set[Int]
   def occurrences: Map[Term, Set[Position]]
-  def feasibleOccurences: Map[Term, Set[Position]]
+  def feasibleOccurrences: Map[Term, Set[Position]]
   def headSymbol: Term
   def headSymbolDepth: Int
   def size: Int
