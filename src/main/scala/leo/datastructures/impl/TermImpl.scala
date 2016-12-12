@@ -151,10 +151,6 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 
   lazy val headSymbol = Root(hd, SNil)
   val headSymbolDepth = 0
-  lazy val occurrences = if (args.length == 0)
-                           Map(this.asInstanceOf[Term] -> Set(Position.root))
-                         else
-                           fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root), headToTerm(hd) -> Set(Position.root.headPos)), args.occurrences)
   lazy val feasibleOccurrences = if (args.length == 0)
     Map(this.asInstanceOf[Term] -> Set(Position.root))
   else
@@ -309,7 +305,6 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
   lazy val size = 1 + body.size + args.size
-  lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
   lazy val feasibleOccurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurrences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
   // Other operations
   def etaExpand0: TermImpl = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
@@ -378,7 +373,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
   lazy val size = 1 + body.size
-  lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
   lazy val feasibleOccurrences = {
     val bodyOccurrences = body.feasibleOccurrences
     var filteredOccurrences: Map[Term, Set[Position]] = Map()
@@ -445,7 +439,6 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
 
   lazy val size = 1 + body.size
-  lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
   lazy val feasibleOccurrences = body.feasibleOccurrences // FIXME
 
   // Other operations
@@ -493,7 +486,6 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   final def symbolMap: Map[Signature#Key, (Count, Depth)] = betaNormalize.asInstanceOf[TermImpl].symbolMap
   final def headSymbol = betaNormalize.headSymbol
   final def headSymbolDepth = 1 + term.headSymbolDepth
-  final def occurrences = betaNormalize.occurrences
   final def feasibleOccurrences = betaNormalize.feasibleOccurrences
   lazy val size = term.size // this might not be reasonable, but will never occur when used properly
 
@@ -624,8 +616,6 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
   def symbolMap: Map[Signature#Key, (Int, Int)]
   def asTerms: Seq[Either[Term, Type]]
   def size: Int
-  lazy val occurrences: Map[Term, Set[Position]] = occurrences0(1)
-  def occurrences0(pos: Int): Map[Term, Set[Position]]
   lazy val feasibleOccurences: Map[Term, Set[Position]] =  feasibleOccurrences0(1)
   def feasibleOccurrences0(pos: Int): Map[Term, Set[Position]]
   // Misc
@@ -666,7 +656,6 @@ protected[impl] case object SNil extends Spine {
   final val length = 0
   final val asTerms = Seq()
   final val size = 1
-  final def occurrences0(pos: Int) = Map()
   final def feasibleOccurrences0(pos: Int) = Map()
 
   // Misc
@@ -716,7 +705,6 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   lazy val length = 1 + tail.length
   lazy val asTerms = Left(hd) +: tail.asTerms
   lazy val size = 1+ hd.size + tail.size
-  def occurrences0(pos: Int) = fuseMaps(hd.occurrences.mapValues(_.map(_.preprendArgPos(pos))), tail.occurrences0(pos+1))
   def feasibleOccurrences0(pos: Int) = fuseMaps(hd.feasibleOccurrences.mapValues(_.map(_.preprendArgPos(pos))), tail.feasibleOccurrences0(pos+1))
 
   // Misc
@@ -776,7 +764,6 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   lazy val length = 1 + tail.length
   lazy val asTerms = Right(hd) +: tail.asTerms
   lazy val size = 1 + tail.size
-  final def occurrences0(pos: Int) = tail.occurrences0(pos+1)
   final def feasibleOccurrences0(pos: Int) = tail.feasibleOccurrences0(pos+1)
 
   // Misc
@@ -831,7 +818,6 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   lazy val length = sp.length
   lazy val asTerms = ???
   lazy val size = sp.size // todo: properly implement
-  def occurrences0(pos: Int) = Map.empty
   def feasibleOccurrences0(pos: Int) = Map.empty
 
   // Misc
