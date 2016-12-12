@@ -379,7 +379,23 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
   lazy val size = 1 + body.size
   lazy val occurrences = body.occurrences.mapValues(_.map(_.prependAbstrPos))
-  lazy val feasibleOccurrences = fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)),body.feasibleOccurrences.filterNot { oc => oc._1.looseBounds.contains(1)}.mapValues(_.map(_.prependAbstrPos)))
+  lazy val feasibleOccurrences = {
+    val bodyOccurrences = body.feasibleOccurrences
+    var filteredOccurrences: Map[Term, Set[Position]] = Map()
+    val bodyOccIt = bodyOccurrences.iterator
+    while (bodyOccIt.hasNext) {
+      val (subterm, positions) = bodyOccIt.next()
+      val newPositions = positions.filterNot(p => subterm.looseBounds.contains(1+p.abstractionCount))
+      if (newPositions.nonEmpty) {
+        filteredOccurrences = filteredOccurrences + (subterm -> newPositions.map(_.prependAbstrPos))
+      }
+    }
+    fuseMaps(
+      Map(this.asInstanceOf[Term] -> Set(Position.root)),
+      filteredOccurrences
+    )
+  }
+//  lazy val feasibleOccurrences = fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)),body.feasibleOccurrences.filterNot { oc => oc._1.looseBounds.contains(1)}.mapValues(_.map(_.prependAbstrPos)))
 
   // Other operations
   lazy val etaExpand0: TermImpl = TermAbstr(typ, body.asInstanceOf[TermImpl].etaExpand0)
