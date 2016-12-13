@@ -155,7 +155,7 @@ Block_comment : '/*' .*? '*/' -> skip;
 // %----Files. Empty file is OK.
 // <TPTP_file>            ::= <TPTP_input>*
 // <TPTP_input>           ::= <annotated_formula> | <include>
-tptp_file           : tptp_input*;
+tptp_file           : tptp_input* EOF;
 tptp_input          : annotated_formula | include;
 
 // %----Include directives
