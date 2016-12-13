@@ -26,11 +26,11 @@ object TPTP {
    * On success, the result is wrapped in an instance of [[scala.util.Right]]; on failure
    * a [[scala.util.Left]] containing an error message is returned.
    *
-   * @param src A [[scala.util.parsing.input.Reader]] wrapping the TPTP input
+   * @param input A [[java.io.Reader]] wrapping the TPTP input
    * @return A representation of the in file in [[leo.datastructures.tptp.Commons.TPTPInput]] format
    */
-  def parseFile(src: io.Source) =
-    TPTPParser2.parseSource(src).right map (_._1)
+  def parseFile(input: java.io.BufferedReader) =
+    TPTPParser2.parseSource(input).right map (_._1)
 //
 //  /**
 //   * Convenience method for parsing. Same as `parseFile(input: Reader[Char])`, just that
@@ -88,6 +88,18 @@ object TPTP {
       case Success(x, _) => Right(x)
       case noSu: NoSuccess => Left(noSu.msg)
     }
+  }
+
+
+  def newParse(input: java.io.BufferedReader): Any = {
+    import leo.modules.parsers.antlr._
+    import org.antlr.v4.runtime._
+    val inputStream = new ANTLRInputStream(input)
+    val lexer = new tptpLexer(inputStream)
+    val tokenStream = new CommonTokenStream(lexer)
+    val parser = new tptpParser(tokenStream)
+    val x = parser.tptp_file()
+    println(x.toStringTree)
   }
 }
 

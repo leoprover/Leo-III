@@ -32,22 +32,15 @@ object TermParser
     }.toStream
   }
 
-  def tokenStreamFromSource(src: io.Source): TokenStream[Token] = {
-    import util.parsing.input._
+  def tokenStreamFromSource(input: java.io.BufferedReader): TokenStream[Token] = {
+    var input0: String = ""
+    var line: String = input.readLine()
+    while (line != null) {
+      input0 = input0 + line + "\n"
+      line = input.readLine()
+    }
     tokenizeFromScanner(
-      new lexical.Scanner(
-        new Reader[Char]{
-          def atEnd: Boolean = !src.hasNext
-          def first: Char = src.next()
-          def pos = new Position{
-            def column: Int = 1
-            def line: Int = 1
-            def lineContents: String = "<>"
-          }
-          def rest: Reader[Char] =
-            this
-        }
-      )
+      new lexical.Scanner(input0)
     )
   }
 

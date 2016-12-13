@@ -77,24 +77,16 @@ class ParseTermTest
       }.toStream
     }
 
-    def tokenStreamFromSource(src: io.Source): TokenStream[Token] = {
+    def tokenStreamFromSource(input: java.io.BufferedReader): TokenStream[Token] = {
       import util.parsing.input._
+      var input0: String = ""
+      var line: String = input.readLine()
+      while (line != null) {
+        input0 = input0 + line + "\n"
+        line = input.readLine()
+      }
       tokenizeFromScanner(
-        new TermParser0.lexical.Scanner(
-          new CharArrayReader(src.toArray)  // <- quick and dirty solution, to be improved!
-          /*new Reader[Char]{
-            def atEnd: Boolean = !src.hasNext
-            def first: Char = src.next()
-            def pos = new Position{
-              def column: Int = 1
-              def line: Int = 1
-              def lineContents: String = ""
-            }
-            def rest: Reader[Char] =
-              this
-          }
-          */
-        )
+        new TermParser0.lexical.Scanner(input0)
       )
     }
 

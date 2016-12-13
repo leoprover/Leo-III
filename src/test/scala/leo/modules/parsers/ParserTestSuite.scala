@@ -1,5 +1,6 @@
 package leo
-package modules.parsers
+package modules
+package parsers
 
 import scala.util.parsing.input.CharArrayReader
 import scala.io.Source._
@@ -33,13 +34,8 @@ class ParserTestSuite extends LeoTestSuite {
       printHeading(s"Parsing test for ${p._2}")
       Out.output(s"## Parsing ${p._1} ...")
 
-      val parsed = TPTP.parseFile(fromFile(source + "/" +  p._1 + ".p"))
-      if (parsed.isLeft) {
-        fail(s"FAILED. Cause: ${parsed.left.get}")
-      } else {
-        val res = parsed.right.get
-        Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
-      }
+      val res = Parsing.shallowReadProblem(source + "/" +  p._1 + ".p")
+      Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
     }
   }
 }

@@ -5,7 +5,7 @@ import leo.datastructures.tptp.Commons
 import leo.modules.parsers.{InputProcessing, TPTP}
 import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
 
-import scala.io.Source
+import java.io.{Reader, BufferedReader, InputStreamReader, FileInputStream}
 import java.nio.file.{Files, Path, Paths}
 
 /**
@@ -27,33 +27,6 @@ object Parsing {
       case _: Exception => canonicalPath(".")
     }
   }
-
-//  /**
-//   * Reads the file located at `file` and parses it recursively using the `TPTP` parser.
-//   * Note that the return value is a sequence of [[Commons.AnnotatedFormula]] since
-//   * all includes are automatically parsed exhaustively.
-//   * If `file` is a relative path, it is assumed to be equivalent to the path
-//   * [[Utility.wd]]/file where `Utility.wd` is the working directory `user.dir`.
-//   *
-//   * @param file  The absolute or relative path to the problem file.
-//   * @param assumeRead Implicitly assume that the problem files in this parameter
-//   *                   have already been read. Hence, recursive parsing will skip this
-//   *                   includes.
-//   * @return The sequence of annotated TPTP formulae.
-//   */
-//  def readProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
-//    val canonicalFile = canonicalPath(file)
-//    if (!assumeRead.contains(canonicalFile)) {
-//      val p = shallowReadProblem(file)
-//      val includes = p.getIncludes
-//
-//      val pIncludes = includes.map{case (inc, _) => readProblem(canonicalFile.getParent.resolve(inc).toString,assumeRead + canonicalFile)}
-//      pIncludes.flatten ++ p.getFormulae
-//    } else {
-//      Seq()
-//    }
-//  }
-
 
     // Functions that go from file/string to unprocessed internal TPTP-syntax
     // "String -> TPTP"
@@ -125,6 +98,7 @@ object Parsing {
       * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
       */
     def shallowReadProblem(file: String): Commons.TPTPInput = {
+//      TPTP.newParse(read0(canonicalPath(file)))
       val p = TPTP.parseFile(read0(canonicalPath(file)))
       if (p.isLeft) {
         throw new SZSException(SZS_SyntaxError, s"Parse error in file $file", p.left.get)
@@ -218,16 +192,33 @@ object Parsing {
       processFormula(readFormula(formula))(sig)
     }
 
-
-    /** Converts the input path to a canonical path representation */
-    def canonicalPath(path: String): Path = Paths.get(path).toAbsolutePath.normalize()
-
-
-  private def read0(absolutePath: Path): io.Source = {
-    if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
-      throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist.")
+  final val urlStartRegex:String  = "(\\w+?:\\/\\/)(.*)"
+  /** Converts the input path to a canonical path representation */
+  def canonicalPath(path: String): Path = {
+    if (path.matches(urlStartRegex)) {
+      if (path.startsWith("file://")) {
+        Paths.get(path.drop("file://".length)).toAbsolutePath.normalize()
+      } else {
+        Paths.get(path)
+      }
     } else {
-        Source.fromFile(absolutePath.toFile)
+      Paths.get(path).toAbsolutePath.normalize()
+    }
+  }
+
+  final val urlStartRegex0:String  = "(\\w+?:\\/)(.*)" // removed one slash because it gets removed by Paths.get(.)
+  private def read0(absolutePath: Path): BufferedReader = {
+    if (absolutePath.toString.matches(urlStartRegex0)) {
+      // URL
+      import java.net.URL
+      val url = new URL(absolutePath.toString.replaceFirst(":/","://"))
+      new BufferedReader(new InputStreamReader(url.openStream()))
+    } else {
+      if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
+        throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist or cannot be read.")
+      } else {
+        Files.newBufferedReader(absolutePath)
+      }
     }
   }
 

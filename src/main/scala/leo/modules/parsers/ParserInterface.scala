@@ -28,9 +28,9 @@ trait ParserInterface[Output]
     )
   def parse(input: TokenStream[Token]): Either[String,(Output, TokenStream[Token])]
 
-  def tokenStreamFromSource(src: io.Source): TokenStream[Token]
-  def parseSource(src: io.Source): Either[String,(Output, TokenStream[Token])] =
+  def tokenStreamFromSource(input: java.io.BufferedReader): TokenStream[Token]
+  def parseSource(input: java.io.BufferedReader): Either[String,(Output, TokenStream[Token])] =
     parse(
-      tokenStreamFromSource(src)
+      tokenStreamFromSource(input)
     )
 }
