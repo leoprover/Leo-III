@@ -1,4 +1,14 @@
+/*  This is a grammar file for TPTP language Version 6.4.0.7
+ *  Use ANTLR on this file to obtain the parser.
+ *  The BNF specification of the TPTP language was provided by Geoff Sutcliffe.
+ *  The grammar file is created by Alexander Steen with help of Tobias Gleißner.
+ *  Date: Dec 2016
+ */
 grammar tptp;
+
+@header {
+package leo.modules.parsers.antlr;
+} 
 
 // Tokens, Lexer rules
 

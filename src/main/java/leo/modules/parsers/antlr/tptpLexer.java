@@ -1,4 +1,7 @@
-// Generated from Leo-III/src/main/resources/tptp.g4 by ANTLR 4.5.3
+// Generated from tptp.g4 by ANTLR 4.5.3
+
+   package leo.modules.parsers.antlr;
+
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;

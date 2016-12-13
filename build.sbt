@@ -18,9 +18,8 @@ lazy val leo = (project in file(".")).
 
     libraryDependencies ++= Seq(
       "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-//    "org.scala-lang" % "scala-compiler" % "2.11.7",
       "org.scalatest" %% "scalatest" % "3.0.0" % "test"),
-    
+
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions += "-target:jvm-1.8",
 
@@ -38,5 +37,4 @@ lazy val leo = (project in file(".")).
     // options for native bindings
     target in javah := (sourceDirectory in nativeCompile).value / "javah_include"
   )
-
 
