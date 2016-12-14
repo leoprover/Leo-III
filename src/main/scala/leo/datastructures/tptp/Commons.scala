@@ -61,7 +61,7 @@ object Commons {
     override val function_symbols : Set[String] = formula.function_symbols
   }
 
-  type Annotations = Option[(Source, List[GeneralTerm])]
+  type Annotations = Option[(Source, Seq[GeneralTerm])]
   type Role = String
 
   // First-order atoms
@@ -144,13 +144,13 @@ object Commons {
   type Source = GeneralTerm
 
   // Include directives
-  type Include = (String, List[Name])
+  type Include = (String, Seq[Name])
 
   // Non-logical data (GeneralTerm, General data)
-  sealed case class GeneralTerm(term: List[Either[GeneralData, List[GeneralTerm]]]) {
+  sealed case class GeneralTerm(term: Seq[Either[GeneralData, Seq[GeneralTerm]]]) {
     override def toString = term.map(gt2String).mkString(":")
 
-    def gt2String(in: Either[GeneralData, List[GeneralTerm]]): String = in match {
+    def gt2String(in: Either[GeneralData, Seq[GeneralTerm]]): String = in match {
       case Left(data) => data.toString
       case Right(termList) => "[" + termList.mkString(",") +"]"
     }
@@ -161,7 +161,7 @@ object Commons {
   case class GWord(gWord: String) extends GeneralData {
     override def toString = gWord
   }
-  case class GFunc(name: String, args: List[GeneralTerm]) extends GeneralData {
+  case class GFunc(name: String, args: Seq[GeneralTerm]) extends GeneralData {
     override def toString = funcToString(name, args)
   }
   case class GVar(gVar: Variable) extends GeneralData {
@@ -199,12 +199,12 @@ object Commons {
 
 
   ///////// String representation functions ///////////
-  def funcToString(name:String, args: List[Any]) = args match {
-    case List()     => name
+  def funcToString(name:String, args: Seq[Any]) = args match {
+    case Seq()     => name
     case _          => name + "(" + args.mkString(",") + ")"
   }
 
-  def annoToString(anno: Option[(Source, List[GeneralTerm])]) = anno match {
+  def annoToString(anno: Option[(Source, Seq[GeneralTerm])]) = anno match {
     case None => ""
     case Some((src, termList)) => "," + src.toString + ",[" + termList.mkString(",") + "]"
   }

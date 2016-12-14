@@ -491,7 +491,7 @@ case _ => throw new Exception(s"action_13: got ${s}")
 
 // general_term -> general_data ":" general_term
 def action_14(s: PStack):PStack = { dbgAction("action_14"); s match {
-case GeneralTermEntry(gterm) :: TokenEntry(Colon) :: GeneralDataEntry(data) :: rest => GeneralTermEntry(GeneralTerm(Left(data) :: gterm.term)) :: rest
+case GeneralTermEntry(gterm) :: TokenEntry(Colon) :: GeneralDataEntry(data) :: rest => GeneralTermEntry(GeneralTerm(Left(data) +: gterm.term)) :: rest
 case _ => throw new Exception(s"action_14: got ${s}")
 }}
 

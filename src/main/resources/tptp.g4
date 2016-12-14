@@ -163,9 +163,7 @@ tptp_input          : annotated_formula | include;
 // <formula_selection>    ::= ,[<name_list>] | <null>
 // <name_list>            ::= <name> | <name>,<name_list>
 include : 'include(' file_name formula_selection? ').';
-formula_selection: ',' '['  name_list ']';
-name_list : name | name ',' name_list;
-
+formula_selection: ',' '['  name (',' name)* ']';
 
 // %----General purpose
 // <name>                 ::= <atomic_word> | <integer>
@@ -240,11 +238,10 @@ optional_info : ',' general_list;
 // <general_terms>        ::= <general_term> | <general_term>,<general_terms>
 general_term: general_data | general_data ':' general_term | general_list;
 general_data : atomic_word | general_function | variable | number | Distinct_object | formula_data;
-general_function: atomic_word '(' general_terms ')';
+general_function: atomic_word '(' general_term (',' general_term)* ')';
 formula_data : '$thf(' thf_formula ')' | '$tff(' tff_formula ')' | '$fof(' fof_formula ')'
              | '$fot(' term ')'; // | '$cnf(' ... ')' | ...
-general_list : '[]' | '[' general_terms ']'; 
-general_terms: general_term | general_term ',' general_terms;
+general_list : '[]' | '[' general_term (',' general_term)* ']'; 
 
 
 ////////////////////////////////////////////////////////////////////////////////
