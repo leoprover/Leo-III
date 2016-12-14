@@ -5,7 +5,7 @@ import leo.datastructures.tptp.Commons
 import leo.modules.parsers.{InputProcessing, TPTP}
 import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
 
-import java.io.{Reader, BufferedReader, InputStreamReader, FileInputStream}
+import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Path, Paths}
 
 /**
