@@ -62,7 +62,7 @@ object TPTPASTConstructor {
     } else if (ctx.variable() != null) {
       GVar(ctx.variable().getText)
     } else if (ctx.number() != null) {
-      ???
+      GNumber(number(ctx.number()))
     } else if (ctx.Distinct_object() != null) {
       GDistinct(ctx.Distinct_object().getText)
     } else if (ctx.formula_data() != null) {
@@ -84,7 +84,8 @@ object TPTPASTConstructor {
       FOTData(term(ctx.term()))
     } else throw new IllegalArgumentException
   }
-
+  // Numbers
+  final def number(ctx: tptpParser.NumberContext): Number = ???
   ////////////////////////////////////////////////////////
   /// FOF
   ////////////////////////////////////////////////////////
@@ -92,7 +93,65 @@ object TPTPASTConstructor {
   final def fofFormula(ctx: tptpParser.Fof_formulaContext): fof.Formula = ???
 
   // term stuff
-  final def term(ctx: tptpParser.TermContext): Term = ???
+  final def term(ctx: tptpParser.TermContext): Term = {
+    if (ctx.conditional_term() != null) {
+      val cond = tffLogicFormula(ctx.conditional_term().tff_logic_formula())
+      val thn = term(ctx.conditional_term().term(0))
+      val els = term(ctx.conditional_term().term(1))
+      Cond(cond, thn, els)
+    } else if (ctx.let_term() != null) {
+      val let = ctx.let_term()
+      val in = term(let.term())
+      if (let.tff_let_formula_defns() != null) {
+        val binding = ???
+        Let(binding, in)
+      } else if (let.tff_let_term_defns() != null) {
+        val binding = ???
+        Let(binding, in)
+      } else throw new IllegalArgumentException
+    } else if (ctx.variable() != null) {
+      Var(ctx.variable().getText)
+    } else if (ctx.function_term() != null) {
+      val fun = ctx.function_term()
+      if (fun.plain_term() != null) {
+        val plain = fun.plain_term()
+        val f = plain.functor().atomic_word().getText
+        if (plain.arguments() != null) {
+          val args = plain.arguments().term().asScala.map(term)
+          Func(f, args)
+        } else {
+          Func(f, Seq())
+        }
+      } else if (fun.defined_term() != null) {
+        val defined = fun.defined_term()
+        if (defined.defined_atom() != null) {
+          if (defined.defined_atom().Distinct_object() != null)
+            Distinct(defined.defined_atom().Distinct_object().getText)
+          else if (defined.defined_atom().number() != null) {
+            val n = number(defined.defined_atom().number())
+            NumberTerm(n)
+          } else throw new IllegalArgumentException
+        } else if (defined.defined_atomic_term() != null) {
+          val definedPlain = defined.defined_atomic_term().defined_plain_term()
+          val f = definedPlain.defined_functor().atomic_defined_word().getText
+          if (definedPlain.arguments() != null) {
+            val args = definedPlain.arguments().term().asScala.map(term)
+            DefinedFunc(f, args)
+          } else
+            DefinedFunc(f, Seq())
+        } else throw new IllegalArgumentException
+      } else if(fun.system_term() != null) {
+        val system = fun.system_term()
+        val f = system.system_functor().getText
+        if (system.arguments() != null) {
+          val args = system.arguments().term().asScala.map(term)
+          SystemFunc(f, args)
+        } else {
+          SystemFunc(f, Seq())
+        }
+      } else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
   ////////////////////////////////////////////////////////
   /// THF
   ////////////////////////////////////////////////////////
@@ -103,5 +162,5 @@ object TPTPASTConstructor {
   ////////////////////////////////////////////////////////
   import leo.datastructures.tptp.tff
   final def tffFormula(ctx: tptpParser.Tff_formulaContext): tff.Formula = ???
-
+  final def tffLogicFormula(ctx: tptpParser.Tff_logic_formulaContext): tff.LogicFormula = ???
 }

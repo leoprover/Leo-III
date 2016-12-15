@@ -621,8 +621,8 @@ infix_inequality : '!=';
 // <functor>              ::= <atomic_word>
 term: function_term | variable | conditional_term | let_term;
 function_term : plain_term | defined_term | system_term;
-plain_term: constant | functor '(' arguments ')';
-constant : functor;
+plain_term: functor ('(' arguments ')')?; // contracted for easier handling
+constant : functor; 
 functor : atomic_word;
 
 // %----Defined terms have TPTP specific interpretations
@@ -637,13 +637,13 @@ defined_atomic_term : defined_plain_term;
 // <defined_plain_term>   ::= <defined_constant> | <defined_functor>(<arguments>)
 // <defined_constant>     ::= <defined_functor>
 // <defined_functor>      ::= <atomic_defined_word>
-defined_plain_term : defined_constant | defined_functor '(' arguments ')';
+defined_plain_term : defined_functor ('(' arguments ')')?;
 defined_constant : defined_functor;
 defined_functor : atomic_defined_word;
 // <system_term>          ::= <system_constant> | <system_functor>(<arguments>)
 // <system_constant>      ::= <system_functor>
 // <system_functor>       ::= <atomic_system_word> 
-system_term : system_constant | system_functor '(' arguments ')';
+system_term : system_functor ('(' arguments ')')?;
 system_constant : system_functor;
 system_functor : atomic_system_word;
 
@@ -654,12 +654,12 @@ system_functor : atomic_system_word;
 // <let_term>             ::= $let_ft(<tff_let_formula_defns>,<term>) |
 //                            $let_tt(<tff_let_term_defns>,<term>)
 conditional_term : '$ite_t(' tff_logic_formula ',' term ',' term ')';
-let_term : '$let_ft(' tff_let_formula_defns ',' term ')'
-         | '$let_tt(' tff_let_term_defns ',' term ')';
+let_term : '$let_ft(' tff_let_formula_defns ',' term ')' 
+         | '$let_tt(' tff_let_term_defns ',' term ')';   
 
 // %----Arguments recurse back up to terms (this is the FOF world here)
 // <arguments>            ::= <term> | <term>,<arguments>
-arguments : term | term ',' arguments;
+arguments : term (',' term)*;
 
 // %----Variables, and only variables, start with uppercase
 // <variable>             ::= <upper_word>

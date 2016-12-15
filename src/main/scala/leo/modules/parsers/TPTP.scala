@@ -99,6 +99,8 @@ object TPTP {
     val tokenStream = new CommonTokenStream(lexer)
     val parser = new tptpParser(tokenStream)
     val x = parser.tptp_file()
+    val y = TPTPASTConstructor.tptpFile(x)
+
     println(x.toStringTree)
   }
 }

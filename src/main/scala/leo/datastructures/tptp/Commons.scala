@@ -93,16 +93,16 @@ object Commons {
   sealed abstract class Term {
     def function_symbols : Set[String]
   }
-  case class Func(name: String, args: List[Term]) extends Term {
+  case class Func(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
 
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
-  case class DefinedFunc(name: String, args: List[Term]) extends Term {
+  case class DefinedFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
-  case class SystemFunc(name: String, args: List[Term]) extends Term {
+  case class SystemFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
