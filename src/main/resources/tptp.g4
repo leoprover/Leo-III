@@ -287,10 +287,8 @@ thf_unitary_formula : thf_quantified_formula | thf_unary_formula | thf_atom | th
 // <thf_variable>         ::= <thf_typed_variable> | <variable>
 // <thf_typed_variable>   ::= <variable> : <thf_top_level_type>
 thf_quantified_formula : thf_quantification thf_unitary_formula;
-thf_quantification : thf_quantifier '[' thf_variable_list ']' ':';
-thf_variable_list : thf_variable | thf_variable ',' thf_variable_list;
-thf_variable : thf_typed_variable | variable;
-thf_typed_variable : variable ':' thf_top_level_type;
+thf_quantification : thf_quantifier '[' thf_variable (',' thf_variable)* ']' ':';
+thf_variable : variable (':' thf_top_level_type)?;
 
 // %----Unary connectives bind more tightly than binary. The negated formula
 // %----must be ()ed because a ~ is also a term.
@@ -302,7 +300,7 @@ thf_typed_variable : variable ':' thf_top_level_type;
 thf_unary_formula : thf_unary_connective '(' thf_logic_formula ')';
 thf_atom : thf_function | variable | thf_conn_term;
 thf_function: thf_plain_term | thf_defined_term | thf_system_term;
-thf_plain_term : constant | functor  '(' thf_arguments ')';
+thf_plain_term : functor  ('(' thf_arguments ')')?;
 
 // %----Defined terms have TPTP specific interpretations
 // <thf_defined_term>     ::= <defined_atom> | <defined_constant> |
@@ -310,8 +308,8 @@ thf_plain_term : constant | functor  '(' thf_arguments ')';
 // <thf_system_term>      ::= <system_constant> | <system_functor>(<thf_arguments>)
 // <thf_conditional>      ::= $ite(<thf_logic_formula>,<thf_logic_formula>,
 //                             <thf_logic_formula>)
-thf_defined_term : defined_atom | defined_constant | defined_functor '(' thf_arguments ')';
-thf_system_term : system_constant | system_functor '(' thf_arguments ')';   
+thf_defined_term : defined_atom | defined_functor ('(' thf_arguments ')')?;
+thf_system_term : system_functor ('(' thf_arguments ')')?;   
 thf_conditional: '$ite(' thf_logic_formula ',' thf_logic_formula ',' thf_logic_formula ')';                      
                             
 // %----The LHS of a term or formula binding must be a non-variable term that
@@ -376,7 +374,7 @@ thf_union_type : thf_unitary_type '+' thf_unitary_type
 //                            <thf_logic_formula>,<thf_formula_list>
 thf_sequent : thf_tuple '-->' thf_tuple | '(' thf_sequent ')';
 thf_tuple : '[]' | '[' thf_formula_list ']';
-thf_formula_list : thf_logic_formula | thf_logic_formula ',' thf_formula_list;
+thf_formula_list : thf_logic_formula (',' thf_logic_formula)*;
 
 // %----Special formulae
 // <thf_conn_term>        ::= <thf_pair_connective> | <assoc_connective> |

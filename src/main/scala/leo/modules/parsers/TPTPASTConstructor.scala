@@ -156,7 +156,36 @@ object TPTPASTConstructor {
   /// THF
   ////////////////////////////////////////////////////////
   import leo.datastructures.tptp.thf
-  final def thfFormula(ctx: tptpParser.Thf_formulaContext): thf.Formula = ???
+  final def thfFormula(ctx: tptpParser.Thf_formulaContext): thf.Formula = {
+    if (ctx.thf_logic_formula() != null) thf.Logical(thfLogicFormula(ctx.thf_logic_formula()))
+    else if (ctx.thf_sequent() != null) thfSequent(ctx.thf_sequent())
+    else throw new IllegalArgumentException
+  }
+  final def thfSequent(ctx: tptpParser.Thf_sequentContext): thf.Sequent = ???
+  final def thfLogicFormula(ctx: tptpParser.Thf_logic_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_binary_formula() != null) {
+      ???
+    } else if (ctx.thf_unitary_formula() != null) {
+      ???
+    } else if (ctx.thf_subtype() != null) {
+      val left = ctx.thf_subtype().constant(0).getText
+      val right = ctx.thf_subtype().constant(1).getText
+      thf.Subtype(left,right)
+    } else if (ctx.thf_type_formula() != null) {
+      val formula0 = ctx.thf_type_formula().thf_typeable_formula()
+      val typ = thfTopLevelType(ctx.thf_type_formula().thf_top_level_type())
+      if (formula0.thf_atom() != null) {
+        ???
+        thf.Typed(???, typ)
+      } else if (formula0.thf_logic_formula() != null)
+        thf.Typed(thfLogicFormula(formula0.thf_logic_formula()), typ)
+      else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+
+  final def thfFunction(ctx: tptpParser.Thf_functionContext): thf.LogicFormula = ???
+
+  final def thfTopLevelType(ctx: tptpParser.Thf_top_level_typeContext): thf.LogicFormula = ???
   ////////////////////////////////////////////////////////
   /// TFF
   ////////////////////////////////////////////////////////
