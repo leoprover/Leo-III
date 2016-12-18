@@ -10,6 +10,23 @@ grammar tptp;
 package leo.modules.parsers.antlr;
 } 
 
+// %----v6.4.0.0 (TPTP version.internal development number)
+// %----v6.4.0.1 Noted that <number>s may not be used in CNF or FOF.
+// %----v6.4.0.2 Added tcf
+// %----v6.4.0.3 Moved ^ into <th0_quantifier>
+// %----v6.4.0.4 Changed <thf_top_level_type> and <thf_unitary_type> to be more
+// %----         precise. <thf_binary_type> removed from <thf_binary_formula>.
+// %----v6.4.0.5 Specified that the quantification in a $let must be universal.
+// %----         Added ()s around the <thf_let_plain_defn> in a
+// %----         <thf_let_quantified_defn> (to avoid binding ambiguity).
+// %----v6.4.0.6 Changed $ite to be an instance of a <thf_unitary_formula>, so
+// %----         it uses application rather than FOF style $ite(...).
+// %----v6.4.0.7 Added := to the list of binary connectives, to accomodate logic
+// %----         specifications. This changed $let to use <thf_unitary_formula>
+// %----         for it's first arguments; the original rule hierarchy for $let
+// %----         has been changed to :== semantic rules. Semantic rules for logic
+// %----         specifications have been added.
+
 // Tokens, Lexer rules
 
 // %----Character classes
@@ -31,38 +48,38 @@ package leo.modules.parsers.antlr;
 // <alpha_numeric>        ::: (<lower_alpha>|<upper_alpha>|<numeric>|[_])
 // <dollar>               ::: [$]
 
-fragment
-Percentage_sign : '%';
-fragment
-Double_quote : '"';
-fragment
-Do_char : [\u0020-\u0021\u0023-\u005B\u005D-\u007E] | '\\'["\\];
-fragment
-Single_quote : '\'';
-fragment
-Sq_char : [\u0020-\u0026\u0028-\u005B\u005D-\u007E] | '\\'['\\];
-fragment
-Sign : [+-];
-fragment
-Dot : '.';
-fragment
-Exponent : [Ee];
-fragment
-Slash : '/';
-fragment
-Zero_numeric : '0';
-fragment
-Non_zero_numeric : [1-9];
-fragment
-Numeric : [0-9];
-fragment
-Lower_alpha : [a-z];
-fragment
-Upper_alpha : [A-Z];
-fragment
-Alpha_numeric : Lower_alpha | Upper_alpha | Numeric | '_';
-fragment
-Dollar : '$';
+fragment Percentage_sign : '%';
+fragment Double_quote : '"';
+fragment Do_char : [\u0020-\u0021\u0023-\u005B\u005D-\u007E] | '\\'["\\];
+fragment Single_quote : '\'';
+fragment Sq_char : [\u0020-\u0026\u0028-\u005B\u005D-\u007E] | '\\'['\\];
+fragment Sign : [+-];
+fragment Dot : '.';
+fragment Exponent : [Ee];
+fragment Slash : '/';
+fragment Zero_numeric : '0';
+fragment Non_zero_numeric : [1-9];
+fragment Numeric : [0-9];
+fragment Lower_alpha : [a-z];
+fragment Upper_alpha : [A-Z];
+fragment Alpha_numeric : Lower_alpha | Upper_alpha | Numeric | '_';
+fragment Dollar : '$';
+
+Or: '|';
+And: '&';
+Not: '~';
+Iff : '<=>';
+Impl : '=>';
+If: '<=';
+Niff: '<~>';
+Nor: '~|';
+Nand: '~&';
+Forall: '!';
+Exists: '?';
+App: '@';
+Infix_equality : '=';
+Infix_inequality : '!=';
+Assignment: ':=';
 
 // %----Numbers. Signs are made part of the same token here.
 // <real>                 ::- (<signed_real>|<unsigned_real>)
@@ -130,27 +147,9 @@ Distinct_object : Double_quote Do_char+ Double_quote;
 // Comments
 
 Whitespace : [ \t\r\n]+ -> channel(HIDDEN);
-Line_comment : '%' ~[\r\n]* -> skip;
+Line_comment : Percentage_sign ~[\r\n]* -> skip;
 Block_comment : '/*' .*? '*/' -> skip;
 
-
-
-// %----v6.4.0.0 (TPTP version.internal development number)
-// %----v6.4.0.1 Noted that <number>s may not be used in CNF or FOF.
-// %----v6.4.0.2 Added tcf
-// %----v6.4.0.3 Moved ^ into <th0_quantifier>
-// %----v6.4.0.4 Changed <thf_top_level_type> and <thf_unitary_type> to be more
-// %----         precise. <thf_binary_type> removed from <thf_binary_formula>.
-// %----v6.4.0.5 Specified that the quantification in a $let must be universal.
-// %----         Added ()s around the <thf_let_plain_defn> in a
-// %----         <thf_let_quantified_defn> (to avoid binding ambiguity).
-// %----v6.4.0.6 Changed $ite to be an instance of a <thf_unitary_formula>, so
-// %----         it uses application rather than FOF style $ite(...).
-// %----v6.4.0.7 Added := to the list of binary connectives, to accomodate logic
-// %----         specifications. This changed $let to use <thf_unitary_formula>
-// %----         for it's first arguments; the original rule hierarchy for $let
-// %----         has been changed to :== semantic rules. Semantic rules for logic
-// %----         specifications have been added.
 
 // %----Files. Empty file is OK.
 // <TPTP_file>            ::= <TPTP_input>*
@@ -269,12 +268,12 @@ thf_binary_formula : thf_binary_pair | thf_binary_tuple;
 //                            <thf_apply_formula> @ <thf_unitary_formula>
 thf_binary_pair : thf_unitary_formula thf_pair_connective thf_unitary_formula;
 thf_binary_tuple : thf_or_formula | thf_and_formula | thf_apply_formula;
-thf_or_formula : thf_unitary_formula '|' thf_unitary_formula
-               | thf_or_formula '|' thf_unitary_formula;
-thf_and_formula : thf_unitary_formula '&' thf_unitary_formula
-               | thf_and_formula '&' thf_unitary_formula;
-thf_apply_formula : thf_unitary_formula '@' thf_unitary_formula
-               | thf_apply_formula '@' thf_unitary_formula;
+thf_or_formula : thf_unitary_formula Or thf_unitary_formula
+               | thf_or_formula Or thf_unitary_formula;
+thf_and_formula : thf_unitary_formula And thf_unitary_formula
+               | thf_and_formula And thf_unitary_formula;
+thf_apply_formula : thf_unitary_formula App thf_unitary_formula
+               | thf_apply_formula App thf_unitary_formula;
 
 // <thf_unitary_formula>  ::= <thf_quantified_formula> | <thf_unary_formula> |
 //                            <thf_atom> | <thf_conditional> | <thf_let> | 
@@ -394,7 +393,7 @@ thf_conn_term : thf_pair_connective | assoc_connective | thf_unary_connective;
 thf_quantifier : fol_quantifier | th0_quantifier | th1_quantifier;
 th0_quantifier: '^' | '@+' | '@-';
 th1_quantifier: '!>' | '?*';
-thf_pair_connective : infix_equality | infix_inequality | binary_connective | ':=' ;
+thf_pair_connective : Infix_equality | Infix_inequality | binary_connective | Assignment ;
 thf_unary_connective : unary_connective | th1_unary_connective;
 th1_unary_connective : '!!' | '??' | '@@+' | '@@-' | '@=';
 
@@ -426,10 +425,10 @@ tff_logic_formula: tff_binary_formula | tff_unitary_formula;
 tff_binary_formula: tff_binary_nonassoc | tff_binary_assoc;
 tff_binary_nonassoc: tff_unitary_formula binary_connective tff_unitary_formula;
 tff_binary_assoc: tff_or_formula | tff_and_formula;
-tff_or_formula : tff_unitary_formula '|' tff_unitary_formula
-               | tff_or_formula '|' tff_unitary_formula;
-tff_and_formula : tff_unitary_formula '&' tff_unitary_formula
-               | tff_and_formula '&' tff_unitary_formula;
+tff_or_formula : tff_unitary_formula Or tff_unitary_formula
+               | tff_or_formula Or tff_unitary_formula;
+tff_and_formula : tff_unitary_formula And tff_unitary_formula
+               | tff_and_formula And tff_unitary_formula;
 tff_unitary_formula : tff_quantified_formula | tff_unary_formula | atomic_formula
                     | tff_conditional | tff_let | '(' tff_logic_formula ')';
 
@@ -551,10 +550,10 @@ fof_logic_formula : fof_binary_formula | fof_unitary_formula;
 fof_binary_formula : fof_binary_nonassoc | fof_binary_assoc;
 fof_binary_nonassoc: fof_unitary_formula binary_connective fof_unitary_formula;
 fof_binary_assoc: fof_or_formula | fof_and_formula;
-fof_or_formula : fof_unitary_formula '|' fof_unitary_formula
-               | fof_or_formula '|' fof_unitary_formula;
-fof_and_formula : fof_unitary_formula '&' fof_unitary_formula
-               | fof_and_formula '&' fof_unitary_formula;
+fof_or_formula : fof_unitary_formula Or fof_unitary_formula
+               | fof_or_formula Or fof_unitary_formula;
+fof_and_formula : fof_unitary_formula And fof_unitary_formula
+               | fof_and_formula And fof_unitary_formula;
 fof_unitary_formula : fof_quantified_formula | fof_unary_formula | atomic_formula
                     | '(' fof_logic_formula ')';
 fof_quantified_formula : fol_quantifier '[' fof_variable_list ']' ':' fof_unitary_formula;
@@ -573,7 +572,7 @@ fof_formula_tuple_list: fof_logic_formula | fof_logic_formula ',' fof_formula_tu
 
 
 // <fol_infix_unary>      ::= <term> <infix_inequality> <term>
-fol_infix_unary : term infix_inequality term;
+fol_infix_unary : term Infix_inequality term;
 
 // %----First order atoms
 // <atomic_formula>       ::= <plain_atomic_formula> | <defined_atomic_formula> |
@@ -597,19 +596,17 @@ system_atomic_formula: system_term;
 // <binary_connective>    ::= <=> | => | <= | <~> | ~<vline> | ~&
 // <assoc_connective>     ::= <vline> | &
 // <unary_connective>     ::= ~
-fol_quantifier: '!' | '?';
-binary_connective: '<=>' | '=>' | '<=' | '<~>' | '~|' | '~&';
-assoc_connective : '|' | '&';
-unary_connective : '~';
+fol_quantifier: Forall | Exists;
+binary_connective: Iff | Impl | If | Niff | Nor | Nand;
 
+assoc_connective : Or | And;
+unary_connective : Not;
 // <defined_infix_formula> ::= <term> <defined_infix_pred> <term>
 // <defined_infix_pred>   ::= <infix_equality>
 // <infix_equality>       ::= =
 // <infix_inequality>     ::= !=
 defined_infix_formula : term defined_infix_pred term;
-defined_infix_pred : infix_equality;
-infix_equality : '=';
-infix_inequality : '!=';
+defined_infix_pred : Infix_equality;
 
 // <term>                 ::= <function_term> | <variable> | <conditional_term> |
 //                            <let_term>

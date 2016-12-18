@@ -17,7 +17,7 @@ case class Logical(formula: LogicFormula) extends Formula {
   override def toString = formula.toString
   val function_symbols : Set[String] = formula.function_symbols
 }
-case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula {
+case class Sequent(tuple1: Seq[LogicFormula], tuple2: Seq[LogicFormula]) extends Formula {
   override def toString = "[" + tuple1.mkString(",") +"]" + " --> " + "[" + tuple2.mkString(",") + "]"
   val function_symbols : Set[String] = tuple1.toSet[LogicFormula].flatMap(_.function_symbols) union tuple2.toSet[LogicFormula].flatMap(_.function_symbols)
 }
@@ -109,6 +109,7 @@ case object & extends BinaryConnective
 case object App extends BinaryConnective {
   override def toString = "@"
 }
+case object := extends BinaryConnective
 
 sealed abstract class UnaryConnective
 case object ~ extends UnaryConnective
