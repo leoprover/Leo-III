@@ -221,8 +221,34 @@ object TPTPASTConstructor {
   final def thfAnd(ctx: tptpParser.Thf_and_formulaContext): thf.LogicFormula = ???
   final def thfOr(ctx: tptpParser.Thf_or_formulaContext): thf.LogicFormula = ???
   final def thfApply(ctx: tptpParser.Thf_apply_formulaContext): thf.LogicFormula = ???
+
   final def thfUnitary(ctx: tptpParser.Thf_unitary_formulaContext): thf.LogicFormula = ???
-  final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = ???
+  final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = {
+    if (ctx.variable() != null) thf.Term(Var(ctx.variable().getText))
+    else if (ctx.thf_function() != null) {
+      val thfFun = ctx.thf_function()
+      if (thfFun.thf_plain_term() != null) {
+        val fun = thfFun.thf_plain_term().functor().getText
+        if (thfFun.thf_plain_term().thf_arguments() == null) thf.Term(Func(fun, Seq()))
+        else thf.Term(Func(fun, ???)) // FIXME: Term not applicable
+      } else if (thfFun.thf_defined_term() != null) {
+        ???
+      } else if (thfFun.thf_system_term() != null) {
+        ???
+      } else throw new IllegalArgumentException
+    } else if (ctx.thf_conn_term() != null) {
+      val conn = ctx.thf_conn_term()
+      if (conn.assoc_connective() != null) {
+        if (conn.assoc_connective().And() != null) thf.Connective(Left(thf.&))
+        else if (conn.assoc_connective().Or() != null) thf.Connective(Left(thf.|))
+        else throw new IllegalArgumentException
+      } else if (conn.thf_pair_connective() != null) {
+        ???
+      } else if (conn.thf_unary_connective() != null) {
+        ???
+      } else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
   final def thfFunction(ctx: tptpParser.Thf_functionContext): thf.LogicFormula = ???
 
   final def thfTopLevelType(ctx: tptpParser.Thf_top_level_typeContext): thf.LogicFormula = ???
