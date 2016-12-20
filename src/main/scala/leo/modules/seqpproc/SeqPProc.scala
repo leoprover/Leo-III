@@ -273,16 +273,13 @@ object SeqPProc {
               state.addChoiceFunction(choiceFun)
               leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                if(mainLoopInferences(cur, state)) {
-                  loop = false
-                }
+              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+              // e.g. by forward subsumption
+              if (!Control.redundant(cur, state.processed)) {
+                if(mainLoopInferences(cur, state)) loop = false
               } else {
-                Out.debug("clause subsumbed, skipping.")
+                Out.debug(s"Clause ${cur.id} redundant, skipping.")
                 state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
               }
             }
           }
@@ -291,7 +288,7 @@ object SeqPProc {
       Out.debug("## Pre-reasoning loop END")
 
       /////////////////////////////////////////
-      // Main proof loop
+      // Main proof loop TODO: Merge with pre-reasoning loop
       /////////////////////////////////////////
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
@@ -308,6 +305,7 @@ object SeqPProc {
           Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
 
           cur = Control.rewriteSimp(cur, state.rewriteRules)
+          // Check if `cur` is an empty clause
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
             if (state.conjecture == null) {
@@ -317,22 +315,20 @@ object SeqPProc {
             }
             state.setDerivationClause(cur)
           } else {
+            // Not an empty clause, detect choice definition or do reasoning step.
             val choiceCandidate = Control.detectChoiceClause(cur)
             if (choiceCandidate.isDefined) {
               val choiceFun = choiceCandidate.get
               state.addChoiceFunction(choiceFun)
               leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                if(mainLoopInferences(cur, state)) {
-                  loop = false
-                }
+              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+              // e.g. by forward subsumption
+              if (!Control.redundant(cur, state.processed)) {
+                if(mainLoopInferences(cur, state)) loop = false
               } else {
-                Out.debug("clause subsumbed, skipping.")
+                Out.debug(s"Clause ${cur.id} redundant, skipping.")
                 state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
               }
             }
           }

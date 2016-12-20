@@ -109,15 +109,13 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
         }
         state.setDerivationClause(cur)
       } else {
-        // Subsumption
-
-        val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-        if (subsumed.isEmpty) {
+        // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+        // e.g. by forward subsumption
+        if (!Control.redundant(cur, state.processed)) {
           mainLoopInferences(cur, state)
         } else {
-          Out.debug(s"($proc) clause subsumbed, skipping.")
+          Out.debug(s"Clause ${cur.id} redundant, skipping.")
           state.incForwardSubsumedCl()
-          Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
         }
       }
     }
@@ -156,15 +154,13 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
             }
             state.setDerivationClause(cur)
           } else {
-            // Subsumption
-            //if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
-            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-            if (subsumed.isEmpty) {
+            // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+            // e.g. by forward subsumption
+            if (!Control.redundant(cur, state.processed)) {
               mainLoopInferences(cur, state)
             } else {
-              Out.debug(s"($proc)clause subsumbed, skipping.")
+              Out.debug(s"Clause ${cur.id} redundant, skipping.")
               state.incForwardSubsumedCl()
-              Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
             }
           }
         }

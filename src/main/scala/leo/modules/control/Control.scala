@@ -42,6 +42,8 @@ object Control {
   @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
   @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
   // Redundancy
+  @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
+  @deprecated("forwardSubsumption test should not be used anymore from this position. Use redundant() or SubsumptionControl object directly.")
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
   // Indexing
@@ -986,8 +988,14 @@ package inferenceControl {
 }
 
 package redundancyControl {
-
   import leo.modules.control.indexingControl.FVIndexControl
+
+  object RedundancyControl {
+    final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Boolean = {
+      val res = SubsumptionControl.testForwardSubsumptionFVI(cl)
+      res.nonEmpty
+    }
+  }
 
   object SubsumptionControl {
     import leo.modules.calculus.Subsumption
