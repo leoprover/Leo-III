@@ -2,21 +2,20 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures._
-import ClauseAnnotation._
-import leo.modules.calculus.PatternUnification
+import leo.datastructures.{ClauseAnnotation, AnnotatedClause, tptp, Term, Signature, Clause, Literal, addProp}
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
 
 import scala.annotation.tailrec
 
-
 /**
-  * Created by lex on 10/28/15.
+  * Sequential proof procedure. Its state is represented by [[leo.modules.seqpproc.State]].
+  *
+  * @since 28.10.15
+  * @author Alexander Steen <a.steen@fu-berlin.de>
   */
-object SeqPProc extends Function1[Long, Unit] {
-
+object SeqPProc {
   ////////////////////////////////////
   //// Loading and converting the problem
   ////////////////////////////////////
@@ -41,6 +40,8 @@ object SeqPProc extends Function1[Long, Unit] {
     * conjectures are present or unknown role occurs. */
   final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: State[AnnotatedClause]): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
     import leo.modules.Utility.termToClause
+    import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
+    import leo.datastructures.ClauseAnnotation._
     var result: Seq[tptp.Commons.AnnotatedFormula] = Seq()
     var conj: tptp.Commons.AnnotatedFormula = null
     val inputIt = input.iterator
@@ -80,6 +81,7 @@ object SeqPProc extends Function1[Long, Unit] {
   }
   final private def processInput(input: tptp.Commons.AnnotatedFormula, state: State[AnnotatedClause]): AnnotatedClause = {
     import leo.modules.Utility.termToClause
+    import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Parsing.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
   }
@@ -373,7 +375,8 @@ object SeqPProc extends Function1[Long, Unit] {
 
       Out.finest("#########################")
       Out.finest("units")
-      Out.finest(state.rewriteRules.map(cl => s"(${PatternUnification.isPattern(cl.cl.lits.head.left)}/${PatternUnification.isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+      import leo.modules.calculus.PatternUnification.isPattern
+      Out.finest(state.rewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("#########################")
