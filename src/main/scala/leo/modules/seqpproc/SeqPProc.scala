@@ -16,11 +16,12 @@ import scala.annotation.tailrec
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
 object SeqPProc {
+  type LocalState = State[AnnotatedClause]
   ////////////////////////////////////
   //// Loading and converting the problem
   ////////////////////////////////////
   /** Converts the input into clauses and filters the axioms if applicable. */
-  final private def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: State[AnnotatedClause]): Seq[AnnotatedClause] = {
+  final private def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conj) = effectiveInput0(input, state)
     if (state.negConjecture != null) {
@@ -38,7 +39,7 @@ object SeqPProc {
   /** Insert types, definitions and the conjecture to the signature resp. state. The rest
     * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
     * conjectures are present or unknown role occurs. */
-  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: State[AnnotatedClause]): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
+  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
     import leo.modules.Utility.termToClause
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
@@ -79,13 +80,13 @@ object SeqPProc {
     }
     (result,conj)
   }
-  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: State[AnnotatedClause]): AnnotatedClause = {
+  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
     import leo.modules.Utility.termToClause
     import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Parsing.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
   }
-  final private def typeCheck(input: Seq[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+  final private def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
     if (state.negConjecture != null) typeCheck0(state.negConjecture +: input)
     else typeCheck0(input)
   }
@@ -105,7 +106,7 @@ object SeqPProc {
   ////////////////////////////////////
   //// Preprocessing
   ////////////////////////////////////
-  protected[modules] final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
+  protected[modules] final def preprocess(state: LocalState, cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
 
@@ -195,9 +196,9 @@ object SeqPProc {
     // Remaining stuff ...
     Out.info(s"Type checking passed. Searching for refutation ...")
       // Initialize indexes
-    if (state.negConjecture != null) Control.fvIndexInit(state.negConjecture +: remainingInput)
-    else Control.fvIndexInit(remainingInput)
-    Control.foIndexInit()
+    if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
+    else Control.initIndexes(remainingInput)
+
     Out.trace(s"Symbols in conjecture: " +
       s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
     // Preprocessing
@@ -258,6 +259,10 @@ object SeqPProc {
           var cur = conjectureProcessedIt.next()
           Out.debug(s"Taken: ${cur.pretty(sig)}")
           cur = Control.rewriteSimp(cur, state.rewriteRules)
+          /* Functional Extensionality */
+          cur = Control.funcext(cur)
+          /* To equality if possible */
+          cur = Control.liftEq(cur)
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
             if (state.conjecture == null) {
@@ -305,15 +310,14 @@ object SeqPProc {
           Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
 
           cur = Control.rewriteSimp(cur, state.rewriteRules)
+          /* Functional Extensionality */
+          cur = Control.funcext(cur)
+          /* To equality if possible */
+          cur = Control.liftEq(cur)
           // Check if `cur` is an empty clause
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
-            if (state.conjecture == null) {
-              state.setSZSStatus(SZS_Unsatisfiable)
-            } else {
-              state.setSZSStatus(SZS_Theorem)
-            }
-            state.setDerivationClause(cur)
+            endplay(cur, state)
           } else {
             // Not an empty clause, detect choice definition or do reasoning step.
             val choiceCandidate = Control.detectChoiceClause(cur)
@@ -412,45 +416,37 @@ object SeqPProc {
       }
   }
 
-  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Boolean = {
+  private final def mainLoopInferences(cl: AnnotatedClause, state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
 
-    var cur: AnnotatedClause = cl
+    val cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
 //    println(s"current clauses symbols: ${Clause.symbols(cl.cl).map(s => state.signature(s).name).mkString(",")}")
 
     /////////////////////////////////////////
-    // Simplifying (mofifying inferences and backward subsumption) BEGIN
+    // Backward simplification BEGIN
     // TODO: à la E: direct descendant criterion, etc.
     /////////////////////////////////////////
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
-
     if (backSubsumedClauses.nonEmpty) {
       Out.trace(s"#### backward subsumed")
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
       Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       state.setProcessed(state.processed -- backSubsumedClauses)
-      Control.fvIndexRemove(backSubsumedClauses)
+      Control.removeFromIndex(backSubsumedClauses)
     }
-
+    /** Add to processed and to indexes. */
     state.addProcessed(cur)
-    Control.fvIndexInsert(cur)
+    Control.insertIndexed(cur)
     /* Add rewrite rules to set */
     if (Clause.rewriteRule(cur.cl)) {
       state.addRewriteRule(cur)
     }
-    /* Functional Extensionality */
-    cur = Control.funcext(cur)
-    /* To equality if possible */
-    cur = Control.liftEq(cur)
     /////////////////////////////////////////
-    // Simplifying (mofifying inferences) END
+    // Backward simplification END
     /////////////////////////////////////////
-    leo.Out.finest(s"XX ${cur.pretty(sig)}")
-    leo.Out.finest(s"XX ${leo.modules.indexing.FOIndex.typedFirstOrder(cur)}")
-    Control.foIndex.insert(cur)
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
@@ -513,9 +509,7 @@ object SeqPProc {
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
       newCl = Control.shallowSimp(newCl)
       if (Clause.effectivelyEmpty(newCl.cl)) {
-        if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
-        else state.setSZSStatus(SZS_Theorem)
-        state.setDerivationClause(newCl)
+        endplay(newCl, state)
         return true
       } else {
         if (!Clause.trivial(newCl.cl)) state.addUnprocessed(newCl)
@@ -523,6 +517,12 @@ object SeqPProc {
       }
     }
     false
+  }
+
+  @inline final private def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
+    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    else state.setSZSStatus(SZS_Theorem)
+    state.setDerivationClause(emptyClause)
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {

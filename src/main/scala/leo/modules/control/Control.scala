@@ -47,13 +47,19 @@ object Control {
   @inline final def forwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testForwardSubsumptionFVI(cl)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
   // Indexing
-  @inline final def fvIndexInit(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses.toSet)(sig)
-  @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
-  @inline final def fvIndexInsert(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.insert(cls)
-  @inline final def fvIndexRemove(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.remove(cl)
-  @inline final def fvIndexRemove(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.remove(cls)
-  @inline final def foIndexInit(): Unit = indexingControl.FOIndexControl.foIndexInit()
-  @inline final def foIndex: leo.modules.indexing.FOIndex = indexingControl.FOIndexControl.index
+  @inline final def initIndexes(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.IndexingControl.initIndexes(initClauses.toSet)(sig)
+  @inline final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.insertIndexed(cl)
+  @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(insertIndexed)
+  @inline final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
+  @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
+  // TODO: Clean-up all those indexing methods below:
+  @deprecated @inline final def fvIndexInit(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses.toSet)(sig)
+  @deprecated @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
+  @deprecated @inline final def fvIndexInsert(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.insert(cls)
+  @deprecated @inline final def fvIndexRemove(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.remove(cl)
+  @deprecated @inline final def fvIndexRemove(cls: Set[AnnotatedClause]): Unit = indexingControl.FVIndexControl.remove(cls)
+  @deprecated @inline final def foIndexInit(): Unit = indexingControl.FOIndexControl.foIndexInit()
+  @deprecated @inline final def foIndex: leo.modules.indexing.FOIndex = indexingControl.FOIndexControl.index
   // Relevance filtering
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
@@ -991,9 +997,12 @@ package redundancyControl {
   import leo.modules.control.indexingControl.FVIndexControl
 
   object RedundancyControl {
+    /** Returns true iff cl is redundant wrt to processed. */
     final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Boolean = {
       val res = SubsumptionControl.testForwardSubsumptionFVI(cl)
       res.nonEmpty
+
+      // TODO: Do e.g. AC tautology deletion? maybe restructure later.
     }
   }
 
@@ -1071,6 +1080,33 @@ package redundancyControl {
 }
 
 package indexingControl {
+
+  object IndexingControl {
+    /** Initiate all index structures. This is
+      * merely a delegator/distributor to all known indexes such
+      * as feature vector index, subsumption index etc.
+      * @note method may change in future (maybe more arguments will be needed). */
+    final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
+      FVIndexControl.init(initClauses.toSet)(sig)
+      FOIndexControl.foIndexInit()
+    }
+    /** Insert cl to all relevant indexes used. This is
+      * merely a delegator/distributor to all known indexes such
+      * as feature vector index, subsumption index etc.*/
+    final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
+      FVIndexControl.insert(cl)
+      FOIndexControl.index.insert(cl)
+      // TODO: more indexes ...
+    }
+    /** Remove cl from all relevant indexes used. This is
+      * merely a delegator/distributor to all known indexes such
+      * as feature vector index, subsumption index etc.*/
+    final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
+      FVIndexControl.remove(cl)
+      FOIndexControl.index.remove(cl)
+      // TODO: more indexes ...
+    }
+  }
 
   object FVIndexControl {
     import leo.datastructures.Clause
