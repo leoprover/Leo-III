@@ -999,10 +999,9 @@ package redundancyControl {
   object RedundancyControl {
     /** Returns true iff cl is redundant wrt to processed. */
     final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Boolean = {
-      val res = SubsumptionControl.testForwardSubsumptionFVI(cl)
-      res.nonEmpty
-
+      if (SubsumptionControl.isSubsumed(cl, processed)) true
       // TODO: Do e.g. AC tautology deletion? maybe restructure later.
+      else false
     }
   }
 
@@ -1011,20 +1010,29 @@ package redundancyControl {
     import leo.modules.indexing.{ClauseFeature, FVIndex, FeatureVector}
     import leo.datastructures.FixedLengthTrie
 
-    final def testForwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+    /** Main function called for deciding if cl is subsumed by (any clause within) `by`.
+      * This function simply check for subsumption (see
+      * [[leo.modules.calculus.Subsumption]]) or might call indexing pre-filters and then check those results
+      * for the subsumption relation. */
+    final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause]): Boolean = {
+      // Current implementation checks feature-vector index for a pre-filter.
+      // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
+      testForwardSubsumptionFVI(cl).nonEmpty
+    }
 
+    /** Test for subsumption using the feature vector index as a prefilter, then run
+      * "trivial" subsumption check using [[leo.modules.calculus.Subsumption]]. */
     final def testForwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
       val index = FVIndexControl.index
       val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
       testForwardSubsumptionFVI0(index, clFV, 0, cl)
     }
-
     final private def testForwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
                                                  clauseFeatures: FeatureVector,
                                                  featureIndex: Int,
                                                  cl: AnnotatedClause): Set[AnnotatedClause] = {
       if (index.isLeaf) {
-        testForwardSubsumption(cl, index.valueSet)
+        testSubsumption(cl, index.valueSet)
       } else {
         var curFeatureValue = 0
         val clFeatureValue = clauseFeatures(featureIndex)
@@ -1042,17 +1050,13 @@ package redundancyControl {
       }
     }
 
-
-    final def testBackwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
-      withSet.filter(cw => Subsumption.subsumes(cl.cl, cw.cl))
-
-
+    /** Test for subsumption using the feature vector index as a prefilter, then run
+      * "trivial" subsumption check using [[leo.modules.calculus.Subsumption]]. */
     final def testBackwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
       val index = FVIndexControl.index
       val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
       testBackwardSubsumptionFVI0(index, clFV, 0, cl)
     }
-
     final private def testBackwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
                                                   clauseFeatures: FeatureVector,
                                                   featureIndex: Int,
@@ -1076,6 +1080,12 @@ package redundancyControl {
       }
     }
 
+    /** Check for subsumption of cl by any clause in `withSet` by subsumption rule in [[leo.modules.calculus.Subsumption]]. */
+    private final def testSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
+    withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+    /** Check for subsumption of any clause in `withSet` by `cl` by subsumption rule in [[leo.modules.calculus.Subsumption]]. */
+    private final def testBackwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
+    withSet.filter(cw => Subsumption.subsumes(cl.cl, cw.cl))
   }
 }
 

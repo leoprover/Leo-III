@@ -441,9 +441,7 @@ object SeqPProc {
     state.addProcessed(cur)
     Control.insertIndexed(cur)
     /* Add rewrite rules to set */
-    if (Clause.rewriteRule(cur.cl)) {
-      state.addRewriteRule(cur)
-    }
+    if (Clause.rewriteRule(cur.cl)) state.addRewriteRule(cur)
     /////////////////////////////////////////
     // Backward simplification END
     /////////////////////////////////////////
