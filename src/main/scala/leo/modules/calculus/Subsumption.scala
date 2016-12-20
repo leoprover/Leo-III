@@ -6,7 +6,7 @@ import leo.datastructures.{Clause, Literal}
 trait Subsumption {
   def subsumes(cl1: Clause, cl2: Clause): Boolean
 }
-
+/** Companion for abstraction over current implementation. */
 object Subsumption extends Subsumption {
   val impl = TrivialSubsumption
   var subsumptiontests = 0
@@ -14,6 +14,9 @@ object Subsumption extends Subsumption {
   def subsumes(cl1: Clause, cl2: Clause) = {subsumptiontests += 1; impl.subsumes(cl1, cl2)}
 }
 
+////////////////////////
+// Subsumption test by syntactical equality
+/////////////////////////
 object TrivialSubsumption extends Subsumption {
   def canApply(cl: Clause, cls: Set[Clause]) = cls.exists(subsumes(cl, _))
   val name = "Trivial Subsumption"
@@ -28,6 +31,9 @@ object TrivialSubsumption extends Subsumption {
   }
 }
 
+////////////////////////
+// Subsumption test by first-order matching
+/////////////////////////
 object FOMatchingSubsumption extends Subsumption {
   import leo.datastructures.{Literal, Subst}
   import leo.modules.calculus.matching.FOMatching
@@ -68,5 +74,24 @@ object FOMatchingSubsumption extends Subsumption {
         }
       }
     }
+  }
+}
+
+////////////////////////
+// Subsumption test by HO subsumption indexing
+/////////////////////////
+
+object HOIndexingSubsumption extends Subsumption {
+  type Index = Any // replace with correct type later
+  private var _index: Index = _
+
+  def getIndex: Index = _index
+  def setIndex(index: Index): Unit = {_index = index} // this will get set by Control.initIndexes
+  // Addition and deletion to the index itself will be invoked by Control.addIndexed and Control.removeFromIndex respectively.
+
+  def subsumes(cl1: Clause, cl2: Clause): Boolean = {
+    // here the index structure can be used to find subsumption partners.
+
+    ???
   }
 }

@@ -1099,6 +1099,7 @@ package indexingControl {
     final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
       FVIndexControl.init(initClauses.toSet)(sig)
       FOIndexControl.foIndexInit()
+      HOSubsumptionIndexControl.init(sig)
     }
     /** Insert cl to all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
@@ -1106,7 +1107,7 @@ package indexingControl {
     final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.insert(cl)
       FOIndexControl.index.insert(cl)
-      // TODO: more indexes ...
+      HOSubsumptionIndexControl.insert(cl)
     }
     /** Remove cl from all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
@@ -1114,8 +1115,27 @@ package indexingControl {
     final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.remove(cl)
       FOIndexControl.index.remove(cl)
-      // TODO: more indexes ...
+      HOSubsumptionIndexControl.remove(cl)
     }
+  }
+
+  object HOSubsumptionIndexControl {
+    import leo.modules.calculus.{HOIndexingSubsumption => Sub}
+    private final val index: Any = null // replace with correct type and instance later
+
+    final def init(implicit sig: Signature):Unit = {
+      // TODO the tree will be created, a init node will be inserted
+      Sub.setIndex(index)
+    }
+
+    final def insert(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
+      // index.insert(cl)
+    }
+
+    final def remove(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
+      // index.remove(cl)
+    }
+
   }
 
   object FVIndexControl {
