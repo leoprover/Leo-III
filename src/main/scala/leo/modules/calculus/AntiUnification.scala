@@ -81,22 +81,22 @@ object PatternAntiUnification extends AntiUnification {
       val hd = unsolved.head
       // hd is {X(xi): h(ti) = h(si)}
       val canApplyDecomp = Decomposition.canApply(hd)
-      if (canApplyDecomp.isDefined) {
+      if (canApplyDecomp.isDefined) { // See Decomposition for description
         val absVar = Bound.unapply(hd._1).get._2 // X
         val bound = hd._2 // xi
         val (newUnsolved, newVars, headSymbol) = Decomposition(vargen, hd, canApplyDecomp.get)
         // newUnsolved: {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn}
         // newVars: [Y1, ... Yn]
         // headsymbol: h
-        val approxBinding = λ(hd._2.map(_.ty))(mkTermApp(headSymbol, newVars.map(v => mkTermApp(v, bound))))
+        val approxBinding = λ(bound.map(_.ty))(mkTermApp(headSymbol, newVars.map(v => mkTermApp(v, bound))))
         // approxBinding: λxi.h(Y1(xi), ... Yn(xi))
         val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi.h(Y1(xi), ... Yn(xi))}
         phase1(vargen, newUnsolved ++ unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
       } else {
         val canApplyAbstraction = Abstraction.canApply(hd)
-        if (canApplyAbstraction.isDefined) {
+        if (canApplyAbstraction.isDefined) { // See Abstraction for description
           val absVar = Bound.unapply(hd._1).get._2 // X
-          val newUnsolved = Abstraction(vargen, hd) // {X'(xi,y): s = t}
+          val newUnsolved = Abstraction(vargen, hd, canApplyAbstraction.get) // {X'(xi,y): s = t}
           val newVar = newUnsolved._1 // X'
           val bound = newUnsolved._2 // yi,y
           val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, bound)) // λxi,y.X'(xi,y)
@@ -110,12 +110,14 @@ object PatternAntiUnification extends AntiUnification {
     }
   }
 
+  /** Exhaustively applies Solve. */
   private final def phase2(vargen: FreshVarGen,
                            unsolved: Unsolved,
                            solved: Solved, partialSubst: FullSubst): (Solved, FullSubst) = {
     ???
   }
 
+  /** Exhaustively applies Merge. */
   private final def phase3(vargen: FreshVarGen,
                            solved: Solved,
                            partialSubst: FullSubst): ((Term, Term), FullSubst) = {
@@ -123,12 +125,13 @@ object PatternAntiUnification extends AntiUnification {
   }
 
   /**
-    * {X(xi): h(ti) = h(si)} U A; S; sigma =>
-    *   {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn} U A; S; sigma{X <- λxi.h(Y1(xi), ... Yn(xi))}
+    * {X(xi): h(ti) = h(si)} U A; S; σ =>
+    *   {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn} U A; S; σ{X <- λxi.h(Y1(xi), ... Yn(xi))}
     *   if h is a constant of h in xi, Yi are fresh.
     */
   object Decomposition {
     type DecompHint = (Term, Seq[Term], Seq[Term])
+    /** Returns an appropriate hint if both terms in `eq` are application with same head symbol. */
     final def canApply(eq: Eq): Option[DecompHint] = { // TODO: Generalize to polymorphism
       import leo.datastructures.Term.{TermApp, Symbol, Bound}
       val left = eq._3; val right = eq._4
@@ -148,10 +151,11 @@ object PatternAntiUnification extends AntiUnification {
     }
     /** Returns ({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)*/
     final def apply(vargen: FreshVarGen, eq: Eq, hint: DecompHint): (Unsolved, Seq[Term], Term) = {
+      import leo.datastructures.Type.mkFunType
       val headSymbol = hint._1; val args1 = hint._2; val args2 = hint._3
       assert(args1.length == args2.length)
       val bound = eq._2
-      val freshAbstractionVars = args1.map(t => vargen(t.ty))
+      val freshAbstractionVars = args1.map(t => vargen(mkFunType(bound.map(_.ty),t.ty)))
       val newEqs = freshAbstractionVars.zip(args1.zip(args2)).map {case (variable, (arg1, arg2)) =>
         (variable, bound, arg1, arg2)
       }
@@ -159,6 +163,12 @@ object PatternAntiUnification extends AntiUnification {
     }
   }
 
+  /**
+    * {{{ {X(xi): λy.t = λz.s} U A; S; σ =>
+    *   {X'(xi,y): t = s{z <- y}} U A; S; σ{X <- λxi,y.X'(xi,y)} }}}
+    *   where X' is fresh.
+    * @note Modified since we use a nameless representation, renaming of z in λz.s is this unnecessary.
+    */
   object Abstraction {
     type AbstractionHint = (Type, Term, Term)
     final def canApply(eq: Eq): Option[AbstractionHint] = {
@@ -173,7 +183,18 @@ object PatternAntiUnification extends AntiUnification {
         case _ => None
       }
     }
-    final def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
+    final def apply(vargen: FreshVarGen, eq: Eq, hint: AbstractionHint): Eq = {
+      import leo.datastructures.Term.{Bound, mkBound}
+      import leo.datastructures.Type.mkFunType
+      val bound = eq._2; val abstractionType = hint._1
+      val newLeft = hint._2; val newRight = hint._3
+      val newBound = bound.map { t =>
+        val (ty, idx) = Bound.unapply(t).get
+        mkBound(ty, idx+1)
+      } :+ mkBound(abstractionType, 1)
+      val freshAbstractionVar = vargen(mkFunType(newBound.map(_.ty),newLeft.ty))
+      (freshAbstractionVar, newBound, newLeft, newRight)
+    }
   }
 
   object Solve {
