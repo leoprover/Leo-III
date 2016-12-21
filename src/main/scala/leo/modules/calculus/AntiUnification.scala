@@ -80,10 +80,11 @@ object PatternAntiUnification extends AntiUnification {
     else {
       val hd = unsolved.head
       // hd is {X(xi): h(ti) = h(si)}
-      if (Decomposition.canApply(hd)) {
+      val canApplyDecomp = Decomposition.canApply(hd)
+      if (canApplyDecomp.isDefined) {
         val absVar = Bound.unapply(hd._1).get._2 // X
         val bound = hd._2 // xi
-        val (newUnsolved, newVars, headSymbol) = Decomposition(vargen, hd)
+        val (newUnsolved, newVars, headSymbol) = Decomposition(vargen, hd, canApplyDecomp.get)
         // newUnsolved: {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn}
         // newVars: [Y1, ... Yn]
         // headsymbol: h
@@ -124,29 +125,40 @@ object PatternAntiUnification extends AntiUnification {
     *   if h is a constant of h in xi, Yi are fresh.
     */
   object Decomposition {
-    def canApply(eq: Eq): Boolean = {
-      import leo.datastructures.Term.{∙, Symbol, Bound}
+    type DecompHint = (Term, Seq[Term], Seq[Term])
+    final def canApply(eq: Eq): Option[DecompHint] = { // TODO: Generalize to polymorphism
+      import leo.datastructures.Term.{TermApp, Symbol, Bound}
       val left = eq._3; val right = eq._4
       val bound = eq._2
       left match {
-        case hd ∙ args1 => right match {
-          case `hd` ∙ args2 =>
+        case TermApp(hd,args1) => right match {
+          case TermApp(`hd`,args2) =>
             hd match {
-              case Symbol(_) => true
-              case Bound(_,idx) if idx <= bound.size => true
-              case _ => false
+              case Symbol(_) => Some((hd, args1, args2))
+              case Bound(_,idx) if idx <= bound.size => Some((hd, args1, args2))
+              case _ => None
             }
-          case _ => false
+          case _ => None
         }
-        case _ => false
+        case _ => None
       }
     }
-    def apply(vargen: FreshVarGen, eq: Eq): (Unsolved, Seq[Term], Term) = ???
+    /** Returns ({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)*/
+    final def apply(vargen: FreshVarGen, eq: Eq, hint: DecompHint): (Unsolved, Seq[Term], Term) = {
+      val headSymbol = hint._1; val args1 = hint._2; val args2 = hint._3
+      assert(args1.length == args2.length)
+      val bound = eq._2
+      val freshAbstractionVars = args1.map(t => vargen(t.ty))
+      val newEqs = freshAbstractionVars.zip(args1.zip(args2)).map {case (variable, (arg1, arg2)) =>
+        (variable, bound, arg1, arg2)
+      }
+      (newEqs, freshAbstractionVars, headSymbol)
+    }
   }
 
   object Abstraction {
-    def canApply(eq: Eq): Boolean = ???
-    def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
+    final def canApply(eq: Eq): Boolean = ???
+    final def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
   }
 
   object Solve {
