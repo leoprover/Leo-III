@@ -89,10 +89,16 @@ object PatternAntiUnification extends AntiUnification {
         // headsymbol: h
         val approxBinding = λ(hd._2.map(_.ty))(mkTermApp(headSymbol, newVars.map(v => mkTermApp(v, bound))))
         // approxBinding: λxi.h(Y1(xi), ... Yn(xi))
-        phase1(vargen, newUnsolved ++ unsolved.tail, processed, partialSubst.comp(Subst.singleton(absVar, approxBinding)), partialTySubst)
+        val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi.h(Y1(xi), ... Yn(xi))}
+        phase1(vargen, newUnsolved ++ unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
       } else if (Abstraction.canApply(hd)) {
-        val result = Abstraction(vargen, hd)
-        phase1(vargen, result._1 +: unsolved.tail, processed, partialSubst, partialTySubst)
+        val absVar = Bound.unapply(hd._1).get._2 // X
+        val newUnsolved = Abstraction(vargen, hd) // {X'(xi,y): s = t}
+        val newVar = newUnsolved._1 // X'
+        val bound = newUnsolved._2 // yi,y
+        val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, bound)) // λxi,y.X'(xi,y)
+        val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi,y.X'(xi,y)}
+        phase1(vargen, newUnsolved +: unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
       } else {
         phase1(vargen, unsolved.tail, hd +: processed, partialSubst, partialTySubst)
       }
@@ -115,15 +121,32 @@ object PatternAntiUnification extends AntiUnification {
   /**
     * {X(xi): h(ti) = h(si)} U A; S; sigma =>
     *   {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn} U A; S; sigma{X <- λxi.h(Y1(xi), ... Yn(xi))}
+    *   if h is a constant of h in xi, Yi are fresh.
     */
   object Decomposition {
-    def canApply(eq: Eq): Boolean = ???
+    def canApply(eq: Eq): Boolean = {
+      import leo.datastructures.Term.{∙, Symbol, Bound}
+      val left = eq._3; val right = eq._4
+      val bound = eq._2
+      left match {
+        case hd ∙ args1 => right match {
+          case `hd` ∙ args2 =>
+            hd match {
+              case Symbol(_) => true
+              case Bound(_,idx) if idx <= bound.size => true
+              case _ => false
+            }
+          case _ => false
+        }
+        case _ => false
+      }
+    }
     def apply(vargen: FreshVarGen, eq: Eq): (Unsolved, Seq[Term], Term) = ???
   }
 
   object Abstraction {
     def canApply(eq: Eq): Boolean = ???
-    def apply(vargen: FreshVarGen, eq: Eq): (Eq, Term) = ???
+    def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
   }
 
   object Solve {
