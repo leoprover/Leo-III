@@ -92,16 +92,19 @@ object PatternAntiUnification extends AntiUnification {
         // approxBinding: λxi.h(Y1(xi), ... Yn(xi))
         val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi.h(Y1(xi), ... Yn(xi))}
         phase1(vargen, newUnsolved ++ unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
-      } else if (Abstraction.canApply(hd)) {
-        val absVar = Bound.unapply(hd._1).get._2 // X
-        val newUnsolved = Abstraction(vargen, hd) // {X'(xi,y): s = t}
-        val newVar = newUnsolved._1 // X'
-        val bound = newUnsolved._2 // yi,y
-        val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, bound)) // λxi,y.X'(xi,y)
-        val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi,y.X'(xi,y)}
-        phase1(vargen, newUnsolved +: unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
       } else {
-        phase1(vargen, unsolved.tail, hd +: processed, partialSubst, partialTySubst)
+        val canApplyAbstraction = Abstraction.canApply(hd)
+        if (canApplyAbstraction.isDefined) {
+          val absVar = Bound.unapply(hd._1).get._2 // X
+          val newUnsolved = Abstraction(vargen, hd) // {X'(xi,y): s = t}
+          val newVar = newUnsolved._1 // X'
+          val bound = newUnsolved._2 // yi,y
+          val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, bound)) // λxi,y.X'(xi,y)
+          val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi,y.X'(xi,y)}
+          phase1(vargen, newUnsolved +: unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
+        } else {
+          phase1(vargen, unsolved.tail, hd +: processed, partialSubst, partialTySubst)
+        }
       }
 
     }
@@ -157,7 +160,19 @@ object PatternAntiUnification extends AntiUnification {
   }
 
   object Abstraction {
-    final def canApply(eq: Eq): Boolean = ???
+    type AbstractionHint = (Type, Term, Term)
+    final def canApply(eq: Eq): Option[AbstractionHint] = {
+      import leo.datastructures.Term.:::>
+      val left = eq._3; val right = eq._4
+      left match {
+        case ty :::> bodyLeft => right match {
+          case ty2 :::> bodyRight => assert(ty == ty2)
+            Some((ty, bodyLeft, bodyRight))
+          case _ => None
+        }
+        case _ => None
+      }
+    }
     final def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
   }
 
