@@ -57,7 +57,7 @@ object PatternAntiUnification extends AntiUnification {
     // Exhaustively apply Decomp and Abstraction
     val (unsolved, partialSubst) = phase1(vargen, Seq((vargen(s.ty),Seq(),s,t)), Seq(), Subst.id, Subst.id)
     // Exhaustively apply Solve
-    val (solved, partialSubst2) = phase2(vargen, unsolved, Seq(), partialSubst)
+    val (solved, partialSubst2) = phase2(vargen, unsolved, Seq(), partialSubst._1, partialSubst._2)
     // Exhaustively apply Merge
     val (merged, (resultSubst, resultTySubst)) = phase3(vargen, solved, partialSubst2)
 
@@ -211,8 +211,25 @@ object PatternAntiUnification extends AntiUnification {
     }
   }
 
+  /**
+    * {{{ {X(xi): t = s} U A; S; σ =>
+    *   A; {Y(yi): t = s} U S; σ{X <- λxi.Y(yi)} }}}
+    *   where `Y` is fresh and the `yi` are those `xi` that occur free in t or s.
+    */
   object Solve {
-    def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
+    final def apply(vargen: FreshVarGen, eq: Eq): Eq = {
+      import leo.datastructures.Term.Bound
+      import leo.datastructures.Type.mkFunType
+      val absVar = eq._1; val bound = eq._2
+      val left = eq._3; val right = eq._4
+      assert(left.headSymbol != right.headSymbol
+        || (Bound.unapply(left.headSymbol).isDefined
+            && Bound.unapply(left.headSymbol).get._2 > bound.size))
+      val boundOccurrences = left.freeVars union right.freeVars
+      val newBound: Seq[Term] = bound.filter (boundOccurrences.contains)
+      val freshAbstractionVar = vargen(mkFunType(newBound.map(_.ty),left.ty))
+      (freshAbstractionVar, newBound, left, right)
+    }
   }
 
   object Merge {
