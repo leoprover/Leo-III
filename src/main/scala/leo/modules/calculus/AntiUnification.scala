@@ -75,7 +75,7 @@ object PatternAntiUnification extends AntiUnification {
   private final def phase1(vargen: FreshVarGen,
                            unsolved: Unsolved,
                            processed: Unsolved, partialSubst: Subst, partialTySubst: Subst): (Unsolved, FullSubst) = {
-    import Term.{Bound, mkBound, λ, mkTermApp}
+    import Term.{Bound, λ, mkTermApp}
     if (unsolved.isEmpty) (processed, (partialSubst, partialTySubst))
     else {
       val hd = unsolved.head
@@ -111,10 +111,24 @@ object PatternAntiUnification extends AntiUnification {
   }
 
   /** Exhaustively applies Solve. */
+  @tailrec
   private final def phase2(vargen: FreshVarGen,
                            unsolved: Unsolved,
-                           solved: Solved, partialSubst: FullSubst): (Solved, FullSubst) = {
-    ???
+                           solved: Solved, partialSubst: Subst, partialTySubst: Subst): (Solved, FullSubst) = {
+    import Term.{Bound, λ, mkTermApp}
+    if (unsolved.isEmpty) (solved, (partialSubst, partialTySubst))
+    else {
+      val hd = unsolved.head
+      // hd is {X(xi): s = t}
+      val absVar = Bound.unapply(hd._1).get._2; val bound = hd._2 // X and xi respectively
+      // No need for canApply since the remaining equations should be of the form s = t where
+      // head(s) != head(t) or head(s) = head(t) = Z not in xi
+      val newSolved = Solve(vargen, hd) // {Y(yi): s = t}
+      val newVar = newSolved._1; val newBound = newSolved._2  // Y and yi respectively
+      val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, newBound)) // λxi.Y(yi)
+      val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi.Y(yi)}
+      phase2(vargen, unsolved.tail, newSolved +: solved, partialSubst.comp(bindingSubst), partialTySubst)
+    }
   }
 
   /** Exhaustively applies Merge. */
@@ -125,9 +139,9 @@ object PatternAntiUnification extends AntiUnification {
   }
 
   /**
-    * {X(xi): h(ti) = h(si)} U A; S; σ =>
-    *   {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn} U A; S; σ{X <- λxi.h(Y1(xi), ... Yn(xi))}
-    *   if h is a constant of h in xi, Yi are fresh.
+    * {{{{X(xi): h(ti) = h(si)} U A; S; σ =>
+    *   {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn} U A; S; σ{X <- λxi.h(Y1(xi), ... Yn(xi))} }}}
+    *   if `h` is a constant or `h` in `xi`, the `Yi` are fresh.
     */
   object Decomposition {
     type DecompHint = (Term, Seq[Term], Seq[Term])
@@ -149,7 +163,7 @@ object PatternAntiUnification extends AntiUnification {
         case _ => None
       }
     }
-    /** Returns ({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)*/
+    /** Returns `({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)`*/
     final def apply(vargen: FreshVarGen, eq: Eq, hint: DecompHint): (Unsolved, Seq[Term], Term) = {
       import leo.datastructures.Type.mkFunType
       val headSymbol = hint._1; val args1 = hint._2; val args2 = hint._3
@@ -198,7 +212,7 @@ object PatternAntiUnification extends AntiUnification {
   }
 
   object Solve {
-
+    def apply(vargen: FreshVarGen, eq: Eq): Eq = ???
   }
 
   object Merge {
