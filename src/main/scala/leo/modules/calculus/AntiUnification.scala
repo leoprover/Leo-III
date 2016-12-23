@@ -59,7 +59,7 @@ object PatternAntiUnification extends AntiUnification {
     // Exhaustively apply Solve
     val (solved, partialSubst2) = phase2(vargen, unsolved, Seq(), partialSubst._1, partialSubst._2)
     // Exhaustively apply Merge
-    val (merged, (resultSubst, resultTySubst)) = phase3(vargen, solved, partialSubst2)
+    val (merged, (resultSubst, resultTySubst)) = phase3(vargen, solved, partialSubst2._1, partialSubst2._2)
 
 
     import leo.datastructures.TermFront
@@ -74,7 +74,7 @@ object PatternAntiUnification extends AntiUnification {
   @tailrec
   private final def phase1(vargen: FreshVarGen,
                            unsolved: Unsolved,
-                           processed: Unsolved, partialSubst: Subst, partialTySubst: Subst): (Unsolved, FullSubst) = {
+                           processed: Unsolved, partialSubst: TermSubst, partialTySubst: TypeSubst): (Unsolved, FullSubst) = {
     import Term.{Bound, λ, mkTermApp}
     if (unsolved.isEmpty) (processed, (partialSubst, partialTySubst))
     else {
@@ -114,7 +114,7 @@ object PatternAntiUnification extends AntiUnification {
   @tailrec
   private final def phase2(vargen: FreshVarGen,
                            unsolved: Unsolved,
-                           solved: Solved, partialSubst: Subst, partialTySubst: Subst): (Solved, FullSubst) = {
+                           solved: Solved, partialSubst: TermSubst, partialTySubst: TypeSubst): (Solved, FullSubst) = {
     import Term.{Bound, λ, mkTermApp}
     if (unsolved.isEmpty) (solved, (partialSubst, partialTySubst))
     else {
@@ -134,7 +134,7 @@ object PatternAntiUnification extends AntiUnification {
   /** Exhaustively applies Merge. */
   private final def phase3(vargen: FreshVarGen,
                            solved: Solved,
-                           partialSubst: FullSubst): ((Term, Term), FullSubst) = {
+                           partialSubst: TermSubst, partialTySubst: TypeSubst): ((Term, Term), FullSubst) = {
     ???
   }
 
