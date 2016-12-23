@@ -1,7 +1,7 @@
 /*  This is a grammar file for TPTP language Version 6.4.0.7
  *  Use ANTLR on this file to obtain the parser.
  *  The BNF specification of the TPTP language was provided by Geoff Sutcliffe.
- *  The grammar file is created by Alexander Steen with help of Tobias Gleißner.
+ *  The grammar file is created by Alexander Steen and Tobias Gleißner.
  *  Date: Dec 2016
  */
 grammar tptp;
@@ -67,18 +67,28 @@ fragment Dollar : '$';
 
 Or: '|';
 And: '&';
-Not: '~';
 Iff : '<=>';
 Impl : '=>';
 If: '<=';
 Niff: '<~>';
 Nor: '~|';
 Nand: '~&';
-Forall: '!';
-Exists: '?';
-App: '@';
-Infix_equality : '=';
+Not: '~';
+ForallComb: '!!';
+TyForall: '!>';
 Infix_inequality : '!=';
+Infix_equality : '=';
+Forall: '!';
+ExistsComb: '??';
+TyExists: '?*';
+Exists: '?';
+Lambda: '^';
+ChoiceComb: '@@+';
+Choice: '@+';
+DescriptionComb: '@@-';
+Description: '@-';
+EqComb: '@=';
+App: '@';
 Assignment: ':=';
 
 // %----Numbers. Signs are made part of the same token here.
@@ -391,11 +401,11 @@ thf_conn_term : thf_pair_connective | assoc_connective | thf_unary_connective;
 // <thf_unary_connective> ::= <unary_connective> | <th1_unary_connective>
 // <th1_unary_connective> ::= !! | ?? | @@+ | @@- | @=
 thf_quantifier : fol_quantifier | th0_quantifier | th1_quantifier;
-th0_quantifier: '^' | '@+' | '@-';
-th1_quantifier: '!>' | '?*';
+th0_quantifier: Lambda | Choice | Description;
+th1_quantifier: TyForall | TyExists;
 thf_pair_connective : Infix_equality | Infix_inequality | binary_connective | Assignment ;
 thf_unary_connective : unary_connective | th1_unary_connective;
-th1_unary_connective : '!!' | '??' | '@@+' | '@@-' | '@=';
+th1_unary_connective : ForallComb | ExistsComb | ChoiceComb | DescriptionComb | EqComb;
 
 // %----Types for THF and TFF
 // <defined_type>         ::= <atomic_defined_word>
@@ -442,7 +452,7 @@ tff_unitary_formula : tff_quantified_formula | tff_unary_formula | atomic_formul
 // <tff_conditional>      ::= $ite_f(<tff_logic_formula>,<tff_logic_formula>,
 //                            <tff_logic_formula>)
 tff_quantified_formula : fol_quantifier '[' tff_variable_list ']' ':' tff_unitary_formula;
-tff_variable_list : tff_variable | tff_variable ',' tff_variable_list;
+tff_variable_list : tff_variable (',' tff_variable)*;
 tff_variable : tff_typed_variable | variable;
 tff_typed_variable: variable ':' tff_atomic_type;
 tff_unary_formula: unary_connective tff_unitary_formula | fol_infix_unary;
@@ -467,15 +477,15 @@ tff_conditional: '$ite_f(' tff_logic_formula ',' tff_logic_formula ',' tff_logic
 tff_let : '$let_tf(' tff_let_term_defns ',' tff_formula ')'
         | '$let_ff(' tff_let_formula_defns ',' tff_formula ')';
 tff_let_term_defns : tff_let_term_defn | '[' tff_let_term_list ']';
-tff_let_term_list : tff_let_term_defn | tff_let_term_defn ',' tff_let_term_list;
-tff_let_term_defn : '!' '[' tff_variable_list ']' ':' tff_let_term_defn
+tff_let_term_list : tff_let_term_defn (',' tff_let_term_defn)*;
+tff_let_term_defn : Forall '[' tff_variable_list ']' ':' tff_let_term_defn
                   | tff_let_term_binding;
-tff_let_term_binding : plain_term '=' term | '(' tff_let_term_binding ')';
+tff_let_term_binding : plain_term Infix_equality term | '(' tff_let_term_binding ')';
 tff_let_formula_defns : tff_let_formula_defn | '[' tff_let_formula_list ']';
-tff_let_formula_list: tff_let_formula_defn | tff_let_formula_defn ',' tff_let_formula_list;
-tff_let_formula_defn: '!' '[' tff_variable_list ']' ':' tff_let_formula_defn
+tff_let_formula_list: tff_let_formula_defn (',' tff_let_formula_defn)*;
+tff_let_formula_defn: Forall '[' tff_variable_list ']' ':' tff_let_formula_defn
                     | tff_let_formula_binding;
-tff_let_formula_binding: plain_atomic_formula '<=>' tff_unitary_formula
+tff_let_formula_binding: plain_atomic_formula Iff tff_unitary_formula
                        | '(' tff_let_formula_binding ')';
                        
 // <tff_sequent>          ::= <tff_formula_tuple> <gentzen_arrow> 
@@ -557,7 +567,7 @@ fof_and_formula : fof_unitary_formula And fof_unitary_formula
 fof_unitary_formula : fof_quantified_formula | fof_unary_formula | atomic_formula
                     | '(' fof_logic_formula ')';
 fof_quantified_formula : fol_quantifier '[' fof_variable_list ']' ':' fof_unitary_formula;
-fof_variable_list : variable | variable ',' fof_variable_list;
+fof_variable_list : variable (',' variable)*;
 fof_unary_formula: unary_connective fof_unitary_formula | fol_infix_unary;
 
 //  <fof_sequent>          ::= <fof_formula_tuple> <gentzen_arrow> 
@@ -568,7 +578,7 @@ fof_unary_formula: unary_connective fof_unitary_formula | fol_infix_unary;
 //                             <fof_logic_formula>,<fof_formula_tuple_list>
 fof_sequent : fof_formula_tuple '>>' fof_formula_tuple | '(' fof_sequent ')';
 fof_formula_tuple : '[]' | '[' fof_formula_tuple_list ']';
-fof_formula_tuple_list: fof_logic_formula | fof_logic_formula ',' fof_formula_tuple_list;
+fof_formula_tuple_list: fof_logic_formula (',' fof_logic_formula)*;
 
 
 // <fol_infix_unary>      ::= <term> <infix_inequality> <term>
