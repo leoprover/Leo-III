@@ -167,8 +167,9 @@ object PatternAntiUnification extends AntiUnification {
     *   if `h` is a constant or `h` in `xi`, the `Yi` are fresh.
     */
   object Decomposition {
+    /** (head symbol, left args, right args) */
     type DecompHint = (Term, Seq[Term], Seq[Term])
-    /** Returns an appropriate hint if both terms in `eq` are application with same head symbol. */
+    /** Returns an appropriate [[Decomposition.DecompHint]] if [[Decomposition]] is applicable, `None` otherwise. */
     final def canApply(eq: Eq): Option[DecompHint] = { // TODO: Generalize to polymorphism
       import leo.datastructures.Term.{TermApp, Symbol, Bound}
       val left = eq._3; val right = eq._4
@@ -186,7 +187,9 @@ object PatternAntiUnification extends AntiUnification {
         case _ => None
       }
     }
-    /** Returns `({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)`*/
+    /** Returns `({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)`
+      * @param vargen
+      * @param hint The precomputed values from [[Decomposition#canApply()]].*/
     final def apply(vargen: FreshVarGen, eq: Eq, hint: DecompHint): (Unsolved, Seq[Term], Term) = {
       import leo.datastructures.Type.mkFunType
       val headSymbol = hint._1; val args1 = hint._2; val args2 = hint._3
@@ -204,10 +207,12 @@ object PatternAntiUnification extends AntiUnification {
     * {{{ {X(xi): λy.t = λz.s} U A; S; σ =>
     *   {X'(xi,y): t = s{z <- y}} U A; S; σ{X <- λxi,y.X'(xi,y)} }}}
     *   where X' is fresh.
-    * @note Modified since we use a nameless representation, renaming of z in λz.s is this unnecessary.
+    * @note Modified since we use a nameless representation, renaming of z in λz.s is thus unnecessary.
     */
   object Abstraction {
+    /** (Type of abstracted variable, body of left abstraction, body of right abstraction) */
     type AbstractionHint = (Type, Term, Term)
+    /** Returns an [[Abstraction.AbstractionHint]] if [[Abstraction]] is applicable, `None` otherwise. */
     final def canApply(eq: Eq): Option[AbstractionHint] = {
       import leo.datastructures.Term.:::>
       val left = eq._3; val right = eq._4
@@ -220,16 +225,23 @@ object PatternAntiUnification extends AntiUnification {
         case _ => None
       }
     }
+    /** Return X'(xi,y): t = s{z <- y}, adjusted to nameless representation.
+      * @param vargen
+      * @param hint The already (from [[Abstraction#canApply]]) calculated details for the computation. */
     final def apply(vargen: FreshVarGen, eq: Eq, hint: AbstractionHint): Eq = {
       import leo.datastructures.Term.{Bound, mkBound}
       import leo.datastructures.Type.mkFunType
       val bound = eq._2; val abstractionType = hint._1
+      // bound is `xi`, abstractionType is the type of `y`
       val newLeft = hint._2; val newRight = hint._3
+      // newLeft and newRight are the bodies of the lambda abstractions (i.e. t and s)
       val newBound = bound.map { t =>
         val (ty, idx) = Bound.unapply(t).get
         mkBound(ty, idx+1)
       } :+ mkBound(abstractionType, 1)
+      // newBound is `xi,y`: lift all `xi` by one and add var to it.
       val freshAbstractionVar = vargen(mkFunType(newBound.map(_.ty),newLeft.ty))
+      // freshAbstractionVar is `X'`
       (freshAbstractionVar, newBound, newLeft, newRight)
     }
   }
@@ -243,14 +255,15 @@ object PatternAntiUnification extends AntiUnification {
     final def apply(vargen: FreshVarGen, eq: Eq): Eq = {
       import leo.datastructures.Term.Bound
       import leo.datastructures.Type.mkFunType
-      val absVar = eq._1; val bound = eq._2
-      val left = eq._3; val right = eq._4
+      val bound = eq._2; val left = eq._3; val right = eq._4
+      // bound is `{xi}`, left is `t`, right is `s`
       assert(left.headSymbol != right.headSymbol
         || (Bound.unapply(left.headSymbol).isDefined
             && Bound.unapply(left.headSymbol).get._2 > bound.size))
       val boundOccurrences = left.freeVars union right.freeVars
       val newBound: Seq[Term] = bound.filter (boundOccurrences.contains)
-      val freshAbstractionVar = vargen(mkFunType(newBound.map(_.ty),left.ty))
+      // newBound is `yi`: those `xi` which occur in left union right.
+      val freshAbstractionVar = vargen(mkFunType(newBound.map(_.ty),left.ty)) // Y
       (freshAbstractionVar, newBound, left, right)
     }
   }
