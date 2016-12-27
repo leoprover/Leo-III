@@ -43,7 +43,6 @@ object PatternAntiUnification extends AntiUnification {
   }
 
   final def antiUnify0(vargen: FreshVarGen, s: Term, t: Term): Result = {
-    val freshAbstractionVar = vargen(s.ty)
     solve(vargen, s, t)
   }
 
@@ -54,8 +53,14 @@ object PatternAntiUnification extends AntiUnification {
   type Solved = Unsolved
   private final def solve(vargen: FreshVarGen,
                           s: Term, t: Term): Result = {
+    leo.Out.debug(s"Solve ${s.pretty} = ${t.pretty}")
     // Exhaustively apply Decomp and Abstraction
     val (unsolved, partialSubst) = phase1(vargen, Seq((vargen(s.ty),Seq(),s,t)), Seq(), Subst.id, Subst.id)
+    leo.Out.debug(s"Result of phase1:")
+    leo.Out.debug(s"unsolved:\n\t${unsolved.map {case (va,de,l,r) =>
+      s"${va.pretty}(${de.map(_.pretty).mkString(",")}):" +
+        s"${l.pretty} = ${r.pretty}"}.mkString("\n\t")}")
+    leo.Out.debug(s"partialSubst: ${partialSubst._1.pretty}")
     // Exhaustively apply Solve
     val (solved, partialSubst2) = phase2(vargen, unsolved, Seq(), partialSubst._1, partialSubst._2)
     // Exhaustively apply Merge
@@ -76,33 +81,41 @@ object PatternAntiUnification extends AntiUnification {
                            unsolved: Unsolved,
                            processed: Unsolved, partialSubst: TermSubst, partialTySubst: TypeSubst): (Unsolved, FullSubst) = {
     import Term.{Bound, λ, mkTermApp}
-    if (unsolved.isEmpty) (processed, (partialSubst, partialTySubst))
+    if (unsolved.isEmpty) (processed, (partialSubst.normalize, partialTySubst))
     else {
       val hd = unsolved.head
       // hd is {X(xi): h(ti) = h(si)}
+      leo.Out.debug(s"subst: ${partialSubst.normalize.pretty}")
+      leo.Out.debug(s"solve: ${hd._1.pretty}(${hd._2.map(_.pretty).mkString(",")}):" +
+          s"${hd._3.pretty} = ${hd._4.pretty}")
+      assert(Term.wellTyped(hd._3))
+      assert(Term.wellTyped(hd._4))
       val canApplyDecomp = Decomposition.canApply(hd)
       if (canApplyDecomp.isDefined) { // See Decomposition for description
+        leo.Out.debug("Apply Decomp")
         val absVar = Bound.unapply(hd._1).get._2 // X
         val bound = hd._2 // xi
         val (newUnsolved, newVars, headSymbol) = Decomposition(vargen, hd, canApplyDecomp.get)
         // newUnsolved: {Y1(xi): t1 = s1, ..., Yn(xi): tn = sn}
         // newVars: [Y1, ... Yn]
         // headsymbol: h
-        val approxBinding = λ(bound.map(_.ty))(mkTermApp(headSymbol, newVars.map(v => mkTermApp(v, bound))))
+        val approxBinding = λ(bound.map(_.ty))(mkTermApp(headSymbol, newVars.map(v => mkTermApp(v.lift(bound.size), bound))))
         // approxBinding: λxi.h(Y1(xi), ... Yn(xi))
         val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi.h(Y1(xi), ... Yn(xi))}
         phase1(vargen, newUnsolved ++ unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
       } else {
         val canApplyAbstraction = Abstraction.canApply(hd)
         if (canApplyAbstraction.isDefined) { // See Abstraction for description
+          leo.Out.debug("Apply Abstraction")
           val absVar = Bound.unapply(hd._1).get._2 // X
           val newUnsolved = Abstraction(vargen, hd, canApplyAbstraction.get) // {X'(xi,y): s = t}
           val newVar = newUnsolved._1 // X'
           val bound = newUnsolved._2 // yi,y
-          val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, bound)) // λxi,y.X'(xi,y)
+          val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar.lift(bound.size), bound)) // λxi,y.X'(xi,y)
           val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi,y.X'(xi,y)}
           phase1(vargen, newUnsolved +: unsolved.tail, processed, partialSubst.comp(bindingSubst), partialTySubst)
         } else {
+          leo.Out.debug("Apply Nothing")
           phase1(vargen, unsolved.tail, hd +: processed, partialSubst, partialTySubst)
         }
       }
