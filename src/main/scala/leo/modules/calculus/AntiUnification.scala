@@ -63,6 +63,11 @@ object PatternAntiUnification extends AntiUnification {
     leo.Out.debug(s"partialSubst: ${partialSubst._1.pretty}")
     // Exhaustively apply Solve
     val (solved, partialSubst2) = phase2(vargen, unsolved, Seq(), partialSubst._1, partialSubst._2)
+    leo.Out.debug(s"Result of phase2:")
+    leo.Out.debug(s"solved:\n\t${solved.map {case (va,de,l,r) =>
+      s"${va.pretty}(${de.map(_.pretty).mkString(",")}):" +
+        s"${l.pretty} = ${r.pretty}"}.mkString("\n\t")}")
+    leo.Out.debug(s"partialSubst: ${partialSubst2._1.pretty}")
     // Exhaustively apply Merge
     val (merged, (resultSubst, resultTySubst)) = phase3(vargen, solved, partialSubst2._1, partialSubst2._2)
 
@@ -129,9 +134,14 @@ object PatternAntiUnification extends AntiUnification {
                            unsolved: Unsolved,
                            solved: Solved, partialSubst: TermSubst, partialTySubst: TypeSubst): (Solved, FullSubst) = {
     import Term.{Bound, λ, mkTermApp}
-    if (unsolved.isEmpty) (solved, (partialSubst, partialTySubst))
+    if (unsolved.isEmpty) (solved, (partialSubst.normalize, partialTySubst))
     else {
       val hd = unsolved.head
+      leo.Out.debug(s"subst: ${partialSubst.normalize.pretty}")
+      leo.Out.debug(s"solve: ${hd._1.pretty}(${hd._2.map(_.pretty).mkString(",")}):" +
+        s"${hd._3.pretty} = ${hd._4.pretty}")
+      assert(Term.wellTyped(hd._3))
+      assert(Term.wellTyped(hd._4))
       // hd is {X(xi): s = t}
       val absVar = Bound.unapply(hd._1).get._2; val bound = hd._2 // X and xi respectively
       // No need for canApply since the remaining equations should be of the form s = t where
