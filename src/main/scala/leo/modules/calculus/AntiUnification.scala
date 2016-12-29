@@ -1,9 +1,7 @@
 package leo.modules.calculus
 
 import leo.datastructures.{Subst, Term}
-
 import scala.annotation.tailrec
-
 
 /**
   * General trait for anti-unification algorithms. For general higher order terms
@@ -158,6 +156,12 @@ object PatternAntiUnification extends AntiUnification {
   private final def phase3(vargen: FreshVarGen,
                            solved: Solved,
                            partialSubst: TermSubst, partialTySubst: TypeSubst): ((Term, Term), FullSubst) = {
+    // Traverse all terms in solved to get unique representation (cf. Lemma 4 in paper)
+
+    // partition to alpha-equivalent terms
+
+    // apply merge in each equivalence class
+
     ???
   }
 
@@ -188,7 +192,7 @@ object PatternAntiUnification extends AntiUnification {
       }
     }
     /** Returns `({Y1(xi): t1 = s1, ..., Yn(xi): tn=sn}, {Y1,..Yn}, h)`
-      * @param vargen
+      * @param vargen Vargen
       * @param hint The precomputed values from [[Decomposition#canApply()]].*/
     final def apply(vargen: FreshVarGen, eq: Eq, hint: DecompHint): (Unsolved, Seq[Term], Term) = {
       import leo.datastructures.Type.mkFunType
@@ -226,7 +230,7 @@ object PatternAntiUnification extends AntiUnification {
       }
     }
     /** Return X'(xi,y): t = s{z <- y}, adjusted to nameless representation.
-      * @param vargen
+      * @param vargen Vargen
       * @param hint The already (from [[Abstraction#canApply]]) calculated details for the computation. */
     final def apply(vargen: FreshVarGen, eq: Eq, hint: AbstractionHint): Eq = {
       import leo.datastructures.Term.{Bound, mkBound}
@@ -268,7 +272,12 @@ object PatternAntiUnification extends AntiUnification {
     }
   }
 
+  /**
+    * {{{A; {X(xi): t1 = t2, Y(yi): s1 = s2} U S; σ =>
+    *   A; {X(xi): t1 = t2} U S; σ{Y <- λyi.X(xiπ)} }}}
+    *   where π: {xi} -> {yi} is a bijection extended as a substitution  with `t1π = s1` and `t2π = s2`.
+    */
   object Merge {
-
+    final def apply(eq1: Eq, eq2: Eq): Any = ???
   }
 }
