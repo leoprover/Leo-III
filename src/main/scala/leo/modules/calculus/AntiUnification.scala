@@ -157,7 +157,7 @@ object PatternAntiUnification extends AntiUnification {
   /** Exhaustively applies Merge. */
   private final def phase3(vargen: FreshVarGen,
                            solved: Solved,
-                           partialSubst: TermSubst, partialTySubst: TypeSubst): (Seq[Term], FullSubst) = {
+                           partialSubst: TermSubst, partialTySubst: TypeSubst): (Seq[Eq], FullSubst) = {
     // Traverse all terms in solved to get unique representation (cf. Lemma 4 in paper)
     // partition to alpha-equivalent terms
     /////////////////////////////
@@ -182,7 +182,7 @@ object PatternAntiUnification extends AntiUnification {
     // apply merge in each equivalence class
     /////////////////////////////
     val canonIt = partition.keys.iterator
-    var resultTerms: Seq[Term] = Seq()
+    var resultEqs: Seq[Eq] = Seq()
     var resultTermSubst: TermSubst = partialSubst; var resultTypeSubst: TypeSubst = partialTySubst
     import Term.{Bound, λ, mkTermApp}
     while (canonIt.hasNext) {
@@ -197,14 +197,15 @@ object PatternAntiUnification extends AntiUnification {
         val (eq2, canonizer2) = eqs.head // // eq2 is {Y(yi): s1 = s2}
         val absVar2 = Bound.unapply(eq2._1).get._2 // Y as int
         val bound2 = eq2._2 // yi
-        val res = Merge(eq1, canonizer1, eq2, canonizer2)
-        val approxBinding = λ(bound2.map(_.ty))(mkTermApp(absVar1.lift(bound2.size), ???)) // λyi.X(xiπ)
+        val bindingArgs = Merge(eq1, canonizer1, eq2, canonizer2)
+        val approxBinding = λ(bound2.map(_.ty))(mkTermApp(absVar1.lift(bound2.size), bindingArgs)) // λyi.X(xiπ)
         val bindingSubst = Subst.singleton(absVar2, approxBinding) // {Y -> λyi.X(xiπ)}
         resultTermSubst = resultTermSubst.comp(bindingSubst)
         eqs = eqs.tail
       }
+      resultEqs = eq1 +: resultEqs
     }
-    (resultTerms, (resultTermSubst, resultTypeSubst))
+    (resultEqs, (resultTermSubst, resultTypeSubst))
   }
 
   /**
@@ -320,13 +321,12 @@ object PatternAntiUnification extends AntiUnification {
     *   where π: {xi} -> {yi} is a bijection extended as a substitution  with `t1π = s1` and `t2π = s2`.
     */
   object Merge {
-    final def apply(eq1: Eq, canonizer1: Canonizer, eq2: Eq, canonizer2: Canonizer): Any = ???
+    final def apply(eq1: Eq, canonizer1: Canonizer, eq2: Eq, canonizer2: Canonizer): Seq[Term] = ???
 
     type Canonizer = Map[Int, Int]
     final protected[calculus] def canonize(eq: Eq): (Term, Term, Canonizer) = {
       leo.Out.debug(s"###")
       val left = eq._3; val right = eq._4; val depth = eq._2.size
-      leo.Out.debug(s"depth: ${depth}")
       leo.Out.debug(s"left: ${left.pretty}")
       leo.Out.debug(s"right: ${right.pretty}")
       val (canonLeft, canonizer) = Merge.canonizeTerm(left, depth)
