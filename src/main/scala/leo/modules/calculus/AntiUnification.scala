@@ -1,6 +1,8 @@
 package leo.modules.calculus
 
 import leo.datastructures.{Subst, Term}
+import leo.modules.calculus.PatternAntiUnification.Merge.Canonizer
+
 import scala.annotation.tailrec
 
 /**
@@ -155,14 +157,54 @@ object PatternAntiUnification extends AntiUnification {
   /** Exhaustively applies Merge. */
   private final def phase3(vargen: FreshVarGen,
                            solved: Solved,
-                           partialSubst: TermSubst, partialTySubst: TypeSubst): ((Term, Term), FullSubst) = {
+                           partialSubst: TermSubst, partialTySubst: TypeSubst): (Seq[Term], FullSubst) = {
     // Traverse all terms in solved to get unique representation (cf. Lemma 4 in paper)
-
     // partition to alpha-equivalent terms
-
+    /////////////////////////////
+    var partition: Map[(Term, Term), Set[(Eq, Canonizer)]] = Map()
+    val solvedIt = solved.iterator
+    leo.Out.debug(s"phase 3")
+    while (solvedIt.hasNext) {
+      val eq = solvedIt.next()
+      val (l,r,canonizer) = Merge.canonize(eq)
+      if (partition.contains((l,r)))
+        partition = partition + ((l,r) -> (partition((l,r)) + ((eq, canonizer))))
+      else
+        partition = partition + ((l,r) -> Set((eq, canonizer)))
+    }
+    leo.Out.debug(s"Partition finished:")
+    partition.foreach {case ((l,r),set) =>
+        leo.Out.debug(s"canon left: ${l.pretty}")
+      leo.Out.debug(s"canon right: ${r.pretty}")
+        leo.Out.debug(s"eqs: ${set.size}")
+    }
+    /////////////////////////////
     // apply merge in each equivalence class
-
-    ???
+    /////////////////////////////
+    val canonIt = partition.keys.iterator
+    var resultTerms: Seq[Term] = Seq()
+    var resultTermSubst: TermSubst = partialSubst; var resultTypeSubst: TypeSubst = partialTySubst
+    import Term.{Bound, λ, mkTermApp}
+    while (canonIt.hasNext) {
+      val canon = canonIt.next()
+      var eqs = partition(canon)
+      assert(eqs.nonEmpty)
+      val (eq1, canonizer1) = eqs.head // eq1 is {X(xi): t1 = t2}
+      val absVar1 = eq1._1 // X
+      // loop over the remaining representatives of this class and reduce them to eq1
+      eqs = eqs.tail
+      while (eqs.nonEmpty) {
+        val (eq2, canonizer2) = eqs.head // // eq2 is {Y(yi): s1 = s2}
+        val absVar2 = Bound.unapply(eq2._1).get._2 // Y as int
+        val bound2 = eq2._2 // yi
+        val res = Merge(eq1, canonizer1, eq2, canonizer2)
+        val approxBinding = λ(bound2.map(_.ty))(mkTermApp(absVar1.lift(bound2.size), ???)) // λyi.X(xiπ)
+        val bindingSubst = Subst.singleton(absVar2, approxBinding) // {Y -> λyi.X(xiπ)}
+        resultTermSubst = resultTermSubst.comp(bindingSubst)
+        eqs = eqs.tail
+      }
+    }
+    (resultTerms, (resultTermSubst, resultTypeSubst))
   }
 
   /**
@@ -278,6 +320,63 @@ object PatternAntiUnification extends AntiUnification {
     *   where π: {xi} -> {yi} is a bijection extended as a substitution  with `t1π = s1` and `t2π = s2`.
     */
   object Merge {
-    final def apply(eq1: Eq, eq2: Eq): Any = ???
+    final def apply(eq1: Eq, canonizer1: Canonizer, eq2: Eq, canonizer2: Canonizer): Any = ???
+
+    type Canonizer = Map[Int, Int]
+    final protected[calculus] def canonize(eq: Eq): (Term, Term, Canonizer) = {
+      leo.Out.debug(s"###")
+      val left = eq._3; val right = eq._4; val depth = eq._2.size
+      leo.Out.debug(s"depth: ${depth}")
+      leo.Out.debug(s"left: ${left.pretty}")
+      leo.Out.debug(s"right: ${right.pretty}")
+      val (canonLeft, canonizer) = Merge.canonizeTerm(left, depth)
+      val (canonRight, finalCanonzier) = Merge.canonizeTerm(right, depth, canonizer)
+      leo.Out.debug(s"canon left: ${canonLeft.pretty}")
+      leo.Out.debug(s"canon right: ${canonRight.pretty}")
+      (canonLeft, canonRight, finalCanonzier)
+    }
+
+    final private def canonizeTerm(term: Term, depth: Int, canonizer: Canonizer = Map()): (Term, Canonizer) =
+      canonizeTerm0(term, depth, 0, canonizer)
+
+    final private def canonizeTerm0(term: Term, originalDepth: Int, extraDepth: Int,
+                                   canonizer: Canonizer): (Term, Canonizer) = {
+      import leo.datastructures.Term._
+      term match {
+          // if bound: rename if necessary
+        case Bound(ty,scope) if scope > extraDepth && scope <= originalDepth =>
+          if (canonizer.contains(scope))
+            (mkBound(ty, canonizer(scope)), canonizer) // Swap entry to the one saved in the canonization substitution
+          else
+            (mkBound(ty, canonizer.size+1), canonizer + (scope -> (canonizer.size+1)))
+          // rest: recurse
+        case t@Bound(_,_) => (t, canonizer)
+        case t@Symbol(_) => (t, canonizer)
+        case hd ∙ args =>
+          val (canonicalHead, canonizer1) = canonizeTerm0(hd, originalDepth, extraDepth, canonizer)
+          var newCanonizer: Canonizer = canonizer1
+          var args0 = args
+          var canonicalArgs:Seq[Either[Term, Type]] = Seq()
+          while (args0.nonEmpty) {
+            val hd = args0.head
+            if (hd.isLeft) {
+              val res = canonizeTerm0(hd.left.get, originalDepth, extraDepth, newCanonizer)
+              newCanonizer = res._2
+              canonicalArgs = canonicalArgs :+ Left(res._1)
+            } else {
+              // Types are unchanged for now
+              canonicalArgs = canonicalArgs :+ hd
+            }
+            args0 = args0.tail
+          }
+          (mkApp(canonicalHead, canonicalArgs), newCanonizer)
+        case ty :::> body =>
+          val (newBody, newCanonizer) = canonizeTerm0(body, originalDepth, extraDepth+1, canonizer)
+          (mkTermAbs(ty, newBody),newCanonizer)
+        case TypeLambda(body) =>
+          val (newBody, newCanonizer) = canonizeTerm0(body, originalDepth, extraDepth+1, canonizer)
+          (mkTypeAbs(newBody),newCanonizer)
+      }
+    }
   }
 }
