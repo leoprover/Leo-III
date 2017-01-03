@@ -70,7 +70,11 @@ object PatternAntiUnification extends AntiUnification {
     leo.Out.debug(s"partialSubst: ${partialSubst2._1.pretty}")
     // Exhaustively apply Merge
     val (merged, (resultSubst, resultTySubst)) = phase3(vargen, solved, partialSubst2._1, partialSubst2._2)
-
+    leo.Out.debug(s"Result of phase3:")
+    leo.Out.debug(s"merged:\n\t${merged.map {case (va,de,l,r) =>
+      s"${va.pretty}(${de.map(_.pretty).mkString(",")}): " +
+        s"${l.pretty} = ${r.pretty}"}.mkString("\n\t")}")
+    leo.Out.debug(s"resultSubst: ${resultSubst.normalize.pretty}")
 
     import leo.datastructures.TermFront
     val resultPattern: Term = resultSubst.substBndIdx(0) match {
@@ -148,7 +152,7 @@ object PatternAntiUnification extends AntiUnification {
       // head(s) != head(t) or head(s) = head(t) = Z not in xi
       val newSolved = Solve(vargen, hd) // {Y(yi): s = t}
       val newVar = newSolved._1; val newBound = newSolved._2  // Y and yi respectively
-      val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar, newBound)) // λxi.Y(yi)
+      val approxBinding = λ(bound.map(_.ty))(mkTermApp(newVar.lift(bound.size), newBound)) // λxi.Y(yi)
       val bindingSubst = Subst.singleton(absVar, approxBinding) // {X -> λxi.Y(yi)}
       phase2(vargen, unsolved.tail, newSolved +: solved, partialSubst.comp(bindingSubst), partialTySubst)
     }
@@ -190,6 +194,8 @@ object PatternAntiUnification extends AntiUnification {
       var eqs = partition(canon)
       assert(eqs.nonEmpty)
       val (eq1, canonizer1) = eqs.head // eq1 is {X(xi): t1 = t2}
+      val invCanonizer1 = canonizer1.map(_.swap) // since canonizer is a bijection, invCanonizer is also a map
+      assert(invCanonizer1.size == canonizer1.size)
       val absVar1 = eq1._1 // X
       // loop over the remaining representatives of this class and reduce them to eq1
       eqs = eqs.tail
@@ -197,7 +203,8 @@ object PatternAntiUnification extends AntiUnification {
         val (eq2, canonizer2) = eqs.head // // eq2 is {Y(yi): s1 = s2}
         val absVar2 = Bound.unapply(eq2._1).get._2 // Y as int
         val bound2 = eq2._2 // yi
-        val bindingArgs = Merge(eq1, canonizer1, eq2, canonizer2)
+        val bindingArgs = Merge(invCanonizer1, bound2, canonizer2) // xiπ
+        assert(bound2.size == bindingArgs.size)
         val approxBinding = λ(bound2.map(_.ty))(mkTermApp(absVar1.lift(bound2.size), bindingArgs)) // λyi.X(xiπ)
         val bindingSubst = Subst.singleton(absVar2, approxBinding) // {Y -> λyi.X(xiπ)}
         resultTermSubst = resultTermSubst.comp(bindingSubst)
@@ -321,7 +328,26 @@ object PatternAntiUnification extends AntiUnification {
     *   where π: {xi} -> {yi} is a bijection extended as a substitution  with `t1π = s1` and `t2π = s2`.
     */
   object Merge {
-    final def apply(eq1: Eq, canonizer1: Canonizer, eq2: Eq, canonizer2: Canonizer): Seq[Term] = ???
+    /** Match eq2 -> eq1 and return the arguments z1...zn where zi = xiπ as above. */
+    final def apply(invCanonizer: Canonizer, bounds0: Depth, canonizer2: Canonizer): Seq[Term] = {
+      import leo.datastructures.Term.mkBound
+      var bounds = bounds0
+      var result: Seq[Term] = Seq()
+      while (bounds.nonEmpty) { // Construct substitution as explicit argument list (decreasing indices)
+        val hd = bounds.head // this is a loose bound variable with index: "bounds.size" (current size in loop)
+        assert(canonizer2.isDefinedAt(bounds.size))
+        // Check to what index hd is mapped to by canonizer2
+        val hdMappedTo = canonizer2(bounds.size)
+        leo.Out.debug(s"hdMappedTo: ${hdMappedTo}")
+        // Now retrieve the index which var index (from eq1) maps to `hdMappedTo` by canonizer1
+        val mappedToHd = invCanonizer(hdMappedTo)
+        result = result :+ mkBound(hd.ty, mappedToHd)
+        leo.Out.debug(s"${bounds.size} is mapped to ${mappedToHd}")
+        bounds = bounds.tail
+      }
+      leo.Out.debug(s"result is: ${result.map(_.pretty).mkString(" , ")}")
+      result
+    }
 
     type Canonizer = Map[Int, Int]
     final protected[calculus] def canonize(eq: Eq): (Term, Term, Canonizer) = {
@@ -344,11 +370,11 @@ object PatternAntiUnification extends AntiUnification {
       import leo.datastructures.Term._
       term match {
           // if bound: rename if necessary
-        case Bound(ty,scope) if scope > extraDepth && scope <= originalDepth =>
-          if (canonizer.contains(scope))
-            (mkBound(ty, canonizer(scope)), canonizer) // Swap entry to the one saved in the canonization substitution
+        case Bound(ty,scope) if scope > extraDepth && scope <= originalDepth+extraDepth =>
+          if (canonizer.contains(scope+extraDepth))
+            (mkBound(ty, canonizer(scope+extraDepth)), canonizer) // Swap entry to the one saved in the canonization substitution
           else
-            (mkBound(ty, canonizer.size+1), canonizer + (scope -> (canonizer.size+1)))
+            (mkBound(ty, canonizer.size+1), canonizer + (scope+extraDepth -> (canonizer.size+1)))
           // rest: recurse
         case t@Bound(_,_) => (t, canonizer)
         case t@Symbol(_) => (t, canonizer)
