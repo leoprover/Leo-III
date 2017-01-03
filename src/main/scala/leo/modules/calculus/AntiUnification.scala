@@ -39,11 +39,7 @@ object PatternAntiUnification extends AntiUnification {
     * (3) r is a least general (most specific) generalization of s and t
     * (4) r is a higher-order pattern. */
   final def antiUnify(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result] = {
-    Iterable(antiUnify0(vargen, s.etaExpand, t.etaExpand))
-  }
-
-  final def antiUnify0(vargen: FreshVarGen, s: Term, t: Term): Result = {
-    solve(vargen, s, t)
+    Iterable(solve(vargen, s.etaExpand, t.etaExpand))
   }
 
   type AbstractionVar = Term
@@ -360,11 +356,11 @@ object PatternAntiUnification extends AntiUnification {
         assert(canonizer2.isDefinedAt(bounds.size))
         // Check to what index hd is mapped to by canonizer2
         val hdMappedTo = canonizer2(bounds.size)
-        leo.Out.debug(s"hdMappedTo: ${hdMappedTo}")
+//        leo.Out.debug(s"hdMappedTo: ${hdMappedTo}")
         // Now retrieve the index which var index (from eq1) maps to `hdMappedTo` by canonizer1
         val mappedToHd = invCanonizer(hdMappedTo)
         result = result :+ mkBound(hd.ty, mappedToHd)
-        leo.Out.debug(s"${bounds.size} is mapped to ${mappedToHd}")
+//        leo.Out.debug(s"${bounds.size} is mapped to ${mappedToHd}")
         bounds = bounds.tail
       }
       leo.Out.debug(s"result is: ${result.map(_.pretty).mkString(" , ")}")
