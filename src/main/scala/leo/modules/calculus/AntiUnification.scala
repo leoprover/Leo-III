@@ -53,9 +53,11 @@ object PatternAntiUnification extends AntiUnification {
   type Solved = Unsolved
   private final def solve(vargen: FreshVarGen,
                           s: Term, t: Term): Result = {
+    import leo.datastructures.Term.Bound
     leo.Out.debug(s"Solve ${s.pretty} = ${t.pretty}")
     // Exhaustively apply Decomp and Abstraction
-    val (unsolved, partialSubst) = phase1(vargen, Seq((vargen(s.ty),Seq(),s,t)), Seq(), Subst.id, Subst.id)
+    val firstAbtractionVar = vargen(s.ty)
+    val (unsolved, partialSubst) = phase1(vargen, Seq((firstAbtractionVar,Seq(),s,t)), Seq(), Subst.id, Subst.id)
     leo.Out.debug(s"Result of phase1:")
     leo.Out.debug(s"unsolved:\n\t${unsolved.map {case (va,de,l,r) =>
       s"${va.pretty}(${de.map(_.pretty).mkString(",")}):" +
@@ -77,10 +79,11 @@ object PatternAntiUnification extends AntiUnification {
     leo.Out.debug(s"resultSubst: ${resultSubst.normalize.pretty}")
 
     import leo.datastructures.TermFront
-    val resultPattern: Term = resultSubst.substBndIdx(0) match {
+    val resultPattern: Term = resultSubst.normalize.substBndIdx(Bound.unapply(firstAbtractionVar).get._2) match {
       case TermFront(r) => r
       case _ => throw new IllegalArgumentException
     }
+    leo.Out.debug(s"Result pattern generalization: ${resultPattern.pretty}")
     (resultPattern, ???, ???)
   }
 
@@ -195,7 +198,7 @@ object PatternAntiUnification extends AntiUnification {
       assert(eqs.nonEmpty)
       val (eq1, canonizer1) = eqs.head // eq1 is {X(xi): t1 = t2}
       val invCanonizer1 = canonizer1.map(_.swap) // since canonizer is a bijection, invCanonizer is also a map
-      assert(invCanonizer1.size == canonizer1.size)
+      assert(invCanonizer1.size == canonizer1.size) // TODO: Maybe exactly the other way around?
       val absVar1 = eq1._1 // X
       // loop over the remaining representatives of this class and reduce them to eq1
       eqs = eqs.tail
