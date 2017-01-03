@@ -84,7 +84,26 @@ object PatternAntiUnification extends AntiUnification {
       case _ => throw new IllegalArgumentException
     }
     leo.Out.debug(s"Result pattern generalization: ${resultPattern.pretty}")
-    (resultPattern, ???, ???)
+    val patternFV = resultPattern.freeVars
+    val x = merged.filter {case (v, _, _, _) => patternFV.contains(v)}
+    leo.Out.debug(s"free vars: ${resultPattern.freeVars.map(_.pretty).toString}")
+    leo.Out.debug(s"x:\n\t${x.map {case (va,de,l,r) =>
+      s"${va.pretty}(${de.map(_.pretty).mkString(",")}): " +
+        s"${l.pretty} = ${r.pretty}"}.mkString("\n\t")}")
+    val mergedIt = merged.iterator
+    var leftSubMap: Map[Int, Term] = Map(); var rightSubMap: Map[Int, Term] = Map()
+    while (mergedIt.hasNext) {
+      import leo.datastructures.Term.{λ,Bound}
+      val (vari, depth, l, r) = mergedIt.next()
+      val varIndex = Bound.unapply(vari).get._2
+      val left = λ(depth.map(_.ty))(l)
+      val right = λ(depth.map(_.ty))(r)
+
+      leftSubMap = leftSubMap + (varIndex -> left)
+      rightSubMap = rightSubMap + (varIndex -> right)
+    }
+    val dummyTySub: TypeSubst = Subst.id
+    (resultPattern, (Subst.fromMap(leftSubMap), dummyTySub), (Subst.fromMap(rightSubMap), dummyTySub))
   }
 
   /** Exhaustively applies Decomposition and Abstraction. */
