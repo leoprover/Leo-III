@@ -2,26 +2,26 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures._
-import ClauseAnnotation._
-import leo.modules.calculus.PatternUnification
+import leo.datastructures.{ClauseAnnotation, AnnotatedClause, tptp, Term, Signature, Clause, Literal, addProp}
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
 
 import scala.annotation.tailrec
 
-
 /**
-  * Created by lex on 10/28/15.
+  * Sequential proof procedure. Its state is represented by [[leo.modules.seqpproc.State]].
+  *
+  * @since 28.10.15
+  * @author Alexander Steen <a.steen@fu-berlin.de>
   */
-object SeqPProc extends Function1[Long, Unit] {
-
+object SeqPProc {
+  type LocalState = State[AnnotatedClause]
   ////////////////////////////////////
   //// Loading and converting the problem
   ////////////////////////////////////
   /** Converts the input into clauses and filters the axioms if applicable. */
-  final private def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: State[AnnotatedClause]): Seq[AnnotatedClause] = {
+  final private def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conj) = effectiveInput0(input, state)
     if (state.negConjecture != null) {
@@ -39,8 +39,10 @@ object SeqPProc extends Function1[Long, Unit] {
   /** Insert types, definitions and the conjecture to the signature resp. state. The rest
     * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
     * conjectures are present or unknown role occurs. */
-  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: State[AnnotatedClause]): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
+  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
     import leo.modules.Utility.termToClause
+    import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
+    import leo.datastructures.ClauseAnnotation._
     var result: Seq[tptp.Commons.AnnotatedFormula] = Seq()
     var conj: tptp.Commons.AnnotatedFormula = null
     val inputIt = input.iterator
@@ -78,12 +80,13 @@ object SeqPProc extends Function1[Long, Unit] {
     }
     (result,conj)
   }
-  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: State[AnnotatedClause]): AnnotatedClause = {
+  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
     import leo.modules.Utility.termToClause
+    import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Parsing.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
   }
-  final private def typeCheck(input: Seq[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+  final private def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
     if (state.negConjecture != null) typeCheck0(state.negConjecture +: input)
     else typeCheck0(input)
   }
@@ -103,7 +106,7 @@ object SeqPProc extends Function1[Long, Unit] {
   ////////////////////////////////////
   //// Preprocessing
   ////////////////////////////////////
-  protected[modules] final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
+  protected[modules] final def preprocess(state: LocalState, cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
 
@@ -139,7 +142,6 @@ object SeqPProc extends Function1[Long, Unit] {
         AnnotatedClause(Clause(Literal.mkLit(LitTrue, true)), NoAnnotation)
       } else cl
     }*/
-
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
 
@@ -149,6 +151,20 @@ object SeqPProc extends Function1[Long, Unit] {
       var result = cl
       result = Control.liftEq(result)
       result = Control.funcext(result) // Maybe comment out? why?
+      val possiblyAC = Control.detectAC(result)
+      if (possiblyAC.isDefined) {
+        val symbol = possiblyAC.get._1
+        val spec = possiblyAC.get._2
+        val sig = state.signature
+        val oldProp = sig(symbol).flag
+        if (spec) {
+          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of commutativity")
+          sig(symbol).updateProp(addProp(Signature.PropCommutative, oldProp))
+        } else {
+          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of associativity")
+          sig(symbol).updateProp(addProp(Signature.PropAssociative, oldProp))
+        }
+      }
       result = Control.acSimp(result)
       Control.simp(result)
     }
@@ -180,9 +196,9 @@ object SeqPProc extends Function1[Long, Unit] {
     // Remaining stuff ...
     Out.info(s"Type checking passed. Searching for refutation ...")
       // Initialize indexes
-    if (state.negConjecture != null) Control.fvIndexInit(state.negConjecture +: remainingInput)
-    else Control.fvIndexInit(remainingInput)
-    Control.foIndexInit()
+    if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
+    else Control.initIndexes(remainingInput)
+
     Out.trace(s"Symbols in conjecture: " +
       s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
     // Preprocessing
@@ -243,6 +259,10 @@ object SeqPProc extends Function1[Long, Unit] {
           var cur = conjectureProcessedIt.next()
           Out.debug(s"Taken: ${cur.pretty(sig)}")
           cur = Control.rewriteSimp(cur, state.rewriteRules)
+          /* Functional Extensionality */
+          cur = Control.funcext(cur)
+          /* To equality if possible */
+          cur = Control.liftEq(cur)
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
             if (state.conjecture == null) {
@@ -258,16 +278,13 @@ object SeqPProc extends Function1[Long, Unit] {
               state.addChoiceFunction(choiceFun)
               leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                if(mainLoopInferences(cur, state)) {
-                  loop = false
-                }
+              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+              // e.g. by forward subsumption
+              if (!Control.redundant(cur, state.processed)) {
+                if(mainLoopInferences(cur, state)) loop = false
               } else {
-                Out.debug("clause subsumbed, skipping.")
+                Out.debug(s"Clause ${cur.id} redundant, skipping.")
                 state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
               }
             }
           }
@@ -276,7 +293,7 @@ object SeqPProc extends Function1[Long, Unit] {
       Out.debug("## Pre-reasoning loop END")
 
       /////////////////////////////////////////
-      // Main proof loop
+      // Main proof loop TODO: Merge with pre-reasoning loop
       /////////////////////////////////////////
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
@@ -293,31 +310,29 @@ object SeqPProc extends Function1[Long, Unit] {
           Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
 
           cur = Control.rewriteSimp(cur, state.rewriteRules)
+          /* Functional Extensionality */
+          cur = Control.funcext(cur)
+          /* To equality if possible */
+          cur = Control.liftEq(cur)
+          // Check if `cur` is an empty clause
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
-            if (state.conjecture == null) {
-              state.setSZSStatus(SZS_Unsatisfiable)
-            } else {
-              state.setSZSStatus(SZS_Theorem)
-            }
-            state.setDerivationClause(cur)
+            endplay(cur, state)
           } else {
+            // Not an empty clause, detect choice definition or do reasoning step.
             val choiceCandidate = Control.detectChoiceClause(cur)
             if (choiceCandidate.isDefined) {
               val choiceFun = choiceCandidate.get
               state.addChoiceFunction(choiceFun)
               leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                if(mainLoopInferences(cur, state)) {
-                  loop = false
-                }
+              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+              // e.g. by forward subsumption
+              if (!Control.redundant(cur, state.processed)) {
+                if(mainLoopInferences(cur, state)) loop = false
               } else {
-                Out.debug("clause subsumbed, skipping.")
+                Out.debug(s"Clause ${cur.id} redundant, skipping.")
                 state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
               }
             }
           }
@@ -360,7 +375,8 @@ object SeqPProc extends Function1[Long, Unit] {
 
       Out.finest("#########################")
       Out.finest("units")
-      Out.finest(state.rewriteRules.map(cl => s"(${PatternUnification.isPattern(cl.cl.lits.head.left)}/${PatternUnification.isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+      import leo.modules.calculus.PatternUnification.isPattern
+      Out.finest(state.rewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("#########################")
@@ -400,45 +416,35 @@ object SeqPProc extends Function1[Long, Unit] {
       }
   }
 
-  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Boolean = {
+  private final def mainLoopInferences(cl: AnnotatedClause, state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
 
-    var cur: AnnotatedClause = cl
+    val cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
 //    println(s"current clauses symbols: ${Clause.symbols(cl.cl).map(s => state.signature(s).name).mkString(",")}")
 
     /////////////////////////////////////////
-    // Simplifying (mofifying inferences and backward subsumption) BEGIN
+    // Backward simplification BEGIN
     // TODO: à la E: direct descendant criterion, etc.
     /////////////////////////////////////////
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
-
     if (backSubsumedClauses.nonEmpty) {
       Out.trace(s"#### backward subsumed")
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
       Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       state.setProcessed(state.processed -- backSubsumedClauses)
-      Control.fvIndexRemove(backSubsumedClauses)
+      Control.removeFromIndex(backSubsumedClauses)
     }
-
+    /** Add to processed and to indexes. */
     state.addProcessed(cur)
-    Control.fvIndexInsert(cur)
+    Control.insertIndexed(cur)
     /* Add rewrite rules to set */
-    if (Clause.rewriteRule(cur.cl)) {
-      state.addRewriteRule(cur)
-    }
-    /* Functional Extensionality */
-    cur = Control.funcext(cur)
-    /* To equality if possible */
-    cur = Control.liftEq(cur)
+    if (Clause.rewriteRule(cur.cl)) state.addRewriteRule(cur)
     /////////////////////////////////////////
-    // Simplifying (mofifying inferences) END
+    // Backward simplification END
     /////////////////////////////////////////
-    leo.Out.finest(s"XX ${cur.pretty(sig)}")
-    leo.Out.finest(s"XX ${leo.modules.indexing.FOIndex.typedFirstOrder(cur)}")
-    Control.foIndex.insert(cur)
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
@@ -492,31 +498,29 @@ object SeqPProc extends Function1[Long, Unit] {
 
     /////////////////////////////////////////
     // At the end, for each generated clause apply simplification etc.
-    // and add to unprocessed
+    // and add to unprocessed, eagly look for the empty clause
+    // and return true if found.
     /////////////////////////////////////////
-
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
       newCl = Control.shallowSimp(newCl)
       if (Clause.effectivelyEmpty(newCl.cl)) {
-        if (state.conjecture == null) {
-          state.setSZSStatus(SZS_Unsatisfiable)
-        } else {
-          state.setSZSStatus(SZS_Theorem)
-        }
-        state.setDerivationClause(newCl)
+        endplay(newCl, state)
         return true
       } else {
-        if (!Clause.trivial(newCl.cl)) {
-          state.addUnprocessed(newCl)
-        } else {
-          Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
-        }
+        if (!Clause.trivial(newCl.cl)) state.addUnprocessed(newCl)
+        else Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
     false
+  }
+
+  @inline final private def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
+    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    else state.setSZSStatus(SZS_Theorem)
+    state.setDerivationClause(emptyClause)
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {

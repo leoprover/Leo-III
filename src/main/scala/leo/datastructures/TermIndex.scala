@@ -27,7 +27,6 @@ object TermIndex {
     // Force computation of lazy values
     t2.headSymbol
     t2.freeVars
-    t2.occurrences
 
     // insert to data structures
     for (s <- t2.symbols.distinct) {

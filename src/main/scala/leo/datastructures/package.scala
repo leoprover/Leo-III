@@ -404,6 +404,7 @@ package object datastructures {
   // Utility functions
   ///////////////////////////////
   @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
+  @inline final def addProp(prop: Int, in: Int): Int = prop | in
   @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
 
   final def fuseMaps[A,B](map1: Map[A,Set[B]], map2: Map[A,Set[B]]): Map[A, Set[B]] = {

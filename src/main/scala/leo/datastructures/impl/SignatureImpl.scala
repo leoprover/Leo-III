@@ -36,34 +36,37 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   /** Case class for meta information for type constructors
     * that are indexed in the signature */
   protected[impl] case class TypeMeta(name: String,
-                                          key: Key,
-                                          k:  Kind,
-                                          flag: Signature.SymbProp) extends Meta {
+                                      key: Key,
+                                      k:  Kind,
+                                      var flag: Signature.SymbProp) extends Meta {
     val ty: Option[Type] = None
     val kind: Option[Kind] = Some(k)
     val defn: Option[Term] = None
+    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
   }
 
   /** Case class for meta information for (un)-interpreted term symbols,
     * i.e. symbols without definition regardless whether system or user provided. */
   protected[impl] case class UninterpretedMeta(name: String,
-                                                   key: Key,
-                                                   typ: Type,
-                                                   flag: Signature.SymbProp) extends Meta {
+                                               key: Key,
+                                               typ: Type,
+                                               var flag: Signature.SymbProp) extends Meta {
     val ty: Option[Type] = Some(typ)
     val kind: Option[Kind] = None
     val defn: Option[Term] = None
+    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
   }
 
   /** Case class for meta information for defined symbols */
   protected[impl] case class DefinedMeta(name: String,
-                                             key: Key,
-                                             typ: Type,
-                                             definition: Term,
-                                             flag: Signature.SymbProp) extends Meta {
+                                         key: Key,
+                                         typ: Type,
+                                         definition: Term,
+                                         var flag: Signature.SymbProp) extends Meta {
     val ty: Option[Type] = Some(typ)
     val kind: Option[Kind] = None
     val defn: Option[Term] = Some(definition)
+    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
   }
 
   ///////////////////////////////
@@ -80,41 +83,34 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
     keyMap += ((identifier, key))
 
     defn match {
-      case None => { // Uninterpreted or type
+      case None => // Uninterpreted or type
         typ match {
-          case Right(k:Kind) => { // Type
+          case Right(k:Kind) => // Type
           val meta = TypeMeta(identifier, key, k, Signature.PropNoProp)
             metaMap += ((key, meta))
             typeSet += key
-          }
-          case Left(t:Type) => { // Uninterpreted symbol
+          case Left(t:Type) =>  // Uninterpreted symbol
           val meta = UninterpretedMeta(identifier, key, t, prop)
             metaMap += ((key, meta))
             uiSet += key
-            // TODO: AC sets
-          }
         }
-      }
-
-      case Some(fed) => { // Defined
+      case Some(fed) => // Defined
         val ty = typ.left.get
         val meta = DefinedMeta(identifier, key, ty, fed, prop)
           metaMap += ((key, meta))
           definedSet += key
-        }
     }
     key
   }
 
   def addDefinition(key: Key, defn: Term) = {
     metaMap.get(key) match {
-      case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty => {
+      case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty =>
         val newMeta = DefinedMeta(meta.name, key, meta._ty, defn, meta.flag)
         metaMap += ((key, newMeta))
         definedSet += key
         uiSet -= key
         key
-      }
       case _ => key
     }
   }
@@ -122,7 +118,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   def remove(key: Key): Boolean = {
      metaMap.get(key) match {
        case None => false
-       case Some(meta) => {
+       case Some(meta) =>
          if (meta.isFixedSymbol) return false
 
          if (meta.isASymbol) aSet -= key
@@ -135,7 +131,6 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
          metaMap -= key
          keyMap -= id
          true
-       }
      }
   }
 
@@ -178,7 +173,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   def meta(key: Key): Meta = try {metaMap(key)} catch {case e:Throwable => throw new RuntimeException("Tried to access meta with key: "+key.toString + ". ",e)}
   def meta(identifier: String): Meta = meta(keyMap(identifier))
 
-  def empty() = {
+  def empty(): Unit = {
     curConstKey = 0
     keyMap = keyMap.empty
     metaMap = metaMap.empty
@@ -236,25 +231,11 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   }
 }
 
-
 object SignatureImpl {
   private case class Nil() extends SignatureImpl
 
   /** Create an empty signature */
   def empty: SignatureImpl = Nil()
-
-  protected val globalSignature = withHOL(empty)
-//  def get = globalSignature
-
-  def resetWithHOL(sig: SignatureImpl): SignatureImpl = {
-    sig.empty
-    sig.skolemVarCounter=0
-    sig.typeVarCounter=0
-    withHOL(sig)
-  }
-//
-//  def apply(symbol: Signature#Key): SignatureImpl#Meta = get.meta(symbol)
-//  def apply(symbol: String): SignatureImpl#Meta = get.meta(symbol)
 
   /** Enriches the given signature with predefined symbols as described by [[leo.modules.HOLSignature]] */
   def withHOL(sig: SignatureImpl): SignatureImpl = {

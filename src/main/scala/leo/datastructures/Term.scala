@@ -25,10 +25,15 @@ trait Term extends Pretty with Prettier {
   // Predicates on terms
   /** Returns true iff `this` is either a constant or a variable, i.e. `isConstant || isVariable`. */
   def isAtom: Boolean
+  /** Returns true iff `this` is a constant from the signature as a term (i.e. TermApp(c,Nil) where c is a constant). */
   def isConstant: Boolean
+  /** Returns true iff `this` is a (free/bound/loose bound) variable. */
   def isVariable: Boolean
+  /** Returns true iff `this` is an abstraction (λ. t') for some term t'. */
   def isTermAbs: Boolean
+  /** Returns true iff `this` is a type abstraction (Λ. t') for some term t'. */
   def isTypeAbs: Boolean
+  /** Returns trie iff `this` is an application h ∙ args. */
   def isApp: Boolean
   def flexHead: Boolean
 
@@ -60,8 +65,7 @@ trait Term extends Pretty with Prettier {
   //////////////////////////
   /** Returns the type of the term */
   def ty: Type
-
-  /** Returns the free occurences of variables as tuple (index, type). */
+  /** Returns the free occurrences of variables as tuple (index, type). */
   def fv: Set[(Int, Type)]
   /** Same as `fv`, just that it returns the free occurences of variables
     * as terms. */
@@ -71,10 +75,9 @@ trait Term extends Pretty with Prettier {
   final def looseBounds: Set[Int] = fv.map(_._1)
   /** true iff the term does not contain any free variables. */
   final def ground: Boolean = fv.isEmpty
-
+  /** Returns the free occurrences of type variables. */
   def tyFV: Set[Int]
-  def occurrences: Map[Term, Set[Position]]
-  def feasibleOccurences: Map[Term, Set[Position]]
+  def feasibleOccurrences: Map[Term, Set[Position]]
   def headSymbol: Term
   def headSymbolDepth: Int
   def size: Int
@@ -179,7 +182,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Bound { def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
+  object Bound { final def unapply(t: Term): Option[(Type, Int)] = TermImpl.boundMatcher(t) }
 
   /**
    * Pattern for matching constant symbols in terms (i.e. symbols in signature). Usage:
@@ -190,7 +193,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Symbol { def unapply(t: Term): Option[Signature#Key] = TermImpl.symbolMatcher(t) }
+  object Symbol { final def unapply(t: Term): Option[Signature#Key] = TermImpl.symbolMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where
@@ -204,7 +207,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object ∙ { def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
+  object ∙ { final def unapply(t: Term): Option[(Term, Seq[Either[Term, Type]])] = TermImpl.appMatcher(t) }
 
   /**
    * Pattern for matching a term application (i.e. terms of form `(h ∙ S)`), where
@@ -219,12 +222,10 @@ object Term extends TermBank {
    * }}}
    */
   object TermApp {
-    def unapply(t: Term): Option[(Term, Seq[Term])] = t match {
+    final def unapply(t: Term): Option[(Term, Seq[Term])] = t match {
       case h ∙ sp => if (sp.forall(_.isLeft)) {
                         Some(h, sp.map(_.left.get))
-                      } else {
-                        None
-                      }
+                      } else None
       case _ => None
     }
   }
@@ -242,12 +243,10 @@ object Term extends TermBank {
    * }}}
    */
   object TypeApp {
-    def unapply(t: Term): Option[(Term, Seq[Type])] = t match {
+    final def unapply(t: Term): Option[(Term, Seq[Type])] = t match {
       case h ∙ sp => if (sp.forall(_.isRight)) {
         Some(h, sp.map(_.right.get))
-      } else {
-        None
-      }
+      } else None
       case _ => None
     }
   }
@@ -262,7 +261,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object :::> { def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
+  object :::> { final def unapply(t: Term): Option[(Type,Term)] = TermImpl.termAbstrMatcher(t) }
 
   /**
    * Pattern for matching (type) abstractions in terms (i.e. terms of form `/\(s)`). Usage:
@@ -273,7 +272,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object TypeLambda { def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
+  object TypeLambda { final def unapply(t: Term): Option[Term] = TermImpl.typeAbstrMatcher(t) }
 
   /** A lexicographical ordering of terms. Its definition is arbitrary, but should form
    * a total order on terms.
