@@ -39,7 +39,8 @@ object PatternAntiUnification extends AntiUnification {
     * (3) r is a least general (most specific) generalization of s and t
     * (4) r is a higher-order pattern. */
   final def antiUnify(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result] = {
-    Iterable(solve(vargen, s.etaExpand, t.etaExpand))
+    if (s == t) Iterable((s, (Subst.id, Subst.id), (Subst.id, Subst.id)))
+    else Iterable(solve(vargen, s.etaExpand, t.etaExpand))
   }
 
   type AbstractionVar = Term
