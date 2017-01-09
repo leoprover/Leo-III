@@ -1210,14 +1210,14 @@ package indexingControl {
         var result: Seq[AnnotatedFormula] = Seq()
         var round : Int = 1
 
-        val conjSymbols = PreFilterSet.useFormula(conjecture)(sig)
+        val conjSymbols = PreFilterSet.useFormula(conjecture)
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
 
         while (taken.nonEmpty) {
           // From SeqFilter:
           // Take all formulas (save the newly touched symbols
-          val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f)(sig))
+          val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
           taken.foreach(f => result = f +: result)
           // Obtain all formulas, that have a
           val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
@@ -1230,7 +1230,7 @@ package indexingControl {
     }
 
     final def relevanceFilterAdd(formula: AnnotatedFormula)(sig: Signature): Unit = {
-      PreFilterSet.addNewFormula(formula)(sig)
+      PreFilterSet.addNewFormula(formula)
     }
   }
 }
