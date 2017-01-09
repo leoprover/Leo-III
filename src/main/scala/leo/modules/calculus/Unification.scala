@@ -558,7 +558,7 @@ object HuetsPreUnification extends Unification {
       if (leftHead.isLeft && rightHead.isLeft) {
         val leftTerm = λ(abstractions)(leftHead.left.get)
         val rightTerm = λ(abstractions)(rightHead.left.get)
-        zipArgumentsWithAbstractions0(l.tail, r.tail, abstractions, (leftTerm, rightTerm) +: acc1, acc2)
+        zipArgumentsWithAbstractions0(l.tail, r.tail, abstractions, (leftTerm.etaExpand, rightTerm.etaExpand) +: acc1, acc2)
       } else if (leftHead.isRight && rightHead.isRight) {
         val leftType = leftHead.right.get
         val rightType = rightHead.right.get
