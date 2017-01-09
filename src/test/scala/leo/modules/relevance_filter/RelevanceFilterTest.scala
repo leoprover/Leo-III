@@ -1,6 +1,5 @@
 package leo.modules.relevance_filter
 
-import com.sun.javafx.iio.ImageFormatDescription.Signature
 import leo.LeoTestSuite
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.parsers.TPTP
