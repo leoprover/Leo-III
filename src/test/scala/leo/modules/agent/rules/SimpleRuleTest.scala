@@ -1,6 +1,6 @@
 package leo.modules.agent.rules
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.agents.{AbstractAgent, Task}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
@@ -11,7 +11,16 @@ import scala.collection.mutable
   * Created by mwisnie on 12/8/16.
   */
 class SimpleRuleTest extends LeoTestSuite {
-  test("Prepend: a"){
+
+  test("Double Insertion of ds.", Checked) {
+    val store = new SimpleStore
+    Blackboard().addDS(store)
+    Blackboard().addDS(store)
+
+    assert(Blackboard().getDS.size == 1, "A double inserted data structure should only be contained once.")
+  }
+
+  test("Prepend: a", Checked){
     val self = this
     val store = new SimpleStore
     val prep = new PrependRule("a", store)
@@ -37,10 +46,16 @@ class SimpleRuleTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
-    println(s"${store.strings.mkString(",")}")
+
+
+    assert(store.strings.size == 3, "The store should only contain 3 strings.")
+    assert(store.strings.contains("ahallo"), "The store should contain 'ahello'.")
+    assert(store.strings.contains("atest"), "The store should contain 'atest'.")
+    assert(store.strings.contains("anice"), "The store should contain 'anice'.")
+
   }
 
-  test("Append: b"){
+  test("Append: b", Checked){
     val self = this
     val store = new SimpleStore
     val prep = new AppendRule("b", store)
@@ -66,7 +81,13 @@ class SimpleRuleTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
-    println(s"${store.strings.mkString(",")}")
+
+
+    assert(store.strings.size == 3, "The store should only contain 3 strings.")
+    assert(store.strings.contains("hallob"), "The store should contain 'ahello'.")
+    assert(store.strings.contains("testb"), "The store should contain 'atest'.")
+    assert(store.strings.contains("niceb"), "The store should contain 'anice'.")
+
   }
 
   test("Pre/Append: a/b"){
@@ -98,7 +119,13 @@ class SimpleRuleTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
-    println(s"${store.strings.mkString(",")}")
+
+
+    assert(store.strings.size == 3, "The store should only contain 3 strings.")
+    assert(store.strings.contains("ahallob"), "The store should contain 'ahello'.")
+    assert(store.strings.contains("atestb"), "The store should contain 'atest'.")
+    assert(store.strings.contains("aniceb"), "The store should contain 'anice'.")
+
   }
 }
 
