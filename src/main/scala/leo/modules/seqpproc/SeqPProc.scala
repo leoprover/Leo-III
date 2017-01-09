@@ -446,7 +446,7 @@ object SeqPProc {
     state.addProcessed(cur)
     Control.insertIndexed(cur)
     /* Add rewrite rules to set */
-    if (Clause.unit(cur.cl) && Utility.isPattern(cur.cl)) {
+    if (Clause.unit(cur.cl)) {
       if (Clause.rewriteRule(cur.cl)) {
         Out.trace(s"Clause ${cur.id} added as rewrite rule.")
         state.addRewriteRule(cur)
