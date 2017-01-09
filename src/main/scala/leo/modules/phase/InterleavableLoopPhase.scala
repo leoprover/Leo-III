@@ -45,7 +45,7 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
         Blackboard().addData(UnprocessedClause)(processForm)  // Write a method to bundle the writing
       }
     }
-    Control.fvIndexInit(startTheIndex.toSet)(sig)
+    Control.fvIndexInit(startTheIndex)(sig)
 
     super.execute()
   }

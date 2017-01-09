@@ -149,10 +149,8 @@ package object calculus {
   final protected def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
     if (s == t) return true
     if (s.ty.typeVars.isEmpty && t.ty.typeVars.isEmpty) {
-      leo.Out.finest(s"mayUnify0: typevars isEmpty")
       if (s.ty != t.ty) return false
     } else {
-      leo.Out.finest(s"mayUnify0: typevars not isEmpty")
       if (!mayUnify(s.ty, t.ty)) return false
     }
     if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?

@@ -28,42 +28,6 @@ object MultiSeqPProc {
 class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[AnnotatedClause] => Set[AnnotatedClause]) extends ProofProcedure {
 
 
-  final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
-    implicit val sig: Signature = state.signature
-    var result: Set[AnnotatedClause] = Set()
-    // Fresh clause, that means its unit and nonequational
-    assert(Clause.unit(cur.cl), "clause not unit")
-    val lit = cur.cl.lits.head
-    assert(!lit.equational, "initial literal equational")
-
-    // Def expansion and simplification
-    var cw = cur
-    cw = Control.expandDefinitions(cw)
-//    cw = Control.nnf(cw)
-    cw = Control.switchPolarity(cw)
-//    cw = Control.skolemize(cw)
-
-    // Exhaustively CNF
-    result = Control.cnf(cw)
-    // Remove defined equalities as far as possible
-//    result = result union Control.convertDefinedEqualities2(result)
-
-    // To equation if possible and then apply func ext
-    // AC Simp if enabled, then Simp.
-    result = result.map { cl =>
-      var result = cl
-      result = Control.liftEq(result)
-      result = Control.funcext(result)
-      result = Control.acSimp(result)
-      Control.simp(result)
-    }
-    // Pre-unify new clauses
-    result = result union Control.preunifySet(result)
-    result = result.filterNot(cw => Clause.trivial(cw.cl))
-    result
-  }
-
-
   ///////////////////////////////////////////////////////////
   /* Main function containing proof loop */
   /**
@@ -79,6 +43,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     *         clause should be returned (containing the proof).
     */
   override def execute(cs1: Iterable[AnnotatedClause]): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
+    import leo.modules.seqpproc.SeqPProc.preprocess
     val proc = MultiSeqPProc.counter.incrementAndGet()
     val cs = addPreprocessing(cs1.toSet)
     /////////////////////////////////////////
@@ -90,14 +55,14 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     val conjecture : Iterable[AnnotatedClause] = cs.filter(x => x.role == Role_NegConjecture || x.role == Role_Conjecture)
     assert(conjecture.size == 1)
     val negatedConjecture : AnnotatedClause = conjecture.head  // TODO no conjecture?
-    val effectiveInputWithoutConjecture : Iterable[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
+    val effectiveInputWithoutConjecture : Set[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
 
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
+    Control.fvIndexInit((effectiveInputWithoutConjecture + negatedConjecture).toSeq)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
     val conjecture_preprocessed = preprocess(state, negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# ($proc) Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
@@ -144,15 +109,13 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
         }
         state.setDerivationClause(cur)
       } else {
-        // Subsumption
-
-        val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-        if (subsumed.isEmpty) {
+        // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+        // e.g. by forward subsumption
+        if (!Control.redundant(cur, state.processed)) {
           mainLoopInferences(cur, state)
         } else {
-          Out.debug(s"($proc) clause subsumbed, skipping.")
+          Out.debug(s"Clause ${cur.id} redundant, skipping.")
           state.incForwardSubsumedCl()
-          Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
         }
       }
     }
@@ -191,15 +154,13 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
             }
             state.setDerivationClause(cur)
           } else {
-            // Subsumption
-            //if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
-            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-            if (subsumed.isEmpty) {
+            // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+            // e.g. by forward subsumption
+            if (!Control.redundant(cur, state.processed)) {
               mainLoopInferences(cur, state)
             } else {
-              Out.debug(s"($proc)clause subsumbed, skipping.")
+              Out.debug(s"Clause ${cur.id} redundant, skipping.")
               state.incForwardSubsumedCl()
-              Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
             }
           }
         }

@@ -33,7 +33,7 @@ Required Dependencies
 ----------------
 
 Leo III needs Java >= 1.8 to run.
-Scala 2.11.6 is required to build and run the project.
+Scala 2.11.8 is required to build and run the project.
 The build tool (sbt, maven) will automatically download Scala and further dependencies.
 Alternative, Scala can be downloaded at [Scala-lang.org](http://scala-lang.org/download/).
 
@@ -144,13 +144,13 @@ This section is a stub. It will be expanded in the future.
     │   ├── blackboard
     │   ├── context
     │   ├── impl           -- Most of the implementations are located here
-    │   ├── term
-    │   └── tptp           -- Internal syntax representation of TPTP
+    │   └── tptp           -- Internal syntax representation of TPTP formulae
     └── modules            -- All sorts of functionality modules
-        ├── churchNumerals -- old package, most likely to be removed soon
-        ├── normalization
-        ├── output         -- Output and logging functionality
-        ├── parsers        -- Input parsing
-        ├── proofCalculi
-        └── visualization
+        ├── agent
+        ├── calculus       -- Implementation of calculus rules
+        ├── control        -- proof procedure's control structures
+        ├── external       -- utility for remote calls and external agents
+        ├── indexing
+        ├── output         -- Output and logging functionality, pretty printing
+        └── parsers        -- Input parsing
 ```

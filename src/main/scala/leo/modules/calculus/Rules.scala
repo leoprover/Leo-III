@@ -221,7 +221,7 @@ object Choice extends CalculusRule {
     while (litIt.hasNext) {
       val lit = litIt.next()
 
-      val leftOcc = lit.left.feasibleOccurences
+      val leftOcc = lit.left.feasibleOccurrences
       val leftOccIt = leftOcc.keysIterator
       while (leftOccIt.hasNext) {
         val occ = leftOccIt.next()
@@ -231,7 +231,7 @@ object Choice extends CalculusRule {
           result = result + findResult
       }
       if (lit.equational) {
-        val rightOcc = lit.right.feasibleOccurences
+        val rightOcc = lit.right.feasibleOccurrences
         val rightOccIt = rightOcc.keysIterator
         while (rightOccIt.hasNext) {
           val occ = rightOccIt.next()
@@ -295,7 +295,8 @@ object Choice extends CalculusRule {
   final def apply(term: Term, choiceFun: Term): Clause = {
     // We dont need to adjust the free variables of `term` since there
     // is no variable capture (we create a fresh clause).
-    val newVar: Term = Term.mkBound(term.ty._funDomainType, term.looseBounds.max + 1)
+    val newVarIndex = if (term.looseBounds.isEmpty) 1 else term.looseBounds.max + 1
+    val newVar: Term = Term.mkBound(term.ty._funDomainType, newVarIndex)
     // lit1: [term y]^f
     val lit1 = Literal.mkLit(Term.mkTermApp(term, newVar).betaNormalize.etaExpand, false)
     // lit2: [term (choicefun term)]^t

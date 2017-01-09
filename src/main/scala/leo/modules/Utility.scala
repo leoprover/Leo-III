@@ -160,6 +160,10 @@ object Utility {
   /// Other stuff.
   /////////////////////////////////////////////////////////////
 
+  @inline final def termToClause(t: Term, polarity: Boolean = true): Clause = {
+    Clause.mkClause(Seq(Literal.mkLit(t, polarity)))
+  }
+
   def stackTraceAsString(e: Throwable): String = {
     val sw = new StringWriter()
     e.printStackTrace(new PrintWriter(sw))

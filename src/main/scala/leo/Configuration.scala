@@ -31,6 +31,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PRE_PRIMSUBST = "preprimsubst"
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
   private val PARAM_NOCHOICE = "nochoice"
+  private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -111,6 +112,7 @@ object Configuration extends DefaultConfiguration {
   lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
 
   lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE)
+  lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
 
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 

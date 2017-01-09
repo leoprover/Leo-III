@@ -54,6 +54,8 @@ trait Signature {
     def _defn: Term = defn.get
 
     // Query functions
+    /** Update the `flag` property of the underlying meta. */
+    def updateProp(newProp: SymbProp): Unit
     /** Returns the status of the symbol, where 0 = mult, 1 = lex.*/
     lazy val status: Int = if (isPropSet(Signature.PropStatus, flag)) Signature.lexStatus else Signature.multStatus
 
