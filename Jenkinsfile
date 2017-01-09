@@ -40,6 +40,7 @@ node {
 
     sh "rm -f benchmark_results"
     sh "rm -f benchmark_logs"
+    sh "rm -f benchmark_errors"
 
     def b = {l ->
       sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o ${l}_logs -e ${l}_errors -r ${l}_results ${benchmark}/Lists/${l}"
