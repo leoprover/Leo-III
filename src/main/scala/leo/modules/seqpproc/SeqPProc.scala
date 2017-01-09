@@ -2,24 +2,111 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures._
-import ClauseAnnotation._
-import leo.modules.calculus.PatternUnification
+import leo.datastructures.{ClauseAnnotation, AnnotatedClause, tptp, Term, Signature, Clause, Literal, addProp}
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
 
+import scala.annotation.tailrec
 
 /**
-  * Created by lex on 10/28/15.
+  * Sequential proof procedure. Its state is represented by [[leo.modules.seqpproc.State]].
+  *
+  * @since 28.10.15
+  * @author Alexander Steen <a.steen@fu-berlin.de>
   */
-object SeqPProc extends Function1[Long, Unit]{
-
-  @inline private final def termToClause(t: Term): Clause = {
-    Clause.mkClause(Seq(Literal.mkLit(t, true)))
+object SeqPProc {
+  type LocalState = State[AnnotatedClause]
+  ////////////////////////////////////
+  //// Loading and converting the problem
+  ////////////////////////////////////
+  /** Converts the input into clauses and filters the axioms if applicable. */
+  final private def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
+    Out.info(s"Parsing finished. Scanning for conjecture ...")
+    val (effectiveInput,conj) = effectiveInput0(input, state)
+    if (state.negConjecture != null) {
+      Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
+      // Do relevance filtering: Filter hopefully unnecessary axioms
+      val relevantAxioms = Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
+      Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
+        s"(removed ${effectiveInput.size - relevantAxioms.size} axioms).")
+      relevantAxioms.map(ax => processInput(ax, state))
+    } else {
+      Out.info(s"${effectiveInput.size} axioms and no conjecture found.")
+      effectiveInput.map(ax => processInput(ax, state))
+    }
+  }
+  /** Insert types, definitions and the conjecture to the signature resp. state. The rest
+    * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
+    * conjectures are present or unknown role occurs. */
+  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
+    import leo.modules.Utility.termToClause
+    import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
+    import leo.datastructures.ClauseAnnotation._
+    var result: Seq[tptp.Commons.AnnotatedFormula] = Seq()
+    var conj: tptp.Commons.AnnotatedFormula = null
+    val inputIt = input.iterator
+    while (inputIt.hasNext) {
+      val formula = inputIt.next()
+      formula.role match {
+        case Role_Definition.pretty | Role_Type.pretty => Parsing.processFormula(formula)(state.signature)
+        case Role_Conjecture.pretty =>
+          if (state.negConjecture == null) {
+            // Convert and negate and add conjecture
+            import leo.modules.calculus.CalculusRule
+            val translated = Parsing.processFormula(formula)(state.signature)
+            val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
+            state.setConjecture(conjectureClause)
+            val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
+              override final val name: String = "neg_conjecture"
+              override final val inferenceStatus = Some(SZS_CounterTheorem)
+            }, Set(conjectureClause)), ClauseAnnotation.PropSOS)
+            state.setNegConjecture(negConjectureClause)
+            conj = formula
+          } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
+        case Role_NegConjecture.pretty =>
+          if (state.negConjecture == null) {
+            val translated = Parsing.processFormula(formula)(state.signature)
+            val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
+            state.setNegConjecture(negConjectureClause)
+            conj = formula
+          } else throw new SZSException(SZS_InputError, "At most one (negated) conjecture per input problem is permitted.")
+        case Role_Unknown.pretty =>
+          throw new SZSException(SZS_InputError, s"Formula ${formula.name} has role 'unknown' which is regarded an error.")
+        case _ =>
+          Control.relevanceFilterAdd(formula)(state.signature)
+          result = formula +: result
+      }
+    }
+    (result,conj)
+  }
+  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
+    import leo.modules.Utility.termToClause
+    import leo.datastructures.ClauseAnnotation.FromFile
+    val formula = Parsing.processFormula(input)(state.signature)
+    AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
+  }
+  final private def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
+    if (state.negConjecture != null) typeCheck0(state.negConjecture +: input)
+    else typeCheck0(input)
+  }
+  @tailrec
+  final private def typeCheck0(input: Seq[AnnotatedClause]): Unit = {
+    if (input.nonEmpty) {
+      val hd = input.head
+      if (!Term.wellTyped(hd.cl.lits.head.left)) {
+        leo.Out.severe(s"Input problem did not pass type check: ${hd.id} is ill-typed.")
+        throw new SZSException(SZS_TypeError, s"Type error in formula ${hd.id}")
+      } else {
+        typeCheck0(input.tail)
+      }
+    }
   }
 
-  protected[modules] final def preprocess(state: State[AnnotatedClause], cur: AnnotatedClause): Set[AnnotatedClause] = {
+  ////////////////////////////////////
+  //// Preprocessing
+  ////////////////////////////////////
+  protected[modules] final def preprocess(state: LocalState, cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
 
@@ -55,7 +142,6 @@ object SeqPProc extends Function1[Long, Unit]{
         AnnotatedClause(Clause(Literal.mkLit(LitTrue, true)), NoAnnotation)
       } else cl
     }*/
-
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
 
@@ -65,6 +151,20 @@ object SeqPProc extends Function1[Long, Unit]{
       var result = cl
       result = Control.liftEq(result)
       result = Control.funcext(result) // Maybe comment out? why?
+      val possiblyAC = Control.detectAC(result)
+      if (possiblyAC.isDefined) {
+        val symbol = possiblyAC.get._1
+        val spec = possiblyAC.get._2
+        val sig = state.signature
+        val oldProp = sig(symbol).flag
+        if (spec) {
+          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of commutativity")
+          sig(symbol).updateProp(addProp(Signature.PropCommutative, oldProp))
+        } else {
+          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of associativity")
+          sig(symbol).updateProp(addProp(Signature.PropAssociative, oldProp))
+        }
+      }
       result = Control.acSimp(result)
       Control.simp(result)
     }
@@ -74,18 +174,9 @@ object SeqPProc extends Function1[Long, Unit]{
     result
   }
 
-
-  final def typeCheck(input: Seq[(Parsing.FormulaId, Term, Role)]): Set[(Parsing.FormulaId, Term, Role)] = {
-    var returnSet:Set[(Parsing.FormulaId, Term, Role)] = Set()
-    val inputIt = input.iterator
-    while(inputIt.hasNext) {
-      val i = inputIt.next()
-      if (!Term.wellTyped(i._2)) returnSet = returnSet + i
-    }
-    returnSet
-  }
-
-  ///////////////////////////////////////////////////////////
+  ////////////////////////////////////
+  //// Main-loop operations
+  ////////////////////////////////////
 
   /* Main function containing proof loop */
   final def apply(startTime: Long): Unit = {
@@ -93,89 +184,53 @@ object SeqPProc extends Function1[Long, Unit]{
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up, etc.
     /////////////////////////////////////////
-    var test = false
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-      // Read problem
-      val input = Parsing.parseProblem(Configuration.PROBLEMFILE)
-      val startTimeWOParsing = System.currentTimeMillis()
-      // Do type check in input
-      val tyCheckSet = typeCheck(input)
-      if (tyCheckSet.nonEmpty) {
-        leo.Out.severe(s"Input problem did not pass type check.")
-        throw new SZSException(SZS_TypeError, s"Type error in formulas: ${tyCheckSet.map(_._1).mkString(",")}")
-      }
-      Out.info(s"Parsing finished. Searching refutation ...")
-      // Iterate over all inputs (which are not type declarations and definitions)
-      // and collect all non-conjectures and set conjecture in state
-      val inputIt = input.iterator
-      var remainingInput: Set[AnnotatedClause] = Set()
-
-      while (inputIt.hasNext) {
-        val formula = inputIt.next()
-        if (formula._3 == Role_Definition || formula._3 == Role_Type) {
-          /* skip */
-        } else if (formula._3 == Role_Conjecture) {
-          if (state.conjecture == null) {
-            import leo.modules.calculus.CalculusRule
-
-            val conjectureClause = AnnotatedClause(termToClause(formula._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
-            state.setConjecture(conjectureClause)
-            val negConjectureClause = AnnotatedClause(Clause.mkClause(Seq(Literal.mkLit(formula._2, false))), Role_NegConjecture, InferredFrom(new CalculusRule {
-              override def name: String = "neg_conjecture"
-
-              override val inferenceStatus = Some(SZS_CounterTheorem)
-            }, Set(conjectureClause)), ClauseAnnotation.PropSOS)
-            state.setNegConjecture(negConjectureClause)
-          } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
-        } else if (formula._3 == Role_NegConjecture) {
-          throw new SZSException(SZS_InputError, "The system does not support input of already negated conjectures, sorry.")
-        } else if (formula._3 == Role_Plain) {
-          leo.Out.warn(s"Formula ${formula._1} has role 'plain' and is now treated as 'axiom'. Please check if that is what you intended.")
-          val formulaClause = AnnotatedClause(termToClause(formula._2), Role_Axiom, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
-          remainingInput = remainingInput + formulaClause
-        } else if (formula._3 == Role_Unknown) {
-          throw new SZSException(SZS_InputError, "One input formula has role 'unknown' which is treated as an error.")
-        } else {
-          val formulaClause = AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
-          remainingInput = remainingInput + formulaClause
-        }
-      }
+    // Read problem from file
+    val input2 = Parsing.readProblem(Configuration.PROBLEMFILE)
+    val startTimeWOParsing = System.currentTimeMillis()
+    // Split input in conjecture/definitions/axioms etc.
+    val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
+    // Typechecking: Throws and exception if not well-typed
+    typeCheck(remainingInput, state)
+    // Remaining stuff ...
+    Out.info(s"Type checking passed. Searching for refutation ...")
       // Initialize indexes
-      if (state.negConjecture != null) Control.fvIndexInit(remainingInput + state.negConjecture)
-      else Control.fvIndexInit(remainingInput)
-      Control.foIndexInit()
-      Out.trace(s"Symbols in conjecture: ${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
-      // Preprocessing
-      val conjecture_preprocessed = if (state.negConjecture != null) {
-        Out.debug("## Preprocess Neg.Conjecture BEGIN")
-        Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
-        val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
-        Out.debug(s"# Result:\n\t${
-          result.map {
-            _.pretty(sig)
-          }.mkString("\n\t")
-        }")
-        Out.trace("## Preprocess Neg.Conjecture END")
-        result
-      } else Set[AnnotatedClause]()
+    if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
+    else Control.initIndexes(remainingInput)
 
-      Out.debug("## Preprocess BEGIN")
-      val preprocessIt = remainingInput.iterator
-      while (preprocessIt.hasNext) {
-        val cur = preprocessIt.next()
-        Out.trace(s"# Process: ${cur.pretty(sig)}")
-        val processed = preprocess(state, cur)
-        Out.debug(s"# Result:\n\t${
-          processed.map {
-            _.pretty(sig)
-          }.mkString("\n\t")
-        }")
-        val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-        state.addUnprocessed(preprocessed)
-        if (preprocessIt.hasNext) Out.trace("--------------------")
-      }
-      Out.trace("## Preprocess END\n\n")
+    Out.trace(s"Symbols in conjecture: " +
+      s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
+    // Preprocessing
+    val conjecture_preprocessed = if (state.negConjecture != null) {
+      Out.debug("## Preprocess Neg.Conjecture BEGIN")
+      Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
+      val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
+      Out.debug(s"# Result:\n\t${
+        result.map {
+          _.pretty(sig)
+        }.mkString("\n\t")
+      }")
+      Out.trace("## Preprocess Neg.Conjecture END")
+      result
+    } else Set[AnnotatedClause]()
+
+    Out.debug("## Preprocess BEGIN")
+    val preprocessIt = remainingInput.iterator
+    while (preprocessIt.hasNext) {
+      val cur = preprocessIt.next()
+      Out.trace(s"# Process: ${cur.pretty(sig)}")
+      val processed = preprocess(state, cur)
+      Out.debug(s"# Result:\n\t${
+        processed.map {
+          _.pretty(sig)
+        }.mkString("\n\t")
+      }")
+      val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
+      state.addUnprocessed(preprocessed)
+      if (preprocessIt.hasNext) Out.trace("--------------------")
+    }
+    Out.trace("## Preprocess END\n\n")
 
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
@@ -194,7 +249,7 @@ object SeqPProc extends Function1[Long, Unit]{
       /////////////////////////////////////////
       // Init loop for conjecture-derived clauses
       /////////////////////////////////////////
-      val conjectureProcessedIt = conjecture_preprocessed.toSeq.iterator
+      val conjectureProcessedIt = conjecture_preprocessed.iterator
       Out.debug("## Pre-reasoning loop BEGIN")
       while (conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
         if (System.currentTimeMillis() - startTime > 1000 * Configuration.TIMEOUT) {
@@ -204,6 +259,10 @@ object SeqPProc extends Function1[Long, Unit]{
           var cur = conjectureProcessedIt.next()
           Out.debug(s"Taken: ${cur.pretty(sig)}")
           cur = Control.rewriteSimp(cur, state.rewriteRules)
+          /* Functional Extensionality */
+          cur = Control.funcext(cur)
+          /* To equality if possible */
+          cur = Control.liftEq(cur)
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
             if (state.conjecture == null) {
@@ -219,16 +278,13 @@ object SeqPProc extends Function1[Long, Unit]{
               state.addChoiceFunction(choiceFun)
               leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              // Subsumption
-              val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-              if (subsumed.isEmpty) {
-                if(mainLoopInferences(cur, state)) {
-                  loop = false
-                }
+              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+              // e.g. by forward subsumption
+              if (!Control.redundant(cur, state.processed)) {
+                if(mainLoopInferences(cur, state)) loop = false
               } else {
-                Out.debug("clause subsumbed, skipping.")
+                Out.debug(s"Clause ${cur.id} redundant, skipping.")
                 state.incForwardSubsumedCl()
-                Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
               }
             }
           }
@@ -237,7 +293,7 @@ object SeqPProc extends Function1[Long, Unit]{
       Out.debug("## Pre-reasoning loop END")
 
       /////////////////////////////////////////
-      // Main proof loop
+      // Main proof loop TODO: Merge with pre-reasoning loop
       /////////////////////////////////////////
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
@@ -248,58 +304,39 @@ object SeqPProc extends Function1[Long, Unit]{
           loop = false
         } else {
           // No cancel, do reasoning step
-          if (Configuration.isSet("ec") && state.noProcessedCl % 20 == 0 && !test) {
-            test = true
-            Out.debug(s"CALL LEO-II")
-            val returnszs = Control.callExternalLeoII(state.processed)
-            Out.debug(s"${returnszs.pretty}")
+          var cur = state.nextUnprocessed
+          // cur is the current AnnotatedClause
+          Out.debug(s"Taken: ${cur.pretty(sig)}")
+          Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
 
-            if (returnszs == SZS_Theorem) {
-              loop = false
-              state.setSZSStatus(SZS_Theorem)
-              val resultcl = AnnotatedClause(Clause(Seq()), InferredFrom(CallLeo, state.processed))
-              state.setDerivationClause(resultcl)
-            }
-
+          cur = Control.rewriteSimp(cur, state.rewriteRules)
+          /* Functional Extensionality */
+          cur = Control.funcext(cur)
+          /* To equality if possible */
+          cur = Control.liftEq(cur)
+          // Check if `cur` is an empty clause
+          if (Clause.effectivelyEmpty(cur.cl)) {
+            loop = false
+            endplay(cur, state)
           } else {
-            test = false
-            var cur = state.nextUnprocessed
-            // cur is the current AnnotatedClause
-            Out.debug(s"Taken: ${cur.pretty(sig)}")
-            Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
-
-            cur = Control.rewriteSimp(cur, state.rewriteRules)
-            if (Clause.effectivelyEmpty(cur.cl)) {
-              loop = false
-              if (state.conjecture == null) {
-                state.setSZSStatus(SZS_Unsatisfiable)
-              } else {
-                state.setSZSStatus(SZS_Theorem)
-              }
-              state.setDerivationClause(cur)
+            // Not an empty clause, detect choice definition or do reasoning step.
+            val choiceCandidate = Control.detectChoiceClause(cur)
+            if (choiceCandidate.isDefined) {
+              val choiceFun = choiceCandidate.get
+              state.addChoiceFunction(choiceFun)
+              leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
             } else {
-              val choiceCandidate = Control.detectChoiceClause(cur)
-              if (choiceCandidate.isDefined) {
-                val choiceFun = choiceCandidate.get
-                state.addChoiceFunction(choiceFun)
-                leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
+              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+              // e.g. by forward subsumption
+              if (!Control.redundant(cur, state.processed)) {
+                if(mainLoopInferences(cur, state)) loop = false
               } else {
-                // Subsumption
-                val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-                if (subsumed.isEmpty) {
-                  if(mainLoopInferences(cur, state)) {
-                    loop = false
-                  }
-                } else {
-                  Out.debug("clause subsumbed, skipping.")
-                  state.incForwardSubsumedCl()
-                  Out.trace(s"Subsumed by:\n\t${subsumed.map(_.pretty(sig)).mkString("\n\t")}")
-                }
+                Out.debug(s"Clause ${cur.id} redundant, skipping.")
+                state.incForwardSubsumedCl()
               }
             }
           }
         }
-
       }
 
       /////////////////////////////////////////
@@ -338,7 +375,8 @@ object SeqPProc extends Function1[Long, Unit]{
 
       Out.finest("#########################")
       Out.finest("units")
-      Out.finest(state.rewriteRules.map(cl => s"(${PatternUnification.isPattern(cl.cl.lits.head.left)}/${PatternUnification.isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+      import leo.modules.calculus.PatternUnification.isPattern
+      Out.finest(state.rewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
       Out.finest("#########################")
       Out.finest("#########################")
       Out.finest("#########################")
@@ -378,45 +416,35 @@ object SeqPProc extends Function1[Long, Unit]{
       }
   }
 
-  private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Boolean = {
+  private final def mainLoopInferences(cl: AnnotatedClause, state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
 
-    var cur: AnnotatedClause = cl
+    val cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
 //    println(s"current clauses symbols: ${Clause.symbols(cl.cl).map(s => state.signature(s).name).mkString(",")}")
 
     /////////////////////////////////////////
-    // Simplifying (mofifying inferences and backward subsumption) BEGIN
+    // Backward simplification BEGIN
     // TODO: à la E: direct descendant criterion, etc.
     /////////////////////////////////////////
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
-
     if (backSubsumedClauses.nonEmpty) {
       Out.trace(s"#### backward subsumed")
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
       Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       state.setProcessed(state.processed -- backSubsumedClauses)
-      Control.fvIndexRemove(backSubsumedClauses)
+      Control.removeFromIndex(backSubsumedClauses)
     }
-
+    /** Add to processed and to indexes. */
     state.addProcessed(cur)
-    Control.fvIndexInsert(cur)
+    Control.insertIndexed(cur)
     /* Add rewrite rules to set */
-    if (Clause.rewriteRule(cur.cl)) {
-      state.addRewriteRule(cur)
-    }
-    /* Functional Extensionality */
-    cur = Control.funcext(cur)
-    /* To equality if possible */
-    cur = Control.liftEq(cur)
+    if (Clause.rewriteRule(cur.cl)) state.addRewriteRule(cur)
     /////////////////////////////////////////
-    // Simplifying (mofifying inferences) END
+    // Backward simplification END
     /////////////////////////////////////////
-    leo.Out.finest(s"XX ${cur.pretty(sig)}")
-    leo.Out.finest(s"XX ${leo.modules.indexing.FOIndex.typedFirstOrder(cur)}")
-    Control.foIndex.insert(cur)
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
@@ -470,31 +498,29 @@ object SeqPProc extends Function1[Long, Unit]{
 
     /////////////////////////////////////////
     // At the end, for each generated clause apply simplification etc.
-    // and add to unprocessed
+    // and add to unprocessed, eagly look for the empty clause
+    // and return true if found.
     /////////////////////////////////////////
-
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
       newCl = Control.shallowSimp(newCl)
       if (Clause.effectivelyEmpty(newCl.cl)) {
-        if (state.conjecture == null) {
-          state.setSZSStatus(SZS_Unsatisfiable)
-        } else {
-          state.setSZSStatus(SZS_Theorem)
-        }
-        state.setDerivationClause(newCl)
+        endplay(newCl, state)
         return true
       } else {
-        if (!Clause.trivial(newCl.cl)) {
-          state.addUnprocessed(newCl)
-        } else {
-          Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
-        }
+        if (!Clause.trivial(newCl.cl)) state.addUnprocessed(newCl)
+        else Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
     false
+  }
+
+  @inline final private def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
+    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    else state.setSZSStatus(SZS_Theorem)
+    state.setDerivationClause(emptyClause)
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {
