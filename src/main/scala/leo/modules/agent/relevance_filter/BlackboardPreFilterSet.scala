@@ -15,9 +15,9 @@ object BlackboardPreFilterSet extends DataStore{
     if(ins.nonEmpty){
       ins.head match {
         case (form : AnnotatedFormula) => // New formula
-          PreFilterSet.addNewFormula(form)(SignatureBlackboard.get)
+          PreFilterSet.addNewFormula(form)
         case (form : AnnotatedFormula, round : Int) => // Taken Formula
-          PreFilterSet.useFormula(form)(SignatureBlackboard.get)
+          PreFilterSet.useFormula(form)
       }
       return true
     }

@@ -140,9 +140,17 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  override protected[blackboard] def getDS(d: Set[DataType]): Iterable[DataStore] = {
+  override def getDS(d: Set[DataType]): Iterable[DataStore] = {
     dsmap.filterKeys(k => d.contains(k)).values.flatten
   }
+
+  /**
+    * Returns a list of all data structures
+    * currently registered in the blackboard
+    *
+    * @return list of all data structures registered in the blackboard
+    */
+  override def getDS: Iterable[DataStore] = dsmap.values.flatten
 }
 
 

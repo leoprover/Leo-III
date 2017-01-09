@@ -26,7 +26,7 @@ trait Agent {
 	/**
 	* Sets the active status.
 	*/
-  def setActive(a : Boolean) = _isActive = a
+  def setActive(a : Boolean) : Unit = _isActive = a
 
   /**
   * This method is called, whenever the program is forcefully stopped.
@@ -37,12 +37,12 @@ trait Agent {
   /**
   * Registers this agent in the System for execution.
   */
-  def register() = Blackboard().registerAgent(this)
+  def register() : Unit = Blackboard().registerAgent(this)
 
   /**
   * Unregisteres this agent in the system.
   */
-  def unregister() = Blackboard().unregisterAgent(this)
+  def unregister() : Unit = Blackboard().unregisterAgent(this)
 
   /**
    * Declares the agents interest in specific data.

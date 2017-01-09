@@ -160,8 +160,15 @@ trait DataBlackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  protected[blackboard] def getDS(d : Set[DataType]) : Iterable[DataStore]
+  def getDS(d : Set[DataType]) : Iterable[DataStore]
 
+  /**
+    * Returns a list of all data structures
+    * currently registered in the blackboard
+    *
+    * @return list of all data structures registered in the blackboard
+    */
+  def getDS : Iterable[DataStore]
 
   /**
     *

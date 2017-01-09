@@ -45,7 +45,7 @@ class SeqFilterPhase extends Phase {
       while(taken.nonEmpty){
 
         // Take all formulas (save the newly touched symbols
-        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f)(SignatureBlackboard.get))
+        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
 
         // Translate all taken formulas to clauses
         taken.foreach{f =>
