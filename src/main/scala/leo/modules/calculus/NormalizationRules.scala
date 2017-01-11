@@ -576,7 +576,7 @@ object Simp extends CalculusRule {
     newLits
   }
 
-  def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
+  final def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
     if (!l.equational) Literal(internalNormalize(l.left), l.polarity)
     else {
       val normLeft = internalNormalize(l.left)
@@ -588,6 +588,29 @@ object Simp extends CalculusRule {
     }
   }
 
+  final def uniLitSimp(l: Literal)(implicit sig: Signature): Seq[Literal] = {
+    assert(!l.polarity)
+    uniLitSimp0(Seq(), Seq(l))
+  }
+  final def uniLitSimp0(processed: Seq[Literal],
+                        unprocessed: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+
+    if (unprocessed.isEmpty) processed
+    else {
+      val hd = unprocessed.head
+      import leo.datastructures.Term.∙
+      val left = hd.left; val right = hd.right
+      if (!(left.isApp && right.isApp)) uniLitSimp0(hd +: processed, unprocessed.tail)
+      else {
+        val (hdLeft, argsLeft) = ∙.unapply(left).get
+        val (hdRight, argsRight) = ∙.unapply(right).get
+        if (hdLeft != hdRight) uniLitSimp0(hd +: processed, unprocessed.tail)
+        else {
+          ???
+        }
+      }
+    }
+  }
 
 
   //////////////////////////////////

@@ -16,6 +16,7 @@ trait Unification {
   type ResultSubst = (TermSubst, TypeSubst)
 
   type UnificationResult = (ResultSubst, Seq[UEq])
+  type ExtendedUnificationResult = (ResultSubst, Seq[UEq], Seq[UEq])
 
   /**
     * Generates a stream of `UnificationResult`s (tuples of substitutions and unsolved equations)

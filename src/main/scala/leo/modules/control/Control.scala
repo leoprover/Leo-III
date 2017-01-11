@@ -173,19 +173,57 @@ package inferenceControl {
             ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
               (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
-          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
-            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-            Out.finest(s"with: ${withClause.pretty}")
-            Out.finest(s"withside: ${withSide.toString}")
-            Out.finest(s"into: ${intoClause.pretty}")
-            Out.finest(s"intoside: ${intoSide.toString}")
-            val newCl = OrderedParamod(withClause, withIndex, withSide,
-              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+          } else {
+            if (leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+              if (!intoTerm.isVariable) {
+                Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
+                Out.finest(s"with: ${withClause.pretty}")
+                Out.finest(s"withside: ${withSide.toString}")
+                Out.finest(s"into: ${intoClause.pretty}")
+                Out.finest(s"intoside: ${intoSide.toString}")
+                val newCl = OrderedParamod(withClause, withIndex, withSide,
+                  intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
 
-            val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-            results = results + newClWrapper
+                val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+                Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                results = results + newClWrapper
+              }
+            } else {
+              if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {
+                // implicitly: intoWrapper.id != withWrapper.id since withLit.polarity == true
+                if (withTerm.headSymbol == intoTerm.headSymbol) {
+                  // this means we can do at least a one-step simplication (Decomp) during unification
+                  Out.trace(s"Simulated Resolution step")
+                  import leo.modules.HOLSignature.LitTrue
+                  val newCl = OrderedParamod(withClause, withIndex, !withSide,
+                    intoClause, intoIndex, !intoSide, intoPos, LitTrue(), true)(sig)
+
+                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+                  Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                  results = results + newClWrapper
+                }
+              }
+            }
           }
+
+
+
+//          if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {
+//            // implicitly: intoWrapper.id != withWrapper.id since withLit.polarity == true
+//            Out.trace(s"Resolution step")
+//          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+//            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
+//            Out.finest(s"with: ${withClause.pretty}")
+//            Out.finest(s"withside: ${withSide.toString}")
+//            Out.finest(s"into: ${intoClause.pretty}")
+//            Out.finest(s"intoside: ${intoSide.toString}")
+//            val newCl = OrderedParamod(withClause, withIndex, withSide,
+//              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+//
+//            val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+//            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+//            results = results + newClWrapper
+//          }
 
         }
       }
@@ -1017,7 +1055,10 @@ package redundancyControl {
     final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause]): Boolean = {
       // Current implementation checks feature-vector index for a pre-filter.
       // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
-      testForwardSubsumptionFVI(cl).nonEmpty
+      val res = testForwardSubsumptionFVI(cl)
+      if (res.nonEmpty)
+        Out.trace(s"[Subsumption]: [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
+      res.nonEmpty
     }
 
     /** Test for subsumption using the feature vector index as a prefilter, then run
