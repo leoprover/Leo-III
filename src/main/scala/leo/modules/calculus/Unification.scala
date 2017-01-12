@@ -33,19 +33,13 @@ trait Unification {
     * are hereby all flex-flex unification constraints that are postponed. The result stream
     * is empty, if the equation `t = s` is not unifiable.
     */
-  def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult]
-}
+  def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
 
-/**
- * Tests solely for equality
- */
-object IdComparison extends Unification{
-  override def unify(vargen: FreshVarGen, t: Term, s: Term) : Iterable[UnificationResult] =
-    if (s == t) Stream(((Subst.id, Subst.id), Seq())) else Stream.empty
+  /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
+  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Seq((t,s)))
 
-  override def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult] =
-    if (constraints.forall(eq => eq._1 == eq._2)) Stream(((Subst.id, Subst.id), Seq()))
-    else Stream.empty
+  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
+  def unify(constraints: Seq[UTEq]): Option[TypeSubst]
 }
 
 
@@ -384,7 +378,7 @@ object HuetsPreUnification extends Unification {
     * returns true if the equation can be deleted
     */
   object DeleteRule {
-    final def canApply(e: UEq) = e._1 == e._2
+    final def canApply(e: UEq): Boolean = e._1 == e._2
   }
 
   /**
@@ -397,7 +391,7 @@ object HuetsPreUnification extends Unification {
       case (_ ∙ sq1, _ ∙ sq2) => zipArgumentsWithAbstractions(sq1, sq2, abstractions)
       case _ => throw new IllegalArgumentException("impossible")
     }
-    final def canApply(e: UEq, depth: Depth) = e match {
+    final def canApply(e: UEq, depth: Depth): Boolean = e match {
       case (hd1 ∙ _, hd2 ∙ _) if hd1 == hd2 => !isFlexible(hd1, depth)
       case _ => false
     }
@@ -521,6 +515,13 @@ object HuetsPreUnification extends Unification {
       res
     }
   }
+
+  /////////////////////////////////////
+  // Type unification
+  /////////////////////////////////////
+
+  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
+  final def unify(constraints: Seq[UTEq]): Option[TypeSubst] = tyDetExhaust(constraints, Subst.id)
 
   /////////////////////////////////////
   // Internal utility functions
@@ -954,4 +955,11 @@ object PatternUnification extends Unification {
       }
     }
   }
+
+  /////////////////////////////////////
+  // Type unification
+  /////////////////////////////////////
+
+  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
+  final def unify(constraints: Seq[UTEq]): Option[TypeSubst] = tyDetExhaust(constraints, Subst.id)
 }
