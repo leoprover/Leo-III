@@ -1,15 +1,14 @@
 package leo.modules.calculus
 
-import leo.LeoTestSuite
-
-import leo.datastructures.{Type, Term, Literal}
+import leo.{Checked, LeoTestSuite}
+import leo.datastructures.{Literal, Term, Type}
 import Term._
-import leo.modules.HOLSignature.{i,o, LitTrue, Not}
+import leo.modules.HOLSignature.{LitTrue, Not, i, o}
 /**
   * Created by lex on 1/12/17.
   */
 class UniLitSimpTest extends LeoTestSuite {
-  test("Test 1") {
+  test("Test 1", Checked) {
     implicit val sig = getFreshSignature
 
     val p = mkAtom(sig.addUninterpreted("p", i ->: (i ->: o) ->: i))
