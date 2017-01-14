@@ -591,9 +591,9 @@ package inferenceControl {
             val resultClause = resultClausesIt.next()
             val uniLits = resultClause.cl.negLits
             val uniLitsSimp = Simp.uniLitSimp(uniLits, freshVarGen)(sig)
-            if (uniLits == uniLitsSimp) resultClause
+            if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
             else {
-              AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(resultClause)), resultClause.properties)
+              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(resultClause)), resultClause.properties)
             }
           }
           resultClausesSimp
