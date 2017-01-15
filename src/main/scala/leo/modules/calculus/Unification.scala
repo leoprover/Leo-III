@@ -203,6 +203,7 @@ object HuetsPreUnification extends Unification {
                          uTyProblems: Seq[UTEq], solvedTy: TypeSubst):
                         (Boolean, Seq[UEq0], Seq[UEq], TermSubst, TypeSubst) = {
     //                  (fail, flexRigid, flexflex, solved, solvedTy)
+    import leo.datastructures.collectLambdas
     leo.Out.finest(s"Unsolved (term eqs): ${unprocessed.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
     leo.Out.finest(s"Unsolved (type eqs): ${uTyProblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
     if (uTyProblems.nonEmpty) {
@@ -570,16 +571,6 @@ object HuetsPreUnification extends Unification {
       throw new IllegalArgumentException("Decomp on differently sized arguments length. Decomp Failing.")
     }
   }
-
-  protected[calculus] final def collectLambdas(t: Term): (Term, Seq[Type]) = collectLambdas0(t, Seq())
-  @tailrec
-  private final def collectLambdas0(t: Term, abstractions: Seq[Type]): (Term, Seq[Type]) = {
-    import leo.datastructures.Term.:::>
-    t match {
-      case ty :::> body => collectLambdas0(body, ty +: abstractions)
-      case _ => (t, abstractions.reverse)
-    }
-  }
 }
 
 /**
@@ -589,7 +580,8 @@ object HuetsPreUnification extends Unification {
   * else the unifiers will be any arbitrary unifier (if existent).
   */
 object PatternUnification extends Unification {
-  import HuetsPreUnification.{tyDetExhaust, collectLambdas, applySubstToList}
+  import leo.datastructures.collectLambdas
+  import HuetsPreUnification.{tyDetExhaust, applySubstToList}
 
     /////////////////////////////////////
   // Unifier search starts with these methods
