@@ -471,12 +471,12 @@ package inferenceControl {
       // 2 if unifiable, reunify again with all literals (simplified)
       if (uniResult0.isEmpty) {
         if (!uniLit.polarity) {
-          val simpResult = Simp.uniLitSimp(uniLit, leo.modules.calculus.freshVarGen(cl0.cl))(sig)
+          val simpResult = Simp.uniLitSimp(uniLit)(sig)
           if (simpResult.size == 1 && simpResult.head == uniLit) Set()
           else {
             val resultClause = Clause(cl.lits.init ++ simpResult)
             val res = AnnotatedClause(resultClause, InferredFrom(Simp, Set(cl0)), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
-            Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
+            Out.finest(s"No unification, but Uni Simp result: ${res.pretty(sig)}")
             Set(res)
           }
         } else Set()
@@ -485,16 +485,7 @@ package inferenceControl {
         val uniResultIt = uniResult0.iterator
         while (uniResultIt.hasNext) {
           val uniRes = uniResultIt.next()
-          val uniLitsInUniRes = uniRes.cl.negLits
-          val uniLitsInUniResSimp = Simp.uniLitSimp(uniLitsInUniRes, freshVarGen)(sig)
-          val uniResSimp = if (uniLitsInUniRes == uniLitsInUniResSimp) uniRes
-          else {
-            val uniResSimpClause = Clause(uniRes.cl.posLits ++ uniLitsInUniResSimp)
-            val res = AnnotatedClause(uniResSimpClause, InferredFrom(Simp, Set(uniRes)), uniRes.properties)
-            Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
-            res
-          }
-          uniResult = uniResult union defaultUnify(freshVarGen, uniResSimp)(sig)
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
         }
         uniResult
       }
@@ -525,12 +516,12 @@ package inferenceControl {
       if (uniResult0.isEmpty) {
         var wasSimplified = false
         val uniLit1Simp = if (!uniLit1.polarity) {
-          val simpResult1 = Simp.uniLitSimp(uniLit1, leo.modules.calculus.freshVarGen(cl0.cl))(sig)
+          val simpResult1 = Simp.uniLitSimp(uniLit1)(sig)
           if (simpResult1.size == 1 && simpResult1.head == uniLit1) Seq(uniLit1)
           else { wasSimplified = true; simpResult1 }
         } else Seq(uniLit1)
         val uniLit2Simp = if (!uniLit2.polarity) {
-          val simpResult2 = Simp.uniLitSimp(uniLit2, leo.modules.calculus.freshVarGen(cl0.cl))(sig)
+          val simpResult2 = Simp.uniLitSimp(uniLit2)(sig)
           if (simpResult2.size == 1 && simpResult2.head == uniLit2) Seq(uniLit2)
           else { wasSimplified = true; simpResult2 }
         } else Seq(uniLit2)
@@ -545,16 +536,7 @@ package inferenceControl {
         val uniResultIt = uniResult0.iterator
         while (uniResultIt.hasNext) {
           val uniRes = uniResultIt.next()
-          val uniLitsInUniRes = uniRes.cl.negLits
-          val uniLitsInUniResSimp = Simp.uniLitSimp(uniLitsInUniRes, freshVarGen)(sig)
-          val uniResSimp = if (uniLitsInUniRes == uniLitsInUniResSimp) uniRes
-          else {
-            val uniResSimpClause = Clause(uniRes.cl.posLits ++ uniLitsInUniResSimp)
-            val res = AnnotatedClause(uniResSimpClause, InferredFrom(Simp, Set(uniRes)), uniRes.properties)
-            Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
-            res
-          }
-          uniResult = uniResult union defaultUnify(freshVarGen, uniResSimp)(sig)
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
         }
         uniResult
       }
@@ -579,7 +561,7 @@ package inferenceControl {
         // else the unified clause is unisimp*d and returned
         if (uniResult.isEmpty) {
           val uniLits = cl.cl.negLits
-          val uniLitsSimp = Simp.uniLitSimp(uniLits, leo.modules.calculus.freshVarGen(cl.cl))(sig)
+          val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
           if (uniLits == uniLitsSimp) Set(cl)
           else {
             Set(AnnotatedClause(Clause(cl.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(cl)), cl.properties))
@@ -590,7 +572,7 @@ package inferenceControl {
           while (resultClausesIt.hasNext) {
             val resultClause = resultClausesIt.next()
             val uniLits = resultClause.cl.negLits
-            val uniLitsSimp = Simp.uniLitSimp(uniLits, freshVarGen)(sig)
+            val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
             if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
             else {
               resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(resultClause)), resultClause.properties)
