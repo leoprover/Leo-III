@@ -38,7 +38,7 @@ trait Clause extends Pretty with Prettier {
 
   // System function adaptions
   override final def equals(obj : Any): Boolean = obj match {
-    case co : Clause => (lits forall {co.lits.contains}) && (co.lits forall {lits.contains})
+    case co : Clause => lits == co.lits //(lits forall {co.lits.contains}) && (co.lits forall {lits.contains})
     case _ => false
   }
   override final def hashCode(): Int = if (lits.isEmpty) 0
