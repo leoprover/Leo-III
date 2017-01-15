@@ -25,9 +25,8 @@ class UniLitSimpTest extends LeoTestSuite {
     assert(Term.wellTyped(right))
     println(left.pretty(sig))
     println(right.pretty(sig))
-    val result = Simp.uniLitSimp(Literal.mkNeg(left, right), vargen)
+    val result = Simp.uniLitSimp(Literal.mkNeg(left, right))(sig)
     assert(result.size == 2)
-    assert(result.forall(l => !l.left.ty.isFunType))
     println(s"Result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
   }
 }
