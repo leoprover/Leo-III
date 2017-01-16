@@ -269,12 +269,7 @@ object SeqPProc {
           cur = Control.liftEq(cur)
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
-            if (state.conjecture == null) {
-              state.setSZSStatus(SZS_Unsatisfiable)
-            } else {
-              state.setSZSStatus(SZS_Theorem)
-            }
-            state.setDerivationClause(cur)
+            endplay(cur, state)
           } else {
             val choiceCandidate = Control.detectChoiceClause(cur)
             if (choiceCandidate.isDefined) {
@@ -398,7 +393,7 @@ object SeqPProc {
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.comment("Signature extension used:")
         Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-        Out.comment(Utility.userDefinedSignatureAsString(sig)) // TODO: Adjust for state
+        Out.comment(Utility.userDefinedSignatureAsString(sig))
       }
 
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
@@ -535,10 +530,5 @@ object SeqPProc {
       case e: NumberFormatException => false
       case e: NoSuchElementException => false
     }
-  }
-
-  object CallLeo extends leo.modules.calculus.CalculusRule {
-    val name = "call_leo2"
-    override val inferenceStatus = Some(SZS_Theorem)
   }
 }
