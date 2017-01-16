@@ -687,13 +687,12 @@ package inferenceControl {
 
   protected[modules] object SpecialInstantiationControl {
     final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-//      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-//
-//      }
-// TODO: shallow simp at end.
-      Set(cl)
-    }
+      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
+        // TODO: shallow simp at end.
 
+        ???
+      } else Set(cl)
+    }
   }
 
   protected[modules] object Choice {
