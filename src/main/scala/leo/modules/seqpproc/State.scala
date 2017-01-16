@@ -31,6 +31,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def addRewriteRule(cl: T): Unit
   def nonRewriteUnits: Set[T]
   def addNonRewriteUnit(cl: T): Unit
+  def removeUnits(cls: Set[T]): Unit
 
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions: Map[Type, Set[Term]]
@@ -132,6 +133,11 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}
   final def nonRewriteUnits: Set[T] = current_nonRewriteUnits
   final def addNonRewriteUnit(cl: T): Unit = {current_nonRewriteUnits = current_nonRewriteUnits + cl}
+  final def removeUnits(cls: Set[T]): Unit = {
+    current_rewriterules = current_rewriterules diff cls
+    current_nonRewriteUnits = current_nonRewriteUnits diff cls
+  }
+
 
   private var choiceFunctions0: Map[Type, Set[Term]] = Map()
   final def addChoiceFunction(f: Term): Unit = {

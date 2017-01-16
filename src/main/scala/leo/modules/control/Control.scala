@@ -944,54 +944,145 @@ package inferenceControl {
     }
 
     final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      Out.trace(s"Simp on ${cl.id}")
+      Out.trace(s"[Simp] Processing ${cl.id}")
       val simpresult = Simp(cl.cl)
       val result = if (simpresult != cl.cl)
         AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
-      Out.finest(s"Simp result: ${result.pretty(sig)}")
+      Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
       result
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(simp)
 
     final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      Out.trace(s"Shallow Simp on ${cl.id}")
+      Out.trace(s"[Simp] Shallow processing ${cl.id}")
       val simpresult = Simp.shallowSimp(cl.cl)
       val result = if (simpresult != cl.cl)
         AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
       else
         cl
-      Out.trace(s"Shallow Simp result: ${result.pretty(sig)}")
+      Out.trace(s"[Simp] Shallow result: ${result.pretty(sig)}")
       result
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
 
     final def rewriteSimp(cw: AnnotatedClause, rules0: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
-      Out.trace(s"Rewrite simp on ${cw.id}")
-      val plainSimp = Simp(cw.cl)
-      // get all rewrite rules as literals
-      val rules: Set[Literal] = rules0.map(_.cl.lits.head)
-      assert(rules.forall(_.oriented))
+      val plainSimp = simp(cw)
+      Out.trace(s"[Rewriting] Processing ${cw.id}")
+      Out.finest(s"[Rewriting] Rules existent? ${rules0.nonEmpty}")
+      if (rules0.isEmpty) plainSimp
+      else {
+        // get all rewrite rules as literals
+        val rules: Set[Literal] = rules0.map(_.cl.lits.head)
+        assert(rules.forall(_.oriented))
 
-      // search in all literals of cw for instances of a rule's left side
-      val lits = cw.cl.lits
-      val litIt = lits.iterator
-      while (litIt.hasNext) {
-        val lit = litIt.next()
-
-        if (lit.polarity) {
-
-        } else {
-          
-
+        // search in all literals of cw for instances of a rule's left side
+        val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
+        while (intoConfigurationIt.hasNext) {
+          val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
+          val rewriteRulesIt = rules.iterator
+          while (rewriteRulesIt.hasNext) {
+            val rewriteRule = rewriteRulesIt.next()
+            val withTerm = rewriteRule.left
+            val replaceBy = rewriteRule.right
+            leo.Out.finest(s"[Rewriting] check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayMatch(withTerm, intoTerm)}")
+            // TODO What to do with multiple rewrites on same (sub)position?
+          }
         }
-        
+        val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
+        if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
+        else plainSimp
+      }
+    }
+
+    type Subterm = Term
+    type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
+
+    /** into-Iterator for rewriting literals. Returns all literal-side-subterm configurations
+      * `(i, l_i, s, p, t)` where
+      *
+      *  - `i` is the literal's index in `cl.lits`
+      *  - `l_i` equals `cl.lits(i)`
+      *  - `s` is a side, either `true` (left) or `false` (right)
+      *  - `p` is a position in `cl.lits(i).s` (s = left/right)
+      *  - `t` is the subterm at position `p`
+      *
+      * The iterator gives all such configurations for which `l_i` is either
+      *
+      *  (i) non-maximal, or
+      *  (ii) maximal, but `s` is not a maximal side, or
+      *  (iii) maximal, `s`is a maximal side, but `p = Position.root`.
+      */
+    final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
+
+      import Literal.{leftSide, rightSide, selectSide}
+
+      val maxLits: Seq[Literal] = Literal.maxOf(cl.lits)
+      var litIndex = 0
+      var lits: Seq[Literal] = cl.lits
+      var side: Side = rightSide // minimal side
+      var curSubterms: Set[Term] = _
+      var curPositions: Set[Position] = _
+
+      def hasNext: Boolean = if (lits.isEmpty) false
+      else {
+        val hd = lits.head
+        if (curSubterms == null) {
+          if (side == rightSide && !hd.equational) {
+            side = leftSide
+          }
+          if (side == leftSide && maxLits.contains(hd)) {
+            curSubterms = Set(selectSide(hd, side))
+            curPositions = Set(Position.root)
+          } else {
+            curSubterms = selectSide(hd, side).feasibleOccurrences.keySet
+            curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
+          }
+          true
+        } else {
+          if (curPositions.isEmpty) {
+            curSubterms = curSubterms.tail
+            if (curSubterms.isEmpty) {
+              if (maxLits.contains(hd) && side == rightSide) {
+                // hd is maximal and right side is done,
+                // select left side at root position
+                side = leftSide
+                curSubterms = Set(selectSide(hd, side))
+                curPositions = Set(Position.root)
+                true
+              } else {
+                if (side == leftSide) {
+                  lits = lits.tail
+                  litIndex += 1
+                  side = rightSide
+                } else {
+                  side = leftSide
+                }
+                curSubterms = null
+                curPositions = null
+                hasNext
+              }
+            } else {
+              curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
+              assert(hasNext)
+              true
+            }
+          } else {
+            true
+          }
+        }
       }
 
-      val rewriteSimp = RewriteSimp(plainSimp, ???)
-      if (rewriteSimp != cw.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
-      else cw
+      def next(): IntoConfiguration = {
+        if (hasNext) {
+          val res = (litIndex, lits.head, side, curPositions.head, curSubterms.head)
+          curPositions = curPositions.tail
+          res
+        } else {
+          throw new NoSuchElementException
+        }
+      }
     }
   }
 

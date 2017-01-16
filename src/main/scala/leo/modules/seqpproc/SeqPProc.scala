@@ -435,6 +435,7 @@ object SeqPProc {
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
       Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       state.setProcessed(state.processed -- backSubsumedClauses)
+      state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
     }
     /** Add to processed and to indexes. */
