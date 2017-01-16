@@ -3,8 +3,11 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, Subst, Type, _}
-import leo.modules.HOLSignature.{Not, |||, Forall, Exists, &, Impl, ===, LitFalse, LitTrue}
-import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
+import leo.modules.HOLSignature.{&, ===, Exists, Forall, Impl, LitFalse, LitTrue, Not, |||}
+import leo.modules.SZSException
+import leo.modules.output.{SZS_EquiSatisfiable, SZS_Error, SZS_Theorem}
+
+import scala.annotation.tailrec
 
 /**
   * Created by lex on 5/12/16.
@@ -576,7 +579,7 @@ object Simp extends CalculusRule {
     newLits
   }
 
-  def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
+  final def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
     if (!l.equational) Literal(internalNormalize(l.left), l.polarity)
     else {
       val normLeft = internalNormalize(l.left)
@@ -589,6 +592,61 @@ object Simp extends CalculusRule {
   }
 
 
+  final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+    assert(l.forall(a => !a.polarity))
+    val simpRes = uniLitSimp0(Seq(), l.map(lit => (lit.left, lit.right)))
+    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+  }
+  /** Given a unification literal `l` where `l = [a,b]^f`
+    * this method returns a sequence of literals (l_i) where each l_i is a (nested)
+    * argument to applications of possibly common head symbols in a and b (Decomp rule).
+    * Also, each l_i has ground type.
+    */
+  final def uniLitSimp(l: Literal)(implicit sig: Signature): Seq[Literal] = {
+    assert(!l.polarity)
+    val simpRes = uniLitSimp0(Seq(), Seq((l.left, l.right)))
+    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+  }
+
+  @tailrec
+  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)]): Seq[(Term, Term)] = {
+    if (unprocessed.isEmpty) processed
+    else {
+      val hd = unprocessed.head
+      val left = hd._1; val right = hd._2
+      val (leftBody, leftAbstractions) = collectLambdas(left)
+      val (rightBody, rightAbstractions) = collectLambdas(right)
+      assert(leftAbstractions == rightAbstractions)
+      if (HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)) {
+        val (newEqs, tyEqs) = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+        if (tyEqs.nonEmpty) {
+          // TODO: Check if we can solve typed equations without looking at all literals again
+          // (e.g. substitution of types within other terms may render them type-incorrect?
+//          // Solve all tyEqs
+//          val tyEqsIt = tyEqs.iterator
+//          var tyUniConflict = false
+//          var tyUniSubst = Subst.id
+//          while (tyEqsIt.hasNext && !tyUniConflict) {
+//            val (tyLeft, tyRight) = tyEqsIt.next()
+//            val adjustedLeft = tyLeft.substitute(tyUniSubst)
+//            val adjustedRight = tyRight.substitute(tyUniSubst)
+//            val uniResult = HuetsPreUnification.unify(adjustedLeft, adjustedRight)
+//            if (uniResult.isDefined) {
+//              tyUniSubst = tyUniSubst.comp(uniResult.get)
+//            } else {
+//              // conflict, abort processing of hd
+//              tyUniConflict = true
+//            }
+//          }
+//          if (tyUniConflict) uniLitSimp0(hd +: processed, unprocessed.tail)
+//          else {
+//            ???
+//          }
+          uniLitSimp0(hd +: processed, unprocessed.tail)
+        } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)
+      } else uniLitSimp0(hd +: processed, unprocessed.tail)
+    }
+  }
 
   //////////////////////////////////
   //// Simplification implementation by Max
