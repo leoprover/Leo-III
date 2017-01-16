@@ -7,7 +7,7 @@ package leo.datastructures
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Pretty with Prettier {
+trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
@@ -36,9 +36,11 @@ trait Clause extends Pretty with Prettier {
   final def pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
   final def pretty(sig: Signature) = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
 
+  final def cong(that: Clause): Boolean = (lits forall {that.lits.contains}) && (that.lits forall {lits.contains})
+
   // System function adaptions
   override final def equals(obj : Any): Boolean = obj match {
-    case co : Clause => lits == co.lits //(lits forall {co.lits.contains}) && (co.lits forall {lits.contains})
+    case co : Clause => lits == co.lits
     case _ => false
   }
   override final def hashCode(): Int = if (lits.isEmpty) 0
