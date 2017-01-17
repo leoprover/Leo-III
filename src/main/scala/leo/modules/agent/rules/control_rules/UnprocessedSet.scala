@@ -92,7 +92,7 @@ class UnprocessedSet extends DataStore{
     * @param t
     * @return
     */
-  override protected[blackboard] def all(t: DataType): Set[Any] = t match{
+  override def all(t: DataType): Set[Any] = t match{
     case Unprocessed => synchronized(mpq.toSet.toSet)
     case _ => Set()
 

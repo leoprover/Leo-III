@@ -1,13 +1,13 @@
 package leo.modules.agent.rules
 package control_rules
-import leo.datastructures.AnnotatedClause
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.control.Control
 
 /**
   * Created by mwisnie on 1/10/17.
   */
-class BoolextRule extends Rule{
+class BoolextRule(implicit signature : Signature) extends Rule{
 
   override final val interest: Seq[DataType] = Seq(Processed)
 

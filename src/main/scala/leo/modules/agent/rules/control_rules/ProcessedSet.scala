@@ -1,6 +1,6 @@
 package leo.modules.agent.rules.control_rules
 
-import leo.datastructures.AnnotatedClause
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataStore, DataType, Result}
 
 import scala.collection.mutable
@@ -11,7 +11,7 @@ case object Processed extends DataType
   * Stores the processed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class ProcessedSet  extends DataStore{
+class ProcessedSet(implicit signature : Signature)  extends DataStore{
 
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
 
@@ -78,7 +78,7 @@ class ProcessedSet  extends DataStore{
     * @param t
     * @return
     */
-  override protected[blackboard] def all(t: DataType): Set[Any] = t match{
+  override def all(t: DataType): Set[Any] = t match{
     case Processed => synchronized(set.toSet)
     case _ => Set()
 

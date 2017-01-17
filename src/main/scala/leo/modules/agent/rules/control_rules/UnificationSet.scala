@@ -78,7 +78,7 @@ class UnificationSet extends DataStore{
     * @param t
     * @return
     */
-  override protected[blackboard] def all(t: DataType): Set[Any] = t match{
+  override def all(t: DataType): Set[Any] = t match{
     case Unify => synchronized(set.toSet)
     case _ => Set()
 

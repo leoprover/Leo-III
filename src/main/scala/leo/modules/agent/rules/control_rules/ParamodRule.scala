@@ -2,14 +2,14 @@ package leo.modules.agent.rules
 package control_rules
 
 import leo.modules.control.Control
-import leo.datastructures.AnnotatedClause
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 
 /**
   * Applies paramodulation for a newly selected formula
   * with all previously processed formulas.
   */
-class ParamodRule(processed : ProcessedSet) extends Rule{
+class ParamodRule(processed : ProcessedSet)(implicit signature : Signature) extends Rule{
   override val name: String = "paramod"
 
   override val observedDataStructures: Seq[DataStore] = Seq(processed)
@@ -24,7 +24,7 @@ class ParamodRule(processed : ProcessedSet) extends Rule{
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.paramodSet(c, ps)
+      val ps = Control.paramodSet(c, p)
       p += c   // Take the new one into consideration for the next selected clause
       res = new ParamodHint(c, ps) +: res
     }

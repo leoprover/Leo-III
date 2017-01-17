@@ -1,6 +1,6 @@
 package leo.modules.agent.rules.control_rules
 
-import leo.datastructures.AnnotatedClause
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.agent.rules.{Hint, Rule}
 import leo.modules.control.Control
@@ -8,7 +8,7 @@ import leo.modules.control.Control
 /**
   * Created by mwisnie on 1/10/17.
   */
-class FactorRule extends Rule{
+class FactorRule(implicit signature : Signature) extends Rule{
   override val name: String = "factor"
 
   override final val interest: Seq[DataType] = Seq(Processed)
