@@ -24,6 +24,7 @@ object ExternalProver {
   @throws[NoSuchMethodException]
   def createProver(name : String, path : String) : TptpProver[AnnotatedClause] = name match {
     case "leo2" => createLeo2(path)
+    case "nitpick" => createNitpickProver(path)
     case _ => throw new NoSuchMethodException(s"There is no prover ${name} registered in the system.")
   }
 
@@ -45,24 +46,34 @@ object ExternalProver {
       throw new NoSuchMethodException(s"There is no prover '${path}' is not exectuable or does not exist.")
     }
   }
+
+  /**
+    * Creates a callable instance of Nitpick.
+    * The given `path` has to reference the isabelle system.
+    *
+    * Throws an [[NoSuchMethodException]] if this prover cannot be executed.
+    *
+    * @param path path of the prover
+    * @return an abstracted instance of Nitpick
+    */
+  @throws[NoSuchMethodException]
+  def createNitpickProver(path : String) : NitpickProver = {
+    val p = Paths.get(path)
+    if(Files.exists(p) && Files.isExecutable(p)) {
+      val convert = p.toAbsolutePath.toString
+      leo.Out.debug(s"Created Nitpick prover with path '$convert' (Isabelle)")
+      new NitpickProver(convert)
+    } else {
+      throw new NoSuchMethodException(s"There is no prover '${path}' is not exectuable or does not exist.\nTip: Reference only to isablle and not nitpick directly.")
+    }
+  }
+
 }
 
 
 
 
-
-
-
-class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause]{
-  /*
-    TODO Build own Future object, that parses the szsStatus from the exitValue
-    Support mkFuture or a Function (Process => Result) with a standard implementation
-    to read the output stream
-
-
-
-    */
-  override val name: String = "leo2"
+abstract class THFProver extends TptpProver[AnnotatedClause]{
   val falseClause = AnnotatedClause(Clause(Seq(Literal.mkLit(LitTrue(), false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
 
   override protected[external] def translateProblem(problem: Set[AnnotatedClause])(implicit sig : Signature): Seq[String] = {
@@ -72,6 +83,12 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause]{
     println(s"\n\nTranslation : ${res.mkString("\n")}")
     res
   }
+}
+
+
+class Leo2Prover(val path : String) extends THFProver{
+  override val name: String = "leo2"
+
 
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     Seq(path, "-t", (timeout / 1000).toString) ++ args ++ Seq(problemFileName)
@@ -80,22 +97,7 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause]{
   /**
     * Performs a translation of the result of the external process.
     *
-    * Reads the exitValue of Leo2 and translates it to a result:
-    * Leo2's exit values are defined by
-    * Theorem -> 0
-    * | Unsatisfiable -> 1
-    * | Timeout -> 2
-    * | ResourceOut -> 3
-    * | GaveUp -> 4
-    * | CounterSatisfiable -> 5
-    * | Satisfiable -> 6
-    * | Tautology -> 7
-    * (*externally-forced status*)
-    * | User -> 50
-    * | Force -> 51
-    * (*"strange" status*)
-    * | Unknown -> 126
-    * | Error -> 127
+    * Reads the exitValue of Leo2 and translates it to a result.
     *
     * @param originalProblem the original set of formulas, passed to the process
     * @param process         the process itself
@@ -107,7 +109,7 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause]{
       val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
       val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
 
-      // Binäre suche 12 Vergleiche vs 4
+      // Tests the possible exitValues of leo2
       val szsStatus = exitValue match {
         case 0 => SZS_Theorem
         case 2 => SZS_Timeout
@@ -128,5 +130,14 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause]{
       case e: Exception =>
         new TptpResult[AnnotatedClause](originalProblem, SZS_Error, 127, Seq(), Seq(e.getMessage))
     }
+  }
+}
+
+
+class NitpickProver(val path : String) extends THFProver {
+  override def name: String = "nitpick"
+
+  override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
+    Seq(path, "tptp_nitpick", (timeout / 1000).toString) ++ Seq(problemFileName)
   }
 }
