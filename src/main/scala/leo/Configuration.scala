@@ -43,7 +43,8 @@ object Configuration extends DefaultConfiguration {
       'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
       's' -> ("sos", "", "Use SOS heuristic search strategy"),
-      'a' -> ("atp", "name=call", "Addition of external provers")
+      'a' -> ("atp", "name=call", "Addition of external provers"),
+      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in milliseconds.")
     )
   }
 

@@ -22,7 +22,17 @@ object ExternalMain {
       }
     }
 
-    val p = ExternalProver.createLeo2("/home/mwisnie/prover/leo2/bin/leo")
+    if(Configuration.ATPS.isEmpty){
+      println("% This program tests external ATP calls. Please specify one")
+      return
+    }
+    val (name, path) = Configuration.ATPS.head
+
+    if(name != "leo2"){
+      println("% Currently there is only support for leo2.")
+      return
+    }
+    val p = ExternalProver.createProver(name,path)
 
     implicit val s = Signature.freshWithHOL()
     val input = Parsing.readProblem(Configuration.PROBLEMFILE)
