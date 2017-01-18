@@ -55,7 +55,7 @@ object ExternalMain {
     // Process our own input
     println(s"Problem to check :\n ${example.map(_.pretty(s)).mkString("\n")}")
 
-    val max = Configuration.TIMEOUT * 1000
+    val max = Configuration.ATP_TIMEOUT.getOrElse(name, Configuration.ATP_STD_TIMEOUT)
 
     val fres = p.call(example, max)
 

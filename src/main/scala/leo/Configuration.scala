@@ -150,6 +150,29 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
+  final val ATP_STD_TIMEOUT : Int = 6000
+  lazy val ATP_TIMEOUT : Map[String, Int] = {
+    val a = valueOf("e")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1).toInt)
+      }.toMap
+    }
+    else {
+      val b = valueOf("atp-timeout")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1).toInt)
+        }.toMap
+      }
+      else Map()
+    }
+  }
+
   // more to come ...
 
   ///////////////
