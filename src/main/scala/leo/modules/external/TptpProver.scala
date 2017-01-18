@@ -78,7 +78,7 @@ trait TptpProver[C <: ClauseProxy] {
       val res = constructCall(args, timeout, file.getAbsolutePath)
       KillableProcess(res.mkString(" "))
     }
-    new SZSKillFuture[C](process, problem, timeout)
+    new SZSKillFuture(process, problem, timeout)
   }
 
   class TptpResult[C <: ClauseProxy](originalProblem : Set[C], passedSzsStatus : StatusSZS, passedExitValue : Int, passedOutput : Iterable[String], passedError : Iterable[String]) {
@@ -129,11 +129,46 @@ trait TptpProver[C <: ClauseProxy] {
     val error : Iterable[String] = passedError
   }
 
-  class SZSKillFuture[C <: ClauseProxy](process : KillableProcess, originalProblem : Set[C], timeout : Int) extends Future[TptpResult[C]] {
+  /**
+    * Performs a translation of the result of the external process.
+    *
+    * The standard implementation reads the stdOut and searches for
+    * TPTP conform SZS result
+    *
+    * @param originalProblem the original set of formulas, passed to the process
+    * @param process the process itself
+    * @return the result of the external prover, run on the originalProblem
+    */
+  protected def translateResult(originalProblem : Set[C], process : KillableProcess) : TptpResult[C] = {
+    try{
+      val exitValue = process.exitValue
+      val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
+      val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
+
+      val it = output.iterator
+      var szsStatus: StatusSZS = null
+      while (it.hasNext && szsStatus == null) {
+        val line = it.next()
+        StatusSZS.answerLine(line) match {
+          case Some(status) => szsStatus = status
+          case _ => ()
+        }
+      }
+      if (szsStatus == null) {
+        szsStatus = SZS_GaveUp
+      }
+      new TptpResult[C](originalProblem, szsStatus, exitValue, output, error)
+    } catch {
+      case e : Exception => new TptpResult[C](originalProblem, SZS_Error, 51, Seq(), Seq(e.getMessage))
+    }
+  }
+
+  class SZSKillFuture(process : KillableProcess, originalProblem : Set[C], timeout : Int) extends Future[TptpResult[C]] {
 
     private var result : TptpResult[C] = null
     private var isTerminated = false    // If this is true, result has been set
     private val startTime = System.currentTimeMillis()
+    final val EPSILON = 1000  // TODO How to handle prover with no good timeout
 
     /**
       * Checks for the processes termination.
@@ -148,33 +183,13 @@ trait TptpProver[C <: ClauseProxy] {
       if(!isTerminated) {
         if(!process.isAlive){
           // The external process is finished. Put the result in an Resultobject.
-          try {
-            val exitValue = process.exitValue
-            val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
-            val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
-
-            val it = output.iterator
-            var szsStatus: StatusSZS = null
-            while (it.hasNext && szsStatus == null) {
-              val line = it.next()
-              StatusSZS.answerLine(line) match {
-                case Some(status) => szsStatus = status
-                case _ => ()
-              }
-            }
-            if (szsStatus == null) {
-              szsStatus = SZS_GaveUp
-            }
-            result = new TptpResult[C](originalProblem, szsStatus, exitValue, output, error)
-          } catch {
-            case e : Exception => result = new TptpResult[C](originalProblem, SZS_Error, -1, Seq(), Seq(e.getMessage))
-          }
+          result = translateResult(originalProblem, process)
           isTerminated = true
         } else {
           // The process is still alive. Check for timeout and kill if it is over
           val cTime = System.currentTimeMillis()
-          if(cTime - startTime > timeout) {
-            result = new TptpResult[C](originalProblem, SZS_Forced, -1, Seq(), Seq())
+          if(cTime - startTime > timeout + EPSILON) {
+            result = new TptpResult[C](originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has exceeded its timelimit and was force fully killed."))
             process.kill
             isTerminated = true
           } else {
