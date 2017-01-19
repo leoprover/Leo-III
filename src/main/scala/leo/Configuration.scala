@@ -43,7 +43,8 @@ object Configuration extends DefaultConfiguration {
       'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
       's' -> ("sos", "", "Use SOS heuristic search strategy"),
-      'a' -> ("atp", "name=call", "Addition of external provers")
+      'a' -> ("atp", "name=call", "Addition of external provers"),
+      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds.")
     )
   }
 
@@ -146,6 +147,29 @@ object Configuration extends DefaultConfiguration {
         }
       }
       else Seq()
+    }
+  }
+
+  final val ATP_STD_TIMEOUT : Int = 30
+  lazy val ATP_TIMEOUT : Map[String, Int] = {
+    val a = valueOf("e")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1).toInt)
+      }.toMap
+    }
+    else {
+      val b = valueOf("atp-timeout")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1).toInt)
+        }.toMap
+      }
+      else Map()
     }
   }
 

@@ -62,10 +62,13 @@ object ToTPTP {
     */
   final def apply[A <: ClauseProxy](formulas : Set[A])(implicit sig: Signature): Seq[Output] = {
     var out: Seq[Output] = Seq()
-    sig.allUserConstants foreach { k =>
-      val constDecl = output(k)
-      out = constDecl +: out
+    var defs : Seq[Output] = Seq()
+    val sortsig = sig.allUserConstants.toSeq.sortBy(x => x)
+    sortsig foreach { k => // Sorted by id
+      out = typeToTPTPOutput(k) +: out
+      definitionToTPTPOutput(k) foreach {o => println(o()); defs = o +: defs}
     }
+    out = defs ++ out
     formulas foreach {formula =>
       out = ToTPTP.output(formula) +: out}
     out.reverse
@@ -97,9 +100,50 @@ object ToTPTP {
       s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
     }
   }
+
   final def output(k: Signature#Key)(implicit sig: Signature): Output = new Output {
     final def apply() = ToTPTP(k)(sig)
   }
+
+  private def typeToTPTP(k: Signature#Key)(implicit sig : Signature) : String = {
+    val constant = sig.apply(k)
+    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
+      "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+    } else {
+      constant.name
+    }
+    if (constant.hasType) {
+      s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)(sig)})."
+    } else {
+      // Its a type constant
+      assert(constant.hasKind)
+      s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
+    }
+  }
+
+  private def typeToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Output = new Output {
+    final def apply() = typeToTPTP(k)(sig)
+  }
+
+  private def definitionToTPTP(k: Signature#Key)(implicit sig : Signature) : Option[String] = {
+    val constant = sig.apply(k)
+    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
+      "'" + constant.name.substring(1, constant.name.length - 1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+    } else {
+      constant.name
+    }
+    if (constant.hasDefn) {
+      Some(s"\nthf(${cname}_def, definition, ($cname = (${toTPTP0(constant._defn)(sig)}))).")
+    } else {
+      None
+    }
+  }
+
+  private def definitionToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Option[Output] =
+    definitionToTPTP(k)(sig) map (x => new Output {
+      final def apply() = x
+    })
+
 
 
   ///////////////////////////////
