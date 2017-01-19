@@ -49,11 +49,14 @@ object SeqPProc {
     while (inputIt.hasNext) {
       val formula = inputIt.next()
       formula.role match {
-        case Role_Definition.pretty | Role_Type.pretty => Parsing.processFormula(formula)(state.signature)
+        case Role_Type.pretty => Parsing.processFormula(formula)(state.signature)
+        case Role_Definition.pretty => Control.relevanceFilterAdd(formula)(state.signature)
+          Parsing.processFormula(formula)(state.signature)
         case Role_Conjecture.pretty =>
           if (state.negConjecture == null) {
             // Convert and negate and add conjecture
             import leo.modules.calculus.CalculusRule
+            Control.relevanceFilterAdd(formula)(state.signature)
             val translated = Parsing.processFormula(formula)(state.signature)
             val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
             state.setConjecture(conjectureClause)
@@ -66,6 +69,7 @@ object SeqPProc {
           } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
         case Role_NegConjecture.pretty =>
           if (state.negConjecture == null) {
+            Control.relevanceFilterAdd(formula)(state.signature)
             val translated = Parsing.processFormula(formula)(state.signature)
             val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
             state.setNegConjecture(negConjectureClause)
@@ -265,12 +269,7 @@ object SeqPProc {
           cur = Control.liftEq(cur)
           if (Clause.effectivelyEmpty(cur.cl)) {
             loop = false
-            if (state.conjecture == null) {
-              state.setSZSStatus(SZS_Unsatisfiable)
-            } else {
-              state.setSZSStatus(SZS_Theorem)
-            }
-            state.setDerivationClause(cur)
+            endplay(cur, state)
           } else {
             val choiceCandidate = Control.detectChoiceClause(cur)
             if (choiceCandidate.isDefined) {
@@ -394,7 +393,7 @@ object SeqPProc {
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.comment("Signature extension used:")
         Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-        Out.comment(Utility.userDefinedSignatureAsString(sig)) // TODO: Adjust for state
+        Out.comment(Utility.userDefinedSignatureAsString(sig))
       }
 
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
@@ -531,10 +530,5 @@ object SeqPProc {
       case e: NumberFormatException => false
       case e: NoSuchElementException => false
     }
-  }
-
-  object CallLeo extends leo.modules.calculus.CalculusRule {
-    val name = "call_leo2"
-    override val inferenceStatus = Some(SZS_Theorem)
   }
 }

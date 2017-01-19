@@ -173,19 +173,57 @@ package inferenceControl {
             ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
               (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
-          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
-            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-            Out.finest(s"with: ${withClause.pretty}")
-            Out.finest(s"withside: ${withSide.toString}")
-            Out.finest(s"into: ${intoClause.pretty}")
-            Out.finest(s"intoside: ${intoSide.toString}")
-            val newCl = OrderedParamod(withClause, withIndex, withSide,
-              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+          } else {
+            if (leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+              if (!intoTerm.isVariable) {
+                Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
+                Out.finest(s"with: ${withClause.pretty}")
+                Out.finest(s"withside: ${withSide.toString}")
+                Out.finest(s"into: ${intoClause.pretty}")
+                Out.finest(s"intoside: ${intoSide.toString}")
+                val newCl = OrderedParamod(withClause, withIndex, withSide,
+                  intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
 
-            val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-            results = results + newClWrapper
+                val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+                Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                results = results + newClWrapper
+              }
+            } else {
+              if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {
+                // implicitly: intoWrapper.id != withWrapper.id since withLit.polarity == true
+                if (withTerm.headSymbol == intoTerm.headSymbol) {
+                  // this means we can do at least a one-step simplication (Decomp) during unification
+                  Out.trace(s"Simulated Resolution step")
+                  import leo.modules.HOLSignature.LitTrue
+                  val newCl = OrderedParamod(withClause, withIndex, !withSide,
+                    intoClause, intoIndex, !intoSide, intoPos, LitTrue(), true)(sig)
+
+                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+                  Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                  results = results + newClWrapper
+                }
+              }
+            }
           }
+
+
+
+//          if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {
+//            // implicitly: intoWrapper.id != withWrapper.id since withLit.polarity == true
+//            Out.trace(s"Resolution step")
+//          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
+//            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
+//            Out.finest(s"with: ${withClause.pretty}")
+//            Out.finest(s"withside: ${withSide.toString}")
+//            Out.finest(s"into: ${intoClause.pretty}")
+//            Out.finest(s"intoside: ${intoSide.toString}")
+//            val newCl = OrderedParamod(withClause, withIndex, withSide,
+//              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+//
+//            val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+//            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+//            results = results + newClWrapper
+//          }
 
         }
       }
@@ -427,31 +465,81 @@ package inferenceControl {
         Seq((uniLit.left, LitFalse.apply())) /* in case a False was substituted in paramod */
       }
       val uniResult0 = doUnify0(cl0, freshVarGen, uniEq, cl.lits.init)(sig)
-      // TODO: Try again to unify all possibly new unification constraints, is that useful?
-      var uniResult: Set[AnnotatedClause] = Set()
-      val uniResultIt = uniResult0.iterator
-      while (uniResultIt.hasNext) {
-        val uniRes = uniResultIt.next()
-        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+      // 1 if not unifiable, check if uni constraints can be simplified
+      // if it can be simplified, return simplified constraints
+      // if it cannot be simplied, drop clause
+      // 2 if unifiable, reunify again with all literals (simplified)
+      if (uniResult0.isEmpty) {
+        if (!uniLit.polarity) {
+          val simpResult = Simp.uniLitSimp(uniLit)(sig)
+          if (simpResult.size == 1 && simpResult.head == uniLit) Set()
+          else {
+            val resultClause = Clause(cl.lits.init ++ simpResult)
+            val res = AnnotatedClause(resultClause, InferredFrom(Simp, Set(cl0)), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
+            Out.finest(s"No unification, but Uni Simp result: ${res.pretty(sig)}")
+            Set(res)
+          }
+        } else Set()
+      } else {
+        var uniResult: Set[AnnotatedClause] = Set()
+        val uniResultIt = uniResult0.iterator
+        while (uniResultIt.hasNext) {
+          val uniRes = uniResultIt.next()
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+        }
+        uniResult
       }
-      uniResult
     }
 
     private final def factorUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
+      import leo.modules.HOLSignature.LitFalse
       val cl = cl0.cl
       assert(cl.lits.size >= 2)
       val uniLit1 = cl.lits.last
       val uniLit2 = cl.lits.init.last
-      assert(!uniLit1.polarity && !uniLit2.polarity) //FIXME: Same fix as for paramodUnify above
-      val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit1.left, uniLit1.right), (uniLit2.left, uniLit2.right)), cl.lits.init.init)(sig)
-      // Try again to unify all possibly new unification constraints
-      var uniResult: Set[AnnotatedClause] = Set()
-      val uniResultIt = uniResult0.iterator
-      while (uniResultIt.hasNext) {
-        val uniRes = uniResultIt.next()
-        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+
+      val uniEq1 = if (!uniLit1.polarity) (uniLit1.left, uniLit1.right) /*standard case*/
+      else {
+        assert(!uniLit1.equational)
+        (uniLit1.left, LitFalse()) /* in case a False was substituted in factor */
       }
-      uniResult
+      val uniEq2 = if (!uniLit2.polarity) (uniLit2.left, uniLit2.right) /*standard case*/
+      else {
+        assert(!uniLit2.equational)
+        (uniLit2.left, LitFalse()) /* in case a False was substituted in factor */
+      }
+      val uniResult0 = doUnify0(cl0, freshVarGen, Seq(uniEq1, uniEq2), cl.lits.init.init)(sig)
+      // 1 if not unifiable, check if uni constraints can be simplified
+      // if it can be simplified, return simplified constraints
+      // if it cannot be simplied, drop clause
+      // 2 if unifiable, reunify again with all literals (simplified)
+      if (uniResult0.isEmpty) {
+        var wasSimplified = false
+        val uniLit1Simp = if (!uniLit1.polarity) {
+          val simpResult1 = Simp.uniLitSimp(uniLit1)(sig)
+          if (simpResult1.size == 1 && simpResult1.head == uniLit1) Seq(uniLit1)
+          else { wasSimplified = true; simpResult1 }
+        } else Seq(uniLit1)
+        val uniLit2Simp = if (!uniLit2.polarity) {
+          val simpResult2 = Simp.uniLitSimp(uniLit2)(sig)
+          if (simpResult2.size == 1 && simpResult2.head == uniLit2) Seq(uniLit2)
+          else { wasSimplified = true; simpResult2 }
+        } else Seq(uniLit2)
+        if (wasSimplified) {
+          val resultClause = Clause(cl.lits.init.init ++ uniLit1Simp ++ uniLit2Simp)
+          val res = AnnotatedClause(resultClause, InferredFrom(Simp, Set(cl0)), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
+          Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
+          Set(res)
+        } else Set()
+      } else {
+        var uniResult: Set[AnnotatedClause] = Set()
+        val uniResultIt = uniResult0.iterator
+        while (uniResultIt.hasNext) {
+          val uniRes = uniResultIt.next()
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+        }
+        uniResult
+      }
     }
 
     private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
@@ -468,14 +556,30 @@ package inferenceControl {
       }
       if (uniLits.nonEmpty) {
         val uniResult = doUnify0(cl, freshVarGen, uniLits, otherLits)(sig)
-        // TODO: Discard those with no unifier here?
-        // i.e. either one of the two options below
-        // at the moment, i prefer (2)
-        // (1)
-        //      uniResult
-        // (2)
-        if (uniResult.isEmpty) Set(cl)
-        else uniResult
+        // all negative literals are taken as unification constraints
+        // if no unifier is found, the original clause is unisimp'd and returned
+        // else the unified clause is unisimp*d and returned
+        if (uniResult.isEmpty) {
+          val uniLits = cl.cl.negLits
+          val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
+          if (uniLits == uniLitsSimp) Set(cl)
+          else {
+            Set(AnnotatedClause(Clause(cl.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(cl)), cl.properties))
+          }
+        } else {
+          val resultClausesIt = uniResult.iterator
+          var resultClausesSimp: Set[AnnotatedClause] = Set()
+          while (resultClausesIt.hasNext) {
+            val resultClause = resultClausesIt.next()
+            val uniLits = resultClause.cl.negLits
+            val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
+            if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
+            else {
+              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(resultClause)), resultClause.properties)
+            }
+          }
+          resultClausesSimp
+        }
       } else Set(cl)
     }
 
@@ -1017,7 +1121,10 @@ package redundancyControl {
     final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause]): Boolean = {
       // Current implementation checks feature-vector index for a pre-filter.
       // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
-      testForwardSubsumptionFVI(cl).nonEmpty
+      val res = testForwardSubsumptionFVI(cl)
+      if (res.nonEmpty)
+        Out.trace(s"[Subsumption]: [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
+      res.nonEmpty
     }
 
     /** Test for subsumption using the feature vector index as a prefilter, then run
@@ -1212,6 +1319,7 @@ package indexingControl {
 
         val conjSymbols = PreFilterSet.useFormula(conjecture)
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
+        leo.Out.finest(s"${firstPossibleCandidates.map(_.name)}")
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
 
         while (taken.nonEmpty) {

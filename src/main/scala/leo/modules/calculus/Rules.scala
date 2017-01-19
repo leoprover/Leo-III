@@ -398,12 +398,13 @@ object OrderedParamod extends CalculusRule {
     * @param intoPosition position in `side(l=r)` that is rewritten
     */
   final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
-            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term)(implicit sig: Signature): Clause = {
+            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term,
+                  simulateResolution: Boolean = false)(implicit sig: Signature): Clause = {
     assert(withClause.lits.isDefinedAt(withIndex))
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
-    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented)
-    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented)
+    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented || simulateResolution)
+    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented || simulateResolution)
 
     val withLiteral = withClause.lits(withIndex)
     val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
