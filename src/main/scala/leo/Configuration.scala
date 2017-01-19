@@ -44,7 +44,7 @@ object Configuration extends DefaultConfiguration {
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
       's' -> ("sos", "", "Use SOS heuristic search strategy"),
       'a' -> ("atp", "name=call", "Addition of external provers"),
-      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in milliseconds.")
+      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds.")
     )
   }
 
@@ -150,7 +150,7 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
-  final val ATP_STD_TIMEOUT : Int = 6000
+  final val ATP_STD_TIMEOUT : Int = 30
   lazy val ATP_TIMEOUT : Map[String, Int] = {
     val a = valueOf("e")
     if(a.nonEmpty) {

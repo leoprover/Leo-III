@@ -168,7 +168,7 @@ trait TptpProver[C <: ClauseProxy] {
     private var result : TptpResult[C] = null
     private var isTerminated = false    // If this is true, result has been set
     private val startTime = System.currentTimeMillis()
-    final val EPSILON = 1000  // TODO How to handle prover with no good timeout
+    private lazy val timeoutMilli = (timeout + ExternalProver.WAITFORTERMINATION) * 1000
 
     /**
       * Checks for the processes termination.
@@ -188,8 +188,8 @@ trait TptpProver[C <: ClauseProxy] {
         } else {
           // The process is still alive. Check for timeout and kill if it is over
           val cTime = System.currentTimeMillis()
-          if(cTime - startTime > timeout + EPSILON) {
-            result = new TptpResult[C](originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has exceeded its timelimit and was force fully killed."))
+          if(cTime - startTime > timeoutMilli) {
+            result = new TptpResult[C](originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has exceeded its timelimit of $timeout and was force fully killed."))
             process.kill
             isTerminated = true
           } else {

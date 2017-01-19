@@ -13,6 +13,12 @@ import leo.modules.HOLSignature.LitTrue
   * Checks for the commands, for their executability.
   */
 object ExternalProver {
+
+  /**
+    * Additional time added to the timeout to wait for termination
+    */
+  final val WAITFORTERMINATION = 1
+
   /**
     * Creates a prover `name` with an executable at the path `path`.
     * Throws an [[NoSuchMethodException]] if this prover cannot be executed.

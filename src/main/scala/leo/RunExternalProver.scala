@@ -9,19 +9,8 @@ import leo.modules.output.SZS_Error
 /**
   * Created by mwisnie on 9/26/16.
   */
-object ExternalMain {
-  def main(args : Array[String]): Unit ={
-
-    try {
-      Configuration.init(new CLParameterParser(args))
-    } catch {
-      case e: IllegalArgumentException => {
-        Out.severe(e.getMessage)
-        Configuration.help()
-        return
-      }
-    }
-
+object RunExternalProver {
+  def runExternal(): Unit ={
     if(Configuration.ATPS.isEmpty){
       println("% This program tests external ATP calls. Please specify one")
       return
@@ -55,7 +44,7 @@ object ExternalMain {
     // Process our own input
     println(s"Problem to check :\n ${example.map(_.pretty(s)).mkString("\n")}")
 
-    val max = Configuration.ATP_TIMEOUT.getOrElse(name, Configuration.ATP_STD_TIMEOUT)
+    val max = Configuration.ATP_TIMEOUT.getOrElse(name, Configuration.ATP_STD_TIMEOUT) * 1000
 
     val fres = p.call(example, max)
 
