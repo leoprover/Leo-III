@@ -33,6 +33,8 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
   private val PARAM_NOCHOICE = "nochoice"
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
+  private val PARAM_ATPCHECKINTERVAL = "atp-check-interval"
+  private val PARAM_ATPCALLINTERVAL = "atp-call-interval"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -130,6 +132,8 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
+  lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
+  lazy val ATP_CHECK_INTERVAL: Int = uniqueIntFor(PARAM_ATPCHECKINTERVAL, DEFAULT_ATPCHECKINTERVAL)
   lazy val ATPS : Seq[(String, String)] = {
     val a = valueOf("a")
     if(a.nonEmpty) {
@@ -272,4 +276,6 @@ trait DefaultConfiguration {
   val DEFAULT_UNIFIERCOUNT = 1
   val DEFAULT_PRIMSUBST = 1
   val DEFAULT_PRE_PRIMSUBST = 0
+  val DEFAULT_ATPCHECKINTERVAL = 10
+  val DEFAULT_ATPCALLINTERVAL = 10
 }

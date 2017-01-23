@@ -64,10 +64,11 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
-  @inline final def callExternalLeoII(clauses: Set[AnnotatedClause])(implicit sig: Signature) = externalProverControl.ExternalLEOIIControl.call(clauses)(sig)
+  @inline final def checkExternalResults: Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults
+  @inline final def submit(clauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = externalProverControl.ExtProverControl.submit(clauses)(sig)
 }
 
-/** Package collcetion control objects for inference rules.
+/** Package collection control objects for inference rules.
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
@@ -1454,45 +1455,47 @@ package indexingControl {
 
 package  externalProverControl {
 
-  import java.util.concurrent.TimeUnit
+  object ExtProverControl {
+    import leo.modules.external._
+    import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    type Prover = String
+    private var openCalls: Map[Prover, Set[Future[TptpResult[AnnotatedClause]]]] = Map()
+    private var lastCheck: Long = Long.MinValue
+    private var lastCall: Long = Long.MinValue
 
-  import leo.datastructures.ClauseAnnotation.NoAnnotation
-  import leo.datastructures._
-  import leo.modules.HOLSignature.LitFalse
-  import leo.modules.external._
-  import leo.modules.output._
-
-  object ExternalLEOIIControl {
-    @inline final def call(cls: Set[AnnotatedClause])(implicit sig: Signature): StatusSZS = call(cls, 5)(sig)
-
-    final def call(cls: Set[AnnotatedClause], sec: Long)(sig: Signature): StatusSZS = {
-      val modifyClauses = cls.map { cl =>
-        if (cl.role == Role_NegConjecture) {
-          AnnotatedClause(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
-        } else {
-          AnnotatedClause(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
+    final def checkExternalResults: Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
+      val curTime = System.currentTimeMillis()
+      if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+        lastCheck = curTime
+        val proversIt = openCalls.keys.iterator
+        while (proversIt.hasNext) {
+          val prover = proversIt.next()
+          var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
+          val openCallsIt = openCalls(prover).iterator
+          while (openCallsIt.hasNext) {
+            val openCall = openCallsIt.next()
+            if (openCall.isCompleted) {
+              finished = finished + openCall
+              val result = openCall.value.get
+              if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
+                return Some(result)
+              } else if (result.szsStatus == SZS_Error) {
+                leo.Out.warn(result.error.mkString("\n"))
+              }
+            }
+          }
+          if (finished == openCalls(prover)) {
+            openCalls = openCalls.-(prover)
+          } else {
+            openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
+          }
         }
-      }
-      val submitClauses: Set[AnnotatedClause] = modifyClauses + AnnotatedClause(Clause(Literal(LitFalse(), true)), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
-      val send = ToTPTP(submitClauses)(sig).map(_.apply)
-      Out.finest(s"LEO input:")
-      Out.finest(s"${send.mkString("\n")}")
-      Out.finest("LEO INPUT END")
-      val result = ExternalCall.exec("/home/lex/bin/leo2/bin/leo ", send)
-      val resres = result.waitFor(sec, TimeUnit.SECONDS)
-      if (resres) {
-        Out.finest(s"leo did know: ${exitCodeToSZS(result.exitValue)}")
-        exitCodeToSZS(result.exitValue)
-      } else {
-        Out.finest("leo didnt know")
-        SZS_Unknown
-      }
+        None
+      } else None
     }
 
-    private final def exitCodeToSZS(exitcode: Int): StatusSZS = exitcode match {
-      case 0 => SZS_Theorem
-      case 1 => SZS_Unsatisfiable
-      case _ => SZS_Unknown
+    final def submit(clauses: Set[AnnotatedClause])(sig: Signature): Unit = {
+      ()
     }
   }
 }
