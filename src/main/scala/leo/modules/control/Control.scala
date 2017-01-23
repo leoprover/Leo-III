@@ -2,6 +2,7 @@ package leo.modules.control
 
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
+import leo.modules.seqpproc.State
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -65,7 +66,8 @@ object Control {
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
   @inline final def checkExternalResults: Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults
-  @inline final def submit(clauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = externalProverControl.ExtProverControl.submit(clauses)(sig)
+  @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
+  @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 }
 
 /** Package collection control objects for inference rules.
@@ -1458,8 +1460,7 @@ package  externalProverControl {
   object ExtProverControl {
     import leo.modules.external._
     import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
-    type Prover = String
-    private var openCalls: Map[Prover, Set[Future[TptpResult[AnnotatedClause]]]] = Map()
+    private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
     private var lastCall: Long = Long.MinValue
 
@@ -1475,9 +1476,11 @@ package  externalProverControl {
           while (openCallsIt.hasNext) {
             val openCall = openCallsIt.next()
             if (openCall.isCompleted) {
+              leo.Out.debug(s"[ExtProver]: Job finished.")
               finished = finished + openCall
               val result = openCall.value.get
               if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
+                leo.Out.debug(s"[ExtProver]: Terminal result.")
                 return Some(result)
               } else if (result.szsStatus == SZS_Error) {
                 leo.Out.warn(result.error.mkString("\n"))
@@ -1494,8 +1497,35 @@ package  externalProverControl {
       } else None
     }
 
-    final def submit(clauses: Set[AnnotatedClause])(sig: Signature): Unit = {
-      ()
+    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+      if (clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
+        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+        lastCall = clauses.size
+        state.externalProvers.foreach(prover =>
+          if (openCalls.isDefinedAt(prover)) {
+            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+              val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+              openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+              leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+            }
+          } else {
+            val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+            openCalls = openCalls + (prover -> Set(futureResult))
+            leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+          }
+        )
+      }
+    }
+
+    final def killExternals(): Unit = {
+      Out.info(s"Killing external provers ...")
+      openCalls.keys.foreach(prover =>
+        openCalls(prover).foreach(future =>
+          future.kill()
+        )
+      )
     }
   }
+
+
 }

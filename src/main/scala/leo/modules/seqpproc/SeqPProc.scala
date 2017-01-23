@@ -185,70 +185,71 @@ object SeqPProc {
 
   /* Main function containing proof loop */
   final def apply(startTime: Long): Unit = {
-    /////////////////////////////////////////
-    // Main loop preparations:
-    // Read Problem, preprocessing, state set-up, etc.
-    /////////////////////////////////////////
-    implicit val sig: Signature = Signature.freshWithHOL()
-    val state: State[AnnotatedClause] = State.fresh(sig)
-    // Check if external provers were defined
-    if (Configuration.ATPS.nonEmpty) {
-      import leo.modules.external.ExternalProver
-      Configuration.ATPS.foreach { case(name, path) =>
-        try {
-          val p = ExternalProver.createProver(name,path)
-          state.addExternalProver(p)
-          leo.Out.info(s"$name registered as external prover.")
-        } catch {
-          case e: NoSuchElementException => leo.Out.warn(e.getMessage)
+    try {
+      /////////////////////////////////////////
+      // Main loop preparations:
+      // Read Problem, preprocessing, state set-up, etc.
+      /////////////////////////////////////////
+      implicit val sig: Signature = Signature.freshWithHOL()
+      val state: State[AnnotatedClause] = State.fresh(sig)
+      // Check if external provers were defined
+      if (Configuration.ATPS.nonEmpty) {
+        import leo.modules.external.ExternalProver
+        Configuration.ATPS.foreach { case(name, path) =>
+          try {
+            val p = ExternalProver.createProver(name,path)
+            state.addExternalProver(p)
+            leo.Out.info(s"$name registered as external prover.")
+          } catch {
+            case e: NoSuchElementException => leo.Out.warn(e.getMessage)
+          }
         }
       }
-    }
-    // Read problem from file
-    val input2 = Parsing.readProblem(Configuration.PROBLEMFILE)
-    val startTimeWOParsing = System.currentTimeMillis()
-    // Split input in conjecture/definitions/axioms etc.
-    val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
-    // Typechecking: Throws and exception if not well-typed
-    typeCheck(remainingInput, state)
-    // Remaining stuff ...
-    Out.info(s"Type checking passed. Searching for refutation ...")
+      // Read problem from file
+      val input2 = Parsing.readProblem(Configuration.PROBLEMFILE)
+      val startTimeWOParsing = System.currentTimeMillis()
+      // Split input in conjecture/definitions/axioms etc.
+      val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
+      // Typechecking: Throws and exception if not well-typed
+      typeCheck(remainingInput, state)
+      // Remaining stuff ...
+      Out.info(s"Type checking passed. Searching for refutation ...")
       // Initialize indexes
-    if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
-    else Control.initIndexes(remainingInput)
+      if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
+      else Control.initIndexes(remainingInput)
 
-    Out.trace(s"Symbols in conjecture: " +
-      s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
-    // Preprocessing
-    val conjecture_preprocessed = if (state.negConjecture != null) {
-      Out.debug("## Preprocess Neg.Conjecture BEGIN")
-      Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
-      val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
-      Out.debug(s"# Result:\n\t${
-        result.map {
-          _.pretty(sig)
-        }.mkString("\n\t")
-      }")
-      Out.trace("## Preprocess Neg.Conjecture END")
-      result
-    } else Set[AnnotatedClause]()
+      Out.trace(s"Symbols in conjecture: " +
+        s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
+      // Preprocessing
+      val conjecture_preprocessed = if (state.negConjecture != null) {
+        Out.debug("## Preprocess Neg.Conjecture BEGIN")
+        Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
+        val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
+        Out.debug(s"# Result:\n\t${
+          result.map {
+            _.pretty(sig)
+          }.mkString("\n\t")
+        }")
+        Out.trace("## Preprocess Neg.Conjecture END")
+        result
+      } else Set[AnnotatedClause]()
 
-    Out.debug("## Preprocess BEGIN")
-    val preprocessIt = remainingInput.iterator
-    while (preprocessIt.hasNext) {
-      val cur = preprocessIt.next()
-      Out.trace(s"# Process: ${cur.pretty(sig)}")
-      val processed = preprocess(state, cur)
-      Out.debug(s"# Result:\n\t${
-        processed.map {
-          _.pretty(sig)
-        }.mkString("\n\t")
-      }")
-      val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-      state.addUnprocessed(preprocessed)
-      if (preprocessIt.hasNext) Out.trace("--------------------")
-    }
-    Out.trace("## Preprocess END\n\n")
+      Out.debug("## Preprocess BEGIN")
+      val preprocessIt = remainingInput.iterator
+      while (preprocessIt.hasNext) {
+        val cur = preprocessIt.next()
+        Out.trace(s"# Process: ${cur.pretty(sig)}")
+        val processed = preprocess(state, cur)
+        Out.debug(s"# Result:\n\t${
+          processed.map {
+            _.pretty(sig)
+          }.mkString("\n\t")
+        }")
+        val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
+        state.addUnprocessed(preprocessed)
+        if (preprocessIt.hasNext) Out.trace("--------------------")
+      }
+      Out.trace("## Preprocess END\n\n")
 
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
@@ -357,7 +358,7 @@ object SeqPProc {
                   state.incForwardSubsumedCl()
                 }
               }
-              Control.submit(state.processed)
+              Control.submit(state.processed, state)
             }
           }
         }
@@ -385,7 +386,7 @@ object SeqPProc {
       Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
       Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
       Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
-    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
+      Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
       Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
       Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
       Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
@@ -439,6 +440,11 @@ object SeqPProc {
         Out.output(Utility.proofToTPTP(proof))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
+    } catch {
+      case e:Throwable => throw e
+    } finally {
+      Control.killExternals()
+    }
   }
 
   private final def mainLoopInferences(cl: AnnotatedClause, state: LocalState): Boolean = {

@@ -35,6 +35,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
   private val PARAM_ATPCHECKINTERVAL = "atp-check-interval"
   private val PARAM_ATPCALLINTERVAL = "atp-call-interval"
+  private val PARAM_ATPMAXJOBS = "atp-max-jobs"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -133,6 +134,7 @@ object Configuration extends DefaultConfiguration {
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
   lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
+  lazy val ATP_MAX_JOBS: Int = uniqueIntFor(PARAM_ATPMAXJOBS, DEFAULT_ATPMAXJOBS)
   lazy val ATP_CHECK_INTERVAL: Int = uniqueIntFor(PARAM_ATPCHECKINTERVAL, DEFAULT_ATPCHECKINTERVAL)
   lazy val ATPS : Seq[(String, String)] = {
     val a = valueOf("a")
@@ -175,7 +177,7 @@ object Configuration extends DefaultConfiguration {
           (eses(0), eses(1).toInt)
         }.toMap
       }
-      else Map()
+      else Map().withDefault(_ => ATP_STD_TIMEOUT)
     }
   }
 
@@ -184,7 +186,7 @@ object Configuration extends DefaultConfiguration {
   ///////////////
   // Help output
   ///////////////
-  lazy val helptext = {
+  lazy val helptext: String = {
     val sb = StringBuilder.newBuilder
     sb.append("Leo III -- A Higher-Order Theorem Prover.\n")
     sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
@@ -278,4 +280,5 @@ trait DefaultConfiguration {
   val DEFAULT_PRE_PRIMSUBST = 0
   val DEFAULT_ATPCHECKINTERVAL = 10
   val DEFAULT_ATPCALLINTERVAL = 10
+  val DEFAULT_ATPMAXJOBS = 3
 }
