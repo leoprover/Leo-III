@@ -86,7 +86,6 @@ abstract class THFProver extends TptpProver[AnnotatedClause]{
     val toAxiom = problem map (c => AnnotatedClause(c.cl, Role_Axiom, c.annotation, c.properties))
     val outTPTP : Seq[Output] = ToTPTP(toAxiom + falseClause)
     val res = outTPTP.map{x => x()}
-    println(s"\n\nTranslation : ${res.mkString("\n")}")
     res
   }
 }
