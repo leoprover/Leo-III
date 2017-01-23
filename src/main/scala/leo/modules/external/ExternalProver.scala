@@ -131,10 +131,10 @@ class Leo2Prover(val path : String) extends THFProver{
         case 127 => SZS_Error
         case _ => SZS_Unknown
       }
-      new TptpResult[AnnotatedClause](originalProblem, szsStatus, exitValue, output, error)
+      new TptpResultImpl(originalProblem, szsStatus, exitValue, output, error)
     } catch {
       case e: Exception =>
-        new TptpResult[AnnotatedClause](originalProblem, SZS_Error, 127, Seq(), Seq(e.getMessage))
+        new TptpResultImpl(originalProblem, SZS_Error, 127, Seq(), Seq(e.getMessage))
     }
   }
 }

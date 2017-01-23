@@ -81,7 +81,7 @@ trait TptpProver[C <: ClauseProxy] {
     new SZSKillFuture(process, problem, timeout)
   }
 
-  class TptpResult[C <: ClauseProxy](originalProblem : Set[C], passedSzsStatus : StatusSZS, passedExitValue : Int, passedOutput : Iterable[String], passedError : Iterable[String]) {
+  protected[TptpProver] class TptpResultImpl(originalProblem : Set[C], passedSzsStatus : StatusSZS, passedExitValue : Int, passedOutput : Iterable[String], passedError : Iterable[String]) extends TptpResult[C] {
     /**
       * The name of the original prover called..
       * @return prover name
@@ -157,9 +157,9 @@ trait TptpProver[C <: ClauseProxy] {
       if (szsStatus == null) {
         szsStatus = SZS_GaveUp
       }
-      new TptpResult[C](originalProblem, szsStatus, exitValue, output, error)
+      new TptpResultImpl(originalProblem, szsStatus, exitValue, output, error)
     } catch {
-      case e : Exception => new TptpResult[C](originalProblem, SZS_Error, 51, Seq(), Seq(e.getMessage))
+      case e : Exception => new TptpResultImpl(originalProblem, SZS_Error, 51, Seq(), Seq(e.getMessage))
     }
   }
 
@@ -189,7 +189,7 @@ trait TptpProver[C <: ClauseProxy] {
           // The process is still alive. Check for timeout and kill if it is over
           val cTime = System.currentTimeMillis()
           if(cTime - startTime > timeoutMilli) {
-            result = new TptpResult[C](originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has exceeded its timelimit of $timeout and was force fully killed."))
+            result = new TptpResultImpl(originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has exceeded its timelimit of $timeout and was force fully killed."))
             process.kill
             isTerminated = true
           } else {
@@ -212,6 +212,54 @@ trait TptpProver[C <: ClauseProxy] {
   }
 }
 
+
+trait TptpResult[C <: ClauseProxy] {
+  /**
+    * The name of the original prover called..
+    * @return prover name
+    */
+  val proverName : String
+
+  /**
+    * The path of the original prover.
+    * @return prover path
+    */
+  val proverPath : String
+
+  /**
+    * Returns the original problem, passed to the external prover
+    * @return
+    */
+  val problem : Set[C]
+
+  /**
+    * The SZS status of the external prover if one was set
+    * or [[leo.modules.output.SZS_Forced]] if the process was killed.
+    *
+    * @return SZSStatus of the problem
+    */
+  val szsStatus : StatusSZS
+
+  /**
+    * The exit value of the prover
+    * @return Passed through exitValue
+    */
+  val exitValue : Int
+
+  /**
+    * The complete system output of the prover.
+    *
+    * @return system out
+    */
+  val output : Iterable[String]
+
+  /**
+    * The complete system error of the prover
+    *
+    * @return system err
+    */
+  val error : Iterable[String]
+}
 
 /**
   * A smaller interface for scala's [[scala.concurrent.Future]] class.
