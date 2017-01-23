@@ -4,7 +4,6 @@ import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
 import leo.datastructures._
 import leo.datastructures.blackboard._
-import leo.datastructures.context.Context
 import leo.modules.calculus.ArgumentExtraction
 
 /**
