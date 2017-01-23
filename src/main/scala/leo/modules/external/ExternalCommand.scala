@@ -84,9 +84,10 @@ protected class AExternalResult(exec : Seq[String]) extends ExternalResult{
   }
 
   private def waitForTerm() : Unit = synchronized{if(!shouldTerm && !fetch) {
+    process.waitFor()
     eV = process.exitValue
     res = scala.io.Source.fromInputStream(process.output).getLines()
-    err = scala.io.Source.fromInputStream(process.output).getLines()
+    err = scala.io.Source.fromInputStream(process.error).getLines()
     fetch = true
     finished = true
   }}

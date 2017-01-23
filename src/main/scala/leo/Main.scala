@@ -55,6 +55,8 @@ object Main {
 
       if (Configuration.isSet("seq")) {
         leo.modules.seqpproc.SeqPProc(beginTime)
+      } else if (Configuration.isSet("pure-ext")) {
+        RunExternalProver.runExternal()
       } else {
         throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
       }
