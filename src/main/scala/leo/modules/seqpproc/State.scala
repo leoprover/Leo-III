@@ -2,7 +2,7 @@ package leo.modules.seqpproc
 
 import leo.datastructures._
 import leo.modules.output.{SZS_Unknown, StatusSZS}
-
+import leo.modules.external.TptpProver
 
 /**
   * Created by lex on 20.02.16.
@@ -39,6 +39,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
+
+  def externalProvers: Set[TptpProver[T]]
+  def addExternalProver(prover: TptpProver[T]): Unit
 }
 
 trait StateStatistics {
@@ -75,6 +78,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var current_rewriterules: Set[T] = Set()
   private var current_nonRewriteUnits: Set[T] = Set()
   private var derivationCl: Option[T] = None
+  private var current_externalProvers: Set[TptpProver[T]] = Set()
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
@@ -151,6 +155,10 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
 
+  final def externalProvers: Set[TptpProver[T]] = current_externalProvers
+  final def addExternalProver(prover: TptpProver[T]): Unit =  {
+    current_externalProvers = current_externalProvers + prover
+  }
   // Statistics
   private var generatedCount: Int = 0
   private var rewriteCount: Int = 0

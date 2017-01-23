@@ -2,7 +2,8 @@ package leo.modules.seqpproc
 
 import leo.Configuration
 import leo.Out
-import leo.datastructures.{ClauseAnnotation, AnnotatedClause, tptp, Term, Signature, Clause, Literal, addProp}
+import leo.datastructures.ClauseAnnotation.InferredFrom
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
@@ -190,6 +191,19 @@ object SeqPProc {
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
+    // Check if external provers were defined
+    if (Configuration.ATPS.nonEmpty) {
+      import leo.modules.external.ExternalProver
+      Configuration.ATPS.foreach { case(name, path) =>
+        try {
+          val p = ExternalProver.createProver(name,path)
+          state.addExternalProver(p)
+          leo.Out.info(s"$name registered as external prover.")
+        } catch {
+          case e: NoSuchElementException => leo.Out.warn(e.getMessage)
+        }
+      }
+    }
     // Read problem from file
     val input2 = Parsing.readProblem(Configuration.PROBLEMFILE)
     val startTimeWOParsing = System.currentTimeMillis()
@@ -303,36 +317,47 @@ object SeqPProc {
           loop = false
         } else {
           // No cancel, do reasoning step
-          var cur = state.nextUnprocessed
-          // cur is the current AnnotatedClause
-          Out.debug(s"Taken: ${cur.pretty(sig)}")
-          Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
-
-          cur = Control.rewriteSimp(cur, state.rewriteRules)
-          /* Functional Extensionality */
-          cur = Control.funcext(cur)
-          /* To equality if possible */
-          cur = Control.liftEq(cur)
-          // Check if `cur` is an empty clause
-          if (Clause.effectivelyEmpty(cur.cl)) {
+          val extRes = Control.checkExternalResults
+          if (extRes.nonEmpty) {
+            val extResAnwers = extRes.get
+            // Other than THM or CSA are filter out by control
+            assert(extResAnwers.szsStatus == SZS_Theorem || extResAnwers.szsStatus == SZS_CounterSatisfiable)
             loop = false
-            endplay(cur, state)
+            val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnwers.proverName, extResAnwers.problem))
+            endplay(emptyClause, state)
           } else {
-            // Not an empty clause, detect choice definition or do reasoning step.
-            val choiceCandidate = Control.detectChoiceClause(cur)
-            if (choiceCandidate.isDefined) {
-              val choiceFun = choiceCandidate.get
-              state.addChoiceFunction(choiceFun)
-              leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
+            var cur = state.nextUnprocessed
+            // cur is the current AnnotatedClause
+            Out.debug(s"Taken: ${cur.pretty(sig)}")
+            Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
+
+            cur = Control.rewriteSimp(cur, state.rewriteRules)
+            /* Functional Extensionality */
+            cur = Control.funcext(cur)
+            /* To equality if possible */
+            cur = Control.liftEq(cur)
+            // Check if `cur` is an empty clause
+            if (Clause.effectivelyEmpty(cur.cl)) {
+              loop = false
+              endplay(cur, state)
             } else {
-              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
-              // e.g. by forward subsumption
-              if (!Control.redundant(cur, state.processed)) {
-                if(mainLoopInferences(cur, state)) loop = false
+              // Not an empty clause, detect choice definition or do reasoning step.
+              val choiceCandidate = Control.detectChoiceClause(cur)
+              if (choiceCandidate.isDefined) {
+                val choiceFun = choiceCandidate.get
+                state.addChoiceFunction(choiceFun)
+                leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
               } else {
-                Out.debug(s"Clause ${cur.id} redundant, skipping.")
-                state.incForwardSubsumedCl()
+                // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+                // e.g. by forward subsumption
+                if (!Control.redundant(cur, state.processed)) {
+                  if(mainLoopInferences(cur, state)) loop = false
+                } else {
+                  Out.debug(s"Clause ${cur.id} redundant, skipping.")
+                  state.incForwardSubsumedCl()
+                }
               }
+              Control.submit(state.processed)
             }
           }
         }
@@ -540,5 +565,11 @@ object SeqPProc {
       case e: NumberFormatException => false
       case e: NoSuchElementException => false
     }
+  }
+
+  private def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
+    InferredFrom(new leo.modules.calculus.CalculusRule {
+      override final val name: String = prover
+    }, source)
   }
 }
