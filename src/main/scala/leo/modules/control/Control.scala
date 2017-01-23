@@ -1467,6 +1467,7 @@ package  externalProverControl {
     final def checkExternalResults: Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
       val curTime = System.currentTimeMillis()
       if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+        leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
         lastCheck = curTime
         val proversIt = openCalls.keys.iterator
         while (proversIt.hasNext) {
