@@ -318,7 +318,7 @@ object SeqPProc {
           loop = false
         } else {
           // No cancel, do reasoning step
-          val extRes = Control.checkExternalResults
+          val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
             val extResAnwers = extRes.get
             // Other than THM or CSA are filter out by control

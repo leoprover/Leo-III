@@ -65,7 +65,7 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
-  @inline final def checkExternalResults: Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 }
@@ -1464,38 +1464,41 @@ package  externalProverControl {
     private var lastCheck: Long = Long.MinValue
     private var lastCall: Long = Long.MinValue
 
-    final def checkExternalResults: Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
-      val curTime = System.currentTimeMillis()
-      if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
-        leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
-        lastCheck = curTime
-        val proversIt = openCalls.keys.iterator
-        while (proversIt.hasNext) {
-          val prover = proversIt.next()
-          var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
-          val openCallsIt = openCalls(prover).iterator
-          while (openCallsIt.hasNext) {
-            val openCall = openCallsIt.next()
-            if (openCall.isCompleted) {
-              leo.Out.debug(s"[ExtProver]: Job finished.")
-              finished = finished + openCall
-              val result = openCall.value.get
-              if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
-                leo.Out.debug(s"[ExtProver]: Terminal result.")
-                return Some(result)
-              } else if (result.szsStatus == SZS_Error) {
-                leo.Out.warn(result.error.mkString("\n"))
+    final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
+      if (state.externalProvers.isEmpty) None
+      else {
+        val curTime = System.currentTimeMillis()
+        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+          leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
+          lastCheck = curTime
+          val proversIt = openCalls.keys.iterator
+          while (proversIt.hasNext) {
+            val prover = proversIt.next()
+            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
+            val openCallsIt = openCalls(prover).iterator
+            while (openCallsIt.hasNext) {
+              val openCall = openCallsIt.next()
+              if (openCall.isCompleted) {
+                leo.Out.debug(s"[ExtProver]: Job finished.")
+                finished = finished + openCall
+                val result = openCall.value.get
+                if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
+                  leo.Out.debug(s"[ExtProver]: Terminal result.")
+                  return Some(result)
+                } else if (result.szsStatus == SZS_Error) {
+                  leo.Out.warn(result.error.mkString("\n"))
+                }
               }
             }
+            if (finished == openCalls(prover)) {
+              openCalls = openCalls.-(prover)
+            } else {
+              openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
+            }
           }
-          if (finished == openCalls(prover)) {
-            openCalls = openCalls.-(prover)
-          } else {
-            openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
-          }
-        }
-        None
-      } else None
+          None
+        } else None
+      }
     }
 
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
