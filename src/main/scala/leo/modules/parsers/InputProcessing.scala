@@ -315,18 +315,18 @@ object InputProcessing {
     conn match {
       case THFAll => Forall
       case THFExists => Exists
-      case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
-                                                 // this is because the mkPolyQuantified will apply a new abstraction
-        val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-        lazy val ty = ???
-        override def apply(arg: Term) = arg
-      }
-
+      case THFLambda => HOLLambda
       case THFChoice => Choice
       case THFDesc => Description
 
       case _ => throw new IllegalArgumentException("Illegal quantifier symbol:" +conn.toString)
     }
+  }
+  private final val HOLLambda = new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
+  // this is because the mkPolyQuantified will apply a new abstraction
+    val key: Signature#Key = Integer.MIN_VALUE // just for fun!
+    lazy val ty = ???
+    override def apply(arg: Term) = arg
   }
 
   protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
@@ -906,7 +906,8 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
     def mkPolyHelper(a: ProcessedVar, b: Term): Term = a match {
       case (_, Left(ty)) => q.apply(λ(ty)(b))
       case (_, Right(`typeKind`)) if q == Forall => TyForall(Λ(b))
-      case (_, Right(_))        => throw new IllegalArgumentException("Formalization of kinds other than * not yet implemented.")
+      case (_, Right(`typeKind`)) if q == HOLLambda => Λ(b)
+      case (_, Right(_))        => throw new IllegalArgumentException(s"Formalization of kinds other than * and ${q.pretty} not yet implemented.")
     }
 
     varList.foldRight(body)(mkPolyHelper)
