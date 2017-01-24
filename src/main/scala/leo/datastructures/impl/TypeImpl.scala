@@ -1,6 +1,6 @@
 package leo.datastructures.impl
 
-import leo.datastructures.{Kind, Subst, Type, TypeFront}
+import leo.datastructures.{Kind, Subst, Type, TypeFront, Signature}
 
 protected[datastructures] abstract class TypeImpl extends Type {
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type) = splitFunParamTypesAt0(n, Seq())
@@ -16,12 +16,17 @@ protected[datastructures] abstract class TypeImpl extends Type {
 /** Literal type, i.e. `$o` */
 protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
-  import Signature.{get => signature}
   lazy val pretty = {
     if (args.isEmpty)
-      signature.meta(id).name
+      s"ty($id)"
     else
-      signature.meta(id).name +"(" + args.map(_.pretty).mkString(",") + ")"
+      s"ty($id)" +"(" + args.map(_.pretty).mkString(",") + ")"
+  }
+  final def pretty(sig: Signature) = {
+    if (args.isEmpty)
+      sig(id).name
+    else
+      s"${sig(id).name}(${args.map(_.pretty).mkString(",")})"
   }
 
   // Predicates on types
@@ -69,6 +74,7 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
 protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl {
   // Pretty printing
   def pretty = scope.toString
+  final def pretty(sig: Signature) = scope.toString
 
   // Predicates on types
   override val isBoundTypeVar     = true
@@ -119,6 +125,10 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
     case funTy:AbstractionTypeNode => "(" + funTy.pretty + ") -> " + out.pretty
     case otherTy:Type              => otherTy.pretty + " -> " + out.pretty
   }
+  final def pretty(sig: Signature) = in match {
+    case funTy:AbstractionTypeNode => "(" + funTy.pretty(sig) + ") -> " + out.pretty(sig)
+    case otherTy:Type              => otherTy.pretty(sig) + " -> " + out.pretty(sig)
+  }
 
   // Predicates on types
   override val isFunType          = true
@@ -162,7 +172,8 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
 /** Product type `l * r` */
 protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends TypeImpl {
   // Pretty printing
-  def pretty = "(" + l.pretty + " * " + r.pretty + ")"
+  final def pretty = s"(${l.pretty} * ${r.pretty})"
+  final def pretty(sig: Signature) =  s"(${l.pretty(sig)} * ${r.pretty(sig)})"
 
   // Predicates on types
   override val isProdType          = true
@@ -205,7 +216,8 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
 /** Product type `l + r` */
 protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends TypeImpl {
   // Pretty printing
-  def pretty = "(" + l.pretty + " + " + r.pretty + ")"
+  final def pretty = s"(${l.pretty} + ${r.pretty})"
+  final def pretty(sig: Signature) =  s"(${l.pretty(sig)} + ${r.pretty(sig)})"
 
   // Predicates on types
   override val isUnionType        = true
@@ -250,7 +262,8 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
  */
 protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl {
   // Pretty printing
-  def pretty = "∀. " + body.pretty
+  final def pretty = s"∀. ${body.pretty}"
+  final def pretty(sig: Signature) = s"∀. ${body.pretty(sig)}"
 
   // Predicates on types
   override val isPolyType         = true

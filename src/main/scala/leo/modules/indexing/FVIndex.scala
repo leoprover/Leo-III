@@ -1,7 +1,6 @@
 package leo.modules.indexing
 
-import leo.datastructures.{AnnotatedClause, Literal, FixedLengthTrie, Clause}
-import leo.datastructures.impl.Signature
+import leo.datastructures.{AnnotatedClause, Literal, FixedLengthTrie, Clause, Signature}
 /**
   * Created by lex on 28.02.16.
   */

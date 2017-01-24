@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard
 
-import leo.agents.{TAgent, Task}
+import leo.agents.{Agent, Task}
 
 /**
   * Created by mwisnie on 5/23/16.
@@ -8,22 +8,30 @@ import leo.agents.{TAgent, Task}
 trait TaskSet {
 
   /**
-    * Adds a new [[leo.agents.TAgent]] to the TaskGraph.
+    * Adds a new [[leo.agents.Agent]] to the TaskGraph.
     *
     * @param a The agent to be added
     */
-  def addAgent(a : TAgent) : Unit
+  def addAgent(a : Agent) : Unit
 
   /**
-    * Removes a [[leo.agents.TAgent]] from the TaskGraph
+    * Removes a [[leo.agents.Agent]] from the TaskGraph
     *
     * @param a The agent to be removed
     */
-  def removeAgent(a : TAgent) : Unit
+  def removeAgent(a : Agent) : Unit
 
-  def containsAgent(a : TAgent) : Boolean
+  /**
+    * Number of tasks executed by the agent a
+ *
+    * @param a The agent the number of tasks we want to know
+    * @return The number of tasks
+    */
+  def executingTasks(a: Agent) : Int
 
-  def dependOn(before : TAgent, after : TAgent)
+  def containsAgent(a: Agent) : Boolean
+
+  def dependOn(before: Agent, after: Agent)
 
   def clear() : Unit
 
@@ -32,7 +40,7 @@ trait TaskSet {
     *
     * @param a The agent to be turned passive
     */
-  def passive(a : TAgent) : Unit
+  def passive(a: Agent) : Unit
 
 
   /**
@@ -40,7 +48,7 @@ trait TaskSet {
     *
     * @param a The agent to be turned active
     */
-  def active(a : TAgent) : Unit
+  def active(a: Agent) : Unit
 
   /**
     * Submits a new task created by an agent to the scheduler.
@@ -86,7 +94,7 @@ trait TaskSet {
   def commit(ts : scala.collection.immutable.Set[Task]) : Unit
 
   /**
-    * Checks through all [[leo.agents.Task]] and [[leo.agents.TAgent]] for
+    * Checks through all [[leo.agents.Task]] and [[leo.agents.Agent]] for
     * executable tasks, after dependency check.
     *
     * @return true, iff there exist executable task
@@ -101,7 +109,7 @@ trait TaskSet {
     * <ol>
     *   <li>For every [[leo.agents.Task]] `i` contained in this list, there exist no [[leo.agents.Task]] `j` in this TaskSet, with `j.before contains i` or
     *   `i.after contains j`</li>
-    *   <li> For every [[leo.agents.TAgent]] `a1` containing a task in this list, there exist no [[leo.agents.TAgent]] `a2` that has a task  and (`a.before contains a2`
+    *   <li> For every [[leo.agents.Agent]] `a1` containing a task in this list, there exist no [[leo.agents.Agent]] `a2` that has a task  and (`a.before contains a2`
     *   or `a2.after contains a`) holds.</li>
     * </ol>
     * </p>

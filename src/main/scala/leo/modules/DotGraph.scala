@@ -2,7 +2,6 @@ package leo.modules
 
 import leo.datastructures.Term._
 import leo.datastructures._
-import leo.datastructures.impl.Signature
 
 /**
  *
@@ -22,12 +21,11 @@ class DotGraph {
   private val bottomLabel = "⊥"
 
   /** Inserts the given term `t` to the underlying graph. */
-  def insertTerm(t: Term): String = {
-    val sig = Signature.get
+  def insertTerm(t: Term)(implicit sig: Signature): String = {
     t match {
       case Symbol(id)            => append(node(id.toString, sig(id).name))
                                     append(node("bottom", bottomLabel))
-                                    val p = next
+                                    val p = next()
                                     append(node(p, "∙"))
                                     append(edge(p, id.toString))
                                     append(edge(p, "bottom"))
@@ -35,26 +33,26 @@ class DotGraph {
       case Bound(ty,scope)        =>
                                     append(node(scope.toString ++ ty.pretty,  scope.toString ++ " type: (" ++ ty.pretty ++ ")"))
                                     append(node("bottom", bottomLabel))
-                                    val p = next
+                                    val p = next()
                                     append(node(p, "∙"))
                                     append(edge(p, scope.toString ++ ty.pretty))
                                     append(edge(p, "bottom"))
                                     p
       case f ∙ args               => val p1 = insertTerm(f)
                                      val p2 = insertArgs(args)
-                                     val p = next
+                                     val p = next()
                                      append(node(p, "∙"))
                                      append(edge(p, p1))
                                      append(edge(p, p2))
                                      p
       case ty :::> t2              => val p1 = insertTerm(t2)
-                                      val p = next
+                                      val p = next()
                                       append(node(p, "λ"))
                                       append(edge(p, p1))
                                       p
 
       case TypeLambda(t2)          => val p1 = insertTerm(t2)
-                                      val p = next
+                                      val p = next()
                                       append(node(p, "Λ"))
                                       append(edge(p, p1))
                                       p
@@ -62,13 +60,13 @@ class DotGraph {
   }
 
   /** Inserts lists of arguments (spines) to the graph */
-  protected def insertArgs(args: Seq[Either[Term, Type]]): String = {
+  protected def insertArgs(args: Seq[Either[Term, Type]])(implicit sig: Signature): String = {
     args match {
       case Seq() => append(node("bottom", bottomLabel))
                     "bottom"
-      case Seq(hd, rest@_*) => val p1 = hd.fold(insertTerm(_), {case ty => val p = next;append(node(p,ty.pretty));p })
+      case Seq(hd, rest@_*) => val p1 = hd.fold(insertTerm, {ty => val p = next();append(node(p,ty.pretty));p })
         val p2 = insertArgs(rest)
-        val p = next
+        val p = next()
         append(node(p, ";"))
         append(edge(p, p1))
         append(edge(p, p2))
@@ -98,15 +96,15 @@ class DotGraph {
   def edge(from: String, to: String): String = "\"" ++ from ++ "\" -> \"" ++ to ++ "\";"
 
   /** Return the complete dot representation of the graph */
-  override def toString(): String = "digraph {\n" ++ str ++ "}"
+  override def toString: String = "digraph {\n" ++ str ++ "}"
 }
 
-object DotGraph extends Function1[Term, DotGraph] {
+object DotGraph {
 
   /** Create a new DotGraph containing the term `t` */
-  def apply(t: Term): DotGraph = {
+  def apply(t: Term)(implicit sig: Signature): DotGraph = {
     val g = new DotGraph
-    g.insertTerm(t)
+    g.insertTerm(t)(sig)
     g
   }
 

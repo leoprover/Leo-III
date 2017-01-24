@@ -23,36 +23,12 @@ trait DataStore {
   def storedTypes : Seq[DataType]
 
   /**
-   * Inserts a new data into the data structure.
-   * If called by the blackboard, it is assured, that
-   * the paramater has one of the types stored in `storedTypes`.
-   *
-   * @param n is new data to be inserted.
-   * @return true, if the insertion was sucessfull. False otherwise.
-   */
-  def insert(n : Any) : Boolean
-
-  /**
-   *
-   * Updates a data to some new value.
-   * If called by the blackboard, it is assured, that
-   * the paramater has one of the types stored in `storedTypes`.
-   *
-   * @param o the old data.
-   * @param n the new data.
-   * @return True, if the update was sucessfull. Should only return false,
-   *         if n was already in the data structure. In any case o is deleted from the data structure.
-   */
-  def update(o : Any, n : Any) : Boolean
-
-  /**
-   * Deletes a data from the data strucutre.
-   * If called by the blackboard, it is assured, that
-   * the paramater has one of the types stored in `storedTypes`.
-   *
-   * @param d the data to be deleted.
-   */
-  def delete(d : Any)
+    *
+    * Inserts all results produced by an agent into the datastructure.
+    *
+    * @param r - A result inserted into the datastructure
+    */
+  def updateResult(r : Result) : Boolean  // TODO Return really updated values for further consideration not only Bool
 
   /**
    * Removes everything from the data structure.
@@ -67,4 +43,22 @@ trait DataStore {
    * @return
    */
   protected[blackboard] def all(t : DataType) : Set[Any]
+
+  def insertData(d : DataType)(n : Any) : Boolean = {
+    val r = Result().insert(d)(n)
+    updateResult(r)
+    true
+  }
+
+  def deleteData(d : DataType)(n : Any) : Boolean = {
+    val r = Result().remove(d)(n)
+    updateResult(r)
+    true
+  }
+
+  def updateData(d : DataType)(o : Any)(n : Any) : Boolean = {
+    val r = Result().update(d)(o)(n)
+    updateResult(r)
+    true
+  }
 }

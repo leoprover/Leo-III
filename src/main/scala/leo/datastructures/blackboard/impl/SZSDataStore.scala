@@ -1,6 +1,7 @@
 package leo.datastructures.blackboard.impl
 
-import leo.datastructures.blackboard.{StatusType, DataType, DataStore}
+import leo.datastructures.ClauseProxy
+import leo.datastructures.blackboard.{DataStore, DataType, Result, StatusType}
 import leo.datastructures.context.Context
 import leo.modules.output.StatusSZS
 
@@ -14,22 +15,20 @@ import scala.collection.mutable
 object SZSDataStore extends DataStore {
 
 
-  private val szsSet : mutable.Map[Context, SZSStore] = new mutable.HashMap[Context, SZSStore]()
+  private var szs : StatusSZS = null
 
   /**
-   * Forces the SZS Status in a context to a new one.
+   * Forces the SZS Status to a new one.
    * Does not fail, if a status is already set.
    *
-   * @param c - The context to update
    * @param s - The status to set
    */
-  def forceStatus(c: Context)(s: StatusSZS): Unit = szsSet.synchronized(szsSet.put(c,SZSStore(s,c)))
+  def forceStatus(s: StatusSZS): Unit = synchronized(szs = s)
 
 
-  def setIfEmpty(c : Context)(s : StatusSZS) : Unit = szsSet.synchronized{
-    if(szsSet.get(c).isEmpty){
-      szsSet.put(c, SZSStore(s,c))
-    }
+  def setIfEmpty(s : StatusSZS) : Unit = synchronized{
+    if(szs != null)
+      szs = s
   }
 
   /**
@@ -39,38 +38,37 @@ object SZSDataStore extends DataStore {
    * @param c - The searched context
    * @return Some(status) if set, else None.
    */
-  def getStatus(c: Context): Option[StatusSZS] = szsSet.synchronized(szsSet.get(c).map(_.szsStatus))
+  def getStatus(c: Context): Option[StatusSZS] = if(szs == null) None else Some(szs)  // TODO convert to "null" representation
 
 
-  override def storedTypes: Seq[DataType] = List(StatusType)
+  @inline override val storedTypes: Seq[DataType] = List(StatusType)
 
-  override def update(o: Any, n: Any): Boolean = (o,n) match {
-    case (SZSStore(so, co), SZSStore(sn, cn)) =>
-      szsSet.remove(co)
-      szsSet.put(cn, SZSStore(sn, cn))
-      true
-    case _ => false
+  override def updateResult(r: Result): Boolean = synchronized {
+    val ins = r.inserts(StatusType)
+    if(ins.nonEmpty & szs == null){
+      val value = ins.head.asInstanceOf[SZSStore]
+      szs = value.szsStatus
+      return true
+    }
+    val ups = r.updates(StatusType)
+    if (ups.nonEmpty) {
+      val (oldV, newV) = ups.head.asInstanceOf[(StatusSZS, StatusSZS)]
+      if (oldV != szs) return false
+      szs = newV
+      return true
+    }
+    false
   }
 
-  override def insert(n: Any): Boolean = n match {
-    case SZSStore(s, c) => szsSet.put(c, SZSStore(s,c)); true
-    case _ => false
-  }
-
-  override def clear(): Unit = szsSet.empty
+  override def clear(): Unit = synchronized(szs)
 
   override protected[blackboard] def all(t: DataType): Set[Any] = t match {
-    case StatusType => szsSet.values.toSet
+    case StatusType => Set(szs)
     case _ => Set.empty
-  }
-
-  override def delete(d: Any): Unit = d match {
-    case SZSStore(s, c) => szsSet.remove(c)
-    case _ => ()
   }
 }
 
-case class SZSStore (szsStatus : StatusSZS, context : Context) {
-  override val toString : String = s"SZSStore(${szsStatus.apply} -> ${context.contextID})"
+case class SZSStore (szsStatus : StatusSZS) {
+  override val toString : String = s"SZSStore(${szsStatus()})"
 }
 

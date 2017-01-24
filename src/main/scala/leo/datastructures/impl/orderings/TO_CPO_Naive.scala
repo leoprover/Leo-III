@@ -3,7 +3,6 @@ package leo.datastructures.impl.orderings
 import leo.Configuration
 import leo.datastructures.{Term, Type}
 import leo.datastructures._
-import leo.datastructures.impl.Signature
 import leo.modules.output.logger.Out
 
 import scala.annotation.tailrec
@@ -16,7 +15,6 @@ import scala.annotation.tailrec
  * @since 29.09.2015
  */
 object TO_CPO_Naive { //} extends LeoOrdering[Term] {
-  import leo.datastructures.Orderings._
   /////////////////////////////////////////////////////////////////
   /// Exported functions
   /////////////////////////////////////////////////////////////////
@@ -43,24 +41,24 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   /* Comparisons of terms */
 
   // Core function for comparisons
-  @inline final def gt(s: Term, t: Term): Boolean = gteq(s.ty, t.ty) && gt0(s,t, Set())
-  @inline final def gt(s: Term, t: Term, bound: Set[Term]): Boolean = gteq(s.ty, t.ty) && gt0(s,t, bound)
-  @inline final def gtMult(s: Seq[Term], t: Seq[Term]): Boolean = gt0Mult(s,t)
+  @inline final def gt(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && gt0(s,t, Set())(sig)
+  @inline final def gt(s: Term, t: Term, bound: Set[Term])(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && gt0(s,t, bound)(sig)
+  @inline final def gtMult(s: Seq[Term], t: Seq[Term])(implicit sig: Signature): Boolean = gt0Mult(s,t)(sig)
 
-  @inline final def gteq(s: Term, t: Term): Boolean = gteq(s.ty, t.ty) && ge0(s,t, Set())
-  @inline final def gteq(s: Term, t: Term, bound: Set[Term]): Boolean = gteq(s.ty, t.ty) && ge0(s,t, bound)
+  @inline final def gteq(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, Set())(sig)
+  @inline final def gteq(s: Term, t: Term, bound: Set[Term])(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, bound)(sig)
 
   // Defined by gt/ge
-  @inline final def lt(s: Term, t: Term): Boolean = gt(t,s)
-  @inline final def lteq(s: Term, t: Term): Boolean = gteq(t,s)
+  @inline final def lt(s: Term, t: Term)(implicit sig: Signature): Boolean = gt(t,s)(sig)
+  @inline final def lteq(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(t,s)(sig)
 
-  @inline final def compare(s: Term, t: Term): CMP_Result = {
+  @inline final def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result = {
     if (s == t) CMP_EQ
-    else if (gt(s,t)) CMP_GT
-    else if (lt(s,t)) CMP_LT
+    else if (gt(s,t)(sig)) CMP_GT
+    else if (lt(s,t)(sig)) CMP_LT
     else CMP_NC
   }
-  @inline final def canCompare(s: Term, t: Term): Boolean = compare(s,t) != CMP_NC
+  @inline final def canCompare(s: Term, t: Term)(implicit sig: Signature): Boolean = compare(s,t)(sig) != CMP_NC
 
   /* Common comparison-related operations */
 
@@ -74,7 +72,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   // ###############################################################################
 
   // well-founded ordering of symbols in signature
-  final private def precedence(s: Signature#Key, t: Signature#Key): CMP_Result = Configuration.PRECEDENCE.compare(s,t)
+  final private def precedence(s: Signature#Key, t: Signature#Key)(sig: Signature): CMP_Result = Configuration.PRECEDENCE.compare(s,t)(sig)
 
   // Well-founded ordering of base types (sort)
   final private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
@@ -194,14 +192,14 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   // Comparisons of terms
   ////////////////////////////////////
 
-  @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int): Boolean = {
-    import leo.datastructures.IsSignature.{lexStatus,multStatus}
+  @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int)(sig: Signature): Boolean = {
+    import leo.datastructures.Signature.{lexStatus,multStatus}
     if (status == lexStatus) {
       if (s.length > t.length){
         alleq(s,t,t.length)
-      } else gt0Lex(a,s,t,x)
+      } else gt0Lex(a,s,t,x)(sig)
     } else if (status == multStatus) {
-      gt0Mult(s,t)
+      gt0Mult(s,t)(sig)
     } else {
       // This should not happen
       Out.severe("[CPO_Naive] Status compare called with unknown status")
@@ -210,12 +208,12 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
   @tailrec
-  private final def gt0Lex(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term]): Boolean = {
+  private final def gt0Lex(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term])(sig: Signature): Boolean = {
     if (s.nonEmpty && t.nonEmpty) {
       if (s.head == t.head) {
-        gt0Lex(a,s.tail,t.tail,x)
+        gt0Lex(a,s.tail,t.tail,x)(sig)
       } else {
-        gt(s.head,t.head) && t.tail.forall(gt0(a,_,x))
+        gt(s.head,t.head)(sig) && t.tail.forall(gt0(a,_,x)(sig))
       }
     } else false
   }
@@ -229,19 +227,19 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
     else false
   }
 
-  private final def gt0Mult(s: Seq[Term], t: Seq[Term]): Boolean = {
+  private final def gt0Mult(s: Seq[Term], t: Seq[Term])(sig: Signature): Boolean = {
     if (s.nonEmpty && t.isEmpty) true
     else if (s.nonEmpty && t.nonEmpty) {
       val sameElements = s.intersect(t)
       val remSameS = s.diff(sameElements)
       val remSameT = t.diff(sameElements)
       if (remSameS.isEmpty && remSameT.isEmpty) false
-      else gt0Mult0(remSameS, remSameT)
+      else gt0Mult0(remSameS, remSameT)(sig)
     } else false
   }
 
   @tailrec
-  private final def gt0Mult0(s: Seq[Term], t: Seq[Term]): Boolean = {
+  private final def gt0Mult0(s: Seq[Term], t: Seq[Term])(sig: Signature): Boolean = {
     if (t.isEmpty) true
     else if (s.nonEmpty && t.nonEmpty) {
       val sn = s.head
@@ -249,16 +247,16 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
       var keepT: Seq[Term] = Seq()
       while (tIt.hasNext) {
         val tn = tIt.next()
-        if (!gt(sn, tn)) {
+        if (!gt(sn, tn)(sig)) {
           keepT = keepT :+ tn
         }
       }
-      gt0Mult0(s.tail,keepT)
+      gt0Mult0(s.tail,keepT)(sig)
     } else false
   }
 
-  final private def gt0(s: Term, t: Term, x: Set[Term]): Boolean = {
-    import leo.datastructures.Term.{:::>, Bound, MetaVar, Symbol, TypeLambda, ∙,mkApp}
+  final private def gt0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
+    import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙,mkApp}
 
     if (s == t) return false
     if (s.isVariable) return false
@@ -281,7 +279,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
         /* f(t) > ... cases */
 
           /* case 1: f(t) >= v */
-          if (fargList.exists(gteq(_, t))) return true
+          if (fargList.exists(gteq(_, t)(sig))) return true
 
           /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
           if (t.isApp || t.isConstant) {
@@ -292,17 +290,17 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
               g match {
                 case Symbol(idg) =>
                   /* case 2+3 */
-                  if (precedence(idf, idg) == CMP_EQ) {
-                    return gt0Stat(s,fargList, gargList, x, Signature(idf).status)
-                  } else if (precedence(idf, idg) == CMP_GT) {
-                    return gargList.forall(gt0(s, _, x))
+                  if (precedence(idf, idg)(sig) == CMP_EQ) {
+                    return gt0Stat(s,fargList, gargList, x, sig(idf).status)(sig)
+                  } else if (precedence(idf, idg)(sig) == CMP_GT) {
+                    return gargList.forall(gt0(s, _, x)(sig))
                   } else {
                     return false
                   }
 
                 case _ if gargList.nonEmpty =>
                   /* case 4*/
-                  return gt0(s, Term.mkApp(g, args2.init), x) && gt0(s, gargList.last, x)
+                  return gt0(s, Term.mkApp(g, args2.init), x)(sig) && gt0(s, gargList.last, x)(sig)
               }
             } catch {
               case e:AssertionError => {
@@ -321,7 +319,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
           /* case 5: f(t) > lambda yv*/
           if (t.isTermAbs) {
             val (_,tO) = :::>.unapply(t).get
-            return gt0(s,tO,x)
+            return gt0(s,tO,x)(sig)
           }
 
           // otherwise, fail
@@ -332,7 +330,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
         // #############
         case _ if fargList.nonEmpty => {
 
-          if (ge0(mkApp(f,args.init),t,x) || gteq(fargList.last,t,x)) return true
+          if (ge0(mkApp(f,args.init),t,x)(sig) || gteq(fargList.last,t,x)(sig)) return true
 
           if (t.isApp) {
             val (g,args2) = ∙.unapply(t).get
@@ -343,17 +341,17 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
               val s2 = mkApp(f,args.init)
               val t2 = mkApp(g, args2.init)
               if (s2 == t2) {
-                if (gt0(fargList.last, gargList.last,x)) return true
+                if (gt0(fargList.last, gargList.last,x)(sig)) return true
               }
 
-              return ((gt(s2,t2,x) || gteq(fargList.last,t2,x) || gt(s,t2))
-                   && (gt(s2,gargList.last,x) || gteq(fargList.last,gargList.last,x) || gt(s,gargList.last)))
+              return ((gt(s2,t2,x)(sig) || gteq(fargList.last,t2,x)(sig) || gt(s,t2)(sig))
+                   && (gt(s2,gargList.last,x)(sig) || gteq(fargList.last,gargList.last,x)(sig) || gt(s,gargList.last)(sig)))
             }
           }
 
           if (t.isTermAbs) {
             val (_, tO) = :::>.unapply(t).get
-            return gt0(s, tO, x)
+            return gt0(s, tO, x)(sig)
           }
 
           return false
@@ -369,13 +367,13 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
     if (s.isTermAbs) {
       val (sInTy, sO) = :::>.unapply(s).get
 
-      if (gteq(sO,t,x)) return true
+      if (gteq(sO,t,x)(sig)) return true
 
       if (t.isTermAbs) {
         val (tInTy, tO) = :::>.unapply(t).get
 
-        if (sInTy == tInTy) return gt0(sO, tO, x)
-        else return gt0(s, tO, x)
+        if (sInTy == tInTy) return gt0(sO, tO, x)(sig)
+        else return gt0(s, tO, x)(sig)
       }
 
       return false
@@ -386,12 +384,12 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
     if (s.isTypeAbs) {
       val sO = TypeLambda.unapply(s).get
 
-      if (gteq(sO,t,x)) return true
+      if (gteq(sO,t,x)(sig)) return true
 
       if (t.isTypeAbs) {
         val tO = TypeLambda.unapply(t).get
 
-        return gt0(sO,tO,x)
+        return gt0(sO,tO,x)(sig)
       }
       return false
     }
@@ -402,9 +400,9 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
 
-  @inline final private def ge0(s: Term, t: Term, x: Set[Term]): Boolean = {
+  @inline final private def ge0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
     if (s == t) true
-    else gt0(s,t,x)
+    else gt0(s,t,x)(sig)
   }
 
 

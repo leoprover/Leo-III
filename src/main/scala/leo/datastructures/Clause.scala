@@ -1,8 +1,5 @@
 package leo.datastructures
 
-import leo.Configuration
-import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
-
 /**
  * Clause interface, the companion object `Clause` offers several constructors methods.
  * The `id` of a clause is unique and is monotonously increasing.
@@ -10,9 +7,7 @@ import Literal.{LitMaxFlag, LitMax, LitStrictlyMax}
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Ordered[Clause] with Pretty {
-  /** The unique, increasing clause number. */
-  def id: Int
+trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
@@ -30,28 +25,27 @@ trait Clause extends Ordered[Clause] with Pretty {
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
 
-  def maxLitsMap: Map[LitMaxFlag, Seq[Literal]]
-
-  @inline final def maxLits: Seq[Literal] = maxLitsMap(LitMax)
-  @inline final def strictlyMaxLits: Seq[Literal] = maxLitsMap(LitStrictlyMax)
-
   // Operations on clauses
   def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
+  def substituteOrdered(s : Subst)(implicit sig: Signature) : Clause = Clause.mkClause(lits.map(_.substituteOrdered(s)(sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
   @inline final def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replaceAll(what, by)))
 
-  /** The clause's weight. */
-  @inline final def weight: Int = Configuration.CLAUSE_WEIGHTING.weightOf(this)
-  @inline final def compare(that: Clause) = Configuration.CLAUSE_ORDERING.compare(this, that)
+  final def pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
+  final def pretty(sig: Signature) = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
 
-  final lazy val pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
-
+  /** Conquence `cong(c1,c2)` on two clauses is more semantical that equals: Two clauses `c1` and `c2` are congruence
+    * if `c1` contains all literals of `c2` set-wise and vice-versa, i.e. we have that
+    * `c1 = l1 ∨ l1` is congruent to `c2 = l1` (and vice versa) while `!(c1.equals(c2))`.*/
+  final def cong(that: Clause): Boolean = (lits forall {that.lits.contains}) && (that.lits forall {lits.contains})
 
   // System function adaptions
+  /** Two clauses `c1` and `c2` are equal if and only if their underlying multi-sets of literals are equal, i.e.
+    * `c1 = l1 ∨ l2` is equal to `c2 = l2 ∨ l1` while `c1` is not equal to `c2' = l2 ∨ l1 ∨ l1`. */
   override final def equals(obj : Any): Boolean = obj match {
-    case co : Clause => (lits forall {co.lits.contains}) && (co.lits forall {lits.contains})
+    case co : Clause => lits.diff(co.lits).isEmpty && co.lits.diff(lits).isEmpty
     case _ => false
   }
   override final def hashCode(): Int = if (lits.isEmpty) 0
@@ -60,7 +54,6 @@ trait Clause extends Ordered[Clause] with Pretty {
 
 object Clause {
   import impl.{VectorClause => ClauseImpl}
-  import Literal.{LitMax, LitStrictlyMax}
 
   /** Create a unit clause containing only literal `lit` with origin `Derived`. */
   def apply(lit: Literal): Clause = mkUnit(lit)
@@ -76,9 +69,6 @@ object Clause {
 
   /** The empty clause. */
   @inline final val empty = mkClause(Seq.empty)
-
-  /** Returns the last clause id that has been issued. */
-  @inline final def lastClauseId: Int = ClauseImpl.lastClauseId
 
   // Utility
   /** Returns true iff clause `c` is empty. */
@@ -107,6 +97,13 @@ object Clause {
   @inline final def demodulator(c: Clause): Boolean = c.posLits.length == 1 && c.negLits.isEmpty
   /** True iff this clause is a rewrite rule. */
   @inline final def rewriteRule(c: Clause): Boolean = demodulator(c) && c.posLits.head.oriented
+  /** Returns the multiset of symbols occuring in the clause. */
+  final def symbols(c: Clause): Multiset[Signature#Key] = c.lits.map(Literal.symbols).foldLeft(Multiset.empty[Signature#Key]){case (a,b) => a.sum(b)}
+  /** Returns a representation of the clause `c` as term. */
+  final def asTerm(c: Clause): Term = {
+    val body = mkDisjunction(c.lits.map(Literal.asTerm))
+    mkPolyUnivQuant(c.implicitlyBound.map(_._2), body)
+  }
   /** Returns true iff all literals are well-typed. */
   final def wellTyped(c: Clause): Boolean = {
     import leo.datastructures.Literal.{wellTyped => wt}

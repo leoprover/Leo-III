@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures._
 import Term._
-import leo.modules.CLParameterParser
+import leo.modules.HOLSignature.{i,o, LitTrue}
 
 /**
   * Created by lex on 6/6/16.
@@ -11,15 +11,13 @@ import leo.modules.CLParameterParser
 class MatchingTestSuite extends LeoTestSuite {
   type UEq = Seq[(Term, Term)]
 
-  import leo.modules.calculus.matching.FOMatching
-
   test("f(x,x) = f(a,a)", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
+    val x = vargen(i)
     val t1 : Term = mkTermApp(f , Seq(x,x))
     val t2 : Term = mkTermApp(f , Seq(a,a))
 
@@ -29,12 +27,12 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,x) = f(a,a) unifier", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
+    val x = vargen(i)
     val t1 : Term = mkTermApp(f , Seq(x,x))
     val t2 : Term = mkTermApp(f , Seq(a,a))
 
@@ -46,13 +44,13 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("x(a) = f(a,a)", Checked){
-    val s = getFreshSignature
+    implicit val s = getFreshSignature
 
     val vargen = freshVarGenFromBlank
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i ->: s.i))
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i ->: i))
 
-    val t1 : Term = mkTermApp(vargen(s.i ->: s.i),a)
+    val t1 : Term = mkTermApp(vargen(i ->: i),a)
     val t2 : Term = mkTermApp(f , Seq(a,a))
 
     val result = FOMatching.decideMatch(t1, t2)
@@ -60,14 +58,14 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(a)))", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val y = vargen(s.i)
+    val x = vargen(i)
+    val y = vargen(i)
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, a))))
@@ -78,14 +76,14 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(a))) unifier", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val y = vargen(s.i)
+    val x = vargen(i)
+    val y = vargen(i)
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, a))))
@@ -98,14 +96,14 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(x)) = f(a,g(f(a)))", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val y = vargen(s.i)
+    val x = vargen(i)
+    val y = vargen(i)
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, x)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, a))))
@@ -116,15 +114,15 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(z)))", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val y = vargen(s.i)
-    val z = vargen(s.i)
+    val x = vargen(i)
+    val y = vargen(i)
+    val z = vargen(i)
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, z))))
@@ -135,15 +133,15 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(y)) = f(a,g(f(z))) unifier", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val y = vargen(s.i)
-    val z = vargen(s.i)
+    val x = vargen(i)
+    val y = vargen(i)
+    val z = vargen(i)
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, y)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, mkTermApp(f, z))))
@@ -156,15 +154,15 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("f(x,g(a)) = f(a,g(z))", Checked){
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit  val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
-    val y = vargen(s.i)
-    val z = vargen(s.i)
+    val x = vargen(i)
+    val y = vargen(i)
+    val z = vargen(i)
 
     val t1 : Term = mkTermApp(f , Seq(x, mkTermApp(g, a)))
     val t2 : Term = mkTermApp(f , Seq(a, mkTermApp(g, z)))
@@ -175,15 +173,15 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("(f(a) = x) = (f(a) = g(a))", Checked){
-    import leo.datastructures.{=== => EQ}
+    import leo.modules.HOLSignature.{=== => EQ}
 
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
 
     val vargen = freshVarGenFromBlank
-    val x = vargen(s.i)
+    val x = vargen(i)
 
     val t1 : Term = EQ(mkTermApp(f , a), x)
     val t2 : Term = EQ(mkTermApp(f , a), mkTermApp(g, a))
@@ -194,13 +192,13 @@ class MatchingTestSuite extends LeoTestSuite {
   }
 
   test("(p(a) = true) = (f(a) = g(a))", Checked){
-    import leo.datastructures.{=== => EQ}
+    import leo.modules.HOLSignature.{=== => EQ}
 
-    val s = getFreshSignature
-    val a = mkAtom(s.addUninterpreted("a",s.i))
-    val f = mkAtom(s.addUninterpreted("f", s.i ->: s.i))
-    val g = mkAtom(s.addUninterpreted("g", s.i ->: s.i))
-    val p = mkAtom(s.addUninterpreted("p", s.i ->: s.o))
+    implicit val s = getFreshSignature
+    val a = mkAtom(s.addUninterpreted("a", i))
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+    val g = mkAtom(s.addUninterpreted("g", i ->: i))
+    val p = mkAtom(s.addUninterpreted("p", i ->: o))
 
     val t1 : Term = EQ(mkTermApp(p , a), LitTrue)
     val t2 : Term = EQ(mkTermApp(f , a), mkTermApp(g, a))

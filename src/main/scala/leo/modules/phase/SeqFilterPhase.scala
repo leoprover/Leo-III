@@ -1,14 +1,14 @@
 package leo.modules.phase
 
 import leo._
-import leo.agents.TAgent
+import leo.agents.Agent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
-import leo.datastructures.blackboard.{Blackboard, ClauseType}
+import leo.datastructures.blackboard.{Blackboard, ClauseType, SignatureBlackboard}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.{Parsing, SZSException}
 import leo.modules.agent.relevance_filter.{AnnotatedFormulaType, BlackboardPreFilterSet, RelevanceFilterAgent}
@@ -22,7 +22,7 @@ import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter, SeqFilter}
   */
 class SeqFilterPhase extends Phase {
   override def name: String = "relevance_filter_phase"
-  override val agents : Seq[TAgent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
+  override val agents : Seq[Agent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 
@@ -49,7 +49,7 @@ class SeqFilterPhase extends Phase {
 
         // Translate all taken formulas to clauses
         taken.foreach{f =>
-          val (name, term, role) = InputProcessing.process(Signature.get)(f)
+          val (name, term, role) = InputProcessing.process(SignatureBlackboard.get)(f)
           val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
             negateConjecture(name, term, role)
           else

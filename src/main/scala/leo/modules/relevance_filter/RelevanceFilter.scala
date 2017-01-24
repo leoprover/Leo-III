@@ -10,8 +10,8 @@ import leo.datastructures.tptp.Commons.AnnotatedFormula
   */
 object RelevanceFilter {
 
-  val std_passmark = 0.6  // TODO Experiment, but these are the values of the 'Lightweight Relevance Filtering for Machine-Generated Resolution Problems' paper
-  val std_aging = 2.4
+  val std_passmark = 0.55  // TODO Experiment, but these are the values of the 'Lightweight Relevance Filtering for Machine-Generated Resolution Problems' paper
+  val std_aging = 2.35 //2.4
 
   /**
     * Applies a relevance filter for the standardvalue
@@ -60,7 +60,7 @@ object RelevanceFilter {
     }
 
     val grade = sum / (sum + new_size)
-    leo.Out.debug(s"$formula : \n  $grade >= $pass\n ${if(grade >= pass) "taken" else "not taken"}")
+    leo.Out.finest(s"$formula : \n  $grade >= $pass\n ${if(grade >= pass) "taken" else "not taken"}")
 
     grade >= pass
   }

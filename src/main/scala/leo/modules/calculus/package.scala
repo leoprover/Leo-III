@@ -1,7 +1,6 @@
 package leo.modules
 
-import leo.datastructures.impl.Signature
-import leo.datastructures.{Type, Term, Clause}
+import leo.datastructures.{Type, Term, Clause, Signature}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -134,8 +133,8 @@ package object calculus {
     aterm.etaExpand
   }
 
-  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int]): Term = {
-    val skFunc = Signature.get.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy)))
+  final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
+    val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy))))
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }
@@ -145,15 +144,13 @@ package object calculus {
 
   /** Checks whether the terms `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the terms are not unifiable, otherwise they may be. */
-  @inline final def mayUnify(s: Term, t: Term) = mayUnify0(s,t,5)
+  @inline final def mayUnify(s: Term, t: Term): Boolean = mayUnify0(s,t,5)
 
   final protected def mayUnify0(s: Term, t: Term, depth: Int): Boolean = {
     if (s == t) return true
     if (s.ty.typeVars.isEmpty && t.ty.typeVars.isEmpty) {
-      leo.Out.finest(s"mayUnify0: typevars isEmpty")
       if (s.ty != t.ty) return false
     } else {
-      leo.Out.finest(s"mayUnify0: typevars not isEmpty")
       if (!mayUnify(s.ty, t.ty)) return false
     }
     if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?
@@ -199,4 +196,55 @@ package object calculus {
     }
   }
 
+
+  /** Checks whether the terms `s` and `t` may be matchable (s onto t) by a simple syntactic over-approximation.
+    * Hence, if {{{!mayMatch(s,t)}}} the terms are not matchable, otherwise they may be. */
+  @inline final def mayMatch(s: Term, t: Term): Boolean = mayMatch0(s,t,5)
+
+  final protected def mayMatch0(s: Term, t: Term, depth: Int): Boolean = {
+    if (s == t) return true
+    if (s.ty.typeVars.isEmpty) {
+      if (s.ty != t.ty) return false
+    } else {
+      if (!mayMatch(s.ty, t.ty)) return false
+    }
+    if (s.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?
+    if (depth <= 0) return true
+    //    if (s.headSymbol.ty != t.headSymbol.ty) return false
+
+    // Match case on head symbols (over approximation):
+    // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
+    // * = if same type
+    import leo.datastructures.Term._
+    (s,t) match {
+      case (Symbol(id1), Symbol(id2)) => id1 == id2 // rigid-rigid
+      case (Bound(_,_), _) => true // flex-
+      case (_ :::> body1, _ :::> body2) => mayMatch0(body1, body2, depth)
+      case (TypeLambda(s2), TypeLambda(t2)) => mayMatch0(s2, t2, depth)
+      case (Bound(_,_) ∙ _, _) => true //flex-head, need to assume that it works
+      case (f1 ∙ args1, f2 ∙ args2) if mayMatch(f1.ty, f2.ty) && args1.length == args2.length => mayMatch0(f1, f2, depth -1) && args1.zip(args2).forall{_ match {
+        case (Left(t1), Left(t2)) => mayMatch0(t1, t2, depth -1)
+        case (Right(ty1), Right(ty2)) => mayMatch(ty1,ty2)
+        case _ => false
+      } }
+      case _ => false
+    }
+  }
+
+  /** Checks whether the types `s` and `t` may be matchable (s onto t) by a simple syntactic over-approximation.
+    * Hence, if {{{!mayMatch(s,t)}}} the types are not matchable, otherwise they may be. */
+  @inline final def mayMatch(s: Type, t: Type): Boolean = {
+    if (s == t) return true
+    import leo.datastructures.Type._
+    (s,t) match {
+      case (BaseType(id1), BaseType(id2)) => id1 == id2
+      case (a -> b, c -> d) => mayMatch(a,c) && mayMatch(b,d)
+      case (a * b, c * d) => mayMatch(a,c) && mayMatch(b,d)
+      case (a + b, c + d) => mayMatch(a,c) && mayMatch(b,d)
+      case (∀(a), ∀(b)) => mayMatch(a,b)
+      case (BoundType(_), _) => true
+      case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayMatch(ts._1, ts._2))
+      case _ => false
+    }
+  }
 }

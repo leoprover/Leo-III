@@ -5,7 +5,7 @@ import java.nio.file.Files
 
 import com.sun.xml.internal.bind.v2.runtime.unmarshaller.TagName
 import leo._
-import leo.agents.{AgentController, TAgent}
+import leo.agents.Agent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures._
 import leo.datastructures.blackboard.{Blackboard, ClauseType}
@@ -21,7 +21,7 @@ import leo.modules.{Parsing, SZSException}
 class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   override val name = "LoadPhase"
 
-  override val agents : Seq[TAgent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
+  override val agents : Seq[Agent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 
@@ -59,7 +59,7 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         }
       } catch {
         case e : SZSException =>
-          SZSDataStore.forceStatus(Context())(e.status)
+          SZSDataStore.forceStatus(e.status)
           Out.severe(e.getMessage)
           ret_def =  false
           return
@@ -69,7 +69,7 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         case e : Throwable =>
           Out.severe("Unexpected Exception")
           e.printStackTrace()
-          SZSDataStore.forceStatus(Context())(SZS_Error)
+          SZSDataStore.forceStatus(SZS_Error)
           ret_def =  false
           return
       }

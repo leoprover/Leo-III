@@ -3,8 +3,10 @@ package leo.modules.calculus
 import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
-import leo.datastructures.impl.Signature
+import leo.modules.HOLSignature.{LitTrue, o}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
+
+import scala.annotation.tailrec
 
 ////////////////////////////////////////////////////////////////
 ////////// Extensionality
@@ -34,7 +36,7 @@ object FuncExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)]): Literal = {
+  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
     assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
     assert(lit.equational, "Trying to apply func ext on non-eq literal")
 
@@ -42,20 +44,20 @@ object FuncExt extends CalculusRule {
     if (lit.polarity) {
       // TODO: Maybe set implicitly quantified variables manually? Otherwise the whole terms is
       // traversed again and again
-      val newVars = funArgTys.map {case ty => vargen(ty)}
-      Literal(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)
+      val newVars = funArgTys.map {ty => vargen(ty)}
+      Literal.mkOrdered(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)(sig)
     } else {
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)) //initFV: We only use the
+      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)(sig)) //initFV: We only use the
       // free vars that were existent at the very beginning, i.e. simulating
       // that we applies func_ext to all negative literals first
       // in order to minimize the FVs inside the sk-term
-      Literal(Term.mkTermApp(lit.left, skTerms).betaNormalize, Term.mkTermApp(lit.right, skTerms).betaNormalize, false)
+      Literal.mkOrdered(Term.mkTermApp(lit.left, skTerms).betaNormalize, Term.mkTermApp(lit.right, skTerms).betaNormalize, false)(sig)
     }
   }
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal]): Seq[Literal] = {
+  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     val initFV = vargen.existingVars
-    lits.map(apply(_,vargen, initFV))
+    lits.map(apply(_,vargen, initFV)(sig))
   }
 
 }
@@ -64,7 +66,7 @@ object BoolExt extends CalculusRule {
   val name = "bool_ext"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty == Signature.get.o
+  def canApply(l: Literal): Boolean = l.equational && l.left.ty == o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
 
@@ -98,7 +100,7 @@ object BoolExt extends CalculusRule {
 
   def apply(l: Literal): (ExtLits, ExtLits) = {
     assert(l.equational, "Trying to apply bool ext on non-eq literal")
-    assert(l.term.ty == Signature.get.o, "Trying to apply bool ext on non-bool literal")
+    assert(l.left.ty == o && l.right.ty == o, "Trying to apply bool ext on non-bool literal")
 
     if (l.polarity) {
        (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, true)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, false)))
@@ -112,15 +114,16 @@ object BoolExt extends CalculusRule {
 ////////////////////////////////////////////////////////////////
 ////////// pre-Unification
 ////////////////////////////////////////////////////////////////
-object PreUni extends CalculusRule {
-  val name = "pre_uni"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+protected[calculus] abstract class AnyUni extends CalculusRule {
+  final override val inferenceStatus = Some(SZS_Theorem)
+
   type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
+  type UniResult = (Clause, (Unification#TermSubst, Unification#TypeSubst))
 
-  def canApply(l: Literal): Boolean = l.uni
+  def canApply(l: Literal): Boolean
 
-  def canApply(cl: Clause): (Boolean, UniLits, OtherLits) = {
+  final def canApply(cl: Clause): (Boolean, UniLits, OtherLits) = {
     var can = false
     var uniLits: UniLits = Seq()
     var otherLits: OtherLits = Seq()
@@ -136,39 +139,171 @@ object PreUni extends CalculusRule {
     }
     (can, uniLits, otherLits)
   }
+}
 
+object PreUni extends AnyUni {
+  final val name = "pre_uni"
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause, uniLits: UniLits, otherLits: OtherLits): Set[(Clause, Subst)] = {
-    Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    val result = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
-    if (result.hasNext) {
-      val uniResult = result.next()
-      val (termSubst, typeSubst) = uniResult._1
-      val flexflexPairs = uniResult._2
-      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2)) // TODO DO they need to be substituted also?
-      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
-      Set((Clause(updatedOtherLits ++ newLiterals),termSubst))
-    } else {
-      Set()
-      //Set((cl, Subst.id))
+  final def canApply(l: Literal): Boolean = l.uni
+
+  final def apply(vargen: FreshVarGen, uniLits: UniLits,
+                  otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
+    Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
+    result.map {case (subst, flexflex) =>
+      val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
+      val resultClause = Clause(updatedOtherLits ++ newLiteralsFromFlexFlex)
+      (resultClause, subst)
     }
-    // Alternative:
-//    val resultStream = HuetsPreUnification2.unifyAll(vargen, uniLits).iterator
-//    var result: Set[(Clause, Subst)] = Set()
-//    while (resultStream.hasNext) {
-//      val uniResult = resultStream.next()
-//      val (termSubst, typeSubst) = uniResult._1
-//      val flexflexPairs = uniResult._2
-//      val newLiterals = flexflexPairs.map(eq => Literal.mkNeg(eq._1, eq._2)) // TODO DO they need to be substituted also?
-//      val updatedOtherLits = otherLits.map(_.substitute(termSubst, typeSubst))
-//      result = result + ((Clause(updatedOtherLits ++ newLiterals),termSubst))
-//    }
-//    result
   }
 }
 
+object PatternUni extends AnyUni {
+  final val name = "pattern_uni"
+
+  final def canApply(l: Literal): Boolean =
+    l.uni && PatternUnification.isPattern(l.left) && PatternUnification.isPattern(l.right)
+
+  final def apply(vargen: FreshVarGen, uniLits: UniLits,
+                  otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
+    Out.debug(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    val result = PatternUnification.unifyAll(vargen, uniLits)
+    if (result.isEmpty) None
+    else {
+      val subst = result.head._1
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
+      val resultClause = Clause(updatedOtherLits)
+      Some((resultClause, subst))
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////
+////////// Choice
+////////////////////////////////////////////////////////////////
+
+object Choice extends CalculusRule {
+  val name = "choice"
+  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+
+  final def detectChoice(clause: Clause): Option[Term] = {
+    import leo.datastructures.Term.TermApp
+    if (clause.lits.size == 2) {
+      val lit1 = clause.lits.head
+      val lit2 = clause.lits.tail.head
+
+      val posLit = if (lit1.polarity) lit1 else if (lit2.polarity) lit2 else null
+      val negLit = if (!lit1.polarity) lit1 else if (!lit2.polarity) lit2 else null
+      if (posLit == null || negLit == null || posLit.equational || negLit.equational) None
+      else {
+        val witnessTerm = negLit.left
+        val choiceTerm = posLit.left
+
+        witnessTerm match {
+          case TermApp(prop, Seq(witness)) if prop.isVariable && witness.isVariable =>
+            choiceTerm match {
+              case TermApp(`prop`, Seq(TermApp(f, Seq(`prop`)))) => Some(f)
+              case _ => None
+            }
+          case _ => None
+        }
+      }
+    } else
+      None
+  }
 
 
+  final def canApply(clause: Clause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[Term] = {
+    import leo.datastructures.Term.{Symbol, Bound,TermApp}
+    var result: Set[Term] = Set()
+    val litIt = clause.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+
+      val leftOcc = lit.left.feasibleOccurrences
+      val leftOccIt = leftOcc.keysIterator
+      while (leftOccIt.hasNext) {
+        val occ = leftOccIt.next()
+//        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
+        val findResult = findChoice(occ, choiceFuns, leftOcc(occ).head)
+        if (findResult != null)
+          result = result + findResult
+      }
+      if (lit.equational) {
+        val rightOcc = lit.right.feasibleOccurrences
+        val rightOccIt = rightOcc.keysIterator
+        while (rightOccIt.hasNext) {
+          val occ = rightOccIt.next()
+          val findResult = findChoice(occ, choiceFuns, rightOcc(occ).head)
+          if (findResult != null)
+            result = result + findResult
+        }
+      }
+    }
+    result
+  }
+  private final def findChoice(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position): Term =
+    findChoice0(occ, choiceFuns, occPos, 0)
+
+  @tailrec
+  private final def findChoice0(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position, depth: Int): Term = {
+    import leo.datastructures.Term.{Symbol, Bound,TermApp, :::>}
+    occ match {
+      case TermApp(hd, args) if compatibleType(hd.ty) && args.nonEmpty && etaArgs(args.tail, depth) =>
+        val arg = args.head
+        hd match {
+          case Bound(_,idx) if idx > occPos.abstractionCount+depth =>
+            arg
+          case Symbol(_) => val choiceType =hd.ty._funDomainType._funDomainType
+            if (choiceFuns.contains(choiceType))
+              if (choiceFuns(choiceType).contains(hd))
+                arg
+              else null
+            else null
+          case _ => null/* skip */
+        }
+      case _ :::> body => findChoice0(body, choiceFuns, occPos, depth+1)
+      case _ => null/* skip */
+    }
+  }
+
+  @tailrec
+  private final def etaArgs(args: Seq[Term], depth: Int): Boolean = {
+    import leo.datastructures.Term.Bound
+    if (args.isEmpty) depth == 0
+    else {
+      val hd = args.head
+      hd match {
+        case Bound(_, idx) if idx == depth => etaArgs(args.tail, depth-1)
+        case _ => false
+      }
+    }
+  }
+
+  private final def compatibleType(ty: Type): Boolean = {
+    if (ty.isFunType) {
+      val domain = ty._funDomainType
+      val codomain = ty.codomainType
+      if (domain.isFunType)
+        if (domain._funDomainType == codomain && domain.codomainType == o) true
+        else false
+      else false
+    } else false
+  }
+
+  final def apply(term: Term, choiceFun: Term): Clause = {
+    // We dont need to adjust the free variables of `term` since there
+    // is no variable capture (we create a fresh clause).
+    val newVarIndex = if (term.looseBounds.isEmpty) 1 else term.looseBounds.max + 1
+    val newVar: Term = Term.mkBound(term.ty._funDomainType, newVarIndex)
+    // lit1: [term y]^f
+    val lit1 = Literal.mkLit(Term.mkTermApp(term, newVar).betaNormalize.etaExpand, false)
+    // lit2: [term (choicefun term)]^t
+    val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)).betaNormalize.etaExpand, true)
+    Clause(Seq(lit1, lit2))
+  }
+}
 
 ////////////////////////////////////////////////////////////////
 ////////// Inferences
@@ -176,7 +311,7 @@ object PreUni extends CalculusRule {
 
 object PrimSubst extends CalculusRule {
   val name = "prim_subst"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  override val inferenceStatus = Some(SZS_Theorem)
 
   type FlexHeads = Set[Term]
 
@@ -195,8 +330,8 @@ object PrimSubst extends CalculusRule {
     (can, flexheads)
   }
 
-  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term]): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
-    flexHeads.map { case hd =>
+  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
+    flexHeads.map {hd =>
 //      println(s"${hd.pretty} - ${hd.fv.head._1}")
 //      println(s"max fv: ${cl.maxImplicitlyBound}")
       val vargen = leo.modules.calculus.freshVarGen(cl)
@@ -204,7 +339,7 @@ object PrimSubst extends CalculusRule {
       val subst = Subst.singleton(hd.fv.head._1, binding)
 //      println(s"${subst.pretty}")
 //      println(Literal(Term.mkBound(hd.fv.head._2, hd.fv.head._1), true).substitute(subst).pretty)
-      (cl.substitute(subst),subst)
+      (cl.substituteOrdered(subst)(sig),subst)
     }
   }
 }
@@ -215,7 +350,7 @@ object OrderedEqFac extends CalculusRule {
   final override val inferenceStatus = Some(SZS_Theorem)
 
   final def apply(cl: Clause, maxLitIndex: Int, maxLitSide: Side,
-                  withLitIndex: Int, withLitSide: Side): Clause = {
+                  withLitIndex: Int, withLitSide: Side)(implicit sig: Signature): Clause = {
     assert(cl.lits.isDefinedAt(maxLitIndex))
     assert(cl.lits.isDefinedAt(withLitIndex))
 
@@ -230,12 +365,12 @@ object OrderedEqFac extends CalculusRule {
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * i.e. it is lated eliminated using Simp. */
     val lits_without_maxLit = cl.lits.updated(maxLitIndex, Literal.mkLit(LitTrue(),false))
-    val unification_task1: Literal = Literal.mkNeg(maxLitSide1, withLitSide1)
-    val unification_task2: Literal = Literal.mkNeg(maxLitSide2, withLitSide2)
+    val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(sig)
+    val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
 
-    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
-    val newlitsSimp = Simp(newlits)
-
+//    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
+//    val newlitsSimp = Simp.shallowSimp(newlits)(sig)
+    val newlitsSimp = Simp.shallowSimp(lits_without_maxLit)(sig):+ unification_task1 :+ unification_task2
     Clause(newlitsSimp)
   }
 
@@ -263,12 +398,13 @@ object OrderedParamod extends CalculusRule {
     * @param intoPosition position in `side(l=r)` that is rewritten
     */
   final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
-            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term): Clause = {
+            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term,
+                  simulateResolution: Boolean = false)(implicit sig: Signature): Clause = {
     assert(withClause.lits.isDefinedAt(withIndex))
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
-    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented)
-    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented)
+    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented || simulateResolution)
+    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented || simulateResolution)
 
     val withLiteral = withClause.lits(withIndex)
     val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
@@ -300,19 +436,21 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"findWithin: ${findWithin.pretty}")
     Out.finest(s"otherSide: ${otherSide.pretty}")
     /* Replace subterm (and shift accordingly) */
-    val rewrittenIntoLit = Literal(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))),otherSide,intoLiteral.polarity)
+    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))),otherSide,intoLiteral.polarity)(sig)
     /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
     val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit)
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty}")
     Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty}")
-    val unificationLit = Literal.mkNeg(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount), Subst.shift(withMaxTyVar)))
+    val unificationLit = Literal.mkNegOrdered(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount), Subst.shift(withMaxTyVar)))(sig)
 
     Out.finest(s"unificationLit: ${unificationLit.pretty}")
 
-    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
-    val newlits_simp = newlits // Simp.apply(newlits)
+//    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
+//    val newlits_simp = Simp.shallowSimp(newlits)(sig)
+
+    val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
     val resultingClause = Clause(newlits_simp)
 
     resultingClause

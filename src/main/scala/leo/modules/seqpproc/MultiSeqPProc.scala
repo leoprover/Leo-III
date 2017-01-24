@@ -5,15 +5,13 @@ import java.util.concurrent.atomic.AtomicInteger
 import leo.agents.ProofProcedure
 import leo.agents.impl.SZSScriptAgent
 import leo.{Configuration, Out}
-import leo.datastructures.ClauseAnnotation._
-import leo.datastructures.impl.Signature
+import leo.datastructures.impl.SignatureImpl
 import leo.datastructures._
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
-import leo.modules.calculus.CalculusRule
+import leo.modules.control.Control
 import leo.modules.output._
-import leo.modules.Utility
 
 object MultiSeqPProc {
   private[seqpproc] var counter : AtomicInteger = new AtomicInteger()
@@ -30,41 +28,6 @@ object MultiSeqPProc {
 class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[AnnotatedClause] => Set[AnnotatedClause]) extends ProofProcedure {
 
 
-  final def preprocess(cur: AnnotatedClause): Set[AnnotatedClause] = {
-    var result: Set[AnnotatedClause] = Set()
-    // Fresh clause, that means its unit and nonequational
-    assert(Clause.unit(cur.cl), "clause not unit")
-    val lit = cur.cl.lits.head
-    assert(!lit.equational, "initial literal equational")
-
-    // Def expansion and simplification
-    var cw = cur
-    cw = Control.expandDefinitions(cw)
-    cw = Control.nnf(cw)
-    cw = Control.switchPolarity(cw)
-    cw = Control.skolemize(cw, Signature.get)
-
-    // Exhaustively CNF
-    result = Control.cnf(cw)
-    // Remove defined equalities as far as possible
-//    result = result union Control.convertDefinedEqualities2(result)
-
-    // To equation if possible and then apply func ext
-    // AC Simp if enabled, then Simp.
-    result = result.map { cl =>
-      var result = cl
-      result = Control.liftEq(result)
-      result = Control.funcext(result)
-      result = Control.acSimp(result)
-      Control.simp(result)
-    }
-    // Pre-unify new clauses
-    result = result union Control.preunifySet(result)
-    result = result.filterNot(cw => Clause.trivial(cw.cl))
-    result
-  }
-
-
   ///////////////////////////////////////////////////////////
   /* Main function containing proof loop */
   /**
@@ -79,7 +42,8 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  override def execute(cs1: Iterable[AnnotatedClause], c: Context): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
+  override def execute(cs1: Iterable[AnnotatedClause]): (StatusSZS, Option[Seq[AnnotatedClause]]) = {
+    import leo.modules.seqpproc.SeqPProc.preprocess
     val proc = MultiSeqPProc.counter.incrementAndGet()
     val cs = addPreprocessing(cs1.toSet)
     /////////////////////////////////////////
@@ -91,14 +55,16 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     val conjecture : Iterable[AnnotatedClause] = cs.filter(x => x.role == Role_NegConjecture || x.role == Role_Conjecture)
     assert(conjecture.size == 1)
     val negatedConjecture : AnnotatedClause = conjecture.head  // TODO no conjecture?
-    val effectiveInputWithoutConjecture : Iterable[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
+    val effectiveInputWithoutConjecture : Set[AnnotatedClause] = cs.filter(_.role != Role_NegConjecture)
+
     // Read problem
     // Proprocess terms with standard normalization techniques for terms (non-equational)
     // transform into equational literals if possible
-    val state: State[AnnotatedClause] = State.fresh(Signature.get)
-    Control.fvIndexInit(effectiveInputWithoutConjecture.toSet + negatedConjecture)
+    implicit val sig: Signature = Signature.freshWithHOL()
+    val state: State[AnnotatedClause] = State.fresh(sig)
+    Control.fvIndexInit((effectiveInputWithoutConjecture + negatedConjecture).toSeq)
     Out.debug(s"## ($proc) Preprocess Neg.Conjecture BEGIN")
-    val conjecture_preprocessed = preprocess(negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
+    val conjecture_preprocessed = preprocess(state, negatedConjecture).filterNot(cw => Clause.trivial(cw.cl))
     Out.debug(s"# ($proc) Result:\n\t${conjecture_preprocessed.map{_.pretty}.mkString("\n\t")}")
 //    Control.fvIndexInsert(conjecture_preprocessed)
     Out.debug(s"## ($proc)Preprocess Neg.Conjecture END")
@@ -108,7 +74,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     while (inputIt.hasNext) {
       val cur = inputIt.next()
       Out.debug(s"# ($proc) Process: ${cur.pretty}")
-      val processed = preprocess(cur)
+      val processed = preprocess(state, cur)
       Out.debug(s"# ($proc) Result:\n\t${processed.map{_.pretty}.mkString("\n\t")}")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
       state.addUnprocessed(preprocessed)
@@ -121,14 +87,14 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     for (c <- state.unprocessed union conjecture_preprocessed)  {
       Out.finest(s"($proc) Clause ${c.pretty}")
       Out.finest(s"($proc) Maximal literal(s):")
-      Out.finest(s"\t${c.cl.maxLits.map(_.pretty).mkString("\n\t")}")
+      Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty).mkString("\n\t")}")
     }
     Out.finest(s"################")
 //    val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
     var loop = true
 
     // Init loop for conjecture-derived clauses
-    val conjectureProcessedIt = conjecture_preprocessed.toSeq.sorted.iterator
+    val conjectureProcessedIt = conjecture_preprocessed.toSeq.iterator
     Out.debug(s"## ($proc)Pre-reasoning loop BEGIN")
     while(conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
       var cur = conjectureProcessedIt.next()
@@ -143,15 +109,13 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
         }
         state.setDerivationClause(cur)
       } else {
-        // Subsumption
-
-        val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-        if (subsumed.isEmpty) {
+        // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+        // e.g. by forward subsumption
+        if (!Control.redundant(cur, state.processed)) {
           mainLoopInferences(cur, state)
         } else {
-          Out.debug(s"($proc) clause subsumbed, skipping.")
+          Out.debug(s"Clause ${cur.id} redundant, skipping.")
           state.incForwardSubsumedCl()
-          Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
         }
       }
     }
@@ -166,14 +130,14 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     Out.debug(s"## ($proc) Reasoning loop BEGIN")
     while (loop && !prematureCancel(state.noProcessedCl) && !Scheduler().isTerminated) {
       if (state.unprocessed.isEmpty) {
-        SZSScriptAgent.execute(state.processed, c)
+        SZSScriptAgent.execute(state.processed)
         loop = false
       } else {
         // Should an external Call be made?
         sinceLastExternal += 1
         if(Configuration.ATPS.nonEmpty && sinceLastExternal > externalCallIteration){
           sinceLastExternal = 0
-          SZSScriptAgent.execute(state.processed, c)
+          SZSScriptAgent.execute(state.processed)
         } else {
           var cur = state.nextUnprocessed
           // cur is the current AnnotatedClause
@@ -190,15 +154,13 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
             }
             state.setDerivationClause(cur)
           } else {
-            // Subsumption
-            //if (!state.processed.exists(cw => Subsumption.subsumes(cw.cl, cur.cl))) {
-            val subsumed = Control.forwardSubsumptionTest(cur, state.processed)
-            if (subsumed.isEmpty) {
+            // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+            // e.g. by forward subsumption
+            if (!Control.redundant(cur, state.processed)) {
               mainLoopInferences(cur, state)
             } else {
-              Out.debug(s"($proc)clause subsumbed, skipping.")
+              Out.debug(s"Clause ${cur.id} redundant, skipping.")
               state.incForwardSubsumedCl()
-              Out.trace(s"($proc) Subsumed by:\n\t${subsumed.map(_.pretty).mkString("\n\t")}")
             }
           }
         }
@@ -219,9 +181,9 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     Out.comment(s"($proc) No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"($proc) No. of units in store: ${state.rewriteRules.size}")
     Out.debug(s"($proc) literals processed: ${state.processed.flatMap(_.cl.lits).size}")
-    Out.debug(s"($proc) -thereof maximal ones: ${state.processed.flatMap(_.cl.maxLits).size}")
+    Out.debug(s"($proc) -thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
     Out.debug(s"($proc) avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size/state.processed.size.toDouble}")
-    Out.debug(s"($proc) avg. max. literals per clause: ${state.processed.flatMap(_.cl.maxLits).size/state.processed.size.toDouble}")
+    Out.debug(s"($proc) avg. max. literals per clause: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size/state.processed.size.toDouble}")
     Out.debug(s"($proc) unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"($proc) oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"($proc) unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
@@ -258,6 +220,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
   }
 
   @inline private final def mainLoopInferences(cl: AnnotatedClause, state: State[AnnotatedClause]): Unit = {
+    implicit val sig: Signature = state.signature
     var cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
@@ -300,7 +263,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur)
+    val primSubst_result = Control.primsubst(cur, 1)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */
@@ -324,7 +287,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
     /* Pre-unify new clauses */
-    newclauses = Control.preunifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)
 
     /////////////////////////////////////////
     // Simplification of newly generated clauses END

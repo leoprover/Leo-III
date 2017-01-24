@@ -1,20 +1,19 @@
 package leo
 
-import leo.datastructures.impl.Signature
-import leo.datastructures.{=== => EQUALS, _}
+import leo.modules.HOLSignature.{=== => EQUALS, _}
+import leo.datastructures.{Signature, Term, Clause, Literal, Derived}
 import Term.{mkAtom, mkTermApp => ap}
 import leo.modules.Numerals
 import Numerals.fromInt
-import leo.modules.preprocessing.Simplification
 
 
 /**
  * Created by lex on 11.06.14.
  */
 class ExecutionTest extends LeoTestSuite {
-  val sig = Signature.get
+  implicit val sig = Signature.freshWithHOL()
 
-  Numerals() // include numerals in signature
+  Numerals(sig) // include numerals in signature
 
 
   val theorems: Map[String, Term] = {
@@ -53,7 +52,7 @@ class ExecutionTest extends LeoTestSuite {
     println("As term: " + term.pretty)
     println()
     println("Definition expansion ...")
-    val test2 = term.full_δ_expand
+    val test2 = term.δ_expand
     //println(test2.pretty)
 
     println("Beta normalizing ...")
@@ -61,9 +60,9 @@ class ExecutionTest extends LeoTestSuite {
     //println(test3.pretty)
 
     println("Simplification ...")
-    val test4 = Simplification(Clause.mkClause(List(Literal(test3,true)),Derived))
+    val test4 = leo.modules.calculus.Simp.normalize(test3)
 
     println(" (Resulting term: " + test4.pretty + " )")
-    test4.lits.head.term
+    test4
   }
 }

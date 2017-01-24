@@ -24,23 +24,23 @@ class ToTPTPTestSuite extends LeoTestSuite {
   val problems = Seq( //"SYN000-1" -> "TPTP CNF basic syntax features",
 //    "SYN000+1" -> "TPTP FOF basic syntax features"
 //    "SYN000_1" -> "TPTP TF0 basic syntax features",
-    "SYN000^1" -> "TPTP THF basic syntax features"
-//    "SYN000^2" -> "TPTP THF advanced syntax features",
+    "SYN000^1" -> "TPTP THF basic syntax features",
+    "SYN000^2" -> "TPTP THF advanced syntax features"
 //    "SYN000+2" -> "TPTP FOF advanced syntax features"
 //    "SYN000_2" -> "TPTP TF0 advanced syntax features",
 //    "SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
   )
 
-  for (p <- problems) {
+  /*for (p <- problems) {
     test(p._2, Ignored){
-      val sig = getFreshSignature
+      implicit val sig = getFreshSignature
       Blackboard().clear()
 
       printHeading(s"Forward/Backward translation test for ${p._2}")
       print(s"## Parsing and processing ${p._1} ...")
-      var fos : Seq[AnnotatedClause] = Parsing.parseProblem(source + "/" + p + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
+      var fos : Seq[AnnotatedClause] = Parsing.parseProblem(source + "/" + p._1 + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       println("Success!")
-      Utility.printUserDefinedSignature()
+      Utility.printUserDefinedSignature(sig)
       for (fs <- fos) {
         val toTPTP = ToTPTP.output(fs)
         println("## Back translation ... success!")
@@ -62,7 +62,7 @@ class ToTPTPTestSuite extends LeoTestSuite {
 //            println(s"Equivalent names: ${name == fs.id}")
             println(s"Equivalent roles: ${role == fs.role}")
 
-            val (oldFormula, newFormula) = (fs.cl.lits.head.term, form)
+            val (oldFormula, newFormula) = (Literal.asTerm(fs.cl.lits.head), form)
             println(s"Equivalent formula: ${oldFormula == newFormula}")
 
             if ((role != fs.role) || (oldFormula != newFormula)) {
@@ -76,5 +76,5 @@ class ToTPTPTestSuite extends LeoTestSuite {
         }
       }
     }
-  }
+  }*/ // FIXME: Single quoted reading is apparently wrong
 }

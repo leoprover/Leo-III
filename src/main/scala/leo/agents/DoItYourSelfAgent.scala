@@ -10,9 +10,14 @@ import leo.datastructures.context.Context
   * An Agent to run on its own an return only its final result (hopefully [])
   * and the SZS status.
   */
-class DoItYourSelfAgent(val procedure : ProofProcedure) extends Agent{
+class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
   override def name: String = procedure.name
   override val interest : Option[Seq[DataType]] = None
+
+  override def init(): Iterable[Task] = {
+    val forms = FormulaDataStore.getFormulas
+    Seq(new DoItYourSelfTask(this, forms))
+  }
 
   /**
     * This method should be called, whenever a formula is added to the blackboard.
@@ -25,25 +30,32 @@ class DoItYourSelfAgent(val procedure : ProofProcedure) extends Agent{
   override def filter(event: Event): Iterable[Task] = event match {
     case DoItYourSelfMessage(c) =>
       // TODO Blackboard Structure might vary
-      val forms = FormulaDataStore.getFormulas(c)
-      Seq(new DoItYourSelfTask(this, forms, c))
+      val forms = FormulaDataStore.getFormulas
+      Seq(new DoItYourSelfTask(this, forms))
     case _ => Iterable()
   }
+
+  /**
+    * Method called, when a task cannot be executed
+    * and is removed from the task set.
+    *
+    * @param t
+    */
+  override def taskCanceled(t: Task): Unit = {}
 }
 
 case class DoItYourSelfMessage(c : Context) extends Message
 
-class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Context) extends Task{
+class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy]) extends Task{
   override val name: String = a.procedure.name+"Task"
-  override val getAgent: TAgent = a
+  override val getAgent: Agent = a
   override val writeSet: Map[DataType, Set[Any]] = Map.empty
   override val readSet: Map[DataType, Set[Any]] = Map.empty
   override def run: Result = {
     val fs1 = fs.map(_.asInstanceOf[AnnotatedClause])
-    val (status, res) = a.procedure.execute(fs1, c)
+    val (status, res) = a.procedure.execute(fs1)
     if(res.isEmpty) return Result()
-    c.close()
-    var r = Result().insert(StatusType)(SZSStore(status, c))
+    var r = Result().insert(StatusType)(SZSStore(status))
     if(res.nonEmpty){
       val it = res.get.iterator
       while(it.hasNext){
@@ -54,7 +66,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy], c : Co
   }
   override def bid: Double = 0.3
 
-  override val pretty: String = a.procedure.name+"Task("+c.contextID+")"
+  override val pretty: String = a.procedure.name
 }
 
 
@@ -77,5 +89,5 @@ trait ProofProcedure {
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  def execute(formulas : Iterable[AnnotatedClause], c : Context) : (StatusSZS, Option[Seq[AnnotatedClause]])
+  def execute(formulas : Iterable[AnnotatedClause]) : (StatusSZS, Option[Seq[AnnotatedClause]])
 }
