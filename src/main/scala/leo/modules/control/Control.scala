@@ -89,7 +89,7 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
     final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-      Out.trace(s"CNF of ${cl.id}")
+      Out.trace(s"CNF of ${cl.pretty(sig)}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
@@ -132,7 +132,7 @@ package inferenceControl {
         val other = withsetIt.next()
         if (!Configuration.SOS || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, other.properties) ||
           leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties))  {
-          Out.trace(s"Paramod on ${cl.id} and ${other.id}")
+          Out.finest(s"Paramod on ${cl.id} and ${other.id}")
           results = results ++ allParamods(cl, other)
         }
       }

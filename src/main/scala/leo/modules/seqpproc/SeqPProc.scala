@@ -252,7 +252,7 @@ object SeqPProc {
         if (preprocessIt.hasNext) Out.trace("--------------------")
       }
       Out.trace("## Preprocess END\n\n")
-
+      assert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)))
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest(s"Clauses and maximal literals of them:")
