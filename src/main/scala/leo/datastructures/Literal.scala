@@ -244,5 +244,13 @@ object Literal extends Function3[Term, Term, Boolean, Literal] {
   final def isFalse(l: Literal): Boolean = if (!l.polarity) trivial(l) else distinctSides(l)
   /** Returns a new literal with the same equation as this one, only with polarity flipped.*/
   final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity) else apply(l.left, !l.polarity)
+  /** Returns whether the literal is well-typed, i.e. if the underlying terms are well-typed and have the same type. */
+  final def wellTyped(l: Literal): Boolean = {
+    import leo.datastructures.impl.Signature
+    import leo.datastructures.Term.{wellTyped => wt}
+    if (l.equational) {
+      wt(l.left) && wt(l.right) && l.left.ty == l.right.ty
+    } else wt(l.left) && l.left.ty == Signature.get.o
+  }
 }
 

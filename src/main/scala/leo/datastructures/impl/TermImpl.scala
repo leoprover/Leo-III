@@ -214,14 +214,6 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   lazy val size = 2 + args.size
 
   // Other operations
-  lazy val typeCheck = typeCheck0(hd.ty, args)
-  private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
-    case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t.codomainType, rest) && head.typeCheck
-    case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
-    case _ => true // other cases should not appear
-  }
-
   lazy val etaExpand0: Term = {
     if (hd.ty.isFunType) {
       val hdFunParamTypes = hd.ty.funParamTypes
@@ -404,14 +396,6 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   lazy val occurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.occurrences.mapValues(_.map(_.prependHeadPos))), args.occurrences)
   lazy val feasibleOccurences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
   // Other operations
-  lazy val typeCheck = typeCheck0(body.ty, args)
-  private def typeCheck0(t: Type, sp: Spine): Boolean = sp match {
-    case SNil => true
-    case App(head, rest) => t.isFunType && t._funDomainType == head.ty && typeCheck0(t.codomainType, rest) && head.typeCheck
-    case TyApp(t2, rest) => t.isPolyType && typeCheck0(t.instantiate(t2), rest)
-    case SpineClos(s, (sub1, sub2)) => typeCheck0(t, s.normalize(sub1,sub2))
-  }
-
   def etaExpand0: Term = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
 
   def replace(what: Term, by: Term): Term = if (this == what)
@@ -511,8 +495,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   lazy val feasibleOccurences = body.occurrences.filterNot {case oc => oc._1.looseBounds.contains(1)}.mapValues(_.map(_.prependAbstrPos))
 
   // Other operations
-  lazy val typeCheck = body.typeCheck
-
   lazy val etaExpand0: Term = {
     TermAbstr(typ, body.asInstanceOf[TermImpl].etaExpand0)
   }
@@ -607,8 +589,6 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   lazy val feasibleOccurences = body.feasibleOccurences // FIXME
 
   // Other operations
-  lazy val typeCheck = body.typeCheck
-
   lazy val etaExpand0: Term = {
     TypeAbstr(body.asInstanceOf[TermImpl].etaExpand0)
   }
@@ -1385,13 +1365,14 @@ object TermImpl extends TermBank {
   final private def wellTyped0(t: TermImpl, boundVars: Map[Int, Type]): Boolean = {
     t match {
       case Root(hd, args) => hd match {
-        case BoundIndex(typ0, scope) => if (boundVars(scope) == typ0) {
-          leo.Out.trace(boundVars.toString())
-          // Bound indices cannot be polymorphic, and we assume that if they
-          // contain type variables, they have been instantiated further above
-          wellTypedArgCheck(t, typ0, args, boundVars, false)
-        } else leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not correspond" +
-          s"to its type declaration of the original binder."); false
+        case BoundIndex(typ0, scope) => if (boundVars.isDefinedAt(scope)) {
+          if (boundVars(scope) == typ0) {
+            // Bound indices cannot be polymorphic, and we assume that if they
+            // contain type variables, they have been instantiated further above
+            wellTypedArgCheck(t, typ0, args, boundVars, false)
+          } else {leo.Out.trace(s"Application ${t.pretty} is ill-typed: The bound variable's type at head position does not correspond" +
+            s"to its type declaration of the original binder."); false}
+        } else true // assume free variables are consistently typed.
         case t0@Atom(key) => // atoms type can be polymorphic
           wellTypedArgCheck(t, t0.ty, args, boundVars, true)
         case _ => throw new IllegalArgumentException("wellTyped0 on this head type currently not supported.")
@@ -1406,7 +1387,7 @@ object TermImpl extends TermBank {
 
   @tailrec
   final private def wellTypedArgCheck(term: Term, functionType: Type, args: Spine, boundVars: Map[Int, Type], canBePolyFunc: Boolean): Boolean = args match {
-    case SNil => leo.Out.trace(s"snil");true
+    case SNil => true
     case App(hd,tail) if functionType.isFunType =>
       if (functionType._funDomainType == hd.ty) {
         if (wellTyped0(hd.asInstanceOf[TermImpl], boundVars)) {
@@ -1423,8 +1404,12 @@ object TermImpl extends TermBank {
     case App(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take" +
       s"parameters, but arguments are applied."); false
     case TyApp(hd,tail) if functionType.isPolyType =>
-      if (canBePolyFunc)
+      if (canBePolyFunc) {
+        val a = functionType
+        val b = functionType.instantiate(hd)
         wellTypedArgCheck(term, functionType.instantiate(hd), tail, boundVars, canBePolyFunc)
+      }
+
       else false
     case TyApp(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take type" +
       s"parameters, but type arguments are applied."); false

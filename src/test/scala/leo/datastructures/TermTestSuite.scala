@@ -43,10 +43,10 @@ class TermTestSuite extends LeoTestSuite {
       Term.mkBound(s.i,1))))
     println("type of t: " + t.ty.pretty)
     println("t: " + t.pretty)
-    println("is t typed properly? " + t.typeCheck)
+    println("is t typed properly? " + Term.wellTyped(t))
     println("t.etaExpand: " + t.etaExpand.pretty)
     println("type of t.etaExpand: " + t.etaExpand.ty.pretty)
-    println("is t.etaExpand typed properly? " + t.etaExpand.typeCheck + " - really?")
+    println("is t.etaExpand typed properly? " + Term.wellTyped(t.etaExpand) + " - really?")
 
     val m = Term.λ(s.i)(Term.mkTermApp(a,Term.λ(s.i->:s.i)(Term.mkTermApp(
       y, List(Term.mkBound(s.i,2), Term.mkBound(s.i,1))))))
