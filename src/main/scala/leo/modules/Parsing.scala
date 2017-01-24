@@ -77,7 +77,7 @@ object Parsing {
           try {
             val alt = tptpHome.resolve(file)
             shallowReadProblem(alt.toString)
-          } catch {case _ : Exception => throw new SZSException(SZS_InputError, s"The file $file does not exist.")}
+          } catch {case e : Exception => throw new SZSException(SZS_InputError, s"${e.toString}")}
         }
         val includes = p.getIncludes
 
