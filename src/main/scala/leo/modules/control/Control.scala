@@ -689,12 +689,49 @@ package inferenceControl {
   }
 
   protected[modules] object SpecialInstantiationControl {
-    final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-        // TODO: shallow simp at end.
+    final val NO_REPLACE: Int = 0
+    final val REPLACE_O: Int = 1
+    final val REPLACE_OO: Int = 2
+    final val REPLACE_OOO: Int = 4
+    final val REPLACE_AAO: Int = 8
+    final val REPLACE_AO: Int = 16
 
-        ???
+    final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
+      if (Configuration.PRE_PRIMSUBST_LEVEL > NO_REPLACE) {
+        val clause = cl.cl
+        assert(Clause.unit(clause))
+        val lit = clause.lits.head
+        assert(!lit.equational)
+        val term = lit.left
+
+        var result: Set[AnnotatedClause] = Set()
+        if (isPropSet(Configuration.PRE_PRIMSUBST_LEVEL, REPLACE_O)) {
+
+        }
+        result
       } else Set(cl)
+    }
+
+    private final def specialInstances0(term: Term, polarity: Boolean, results: Set[Term]): Set[Term] = {
+      import leo.datastructures.Term._
+      import leo.modules.HOLSignature.{Forall, Exists}
+      term match {
+        case Forall(ty :::> body) if polarity =>
+          val instances = Enumeration.specialInstances(ty)
+          if (instances.nonEmpty) {
+???
+          } else {
+???
+          }
+        case Exists(ty ) if !polarity => ???
+        case b@Bound(_,_) => ???
+        case s@Symbol(_) => ???
+        case hd ∙ args => ???
+        case ty :::> body => ???
+        case TypeLambda(body) => ???
+        case _ => results
+      }
+
     }
   }
 

@@ -14,8 +14,8 @@ object Enumeration {
   import Term.{mkBound, λ}
   import leo.modules.HOLSignature.{LitFalse, LitTrue, Not, o}
   private final lazy val instanceTable: Map[Type, Set[Term]] = Map(
-    o -> Set(LitTrue, LitFalse),
-    (o ->: o) -> Set(λ(o)(LitTrue),λ(o)(LitFalse),λ(o)(mkBound(o, 1)),λ(o)(Not(mkBound(o, 1))))
+    o -> Set(LitTrue(), LitFalse()),
+    (o ->: o) -> Set(λ(o)(LitTrue()),λ(o)(LitFalse()),λ(o)(mkBound(o, 1)),λ(o)(Not(mkBound(o, 1))))
     // more to come, e.g. for ooo:
     //        λ(o,o)(LitTrue),
     //        λ(o,o)(LitFalse),
@@ -37,6 +37,8 @@ object Enumeration {
     //        λ(o,o)(Not(1)),
     //        λ(o,o)(Not(2))
   )
+  private final val exhaustive: Set[Type] = Set(o, o ->: o)
+  @inline protected[calculus] final def isExhaustive(ty: Type): Boolean = exhaustive.contains(ty)
 
-  @inline final def specialInstances(ty: Type)(implicit sig: Signature): Set[Term] = instanceTable.getOrElse(ty, Set())
+  @inline final def specialInstances(ty: Type): Set[Term] = instanceTable.getOrElse(ty, Set())
 }
