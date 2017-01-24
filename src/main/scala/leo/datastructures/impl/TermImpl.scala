@@ -188,7 +188,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
       assert(tyArgs.size == hd.ty.polyPrefixArgsCount)
       // Now do the same as above for function types, but with typeBody as functional type
       // and with restArgs as Args to count/expand
-      val typeBody = hd.ty.monomorphicBody
+      val typeBody = hd.ty.instantiate(tyArgs)
       val hdFunParamTypes = typeBody.funParamTypes
       if (restArgs.length < hdFunParamTypes.length) {
         // Introduce new lambda binders, number = missing #args

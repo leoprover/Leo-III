@@ -69,15 +69,11 @@ abstract class Type extends Pretty with Prettier {
   /** if `this` is a polymorphic type (i.e. a forall type), the method returns the abstracted type where all type parameters bound
     * by the head quantifier are replaced by `by`. In any other case, it does nothing */
   def instantiate(by: Type): Type
-
-  // Other operation
-  /** Right folding on types. This may change if the type system is changed. */
-  def foldRight[A](baseFunc: Signature#Key => A)
-                  (boundFunc: Int => A)
-                  (absFunc: (A,A) => A)
-                  (prodFunc: (A,A) => A)
-                  (unionFunc: (A,A) => A)
-                  (forAllFunc: A => A): A
+  /** if `this` is a n-fold polymorphic type (i.e. nested forall type), the method returns the abstracted type where all type parameters i bound
+    * by (at most) `by.size` prefix quantifiers are replaced by `by(i)`. If `by.size` is smaller than the prefix of
+    * type abstraction, only `by.size` many are instantiated. If `by.size` is larger than the `n` prefix
+    * of type abstraction, only the first `n` types are instantiated, the rest is discarded. */
+  def instantiate(by: Seq[Type]): Type
 
   // Syntactic nice constructors
   /** Create abstraction type from `hd` to `this` */

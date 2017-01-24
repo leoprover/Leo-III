@@ -2,7 +2,7 @@ package leo.modules.seqpproc
 
 import leo.datastructures._
 import leo.modules.output.{SZS_Unknown, StatusSZS}
-
+import leo.modules.external.TptpProver
 
 /**
   * Created by lex on 20.02.16.
@@ -29,6 +29,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def rewriteRules: Set[T]
   def addRewriteRule(cl: T): Unit
+  def nonRewriteUnits: Set[T]
+  def addNonRewriteUnit(cl: T): Unit
+  def removeUnits(cls: Set[T]): Unit
 
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions: Map[Type, Set[Term]]
@@ -36,6 +39,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
+
+  def externalProvers: Set[TptpProver[T]]
+  def addExternalProver(prover: TptpProver[T]): Unit
 }
 
 trait StateStatistics {
@@ -70,7 +76,9 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var current_szs = initSZS
   private var current_processed: Set[T] = Set()
   private var current_rewriterules: Set[T] = Set()
+  private var current_nonRewriteUnits: Set[T] = Set()
   private var derivationCl: Option[T] = None
+  private var current_externalProvers: Set[TptpProver[T]] = Set()
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
@@ -127,6 +135,13 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   final def rewriteRules: Set[T] = current_rewriterules
   final def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}
+  final def nonRewriteUnits: Set[T] = current_nonRewriteUnits
+  final def addNonRewriteUnit(cl: T): Unit = {current_nonRewriteUnits = current_nonRewriteUnits + cl}
+  final def removeUnits(cls: Set[T]): Unit = {
+    current_rewriterules = current_rewriterules diff cls
+    current_nonRewriteUnits = current_nonRewriteUnits diff cls
+  }
+
 
   private var choiceFunctions0: Map[Type, Set[Term]] = Map()
   final def addChoiceFunction(f: Term): Unit = {
@@ -140,6 +155,10 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
 
+  final def externalProvers: Set[TptpProver[T]] = current_externalProvers
+  final def addExternalProver(prover: TptpProver[T]): Unit =  {
+    current_externalProvers = current_externalProvers + prover
+  }
   // Statistics
   private var generatedCount: Int = 0
   private var rewriteCount: Int = 0

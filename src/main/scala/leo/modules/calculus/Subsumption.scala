@@ -30,7 +30,6 @@ object TrivialSubsumption extends Subsumption {
 
 object FOMatchingSubsumption extends Subsumption {
   import leo.datastructures.{Literal, Subst}
-  import leo.modules.calculus.matching.FOMatching
   val name = "FO matching subsumption"
 
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {
@@ -70,3 +69,4 @@ object FOMatchingSubsumption extends Subsumption {
     }
   }
 }
+

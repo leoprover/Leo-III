@@ -27,11 +27,15 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_SOS_LONG = "sos"
   private val PARAM_UNIFICATIONDEPTH = "unidepth"
   private val PARAM_UNIFIERCOUNT = "unifiers"
+  private val PARAM_MATCHINGDEPTH = "matchingdepth"
   private val PARAM_PRIMSUBST = "primsubst"
   private val PARAM_PRE_PRIMSUBST = "preprimsubst"
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
   private val PARAM_NOCHOICE = "nochoice"
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
+  private val PARAM_ATPCHECKINTERVAL = "atp-check-interval"
+  private val PARAM_ATPCALLINTERVAL = "atp-call-interval"
+  private val PARAM_ATPMAXJOBS = "atp-max-jobs"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -43,7 +47,8 @@ object Configuration extends DefaultConfiguration {
       'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
       's' -> ("sos", "", "Use SOS heuristic search strategy"),
-      'a' -> ("atp", "name=call", "Addition of external provers")
+      'a' -> ("atp", "name=call", "Addition of external provers"),
+      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds.")
     )
   }
 
@@ -107,6 +112,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
   lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
+  lazy val MATCHING_DEPTH: Int = uniqueIntFor(PARAM_MATCHINGDEPTH, DEFAULT_MATCHINGDEPTH)
 
   lazy val PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRIMSUBST, DEFAULT_PRIMSUBST)
   lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
@@ -127,6 +133,9 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
+  lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
+  lazy val ATP_MAX_JOBS: Int = uniqueIntFor(PARAM_ATPMAXJOBS, DEFAULT_ATPMAXJOBS)
+  lazy val ATP_CHECK_INTERVAL: Int = uniqueIntFor(PARAM_ATPCHECKINTERVAL, DEFAULT_ATPCHECKINTERVAL)
   lazy val ATPS : Seq[(String, String)] = {
     val a = valueOf("a")
     if(a.nonEmpty) {
@@ -149,12 +158,35 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
+  final val ATP_STD_TIMEOUT : Int = 30
+  lazy val ATP_TIMEOUT : Map[String, Int] = {
+    val a = valueOf("e")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1).toInt)
+      }.toMap
+    }
+    else {
+      val b = valueOf("atp-timeout")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1).toInt)
+        }.toMap
+      }
+      else Map().withDefault(_ => ATP_STD_TIMEOUT)
+    }
+  }
+
   // more to come ...
 
   ///////////////
   // Help output
   ///////////////
-  lazy val helptext = {
+  lazy val helptext: String = {
     val sb = StringBuilder.newBuilder
     sb.append("Leo III -- A Higher-Order Theorem Prover.\n")
     sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
@@ -239,10 +271,14 @@ object Configuration extends DefaultConfiguration {
 
 trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
-  val DEFAULT_VERBOSITY = java.util.logging.Level.INFO
+  val DEFAULT_VERBOSITY = java.util.logging.Level.FINEST
   val DEFAULT_TIMEOUT = 60
   val DEFAULT_UNIFICATIONDEPTH = 8
+  val DEFAULT_MATCHINGDEPTH = 4
   val DEFAULT_UNIFIERCOUNT = 1
   val DEFAULT_PRIMSUBST = 1
   val DEFAULT_PRE_PRIMSUBST = 0
+  val DEFAULT_ATPCHECKINTERVAL = 3
+  val DEFAULT_ATPCALLINTERVAL = 10
+  val DEFAULT_ATPMAXJOBS = 3
 }

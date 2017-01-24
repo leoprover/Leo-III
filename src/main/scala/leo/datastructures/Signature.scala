@@ -248,7 +248,7 @@ trait Signature {
   /** Create fresh uninterpreted symbol of type `ty` */
   def freshSkolemConst(ty: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key
   /** Create fresh base type symbol */
-  def freshSkolemTypeConst: Key
+  def freshSkolemTypeConst(k: Kind): Key
 }
 
 object Signature {
