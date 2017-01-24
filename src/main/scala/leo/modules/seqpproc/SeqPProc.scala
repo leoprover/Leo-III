@@ -436,7 +436,7 @@ object SeqPProc {
 
 
       /* Print proof object if possible and requested. */
-      if (state.szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
+      if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(sig))
         Out.output(Utility.proofToTPTP(proof))
