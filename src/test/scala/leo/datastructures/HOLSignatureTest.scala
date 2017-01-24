@@ -11,7 +11,7 @@ import leo.{Checked, LeoTestSuite}
 class HOLSignatureTest extends LeoTestSuite {
   import leo.modules.HOLSignature._
   test("Cardinality of fixed symbols",Checked) {
-    assertResult(34)(fixedConsts.length)
+    assertResult(35)(fixedConsts.length)
   }
   test("cardinality of defined symbols",Checked) {
     assertResult(9)(definedConsts.length)
