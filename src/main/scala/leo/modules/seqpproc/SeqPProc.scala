@@ -99,7 +99,9 @@ object SeqPProc {
   final private def typeCheck0(input: Seq[AnnotatedClause]): Unit = {
     if (input.nonEmpty) {
       val hd = input.head
-      if (!Term.wellTyped(hd.cl.lits.head.left)) {
+      val term = hd.cl.lits.head.left
+      import leo.modules.HOLSignature.o
+      if (!Term.wellTyped(term) || term.ty != o) {
         leo.Out.severe(s"Input problem did not pass type check: ${hd.id} is ill-typed.")
         throw new SZSException(SZS_TypeError, s"Type error in formula ${hd.id}")
       } else {
@@ -185,13 +187,13 @@ object SeqPProc {
 
   /* Main function containing proof loop */
   final def apply(startTime: Long): Unit = {
+    /////////////////////////////////////////
+    // Main loop preparations:
+    // Read Problem, preprocessing, state set-up, etc.
+    /////////////////////////////////////////
+    implicit val sig: Signature = Signature.freshWithHOL()
+    val state: State[AnnotatedClause] = State.fresh(sig)
     try {
-      /////////////////////////////////////////
-      // Main loop preparations:
-      // Read Problem, preprocessing, state set-up, etc.
-      /////////////////////////////////////////
-      implicit val sig: Signature = Signature.freshWithHOL()
-      val state: State[AnnotatedClause] = State.fresh(sig)
       // Check if external provers were defined
       if (Configuration.ATPS.nonEmpty) {
         import leo.modules.external.ExternalProver
@@ -441,9 +443,10 @@ object SeqPProc {
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } catch {
-      case e:Throwable => throw e
+      case e:Throwable => Out.severe(s"Signature used:\n${Utility.signatureAsString(sig)}"); throw e
     } finally {
-      Control.killExternals()
+      if (state.externalProvers.nonEmpty)
+        Control.killExternals()
     }
   }
 

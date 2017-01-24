@@ -3,9 +3,8 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, Subst, Type, _}
-import leo.modules.HOLSignature.{&, ===, Exists, Forall, Impl, LitFalse, LitTrue, Not, |||}
-import leo.modules.SZSException
-import leo.modules.output.{SZS_EquiSatisfiable, SZS_Error, SZS_Theorem}
+import leo.modules.HOLSignature.{&, ===, Exists, Forall, TyForall, Impl, LitFalse, LitTrue, Not, |||}
+import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 
 import scala.annotation.tailrec
 
@@ -171,7 +170,7 @@ object FullCNF extends CalculusRule {
       case _ Impl _ => true
       case Forall(_ :::> _) => true
       case Exists(_ :::> _) => true
-      case TypeLambda(_) => true
+      case TyForall(TypeLambda(_)) => true
       case _ => false
     }
   } else false
@@ -211,8 +210,8 @@ object FullCNF extends CalculusRule {
       case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, false))
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, true))
       case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))
-      case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
-      case term@TypeLambda(t) if !l.polarity => val sko = sig.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize.etaExpand, false))
+      case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)), true))
+      case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false))
       case _ => Seq(Seq(l))
     }
   } else {
