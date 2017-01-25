@@ -14,7 +14,7 @@ import leo.modules.output.{SZS_Error, SZS_Theorem, SuccessSZS}
   * This rule assumes a prenex form with implicit quantifiers.
   *
   */
-object CaptureFreeArgumentExtraction extends CalculusRule {
+object ArgumentExtraction extends CalculusRule {
 
   /**
     * The type of extracted arguments.

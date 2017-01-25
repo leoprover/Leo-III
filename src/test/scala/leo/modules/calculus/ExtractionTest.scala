@@ -24,7 +24,7 @@ class ExtractionTest extends LeoTestSuite{
     val b = Term.mkAtom(kb)
 
     val t = Term.mkTermApp(f, Seq(Term.mkTermApp(g, &(a,b)), |||(a,b), a))
-    val (t1, units) = CaptureFreeArgumentExtraction(t, CaptureFreeArgumentExtraction.BooleanType)
+    val (t1, units) = ArgumentExtraction(t, ArgumentExtraction.BooleanType)
 
     println(s"Extract ${t.pretty(s)}:\n  =>${t1.pretty(s)}\n     ${units.map{_.pretty(s)}.mkString("\n     ")}")
   }
@@ -41,11 +41,11 @@ class ExtractionTest extends LeoTestSuite{
 
     val t = Term.mkTermApp(p, Term.mkTermAbs(o, |||(x,y)))
     assert(Term.wellTyped(t), s"Not well typed ${t.pretty(s)}")
-    val (t1, units) = CaptureFreeArgumentExtraction(t, CaptureFreeArgumentExtraction.BooleanType)
+    val (t1, units) = ArgumentExtraction(t, ArgumentExtraction.BooleanType)
 
     assert(units.isEmpty, "BooleanType should not extract predicates.")
 
-    val (t2, units2) = CaptureFreeArgumentExtraction(t, CaptureFreeArgumentExtraction.PredicateType)
+    val (t2, units2) = ArgumentExtraction(t, ArgumentExtraction.PredicateType)
 
     println(s"Extract ${t.pretty(s)}:\n  =>${t2.pretty(s)}\n     ${units2.map{_.pretty(s)}.mkString("\n     ")}")
   }
@@ -62,7 +62,7 @@ class ExtractionTest extends LeoTestSuite{
 
     val t = Term.mkTermAbs(o, Term.mkTermApp(p, Term.mkTermAbs(o, |||(x,y))))
     assert(Term.wellTyped(t), s"Not well typed ${t.pretty(s)}")
-    val (t2, units2) = CaptureFreeArgumentExtraction(t, CaptureFreeArgumentExtraction.PredicateType)
+    val (t2, units2) = ArgumentExtraction(t, ArgumentExtraction.PredicateType)
 
     assert(units2.isEmpty, s"The clause ${t.pretty(s)} cannot extract arguments")
     println(s"Extract ${t.pretty(s)}:\n  =>${t2.pretty(s)}\n     ${units2.map{_.pretty(s)}.mkString("\n     ")}")
@@ -81,7 +81,7 @@ class ExtractionTest extends LeoTestSuite{
 
     val t = Term.mkTermAbs(o, Term.mkTermApp(p, Seq(Term.mkTermAbs(o, |||(x,y)), Term.mkTermAbs(o, |||(x,z)))))
     assert(Term.wellTyped(t), s"Not well typed ${t.pretty(s)}")
-    val (t2, units2) = CaptureFreeArgumentExtraction(t, CaptureFreeArgumentExtraction.PredicateType)
+    val (t2, units2) = ArgumentExtraction(t, ArgumentExtraction.PredicateType)
     assert(units2.size == 1, s"The clause ${t.pretty(s)} canonly extract the second argument.")
     println(s"Extract ${t.pretty(s)}:\n  =>${t2.pretty(s)}\n     ${units2.map{_.pretty(s)}.mkString("\n     ")}")
 
