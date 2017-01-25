@@ -4,7 +4,7 @@ import leo.datastructures._
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
-import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
+import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, TyForall, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec
@@ -287,7 +287,8 @@ object ToTPTP {
           case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)}"
           case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)})"
         }
-
+      case TyForall(_) => val (tyAbsCount, body) = collectTyForall(t)
+        s"! [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, bVars)(sig)})"
       // Binary connectives
       case t1 ||| t2 => t1 match {
         case _ ||| _| Not(_) | Forall(_) | Exists(_) => t2 match {
@@ -365,7 +366,7 @@ object ToTPTP {
 
 
   final private def toTPTP(ty: Type)(sig: Signature): String = ty match {
-    case ∀(t) => val (tyAbsCount, bodyTy) = collectTyForalls(0, ty)
+    case ∀(t) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
       "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + toTPTP0(bodyTy)(sig)
     case _ => toTPTP0(ty)(sig)
   }
@@ -394,7 +395,7 @@ object ToTPTP {
   ///////////////////////////////
   // Utility methods
   ///////////////////////////////
-
+  // Term quantification collection
   /** Gather consecutive all-quantifications (nameless). */
   final private def collectForall(t: Term): (Seq[Type], Term) = {
     collectForall0(Seq.empty, t)
@@ -408,13 +409,19 @@ object ToTPTP {
     }
   }
 
+  /** Gather consecutive all-type-quantifications (nameless). */
+  final private def collectTyForall(t: Term): (Int, Term) = {
+    collectTyForall0(0, t)
+  }
   @tailrec
-  private final def collectTyForalls(count: Int, ty: Type): (Int, Type) = {
-    ty match {
-      case ∀(t) => collectTyForalls(count+1, t)
-      case _ => (count, ty)
+  @inline final private def collectTyForall0(vars: Int, t: Term): (Int, Term) = {
+    t match {
+      case TyForall(TypeLambda(body)) => collectTyForall0(vars +1, body)
+      case TyForall(_) => throw new IllegalArgumentException("Unexcepted body term in type-forall quantification decomposition.")
+      case _ => (vars, t)
     }
   }
+
 
   /** Gather consecutive exist-quantifications (nameless). */
   final private def collectExists(t: Term): (Seq[Type], Term) = {
@@ -447,6 +454,15 @@ object ToTPTP {
     t match {
       case TypeLambda(body) => collectTyLambdas(count+1, body)
       case _ => (count, t)
+    }
+  }
+
+  // Type quantification collection
+  @tailrec
+  private final def collectForallTys(count: Int, ty: Type): (Int, Type) = {
+    ty match {
+      case ∀(t) => collectForallTys(count+1, t)
+      case _ => (count, ty)
     }
   }
 

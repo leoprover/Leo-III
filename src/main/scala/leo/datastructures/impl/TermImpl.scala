@@ -21,11 +21,11 @@ import scala.language.implicitConversions
  * @since 04.08.2014
  */
 protected[datastructures] sealed abstract class TermImpl(private var _locality: Locality,
-                                                         private var normal: Boolean = false,
-                                                         private var etanormal: Boolean = false) extends Term {
+                                                         protected[TermImpl] var normal: Boolean = false,
+                                                         protected[TermImpl] var etanormal: Boolean = false) extends Term {
   // Predicates on terms
-  def isLocal = _locality == LOCAL
-  def locality = _locality
+  def isLocal: Boolean = _locality == LOCAL
+  def locality: Locality = _locality
 
   final def flexHead: Boolean = flexHead0(0)
   protected[impl] def flexHead0(depth: Int): Boolean
@@ -35,7 +35,7 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
     if (normal) this
     else {
       val erg = normalize(Subst.id, Subst.id)
-      erg.normal = true
+      erg.markBetaNormal()
       if (isGlobal)
         TermImpl.insert0(erg)
       else
@@ -48,16 +48,19 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
     else {
       val betanf = this.betaNormalize.asInstanceOf[TermImpl]
       val res = betanf.etaExpand0
-      res.etanormal = true
-      res.normal = true
+      res.markBetaEtaNormal()
       res
     }
   }
   protected[datastructures] def etaExpand0: TermImpl
 
-  def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
-  def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
-  def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
+  final def isBetaNormal: Boolean = normal
+  protected[impl] def markBetaNormal(): Unit
+  protected[impl] def markBetaEtaNormal(): Unit
+
+  final def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
+  final def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
+  final def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
 //    this.normalize(subst, Subst.id)
 
   // Substitutions
@@ -83,6 +86,15 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
 /** Representation of terms that are in (weak) head normal form. */
 protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
   import TermImpl.{headToTerm, mkRedex, mkRoot}
+
+  final protected[impl] def markBetaNormal(): Unit = {
+    this.normal = true
+    args.markBetaNormal()
+  }
+  final protected[impl] def markBetaEtaNormal(): Unit = {
+    this.normal = true; this.etanormal = true
+    args.markBetaEtaNormal()
+  }
 
   // Predicates on terms
   final val isAtom = args == SNil
@@ -188,7 +200,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
       assert(tyArgs.size == hd.ty.polyPrefixArgsCount)
       // Now do the same as above for function types, but with typeBody as functional type
       // and with restArgs as Args to count/expand
-      val typeBody = hd.ty.monomorphicBody
+      val typeBody = hd.ty.instantiate(tyArgs)
       val hdFunParamTypes = typeBody.funParamTypes
       if (restArgs.length < hdFunParamTypes.length) {
         // Introduce new lambda binders, number = missing #args
@@ -270,6 +282,13 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL) {
   import TermImpl.mkRedex
 
+  final protected[impl] def markBetaNormal(): Unit = {
+    throw new IllegalArgumentException("Cannot mark Redex as Beta-Normal")
+  }
+  final protected[impl] def markBetaEtaNormal(): Unit = {
+    throw new IllegalArgumentException("Cannot mark Redex as Beta-Normal")
+  }
+
   // Predicates on terms
   @inline final val isAtom = false
   @inline final val isConstant = false
@@ -350,6 +369,15 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
 protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOCAL) {
   import TermImpl.mkTermAbstr
 
+  final protected[impl] def markBetaNormal(): Unit = {
+    this.normal = true
+    body.asInstanceOf[TermImpl].markBetaNormal()
+  }
+  final protected[impl] def markBetaEtaNormal(): Unit = {
+    this.normal = true; this.etanormal = true
+    body.asInstanceOf[TermImpl].markBetaEtaNormal()
+  }
+
   // Predicates on terms
   @inline final val isAtom = false
   @inline final val isConstant = false
@@ -415,6 +443,15 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   import TermImpl.mkTypeAbstr
   import Type.∀
 
+  final protected[impl] def markBetaNormal(): Unit = {
+    this.normal = true
+    body.asInstanceOf[TermImpl].markBetaNormal()
+  }
+  final protected[impl] def markBetaEtaNormal(): Unit = {
+    this.normal = true; this.etanormal = true
+    body.asInstanceOf[TermImpl].markBetaEtaNormal()
+  }
+
   // Predicates on terms
   @inline final val isAtom = false
   @inline final val isConstant = false
@@ -463,6 +500,13 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
 
 protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends TermImpl(LOCAL) {
   // Closure should never be handed to the outside
+
+  final protected[impl] def markBetaNormal(): Unit = {
+    throw new IllegalArgumentException("Cannot mark closure as beta-normal")
+  }
+  final protected[impl] def markBetaEtaNormal(): Unit = {
+    throw new IllegalArgumentException("Cannot mark closure as beta-eta-normal")
+  }
 
   // Predicates on terms
   @inline final val isAtom = false
@@ -637,11 +681,16 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
   def substitute(subst: Subst): Spine
 
   protected[impl] def replaceAt0(pos: Int, tail: Position, by: Term): Spine
+  protected[impl] def markBetaNormal(): Unit
+  protected[impl] def markBetaEtaNormal(): Unit
 }
 
 protected[impl] case object SNil extends Spine {
   final def normalize(termSubst: Subst, typeSubst: Subst) = SNil
   final val etaExpand: Spine = this
+
+  final protected[impl] def markBetaNormal(): Unit = {}
+  final protected[impl] def markBetaEtaNormal(): Unit = {}
 
   // Handling def. expansion
   @inline final def δ_expandable(sig: Signature) = false
@@ -681,6 +730,15 @@ protected[impl] case object SNil extends Spine {
 
 protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
+
+  protected[impl] def markBetaNormal(): Unit = {
+    hd.asInstanceOf[TermImpl].markBetaNormal()
+    tail.markBetaNormal()
+  }
+  protected[impl] def markBetaEtaNormal(): Unit = {
+    hd.asInstanceOf[TermImpl].markBetaEtaNormal()
+    tail.markBetaEtaNormal()
+  }
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
 //    if (isIndexed) { // TODO: maybe optimize re-normalization if term is indexed?
@@ -746,6 +804,13 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
 protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
   import TermImpl.{mkSpineCons => cons}
 
+  final protected[impl] def markBetaNormal(): Unit = {
+    tail.markBetaNormal()
+  }
+  final protected[impl] def markBetaEtaNormal(): Unit = {
+    tail.markBetaEtaNormal()
+  }
+
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     cons(Right(hd.substitute(typeSubst)), tail.normalize(termSubst, typeSubst))
   }
@@ -800,6 +865,13 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
 
 protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine {
   import TermImpl.{mkSpineCons => cons}
+
+  protected[impl] def markBetaNormal(): Unit = {
+    throw new IllegalArgumentException("Marked Spine closure as beta-normal.")
+  }
+  protected[impl] def markBetaEtaNormal(): Unit = {
+    throw new IllegalArgumentException("Marked Spine closure as beta-eta-normal.")
+  }
 
   def normalize(termSubst: Subst, typeSubst: Subst) = {
     sp.normalize(s._1 o termSubst, s._2 o typeSubst)
@@ -954,32 +1026,58 @@ object TermImpl extends TermBank {
     t
   }
 
-  final private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Left(t),sp)})
-  final private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Right(t),sp)})
-  final private def mkGenSpine(args: Seq[Either[Term,Type]]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(t,sp)})
+  @inline final private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Left(t),sp)})
+  @inline final private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(Right(t),sp)})
+  @inline final private def mkGenSpine(args: Seq[Either[Term,Type]]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => mkSpineCons(t,sp)})
 
   /////////////////////////////////////////////
   // Public visible term constructors
   /////////////////////////////////////////////
   final val local = new TermFactory {
-    def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
-    def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
-    def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
-    def mkTypeApp(func: Term, args: Seq[Type]): Term = Redex(func, args.foldRight(mkSpineNil)((ty,sp) => TyApp(ty,sp)))
-    def mkTypeApp(func: Term, arg: Type): Term =  Redex(func, TyApp(arg, SNil))
-    def mkTypeAbs(body: Term): Term = TypeAbstr(body)
-    def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
-    def mkTermApp(func: Term, args: Seq[Term]): Term = Redex(func, args.foldRight(mkSpineNil)((t,sp) => App(t,sp)))
-    def mkTermApp(func: Term, arg: Term): Term = Redex(func, App(arg, SNil))
-  }
+    @inline final private def mkSpine(args: Seq[Term]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => App(t, sp)})
+    @inline final private def mkTySpine(args: Seq[Type]): Spine = args.foldRight[Spine](SNil)({case (t,sp) => TyApp(t, sp)})
+    @inline final private def mkGenSpine(args: Seq[Either[Term, Type]]): Spine = args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp)))
 
+    final def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
+    final def mkAtom(id: Signature#Key, ty: Type): Term = Root(Atom(id, ty), SNil)
+    final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
+
+    final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Seq(arg))
+    final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
+      func else func match {
+      case Root(h, SNil) => Root(h, mkSpine(args))
+      case Root(h,sp)  => Root(h,sp ++ mkSpine(args))
+      case Redex(r,sp) => Redex(r, sp ++ mkSpine(args))
+      case other       => Redex(other, mkSpine(args))
+    }
+    final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
+
+    final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Seq(arg))
+    final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
+      func else func match {
+      case Root(h, SNil) => Root(h, mkTySpine(args))
+      case Root(h,sp)  => Root(h,sp ++ mkTySpine(args))
+      case Redex(r,sp) => Redex(r, sp ++ mkTySpine(args))
+      case other       => Redex(other, mkTySpine(args))
+    }
+    final def mkTypeAbs(body: Term): Term = TypeAbstr(body)
+
+    final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
+      func else func match {
+        case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
+        case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
+        case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))
+        case other       => mkRedex(other, mkGenSpine(args))
+      }
+  }
 
   final def mkAtom(id: Signature#Key)(implicit sig: Signature): TermImpl = mkRoot(mkAtom0(id, sig(id)._ty), SNil)
   final def mkAtom(id: Signature#Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
   final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  final def mkTermApp(func: Term, arg: Term): TermImpl = mkTermApp(func, Seq(arg))
-  final def mkTermApp(func: Term, args: Seq[Term]): TermImpl = func match {
+  final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Seq(arg))
+  final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
+    func else func match {
       case Root(h, SNil) => mkRoot(h, mkSpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args))
@@ -997,7 +1095,8 @@ object TermImpl extends TermBank {
 
   final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
 
-  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): TermImpl  = func match {
+  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term  = if (args.isEmpty)
+    func else func match {
       case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
       case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
       case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))

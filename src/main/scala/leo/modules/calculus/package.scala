@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Type, Term, Clause, Signature}
+import leo.datastructures.{Type, Term, Kind, Clause, Signature}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -60,9 +60,14 @@ package object calculus {
   trait FreshVarGen extends Function1[Type, Term] {
     /** Returns a fresh variable wrt. the context of this generator. */
     def apply(ty: Type): Term = Term.mkBound(ty, next(ty)._1)
+    /** Returns a fresh type variable wrt. the context of this generator. */
+    def apply(): Type = Type.mkVarType(next())
     /** Returns a fresh variable represented as its loose de-bruijn index
       *  wrt. the context of this generator. */
     def next(ty: Type): (Int, Type)
+    /** Returns a fresh type variable represented as its loose de-bruijn index
+      * wrt. the context of this generator. */
+    def next(): Int
     /** Return all already used variables within the context of this generator.
       * The "newest" variable is the head of the list.
       * @example If `f` is a FreshVarGen for clause `cl`, then
@@ -85,13 +90,19 @@ package object calculus {
 
   final private def freshVarGen0(variables:  Seq[(Int, Type)], tyVariables: Seq[Int], curVar: Int): FreshVarGen = new FreshVarGen {
     private var cur = curVar
+    private var curTy = if (tyVariables.nonEmpty) tyVariables.max else 0
     private var vars: Seq[(Int, Type)] = variables
-    private val tyVars: Seq[Int] = tyVariables
+    private var tyVars: Seq[Int] = tyVariables
 
     override final def next(ty: Type): (Int, Type) = {
       cur = cur + 1
       vars = (cur, ty) +: vars
       (cur, ty)
+    }
+    override final def next(): Int = {
+      curTy = curTy + 1
+      tyVars = curTy +: tyVars
+      curTy
     }
 
     override final def existingVars: Seq[(Int, Type)] = vars
@@ -138,9 +149,15 @@ package object calculus {
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
   }
+  final def skType(tyFvs: Seq[Int])(implicit sig: Signature): Type = {
+    val freshTypeOp: Signature#Key = sig.freshSkolemTypeConst(mkPolyKindAbstraction(tyFvs.size))
+    Type.mkType(freshTypeOp, tyFvs.map(Type.mkVarType))
+  }
 
   final private def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
   else Type.mkPolyType(mkPolyTyAbstractionType(count-1, body))
+  final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.typeKind
+  else Kind.mkFunKind(Kind.typeKind, mkPolyKindAbstraction(count-1))
 
   /** Checks whether the terms `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the terms are not unifiable, otherwise they may be. */

@@ -209,6 +209,11 @@ trait TptpProver[C <: ClauseProxy] {
       * @return Some(result) if the process has finished, None otherwise.
       */
     override def value: Option[TptpResult[C]] = synchronized{if(isCompleted) Some(result) else None}
+
+    /**
+      * Forcibly kills the underlying process calculating the future's result.
+      */
+    override def kill(): Unit = process.kill
   }
 }
 
@@ -280,4 +285,9 @@ trait Future[+T] {
     * @return Some(result) if the process has finished, None otherwise.
     */
   def value : Option[T]
+
+  /**
+    * Forcibly kills the underlying process calculating the future's result.
+    */
+  def kill(): Unit
 }

@@ -2,6 +2,7 @@ package leo.modules.control
 
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
+import leo.modules.seqpproc.State
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -64,10 +65,12 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
-  @inline final def callExternalLeoII(clauses: Set[AnnotatedClause])(implicit sig: Signature) = externalProverControl.ExternalLEOIIControl.call(clauses)(sig)
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
+  @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
+  @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 }
 
-/** Package collcetion control objects for inference rules.
+/** Package collection control objects for inference rules.
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
@@ -86,7 +89,7 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
     final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-      Out.trace(s"CNF of ${cl.id}")
+      Out.trace(s"CNF of ${cl.pretty(sig)}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
@@ -129,7 +132,7 @@ package inferenceControl {
         val other = withsetIt.next()
         if (!Configuration.SOS || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, other.properties) ||
           leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties))  {
-          Out.trace(s"Paramod on ${cl.id} and ${other.id}")
+          Out.finest(s"Paramod on ${cl.id} and ${other.id}")
           results = results ++ allParamods(cl, other)
         }
       }
@@ -1454,45 +1457,79 @@ package indexingControl {
 
 package  externalProverControl {
 
-  import java.util.concurrent.TimeUnit
+  object ExtProverControl {
+    import leo.modules.external._
+    import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
+    private var lastCheck: Long = Long.MinValue
+    private var lastCall: Long = Long.MinValue
 
-  import leo.datastructures.ClauseAnnotation.NoAnnotation
-  import leo.datastructures._
-  import leo.modules.HOLSignature.LitFalse
-  import leo.modules.external._
-  import leo.modules.output._
-
-  object ExternalLEOIIControl {
-    @inline final def call(cls: Set[AnnotatedClause])(implicit sig: Signature): StatusSZS = call(cls, 5)(sig)
-
-    final def call(cls: Set[AnnotatedClause], sec: Long)(sig: Signature): StatusSZS = {
-      val modifyClauses = cls.map { cl =>
-        if (cl.role == Role_NegConjecture) {
-          AnnotatedClause(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
-        } else {
-          AnnotatedClause(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
-        }
-      }
-      val submitClauses: Set[AnnotatedClause] = modifyClauses + AnnotatedClause(Clause(Literal(LitFalse(), true)), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
-      val send = ToTPTP(submitClauses)(sig).map(_.apply)
-      Out.finest(s"LEO input:")
-      Out.finest(s"${send.mkString("\n")}")
-      Out.finest("LEO INPUT END")
-      val result = ExternalCall.exec("/home/lex/bin/leo2/bin/leo ", send)
-      val resres = result.waitFor(sec, TimeUnit.SECONDS)
-      if (resres) {
-        Out.finest(s"leo did know: ${exitCodeToSZS(result.exitValue)}")
-        exitCodeToSZS(result.exitValue)
-      } else {
-        Out.finest("leo didnt know")
-        SZS_Unknown
+    final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
+      if (state.externalProvers.isEmpty) None
+      else {
+        val curTime = System.currentTimeMillis()
+        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+          leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
+          lastCheck = curTime
+          val proversIt = openCalls.keys.iterator
+          while (proversIt.hasNext) {
+            val prover = proversIt.next()
+            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
+            val openCallsIt = openCalls(prover).iterator
+            while (openCallsIt.hasNext) {
+              val openCall = openCallsIt.next()
+              if (openCall.isCompleted) {
+                leo.Out.debug(s"[ExtProver]: Job finished.")
+                finished = finished + openCall
+                val result = openCall.value.get
+                if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
+                  leo.Out.debug(s"[ExtProver]: Terminal result.")
+                  return Some(result)
+                } else if (result.szsStatus == SZS_Error) {
+                  leo.Out.warn(result.error.mkString("\n"))
+                }
+              }
+            }
+            if (finished == openCalls(prover)) {
+              openCalls = openCalls.-(prover)
+            } else {
+              openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
+            }
+          }
+          None
+        } else None
       }
     }
 
-    private final def exitCodeToSZS(exitcode: Int): StatusSZS = exitcode match {
-      case 0 => SZS_Theorem
-      case 1 => SZS_Unsatisfiable
-      case _ => SZS_Unknown
+    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+      if (clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
+        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+        lastCall = clauses.size
+        state.externalProvers.foreach(prover =>
+          if (openCalls.isDefinedAt(prover)) {
+            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+              val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+              openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+              leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+            }
+          } else {
+            val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+            openCalls = openCalls + (prover -> Set(futureResult))
+            leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+          }
+        )
+      }
+    }
+
+    final def killExternals(): Unit = {
+      Out.info(s"Killing external provers ...")
+      openCalls.keys.foreach(prover =>
+        openCalls(prover).foreach(future =>
+          future.kill()
+        )
+      )
     }
   }
+
+
 }
