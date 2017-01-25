@@ -1071,7 +1071,6 @@ object TermImpl extends TermBank {
       }
   }
 
-
   final def mkAtom(id: Signature#Key)(implicit sig: Signature): TermImpl = mkRoot(mkAtom0(id, sig(id)._ty), SNil)
   final def mkAtom(id: Signature#Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
   final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
