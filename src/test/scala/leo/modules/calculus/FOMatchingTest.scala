@@ -11,8 +11,6 @@ import leo.modules.HOLSignature.{i,o, LitTrue}
 class MatchingTestSuite extends LeoTestSuite {
   type UEq = Seq[(Term, Term)]
 
-  import leo.modules.calculus.matching.FOMatching
-
   test("f(x,x) = f(a,a)", Checked){
     implicit val s = getFreshSignature
     val a = mkAtom(s.addUninterpreted("a", i))

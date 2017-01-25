@@ -219,15 +219,15 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   }
   // Skolem variables start with 'tv'
   var typeVarCounter = 0
-  val typeVarPrefix = "tv"
+  val typeVarPrefix = "skt"
   /** Returns a fresh base type symbol. That symbol will be
     * named `tvi` where i is some positive number. */
-  def freshSkolemTypeConst: Key = {
+  def freshSkolemTypeConst(k: Kind): Key = {
     while(exists(typeVarPrefix + (typeVarCounter + 1).toString)) {
       typeVarCounter += 1
     }
     typeVarCounter += 1
-    addBaseType(typeVarPrefix + typeVarCounter.toString)
+    addTypeConstructor(typeVarPrefix + typeVarCounter.toString, k)
   }
 }
 

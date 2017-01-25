@@ -36,6 +36,9 @@ trait Term extends Pretty with Prettier {
   /** Returns trie iff `this` is an application h ∙ args. */
   def isApp: Boolean
   def flexHead: Boolean
+  /** `true` is the term is known to be in beta-normal form, else false.
+    * @note Might return false if the term is in beta normal form but .betaNormalize was never invoked in it. */
+  def isBetaNormal: Boolean
 
   // Locality/Indexing properties of terms, TODO: Obsolete, what to do with it?
   def indexing: Indexing = if (isIndexed) INDEXED else PLAIN

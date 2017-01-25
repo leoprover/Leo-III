@@ -55,12 +55,28 @@ trait KillableProcess {
   def waitFor(timout : Long, unit : TimeUnit) : Boolean
 
   /**
-    * Waits for the exit Value of the spawnt process.
     *
-    * @return The exit Value of the process
+    * Waits for the processes to finish
+    *
+    * @return true iff the process has successfully terminated
     */
   @throws[InterruptedException]
+  def waitFor() : Boolean
+
+  /**
+    * Returns the exit value of a process
+    *
+    * @return The exit Value of the process
+    * @throws IllegalThreadStateException if the process has not yet finished
+    */
+  @throws[IllegalThreadStateException]
   def exitValue : Int
+
+  /**
+    * Checks for the process, if it is still alive.
+    * @return
+    */
+  def isAlive : Boolean
 
   /**
     *
@@ -105,7 +121,9 @@ case class Command(cmd : String) {
 
 private class KillableProcessImpl(process : Process) extends KillableProcess {
 
-  override def exitValue: Int = process.waitFor()
+  override def isAlive = process.isAlive
+
+  override def exitValue: Int = process.exitValue()
 
   override def output: InputStream = process.getInputStream
   override def input: OutputStream = process.getOutputStream
@@ -129,8 +147,9 @@ private class KillableProcessImpl(process : Process) extends KillableProcess {
         case _ : Throwable => return None
       }
     } else {
-      return None   // TODO implement windows handles
+      return None
     }
   }
   override def waitFor(timout: Long, unit: TimeUnit): Boolean = process.waitFor(timout, unit)
+  override def waitFor: Boolean = process.waitFor() > 0
 }

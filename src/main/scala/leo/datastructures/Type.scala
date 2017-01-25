@@ -69,15 +69,11 @@ abstract class Type extends Pretty with Prettier {
   /** if `this` is a polymorphic type (i.e. a forall type), the method returns the abstracted type where all type parameters bound
     * by the head quantifier are replaced by `by`. In any other case, it does nothing */
   def instantiate(by: Type): Type
-
-  // Other operation
-  /** Right folding on types. This may change if the type system is changed. */
-  def foldRight[A](baseFunc: Signature#Key => A)
-                  (boundFunc: Int => A)
-                  (absFunc: (A,A) => A)
-                  (prodFunc: (A,A) => A)
-                  (unionFunc: (A,A) => A)
-                  (forAllFunc: A => A): A
+  /** if `this` is a n-fold polymorphic type (i.e. nested forall type), the method returns the abstracted type where all type parameters i bound
+    * by (at most) `by.size` prefix quantifiers are replaced by `by(i)`. If `by.size` is smaller than the prefix of
+    * type abstraction, only `by.size` many are instantiated. If `by.size` is larger than the `n` prefix
+    * of type abstraction, only the first `n` types are instantiated, the rest is discarded. */
+  def instantiate(by: Seq[Type]): Type
 
   // Syntactic nice constructors
   /** Create abstraction type from `hd` to `this` */
@@ -112,63 +108,62 @@ abstract class Type extends Pretty with Prettier {
  * Constructor methods the `Type` class.
  */
 object Type {
-  type Impl = Type // fix by introducing super-type on types TODO
-
-  /** Create type with name `identifier`. */
-  def mkType(identifier: Signature#Key): Type = GroundTypeNode(identifier, Seq())
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
-  def mkType(identifier: Signature#Key, args: Seq[Type]): Type = GroundTypeNode(identifier, args)
+  final def mkType(identifier: Signature#Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
+  /** Create type with name `identifier`. */
+  final def mkType(identifier: Signature#Key): Type = mkType(identifier, Seq())
+
   /** Build type `in -> out`. */
-  def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
+  final def mkFunType(in: Type, out: Type): Type = TypeImpl.mkFunType(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
-  def mkFunType(in: Seq[Type], out: Type): Type = in match {
+  final def mkFunType(in: Seq[Type], out: Type): Type = in match {
     case Seq()           => out
     case Seq(x, xs @ _*) => mkFunType(x, mkFunType(xs, out))
   }
-  def mkFunType(in: Seq[Type]): Type = in match {
+  /** Build type `in(0) -> in(1) -> ... -> in(n-1)` where `n = in.size`. */
+  final def mkFunType(in: Seq[Type]): Type = in match {
     case Seq(ty)            => ty
     case Seq(ty, tys @ _*)  => mkFunType(ty, mkFunType(tys))
   }
 
-  def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
-
+  /** Create product type (t1,t2). */
+  final def mkProdType(t1: Type, t2: Type): Type = TypeImpl.mkProdType(t1,t2)
   /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
-  def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(ProductTypeNode(t1, t2))((arg,f) => ProductTypeNode(arg,f))
+  final def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
+    ti.foldLeft(mkProdType(t1, t2))((arg,f) => mkProdType(arg,f))
   }
-
-  def mkProdType(ti: Seq[Type]): Type = ti match {
+  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
+  final def mkProdType(ti: Seq[Type]): Type = ti match {
     case Seq(ty)        => ty
     case Seq(ty1, ty2, tys @ _*) => mkProdType(ty1, ty2, tys)
   }
 
-  def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
-
+  /** Create union type (t1+t2). */
+  final def mkUnionType(t1: Type, t2: Type): Type = TypeImpl.mkUnionType(t1,t2)
   /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
-  def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(UnionTypeNode(t1, t2))((arg,f) => UnionTypeNode(arg,f))
+  final def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
+    ti.foldLeft(mkUnionType(t1, t2))((arg,f) => mkUnionType(arg,f))
   }
-
-  def mkUnionType(ti: Seq[Type]): Type = ti match {
+  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
+  final def mkUnionType(ti: Seq[Type]): Type = ti match {
     case Seq(ty)        => ty
     case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
   }
 
   /** Build `forall. ty` (i.e. a universally quantified type) */
-  def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
+  final def mkPolyType(bodyType: Type): Type = TypeImpl.mkPolyType(bodyType)
   /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */
-  def ∀(bodyType: Type): Type = ForallTypeNode(bodyType)
+  final def ∀(bodyType: Type): Type = mkPolyType(bodyType)
 
   /** The (bound) type a type variable represents. This should always be bound by a `mkPolyType`*/
-  def mkVarType(scope: Int): Type = BoundTypeNode(scope)
+  final def mkVarType(scope: Int): Type = TypeImpl.mkVarType(scope)
 
   /** Represents the kind `*` or `type` (i.e. the type of types). */
-  val typeKind: Kind = TypeKind
+  final val typeKind: Kind = TypeKind
   /** Represents the type of kinds. Only needed internally so that we can type kinds correctly */
-  val superKind: Kind = SuperKind
+  final val superKind: Kind = SuperKind
 
   implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
-
 
   ///////////////////////////////
   // Pattern matchers for types
