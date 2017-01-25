@@ -36,6 +36,9 @@ trait Term extends Pretty with Prettier {
   /** Returns trie iff `this` is an application h ∙ args. */
   def isApp: Boolean
   def flexHead: Boolean
+  /** `true` is the term is known to be in beta-normal form, else false.
+    * @note Might return false if the term is in beta normal form but .betaNormalize was never invoked in it. */
+  def isBetaNormal: Boolean
 
   // Locality/Indexing properties of terms, TODO: Obsolete, what to do with it?
   def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
@@ -135,16 +138,16 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  final def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
-  final def mkAtom(id: Signature#Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
-  final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
-  final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
-  final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
-  final def mkTermAbs(t: Type, body: Term): Term = TermImpl.mkTermAbs(t, body)
-  final def mkTypeApp(func: Term, arg: Type): Term = TermImpl.mkTypeApp(func, arg)
-  final def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.mkTypeApp(func, args)
-  final def mkTypeAbs(body: Term): Term = TermImpl.mkTypeAbs(body)
-  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
+  final def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = TermImpl.local.mkAtom(id)(sig)
+  final def mkAtom(id: Signature#Key, ty: Type): Term = TermImpl.local.mkAtom(id,ty)
+  final def mkBound(t: Type, scope: Int): Term = TermImpl.local.mkBound(t,scope)
+  final def mkTermApp(func: Term, arg: Term): Term = TermImpl.local.mkTermApp(func, arg)
+  final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.local.mkTermApp(func, args)
+  final def mkTermAbs(t: Type, body: Term): Term = TermImpl.local.mkTermAbs(t, body)
+  final def mkTypeApp(func: Term, arg: Type): Term = TermImpl.local.mkTypeApp(func, arg)
+  final def mkTypeApp(func: Term, args: Seq[Type]): Term = TermImpl.local.mkTypeApp(func, args)
+  final def mkTypeAbs(body: Term): Term = TermImpl.local.mkTypeAbs(body)
+  final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.local.mkApp(func, args)
 
   // Term bank method delegation
   final val local = TermImpl.local

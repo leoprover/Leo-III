@@ -330,7 +330,8 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
         // #############
         case _ if fargList.nonEmpty => {
 
-          if (ge0(mkApp(f,args.init),t,x)(sig) || gteq(fargList.last,t,x)(sig)) return true
+          if (ge0(mkApp(f,args.init),t,x)(sig)) return true
+          if (gteq(fargList.last,t,x)(sig)) return true
 
           if (t.isApp) {
             val (g,args2) = ∙.unapply(t).get

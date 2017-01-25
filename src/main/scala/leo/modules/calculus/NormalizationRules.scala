@@ -268,6 +268,8 @@ object LiftEq extends CalculusRule {
 
   def apply(left: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
     val (l,r) = ===.unapply(left).get
+    assert(l.isBetaNormal, "asd")
+    assert(r.isBetaNormal, "asd")
     if (polarity) {
       Literal.mkOrdered(l,r,true)(sig)
     } else {

@@ -55,9 +55,11 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
   }
   protected[datastructures] def etaExpand0: TermImpl
 
-  def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
-  def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
-  def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
+  final def isBetaNormal: Boolean = normal
+
+  final def closure(termSubst: Subst, typeSubst: Subst) = TermClos(this, (termSubst, typeSubst))
+  final def termClosure(subst: Subst) = TermClos(this, (subst, Subst.id))
+  final def typeClosure(tySubst: Subst) = TermClos(this, (Subst.id, tySubst))
 //    this.normalize(subst, Subst.id)
 
   // Substitutions
@@ -965,6 +967,7 @@ object TermImpl extends TermBank {
     def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = Redex(func, args.foldRight(mkSpineNil)((termOrTy,sp) => termOrTy.fold(App(_,sp),TyApp(_,sp))))
     def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
     def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = Root(Atom(id, sig(id)._ty), SNil)
+    def mkAtom(id: Signature#Key, ty: Type): Term = Root(Atom(id, ty), SNil)
     def mkTypeApp(func: Term, args: Seq[Type]): Term = Redex(func, args.foldRight(mkSpineNil)((ty,sp) => TyApp(ty,sp)))
     def mkTypeApp(func: Term, arg: Type): Term =  Redex(func, TyApp(arg, SNil))
     def mkTypeAbs(body: Term): Term = TypeAbstr(body)
