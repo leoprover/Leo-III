@@ -689,12 +689,111 @@ package inferenceControl {
   }
 
   protected[modules] object SpecialInstantiationControl {
+
     final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
       if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-        // TODO: shallow simp at end.
-
-        ???
+        leo.Out.trace("[Special Instances] Searching ...")
+        val clause = cl.cl
+        assert(Clause.unit(clause))
+        val lit = clause.lits.head
+        assert(!lit.equational)
+        val term = lit.left
+        val instancesResult = a(term, lit.polarity)(sig)
+        val result = instancesResult.map (r =>
+          if (r == term)
+            cl
+          else
+          AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), cl.properties)
+        )
+        leo.Out.debug(s"[Special Instances] Instances used:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        result
       } else Set(cl)
+    }
+
+    final def a(t: Term, polarity: Boolean)(sig: Signature): Set[Term] = {
+      import leo.datastructures.Term._
+      import leo.modules.HOLSignature.{Forall, Exists, Not, Impl}
+
+      t match {
+        case Not(body) =>
+          val erg = a(body, !polarity)(sig)
+          erg.map(e => Not(e))
+        case Impl(l,r) =>
+          val ergL = a(l, !polarity)(sig)
+          val ergR = a(r, polarity)(sig)
+          ergL.flatMap(eL => ergR.map(eR => Impl(eL, eR)))
+        case Forall(all@(ty :::> _)) if polarity =>
+          if (Enumeration.exhaustive(ty))
+            instantiateAbstractions(all, ty)(sig)
+          else
+            instantiateAbstractions(all, ty)(sig) + t
+        case Exists(all@(ty :::> _)) if !polarity =>
+          if (Enumeration.exhaustive(ty))
+            instantiateAbstractions(all, ty)(sig)
+          else
+            instantiateAbstractions(all, ty)(sig) + t
+        case hd ∙ args =>
+          val argsIt = args.iterator
+          var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
+          while (argsIt.hasNext) {
+            val arg = argsIt.next()
+            if (arg.isRight) {
+              newArgs = newArgs.map(seq => seq :+ arg)
+            } else {
+              val termArg = arg.left.get
+              val erg = a(termArg, polarity)(sig)
+              newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
+            }
+          }
+          newArgs.map(erg => Term.mkApp(hd, erg))
+        case ty :::> body =>
+          val erg = a(body, polarity)(sig)
+          erg.map(e => Term.mkTermAbs(ty, e))
+        case TypeLambda(body) =>
+          val erg = a(body, polarity)(sig)
+          erg.map(e => Term.mkTypeAbs(e))
+        case _ => Set(t)
+      }
+    }
+
+    private final def instantiateAbstractions(term: Term, ty: Type)(sig: Signature): Set[Term] = {
+      assert(term.ty.isFunType)
+      leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
+      leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_O,Configuration.PRE_PRIMSUBST_LEVEL )}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_OO,Configuration.PRE_PRIMSUBST_LEVEL )}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_AO,Configuration.PRE_PRIMSUBST_LEVEL )}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_AAO,Configuration.PRE_PRIMSUBST_LEVEL )}")
+      if (shouldReplace(ty)) {
+        leo.Out.finest(s"[Special Instances]: Should apply.")
+        val instances = Enumeration.specialInstances(ty, Configuration.PRE_PRIMSUBST_LEVEL)(sig)
+        if (instances.nonEmpty) {
+          leo.Out.trace(s"[Special Instances]: Used (${instances.size}): ${instances.map(_.pretty(sig))}")
+          instances.map(i => Term.mkTermApp(term, i).betaNormalize)
+        } else Set()
+      } else Set()
+    }
+
+    private final def shouldReplace(ty: Type): Boolean = {
+      import leo.modules.HOLSignature.o
+      import leo.modules.calculus.Enumeration._
+
+      val funTyArgs = ty.funParamTypesWithResultType
+      if (funTyArgs.last == o) {
+        if (funTyArgs.size == 1) isPropSet(REPLACE_O, Configuration.PRE_PRIMSUBST_LEVEL) // Booleans
+        else {
+          // funTyArgs.size > 1
+          if (funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          else {
+            if (isPropSet(REPLACE_AO, Configuration.PRE_PRIMSUBST_LEVEL)) true
+            else {
+              if (funTyArgs.size == 3) {
+                val ty1 = funTyArgs.head; val ty2 = funTyArgs.tail.head
+                (ty1 == ty2) && isPropSet(REPLACE_AAO,Configuration.PRE_PRIMSUBST_LEVEL)
+              } else false
+            }
+          }
+        }
+      } else false
     }
   }
 
