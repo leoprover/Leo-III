@@ -547,7 +547,7 @@ object SeqPProc {
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
-      assert(Clause.wellTyped(newCl.cl), s"clause ${newCl.id} is not well-typed")
+      assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
       newCl = Control.shallowSimp(newCl)
       if (Clause.effectivelyEmpty(newCl.cl)) {
         endplay(newCl, state)

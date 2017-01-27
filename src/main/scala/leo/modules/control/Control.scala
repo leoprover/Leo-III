@@ -645,7 +645,7 @@ package inferenceControl {
     import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
 
     val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)//, Term.mkTypeApp(Forall, Signature.get.i))
-    def eqBindings(tys: Seq[Type]): Set[Term] = {
+    final def eqBindings(tys: Seq[Type]): Set[Term] = {
       if (tys.size == 2) {
         val (ty1, ty2) = (tys.head, tys.tail.head)
         if (ty1 == ty2) {
@@ -656,11 +656,11 @@ package inferenceControl {
         } else Set()
       } else Set()
     }
-    def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
+    final def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
       if (typs.size == 1) {
         val typ = typs.head
         val compatibleTerms = terms.filter(_.ty == typ)
-        compatibleTerms.map(t => Term.λ(typ)(Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.substitute(Subst.shift(1)), Term.mkBound(typ, 1)))))
+        compatibleTerms.map(t => Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.lift(1), Term.mkBound(typ, 1))))
       } else Set()
     }
 
@@ -668,7 +668,8 @@ package inferenceControl {
       if (level > 0) {
         val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
         if (cA_ps) {
-          Out.debug(s"Prim subst on: ${cw.id}")
+          // Every variable in ps_vars has type a_1 -> ... -> a_n -> o (n >= 0)
+          Out.debug(s"[Prim subst] On ${cw.id}")
           var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
           if (level > 1) {
             primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
