@@ -254,6 +254,42 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
   else body.substitute(TypeFront(by.head) +: Subst.id).instantiate(by.tail)
 }
 
+object TypeImpl {
+  private var types: Map[Signature#Key, Map[Seq[Type], Type]] = Map()
+  private var varTypes: Map[Int, Type] = Map()
+
+  def mkType(identifier: Signature#Key, args: Seq[Type]): Type = { //GroundTypeNode(identifier, args)
+    if (types.isDefinedAt(identifier)) {
+      val map = types(identifier)
+      if (map.isDefinedAt(args))
+        map(args)
+      else {
+        val ty = GroundTypeNode(identifier, args)
+        types = types + (identifier -> (map + (args -> ty)))
+        ty
+      }
+    } else {
+      val ty = GroundTypeNode(identifier, args)
+      val map = Map(args -> ty)
+      types = types + (identifier -> map)
+      ty
+    }
+  }
+  def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
+  def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
+  def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
+  def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
+  def mkVarType(scope: Int): Type = { //BoundTypeNode(scope)
+    if (varTypes.isDefinedAt(scope))
+      varTypes(scope)
+    else {
+      val ty = BoundTypeNode(scope)
+      varTypes = varTypes + (scope -> ty)
+      ty
+    }
+  }
+}
+
 
 //////////////////////////////////
 /// Kinds
