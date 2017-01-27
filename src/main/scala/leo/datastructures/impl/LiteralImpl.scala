@@ -3,10 +3,9 @@ package leo.datastructures.impl
 import leo.datastructures.{Term, Literal, Signature}
 import leo.modules.HOLSignature.{LitFalse, LitTrue}
 
-
 protected[impl] sealed abstract class LiteralImpl extends Literal {
   @inline final private def printPol(pol: Boolean): String = if (pol) "t" else "f"
-  override lazy val pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
+  final def pretty: String = s"[${left.pretty} ≈ ${right.pretty}]^${printPol(polarity)}"
   final def pretty(sig: Signature): String = s"[${left.pretty(sig)} ≈ ${right.pretty(sig)}]^${printPol(polarity)}"
 }
 
@@ -75,16 +74,6 @@ object LiteralImpl {
                                      right: Term,
                                      polarity: Boolean,
                                      oriented: Boolean) extends LiteralImpl {
-
-    /** Returns a term representation of the literal.
-      * @return Term `s = t` if `polarity`; term `!(s = t)` if `!polarity`,
-      *         where `s ≡ left and t ≡ right`. If `!equational` the equality may
-      *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ true`). */
-    lazy val term: Term = {
-      import leo.modules.HOLSignature.{=== => EQ, Not}
-      if (polarity) EQ(left,right) else Not(EQ(left,right))
-    }
-
     /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` and not
       * `s = $true` or `s = $false`. */
     val equational: Boolean = true
@@ -108,19 +97,9 @@ object LiteralImpl {
     /** The left side of the literal's equation.
       * Invariant: `!equational => right = $true or right = $false`.
       * Invariant: `left > right or !oriented` where `>` is a term ordering. */
-    val right: Term = LitTrue
+    val right: Term = LitTrue()
     /** Whether the equation could have been oriented wrt. a term ordering `>`. */
     val oriented: Boolean = true
-
-    /** Returns a term representation of the literal.
-      * @return Term `s = t` if `polarity`; term `!(s = t)` if `!polarity`,
-      *         where `s ≡ left and t ≡ right`. If `!equational` the equality may
-      *         be contracted, e.g. `!s` instead of `s = $false` (here `polarity ≡ true`). */
-    lazy val term: Term = {
-      import leo.modules.HOLSignature.Not
-      if (polarity) left else Not(left)
-    }
-
     /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` and not
       * `s = $true` or `s = $false`. */
     val equational: Boolean = false
@@ -134,6 +113,6 @@ object LiteralImpl {
     /** Returns true iff the literal is a flex-flex unification constraint, */
     val flexflex: Boolean = false
     /** Returns true iff the literal has a flexible head. */
-    val flexHead: Boolean = left.isApp && left.headSymbol.isVariable
+    val flexHead: Boolean = (left.isApp || left.isAtom) && left.flexHead
   }
 }
