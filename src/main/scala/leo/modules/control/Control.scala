@@ -650,8 +650,8 @@ package inferenceControl {
         val (ty1, ty2) = (tys.head, tys.tail.head)
         if (ty1 == ty2) {
           Set(
-            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))),
-            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))))
+            /*Term.λ(ty1, ty1)*/(Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))),
+            /*Term.λ(ty1, ty1)*/(Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))))
           )
         } else Set()
       } else Set()
