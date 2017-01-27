@@ -703,8 +703,11 @@ package inferenceControl {
         val result = instancesResult.map (r =>
           if (r == term)
             cl
-          else
-          AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), cl.properties)
+          else {
+            val result = AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), cl.properties)
+            val simpResult = SimplificationControl.shallowSimp(result)(sig)
+            simpResult
+          }
         )
         leo.Out.debug(s"[Special Instances] Instances used:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
@@ -724,15 +727,19 @@ package inferenceControl {
           val ergR = a(r, polarity)(sig)
           ergL.flatMap(eL => ergR.map(eR => Impl(eL, eR)))
         case Forall(all@(ty :::> _)) if polarity =>
+          val r = instantiateAbstractions(all, ty)(sig)
+          val r2 = r.flatMap(rr => a(rr, polarity)(sig))
           if (Enumeration.exhaustive(ty))
-            instantiateAbstractions(all, ty)(sig)
+            r2
           else
-            instantiateAbstractions(all, ty)(sig) + t
+            r2 + t
         case Exists(all@(ty :::> _)) if !polarity =>
+          val r = instantiateAbstractions(all, ty)(sig)
+          val r2 = r.flatMap(rr => a(rr, polarity)(sig))
           if (Enumeration.exhaustive(ty))
-            instantiateAbstractions(all, ty)(sig)
+            r2
           else
-            instantiateAbstractions(all, ty)(sig) + t
+            r2 + t
         case hd ∙ args =>
           val argsIt = args.iterator
           var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
@@ -907,7 +914,8 @@ package inferenceControl {
     /** Pre: Is only called on initial clauses, i.e. clauses are not equaltional and unit. */
     final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       import leo.modules.calculus.Miniscope
-
+      if (Clause.empty(cl.cl)) return cl
+      
       assert(Clause.unit(cl.cl))
       assert(!cl.cl.lits.head.equational)
 
