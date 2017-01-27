@@ -122,13 +122,25 @@ trait Term extends Pretty with Prettier {
   def etaExpand: Term
 }
 
+/////////////////////////////
+// Associated traits, exceptions, ...
+/////////////////////////////
 
+class NotWellTypedException(msg: String, term: Option[Term]) extends RuntimeException(msg) {
+  def this(msg: String) {
+    this(msg, None)
+  }
+}
+object NotWellTypedException {
+  final def apply(): NotWellTypedException = new NotWellTypedException("", None)
+  final def apply(msg: String): NotWellTypedException = new NotWellTypedException(msg, None)
+  final def apply(term: Term): NotWellTypedException = new NotWellTypedException("", Some(term))
+  final def apply(msg: String, term: Term): NotWellTypedException = new NotWellTypedException(msg, Some(term))
+}
 
 /////////////////////////////
 // Companion factory object
 /////////////////////////////
-
-
 /**
  * Term Factory object. Only this class is used to create new terms.
  *
@@ -158,7 +170,14 @@ object Term extends TermBank {
   // Utility
   /** Checks if a term is well-typed. Does does check whether free variables
     * are consistently typed. */
-  final def wellTyped(t: Term): Boolean = TermImpl.wellTyped(t.asInstanceOf[TermImpl])
+  final def wellTyped(t: Term): Boolean = {
+    try {
+      TermImpl.wellTyped(t.asInstanceOf[TermImpl])
+    } catch {
+      case e: NotWellTypedException => false
+    }
+
+  }
 
   // Conversions
   /** Convert tuple (i,ty) to according de-Bruijn index */

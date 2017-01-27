@@ -296,7 +296,7 @@ object Literal {
     import leo.modules.HOLSignature.o
     if (l.equational) {
       wt(l.left) && wt(l.right) && l.left.ty == l.right.ty
-    } else wt(l.left) && l.left.ty == o
+    } else wt(l.left) && (try {l.left.ty == o} catch {case e:NotWellTypedException => false})
   }
 }
 
