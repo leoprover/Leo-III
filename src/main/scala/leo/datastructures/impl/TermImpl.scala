@@ -20,12 +20,11 @@ import scala.language.implicitConversions
  * @author Alexander Steen
  * @since 04.08.2014
  */
-protected[datastructures] sealed abstract class TermImpl(private var _locality: Locality,
-                                                         protected[TermImpl] var normal: Boolean = false,
+protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var normal: Boolean = false,
                                                          protected[TermImpl] var etanormal: Boolean = false) extends Term {
   // Predicates on terms
-  def isLocal: Boolean = _locality == LOCAL
-  def locality: Locality = _locality
+  protected[TermImpl] var _sharing: Term#Sharing = false
+  final def sharing: Sharing = _sharing
 
   final def flexHead: Boolean = flexHead0(0)
   protected[impl] def flexHead0(depth: Int): Boolean
@@ -36,7 +35,7 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
     else {
       val erg = normalize(Subst.id, Subst.id)
       erg.markBetaNormal()
-      if (isGlobal)
+      if (sharing)
         TermImpl.insert0(erg)
       else
         erg
@@ -84,7 +83,7 @@ protected[datastructures] sealed abstract class TermImpl(private var _locality: 
 /////////////////////////////////////////////////
 
 /** Representation of terms that are in (weak) head normal form. */
-protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
+protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   import TermImpl.{headToTerm, mkRedex, mkRoot}
 
   final protected[impl] def markBetaNormal(): Unit = {
@@ -279,7 +278,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
 
 // For all terms that have not been normalized, assume they are a redex, represented
 // by this term instance
-protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL) {
+protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   import TermImpl.mkRedex
 
   final protected[impl] def markBetaNormal(): Unit = {
@@ -366,7 +365,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl(LOCAL
   final def pretty(sig: Signature): String =  s"[${body.pretty(sig)}] ⋅ (${args.pretty(sig)})"
 }
 
-protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOCAL) {
+protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   import TermImpl.mkTermAbstr
 
   final protected[impl] def markBetaNormal(): Unit = {
@@ -439,7 +438,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl(LOC
   final def pretty(sig: Signature): String =  s"λ[${typ.pretty(sig)}]. (${body.pretty(sig)})"
 }
 
-protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
+protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   import TermImpl.mkTypeAbstr
   import Type.∀
 
@@ -498,7 +497,7 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl(LOCAL) {
   final def pretty(sig: Signature): String =   s"Λ. (${body.pretty(sig)})"
 }
 
-protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends TermImpl(LOCAL) {
+protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends TermImpl {
   // Closure should never be handed to the outside
 
   final protected[impl] def markBetaNormal(): Unit = {
@@ -1022,7 +1021,7 @@ object TermImpl extends TermBank {
   }
 
   final private def global[A <: TermImpl](t: A): A = {
-    t._locality = GLOBAL
+    t._sharing = true
     t
   }
 
@@ -1064,10 +1063,10 @@ object TermImpl extends TermBank {
 
     final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
       func else func match {
-        case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
-        case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
-        case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))
-        case other       => mkRedex(other, mkGenSpine(args))
+        case Root(h, SNil) => Root(h, mkGenSpine(args))
+        case Root(h,sp)  => Root(h,sp ++ mkGenSpine(args))
+        case Redex(r,sp) => Redex(r, sp ++ mkGenSpine(args))
+        case other       => Redex(other, mkGenSpine(args))
       }
   }
 
@@ -1110,7 +1109,7 @@ object TermImpl extends TermBank {
   final def contains(term: Term): Boolean = terms.contains(term)
 
   final def insert(term: Term): Term = {
-    val t = if (term.isLocal)
+    val t = if (Term.isLocal(term))
       insert0(term)
     else
       term

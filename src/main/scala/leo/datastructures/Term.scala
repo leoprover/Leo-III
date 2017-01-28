@@ -40,12 +40,8 @@ trait Term extends Pretty with Prettier {
     * @note Might return false if the term is in beta normal form but .betaNormalize was never invoked in it. */
   def isBetaNormal: Boolean
 
-  // Locality/Indexing properties of terms, TODO: Obsolete, what to do with it?
-  def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
-  def isIndexed: Boolean = TermIndex.contains(this)
-  def locality: Locality
-  def isLocal: Boolean
-  def isGlobal: Boolean = !isLocal
+  type Sharing = Boolean
+  def sharing: Sharing
 
   //////////////////////////
   // Handling def. expansion
@@ -176,8 +172,10 @@ object Term extends TermBank {
     } catch {
       case e: NotWellTypedException => false
     }
-
   }
+
+  final def isLocal(t: Term): Boolean = !t.sharing
+  final def isGlobal(t: Term): Boolean = t.sharing
 
   // Conversions
   /** Convert tuple (i,ty) to according de-Bruijn index */
