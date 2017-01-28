@@ -185,7 +185,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl(LOCAL) {
         val liftedArgs = args.normalize(Subst.shift(missing), Subst.id).etaExpand
         // produce new list of bound variables (decreasing index)
         val newTypes = hdFunParamTypes.drop(args.length)
-        val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil),SNil); missing = missing - 1; r}}
+        val newSpineSuffix: Spine = newTypes.foldLeft(SNil.asInstanceOf[Spine]){case (s, t) => {val r = s ++ App(Root(BoundIndex(t, missing), SNil).etaExpand,SNil); missing = missing - 1; r}}
         val newSpine = liftedArgs ++ newSpineSuffix
         // combine and prefix with lambdas
         val liftedBody: TermImpl = Root(newHead, newSpine)
