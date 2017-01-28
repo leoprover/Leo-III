@@ -66,6 +66,7 @@ object RunExternalProver {
         if(res.szsStatus == SZS_Error){
           println(res.error.mkString("\n"))
         }
+        println(s"Leo's output:\n  ${res.output.mkString("\n  ")}")
       case None => println("Got no result")
     }
   }
