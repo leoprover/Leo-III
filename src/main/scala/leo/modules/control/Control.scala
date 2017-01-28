@@ -692,7 +692,7 @@ package inferenceControl {
 
   protected[modules] object SpecialInstantiationControl {
     import leo.modules.calculus.Enumeration._
-    import leo.Configuration.{PRE_PRIMSUBST_LEVEL => LEVEL}
+    import leo.Configuration.{PRE_PRIMSUBST_LEVEL => LEVEL, PRE_PRIMSUBST_MAX_DEPTH => MAXDEPTH}
 
     final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
       if (LEVEL != NO_REPLACE) {
@@ -702,7 +702,7 @@ package inferenceControl {
         val lit = clause.lits.head
         assert(!lit.equational)
         val term = lit.left
-        val instancesResult = instantiateTerm(term, lit.polarity)(sig)
+        val instancesResult = instantiateTerm(term, lit.polarity, 0)(sig)
         val result = instancesResult.map (r =>
           if (r == term)
             cl
@@ -717,53 +717,68 @@ package inferenceControl {
       } else Set(cl)
     }
 
-    final def instantiateTerm(t: Term, polarity: Boolean)(sig: Signature): Set[Term] = {
+    final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(sig: Signature): Set[Term] = {
       import leo.datastructures.Term._
       import leo.modules.HOLSignature.{Forall, Exists, Not, Impl}
 
-      t match {
-        case Not(body) =>
-          val erg = instantiateTerm(body, !polarity)(sig)
-          erg.map(e => Not(e))
-        case Impl(l,r) =>
-          val ergL = instantiateTerm(l, !polarity)(sig)
-          val ergR = instantiateTerm(r, polarity)(sig)
-          ergL.flatMap(eL => ergR.map(eR => Impl(eL, eR)))
-        case Forall(all@(ty :::> _)) if polarity =>
-          val r = instantiateAbstractions(all, ty)(sig)
-          val r2 = r.flatMap(rr => instantiateTerm(rr, polarity)(sig))
-          if (Enumeration.exhaustive(ty))
-            r2
-          else
-            r2 + t
-        case Exists(all@(ty :::> _)) if !polarity =>
-          val r = instantiateAbstractions(all, ty)(sig)
-          val r2 = r.flatMap(rr => instantiateTerm(rr, polarity)(sig))
-          if (Enumeration.exhaustive(ty))
-            r2
-          else
-            r2 + t
-        case hd ∙ args =>
-          val argsIt = args.iterator
-          var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
-          while (argsIt.hasNext) {
-            val arg = argsIt.next()
-            if (arg.isRight) {
-              newArgs = newArgs.map(seq => seq :+ arg)
-            } else {
-              val termArg = arg.left.get
-              val erg = instantiateTerm(termArg, polarity)(sig)
-              newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
+      if (depth >= MAXDEPTH)
+        Set(t)
+      else {
+        t match {
+          case Not(body) =>
+            val erg = instantiateTerm(body, !polarity, depth+1)(sig)
+            erg.map(e => Not(e))
+          case Impl(l,r) =>
+            val ergL = instantiateTerm(l, !polarity, depth+1)(sig)
+            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            var result: Set[Term] = Set()
+            val ergLIt = ergL.iterator
+            while (ergLIt.hasNext) {
+              val eL = ergLIt.next()
+              val ergRIt = ergR.iterator
+              while (ergRIt.hasNext) {
+                val eR = ergRIt.next()
+                val impl = Impl(eL, eR)
+                result = result + impl
+              }
             }
-          }
-          newArgs.map(erg => Term.mkApp(hd, erg))
-        case ty :::> body =>
-          val erg = instantiateTerm(body, polarity)(sig)
-          erg.map(e => Term.mkTermAbs(ty, e))
-        case TypeLambda(body) =>
-          val erg = instantiateTerm(body, polarity)(sig)
-          erg.map(e => Term.mkTypeAbs(e))
-        case _ => Set(t)
+            result
+          case Forall(all@(ty :::> _)) if polarity && shouldReplace(ty) =>
+            val r = instantiateAbstractions(all, ty)(sig)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+            if (Enumeration.exhaustive(ty))
+              r2
+            else
+              r2 + t
+          case Exists(all@(ty :::> _)) if !polarity && shouldReplace(ty) =>
+            val r = instantiateAbstractions(all, ty)(sig)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+            if (Enumeration.exhaustive(ty))
+              r2
+            else
+              r2 + t
+          case hd ∙ args =>
+            val argsIt = args.iterator
+            var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
+            while (argsIt.hasNext) {
+              val arg = argsIt.next()
+              if (arg.isRight) {
+                newArgs = newArgs.map(seq => seq :+ arg)
+              } else {
+                val termArg = arg.left.get
+                val erg = instantiateTerm(termArg, polarity, depth+1)(sig)
+                newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
+              }
+            }
+            newArgs.map(erg => Term.mkApp(hd, erg))
+          case ty :::> body =>
+            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+            erg.map(e => Term.mkTermAbs(ty, e))
+          case TypeLambda(body) =>
+            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+            erg.map(e => Term.mkTypeAbs(e))
+          case _ => Set(t)
+        }
       }
     }
 
@@ -1427,14 +1442,14 @@ package indexingControl {
       * @note method may change in future (maybe more arguments will be needed). */
     final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
       FVIndexControl.init(initClauses)(sig)
-      FOIndexControl.foIndexInit()
+//      FOIndexControl.foIndexInit()
     }
     /** Insert cl to all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
       * as feature vector index, subsumption index etc.*/
     final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.insert(cl)
-      FOIndexControl.index.insert(cl)
+//      FOIndexControl.index.insert(cl) // FIXME There seems to be some error in recognizing real TFF clauses, i.e. some are falsely added
       // TODO: more indexes ...
     }
     /** Remove cl from all relevant indexes used. This is
@@ -1442,7 +1457,7 @@ package indexingControl {
       * as feature vector index, subsumption index etc.*/
     final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.remove(cl)
-      FOIndexControl.index.remove(cl)
+//      FOIndexControl.index.remove(cl)
       // TODO: more indexes ...
     }
   }

@@ -429,11 +429,6 @@ object SeqPProc {
         Out.comment("Clauses at the end of the loop:")
         Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
       }
-      if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
-        Out.finest("TFF clauses at the end:")
-        Out.finest("\t" + Control.foIndex.iterator.toSeq.map(leo.modules.output.ToTFF.apply).mkString("\n\t"))
-      }
-
 
       /* Print proof object if possible and requested. */
       if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
