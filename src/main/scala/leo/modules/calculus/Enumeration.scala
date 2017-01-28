@@ -13,6 +13,7 @@ object Enumeration extends CalculusRule {
   override final val inferenceStatus = Some(SZS_Theorem)
 
   final val REPLACE_ALL: Int = -1
+  final val NO_REPLACE: Int = 0
   final val REPLACE_O: Int = 1
   final val REPLACE_OO: Int = 2
   final val REPLACE_AO: Int = 4

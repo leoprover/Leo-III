@@ -642,16 +642,16 @@ package inferenceControl {
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
-    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
+    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===, Forall, i}
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)//, Term.mkTypeApp(Forall, Signature.get.i))
+    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||, Term.mkTypeApp(Forall, i))
     final def eqBindings(tys: Seq[Type]): Set[Term] = {
       if (tys.size == 2) {
         val (ty1, ty2) = (tys.head, tys.tail.head)
         if (ty1 == ty2) {
-          Set(
-            /*Term.λ(ty1, ty1)*/(Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))),
-            /*Term.λ(ty1, ty1)*/(Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))))
+          Set(  // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
+            /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))),
+            /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))
           )
         } else Set()
       } else Set()
@@ -660,6 +660,7 @@ package inferenceControl {
       if (typs.size == 1) {
         val typ = typs.head
         val compatibleTerms = terms.filter(_.ty == typ)
+        // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
         compatibleTerms.map(t => Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.lift(1), Term.mkBound(typ, 1))))
       } else Set()
     }
@@ -690,16 +691,18 @@ package inferenceControl {
   }
 
   protected[modules] object SpecialInstantiationControl {
+    import leo.modules.calculus.Enumeration._
+    import leo.Configuration.{PRE_PRIMSUBST_LEVEL => LEVEL}
 
     final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
+      if (LEVEL != NO_REPLACE) {
         leo.Out.trace("[Special Instances] Searching ...")
         val clause = cl.cl
         assert(Clause.unit(clause))
         val lit = clause.lits.head
         assert(!lit.equational)
         val term = lit.left
-        val instancesResult = a(term, lit.polarity)(sig)
+        val instancesResult = instantiateTerm(term, lit.polarity)(sig)
         val result = instancesResult.map (r =>
           if (r == term)
             cl
@@ -714,28 +717,28 @@ package inferenceControl {
       } else Set(cl)
     }
 
-    final def a(t: Term, polarity: Boolean)(sig: Signature): Set[Term] = {
+    final def instantiateTerm(t: Term, polarity: Boolean)(sig: Signature): Set[Term] = {
       import leo.datastructures.Term._
       import leo.modules.HOLSignature.{Forall, Exists, Not, Impl}
 
       t match {
         case Not(body) =>
-          val erg = a(body, !polarity)(sig)
+          val erg = instantiateTerm(body, !polarity)(sig)
           erg.map(e => Not(e))
         case Impl(l,r) =>
-          val ergL = a(l, !polarity)(sig)
-          val ergR = a(r, polarity)(sig)
+          val ergL = instantiateTerm(l, !polarity)(sig)
+          val ergR = instantiateTerm(r, polarity)(sig)
           ergL.flatMap(eL => ergR.map(eR => Impl(eL, eR)))
         case Forall(all@(ty :::> _)) if polarity =>
           val r = instantiateAbstractions(all, ty)(sig)
-          val r2 = r.flatMap(rr => a(rr, polarity)(sig))
+          val r2 = r.flatMap(rr => instantiateTerm(rr, polarity)(sig))
           if (Enumeration.exhaustive(ty))
             r2
           else
             r2 + t
         case Exists(all@(ty :::> _)) if !polarity =>
           val r = instantiateAbstractions(all, ty)(sig)
-          val r2 = r.flatMap(rr => a(rr, polarity)(sig))
+          val r2 = r.flatMap(rr => instantiateTerm(rr, polarity)(sig))
           if (Enumeration.exhaustive(ty))
             r2
           else
@@ -749,16 +752,16 @@ package inferenceControl {
               newArgs = newArgs.map(seq => seq :+ arg)
             } else {
               val termArg = arg.left.get
-              val erg = a(termArg, polarity)(sig)
+              val erg = instantiateTerm(termArg, polarity)(sig)
               newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
             }
           }
           newArgs.map(erg => Term.mkApp(hd, erg))
         case ty :::> body =>
-          val erg = a(body, polarity)(sig)
+          val erg = instantiateTerm(body, polarity)(sig)
           erg.map(e => Term.mkTermAbs(ty, e))
         case TypeLambda(body) =>
-          val erg = a(body, polarity)(sig)
+          val erg = instantiateTerm(body, polarity)(sig)
           erg.map(e => Term.mkTypeAbs(e))
         case _ => Set(t)
       }
@@ -767,13 +770,13 @@ package inferenceControl {
     private final def instantiateAbstractions(term: Term, ty: Type)(sig: Signature): Set[Term] = {
       assert(term.ty.isFunType)
       leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
-      leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_O,Configuration.PRE_PRIMSUBST_LEVEL )}")
-      leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_OO,Configuration.PRE_PRIMSUBST_LEVEL )}")
-      leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_AO,Configuration.PRE_PRIMSUBST_LEVEL )}")
-      leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(leo.modules.calculus.Enumeration.REPLACE_AAO,Configuration.PRE_PRIMSUBST_LEVEL )}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(REPLACE_O,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(REPLACE_OO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(REPLACE_AO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
       if (shouldReplace(ty)) {
         leo.Out.finest(s"[Special Instances]: Should apply.")
-        val instances = Enumeration.specialInstances(ty, Configuration.PRE_PRIMSUBST_LEVEL)(sig)
+        val instances = Enumeration.specialInstances(ty, LEVEL)(sig)
         if (instances.nonEmpty) {
           leo.Out.trace(s"[Special Instances]: Used (${instances.size}): ${instances.map(_.pretty(sig))}")
           instances.map(i => Term.mkTermApp(term, i).betaNormalize)
@@ -915,7 +918,7 @@ package inferenceControl {
     final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       import leo.modules.calculus.Miniscope
       if (Clause.empty(cl.cl)) return cl
-      
+
       assert(Clause.unit(cl.cl))
       assert(!cl.cl.lits.head.equational)
 
@@ -1423,7 +1426,7 @@ package indexingControl {
       * as feature vector index, subsumption index etc.
       * @note method may change in future (maybe more arguments will be needed). */
     final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
-      FVIndexControl.init(initClauses.toSet)(sig)
+      FVIndexControl.init(initClauses)(sig)
       FOIndexControl.foIndexInit()
     }
     /** Insert cl to all relevant indexes used. This is

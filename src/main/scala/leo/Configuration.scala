@@ -29,7 +29,8 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_UNIFIERCOUNT = "unifiers"
   private val PARAM_MATCHINGDEPTH = "matchingdepth"
   private val PARAM_PRIMSUBST = "primsubst"
-  private val PARAM_PRE_PRIMSUBST = "preprimsubst"
+  private val PARAM_PRE_PRIMSUBST = "instantiate"
+  private val PARAM_PRE_PRIMSUBST_MAXINSTANCES = "instantiate-max"
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
   private val PARAM_NOCHOICE = "nochoice"
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
@@ -116,6 +117,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRIMSUBST, DEFAULT_PRIMSUBST)
   lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
+  lazy val PRE_PRIMSUBST_MAX_INSTANCES: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST_MAXINSTANCES, DEFAULT_PRE_PRIMSUBST_MAXINSTANCES)
 
   lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE)
   lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
@@ -276,8 +278,9 @@ trait DefaultConfiguration {
   val DEFAULT_UNIFICATIONDEPTH = 8
   val DEFAULT_MATCHINGDEPTH = 4
   val DEFAULT_UNIFIERCOUNT = 1
-  val DEFAULT_PRIMSUBST = 1
-  val DEFAULT_PRE_PRIMSUBST = 0
+  val DEFAULT_PRIMSUBST = 2
+  val DEFAULT_PRE_PRIMSUBST = -1
+  val DEFAULT_PRE_PRIMSUBST_MAXINSTANCES = 8
   val DEFAULT_ATPCHECKINTERVAL = 3
   val DEFAULT_ATPCALLINTERVAL = 10
   val DEFAULT_ATPMAXJOBS = 3
