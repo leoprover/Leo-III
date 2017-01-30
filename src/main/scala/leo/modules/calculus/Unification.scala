@@ -463,12 +463,12 @@ object HuetsPreUnification extends Unification {
       val (t,s) = if (isFlexible(e._1, depth)) (e._1,e._2) else (e._2, e._1)
       val s0 = if (s.headSymbol.ty.isPolyType) {
         leo.Out.finest(s"head symbol is polymorphic")
-        Term.mkTypeApp(s.headSymbol, takePrefixTypeArguments(s))}
+        Term.local.mkTypeApp(s.headSymbol, takePrefixTypeArguments(s))}
       else
         s.headSymbol
       leo.Out.finest(s"chose head symbol to be ${s0.pretty}, type: ${s0.ty.pretty}")
       val variable = Bound.unapply(t.headSymbol).get
-      val liftedVar = Term.mkBound(variable._1, variable._2 - depth).etaExpand
+      val liftedVar = Term.local.mkBound(variable._1, variable._2 - depth).etaExpand
       val res = (liftedVar, partialBinding(vargen, t.headSymbol.ty,  s0))
       leo.Out.finest(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
       res
@@ -508,7 +508,7 @@ object HuetsPreUnification extends Unification {
       val funBVars = bvars.filter(bvar => t.headSymbol.ty.funParamTypesWithResultType.endsWith(bvar.ty.funParamTypesWithResultType))
       leo.Out.finest(s"compatible type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
       val variable = Bound.unapply(t.headSymbol).get
-      val liftedVar = Term.mkBound(variable._1, variable._2 - depth).etaExpand
+      val liftedVar = Term.local.mkBound(variable._1, variable._2 - depth).etaExpand
       val res = funBVars.map(bvar => (liftedVar, partialBinding(vargen, t.headSymbol.ty, bvar)))
 
       leo.Out.finest(s"Result of Project:\n\t${res.map(eq => eq._1.pretty ++ " = " ++ eq._2.pretty).mkString("\n\t")}")
@@ -553,7 +553,7 @@ object HuetsPreUnification extends Unification {
   private final def zipArgumentsWithAbstractions0(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]],
                                                   abstractions: Seq[Type],
                                                   acc1: Seq[UEq], acc2: Seq[UTEq]): (Seq[UEq], Seq[UTEq]) = {
-    import leo.datastructures.Term.λ
+    import leo.datastructures.Term.local.λ
     if (l.isEmpty && r.isEmpty) (acc1, acc2)
     else if (l.nonEmpty && r.nonEmpty) {
       val leftHead = l.head
@@ -612,6 +612,7 @@ object PatternUnification extends Unification {
       Iterable.empty
     else {
       val initialTypeSubst0 = initialTypeSubst.get
+      leo.Out.trace(s"initialTypeSubst0: ${initialTypeSubst0.pretty}")
       val constraints0 = constraints.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
       val unifyResult = unify0(constraints0,initialTypeSubst0, vargen)
       if (unifyResult.isDefined) Seq(unifyResult.get)
@@ -712,7 +713,7 @@ object PatternUnification extends Unification {
 
   /** unification of flex-flex equation. Fails if type arguments are applied (not pattern, is it?). */
   private final def flexflex(idx1: Int, ty1: Type, args01: Seq[Either[Term, Type]], idx2: Int, ty2: Type, args02: Seq[Either[Term, Type]], vargen: FreshVarGen, ty: Type): PartialUniResult = {
-    import leo.datastructures.Term.{λ, mkTermApp, mkBound}
+    import leo.datastructures.Term.local.{λ, mkTermApp, mkBound}
     import leo.datastructures.Type.mkFunType
     try
       {
@@ -739,6 +740,7 @@ object PatternUnification extends Unification {
             val liftedFreshVar = mkBound(freshVar._2, freshVar._1+tys.size)
             // binding is idx1 -> lamdas(H(posArgs))
             val binding = λ(tys)(mkTermApp(liftedFreshVar, posArgs))
+            leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
             (Subst.singleton(idx1, binding), Subst.id)
           }
         } else {
@@ -749,9 +751,10 @@ object PatternUnification extends Unification {
 
             val argIdx = args2.zipWithIndex.toMap
             val argCount = argIdx.size
-            val newArgs = args1.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
+            val newArgs = args1.map(t => mkBound(t.ty, argCount - argIdx(t)))
             // binding is idx2 -> lamdas(idx1(args1'))
             val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
+            leo.Out.finest(s"binding: $idx2 -> ${binding.pretty}")
             (Subst.singleton(idx2, binding), Subst.id)
           } else if (subset(args2, args1)) { // ditto
           val tys = args1.map(_.ty)
@@ -759,9 +762,10 @@ object PatternUnification extends Unification {
 
             val argIdx = args1.zipWithIndex.toMap
             val argCount = argIdx.size
-            val newArgs = args2.map(t => Term.mkBound(t.ty, argCount - argIdx(t)))
+            val newArgs = args2.map(t => mkBound(t.ty, argCount - argIdx(t)))
             // binding is idx1 -> lamdas(idx2(args2))
             val binding = λ(tys)(mkTermApp(liftedVar, newArgs))
+            leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
             (Subst.singleton(idx1, binding), Subst.id)
           } else { // two bindings
           val sameArgs = args1.intersect(args2)
@@ -770,8 +774,8 @@ object PatternUnification extends Unification {
             val arg1Count = arg1Idx.size
             val arg2Idx = args2.zipWithIndex.toMap
             val arg2Count = arg2Idx.size
-            val newArgs1 = sameArgs.map(t => Term.mkBound(t.ty, arg1Count - arg1Idx(t)))
-            val newArgs2 = sameArgs.map(t => Term.mkBound(t.ty, arg2Count - arg2Idx(t)))
+            val newArgs1 = sameArgs.map(t => mkBound(t.ty, arg1Count - arg1Idx(t)))
+            val newArgs2 = sameArgs.map(t => mkBound(t.ty, arg2Count - arg2Idx(t)))
 
             val tys1 = args1.map(_.ty)
             val tys2 = args2.map(_.ty)
@@ -784,6 +788,8 @@ object PatternUnification extends Unification {
             val binding1 = λ(tys1)(mkTermApp(liftedFreshVar1, newArgs1))
             // binding2 is idx2 -> lamdas'(H(sameArgs))
             val binding2 = λ(tys2)(mkTermApp(liftedFreshVar2, newArgs2))
+            leo.Out.finest(s"binding1: $idx1 -> ${binding1.pretty}")
+            leo.Out.finest(s"binding2: $idx2 -> ${binding1.pretty}")
             (Subst.fromMap(Map(idx1 -> binding1, idx2 -> binding2)), Subst.id)
           }
         }
@@ -794,7 +800,7 @@ object PatternUnification extends Unification {
 
   /** Return argument positions that have matching arguments. */
   private final def pos(args1: Seq[Term], args2: Seq[Term]): Seq[Term] = {
-    import leo.datastructures.Term.mkBound
+    import leo.datastructures.Term.local.mkBound
     if (args1.isEmpty) {
       assert(args2.isEmpty)
       Nil
@@ -827,22 +833,41 @@ object PatternUnification extends Unification {
       // difference of vars in vargen (those have been introduced).
       // Maybe this should be done better...
       val varsBefore = vargen.existingVars
-      // binding is just the imitation of rigid's head symbol.
-      val rigidArgs0 = splitArgs(rigidArgs)
-      assert(rigidArgs0._1.isEmpty || rigidHd.ty.isPolyType)
-      val rigidHd0 = if (rigidHd.ty.isPolyType) {
-        leo.Out.finest(s"head symbol is polymorphic")
-        Term.mkTypeApp(rigidHd, rigidArgs0._1)}
-      else
-        rigidHd
-      val binding = partialBinding(vargen, ty1, rigidHd0)
-      val varsAfter = vargen.existingVars
-      val subst = Subst.singleton(idx1, binding)
-      // new equations:
-      val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
-      assert(newVars.size == rigidArgs0._2.size)
-      val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
-      ((subst, Subst.id), newueqs)
+
+//      if (rigidHd.isVariable) {
+////        if (!args10.contains(rigidHd.etaExpand)) return null /*fail*/
+//        // variables cannot be polymorphic, calculating projection binding.
+//        // newrigidHd: position of bound rigid hd in flex-args-list
+//        val newrigidHd = Term.local.mkBound(rigidHd.ty, args10.size - args10.indexOf(rigidHd.etaExpand))
+//        val binding = partialBinding(vargen, ty1, newrigidHd)
+//        leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
+//        val varsAfter = vargen.existingVars
+//        val subst = Subst.singleton(idx1, binding)
+//        // new equations:
+//        val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
+//        assert(newVars.size == rigidArgs.size)
+//        val newueqs = newUEqs(newVars, args10, rigidArgs.map(_.left.get), depth)
+//        ((subst, Subst.id), newueqs)
+//      } else {
+//        assert(rigidHd.isConstant)
+        // Constants may be polymorphic: Apply types before calculating imitation binding.
+        val rigidArgs0 = splitArgs(rigidArgs)
+        assert(rigidArgs0._1.isEmpty || rigidHd.ty.isPolyType)
+        val rigidHd0 = if (rigidHd.ty.isPolyType) {
+          leo.Out.finest(s"head symbol is polymorphic")
+          Term.local.mkTypeApp(rigidHd, rigidArgs0._1)}
+        else
+          rigidHd
+        val binding = partialBinding(vargen, ty1, rigidHd0)
+        leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
+        val varsAfter = vargen.existingVars
+        val subst = Subst.singleton(idx1, binding)
+        // new equations:
+        val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
+        assert(newVars.size == rigidArgs0._2.size)
+        val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
+        ((subst, Subst.id), newueqs)
+//      }
     } catch {
       case _:NoSuchElementException => null
     }
@@ -868,7 +893,7 @@ object PatternUnification extends Unification {
     newVars.takeWhile(elem => !oldVars.contains(elem))
   }
   private final def newUEqs(freeVars: Seq[(Int, Type)], boundVarArgs: Seq[Term], otherTermList: Seq[Term], depth: Seq[Type]): Seq[UEq] = {
-    import leo.datastructures.Term.{mkTermApp, mkBound, λ}
+    import leo.datastructures.Term.local.{mkTermApp, mkBound, λ}
     if (freeVars.isEmpty) Nil
     else {
       val hd = freeVars.head

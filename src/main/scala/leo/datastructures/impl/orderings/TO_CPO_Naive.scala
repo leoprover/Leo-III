@@ -256,7 +256,8 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
   final private def gt0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
-    import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙,mkApp}
+    import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙}
+    import leo.datastructures.Term.mkApp
 
     if (s == t) return false
     if (s.isVariable) return false
@@ -300,7 +301,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
 
                 case _ if gargList.nonEmpty =>
                   /* case 4*/
-                  return gt0(s, Term.mkApp(g, args2.init), x)(sig) && gt0(s, gargList.last, x)(sig)
+                  return gt0(s, mkApp(g, args2.init), x)(sig) && gt0(s, gargList.last, x)(sig)
               }
             } catch {
               case e:AssertionError => {

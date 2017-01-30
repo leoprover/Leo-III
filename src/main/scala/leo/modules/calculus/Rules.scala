@@ -326,7 +326,7 @@ object PrimSubst extends CalculusRule {
         can = true
       }
     }
-    Out.finest(s"flexHeads: ${flexheads.map(_.pretty).mkString(",")}")
+    Out.trace(s"flexHeads: ${flexheads.map(_.pretty).mkString(",")}")
     (can, flexheads)
   }
 

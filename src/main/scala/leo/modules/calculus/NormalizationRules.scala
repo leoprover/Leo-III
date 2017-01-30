@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, Subst, Type, _}
-import leo.modules.HOLSignature.{&, ===, Exists, Forall, TyForall, Impl, LitFalse, LitTrue, Not, |||}
+import leo.modules.HOLSignature.{&, ===, !===, Exists, Forall, TyForall, Impl, LitFalse, LitTrue, Not, |||}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 
 import scala.annotation.tailrec
@@ -238,45 +238,65 @@ object LiftEq extends CalculusRule {
   val name = "lifteq"
   override val inferenceStatus = Some(SZS_Theorem)
 
-  def canApply(t: Term): Boolean = t match {
-    case ===(_,_) => true
-    case _ => false
+  type Lift = Int
+  final val NO_LIFT: Lift = 0
+  final val NEG_LIFT: Lift = -1
+  final val POS_LIFT: Lift = 1
+
+  final def canApply(t: Term): Lift = t match {
+    case ===(_,_) => POS_LIFT
+    case !===(_,_) => NEG_LIFT
+    case _ => NO_LIFT
   }
-  def canApply(lit: Literal): Boolean = !lit.equational && canApply(lit.left)
-  type LiftLits = Seq[Literal]
+  final def canApply(lit: Literal): Lift = if (lit.equational) NO_LIFT else canApply(lit.left)
+
+  type PosLiftLits = Seq[Literal]
+  type NegLiftLits = Seq[Literal]
   type OtherLits = Seq[Literal]
-  def canApply(cl: Clause): (Boolean, LiftLits, OtherLits) = {
+  final def canApply(cl: Clause): (Boolean, PosLiftLits, NegLiftLits, OtherLits) = {
     var can = false
-    var liftLits: LiftLits = Seq()
+    var posLiftLits: PosLiftLits = Seq()
+    var negLiftLits: NegLiftLits = Seq()
     var otherLits: OtherLits = Seq()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
-      if (canApply(l)) {
-        liftLits = liftLits :+ l
+      val canLift = canApply(l)
+      if (canLift == POS_LIFT) {
+        posLiftLits = posLiftLits :+ l
+        can = true
+      } else if (canLift == NEG_LIFT) {
+        negLiftLits = negLiftLits :+ l
         can = true
       } else {
         otherLits = otherLits :+ l
       }
     }
-    (can, liftLits, otherLits)
-  }
-  def apply(liftLits: LiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
-    liftLits.map(l => apply(l.left, l.polarity)(sig)) ++ otherLits
+    (can, posLiftLits, negLiftLits, otherLits)
   }
 
+  final def apply(posLiftLits: PosLiftLits, negLiftLits: NegLiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
+    posLiftLits.map(l => apply(POS_LIFT, l.left, l.polarity)(sig)) ++ negLiftLits.map(l => apply(NEG_LIFT, l.left, l.polarity)(sig)) ++ otherLits
+  }
 
-  def apply(left: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
-    val (l,r) = ===.unapply(left).get
+  final def apply(lift: Lift, t: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
+    assert(lift != NO_LIFT)
+    val (l,r) = if (lift == POS_LIFT) {
+      ===.unapply(t).get
+    } else {
+      // lift == NEG_LIFT
+      !===.unapply(t).get
+    }
     assert(l.isBetaNormal, s"${l.pretty(sig)} // ${l.toString}")
     assert(r.isBetaNormal, s"${r.pretty(sig)} // ${r.toString}")
-    if (polarity) {
-      Literal.mkOrdered(l,r,true)(sig)
+    if (lift == POS_LIFT) {
+      Literal.mkOrdered(l,r,polarity)(sig)
     } else {
-      Literal.mkOrdered(l,r,false)(sig)
+      // lift == NEG_LIFT
+      Literal.mkOrdered(l,r,!polarity)(sig)
     }
-  }
 
+  }
 }
 
 

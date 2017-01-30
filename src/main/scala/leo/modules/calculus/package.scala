@@ -116,7 +116,7 @@ package object calculus {
   // hdSymb is head
   // y1,..,yn are new bound variable
   // x1,..,xm are new free variables
-  final def partialBinding(varGen: FreshVarGen, typ: Type, hdSymb: Term) = {
+  final def partialBinding(varGen: FreshVarGen, typ: Type, hdSymb: Term): Term = {
     // if typ = t1 -> t2 -> ... -> tn -> t(n+1) (where t(n+1) is not a function type)
     // then yTypes is (t1,t2,t3,..., tn)
     val yTypes = typ.funParamTypes
@@ -139,7 +139,6 @@ package object calculus {
           Term.mkTermApp({val i = varGen.next(Type.mkFunType(yTypes,p));Term.mkBound(i._2,i._1+ys.size)}, ys))
       }
     val t = Term.mkTermApp(hdSymb,xs)
-
     val aterm = Term.λ(yTypes)(t)
     aterm.etaExpand
   }
