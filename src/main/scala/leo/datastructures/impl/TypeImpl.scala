@@ -122,7 +122,7 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   final val funDomainType   = Some(in)
   final val codomainType = out
   final lazy val arity = 1 + out.arity
-  final lazy val funParamTypesWithResultType = Seq(in) ++ out.funParamTypesWithResultType
+  final lazy val funParamTypesWithResultType = in +: out.funParamTypesWithResultType
   final lazy val order = Math.max(1+in.order,out.order)
   final val polyPrefixArgsCount = 0
 

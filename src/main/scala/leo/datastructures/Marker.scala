@@ -202,24 +202,6 @@ object ClauseAnnotation {
 //////////////////////////////////////////////
 
 
-abstract sealed class Indexing
-case object INDEXED extends Indexing
-case object PLAIN extends Indexing
-
-
-//////////////////////////////////////////////
-//////////////////////////////////////////////
-
-
-abstract sealed class Locality
-case object GLOBAL extends Locality
-case object LOCAL extends Locality
-
-
-//////////////////////////////////////////////
-//////////////////////////////////////////////
-
-
 /**
  * Marker type for the 'language level' of terms.
  * A Term is flagged `PROPOSITIONAL` iff it is a propositional formula,

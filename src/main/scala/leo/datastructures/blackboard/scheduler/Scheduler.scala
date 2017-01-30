@@ -447,7 +447,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
         try {
           t.stop()
         } catch {
-          case _ => () // TODO FIX. IMPORTANT. DO NOT USE FURTHER ON
+          case _:Throwable => () // TODO FIX. IMPORTANT. DO NOT USE FURTHER ON
         }
         }
     }

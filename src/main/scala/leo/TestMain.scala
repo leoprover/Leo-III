@@ -5,8 +5,6 @@ import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard
 import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.{BetaSplit, Context}
-import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.agent.preprocessing.{ArgumentExtractionAgent, FormulaRenamingAgent}
 import leo.modules.agent.relevance_filter.BlackboardPreFilterSet
 import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
 import leo.modules._

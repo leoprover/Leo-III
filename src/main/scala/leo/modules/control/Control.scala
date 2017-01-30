@@ -642,25 +642,26 @@ package inferenceControl {
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
-    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
+    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===, Forall, i}
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)//, Term.mkTypeApp(Forall, Signature.get.i))
-    def eqBindings(tys: Seq[Type]): Set[Term] = {
+    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||, Term.mkTypeApp(Forall, i))
+    final def eqBindings(tys: Seq[Type]): Set[Term] = {
       if (tys.size == 2) {
         val (ty1, ty2) = (tys.head, tys.tail.head)
         if (ty1 == ty2) {
-          Set(
-            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))),
-            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))))
+          Set(  // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
+            /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))),
+            /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))
           )
         } else Set()
       } else Set()
     }
-    def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
+    final def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
       if (typs.size == 1) {
         val typ = typs.head
         val compatibleTerms = terms.filter(_.ty == typ)
-        compatibleTerms.map(t => Term.λ(typ)(Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.substitute(Subst.shift(1)), Term.mkBound(typ, 1)))))
+        // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
+        compatibleTerms.map(t => Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.lift(1), Term.mkBound(typ, 1))))
       } else Set()
     }
 
@@ -668,7 +669,8 @@ package inferenceControl {
       if (level > 0) {
         val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
         if (cA_ps) {
-          Out.debug(s"Prim subst on: ${cw.id}")
+          // Every variable in ps_vars has type a_1 -> ... -> a_n -> o (n >= 0)
+          Out.debug(s"[Prim subst] On ${cw.id}")
           var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
           if (level > 1) {
             primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
@@ -689,14 +691,136 @@ package inferenceControl {
   }
 
   protected[modules] object SpecialInstantiationControl {
+    import leo.modules.calculus.Enumeration._
+    import leo.Configuration.{PRE_PRIMSUBST_LEVEL => LEVEL, PRE_PRIMSUBST_MAX_DEPTH => MAXDEPTH}
+
     final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-//      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-//
-//      }
-// TODO: shallow simp at end.
-      Set(cl)
+      if (LEVEL != NO_REPLACE) {
+        leo.Out.trace("[Special Instances] Searching ...")
+        val clause = cl.cl
+        assert(Clause.unit(clause))
+        val lit = clause.lits.head
+        assert(!lit.equational)
+        val term = lit.left
+        val instancesResult = instantiateTerm(term, lit.polarity, 0)(sig)
+        val result = instancesResult.map (r =>
+          if (r == term)
+            cl
+          else {
+            val result = AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), cl.properties)
+            val simpResult = SimplificationControl.shallowSimp(result)(sig)
+            simpResult
+          }
+        )
+        leo.Out.debug(s"[Special Instances] Instances used:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        result
+      } else Set(cl)
     }
 
+    final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(sig: Signature): Set[Term] = {
+      import leo.datastructures.Term._
+      import leo.modules.HOLSignature.{Forall, Exists, Not, Impl}
+
+      if (depth >= MAXDEPTH)
+        Set(t)
+      else {
+        t match {
+          case Not(body) =>
+            val erg = instantiateTerm(body, !polarity, depth+1)(sig)
+            erg.map(e => Not(e))
+          case Impl(l,r) =>
+            val ergL = instantiateTerm(l, !polarity, depth+1)(sig)
+            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            var result: Set[Term] = Set()
+            val ergLIt = ergL.iterator
+            while (ergLIt.hasNext) {
+              val eL = ergLIt.next()
+              val ergRIt = ergR.iterator
+              while (ergRIt.hasNext) {
+                val eR = ergRIt.next()
+                val impl = Impl(eL, eR)
+                result = result + impl
+              }
+            }
+            result
+          case Forall(all@(ty :::> _)) if polarity && shouldReplace(ty) =>
+            val r = instantiateAbstractions(all, ty)(sig)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+            if (Enumeration.exhaustive(ty))
+              r2
+            else
+              r2 + t
+          case Exists(all@(ty :::> _)) if !polarity && shouldReplace(ty) =>
+            val r = instantiateAbstractions(all, ty)(sig)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+            if (Enumeration.exhaustive(ty))
+              r2
+            else
+              r2 + t
+          case hd ∙ args =>
+            val argsIt = args.iterator
+            var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
+            while (argsIt.hasNext) {
+              val arg = argsIt.next()
+              if (arg.isRight) {
+                newArgs = newArgs.map(seq => seq :+ arg)
+              } else {
+                val termArg = arg.left.get
+                val erg = instantiateTerm(termArg, polarity, depth+1)(sig)
+                newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
+              }
+            }
+            newArgs.map(erg => Term.mkApp(hd, erg))
+          case ty :::> body =>
+            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+            erg.map(e => Term.mkTermAbs(ty, e))
+          case TypeLambda(body) =>
+            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+            erg.map(e => Term.mkTypeAbs(e))
+          case _ => Set(t)
+        }
+      }
+    }
+
+    private final def instantiateAbstractions(term: Term, ty: Type)(sig: Signature): Set[Term] = {
+      assert(term.ty.isFunType)
+      leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
+      leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(REPLACE_O,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(REPLACE_OO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(REPLACE_AO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
+      if (shouldReplace(ty)) {
+        leo.Out.finest(s"[Special Instances]: Should apply.")
+        val instances = Enumeration.specialInstances(ty, LEVEL)(sig)
+        if (instances.nonEmpty) {
+          leo.Out.trace(s"[Special Instances]: Used (${instances.size}): ${instances.map(_.pretty(sig))}")
+          instances.map(i => Term.mkTermApp(term, i).betaNormalize)
+        } else Set()
+      } else Set()
+    }
+
+    private final def shouldReplace(ty: Type): Boolean = {
+      import leo.modules.HOLSignature.o
+      import leo.modules.calculus.Enumeration._
+
+      val funTyArgs = ty.funParamTypesWithResultType
+      if (funTyArgs.last == o) {
+        if (funTyArgs.size == 1) isPropSet(REPLACE_O, Configuration.PRE_PRIMSUBST_LEVEL) // Booleans
+        else {
+          // funTyArgs.size > 1
+          if (funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          else {
+            if (isPropSet(REPLACE_AO, Configuration.PRE_PRIMSUBST_LEVEL)) true
+            else {
+              if (funTyArgs.size == 3) {
+                val ty1 = funTyArgs.head; val ty2 = funTyArgs.tail.head
+                (ty1 == ty2) && isPropSet(REPLACE_AAO,Configuration.PRE_PRIMSUBST_LEVEL)
+              } else false
+            }
+          }
+        }
+      } else false
+    }
   }
 
   protected[modules] object Choice {
@@ -808,6 +932,7 @@ package inferenceControl {
     /** Pre: Is only called on initial clauses, i.e. clauses are not equaltional and unit. */
     final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       import leo.modules.calculus.Miniscope
+      if (Clause.empty(cl.cl)) return cl
 
       assert(Clause.unit(cl.cl))
       assert(!cl.cl.lits.head.equational)
@@ -1316,15 +1441,15 @@ package indexingControl {
       * as feature vector index, subsumption index etc.
       * @note method may change in future (maybe more arguments will be needed). */
     final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
-      FVIndexControl.init(initClauses.toSet)(sig)
-      FOIndexControl.foIndexInit()
+      FVIndexControl.init(initClauses)(sig)
+//      FOIndexControl.foIndexInit()
     }
     /** Insert cl to all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
       * as feature vector index, subsumption index etc.*/
     final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.insert(cl)
-      FOIndexControl.index.insert(cl)
+//      FOIndexControl.index.insert(cl) // FIXME There seems to be some error in recognizing real TFF clauses, i.e. some are falsely added
       // TODO: more indexes ...
     }
     /** Remove cl from all relevant indexes used. This is
@@ -1332,7 +1457,7 @@ package indexingControl {
       * as feature vector index, subsumption index etc.*/
     final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.remove(cl)
-      FOIndexControl.index.remove(cl)
+//      FOIndexControl.index.remove(cl)
       // TODO: more indexes ...
     }
   }
