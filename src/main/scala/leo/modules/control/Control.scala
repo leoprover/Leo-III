@@ -53,6 +53,7 @@ object Control {
   @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(insertIndexed)
   @inline final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
   @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
+  @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = Set()
   // TODO: Clean-up all those indexing methods below:
   @deprecated @inline final def fvIndexInit(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses.toSet)(sig)
   @deprecated @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)

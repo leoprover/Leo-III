@@ -472,8 +472,8 @@ object SeqPProc {
       state.removeProcessed(backSubsumedClauses)
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
-      // Remove all direct descandants of clauses in `bachSubsumedClauses` from unprocessed
-      // TODO
+      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
+      state.removeUnprocessed(Control.descendants(backSubsumedClauses))
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
