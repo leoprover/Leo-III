@@ -129,7 +129,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   final def addUnprocessed(cl: T): Unit = {mpq.insert(cl)}
   final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
-  final def removeUnprocessed(cls: Set[T]): Unit = throw new NotImplementedError()
+  final def removeUnprocessed(cls: Set[T]): Unit = {mpq.remove(cls)}
 
   final def processed: Set[T] = current_processed
   final def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
