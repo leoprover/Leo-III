@@ -834,22 +834,22 @@ object PatternUnification extends Unification {
       // Maybe this should be done better...
       val varsBefore = vargen.existingVars
 
-//      if (rigidHd.isVariable) {
-////        if (!args10.contains(rigidHd.etaExpand)) return null /*fail*/
-//        // variables cannot be polymorphic, calculating projection binding.
-//        // newrigidHd: position of bound rigid hd in flex-args-list
-//        val newrigidHd = Term.local.mkBound(rigidHd.ty, args10.size - args10.indexOf(rigidHd.etaExpand))
-//        val binding = partialBinding(vargen, ty1, newrigidHd)
-//        leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
-//        val varsAfter = vargen.existingVars
-//        val subst = Subst.singleton(idx1, binding)
-//        // new equations:
-//        val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
-//        assert(newVars.size == rigidArgs.size)
-//        val newueqs = newUEqs(newVars, args10, rigidArgs.map(_.left.get), depth)
-//        ((subst, Subst.id), newueqs)
-//      } else {
-//        assert(rigidHd.isConstant)
+      if (rigidHd.isVariable) {
+        if (!args10.contains(rigidHd.etaExpand)) return null /*fail*/
+        // variables cannot be polymorphic, calculating projection binding.
+        // newrigidHd: position of bound rigid hd in flex-args-list
+        val newrigidHd = Term.local.mkBound(rigidHd.ty, args10.size - args10.indexOf(rigidHd.etaExpand))
+        val binding = partialBinding(vargen, ty1, newrigidHd)
+        leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
+        val varsAfter = vargen.existingVars
+        val subst = Subst.singleton(idx1, binding)
+        // new equations:
+        val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
+        assert(newVars.size == rigidArgs.size)
+        val newueqs = newUEqs(newVars, args10, rigidArgs.map(_.left.get), depth)
+        ((subst, Subst.id), newueqs)
+      } else {
+        assert(rigidHd.isConstant)
         // Constants may be polymorphic: Apply types before calculating imitation binding.
         val rigidArgs0 = splitArgs(rigidArgs)
         assert(rigidArgs0._1.isEmpty || rigidHd.ty.isPolyType)
@@ -867,7 +867,7 @@ object PatternUnification extends Unification {
         assert(newVars.size == rigidArgs0._2.size)
         val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
         ((subst, Subst.id), newueqs)
-//      }
+      }
     } catch {
       case _:NoSuchElementException => null
     }
