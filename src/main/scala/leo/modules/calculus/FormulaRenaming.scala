@@ -72,6 +72,7 @@ object FormulaRenaming {
       val c_ty = Type.mkFunType(arg_ty, o)
       val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
       val t = &(a, c_def)
+      println("Rename")
       (t, Literal(c_def, true), Literal(b, false))
     case (a ||| b) if polarity =>
       val args : Seq[Term] = b.freeVars.toSeq
@@ -79,6 +80,7 @@ object FormulaRenaming {
       val c_ty = Type.mkFunType(arg_ty, o)
       val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
       val t = |||(a, c_def)
+      println("Rename")
       (t, Literal(c_def, false), Literal(b, true))
     case Impl(a,b) if polarity =>
       val args : Seq[Term] = b.freeVars.toSeq
@@ -86,6 +88,7 @@ object FormulaRenaming {
       val c_ty = Type.mkFunType(arg_ty, o)
       val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
       val t = Impl(a, c_def)
+      println("Rename")
       (t, Literal(c_def, false), Literal(b, true))
     case otherwise => (t, null, null)
   }
