@@ -646,9 +646,9 @@ package inferenceControl {
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
-    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===, Forall, i}
+    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||, Term.mkTypeApp(Forall, i))
+    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||)
     final def eqBindings(tys: Seq[Type]): Set[Term] = {
       leo.Out.trace(s"eqBindings on type: ${tys.map(_.pretty)}")
       if (tys.size == 2) {
