@@ -454,6 +454,7 @@ package inferenceControl {
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, cl.properties)) {
           Out.debug(s"Clause ${cl.id} needs unification. Working on it ...")
           Out.debug(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
+          Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           val vargen = leo.modules.calculus.freshVarGen(cl.cl)
 
           val results = if (cl.annotation.fromRule.isEmpty) {
@@ -469,6 +470,9 @@ package inferenceControl {
             }
           }
           Out.trace(s"Uni result:\n\t${results.map(_.pretty(sig)).mkString("\n\t")}")
+          results.foreach(cl =>
+            Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
+          )
           resultSet = resultSet union results
         } else resultSet = resultSet + cl
       }
@@ -661,13 +665,16 @@ package inferenceControl {
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
     import leo.modules.output.ToTPTP
-    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===, Forall, i}
+    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||, Term.mkTypeApp(Forall, i))
+    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||)
     final def eqBindings(tys: Seq[Type]): Set[Term] = {
+      leo.Out.trace(s"eqBindings on type: ${tys.map(_.pretty)}")
       if (tys.size == 2) {
+        leo.Out.trace(s"eqBindings two arguments")
         val (ty1, ty2) = (tys.head, tys.tail.head)
         if (ty1 == ty2) {
+          leo.Out.trace(s"same type")
           Set(  // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
             /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))),
             /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))
@@ -692,11 +699,11 @@ package inferenceControl {
           Out.debug(s"[Prim subst] On ${cw.id}")
           var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
           if (level > 1) {
-            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
+            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), eqBindings(h.ty.funParamTypes)))
             if (level > 2) {
-              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
               if (level > 3) {
-                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
               }
             }
           }
@@ -979,9 +986,9 @@ package inferenceControl {
     }
 
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      val (cA_lift, lift, lift_other) = LiftEq.canApply(cl.cl)
+      val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(lift, lift_other)(sig)), InferredFrom(LiftEq, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, Set(cl)), cl.properties)
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
