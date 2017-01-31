@@ -339,28 +339,35 @@ object SeqPProc {
             cur = Control.funcext(cur)
             /* To equality if possible */
             cur = Control.liftEq(cur)
-            // Check if `cur` is an empty clause
-            if (Clause.effectivelyEmpty(cur.cl)) {
-              loop = false
-              endplay(cur, state)
-            } else {
-              // Not an empty clause, detect choice definition or do reasoning step.
-              val choiceCandidate = Control.detectChoiceClause(cur)
-              if (choiceCandidate.isDefined) {
-                val choiceFun = choiceCandidate.get
-                state.addChoiceFunction(choiceFun)
-                leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
+
+            val curCNF = Control.cnf(cur)
+            if (curCNF.size == 1 && curCNF.head == cur) {
+              // No CNF step, do main loop inferences
+              // Check if `cur` is an empty clause
+              if (Clause.effectivelyEmpty(cur.cl)) {
+                loop = false
+                endplay(cur, state)
               } else {
-                // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
-                // e.g. by forward subsumption
-                if (!Control.redundant(cur, state.processed)) {
-                  if(mainLoopInferences(cur, state)) loop = false
+                // Not an empty clause, detect choice definition or do reasoning step.
+                val choiceCandidate = Control.detectChoiceClause(cur)
+                if (choiceCandidate.isDefined) {
+                  val choiceFun = choiceCandidate.get
+                  state.addChoiceFunction(choiceFun)
+                  leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
                 } else {
-                  Out.debug(s"Clause ${cur.id} redundant, skipping.")
-                  state.incForwardSubsumedCl()
+                  // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+                  // e.g. by forward subsumption
+                  if (!Control.redundant(cur, state.processed)) {
+                    if(mainLoopInferences(cur, state)) loop = false
+                  } else {
+                    Out.debug(s"Clause ${cur.id} redundant, skipping.")
+                    state.incForwardSubsumedCl()
+                  }
                 }
+                Control.submit(state.processed, state)
               }
-              Control.submit(state.processed, state)
+            } else {
+              state.addUnprocessed(curCNF)
             }
           }
         }
@@ -451,22 +458,24 @@ object SeqPProc {
     val cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
-//    println(s"current clauses symbols: ${Clause.symbols(cl.cl).map(s => state.signature(s).name).mkString(",")}")
-
     /////////////////////////////////////////
     // Backward simplification BEGIN
-    // TODO: à la E: direct descendant criterion, etc.
     /////////////////////////////////////////
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
     if (backSubsumedClauses.nonEmpty) {
-      Out.trace(s"#### backward subsumed")
+      Out.trace(s"[Redundancy] ${cur.id} subsumes processed clauses")
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
-      Out.trace(s"backward subsumes\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
-      state.setProcessed(state.processed -- backSubsumedClauses)
+      Out.finest(s"[Redundancy] Processed subsumed:" +
+        s"\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
+      // Remove from processed set, from indexes etc.
+      state.removeProcessed(backSubsumedClauses)
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
+      // Remove all direct descandants of clauses in `bachSubsumedClauses` from unprocessed
+      // TODO
     }
+    assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
     state.addProcessed(cur)
     Control.insertIndexed(cur)

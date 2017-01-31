@@ -23,9 +23,10 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def nextUnprocessed: T
   def addUnprocessed(unprocessed: T): Unit
   def addUnprocessed(unprocessed: Set[T]): Unit
+  def removeUnprocessed(unprocessed: Set[T]): Unit
   def processed: Set[T]
-  def setProcessed(p: Set[T]): Unit
   def addProcessed(cl: T): Unit
+  def removeProcessed(cls: Set[T]): Unit
 
   def rewriteRules: Set[T]
   def addRewriteRule(cl: T): Unit
@@ -128,10 +129,11 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   final def addUnprocessed(cl: T): Unit = {mpq.insert(cl)}
   final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
+  final def removeUnprocessed(cls: Set[T]): Unit = throw new NotImplementedError()
 
   final def processed: Set[T] = current_processed
-  final def setProcessed(c: Set[T]): Unit = {current_processed = c}
   final def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
+  final def removeProcessed(cls: Set[T]): Unit = {current_processed = current_processed -- cls}
 
   final def rewriteRules: Set[T] = current_rewriterules
   final def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}

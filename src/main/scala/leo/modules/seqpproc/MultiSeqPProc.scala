@@ -231,7 +231,7 @@ class MultiSeqPProc(externalCallIteration : Int, addPreprocessing : Set[Annotate
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
     state.incBackwardSubsumedCl(backSubsumedClauses.size)
-    state.setProcessed(state.processed -- backSubsumedClauses)
+    state.removeProcessed(backSubsumedClauses)
     Control.fvIndexRemove(backSubsumedClauses)
     state.addProcessed(cur)
     Control.fvIndexInsert(cur)
