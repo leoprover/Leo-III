@@ -25,6 +25,7 @@ trait MultiPriorityQueue[A] {
       case xs                                => xs foreach insert
     }
   }
+  def remove(x: A): Unit
   def addPriority(p: Ordering[A]): OrderingKey
   def priorities: Int
   def isEmpty: Boolean
