@@ -25,12 +25,13 @@ object FormulaRenaming {
     * Compares the blowup of the clauses of the original term,
     * and the introduction of a definition.
     *
-    * @param t The term checked for introducing definitions.
-    * @param polarity The polarity under which the term occures
+    * @param l The literal checked for introducing definitions.
     * @param THRESHHOLD The threshhold until we do not consider renaming
     * @return true, iff the cnf of the split smaller (+THRESHHOLD) than the original cnf
     */
-  def canApply(t : Term, polarity : Boolean, THRESHHOLD : Int = 5) : Boolean = t match {
+  def canApply(l : Literal, THRESHHOLD : Int = 0) : Boolean = if(!l.equational) canApply(l.left, l.polarity, THRESHHOLD) else false
+
+  private def canApply(t : Term, polarity : Boolean, THRESHHOLD : Int) : Boolean = t match {
     case (a & b) if !polarity =>
       val as = size(a, polarity)
       val bs = size(b, polarity)
@@ -51,37 +52,41 @@ object FormulaRenaming {
     *
     * Performs trivial checks for a blowup in which case (t, Seq()) is returned,
     * but a renaming is only guaranteed to succeed, if it is guarded by `canApply`.
+    * After a successfull test with `canApply` the result has exactly two elements in the sequence.
     *
-    * @param t The term, that should be replaced
-    * @param polarity the polarity of the term
+    * @param l The literal, that should be replaced
     * @param sig Signature in the current context
-    * @return A tupel of the replaced term and a sequence of new Literals from the single defining clause.
+    * @return A tupel of the replaced term and a sequence of two Literals repersenting the defining clause (null, null if not successfull)
     */
-  def apply(t : Term, polarity : Boolean)(implicit sig : Signature) : (Term, Seq[Literal]) = t match {
+  def apply(l : Literal)(implicit sig : Signature) : (Literal, Literal, Literal) = {
+    if(!l.equational) {
+      val (l1, l2, l3) = apply(l.left, l.polarity)
+      (Literal(l1, l.polarity), l2, l3)
+    } else (l, null, null)
+  }
+
+  private def apply(t : Term, polarity : Boolean)(implicit sig : Signature) : (Term, Literal, Literal) = t match {
     case (a & b) if !polarity =>
       val args : Seq[Term] = b.freeVars.toSeq
       val arg_ty : Seq[Type] = args.map(_.ty)
       val c_ty = Type.mkFunType(arg_ty, o)
       val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
-      val defs = Seq(Literal(c_def, false), Literal(b, true))
       val t = &(a, c_def)
-      (t, defs)
+      (t, Literal(c_def, true), Literal(b, false))
     case (a ||| b) if polarity =>
       val args : Seq[Term] = b.freeVars.toSeq
       val arg_ty : Seq[Type] = args.map(_.ty)
       val c_ty = Type.mkFunType(arg_ty, o)
       val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
-      val defs = Seq(Literal(c_def, false), Literal(b, true))
       val t = |||(a, c_def)
-      (t, defs)
+      (t, Literal(c_def, false), Literal(b, true))
     case Impl(a,b) if polarity =>
       val args : Seq[Term] = b.freeVars.toSeq
       val arg_ty : Seq[Type] = args.map(_.ty)
       val c_ty = Type.mkFunType(arg_ty, o)
       val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
-      val defs = Seq(Literal(c_def, false), Literal(b, true))
       val t = Impl(a, c_def)
-      (t, defs)
-    case otherwise => (t, Seq())
+      (t, Literal(c_def, false), Literal(b, true))
+    case otherwise => (t, null, null)
   }
 }

@@ -153,6 +153,67 @@ object  StepCNF extends CalculusRule {
   }
 }
 
+
+object RenameCNF extends CalculusRule {
+  override def name : String = "cnf"
+  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  type FVs = FullCNF.FVs
+  type TyFVS = FullCNF.TyFVS
+
+  @inline
+  final def canApply(l : Literal) : Boolean = FullCNF.canApply(l)
+
+  final def apply(vargen : leo.modules.calculus.FreshVarGen, cl : Clause)(implicit sig: Signature) : Seq[Clause] = {
+    val lits = cl.lits
+    val normLits = apply(vargen, lits)
+    normLits.map{ls => Clause(ls)}
+  }
+
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal])(implicit sig: Signature): (Seq[Seq[Literal]]) = {
+    var acc : Seq[Seq[Literal]] = Seq(Seq())
+    val it : Iterator[Literal] = l.iterator
+    while(it.hasNext){
+      val nl = it.next()
+      apply(vargen, nl) match {
+        case Seq(Seq(lit)) => acc = acc.map{normLits => lit +: normLits}
+        case norms =>  acc = multiply(norms, acc)
+      }
+    }
+    acc
+  }
+
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal)(implicit sig: Signature): Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l)
+
+  @inline
+  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal)(implicit sig: Signature): Seq[Seq[Literal]] = if(!l.equational){
+    if(FormulaRenaming.canApply(l)) {
+      val (replLit, defl1, defl2) = FormulaRenaming.apply(l)
+      assert(defl1 != null && defl2 != null, "No renaming was performed")
+      apply0(fvs, tyFVs, vargen, replLit) ++ multiply(apply0(fvs, tyFVs, vargen, defl1), apply0(fvs, tyFVs, vargen, defl2))
+    } else {
+    l.left match {
+      case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity))
+      case &(lt,rt) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,true))
+      case &(lt,rt) if !l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false)), apply0(fvs, tyFVs, vargen, Literal(rt, false)))
+      case |||(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,true)), apply0(fvs, tyFVs, vargen, Literal(rt, true)))
+      case |||(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,false)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
+      case Impl(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false)), apply0(fvs, tyFVs, vargen, Literal(rt, true)))
+      case Impl(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
+      case Forall(a@(ty :::> t)) if l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true))
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, false))
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, true))
+      case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))
+      case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)).betaNormalize.etaExpand, true))
+      case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false))
+      case _ => Seq(Seq(l))
+    }}
+  } else {
+    Seq(Seq(l))
+  }
+
+  private[calculus] final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = FullCNF.multiply(l,r)
+}
+
 /**
   * Created by mwisnie on 4/4/16.
   */
@@ -218,7 +279,7 @@ object FullCNF extends CalculusRule {
     Seq(Seq(l))
   }
 
-  private final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
+  private[calculus] final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
     var acc : Seq[Seq[A]] = Seq()
     val itl = l.iterator
     while(itl.hasNext) {
