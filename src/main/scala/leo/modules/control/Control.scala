@@ -88,7 +88,12 @@ package inferenceControl {
   protected[modules] object CNFControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
-    final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
+    private lazy val internalCNF: (AnnotatedClause, Signature) => Set[AnnotatedClause] = if (Configuration.RENAMING_SET) cnf1 else cnf2
+    private lazy val threshhold : Int = Configuration.RENAMING_THRESHHOLD
+
+    final def cnf(cl : AnnotatedClause)(implicit sig : Signature) : Set[AnnotatedClause] = internalCNF(cl, sig)
+
+    private final def cnf1(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
       Out.trace(s"CNF of ${cl.pretty(sig)}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
@@ -101,7 +106,21 @@ package inferenceControl {
         Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       }
+    }
 
+    private final def cnf2(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
+      Out.trace(s"CNF of ${cl.pretty(sig)}")
+      val cnfresult = RenameCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
+      if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
+        // no CNF step at all
+        Out.trace(s"CNF result:\n\t${cl.pretty(sig)}")
+        Set(cl)
+      } else {
+        val cnfsimp = cnfresult //.map(Simp.shallowSimp)
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        result
+      }
     }
 
     final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
