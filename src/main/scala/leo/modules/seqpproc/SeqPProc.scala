@@ -64,7 +64,7 @@ object SeqPProc {
             val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
               override final val name: String = "neg_conjecture"
               override final val inferenceStatus = Some(SZS_CounterTheorem)
-            }, Set(conjectureClause)), ClauseAnnotation.PropSOS)
+            }, conjectureClause), ClauseAnnotation.PropSOS)
             state.setNegConjecture(negConjectureClause)
             conj = formula
           } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
@@ -394,6 +394,7 @@ object SeqPProc {
       Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
       Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
       Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
+      Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
       Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
       Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
       Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
@@ -473,7 +474,9 @@ object SeqPProc {
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
       // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
-      state.removeUnprocessed(Control.descendants(backSubsumedClauses))
+//      val descendants = Control.descendants(backSubsumedClauses)
+//      state.incDescendantsDeleted(descendants.size)
+//      state.removeUnprocessed(descendants)
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
@@ -536,23 +539,22 @@ object SeqPProc {
     newclauses = Control.unifyNewClauses(newclauses)
 
     /* exhaustively CNF new clauses */
-    newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+    newclauses = newclauses.flatMap(Control.cnf)
     /* Replace eq symbols on top-level by equational literals. */
-    newclauses = newclauses.map(Control.liftEq)
+    newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
-
+//    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
-    // At the end, for each generated clause apply simplification etc.
-    // and add to unprocessed, eagly look for the empty clause
+    // At the end, for each generated clause add to unprocessed,
+    // eagly look for the empty clause
     // and return true if found.
     /////////////////////////////////////////
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
-      var newCl = newIt.next()
+      val newCl = newIt.next()
       assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
-      newCl = Control.shallowSimp(newCl)
       if (Clause.effectivelyEmpty(newCl.cl)) {
         endplay(newCl, state)
         return true

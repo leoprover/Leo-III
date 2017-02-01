@@ -53,7 +53,8 @@ object Control {
   @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(insertIndexed)
   @inline final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
   @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
-  @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = Set()
+  @inline final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = indexingControl.IndexingControl.updateDescendants(taken, generated)
+  @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = indexingControl.IndexingControl.descendants(cls)
   // TODO: Clean-up all those indexing methods below:
   @deprecated @inline final def fvIndexInit(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses.toSet)(sig)
   @deprecated @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
@@ -98,7 +99,7 @@ package inferenceControl {
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
-        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, cl), cl.properties)}
         Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       }
@@ -209,26 +210,6 @@ package inferenceControl {
               }
             }
           }
-
-
-
-//          if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {
-//            // implicitly: intoWrapper.id != withWrapper.id since withLit.polarity == true
-//            Out.trace(s"Resolution step")
-//          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
-//            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-//            Out.finest(s"with: ${withClause.pretty}")
-//            Out.finest(s"withside: ${withSide.toString}")
-//            Out.finest(s"into: ${intoClause.pretty}")
-//            Out.finest(s"intoside: ${intoSide.toString}")
-//            val newCl = OrderedParamod(withClause, withIndex, withSide,
-//              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
-//
-//            val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-//            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-//            results = results + newClWrapper
-//          }
-
         }
       }
 
@@ -341,7 +322,7 @@ package inferenceControl {
 //                  ClauseAnnotation.PropSOS
 //                else ClauseAnnotation.PropNoProp
 
-                val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
                 res = res + result
               }
               // If equation is oriented, we still need to look at the side-switched version
@@ -359,7 +340,7 @@ package inferenceControl {
                   //                  ClauseAnnotation.PropSOS
                   //                else ClauseAnnotation.PropNoProp
 
-                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
                   res = res + result
                 }
               }
@@ -483,7 +464,7 @@ package inferenceControl {
           if (simpResult.size == 1 && simpResult.head == uniLit) Set()
           else {
             val resultClause = Clause(cl.lits.init ++ simpResult)
-            val res = AnnotatedClause(resultClause, InferredFrom(Simp, Set(cl0)), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
+            val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
             Out.finest(s"No unification, but Uni Simp result: ${res.pretty(sig)}")
             Set(res)
           }
@@ -535,7 +516,7 @@ package inferenceControl {
         } else Seq(uniLit2)
         if (wasSimplified) {
           val resultClause = Clause(cl.lits.init.init ++ uniLit1Simp ++ uniLit2Simp)
-          val res = AnnotatedClause(resultClause, InferredFrom(Simp, Set(cl0)), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
+          val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
           Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
           Set(res)
         } else Set()
@@ -572,7 +553,7 @@ package inferenceControl {
           val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
           if (uniLits == uniLitsSimp) Set(cl)
           else {
-            Set(AnnotatedClause(Clause(cl.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(cl)), cl.properties))
+            Set(AnnotatedClause(Clause(cl.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, cl), cl.properties))
           }
         } else {
           val resultClausesIt = uniResult.iterator
@@ -583,7 +564,7 @@ package inferenceControl {
             val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
             if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
             else {
-              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, Set(resultClause)), resultClause.properties)
+              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, resultClause), resultClause.properties)
             }
           }
           resultClausesSimp
@@ -635,7 +616,7 @@ package inferenceControl {
           val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
           if (cA_boolExt) {
             Out.debug(s"Bool Ext on: ${cw.pretty(sig)}")
-            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cw)),cw.properties | ClauseAnnotation.PropBoolExt))
+            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw),cw.properties | ClauseAnnotation.PropBoolExt))
             Out.trace(s"Bool Ext result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
             result
           } else Set()
@@ -887,14 +868,14 @@ package inferenceControl {
               while (choiceFunIt.hasNext) {
                 val choiceFun = choiceFunIt.next()
                 val result0 = ChoiceRule(candPredicate, choiceFun)
-                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
+                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
                 results = results + result
               }
             } else {
               // No choice function registered, introduce one now
               val choiceFun = registerNewChoiceFunction(choiceType)(sig)
               val result0 = ChoiceRule(candPredicate, choiceFun)
-              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
+              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
               results = results + result
             }
           }
@@ -929,7 +910,7 @@ package inferenceControl {
         }
       }
       if (wasApplied) {
-        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, cl), cl.properties)
         Out.trace(s"Switch polarity: ${result.pretty}")
         result
       } else
@@ -949,7 +930,7 @@ package inferenceControl {
       val term = lit.left
       val resultterm = Miniscope.apply(term, lit.polarity)
       val result = if (term != resultterm)
-          AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Miniscope, Set(cl)), cl.properties)
+          AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Miniscope, cl), cl.properties)
         else
           cl
       Out.trace(s"Miniscope Result: ${result.pretty(sig)}")
@@ -962,7 +943,7 @@ package inferenceControl {
       val lit = cl.cl.lits.head
       assert(!lit.equational)
       val newleft = DefExpSimp(lit.left)(sig)
-      val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, Set(cl)), cl.properties)
+      val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, cl), cl.properties)
       Out.trace(s"Def expansion: ${result.pretty(sig)}")
       result
     }
@@ -970,7 +951,7 @@ package inferenceControl {
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), cl.properties)
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
@@ -981,7 +962,7 @@ package inferenceControl {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
-        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), cl.properties)
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else
@@ -1021,7 +1002,7 @@ package inferenceControl {
           result = result + cl
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
-          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cl)),cl.properties | ClauseAnnotation.PropBoolExt))
+          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
           result = result union cnf
         }
@@ -1072,7 +1053,7 @@ package inferenceControl {
         val acSymbols = sig.acSymbols
         Out.trace(s"AC Simp on ${cl.pretty(sig)}")
         val pre_result = ACSimp.apply(cl.cl,acSymbols)
-        val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, Set(cl)), cl.properties)
+        val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, cl), cl.properties)
         Out.finest(s"AC Result: ${result.pretty(sig)}")
         result
       } else
@@ -1083,7 +1064,7 @@ package inferenceControl {
       Out.trace(s"[Simp] Processing ${cl.id}")
       val simpresult = Simp(cl.cl)
       val result = if (simpresult != cl.cl)
-        AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
+        AnnotatedClause(simpresult, InferredFrom(Simp, cl), cl.properties)
       else
         cl
       Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
@@ -1095,7 +1076,7 @@ package inferenceControl {
       Out.trace(s"[Simp] Shallow processing ${cl.id}")
       val simpresult = Simp.shallowSimp(cl.cl)
       val result = if (simpresult != cl.cl)
-        AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
+        AnnotatedClause(simpresult, InferredFrom(Simp, cl), cl.properties)
       else
         cl
       Out.trace(s"[Simp] Shallow result: ${result.pretty(sig)}")
@@ -1127,7 +1108,7 @@ package inferenceControl {
           }
         }
         val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
-        if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
+        if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
         else plainSimp
       }
     }
@@ -1241,7 +1222,7 @@ package inferenceControl {
           if (replaceAndrews) {
             cur_c = convertAndrews0(cur_c)(sig)
           }
-          if (cur_c != cl) {
+          if (cur_c.cl != cl.cl) {
             newClauses = newClauses + cur_c
           }
         }
@@ -1467,6 +1448,49 @@ package indexingControl {
       FVIndexControl.remove(cl)
 //      FOIndexControl.index.remove(cl)
       // TODO: more indexes ...
+    }
+
+
+    private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map()
+    final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = {
+      var result: Set[AnnotatedClause] = Set()
+      val clsIt = cls.iterator
+      while (clsIt.hasNext) {
+        val cl = clsIt.next()
+        result = result union decendantMap(cl.id)
+      }
+      result
+    }
+
+    final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = {
+      decendantMap = decendantMap + (taken.id -> generated)
+      val generatedIt = generated.iterator
+      while (generatedIt.hasNext) {
+        val cl = generatedIt.next()
+        assert(cl.annotation.fromRule.isDefined)
+        var parents = cl.annotation.parents
+        var found = false
+        assert(parents.nonEmpty)
+        while (!found) {
+          if (parents.size == 1) {
+            if (parents.head == taken) found = true
+            else parents = parents.head.annotation.parents
+          } else if (parents.size == 2) {
+            val p1 = parents.head; val p2 = parents.tail.head
+            assert(p1.id == taken.id || p2.id == taken.id)
+            if (p1.id == taken.id) {
+              // cl is descendant of p2
+              assert(decendantMap.isDefinedAt(p2.id))
+              decendantMap = decendantMap + (p2.id -> (decendantMap(p2.id) + cl))
+            } else {
+              // p2 == taken
+              // cl is descendant of p1
+              assert(decendantMap.isDefinedAt(p1.id))
+              decendantMap = decendantMap + (p1.id -> (decendantMap(p1.id) + cl))
+            }
+          } else assert(false)
+        }
+      }
     }
   }
 

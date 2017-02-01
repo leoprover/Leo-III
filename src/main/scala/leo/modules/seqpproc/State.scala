@@ -56,6 +56,8 @@ trait StateStatistics {
   def incBackwardSubsumedCl(): Unit
   def incBackwardSubsumedCl(n: Int): Unit
   def noBackwardSubsumedCl: Int
+  def incDescendantsDeleted(n: Int): Unit
+  def noDescendantsDeleted: Int
   def incGeneratedCl(by: Int): Unit
   def noGeneratedCl: Int
   def incParamod(by: Int): Unit
@@ -167,6 +169,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var trivialCount: Int = 0
   private var forwardSubsumedCount: Int = 0
   private var backwardSubsumedCount: Int = 0
+  private var descendantsDeleted: Int = 0
   private var factorCount: Int = 0
   private var paramodCount: Int = 0
   private var choiceInstantiations0: Int = 0
@@ -178,6 +181,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def noFactor: Int = factorCount
   final def noForwardSubsumedCl: Int = forwardSubsumedCount
   final def noBackwardSubsumedCl: Int = backwardSubsumedCount
+  final def noDescendantsDeleted: Int = descendantsDeleted
   final def choiceInstantiations: Int = choiceInstantiations0
 
   final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
@@ -188,6 +192,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
   final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
   final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
+  final def incDescendantsDeleted(n: Int): Unit = {descendantsDeleted += n}
   final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
 
   // Pretty

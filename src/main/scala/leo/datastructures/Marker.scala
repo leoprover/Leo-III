@@ -126,12 +126,18 @@ trait ClauseProxy extends Pretty with Prettier {
 
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
                            var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
-  override def equals(o: Any): Boolean = o match {  // TODO IMPORTANT, Clause Equivalence checks for set inclusion, multiplicity not checked in hashCode()
-    case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
+  override def equals(o: Any): Boolean = o match {
+    case cw: ClauseProxy => cw.id == id // Equality is defined in term of id. This implies that the clauses of two
+                                        // annotatedclauses may be equal while the annotatedclauses are not equal.
+                                        // This is done due to performance considerations: Clause equality is quite
+                                        // expensive to calculate. On the other hand, the unprocessed set will
+                                        // contain duplicated clauses now, this will nevertheless be handled by
+                                        // subsumption. This way, equality on clauses is only calculated for
+                                        // selected clauses.
     case _ => false
   }
 
-  override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
+  override def hashCode(): Int = id.hashCode()
 }
 
 object AnnotatedClause {
@@ -148,6 +154,7 @@ object AnnotatedClause {
 
 abstract sealed class ClauseAnnotation extends Pretty {
   def fromRule: Option[leo.modules.calculus.CalculusRule]
+  def parents: Set[_ <: ClauseProxy]
 }
 
 object ClauseAnnotation {
@@ -161,7 +168,8 @@ object ClauseAnnotation {
       }.mkString(",")
     }])"
 
-    val fromRule = Some(rule)
+    def fromRule = Some(rule)
+    def parents = cws.map(_._1)
   }
   object InferredFrom {
     def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Set[A]): ClauseAnnotation =
@@ -172,12 +180,14 @@ object ClauseAnnotation {
   }
 
   case object NoAnnotation extends ClauseAnnotation {
-    val pretty: String = ""
-    val fromRule = None
+    final def pretty: String = ""
+    final val fromRule = None
+    final def parents = Set()
   }
   case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
-    def pretty = s"file('$fileName',$formulaName)"
-    val fromRule = None
+    final def pretty = s"file('$fileName',$formulaName)"
+    final val fromRule = None
+    final def parents = Set()
   }
 
   type ClauseProp = Int
