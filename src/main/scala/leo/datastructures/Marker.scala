@@ -154,11 +154,11 @@ object AnnotatedClause {
 
 abstract sealed class ClauseAnnotation extends Pretty {
   def fromRule: Option[leo.modules.calculus.CalculusRule]
-  def parents: Set[_ <: ClauseProxy]
+  def parents: Seq[_ <: ClauseProxy]
 }
 
 object ClauseAnnotation {
-  case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Set[(A, Output)]) extends ClauseAnnotation {
+  case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Seq[(A, Output)]) extends ClauseAnnotation {
     def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status(" + _.pretty.toLowerCase + ")")}],[${
       cws.map { case (cw, add) => if (add == null) {
         cw.id
@@ -172,22 +172,22 @@ object ClauseAnnotation {
     def parents = cws.map(_._1)
   }
   object InferredFrom {
-    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Set[A]): ClauseAnnotation =
-      InferredFrom(rule, cs.map((_, null.asInstanceOf[Output])))
+    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Seq[A]): ClauseAnnotation =
+      InferredFrom(rule, cs.map((_, null)))
 
     def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, c: A): ClauseAnnotation =
-      InferredFrom(rule, Set((c,null.asInstanceOf[Output])))
+      InferredFrom(rule, Seq((c,null)))
   }
 
   case object NoAnnotation extends ClauseAnnotation {
-    final def pretty: String = ""
+    final val pretty: String = ""
     final val fromRule = None
-    final def parents = Set()
+    final val parents = Seq.empty
   }
   case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
     final def pretty = s"file('$fileName',$formulaName)"
     final val fromRule = None
-    final def parents = Set()
+    final def parents = Seq.empty
   }
 
   type ClauseProp = Int

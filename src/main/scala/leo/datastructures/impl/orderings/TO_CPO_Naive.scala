@@ -408,18 +408,18 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
 
-
-
   final private def effectiveArgs(forTy: Type, args: Seq[Either[Term, Type]]): Seq[Term] = {
     assert(args.take(forTy.polyPrefixArgsCount).forall(_.isRight), s"Number of expected type arguments (${forTy.polyPrefixArgsCount}) do not match ty abstraction count: \n\t Type: ${forTy.pretty}\n\tArgs: ${args.map(_.fold(_.pretty,_.pretty))}")
     filterTermArgs(args.drop(forTy.polyPrefixArgsCount))
   }
 
-  final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
-    case Seq() => Seq()
-    case Seq(h, rest@_*) => h match {
-      case Left(term) => term +: filterTermArgs(rest)
-      case Right(_) => filterTermArgs(rest)
+ final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
+    if (args.isEmpty) Seq.empty
+    else {
+      val hd = args.head
+      if (hd.isLeft) {
+        hd.left.get +: filterTermArgs(args.tail)
+      } else filterTermArgs(args.tail)
     }
   }
 }

@@ -19,7 +19,7 @@ object Preprocess {
     cs.flatMap{c =>
       val (c1, c1s) = FormulaRenaming(c.cl)(sig)
       val c2s : Set[AnnotatedClause] = (c1s map {c2 => AnnotatedClause(c2, Role_Plain, NoAnnotation, ClauseAnnotation.PropNoProp)}).toSet
-      val c2 = if(c1s.nonEmpty) AnnotatedClause(c1, c.role, InferredFrom(FormulaRenamed, c2s+c), ClauseAnnotation.PropNoProp) else c
+      val c2 = if(c1s.nonEmpty) AnnotatedClause(c1, c.role, InferredFrom(FormulaRenamed, c +: c2s.toSeq), ClauseAnnotation.PropNoProp) else c
       c2s + c2
     }
   }

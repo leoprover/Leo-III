@@ -161,7 +161,7 @@ object Utility {
   /////////////////////////////////////////////////////////////
 
   @inline final def termToClause(t: Term, polarity: Boolean = true): Clause = {
-    Clause.mkClause(Seq(Literal.mkLit(t, polarity)))
+    Clause.mkClause(Vector(Literal.mkLit(t, polarity)))
   }
 
   @inline final def isPattern(t: Term): Boolean = modules.calculus.PatternUnification.isPattern(t)

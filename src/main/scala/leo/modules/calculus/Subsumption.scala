@@ -21,7 +21,7 @@ object TrivialSubsumption extends Subsumption {
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {
     val (lits1, lits2) = (cl1.lits, cl2.lits)
     if (lits1.length <= lits2.length) {
-      lits1.forall(l1 => lits2.exists(l2 => l1.polarity == l2.polarity && Literal.asTerm(l1) == Literal.asTerm(l2)))
+      lits1.forall(l1 => lits2.exists(l2 => l1.polarity == l2.polarity && l1.unsignedEquals(l2)))
     } else {
       false
     }

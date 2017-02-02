@@ -426,17 +426,11 @@ object SeqPProc {
       Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
       Out.finest("#########################")
 
-
-      if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
-        Out.comment("Signature extension used:")
-        Out.comment(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-        Out.comment(Utility.userDefinedSignatureAsString(sig))
-      }
-
-      if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
-        Out.comment("Clauses at the end of the loop:")
-        Out.comment("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
-      }
+      Out.finest("Signature extension used:")
+      Out.finest(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+      Out.finest(Utility.userDefinedSignatureAsString(sig))
+      Out.finest("Clauses at the end of the loop:")
+      Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
 
       /* Print proof object if possible and requested. */
       if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
@@ -585,6 +579,6 @@ object SeqPProc {
   private def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
     InferredFrom(new leo.modules.calculus.CalculusRule {
       override final val name: String = prover
-    }, source)
+    }, source.toSeq)
   }
 }
