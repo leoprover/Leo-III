@@ -76,7 +76,7 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
-  import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
+  import leo.datastructures.ClauseAnnotation.{InferredFrom}
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -420,10 +420,10 @@ package inferenceControl {
           Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           val vargen = leo.modules.calculus.freshVarGen(cl.cl)
 
-          val results = if (cl.annotation.fromRule.isEmpty) {
+          val results = if (cl.annotation.fromRule == null) {
             defaultUnify(vargen, cl)(sig)
           } else {
-            val fromRule = cl.annotation.fromRule.get
+            val fromRule = cl.annotation.fromRule
             if (fromRule == OrderedParamod) {
               paramodUnify(vargen, cl)(sig)
             } else if (fromRule == OrderedEqFac) {
@@ -814,6 +814,7 @@ package inferenceControl {
 
   protected[modules] object Choice {
     import leo.modules.calculus.{Choice => ChoiceRule}
+    import leo.datastructures.ClauseAnnotation.FromSystem
     private var acMap: Map[Type, AnnotatedClause] = Map()
     final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
 
@@ -836,7 +837,7 @@ package inferenceControl {
           )
         ))
       )), true)
-      val res = AnnotatedClause(Clause(lit), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("tautology"), ClauseAnnotation.PropNoProp)
       acMap = acMap + ((ty, res))
       res
     }
@@ -1467,7 +1468,7 @@ package indexingControl {
       val generatedIt = generated.iterator
       while (generatedIt.hasNext) {
         val cl = generatedIt.next()
-        assert(cl.annotation.fromRule.isDefined)
+        assert(cl.annotation.fromRule != null)
         var parents = cl.annotation.parents
         var found = false
         assert(parents.nonEmpty)

@@ -68,7 +68,7 @@ object Clause {
   @inline final def mkUnit(lit: Literal): Clause = mkClause(Vector(lit), Derived)
 
   /** The empty clause. */
-  @inline final val empty = mkClause(Seq.empty)
+  @inline final val empty: Clause = mkClause(Seq.empty)
 
   // Utility
   /** Returns true iff clause `c` is empty. */

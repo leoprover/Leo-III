@@ -153,11 +153,14 @@ object AnnotatedClause {
 }
 
 abstract sealed class ClauseAnnotation extends Pretty {
-  def fromRule: Option[leo.modules.calculus.CalculusRule]
+  /** A [[leo.modules.calculus.CalculusRule]] that generated the AnnotatedClause annotated with the
+    * ClauseAnnotation. May be `null` if no such rule is known. */
+  def fromRule: leo.modules.calculus.CalculusRule
   def parents: Seq[_ <: ClauseProxy]
 }
 
 object ClauseAnnotation {
+  import leo.modules.calculus.CalculusRule
   case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Seq[(A, Output)]) extends ClauseAnnotation {
     def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status(" + _.pretty.toLowerCase + ")")}],[${
       cws.map { case (cw, add) => if (add == null) {
@@ -168,7 +171,7 @@ object ClauseAnnotation {
       }.mkString(",")
     }])"
 
-    def fromRule = Some(rule)
+    def fromRule: CalculusRule = rule
     def parents = cws.map(_._1)
   }
   object InferredFrom {
@@ -181,12 +184,17 @@ object ClauseAnnotation {
 
   case object NoAnnotation extends ClauseAnnotation {
     final val pretty: String = ""
-    final val fromRule = None
-    final val parents = Seq.empty
+    final val fromRule: CalculusRule = null
+    final def parents = Seq.empty
   }
   case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
     final def pretty = s"file('$fileName',$formulaName)"
-    final val fromRule = None
+    final val fromRule: CalculusRule = null
+    final def parents = Seq.empty
+  }
+  case class FromSystem(hint: String) extends ClauseAnnotation {
+    final def pretty = s"introduced($hint)"
+    final val fromRule: CalculusRule = null
     final def parents = Seq.empty
   }
 

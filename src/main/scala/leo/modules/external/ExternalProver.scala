@@ -4,7 +4,6 @@ import leo.datastructures._
 import leo.modules.output._
 import java.nio.file.{Files, Paths}
 
-import leo.datastructures.ClauseAnnotation.NoAnnotation
 import leo.modules.HOLSignature.LitTrue
 
 

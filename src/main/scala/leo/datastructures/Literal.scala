@@ -156,10 +156,10 @@ object Literal {
   /** Create new unordered (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def apply(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false) = mkLit(t1,t2,pol, oriented)
+  @inline final def apply(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = mkLit(t1,t2,pol, oriented)
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
-  @inline final def apply(left: Term, pol: Boolean) = mkLit(left, pol)
+  @inline final def apply(left: Term, pol: Boolean): Literal = mkLit(left, pol)
 
   // Equation selection stuff
   type Side = Boolean
@@ -296,7 +296,7 @@ object Literal {
     import leo.modules.HOLSignature.o
     if (l.equational) {
       wt(l.left) && wt(l.right) && l.left.ty == l.right.ty
-    } else wt(l.left) && (try {l.left.ty == o} catch {case e:NotWellTypedException => false})
+    } else wt(l.left) && (try {l.left.ty == o} catch {case _:NotWellTypedException => false})
   }
 }
 

@@ -189,7 +189,7 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of clause to THF formula
   ///////////////////////////////
-  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation)(sig: Signature): String = {
+  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = null)(sig: Signature): String = {
     val sb = new StringBuffer()
     if (cl.implicitlyBound.nonEmpty) {
       // make universal quantification and then print term
@@ -203,10 +203,14 @@ object ToTPTP {
     }
 
     // Output whole tptp thf statement
-    if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
+    if (clauseAnnotation == null)
       s"thf($name,${role.pretty},(${sb.toString}))."
-    else
-      s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
+    else {
+      if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
+        s"thf($name,${role.pretty},(${sb.toString}))."
+      else
+        s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
+    }
   }
 
   final private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String])(sig: Signature): String = {
