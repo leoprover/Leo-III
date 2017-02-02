@@ -1468,7 +1468,6 @@ package indexingControl {
       val generatedIt = generated.iterator
       while (generatedIt.hasNext) {
         val cl = generatedIt.next()
-        assert(cl.annotation.fromRule != null)
         var parents = cl.annotation.parents
         var found = false
         assert(parents.nonEmpty)
@@ -1489,6 +1488,7 @@ package indexingControl {
               assert(decendantMap.isDefinedAt(p1.id))
               decendantMap = decendantMap + (p1.id -> (decendantMap(p1.id) + cl))
             }
+            found = true
           } else assert(false)
         }
       }

@@ -447,10 +447,8 @@ object SeqPProc {
     }
   }
 
-  private final def mainLoopInferences(cl: AnnotatedClause, state: LocalState): Boolean = {
+  private final def mainLoopInferences(cur: AnnotatedClause, state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
-
-    val cur: AnnotatedClause = cl
     var newclauses: Set[AnnotatedClause] = Set()
 
     /////////////////////////////////////////
@@ -468,9 +466,9 @@ object SeqPProc {
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
       // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
-//      val descendants = Control.descendants(backSubsumedClauses)
-//      state.incDescendantsDeleted(descendants.size)
-//      state.removeUnprocessed(descendants)
+      val descendants = Control.descendants(backSubsumedClauses)
+      state.incDescendantsDeleted(descendants.size)
+      state.removeUnprocessed(descendants)
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
@@ -539,7 +537,7 @@ object SeqPProc {
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
-//    Control.updateDescendants(cur, newclauses)
+    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause
