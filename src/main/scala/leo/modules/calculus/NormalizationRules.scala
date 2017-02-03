@@ -490,7 +490,7 @@ object ACSimp extends CalculusRule {
           case Symbol(id) if id == acSymbol =>
             val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
 
-            val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Seq(arg, term))}
+            val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Vector(arg, term))}
             //        Term.mkTermApp(f, newArgs)
             newArgs
           case _ => t

@@ -14,7 +14,7 @@ import leo.datastructures._
   /** The types of the implicitly universally quantified variables. */
   final lazy val implicitlyBound: Seq[(Int, Type)] = {
     val fvs = lits.map(_.fv).fold(Set())((s1,s2) => s1 ++ s2)
-    fvs.toSeq.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
+    fvs.toVector.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
   }
   @inline final def maxImplicitlyBound: Int = if (implicitlyBound.isEmpty) 0 else implicitlyBound.head._1
 

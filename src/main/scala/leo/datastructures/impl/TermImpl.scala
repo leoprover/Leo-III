@@ -1041,32 +1041,32 @@ object TermImpl extends TermBank {
     final def mkAtom(id: Signature#Key, ty: Type): Term = Root(Atom(id, ty), SNil)
     final def mkBound(t: Type, scope: Int): Term = Root(BoundIndex(t, scope), SNil)
 
-    final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Seq(arg))
+    final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
     final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
       func else func match {
-      case Root(h, SNil) => Root(h, mkSpine(args))
-      case Root(h,sp)  => Root(h,sp ++ mkSpine(args))
-      case Redex(r,sp) => Redex(r, sp ++ mkSpine(args))
-      case other       => Redex(other, mkSpine(args))
+      case Root(h, SNil) => Root(h, mkSpine(args.toVector))
+      case Root(h,sp)  => Root(h,sp ++ mkSpine(args.toVector))
+      case Redex(r,sp) => Redex(r, sp ++ mkSpine(args.toVector))
+      case other       => Redex(other, mkSpine(args.toVector))
     }
     final def mkTermAbs(t: Type, body: Term): Term = TermAbstr(t, body)
 
-    final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Seq(arg))
+    final def mkTypeApp(func: Term, arg: Type): Term = mkTypeApp(func, Vector(arg))
     final def mkTypeApp(func: Term, args: Seq[Type]): Term = if (args.isEmpty)
       func else func match {
-      case Root(h, SNil) => Root(h, mkTySpine(args))
-      case Root(h,sp)  => Root(h,sp ++ mkTySpine(args))
-      case Redex(r,sp) => Redex(r, sp ++ mkTySpine(args))
-      case other       => Redex(other, mkTySpine(args))
+      case Root(h, SNil) => Root(h, mkTySpine(args.toVector))
+      case Root(h,sp)  => Root(h,sp ++ mkTySpine(args.toVector))
+      case Redex(r,sp) => Redex(r, sp ++ mkTySpine(args.toVector))
+      case other       => Redex(other, mkTySpine(args.toVector))
     }
     final def mkTypeAbs(body: Term): Term = TypeAbstr(body)
 
     final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = if (args.isEmpty)
       func else func match {
-        case Root(h, SNil) => Root(h, mkGenSpine(args))
-        case Root(h,sp)  => Root(h,sp ++ mkGenSpine(args))
-        case Redex(r,sp) => Redex(r, sp ++ mkGenSpine(args))
-        case other       => Redex(other, mkGenSpine(args))
+        case Root(h, SNil) => Root(h, mkGenSpine(args.toVector))
+        case Root(h,sp)  => Root(h,sp ++ mkGenSpine(args.toVector))
+        case Redex(r,sp) => Redex(r, sp ++ mkGenSpine(args.toVector))
+        case other       => Redex(other, mkGenSpine(args.toVector))
       }
   }
 
@@ -1074,32 +1074,32 @@ object TermImpl extends TermBank {
   final def mkAtom(id: Signature#Key, ty: Type): TermImpl = mkRoot(mkAtom0(id, ty), SNil)
   final def mkBound(typ: Type, scope: Int): TermImpl = mkRoot(mkBoundAtom(typ, scope), SNil)
 
-  final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Seq(arg))
+  final def mkTermApp(func: Term, arg: Term): Term = mkTermApp(func, Vector(arg))
   final def mkTermApp(func: Term, args: Seq[Term]): Term = if (args.isEmpty)
     func else func match {
-      case Root(h, SNil) => mkRoot(h, mkSpine(args))
-      case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args))
-      case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args))
-      case other       => mkRedex(other, mkSpine(args))
+      case Root(h, SNil) => mkRoot(h, mkSpine(args.toVector))
+      case Root(h,sp)  => mkRoot(h,sp ++ mkSpine(args.toVector))
+      case Redex(r,sp) => mkRedex(r, sp ++ mkSpine(args.toVector))
+      case other       => mkRedex(other, mkSpine(args.toVector))
     }
   final def mkTermAbs(typ: Type, body: Term): TermImpl = mkTermAbstr(typ, body)
 
-  final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Seq(arg))
+  final def mkTypeApp(func: Term, arg: Type): TermImpl = mkTypeApp(func, Vector(arg))
   final def mkTypeApp(func: Term, args: Seq[Type]): TermImpl  = if (args.isEmpty) func.asInstanceOf[TermImpl] else func match {
-      case Root(h, SNil) => mkRoot(h, mkTySpine(args))
-      case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args))
-      case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args))
-      case other       => mkRedex(other, mkTySpine(args))
+      case Root(h, SNil) => mkRoot(h, mkTySpine(args.toVector))
+      case Root(h,sp)  => mkRoot(h,sp ++ mkTySpine(args.toVector))
+      case Redex(r,sp) => mkRedex(r, sp ++ mkTySpine(args.toVector))
+      case other       => mkRedex(other, mkTySpine(args.toVector))
     }
 
   final def mkTypeAbs(body: Term): TermImpl = mkTypeAbstr(body)
 
   final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term  = if (args.isEmpty)
     func else func match {
-      case Root(h, SNil) => mkRoot(h, mkGenSpine(args))
-      case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args))
-      case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args))
-      case other       => mkRedex(other, mkGenSpine(args))
+      case Root(h, SNil) => mkRoot(h, mkGenSpine(args.toVector))
+      case Root(h,sp)  => mkRoot(h,sp ++ mkGenSpine(args.toVector))
+      case Redex(r,sp) => mkRedex(r, sp ++ mkGenSpine(args.toVector))
+      case other       => mkRedex(other, mkGenSpine(args.toVector))
     }
 
   /////////////////////////////////////////////

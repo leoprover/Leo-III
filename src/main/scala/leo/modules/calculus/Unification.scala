@@ -168,7 +168,7 @@ object HuetsPreUnification extends Unification {
           ProjectRule(vargen, head).foreach (e => lb.append(new MyConfiguration(Vector(e), flexRigid, flexFlex,
             partialUnifier, partialTyUnifier, conf.searchDepth+1)))
 
-          lb.toList
+          lb.toVector
         }
       }
     }

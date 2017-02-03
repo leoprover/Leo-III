@@ -253,7 +253,7 @@ object TPTPParsers extends TokenParsers with PackratParsers {
   def generalTerm: Parser[Commons.GeneralTerm] = (
         generalList                             ^^ {x => Commons.GeneralTerm(List(Right(x)))}
     ||| generalData                             ^^ {x => Commons.GeneralTerm(List(Left(x)))}
-    ||| generalData ~ elem(Colon) ~ generalTerm ^^ {case data ~ _ ~ gterm => Commons.GeneralTerm(Left(data) :: gterm.term)}
+    ||| generalData ~ elem(Colon) ~ generalTerm ^^ {case data ~ _ ~ gterm => Commons.GeneralTerm(Left(data) +: gterm.term)}
   )
 
   def generalData: Parser[Commons.GeneralData] = (

@@ -93,16 +93,16 @@ object Commons {
   sealed abstract class Term {
     def function_symbols : Set[String]
   }
-  case class Func(name: String, args: List[Term]) extends Term {
+  case class Func(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
 
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
-  case class DefinedFunc(name: String, args: List[Term]) extends Term {
+  case class DefinedFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
-  case class SystemFunc(name: String, args: List[Term]) extends Term {
+  case class SystemFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
@@ -147,10 +147,10 @@ object Commons {
   type Include = (String, List[Name])
 
   // Non-logical data (GeneralTerm, General data)
-  sealed case class GeneralTerm(term: List[Either[GeneralData, List[GeneralTerm]]]) {
+  sealed case class GeneralTerm(term: Seq[Either[GeneralData, Seq[GeneralTerm]]]) {
     override def toString = term.map(gt2String).mkString(":")
 
-    def gt2String(in: Either[GeneralData, List[GeneralTerm]]): String = in match {
+    def gt2String(in: Either[GeneralData, Seq[GeneralTerm]]): String = in match {
       case Left(data) => data.toString
       case Right(termList) => "[" + termList.mkString(",") +"]"
     }
@@ -161,7 +161,7 @@ object Commons {
   case class GWord(gWord: String) extends GeneralData {
     override def toString = gWord
   }
-  case class GFunc(name: String, args: List[GeneralTerm]) extends GeneralData {
+  case class GFunc(name: String, args: Seq[GeneralTerm]) extends GeneralData {
     override def toString = funcToString(name, args)
   }
   case class GVar(gVar: Variable) extends GeneralData {
@@ -199,18 +199,17 @@ object Commons {
 
 
   ///////// String representation functions ///////////
-  def funcToString(name:String, args: List[Any]) = args match {
-    case List()     => name
-    case _          => name + "(" + args.mkString(",") + ")"
+  final def funcToString(name:String, args: Seq[Any]): String = if (args.isEmpty) name
+  else s"$name(${args.mkString(",")})"
+
+  final def annoToString(anno: Option[(Source, Seq[GeneralTerm])]): String = if (anno.isEmpty) ""
+  else {
+    val (src, termList) = anno.get
+    s",${src.toString},[${termList.mkString(",")}]"
   }
 
-  def annoToString(anno: Option[(Source, List[GeneralTerm])]) = anno match {
-    case None => ""
-    case Some((src, termList)) => "," + src.toString + ",[" + termList.mkString(",") + "]"
-  }
-
-  def typedVarToString(input: (Variable,Option[Any])) = input match {
+  final def typedVarToString(input: (Variable,Option[Any])): String = input match {
     case (v, None) => v.toString
-    case (v, Some(typ)) => v.toString + " : " + typ.toString
+    case (v, Some(typ)) => s"${v.toString} : ${typ.toString}"
   }
 }
