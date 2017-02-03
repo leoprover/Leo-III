@@ -117,7 +117,7 @@ package inferenceControl {
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
-        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(RenameCNF, Set(cl)), cl.properties)} // TODO Definitions other way into the CNF.
         Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       }
