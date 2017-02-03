@@ -20,6 +20,57 @@ import leo.datastructures.ClauseProxy
     def compare(a: ClauseProxy, b: ClauseProxy) = implicitly[Ordering[Tuple2[Double, Int]]].compare((1 - ((1+a.cl.posLits.size)/(1+a.cl.lits.size)), a.weight), (1 - ((1+b.cl.posLits.size)/(b.cl.lits.size+1)), b.weight))
   }
 
+import leo.datastructures.Signature
+class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature#Key], conjSymbolFactor: Float, varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering {
+  import leo.datastructures.Clause
+  final def compare(a: ClauseProxy, b: ClauseProxy) = {
+    val aWeight = computeWeight(a.cl)
+    val bWeight = computeWeight(b.cl)
+    -aWeight.compare(bWeight)
+  }
+
+  private[this] final def computeWeight(cl: Clause): Float = {
+    val symbols = Clause.symbols(cl)
+    var weight: Float = 0f
+    weight += cl.implicitlyBound.size * varWeight
+    val it = symbols.distinctIterator
+    while(it.hasNext) {
+      val symb = it.next()
+      if (conjSymbols.contains(symb))
+        weight += symbols.multiplicity(symb) * symbWeight * conjSymbolFactor
+      else
+        weight += symbols.multiplicity(symb) * symbWeight
+    }
+    weight
+  }
+}
+
+class CPO_SymbolWeight(varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering {
+  import leo.datastructures.Clause
+  final def compare(a: ClauseProxy, b: ClauseProxy) = {
+    val aWeight = computeWeight(a.cl)
+    val bWeight = computeWeight(b.cl)
+    aWeight.compare(bWeight)
+  }
+  private[this] final def computeWeight(cl: Clause): Int = {
+    val symbols = Clause.symbols(cl)
+    var weight: Int = 0
+    weight += cl.implicitlyBound.size * varWeight
+    val it = symbols.distinctIterator
+    while(it.hasNext) {
+      val symb = it.next()
+      weight += symbols.multiplicity(symb) * symbWeight
+    }
+    weight
+  }
+}
+
+object CPO_SmallerFirst extends ClauseProxyOrdering {
+  final def compare(a: ClauseProxy, b: ClauseProxy) = {
+    val aLitsCounts = a.cl.lits.size; val bLitsCounts = b.cl.lits.size
+    aLitsCounts.compareTo(bLitsCounts)
+  }
+}
 
 object CPO_OldestFirst extends ClauseProxyOrdering {
   final def compare(a: ClauseProxy, b: ClauseProxy) = {
