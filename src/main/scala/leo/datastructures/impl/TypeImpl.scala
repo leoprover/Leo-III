@@ -27,7 +27,7 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
     if (args.isEmpty)
       sig(id).name
     else
-      s"${sig(id).name}(${args.map(_.pretty).mkString(",")})"
+      s"${sig(id).name}(${args.map(_.pretty(sig)).mkString(",")})"
   }
 
   // Predicates on types

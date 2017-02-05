@@ -252,7 +252,7 @@ object SeqPProc {
         if (preprocessIt.hasNext) Out.trace("--------------------")
       }
       Out.trace("## Preprocess END\n\n")
-      assert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)))
+      assert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)), s"Not well typed:\n\t${state.unprocessed.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.pretty(sig)).mkString("\n\t")}")
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest(s"Clauses and maximal literals of them:")

@@ -182,9 +182,9 @@ package inferenceControl {
             if (leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
               if (!intoTerm.isVariable) {
                 Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-                Out.finest(s"with: ${withClause.pretty}")
+                Out.finest(s"with: ${withClause.pretty(sig)}")
                 Out.finest(s"withside: ${withSide.toString}")
-                Out.finest(s"into: ${intoClause.pretty}")
+                Out.finest(s"into: ${intoClause.pretty(sig)}")
                 Out.finest(s"intoside: ${intoSide.toString}")
                 val newCl = OrderedParamod(withClause, withIndex, withSide,
                   intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
@@ -1005,7 +1005,8 @@ package inferenceControl {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
           val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
-          result = result union cnf
+          val lifted = cnf.map(Control.liftEq)
+          result = result union lifted
         }
       }
       result

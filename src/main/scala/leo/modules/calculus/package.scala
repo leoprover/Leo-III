@@ -84,7 +84,7 @@ package object calculus {
   }
 
   /** Create a [[FreshVarGen]] with the free var context of the clause `cl`. */
-  @inline final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.typeVars.toSeq, cl.maxImplicitlyBound)
+  @inline final def freshVarGen(cl: Clause): FreshVarGen = freshVarGen0(cl.implicitlyBound, cl.typeVars, cl.maxImplicitlyBound)
   /** Create a [[FreshVarGen]] without any so-far registered free vars. */
   @inline final def freshVarGenFromBlank: FreshVarGen = freshVarGen0(Seq(), Seq(), 0)
 

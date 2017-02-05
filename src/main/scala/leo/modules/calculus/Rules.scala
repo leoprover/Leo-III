@@ -409,19 +409,19 @@ object OrderedParamod extends CalculusRule {
     val withLiteral = withClause.lits(withIndex)
     val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
 
-    Out.finest(s"toFind: ${toFind.pretty}")
-    Out.finest(s"replaceBy: ${replaceBy.pretty}")
+    Out.finest(s"toFind: ${toFind.pretty(sig)}")
+    Out.finest(s"replaceBy: ${replaceBy.pretty(sig)}")
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * i.e. it is lated eliminated using Simp. */
     val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false))
-    Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty).mkString("\n\t")}")
+    Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
-    val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.max
+    val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.head
     val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar))) // TOFIX reordering done
-    Out.finest(s"IntoLits: ${intoClause.lits.map(_.pretty).mkString("\n\t")}")
-    Out.finest(s"shiftedIntoLits: ${shiftedIntoLits.map(_.pretty).mkString("\n\t")}")
+    Out.finest(s"IntoLits: ${intoClause.lits.map(_.pretty(sig)).mkString("\n\t")}")
+    Out.finest(s"shiftedIntoLits: ${shiftedIntoLits.map(_.pretty(sig)).mkString("\n\t")}")
 
     // val intoLiteral = shiftedIntoLits(intoIndex) // FIXME Avoid reordering
     val intoLiteral = intoClause.lits(intoIndex)
@@ -433,19 +433,20 @@ object OrderedParamod extends CalculusRule {
         intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
 
 
-    Out.finest(s"findWithin: ${findWithin.pretty}")
-    Out.finest(s"otherSide: ${otherSide.pretty}")
+    Out.finest(s"findWithin: ${findWithin.pretty(sig)}")
+    Out.finest(s"otherSide (rewrittenIntolit right): ${otherSide.pretty(sig)}")
+    Out.finest(s"rewrittenIntoLit left: ${findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize.pretty(sig)}")
     /* Replace subterm (and shift accordingly) */
-    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))),otherSide,intoLiteral.polarity)(sig)
+    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize,otherSide,intoLiteral.polarity)(sig)
     /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
     val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit)
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
-    Out.finest(s"intoSubterm: ${intoSubterm.pretty}")
-    Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty}")
+    Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")
+    Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty(sig)}")
     val unificationLit = Literal.mkNegOrdered(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount), Subst.shift(withMaxTyVar)))(sig)
 
-    Out.finest(s"unificationLit: ${unificationLit.pretty}")
+    Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
 //    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
 //    val newlits_simp = Simp.shallowSimp(newlits)(sig)

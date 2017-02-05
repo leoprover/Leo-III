@@ -15,7 +15,7 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   def maxImplicitlyBound: Int
   /** The implicitly (universally) quantified type variables.
     * It is assumed that we are in rank-1 polymorphism. */
-  def typeVars: Set[Int]
+  def typeVars: Seq[Int]
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
