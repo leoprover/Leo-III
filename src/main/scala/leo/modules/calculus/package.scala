@@ -205,7 +205,9 @@ package object calculus {
       case (a * b, c * d) => mayUnify(a,c) && mayUnify(b,d)
       case (a + b, c + d) => mayUnify(a,c) && mayUnify(b,d)
       case (∀(a), ∀(b)) => mayUnify(a,b)
+      case (BoundType(_), ∀(_)) => false
       case (BoundType(_), _) => true
+      case (∀(_), BoundType(_)) => false
       case (_, BoundType(_)) => true
       case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayUnify(ts._1, ts._2))
       case _ => false

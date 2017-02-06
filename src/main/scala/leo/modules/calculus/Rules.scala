@@ -418,19 +418,18 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
-    val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.head
-    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar))) // TOFIX reordering done
+    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound))) // TOFIX reordering done
     Out.finest(s"IntoLits: ${intoClause.lits.map(_.pretty(sig)).mkString("\n\t")}")
     Out.finest(s"shiftedIntoLits: ${shiftedIntoLits.map(_.pretty(sig)).mkString("\n\t")}")
 
     // val intoLiteral = shiftedIntoLits(intoIndex) // FIXME Avoid reordering
     val intoLiteral = intoClause.lits(intoIndex)
     val (findWithin, otherSide) = if (intoSide == Literal.leftSide)
-      (intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)),
-        intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
+      (intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound)),
+        intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound)))
     else
-      (intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)),
-        intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
+      (intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound)),
+        intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound)))
 
 
     Out.finest(s"findWithin: ${findWithin.pretty(sig)}")
@@ -444,7 +443,7 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")
     Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty(sig)}")
-    val unificationLit = Literal.mkNegOrdered(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount), Subst.shift(withMaxTyVar)))(sig)
+    val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount)).etaExpand)(sig)
 
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 

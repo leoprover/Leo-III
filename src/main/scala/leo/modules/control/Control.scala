@@ -186,12 +186,44 @@ package inferenceControl {
                 Out.finest(s"withside: ${withSide.toString}")
                 Out.finest(s"into: ${intoClause.pretty(sig)}")
                 Out.finest(s"intoside: ${intoSide.toString}")
-                val newCl = OrderedParamod(withClause, withIndex, withSide,
-                  intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+                val newCl = if (withTerm.ty == intoTerm.ty) {
+                  // No type unification needed at this point
+                  OrderedParamod(withClause, withIndex, withSide,
+                    intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+                } else {
+                  import leo.modules.calculus.{HuetsPreUnification => Unification}
+                  leo.Out.finest(s"Nonequal type, calculating type unification ...")
+                  leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
+                  leo.Out.finest(s"intoTerm.ty: ${intoTerm.ty.pretty(sig)}")
+                  val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.head
+                  leo.Out.finest(s"withTerm max ty var: ${withMaxTyVar}")
+                  leo.Out.finest(s"liftedIntoTermType: ${intoTerm.ty.substitute(Subst.shift(withMaxTyVar)).pretty(sig)}")
+                  val tyUniResult = Unification.unify(withTerm.ty, intoTerm.ty.substitute(Subst.shift(withMaxTyVar)))
+                  if (tyUniResult.isDefined) {
+                    leo.Out.finest(s"Type unification succeeded.")
+                    val tySubst = tyUniResult.get
+                    leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
+                    val substWithClause = withClause.substitute(Subst.id, tySubst)
+                    val substIntoClause = intoClause.substitute(Subst.id, Subst.shift(withMaxTyVar).comp(tySubst))
+                    val substIntoTerm = intoTerm.substitute(Subst.id, Subst.shift(withMaxTyVar).comp(tySubst))
+//                    leo.Out.finest(s"###########")
+                    OrderedParamod(substWithClause, withIndex, withSide,
+                      substIntoClause, intoIndex, intoSide, intoPos, substIntoTerm)(sig)
+//                    leo.Out.finest(s"###########")
+//                    OrderedParamod(withClause, withIndex, withSide,
+//                      intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
 
-                val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-                Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-                results = results + newClWrapper
+                  } else {
+                    leo.Out.finest(s"Type unification failed.")
+                    assert(false)
+                    null
+                  }
+                }
+                if (newCl != null) {
+                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+                  Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                  results = results + newClWrapper
+                }
               }
             } else {
               if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {

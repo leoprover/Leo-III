@@ -615,7 +615,7 @@ object Simp extends CalculusRule {
 
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     assert(l.forall(a => !a.polarity))
-    val simpRes = uniLitSimp0(Seq(), l.map(lit => (lit.left, lit.right)))
+    val simpRes = uniLitSimp0(Seq(), l.map(lit => (lit.left, lit.right)))(sig)
     simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
   }
   /** Given a unification literal `l` where `l = [a,b]^f`
@@ -625,19 +625,19 @@ object Simp extends CalculusRule {
     */
   final def uniLitSimp(l: Literal)(implicit sig: Signature): Seq[Literal] = {
     assert(!l.polarity)
-    val simpRes = uniLitSimp0(Seq(), Seq((l.left, l.right)))
+    val simpRes = uniLitSimp0(Seq(), Seq((l.left, l.right)))(sig)
     simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
   }
 
   @tailrec
-  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)]): Seq[(Term, Term)] = {
+  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)])(sig: Signature): Seq[(Term, Term)] = {
     if (unprocessed.isEmpty) processed
     else {
       val hd = unprocessed.head
       val left = hd._1; val right = hd._2
       val (leftBody, leftAbstractions) = collectLambdas(left)
       val (rightBody, rightAbstractions) = collectLambdas(right)
-      assert(leftAbstractions == rightAbstractions)
+      assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
       if (HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)) {
         val (newEqs, tyEqs) = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
         if (tyEqs.nonEmpty) {
@@ -663,9 +663,9 @@ object Simp extends CalculusRule {
 //          else {
 //            ???
 //          }
-          uniLitSimp0(hd +: processed, unprocessed.tail)
-        } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)
-      } else uniLitSimp0(hd +: processed, unprocessed.tail)
+          uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
+        } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)(sig)
+      } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
     }
   }
 

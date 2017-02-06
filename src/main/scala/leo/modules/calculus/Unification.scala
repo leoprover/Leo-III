@@ -36,7 +36,7 @@ trait Unification {
   def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
 
   /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
-  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Seq((t,s)))
+  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Vector((t,s)))
 
   /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
   def unify(constraints: Seq[UTEq]): Option[TypeSubst]
