@@ -219,6 +219,7 @@ package inferenceControl {
                     leo.Out.finest(s"Type unification succeeded.")
                     val tySubst = tyUniResult.get
                     leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
+                    // FIXME the clauses below are not ordered anymore. This needs to be fixed.
                     val substWithClause = withClause.substitute(Subst.id, tySubst)
                     val substIntoClause = shiftedIntoClause.substitute(Subst.id, tySubst)
                     val substIntoTerm = shiftedIntoTerm.substitute(Subst.id, tySubst)
@@ -373,10 +374,6 @@ package inferenceControl {
               Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-//                val resultprop = if (leo.datastructures.isPropSet(ClauseAnnotation.PropSOS,cl.properties))
-//                  ClauseAnnotation.PropSOS
-//                else ClauseAnnotation.PropNoProp
-
                 val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
                 res = res + result
               }
@@ -391,10 +388,6 @@ package inferenceControl {
                 Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
                 if (test1 && test2) {
                   val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
-                  //                val resultprop = if (leo.datastructures.isPropSet(ClauseAnnotation.PropSOS,cl.properties))
-                  //                  ClauseAnnotation.PropSOS
-                  //                else ClauseAnnotation.PropNoProp
-
                   val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
                   res = res + result
                 }
