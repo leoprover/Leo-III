@@ -186,36 +186,46 @@ package inferenceControl {
                 Out.finest(s"withside: ${withSide.toString}")
                 Out.finest(s"into: ${intoClause.pretty(sig)}")
                 Out.finest(s"intoside: ${intoSide.toString}")
-                val newCl = if (withTerm.ty == intoTerm.ty) {
+                // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
+                // We cannot use _.substitute on literal since this will forget the ordering
+                val termShift = Subst.shift(withClause.maxImplicitlyBound)
+                val typeShift = Subst.shift(withClause.maxTypeVar)
+                val shiftedIntoClause: Clause = Clause(
+                  intoClause.lits.map {l =>
+                    if (l.equational) {
+                      // since we only lift variables, the orientation property isnt affected
+                      // we may safely assume that the new lits are also orientable if the original ones were orientable.
+                      Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
+                    } else {
+                      Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
+                    }
+                  }
+                )
+                val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
+                Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
+                Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
+
+                val newCl = if (withTerm.ty == shiftedIntoTerm.ty) {
                   // No type unification needed at this point
                   OrderedParamod(withClause, withIndex, withSide,
-                    intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+                    shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
                 } else {
                   import leo.modules.calculus.{HuetsPreUnification => Unification}
                   leo.Out.finest(s"Nonequal type, calculating type unification ...")
                   leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
-                  leo.Out.finest(s"intoTerm.ty: ${intoTerm.ty.pretty(sig)}")
-                  val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.head
-                  leo.Out.finest(s"withTerm max ty var: ${withMaxTyVar}")
-                  leo.Out.finest(s"liftedIntoTermType: ${intoTerm.ty.substitute(Subst.shift(withMaxTyVar)).pretty(sig)}")
-                  val tyUniResult = Unification.unify(withTerm.ty, intoTerm.ty.substitute(Subst.shift(withMaxTyVar)))
+                  leo.Out.finest(s"intoTerm.ty: ${shiftedIntoTerm.ty.pretty(sig)}")
+                  val tyUniResult = Unification.unify(withTerm.ty, shiftedIntoTerm.ty)
                   if (tyUniResult.isDefined) {
                     leo.Out.finest(s"Type unification succeeded.")
                     val tySubst = tyUniResult.get
                     leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
                     val substWithClause = withClause.substitute(Subst.id, tySubst)
-                    val substIntoClause = intoClause.substitute(Subst.id, Subst.shift(withMaxTyVar).comp(tySubst))
-                    val substIntoTerm = intoTerm.substitute(Subst.id, Subst.shift(withMaxTyVar).comp(tySubst))
-//                    leo.Out.finest(s"###########")
+                    val substIntoClause = shiftedIntoClause.substitute(Subst.id, tySubst)
+                    val substIntoTerm = shiftedIntoTerm.substitute(Subst.id, tySubst)
                     OrderedParamod(substWithClause, withIndex, withSide,
                       substIntoClause, intoIndex, intoSide, intoPos, substIntoTerm)(sig)
-//                    leo.Out.finest(s"###########")
-//                    OrderedParamod(withClause, withIndex, withSide,
-//                      intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
-
                   } else {
                     leo.Out.finest(s"Type unification failed.")
-                    assert(false)
                     null
                   }
                 }
@@ -231,9 +241,23 @@ package inferenceControl {
                 if (withTerm.headSymbol == intoTerm.headSymbol) {
                   // this means we can do at least a one-step simplication (Decomp) during unification
                   Out.trace(s"Simulated Resolution step")
+                  val termShift = Subst.shift(withClause.maxImplicitlyBound)
+                  val typeShift = Subst.shift(withClause.maxTypeVar)
+                  val shiftedIntoClause: Clause = Clause(
+                    intoClause.lits.map {l =>
+                      if (l.equational) {
+                        // since we only lift variables, the orientation property isnt affected
+                        // we may safely assume that the new lits are also orientable if the original ones were orientable.
+                        Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
+                      } else {
+                        Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
+                      }
+                    }
+                  )
+                  Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
                   import leo.modules.HOLSignature.LitTrue
                   val newCl = OrderedParamod(withClause, withIndex, !withSide,
-                    intoClause, intoIndex, !intoSide, intoPos, LitTrue(), true)(sig)
+                    shiftedIntoClause, intoIndex, !intoSide, intoPos, LitTrue(), true)(sig)
 
                   val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
                   Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
@@ -244,7 +268,6 @@ package inferenceControl {
           }
         }
       }
-
       results
     }
 

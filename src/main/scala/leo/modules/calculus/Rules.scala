@@ -332,13 +332,9 @@ object PrimSubst extends CalculusRule {
 
   def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map {hd =>
-//      println(s"${hd.pretty} - ${hd.fv.head._1}")
-//      println(s"max fv: ${cl.maxImplicitlyBound}")
       val vargen = leo.modules.calculus.freshVarGen(cl)
       val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
       val subst = Subst.singleton(hd.fv.head._1, binding)
-//      println(s"${subst.pretty}")
-//      println(Literal(Term.mkBound(hd.fv.head._2, hd.fv.head._1), true).substitute(subst).pretty)
       (cl.substituteOrdered(subst)(sig),subst)
     }
   }
@@ -368,8 +364,6 @@ object OrderedEqFac extends CalculusRule {
     val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(sig)
     val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
 
-//    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
-//    val newlitsSimp = Simp.shallowSimp(newlits)(sig)
     val newlitsSimp = Simp.shallowSimp(lits_without_maxLit)(sig):+ unification_task1 :+ unification_task2
     Clause(newlitsSimp)
   }
@@ -382,11 +376,13 @@ object OrderedParamod extends CalculusRule {
   final override val inferenceStatus = Some(SZS_Theorem)
 
   /**
-    *
+    * Performs a paramodulation step on the given configuration.
+    * @note It is assumed that both clauses have distinct variables. This must be ensured
+    *       before using this method.
     * @note Preconditions:
     * - withClause.lits(withIndex).polarity == true
-    * - withSide == right => !withClause.lits(withIndex).oriented
-    * - intoSide == right => !intoClause.lits(intoIndex).oriented
+    * - withSide == right => !withClause.lits(withIndex).oriented || simulateResolution
+    * - intoSide == right => !intoClause.lits(intoIndex).oriented || simulateResolution
     * - if `t` is the `intoSide` of intoClause.lits(intoIndex), then
     *   u.fv = intoClause.implicitlyBound where `u` is a subterm of `t`
     * @param withClause clause that contains the literal used for rewriting
@@ -418,19 +414,10 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
-    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound))) // TOFIX reordering done
-    Out.finest(s"IntoLits: ${intoClause.lits.map(_.pretty(sig)).mkString("\n\t")}")
-    Out.finest(s"shiftedIntoLits: ${shiftedIntoLits.map(_.pretty(sig)).mkString("\n\t")}")
+    val shiftedIntoLits = intoClause.lits
 
-    // val intoLiteral = shiftedIntoLits(intoIndex) // FIXME Avoid reordering
-    val intoLiteral = intoClause.lits(intoIndex)
-    val (findWithin, otherSide) = if (intoSide == Literal.leftSide)
-      (intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound)),
-        intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound)))
-    else
-      (intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound)),
-        intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound)))
-
+    val intoLiteral = shiftedIntoLits(intoIndex)
+    val (findWithin, otherSide) = Literal.getSidesOrdered(intoLiteral, intoSide)
 
     Out.finest(s"findWithin: ${findWithin.pretty(sig)}")
     Out.finest(s"otherSide (rewrittenIntolit right): ${otherSide.pretty(sig)}")
@@ -442,17 +429,10 @@ object OrderedParamod extends CalculusRule {
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")
-    Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty(sig)}")
-    val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount)).etaExpand)(sig)
-
+    val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(sig)
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
-//    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
-//    val newlits_simp = Simp.shallowSimp(newlits)(sig)
-
     val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
-    val resultingClause = Clause(newlits_simp)
-
-    resultingClause
+    Clause(newlits_simp)
   }
 }
