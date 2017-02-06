@@ -6,7 +6,7 @@ import leo.datastructures.Pretty
 import scala.collection.mutable
 
 /**
-  * Common Trait for any changes to the data in the blackboard.
+  * A delta for the data stored in the blackboard..
   */
 trait Delta extends Event {
   /**
@@ -20,7 +20,7 @@ trait Delta extends Event {
     *
     * @return all stored datatypes
     */
-  def keys : Set[DataType]
+  def types : Seq[DataType[Any]]
 
 
   /**
@@ -29,7 +29,7 @@ trait Delta extends Event {
     * @param t is the requested type.
     * @return all inserted data of type t.
     */
-  def inserts(t : DataType) : Seq[Any]
+  def inserts[T](t : DataType[T]) : Seq[T]
 
   /**
     *
@@ -38,7 +38,7 @@ trait Delta extends Event {
     * @param t is the requested type.
     * @return all inserted data of type t.
     */
-  def updates(t : DataType) : Seq[(Any, Any)]
+  def updates[T](t : DataType[T]) : Seq[(T, T)]
 
   /**
     *
@@ -47,7 +47,23 @@ trait Delta extends Event {
     * @param t is the requested type.
     * @return all inserted data of type t.
     */
-  def removes(t : DataType) : Seq[Any]
+  def removes[T](t : DataType[T]) : Seq[T]
+
+  /**
+    *
+    * Returns an immutable version of this Delta.
+    *
+    * @return this delta, but immutable
+    */
+  def immutable : Delta = this
+
+  /**
+    * This delta into another one.
+    *
+    * @param d - the other delta
+    * @return the merged delta
+    */
+  def merge(d : Delta) : Delta
 }
 
 /**
@@ -60,7 +76,7 @@ object Result {
    *
    * @return an empty Result Object.
    */
-  def apply() : Result = new Result
+  def apply() : MutableDelta = new MutableDelta
 }
 
 /**
@@ -72,11 +88,11 @@ object Result {
  * This is a <b>mutable</b> class. The manipulating operations return
  * the changed object for conviniece.
  */
-class Result extends Delta {
+class MutableDelta extends Delta {
 
-  private val insertM : mutable.HashMap[DataType, Seq[Any]] = new mutable.HashMap[DataType, Seq[Any]]()
-  private val updateM : mutable.HashMap[DataType, Seq[(Any,Any)]] = new mutable.HashMap[DataType, Seq[(Any,Any)]]()
-  private val removeM : mutable.HashMap[DataType, Seq[Any]] = new mutable.HashMap[DataType, Seq[Any]]()
+  private val insertM : mutable.HashMap[DataType[Any], Seq[Any]] = new mutable.HashMap[DataType[Any], Seq[Any]]()
+  private val updateM : mutable.HashMap[DataType[Any], Seq[(Any,Any)]] = new mutable.HashMap[DataType[Any], Seq[(Any,Any)]]()
+  private val removeM : mutable.HashMap[DataType[Any], Seq[Any]] = new mutable.HashMap[DataType[Any], Seq[Any]]()
   private var prio : Int = 5
 
 
@@ -90,7 +106,7 @@ class Result extends Delta {
    * @param t is the type of the data.
    * @param d is the data itself
    */
-  def insert (t : DataType)(d : Any): Result = {
+  def insert[T](t : DataType[T])(d : T): MutableDelta = {
     insertM.put(t, d +: insertM.getOrElse(t, Nil))
     this
   }
@@ -103,7 +119,7 @@ class Result extends Delta {
    * @param d1 is the old data
    * @param d2 is the new data
    */
-  def update (t : DataType)(d1 : Any)(d2 : Any): Result = {
+  def update[T](t : DataType[T])(d1 : T)(d2 : T): MutableDelta = {
     updateM.put(t, (d1,d2) +: updateM.getOrElse(t, Nil))
     this
   }
@@ -114,7 +130,7 @@ class Result extends Delta {
    * @param t is the type of data.
    * @param d is the data itself.
    */
-  def remove (t : DataType)(d : Any): Result = {
+  def remove[T](t : DataType[T])(d : T): MutableDelta = {
     removeM.put(t, d +: removeM.getOrElse(t, Nil))
     this
   }
@@ -126,7 +142,7 @@ class Result extends Delta {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  def inserts(t : DataType) : Seq[Any] = insertM.getOrElse(t, Nil)
+  def inserts[T](t : DataType[T]) : Seq[T] = insertM.getOrElse(t, Nil).map(x => t.convert(x))
 
   /**
    *
@@ -135,7 +151,7 @@ class Result extends Delta {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  def updates(t : DataType) : Seq[(Any, Any)] = updateM.getOrElse(t,Nil)
+  def updates[T](t : DataType[T]) : Seq[(T, T)] = updateM.getOrElse(t,Nil).map{ case (x,y) => (t.convert(x), t.convert(y))}
 
   /**
    *
@@ -144,30 +160,23 @@ class Result extends Delta {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  def removes(t : DataType) : Seq[Any] = removeM.getOrElse(t,Nil)
+  def removes[T](t : DataType[T]) : Seq[T] = removeM.getOrElse(t,Nil).map(x => t.convert(x))
 
   /**
    * Returns a sequence of all stored datatypes by this result.
    *
    * @return all stored datatypes
    */
-  def keys : Set[DataType] = ((removeM.keySet union insertM.keySet) union updateM.keySet).toSet
+  def types : Seq[DataType[Any]] = ((removeM.keySet union insertM.keySet) union updateM.keySet).toSeq
+
 
   /**
-   * Returns the priority of the Result.
-   * The priority is between 1 and 10, where 1 is important and 10 is unimportant.
-   *
-   * @return priority of the result
-   */
-  protected[blackboard] def priority : Int = prio
-
-  /**
-   * Sets the priority of the result to a value between
-   * 1 and 10, where 1 is important and 10 is unimportant.
-   *
-   * @param prio sets the priority to max(min(prio,10),1)
-   */
-  def setPriority(prio : Int) : Result = {this.prio = prio.min(10).max(1); this}
+    * This delta into another one.
+    *
+    * @param d - the other delta
+    * @return the merged delta
+    */
+  override def merge(d: Delta): Delta = ???
 
   final override def toString : String = {
     val sb : mutable.StringBuilder = new mutable.StringBuilder()
