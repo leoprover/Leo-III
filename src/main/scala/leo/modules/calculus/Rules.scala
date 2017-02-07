@@ -340,11 +340,37 @@ object PrimSubst extends CalculusRule {
   }
 }
 
-
+/**
+  * Representation of an (ordered) equality factoring step.
+  * For details, see [[leo.modules.calculus.OrderedEqFac#apply]].
+  */
 object OrderedEqFac extends CalculusRule {
   final val name = "eqfactor_ordered"
   final override val inferenceStatus = Some(SZS_Theorem)
 
+  /**
+    * Let `l = cl.lits(maxLitIndex)` and `l' = cl.lits(withLitIndex)` be literals
+    * called `maxLit` and `withLit` in the following.
+    * The method performs a single factoring step between `maxLit` and `withLit`.
+    * Unification constraints `c1 = [a = b]^f` and `c2 = [c = d]^f` are appended to the literal list,
+    * where `a` and `b` are the sides of the `maxLit` and `withLit`, respectively,
+    * according to `maxLitSide` and `withLitSide`. `c` and `d` are the remaining terms in those literals.
+    *
+    * @note Precondition:
+    *       - `maxLit` and `withLit` have the same polarity.
+    *       - `maxLitIndex != otherLitIndex`
+    * @note The rule does not validate that `maxLit` is indeed a maximal literal, i.e.
+    *       this is not required for the soundness of the application.
+    *
+    * @param cl The clause in which the factoring step is performed
+    * @param maxLitIndex The index of the (maximal) literal `l`
+    * @param maxLitSide The side of the literal that is taken as the left side `s` of literal `l`
+    * @param withLitIndex The index of the literal `l'`
+    * @param withLitSide The side of the literal that is taken as the left side `t` of literal `l'`
+    * @param sig The signature
+    * @return A new clause containing of all literals of `cl` except for `maxLit` add two appended unification contraints
+    *         `c1` and `c2`.
+    */
   final def apply(cl: Clause, maxLitIndex: Int, maxLitSide: Side,
                   withLitIndex: Int, withLitSide: Side)(implicit sig: Signature): Clause = {
     assert(cl.lits.isDefinedAt(maxLitIndex))
@@ -371,6 +397,10 @@ object OrderedEqFac extends CalculusRule {
 
 }
 
+/**
+  * Representation of an (ordered) paramodulation step.
+  * For details, see [[leo.modules.calculus.OrderedParamod#apply]].
+  */
 object OrderedParamod extends CalculusRule {
   final val name = "paramod_ordered"
   final override val inferenceStatus = Some(SZS_Theorem)
