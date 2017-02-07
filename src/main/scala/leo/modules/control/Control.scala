@@ -1533,7 +1533,7 @@ package indexingControl {
               decendantMap = decendantMap + (p1.id -> (decendantMap(p1.id) + cl))
             }
             found = true
-          } else assert(false)
+          } else found = true
         }
       }
     }
