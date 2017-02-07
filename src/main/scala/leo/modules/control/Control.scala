@@ -354,14 +354,14 @@ package inferenceControl {
 
       while (maxLitIt.hasNext) {
         val (maxLitIndex, maxLit, maxLitSide) = maxLitIt.next()
-        Out.trace(s"maxLit chosen: ${maxLit.pretty}")
+        Out.trace(s"maxLit chosen: ${maxLit.pretty(sig)}")
         val otherLitIt = new LiteralSideIterator(clause, false, true, true)
 
         while (otherLitIt.hasNext) {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
-          Out.trace(s"otherLit chosen: ${otherLit.pretty}")
+          Out.trace(s"otherLit chosen: ${otherLit.pretty(sig)}")
           if (maxLitIndex <= otherLitIndex && maxLitsofClause.contains(otherLit) ) {
-            Out.finest(s"skipped maxLit ${maxLit.pretty} with ${otherLit.pretty}")
+            Out.finest(s"skipped maxLit ${maxLit.pretty(sig)} with ${otherLit.pretty(sig)}")
             /* skipped since already tested */
           } else {
             if (maxLit.polarity == otherLit.polarity) {
@@ -370,8 +370,8 @@ package inferenceControl {
               val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
               val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
               val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
                 val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
@@ -384,8 +384,8 @@ package inferenceControl {
                 val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, !otherLitSide)
                 val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
                 val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-                Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+                Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+                Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
                 if (test1 && test2) {
                   val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
                   val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
@@ -393,49 +393,25 @@ package inferenceControl {
                 }
               }
             } else {
-              // Exactly one is flexhead and negative
-              // attach not to not-flex literal
-              if (maxLit.flexHead) {
-                // TODO
-                // assert(!otherLit.flexHead) NOT TRUE, right?
-                // otherlit is not flexhead
-                //following only makes sense if otherlit is equality between booleans
-                if (otherLit.left.ty == maxLit.left.ty) {
-                  //                  val adjustedOtherLit = Literal.mkLit(Not(otherLit.left), otherLit.right, !otherLit.polarity)
-                  //
-                  //                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
-                  //                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(adjustedOtherLit, otherLitSide)
-                  //                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                  //                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                  //                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-                  //                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
-                  //                  if (test1 && test2) {
-                  //                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-                  //                    val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)))
-                  //                    res = res + result
-                  //                  }
-                }
-              } else {
-                // assert(otherLit.flexHead)
-                // assert(!maxLit.flexHead)
-
-                //following only makes sense if maxLit is equality between booleans
-                if (maxLit.left.ty == otherLit.left.ty) {
-                  //                  val adjustedMaxLit = Literal.mkLit(Not(maxLit.left), maxLit.right, !maxLit.polarity)
-                  //
-                  //                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(adjustedMaxLit, maxLitSide)
-                  //                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
-                  //                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                  //                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                  //                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-                  //                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
-                  //                  if (test1 && test2) {
-                  //                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-                  //                    val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)))
-                  //                    res = res + result
-                  //                  }
+              // Different polarity, this can only work out if at least one of the literals
+              // is a flexhead, i.e. a literal `l` with `l = [s = $true]^alpha` where head(s) is a variable.
+              // The other literal l` must then be non-equational.
+              // This is not traversed again since bot literals are oriented.
+              if (maxLit.flexHead && !otherLit.equational) {
+                assert(maxLit.polarity != otherLit.polarity)
+                import leo.modules.HOLSignature.Not
+                val flexTerm = maxLit.left
+                val otherTerm = otherLit.left
+                val test = leo.modules.calculus.mayUnify(flexTerm, Not(otherTerm))
+                Out.finest(s"Test unify ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
+                if (test) {
+                  val adjustedClause = Clause(clause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
+                  val factor = OrderedEqFac(adjustedClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  res = res + result
                 }
               }
+              // Not clear if we also want the other way around: Since maxlit would be removed by EqFac
             }
           }
         }
