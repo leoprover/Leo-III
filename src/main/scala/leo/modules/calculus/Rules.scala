@@ -13,13 +13,15 @@ import scala.annotation.tailrec
 ////////////////////////////////////////////////////////////////
 
 object FuncExt extends CalculusRule {
-  val name = "func_ext"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name = "func_ext"
+  final val inferenceStatus = SZS_EquiSatisfiable
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty.isFunType
   type ExtLits = Literal
   type OtherLits = Literal
-  def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
+
+  final def canApply(l: Literal): Boolean = l.equational && l.left.ty.isFunType
+
+  final def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
     var can = false
     var extLits:Seq[Literal] = Seq()
     var otherLits: Seq[Literal] = Seq()
@@ -36,14 +38,12 @@ object FuncExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
+  final def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
     assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
     assert(lit.equational, "Trying to apply func ext on non-eq literal")
 
     val funArgTys = lit.left.ty.funParamTypes
     if (lit.polarity) {
-      // TODO: Maybe set implicitly quantified variables manually? Otherwise the whole terms is
-      // traversed again and again
       val newVars = funArgTys.map {ty => vargen(ty)}
       Literal.mkOrdered(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)(sig)
     } else {
@@ -55,22 +55,22 @@ object FuncExt extends CalculusRule {
     }
   }
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     val initFV = vargen.existingVars
     lits.map(apply(_,vargen, initFV)(sig))
   }
-
 }
 
 object BoolExt extends CalculusRule {
-  val name = "bool_ext"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "bool_ext"
+  final val inferenceStatus = SZS_Theorem
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty == o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
 
-  def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
+  final def canApply(l: Literal): Boolean = l.equational && l.left.ty == o
+
+  final def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
     var can = false
     var extLits:Seq[Literal] = Seq()
     var otherLits: Seq[Literal] = Seq()
@@ -87,7 +87,7 @@ object BoolExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(extLits: ExtLits, otherLits: OtherLits): Set[Clause] = {
+  final def apply(extLits: ExtLits, otherLits: OtherLits): Set[Clause] = {
     var transformed = Set(otherLits)
     val extIt = extLits.iterator
     while (extIt.hasNext) {
@@ -98,7 +98,7 @@ object BoolExt extends CalculusRule {
     transformed.map(Clause.mkClause)
   }
 
-  def apply(l: Literal): (ExtLits, ExtLits) = {
+  final def apply(l: Literal): (ExtLits, ExtLits) = {
     assert(l.equational, "Trying to apply bool ext on non-eq literal")
     assert(l.left.ty == o && l.right.ty == o, "Trying to apply bool ext on non-bool literal")
 
@@ -108,14 +108,13 @@ object BoolExt extends CalculusRule {
       (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, false)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, true)))
     }
   }
-
 }
 
 ////////////////////////////////////////////////////////////////
 ////////// pre-Unification
 ////////////////////////////////////////////////////////////////
 protected[calculus] abstract class AnyUni extends CalculusRule {
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val inferenceStatus = SZS_Theorem
 
   type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
@@ -184,8 +183,8 @@ object PatternUni extends AnyUni {
 ////////////////////////////////////////////////////////////////
 
 object Choice extends CalculusRule {
-  val name = "choice"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name = "choice"
+  final val inferenceStatus = SZS_EquiSatisfiable
 
   final def detectChoice(clause: Clause): Option[Term] = {
     import leo.datastructures.Term.TermApp
@@ -215,7 +214,6 @@ object Choice extends CalculusRule {
 
 
   final def canApply(clause: Clause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[Term] = {
-    import leo.datastructures.Term.{Symbol, Bound,TermApp}
     var result: Set[Term] = Set()
     val litIt = clause.lits.iterator
     while (litIt.hasNext) {
@@ -310,12 +308,11 @@ object Choice extends CalculusRule {
 ////////////////////////////////////////////////////////////////
 
 object PrimSubst extends CalculusRule {
-  val name = "prim_subst"
-  override val inferenceStatus = Some(SZS_Theorem)
-
   type FlexHeads = Set[Term]
+  final val name = "prim_subst"
+  final val inferenceStatus = SZS_Theorem
 
-  def canApply(cl: Clause): (Boolean, FlexHeads) = {
+  final def canApply(cl: Clause): (Boolean, FlexHeads) = {
     var can = false
     var flexheads: FlexHeads = Set()
     val lits = cl.lits.iterator
@@ -330,7 +327,7 @@ object PrimSubst extends CalculusRule {
     (can, flexheads)
   }
 
-  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
+  final def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map {hd =>
       val vargen = leo.modules.calculus.freshVarGen(cl)
       val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
@@ -346,7 +343,7 @@ object PrimSubst extends CalculusRule {
   */
 object OrderedEqFac extends CalculusRule {
   final val name = "eqfactor_ordered"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val inferenceStatus = SZS_Theorem
 
   /**
     * Let `l = cl.lits(maxLitIndex)` and `l' = cl.lits(withLitIndex)` be literals
@@ -403,7 +400,7 @@ object OrderedEqFac extends CalculusRule {
   */
 object OrderedParamod extends CalculusRule {
   final val name = "paramod_ordered"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val inferenceStatus = SZS_Theorem
 
   /**
     * Performs a paramodulation step on the given configuration.

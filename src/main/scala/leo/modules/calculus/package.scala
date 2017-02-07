@@ -12,41 +12,18 @@ import leo.modules.output.SuccessSZS
   */
 package object calculus {
 
-  ///////////////////////////////////
-  // Some super types for calculus rules
-  ///////////////////////////////////
-
   /**
     * Base type for calculus rules wrapped in objects/classes.
     * By extending this trait, the rule can be passed the proof output
     * methods (for logging the inference steps).
     */
   trait CalculusRule {
+    /** The name of the inference rule. */
     def name: String
-    def inferenceStatus: Option[SuccessSZS] = None
+    /** The kind of model-theoric relation of the inference rule's result to its premises.
+      * @see Explanation of values given in [[leo.modules.output.SuccessSZS]]. */
+    def inferenceStatus: SuccessSZS
   }
-
-  // Probably everything is obsolete from here ...
-  trait CalculusHintRule[Hint] extends CalculusRule {
-    type HintType = Hint
-  }
-
-  trait UnaryCalculusRule[Res] extends (Clause => Res) with CalculusRule {
-    def canApply(cl: Clause): Boolean
-  }
-
-  trait PolyadicCalculusRule[Res] extends ((Clause, Set[Clause]) => Res) with CalculusRule {
-    def canApply(cl: Clause, cls: Set[Clause]): Boolean
-  }
-
-  trait UnaryCalculusHintRule[Res, Hint] extends ((Clause, Hint) => Res) with CalculusHintRule[Hint] {
-    def canApply(cl: Clause): (Boolean, Hint)
-  }
-
-  trait BinaryCalculusRule[Res, Hint] extends ((Clause, Clause, Hint) => Res) with CalculusHintRule[Hint] {
-    def canApply(cl1: Clause, cl2: Clause): (Boolean, Hint)
-  }
-  // ... until here
 
   ///////////////////////////////////
   /// Fresh variable generation for clauses

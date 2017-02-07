@@ -17,14 +17,15 @@ import scala.annotation.tailrec
 ////////////////////////////////////////////////////////////////
 
 object DefExpSimp extends CalculusRule {
-  override val name = "defexp_and_simp_and_etaexpand"
-  override val inferenceStatus = Some(SZS_Theorem)
-  def apply(t: Term)(implicit sig: Signature): Term = {
+  final val name = "defexp_and_simp_and_etaexpand"
+  final val inferenceStatus = SZS_Theorem
+
+  final def apply(t: Term)(implicit sig: Signature): Term = {
     val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
     Simp.normalize(t.δ_expand_upTo(symb).betaNormalize.etaExpand)
   }
 
-  def apply(cl: Clause)(implicit sig: Signature): Clause = {
+  final def apply(cl: Clause)(implicit sig: Signature): Clause = {
     val litsIt = cl.lits.iterator
     var newLits: Seq[Literal] = Seq()
     while (litsIt.hasNext) {
@@ -44,20 +45,20 @@ object DefExpSimp extends CalculusRule {
 // with its ancestor clause.
 
 object PolaritySwitch extends CalculusRule {
-  val name = "polarity_switch"
-  override val inferenceStatus = Some(SZS_Theorem)
-  def canApply(t: Term): Boolean = t match {
+  final val name = "polarity_switch"
+  final val inferenceStatus = SZS_Theorem
+  final def canApply(t: Term): Boolean = t match {
     case Not(_) => true
     case _ => false
   }
-  def canApply(l: Literal): Boolean = canApply(l.left) || canApply(l.right)
+  final def canApply(l: Literal): Boolean = canApply(l.left) || canApply(l.right)
 
-  def apply(t: Term): Term = t match {
+  final def apply(t: Term): Term = t match {
     case Not(t2) => t2
     case _ => t
   }
 
-  def apply(l: Literal): Literal = if (l.equational) {
+  final def apply(l: Literal): Literal = if (l.equational) {
     (l.left, l.right) match {
       case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity, l.oriented)
       case _ => l
@@ -74,8 +75,8 @@ object PolaritySwitch extends CalculusRule {
   * Created by mwisnie on 11.04.16.
   */
 object  StepCNF extends CalculusRule {
-  override def name: String = "cnf"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val name: String = "cnf"
+  final val inferenceStatus = SZS_Theorem
 
   trait CNF
   case class Alpha(l : Literal, r : Literal) extends CNF
@@ -155,8 +156,8 @@ object  StepCNF extends CalculusRule {
 
 
 object RenameCNF extends CalculusRule {
-  override def name : String = "cnf"
-  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name : String = "cnf"
+  final val inferenceStatus = SZS_EquiSatisfiable
   type FVs = FullCNF.FVs
   type TyFVS = FullCNF.TyFVS
 
@@ -218,8 +219,8 @@ object RenameCNF extends CalculusRule {
   * Created by mwisnie on 4/4/16.
   */
 object FullCNF extends CalculusRule {
-  override def name: String = "cnf"
-  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name: String = "cnf"
+  final val inferenceStatus = SZS_EquiSatisfiable
   type FVs = Seq[(Int, Type)]
   type TyFVS = Seq[Int]
 
@@ -296,8 +297,8 @@ object FullCNF extends CalculusRule {
 
 
 object LiftEq extends CalculusRule {
-  val name = "lifteq"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "lifteq"
+  final val inferenceStatus = SZS_Theorem
 
   type Lift = Int
   final val NO_LIFT: Lift = 0
@@ -362,8 +363,8 @@ object LiftEq extends CalculusRule {
 
 
 object ReplaceLeibnizEq extends CalculusRule {
-  val name = "replace_leibeq"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "replace_leibeq"
+  final val inferenceStatus = SZS_Theorem
   type Polarity = Boolean
 
 
@@ -412,8 +413,8 @@ object ReplaceLeibnizEq extends CalculusRule {
 }
 
 object ReplaceAndrewsEq extends CalculusRule {
-  val name = "replace_andrewseq"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "replace_andrewseq"
+  final val inferenceStatus = SZS_Theorem
 
   def canApply(cl: Clause): (Boolean, Map[Int, Type]) = {
     import leo.datastructures.Term.{Bound, TermApp}
@@ -452,8 +453,8 @@ object ReplaceAndrewsEq extends CalculusRule {
 }
 
 object RewriteSimp extends CalculusRule {
-  val name = "rewrite"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "rewrite"
+  final val inferenceStatus = SZS_Theorem
 
 //  /**
 //    * Apply a rewrite using `rewriteRule` on a specific literal in `ìntoClause`.
@@ -519,8 +520,8 @@ object RewriteSimp extends CalculusRule {
 }
 
 object ACSimp extends CalculusRule {
-  val name = "ac_simp"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "ac_simp"
+  final val inferenceStatus = SZS_Theorem
 
   def lt(a: Term, b: Term): Boolean = {
     import leo.datastructures.Term.{Bound, Symbol}
@@ -603,8 +604,8 @@ object ACSimp extends CalculusRule {
 }
 
 object Simp extends CalculusRule {
-  val name = "simp"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "simp"
+  final val inferenceStatus = SZS_Theorem
 
   def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
@@ -855,10 +856,10 @@ object Miniscope extends CalculusRule {
   @inline final val LEFT : PUSH_TYPE = 1
   @inline final val RIGHT : PUSH_TYPE = 2
 
-  override val inferenceStatus = Some(SZS_Theorem)
-  val name = "miniscope"
+  final val inferenceStatus = SZS_Theorem
+  final val name = "miniscope"
 
-  def apply(t : Term, pol : Boolean)(implicit sig: Signature): Term = {
+  final def apply(t : Term, pol : Boolean)(implicit sig: Signature): Term = {
     apply0(t, pol, Vector[(Boolean, Type)]())
   }
 

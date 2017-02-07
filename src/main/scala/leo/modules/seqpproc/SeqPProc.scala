@@ -62,8 +62,8 @@ object SeqPProc {
             val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
             state.setConjecture(conjectureClause)
             val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
-              override final val name: String = "neg_conjecture"
-              override final val inferenceStatus = Some(SZS_CounterTheorem)
+              final val name: String = "neg_conjecture"
+              final val inferenceStatus = SZS_CounterTheorem
             }, conjectureClause), ClauseAnnotation.PropSOS)
             state.setNegConjecture(negConjectureClause)
             conj = formula
@@ -576,7 +576,8 @@ object SeqPProc {
 
   private def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
     InferredFrom(new leo.modules.calculus.CalculusRule {
-      override final val name: String = prover
+      final val name: String = prover
+      final val inferenceStatus = SZS_Theorem
     }, source.toSeq)
   }
 }

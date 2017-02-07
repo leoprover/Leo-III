@@ -162,7 +162,7 @@ abstract sealed class ClauseAnnotation extends Pretty {
 object ClauseAnnotation {
   import leo.modules.calculus.CalculusRule
   case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Seq[(A, Output)]) extends ClauseAnnotation {
-    def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status(" + _.pretty.toLowerCase + ")")}],[${
+    def pretty: String = s"inference(${rule.name},[status(${rule.inferenceStatus.pretty.toLowerCase})],[${
       cws.map { case (cw, add) => if (add == null) {
         cw.id
       } else {
