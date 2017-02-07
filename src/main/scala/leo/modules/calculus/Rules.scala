@@ -349,17 +349,17 @@ object OrderedEqFac extends CalculusRule {
                   withLitIndex: Int, withLitSide: Side)(implicit sig: Signature): Clause = {
     assert(cl.lits.isDefinedAt(maxLitIndex))
     assert(cl.lits.isDefinedAt(withLitIndex))
+    assert(maxLitIndex != withLitIndex)
 
     val maxLit = cl.lits(maxLitIndex)
     val withLit = cl.lits(withLitIndex)
-    assert(maxLit.polarity || maxLit.flexHead)
-    assert(withLit.polarity || withLit.flexHead)
+    assert(maxLit.polarity == withLit.polarity)
 
     val (maxLitSide1, maxLitSide2) = Literal.getSidesOrdered(maxLit, maxLitSide)
     val (withLitSide1, withLitSide2) = Literal.getSidesOrdered(withLit, withLitSide)
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
-    * i.e. it is lated eliminated using Simp. */
+    * that is later eliminated using Simp. */
     val lits_without_maxLit = cl.lits.updated(maxLitIndex, Literal.mkLit(LitTrue(),false))
     val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(sig)
     val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
