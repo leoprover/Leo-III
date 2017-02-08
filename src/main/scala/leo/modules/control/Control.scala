@@ -3,6 +3,7 @@ package leo.modules.control
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.seqpproc.State
+import leo.modules.Utility.myAssert
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -1137,7 +1138,7 @@ package inferenceControl {
       else {
         // get all rewrite rules as literals
         val rules: Set[Literal] = rules0.map(_.cl.lits.head)
-        assert(rules.forall(_.oriented))
+        myAssert(rules.forall(_.oriented))
 
         // search in all literals of cw for instances of a rule's left side
         val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
