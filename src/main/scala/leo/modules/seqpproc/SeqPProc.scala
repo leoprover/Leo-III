@@ -202,6 +202,7 @@ object SeqPProc {
             val p = ExternalProver.createProver(name,path)
             state.addExternalProver(p)
             leo.Out.info(s"$name registered as external prover.")
+            leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")
           } catch {
             case e: NoSuchElementException => leo.Out.warn(e.getMessage)
           }
@@ -225,7 +226,7 @@ object SeqPProc {
 
 
       // Preprocessing
-      val conjecture_preprocessed = if (state.negConjecture != null) {
+      if (state.negConjecture != null) {
         Out.debug("## Preprocess Neg.Conjecture BEGIN")
         Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
         val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
@@ -235,8 +236,8 @@ object SeqPProc {
           }.mkString("\n\t")
         }")
         Out.trace("## Preprocess Neg.Conjecture END")
-        result
-      } else Set[AnnotatedClause]()
+        state.addUnprocessed(result)
+      }
 
       Out.debug("## Preprocess BEGIN")
       val preprocessIt = remainingInput.iterator
@@ -258,7 +259,7 @@ object SeqPProc {
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest(s"Clauses and maximal literals of them:")
-        for (c <- state.unprocessed union conjecture_preprocessed) {
+        for (c <- state.unprocessed) {
           Out.finest(s"Clause ${c.pretty(sig)}")
           Out.finest(s"Maximal literal(s):")
           Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
@@ -270,48 +271,7 @@ object SeqPProc {
       var loop = true
 
       /////////////////////////////////////////
-      // Init loop for conjecture-derived clauses
-      /////////////////////////////////////////
-      val conjectureProcessedIt = conjecture_preprocessed.iterator
-      Out.debug("## Pre-reasoning loop BEGIN")
-      while (conjectureProcessedIt.hasNext && loop && !prematureCancel(state.noProcessedCl)) {
-        if (System.currentTimeMillis() - startTime > 1000 * Configuration.TIMEOUT) {
-          loop = false
-          state.setSZSStatus(SZS_Timeout)
-        } else {
-          var cur = conjectureProcessedIt.next()
-          Out.debug(s"Taken: ${cur.pretty(sig)}")
-          cur = Control.rewriteSimp(cur, state.rewriteRules)
-          /* Functional Extensionality */
-          cur = Control.funcext(cur)
-          /* To equality if possible */
-          cur = Control.liftEq(cur)
-          if (Clause.effectivelyEmpty(cur.cl)) {
-            loop = false
-            endplay(cur, state)
-          } else {
-            val choiceCandidate = Control.detectChoiceClause(cur)
-            if (choiceCandidate.isDefined) {
-              val choiceFun = choiceCandidate.get
-              state.addChoiceFunction(choiceFun)
-              leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
-            } else {
-              // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
-              // e.g. by forward subsumption
-              if (!Control.redundant(cur, state.processed)) {
-                if(mainLoopInferences(cur, state)) loop = false
-              } else {
-                Out.debug(s"Clause ${cur.id} redundant, skipping.")
-                state.incForwardSubsumedCl()
-              }
-            }
-          }
-        }
-      }
-      Out.debug("## Pre-reasoning loop END")
-
-      /////////////////////////////////////////
-      // Main proof loop TODO: Merge with pre-reasoning loop
+      // Main proof loop
       /////////////////////////////////////////
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
@@ -360,13 +320,13 @@ object SeqPProc {
                   // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
                   // e.g. by forward subsumption
                   if (!Control.redundant(cur, state.processed)) {
+                    Control.submit(state.processed, state)
                     if(mainLoopInferences(cur, state)) loop = false
                   } else {
                     Out.debug(s"Clause ${cur.id} redundant, skipping.")
                     state.incForwardSubsumedCl()
                   }
                 }
-                Control.submit(state.processed, state)
               }
             } else {
               state.addUnprocessed(curCNF)

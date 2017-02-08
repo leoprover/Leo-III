@@ -110,18 +110,20 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
     val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
-
-    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
-    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
-    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[T]])
-    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
+    mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+    mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(nongoals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+    mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[T]])
+    mpq.addPriority(oldest_first.asInstanceOf[Ordering[T]])
   }
   final def unprocessedLeft: Boolean = !mpq.isEmpty
   final def unprocessed: Set[T] = {
     if (mpq == null) leo.Out.comment("MPQ null")
     mpq.toSet
   }
-  final private val prio_weights = Seq(8,1,2,2)
+  final private val prio_weights = Seq(10,1,1,2,10,2,1)
   private var cur_prio = 0
   private var cur_weight = 0
   final def nextUnprocessed: T = {
