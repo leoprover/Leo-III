@@ -221,42 +221,44 @@ package object datastructures {
 
     // Since the orderings are used in a scala priorityqueue which prefers greater elemens, we need to reverse the
     // element orderings in the compounds
-    final val fifo2: ClauseProxyOrdering = CPO_OldestFirst.reverse
-    final def goals_SymbWeight(conjSymbols: Set[Signature#Key],
-                                   conjSymbolFactor: Float,
-                                   varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+    final val oldest_first: ClauseProxyOrdering = CPO_OldestFirst.reverse
+    final def goals_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         CPO_GoalsFirst2.reverse,
         new CPO_SymbolWeight(varWeight, symbWeight).reverse,
-        fifo2)
-    final def goals_litCount_SymbWeight(conjSymbols: Set[Signature#Key],
-                               conjSymbolFactor: Float,
-                               varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+        oldest_first)
+    final def goals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         CPO_GoalsFirst2.reverse,
         CPO_SmallerFirst.reverse,
         new CPO_SymbolWeight(varWeight, symbWeight).reverse,
-        fifo2)
+        oldest_first)
+    final def nongoals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        CPO_NonGoalsFirst2.reverse,
+        CPO_SmallerFirst.reverse,
+        new CPO_SymbolWeight(varWeight, symbWeight).reverse,
+        oldest_first)
     final def conjRelSymb(conjSymbols: Set[Signature#Key],
                                    conjSymbolFactor: Float,
                                    varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
-        fifo2)
+        oldest_first)
     final def litCount_conjRelSymb(conjSymbols: Set[Signature#Key],
                               conjSymbolFactor: Float,
                               varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         CPO_SmallerFirst.reverse,
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
-        fifo2)
+        oldest_first)
     final def sos_conjRelSymb(conjSymbols: Set[Signature#Key],
                               conjSymbolFactor: Float,
                               varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         CPO_SOSFirst.reverse,
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
-        fifo2)
+        oldest_first)
   }
 
   ///////////////////////
