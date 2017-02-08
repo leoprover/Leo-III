@@ -18,6 +18,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
+  def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
   def unprocessed: Set[T]
   def nextUnprocessed: T
@@ -85,15 +86,8 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[T]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
-  final private val prio_weights = Seq(8,1,2,2)
-  private var cur_prio = 0
-  private var cur_weight = 0
 
-  private var symbolsInConjecture0: Set[Signature#Key] = Set()
+  private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
   final def conjecture: T = conjecture0
   final def setConjecture(conj: T): Unit = {
     conjecture0 = conj
@@ -113,11 +107,23 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
+  final def initUnprocessed(): Unit = {
+    import leo.datastructures.ClauseProxyOrderings._
+    val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
+
+    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
+    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
+    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[T]])
+    mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
+  }
   final def unprocessedLeft: Boolean = !mpq.isEmpty
   final def unprocessed: Set[T] = {
     if (mpq == null) leo.Out.comment("MPQ null")
     mpq.toSet
   }
+  final private val prio_weights = Seq(8,1,2,2)
+  private var cur_prio = 0
+  private var cur_weight = 0
   final def nextUnprocessed: T = {
     leo.Out.debug(s"[###] Selecting with priority $cur_prio: element $cur_weight")
     if (cur_weight >= prio_weights(cur_prio)) {

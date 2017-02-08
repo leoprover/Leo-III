@@ -215,13 +215,15 @@ object SeqPProc {
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
       // Remaining stuff ...
+      Out.trace(s"Symbols in conjecture: " +
+        s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
+      state.initUnprocessed()
       Out.info(s"Type checking passed. Searching for refutation ...")
       // Initialize indexes
       if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
       else Control.initIndexes(remainingInput)
 
-      Out.trace(s"Symbols in conjecture: " +
-        s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
+
       // Preprocessing
       val conjecture_preprocessed = if (state.negConjecture != null) {
         Out.debug("## Preprocess Neg.Conjecture BEGIN")
@@ -569,8 +571,8 @@ object SeqPProc {
       val limit: Int = Configuration.valueOf("ll").get.head.toInt
       counter >= limit
     } catch {
-      case e: NumberFormatException => false
-      case e: NoSuchElementException => false
+      case _: NumberFormatException => false
+      case _: NoSuchElementException => false
     }
   }
 
