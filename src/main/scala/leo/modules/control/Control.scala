@@ -251,7 +251,10 @@ package inferenceControl {
                   }
                 }
                 if (newCl != null) {
-                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
+                  val newProperties = if (isPropSet(ClauseAnnotation.PropSOS, withWrapper.properties) || isPropSet(ClauseAnnotation.PropSOS, intoWrapper.properties))
+                    ClauseAnnotation.PropNeedsUnification |  ClauseAnnotation.PropSOS
+                  else ClauseAnnotation.PropNeedsUnification
+                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
                   Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
                   results = results + newClWrapper
                 }
@@ -459,8 +462,8 @@ package inferenceControl {
         val cl = clsIt.next()
 
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, cl.properties)) {
-          Out.debug(s"Clause ${cl.id} needs unification. Working on it ...")
-          Out.debug(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
+          Out.trace(s"Clause ${cl.id} needs unification. Working on it ...")
+          Out.trace(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
           Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           val vargen = leo.modules.calculus.freshVarGen(cl.cl)
 
@@ -1007,7 +1010,7 @@ package inferenceControl {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
-        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), cl.properties)
+        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else
@@ -1705,8 +1708,9 @@ package  externalProverControl {
     }
 
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
-      if (clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
+      if (state.externalProvers.nonEmpty && clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
         leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+
         lastCall = clauses.size
         state.externalProvers.foreach(prover =>
           if (openCalls.isDefinedAt(prover)) {
