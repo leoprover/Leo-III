@@ -147,7 +147,7 @@ object PreUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
-    Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    Out.trace(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
@@ -166,7 +166,7 @@ object PatternUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
-    Out.debug(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    Out.trace(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     val result = PatternUnification.unifyAll(vargen, uniLits)
     if (result.isEmpty) None
     else {

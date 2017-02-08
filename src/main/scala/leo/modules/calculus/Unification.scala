@@ -143,14 +143,14 @@ object HuetsPreUnification extends Unification {
       leo.Out.finest(s"Finished detExhaust")
       // if uTyProblems is non-empty fail
       if (fail) {
-        leo.Out.debug(s"Unification failed.")
+        leo.Out.trace(s"Unification failed.")
         Seq()
       } else {
         // if there is no unsolved equation (other than flex-flex), then succeed
         if (flexRigid.isEmpty) {
-          leo.Out.debug(s"Unification finished")
-          leo.Out.debug(s"\tTerm substitution ${partialUnifier.normalize.pretty}")
-          leo.Out.debug(s"\tType substitution ${partialTyUnifier.normalize.pretty}")
+          leo.Out.trace(s"Unification finished")
+          leo.Out.finest(s"\tTerm substitution ${partialUnifier.normalize.pretty}")
+          leo.Out.finest(s"\tType substitution ${partialTyUnifier.normalize.pretty}")
           Seq(new MyConfiguration(((partialUnifier.normalize, initialTypeSubst.comp(partialTyUnifier).normalize), flexFlex)))
         }
         // else do flex-rigid cases
