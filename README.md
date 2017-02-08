@@ -111,8 +111,23 @@ To test the bindings run:
 
 Usage
 ----------------
-todo
+```
+Leo III -- A Higher-Order Theorem Prover.
+Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.
 
+Usage: ... PROBLEM_FILE [OPTIONS]
+Options:
+-e name=N, --atp-timout name=N		Timeout for an external prover in seconds.
+-s, --sos 		Use SOS heuristic search strategy
+-n N		Maximum number of threads
+-t N		Timeout in seconds
+-a name=call, --atp name=call		Addition of external provers
+-v Lvl		Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)
+-p		Display proof output
+-c Csat		Sets the proof mode to counter satisfiable (Through remote proof
+-h		Display this help message
+```
+Note that verbosity levels greater than 3 are only supported in debug builds.
 
 
 Project's current structure
