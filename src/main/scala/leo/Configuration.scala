@@ -172,16 +172,15 @@ object Configuration extends DefaultConfiguration {
       atps.filter(_.contains("=")).map{(s : String)  =>
         val eses = s.split("=",2)
         (eses(0), eses(1).toInt)
-      }.toMap
-    }
-    else {
+      }.toMap.withDefault(_ => ATP_STD_TIMEOUT)
+    } else {
       val b = valueOf("atp-timeout")
       if(b.nonEmpty) {
         val atps = b.get
         atps.filter(_.contains("=")).map{(s : String)  =>
           val eses = s.split("=",2)
           (eses(0), eses(1).toInt)
-        }.toMap
+        }.toMap.withDefault(_ => ATP_STD_TIMEOUT)
       }
       else Map().withDefault(_ => ATP_STD_TIMEOUT)
     }
