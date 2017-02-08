@@ -9,6 +9,7 @@ import leo.datastructures._
 import leo.datastructures.context.Context
 import leo.modules.output._
 
+import scala.annotation.elidable
 import scala.collection.immutable.HashSet
 
 /**
@@ -173,6 +174,9 @@ object Utility {
     e.printStackTrace(new PrintWriter(sw))
     sw.toString
   }
+
+  @elidable(elidable.FINE) final def myAssert(condition: => Boolean): Unit = {assert(condition)}
+  @elidable(elidable.FINE) final def myAssert(condition: => Boolean, msg: => String): Unit = {assert(condition, msg)}
 
   /////////////////////////////////////////////////////////////
   /// Old, unused and should soon get deleted or moved to a reasonable location:

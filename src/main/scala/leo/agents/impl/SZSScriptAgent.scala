@@ -172,5 +172,6 @@ case class SZSScriptMessage(f: ClauseProxy) extends Message
 case class CallExternal(clauses : Set[ClauseProxy]) extends Message
 
 case class ExternalRule(prover : String) extends CalculusRule {
-  override def name: String = s"external($prover)"
+  override val name: String = s"external($prover)"
+  override val inferenceStatus = SZS_Theorem
 }

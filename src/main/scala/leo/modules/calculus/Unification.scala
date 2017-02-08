@@ -36,7 +36,7 @@ trait Unification {
   def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
 
   /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
-  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Seq((t,s)))
+  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Vector((t,s)))
 
   /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
   def unify(constraints: Seq[UTEq]): Option[TypeSubst]
@@ -393,7 +393,27 @@ object HuetsPreUnification extends Unification {
       case _ => throw new IllegalArgumentException("impossible")
     }
     final def canApply(e: UEq, depth: Depth): Boolean = e match {
-      case (hd1 ∙ _, hd2 ∙ _) if hd1 == hd2 => !isFlexible(hd1, depth)
+      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 && !isFlexible(hd1, depth) => if (!hd1.ty.isPolyType) true else {
+        // If head symbols are polymorphic we need to check if the applied type arguments
+        // are "compatible" in the sense that the resulting new unsolved equations are
+        // have the same type arity. otherwise lambda-detaching in apply(.) is not even and will fail.
+        // (they are not necessarily well-typed, since the new unsolved type equations are not yet solved)
+        var hd1PrefixTypeArgs = args1.takeWhile(_.isRight).map(_.right.get)
+        var hd2PrefixTypeArgs = args2.takeWhile(_.isRight).map(_.right.get)
+        assert(hd1PrefixTypeArgs.size == hd2PrefixTypeArgs.size)
+        while(hd1PrefixTypeArgs.nonEmpty) {
+          val hd1type = hd1PrefixTypeArgs.head
+          val hd2type = hd2PrefixTypeArgs.head
+          /* TODO: This is too restrictive: If the last type in hd[1/2]type.funParamTypesWithResultType.last is a variable
+           * we can (try to) bind it accordingly using type unification directly. */
+          if (hd1type.arity != hd2type.arity) return false
+          else {
+            hd1PrefixTypeArgs = hd1PrefixTypeArgs.tail
+            hd2PrefixTypeArgs = hd2PrefixTypeArgs.tail
+          }
+        }
+        true
+      }
       case _ => false
     }
   }
@@ -445,14 +465,6 @@ object HuetsPreUnification extends Unification {
     */
   object ImitateRule {
     import leo.datastructures.Term.{∙, :::>}
-
-    private final def takePrefixTypeArguments(t: Term): Seq[Type] = {
-      t match {
-        case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
-        case _ :::> body  => takePrefixTypeArguments(body)
-        case _ => Seq()
-      }
-    }
 
     final def apply(vargen: FreshVarGen, e: UEq0): UEq = {
       import leo.datastructures.Term.Bound
@@ -536,6 +548,16 @@ object HuetsPreUnification extends Unification {
           case Bound(_, scope) => scope > depth
           case _ => false
         }
+  }
+
+  @tailrec
+  private final def takePrefixTypeArguments(t: Term): Seq[Type] = {
+    import leo.datastructures.Term.{∙,:::>}
+    t match {
+      case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
+      case _ :::> body  => takePrefixTypeArguments(body)
+      case _ => Seq()
+    }
   }
 
 //  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =

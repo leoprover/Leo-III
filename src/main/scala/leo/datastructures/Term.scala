@@ -130,7 +130,7 @@ class NotWellTypedException(msg: String, term: Option[Term]) extends RuntimeExce
 object NotWellTypedException {
   final def apply(): NotWellTypedException = new NotWellTypedException("", None)
   final def apply(msg: String): NotWellTypedException = new NotWellTypedException(msg, None)
-  final def apply(term: Term): NotWellTypedException = new NotWellTypedException("", Some(term))
+  final def apply(term: Term): NotWellTypedException = new NotWellTypedException(term.pretty, Some(term))
   final def apply(msg: String, term: Term): NotWellTypedException = new NotWellTypedException(msg, Some(term))
 }
 

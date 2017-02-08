@@ -12,7 +12,7 @@ object ToTFF {
   }
 
   import leo.datastructures.{Literal, Type, Term}
-  private final def apply0(fvs: Seq[(Int, Type)], tyFvs: Set[Int], lits: Seq[Literal])(sig: Signature): String = {
+  private final def apply0(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], lits: Seq[Literal])(sig: Signature): String = {
     if (tyFvs.nonEmpty) throw new IllegalArgumentException
 
     val sb = new StringBuffer()

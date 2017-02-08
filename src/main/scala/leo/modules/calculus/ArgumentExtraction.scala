@@ -42,7 +42,7 @@ object ArgumentExtraction extends CalculusRule {
     * formula and the extracted definitions.
     * @return
     */
-  override def inferenceStatus: Option[SuccessSZS] = Some(SZS_Theorem)
+  override def inferenceStatus: SuccessSZS = SZS_Theorem
 
   /**
     * Tests the term 't' for any occurences of lambdas of a sequence
