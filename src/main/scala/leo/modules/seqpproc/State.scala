@@ -42,6 +42,8 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
 
+  def addInitial(cls: Set[T]): Unit
+  def initialProblem: Set[T]
   def externalProvers: Set[TptpProver[T]]
   def addExternalProver(prover: TptpProver[T]): Unit
 }
@@ -166,6 +168,10 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
+
+  private var initialProblem0: Set[T] = Set()
+  final def addInitial(cls: Set[T]): Unit = {initialProblem0 = initialProblem0 union cls}
+  final def initialProblem: Set[T] = initialProblem0
 
   final def externalProvers: Set[TptpProver[T]] = current_externalProvers
   final def addExternalProver(prover: TptpProver[T]): Unit =  {

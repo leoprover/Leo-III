@@ -1715,12 +1715,12 @@ package  externalProverControl {
         state.externalProvers.foreach(prover =>
           if (openCalls.isDefinedAt(prover)) {
             if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
-              val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+              val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
               openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
               leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
             }
           } else {
-            val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+            val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
             openCalls = openCalls + (prover -> Set(futureResult))
             leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
           }

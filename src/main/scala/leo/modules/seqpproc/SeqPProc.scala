@@ -237,6 +237,10 @@ object SeqPProc {
         }")
         Out.trace("## Preprocess Neg.Conjecture END")
         state.addUnprocessed(result)
+        // Save initial pre-processed set as auxiliary set for ATP calls (if existent)
+        if (state.externalProvers.nonEmpty) {
+          state.addInitial(result)
+        }
       }
 
       Out.debug("## Preprocess BEGIN")
@@ -252,6 +256,9 @@ object SeqPProc {
         }")
         val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
         state.addUnprocessed(preprocessed)
+        if (state.externalProvers.nonEmpty) {
+          state.addInitial(preprocessed)
+        }
         if (preprocessIt.hasNext) Out.trace("--------------------")
       }
       Out.trace("## Preprocess END\n\n")
@@ -288,8 +295,14 @@ object SeqPProc {
             // Other than THM or CSA are filter out by control
             assert(extResAnwers.szsStatus == SZS_Theorem || extResAnwers.szsStatus == SZS_CounterSatisfiable)
             loop = false
-            val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnwers.proverName, extResAnwers.problem))
-            endplay(emptyClause, state)
+            if (extResAnwers.szsStatus == SZS_Theorem) {
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnwers.proverName, extResAnwers.problem))
+              endplay(emptyClause, state)
+            } else {
+              assert(extResAnwers.szsStatus == SZS_CounterSatisfiable)
+              state.setSZSStatus(SZS_CounterSatisfiable)
+            }
+
           } else {
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
