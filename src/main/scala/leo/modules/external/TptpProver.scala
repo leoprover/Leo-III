@@ -34,7 +34,7 @@ trait TptpProver[C <: ClauseProxy] {
     * Calls the external prover on a set of formulas assumed to be correct.
     *
     * @param problem the set of formulas to be checked.
-    * @param timeout the timeout for the prover in milliseconds
+    * @param timeout the timeout for the prover in seconds
     * @param args additional arguments for the prover
     * @param sig the current signature
     * @return A Future with the result of the prover.
@@ -50,7 +50,7 @@ trait TptpProver[C <: ClauseProxy] {
     * Important are the nameing of the timeout and where to put the problem file.
     *
     * @param args Additional arguments for the prover
-    * @param timeout The timeout in milliseconds
+    * @param timeout The timeout in seconds
     * @param problemFileName The name of the problemfile in TPTP syntax
     * @return
     */
