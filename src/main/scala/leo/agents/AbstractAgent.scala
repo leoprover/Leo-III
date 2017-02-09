@@ -35,7 +35,7 @@ abstract class AbstractAgent extends Agent {
    *         Some(Nil) -> The agent registers for all data changes. <br />
    *         Some(xs) -> The agent registers only for data changes for any type in xs.
    */
-  def interest : Option[Seq[DataType]] = Some(Nil)
+  def interest : Option[Seq[DataType[Any]]] = Some(Nil)
 
   /**
    * Prints the comment in the comment stream of the console.

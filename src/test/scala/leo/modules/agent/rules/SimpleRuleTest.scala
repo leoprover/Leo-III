@@ -34,7 +34,7 @@ class SimpleRuleTest extends LeoTestSuite {
     prepAgent.register()
 
     new AbstractAgent {
-      override val interest : Option[Seq[DataType]] = None
+      override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
         case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
@@ -69,7 +69,7 @@ class SimpleRuleTest extends LeoTestSuite {
     prepAgent.register()
 
     new AbstractAgent {
-      override val interest : Option[Seq[DataType]] = None
+      override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
         case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
@@ -107,7 +107,7 @@ class SimpleRuleTest extends LeoTestSuite {
     appAgent.register()
 
     new AbstractAgent {
-      override val interest : Option[Seq[DataType]] = None
+      override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
         case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
@@ -130,13 +130,15 @@ class SimpleRuleTest extends LeoTestSuite {
 }
 
 
-case object StringType extends DataType
+case object StringType extends DataType[String]{
+  override def convert(d: Any): String = d.asInstanceOf[String]
+}
 class SimpleStore extends DataStore {
 
   val strings : mutable.Set[String] = mutable.HashSet[String]()
 
-  override val storedTypes: Seq[DataType] = Seq(StringType)
-  override def updateResult(r: Result): Boolean = synchronized{
+  override val storedTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def updateResult(r: Delta): Boolean = synchronized{
     var (del, ins) : (Seq[String], Seq[String])= r.updates(StringType).map{case (a,b) => (a.asInstanceOf[String], b.asInstanceOf[String])}.unzip
     del = del ++ r.removes(StringType).map(_.asInstanceOf[String])
     ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
@@ -147,7 +149,7 @@ class SimpleStore extends DataStore {
     true
   }
   override def clear(): Unit = synchronized(strings.clear())
-  override def all(t: DataType): Set[Any] = if(t == StringType) synchronized(strings.toSet) else Set()
+  override def all[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
 }
 
 
@@ -186,9 +188,9 @@ class AppendRule(letter : String, observe : SimpleStore) extends Rule {
 }
 
 class ChangeStringHint(olds : String, news : String) extends Hint {
-  override def apply(): Result = {
+  override def apply(): Delta = {
     Result().update(StringType)(olds)(news)
   }
-  override val read: Map[DataType, Set[Any]] = Map()
-  override val write: Map[DataType, Set[Any]] = Map(StringType -> Set(olds))
+  override val read: Map[DataType[Any], Set[Any]] = Map()
+  override val write: Map[DataType[Any], Set[Any]] = Map(StringType -> Set(olds))
 }

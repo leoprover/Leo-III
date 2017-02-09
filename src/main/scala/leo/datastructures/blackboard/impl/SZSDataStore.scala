@@ -1,7 +1,7 @@
 package leo.datastructures.blackboard.impl
 
 import leo.datastructures.ClauseProxy
-import leo.datastructures.blackboard.{DataStore, DataType, Result, StatusType}
+import leo.datastructures.blackboard._
 import leo.datastructures.context.Context
 import leo.modules.output.StatusSZS
 
@@ -41,18 +41,18 @@ object SZSDataStore extends DataStore {
   def getStatus(c: Context): Option[StatusSZS] = if(szs == null) None else Some(szs)  // TODO convert to "null" representation
 
 
-  @inline override val storedTypes: Seq[DataType] = List(StatusType)
+  @inline override val storedTypes: Seq[DataType[Any]] = List(StatusType)
 
-  override def updateResult(r: Result): Boolean = synchronized {
+  override def updateResult(r: Delta): Boolean = synchronized {
     val ins = r.inserts(StatusType)
     if(ins.nonEmpty & szs == null){
-      val value = ins.head.asInstanceOf[SZSStore]
-      szs = value.szsStatus
+      val value = ins.head
+      szs = value
       return true
     }
     val ups = r.updates(StatusType)
     if (ups.nonEmpty) {
-      val (oldV, newV) = ups.head.asInstanceOf[(StatusSZS, StatusSZS)]
+      val (oldV, newV) = ups.head
       if (oldV != szs) return false
       szs = newV
       return true
@@ -62,8 +62,8 @@ object SZSDataStore extends DataStore {
 
   override def clear(): Unit = synchronized(szs)
 
-  override protected[blackboard] def all(t: DataType): Set[Any] = t match {
-    case StatusType => Set(szs)
+  override protected[blackboard] def all[T](t: DataType[T]): Set[T] = t match {
+    case StatusType => Set(szs).asInstanceOf[Set[T]]
     case _ => Set.empty
   }
 }

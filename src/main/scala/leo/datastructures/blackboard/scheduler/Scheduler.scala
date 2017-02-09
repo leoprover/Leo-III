@@ -247,7 +247,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       if(curExec.contains(task)) {
         work = true
 
-        val dsIT = Blackboard().getDS(result.keys).iterator
+        val dsIT = Blackboard().getDS(result.types.toSet).iterator
         while(dsIT.hasNext){
           val ds = dsIT.next()
           ds.updateResult(result)
@@ -264,7 +264,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
         try {
           Blackboard().filterAll { a => // Informing agents of the changes
             a.interest match {
-              case Some(xs) if xs.isEmpty || (xs.toSet & result.keys).nonEmpty=>
+              case Some(xs) if xs.isEmpty || (xs.toSet & result.types.toSet).nonEmpty=>
                 ActiveTracker.incAndGet(s"Filter new data\n\t\tin Agent ${a.name}\n\t\tfrom Task ${task.name}")
                 exe.submit(new GenFilter(a, result, task))
                 workCount.incrementAndGet()
@@ -323,7 +323,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
     }
   }
 
-  private class GenFilter(a : Agent, r : Result, from : Task) extends Runnable{
+  private class GenFilter(a : Agent, r : Delta, from : Task) extends Runnable{
     override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
       try {
@@ -356,9 +356,9 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
    * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private var results : Map[Int, Seq[(Result,Task, Agent)]] = TreeMap[Int, Seq[(Result,Task, Agent)]]()
+    private var results : Map[Int, Seq[(Delta,Task, Agent)]] = TreeMap[Int, Seq[(Delta,Task, Agent)]]()
 
-    def get() : (Result,Task,Agent) = this.synchronized {
+    def get() : (Delta,Task,Agent) = this.synchronized {
       while (true) {
         try {
            while(results.keys.isEmpty) {this.wait()}
@@ -377,10 +377,10 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       null  // Should never be reached
     }
 
-    def put(r : Result, t : Task, a : Agent) {
+    def put(r : Delta, t : Task, a : Agent) {
       this.synchronized{
-        val s : Seq[(Result,Task,Agent)] = results.get(r.priority).fold(Seq[(Result,Task,Agent)]()){ x => x}
-        results = results + (r.priority -> (s :+ ((r,t,a))))        // Must not be synchronized, but maybe it should
+        val s : Seq[(Delta,Task,Agent)] = results.get(1).fold(Seq[(Delta,Task,Agent)]()){ x => x} // TODO Remove priority here
+        results = results + (1 -> (s :+ ((r,t,a))))        // Must not be synchronized, but maybe it should
         this.notifyAll()
       }
     }
@@ -418,18 +418,18 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
   /**
    * Marker for the writer to end itself
    */
-  private object ExitResult extends Result {}
+  private object ExitResult extends EmptyDelta {}
 
   /**
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
-    override def readSet(): Map[DataType, Set[Any]] = Map.empty
-    override def writeSet(): Map[DataType, Set[Any]] = Map.empty
+    override def readSet(): Map[DataType[Any], Set[Any]] = Map.empty
+    override def writeSet(): Map[DataType[Any], Set[Any]] = Map.empty
     override def bid : Double = 1
     override def name: String = "ExitTask"
 
-    override def run : Result = {
+    override def run : Delta = {
       Result()
     }
 

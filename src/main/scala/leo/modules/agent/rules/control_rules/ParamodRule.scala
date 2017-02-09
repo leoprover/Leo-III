@@ -13,7 +13,7 @@ class ParamodRule(processed : ProcessedSet)(implicit signature : Signature) exte
   override val name: String = "paramod"
 
   override val observedDataStructures: Seq[DataStore] = Seq(processed)
-  override final val interest: Seq[DataType] = Seq(Processed)
+  override final val interest: Seq[DataType[Any]] = Seq(Processed)
 
   override def canApply(r: Delta): Seq[Hint] = {
     // All new selected clauses
@@ -34,7 +34,7 @@ class ParamodRule(processed : ProcessedSet)(implicit signature : Signature) exte
 
 // Paramodulation of all processed clauses with a new one
 class ParamodHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
-  override def apply(): Result = {
+  override def apply(): Delta = {
     val r = Result()
     val it = nClauses.iterator
     while(it.hasNext){
@@ -43,6 +43,6 @@ class ParamodHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) ex
     r
   }
 
-  override lazy val read: Map[DataType, Set[Any]] = Map(Processed -> Set(sClause))
-  override lazy val write: Map[DataType, Set[Any]] = Map()
+  override lazy val read: Map[DataType[Any], Set[Any]] = Map(Processed -> Set(sClause))
+  override lazy val write: Map[DataType[Any], Set[Any]] = Map()
 }

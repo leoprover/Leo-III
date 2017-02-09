@@ -1,6 +1,6 @@
 package leo.datastructures.blackboard
 
-import leo.datastructures.AnnotatedClause
+import leo.datastructures.{AnnotatedClause, ClauseProxy}
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.SZSException
 import leo.modules.output.{SZS_Error, StatusSZS}
@@ -30,7 +30,7 @@ trait DataType[+T] {
 /**
  * The FormulaType marks any formula data for the blackboard.
  */
-case object ClauseType extends DataType[AnnotatedClause] {
+case object ClauseType extends DataType[ClauseProxy] {
   def convert(d : Any) : AnnotatedClause = d match {
     case ac : AnnotatedClause => ac
     case _ =>

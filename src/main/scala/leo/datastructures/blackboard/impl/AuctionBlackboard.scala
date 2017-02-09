@@ -112,7 +112,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
 
 
   private val dsset : mutable.Set[DataStore] = new mutable.HashSet[DataStore]
-  private val dsmap : mutable.Map[DataType, Set[DataStore]] = new mutable.HashMap[DataType, Set[DataStore]]
+  private val dsmap : mutable.Map[DataType[Any], Set[DataStore]] = new mutable.HashMap[DataType[Any], Set[DataStore]]
 
   /**
    * Adds a data structure to the blackboard.
@@ -140,7 +140,7 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  override def getDS(d: Set[DataType]): Iterable[DataStore] = {
+  override def getDS(d: Set[DataType[Any]]): Iterable[DataStore] = {
     dsmap.filterKeys(k => d.contains(k)).values.flatten
   }
 

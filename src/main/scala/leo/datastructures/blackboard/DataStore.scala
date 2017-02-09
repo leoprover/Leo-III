@@ -20,7 +20,7 @@ trait DataStore {
    *
    * @return all stored types
    */
-  def storedTypes : Seq[DataType]
+  def storedTypes : Seq[DataType[Any]]
 
   /**
     *
@@ -28,7 +28,7 @@ trait DataStore {
     *
     * @param r - A result inserted into the datastructure
     */
-  def updateResult(r : Result) : Boolean  // TODO Return really updated values for further consideration not only Bool
+  def updateResult(r : Delta) : Boolean  // TODO Return really updated values for further consideration not only Bool
 
   /**
    * Removes everything from the data structure.
@@ -42,21 +42,21 @@ trait DataStore {
    * @param t
    * @return
    */
-  protected[blackboard] def all(t : DataType) : Set[Any]
+  protected[blackboard] def all[T](t : DataType[T]) : Set[T]
 
-  def insertData(d : DataType)(n : Any) : Boolean = {
+  def insertData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().insert(d)(n)
     updateResult(r)
     true
   }
 
-  def deleteData(d : DataType)(n : Any) : Boolean = {
+  def deleteData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().remove(d)(n)
     updateResult(r)
     true
   }
 
-  def updateData(d : DataType)(o : Any)(n : Any) : Boolean = {
+  def updateData[T](d : DataType[T])(o : T)(n : T) : Boolean = {
     val r = Result().update(d)(o)(n)
     updateResult(r)
     true

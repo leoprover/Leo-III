@@ -89,7 +89,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
    * @param errno - The return value.
    * @return
    */
-  override def handle(input: Iterator[String], err: Iterator[String], errno: Int, fs : Set[ClauseProxy]): Result = {
+  override def handle(input: Iterator[String], err: Iterator[String], errno: Int, fs : Set[ClauseProxy]): Delta = {
     val it = input
     val b = new StringBuilder
 
@@ -100,7 +100,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
         case Some(status) if status == SZS_Theorem =>     // TODO Salvage other information
           Out.debug(s"[$name]: Got positive ${status.apply} from the external prover.")
           var r =  Result()
-            .insert(StatusType)(SZSStore(reinterpreteResult(status)))
+            .insert(StatusType)(reinterpreteResult(status))
             .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
           return r
         case Some(status)      =>

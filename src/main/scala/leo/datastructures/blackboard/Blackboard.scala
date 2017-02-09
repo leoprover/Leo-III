@@ -160,7 +160,7 @@ trait DataBlackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  def getDS(d : Set[DataType]) : Iterable[DataStore]
+  def getDS(d : Set[DataType[Any]]) : Iterable[DataStore]
 
   /**
     * Returns a list of all data structures
@@ -178,7 +178,7 @@ trait DataBlackboard {
     * @param d the data to be added
     * @return true if sucessfully added. false if already existing or could no be added
     */
-  def addData(dataType : DataType)(d : Any) : Boolean = {
+  def addData[T](dataType : DataType[T])(d : T) : Boolean = {
     val result = Result().insert(dataType)(d)
     val isNew = getDS(Set(dataType)) exists (ds => ds.updateResult(result)) // TODO forall or exist?
     if(isNew)
@@ -197,7 +197,7 @@ trait DataBlackboard {
     * @param d2 the new value
     * @return true if sucessfully been updated. false if already existing or could no be added
     */
-  def updateData(dataType: DataType)(d1 : Any)(d2 : Any) : Boolean = {
+  def updateData[T](dataType: DataType[T])(d1 : T)(d2 : T) : Boolean = {
     val result = Result().update(dataType)(d1)(d2)
     val isNew = getDS(Set(dataType)) exists {ds => ds.updateResult(result)} // TODO forall or exist?
     if(isNew)
@@ -214,7 +214,7 @@ trait DataBlackboard {
     * @param dataType The type of data to be deleted
     * @param d the value to be deleted
     */
-  def removeData(dataType: DataType)(d : Any) : Unit = {
+  def removeData[T](dataType: DataType[T])(d : T) : Unit = {
     val result = Result().remove(dataType)(d)
     val wasDel = getDS(Set(dataType)) exists {d => d.updateResult(result) }
     if(wasDel)

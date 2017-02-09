@@ -138,12 +138,12 @@ trait CompletePhase extends Phase {
   protected class CompleteWait extends AbstractAgent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType]] = Some(Seq(StatusType))
+    override def interest : Option[Seq[DataType[Any]]] = Some(Seq(StatusType))
     @inline override val init: Iterable[Task] = Seq()
     override def filter(event: Event): Iterable[Task] = event match {
       case d : DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
-      case r : Result =>
+      case r : Delta =>
         if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty){
           synchronized{finish = true; notifyAll()}
         }

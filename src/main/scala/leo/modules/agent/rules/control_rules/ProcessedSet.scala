@@ -1,11 +1,18 @@
 package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Signature}
-import leo.datastructures.blackboard.{DataStore, DataType, Result}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
+import leo.modules.SZSException
+import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
 
-case object Processed extends DataType
+case object Processed extends DataType[AnnotatedClause]{
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 
 /**
   * Stores the processed Formulas for
@@ -28,7 +35,7 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
     *
     * @return all stored types
     */
-  override val storedTypes: Seq[DataType] = Seq(Processed)
+  override val storedTypes: Seq[DataType[Any]] = Seq(Processed)
 
   /**
     *
@@ -36,7 +43,7 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Result): Boolean = synchronized {
+  override def updateResult(r: Delta): Boolean = synchronized {
     val ins1 = r.inserts(Processed)
     val del1 = r.removes(Processed)
     val (del2, ins2) = r.updates(Processed).unzip
@@ -78,8 +85,8 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
     * @param t
     * @return
     */
-  override def all(t: DataType): Set[Any] = t match{
-    case Processed => synchronized(set.toSet)
+  override def all[T](t: DataType[T]): Set[T] = t match{
+    case Processed => synchronized(set.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }

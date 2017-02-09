@@ -1,8 +1,9 @@
 package leo.modules.interleavingproc
 
-import leo.datastructures.blackboard.{DataStore, DataType, Result}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy, Signature}
-import leo.modules.output.StatusSZS
+import leo.modules.SZSException
+import leo.modules.output.{SZS_Error, StatusSZS}
 import leo.modules.output.logger.Out
 import leo.modules.seqpproc.State
 import leo.modules.control.Control
@@ -34,12 +35,12 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
     state.unprocessedLeft
   }
 
-  override val storedTypes: Seq[DataType] = Seq(UnprocessedClause, ProcessedClause, RewriteRule, SZSStatus, DerivedClause, StatisticType)
+  override val storedTypes: Seq[DataType[Any]] = Seq(UnprocessedClause, ProcessedClause, RewriteRule, SZSStatus, DerivedClause, StatisticType)
   override def clear(): Unit = {
     Out.info("Could not clear the state. Not yet implemented.")
   }
-  override def all(t: DataType): Set[Any] = ???     // TODO implement
-  override def updateResult(r: Result): Boolean = synchronized {
+  override def all[T](t: DataType[T]): Set[T] = ???     // TODO implement
+  override def updateResult(r: Delta): Boolean = synchronized {
     // Unprocessed can only be added
     val newUnprocessed = r.inserts(UnprocessedClause).iterator
     while(newUnprocessed.nonEmpty){
@@ -113,29 +114,59 @@ object BlackboardState {
 /**
   * Type for unprocessed clauses in the state.
   */
-case object UnprocessedClause extends DataType {}
+case object UnprocessedClause extends DataType[AnnotatedClause] {
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 /**
   * Type for processed clauses in the state
   */
-case object ProcessedClause extends DataType {}
+case object ProcessedClause extends DataType[AnnotatedClause] {
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 
 /**
   * Type for rewrite rules
   */
-case object RewriteRule extends DataType {}
+case object RewriteRule extends DataType[AnnotatedClause] {
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 /**
   * Setting the SZS status
   */
-case object SZSStatus extends DataType {}
+case object SZSStatus extends DataType[StatusSZS] {
+  override def convert(d: Any): StatusSZS = d match {
+    case c : StatusSZS => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 /**
   * Setting the Derived Clause (contains the proof tree in the derived empty clause)
   */
-case object DerivedClause extends DataType {}
+case object DerivedClause extends DataType [AnnotatedClause] {
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 
 /**
   * Type for statistical information
   */
-case object StatisticType extends DataType {}
+case object StatisticType extends DataType[Statistic] {
+  override def convert(d: Any): Statistic = d match {
+    case s : Statistic => s
+    case _ => throw new SZSException(SZS_Error, s"Expected Statistic, but got $d")
+  }
+}
 
 /**
   *

@@ -1,7 +1,7 @@
 package leo.agents
 
 import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
+import leo.datastructures.blackboard._
 
 /**
  * Interface to any agent in the architecture.
@@ -51,7 +51,7 @@ trait Agent {
    *         Some(Nil) -> The agent registers for all data changes. <br />
    *         Some(xs) -> The agent registers only for data changes for any type in xs.
    */
-  def interest : Option[Seq[DataType]]    // TODO Swap None and Some(Nil)
+  def interest : Option[Seq[DataType[Any]]]    // TODO Swap None and Some(Nil)
 
   /**
     * Flags the maximal number of parallel executed tasks
@@ -153,7 +153,7 @@ abstract class Task extends Pretty  {
  *
     * @return
     */
-  def run : Result
+  def run : Delta
 
   /**
     *
@@ -161,7 +161,7 @@ abstract class Task extends Pretty  {
     *
     * @return Read set for the Task.
     */
-  def readSet() : Map[DataType, Set[Any]]
+  def readSet() : Map[DataType[Any], Set[Any]]
 
   /**
     *
@@ -169,7 +169,7 @@ abstract class Task extends Pretty  {
     *
     * @return Write set for the task
     */
-  def writeSet() : Map[DataType, Set[Any]]
+  def writeSet() : Map[DataType[Any], Set[Any]]
 
   /**
     *
@@ -177,7 +177,7 @@ abstract class Task extends Pretty  {
     *
     * @return all [[DataType]] contained in this task.
     */
-  lazy val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
+  lazy val lockedTypes : Set[DataType[Any]] = readSet().keySet.union(writeSet().keySet)
 
   /**
     * Checks for two tasks, if they are in conflict with each other.

@@ -3,14 +3,15 @@ package impl
 
 import leo.datastructures.{ClauseProxy, blackboard}
 import leo.datastructures.context.Context
-import leo.datastructures.blackboard.{DataType, Result, ClauseType}
-import java.io.{PrintWriter, File}
+import leo.datastructures.blackboard.{ClauseType, DataType, Delta, Result}
+import java.io.{File, PrintWriter}
+
 import leo.modules.external.{ExternalCall, ExternalResult}
-import leo.modules.output.{ToTPTP, Output}
+import leo.modules.output.{Output, ToTPTP}
 import leo.modules.output.logger._
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
 import scala.sys.process._
 import java.io.IOException
 
@@ -30,9 +31,9 @@ import java.io.IOException
  * @since 11/10/14
  */
 abstract class ScriptAgent(path : String) extends AbstractAgent {
-  override val interest : Option[Seq[DataType]] = None
+  override val interest : Option[Seq[DataType[Any]]] = None
 
-  def handle(input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Result
+  def handle(input: Iterator[String], err: Iterator[String], retValue: Int, orgClauses : Set[ClauseProxy]): blackboard.Delta
 
   def encode(fs: Set[ClauseProxy]): Seq[String]
 
@@ -69,9 +70,9 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
 
 
   final case class ScriptTask(script : String, fs: Set[ClauseProxy], a : ScriptAgent) extends Task {
-    override val readSet: Map[DataType, Set[Any]] = Map()
+    override val readSet: Map[DataType[Any], Set[Any]] = Map()
 
-    override val writeSet: Map[DataType, Set[Any]] = Map()
+    override val writeSet: Map[DataType[Any], Set[Any]] = Map()
 
     override def bid: Double = 1 // TODO Better value
 
@@ -83,7 +84,7 @@ abstract class ScriptAgent(path : String) extends AbstractAgent {
     /**
       * This function runs the specific agent on the registered Blackboard.
       */
-    override def run: Result = {
+    override def run: Delta = {
       val process : ExternalResult = ExternalCall.exec(script, encode(fs))
       extSet.synchronized(extSet.add(process))
       val retValue = process.exitValue

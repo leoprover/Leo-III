@@ -3,7 +3,7 @@ package leo.modules.interleavingproc
 import leo.Configuration
 import leo.agents.{InterferingLoop, OperationState}
 import leo.datastructures._
-import leo.datastructures.blackboard.{DataType, Result}
+import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem, SZS_Unknown, StatusSZS}
 import leo.modules.seqpproc.State
 import leo.modules.control.Control
@@ -132,7 +132,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
 
 
 
-  @inline override def apply(opState: StateView[InterleavingLoop.A]): Result = {
+  @inline override def apply(opState: StateView[InterleavingLoop.A]): Delta = {
     val result = Result()
 
     // First check for empty clause
@@ -236,9 +236,9 @@ case class StateView[T <: ClauseProxy](select : T, processedSelect : T, paramodP
 
   override val toString: String = s"processed = ${select.pretty}"
 
-  override def datatypes: Iterable[DataType] = Seq(ProcessedClause, UnprocessedClause)
-  override def readData(ty: DataType): Set[Any] = if(ty == UnprocessedClause) (/*paramodPartners + */Set(select)).asInstanceOf[Set[Any]] else Set()
-  override def writeData(ty: DataType): Set[Any] = if(ty == ProcessedClause) subsumed.asInstanceOf[Set[Any]] else Set() // TODO type check?
+  override def datatypes: Iterable[DataType[Any]] = Seq(ProcessedClause, UnprocessedClause)
+  override def readData[T](ty: DataType[T]): Set[T] = if(ty == UnprocessedClause) (/*paramodPartners + */Set(select)).asInstanceOf[Set[T]] else Set()
+  override def writeData[T](ty: DataType[T]): Set[T] = if(ty == ProcessedClause) subsumed.asInstanceOf[Set[T]] else Set() // TODO type check?
 }
 
 

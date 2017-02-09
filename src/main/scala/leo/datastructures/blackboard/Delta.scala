@@ -58,7 +58,10 @@ trait Delta extends Event {
   def immutable : Delta = this
 
   /**
-    * This delta into another one.
+    * Merges this delta into another one.
+    *
+    * Important: If `this` delta is Mutable, the result will be `this`, with the applied update.
+    * If this is not the wanted behaviour, call `immutable` first.
     *
     * @param d - the other delta
     * @return the merged delta
@@ -77,6 +80,39 @@ object Result {
    * @return an empty Result Object.
    */
   def apply() : MutableDelta = new MutableDelta
+}
+
+class EmptyDelta() extends Delta{
+  override def isEmpty: Boolean = true
+  override def types: Seq[DataType[Any]] = Seq()
+  override def inserts[T](t: DataType[T]): Seq[T] = Seq()
+  override def updates[T](t: DataType[T]): Seq[(T, T)] = Seq()
+  override def removes[T](t: DataType[T]): Seq[T] = Seq()
+  override def merge(d: Delta): Delta = d
+}
+
+class ImmutableDelta(insert : Map[DataType[Any], Seq[Any]] = Map(), remove : Map[DataType[Any], Seq[Any]] = Map(), update : Map[DataType[Any], Seq[Any]] = Map()) extends Delta {
+  override lazy val isEmpty: Boolean = insert.isEmpty && remove.isEmpty && update.isEmpty    // Lazy because it is called after a couple of merges
+  override val types: Seq[DataType[Any]] = (insert.keySet union remove.keySet union update.keySet).toSeq // Not lazy, because we need it emmediatly
+  override def inserts[T](t: DataType[T]): Seq[T] = insert.getOrElse(t, Seq()).map(t.convert(_))
+  override def updates[T](t: DataType[T]): Seq[(T, T)] = update.getOrElse(t, Seq()).map{case (x,y) => (t.convert(x), t.convert(y))}
+  override def removes[T](t: DataType[T]): Seq[T] = remove.getOrElse(t, Seq()).map(t.convert(_))
+  override def merge(d: Delta): Delta = {
+    val dtypes = d.types.iterator
+    var insM = insert
+    var remM = remove
+    var upM = update
+    while(dtypes.nonEmpty){
+      val dty = dtypes.next()
+      val dins = d.inserts(dty)
+      insM += (dty -> (insert.getOrElse(dty, Seq[Any]()) ++ dins))
+      val dup = d.updates(dty)
+      upM += (dty -> (update.getOrElse(dty, Seq[(Any,Any)]()) ++ dup))
+      val drem = d.removes(dty)
+      remM += (dty -> (remove.getOrElse(dty, Seq[Any]()) ++ drem))
+    }
+    new ImmutableDelta(insM, remM, upM)
+  }
 }
 
 /**
@@ -176,8 +212,26 @@ class MutableDelta extends Delta {
     * @param d - the other delta
     * @return the merged delta
     */
-  override def merge(d: Delta): Delta = ???
+  override def merge(d: Delta): Delta = {
+    val dtypes = d.types.iterator
+    while(dtypes.nonEmpty){
+      val dty = dtypes.next()
+      val dins = d.inserts(dty)
+      insertM.put(dty, insertM.getOrElse(dty, Seq[Any]()) ++ dins)
+      val dup = d.updates(dty)
+      updateM.put(dty, updateM.getOrElse(dty, Seq[(Any,Any)]()) ++ dup)
+      val drem = d.removes(dty)
+      removeM.put(dty, removeM.getOrElse(dty, Seq[Any]()) ++ drem)
+    }
+    this
+  }
 
+
+  /**
+    * Debug to String.
+    * Produces a listing of the contents of this Delta.
+    * @return
+    */
   final override def toString : String = {
     val sb : mutable.StringBuilder = new mutable.StringBuilder()
     sb.append("Result(\n")
