@@ -95,7 +95,7 @@ class Leo2Prover(val path : String) extends THFProver{
 
 
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    Seq(path, "-t", (timeout / 1000).toString) ++ args ++ Seq(problemFileName)
+    Seq(path, "-t", (timeout).toString) ++ args ++ Seq(problemFileName)
   }
 
   /**
@@ -142,6 +142,6 @@ class NitpickProver(val path : String) extends THFProver {
   override def name: String = "nitpick"
 
   override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    Seq(path, "tptp_nitpick", (timeout / 1000).toString) ++ Seq(problemFileName)
+    Seq(path, "tptp_nitpick", (timeout).toString) ++ Seq(problemFileName)
   }
 }
