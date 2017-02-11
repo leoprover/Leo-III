@@ -40,7 +40,7 @@ case class Unary(connective: UnaryConnective, formula: LogicFormula) extends Log
 
   override val function_symbols: Set[String] = formula.function_symbols
 }
-case class Quantified(quantifier: Quantifier, varList: List[(Commons.Variable,Option[LogicFormula])], matrix: LogicFormula) extends LogicFormula {
+case class Quantified(quantifier: Quantifier, varList: Seq[(Commons.Variable,Option[LogicFormula])], matrix: LogicFormula) extends LogicFormula {
   override def toString = quantifier.toString + " [" + varList.mkString(",") + "] : (" + matrix.toString + ")"
 
   // TODO are we considering types as well? (Remove `union decl` if we do not want to check types)
@@ -115,6 +115,9 @@ sealed abstract class UnaryConnective
 case object ~ extends UnaryConnective
 case object !! extends UnaryConnective
 case object ?? extends UnaryConnective
+case object @@+ extends UnaryConnective // Choice
+case object @@- extends UnaryConnective // Description
+case object @@= extends UnaryConnective // Prefix equality
 
 sealed abstract class Quantifier
 case object ! extends Quantifier  // All
@@ -129,16 +132,16 @@ case object @- extends Quantifier // Description
 sealed abstract class BinaryType {
   def function_symbols : Set[String]
 }
-case class ->(t: List[LogicFormula]) extends BinaryType {
+case class ->(t: Seq[LogicFormula]) extends BinaryType {
   override def toString = "(" + t.mkString(" > ") + ")"
 
   override val function_symbols: Set[String] = t.flatMap(_.function_symbols).toSet
 }
-case class *(t: List[LogicFormula]) extends BinaryType {
+case class *(t: Seq[LogicFormula]) extends BinaryType {
   override def toString = "(" + t.mkString(" * ") + ")"
   override val function_symbols: Set[String] = t.flatMap(_.function_symbols).toSet
 }
-case class +(t: List[LogicFormula]) extends BinaryType {
+case class +(t: Seq[LogicFormula]) extends BinaryType {
   override def toString = "(" + t.mkString(" + ") + ")"
   override val function_symbols: Set[String] = t.flatMap(_.function_symbols).toSet
 }

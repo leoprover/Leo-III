@@ -176,20 +176,8 @@ object TPTPASTConstructor {
         val pair = binary.thf_binary_pair()
         val left = thfUnitary(pair.thf_unitary_formula(0))
         val right = thfUnitary(pair.thf_unitary_formula(1))
-        val connective = pair.thf_pair_connective()
-        if (connective.Assignment() != null) thf.Binary(left, thf.:=, right)
-        else if (connective.Infix_equality() != null) thf.Binary(left, thf.Eq, right)
-        else if (connective.Infix_inequality() != null) thf.Binary(left, thf.Neq, right)
-        else if (connective.binary_connective() != null) {
-          val bincon = connective.binary_connective()
-          if (bincon.If() != null) thf.Binary(left, thf.<=, right)
-          else if (bincon.Iff() != null) thf.Binary(left, thf.<=>, right)
-          else if (bincon.Impl() != null) thf.Binary(left, thf.Impl, right)
-          else if (bincon.Nand() != null) thf.Binary(left, thf.~&, right)
-          else if (bincon.Niff() != null) thf.Binary(left, thf.<~>, right)
-          else if (bincon.Nor() != null) thf.Binary(left, thf.~|, right)
-          else throw new IllegalArgumentException
-        } else throw new IllegalArgumentException
+        val connective = thfPairConnective(pair.thf_pair_connective())
+        thf.Binary(left, connective, right)
       } else if (binary.thf_binary_tuple() != null) {
         val tuple = binary.thf_binary_tuple()
         if (tuple.thf_and_formula() != null)
@@ -217,12 +205,88 @@ object TPTPASTConstructor {
       else throw new IllegalArgumentException
     } else throw new IllegalArgumentException
   }
+  final def thfPairConnective(ctx: tptpParser.Thf_pair_connectiveContext): thf.BinaryConnective = {
+    val connective = ctx
+    if (connective.Assignment() != null) thf.:=
+    else if (connective.Infix_equality() != null) thf.Eq
+    else if (connective.Infix_inequality() != null) thf.Neq
+    else if (connective.binary_connective() != null) {
+      val bincon = connective.binary_connective()
+      if (bincon.If() != null) thf.<=
+      else if (bincon.Iff() != null) thf.<=>
+      else if (bincon.Impl() != null) thf.Impl
+      else if (bincon.Nand() != null) thf.~&
+      else if (bincon.Niff() != null) thf.<~>
+      else if (bincon.Nor() != null) thf.~|
+      else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+  final def thfUnaryConnective(ctx: tptpParser.Thf_unary_connectiveContext): thf.UnaryConnective = {
+    if (ctx.unary_connective() != null) {
+      assert(ctx.unary_connective().Not() != null) // Not is the only unary connective
+      thf.~
+    } else if (ctx.th1_unary_connective() != null) {
+      val th1con = ctx.th1_unary_connective()
+      if (th1con.ForallComb() != null) thf.!!
+      else if (th1con.ExistsComb() != null) thf.??
+      else if (th1con.ChoiceComb() != null) thf.@@+
+      else if (th1con.DescriptionComb() != null) thf.@@-
+      else if (th1con.EqComb() != null) thf.@@=
+      else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
 
-  final def thfAnd(ctx: tptpParser.Thf_and_formulaContext): thf.LogicFormula = ???
-  final def thfOr(ctx: tptpParser.Thf_or_formulaContext): thf.LogicFormula = ???
-  final def thfApply(ctx: tptpParser.Thf_apply_formulaContext): thf.LogicFormula = ???
+  final def thfAnd(ctx: tptpParser.Thf_and_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_and_formula()  != null) {
+      val left = thfAnd(ctx.thf_and_formula())
+      val right = thfUnitary(ctx.thf_unitary_formula(0))
+      thf.Binary(left, thf.&, right)
+    } else {
+      val left = thfUnitary(ctx.thf_unitary_formula(0))
+      val right = thfUnitary(ctx.thf_unitary_formula(1))
+      thf.Binary(left, thf.&, right)
+    }
+  }
+  final def thfOr(ctx: tptpParser.Thf_or_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_or_formula()  != null) {
+      val left = thfOr(ctx.thf_or_formula())
+      val right = thfUnitary(ctx.thf_unitary_formula(0))
+      thf.Binary(left, thf.|, right)
+    } else {
+      val left = thfUnitary(ctx.thf_unitary_formula(0))
+      val right = thfUnitary(ctx.thf_unitary_formula(1))
+      thf.Binary(left, thf.|, right)
+    }
+  }
+  final def thfApply(ctx: tptpParser.Thf_apply_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_apply_formula()  != null) {
+      val left = thfApply(ctx.thf_apply_formula())
+      val right = thfUnitary(ctx.thf_unitary_formula(0))
+      thf.Binary(left, thf.App, right)
+    } else {
+      val left = thfUnitary(ctx.thf_unitary_formula(0))
+      val right = thfUnitary(ctx.thf_unitary_formula(1))
+      thf.Binary(left, thf.App, right)
+    }
+  }
 
-  final def thfUnitary(ctx: tptpParser.Thf_unitary_formulaContext): thf.LogicFormula = ???
+  final def thfUnitary(ctx: tptpParser.Thf_unitary_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_atom() != null) {
+
+    } else if (ctx.thf_conditional() != null) {
+      
+    } else if (ctx.thf_let() != null) {
+
+    } else if (ctx.thf_logic_formula() != null) {
+      thfLogicFormula(ctx.thf_logic_formula())
+    } else if (ctx.thf_quantified_formula() != null) {
+
+    } else if (ctx.thf_tuple() != null) {
+
+    } else if (ctx.thf_unary_formula() != null) {
+
+    } else throw new IllegalArgumentException
+  }
   final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = {
     if (ctx.variable() != null) thf.Term(Var(ctx.variable().getText))
     else if (ctx.thf_function() != null) {
@@ -243,9 +307,9 @@ object TPTPASTConstructor {
         else if (conn.assoc_connective().Or() != null) thf.Connective(Left(thf.|))
         else throw new IllegalArgumentException
       } else if (conn.thf_pair_connective() != null) {
-        ???
+        thf.Connective(Left(thfPairConnective(conn.thf_pair_connective())))
       } else if (conn.thf_unary_connective() != null) {
-        ???
+        thf.Connective(Right(thfUnaryConnective(conn.thf_unary_connective())))
       } else throw new IllegalArgumentException
     } else throw new IllegalArgumentException
   }

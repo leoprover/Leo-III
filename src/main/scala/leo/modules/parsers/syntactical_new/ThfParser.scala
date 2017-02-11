@@ -740,14 +740,14 @@ class ThfParser
     // thf_mapping_type -> thf_unitary_type "arrow" thf_mapping_type
     def action_74(s: PStack): PStack = { dbgAction("action_74"); s match {
       case LogicFormulaEntry(BinType(->(l))) :: TokenEntry(Arrow) :: LogicFormulaEntry(t1) :: rest
-      => LogicFormulaEntry(BinType(->(t1 :: l))) :: rest
+      => LogicFormulaEntry(BinType(->(t1 +: l))) :: rest
       case _ => throw new Exception(s"action_74: got ${s}")
     }}
 
     // thf_xprod_type -> thf_unitary_type "star" thf_unitary_type
     def action_76(s: PStack): PStack = { dbgAction("action_76"); s match {
       case LogicFormulaEntry(t2) :: TokenEntry(Star) :: LogicFormulaEntry(t1) :: rest
-      => LogicFormulaEntry(BinType(*(List(t1, t2)))) :: rest
+      => LogicFormulaEntry(BinType(*(Seq(t1, t2)))) :: rest
       case _ => throw new Exception(s"action_76: got ${s}")
     }}
 

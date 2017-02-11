@@ -258,7 +258,21 @@ object InputProcessing {
       case Subtype(left,right) => ???
       case Cond(c, thn, els) => {
         try {
-          IF_THEN_ELSE(processTHF0(sig)(c, replaces).left.get, processTHF0(sig)(thn, replaces).left.get, processTHF0(sig)(els, replaces).left.get)
+          val convertedCondition = processTHF0(sig)(c, replaces).left.get
+          val convertedThen = processTHF0(sig)(thn, replaces).left.get
+          val convertedElse = processTHF0(sig)(els, replaces).left.get
+          import leo.modules.HOLSignature.o
+          val conditionType = convertedCondition.ty
+          val thenType = convertedThen.ty
+          val elseType = convertedElse.ty
+          if (thenType == elseType) {
+            if (conditionType == o) {
+              import leo.datastructures.Term.{λ, mkBound}
+              import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+              Choice(λ(thenType)(&(Impl(convertedCondition, ===(mkBound(thenType, 1), convertedThen)),
+                Impl(Not(convertedCondition), ===(mkBound(thenType, 1), convertedElse)))))
+            } else throw new SZSException(SZS_TypeError, "Condition in IF-THEN-ElSE is not Boolean typed.")
+          } else throw new SZSException(SZS_TypeError, "THEN and ELSE case types do not match in IF-THEN-ELSE")
         } catch {
           case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError,e.toString)
         }
@@ -277,7 +291,7 @@ object InputProcessing {
 
   import leo.datastructures.tptp.thf.{BinaryConnective => THFBinaryConnective}
   protected[parsers] def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
-    import leo.datastructures.tptp.thf.{Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
+    import leo.datastructures.tptp.thf.{:= => THFAssign, Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
     import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
 
     conn match {
@@ -292,6 +306,7 @@ object InputProcessing {
       case THFNand  => nand
       case THFNiff  => !=== //niff
       case THFApp   => @@@
+      case THFAssign => throw new NotImplementedError("Assignment operator not supported.")
     }
   }
 

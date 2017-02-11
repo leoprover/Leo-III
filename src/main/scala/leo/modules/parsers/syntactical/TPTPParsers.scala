@@ -416,19 +416,19 @@ object TPTPParsers extends TokenParsers with PackratParsers {
   def thfBinaryType: Parser[thf.BinaryType] = thfMappingType | thfXProdType | thfUnionType
 
   lazy val thfMappingType: PackratParser[thf.->] = (
-        thfUnitaryType ~ elem(Arrow) ~ thfUnitaryType ^^ {case l ~ _ ~ r => thf.->(List(l,r))}
-    ||| thfUnitaryType ~ elem(Arrow) ~ thfMappingType ^^ {case l ~ _ ~ typ => thf.->(l::typ.t)}
+        thfUnitaryType ~ elem(Arrow) ~ thfUnitaryType ^^ {case l ~ _ ~ r => thf.->(Seq(l,r))}
+    ||| thfUnitaryType ~ elem(Arrow) ~ thfMappingType ^^ {case l ~ _ ~ typ => thf.->(l +: typ.t)}
   )
 
   lazy val thfXProdType: PackratParser[thf.*] = (
-        thfUnitaryType ~ elem(Star) ~ thfUnitaryType ^^ {case l ~ _ ~ r => thf.*(List(l,r))}
-    ||| thfXProdType   ~ elem(Star) ~ thfUnitaryType ^^ {case typ ~ _ ~ r => thf.*(typ.t ++ List(r))}
+        thfUnitaryType ~ elem(Star) ~ thfUnitaryType ^^ {case l ~ _ ~ r => thf.*(Seq(l,r))}
+    ||| thfXProdType   ~ elem(Star) ~ thfUnitaryType ^^ {case typ ~ _ ~ r => thf.*(typ.t :+ r)}
      //This may need to be optimized
   )
 
   lazy val thfUnionType: PackratParser[thf.+] = (
-        thfUnitaryType ~ elem(Plus) ~ thfUnitaryType ^^ {case l ~ _ ~ r => thf.+(List(l,r))}
-    ||| thfUnionType   ~ elem(Plus) ~ thfUnitaryType ^^ {case typ ~ _ ~ r => thf.+(typ.t ++ List(r))}
+        thfUnitaryType ~ elem(Plus) ~ thfUnitaryType ^^ {case l ~ _ ~ r => thf.+(Seq(l,r))}
+    ||| thfUnionType   ~ elem(Plus) ~ thfUnitaryType ^^ {case typ ~ _ ~ r => thf.+(typ.t :+ r)}
      //This may need to be optimized
   )
 
