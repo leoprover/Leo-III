@@ -70,7 +70,7 @@ class BlackboardState[T <: ClauseProxy](val state : State[T]) extends DataStore 
     val subsumed = r.removes(ProcessedClause)
     if(subsumed.nonEmpty){
       val subsumedCast : Set[T] = subsumed.map(_.asInstanceOf[T]).toSet
-      state.setProcessed(state.processed -- subsumedCast)
+      state.removeProcessed(subsumedCast)
       if(subsumedCast.isInstanceOf[Set[AnnotatedClause]]) Control.fvIndexRemove(subsumedCast.asInstanceOf[Set[AnnotatedClause]])
     }
     // Check for a found Result

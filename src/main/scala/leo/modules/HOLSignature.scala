@@ -67,8 +67,10 @@ object HOLSignature {
   private final val toRealKey = toRatKey + 1
   private final val isRatKey = toRealKey + 1
   private final val isIntKey = isRatKey + 1
+  // Th1 constants
+  private final val tyForallKey = isIntKey + 1
 
-  private final val existsKey = isIntKey + 1
+  private final val existsKey = tyForallKey + 1
   private final val andKey = existsKey + 1
   private final val implKey = andKey + 1
   private final val ifKey = implKey + 1
@@ -94,6 +96,7 @@ object HOLSignature {
   private final val aoo = forall((1 ->: o) ->: o)
   private final val aa = forall(1 ->: 1)
   private final val aaa = forall(1 ->: 1 ->: 1)
+  private final val faoo = forall(o) ->: o
 
   // Shorthands for later definitions
   private final val not = mkAtom(notKey, Not.ty)
@@ -177,7 +180,7 @@ object HOLSignature {
     val ty: Type
 
     /** Create the term that is constructed by applying two arguments to the binary connective. */
-    override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key,ty), Seq(left, right))
+    override def apply(left: Term, right: Term): Term = mkTermApp(mkAtom(key,ty), Vector(left, right))
 
     def unapply(t: Term): Option[(Term,Term)] = t match {
       case Symbol(`key`) ∙ Seq(Left(t1), Left(t2)) => Some((t1,t2))
@@ -191,7 +194,7 @@ object HOLSignature {
 
   // For polymorphic (e.g. arithmetic) binary symbols, provide traits for apply/unapply standard prenex-polymorphic symbols
   trait PolyBinaryConnective extends HOLBinaryConnective {
-    override def apply(left: Term, right: Term): Term = mkApp(mkAtom(key, ty), Seq(Right(left.ty), Left(left), Left(right)))
+    override def apply(left: Term, right: Term): Term = mkApp(mkAtom(key, ty), Vector(Right(left.ty), Left(left), Left(right)))
 
     override def unapply(t: Term): Option[(Term,Term)] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2))) => Some((t1, t2))
@@ -219,7 +222,7 @@ object HOLSignature {
 
   // For polymorphic (e.g. arithmetic) unary symbols, provide traits for apply/unapply standard prenex-polymorphic symbols
   trait PolyUnaryConnective extends HOLUnaryConnective {
-    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty), Left(arg)))
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(arg.ty), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case Symbol(`key`) ∙ Seq(Right(_), Left(t1)) => Some(t1)
@@ -274,7 +277,7 @@ object HOLSignature {
   object Not extends HOLUnaryConnective    { val key = notKey; val ty = oo }
   /** HOL forall */
   object Forall extends HOLUnaryConnective { val key = forallKey; val ty = aoo
-    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -283,7 +286,7 @@ object HOLSignature {
   }
   /** HOL exists */
   object Exists extends HOLUnaryConnective { val key = existsKey; val ty = aoo
-    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -293,7 +296,7 @@ object HOLSignature {
 
   /** HOL choice @+ */
   object Choice extends HOLUnaryConnective { val key = choiceKey; val ty = forall((1 ->: o) ->: 1)
-    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -302,7 +305,7 @@ object HOLSignature {
   }
   /** HOL description @- */
   object Description extends HOLUnaryConnective { val key = descKey; val ty = forall((1 ->: o) ->: 1)
-    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(arg.ty._funDomainType), Left(arg)))
+    override def apply(arg: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(arg.ty._funDomainType), Left(arg)))
 
     override def unapply(t: Term): Option[Term] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1))) => Some(t1)
@@ -360,13 +363,30 @@ object HOLSignature {
     val key = iteKey
     val ty = forall(o ->: 1 ->: 1 ->: 1)
 
-    override def apply(cond: Term, thn: Term, els: Term): Term = mkApp(mkAtom(key,ty), Seq(Right(thn.ty), Left(cond), Left(thn), Left(els)))
+    override def apply(cond: Term, thn: Term, els: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(thn.ty), Left(cond), Left(thn), Left(els)))
 
     def unapply(t: Term): Option[(Term,Term, Term)] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2), Left(t3))) => Some((t1,t2,t3))
       case _ => None
     }
   }
+
+  ///////////////////
+  // TH1 HOL constants
+  ///////////////////
+  /** HOL forall */
+  object TyForall extends HOLUnaryConnective { val key = tyForallKey; val ty = faoo
+    override def apply(arg: Term): Term = mkTermApp(mkAtom(key,ty), arg)
+
+    override def unapply(t: Term): Option[Term] = t match {
+      case Symbol(`key`) ∙ Seq(Left(body)) => Some(body)
+      case _ => None
+    }
+  }
+
+  ///////////////////
+  // collecting all objects in lists
+  ///////////////////
 
   import Signature.{lexStatus, multStatus}
 
@@ -418,7 +438,8 @@ object HOLSignature {
     ("$to_rat", HOLToRat.ty, multProp),
     ("$to_real", HOLToReal.ty, multProp),
     ("$is_rat", HOLIsInt.ty, multProp),
-    ("$is_int", HOLIsRat.ty, multProp)
+    ("$is_int", HOLIsRat.ty, multProp),
+    ("!>", TyForall.ty, multProp)
   )
 
   // Standard defined symbols

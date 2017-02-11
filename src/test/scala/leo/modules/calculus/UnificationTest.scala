@@ -148,6 +148,32 @@ class UnificationTestSuite extends LeoTestSuite {
 
     println(result.hasNext)
   }
+
+  test("λx. x f = λx. x Y", Checked) {
+    implicit val s = getFreshSignature
+
+    val vargen = freshVarGenFromBlank
+    val Y = vargen(i ->: i)
+
+    val f = mkAtom(s.addUninterpreted("f", i ->: i))
+
+    val t1 = λ((i ->: i) ->: i)(mkTermApp(mkBound((i ->: i) ->: i,1), f))
+    println(t1.pretty +" "+ Term.wellTyped(t1))
+    val t2 = λ((i ->: i) ->: i)(mkTermApp(mkBound((i ->: i) ->: i,1), Y.lift(1)))
+    println(t2.pretty + " " + Term.wellTyped(t2))
+
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+
+    assert(result.nonEmpty)
+    // This unification task should be solvable, right?
+    val ((termSub, typeSub), _) = result.next
+    println("unifier: " + termSub.pretty)
+    println(t1.substitute(termSub, typeSub).pretty(s))
+    println(t2.substitute(termSub, typeSub).pretty(s))
+    assert(t1.substitute(termSub, typeSub).etaExpand == t2.substitute(termSub, typeSub).etaExpand)
+
+    println(result.hasNext)
+  }
 }
 
 class PatternUnificationTestSuite extends LeoTestSuite {

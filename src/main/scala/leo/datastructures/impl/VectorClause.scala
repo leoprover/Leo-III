@@ -10,15 +10,16 @@ import leo.datastructures._
  * @author Alexander Steen
  * @since 23.11.2014
  */
- abstract sealed class VectorClause extends Clause {
+ case class VectorClause(lits: Seq[Literal], origin: ClauseOrigin) extends Clause {
   /** The types of the implicitly universally quantified variables. */
-  final val implicitlyBound: Seq[(Int, Type)] = {
+  final lazy val implicitlyBound: Seq[(Int, Type)] = {
     val fvs = lits.map(_.fv).fold(Set())((s1,s2) => s1 ++ s2)
-    fvs.toSeq.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
+    fvs.toVector.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
   }
   @inline final def maxImplicitlyBound: Int = if (implicitlyBound.isEmpty) 0 else implicitlyBound.head._1
+  @inline final def maxTypeVar = if (typeVars.isEmpty) 0 else typeVars.head
 
-  @inline final lazy val typeVars: Set[Int] = lits.flatMap(_.tyFV).distinct.toSet
+  @inline final lazy val typeVars: Seq[Int] = lits.flatMap(_.tyFV).distinct.sortWith{case (x,y) => x > y}
 
   /** Those literals in `lits` that are positive. */
   @inline final lazy val posLits: Seq[Literal] = lits.filter(_.polarity)
@@ -28,10 +29,6 @@ import leo.datastructures._
 
 object VectorClause {
   final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause = {
-    new VectorClause0(lits, origin)
-  }
-
-  private final class VectorClause0(literals: Iterable[Literal], val origin: ClauseOrigin) extends VectorClause {
-    lazy val lits = literals.toVector
+    VectorClause(lits.toVector, origin)
   }
 }

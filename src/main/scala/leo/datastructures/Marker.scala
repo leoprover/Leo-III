@@ -126,12 +126,18 @@ trait ClauseProxy extends Pretty with Prettier {
 
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
                            var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
-  override def equals(o: Any): Boolean = o match {  // TODO IMPORTANT, Clause Equivalence checks for set inclusion, multiplicity not checked in hashCode()
-    case cw: ClauseProxy => cw.cl == cl // TODO: Does this make sense?
+  override def equals(o: Any): Boolean = o match {
+    case cw: ClauseProxy => cw.id == id // Equality is defined in term of id. This implies that the clauses of two
+                                        // annotatedclauses may be equal while the annotatedclauses are not equal.
+                                        // This is done due to performance considerations: Clause equality is quite
+                                        // expensive to calculate. On the other hand, the unprocessed set will
+                                        // contain duplicated clauses now, this will nevertheless be handled by
+                                        // subsumption. This way, equality on clauses is only calculated for
+                                        // selected clauses.
     case _ => false
   }
 
-  override def hashCode(): Int = cl.hashCode()  // TODO: Does this make sense?
+  override def hashCode(): Int = id.hashCode()
 }
 
 object AnnotatedClause {
@@ -147,12 +153,16 @@ object AnnotatedClause {
 }
 
 abstract sealed class ClauseAnnotation extends Pretty {
-  def fromRule: Option[leo.modules.calculus.CalculusRule]
+  /** A [[leo.modules.calculus.CalculusRule]] that generated the AnnotatedClause annotated with the
+    * ClauseAnnotation. May be `null` if no such rule is known. */
+  def fromRule: leo.modules.calculus.CalculusRule
+  def parents: Seq[_ <: ClauseProxy]
 }
 
 object ClauseAnnotation {
-  case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Set[(A, Output)]) extends ClauseAnnotation {
-    def pretty: String = s"inference(${rule.name},[${rule.inferenceStatus.fold("")("status(" + _.pretty.toLowerCase + ")")}],[${
+  import leo.modules.calculus.CalculusRule
+  case class InferredFrom[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cws: Seq[(A, Output)]) extends ClauseAnnotation {
+    def pretty: String = s"inference(${rule.name},[status(${rule.inferenceStatus.pretty.toLowerCase})],[${
       cws.map { case (cw, add) => if (add == null) {
         cw.id
       } else {
@@ -161,23 +171,31 @@ object ClauseAnnotation {
       }.mkString(",")
     }])"
 
-    val fromRule = Some(rule)
+    def fromRule: CalculusRule = rule
+    def parents = cws.map(_._1)
   }
   object InferredFrom {
-    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Set[A]): ClauseAnnotation =
-      InferredFrom(rule, cs.map((_, null.asInstanceOf[Output])))
+    def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, cs: Seq[A]): ClauseAnnotation =
+      InferredFrom(rule, cs.map((_, null)))
 
     def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, c: A): ClauseAnnotation =
-      InferredFrom(rule, Set((c,null.asInstanceOf[Output])))
+      InferredFrom(rule, Seq((c,null)))
   }
 
   case object NoAnnotation extends ClauseAnnotation {
-    val pretty: String = ""
-    val fromRule = None
+    final val pretty: String = ""
+    final val fromRule: CalculusRule = null
+    final def parents = Seq.empty
   }
   case class FromFile(fileName: String, formulaName: String) extends ClauseAnnotation {
-    def pretty = s"file('$fileName',$formulaName)"
-    val fromRule = None
+    final def pretty = s"file('$fileName',$formulaName)"
+    final val fromRule: CalculusRule = null
+    final def parents = Seq.empty
+  }
+  case class FromSystem(hint: String) extends ClauseAnnotation {
+    final def pretty = s"introduced($hint)"
+    final val fromRule: CalculusRule = null
+    final def parents = Seq.empty
   }
 
   type ClauseProp = Int
@@ -196,24 +214,6 @@ object ClauseAnnotation {
     sb.toString()
   }
 }
-
-
-//////////////////////////////////////////////
-//////////////////////////////////////////////
-
-
-abstract sealed class Indexing
-case object INDEXED extends Indexing
-case object PLAIN extends Indexing
-
-
-//////////////////////////////////////////////
-//////////////////////////////////////////////
-
-
-abstract sealed class Locality
-case object GLOBAL extends Locality
-case object LOCAL extends Locality
 
 
 //////////////////////////////////////////////

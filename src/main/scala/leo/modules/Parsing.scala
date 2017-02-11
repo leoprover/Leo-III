@@ -46,7 +46,12 @@ object Parsing {
     def readProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
       val canonicalFile = canonicalPath(file)
       if (!assumeRead.contains(canonicalFile)) {
-        val p = shallowReadProblem(file)
+        val p = try {shallowReadProblem(file)} catch {case _ : Exception =>
+          try {
+            val alt = tptpHome.resolve(file)
+            shallowReadProblem(alt.toString)
+          } catch {case e : Exception => throw new SZSException(SZS_InputError, s"${e.toString}")}
+        }
         val includes = p.getIncludes
 
         // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)

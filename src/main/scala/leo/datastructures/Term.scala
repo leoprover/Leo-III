@@ -36,13 +36,12 @@ trait Term extends Pretty with Prettier {
   /** Returns trie iff `this` is an application h ∙ args. */
   def isApp: Boolean
   def flexHead: Boolean
+  /** `true` is the term is known to be in beta-normal form, else false.
+    * @note Might return false if the term is in beta normal form but .betaNormalize was never invoked in it. */
+  def isBetaNormal: Boolean
 
-  // Locality/Indexing properties of terms, TODO: Obsolete, what to do with it?
-  def indexing: Indexing = if (isIndexed) INDEXED else PLAIN
-  def isIndexed: Boolean = TermIndex.contains(this)
-  def locality: Locality
-  def isLocal: Boolean
-  def isGlobal: Boolean = !isLocal
+  type Sharing = Boolean
+  def sharing: Sharing
 
   //////////////////////////
   // Handling def. expansion
@@ -119,13 +118,25 @@ trait Term extends Pretty with Prettier {
   def etaExpand: Term
 }
 
+/////////////////////////////
+// Associated traits, exceptions, ...
+/////////////////////////////
 
+class NotWellTypedException(msg: String, term: Option[Term]) extends RuntimeException(msg) {
+  def this(msg: String) {
+    this(msg, None)
+  }
+}
+object NotWellTypedException {
+  final def apply(): NotWellTypedException = new NotWellTypedException("", None)
+  final def apply(msg: String): NotWellTypedException = new NotWellTypedException(msg, None)
+  final def apply(term: Term): NotWellTypedException = new NotWellTypedException(term.pretty, Some(term))
+  final def apply(msg: String, term: Term): NotWellTypedException = new NotWellTypedException(msg, Some(term))
+}
 
 /////////////////////////////
 // Companion factory object
 /////////////////////////////
-
-
 /**
  * Term Factory object. Only this class is used to create new terms.
  *
@@ -155,7 +166,16 @@ object Term extends TermBank {
   // Utility
   /** Checks if a term is well-typed. Does does check whether free variables
     * are consistently typed. */
-  final def wellTyped(t: Term): Boolean = TermImpl.wellTyped(t.asInstanceOf[TermImpl])
+  final def wellTyped(t: Term): Boolean = {
+    try {
+      TermImpl.wellTyped(t.asInstanceOf[TermImpl])
+    } catch {
+      case e: NotWellTypedException => false
+    }
+  }
+
+  final def isLocal(t: Term): Boolean = !t.sharing
+  final def isGlobal(t: Term): Boolean = t.sharing
 
   // Conversions
   /** Convert tuple (i,ty) to according de-Bruijn index */

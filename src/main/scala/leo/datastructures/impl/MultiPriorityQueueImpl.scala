@@ -16,7 +16,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
       case x:ObjectProxy => x.elem == elem
       case _ => false
     }
-    override val hashCode: Int = elem.hashCode()
+    override def hashCode: Int = if (elem == null) 0 else elem.hashCode()
   }
   private final def toProxyOrdering(ord: Ordering[A]): Ordering[ObjectProxy] = {
     new Ordering[ObjectProxy] {
@@ -29,16 +29,26 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
 
   private var priorityQueues: Seq[mutable.PriorityQueue[ObjectProxy]] = Vector()
   private var initialized = false
+  private var deletedObjects: Set[A] = Set()
 
   def insert(x: A): Unit = {
     if (!initialized) return
-    val queues = priorityQueues.size
-    var i = 0
-    val op = new ObjectProxy(x)
-    while (i < queues) {
-      priorityQueues(i).enqueue(op)
-      i = i+1
+    if (deletedObjects.contains(x))
+      deletedObjects = deletedObjects - x
+    else {
+      val queues = priorityQueues.size
+      var i = 0
+      val op = new ObjectProxy(x)
+      while (i < queues) {
+        priorityQueues(i).enqueue(op)
+        i = i+1
+      }
     }
+  }
+
+  def remove(x: A): Unit = {
+    if (!initialized) return
+    deletedObjects = deletedObjects + x
   }
 
   def addPriority(p: Ordering[A]): OrderingKey = {
@@ -59,8 +69,11 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
       else {
         val resultElement = result.get
         result.clear()
-
-        resultElement
+        if (deletedObjects.contains(resultElement)) {
+          deletedObjects = deletedObjects - resultElement
+          dequeue(k)
+        }
+        else resultElement
       }
     }
   }
@@ -83,7 +96,11 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
           priorityQueues.head.dequeue()
           isEmpty
         } else {
-          false
+          val elem = result.get
+          if (deletedObjects.contains(elem)) {
+            priorityQueues.head.dequeue()
+            isEmpty
+          } else false
         }
       }
 
@@ -98,10 +115,14 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
         priorityQueues(k).dequeue()
         head(k)
       } else {
-        result.get
+        val elem = result.get
+        if (deletedObjects.contains(elem)) {
+          priorityQueues(k).dequeue()
+          head(k)
+        } else elem
       }
     }
   }
 
-  def toSet: Set[A] = if (priorityQueues.isEmpty) Set() else priorityQueues.head.view.filterNot(_.get == null).map(_.get).toSet
+  def toSet: Set[A] = if (priorityQueues.isEmpty) Set() else priorityQueues.head.view.filterNot(elem => elem.get == null || deletedObjects.contains(elem.get)).map(_.get).toSet
 }

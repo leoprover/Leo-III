@@ -209,32 +209,31 @@ object InputProcessing {
 
         // Fold through the variables to propagate bindings trough variable list
         // and save bindings to `newReplaces` for body conversion
-        val processedVars = vars.map(_ match { // FIXME: fold like I said two years ago, not map!
+        val processedVars = vars.map{
           case (name, None) => {
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1))), termOffset(newReplaces)), newReplaces._2)
+              case _ => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1))), termOffset(newReplaces) + 1), newReplaces._2)
             }
             (name, Left(i))
           }
           case (name, Some(ty)) => convertTHFType(sig)(ty, newReplaces) match {
             case Left(t) => {
               termMapping(newReplaces).get(name) match {
-                case None => newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-                case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+                case None => newReplaces = ((termMapping(newReplaces).+((name, (t, termMapping(newReplaces).size + 1))), termOffset(newReplaces)), newReplaces._2)
+                case _ => newReplaces = ((termMapping(newReplaces).+((name, (t, termMapping(newReplaces).size + 1))), termOffset(newReplaces) + 1), newReplaces._2)
               }
               (name, Left(t))
             }
             case Right(k) => {
               typeMapping(newReplaces).get(name) match {
-                case None => newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces)))
-                case _ =>  newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces) +1))
+                case None => newReplaces = (newReplaces._1, (typeMapping(newReplaces).+((name, (k, typeMapping(newReplaces).size + 1))), typeOffset(newReplaces)))
+                case _ => newReplaces = (newReplaces._1, (typeMapping(newReplaces).+((name, (k, typeMapping(newReplaces).size + 1))), typeOffset(newReplaces) + 1))
               }
               (name, Right(k))
             }
           }
-
-          })
+        }
         val intermediateRes = processTHF0(sig)(matrix, newReplaces)
         if (intermediateRes.isLeft)
           mkPolyQuantified(quantifier, processedVars, intermediateRes.left.get)
@@ -316,18 +315,18 @@ object InputProcessing {
     conn match {
       case THFAll => Forall
       case THFExists => Exists
-      case THFLambda => new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
-                                                 // this is because the mkPolyQuantified will apply a new abstraction
-        val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-        lazy val ty = ???
-        override def apply(arg: Term) = arg
-      }
-
+      case THFLambda => HOLLambda
       case THFChoice => Choice
       case THFDesc => Description
 
       case _ => throw new IllegalArgumentException("Illegal quantifier symbol:" +conn.toString)
     }
+  }
+  private final val HOLLambda = new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
+  // this is because the mkPolyQuantified will apply a new abstraction
+    val key: Signature#Key = Integer.MIN_VALUE // just for fun!
+    lazy val ty = ???
+    override def apply(arg: Term) = arg
   }
 
   protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
@@ -903,10 +902,12 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   ///////////
 
   protected[parsers] def mkPolyQuantified(q: HOLUnaryConnective, varList: Seq[ProcessedVar], body: Term): Term = {
+    import leo.modules.HOLSignature.{Forall, Exists, TyForall}
     def mkPolyHelper(a: ProcessedVar, b: Term): Term = a match {
       case (_, Left(ty)) => q.apply(λ(ty)(b))
-      case (_, Right(`typeKind`)) => Λ(b)
-      case (_, Right(_))        => throw new IllegalArgumentException("Formalization of kinds other than * not yet implemented.")
+      case (_, Right(`typeKind`)) if q == Forall => TyForall(Λ(b))
+      case (_, Right(`typeKind`)) if q == HOLLambda => Λ(b)
+      case (_, Right(_))        => throw new IllegalArgumentException(s"Formalization of kinds other than * and ${q.pretty} not yet implemented.")
     }
 
     varList.foldRight(body)(mkPolyHelper)

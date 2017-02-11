@@ -6,6 +6,51 @@ import leo.datastructures.Pretty
 import scala.collection.mutable
 
 /**
+  * Common Trait for any changes to the data in the blackboard.
+  */
+trait Delta extends Event {
+  /**
+    * Checks if this Delta is empty, i.e. it changes nothing
+    * @return true, iff it is empty
+    */
+  def isEmpty : Boolean
+
+  /**
+    * Returns a sequence of all stored datatypes by this result.
+    *
+    * @return all stored datatypes
+    */
+  def keys : Set[DataType]
+
+
+  /**
+    * Returns all inserts of type t.
+    *
+    * @param t is the requested type.
+    * @return all inserted data of type t.
+    */
+  def inserts(t : DataType) : Seq[Any]
+
+  /**
+    *
+    * All updates of type t.
+    *
+    * @param t is the requested type.
+    * @return all inserted data of type t.
+    */
+  def updates(t : DataType) : Seq[(Any, Any)]
+
+  /**
+    *
+    * All removes of type t.
+    *
+    * @param t is the requested type.
+    * @return all inserted data of type t.
+    */
+  def removes(t : DataType) : Seq[Any]
+}
+
+/**
  * Compagnion Object for Result
  */
 object Result {
@@ -27,7 +72,7 @@ object Result {
  * This is a <b>mutable</b> class. The manipulating operations return
  * the changed object for conviniece.
  */
-class Result extends Event {
+class Result extends Delta {
 
   private val insertM : mutable.HashMap[DataType, Seq[Any]] = new mutable.HashMap[DataType, Seq[Any]]()
   private val updateM : mutable.HashMap[DataType, Seq[(Any,Any)]] = new mutable.HashMap[DataType, Seq[(Any,Any)]]()

@@ -7,7 +7,7 @@ package leo.datastructures
  * @author Alexander Steen
  * @since 07.11.2014
  */
-trait Clause extends Pretty with Prettier {
+trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
   /** The types of the implicitly universally quantified variables. */
@@ -15,7 +15,8 @@ trait Clause extends Pretty with Prettier {
   def maxImplicitlyBound: Int
   /** The implicitly (universally) quantified type variables.
     * It is assumed that we are in rank-1 polymorphism. */
-  def typeVars: Set[Int]
+  def typeVars: Seq[Int]
+  def maxTypeVar: Int
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
@@ -26,8 +27,8 @@ trait Clause extends Pretty with Prettier {
   def negLits: Seq[Literal]
 
   // Operations on clauses
-  def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
-  def substituteOrdered(s : Subst)(implicit sig: Signature) : Clause = Clause.mkClause(lits.map(_.substituteOrdered(s)(sig)))
+  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Clause = Clause.mkClause(lits.map(_.substitute(termSubst, typeSubst)))
+  def substituteOrdered(termSubst: Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature): Clause = Clause.mkClause(lits.map(_.substituteOrdered(termSubst, typeSubst)(sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
@@ -36,9 +37,16 @@ trait Clause extends Pretty with Prettier {
   final def pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
   final def pretty(sig: Signature) = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
 
+  /** Conquence `cong(c1,c2)` on two clauses is more semantical that equals: Two clauses `c1` and `c2` are congruence
+    * if `c1` contains all literals of `c2` set-wise and vice-versa, i.e. we have that
+    * `c1 = l1 ∨ l1` is congruent to `c2 = l1` (and vice versa) while `!(c1.equals(c2))`.*/
+  final def cong(that: Clause): Boolean = (lits forall {that.lits.contains}) && (that.lits forall {lits.contains})
+
   // System function adaptions
+  /** Two clauses `c1` and `c2` are equal if and only if their underlying multi-sets of literals are equal, i.e.
+    * `c1 = l1 ∨ l2` is equal to `c2 = l2 ∨ l1` while `c1` is not equal to `c2' = l2 ∨ l1 ∨ l1`. */
   override final def equals(obj : Any): Boolean = obj match {
-    case co : Clause => (lits forall {co.lits.contains}) && (co.lits forall {lits.contains})
+    case co : Clause => lits.diff(co.lits).isEmpty && co.lits.diff(lits).isEmpty
     case _ => false
   }
   override final def hashCode(): Int = if (lits.isEmpty) 0
@@ -61,7 +69,7 @@ object Clause {
   @inline final def mkUnit(lit: Literal): Clause = mkClause(Vector(lit), Derived)
 
   /** The empty clause. */
-  @inline final val empty = mkClause(Seq.empty)
+  @inline final val empty: Clause = mkClause(Seq.empty)
 
   // Utility
   /** Returns true iff clause `c` is empty. */

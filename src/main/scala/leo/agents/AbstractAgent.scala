@@ -10,7 +10,7 @@ import scala.collection.mutable
 
 /**
  * <p>
- * A implementation of TAgent which supports empty implementations
+ * A implementation of Agent which supports empty implementations
   * for non-essential methods of [[Agent]]
   * <p>
   *

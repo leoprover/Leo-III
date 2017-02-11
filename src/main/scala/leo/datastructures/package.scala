@@ -405,7 +405,7 @@ package object datastructures {
   ///////////////////////////////
   @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
   @inline final def addProp(prop: Int, in: Int): Int = prop | in
-  @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
+  @inline final def deleteProp(prop: Int, in: Int): Int = ~prop & in
 
   final def fuseMaps[A,B](map1: Map[A,Set[B]], map2: Map[A,Set[B]]): Map[A, Set[B]] = {
     map2.foldLeft(map1)({case (intermediateMap, (k,v)) =>
@@ -427,6 +427,9 @@ package object datastructures {
   @inline final def addMaps[A](map1: Map[A, Int], map2: Map[A, Int]): Map[A, Int] = mergeMapsBy(map1,map2,(a:Int,b:Int) => a+b)(0)
 
   // Further utility functions
+  /** Given a sequence of terms `terms = (t_i)_i` return the nested disjunction
+    * {{{t_1 ∨ (t_2 ∨ ( ... ∨ t_n) ... ) )}}}
+    * `LitFalse` is (t_i)_i is empty. */
   final def mkDisjunction(terms: Seq[Term]): Term = {
     import leo.modules.HOLSignature.{LitFalse, |||}
     terms match {
@@ -434,6 +437,9 @@ package object datastructures {
       case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t2) => |||(disj, t2)})
     }
   }
+  /** Given a sequence of terms `terms = (t_i)_i` return the nested conjunction
+    * {{{t_1 ∧ (t_2 ∧ ( ... ∧ t_n) ... ) )}}}
+    * `LitTrue` is (t_i)_i is empty. */
   final def mkConjunction(terms: Seq[Term]): Term = {
     import leo.modules.HOLSignature.{LitTrue, &}
     terms match {
@@ -441,10 +447,33 @@ package object datastructures {
       case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t2) => &(disj, t2)})
     }
   }
+  /** Given a sequence `bindings = (ty_i)_i` of types and a term `term`, return the nested universal quantification
+    * {{{∀ty_1.∀ty_2....∀ty_n. term}}} */
   final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
     import leo.datastructures.Term.λ
     import leo.modules.HOLSignature.Forall
     bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
+  }
+  /** Given a sequence `bindings = (ty_i)_i` of types and a term `term`, return the nested existential quantification
+    * {{{∃ty_1.∃ty_2....∃ty_n. term}}} */
+  final def mkPolyExistQuant(bindings: Seq[Type], term: Term): Term = {
+    import leo.datastructures.Term.λ
+    import leo.modules.HOLSignature.Exists
+    bindings.foldRight(term)((ty,t) => Exists(λ(ty)(t)))
+  }
+
+  /** For a term `t` return `(t', (ty_i)_i)` where `t'` is the subterm of `t`
+    * that is acquired by stripping all prefix-lambdas (term abstraction) and
+    * the (ty_i)_i are the respective types that lambdas abstract over. E.g.
+    * {{{collectLambdas(λi.λo. t') = (t', (i,o))}}} */
+  final def collectLambdas(t: Term): (Term, Seq[Type]) = collectLambdas0(t, Seq())
+  @tailrec
+  private final def collectLambdas0(t: Term, abstractions: Seq[Type]): (Term, Seq[Type]) = {
+    import leo.datastructures.Term.:::>
+    t match {
+      case ty :::> body => collectLambdas0(body, ty +: abstractions)
+      case _ => (t, abstractions.reverse)
+    }
   }
 
   /** if `term` is eta-equivalent to a (free or bound) variable, return true.

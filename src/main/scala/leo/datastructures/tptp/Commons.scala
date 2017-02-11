@@ -199,18 +199,17 @@ object Commons {
 
 
   ///////// String representation functions ///////////
-  def funcToString(name:String, args: Seq[Any]) = args match {
-    case Seq()     => name
-    case _          => name + "(" + args.mkString(",") + ")"
+  final def funcToString(name:String, args: Seq[Any]): String = if (args.isEmpty) name
+  else s"$name(${args.mkString(",")})"
+
+  final def annoToString(anno: Option[(Source, Seq[GeneralTerm])]): String = if (anno.isEmpty) ""
+  else {
+    val (src, termList) = anno.get
+    s",${src.toString},[${termList.mkString(",")}]"
   }
 
-  def annoToString(anno: Option[(Source, Seq[GeneralTerm])]) = anno match {
-    case None => ""
-    case Some((src, termList)) => "," + src.toString + ",[" + termList.mkString(",") + "]"
-  }
-
-  def typedVarToString(input: (Variable,Option[Any])) = input match {
+  final def typedVarToString(input: (Variable,Option[Any])): String = input match {
     case (v, None) => v.toString
-    case (v, Some(typ)) => v.toString + " : " + typ.toString
+    case (v, Some(typ)) => s"${v.toString} : ${typ.toString}"
   }
 }

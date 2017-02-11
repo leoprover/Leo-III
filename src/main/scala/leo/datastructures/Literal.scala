@@ -122,7 +122,12 @@ object Literal {
     * t1 will be used as left and t2 as right.
     * Note that the resulting literal is only
     * equational if both terms t1 and t2 and not equivalent to $true/$false. */
-  @inline final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = LitImpl.mkOrdered(t1,t2,pol)(sig)
+  @inline final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = {
+    assert(Term.wellTyped(t1))
+    assert(Term.wellTyped(t2))
+    assert(t1.ty == t2.ty)
+    LitImpl.mkOrdered(t1,t2,pol)(sig)
+  }
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
   @inline final def mkLit(t: Term, pol: Boolean): Literal = LitImpl.mkLit(t,pol)
@@ -156,10 +161,10 @@ object Literal {
   /** Create new unordered (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def apply(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false) = mkLit(t1,t2,pol, oriented)
+  @inline final def apply(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = mkLit(t1,t2,pol, oriented)
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
-  @inline final def apply(left: Term, pol: Boolean) = mkLit(left, pol)
+  @inline final def apply(left: Term, pol: Boolean): Literal = mkLit(left, pol)
 
   // Equation selection stuff
   type Side = Boolean
@@ -296,7 +301,7 @@ object Literal {
     import leo.modules.HOLSignature.o
     if (l.equational) {
       wt(l.left) && wt(l.right) && l.left.ty == l.right.ty
-    } else wt(l.left) && l.left.ty == o
+    } else wt(l.left) && (try {l.left.ty == o} catch {case _:NotWellTypedException => false})
   }
 }
 

@@ -2,7 +2,7 @@ package leo.modules.seqpproc
 
 import leo.datastructures._
 import leo.modules.output.{SZS_Unknown, StatusSZS}
-
+import leo.modules.external.TptpProver
 
 /**
   * Created by lex on 20.02.16.
@@ -23,12 +23,16 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def nextUnprocessed: T
   def addUnprocessed(unprocessed: T): Unit
   def addUnprocessed(unprocessed: Set[T]): Unit
+  def removeUnprocessed(unprocessed: Set[T]): Unit
   def processed: Set[T]
-  def setProcessed(p: Set[T]): Unit
   def addProcessed(cl: T): Unit
+  def removeProcessed(cls: Set[T]): Unit
 
   def rewriteRules: Set[T]
   def addRewriteRule(cl: T): Unit
+  def nonRewriteUnits: Set[T]
+  def addNonRewriteUnit(cl: T): Unit
+  def removeUnits(cls: Set[T]): Unit
 
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions: Map[Type, Set[Term]]
@@ -36,6 +40,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
+
+  def externalProvers: Set[TptpProver[T]]
+  def addExternalProver(prover: TptpProver[T]): Unit
 }
 
 trait StateStatistics {
@@ -49,6 +56,8 @@ trait StateStatistics {
   def incBackwardSubsumedCl(): Unit
   def incBackwardSubsumedCl(n: Int): Unit
   def noBackwardSubsumedCl: Int
+  def incDescendantsDeleted(n: Int): Unit
+  def noDescendantsDeleted: Int
   def incGeneratedCl(by: Int): Unit
   def noGeneratedCl: Int
   def incParamod(by: Int): Unit
@@ -70,7 +79,9 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var current_szs = initSZS
   private var current_processed: Set[T] = Set()
   private var current_rewriterules: Set[T] = Set()
+  private var current_nonRewriteUnits: Set[T] = Set()
   private var derivationCl: Option[T] = None
+  private var current_externalProvers: Set[TptpProver[T]] = Set()
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
@@ -120,13 +131,21 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   final def addUnprocessed(cl: T): Unit = {mpq.insert(cl)}
   final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
+  final def removeUnprocessed(cls: Set[T]): Unit = {mpq.remove(cls)}
 
   final def processed: Set[T] = current_processed
-  final def setProcessed(c: Set[T]): Unit = {current_processed = c}
   final def addProcessed(cl: T): Unit = { current_processed = current_processed + cl }
+  final def removeProcessed(cls: Set[T]): Unit = {current_processed = current_processed -- cls}
 
   final def rewriteRules: Set[T] = current_rewriterules
   final def addRewriteRule(cl: T): Unit = {current_rewriterules = current_rewriterules + cl}
+  final def nonRewriteUnits: Set[T] = current_nonRewriteUnits
+  final def addNonRewriteUnit(cl: T): Unit = {current_nonRewriteUnits = current_nonRewriteUnits + cl}
+  final def removeUnits(cls: Set[T]): Unit = {
+    current_rewriterules = current_rewriterules diff cls
+    current_nonRewriteUnits = current_nonRewriteUnits diff cls
+  }
+
 
   private var choiceFunctions0: Map[Type, Set[Term]] = Map()
   final def addChoiceFunction(f: Term): Unit = {
@@ -140,12 +159,17 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
 
+  final def externalProvers: Set[TptpProver[T]] = current_externalProvers
+  final def addExternalProver(prover: TptpProver[T]): Unit =  {
+    current_externalProvers = current_externalProvers + prover
+  }
   // Statistics
   private var generatedCount: Int = 0
   private var rewriteCount: Int = 0
   private var trivialCount: Int = 0
   private var forwardSubsumedCount: Int = 0
   private var backwardSubsumedCount: Int = 0
+  private var descendantsDeleted: Int = 0
   private var factorCount: Int = 0
   private var paramodCount: Int = 0
   private var choiceInstantiations0: Int = 0
@@ -157,6 +181,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def noFactor: Int = factorCount
   final def noForwardSubsumedCl: Int = forwardSubsumedCount
   final def noBackwardSubsumedCl: Int = backwardSubsumedCount
+  final def noDescendantsDeleted: Int = descendantsDeleted
   final def choiceInstantiations: Int = choiceInstantiations0
 
   final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
@@ -167,6 +192,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
   final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
   final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
+  final def incDescendantsDeleted(n: Int): Unit = {descendantsDeleted += n}
   final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
 
   // Pretty

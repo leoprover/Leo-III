@@ -4,7 +4,7 @@ import leo.datastructures._
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
-import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
+import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, TyForall, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec
@@ -62,10 +62,13 @@ object ToTPTP {
     */
   final def apply[A <: ClauseProxy](formulas : Set[A])(implicit sig: Signature): Seq[Output] = {
     var out: Seq[Output] = Seq()
-    sig.allUserConstants foreach { k =>
-      val constDecl = output(k)
-      out = constDecl +: out
+    var defs : Seq[Output] = Seq()
+    val sortsig = sig.allUserConstants.toSeq.sortBy(x => x)
+    sortsig foreach { k => // Sorted by id
+      out = typeToTPTPOutput(k) +: out
+      definitionToTPTPOutput(k) foreach {o => println(o()); defs = o +: defs}
     }
+    out = defs ++ out
     formulas foreach {formula =>
       out = ToTPTP.output(formula) +: out}
     out.reverse
@@ -97,9 +100,50 @@ object ToTPTP {
       s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
     }
   }
+
   final def output(k: Signature#Key)(implicit sig: Signature): Output = new Output {
     final def apply() = ToTPTP(k)(sig)
   }
+
+  private def typeToTPTP(k: Signature#Key)(implicit sig : Signature) : String = {
+    val constant = sig.apply(k)
+    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
+      "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+    } else {
+      constant.name
+    }
+    if (constant.hasType) {
+      s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)(sig)})."
+    } else {
+      // Its a type constant
+      assert(constant.hasKind)
+      s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
+    }
+  }
+
+  private def typeToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Output = new Output {
+    final def apply() = typeToTPTP(k)(sig)
+  }
+
+  private def definitionToTPTP(k: Signature#Key)(implicit sig : Signature) : Option[String] = {
+    val constant = sig.apply(k)
+    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
+      "'" + constant.name.substring(1, constant.name.length - 1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
+    } else {
+      constant.name
+    }
+    if (constant.hasDefn) {
+      Some(s"\nthf(${cname}_def, definition, ($cname = (${toTPTP0(constant._defn)(sig)}))).")
+    } else {
+      None
+    }
+  }
+
+  private def definitionToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Option[Output] =
+    definitionToTPTP(k)(sig) map (x => new Output {
+      final def apply() = x
+    })
+
 
 
   ///////////////////////////////
@@ -145,7 +189,7 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of clause to THF formula
   ///////////////////////////////
-  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = ClauseAnnotation.NoAnnotation)(sig: Signature): String = {
+  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = null)(sig: Signature): String = {
     val sb = new StringBuffer()
     if (cl.implicitlyBound.nonEmpty) {
       // make universal quantification and then print term
@@ -159,10 +203,14 @@ object ToTPTP {
     }
 
     // Output whole tptp thf statement
-    if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
+    if (clauseAnnotation == null)
       s"thf($name,${role.pretty},(${sb.toString}))."
-    else
-      s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
+    else {
+      if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
+        s"thf($name,${role.pretty},(${sb.toString}))."
+      else
+        s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
+    }
   }
 
   final private def clauseToTPTP(cl: Clause, bVarMap: Map[Int, String])(sig: Signature): String = {
@@ -243,7 +291,8 @@ object ToTPTP {
           case Forall(_) | Exists(_) | Not(_) => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: ${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)}"
           case _ => s"${sig(Exists.key).name} [${newBVars.map({case (s,ty) => s"$s:${toTPTP(ty)(sig)}"}).mkString(",")}]: (${toTPTP0(body, fusebVarListwithMap(newBVars, bVars))(sig)})"
         }
-
+      case TyForall(_) => val (tyAbsCount, body) = collectTyForall(t)
+        s"! [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, bVars)(sig)})"
       // Binary connectives
       case t1 ||| t2 => t1 match {
         case _ ||| _| Not(_) | Forall(_) | Exists(_) => t2 match {
@@ -321,7 +370,7 @@ object ToTPTP {
 
 
   final private def toTPTP(ty: Type)(sig: Signature): String = ty match {
-    case ∀(t) => val (tyAbsCount, bodyTy) = collectTyForalls(0, ty)
+    case ∀(t) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
       "!>[" + (1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",") + "]: " + toTPTP0(bodyTy)(sig)
     case _ => toTPTP0(ty)(sig)
   }
@@ -350,7 +399,7 @@ object ToTPTP {
   ///////////////////////////////
   // Utility methods
   ///////////////////////////////
-
+  // Term quantification collection
   /** Gather consecutive all-quantifications (nameless). */
   final private def collectForall(t: Term): (Seq[Type], Term) = {
     collectForall0(Seq.empty, t)
@@ -364,13 +413,19 @@ object ToTPTP {
     }
   }
 
+  /** Gather consecutive all-type-quantifications (nameless). */
+  final private def collectTyForall(t: Term): (Int, Term) = {
+    collectTyForall0(0, t)
+  }
   @tailrec
-  private final def collectTyForalls(count: Int, ty: Type): (Int, Type) = {
-    ty match {
-      case ∀(t) => collectTyForalls(count+1, t)
-      case _ => (count, ty)
+  @inline final private def collectTyForall0(vars: Int, t: Term): (Int, Term) = {
+    t match {
+      case TyForall(TypeLambda(body)) => collectTyForall0(vars +1, body)
+      case TyForall(_) => throw new IllegalArgumentException("Unexcepted body term in type-forall quantification decomposition.")
+      case _ => (vars, t)
     }
   }
+
 
   /** Gather consecutive exist-quantifications (nameless). */
   final private def collectExists(t: Term): (Seq[Type], Term) = {
@@ -403,6 +458,15 @@ object ToTPTP {
     t match {
       case TypeLambda(body) => collectTyLambdas(count+1, body)
       case _ => (count, t)
+    }
+  }
+
+  // Type quantification collection
+  @tailrec
+  private final def collectForallTys(count: Int, ty: Type): (Int, Type) = {
+    ty match {
+      case ∀(t) => collectForallTys(count+1, t)
+      case _ => (count, ty)
     }
   }
 
