@@ -89,6 +89,19 @@ case class Let(binding: LetBinding, in: Formula) extends LogicFormula {
   }
 }
 
+case class NewLet(binding: Tuple, in: Formula) extends LogicFormula {
+  override def toString: String = s"$$let(${binding.toString},${in.toString})"
+  override val function_symbols: Set[String] = {
+    ???
+  }
+}
+
+case class Tuple(entries: Seq[LogicFormula]) extends LogicFormula{
+  override def toString = s"[${entries.map(_.toString()).mkString(",")}]"
+
+  override val function_symbols: Set[String] = entries.flatMap(_.function_symbols).toSet
+}
+
 sealed abstract class BinaryConnective
 case object Eq extends BinaryConnective {
   override def toString = "="

@@ -270,21 +270,62 @@ object TPTPASTConstructor {
     }
   }
 
+  final def thfTuple(ctx: tptpParser.Thf_tupleContext): thf.Tuple = {
+    val formulaList = ctx.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+    thf.Tuple(formulaList)
+  }
+  final def thfQuantifier(ctx: tptpParser.Thf_quantifierContext): thf.Quantifier = {
+    if (ctx.fol_quantifier() != null) {
+      val q = ctx.fol_quantifier()
+      if (q.Forall() != null) thf.!
+      else if (q.Exists() != null) thf.?
+      else throw new IllegalArgumentException
+    } else if (ctx.th0_quantifier() != null) {
+      val q = ctx.th0_quantifier()
+      if (q.Choice() != null) thf.@+
+      else if (q.Description() != null) thf.@-
+      else if (q.Lambda() != null) thf.^
+      else throw new IllegalArgumentException
+    } else if (ctx.th1_quantifier() != null) {
+      val q = ctx.th1_quantifier()
+      if (q.TyForall() != null) thf.!>
+      else if (q.TyExists() != null) thf.?*
+      else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+  final def thfVariable(ctx: tptpParser.Thf_variableContext): (Variable, Option[thf.LogicFormula]) = {
+    val variable = ctx.variable().Upper_word().getText
+    val typ = thfTopLevelType(ctx.thf_top_level_type())
+    (variable, Some(typ))
+  }
   final def thfUnitary(ctx: tptpParser.Thf_unitary_formulaContext): thf.LogicFormula = {
     if (ctx.thf_atom() != null) {
-
+      thfAtom(ctx.thf_atom())
     } else if (ctx.thf_conditional() != null) {
-      
+      val condition  = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(0))
+      val thn = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(1))
+      val els = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(1))
+      thf.Cond(condition, thn, els)
     } else if (ctx.thf_let() != null) {
-
+      val binding = if (ctx.thf_let().thf_unitary_formula().thf_tuple() != null) {
+        thfTuple(ctx.thf_let().thf_unitary_formula().thf_tuple())
+      } else thf.Tuple(Seq(thfUnitary(ctx.thf_let().thf_unitary_formula())))
+      val body =thfFormula(ctx.thf_let().thf_formula())
+      thf.NewLet(binding, body)
     } else if (ctx.thf_logic_formula() != null) {
       thfLogicFormula(ctx.thf_logic_formula())
     } else if (ctx.thf_quantified_formula() != null) {
-
+      val quantification = ctx.thf_quantified_formula().thf_quantification()
+      val matrix = thfUnitary(ctx.thf_quantified_formula().thf_unitary_formula())
+      thf.Quantified(thfQuantifier(quantification.thf_quantifier()),
+        quantification.thf_variable().asScala.map(thfVariable),
+        matrix)
     } else if (ctx.thf_tuple() != null) {
-
+      thfTuple(ctx.thf_tuple())
     } else if (ctx.thf_unary_formula() != null) {
-
+      val connective = thfUnaryConnective(ctx.thf_unary_formula().thf_unary_connective())
+      val body = thfLogicFormula(ctx.thf_unary_formula().thf_logic_formula())
+      thf.Unary(connective, body)
     } else throw new IllegalArgumentException
   }
   final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = {
