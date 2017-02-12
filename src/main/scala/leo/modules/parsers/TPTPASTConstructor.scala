@@ -329,7 +329,7 @@ object TPTPASTConstructor {
     } else throw new IllegalArgumentException
   }
   final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = {
-    if (ctx.variable() != null) thf.Term(Var(ctx.variable().getText))
+    if (ctx.variable() != null) thf.Var(ctx.variable().getText)
     else if (ctx.thf_function() != null) {
       val thfFun = ctx.thf_function()
       if (thfFun.thf_plain_term() != null) {
@@ -381,8 +381,54 @@ object TPTPASTConstructor {
 //  final def thfFunction(ctx: tptpParser.Thf_functionContext): thf.LogicFormula = ???
 
   final def thfTopLevelType(ctx: tptpParser.Thf_top_level_typeContext): thf.LogicFormula = {
-
-    ???
+    if (ctx.thf_mapping_type() != null) {
+      thf.BinType(thfMappingType(ctx.thf_mapping_type()))
+    } else if (ctx.thf_unitary_type() != null) {
+      thfUnitaryType(ctx.thf_unitary_type())
+    } else throw new IllegalArgumentException
+  }
+  final def thfUnitaryType(typ: tptpParser.Thf_unitary_typeContext): thf.LogicFormula = {
+    if (typ.thf_unitary_formula() != null) thfUnitary(typ.thf_unitary_formula())
+    else if (typ.thf_binary_type() != null) {
+      val bintyp = typ.thf_binary_type()
+      if (bintyp.thf_mapping_type() != null) thf.BinType(thfMappingType(bintyp.thf_mapping_type()))
+      else if (bintyp.thf_union_type() != null) thf.BinType(thfUnionType(bintyp.thf_union_type()))
+      else if (bintyp.thf_xprod_type() != null) thf.BinType(thfProdType(bintyp.thf_xprod_type()))
+      else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+  final def thfMappingType(ctx: tptpParser.Thf_mapping_typeContext): thf.-> = {
+    if (ctx.thf_mapping_type() != null) {
+      val left = thfUnitaryType(ctx.thf_unitary_type(0))
+      val right = thfMappingType(ctx.thf_mapping_type())
+      thf.->(left +: right.t)
+    } else {
+      val left = thfUnitaryType(ctx.thf_unitary_type(0))
+      val right = thfUnitaryType(ctx.thf_unitary_type(1))
+      thf.->(Seq(left,right))
+    }
+  }
+  final def thfUnionType(ctx: tptpParser.Thf_union_typeContext): thf.+ = {
+    if (ctx.thf_union_type() != null) {
+      val right = thfUnitaryType(ctx.thf_unitary_type(0))
+      val left = thfUnionType(ctx.thf_union_type())
+      thf.+(left.t :+ right)
+    } else {
+      val left = thfUnitaryType(ctx.thf_unitary_type(0))
+      val right = thfUnitaryType(ctx.thf_unitary_type(1))
+      thf.+(Seq(left,right))
+    }
+  }
+  final def thfProdType(ctx: tptpParser.Thf_xprod_typeContext): thf.* = {
+    if (ctx.thf_xprod_type() != null) {
+      val right = thfUnitaryType(ctx.thf_unitary_type(0))
+      val left = thfProdType(ctx.thf_xprod_type())
+      thf.*(left.t :+ right)
+    } else {
+      val left = thfUnitaryType(ctx.thf_unitary_type(0))
+      val right = thfUnitaryType(ctx.thf_unitary_type(1))
+      thf.*(Seq(left,right))
+    }
   }
   ////////////////////////////////////////////////////////
   /// TFF
