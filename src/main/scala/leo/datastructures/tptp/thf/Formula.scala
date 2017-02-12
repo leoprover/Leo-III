@@ -25,11 +25,13 @@ case class Sequent(tuple1: Seq[LogicFormula], tuple2: Seq[LogicFormula]) extends
 sealed abstract class LogicFormula {
   def function_symbols : Set[String]
 }
+
 case class Typed(formula: LogicFormula, typ: LogicFormula) extends LogicFormula {
   override def toString = formula.toString + " : " + typ.toString
 
   override val function_symbols: Set[String] = formula.function_symbols // TODO Do we need the typ symbols as well?
 }
+
 case class Binary(left: LogicFormula, connective: BinaryConnective, right: LogicFormula) extends LogicFormula {
   override def toString = "(" + left.toString + ") " + connective.toString + " (" + right.toString + ")"
 
@@ -53,42 +55,35 @@ case class Quantified(quantifier: Quantifier, varList: Seq[(Commons.Variable,Opt
 
   val blocked_symbols : Set[String] = varList.map(_._1).toSet
 }
+case class Tuple(entries: Seq[LogicFormula]) extends LogicFormula{
+  override def toString = s"[${entries.map(_.toString()).mkString(",")}]"
+
+  override val function_symbols: Set[String] = entries.flatMap(_.function_symbols).toSet
+}
 case class Connective(c: Either[BinaryConnective, UnaryConnective]) extends LogicFormula {
   override def function_symbols: Set[String] = Set()
 }
-case class Term(t: Commons.Term) extends LogicFormula {
-  override def toString = t.toString
-
-  override val function_symbols: Set[String] = t.function_symbols
+case class Function(func: String, args: Seq[LogicFormula]) extends LogicFormula {
+  override def toString = s"$func(${args.map(_.toString).mkString(",")})"
+  override val function_symbols: Set[String] = args.flatMap(_.function_symbols).toSet + func
 }
-case class BinType(t: BinaryType) extends LogicFormula {
-  override def toString = t.toString
-
-  override val function_symbols: Set[String] = t.function_symbols
+case class Var(name: String) extends LogicFormula {
+  override def toString = name
+  override val function_symbols: Set[String] = Set.empty
 }
-case class Subtype(left: String, right: String) extends LogicFormula {
-  override def toString = left + " << " + right
-
-  override val function_symbols: Set[String] = Set()  // TODO What do we do in this case?
+case class Distinct(data: String) extends LogicFormula {
+  override def toString = data
+  override val function_symbols: Set[String] = Set.empty
+}
+case class Number(number: Commons.Number) extends LogicFormula {
+  override def toString = number.toString
+  override val function_symbols: Set[String] = Set.empty
 }
 case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extends LogicFormula{
   override def toString = "$ite_f(" + List(cond,thn,els).mkString(",") + ")"
 
   override val function_symbols: Set[String] = cond.function_symbols union thn.function_symbols union els.function_symbols
 }
-
-case class Let(binding: LetBinding, in: Formula) extends LogicFormula {
-  override def toString = binding match {
-    case _:TermBinding => "$let_tf(" + List(binding,in).mkString(",") + ")"
-    case _:FormulaBinding => "$let_ff(" + List(binding,in).mkString(",") + ")"
-  }
-
-  override val function_symbols: Set[String] = {
-    val (vars, symbs) = binding.function_symbols
-    (in.function_symbols -- vars) union symbs
-  }
-}
-
 case class NewLet(binding: Tuple, in: Formula) extends LogicFormula {
   override def toString: String = s"$$let(${binding.toString},${in.toString})"
   override val function_symbols: Set[String] = {
@@ -96,10 +91,16 @@ case class NewLet(binding: Tuple, in: Formula) extends LogicFormula {
   }
 }
 
-case class Tuple(entries: Seq[LogicFormula]) extends LogicFormula{
-  override def toString = s"[${entries.map(_.toString()).mkString(",")}]"
+case class Subtype(left: String, right: String) extends LogicFormula {
+  override def toString = left + " << " + right
 
-  override val function_symbols: Set[String] = entries.flatMap(_.function_symbols).toSet
+  override val function_symbols: Set[String] = Set()  // TODO What do we do in this case?
+}
+
+case class BinType(t: BinaryType) extends LogicFormula {
+  override def toString = t.toString
+
+  override val function_symbols: Set[String] = t.function_symbols
 }
 
 sealed abstract class BinaryConnective
@@ -159,6 +160,14 @@ case class +(t: Seq[LogicFormula]) extends BinaryType {
   override val function_symbols: Set[String] = t.flatMap(_.function_symbols).toSet
 }
 
+
+// TODO Legacy, remove if parsers have been switched.
+case class Term(t: Commons.Term) extends LogicFormula {
+  override def toString = t.toString
+
+  override val function_symbols: Set[String] = t.function_symbols
+}
+
 sealed abstract class LetBinding {
   /**
     * Returns a set of new defined symbols and a set of symbols, used in the definition of those
@@ -173,4 +182,15 @@ case class FormulaBinding(binding: Quantified) extends LetBinding {
 case class TermBinding(binding: Quantified) extends LetBinding {
   override def toString = binding.toString
   override val function_symbols: (Set[String], Set[String]) = (binding.blocked_symbols, binding.function_symbols)
+}
+case class Let(binding: LetBinding, in: Formula) extends LogicFormula {
+  override def toString = binding match {
+    case _:TermBinding => "$let_tf(" + List(binding,in).mkString(",") + ")"
+    case _:FormulaBinding => "$let_ff(" + List(binding,in).mkString(",") + ")"
+  }
+
+  override val function_symbols: Set[String] = {
+    val (vars, symbs) = binding.function_symbols
+    (in.function_symbols -- vars) union symbs
+  }
 }

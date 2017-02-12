@@ -334,12 +334,36 @@ object TPTPASTConstructor {
       val thfFun = ctx.thf_function()
       if (thfFun.thf_plain_term() != null) {
         val fun = thfFun.thf_plain_term().functor().getText
-        if (thfFun.thf_plain_term().thf_arguments() == null) thf.Term(Func(fun, Seq()))
-        else thf.Term(Func(fun, ???)) // FIXME: Term not applicable
+        if (thfFun.thf_plain_term().thf_arguments() == null) thf.Function(fun, Seq())
+        else {
+          val args = thfFun.thf_plain_term().thf_arguments()
+          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+          thf.Function(fun, convertedArgs)
+        }
       } else if (thfFun.thf_defined_term() != null) {
-        ???
+        val fun = thfFun.thf_defined_term()
+        if (fun.defined_atom() != null) {
+          val atom = fun.defined_atom()
+          if (atom.Distinct_object() != null) thf.Distinct(atom.Distinct_object().getText)
+          else if (atom.number() != null) thf.Number(number(atom.number()))
+          else throw new IllegalArgumentException
+        } else if (fun.defined_functor() != null) {
+          val fun2 = fun.defined_functor().getText
+          if (fun.thf_arguments() == null) thf.Function(fun2, Seq())
+          else {
+            val args = fun.thf_arguments()
+            val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+            thf.Function(fun2, convertedArgs)
+          }
+        } else throw new IllegalArgumentException
       } else if (thfFun.thf_system_term() != null) {
-        ???
+        val fun = thfFun.thf_system_term().system_functor().getText
+        if (thfFun.thf_system_term().thf_arguments() == null) thf.Function(fun, Seq())
+        else {
+          val args = thfFun.thf_system_term().thf_arguments()
+          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+          thf.Function(fun, convertedArgs)
+        }
       } else throw new IllegalArgumentException
     } else if (ctx.thf_conn_term() != null) {
       val conn = ctx.thf_conn_term()
@@ -354,9 +378,12 @@ object TPTPASTConstructor {
       } else throw new IllegalArgumentException
     } else throw new IllegalArgumentException
   }
-  final def thfFunction(ctx: tptpParser.Thf_functionContext): thf.LogicFormula = ???
+//  final def thfFunction(ctx: tptpParser.Thf_functionContext): thf.LogicFormula = ???
 
-  final def thfTopLevelType(ctx: tptpParser.Thf_top_level_typeContext): thf.LogicFormula = ???
+  final def thfTopLevelType(ctx: tptpParser.Thf_top_level_typeContext): thf.LogicFormula = {
+
+    ???
+  }
   ////////////////////////////////////////////////////////
   /// TFF
   ////////////////////////////////////////////////////////
