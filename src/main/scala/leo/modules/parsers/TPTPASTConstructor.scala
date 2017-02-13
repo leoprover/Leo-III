@@ -54,7 +54,15 @@ object TPTPASTConstructor {
     }
   }
   final def generalTerm(ctx: tptpParser.General_termContext): GeneralTerm = {
-    ???
+    if (ctx.general_data() != null) {
+      val data = generalData(ctx.general_data())
+      if (ctx.general_term() != null) {
+        val convertedGT = generalTerm(ctx.general_term())
+        GeneralTerm(Left(data) +: convertedGT.term)
+      } else GeneralTerm(Seq(Left(data)))
+    } else if (ctx.general_list() != null) {
+      GeneralTerm(Seq(Right(ctx.general_list().general_term().asScala.map(generalTerm))))
+    } else throw new IllegalArgumentException
   }
   final def generalData(ctx: tptpParser.General_dataContext): GeneralData = {
     if (ctx.atomic_word() != null) {
@@ -85,7 +93,19 @@ object TPTPASTConstructor {
     } else throw new IllegalArgumentException
   }
   // Numbers
-  final def number(ctx: tptpParser.NumberContext): Number = ???
+  final def number(ctx: tptpParser.NumberContext): Number = {
+    if (ctx.Integer() != null) {
+      IntegerNumber(ctx.Integer().getText.toInt)
+    } else if (ctx.Rational() != null) {
+      val input = ctx.Rational().getText
+      val slashIdx = input.indexOf('/')
+      val numerator = input.substring(0,slashIdx).toInt
+      val denominator = input.substring(slashIdx+1).toInt
+      RationalNumber(numerator, denominator)
+    } else if (ctx.Real() != null) {
+      DoubleNumber(ctx.Real().getText.toDouble)
+    } else throw new IllegalArgumentException
+  }
   ////////////////////////////////////////////////////////
   /// FOF
   ////////////////////////////////////////////////////////
