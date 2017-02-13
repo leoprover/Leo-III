@@ -368,10 +368,10 @@ package inferenceControl {
               // same polarity, standard
               val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
               val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
-              val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-              val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
-              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+              val test1 = shouldFactor(maxLitMaxSide, otherLitMaxSide)
+              val test2 = shouldFactor(maxLitOtherSide, otherLitOtherSide)
+              Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+              Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
                 val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
@@ -381,11 +381,10 @@ package inferenceControl {
               // of otherLit, since our iterator does not give us this test. It will give us this test
               // if otherLit is not oriented.
               if (otherLit.oriented) {
-                val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, !otherLitSide)
-                val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
-                Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+                val test1 = shouldFactor(maxLitMaxSide, otherLitOtherSide)
+                val test2 = shouldFactor(maxLitOtherSide, otherLitMaxSide)
+                Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+                Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
                 if (test1 && test2) {
                   val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
                   val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
@@ -402,8 +401,8 @@ package inferenceControl {
                 import leo.modules.HOLSignature.Not
                 val flexTerm = maxLit.left
                 val otherTerm = otherLit.left
-                val test = leo.modules.calculus.mayUnify(flexTerm, Not(otherTerm))
-                Out.finest(s"Test unify ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
+                val test = shouldFactor(flexTerm, Not(otherTerm))
+                Out.finest(s"Should factor ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
                 if (test) {
                   val adjustedClause = Clause(clause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
                   val factor = OrderedEqFac(adjustedClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
@@ -419,6 +418,14 @@ package inferenceControl {
 
       Out.trace(s"Factor result:\n\t${res.map(_.pretty(sig)).mkString("\n\t")}")
       res
+    }
+
+    /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
+    private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
+      val withHd = term.headSymbol
+      val intoHd = otherTerm.headSymbol
+      if (withHd == intoHd && withHd.isConstant) true
+      else leo.modules.calculus.mayUnify(term, otherTerm)
     }
   }
 
