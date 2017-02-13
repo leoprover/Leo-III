@@ -91,18 +91,16 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
   final def conjecture: T = conjecture0
-  final def setConjecture(conj: T): Unit = {
-    conjecture0 = conj
-    val conjClauseIt = conj.cl.lits.iterator
-    while (conjClauseIt.hasNext) {
-      val lit = conjClauseIt.next()
-      symbolsInConjecture0 = symbolsInConjecture0 union lit.left.symbols.distinct
-      symbolsInConjecture0 = symbolsInConjecture0 union lit.right.symbols.distinct
-    }
-    symbolsInConjecture0 = symbolsInConjecture0 intersect signature.allUserConstants
-  }
+  final def setConjecture(conj: T): Unit = {conjecture0 = conj }
   final def negConjecture: T = negConjecture0
-  final def setNegConjecture(negConj: T): Unit = { negConjecture0 = negConj }
+  final def setNegConjecture(negConj: T): Unit = {
+    negConjecture0 = negConj
+    assert(Clause.unit(negConj.cl))
+    val lit = negConj.cl.lits.head
+    assert(!lit.equational)
+    val term = lit.left.δ_expand(sig).betaNormalize
+    symbolsInConjecture0 = term.symbols.distinct intersect signature.allUserConstants
+  }
   final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
 
   final def signature: Signature = sig
