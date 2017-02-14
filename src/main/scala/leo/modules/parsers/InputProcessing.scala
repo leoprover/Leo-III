@@ -1,17 +1,15 @@
 package leo.modules.parsers
 
 import scala.language.implicitConversions
-
 import leo.Out
-import leo.datastructures.tptp.Commons.{AnnotatedFormula, Term => TPTPTerm, Variable}
-import leo.datastructures.tptp.Commons.{THFAnnotated, TPIAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated}
-import leo.datastructures.tptp.Commons.{Var, Func, DefinedFunc, SystemFunc, Equality}
+import leo.datastructures.tptp.Commons.{AnnotatedFormula, Variable, Term => TPTPTerm}
+import leo.datastructures.tptp.Commons.{CNFAnnotated, FOFAnnotated, TFFAnnotated, THFAnnotated, TPIAnnotated}
+import leo.datastructures.tptp.Commons.{DefinedFunc, Equality, Func, SystemFunc, Var}
 import leo.datastructures._
-import Term.{mkAtom,λ,Λ, mkBound,mkTermApp, mkApp}
-import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
-
+import Term.{mkApp, mkAtom, mkBound, mkTermApp, Λ, λ}
+import Type.{mkFunType, mkProdType, mkType, mkUnionType, mkVarType, typeKind, ∀}
 import leo.modules.SZSException
-import leo.modules.output.{SZS_InputError,SZS_TypeError}
+import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 
 
 /**
@@ -65,9 +63,6 @@ object InputProcessing {
     case Role_NegConjecture => FromConjecture
     case _ => FromAxiom
   }
-  private final def singleTermToClause(t: Term, role: Role): Clause = {
-    Clause.mkClause(Seq(Literal.mkLit(t, true)), roleToClauseOrigin(role))
-  }
 
   def process(sig: Signature)(input: AnnotatedFormula): Result = {
     val p = input match {
@@ -78,7 +73,6 @@ object InputProcessing {
       case _:CNFAnnotated => processCNF(sig)(input.asInstanceOf[CNFAnnotated])
     }
     p match {
-//      case None => val role = processRole(input.role); (input.name, singleTermToClause(LitTrue, role), role)
       case None => val role = processRole(input.role); (input.name, LitTrue, role)
       case Some(res) => res
     }
@@ -89,21 +83,19 @@ object InputProcessing {
   // TPI Formula processing
   //////////////////////////
 
-  def processTPI(sig: Signature)(input: TPIAnnotated): Option[Result] = ???
-
+  def processTPI(sig: Signature)(input: TPIAnnotated): Option[Result] = throw new SZSException(SZS_Inappropriate, "TPI format not supported.")
 
   //////////////////////////
   // THF Formula processing
   //////////////////////////
 
   def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = {
-//    println(input.formula.toString)
     import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term, Function}
 
     input.formula match {
       case Logical(lf) if input.role == "definition" => {
         processTHFDef(sig)(lf) match {
-          case None => {
+          case None =>
             Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.")
             val role = processRole("axiom")
             val res = processTHF0(sig)(lf, noRep)
@@ -111,8 +103,7 @@ object InputProcessing {
               Some((input.name, res.left.get, role))
             else
               throw new SZSException(SZS_InputError)
-          }
-          case Some((defName, defDef)) => {
+          case Some((defName, defDef)) =>
             if (sig.exists(defName)) {
               val meta = sig(defName)
               if (meta.isUninterpreted && meta._ty == defDef.ty) {
@@ -128,7 +119,6 @@ object InputProcessing {
               sig.addDefined(defName, defDef.betaNormalize.etaExpand, defDef.ty)
             }
             None
-          }
         }
                                                         }
       case Logical(Typed(Function(atom, _),ty)) if input.role == "type" =>
@@ -156,8 +146,14 @@ object InputProcessing {
 
   import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
   protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, Term)] = {
-    import leo.datastructures.tptp.thf.{Binary, Term, Eq}
+    import leo.datastructures.tptp.thf.{Binary, Term, Eq, Function}
     input match {
+      case Binary(Function(name, Seq()), Eq, right) =>
+        val res = processTHF0(sig)(right, noRep)
+        if (res.isLeft)
+          Some(name, res.left.get)
+        else
+          throw new SZSException(SZS_InputError, "Type detected on right side of definition statement.")
       case Binary(Term(Func(name, Seq())), Eq, right) => {
         val res = processTHF0(sig)(right, noRep)
         if (res.isLeft)
