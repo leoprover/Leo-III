@@ -282,7 +282,13 @@ object InputProcessing {
           if (!sig.exists(func)) throw new SZSException(SZS_InputError, s"Defined function $func is unknown.")
           else {
             val f = sig(func)
-            ???
+            if (f._ty.isPolyType) {
+              val convertedArgs = args.map(processTHF0(sig)(_, replaces))
+              mkApp(mkAtom(f.key)(sig), Right(convertedArgs.head.left.get.ty) +: convertedArgs)
+            } else {
+              val convertedArgs = args.map(processTHF0(sig)(_, replaces))
+              mkApp(mkAtom(f.key)(sig), convertedArgs)
+            }
           }
         } else {
           // system or plain function
