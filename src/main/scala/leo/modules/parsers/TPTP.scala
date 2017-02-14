@@ -91,7 +91,7 @@ object TPTP {
   }
 
 
-  def newParse(input: java.io.BufferedReader): Any = {
+  def newParse(input: java.io.BufferedReader): TPTPInput = {
     import leo.modules.parsers.antlr._
     import org.antlr.v4.runtime._
     val inputStream = new ANTLRInputStream(input)
@@ -100,8 +100,7 @@ object TPTP {
     val parser = new tptpParser(tokenStream)
     val x = parser.tptp_file()
     val y = TPTPASTConstructor.tptpFile(x)
-
-    println(x.toStringTree)
+    y
   }
 }
 

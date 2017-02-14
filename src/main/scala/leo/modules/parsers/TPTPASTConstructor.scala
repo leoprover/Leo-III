@@ -17,26 +17,33 @@ object TPTPASTConstructor {
     } else Right(include(ctx.include()))
   }
   final def include(ctx: tptpParser.IncludeContext): Include = {
-    val filename = ctx.file_name().getText
-    val formulaSelection = ctx.formula_selection().name().asScala.map(_.getText)
-    (filename, formulaSelection)
+    val filename = ctx.file_name().Single_quoted().getText.tail.init
+    if (ctx.formula_selection() != null) {
+      val formulaSelection = ctx.formula_selection().name().asScala.map(_.getText)
+      (filename, formulaSelection)
+    } else (filename, Seq())
+  }
+  final def getName(ctx: tptpParser.NameContext): String = {
+    if (ctx.Integer() != null) ctx.Integer().getText
+    else if (ctx.atomic_word() != null) atomicWord(ctx.atomic_word())
+    else throw new IllegalArgumentException
   }
   final def annotatedFormula(ctx: tptpParser.Annotated_formulaContext): AnnotatedFormula = {
     if (ctx.fof_annotated() != null) {
       val annotated = ctx.fof_annotated()
-      val name = annotated.name().getText
+      val name = getName(annotated.name())
       val annotation = annotations(annotated.annotations())
       val formula = fofFormula(annotated.fof_formula())
       FOFAnnotated(name, role(annotated.formula_role()), formula, annotation)
     } else if (ctx.tff_annotated() != null) {
       val annotated = ctx.tff_annotated()
-      val name = annotated.name().getText
+      val name = getName(annotated.name())
       val annotation = annotations(annotated.annotations())
       val formula = tffFormula(annotated.tff_formula())
       TFFAnnotated(name, role(annotated.formula_role()), formula, annotation)
     } else if (ctx.thf_annotated() != null) {
       val annotated = ctx.thf_annotated()
-      val name = annotated.name().getText
+      val name = getName(annotated.name())
       val annotation = annotations(annotated.annotations())
       val formula = thfFormula(annotated.thf_formula())
       THFAnnotated(name, role(annotated.formula_role()), formula, annotation)
@@ -64,9 +71,14 @@ object TPTPASTConstructor {
       GeneralTerm(Seq(Right(ctx.general_list().general_term().asScala.map(generalTerm))))
     } else throw new IllegalArgumentException
   }
+  final def atomicWord(ctx: tptpParser.Atomic_wordContext): String = {
+    if (ctx.Lower_word() != null) ctx.Lower_word().getText
+    else if (ctx.Single_quoted() != null) ctx.Single_quoted().getText.tail.init
+    else throw new IllegalArgumentException
+  }
   final def generalData(ctx: tptpParser.General_dataContext): GeneralData = {
     if (ctx.atomic_word() != null) {
-      GWord(ctx.atomic_word().getText)
+      GWord(atomicWord(ctx.atomic_word()))
     } else if (ctx.variable() != null) {
       GVar(ctx.variable().getText)
     } else if (ctx.number() != null) {
@@ -76,7 +88,7 @@ object TPTPASTConstructor {
     } else if (ctx.formula_data() != null) {
       GFormulaData(formulaData(ctx.formula_data()))
     } else if (ctx.general_function() != null) {
-      val fun = ctx.general_function().atomic_word().getText
+      val fun = atomicWord(ctx.general_function().atomic_word())
       val args = ctx.general_function().general_term().asScala.map(generalTerm)
       GFunc(fun, args)
     } else throw new IllegalArgumentException
@@ -135,7 +147,7 @@ object TPTPASTConstructor {
       val fun = ctx.function_term()
       if (fun.plain_term() != null) {
         val plain = fun.plain_term()
-        val f = plain.functor().atomic_word().getText
+        val f = atomicWord(plain.functor().atomic_word())
         if (plain.arguments() != null) {
           val args = plain.arguments().term().asScala.map(term)
           Func(f, args)
@@ -211,8 +223,8 @@ object TPTPASTConstructor {
     } else if (ctx.thf_unitary_formula() != null) {
       thfUnitary(ctx.thf_unitary_formula())
     } else if (ctx.thf_subtype() != null) {
-      val left = ctx.thf_subtype().constant(0).getText
-      val right = ctx.thf_subtype().constant(1).getText
+      val left = atomicWord(ctx.thf_subtype().constant(0).functor().atomic_word())
+      val right = atomicWord(ctx.thf_subtype().constant(1).functor().atomic_word())
       thf.Subtype(left,right)
     } else if (ctx.thf_type_formula() != null) {
       val formula0 = ctx.thf_type_formula().thf_typeable_formula()
@@ -353,7 +365,7 @@ object TPTPASTConstructor {
     else if (ctx.thf_function() != null) {
       val thfFun = ctx.thf_function()
       if (thfFun.thf_plain_term() != null) {
-        val fun = thfFun.thf_plain_term().functor().getText
+        val fun = atomicWord(thfFun.thf_plain_term().functor().atomic_word())
         if (thfFun.thf_plain_term().thf_arguments() == null) thf.Function(fun, Seq())
         else {
           val args = thfFun.thf_plain_term().thf_arguments()

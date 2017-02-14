@@ -46,11 +46,13 @@ object Parsing {
     def readProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
       val canonicalFile = canonicalPath(file)
       if (!assumeRead.contains(canonicalFile)) {
-        val p = try {shallowReadProblem(file)} catch {case _ : Exception =>
-          try {
-            val alt = tptpHome.resolve(file)
-            shallowReadProblem(alt.toString)
-          } catch {case e : Exception => throw new SZSException(SZS_InputError, s"${e.toString}")}
+        val p: Commons.TPTPInput = try {shallowReadProblem(file)} catch {case e1 : Exception =>
+          if (tptpHome != null){
+//            try {
+              val alt = tptpHome.resolve(file)
+              shallowReadProblem(alt.toString)
+//            } catch {case e : Exception => throw new SZSException(SZS_InputError, s"${e.toString}")}
+          } else throw e1
         }
         val includes = p.getIncludes
 
@@ -103,13 +105,13 @@ object Parsing {
       * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
       */
     def shallowReadProblem(file: String): Commons.TPTPInput = {
-//      TPTP.newParse(read0(canonicalPath(file)))
-      val p = TPTP.parseFile(read0(canonicalPath(file)))
-      if (p.isLeft) {
-        throw new SZSException(SZS_SyntaxError, s"Parse error in file $file", p.left.get)
-      } else {
-        p.right.get
-      }
+      TPTP.newParse(read0(canonicalPath(file)))
+//      val p = TPTP.parseFile(read0(canonicalPath(file)))
+//      if (p.isLeft) {
+//        throw new SZSException(SZS_SyntaxError, s"Parse error in file $file", p.left.get)
+//      } else {
+//        p.right.get
+//      }
     }
 
     // Functions that go from internal TPTP syntax to processed internal representation (Term)

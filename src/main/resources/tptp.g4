@@ -48,10 +48,7 @@ package leo.modules.parsers.antlr;
 // <alpha_numeric>        ::: (<lower_alpha>|<upper_alpha>|<numeric>|[_])
 // <dollar>               ::: [$]
 
-fragment Percentage_sign : '%';
-fragment Double_quote : '"';
 fragment Do_char : [\u0020-\u0021\u0023-\u005B\u005D-\u007E] | '\\'["\\];
-fragment Single_quote : '\'';
 fragment Sq_char : [\u0020-\u0026\u0028-\u005B\u005D-\u007E] | '\\'['\\];
 fragment Sign : [+-];
 fragment Dot : '.';
@@ -151,13 +148,13 @@ Lower_word : Lower_alpha Alpha_numeric*;
 // %----e.g., "Apple" != "Microsoft" is implicit.
 // <distinct_object>      ::- <double_quote><do_char>*<double_quote>
 
-Single_quoted : Single_quote Sq_char+ Single_quote;
-Distinct_object : Double_quote Do_char+ Double_quote;
+Single_quoted : '\'' Sq_char+ '\'';
+Distinct_object : '"' Do_char+ '"';
 
 // Comments
 
-Whitespace : [ \t\r\n]+ -> channel(HIDDEN);
-Line_comment : Percentage_sign ~[\r\n]* -> skip;
+WS : [ \r\t\n]+ -> skip ;
+Line_comment : '%' ~[\r\n]* -> skip;
 Block_comment : '/*' .*? '*/' -> skip;
 
 
