@@ -20,7 +20,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
       }
 
@@ -29,6 +29,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
+    Scheduler().killAll()
     assert(NumberStore.getNumber == 10, "Incrementing to 10 should hold 10.")
   }
 
@@ -43,7 +44,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
       }
 
@@ -52,6 +53,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
+    Scheduler().killAll()
     val n = NumberStore.getNumber
     assert(n == 10 || n == 11 || n == 14, "Incrementing to 10 should hold 10.")
   }
@@ -66,7 +68,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
       }
 
@@ -75,6 +77,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
 
     Scheduler().signal()
     self.synchronized(self.wait())
+    Scheduler().killAll()
     assert(NumberStore.getNumber == 100, "Incrementing to 100 should hold 100.")
   }
 

@@ -150,12 +150,13 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
     }
     synchronized(freeThreads foreach {t => t.interrupt(); t.stop()})
     AgentWork.executingAgents() foreach(_.kill())
-    Blackboard().filterAll(a => a.filter(DoneEvent()))
+    Blackboard().filterAll(a => a.filter(DoneEvent))
     curExec.clear()
     AgentWork.clear()
     ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
     sT.interrupt()
     s.notifyAll()
+    AgentWork.synchronized(AgentWork.notifyAll())
     curExec.clear()
 //    Scheduler.s = null
   }
@@ -206,7 +207,8 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
 
       // Blocks until a task is available
       val tasks = Blackboard().getTask
-
+      tasks foreach {case (a, _) => AgentWork.inc(a)}
+//      println(tasks)
       try {
         for ((a, t) <- tasks) {
           this.synchronized {
@@ -222,7 +224,6 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
 
             // Execute task
             if (!exe.isShutdown) {
-              AgentWork.inc(a)
               exe.submit(new GenAgent(a, t))
               workCount.incrementAndGet()
             }
@@ -239,12 +240,32 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
    */
   private class Writer extends Runnable{
     var work : Boolean = false
+    val MAX_WAITING_TIME : Long = 1000 // IN MIlliseconds
+    val workLoad : Double =  0    // Wait till workLoad Processes are available of all possible ones
+    val maxThreads = Configuration.THREADCOUNT
+
 
     override def run(): Unit = while(!endFlag) {
+      val start : Long = System.currentTimeMillis()
+      var end = start
+      while((end - start) < MAX_WAITING_TIME && (AgentWork.overallWork.toDouble / maxThreads > workLoad || curExec.size == 0)) {
+        val rest = Math.max(MAX_WAITING_TIME - end + start, 0)
+//        println(s"------\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${rest} ms")
+        AgentWork.synchronized(AgentWork.wait(rest))
+        if(endFlag) return
+        end = System.currentTimeMillis()
+      }
+//      println(s"--- OUT ---\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${Math.max(MAX_WAITING_TIME - end + start, 0)} ms")
       val (result,task, agent) = ExecTask.get()
       if(endFlag) return              // Savely exit
       var doneSmth = false
-      if(curExec.contains(task)) {
+//      println(result)
+      if(
+        task match {
+          case ct : CompressTask => ct.tasks.exists(t => curExec.contains(t))
+          case _ => curExec.contains(task)
+        }
+        ) {
         work = true
 
         val dsIT = Blackboard().getDS(result.types.toSet).iterator
@@ -253,12 +274,23 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
           ds.updateResult(result)
         }
 
+        // TODO Merged Result => Multiple release
         ActiveTracker.incAndGet(s"Start Filter after finished ${task.name}")
         // Data Written, Release Locks before filtering
-        LockSet.releaseTask(task) // TODO right position?
-        Blackboard().finishTask(task)
-        curExec.remove(task)
-        agent.taskFinished(task)
+        task match {
+          case ct : CompressTask => ct.tasks.foreach{t =>
+            LockSet.releaseTask(t) // TODO right position?
+            Blackboard().finishTask(t)
+            curExec.remove(t)
+            agent.taskFinished(t)
+          }
+          case _ =>
+            LockSet.releaseTask(task) // TODO right position?
+            Blackboard().finishTask(task)
+            curExec.remove(task)
+            agent.taskFinished(task)
+        }
+
 
 
         try {
@@ -278,7 +310,10 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       }
 
       ActiveTracker.decAndGet(s"End Filter after finished ${task.name}")
-      workCount.decrementAndGet()
+      task match {
+        case ct : CompressTask => ct.tasks.foreach(_ => workCount.decrementAndGet())
+        case _ =>  workCount.decrementAndGet()
+      }
       Scheduler().signal()  // Get new task
       work = false
       Blackboard().forceCheck()
@@ -294,9 +329,12 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
   private class GenAgent(a : Agent, t : Task) extends Runnable{
     override def run()  { // TODO catch error and move outside or at least recover
       try {
+//        println(s"--- ${a.name} ---\n  Start : ${t.pretty}\n-------")
         val res = t.run
-        ExecTask.put(res, t, a)
+        ExecTask.put(res.immutable, t, a)
         AgentWork.dec(a)
+//        println(s"--- ${a.name} ---\n  Done : ${t.pretty}\n-------")
+        AgentWork.synchronized(AgentWork.notifyAll()) // Signals the writer over one finished Task
       } catch {
         case e : InterruptedException => {
           throw e
@@ -307,7 +345,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
           LockSet.releaseTask(t)
           Blackboard().finishTask(t)
           ActiveTracker.decAndGet(s"${a.name} killed with exception.")
-          Blackboard().filterAll(_.filter(DoneEvent()))
+          Blackboard().filterAll(_.filter(DoneEvent))
           Scheduler().killAll()
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
@@ -317,7 +355,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
             Blackboard().forceCheck()
           }
-          Blackboard().filterAll(_.filter(DoneEvent()))
+          Blackboard().filterAll(_.filter(DoneEvent))
           Scheduler().killAll()
       }
     }
@@ -353,19 +391,20 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
    * Producer Consumer Implementation for the solutions of the current executing Threads (Agents)
    * and the Task responsible for writing the changes to the Blackboard.
    *
-   * // TODO Use of Java Monitors might work with ONE Writer
    */
   private object ExecTask {
-    private var results : Map[Int, Seq[(Delta,Task, Agent)]] = TreeMap[Int, Seq[(Delta,Task, Agent)]]()
+    private var results : Seq[(Delta,Task, Agent)] = Seq[(Delta,Task, Agent)]()
+    private lazy val threshHold = 3
+    private lazy val maxMerge = 10
 
     def get() : (Delta,Task,Agent) = this.synchronized {
       while (true) {
         try {
-           while(results.keys.isEmpty) {this.wait()}
-           val k = results.keys.head
-           val s = results.get(k).get
-           val r = s.head
-           if(s.size > 1) results = results + (k -> s.tail) else results = results - k
+           while(results.isEmpty) {this.wait()}
+           compress()
+           val r = results.head
+           results = results.tail
+//           println(s"-----------\n  Retriving ${r} for filtering.\n--------------")
            return r
         } catch {
           // If got interrupted exception, restore status and continue
@@ -377,17 +416,104 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       null  // Should never be reached
     }
 
+    /**
+      * This method compresses the sequence of Deltas into a single
+      * Delta. Containing all changes of each delta.
+      */
+    private def compress() : Unit = {
+      // 1. When to compress?
+//      println("Before compress: "+results)
+      if(results.isEmpty || results.size < threshHold) return
+
+      // 2a. What to Compress
+      // TODO Only take maxMerge tasks
+
+      // 2b. Generate Alibi Agent (meta work pass through later.)
+      val ca = new CompressAgent(results.map{case (d,t,a) => (t,a)})
+      val ct = new CompressTask(results.map(_._2), ca)
+
+      // 3. Calculate compressed Delta
+
+      val it = results.iterator
+      var cd : Delta = new EmptyDelta
+      while(it.hasNext){
+        val (d, _ , _) = it.next()
+        cd = cd.merge(d)
+      }
+
+      // 4. Update list internal list
+//      println("Compressed Result" + cd)
+      results = Seq((cd, ct, ca))
+    }
+
     def put(r : Delta, t : Task, a : Agent) {
       this.synchronized{
-        val s : Seq[(Delta,Task,Agent)] = results.get(1).fold(Seq[(Delta,Task,Agent)]()){ x => x} // TODO Remove priority here
-        results = results + (1 -> (s :+ ((r,t,a))))        // Must not be synchronized, but maybe it should
+        results = (r,t,a) +: results
         this.notifyAll()
       }
     }
   }
 
+  private class CompressAgent(orignalTaskAgent : Seq[(Task, Agent)]) extends Agent {
+    // TODO Return real errors? Leave not implemented?
+    override val name: String = s"Compressed Agent (${orignalTaskAgent.map(_._2.name).mkString(",  ")})"
+    override def kill(): Unit = orignalTaskAgent.foreach(_._2.kill())
+    override def interest: Option[Seq[DataType[Any]]] = ???
+    override def filter(event: Event): Iterable[Task] = ???
+    override def init(): Iterable[Task] = ???
+    override def maxMoney: Double = ???
+    override def taskFinished(t: Task): Unit = t match {
+      case ct : CompressTask => ct.tasks.foreach{t1 => t1.getAgent.taskFinished(t1)}
+      case _ =>
+    }
+    override def taskChoosen(t: Task): Unit = ???   // After compression, no task can be choosen or canceled.
+    override def taskCanceled(t: Task): Unit = ???
+  }
+
+  private class CompressTask(val tasks : Seq[Task], a : CompressAgent) extends Task {
+    override val name: String = s"Compressed Task (${tasks.map(_.name).mkString(",  ")})"
+    override def run: Delta = ???
+    override val readSet : Map[DataType[Any], Set[Any]] = {
+      if(tasks.isEmpty) {Map()}
+      else {
+        var r = Map[DataType[Any], Set[Any]]()
+        val it = tasks.iterator
+        while(it.hasNext){
+          val t = it.next()
+          val mit = t.readSet().iterator
+          while(mit.hasNext){
+            val (ty, set) = mit.next()
+            r = r + (ty -> set.union(r.getOrElse(ty, Set[Any]())))
+          }
+        }
+        r
+      }
+    }
+    override val writeSet : Map[DataType[Any], Set[Any]] = {
+      if(tasks.isEmpty) {Map()}
+      else {
+        var r = Map[DataType[Any], Set[Any]]()
+        val it = tasks.iterator
+        while(it.hasNext){
+          val t = it.next()
+          val mit = t.writeSet().iterator
+          while(mit.hasNext){
+            val (ty, set) = mit.next()
+            r = r + (ty -> set.union(r.getOrElse(ty, Set[Any]())))
+          }
+        }
+        r
+      }
+    }
+    override def bid: Double = ???
+    override def getAgent: Agent = a
+    override lazy val pretty: String = s"Compressed Task (${tasks.map(_.pretty).mkString(",  ")})"
+  }
+
   private object AgentWork {
     protected val agentWork : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
+
+    protected var work : Int = 0
 
     /**
      * Increases the amount of work of an agent by 1.
@@ -395,16 +521,22 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
      * @param a - Agent that executes a task
      * @return the updated number of task of the agent.
      */
-    def inc(a : Agent) : Int = synchronized(agentWork.get(a) match {
+    def inc(a : Agent) : Int = synchronized{
+      work += 1
+//      println(s"WORK : $work !!!!")
+      agentWork.get(a) match {
       case Some(v)  => agentWork.update(a,v+1); return v+1
       case None     => agentWork.put(a,1); return 1
-    })
+    }}
 
-    def dec(a : Agent) : Int = synchronized(agentWork.get(a) match {
+    def dec(a : Agent) : Int = synchronized{
+      work -= 1
+//      println(s"WORK : $work !!!!")
+      agentWork.get(a) match {
       case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
       case Some(v)  if v == 1 => agentWork.remove(a); return 0
       case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
-    })
+    }}
 
     def executingAgents() : Iterable[Agent] = synchronized(agentWork.keys)
 
@@ -413,6 +545,8 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
     def isEmpty : Boolean = synchronized(agentWork.isEmpty)
 
     def nonEmpty : Boolean = synchronized(agentWork.nonEmpty)
+
+    def overallWork : Int = synchronized(work)
   }
 
   /**
@@ -430,7 +564,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
     override def name: String = "ExitTask"
 
     override def run : Delta = {
-      Result()
+      new EmptyDelta
     }
 
     override def pretty: String = "Exit Task"

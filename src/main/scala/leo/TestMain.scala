@@ -216,7 +216,7 @@ object TestMain {
         exit = true
         this.interrupt()
         Out.finest("Scheduler killed before timeout.")
-        Blackboard().filterAll(_.filter(DoneEvent()))
+        Blackboard().filterAll(_.filter(DoneEvent))
         Scheduler().killAll()
       }
     }
@@ -244,7 +244,7 @@ object TestMain {
         Out.finest(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism
-        Blackboard().filterAll(_.filter(DoneEvent()))
+        Blackboard().filterAll(_.filter(DoneEvent))
         Scheduler().killAll()
       }
     }

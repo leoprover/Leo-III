@@ -37,7 +37,7 @@ class SimpleRuleTest extends LeoTestSuite {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
       }
 
@@ -72,7 +72,7 @@ class SimpleRuleTest extends LeoTestSuite {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
       }
 
@@ -110,7 +110,7 @@ class SimpleRuleTest extends LeoTestSuite {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => println("Done"); self.synchronized(self.notifyAll()); Seq()
         case _ => Seq()
       }
 

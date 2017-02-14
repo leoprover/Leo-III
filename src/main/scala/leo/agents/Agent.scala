@@ -140,35 +140,12 @@ trait Agent {
   */
 abstract class Task extends Pretty  {
 
-  /**
-    * Prints a short name of the task
- *
-    * @return
-    */
   def name : String
 
-  /**
-    * Computes the result, a delta on the blackboard state,
-    * of the task.
- *
-    * @return
-    */
   def run : Delta
 
-  /**
-    *
-    * Returns a set of all Formulas that are read for the task.
-    *
-    * @return Read set for the Task.
-    */
   def readSet() : Map[DataType[Any], Set[Any]]
 
-  /**
-    *
-    * Returns a set of all Formulas, that will be written by the task.
-    *
-    * @return Write set for the task
-    */
   def writeSet() : Map[DataType[Any], Set[Any]]
 
   /**
@@ -219,20 +196,8 @@ abstract class Task extends Pretty  {
     }
   }
 
-  /**
-    *
-    * Defines the realtive bid of an agent for a task.
-    * The result has to in [0,1].
-    *
-    * @return - Possible profit, if the task is executed
-    */
   def bid : Double
 
-  /**
-    * Returns the agent, that will execute this task.
- *
-    * @return
-    */
   def getAgent : Agent
 }
 

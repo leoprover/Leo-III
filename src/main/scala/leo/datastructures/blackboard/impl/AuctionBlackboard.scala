@@ -204,7 +204,7 @@ private object TaskSet {
     val agents = regAgents.toList.map(_._1).toIterator
     while(agents.hasNext){
       val a = agents.next()
-      taskSet.submit(a.filter(DoneEvent()))
+      taskSet.submit(a.filter(DoneEvent))
     }
   }
 
@@ -296,7 +296,7 @@ private object TaskSet {
               regAgents.put(a, b + AGENT_SALARY)
             }
           }
-          //        println("Sending "+newTask.size+" tasks to scheduler.")
+//                  println("Sending "+newTask.size+" tasks to scheduler.")
           return newTask
         }
         //Lastly interrupt recovery

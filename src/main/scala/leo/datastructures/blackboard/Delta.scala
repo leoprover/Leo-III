@@ -49,12 +49,6 @@ trait Delta extends Event {
     */
   def removes[T](t : DataType[T]) : Seq[T]
 
-  /**
-    *
-    * Returns an immutable version of this Delta.
-    *
-    * @return this delta, but immutable
-    */
   def immutable : Delta = this
 
   /**
@@ -113,6 +107,8 @@ class ImmutableDelta(insert : Map[DataType[Any], Seq[Any]] = Map(), remove : Map
     }
     new ImmutableDelta(insM, remM, upM)
   }
+
+  override def toString: String = s"Delta(Insert = {${insert}, Remove = {${remove}}, Update = {${update}})"
 }
 
 /**
@@ -227,9 +223,14 @@ class MutableDelta extends Delta {
   }
 
 
+  override def immutable: Delta = {
+    new ImmutableDelta(insertM.toMap, removeM.toMap, updateM.toMap)
+  }
+
   /**
     * Debug to String.
     * Produces a listing of the contents of this Delta.
+    *
     * @return
     */
   final override def toString : String = {

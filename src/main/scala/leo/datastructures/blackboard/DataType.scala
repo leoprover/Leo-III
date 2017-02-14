@@ -18,11 +18,6 @@ import leo.modules.output.{SZS_Error, StatusSZS}
  * @since 4/15/15
  */
 trait DataType[+T] {
-  /**
-    * Converts data, assigned to this type to
-    * @param d
-    * @return
-    */
   def convert(d : Any) : T
 }
 
