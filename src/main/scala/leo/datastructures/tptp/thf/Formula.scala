@@ -84,10 +84,18 @@ case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extend
 
   override val function_symbols: Set[String] = cond.function_symbols union thn.function_symbols union els.function_symbols
 }
+/** Invariant: Only bindings supported of the form `c = ....`, this may have to be transformed into this form before. */
 case class NewLet(binding: Tuple, in: Formula) extends LogicFormula {
   override def toString: String = s"$$let(${binding.toString},${in.toString})"
   override val function_symbols: Set[String] = {
-    ???
+    var introducedSymbols: Set[String] = Set()
+    var symbolsInDef: Set[String] = Set()
+    in.function_symbols
+    binding.entries.foreach{case Binary(Function(symbol, Seq()), Eq, right) =>
+        introducedSymbols = introducedSymbols + symbol
+        symbolsInDef = symbolsInDef union right.function_symbols
+    }
+    (in.function_symbols -- introducedSymbols) union symbolsInDef
   }
 }
 

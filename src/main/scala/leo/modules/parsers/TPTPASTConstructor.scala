@@ -471,9 +471,7 @@ object TPTPASTConstructor {
       val els = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(1))
       thf.Cond(condition, thn, els)
     } else if (ctx.thf_let() != null) {
-      val binding = if (ctx.thf_let().thf_unitary_formula().thf_tuple() != null) {
-        thfTuple(ctx.thf_let().thf_unitary_formula().thf_tuple())
-      } else thf.Tuple(Seq(thfUnitary(ctx.thf_let().thf_unitary_formula())))
+      val binding = thf.Tuple(Seq(transformUnitaryLetBinding(ctx.thf_let().thf_unitary_formula())))
       val body =thfFormula(ctx.thf_let().thf_formula())
       thf.NewLet(binding, body)
     } else if (ctx.thf_logic_formula() != null) {
@@ -491,6 +489,76 @@ object TPTPASTConstructor {
       val body = thfLogicFormula(ctx.thf_unary_formula().thf_logic_formula())
       thf.Unary(connective, body)
     } else throw new IllegalArgumentException
+  }
+  final def transformUnitaryLetBinding(ctx: tptpParser.Thf_unitary_formulaContext): thf.LogicFormula = {
+    // It may already be a tuple of formulas
+    if (ctx.thf_tuple() != null) {
+      // process each of it
+      val transformed = ctx.thf_tuple().thf_formula_list().thf_logic_formula().asScala.map(transformUnitaryLetBinding0)
+      thf.Tuple(transformed)
+    } else if (ctx.thf_quantified_formula() != null) {
+      transformUnitaryLetBinding1(ctx.thf_quantified_formula())
+    } else if (ctx.thf_logic_formula() != null) {
+      transformUnitaryLetBinding0(ctx.thf_logic_formula())
+    } else throw new IllegalArgumentException
+    // If it is a "plain unitary" formula, it is either Forall [...]: Phi = Psi/Phi <=> Phi
+    //
+  }
+  final def transformUnitaryLetBinding0(ctx: tptpParser.Thf_logic_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_binary_formula() != null) {
+      // Equality binding
+      if (ctx.thf_binary_formula().thf_binary_pair() != null) {
+        if (ctx.thf_binary_formula().thf_binary_pair().thf_pair_connective() != null && ctx.thf_binary_formula().thf_binary_pair().thf_pair_connective().Infix_equality() != null) {
+          thfLogicFormula(ctx) // just transform it
+        } else throw new IllegalArgumentException
+      }else throw new IllegalArgumentException
+    } else if (ctx.thf_unitary_formula() != null) {
+      // forall binding
+      if (ctx.thf_unitary_formula().thf_quantified_formula() != null) {
+        transformUnitaryLetBinding1(ctx.thf_unitary_formula().thf_quantified_formula())
+      } else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+  final def transformUnitaryLetBinding1(ctx: tptpParser.Thf_quantified_formulaContext): thf.LogicFormula = {
+    if (ctx.thf_quantification().thf_quantifier().fol_quantifier().Forall() != null) {
+      val matrix = ctx.thf_unitary_formula()
+      if (matrix.thf_logic_formula() != null) {
+        if (matrix.thf_logic_formula().thf_binary_formula() != null) {
+          if (matrix.thf_logic_formula().thf_binary_formula().thf_binary_pair() != null) {
+            val pair = matrix.thf_logic_formula().thf_binary_formula().thf_binary_pair()
+            if (pair.thf_pair_connective().Infix_equality() != null || (pair.thf_pair_connective().binary_connective() != null && pair.thf_pair_connective().binary_connective().Iff() != null)) {
+              val right = thfUnitary(pair.thf_unitary_formula(1))
+              val head = headSymbolForLetBinding(pair.thf_unitary_formula(0))
+              thf.Binary(head, thf.Eq, thf.Quantified(thf.^,ctx.thf_quantification().thf_variable().asScala.map(thfVariable),right))
+            } else throw new IllegalArgumentException
+          } else throw new IllegalArgumentException
+        } else throw new IllegalArgumentException
+      } else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+  final def headSymbolForLetBinding(ctx: tptpParser.Thf_unitary_formulaContext): thf.Function = {
+    if (ctx.thf_atom() != null && ctx.thf_atom().thf_function() != null && ctx.thf_atom().thf_function().thf_plain_term() != null
+    && ctx.thf_atom().thf_function().thf_plain_term().thf_arguments() == null) {
+      val fun = atomicWord(ctx.thf_atom().thf_function().thf_plain_term().functor().atomic_word())
+      thf.Function(fun, Seq())
+    } else if (ctx.thf_logic_formula() != null) {
+      if (ctx.thf_logic_formula().thf_binary_formula() != null && ctx.thf_logic_formula().thf_binary_formula().thf_binary_tuple() != null
+      && ctx.thf_logic_formula().thf_binary_formula().thf_binary_tuple().thf_apply_formula() != null) {
+        val apply = ctx.thf_logic_formula().thf_binary_formula().thf_binary_tuple().thf_apply_formula()
+        headSymbolForLetBinding0(apply)
+      } else if (ctx.thf_logic_formula().thf_unitary_formula() != null) headSymbolForLetBinding(ctx.thf_logic_formula().thf_unitary_formula())
+      else throw new IllegalArgumentException
+    } else throw new IllegalArgumentException
+  }
+  final def headSymbolForLetBinding0(ctx: tptpParser.Thf_apply_formulaContext): thf.Function = {
+    val apply = ctx
+    if (apply.thf_apply_formula() != null) {
+      val left = apply.thf_apply_formula()
+      headSymbolForLetBinding0(left)
+    } else {
+      val left = apply.thf_unitary_formula(0)
+      headSymbolForLetBinding(left)
+    }
   }
   final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = {
     if (ctx.variable() != null) thf.Var(ctx.variable().getText)
