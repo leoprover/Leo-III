@@ -12,7 +12,7 @@ case class Logical(formula: LogicFormula) extends Formula {
 
   override val function_symbols: Set[String] = formula.function_symbols
 }
-case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula {
+case class Sequent(tuple1: Seq[LogicFormula], tuple2: Seq[LogicFormula]) extends Formula {
   override def toString = "[" + tuple1.mkString(",") +"]" + " --> " + "[" + tuple2.mkString(",") + "]"
 
   override val function_symbols: Set[String] = tuple1.toSet[LogicFormula].flatMap(_.function_symbols) union tuple2.toSet[LogicFormula].flatMap(_.function_symbols)
@@ -31,7 +31,7 @@ case class Unary(connective: UnaryConnective, formula: LogicFormula) extends Log
 
   override val function_symbols: Set[String] = formula.function_symbols
 }
-case class Quantified(quantifier: Quantifier, varList: List[Variable], matrix: LogicFormula) extends LogicFormula {
+case class Quantified(quantifier: Quantifier, varList: Seq[Variable], matrix: LogicFormula) extends LogicFormula {
   override def toString = quantifier.toString + " [" + varList.mkString(",") + "] : (" + matrix.toString + ")"
 
   override val function_symbols: Set[String] = matrix.function_symbols -- varList
