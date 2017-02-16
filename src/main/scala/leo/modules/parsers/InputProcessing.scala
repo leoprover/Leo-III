@@ -333,12 +333,44 @@ object InputProcessing {
             } else throw new SZSException(SZS_TypeError, "Condition in IF-THEN-ElSE is not Boolean typed.")
           } else throw new SZSException(SZS_TypeError, "THEN and ELSE case types do not match in IF-THEN-ELSE")
         } catch {
+
           case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError,e.toString)
         }
       case Let(binding, in) => Out.severe("Unsupported let-definition in term, treated as $true."); LitTrue()
-      case NewLet(binding, body) => Out.severe("Unsupported let-definition in term, treated as $true."); LitTrue()
+      case NewLet(binding, leo.datastructures.tptp.thf.Logical(body)) =>
+        import leo.datastructures.tptp.thf.{Eq => THFEq}
+        var localBindingMap: Map[Function, THFLogicFormula] = Map()
+        binding.entries.foreach {
+          case Binary(f@Function(_, Seq()), THFEq, right) =>
+            localBindingMap = localBindingMap + (f -> right)
+          case _ => throw new SZSException(SZS_InputError, s"Malformed let-expression in ${input.toString}")
+        }
+        processTHF0(sig)(expandLetDefs(body, localBindingMap), replaces)
+      case _ => throw new SZSException(SZS_InputError, s"Unrecognized input ${input.toString}")
     }
   }
+  private final def expandLetDefs(t: THFLogicFormula, binding: Map[leo.datastructures.tptp.thf.Function, THFLogicFormula]): THFLogicFormula = {
+    import leo.datastructures.tptp.thf.{Logical, Typed, Binary, *,+ => THFSum,->,Function, Unary, BinType, Quantified, Tuple, Connective, Var => THFVar, Cond, NewLet}
+    t match {
+      case f@Function(fname,fargs) => if (binding.isDefinedAt(f)) binding(f)
+                                      else Function(fname, fargs.map(expandLetDefs(_, binding)))
+        // All other just recurse
+      case Typed(f,ty) => Typed(expandLetDefs(f, binding), expandLetDefs(ty, binding))
+      case Binary(l,op,r) => Binary(expandLetDefs(l,binding), op, expandLetDefs(r,binding))
+      case Unary(op, body) => Unary(op, expandLetDefs(body, binding))
+      case Quantified(q,v,matrix) => Quantified(q,v,expandLetDefs(matrix, binding))
+      case Tuple(entries) => Tuple(entries.map(expandLetDefs(_, binding)))
+      case Cond(cond,thn,els) => Cond(expandLetDefs(cond,binding), expandLetDefs(thn, binding), expandLetDefs(els, binding))
+      case NewLet(letBinding, Logical(body)) => NewLet(letBinding, Logical(expandLetDefs(body, binding))) // TODO Recurse on letBinding
+      case BinType(ty) => ty match {
+        case ->(args) => BinType(->(args.map(expandLetDefs(_, binding))))
+        case THFSum(args) => BinType(THFSum(args.map(expandLetDefs(_, binding))))
+        case *(args) => BinType(*(args.map(expandLetDefs(_, binding))))
+      }
+      case _ => t
+    }
+  }
+
 
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
   final object @@@ extends HOLBinaryConnective {
@@ -403,7 +435,7 @@ object InputProcessing {
   private final val HOLLambda = new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
   // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-    lazy val ty = ???
+    lazy val ty = null
     override def apply(arg: Term) = arg
   }
 
@@ -416,10 +448,10 @@ object InputProcessing {
 
         q match {
           case THFTyForAll => {
-            val processedVars = vars.map(_ match {
+            val processedVars = vars.map{
               case (name, None) => (name, Right(typeKind)) // * is assumed when no type is given
               case (name, Some(ty)) => (name, convertTHFType(sig)(ty, replaces))
-            })
+            }
             require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
             val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
               case (name, Left(ty)) => {
