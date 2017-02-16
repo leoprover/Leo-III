@@ -18,6 +18,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
+  def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
   def unprocessed: Set[T]
   def nextUnprocessed: T
@@ -41,6 +42,8 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def setDerivationClause(cl: T): Unit
   def derivationClause: Option[T]
 
+  def addInitial(cls: Set[T]): Unit
+  def initialProblem: Set[T]
   def externalProvers: Set[TptpProver[T]]
   def addExternalProver(prover: TptpProver[T]): Unit
 }
@@ -85,39 +88,44 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[T]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[T]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[T]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[T]])
-  final private val prio_weights = Seq(8,1,2,2)
-  private var cur_prio = 0
-  private var cur_weight = 0
 
-  private var symbolsInConjecture0: Set[Signature#Key] = Set()
+  private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
   final def conjecture: T = conjecture0
-  final def setConjecture(conj: T): Unit = {
-    conjecture0 = conj
-    val conjClauseIt = conj.cl.lits.iterator
-    while (conjClauseIt.hasNext) {
-      val lit = conjClauseIt.next()
-      symbolsInConjecture0 = symbolsInConjecture0 union lit.left.symbols.distinct
-      symbolsInConjecture0 = symbolsInConjecture0 union lit.right.symbols.distinct
-    }
-    symbolsInConjecture0 = symbolsInConjecture0 intersect signature.allUserConstants
-  }
+  final def setConjecture(conj: T): Unit = {conjecture0 = conj }
   final def negConjecture: T = negConjecture0
-  final def setNegConjecture(negConj: T): Unit = { negConjecture0 = negConj }
+  final def setNegConjecture(negConj: T): Unit = {
+    negConjecture0 = negConj
+    assert(Clause.unit(negConj.cl))
+    val lit = negConj.cl.lits.head
+    assert(!lit.equational)
+    val term = lit.left.δ_expand(sig).betaNormalize
+    symbolsInConjecture0 = term.symbols.distinct intersect signature.allUserConstants
+  }
   final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
 
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
+  final def initUnprocessed(): Unit = {
+    import leo.datastructures.ClauseProxyOrderings._
+    val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
+    mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+    mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(nongoals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+    mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[T]])
+    mpq.addPriority(oldest_first.asInstanceOf[Ordering[T]])
+  }
   final def unprocessedLeft: Boolean = !mpq.isEmpty
   final def unprocessed: Set[T] = {
     if (mpq == null) leo.Out.comment("MPQ null")
     mpq.toSet
   }
+  final private val prio_weights = Seq(10,1,1,2,10,2,1)
+  private var cur_prio = 0
+  private var cur_weight = 0
   final def nextUnprocessed: T = {
     leo.Out.debug(s"[###] Selecting with priority $cur_prio: element $cur_weight")
     if (cur_weight >= prio_weights(cur_prio)) {
@@ -158,6 +166,10 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
+
+  private var initialProblem0: Set[T] = Set()
+  final def addInitial(cls: Set[T]): Unit = {initialProblem0 = initialProblem0 union cls}
+  final def initialProblem: Set[T] = initialProblem0
 
   final def externalProvers: Set[TptpProver[T]] = current_externalProvers
   final def addExternalProver(prover: TptpProver[T]): Unit =  {

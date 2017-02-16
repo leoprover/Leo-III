@@ -3,6 +3,7 @@ package leo.modules.control
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.seqpproc.State
+import leo.modules.Utility.myAssert
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -183,7 +184,7 @@ package inferenceControl {
       val withConfigurationIt = new LiteralSideIterator(withClause, true, true, false)(sig)
       while (withConfigurationIt.hasNext) {
         val (withIndex, withLit, withSide) = withConfigurationIt.next()
-        val withTerm = if (withSide) withLit.left else withLit.right
+        val withTerm = Literal.selectSide(withLit, withSide)
 
         assert(withClause.lits(withIndex) == withLit, s"$withIndex in ${withClause.pretty(sig)}\n lit = ${withLit.pretty(sig)}")
         assert(withLit.polarity)
@@ -191,104 +192,84 @@ package inferenceControl {
         val intoConfigurationIt = intoConfigurationIterator(intoClause)(sig)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-          leo.Out.finest(s"check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
           assert(!intoLit.flexflex)
           if (intoPos == Position.root &&
             ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
               (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
           } else {
-            if (leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
-              if (!intoTerm.isVariable) {
-                Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-                Out.finest(s"with: ${withClause.pretty(sig)}")
-                Out.finest(s"withside: ${withSide.toString}")
-                Out.finest(s"into: ${intoClause.pretty(sig)}")
-                Out.finest(s"intoside: ${intoSide.toString}")
-                // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
-                // We cannot use _.substitute on literal since this will forget the ordering
-                val termShift = Subst.shift(withClause.maxImplicitlyBound)
-                val typeShift = Subst.shift(withClause.maxTypeVar)
-                val shiftedIntoClause: Clause = Clause(
-                  intoClause.lits.map {l =>
-                    if (l.equational) {
-                      // since we only lift variables, the orientation property isnt affected
-                      // we may safely assume that the new lits are also orientable if the original ones were orientable.
-                      Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
-                    } else {
-                      Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
-                    }
-                  }
-                )
-                val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
-                Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
-                Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
-
-                val newCl = if (withTerm.ty == shiftedIntoTerm.ty) {
-                  // No type unification needed at this point
-                  OrderedParamod(withClause, withIndex, withSide,
-                    shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
-                } else {
-                  import leo.modules.calculus.{HuetsPreUnification => Unification}
-                  leo.Out.finest(s"Nonequal type, calculating type unification ...")
-                  leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
-                  leo.Out.finest(s"intoTerm.ty: ${shiftedIntoTerm.ty.pretty(sig)}")
-                  val tyUniResult = Unification.unify(withTerm.ty, shiftedIntoTerm.ty)
-                  if (tyUniResult.isDefined) {
-                    leo.Out.finest(s"Type unification succeeded.")
-                    val tySubst = tyUniResult.get
-                    leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
-                    // FIXME the clauses below are not ordered anymore. This needs to be fixed.
-                    val substWithClause = withClause.substitute(Subst.id, tySubst)
-                    val substIntoClause = shiftedIntoClause.substitute(Subst.id, tySubst)
-                    val substIntoTerm = shiftedIntoTerm.substitute(Subst.id, tySubst)
-                    OrderedParamod(substWithClause, withIndex, withSide,
-                      substIntoClause, intoIndex, intoSide, intoPos, substIntoTerm)(sig)
+            val shouldParamod0 = shouldParamod(withTerm, intoTerm)
+            leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
+            if (!intoTerm.isVariable && shouldParamod0) {
+              Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
+              Out.finest(s"with: ${withClause.pretty(sig)}")
+              Out.finest(s"withside: ${withSide.toString}")
+              Out.finest(s"into: ${intoClause.pretty(sig)}")
+              Out.finest(s"intoside: ${intoSide.toString}")
+              // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
+              // We cannot use _.substitute on literal since this will forget the ordering
+              val termShift = Subst.shift(withClause.maxImplicitlyBound)
+              val typeShift = Subst.shift(withClause.maxTypeVar)
+              val shiftedIntoClause: Clause = Clause(
+                intoClause.lits.map {l =>
+                  if (l.equational) {
+                    // since we only lift variables, the orientation property isnt affected
+                    // we may safely assume that the new lits are also orientable if the original ones were orientable.
+                    Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
                   } else {
-                    leo.Out.finest(s"Type unification failed.")
-                    null
+                    Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
                   }
                 }
-                if (newCl != null) {
-                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-                  Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-                  results = results + newClWrapper
+              )
+              val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
+              Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
+              Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
+
+              val newCl = if (withTerm.ty == shiftedIntoTerm.ty) {
+                // No type unification needed at this point
+                OrderedParamod(withClause, withIndex, withSide,
+                  shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
+              } else {
+                import leo.modules.calculus.{HuetsPreUnification => Unification}
+                leo.Out.finest(s"Nonequal type, calculating type unification ...")
+                leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
+                leo.Out.finest(s"intoTerm.ty: ${shiftedIntoTerm.ty.pretty(sig)}")
+                val tyUniResult = Unification.unify(withTerm.ty, shiftedIntoTerm.ty)
+                if (tyUniResult.isDefined) {
+                  leo.Out.finest(s"Type unification succeeded.")
+                  val tySubst = tyUniResult.get
+                  leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
+                  // FIXME the clauses below are not ordered anymore. This needs to be fixed.
+                  val substWithClause = withClause.substitute(Subst.id, tySubst)
+                  val substIntoClause = shiftedIntoClause.substitute(Subst.id, tySubst)
+                  val substIntoTerm = shiftedIntoTerm.substitute(Subst.id, tySubst)
+                  OrderedParamod(substWithClause, withIndex, withSide,
+                    substIntoClause, intoIndex, intoSide, intoPos, substIntoTerm)(sig)
+                } else {
+                  leo.Out.finest(s"Type unification failed.")
+                  null
                 }
               }
-            } else {
-              if (!withLit.equational && !intoLit.equational && !intoLit.polarity && intoPos == Position.root) {
-                // implicitly: intoWrapper.id != withWrapper.id since withLit.polarity == true
-                if (withTerm.headSymbol == intoTerm.headSymbol) {
-                  // this means we can do at least a one-step simplication (Decomp) during unification
-                  Out.trace(s"Simulated Resolution step")
-                  val termShift = Subst.shift(withClause.maxImplicitlyBound)
-                  val typeShift = Subst.shift(withClause.maxTypeVar)
-                  val shiftedIntoClause: Clause = Clause(
-                    intoClause.lits.map {l =>
-                      if (l.equational) {
-                        // since we only lift variables, the orientation property isnt affected
-                        // we may safely assume that the new lits are also orientable if the original ones were orientable.
-                        Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
-                      } else {
-                        Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
-                      }
-                    }
-                  )
-                  Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
-                  import leo.modules.HOLSignature.LitTrue
-                  val newCl = OrderedParamod(withClause, withIndex, !withSide,
-                    shiftedIntoClause, intoIndex, !intoSide, intoPos, LitTrue(), true)(sig)
-
-                  val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-                  Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-                  results = results + newClWrapper
-                }
+              if (newCl != null) { // May be null if type unification was not successful
+                val newProperties = if (isPropSet(ClauseAnnotation.PropSOS, withWrapper.properties) || isPropSet(ClauseAnnotation.PropSOS, intoWrapper.properties))
+                  ClauseAnnotation.PropNeedsUnification |  ClauseAnnotation.PropSOS
+                else ClauseAnnotation.PropNeedsUnification
+                val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
+                Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                results = results + newClWrapper
               }
             }
           }
         }
       }
       results
+    }
+    /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
+    private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {
+      val withHd = withTerm.headSymbol
+      val intoHd = intoTerm.headSymbol
+      if (withHd == intoHd && withHd.isConstant) true
+      else leo.modules.calculus.mayUnify(withTerm, intoTerm)
     }
 
     ////////////////////////////////////////////////////////
@@ -387,10 +368,10 @@ package inferenceControl {
               // same polarity, standard
               val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
               val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
-              val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-              val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
-              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+              val test1 = shouldFactor(maxLitMaxSide, otherLitMaxSide)
+              val test2 = shouldFactor(maxLitOtherSide, otherLitOtherSide)
+              Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+              Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
                 val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
@@ -400,11 +381,10 @@ package inferenceControl {
               // of otherLit, since our iterator does not give us this test. It will give us this test
               // if otherLit is not oriented.
               if (otherLit.oriented) {
-                val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, !otherLitSide)
-                val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
-                Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+                val test1 = shouldFactor(maxLitMaxSide, otherLitOtherSide)
+                val test2 = shouldFactor(maxLitOtherSide, otherLitMaxSide)
+                Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+                Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
                 if (test1 && test2) {
                   val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
                   val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
@@ -421,8 +401,8 @@ package inferenceControl {
                 import leo.modules.HOLSignature.Not
                 val flexTerm = maxLit.left
                 val otherTerm = otherLit.left
-                val test = leo.modules.calculus.mayUnify(flexTerm, Not(otherTerm))
-                Out.finest(s"Test unify ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
+                val test = shouldFactor(flexTerm, Not(otherTerm))
+                Out.finest(s"Should factor ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
                 if (test) {
                   val adjustedClause = Clause(clause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
                   val factor = OrderedEqFac(adjustedClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
@@ -438,6 +418,14 @@ package inferenceControl {
 
       Out.trace(s"Factor result:\n\t${res.map(_.pretty(sig)).mkString("\n\t")}")
       res
+    }
+
+    /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
+    private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
+      val withHd = term.headSymbol
+      val intoHd = otherTerm.headSymbol
+      if (withHd == intoHd && withHd.isConstant) true
+      else leo.modules.calculus.mayUnify(term, otherTerm)
     }
   }
 
@@ -458,8 +446,8 @@ package inferenceControl {
         val cl = clsIt.next()
 
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, cl.properties)) {
-          Out.debug(s"Clause ${cl.id} needs unification. Working on it ...")
-          Out.debug(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
+          Out.trace(s"Clause ${cl.id} needs unification. Working on it ...")
+          Out.trace(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
           Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           val vargen = leo.modules.calculus.freshVarGen(cl.cl)
 
@@ -1006,7 +994,7 @@ package inferenceControl {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
-        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), cl.properties)
+        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else
@@ -1137,7 +1125,7 @@ package inferenceControl {
       else {
         // get all rewrite rules as literals
         val rules: Set[Literal] = rules0.map(_.cl.lits.head)
-        assert(rules.forall(_.oriented))
+        myAssert(rules.forall(_.oriented))
 
         // search in all literals of cw for instances of a rule's left side
         val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
@@ -1704,18 +1692,19 @@ package  externalProverControl {
     }
 
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
-      if (clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
+      if (state.externalProvers.nonEmpty && clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
         leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+
         lastCall = clauses.size
         state.externalProvers.foreach(prover =>
           if (openCalls.isDefinedAt(prover)) {
             if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
-              val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+              val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
               openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
               leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
             }
           } else {
-            val futureResult = prover.call(clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+            val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
             openCalls = openCalls + (prover -> Set(futureResult))
             leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
           }
