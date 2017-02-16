@@ -30,24 +30,30 @@ object TPTPASTConstructor {
   }
   final def annotatedFormula(ctx: tptpParser.Annotated_formulaContext): AnnotatedFormula = {
     if (ctx.fof_annotated() != null) {
-      val annotated = ctx.fof_annotated()
-      val name = getName(annotated.name())
-      val annotation = annotations(annotated.annotations())
-      val formula = fofFormula(annotated.fof_formula())
-      FOFAnnotated(name, role(annotated.formula_role()), formula, annotation)
+      fofAnnotated(ctx.fof_annotated())
     } else if (ctx.tff_annotated() != null) {
-      val annotated = ctx.tff_annotated()
-      val name = getName(annotated.name())
-      val annotation = annotations(annotated.annotations())
-      val formula = tffFormula(annotated.tff_formula())
-      TFFAnnotated(name, role(annotated.formula_role()), formula, annotation)
+      tffAnnotated(ctx.tff_annotated())
     } else if (ctx.thf_annotated() != null) {
-      val annotated = ctx.thf_annotated()
-      val name = getName(annotated.name())
-      val annotation = annotations(annotated.annotations())
-      val formula = thfFormula(annotated.thf_formula())
-      THFAnnotated(name, role(annotated.formula_role()), formula, annotation)
+      thfAnnotated(ctx.thf_annotated())
     } else throw new IllegalArgumentException
+  }
+  final def fofAnnotated(annotated: tptpParser.Fof_annotatedContext): AnnotatedFormula = {
+    val name = getName(annotated.name())
+    val annotation = annotations(annotated.annotations())
+    val formula = fofFormula(annotated.fof_formula())
+    FOFAnnotated(name, role(annotated.formula_role()), formula, annotation)
+  }
+  final def tffAnnotated(annotated: tptpParser.Tff_annotatedContext): AnnotatedFormula = {
+    val name = getName(annotated.name())
+    val annotation = annotations(annotated.annotations())
+    val formula = tffFormula(annotated.tff_formula())
+    TFFAnnotated(name, role(annotated.formula_role()), formula, annotation)
+  }
+  final def thfAnnotated(annotated: tptpParser.Thf_annotatedContext): AnnotatedFormula = {
+    val name = getName(annotated.name())
+    val annotation = annotations(annotated.annotations())
+    val formula = thfFormula(annotated.thf_formula())
+    THFAnnotated(name, role(annotated.formula_role()), formula, annotation)
   }
   final def role(ctx: tptpParser.Formula_roleContext): Role = ctx.getText
   final def annotations(ctx: tptpParser.AnnotationsContext): Annotations = {

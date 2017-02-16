@@ -86,12 +86,7 @@ object Parsing {
       * @return The input formula in internal TPTP syntax representation
       */
     def readFormula(formula: String): Commons.AnnotatedFormula = {
-      val p = TPTP.parseFormula(formula)
-      if (p.isLeft) {
-        throw new SZSException(SZS_SyntaxError, s"Parse error in formula $formula", p.left.get)
-      } else {
-        p.right.get
-      }
+      TPTP.parseFormula(formula)
     }
 
     /**
@@ -105,13 +100,7 @@ object Parsing {
       * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
       */
     def shallowReadProblem(file: String): Commons.TPTPInput = {
-      TPTP.newParse(read0(canonicalPath(file)))
-//      val p = TPTP.parseFile(read0(canonicalPath(file)))
-//      if (p.isLeft) {
-//        throw new SZSException(SZS_SyntaxError, s"Parse error in file $file", p.left.get)
-//      } else {
-//        p.right.get
-//      }
+      TPTP.parseFile(read0(canonicalPath(file)))
     }
 
     // Functions that go from internal TPTP syntax to processed internal representation (Term)
