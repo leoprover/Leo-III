@@ -350,7 +350,7 @@ object InputProcessing {
     }
   }
   private final def expandLetDefs(t: THFLogicFormula, binding: Map[leo.datastructures.tptp.thf.Function, THFLogicFormula]): THFLogicFormula = {
-    import leo.datastructures.tptp.thf.{Logical, Typed, Binary, *,+ => THFSum,->,Function, Unary, BinType, Quantified, Tuple, Connective, Var => THFVar, Cond, NewLet}
+    import leo.datastructures.tptp.thf.{Logical, Typed, Binary, Eq, *,+ => THFSum,->,Function, Unary, BinType, Quantified, Tuple, Connective, Var => THFVar, Cond, NewLet}
     t match {
       case f@Function(fname,fargs) => if (binding.isDefinedAt(f)) binding(f)
                                       else Function(fname, fargs.map(expandLetDefs(_, binding)))
@@ -361,7 +361,10 @@ object InputProcessing {
       case Quantified(q,v,matrix) => Quantified(q,v,expandLetDefs(matrix, binding))
       case Tuple(entries) => Tuple(entries.map(expandLetDefs(_, binding)))
       case Cond(cond,thn,els) => Cond(expandLetDefs(cond,binding), expandLetDefs(thn, binding), expandLetDefs(els, binding))
-      case NewLet(letBinding, Logical(body)) => NewLet(letBinding, Logical(expandLetDefs(body, binding))) // TODO Recurse on letBinding
+      case NewLet(letBinding, Logical(body)) =>
+        val newLetBinding = Tuple(letBinding.entries.map{case Binary(f, Eq, right)
+        => Binary(f, Eq, expandLetDefs(right, binding))})
+        NewLet(newLetBinding, Logical(expandLetDefs(body, binding)))
       case BinType(ty) => ty match {
         case ->(args) => BinType(->(args.map(expandLetDefs(_, binding))))
         case THFSum(args) => BinType(THFSum(args.map(expandLetDefs(_, binding))))
@@ -438,7 +441,7 @@ object InputProcessing {
     lazy val ty = null
     override def apply(arg: Term) = arg
   }
-  
+
   protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
     import leo.datastructures.tptp.thf.{Quantified, Term, Var => THFVar, Function, BinType, Binary, App}
 
