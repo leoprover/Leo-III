@@ -373,9 +373,9 @@ object InputProcessing {
 
 
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
-  final object @@@ extends HOLBinaryConnective {
+  object @@@ extends HOLBinaryConnective {
     val key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
-    val ty = ???
+    val ty = null
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
   //////
@@ -438,7 +438,7 @@ object InputProcessing {
     lazy val ty = null
     override def apply(arg: Term) = arg
   }
-
+  
   protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
     import leo.datastructures.tptp.thf.{Quantified, Term, Var => THFVar, Function, BinType, Binary, App}
 
