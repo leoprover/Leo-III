@@ -471,7 +471,7 @@ object TPTPASTConstructor {
       val els = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(1))
       thf.Cond(condition, thn, els)
     } else if (ctx.thf_let() != null) {
-      val binding = thf.Tuple(Seq(transformUnitaryLetBinding(ctx.thf_let().thf_unitary_formula())))
+      val binding = transformUnitaryLetBinding(ctx.thf_let().thf_unitary_formula())
       val body =thfFormula(ctx.thf_let().thf_formula())
       thf.NewLet(binding, body)
     } else if (ctx.thf_logic_formula() != null) {
@@ -490,16 +490,16 @@ object TPTPASTConstructor {
       thf.Unary(connective, body)
     } else throw new IllegalArgumentException
   }
-  final def transformUnitaryLetBinding(ctx: tptpParser.Thf_unitary_formulaContext): thf.LogicFormula = {
+  final def transformUnitaryLetBinding(ctx: tptpParser.Thf_unitary_formulaContext): thf.Tuple = {
     // It may already be a tuple of formulas
     if (ctx.thf_tuple() != null) {
       // process each of it
       val transformed = ctx.thf_tuple().thf_formula_list().thf_logic_formula().asScala.map(transformUnitaryLetBinding0)
       thf.Tuple(transformed)
     } else if (ctx.thf_quantified_formula() != null) {
-      transformUnitaryLetBinding1(ctx.thf_quantified_formula())
+      thf.Tuple(Seq(transformUnitaryLetBinding1(ctx.thf_quantified_formula())))
     } else if (ctx.thf_logic_formula() != null) {
-      transformUnitaryLetBinding0(ctx.thf_logic_formula())
+      thf.Tuple(Seq(transformUnitaryLetBinding0(ctx.thf_logic_formula())))
     } else throw new IllegalArgumentException
     // If it is a "plain unitary" formula, it is either Forall [...]: Phi = Psi/Phi <=> Phi
     //

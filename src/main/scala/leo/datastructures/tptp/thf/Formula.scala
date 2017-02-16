@@ -1,6 +1,8 @@
 package leo.datastructures.tptp.thf
 
 import leo.datastructures.tptp._
+import leo.modules.SZSException
+import leo.modules.output.SZS_InputError
 
 /**
  * Created by lex on 3/23/14.
@@ -91,11 +93,15 @@ case class NewLet(binding: Tuple, in: Formula) extends LogicFormula {
     var introducedSymbols: Set[String] = Set()
     var symbolsInDef: Set[String] = Set()
     in.function_symbols
-    binding.entries.foreach{case Binary(Function(symbol, Seq()), Eq, right) =>
+    try {
+      binding.entries.foreach { case Binary(Function(symbol, Seq()), Eq, right) =>
         introducedSymbols = introducedSymbols + symbol
         symbolsInDef = symbolsInDef union right.function_symbols
+      }
+      (in.function_symbols -- introducedSymbols) union symbolsInDef
+    } catch {
+      case _:scala.MatchError => throw new SZSException(SZS_InputError, "Illegal use of let-specification")
     }
-    (in.function_symbols -- introducedSymbols) union symbolsInDef
   }
 }
 

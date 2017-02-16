@@ -362,7 +362,7 @@ object InputProcessing {
       case Tuple(entries) => Tuple(entries.map(expandLetDefs(_, binding)))
       case Cond(cond,thn,els) => Cond(expandLetDefs(cond,binding), expandLetDefs(thn, binding), expandLetDefs(els, binding))
       case NewLet(letBinding, Logical(body)) =>
-        val newLetBinding = Tuple(letBinding.entries.map{case Binary(f, Eq, right)
+        val newLetBinding = Tuple(letBinding.entries.map{case Binary(f, Eq, right) // See invariant in NewLet
         => Binary(f, Eq, expandLetDefs(right, binding))})
         NewLet(newLetBinding, Logical(expandLetDefs(body, binding)))
       case BinType(ty) => ty match {

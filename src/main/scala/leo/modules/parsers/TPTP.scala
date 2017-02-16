@@ -1,10 +1,15 @@
 package leo.modules.parsers
 
 import java.io.CharArrayReader
+import java.util
 
 import leo.datastructures.tptp.Commons.{AnnotatedFormula, TPTPInput}
 import leo.datastructures.tptp._
+import leo.modules.SZSException
+import leo.modules.output.SZS_InputError
 import leo.modules.parsers.syntactical_new.TPTPParser2
+import org.antlr.v4.runtime.atn.ATNConfigSet
+import org.antlr.v4.runtime.dfa.DFA
 import syntactical.TPTPParsers._
 
 //import syntactical_new.{StatementParser2, TPTPParser2}
@@ -98,9 +103,28 @@ object TPTP {
     val lexer = new tptpLexer(inputStream)
     val tokenStream = new CommonTokenStream(lexer)
     val parser = new tptpParser(tokenStream)
-    val x = parser.tptp_file()
-    val y = TPTPASTConstructor.tptpFile(x)
-    y
+    parser.removeErrorListeners()
+    parser.addErrorListener(new ANTLRErrorListener {
+      def reportContextSensitivity(parser: Parser, dfa: DFA, i: Int, i1: Int, i2: Int, atnConfigSet: ATNConfigSet): Unit = ???
+
+      def reportAmbiguity(parser: Parser, dfa: DFA, i: Int, i1: Int, b: Boolean, bitSet: util.BitSet, atnConfigSet: ATNConfigSet): Unit = ???
+
+      def reportAttemptingFullContext(parser: Parser, dfa: DFA, i: Int, i1: Int, bitSet: util.BitSet, atnConfigSet: ATNConfigSet): Unit = ???
+
+      def syntaxError(recognizer: Recognizer[_, _], o: scala.Any, line: Int, pos: Int, s: String, e: RecognitionException): Unit = {
+        var sourceName = recognizer.getInputStream.getSourceName
+        if (sourceName != "<unknown>") sourceName = s"$sourceName:$line:$pos"
+        else sourceName = s"${leo.Configuration.PROBLEMFILE}:$line:$pos"
+
+        throw new SZSException(SZS_InputError, s"$s in $sourceName", e.toString)
+      }
+    })
+    try {
+      val x = parser.tptp_file()
+      TPTPASTConstructor.tptpFile(x)
+    } catch {
+      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+    }
   }
 }
 
