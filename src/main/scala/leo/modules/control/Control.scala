@@ -268,7 +268,7 @@ package inferenceControl {
     private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {
       val withHd = withTerm.headSymbol
       val intoHd = intoTerm.headSymbol
-      if (withHd == intoHd && withHd.isConstant) true
+      if (withHd == intoHd && withHd.isConstant && mayUnify(withTerm.ty, intoTerm.ty)) true
       else leo.modules.calculus.mayUnify(withTerm, intoTerm)
     }
 
@@ -424,7 +424,7 @@ package inferenceControl {
     private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
       val withHd = term.headSymbol
       val intoHd = otherTerm.headSymbol
-      if (withHd == intoHd && withHd.isConstant) true
+      if (withHd == intoHd && withHd.isConstant && mayUnify(term.ty, otherTerm.ty)) true
       else leo.modules.calculus.mayUnify(term, otherTerm)
     }
   }
