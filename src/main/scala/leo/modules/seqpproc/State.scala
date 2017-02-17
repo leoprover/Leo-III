@@ -18,6 +18,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
+  def defConjSymbols(negConj: T): Unit
   def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
   def unprocessed: Set[T]
@@ -93,20 +94,22 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def conjecture: T = conjecture0
   final def setConjecture(conj: T): Unit = {conjecture0 = conj }
   final def negConjecture: T = negConjecture0
-  final def setNegConjecture(negConj: T): Unit = {
-    negConjecture0 = negConj
-    assert(Clause.unit(negConj.cl))
-    val lit = negConj.cl.lits.head
-    assert(!lit.equational)
-    val term = lit.left.δ_expand(sig).betaNormalize
-    symbolsInConjecture0 = term.symbols.distinct intersect signature.allUserConstants
-  }
+  final def setNegConjecture(negConj: T): Unit = negConjecture0 = negConj
   final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
 
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
+  final def defConjSymbols(negConj: T): Unit = {
+    assert(Clause.unit(negConj.cl))
+    val lit = negConj.cl.lits.head
+    assert(!lit.equational)
+    val term = lit.left
+    symbolsInConjecture0 = term.symbols.distinct intersect signature.allUserConstants
+    leo.Out.trace(s"Set Symbols in conjecture: " +
+      s"${symbolsInConjecture0.map(signature(_).name).mkString(",")}")
+  }
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
     val conjSymbols: Set[Signature#Key] = symbolsInConjecture0

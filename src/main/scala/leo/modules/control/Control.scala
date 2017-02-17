@@ -971,13 +971,16 @@ package inferenceControl {
 
 
     final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      assert(Clause.unit(cl.cl))
-      val lit = cl.cl.lits.head
-      assert(!lit.equational)
-      val newleft = DefExpSimp(lit.left)(sig)
-      val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, cl), cl.properties)
-      Out.trace(s"Def expansion: ${result.pretty(sig)}")
-      result
+      if (cl.annotation.fromRule != null && cl.annotation.fromRule == DefExpSimp) cl
+      else {
+        assert(Clause.unit(cl.cl))
+        val lit = cl.cl.lits.head
+        assert(!lit.equational)
+        val newleft = DefExpSimp(lit.left)(sig)
+        val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, cl), cl.properties)
+        Out.trace(s"Def expansion: ${result.pretty(sig)}")
+        result
+      }
     }
 
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {

@@ -215,21 +215,19 @@ object SeqPProc {
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
-      // Remaining stuff ...
-      Out.trace(s"Symbols in conjecture: " +
-        s"${state.symbolsInConjecture.map(state.signature(_).name).mkString(",")}")
-      state.initUnprocessed()
       Out.info(s"Type checking passed. Searching for refutation ...")
-      // Initialize indexes
-      if (state.negConjecture != null) Control.initIndexes(state.negConjecture +: remainingInput)
-      else Control.initIndexes(remainingInput)
 
-
-      // Preprocessing
+      // Preprocessing Conjecture
       if (state.negConjecture != null) {
+        // Expand conj, Initialize indexes
+        // We expand here already since we are interested in all symbols (possibly contained within defined symbols)
         Out.debug("## Preprocess Neg.Conjecture BEGIN")
         Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
-        val result = preprocess(state, state.negConjecture).filterNot(cw => Clause.trivial(cw.cl))
+        val simpNegConj = Control.expandDefinitions(state.negConjecture)
+        state.defConjSymbols(simpNegConj)
+        state.initUnprocessed()
+        Control.initIndexes(simpNegConj +: remainingInput)
+        val result = preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
         Out.debug(s"# Result:\n\t${
           result.map {
             _.pretty(sig)
@@ -241,8 +239,13 @@ object SeqPProc {
         if (state.externalProvers.nonEmpty) {
           state.addInitial(result)
         }
+      } else {
+        // Initialize indexes
+        state.initUnprocessed()
+        Control.initIndexes(remainingInput)
       }
 
+      // Preprocessing
       Out.debug("## Preprocess BEGIN")
       val preprocessIt = remainingInput.iterator
       while (preprocessIt.hasNext) {
