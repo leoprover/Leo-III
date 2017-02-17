@@ -6,7 +6,6 @@ import scala.io.Source
 import scala.sys.process._
 import leo.{Ignored, LeoTestSuite}
 
-import scala.util.parsing.input.StreamReader
 
 /**
  * Created by mwisnie on 10/27/15.

@@ -2,8 +2,6 @@ package leo
 package modules
 package parsers
 
-import scala.util.parsing.input.CharArrayReader
-import scala.io.Source._
 
 /**
  * This suite tests parsing of the SYN000-sample problems of the TPTP library.

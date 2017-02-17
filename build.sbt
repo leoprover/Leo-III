@@ -15,12 +15,11 @@ lazy val leo = (project in file(".")).
   settings(
     name := "Leo III",
     description := "A Higher-Order Theorem Prover.",
-    libraryDependencies ++= Seq(
-      "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-      "org.scalatest" %% "scalatest" % "3.0.0" % "test"),
+    libraryDependencies ++= Seq("org.scalatest" %% "scalatest" % "3.0.0" % "test"),
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions += "-target:jvm-1.8",
     mainClass in (Compile, run) := Some("leo.Main"),
+    mainClass in assembly := Some("leo.Main"),
     mainClass in (Compile, packageBin) := Some("leo.Main"),
     // set stack size to 4m 
     javaOptions += "-Xss4m",
