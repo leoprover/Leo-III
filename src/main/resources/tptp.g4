@@ -464,12 +464,12 @@ tff_let : '$let_tf(' tff_let_term_defns ',' tff_formula ')'
         | '$let_ff(' tff_let_formula_defns ',' tff_formula ')';
 tff_let_term_defns : tff_let_term_defn | '[' tff_let_term_list ']';
 tff_let_term_list : tff_let_term_defn (',' tff_let_term_defn)*;
-tff_let_term_defn : Forall '[' tff_variable_list ']' ':' tff_let_term_defn
+tff_let_term_defn : Forall '[' tff_variable_list ']' ':' tff_let_term_binding
                   | tff_let_term_binding;
 tff_let_term_binding : fof_plain_term Infix_equality fof_term | '(' tff_let_term_binding ')';
 tff_let_formula_defns : tff_let_formula_defn | '[' tff_let_formula_list ']';
 tff_let_formula_list: tff_let_formula_defn (',' tff_let_formula_defn)*;
-tff_let_formula_defn: Forall '[' tff_variable_list ']' ':' tff_let_formula_defn
+tff_let_formula_defn: Forall '[' tff_variable_list ']' ':' tff_let_formula_binding
                     | tff_let_formula_binding;
 tff_let_formula_binding: fof_plain_atomic_formula Iff tff_unitary_formula
                        | '(' tff_let_formula_binding ')';

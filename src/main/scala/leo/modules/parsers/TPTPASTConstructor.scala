@@ -238,12 +238,7 @@ object TPTPASTConstructor {
   final def fofAtomicFormula(ctx: tptpParser.Fof_atomic_formulaContext): fof.Atomic = {
     if (ctx.fof_plain_atomic_formula() != null) {
       val plain = ctx.fof_plain_atomic_formula()
-      val func = atomicWord(plain.fof_plain_term().functor().atomic_word())
-      if (plain.fof_plain_term().fof_arguments() == null) fof.Atomic(Plain(Func(func, Seq())))
-      else {
-        val args = plain.fof_plain_term().fof_arguments().fof_term().asScala.map(fofTerm)
-        fof.Atomic(Plain(Func(func, args)))
-      }
+      fof.Atomic(Plain(fofPlainTerm(plain.fof_plain_term())))
     } else if (ctx.fof_defined_atomic_formula() != null) {
       val defined = ctx.fof_defined_atomic_formula()
       if (defined.fof_defined_infix_formula() != null) {
@@ -270,6 +265,14 @@ object TPTPASTConstructor {
         fof.Atomic(SystemPlain(SystemFunc(func, args)))
       }
     } else throw new IllegalArgumentException
+  }
+  final def fofPlainTerm(ctx: tptpParser.Fof_plain_termContext): Func = {
+    val func = atomicWord(ctx.functor().atomic_word())
+    if (ctx.fof_arguments() == null) Func(func, Seq())
+    else {
+      val args = ctx.fof_arguments().fof_term().asScala.map(fofTerm)
+      Func(func, args)
+    }
   }
 
   // term stuff
@@ -763,21 +766,46 @@ object TPTPASTConstructor {
   }
   final def tffLet(ctx: tptpParser.Tff_letContext): tff.Let = {
     val in = tffFormula(ctx.tff_formula())
-    if (ctx.tff_let_formula_defns() != null) {
-      ???
-    } else if (ctx.tff_let_term_defns() != null) {
-      ???
-    } else throw new IllegalArgumentException
+    if (ctx.tff_let_formula_defns() != null) tff.Let(tffLetFormulaDefns(ctx.tff_let_formula_defns()), in)
+    else if (ctx.tff_let_term_defns() != null) tff.Let(tffLetTermDefns(ctx.tff_let_term_defns()), in)
+    else throw new IllegalArgumentException
   }
   final def tffLetTerm(ctx: tptpParser.Tff_let_termContext): Let = {
     val in = fofTerm(ctx.fof_term())
-    if (ctx.tff_let_formula_defns() != null) {
-      val binding = ???
-      Let(binding, in)
-    } else if (ctx.tff_let_term_defns() != null) {
-      val binding = ???
-      Let(binding, in)
+    if (ctx.tff_let_formula_defns() != null) Let(tffLetFormulaDefns(ctx.tff_let_formula_defns()), in)
+    else if (ctx.tff_let_term_defns() != null) Let(tffLetTermDefns(ctx.tff_let_term_defns()), in)
+    else throw new IllegalArgumentException
+  }
+  final def tffLetTermDefns(ctx: tptpParser.Tff_let_term_defnsContext): tff.Formula#LetBinding = {
+    if (ctx.tff_let_term_defn() != null) {
+      Left(Map(tffLetTermBinding(ctx.tff_let_term_defn().tff_let_term_binding()))).asInstanceOf[tff.Formula#LetBinding]
+    } else if (ctx.tff_let_term_list() != null) {
+      Left(Map(ctx.tff_let_term_list().tff_let_term_defn().asScala.map(x => tffLetTermBinding(x.tff_let_term_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
     } else throw new IllegalArgumentException
+  }
+  final def tffLetTermBinding(ctx: tptpParser.Tff_let_term_bindingContext): (Func, Term) = {
+    if (ctx.tff_let_term_binding() != null) tffLetTermBinding(ctx.tff_let_term_binding())
+    else {
+      val left = fofPlainTerm(ctx.fof_plain_term())
+      val in = fofTerm(ctx.fof_term())
+      (left,in)
+    }
+  }
+
+  final def tffLetFormulaDefns(ctx: tptpParser.Tff_let_formula_defnsContext): tff.Formula#LetBinding = {
+    if (ctx.tff_let_formula_defn() != null) {
+      Left(Map(tffLetFormulaBinding(ctx.tff_let_formula_defn().tff_let_formula_binding()))).asInstanceOf[tff.Formula#LetBinding]
+    } else if (ctx.tff_let_formula_list() != null) {
+      Left(Map(ctx.tff_let_formula_list().tff_let_formula_defn().asScala.map(x => tffLetFormulaBinding(x.tff_let_formula_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
+    } else throw new IllegalArgumentException
+  }
+  final def tffLetFormulaBinding(ctx: tptpParser.Tff_let_formula_bindingContext): (Func, tff.LogicFormula) = {
+    if (ctx.tff_let_formula_binding() != null) tffLetFormulaBinding(ctx.tff_let_formula_binding())
+    else {
+      val left = fofPlainTerm(ctx.fof_plain_atomic_formula().fof_plain_term())
+      val in = tffUnitary(ctx.tff_unitary_formula())
+      (left,in)
+    }
   }
   final def tffTupleTerm(ctx: tptpParser.Tff_tuple_termContext): Tuple = {
     if (ctx.fof_arguments() != null) Tuple(Seq())

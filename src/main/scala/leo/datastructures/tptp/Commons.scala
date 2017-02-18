@@ -124,8 +124,15 @@ object Commons {
     override val function_symbols: Set[String] =  cond.function_symbols union thn.function_symbols union els.function_symbols
   }
   /** Used by TFF only */
-  case class Let(let: tff.LetBinding, in: Term) extends Term {
-    override def function_symbols: Set[String] = let.function_symbols union in.function_symbols
+  case class Let(binding: tff.Formula#LetBinding, in: Term) extends Term {
+    override val function_symbols: Set[String] = {
+      val (definedSymbols, newSymbols) = binding.fold({ fBinding =>
+        (fBinding.keySet.map(_.name), fBinding.values.toSet.flatMap{x:tff.LogicFormula => x.function_symbols})
+      }, { tBinding =>
+        (tBinding.keySet.map(_.name), tBinding.values.toSet.flatMap{x:Term => x.function_symbols})
+      })
+      (in.function_symbols -- definedSymbols) union newSymbols
+    }
   }
   case class Tuple(entries: Seq[Term]) extends Term {
     override def toString: Role = s"{${entries.map(_.toString).mkString(",")}"

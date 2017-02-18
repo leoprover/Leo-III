@@ -6,6 +6,10 @@ import leo.datastructures.tptp.Commons._
  * Created by lex on 3/23/14.
  */
 sealed abstract class Formula{
+  type LetBinding = Either[Formula#LetFormulaBinding, Formula#LetTermBinding]
+  type LetFormulaBinding = Map[Func, LogicFormula]
+  type LetTermBinding = Map[Func, Term]
+
   def function_symbols : Set[String]
 }
 case class Logical(formula: LogicFormula) extends Formula {
@@ -62,8 +66,17 @@ case class Cond(cond: LogicFormula, thn: LogicFormula, els: LogicFormula) extend
 
   override val function_symbols: Set[String] = cond.function_symbols union thn.function_symbols union els.function_symbols
 }
-case class Let(binding: LetBinding, in: Formula) extends LogicFormula {
-  override val function_symbols: Set[String] = (in.function_symbols -- binding.bound_variables) union binding.function_symbols
+
+case class Let(binding: Formula#LetBinding,
+               in: Formula) extends LogicFormula {
+  override val function_symbols: Set[String] = {
+    val (definedSymbols, newSymbols) = binding.fold({ fBinding =>
+      (fBinding.keySet.map(_.name), fBinding.values.toSet.flatMap{x:LogicFormula => x.function_symbols})
+    }, { tBinding =>
+      (tBinding.keySet.map(_.name), tBinding.values.toSet.flatMap{x:Term => x.function_symbols})
+    })
+    (in.function_symbols -- definedSymbols) union newSymbols
+  }
 }
 
 sealed abstract class BinaryConnective
@@ -99,20 +112,4 @@ case class *(t: Seq[Type]) extends Type {
 }
 case class QuantifiedType(varList: Seq[(Variable,Option[AtomicType])], typ: Type) extends Type {
   override def toString = "!> [" + varList.map(typedVarToString).mkString(",")+ "] : " + typ.toString
-}
-
-
-sealed abstract class LetBinding {
-  def function_symbols : Set[String]
-  def bound_variables : Set[String]
-}
-case class FormulaBinding(varList: Seq[(Variable,Option[AtomicType])], left: Atomic, right: LogicFormula) extends LetBinding {
-  override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
-
-  override val bound_variables : Set[String] = varList.map(_._1).toSet
-}
-case class TermBinding(varList: Seq[(Variable,Option[AtomicType])], left: Term, right: Term) extends LetBinding {
-  override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
-
-  override val bound_variables : Set[String] = varList.map(_._1).toSet
 }
