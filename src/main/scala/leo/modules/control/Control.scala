@@ -1620,12 +1620,13 @@ package indexingControl {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
         var result: Seq[AnnotatedFormula] = Seq()
-        var round : Int = 1
+        var round : Int = 0
 
         val conjSymbols = PreFilterSet.useFormula(conjecture)
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
         leo.Out.finest(s"${firstPossibleCandidates.map(_.name)}")
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
+        round += 1
 
         while (taken.nonEmpty) {
           // From SeqFilter:
