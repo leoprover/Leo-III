@@ -35,6 +35,8 @@ object TPTPASTConstructor {
       tffAnnotated(ctx.tff_annotated())
     } else if (ctx.thf_annotated() != null) {
       thfAnnotated(ctx.thf_annotated())
+    } else if (ctx.cnf_annotated() != null) {
+      cnfAnnotated(ctx.cnf_annotated())
     } else throw new IllegalArgumentException
   }
   final def fofAnnotated(annotated: tptpParser.Fof_annotatedContext): AnnotatedFormula = {
@@ -54,6 +56,12 @@ object TPTPASTConstructor {
     val annotation = annotations(annotated.annotations())
     val formula = thfFormula(annotated.thf_formula())
     THFAnnotated(name, role(annotated.formula_role()), formula, annotation)
+  }
+  final def cnfAnnotated(annotated: tptpParser.Cnf_annotatedContext): AnnotatedFormula = {
+    val name = getName(annotated.name())
+    val annotation = annotations(annotated.annotations())
+    val formula = cnfFormula(annotated.cnf_formula())
+    CNFAnnotated(name, role(annotated.formula_role()), formula, annotation)
   }
   final def role(ctx: tptpParser.Formula_roleContext): Role = ctx.getText
   final def annotations(ctx: tptpParser.AnnotationsContext): Annotations = {
@@ -106,8 +114,10 @@ object TPTPASTConstructor {
       TFFData(tffFormula(ctx.tff_formula()))
     } else if (ctx.thf_formula() != null) {
       THFData(thfFormula(ctx.thf_formula()))
-    } else if (ctx.term() != null) {
-      FOTData(term(ctx.term()))
+    } else if (ctx.fof_term() != null) {
+      FOTData(fofTerm(ctx.fof_term()))
+    } else if (ctx.cnf_formula() != null) {
+      CNFData(cnfFormula(ctx.cnf_formula()))
     } else throw new IllegalArgumentException
   }
   // Numbers
@@ -197,18 +207,18 @@ object TPTPASTConstructor {
 
   final def fofUnitary(ctx: tptpParser.Fof_unitary_formulaContext): fof.LogicFormula = {
     if (ctx.fof_logic_formula() != null) fofLogicFormula(ctx.fof_logic_formula())
-    else if (ctx.atomic_formula() != null) {
-      atomicFormula(ctx.atomic_formula())
+    else if (ctx.fof_atomic_formula() != null) {
+      fofAtomicFormula(ctx.fof_atomic_formula())
     } else if (ctx.fof_quantified_formula() != null) {
       val matrix = fofUnitary(ctx.fof_quantified_formula().fof_unitary_formula())
-      val quantifier = fofQuantifier(ctx.fof_quantified_formula().fol_quantifier())
+      val quantifier = fofQuantifier(ctx.fof_quantified_formula().fof_quantifier())
       val varlist = ctx.fof_quantified_formula().fof_variable_list().variable().asScala.map(fofVariable)
       fof.Quantified(quantifier, varlist, matrix)
     } else if (ctx.fof_unary_formula() != null) {
       val unary = ctx.fof_unary_formula()
-      if (unary.fol_infix_unary() != null) {
-        val left = term(unary.fol_infix_unary().term(0))
-        val right = term(unary.fol_infix_unary().term(1))
+      if (unary.fof_infix_unary() != null) {
+        val left = fofTerm(unary.fof_infix_unary().fof_term(0))
+        val right = fofTerm(unary.fof_infix_unary().fof_term(1))
         fof.Inequality(left,right)
       } else {
         // Not is the only unary connective
@@ -218,60 +228,60 @@ object TPTPASTConstructor {
       }
     } else throw new IllegalArgumentException
   }
-  final def fofQuantifier(ctx: tptpParser.Fol_quantifierContext): fof.Quantifier = {
+  final def fofQuantifier(ctx: tptpParser.Fof_quantifierContext): fof.Quantifier = {
     if (ctx.Forall() != null) fof.!
     else if (ctx.Exists() != null) fof.?
     else throw new IllegalArgumentException
   }
   final def fofVariable(ctx: tptpParser.VariableContext): Variable = ctx.Upper_word().getText
 
-  final def atomicFormula(ctx: tptpParser.Atomic_formulaContext): fof.LogicFormula = {
-    if (ctx.plain_atomic_formula() != null) {
-      val plain = ctx.plain_atomic_formula()
-      val func = atomicWord(plain.plain_term().functor().atomic_word())
-      if (plain.plain_term().arguments() == null) fof.Atomic(Plain(Func(func, Seq())))
+  final def fofAtomicFormula(ctx: tptpParser.Fof_atomic_formulaContext): fof.Atomic = {
+    if (ctx.fof_plain_atomic_formula() != null) {
+      val plain = ctx.fof_plain_atomic_formula()
+      val func = atomicWord(plain.fof_plain_term().functor().atomic_word())
+      if (plain.fof_plain_term().fof_arguments() == null) fof.Atomic(Plain(Func(func, Seq())))
       else {
-        val args = plain.plain_term().arguments().term().asScala.map(term)
+        val args = plain.fof_plain_term().fof_arguments().fof_term().asScala.map(fofTerm)
         fof.Atomic(Plain(Func(func, args)))
       }
-    } else if (ctx.defined_atomic_formula() != null) {
-      val defined = ctx.defined_atomic_formula()
-      if (defined.defined_infix_formula() != null) {
+    } else if (ctx.fof_defined_atomic_formula() != null) {
+      val defined = ctx.fof_defined_atomic_formula()
+      if (defined.fof_defined_infix_formula() != null) {
         // Equality is the only infix connective here
-        assert(defined.defined_infix_formula().defined_infix_pred().Infix_equality() != null)
-        val left = term(defined.defined_infix_formula().term(0))
-        val right = term(defined.defined_infix_formula().term(1))
+        assert(defined.fof_defined_infix_formula().defined_infix_pred().Infix_equality() != null)
+        val left = fofTerm(defined.fof_defined_infix_formula().fof_term(0))
+        val right = fofTerm(defined.fof_defined_infix_formula().fof_term(1))
         fof.Atomic(Equality(left,right))
-      } else if (defined.defined_plain_formula() != null) {
-        val definedPlain = defined.defined_plain_formula().defined_plain_term()
+      } else if (defined.fof_defined_plain_formula() != null) {
+        val definedPlain = defined.fof_defined_plain_formula().fof_defined_term()
         val func = definedPlain.defined_functor().getText
-        if (definedPlain.arguments() == null) fof.Atomic(DefinedPlain(DefinedFunc(func, Seq())))
+        if (definedPlain.fof_arguments() == null) fof.Atomic(DefinedPlain(DefinedFunc(func, Seq())))
         else {
-          val args = definedPlain.arguments().term().asScala.map(term)
+          val args = definedPlain.fof_arguments().fof_term().asScala.map(fofTerm)
           fof.Atomic(DefinedPlain(DefinedFunc(func, args)))
         }
       } else throw new IllegalArgumentException
-    } else if (ctx.system_atomic_formula() != null) {
-      val system = ctx.system_atomic_formula()
-      val func = system.system_term().system_functor().getText
-      if (system.system_term().arguments() == null) fof.Atomic(SystemPlain(SystemFunc(func, Seq())))
+    } else if (ctx.fof_system_atomic_formula() != null) {
+      val system = ctx.fof_system_atomic_formula()
+      val func = system.fof_system_term().system_functor().getText
+      if (system.fof_system_term().fof_arguments() == null) fof.Atomic(SystemPlain(SystemFunc(func, Seq())))
       else {
-        val args = system.system_term().arguments().term.asScala.map(term)
+        val args = system.fof_system_term().fof_arguments().fof_term().asScala.map(fofTerm)
         fof.Atomic(SystemPlain(SystemFunc(func, args)))
       }
     } else throw new IllegalArgumentException
   }
 
   // term stuff
-  final def term(ctx: tptpParser.TermContext): Term = {
-    if (ctx.conditional_term() != null) {
-      val cond = tffLogicFormula(ctx.conditional_term().tff_logic_formula())
-      val thn = term(ctx.conditional_term().term(0))
-      val els = term(ctx.conditional_term().term(1))
+  final def fofTerm(ctx: tptpParser.Fof_termContext): Term = {
+    if (ctx.tff_conditional_term() != null) {
+      val cond = tffLogicFormula(ctx.tff_conditional_term().tff_logic_formula())
+      val thn = fofTerm(ctx.tff_conditional_term().fof_term(0))
+      val els = fofTerm(ctx.tff_conditional_term().fof_term(1))
       Cond(cond, thn, els)
-    } else if (ctx.let_term() != null) {
-      val let = ctx.let_term()
-      val in = term(let.term())
+    } else if (ctx.tff_let_term() != null) {
+      val let = ctx.tff_let_term()
+      val in = fofTerm(let.fof_term())
       if (let.tff_let_formula_defns() != null) {
         val binding = ???
         Let(binding, in)
@@ -281,40 +291,38 @@ object TPTPASTConstructor {
       } else throw new IllegalArgumentException
     } else if (ctx.variable() != null) {
       Var(ctx.variable().getText)
-    } else if (ctx.function_term() != null) {
-      val fun = ctx.function_term()
-      if (fun.plain_term() != null) {
-        val plain = fun.plain_term()
+    } else if (ctx.defined_term() != null) {
+      val defined = ctx.defined_term()
+      if (defined.Distinct_object() != null)
+        Distinct(defined.Distinct_object().getText)
+      else if (defined.number() != null) {
+        val n = number(defined.number())
+        NumberTerm(n)
+      } else throw new IllegalArgumentException
+    } else if (ctx.fof_function_term() != null) {
+      val fun = ctx.fof_function_term()
+      if (fun.fof_plain_term() != null) {
+        val plain = fun.fof_plain_term()
         val f = atomicWord(plain.functor().atomic_word())
-        if (plain.arguments() != null) {
-          val args = plain.arguments().term().asScala.map(term)
+        if (plain.fof_arguments() != null) {
+          val args = plain.fof_arguments().fof_term().asScala.map(fofTerm)
           Func(f, args)
         } else {
           Func(f, Seq())
         }
-      } else if (fun.defined_term() != null) {
-        val defined = fun.defined_term()
-        if (defined.defined_atom() != null) {
-          if (defined.defined_atom().Distinct_object() != null)
-            Distinct(defined.defined_atom().Distinct_object().getText)
-          else if (defined.defined_atom().number() != null) {
-            val n = number(defined.defined_atom().number())
-            NumberTerm(n)
-          } else throw new IllegalArgumentException
-        } else if (defined.defined_atomic_term() != null) {
-          val definedPlain = defined.defined_atomic_term().defined_plain_term()
-          val f = definedPlain.defined_functor().atomic_defined_word().getText
-          if (definedPlain.arguments() != null) {
-            val args = definedPlain.arguments().term().asScala.map(term)
-            DefinedFunc(f, args)
-          } else
-            DefinedFunc(f, Seq())
-        } else throw new IllegalArgumentException
-      } else if(fun.system_term() != null) {
-        val system = fun.system_term()
+      } else if (fun.fof_defined_term() != null) {
+        val defined = fun.fof_defined_term()
+        val f = defined.defined_functor().atomic_defined_word().getText
+        if (defined.fof_arguments() != null) {
+          val args = defined.fof_arguments().fof_term().asScala.map(fofTerm)
+          DefinedFunc(f, args)
+        } else
+          DefinedFunc(f, Seq())
+      } else if(fun.fof_system_term() != null) {
+        val system = fun.fof_system_term()
         val f = system.system_functor().getText
-        if (system.arguments() != null) {
-          val args = system.arguments().term().asScala.map(term)
+        if (system.fof_arguments() != null) {
+          val args = system.fof_arguments().fof_term().asScala.map(fofTerm)
           SystemFunc(f, args)
         } else {
           SystemFunc(f, Seq())
@@ -452,8 +460,8 @@ object TPTPASTConstructor {
     else thf.Tuple(Seq())
   }
   final def thfQuantifier(ctx: tptpParser.Thf_quantifierContext): thf.Quantifier = {
-    if (ctx.fol_quantifier() != null) {
-      val q = ctx.fol_quantifier()
+    if (ctx.fof_quantifier() != null) {
+      val q = ctx.fof_quantifier()
       if (q.Forall() != null) thf.!
       else if (q.Exists() != null) thf.?
       else throw new IllegalArgumentException
@@ -533,7 +541,7 @@ object TPTPASTConstructor {
     } else throw new IllegalArgumentException
   }
   final def transformUnitaryLetBinding1(ctx: tptpParser.Thf_quantified_formulaContext): thf.LogicFormula = {
-    if (ctx.thf_quantification().thf_quantifier().fol_quantifier().Forall() != null) {
+    if (ctx.thf_quantification().thf_quantifier().fof_quantifier().Forall() != null) {
       val matrix = ctx.thf_unitary_formula()
       if (matrix.thf_logic_formula() != null) {
         if (matrix.thf_logic_formula().thf_binary_formula() != null) {
@@ -575,7 +583,11 @@ object TPTPASTConstructor {
   }
   final def thfAtom(ctx: tptpParser.Thf_atomContext): thf.LogicFormula = {
     if (ctx.variable() != null) thf.Var(ctx.variable().getText)
-    else if (ctx.thf_function() != null) {
+    else if (ctx.defined_term() != null) {
+      if (ctx.defined_term().Distinct_object() != null) thf.Distinct(ctx.defined_term().Distinct_object().getText)
+      else if (ctx.defined_term().number() != null) thf.Number(number(ctx.defined_term().number()))
+      else throw new IllegalArgumentException
+    } else if (ctx.thf_function() != null) {
       val thfFun = ctx.thf_function()
       if (thfFun.thf_plain_term() != null) {
         val fun = atomicWord(thfFun.thf_plain_term().functor().atomic_word())
@@ -587,20 +599,12 @@ object TPTPASTConstructor {
         }
       } else if (thfFun.thf_defined_term() != null) {
         val fun = thfFun.thf_defined_term()
-        if (fun.defined_atom() != null) {
-          val atom = fun.defined_atom()
-          if (atom.Distinct_object() != null) thf.Distinct(atom.Distinct_object().getText)
-          else if (atom.number() != null) thf.Number(number(atom.number()))
-          else throw new IllegalArgumentException
-        } else if (fun.defined_functor() != null) {
-          val fun2 = fun.defined_functor().getText
-          if (fun.thf_arguments() == null) thf.Function(fun2, Seq())
-          else {
-            val args = fun.thf_arguments()
-            val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
-            thf.Function(fun2, convertedArgs)
-          }
-        } else throw new IllegalArgumentException
+        if (fun.thf_arguments() == null) thf.Function(fun.defined_functor().getText, Seq())
+        else {
+          val args = fun.thf_arguments()
+          val convertedArgs = args.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
+          thf.Function(fun.defined_functor().getText, convertedArgs)
+        }
       } else if (thfFun.thf_system_term() != null) {
         val fun = thfFun.thf_system_term().system_functor().getText
         if (thfFun.thf_system_term().thf_arguments() == null) thf.Function(fun, Seq())
@@ -675,4 +679,39 @@ object TPTPASTConstructor {
   import leo.datastructures.tptp.tff
   final def tffFormula(ctx: tptpParser.Tff_formulaContext): tff.Formula = ???
   final def tffLogicFormula(ctx: tptpParser.Tff_logic_formulaContext): tff.LogicFormula = ???
+
+  ////////////////////////////////////////////////////////
+  /// CNF
+  ////////////////////////////////////////////////////////
+  import leo.datastructures.tptp.cnf
+  final def cnfFormula(ctx: tptpParser.Cnf_formulaContext): cnf.Formula = {
+    if (ctx.cnf_disjunction() != null) {
+      cnfDisjunction(ctx.cnf_disjunction())
+    } else throw new IllegalArgumentException
+  }
+  final def cnfDisjunction(ctx: tptpParser.Cnf_disjunctionContext): cnf.Formula = {
+    if (ctx.cnf_disjunction() != null) {
+      val disj = cnfDisjunction(ctx.cnf_disjunction())
+      val lit = cnfLiteral(ctx.cnf_literal())
+      cnf.Formula(disj.literals :+ lit)
+    } else {
+      cnf.Formula(Seq(cnfLiteral(ctx.cnf_literal())))
+    }
+  }
+  final def cnfLiteral(ctx: tptpParser.Cnf_literalContext): cnf.Literal = {
+    if (ctx.fof_atomic_formula() != null) {
+      if (ctx.Not() != null) {
+        // negative literal
+        cnf.Negative(fofAtomicFormula(ctx.fof_atomic_formula()).formula)
+      } else {
+        // positive literal
+        cnf.Positive(fofAtomicFormula(ctx.fof_atomic_formula()).formula)
+      }
+    } else if (ctx.fof_infix_unary() != null) {
+      val unary = ctx.fof_infix_unary()
+      assert(unary.Infix_inequality() != null)
+      cnf.Inequality(fofTerm(unary.fof_term(0)), fofTerm(unary.fof_term(1)))
+    } else throw new IllegalArgumentException
+  }
+
 }

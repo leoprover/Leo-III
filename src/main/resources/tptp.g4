@@ -3,6 +3,7 @@
  *  The BNF specification of the TPTP language was provided by Geoff Sutcliffe.
  *  The grammar file is created by Alexander Steen and Tobias Gleißner.
  *  Date: Dec 2016
+ *  Last updated: Feb 2017
  */
 grammar tptp;
 
@@ -26,6 +27,14 @@ package leo.modules.parsers.antlr;
 // %----         for it's first arguments; the original rule hierarchy for $let
 // %----         has been changed to :== semantic rules. Semantic rules for logic
 // %----         specifications have been added.
+// %----v6.4.0.8 Added := to the TFF binary connectives, to accomodate logic
+// %----         specifications.
+// %----v6.4.0.9 Split off TFX language, for FOOL and modal logic.
+// %----v6.4.0.10 Renamed things to separate THF from TFF from FOF from general
+// %----v6.4.0.11 Added <tff_subtype> back
+// %----v6.4.0.12 Added <tff_tuple_term>. Allow <thf_tuple>s to use either {}s or
+// %----          []s.
+
 
 // Tokens, Lexer rules
 
@@ -213,11 +222,12 @@ file_name : Single_quoted;
 //                            <annotations>).
 // <annotations>          ::= ,<source><optional_info> | <null>
 // <formula_role>         ::= <lower_word>
-annotated_formula : thf_annotated | tff_annotated | fof_annotated;
-                // tcf_annotated | cnf_annoptated | tpi_annotated;
+annotated_formula : thf_annotated | tff_annotated | fof_annotated | cnf_annotated;
+                // tcf_annotated | tpi_annotated;
 thf_annotated  : 'thf(' name ',' formula_role ',' thf_formula annotations? ').';
 tff_annotated  : 'tff(' name ',' formula_role ',' tff_formula annotations? ').';
 fof_annotated  : 'fof(' name ',' formula_role ',' fof_formula annotations? ').';
+cnf_annotated  : 'cnf(' name ',' formula_role ',' cnf_formula annotations? ').';
 
 annotations : ',' source optional_info?;
 formula_role : Lower_word;
@@ -246,7 +256,7 @@ general_term: general_data | general_data ':' general_term | general_list;
 general_data : atomic_word | general_function | variable | number | Distinct_object | formula_data;
 general_function: atomic_word '(' general_term (',' general_term)* ')';
 formula_data : '$thf(' thf_formula ')' | '$tff(' tff_formula ')' | '$fof(' fof_formula ')'
-             | '$fot(' term ')'; // | '$cnf(' ... ')' | ...
+             | '$fot(' fof_term ')' | '$cnf(' cnf_formula ')';
 general_list : '[]' | '[' general_term (',' general_term)* ']'; 
 
 
@@ -299,23 +309,26 @@ thf_variable : variable (':' thf_top_level_type)?;
 // %----Unary connectives bind more tightly than binary. The negated formula
 // %----must be ()ed because a ~ is also a term.
 // <thf_unary_formula>    ::= <thf_unary_connective> (<thf_logic_formula>)
-// <thf_atom>             ::= <thf_function> | <variable> | <thf_conn_term>
-// <thf_function>         ::= <thf_plain_term> | <thf_defined_term> |
-//                            <thf_system_term>
-// <thf_plain_term>       ::= <constant> | <functor>(<thf_arguments>)
+// <thf_atom>             ::= <thf_function> | <variable> | <defined_term> | <thf_conn_term>
+// <thf_function>         ::= <atom> | <functor>(<thf_arguments>) |
+//                              <defined_functor>(<thf_arguments>) |
+//                              <system_functor>(<thf_arguments>)
 thf_unary_formula : thf_unary_connective '(' thf_logic_formula ')';
-thf_atom : thf_function | variable | thf_conn_term;
-thf_function: thf_plain_term | thf_defined_term | thf_system_term;
-thf_plain_term : functor  ('(' thf_arguments ')')?;
+thf_atom : thf_function | variable | defined_term | thf_conn_term;
 
-// %----Defined terms have TPTP specific interpretations
-// <thf_defined_term>     ::= <defined_atom> | <defined_constant> |
-//                            <defined_functor>(<thf_arguments>)
-// <thf_system_term>      ::= <system_constant> | <system_functor>(<thf_arguments>)
+thf_function: thf_plain_term | thf_defined_term | thf_system_term;
+// Splitted rules of <thf_function> to avoid using <atom> here: We use conditional arguments, i.e.
+// the atoms are included (= thf_arguments is empty).
+thf_plain_term : functor  ('(' thf_arguments ')')?;
+thf_defined_term : defined_functor ('(' thf_arguments ')')?;
+thf_system_term : system_functor ('(' thf_arguments ')')?;
+
+// <thf_conn_term>        ::= <thf_pair_connective> | <assoc_connective> |
+//                            <thf_unary_connective>
+thf_conn_term : thf_pair_connective | assoc_connective | thf_unary_connective;
+
 // <thf_conditional>      ::= $ite(<thf_logic_formula>,<thf_logic_formula>,
 //                             <thf_logic_formula>)
-thf_defined_term : defined_atom | defined_functor ('(' thf_arguments ')')?;
-thf_system_term : system_functor ('(' thf_arguments ')')?;   
 thf_conditional: '$ite(' thf_logic_formula ',' thf_logic_formula ',' thf_logic_formula ')';                      
                             
 // %----The LHS of a term or formula binding must be a non-variable term that
@@ -382,31 +395,7 @@ thf_sequent : thf_tuple '-->' thf_tuple | '(' thf_sequent ')';
 thf_tuple : '[]' | '[' thf_formula_list ']' | '{}' | '{' thf_formula_list '}';
 thf_formula_list : thf_logic_formula (',' thf_logic_formula)*;
 
-// %----Special formulae
-// <thf_conn_term>        ::= <thf_pair_connective> | <assoc_connective> |
-//                            <thf_unary_connective>
-thf_conn_term : thf_pair_connective | assoc_connective | thf_unary_connective;
 
-// %----Connectives - THF
-// <thf_quantifier>       ::= <fol_quantifier> | <th0_quantifier> |
-//                            <th1_quantifier>
-// %----TH0 quantifiers are also available in TH1
-// <th0_quantifier>       ::= ^ | @+ | @-
-// <th1_quantifier>       ::= !> | ?*
-// <thf_pair_connective>  ::= <infix_equality> | <infix_inequality> |
-//                            <binary_connective> | <assignment>
-// <thf_unary_connective> ::= <unary_connective> | <th1_unary_connective>
-// <th1_unary_connective> ::= !! | ?? | @@+ | @@- | @=
-thf_quantifier : fol_quantifier | th0_quantifier | th1_quantifier;
-th0_quantifier: Lambda | Choice | Description;
-th1_quantifier: TyForall | TyExists;
-thf_pair_connective : Infix_equality | Infix_inequality | binary_connective | Assignment ;
-thf_unary_connective : unary_connective | th1_unary_connective;
-th1_unary_connective : ForallComb | ExistsComb | ChoiceComb | DescriptionComb | EqComb;
-
-// %----Types for THF and TFF
-// <defined_type>         ::= <atomic_defined_word>
-defined_type : atomic_defined_word;
 
 ////////////////////////////////////////////////////////////////////////////////
 //// TFF Formulae
@@ -425,7 +414,7 @@ defined_type : atomic_defined_word;
 // <tff_and_formula>      ::= <tff_unitary_formula> & <tff_unitary_formula> |
 //                            <tff_and_formula> & <tff_unitary_formula>
 // <tff_unitary_formula>  ::= <tff_quantified_formula> | <tff_unary_formula> |
-//                            <atomic_formula> | <tff_conditional> | <tff_let> |
+//                            <tff_atomic_formula> | <tff_conditional> | <tff_let> |
 //                            (<tff_logic_formula>) 
 tff_formula : tff_logic_formula | tff_typed_atom | tff_sequent;
 tff_logic_formula: tff_binary_formula | tff_unitary_formula;
@@ -436,23 +425,24 @@ tff_or_formula : tff_unitary_formula Or tff_unitary_formula
                | tff_or_formula Or tff_unitary_formula;
 tff_and_formula : tff_unitary_formula And tff_unitary_formula
                | tff_and_formula And tff_unitary_formula;
-tff_unitary_formula : tff_quantified_formula | tff_unary_formula | atomic_formula
+tff_unitary_formula : tff_quantified_formula | tff_unary_formula | tff_atomic_formula
                     | tff_conditional | tff_let | '(' tff_logic_formula ')';
 
-// <tff_quantified_formula> ::= <fol_quantifier> [<tff_variable_list>] :
+// <tff_quantified_formula> ::= <fof_quantifier> [<tff_variable_list>] :
 //                            <tff_unitary_formula>
 // <tff_variable_list>    ::= <tff_variable> | <tff_variable>,<tff_variable_list>
 // <tff_variable>         ::= <tff_typed_variable> | <variable>
 // <tff_typed_variable>   ::= <variable> : <tff_atomic_type>
 // <tff_unary_formula>    ::= <unary_connective> <tff_unitary_formula> |
-//                            <fol_infix_unary>
+//                            <fof_infix_unary>
 // <tff_conditional>      ::= $ite_f(<tff_logic_formula>,<tff_logic_formula>,
 //                            <tff_logic_formula>)
-tff_quantified_formula : fol_quantifier '[' tff_variable_list ']' ':' tff_unitary_formula;
+tff_quantified_formula : fof_quantifier '[' tff_variable_list ']' ':' tff_unitary_formula;
 tff_variable_list : tff_variable (',' tff_variable)*;
 tff_variable : tff_typed_variable | variable;
 tff_typed_variable: variable ':' tff_atomic_type;
-tff_unary_formula: unary_connective tff_unitary_formula | fol_infix_unary;
+tff_unary_formula: unary_connective tff_unitary_formula | fof_infix_unary;
+tff_atomic_formula : fof_atomic_formula;
 tff_conditional: '$ite_f(' tff_logic_formula ',' tff_logic_formula ',' tff_logic_formula ')';
 
 // <tff_let>              ::= $let_tf(<tff_let_term_defns>,<tff_formula>) |
@@ -477,12 +467,12 @@ tff_let_term_defns : tff_let_term_defn | '[' tff_let_term_list ']';
 tff_let_term_list : tff_let_term_defn (',' tff_let_term_defn)*;
 tff_let_term_defn : Forall '[' tff_variable_list ']' ':' tff_let_term_defn
                   | tff_let_term_binding;
-tff_let_term_binding : plain_term Infix_equality term | '(' tff_let_term_binding ')';
+tff_let_term_binding : fof_plain_term Infix_equality fof_term | '(' tff_let_term_binding ')';
 tff_let_formula_defns : tff_let_formula_defn | '[' tff_let_formula_list ']';
 tff_let_formula_list: tff_let_formula_defn (',' tff_let_formula_defn)*;
 tff_let_formula_defn: Forall '[' tff_variable_list ']' ':' tff_let_formula_defn
                     | tff_let_formula_binding;
-tff_let_formula_binding: plain_atomic_formula Iff tff_unitary_formula
+tff_let_formula_binding: fof_plain_atomic_formula Iff tff_unitary_formula
                        | '(' tff_let_formula_binding ')';
                        
 // <tff_sequent>          ::= <tff_formula_tuple> <gentzen_arrow> 
@@ -501,6 +491,7 @@ tff_formula_tuple_list: tff_logic_formula | tff_logic_formula ',' tff_formula_tu
 tff_typed_atom: tff_untyped_atom ':' tff_top_level_type | '(' tff_typed_atom ')';
 tff_untyped_atom: functor | system_functor;
 
+
 // %----See <thf_top_level_type> for commentary. <tff_quantified_type> is TFF1.
 // <tff_top_level_type>   ::= <tff_atomic_type> | <tff_mapping_type> |
 //                            <tf1_quantified_type> | (<tff_top_level_type>)
@@ -518,40 +509,41 @@ tff_top_level_type : tff_atomic_type | tff_mapping_type | tf1_quantified_type | 
 tf1_quantified_type : '!>' '[' tff_variable_list ']' ':' tff_monotype;
 tff_monotype: tff_atomic_type | '(' tff_mapping_type ')';
 tff_unitary_type : tff_atomic_type | '(' tff_xprod_type ')';
-tff_atomic_type : atomic_word | defined_type | atomic_word '(' tff_type_arguments ')' | variable;
-tff_type_arguments : tff_atomic_type | tff_atomic_type ',' tff_type_arguments;
+tff_atomic_type : defined_type | type_functor ('(' tff_type_arguments ')')? | variable;
+tff_type_arguments : tff_atomic_type (',' tff_atomic_type)*;
 tff_mapping_type : tff_unitary_type '>' tff_atomic_type;
 tff_xprod_type: tff_unitary_type '*' tff_atomic_type
               | tff_xprod_type '*' tff_atomic_type;                        
-                           
+
+
 ////////////////////////////////////////////////////////////////////////////////
 //// FOF Formulae
 ////////////////////////////////////////////////////////////////////////////////
 
-// %----FOF formulae.
-// <fof_formula>          ::= <fof_logic_formula> | <fof_sequent>
-// <fof_logic_formula>    ::= <fof_binary_formula> | <fof_unitary_formula>
-// %----Future answer variable ideas | <answer_formula>
-// <fof_binary_formula>   ::= <fof_binary_nonassoc> | <fof_binary_assoc>
-// %----Only some binary connectives are associative
-// %----There's no precedence among binary connectives
-// <fof_binary_nonassoc>  ::= <fof_unitary_formula> <binary_connective>
-//                            <fof_unitary_formula>
-// %----Associative connectives & and | are in <binary_assoc>
-// <fof_binary_assoc>     ::= <fof_or_formula> | <fof_and_formula>
-// <fof_or_formula>       ::= <fof_unitary_formula> <vline> <fof_unitary_formula> |
-//                            <fof_or_formula> <vline> <fof_unitary_formula>
-// <fof_and_formula>      ::= <fof_unitary_formula> & <fof_unitary_formula> |
-//                            <fof_and_formula> & <fof_unitary_formula>
-// %----<fof_unitary_formula> are in ()s or do not have a <binary_connective> at
-// %----the top level.
-// <fof_unitary_formula>  ::= <fof_quantified_formula> | <fof_unary_formula> |
-//                            <atomic_formula> | (<fof_logic_formula>)
-// <fof_quantified_formula> ::= <fol_quantifier> [<fof_variable_list>] :
-//                            <fof_unitary_formula>
-// <fof_variable_list>    ::= <variable> | <variable>,<fof_variable_list>
-// <fof_unary_formula>    ::= <unary_connective> <fof_unitary_formula> |
-//                            <fol_infix_unary>
+
+//<fof_formula>          ::= <fof_logic_formula> | <fof_sequent>
+//<fof_logic_formula>    ::= <fof_binary_formula> | <fof_unitary_formula>
+//%----Future answer variable ideas | <answer_formula>
+//<fof_binary_formula>   ::= <fof_binary_nonassoc> | <fof_binary_assoc>
+//%----Only some binary connectives are associative
+//%----There's no precedence among binary connectives
+//<fof_binary_nonassoc>  ::= <fof_unitary_formula> <binary_connective>
+//                           <fof_unitary_formula>
+//%----Associative connectives & and | are in <binary_assoc>
+//<fof_binary_assoc>     ::= <fof_or_formula> | <fof_and_formula>
+//<fof_or_formula>       ::= <fof_unitary_formula> <vline> <fof_unitary_formula> |
+//                           <fof_or_formula> <vline> <fof_unitary_formula>
+//<fof_and_formula>      ::= <fof_unitary_formula> & <fof_unitary_formula> |
+//                           <fof_and_formula> & <fof_unitary_formula>
+//%----<fof_unitary_formula> are in ()s or do not have a <binary_connective> at
+//%----the top level.
+//<fof_unitary_formula>  ::= <fof_quantified_formula> | <fof_unary_formula> |
+//                           <fof_atomic_formula> | (<fof_logic_formula>)
+//<fof_quantified_formula> ::= <fof_quantifier> [<fof_variable_list>] :
+//                           <fof_unitary_formula>
+//<fof_variable_list>    ::= <variable> | <variable>,<fof_variable_list>
+//<fof_unary_formula>    ::= <unary_connective> <fof_unitary_formula> |
+//                           <fof_infix_unary>
 fof_formula : fof_logic_formula | fof_sequent;
 fof_logic_formula : fof_binary_formula | fof_unitary_formula;
 fof_binary_formula : fof_binary_nonassoc | fof_binary_assoc;
@@ -561,15 +553,88 @@ fof_or_formula : fof_unitary_formula Or fof_unitary_formula
                | fof_or_formula Or fof_unitary_formula;
 fof_and_formula : fof_unitary_formula And fof_unitary_formula
                | fof_and_formula And fof_unitary_formula;
-fof_unitary_formula : fof_quantified_formula | fof_unary_formula | atomic_formula
+fof_unitary_formula : fof_quantified_formula | fof_unary_formula | fof_atomic_formula
                     | '(' fof_logic_formula ')';
-fof_quantified_formula : fol_quantifier '[' fof_variable_list ']' ':' fof_unitary_formula;
+fof_quantified_formula : fof_quantifier '[' fof_variable_list ']' ':' fof_unitary_formula;
 fof_variable_list : variable (',' variable)*;
-fof_unary_formula: unary_connective fof_unitary_formula | fol_infix_unary;
+fof_unary_formula: unary_connective fof_unitary_formula | fof_infix_unary;
 
-//  <fof_sequent>          ::= <fof_formula_tuple> <gentzen_arrow> 
+
+//<fof_infix_unary>      ::= <fof_term> <infix_inequality> <fof_term>
+//<fof_atomic_formula>   ::= <fof_plain_atomic_formula> |
+//                           <fof_defined_atomic_formula> |
+//                           <fof_system_atomic_formula>
+//<fof_plain_atomic_formula> ::= <fof_plain_term>
+//<fof_defined_atomic_formula> ::= <fof_defined_plain_formula> |
+//                           <fof_defined_infix_formula>
+//<fof_defined_plain_formula> ::= <fof_defined_plain_term>
+//<fof_defined_infix_formula> ::= <fof_term> <defined_infix_pred> <fof_term>
+//%----System terms have system specific interpretations
+//<fof_system_atomic_formula> ::= <fof_system_term>
+
+fof_infix_unary : fof_term Infix_inequality fof_term;
+fof_atomic_formula : fof_plain_atomic_formula | fof_defined_atomic_formula | fof_system_atomic_formula;
+fof_plain_atomic_formula : fof_plain_term;
+
+fof_defined_atomic_formula : fof_defined_plain_formula | fof_defined_infix_formula;
+fof_defined_plain_formula : fof_defined_term;
+fof_defined_infix_formula : fof_term defined_infix_pred fof_term;
+fof_system_atomic_formula: fof_system_term;
+
+
+
+//%----FOF terms.
+//<fof_plain_term>       ::= <constant> | <functor>(<fof_arguments>)
+//%----Defined terms have TPTP specific interpretations
+//<fof_defined_term>     ::= <defined_term> | <fof_defined_atomic_term>
+//<fof_defined_atomic_term>  ::= <fof_defined_plain_term>
+//%----None yet             | <defined_infix_term>
+//%----None yet <defined_infix_term> ::= <fof_term> <defined_infix_func> <fof_term>
+//%----None yet <defined_infix_func> ::=
+//<fof_defined_plain_term>   ::= <defined_constant> |
+//                           <defined_functor>(<fof_arguments>)
+//%----System terms have system specific interpretations
+//<fof_system_term>      ::= <system_constant> | <system_functor>(<fof_arguments>)
+//%----Arguments recurse back to terms (this is the FOF world here)
+//<fof_arguments>        ::= <fof_term> | <fof_term>,<fof_arguments>
+//%----These are terms used as arguments. Not the entry point for terms because
+//%----<fof_plain_term> is also used as <fof_plain_atomic_formula>. The <tff_
+//%----options are for only TFF, but are here because fof_plain_atomic_formula>
+//%----is used in fof_atomic_formula>, which is also used as <tff_atomic_formula>.
+//<fof_term>             ::= <fof_function_term> | <variable> |
+//                           <tff_conditional_term> | <tff_let_term> |
+//                           <tff_tuple_term>
+// ADAPTED:                 | <defined_term>
+//<fof_function_term>    ::= <fof_plain_term> | <fof_defined_plain_term> |
+//                           <fof_system_term>
+
+fof_plain_term: functor ('(' fof_arguments ')')?; // contracted for easier handling
+fof_defined_term: defined_functor ('(' fof_arguments ')')?; // contracted for easier handling
+fof_system_term: system_functor ('(' fof_arguments ')')?; // contracted for easier handling
+
+fof_arguments : fof_term (',' fof_term)*;
+
+fof_term: defined_term | fof_function_term | variable | tff_conditional_term | tff_let_term | tff_tuple_term;
+fof_function_term : fof_plain_term | fof_defined_term | fof_system_term;
+
+//%----Conditional terms should be used by only TFF.
+//<tff_conditional_term> ::= $ite_t(<tff_logic_formula>,<fof_term>,<fof_term>)
+//%----Let terms should be used by only TFF. $let_ft is for use when there is
+//%----a $ite_t in the <fof_term>. See the commentary for $let_tf and $let_ff.
+//<tff_let_term>         ::= $let_ft(<tff_let_formula_defns>,<fof_term>) |
+//                           $let_tt(<tff_let_term_defns>,<fof_term>)
+//%----<tff_tuple_term> uses {}s to disambiguate from tuples of formulae in []s.
+//<tff_tuple_term>       ::= {} | {<fof_arguments>}
+
+tff_conditional_term : '$ite_t(' tff_logic_formula ',' fof_term ',' fof_term ')';
+tff_let_term : '$let_ft(' tff_let_formula_defns ',' fof_term ')'
+         | '$let_tt(' tff_let_term_defns ',' fof_term ')';
+tff_tuple_term : '{}' | '{' fof_arguments '}';
+
+
+//  <fof_sequent>          ::= <fof_formula_tuple> <gentzen_arrow>
 //                             <fof_formula_tuple> | (<fof_sequent>)
-//  
+//
 //  <fof_formula_tuple>    ::= [] | [<fof_formula_tuple_list>]
 //  <fof_formula_tuple_list> ::= <fof_logic_formula> |
 //                             <fof_logic_formula>,<fof_formula_tuple_list>
@@ -577,92 +642,85 @@ fof_sequent : fof_formula_tuple '>>' fof_formula_tuple | '(' fof_sequent ')';
 fof_formula_tuple : '[]' | '[' fof_formula_tuple_list ']';
 fof_formula_tuple_list: fof_logic_formula (',' fof_logic_formula)*;
 
+////////////////////////////////////////////////////////////////////////////////
+//// CNF Formulae
+////////////////////////////////////////////////////////////////////////////////
 
-// <fol_infix_unary>      ::= <term> <infix_inequality> <term>
-fol_infix_unary : term Infix_inequality term;
 
-// %----First order atoms
-// <atomic_formula>       ::= <plain_atomic_formula> | <defined_atomic_formula> |
-//                            <system_atomic_formula>
-// <plain_atomic_formula> ::= <plain_term>
-atomic_formula : plain_atomic_formula | defined_atomic_formula | system_atomic_formula;
-plain_atomic_formula : plain_term;
+// <cnf_formula>          ::= <disjunction> | (<disjunction>)
+// <disjunction>          ::= <literal> | <disjunction> <vline> <literal>
+// <literal>              ::= <fof_atomic_formula> | ~ <fof_atomic_formula> |
+//                           <fof_infix_unary>
+cnf_formula : cnf_disjunction | '(' cnf_disjunction ')';
+cnf_disjunction : cnf_literal | cnf_disjunction '|' cnf_literal;
+cnf_literal : fof_atomic_formula | Not fof_atomic_formula | fof_infix_unary;
 
-// <defined_atomic_formula> ::= <defined_plain_formula> | <defined_infix_formula>
-// <defined_plain_formula> ::= <defined_plain_term>
-// <system_atomic_formula> ::= <system_term>                    
-defined_atomic_formula : defined_plain_formula | defined_infix_formula;
-defined_plain_formula : defined_plain_term;
-system_atomic_formula: system_term;
-//////////////////////////////////////////////////////////
-// Shared stuff i guess
-//////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+//// Connectives
+////////////////////////////////////////////////////////////////////////////////
+
+
+// %----Connectives - THF
+// <thf_quantifier>       ::= <fol_quantifier> | <th0_quantifier> |
+//                            <th1_quantifier>
+// %----TH0 quantifiers are also available in TH1
+// <th0_quantifier>       ::= ^ | @+ | @-
+// <th1_quantifier>       ::= !> | ?*
+// <thf_pair_connective>  ::= <infix_equality> | <infix_inequality> |
+//                            <binary_connective> | <assignment>
+// <thf_unary_connective> ::= <unary_connective> | <th1_unary_connective>
+// <th1_unary_connective> ::= !! | ?? | @@+ | @@- | @=
+thf_quantifier : fof_quantifier | th0_quantifier | th1_quantifier;
+th0_quantifier: Lambda | Choice | Description;
+th1_quantifier: TyForall | TyExists;
+thf_pair_connective : Infix_equality | Infix_inequality | binary_connective | Assignment ;
+thf_unary_connective : unary_connective | th1_unary_connective;
+th1_unary_connective : ForallComb | ExistsComb | ChoiceComb | DescriptionComb | EqComb;
+
+// %----Types for THF and TFF
+//<type_functor>         ::= <atomic_word>
+// <defined_type>         ::= <atomic_defined_word>
+type_functor: atomic_word;
+defined_type : atomic_defined_word;
 
 // %----Connectives - FOF
 // <fol_quantifier>       ::= ! | ?
 // <binary_connective>    ::= <=> | => | <= | <~> | ~<vline> | ~&
 // <assoc_connective>     ::= <vline> | &
 // <unary_connective>     ::= ~
-fol_quantifier: Forall | Exists;
+fof_quantifier: Forall | Exists;
 binary_connective: Iff | Impl | If | Niff | Nor | Nand;
-
 assoc_connective : Or | And;
 unary_connective : Not;
-// <defined_infix_formula> ::= <term> <defined_infix_pred> <term>
+
+
+//////////////////////////////////////////////////////////
+// Shared formula stuff
+//////////////////////////////////////////////////////////
+
+
 // <defined_infix_pred>   ::= <infix_equality>
-// <infix_equality>       ::= =
-// <infix_inequality>     ::= !=
-defined_infix_formula : term defined_infix_pred term;
+// <infix_equality>       ::= = // Modelled as Token
+// <infix_inequality>     ::= != // Modelled as Token
 defined_infix_pred : Infix_equality;
 
-// <term>                 ::= <function_term> | <variable> | <conditional_term> |
-//                            <let_term>
-// <function_term>        ::= <plain_term> | <defined_term> | <system_term>
-// <plain_term>           ::= <constant> | <functor>(<arguments>)
 // <constant>             ::= <functor>
 // <functor>              ::= <atomic_word>
-term: function_term | variable | conditional_term | let_term;
-function_term : plain_term | defined_term | system_term;
-plain_term: functor ('(' arguments ')')?; // contracted for easier handling
-constant : functor; 
+constant : functor;
 functor : atomic_word;
 
-// %----Defined terms have TPTP specific interpretations
-// <defined_term>         ::= <defined_atom> | <defined_atomic_term>
-// %----<numbers> may not be used on CNF and FOF
-// <defined_atom>         ::= <number> | <distinct_object>
-// <defined_atomic_term>  ::= <defined_plain_term>
-defined_term : defined_atom | defined_atomic_term;
-defined_atom : number | Distinct_object;
-defined_atomic_term : defined_plain_term;
-
-// <defined_plain_term>   ::= <defined_constant> | <defined_functor>(<arguments>)
-// <defined_constant>     ::= <defined_functor>
-// <defined_functor>      ::= <atomic_defined_word>
-defined_plain_term : defined_functor ('(' arguments ')')?;
-defined_constant : defined_functor;
-defined_functor : atomic_defined_word;
-// <system_term>          ::= <system_constant> | <system_functor>(<arguments>)
 // <system_constant>      ::= <system_functor>
-// <system_functor>       ::= <atomic_system_word> 
-system_term : system_functor ('(' arguments ')')?;
+// <system_functor>       ::= <atomic_system_word>
 system_constant : system_functor;
 system_functor : atomic_system_word;
 
-// %----Conditional terms should be used by only TFF.
-// <conditional_term>     ::= $ite_t(<tff_logic_formula>,<term>,<term>)
-// %----Let terms should be used by only TFF. $let_ft is for use when there is
-// %----a $ite_t in the <term>. See the commentary for $let_tf and $let_ff.
-// <let_term>             ::= $let_ft(<tff_let_formula_defns>,<term>) |
-//                            $let_tt(<tff_let_term_defns>,<term>)
-conditional_term : '$ite_t(' tff_logic_formula ',' term ',' term ')';
-let_term : '$let_ft(' tff_let_formula_defns ',' term ')' 
-         | '$let_tt(' tff_let_term_defns ',' term ')';   
+// <defined_constant>     ::= <defined_functor>
+// <defined_functor>      ::= <atomic_defined_word>
+defined_constant : defined_functor;
+defined_functor : atomic_defined_word;
 
-// %----Arguments recurse back up to terms (this is the FOF world here)
-// <arguments>            ::= <term> | <term>,<arguments>
-arguments : term (',' term)*;
-
-// %----Variables, and only variables, start with uppercase
+// <defined_term>         ::= <number> | <distinct_object>
 // <variable>             ::= <upper_word>
+defined_term : number | Distinct_object;
 variable : Upper_word;
