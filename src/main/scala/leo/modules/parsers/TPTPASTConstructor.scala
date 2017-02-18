@@ -778,9 +778,9 @@ object TPTPASTConstructor {
   }
   final def tffLetTermDefns(ctx: tptpParser.Tff_let_term_defnsContext): tff.Formula#LetBinding = {
     if (ctx.tff_let_term_defn() != null) {
-      Left(Map(tffLetTermBinding(ctx.tff_let_term_defn().tff_let_term_binding()))).asInstanceOf[tff.Formula#LetBinding]
+      Right(Map(tffLetTermBinding(ctx.tff_let_term_defn().tff_let_term_binding()))).asInstanceOf[tff.Formula#LetBinding]
     } else if (ctx.tff_let_term_list() != null) {
-      Left(Map(ctx.tff_let_term_list().tff_let_term_defn().asScala.map(x => tffLetTermBinding(x.tff_let_term_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
+      Right(Map(ctx.tff_let_term_list().tff_let_term_defn().asScala.map(x => tffLetTermBinding(x.tff_let_term_binding())):_*)).asInstanceOf[tff.Formula#LetBinding]
     } else throw new IllegalArgumentException
   }
   final def tffLetTermBinding(ctx: tptpParser.Tff_let_term_bindingContext): (Func, Term) = {
