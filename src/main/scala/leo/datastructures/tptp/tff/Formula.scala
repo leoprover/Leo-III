@@ -18,7 +18,7 @@ case class TypedAtom(formula: String, typ: Type) extends Formula {
 
   override val function_symbols: Set[String] = Set(formula)
 }
-case class Sequent(tuple1: List[LogicFormula], tuple2: List[LogicFormula]) extends Formula {
+case class Sequent(tuple1: Seq[LogicFormula], tuple2: Seq[LogicFormula]) extends Formula {
   override def toString = "[" + tuple1.mkString(",") +"]" + " --> " + "[" + tuple2.mkString(",") + "]"
 
   override val function_symbols: Set[String] = tuple1.toSet[LogicFormula].flatMap(_.function_symbols) union tuple2.toSet[LogicFormula].flatMap(_.function_symbols)
@@ -32,7 +32,7 @@ case class Binary(left: LogicFormula, connective: BinaryConnective, right: Logic
 
   override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
 }
-case class Quantified(quantifier: Quantifier, varList: List[(Variable,Option[AtomicType])], matrix: LogicFormula) extends LogicFormula {
+case class Quantified(quantifier: Quantifier, varList: Seq[(Variable,Option[AtomicType])], matrix: LogicFormula) extends LogicFormula {
   override def toString = quantifier.toString + " [" + varList.mkString(",") + "] : (" + matrix.toString + ")"
 
   override val function_symbols: Set[String] = {
@@ -88,16 +88,16 @@ case object ! extends Quantifier
 case object ? extends Quantifier
 
 sealed abstract class Type
-case class AtomicType(typ: String, args: List[AtomicType]) extends Type {
+case class AtomicType(typ: String, args: Seq[AtomicType]) extends Type {
   override def toString = funcToString(typ, args)
 }
-case class ->(t: List[Type]) extends Type {
+case class ->(t: Seq[Type]) extends Type {
   override def toString = "(" + t.mkString(" > ") + ")"
 }
-case class *(t: List[Type]) extends Type {
+case class *(t: Seq[Type]) extends Type {
   override def toString = "(" + t.mkString(" * ") + ")"
 }
-case class QuantifiedType(varList: List[(Variable,Option[AtomicType])], typ: Type) extends Type {
+case class QuantifiedType(varList: Seq[(Variable,Option[AtomicType])], typ: Type) extends Type {
   override def toString = "!> [" + varList.map(typedVarToString).mkString(",")+ "] : " + typ.toString
 }
 
@@ -106,12 +106,12 @@ sealed abstract class LetBinding {
   def function_symbols : Set[String]
   def bound_variables : Set[String]
 }
-case class FormulaBinding(varList: List[(Variable,Option[AtomicType])], left: Atomic, right: LogicFormula) extends LetBinding {
+case class FormulaBinding(varList: Seq[(Variable,Option[AtomicType])], left: Atomic, right: LogicFormula) extends LetBinding {
   override val function_symbols: Set[String] = (left.function_symbols union right.function_symbols)
 
   override val bound_variables : Set[String] = varList.map(_._1).toSet
 }
-case class TermBinding(varList: List[(Variable,Option[AtomicType])], left: Term, right: Term) extends LetBinding {
+case class TermBinding(varList: Seq[(Variable,Option[AtomicType])], left: Term, right: Term) extends LetBinding {
   override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
 
   override val bound_variables : Set[String] = varList.map(_._1).toSet

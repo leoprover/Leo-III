@@ -439,8 +439,7 @@ tff_unitary_formula : tff_quantified_formula | tff_unary_formula | tff_atomic_fo
 //                            <tff_logic_formula>)
 tff_quantified_formula : fof_quantifier '[' tff_variable_list ']' ':' tff_unitary_formula;
 tff_variable_list : tff_variable (',' tff_variable)*;
-tff_variable : tff_typed_variable | variable;
-tff_typed_variable: variable ':' tff_atomic_type;
+tff_variable : variable (':' tff_atomic_type)?;
 tff_unary_formula: unary_connective tff_unitary_formula | fof_infix_unary;
 tff_atomic_formula : fof_atomic_formula;
 tff_conditional: '$ite_f(' tff_logic_formula ',' tff_logic_formula ',' tff_logic_formula ')';
@@ -482,7 +481,7 @@ tff_let_formula_binding: fof_plain_atomic_formula Iff tff_unitary_formula
 //                            <tff_logic_formula>,<tff_formula_tuple_list>
 tff_sequent: tff_formula_tuple '>>' tff_formula_tuple | '(' tff_sequent ')';                      
 tff_formula_tuple : '[]' | '[' tff_formula_tuple_list ']';
-tff_formula_tuple_list: tff_logic_formula | tff_logic_formula ',' tff_formula_tuple_list;
+tff_formula_tuple_list: tff_logic_formula (',' tff_logic_formula)*;
                            
 // %----<tff_typed_atom> can appear only at top level
 // <tff_typed_atom>       ::= <tff_untyped_atom> : <tff_top_level_type> |

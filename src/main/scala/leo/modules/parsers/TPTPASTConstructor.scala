@@ -677,9 +677,85 @@ object TPTPASTConstructor {
   /// TFF
   ////////////////////////////////////////////////////////
   import leo.datastructures.tptp.tff
-  final def tffFormula(ctx: tptpParser.Tff_formulaContext): tff.Formula = ???
+  final def tffFormula(ctx: tptpParser.Tff_formulaContext): tff.Formula = {
+    if (ctx.tff_logic_formula() != null) tff.Logical(tffLogicFormula(ctx.tff_logic_formula()))
+    else if (ctx.tff_sequent() != null) tffSequent(ctx.tff_sequent())
+    else if (ctx.tff_typed_atom() != null) tffTypedAtom(ctx.tff_typed_atom())
+    else throw new IllegalArgumentException
+  }
   final def tffLogicFormula(ctx: tptpParser.Tff_logic_formulaContext): tff.LogicFormula = ???
 
+  final def tffVariable(ctx: tptpParser.Tff_variableContext): (Variable, Option[tff.AtomicType]) = {
+    val varname = ctx.variable().getText
+    val ty = if (ctx.tff_atomic_type() != null) None else Some(tffAtomicType(ctx.tff_atomic_type()))
+    (varname, ty)
+  }
+
+  final def tffTopLevelType(ctx: tptpParser.Tff_top_level_typeContext): tff.Type = {
+    if (ctx.tff_top_level_type() != null) tffTopLevelType(ctx.tff_top_level_type())
+    else if (ctx.tff_atomic_type() != null) {
+      tffAtomicType(ctx.tff_atomic_type())
+    } else if (ctx.tff_mapping_type() != null) {
+      tffMappingType(ctx.tff_mapping_type())
+    } else if (ctx.tf1_quantified_type() != null) {
+      val quant = ctx.tf1_quantified_type()
+      val vars = quant.tff_variable_list().tff_variable().asScala.map(tffVariable)
+      val monotype = if (quant.tff_monotype().tff_atomic_type() != null) tffAtomicType(quant.tff_monotype().tff_atomic_type())
+      else tffMappingType(quant.tff_monotype().tff_mapping_type())
+      tff.QuantifiedType(vars, monotype)
+    } else throw new IllegalArgumentException
+  }
+  final def tffAtomicType(ctx: tptpParser.Tff_atomic_typeContext): tff.AtomicType = {
+    val atomic = ctx
+    if (atomic.variable() != null) tff.AtomicType(atomic.variable().getText, Seq())
+    else {
+      val fun = if (atomic.defined_type() != null) atomic.defined_type().getText
+      else atomicWord(atomic.type_functor().atomic_word())
+      val args = if (atomic.tff_type_arguments() != null) atomic.tff_type_arguments().tff_atomic_type().asScala.map(tffAtomicType)
+      else Seq()
+      tff.AtomicType(fun, args)
+    }
+  }
+  final def tffUnitaryType(ctx: tptpParser.Tff_unitary_typeContext): tff.Type = {
+    if (ctx.tff_atomic_type() != null) tffAtomicType(ctx.tff_atomic_type())
+    else if (ctx.tff_xprod_type() != null) tffProdType(ctx.tff_xprod_type())
+    else throw new IllegalArgumentException
+  }
+  final def tffMappingType(ctx: tptpParser.Tff_mapping_typeContext): tff.-> = {
+    val left = tffUnitaryType(ctx.tff_unitary_type())
+    val right = tffAtomicType(ctx.tff_atomic_type())
+    tff.->(Seq(left, right))
+  }
+  final def tffProdType(ctx: tptpParser.Tff_xprod_typeContext): tff.* = {
+    val left = if (ctx.tff_unitary_type() != null) tffUnitaryType(ctx.tff_unitary_type())
+    else tffProdType(ctx.tff_xprod_type())
+    val right = tffAtomicType(ctx.tff_atomic_type())
+    tff.*(Seq(left,right))
+  }
+
+  final def tffTypedAtom(ctx: tptpParser.Tff_typed_atomContext): tff.TypedAtom = {
+    if (ctx.tff_typed_atom() != null) tffTypedAtom(ctx.tff_typed_atom())
+    else {
+      val atom = ctx.tff_untyped_atom().getText
+      val typ = tffTopLevelType(ctx.tff_top_level_type())
+      tff.TypedAtom(atom, typ)
+    }
+  }
+
+  final def tffSequent(ctx: tptpParser.Tff_sequentContext): tff.Sequent = {
+    if (ctx.tff_sequent() != null) tffSequent(ctx.tff_sequent())
+    else {
+      val left = ctx.tff_formula_tuple(0)
+      val right = ctx.tff_formula_tuple(1)
+      val convertedLeft = if (left.tff_formula_tuple_list() == null) Seq() else {
+        left.tff_formula_tuple_list().tff_logic_formula().asScala.map(tffLogicFormula)
+      }
+      val convertedRight = if (right.tff_formula_tuple_list() == null) Seq() else {
+        right.tff_formula_tuple_list().tff_logic_formula().asScala.map(tffLogicFormula)
+      }
+      tff.Sequent(convertedLeft, convertedRight)
+    }
+  }
   ////////////////////////////////////////////////////////
   /// CNF
   ////////////////////////////////////////////////////////
