@@ -105,7 +105,7 @@ case class NewLet(binding: Tuple, in: Formula) extends LogicFormula {
   }
 }
 
-case class Subtype(left: String, right: String) extends LogicFormula {
+case class Subtype(left: LogicFormula, right: LogicFormula) extends LogicFormula {
   override def toString = left + " << " + right
 
   override val function_symbols: Set[String] = Set()  // TODO What do we do in this case?

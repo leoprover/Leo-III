@@ -239,8 +239,8 @@ object HuetsPreUnification extends Unification {
           leo.Out.finest("Apply delete")
           detExhaust(unprocessed.tail, flexRigid, flexFlex, solved, uTyProblems, solvedTy)
         } else {
-          val left = head0._1
-          val right = head0._2
+          val left = head0._1.etaExpand
+          val right = head0._2.etaExpand
 
           val (leftBody, leftAbstractions) = collectLambdas(left)
           val (rightBody, rightAbstractions) = collectLambdas(right)
@@ -672,8 +672,8 @@ object PatternUnification extends Unification {
         val (l0,r0) = ueqs.head
         if (l0 == r0) unify1(ueqs.tail, uTyEqs, vargen, partialUnifier, partialTyUnifier)
         else {
-          val l = l0.substitute(partialUnifier, partialTyUnifier)
-          val r = r0.substitute(partialUnifier, partialTyUnifier)
+          val l = l0.substitute(partialUnifier, partialTyUnifier).etaExpand
+          val r = r0.substitute(partialUnifier, partialTyUnifier).etaExpand
           leo.Out.trace(s"solve: ${l.pretty} = ${r.pretty}")
           // take off the lambdas
           val (leftBody, leftAbstractions) = collectLambdas(l)

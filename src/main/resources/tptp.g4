@@ -256,10 +256,10 @@ general_list : '[]' | '[' general_term (',' general_term)* ']';
 // <thf_formula>          ::= <thf_logic_formula> | <thf_sequent>
 // <thf_logic_formula>    ::= <thf_binary_formula> | <thf_unitary_formula> |
 //                            <thf_type_formula> | <thf_subtype>  
-// <thf_binary_formula>   ::= <thf_binary_pair> | <thf_binary_tuple>
+// <thf_binary_formula>   ::= <thf_binary_pair> | <thf_binary_tuple> | <thf_binary_type> // Fixed
 thf_formula : thf_logic_formula | thf_sequent;
 thf_logic_formula : thf_binary_formula | thf_unitary_formula | thf_type_formula | thf_subtype;
-thf_binary_formula : thf_binary_pair | thf_binary_tuple;
+thf_binary_formula : thf_binary_pair | thf_binary_tuple | thf_binary_type;
 
 // %----Only some binary connectives can be written without ()s.
 // %----There's no precedence among binary connectives
@@ -338,10 +338,10 @@ thf_arguments : thf_formula_list;
 // %----A <thf_type_formula> is an assertion that the formula is in this type.
 // <thf_type_formula>     ::= <thf_typeable_formula> : <thf_top_level_type>
 // <thf_typeable_formula> ::= <thf_atom> | (<thf_logic_formula>)
-// <thf_subtype>          ::= <constant> <subtype_sign> <constant>
+// <thf_subtype>          ::= <thf_atom> <subtype_sign> <thf_atom>
 thf_type_formula : thf_typeable_formula ':' thf_top_level_type;
 thf_typeable_formula: thf_atom | '(' thf_logic_formula ')';
-thf_subtype : constant '<<' constant;
+thf_subtype : thf_atom '<<' thf_atom;
 
 // %----<thf_top_level_type> appears after ":", where a type is being specified
 // %----for a term or variable. <thf_unitary_type> includes <thf_unitary_formula>,
@@ -362,7 +362,7 @@ thf_subtype : constant '<<' constant;
 // <thf_union_type>       ::= <thf_unitary_type> <plus> <thf_unitary_type> |
 //                            <thf_union_type> <plus> <thf_unitary_type>
 thf_top_level_type : thf_unitary_type | thf_mapping_type;
-thf_unitary_type : thf_unitary_formula | '(' thf_binary_type ')';
+thf_unitary_type : thf_unitary_formula;
 thf_binary_type : thf_mapping_type | thf_xprod_type | thf_union_type;
 thf_mapping_type : thf_unitary_type '>' thf_unitary_type
                  | thf_unitary_type '>' thf_mapping_type;
@@ -379,7 +379,7 @@ thf_union_type : thf_unitary_type '+' thf_unitary_type
 // <thf_formula_list>     ::= <thf_logic_formula> |
 //                            <thf_logic_formula>,<thf_formula_list>
 thf_sequent : thf_tuple '-->' thf_tuple | '(' thf_sequent ')';
-thf_tuple : '[]' | '[' thf_formula_list ']';
+thf_tuple : '[]' | '[' thf_formula_list ']' | '{}' | '{' thf_formula_list '}';
 thf_formula_list : thf_logic_formula (',' thf_logic_formula)*;
 
 // %----Special formulae

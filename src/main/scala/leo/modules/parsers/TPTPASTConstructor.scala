@@ -357,12 +357,18 @@ object TPTPASTConstructor {
         else if (tuple.thf_apply_formula() != null)
           thfApply(tuple.thf_apply_formula())
         else throw new IllegalArgumentException
+      } else if (binary.thf_binary_type() != null) {
+        val bintyp = binary.thf_binary_type()
+        if (bintyp.thf_mapping_type() != null) thf.BinType(thfMappingType(bintyp.thf_mapping_type()))
+        else if (bintyp.thf_union_type() != null) thf.BinType(thfUnionType(bintyp.thf_union_type()))
+        else if (bintyp.thf_xprod_type() != null) thf.BinType(thfProdType(bintyp.thf_xprod_type()))
+        else throw new IllegalArgumentException
       } else throw new IllegalArgumentException
     } else if (ctx.thf_unitary_formula() != null) {
       thfUnitary(ctx.thf_unitary_formula())
     } else if (ctx.thf_subtype() != null) {
-      val left = atomicWord(ctx.thf_subtype().constant(0).functor().atomic_word())
-      val right = atomicWord(ctx.thf_subtype().constant(1).functor().atomic_word())
+      val left = thfAtom(ctx.thf_subtype().thf_atom(0))
+      val right = thfAtom(ctx.thf_subtype().thf_atom(1))
       thf.Subtype(left,right)
     } else if (ctx.thf_type_formula() != null) {
       val formula0 = ctx.thf_type_formula().thf_typeable_formula()
@@ -441,8 +447,9 @@ object TPTPASTConstructor {
   }
 
   final def thfTuple(ctx: tptpParser.Thf_tupleContext): thf.Tuple = {
-    val formulaList = ctx.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula)
-    thf.Tuple(formulaList)
+    if (ctx.thf_formula_list() != null)
+      thf.Tuple(ctx.thf_formula_list().thf_logic_formula().asScala.map(thfLogicFormula))
+    else thf.Tuple(Seq())
   }
   final def thfQuantifier(ctx: tptpParser.Thf_quantifierContext): thf.Quantifier = {
     if (ctx.fol_quantifier() != null) {
@@ -627,13 +634,7 @@ object TPTPASTConstructor {
   }
   final def thfUnitaryType(typ: tptpParser.Thf_unitary_typeContext): thf.LogicFormula = {
     if (typ.thf_unitary_formula() != null) thfUnitary(typ.thf_unitary_formula())
-    else if (typ.thf_binary_type() != null) {
-      val bintyp = typ.thf_binary_type()
-      if (bintyp.thf_mapping_type() != null) thf.BinType(thfMappingType(bintyp.thf_mapping_type()))
-      else if (bintyp.thf_union_type() != null) thf.BinType(thfUnionType(bintyp.thf_union_type()))
-      else if (bintyp.thf_xprod_type() != null) thf.BinType(thfProdType(bintyp.thf_xprod_type()))
-      else throw new IllegalArgumentException
-    } else throw new IllegalArgumentException
+    else throw new IllegalArgumentException
   }
   final def thfMappingType(ctx: tptpParser.Thf_mapping_typeContext): thf.-> = {
     if (ctx.thf_mapping_type() != null) {
