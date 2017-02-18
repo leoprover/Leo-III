@@ -683,7 +683,90 @@ object TPTPASTConstructor {
     else if (ctx.tff_typed_atom() != null) tffTypedAtom(ctx.tff_typed_atom())
     else throw new IllegalArgumentException
   }
-  final def tffLogicFormula(ctx: tptpParser.Tff_logic_formulaContext): tff.LogicFormula = ???
+  final def tffLogicFormula(ctx: tptpParser.Tff_logic_formulaContext): tff.LogicFormula = {
+    if (ctx.tff_binary_formula() != null) {
+      val binary = ctx.tff_binary_formula()
+      if (binary.tff_binary_assoc() != null) {
+        val assoc = binary.tff_binary_assoc()
+        if (assoc.tff_and_formula() != null) tffAnd(assoc.tff_and_formula())
+        else if (assoc.tff_or_formula() != null) tffOr(assoc.tff_or_formula())
+        else throw new IllegalArgumentException
+      } else if (binary.tff_binary_nonassoc() != null) {
+        val nonassoc = binary.tff_binary_nonassoc()
+        val left = tffUnitary(nonassoc.tff_unitary_formula(0))
+        val right = tffUnitary(nonassoc.tff_unitary_formula(1))
+        val conn = nonassoc.binary_connective()
+        val convertedConn = if (conn.If() != null) tff.<=
+        else if (conn.Iff() != null) tff.<=>
+        else if (conn.Impl() != null) tff.Impl
+        else if (conn.Nand() != null) tff.~&
+        else if (conn.Niff() != null) tff.<~>
+        else if (conn.Nor() != null) tff.~|
+        else throw new IllegalArgumentException
+        tff.Binary(left, convertedConn, right)
+      } else throw new IllegalArgumentException
+    } else if (ctx.tff_unitary_formula() != null) {
+      tffUnitary(ctx.tff_unitary_formula())
+    } else throw new IllegalArgumentException
+  }
+  final def tffAnd(ctx: tptpParser.Tff_and_formulaContext): tff.LogicFormula = {
+    if (ctx.tff_and_formula() != null) {
+      val left = tffAnd(ctx.tff_and_formula())
+      val right = tffUnitary(ctx.tff_unitary_formula(0))
+      tff.Binary(left, tff.&, right)
+    } else {
+      val left = tffUnitary(ctx.tff_unitary_formula(0))
+      val right = tffUnitary(ctx.tff_unitary_formula(1))
+      tff.Binary(left, tff.&, right)
+    }
+  }
+  final def tffOr(ctx: tptpParser.Tff_or_formulaContext): tff.LogicFormula = {
+    if (ctx.tff_or_formula() != null) {
+      val left = tffOr(ctx.tff_or_formula())
+      val right = tffUnitary(ctx.tff_unitary_formula(0))
+      tff.Binary(left, tff.|, right)
+    } else {
+      val left = tffUnitary(ctx.tff_unitary_formula(0))
+      val right = tffUnitary(ctx.tff_unitary_formula(1))
+      tff.Binary(left, tff.|, right)
+    }
+  }
+
+  final def tffUnitary(ctx: tptpParser.Tff_unitary_formulaContext): tff.LogicFormula = {
+    if (ctx.tff_conditional() != null) {
+      val cond = tffLogicFormula(ctx.tff_conditional().tff_logic_formula(0))
+      val thn = tffLogicFormula(ctx.tff_conditional().tff_logic_formula(1))
+      val els = tffLogicFormula(ctx.tff_conditional().tff_logic_formula(2))
+      tff.Cond(cond, thn, els)
+    } else if (ctx.tff_atomic_formula() != null) {
+      val atomic = ctx.tff_atomic_formula().fof_atomic_formula()
+      tff.Atomic(fofAtomicFormula(atomic).formula)
+    } else if (ctx.tff_let() != null) {
+      ???
+    } else if (ctx.tff_logic_formula() != null) {
+      tffLogicFormula(ctx.tff_logic_formula())
+    } else if (ctx.tff_unary_formula() != null) {
+      val unary = ctx.tff_unary_formula()
+      if (unary.fof_infix_unary() != null) {
+        assert(unary.fof_infix_unary().Infix_inequality() != null)
+        val left = fofTerm(unary.fof_infix_unary().fof_term(0))
+        val right = fofTerm(unary.fof_infix_unary().fof_term(1))
+        tff.Inequality(left, right)
+      } else if (unary.tff_unitary_formula() != null) {
+        val body = tffUnitary(unary.tff_unitary_formula())
+        assert(unary.unary_connective().Not() != null)
+        tff.Unary(tff.Not, body)
+      } else throw new IllegalArgumentException
+    } else if (ctx.tff_quantified_formula() != null) {
+      val quant = ctx.tff_quantified_formula()
+      val quantifier = if (quant.fof_quantifier().Forall() != null) tff.!
+      else if (quant.fof_quantifier().Exists() != null) tff.?
+      else throw new IllegalArgumentException
+      val vars = quant.tff_variable_list().tff_variable().asScala.map(tffVariable)
+      val matrix = tffUnitary(quant.tff_unitary_formula())
+      tff.Quantified(quantifier, vars, matrix)
+    } else throw new IllegalArgumentException
+  }
 
   final def tffVariable(ctx: tptpParser.Tff_variableContext): (Variable, Option[tff.AtomicType]) = {
     val varname = ctx.variable().getText
