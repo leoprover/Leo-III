@@ -57,19 +57,18 @@ package leo.modules.parsers.antlr;
 // <alpha_numeric>        ::: (<lower_alpha>|<upper_alpha>|<numeric>|[_])
 // <dollar>               ::: [$]
 
+// Most of the character classes are modelled as directly literals in this grammar.
+// Here we define some handy ones which are collections of individual literals
+
 fragment Do_char : [\u0020-\u0021\u0023-\u005B\u005D-\u007E] | '\\'["\\];
 fragment Sq_char : [\u0020-\u0026\u0028-\u005B\u005D-\u007E] | '\\'['\\];
 fragment Sign : [+-];
-fragment Dot : '.';
 fragment Exponent : [Ee];
-fragment Slash : '/';
-fragment Zero_numeric : '0';
 fragment Non_zero_numeric : [1-9];
 fragment Numeric : [0-9];
 fragment Lower_alpha : [a-z];
 fragment Upper_alpha : [A-Z];
 fragment Alpha_numeric : Lower_alpha | Upper_alpha | Numeric | '_';
-fragment Dollar : '$';
 
 Or: '|';
 And: '&';
@@ -121,15 +120,15 @@ Signed_real : Sign Unsigned_real;
 Unsigned_real : Decimal_fraction|Decimal_exponent;
 Rational: Signed_rational | Unsigned_rational;
 Signed_rational: Sign Unsigned_rational;
-Unsigned_rational: Decimal Slash Positive_decimal;
+Unsigned_rational: Decimal '/' Positive_decimal;
 Integer : Signed_integer | Unsigned_integer;
 Signed_integer: Sign Unsigned_integer;
 Unsigned_integer: Decimal;
-Decimal : Zero_numeric | Positive_decimal;
+Decimal : '0' | Positive_decimal;
 Positive_decimal : Non_zero_numeric Numeric*;
 Decimal_exponent : (Decimal|Decimal_fraction) Exponent Exp_integer;
 Decimal_fraction : Decimal Dot_decimal;
-Dot_decimal : Dot Numeric Numeric*;
+Dot_decimal : '.' Numeric Numeric*;
 Exp_integer : Signed_exp_integer|Unsigned_exp_integer;
 Signed_exp_integer : Sign Unsigned_exp_integer;
 Unsigned_exp_integer : Numeric Numeric*;
@@ -139,8 +138,8 @@ Unsigned_exp_integer : Numeric Numeric*;
 // <dollar_dollar_word>   ::- <dollar><dollar><lower_word>
 // <upper_word>           ::- <upper_alpha><alpha_numeric>*
 // <lower_word>           ::- <lower_alpha><alpha_numeric>*
-Dollar_word : Dollar Lower_word;
-Dollar_dollar_word : Dollar Dollar Lower_word;
+Dollar_word : '$' Lower_word;
+Dollar_dollar_word : '$$' Lower_word;
 Upper_word : Upper_alpha Alpha_numeric*;
 Lower_word : Lower_alpha Alpha_numeric*;
 
