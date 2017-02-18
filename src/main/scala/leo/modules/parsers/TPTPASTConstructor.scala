@@ -280,15 +280,9 @@ object TPTPASTConstructor {
       val els = fofTerm(ctx.tff_conditional_term().fof_term(1))
       Cond(cond, thn, els)
     } else if (ctx.tff_let_term() != null) {
-      val let = ctx.tff_let_term()
-      val in = fofTerm(let.fof_term())
-      if (let.tff_let_formula_defns() != null) {
-        val binding = ???
-        Let(binding, in)
-      } else if (let.tff_let_term_defns() != null) {
-        val binding = ???
-        Let(binding, in)
-      } else throw new IllegalArgumentException
+      tffLetTerm(ctx.tff_let_term())
+    } else if (ctx.tff_tuple_term() != null) {
+      tffTupleTerm(ctx.tff_tuple_term())
     } else if (ctx.variable() != null) {
       Var(ctx.variable().getText)
     } else if (ctx.defined_term() != null) {
@@ -742,7 +736,7 @@ object TPTPASTConstructor {
       val atomic = ctx.tff_atomic_formula().fof_atomic_formula()
       tff.Atomic(fofAtomicFormula(atomic).formula)
     } else if (ctx.tff_let() != null) {
-      ???
+      tffLet(ctx.tff_let())
     } else if (ctx.tff_logic_formula() != null) {
       tffLogicFormula(ctx.tff_logic_formula())
     } else if (ctx.tff_unary_formula() != null) {
@@ -767,7 +761,28 @@ object TPTPASTConstructor {
       tff.Quantified(quantifier, vars, matrix)
     } else throw new IllegalArgumentException
   }
-
+  final def tffLet(ctx: tptpParser.Tff_letContext): tff.Let = {
+    val in = tffFormula(ctx.tff_formula())
+    if (ctx.tff_let_formula_defns() != null) {
+      ???
+    } else if (ctx.tff_let_term_defns() != null) {
+      ???
+    } else throw new IllegalArgumentException
+  }
+  final def tffLetTerm(ctx: tptpParser.Tff_let_termContext): Let = {
+    val in = fofTerm(ctx.fof_term())
+    if (ctx.tff_let_formula_defns() != null) {
+      val binding = ???
+      Let(binding, in)
+    } else if (ctx.tff_let_term_defns() != null) {
+      val binding = ???
+      Let(binding, in)
+    } else throw new IllegalArgumentException
+  }
+  final def tffTupleTerm(ctx: tptpParser.Tff_tuple_termContext): Tuple = {
+    if (ctx.fof_arguments() != null) Tuple(Seq())
+    else Tuple(ctx.fof_arguments().fof_term().asScala.map(fofTerm))
+  }
   final def tffVariable(ctx: tptpParser.Tff_variableContext): (Variable, Option[tff.AtomicType]) = {
     val varname = ctx.variable().getText
     val ty = if (ctx.tff_atomic_type() != null) None else Some(tffAtomicType(ctx.tff_atomic_type()))

@@ -107,7 +107,7 @@ sealed abstract class LetBinding {
   def bound_variables : Set[String]
 }
 case class FormulaBinding(varList: Seq[(Variable,Option[AtomicType])], left: Atomic, right: LogicFormula) extends LetBinding {
-  override val function_symbols: Set[String] = (left.function_symbols union right.function_symbols)
+  override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
 
   override val bound_variables : Set[String] = varList.map(_._1).toSet
 }

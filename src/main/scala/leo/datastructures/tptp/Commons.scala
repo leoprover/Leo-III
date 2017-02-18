@@ -118,14 +118,20 @@ object Commons {
     override def toString = data.toString
     override val function_symbols: Set[String] =  Set()
   }
+  /** Used by TFF only */
   case class Cond(cond: tff.LogicFormula, thn: Term, els: Term) extends Term {
     override def toString = "$ite_t(" + List(cond,thn,els).mkString(",") + ")"
     override val function_symbols: Set[String] =  cond.function_symbols union thn.function_symbols union els.function_symbols
-  } // Cond used by TFF only
-  // can Let be modeled like this?
+  }
+  /** Used by TFF only */
   case class Let(let: tff.LetBinding, in: Term) extends Term {
     override def function_symbols: Set[String] = let.function_symbols union in.function_symbols
-  } // Let used by TFF only
+  }
+  case class Tuple(entries: Seq[Term]) extends Term {
+    override def toString: Role = s"{${entries.map(_.toString).mkString(",")}"
+
+    override def function_symbols: Set[String] = entries.flatMap(_.function_symbols).toSet
+  }
 
   type Variable = String
 
