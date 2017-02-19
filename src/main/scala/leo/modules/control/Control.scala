@@ -91,13 +91,13 @@ package inferenceControl {
   protected[modules] object CNFControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
-    private lazy val internalCNF: (AnnotatedClause, Signature) => Set[AnnotatedClause] = if (Configuration.RENAMING_SET) cnf1 else cnf2
+    private lazy val internalCNF: (AnnotatedClause, Signature) => Set[AnnotatedClause] = if (Configuration.RENAMING_SET) cnf2 else cnf1
     private lazy val threshhold : Int = Configuration.RENAMING_THRESHHOLD
 
     final def cnf(cl : AnnotatedClause)(implicit sig : Signature) : Set[AnnotatedClause] = internalCNF(cl, sig)
 
     private final def cnf1(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
-      Out.trace(s"CNF of ${cl.pretty(sig)}")
+      Out.trace(s"Standard CNF of ${cl.pretty(sig)}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
@@ -112,7 +112,7 @@ package inferenceControl {
     }
 
     private final def cnf2(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
-      Out.trace(s"CNF of ${cl.pretty(sig)}")
+      Out.trace(s"Rename CNF of ${cl.pretty(sig)}")
       val cnfresult = RenameCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
@@ -201,6 +201,7 @@ package inferenceControl {
             val shouldParamod0 = shouldParamod(withTerm, intoTerm)
             leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
             if (!intoTerm.isVariable && shouldParamod0) {
+              leo.Out.finest(s"ordered: ${withLit.oriented} // ${intoLit.oriented}")
               Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
               Out.finest(s"with: ${withClause.pretty(sig)}")
               Out.finest(s"withside: ${withSide.toString}")
@@ -1087,10 +1088,11 @@ package inferenceControl {
     final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       if (Configuration.isSet("acsimp")) {
         val acSymbols = sig.acSymbols
-        Out.trace(s"AC Simp on ${cl.pretty(sig)}")
-        val pre_result = ACSimp.apply(cl.cl,acSymbols)
-        val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, cl), cl.properties)
-        Out.finest(s"AC Result: ${result.pretty(sig)}")
+        Out.trace(s"[AC] Simp on ${cl.pretty(sig)}")
+        val pre_result = ACSimp.apply(cl.cl,acSymbols)(sig)
+        val result = if (pre_result == cl.cl) cl
+        else AnnotatedClause(pre_result, InferredFrom(ACSimp, cl), cl.properties)
+        Out.finest(s"[AC] Result: ${result.pretty(sig)}")
         result
       } else
         cl

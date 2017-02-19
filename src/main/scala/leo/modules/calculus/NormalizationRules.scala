@@ -551,13 +551,11 @@ object ACSimp extends CalculusRule {
         f match {
           case Symbol(id) if id == acSymbol =>
             val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
-
             val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Vector(arg, term))}
             //        Term.mkTermApp(f, newArgs)
             newArgs
-          case _ => t
+          case _ => Term.mkTermApp(f, args.map(apply(_, acSymbol)))
         }
-
       }
       case (f ∙ args) => Term.mkApp(f, args.map {case arg => arg.fold({case t => Left(apply(t, acSymbol))}, {case ty => Right(ty)})})
       case _ => t
@@ -577,14 +575,14 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
+  def apply(lit: Literal, allACSymbols: Set[Signature#Key])(implicit sig: Signature): Literal = {
     val leftAC = lit.left.symbols.distinct intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
       val rightAC = lit.right.symbols.distinct intersect allACSymbols
       val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
       if (newLeft == lit.left && newRight == lit.right) lit
-      else Literal(newLeft, newRight, lit.polarity) // TODO: Orient?
+      else Literal.mkOrdered(newLeft, newRight, lit.polarity) // TODO: Orient?
     } else {
       if (leftAC.isEmpty) lit
       else {
@@ -598,8 +596,8 @@ object ACSimp extends CalculusRule {
 
   }
 
-  def apply(cl: Clause, acSymbols: Set[Signature#Key]): Clause = {
-    Clause(cl.lits.map(apply(_, acSymbols)))
+  def apply(cl: Clause, acSymbols: Set[Signature#Key])(implicit sig: Signature): Clause = {
+    Clause(cl.lits.map(apply(_, acSymbols)(sig)))
   }
 }
 
