@@ -986,7 +986,7 @@ package inferenceControl {
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), cl.properties)
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
