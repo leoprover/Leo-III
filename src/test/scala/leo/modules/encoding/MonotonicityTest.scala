@@ -38,9 +38,12 @@ class MonotonicityTest extends LeoTestSuite {
     // calculate CNF
     val cnf = CNF(vargen, termToClause(f1)).toSet union CNF(vargen, termToClause(f2)).toSet union CNF(vargen, termToClause(f3)).toSet
 
+    // infinite types
+    val infTypes: Set[Type] = Set.empty // none known
+
     // test monotonicity check
-    assert(BBPS.monotone(banana ,cnf))
-    assert(!BBPS.monotone(monkey ,cnf))
-    assert(!BBPS.monotone(cnf))
+    assert(BBPS.monotone(banana ,cnf, infTypes))
+    assert(!BBPS.monotone(monkey ,cnf, infTypes))
+    assert(!BBPS.monotone(cnf, infTypes))
   }
 }

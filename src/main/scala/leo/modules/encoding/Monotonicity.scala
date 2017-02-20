@@ -32,17 +32,17 @@ trait Monotonicity[Problem] {
     * @param problem The problem which `ty` is relatively evaluated to.
     * @return `true` if `ty` can be shown monotonic wrt. `problem`, else `false`.
     */
-  def monotone(ty: Type, problem: Problem)(implicit sig: Signature): Boolean
+  def monotone(ty: Type, problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean
 
   /** (Approximating) decision procedure for deciding whether
     * each type `ty` in `types` is monotonic wrt. problem `problem`.
     * Default implementation uses `monotone(Type, Problem)` as allowed by Lemma 56.
     * @see monotone(Type, Problem) for details. */
-  def monotone(types: Set[Type], problem: Problem)(implicit sig: Signature): Boolean = {
+  def monotone(types: Set[Type], problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
     val typesIt = types.iterator
     while(typesIt.hasNext) {
       val ty = typesIt.next()
-      if (!monotone(ty, problem)) return false
+      if (!monotone(ty, problem, infiniteTypes)) return false
     }
     true
   }
@@ -51,9 +51,9 @@ trait Monotonicity[Problem] {
     * problem `problem` is (globally) monotonic, i.e. each type
     * in the signature is monotonic wrt. `problem`.
     * @see monotone(Type, Problem) for details. */
-  def monotone(problem: Problem)(implicit sig: Signature): Boolean = {
+  def monotone(problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
     val types = sig.typeSymbols.map(Type.mkType)
-    monotone(types, problem)
+    monotone(types, problem, infiniteTypes)
   }
 }
 
@@ -81,17 +81,18 @@ object BBPS extends ClauseProblemMonotonicity {
     * @param problem The problem which `ty` is relatively evaluated to.
     * @return `true` if `ty` can be shown monotonic wrt. `problem`, else `false`.
     */
-  override def monotone(ty: Type, problem: Problem)(implicit sig: Signature): Boolean = {
+  override def monotone(ty: Type, problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
     val naked = nakedVars(problem)
-    !naked.contains(ty)
+    infiniteTypes.contains(ty) || !naked.contains(ty)
   }
 
   /** (Approximating) decision procedure for deciding whether
     * each type `ty` in `types` is monotonic wrt. problem `problem`.
     * @see monotone(Type, Problem) for details. */
-  override def monotone(types: Set[Type], problem: Problem)(implicit sig: Signature): Boolean = {
+  override def monotone(types: Set[Type], problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
     val naked = nakedVars(problem)
-    naked.intersect(types).isEmpty
+    val naked0 = naked.diff(infiniteTypes)
+    naked0.intersect(types).isEmpty
   }
 
   protected final def nakedVars(problem: Problem): Set[Type] = {
