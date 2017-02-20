@@ -1,7 +1,7 @@
 package leo.modules.encoding
 
-import leo.LeoTestSuite
-import leo.datastructures.{Term, Type, Signature}
+import leo.{Checked, LeoTestSuite}
+import leo.datastructures.{Signature, Term, Type}
 import leo.modules.Parsing
 
 /**
@@ -10,7 +10,7 @@ import leo.modules.Parsing
   * @see [[leo.modules.encoding.BBPS]] -- the calculus tested here.
   */
 class MonotonicityTest extends LeoTestSuite {
-  test("Monkey Village (Ex. 1)") {
+  test("Monkey Village (Ex. 1)", Checked) {
     implicit val sig: Signature = getFreshSignature
     import leo.modules.HOLSignature.o
     import leo.modules.calculus.{FullCNF => CNF, freshVarGenFromBlank => vargen}
@@ -42,8 +42,8 @@ class MonotonicityTest extends LeoTestSuite {
     val infTypes: Set[Type] = Set.empty // none known
 
     // test monotonicity check
-    assert(BBPS.monotone(banana ,cnf, infTypes))
-    assert(!BBPS.monotone(monkey ,cnf, infTypes))
+    assert(BBPS.monotone(banana, cnf, infTypes))
+    assert(!BBPS.monotone(monkey, cnf, infTypes))
     assert(!BBPS.monotone(cnf, infTypes))
   }
 }
