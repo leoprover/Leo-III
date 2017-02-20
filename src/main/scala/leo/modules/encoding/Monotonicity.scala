@@ -5,17 +5,7 @@ import leo.datastructures.{Clause, Type, Signature}
 /**
   * Trait for monotonicity inference systems.
   *
-  * Contract:
-  * If `monotone(ty, p)` return `true` then type `ty` is monotonic wrt. `p`.
-  *
-  * Monotonicity is defined by
-  * (taken from Blanchette et al.: Encoding Monomorphic and Polymorphic Types):
-  * Let S be a set of types and Φ be a problem. The set S is
-  * monotonic in Φ if for all models M = (D_σ∈Type,_,_) of Φ, there exists a model M' =
-  * (D'_σ∈Type,_,_) of Φ such that for all types σ, D'_σ is infinite if σ ∈ S and |D'_σ| = |D_σ|
-  * otherwise.
   * @tparam Problem The representation of a problem (e.g. set of terms, set of clauses ...)
-  *
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
 trait Monotonicity[Problem] {
@@ -27,6 +17,8 @@ trait Monotonicity[Problem] {
     * @note Precondition:
     *       All [[leo.datastructures.Term]]s in `problem` need to be sentences,
     *       i.e. closed formulas (= closed terms of type [[leo.modules.HOLSignature#o]]).
+    * @note Contract:
+    *       If `monotone(ty, p)` then type `ty` is indeed monotonic wrt. `p`.
     *
     * @param ty The [[leo.datastructures.Type]] that may be monotonic
     * @param problem The problem which `ty` is relatively evaluated to.
@@ -62,9 +54,17 @@ abstract class ClauseProblemMonotonicity extends Monotonicity[Set[Clause]] {
   type Problem = Set[Clause]
 }
 
-/** Monotonicity inference calculus by Blanchette, Böhme, Popescu and Smallbone (BBPS).
-  * Definitions of naked variables are adapted to the representation of problems as sets of clauses.
-  * @see  Blanchette et al.: Encoding Monomorphic and Polymorphic Types, chapter 5. */
+/** Monotonicity inference calculus by Blanchette, Böhme, Popescu and Smallbone (BBPS) for
+  * polymorphic first-order logic.
+  *
+  * Monotonicity is defined by (taken from [1]):
+  * Let S be a set of types and Φ be a problem. The set S is
+  * monotonic in Φ if for all models M = (D_σ∈Type,_,_) of Φ, there exists a model M' =
+  * (D'_σ∈Type,_,_) of Φ such that for all types σ, D'_σ is infinite if σ ∈ S and |D'_σ| = |D_σ|
+  * otherwise.
+  *
+  * Definitions of naked variables [1,Chapter 5] are adapted to the representation of problems as sets of clauses.
+  * @see [1] Blanchette et al.: Encoding Monomorphic and Polymorphic Types. */
 object BBPS extends ClauseProblemMonotonicity {
   import leo.datastructures.{Literal, Term}
   /**
@@ -95,7 +95,7 @@ object BBPS extends ClauseProblemMonotonicity {
     naked0.intersect(types).isEmpty
   }
 
-  protected final def nakedVars(problem: Problem): Set[Type] = {
+  private final def nakedVars(problem: Problem): Set[Type] = {
     var vars: Set[Type] = Set.empty
     val clIt = problem.iterator
     while (clIt.hasNext) {
@@ -105,7 +105,7 @@ object BBPS extends ClauseProblemMonotonicity {
     vars
   }
 
-  protected final def nakedVars(clause: Clause): Set[Type] = {
+  private final def nakedVars(clause: Clause): Set[Type] = {
     var vars: Set[Type] = Set.empty
     val litIt = clause.lits.iterator
     while (litIt.hasNext) {
@@ -115,7 +115,7 @@ object BBPS extends ClauseProblemMonotonicity {
     vars
   }
 
-  protected final def nakedVars(lit: Literal): Set[Type] = {
+  private final def nakedVars(lit: Literal): Set[Type] = {
     if (lit.equational) {
       if (lit.polarity) {
         nakedVars0(lit.left, lit.right)
@@ -125,7 +125,7 @@ object BBPS extends ClauseProblemMonotonicity {
     }
   }
 
-  protected final def nakedVars(formula: Term, polarity: Boolean): Set[Type] = {
+  private final def nakedVars(formula: Term, polarity: Boolean): Set[Type] = {
     import leo.modules.HOLSignature._
     formula match {
       case ===(l,r) if polarity => nakedVars0(l,r)
