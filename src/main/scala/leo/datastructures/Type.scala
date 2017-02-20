@@ -110,6 +110,7 @@ abstract class Type extends Pretty with Prettier {
 object Type {
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
   final def mkType(identifier: Signature#Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
+  final def mkType(identifier: Signature#Key, arg: Type): Type = TypeImpl.mkType(identifier, Seq(arg))
   /** Create type with name `identifier`. */
   final def mkType(identifier: Signature#Key): Type = mkType(identifier, Seq.empty)
 
@@ -271,11 +272,14 @@ abstract class Kind extends Pretty {
   val isSuperKind: Boolean
 
   def arity: Int
+
+  def ->:(hd: Kind): Kind = Kind.mkFunKind(hd, this)
 }
 
 object Kind {
 
   val typeKind: Kind = TypeKind
+  val * = TypeKind.asInstanceOf[Kind]
 
   /** Build kind k1 -> k2  */
   def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
