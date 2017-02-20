@@ -188,6 +188,13 @@ object Parsing {
       processFormula(readFormula(formula))(sig)
     }
 
+  def parseThf(formula: String)(implicit sig: Signature): Term = {
+    val parsed = TPTP(formula)
+    val result = InputProcessing.processTHF(sig)(parsed)
+    if (result.isLeft) result.left.get
+    else throw new IllegalArgumentException
+  }
+
   final val urlStartRegex:String  = "(\\w+?:\\/\\/)(.*)"
   /** Converts the input path to a canonical path representation */
   def canonicalPath(path: String): Path = {

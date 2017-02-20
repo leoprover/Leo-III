@@ -3,7 +3,7 @@ package leo.modules.parsers
 import java.io.{BufferedReader, StringReader}
 
 import leo.datastructures.tptp.Commons.{AnnotatedFormula, TPTPInput}
-import leo.datastructures.tptp.thf.{Formula => THFFormula}
+import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
 import leo.modules.SZSException
 import leo.modules.output.SZS_InputError
 
@@ -61,8 +61,8 @@ object TPTP {
     parser.removeErrorListeners()
     parser.addErrorListener(new ParserErrorListener)
     try {
-      val x = parser.thf_formula()
-      TPTPASTConstructor.thfFormula(x)
+      val x = parser.thf_logic_formula()
+      TPTPASTConstructor.thfLogicFormula(x)
     } catch {
       case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
     }
