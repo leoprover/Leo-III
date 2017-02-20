@@ -268,10 +268,24 @@ object FullCNF extends CalculusRule {
       case |||(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,false)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
       case Impl(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false)), apply0(fvs, tyFVs, vargen, Literal(rt, true)))
       case Impl(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
-      case Forall(a@(ty :::> t)) if l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true))
+      case Forall(a@(ty :::> t)) if l.polarity =>
+        import leo.modules.HOLSignature.{o, LitTrue, LitFalse}
+        if (ty == o) {
+          apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitTrue).betaNormalize.etaExpand, true)) ++ apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitFalse).betaNormalize.etaExpand, true))
+        } else {
+          val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true))
+        }
+
       case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, false))
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, true))
-      case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))
+      case Exists(a@(ty :::> t)) if !l.polarity =>
+        import leo.modules.HOLSignature.{o, LitTrue, LitFalse}
+        if (ty == o) {
+          apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitTrue).betaNormalize.etaExpand, false)) ++ apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitFalse).betaNormalize.etaExpand, false))
+        } else {
+          val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))
+        }
+
       case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)).betaNormalize.etaExpand, true))
       case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false))
       case _ => Seq(Seq(l))

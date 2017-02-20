@@ -1626,7 +1626,6 @@ package indexingControl {
 
         val conjSymbols = PreFilterSet.useFormula(conjecture)
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
-        leo.Out.finest(s"${firstPossibleCandidates.map(_.name)}")
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
         round += 1
 
