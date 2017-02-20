@@ -55,26 +55,36 @@ object SeqPProc {
           Parsing.processFormula(formula)(state.signature)
         case Role_Conjecture.pretty =>
           if (state.negConjecture == null) {
-            // Convert and negate and add conjecture
-            import leo.modules.calculus.CalculusRule
-            Control.relevanceFilterAdd(formula)(state.signature)
-            val translated = Parsing.processFormula(formula)(state.signature)
-            val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
-            state.setConjecture(conjectureClause)
-            val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
-              final val name: String = "neg_conjecture"
-              final val inferenceStatus = SZS_CounterTheorem
-            }, conjectureClause), ClauseAnnotation.PropSOS)
-            state.setNegConjecture(negConjectureClause)
-            conj = formula
+            if (Configuration.CONSISTENCY_CHECK) {
+              Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
+              /* skip */
+            } else {
+              // Convert and negate and add conjecture
+              import leo.modules.calculus.CalculusRule
+              Control.relevanceFilterAdd(formula)(state.signature)
+              val translated = Parsing.processFormula(formula)(state.signature)
+              val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
+              state.setConjecture(conjectureClause)
+              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
+                final val name: String = "neg_conjecture"
+                final val inferenceStatus = SZS_CounterTheorem
+              }, conjectureClause), ClauseAnnotation.PropSOS)
+              state.setNegConjecture(negConjectureClause)
+              conj = formula
+            }
           } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
         case Role_NegConjecture.pretty =>
           if (state.negConjecture == null) {
-            Control.relevanceFilterAdd(formula)(state.signature)
-            val translated = Parsing.processFormula(formula)(state.signature)
-            val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
-            state.setNegConjecture(negConjectureClause)
-            conj = formula
+            if (Configuration.CONSISTENCY_CHECK) {
+              Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
+              /* skip */
+            } else {
+              Control.relevanceFilterAdd(formula)(state.signature)
+              val translated = Parsing.processFormula(formula)(state.signature)
+              val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
+              state.setNegConjecture(negConjectureClause)
+              conj = formula
+            }
           } else throw new SZSException(SZS_InputError, "At most one (negated) conjecture per input problem is permitted.")
         case Role_Unknown.pretty =>
           throw new SZSException(SZS_InputError, s"Formula ${formula.name} has role 'unknown' which is regarded an error.")

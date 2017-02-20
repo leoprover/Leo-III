@@ -3,6 +3,7 @@ package leo.modules.parsers
 import java.io.{BufferedReader, StringReader}
 
 import leo.datastructures.tptp.Commons.{AnnotatedFormula, TPTPInput}
+import leo.datastructures.tptp.thf.{Formula => THFFormula}
 import leo.modules.SZSException
 import leo.modules.output.SZS_InputError
 
@@ -50,8 +51,23 @@ object TPTP {
    */
   def parseFile(input: String): TPTPInput = parseFile(new BufferedReader(new StringReader(input)))
 
-  def apply(input: String): AnnotatedFormula = parseFormula(input)
-  def parseFormula(input: String): AnnotatedFormula = {
+  def apply(input: String): THFFormula = {
+    import leo.modules.parsers.antlr._
+    import org.antlr.v4.runtime._
+    val inputStream = new ANTLRInputStream(input)
+    val lexer = new tptpLexer(inputStream)
+    val tokenStream = new CommonTokenStream(lexer)
+    val parser = new tptpParser(tokenStream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(new ParserErrorListener)
+    try {
+      val x = parser.thf_formula()
+      TPTPASTConstructor.thfFormula(x)
+    } catch {
+      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+    }
+  }
+  def annotatedFormula(input: String): AnnotatedFormula = {
     import leo.modules.parsers.antlr._
     import org.antlr.v4.runtime._
     val inputStream = new ANTLRInputStream(input)
@@ -67,7 +83,7 @@ object TPTP {
       case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
     }
   }
-  def parseFOF(input: String): AnnotatedFormula = {
+  def fof(input: String): AnnotatedFormula = {
     import leo.modules.parsers.antlr._
     import org.antlr.v4.runtime._
     val inputStream = new ANTLRInputStream(input)
@@ -83,7 +99,7 @@ object TPTP {
       case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
     }
   }
-  def parseTHF(input: String): AnnotatedFormula = {
+  def thf(input: String): AnnotatedFormula = {
     import leo.modules.parsers.antlr._
     import org.antlr.v4.runtime._
     val inputStream = new ANTLRInputStream(input)
@@ -99,7 +115,7 @@ object TPTP {
       case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
     }
   }
-  def parseTFF(input: String): AnnotatedFormula = {
+  def tff(input: String): AnnotatedFormula = {
     import leo.modules.parsers.antlr._
     import org.antlr.v4.runtime._
     val inputStream = new ANTLRInputStream(input)
@@ -122,8 +138,8 @@ object TPTP {
       var sourceName = recognizer.getInputStream.getSourceName
       if (sourceName != "<unknown>") sourceName = s"$sourceName:$line:$pos"
       else sourceName = s"${leo.Configuration.PROBLEMFILE}:$line:$pos"
-
-      throw new SZSException(SZS_InputError, s"$s in $sourceName", e.toString)
+      if (e == null) throw new SZSException(SZS_InputError, s"$s in $sourceName")
+      else throw new SZSException(SZS_InputError, s"$s in $sourceName", e.toString)
     }
   }
 }

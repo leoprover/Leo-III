@@ -38,6 +38,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_ATPCALLINTERVAL = "atp-call-interval"
   private val PARAM_ATPMAXJOBS = "atp-max-jobs"
   private val RENAMING = "renaming"
+  private val PARAM_CONSISTENCYCHECK = "consistency-only"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -127,6 +128,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   import leo.datastructures.{Precedence,ClauseProxyWeights,LiteralWeights}
+  lazy val CONSISTENCY_CHECK: Boolean = isSet(PARAM_CONSISTENCYCHECK)
 
   lazy val CLAUSEPROXY_WEIGHTING: ClauseProxyWeight = ClauseProxyWeights.litCount
 

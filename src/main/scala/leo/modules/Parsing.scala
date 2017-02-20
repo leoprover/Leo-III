@@ -86,7 +86,7 @@ object Parsing {
       * @return The input formula in internal TPTP syntax representation
       */
     def readFormula(formula: String): Commons.AnnotatedFormula = {
-      TPTP.parseFormula(formula)
+      TPTP.annotatedFormula(formula)
     }
 
     /**
