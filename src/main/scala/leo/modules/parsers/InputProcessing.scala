@@ -1,17 +1,15 @@
 package leo.modules.parsers
 
 import scala.language.implicitConversions
-
 import leo.Out
-import leo.datastructures.tptp.Commons.{AnnotatedFormula, Term => TPTPTerm, Variable}
-import leo.datastructures.tptp.Commons.{THFAnnotated, TPIAnnotated, TFFAnnotated, FOFAnnotated, CNFAnnotated}
-import leo.datastructures.tptp.Commons.{Var, Func, DefinedFunc, SystemFunc, Equality}
+import leo.datastructures.tptp.Commons.{AnnotatedFormula, Variable, Term => TPTPTerm}
+import leo.datastructures.tptp.Commons.{CNFAnnotated, FOFAnnotated, TFFAnnotated, THFAnnotated, TPIAnnotated}
+import leo.datastructures.tptp.Commons.{DefinedFunc, Equality, Func, SystemFunc, Var}
 import leo.datastructures._
-import Term.{mkAtom,λ,Λ, mkBound,mkTermApp}
-import Type.{mkFunType,mkType,∀,mkVarType, typeKind,mkProdType, mkUnionType}
-
+import Term.{mkApp, mkAtom, mkBound, mkTermApp, Λ, λ}
+import Type.{mkFunType, mkProdType, mkType, mkUnionType, mkVarType, typeKind, ∀}
 import leo.modules.SZSException
-import leo.modules.output.{SZS_InputError,SZS_TypeError}
+import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
 
 
 /**
@@ -65,9 +63,6 @@ object InputProcessing {
     case Role_NegConjecture => FromConjecture
     case _ => FromAxiom
   }
-  private final def singleTermToClause(t: Term, role: Role): Clause = {
-    Clause.mkClause(Seq(Literal.mkLit(t, true)), roleToClauseOrigin(role))
-  }
 
   def process(sig: Signature)(input: AnnotatedFormula): Result = {
     val p = input match {
@@ -78,7 +73,6 @@ object InputProcessing {
       case _:CNFAnnotated => processCNF(sig)(input.asInstanceOf[CNFAnnotated])
     }
     p match {
-//      case None => val role = processRole(input.role); (input.name, singleTermToClause(LitTrue, role), role)
       case None => val role = processRole(input.role); (input.name, LitTrue, role)
       case Some(res) => res
     }
@@ -89,21 +83,19 @@ object InputProcessing {
   // TPI Formula processing
   //////////////////////////
 
-  def processTPI(sig: Signature)(input: TPIAnnotated): Option[Result] = ???
-
+  def processTPI(sig: Signature)(input: TPIAnnotated): Option[Result] = throw new SZSException(SZS_Inappropriate, "TPI format not supported.")
 
   //////////////////////////
   // THF Formula processing
   //////////////////////////
 
   def processTHF(sig: Signature)(input: THFAnnotated): Option[Result] = {
-//    println(input.formula.toString)
-    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term}
+    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term, Function}
 
     input.formula match {
       case Logical(lf) if input.role == "definition" => {
         processTHFDef(sig)(lf) match {
-          case None => {
+          case None =>
             Out.info(s"No direction of definition ${input.name} detected. Treating as axiom.")
             val role = processRole("axiom")
             val res = processTHF0(sig)(lf, noRep)
@@ -111,8 +103,7 @@ object InputProcessing {
               Some((input.name, res.left.get, role))
             else
               throw new SZSException(SZS_InputError)
-          }
-          case Some((defName, defDef)) => {
+          case Some((defName, defDef)) =>
             if (sig.exists(defName)) {
               val meta = sig(defName)
               if (meta.isUninterpreted && meta._ty == defDef.ty) {
@@ -128,9 +119,14 @@ object InputProcessing {
               sig.addDefined(defName, defDef.betaNormalize.etaExpand, defDef.ty)
             }
             None
-          }
         }
                                                         }
+      case Logical(Typed(Function(atom, _),ty)) if input.role == "type" =>
+        convertTHFType(sig)(ty, noRep) match {
+          case Left(ty) => sig.addUninterpreted(atom, ty)
+          case Right(k) => sig.addTypeConstructor(atom, k)
+        }
+        None
       case Logical(Typed(Term(Func(atom, _)),ty)) if input.role == "type" => {
                                                         convertTHFType(sig)(ty, noRep) match {
                                                           case Left(ty) => sig.addUninterpreted(atom, ty)
@@ -150,8 +146,14 @@ object InputProcessing {
 
   import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
   protected[parsers] def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, Term)] = {
-    import leo.datastructures.tptp.thf.{Binary, Term, Eq}
+    import leo.datastructures.tptp.thf.{Binary, Term, Eq, Function}
     input match {
+      case Binary(Function(name, Seq()), Eq, right) =>
+        val res = processTHF0(sig)(right, noRep)
+        if (res.isLeft)
+          Some(name, res.left.get)
+        else
+          throw new SZSException(SZS_InputError, "Type detected on right side of definition statement.")
       case Binary(Term(Func(name, Seq())), Eq, right) => {
         val res = processTHF0(sig)(right, noRep)
         if (res.isLeft)
@@ -164,7 +166,7 @@ object InputProcessing {
   }
 
   protected[parsers] def processTHF0(sig: Signature)(input: THFLogicFormula, replaces: Replaces): TermOrType = {
-    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Quantified, Connective, Term, BinType, Subtype, Cond, Let, App => THFApp}
+    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Tuple, Number => THFNumber, Distinct, Function, Var => THFVar, Quantified, Connective, Term, BinType, Subtype, Cond, Let, NewLet, App => THFApp}
 
     input match {
       case Typed(f, ty) => processTHF0(sig)(f,replaces) // TODO: What to do with type information?
@@ -243,7 +245,7 @@ object InputProcessing {
       case Connective(c) => {
         c.fold(cc => Left(processTHFBinaryConn(cc)),cc => Left(processTHFUnaryConn(cc)))
       }
-      case Term(Var(name)) => termMapping(replaces).get(name) match {
+      case Term(Var(name)) => termMapping(replaces).get(name) match { // TODO: Legacy
         case None => typeMapping(replaces).get(name) match {
           case Some((k, scope))  => Type.mkVarType(scope)
           case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
@@ -253,31 +255,137 @@ object InputProcessing {
           mkBound(ty, termMapping(replaces).size + termOffset(replaces) - scope +1)
         }
       }
-      case Term(t) => processTerm(sig)(t, replaces, false)
-      case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
-      case Subtype(left,right) => ???
-      case Cond(c, thn, els) => {
-        try {
-          IF_THEN_ELSE(processTHF0(sig)(c, replaces).left.get, processTHF0(sig)(thn, replaces).left.get, processTHF0(sig)(els, replaces).left.get)
-        } catch {
-          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError,e.toString)
+      case Term(t) => processTerm(sig)(t, replaces, false) // TODO: Legacy
+      case THFVar(name) => termMapping(replaces).get(name) match {
+        case None => typeMapping(replaces).get(name) match {
+          case Some((k, scope))  => Type.mkVarType(scope)
+          case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
+        }
+        case Some((ty, scope)) => {
+          assert(typeMapping(replaces).get(name).isEmpty)
+          mkBound(ty, termMapping(replaces).size + termOffset(replaces) - scope +1)
         }
       }
-      case Let(binding, in) => Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
+      case Function(func, args) =>
+        if (func.startsWith("$$")) {
+          // system function
+          if (sig.exists(func)) {
+            val converted = args.map(processTHF0(sig)(_, replaces))
+            mkApp(mkAtom(sig(func).key)(sig), converted)
+          } else throw new SZSException(SZS_InputError, s"System function $func is unknown.")
+        } else if (func.startsWith("$")) {
+          // Defined function
+          if (!sig.exists(func)) throw new SZSException(SZS_InputError, s"Defined function $func is unknown.")
+          else {
+            val f = sig(func)
+            if (f._ty.isPolyType) {
+              val convertedArgs = args.map(processTHF0(sig)(_, replaces))
+              mkApp(mkAtom(f.key)(sig), Right(convertedArgs.head.left.get.ty) +: convertedArgs)
+            } else {
+              val convertedArgs = args.map(processTHF0(sig)(_, replaces))
+              mkApp(mkAtom(f.key)(sig), convertedArgs)
+            }
+          }
+        } else {
+          // system or plain function
+          if (sig.exists(func)) {
+            val converted = args.map(processTHF0(sig)(_, replaces))
+            mkApp(mkAtom(sig(func).key)(sig), converted)
+          } else throw new SZSException(SZS_InputError, s"Function $func is unknown, please specify its type first.")
+        }
+      case Distinct(data) => // NOTE: Side-effects may occur if this is the first occurence of '"data"'
+        if (sig.exists("\""+data+"\"")) mkAtom(sig.apply("\""+data+"\"").key)(sig)
+        else mkAtom(sig.addUninterpreted("\""+data+"\"", i))(sig)
+      case THFNumber(n) =>
+        import leo.datastructures.tptp.Commons.{IntegerNumber, DoubleNumber, RationalNumber}
+        n match {
+        case IntegerNumber(value) =>
+          val constName = s"$$$$int(${value.toString})"
+          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
+          else mkAtom(sig.addUninterpreted(constName, int))(sig)
+        case DoubleNumber(value) =>
+          val constName = s"$$$$real(${value.toString})"
+          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
+          else mkAtom(sig.addUninterpreted(constName, real))(sig)
+        case RationalNumber(p,q) =>
+          val constName = s"$$$$rational(${p.toString}/${q.toString})"
+          if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
+          else mkAtom(sig.addUninterpreted(constName, rat))(sig)
+      }
+      case Tuple(_) => Out.severe("Unsupported tuple-definition, treated as $true."); LitTrue() // TODO: New tuples
+      case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
+      case Subtype(left,right) => Out.severe("Unsupported subtype declaration, treated as $true."); LitTrue() // Not supported
+      case Cond(c, thn, els) =>
+        try {
+          val convertedCondition = processTHF0(sig)(c, replaces).left.get
+          val convertedThen = processTHF0(sig)(thn, replaces).left.get
+          val convertedElse = processTHF0(sig)(els, replaces).left.get
+          import leo.modules.HOLSignature.o
+          val conditionType = convertedCondition.ty
+          val thenType = convertedThen.ty
+          val elseType = convertedElse.ty
+          if (thenType == elseType) {
+            if (conditionType == o) {
+              import leo.datastructures.Term.{λ, mkBound}
+              import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+              Choice(λ(thenType)(&(Impl(convertedCondition, ===(mkBound(thenType, 1), convertedThen)),
+                Impl(Not(convertedCondition), ===(mkBound(thenType, 1), convertedElse)))))
+            } else throw new SZSException(SZS_TypeError, "Condition in IF-THEN-ElSE is not Boolean typed.")
+          } else throw new SZSException(SZS_TypeError, "THEN and ELSE case types do not match in IF-THEN-ELSE")
+        } catch {
+
+          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError,e.toString)
+        }
+      case Let(binding, in) => Out.severe("Unsupported let-definition in term, treated as $true."); LitTrue()
+      case NewLet(binding, leo.datastructures.tptp.thf.Logical(body)) =>
+        import leo.datastructures.tptp.thf.{Eq => THFEq}
+        var localBindingMap: Map[Function, THFLogicFormula] = Map()
+        binding.entries.foreach {
+          case Binary(f@Function(_, Seq()), THFEq, right) =>
+            localBindingMap = localBindingMap + (f -> right)
+          case _ => throw new SZSException(SZS_InputError, s"Malformed let-expression in ${input.toString}")
+        }
+        processTHF0(sig)(expandLetDefs(body, localBindingMap), replaces)
+      case _ => throw new SZSException(SZS_InputError, s"Unrecognized input ${input.toString}")
+    }
+  }
+  private final def expandLetDefs(t: THFLogicFormula, binding: Map[leo.datastructures.tptp.thf.Function, THFLogicFormula]): THFLogicFormula = {
+    import leo.datastructures.tptp.thf.{Logical, Typed, Binary, Eq, *,+ => THFSum,->,Function, Unary, BinType, Quantified, Tuple, Connective, Var => THFVar, Cond, NewLet}
+    t match {
+      case f@Function(fname,fargs) => if (binding.isDefinedAt(f)) binding(f)
+                                      else Function(fname, fargs.map(expandLetDefs(_, binding)))
+        // All other just recurse
+      case Typed(f,ty) => Typed(expandLetDefs(f, binding), expandLetDefs(ty, binding))
+      case Binary(l,op,r) => Binary(expandLetDefs(l,binding), op, expandLetDefs(r,binding))
+      case Unary(op, body) => Unary(op, expandLetDefs(body, binding))
+      case Quantified(q,v,matrix) => Quantified(q,v,expandLetDefs(matrix, binding))
+      case Tuple(entries) => Tuple(entries.map(expandLetDefs(_, binding)))
+      case Cond(cond,thn,els) => Cond(expandLetDefs(cond,binding), expandLetDefs(thn, binding), expandLetDefs(els, binding))
+      case NewLet(letBinding, Logical(body)) =>
+        val newLetBinding = Tuple(letBinding.entries.map{case Binary(f, Eq, right) // See invariant in NewLet
+        => Binary(f, Eq, expandLetDefs(right, binding))})
+        NewLet(newLetBinding, Logical(expandLetDefs(body, binding)))
+      case BinType(ty) => ty match {
+        case ->(args) => BinType(->(args.map(expandLetDefs(_, binding))))
+        case THFSum(args) => BinType(THFSum(args.map(expandLetDefs(_, binding))))
+        case *(args) => BinType(*(args.map(expandLetDefs(_, binding))))
+      }
+      case _ => t
     }
   }
 
+
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
-  final object @@@ extends HOLBinaryConnective {
+  object @@@ extends HOLBinaryConnective {
     val key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
-    val ty = ???
+    val ty = null
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
   //////
 
   import leo.datastructures.tptp.thf.{BinaryConnective => THFBinaryConnective}
   protected[parsers] def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
-    import leo.datastructures.tptp.thf.{Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
+    import leo.datastructures.tptp.thf.{:= => THFAssign, Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
     import leo.modules.HOLSignature.{<=> => equiv, Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, <~> => niff, ===, !===}
 
     conn match {
@@ -292,18 +400,23 @@ object InputProcessing {
       case THFNand  => nand
       case THFNiff  => !=== //niff
       case THFApp   => @@@
+      case THFAssign => throw new NotImplementedError("Assignment operator not supported.")
     }
   }
 
   import leo.datastructures.tptp.thf.{UnaryConnective => THFUnaryConnective}
   protected[parsers] def processTHFUnaryConn(conn: THFUnaryConnective): HOLUnaryConnective = {
-    import leo.datastructures.tptp.thf.{~ => THFNot, !! => THFAllComb, ?? => THFExistsComb}
-    import leo.modules.HOLSignature.{Not => not, Forall => forall, Exists => exists}
+    import leo.datastructures.tptp.thf.{~ => THFNot, !! => THFAllComb,
+    ?? => THFExistsComb, @@+ => THFChoiceComb, @@- => THFDescComb, @@= => THFEqComb}
+    import leo.modules.HOLSignature.{Not => not, Forall => forall, Exists => exists, Choice => choice, Description => desc, === => eq}
 
     conn match {
       case THFNot => not
       case THFAllComb => forall
       case THFExistsComb => exists
+      case THFChoiceComb => choice
+      case THFDescComb => desc
+      case THFEqComb => ???
     }
   }
 
@@ -325,12 +438,12 @@ object InputProcessing {
   private final val HOLLambda = new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
   // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature#Key = Integer.MIN_VALUE // just for fun!
-    lazy val ty = ???
+    lazy val ty = null
     override def apply(arg: Term) = arg
   }
 
   protected[parsers] def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
-    import leo.datastructures.tptp.thf.{Quantified, Term, BinType, Binary, App}
+    import leo.datastructures.tptp.thf.{Quantified, Term, Var => THFVar, Function, BinType, Binary, App}
 
     typ match {
       case Quantified(q, vars, matrix) => {
@@ -338,10 +451,10 @@ object InputProcessing {
 
         q match {
           case THFTyForAll => {
-            val processedVars = vars.map(_ match {
+            val processedVars = vars.map{
               case (name, None) => (name, Right(typeKind)) // * is assumed when no type is given
               case (name, Some(ty)) => (name, convertTHFType(sig)(ty, replaces))
-            })
+            }
             require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
             val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
               case (name, Left(ty)) => {
@@ -365,7 +478,23 @@ object InputProcessing {
           case _ => throw new SZSException(SZS_InputError, "Illegal quantifier on type level: " + typ.toString)
         }
       }
-      case Term(t) => {
+      case THFVar(name) => mkVarType(typeMapping(replaces).size + typeOffset(replaces) - typeMapping(replaces)(name)._2 + 1)
+      case Function(func, args) =>
+        if (args.nonEmpty) throw new SZSException(SZS_TypeError, s"Malformed type expression: ${typ.toString}")
+        else {
+          if (func.startsWith("$$")) {
+            if (sig.exists(func)) mkType(sig(func).key)
+            else throw new SZSException(SZS_InputError, s"Unknown system type/type operator $func")
+          } else if (func.startsWith("$")) {
+            if (func == "$tType") typeKind
+            else if (sig.exists(func)) mkType(sig(func).key)
+            else throw new SZSException(SZS_InputError, s"Unknown defined type/type operator $func")
+          } else {
+            if (sig.exists(func)) mkType(sig(func).key)
+            else throw new SZSException(SZS_InputError, s"Unknown type/type operator $func, please specify its kind before.")
+          }
+        }
+      case Term(t) => { // TODO: Legacy
         t match {
 //          case Func(k, args) => {
 //            if (sig(k).hasKind)

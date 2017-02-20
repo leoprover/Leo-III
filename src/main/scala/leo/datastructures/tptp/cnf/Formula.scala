@@ -5,7 +5,7 @@ import leo.datastructures.tptp.Commons._
 /**
  * Created by lex on 3/23/14.
  */
-case class Formula(literals: List[Literal]) {
+case class Formula(literals: Seq[Literal]) {
   override def toString = literals.mkString(" | ")
 
   val function_symbols: Set[String] = literals.toSet[Literal].flatMap(l => l.function_symbols)

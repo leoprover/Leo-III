@@ -99,5 +99,5 @@ object FormulaTakenType extends DataType[(AnnotatedFormula, Int)] {
 
 object NegateConjecture extends CalculusRule {
   override def name: String = "neg_conjecture"
-  override val inferenceStatus = Some(SZS_CounterTheorem)
+  override val inferenceStatus = SZS_CounterTheorem
 }

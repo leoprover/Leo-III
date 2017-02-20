@@ -25,6 +25,19 @@ trait MultiPriorityQueue[A] {
       case xs                                => xs foreach insert
     }
   }
+  def remove(x: A): Unit
+  def remove(xs: TraversableOnce[A]): Unit = {
+    @tailrec def loop(xs: scala.collection.LinearSeq[A]) {
+      if (xs.nonEmpty) {
+        this remove xs.head
+        loop(xs.tail)
+      }
+    }
+    xs match {
+      case xs: scala.collection.LinearSeq[_] => loop(xs)
+      case xs                                => xs foreach remove
+    }
+  }
   def addPriority(p: Ordering[A]): OrderingKey
   def priorities: Int
   def isEmpty: Boolean

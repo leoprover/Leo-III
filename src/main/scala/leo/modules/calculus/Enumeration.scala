@@ -10,7 +10,7 @@ import leo.modules.output.SZS_Theorem
   */
 object Enumeration extends CalculusRule {
   override final val name = "instance"
-  override final val inferenceStatus = Some(SZS_Theorem)
+  override final val inferenceStatus = SZS_Theorem
 
   final val REPLACE_ALL: Int = -1
   final val NO_REPLACE: Int = 0

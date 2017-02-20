@@ -22,7 +22,7 @@ object FOIndex {
   final def typedFirstOrder(cl: ClauseProxy)(implicit sig: Signature): Boolean = typedFirstOrder0(cl.cl.implicitlyBound, cl.cl.typeVars, cl.cl.lits)(sig)
 
   import leo.datastructures.{Literal, Type, Term}
-  private final def typedFirstOrder0(fvs: Seq[(Int, Type)], tyFvs: Set[Int], lits: Seq[Literal])(sig: Signature): Boolean = {
+  private final def typedFirstOrder0(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], lits: Seq[Literal])(sig: Signature): Boolean = {
     if (tyFvs.nonEmpty) return false
     val litIt = lits.iterator
     while (litIt.hasNext) {

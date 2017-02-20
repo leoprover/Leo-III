@@ -3,7 +3,7 @@ package leo.modules.relevance_filter
 import leo.datastructures.tptp.tff.Atomic
 import leo.datastructures.{Role_Definition}
 import leo.datastructures.tptp.Commons._
-import leo.datastructures.tptp.thf.{Eq, Term, Binary}
+import leo.datastructures.tptp.thf.{Eq, Term, Binary, Function}
 
 /**
   *
@@ -149,6 +149,7 @@ object PreFilterSet {
         case f : THFAnnotated =>
           import leo.datastructures.tptp.thf.Logical
           f.formula match {
+            case Logical(Binary(Function(name, Seq()), Eq, right)) => Some(name)
           case Logical(Binary(Term(Func(name, Seq())), Eq, right)) => Some(name)
           case _ => None
         }

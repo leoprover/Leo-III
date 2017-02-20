@@ -9,6 +9,7 @@ import leo.datastructures._
 import leo.datastructures.context.Context
 import leo.modules.output._
 
+import scala.annotation.elidable
 import scala.collection.immutable.HashSet
 
 /**
@@ -161,7 +162,7 @@ object Utility {
   /////////////////////////////////////////////////////////////
 
   @inline final def termToClause(t: Term, polarity: Boolean = true): Clause = {
-    Clause.mkClause(Seq(Literal.mkLit(t, polarity)))
+    Clause.mkClause(Vector(Literal.mkLit(t, polarity)))
   }
 
   @inline final def isPattern(t: Term): Boolean = modules.calculus.PatternUnification.isPattern(t)
@@ -173,6 +174,9 @@ object Utility {
     e.printStackTrace(new PrintWriter(sw))
     sw.toString
   }
+
+  @elidable(elidable.FINE) final def myAssert(condition: => Boolean): Unit = {assert(condition)}
+  @elidable(elidable.FINE) final def myAssert(condition: => Boolean, msg: => String): Unit = {assert(condition, msg)}
 
   /////////////////////////////////////////////////////////////
   /// Old, unused and should soon get deleted or moved to a reasonable location:

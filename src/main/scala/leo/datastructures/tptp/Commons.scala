@@ -61,7 +61,7 @@ object Commons {
     override val function_symbols : Set[String] = formula.function_symbols
   }
 
-  type Annotations = Option[(Source, List[GeneralTerm])]
+  type Annotations = Option[(Source, Seq[GeneralTerm])]
   type Role = String
 
   // First-order atoms
@@ -93,16 +93,16 @@ object Commons {
   sealed abstract class Term {
     def function_symbols : Set[String]
   }
-  case class Func(name: String, args: List[Term]) extends Term {
+  case class Func(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
 
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
-  case class DefinedFunc(name: String, args: List[Term]) extends Term {
+  case class DefinedFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
-  case class SystemFunc(name: String, args: List[Term]) extends Term {
+  case class SystemFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
   }
@@ -118,14 +118,27 @@ object Commons {
     override def toString = data.toString
     override val function_symbols: Set[String] =  Set()
   }
+  /** Used by TFF only */
   case class Cond(cond: tff.LogicFormula, thn: Term, els: Term) extends Term {
     override def toString = "$ite_t(" + List(cond,thn,els).mkString(",") + ")"
     override val function_symbols: Set[String] =  cond.function_symbols union thn.function_symbols union els.function_symbols
-  } // Cond used by TFF only
-  // can Let be modeled like this?
-  case class Let(let: tff.LetBinding, in: Term) extends Term {
-    override def function_symbols: Set[String] = let.function_symbols union in.function_symbols
-  } // Let used by TFF only
+  }
+  /** Used by TFF only */
+  case class Let(binding: tff.Formula#LetBinding, in: Term) extends Term {
+    override val function_symbols: Set[String] = {
+      val (definedSymbols, newSymbols) = binding.fold({ fBinding =>
+        (fBinding.keySet.map(_.name), fBinding.values.toSet.flatMap{x:tff.LogicFormula => x.function_symbols})
+      }, { tBinding =>
+        (tBinding.keySet.map(_.name), tBinding.values.toSet.flatMap{x:Term => x.function_symbols})
+      })
+      (in.function_symbols -- definedSymbols) union newSymbols
+    }
+  }
+  case class Tuple(entries: Seq[Term]) extends Term {
+    override def toString: Role = s"{${entries.map(_.toString).mkString(",")}"
+
+    override def function_symbols: Set[String] = entries.flatMap(_.function_symbols).toSet
+  }
 
   type Variable = String
 
@@ -144,13 +157,13 @@ object Commons {
   type Source = GeneralTerm
 
   // Include directives
-  type Include = (String, List[Name])
+  type Include = (String, Seq[Name])
 
   // Non-logical data (GeneralTerm, General data)
-  sealed case class GeneralTerm(term: List[Either[GeneralData, List[GeneralTerm]]]) {
+  sealed case class GeneralTerm(term: Seq[Either[GeneralData, Seq[GeneralTerm]]]) {
     override def toString = term.map(gt2String).mkString(":")
 
-    def gt2String(in: Either[GeneralData, List[GeneralTerm]]): String = in match {
+    def gt2String(in: Either[GeneralData, Seq[GeneralTerm]]): String = in match {
       case Left(data) => data.toString
       case Right(termList) => "[" + termList.mkString(",") +"]"
     }
@@ -161,7 +174,7 @@ object Commons {
   case class GWord(gWord: String) extends GeneralData {
     override def toString = gWord
   }
-  case class GFunc(name: String, args: List[GeneralTerm]) extends GeneralData {
+  case class GFunc(name: String, args: Seq[GeneralTerm]) extends GeneralData {
     override def toString = funcToString(name, args)
   }
   case class GVar(gVar: Variable) extends GeneralData {
@@ -199,18 +212,17 @@ object Commons {
 
 
   ///////// String representation functions ///////////
-  def funcToString(name:String, args: List[Any]) = args match {
-    case List()     => name
-    case _          => name + "(" + args.mkString(",") + ")"
+  final def funcToString(name:String, args: Seq[Any]): String = if (args.isEmpty) name
+  else s"$name(${args.mkString(",")})"
+
+  final def annoToString(anno: Option[(Source, Seq[GeneralTerm])]): String = if (anno.isEmpty) ""
+  else {
+    val (src, termList) = anno.get
+    s",${src.toString},[${termList.mkString(",")}]"
   }
 
-  def annoToString(anno: Option[(Source, List[GeneralTerm])]) = anno match {
-    case None => ""
-    case Some((src, termList)) => "," + src.toString + ",[" + termList.mkString(",") + "]"
-  }
-
-  def typedVarToString(input: (Variable,Option[Any])) = input match {
+  final def typedVarToString(input: (Variable,Option[Any])): String = input match {
     case (v, None) => v.toString
-    case (v, Some(typ)) => v.toString + " : " + typ.toString
+    case (v, Some(typ)) => s"${v.toString} : ${typ.toString}"
   }
 }

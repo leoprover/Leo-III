@@ -1,9 +1,7 @@
 package leo.modules.relevance_filter
 
 import leo.LeoTestSuite
-import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.parsers.TPTP
-import leo.modules.HOLSignature._
 
 /**
   * Created by mwisnie on 1/9/17.
@@ -11,19 +9,10 @@ import leo.modules.HOLSignature._
 class RelevanceFilterTest extends LeoTestSuite {
   test("One Step Delta Expansion"){
     PreFilterSet.clear()
-    val definition1 = TPTP.parseFormula("thf(d1_defn, definition, (d1 = (a & b))).") match {
-      case Left(msg) => fail(msg)
-      case Right(form) => form
-    }
-    val definition2 = TPTP.parseFormula("thf(d2_defn, definition, (d2 = (c & d))).") match {
-      case Left(msg) => fail(msg)
-      case Right(form) => form
-    }
+    val definition1 = TPTP.annotatedFormula("thf(d1_defn, definition, (d1 = (a & b))).")
+    val definition2 = TPTP.annotatedFormula("thf(d2_defn, definition, (d2 = (c & d))).")
 
-    val formula = TPTP.parseFormula("thf(c, conjecture, (d1 & d2)).") match {
-      case Left(msg) => fail(msg)
-      case Right(form) => form
-    }
+    val formula = TPTP.annotatedFormula("thf(c, conjecture, (d1 & d2)).")
 
     PreFilterSet.addNewFormula(definition1)
     PreFilterSet.addNewFormula(definition2)
@@ -40,19 +29,10 @@ class RelevanceFilterTest extends LeoTestSuite {
 
   test("Two Step Delta Expansion"){
     PreFilterSet.clear()
-    val definition1 = TPTP.parseFormula("thf(d1_defn, definition, (d1 = (a & b))).") match {
-      case Left(msg) => fail(msg)
-      case Right(form) => form
-    }
-    val definition2 = TPTP.parseFormula("thf(d2_defn, definition, (d2 = (d1 & c))).") match {
-      case Left(msg) => fail(msg)
-      case Right(form) => form
-    }
+    val definition1 = TPTP.annotatedFormula("thf(d1_defn, definition, (d1 = (a & b))).")
+    val definition2 = TPTP.annotatedFormula("thf(d2_defn, definition, (d2 = (d1 & c))).")
 
-    val formula = TPTP.parseFormula("thf(c, conjecture, (d & d2)).") match {
-      case Left(msg) => fail(msg)
-      case Right(form) => form
-    }
+    val formula = TPTP.annotatedFormula("thf(c, conjecture, (d & d2)).")
 
     PreFilterSet.addNewFormula(definition1)
     PreFilterSet.addNewFormula(definition2)

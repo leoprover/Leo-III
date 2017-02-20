@@ -10,7 +10,7 @@ import leo.datastructures.tptp.Commons.AnnotatedFormula
   */
 object RelevanceFilter {
 
-  val std_passmark = 0.55  // TODO Experiment, but these are the values of the 'Lightweight Relevance Filtering for Machine-Generated Resolution Problems' paper
+  val std_passmark = 0.56  // TODO Experiment, but these are the values of the 'Lightweight Relevance Filtering for Machine-Generated Resolution Problems' paper
   val std_aging = 2.35 //2.4
 
   /**

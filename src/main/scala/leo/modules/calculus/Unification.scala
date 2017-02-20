@@ -36,7 +36,7 @@ trait Unification {
   def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
 
   /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
-  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Seq((t,s)))
+  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Vector((t,s)))
 
   /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
   def unify(constraints: Seq[UTEq]): Option[TypeSubst]
@@ -100,7 +100,7 @@ object HuetsPreUnification extends Unification {
     // 1. check if types are unifiable
     val t_ty = t1.ty
     val s_ty = t1.ty
-    val initialTypeSubst = tyDetExhaust(Seq((t_ty, s_ty)), Subst.id)
+    val initialTypeSubst = tyDetExhaust(Vector((t_ty, s_ty)), Subst.id)
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)
       Iterable.empty
@@ -108,7 +108,7 @@ object HuetsPreUnification extends Unification {
       val initialTypeSubst0 = initialTypeSubst.get
       val t = t1.substitute(Subst.id, initialTypeSubst0).etaExpand
       val s = s1.substitute(Subst.id, initialTypeSubst0).etaExpand
-      new NDStream[UnificationResult](new MyConfiguration(Seq((t,s)), Seq(), Seq(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
+      new NDStream[UnificationResult](new MyConfiguration(Vector((t,s)), Vector(), Vector(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
     }
   }
 
@@ -121,7 +121,7 @@ object HuetsPreUnification extends Unification {
     else {
       val initialTypeSubst0 = initialTypeSubst.get
       val constraints0 = constraints.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
-      new NDStream[UnificationResult](new MyConfiguration(constraints0, Seq(), Seq(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
+      new NDStream[UnificationResult](new MyConfiguration(constraints0.toVector, Vector(), Vector(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
     }
 
   }
@@ -139,18 +139,18 @@ object HuetsPreUnification extends Unification {
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (fail, flexRigid, flexFlex, partialUnifier, partialTyUnifier) = detExhaust(conf.unprocessed,
                                                                                           conf.flexRigid, conf.flexFlex,
-                                                                                          conf.solved, Seq(), conf.solvedTy)
+                                                                                          conf.solved, Vector(), conf.solvedTy)
       leo.Out.finest(s"Finished detExhaust")
       // if uTyProblems is non-empty fail
       if (fail) {
-        leo.Out.debug(s"Unification failed.")
+        leo.Out.trace(s"Unification failed.")
         Seq()
       } else {
         // if there is no unsolved equation (other than flex-flex), then succeed
         if (flexRigid.isEmpty) {
-          leo.Out.debug(s"Unification finished")
-          leo.Out.debug(s"\tTerm substitution ${partialUnifier.normalize.pretty}")
-          leo.Out.debug(s"\tType substitution ${partialTyUnifier.normalize.pretty}")
+          leo.Out.trace(s"Unification finished")
+          leo.Out.finest(s"\tTerm substitution ${partialUnifier.normalize.pretty}")
+          leo.Out.finest(s"\tType substitution ${partialTyUnifier.normalize.pretty}")
           Seq(new MyConfiguration(((partialUnifier.normalize, initialTypeSubst.comp(partialTyUnifier).normalize), flexFlex)))
         }
         // else do flex-rigid cases
@@ -161,14 +161,14 @@ object HuetsPreUnification extends Unification {
           import  scala.collection.mutable.ListBuffer
           val lb = new ListBuffer[MyConfiguration]
           // compute the imitate partial binding and add the new configuration
-          if (ImitateRule.canApply(head)) lb.append(new MyConfiguration(Seq(ImitateRule(vargen, head)), flexRigid, flexFlex,
+          if (ImitateRule.canApply(head)) lb.append(new MyConfiguration(Vector(ImitateRule(vargen, head)), flexRigid, flexFlex,
             partialUnifier, partialTyUnifier, conf.searchDepth+1))
 
           // compute all the project partial bindings and add them to the return list
-          ProjectRule(vargen, head).foreach (e => lb.append(new MyConfiguration(Seq(e), flexRigid, flexFlex,
+          ProjectRule(vargen, head).foreach (e => lb.append(new MyConfiguration(Vector(e), flexRigid, flexFlex,
             partialUnifier, partialTyUnifier, conf.searchDepth+1)))
 
-          lb.toList
+          lb.toVector
         }
       }
     }
@@ -239,8 +239,8 @@ object HuetsPreUnification extends Unification {
           leo.Out.finest("Apply delete")
           detExhaust(unprocessed.tail, flexRigid, flexFlex, solved, uTyProblems, solvedTy)
         } else {
-          val left = head0._1
-          val right = head0._2
+          val left = head0._1.etaExpand
+          val right = head0._2.etaExpand
 
           val (leftBody, leftAbstractions) = collectLambdas(left)
           val (rightBody, rightAbstractions) = collectLambdas(right)
@@ -259,7 +259,7 @@ object HuetsPreUnification extends Unification {
               leo.Out.finest(s"Bind: ${subst.pretty}")
               detExhaust(
                 applySubstToList(subst, Subst.id, flexRigid.map(e => (e._1, e._2)) ++ flexFlex ++ unprocessed.tail),
-                Seq(), Seq(),
+                Vector(), Vector(),
                 solved.comp(subst), uTyProblems, solvedTy)
             } else {
               // ... move to according list if nothing applies
@@ -393,7 +393,27 @@ object HuetsPreUnification extends Unification {
       case _ => throw new IllegalArgumentException("impossible")
     }
     final def canApply(e: UEq, depth: Depth): Boolean = e match {
-      case (hd1 ∙ _, hd2 ∙ _) if hd1 == hd2 => !isFlexible(hd1, depth)
+      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 && !isFlexible(hd1, depth) => if (!hd1.ty.isPolyType) true else {
+        // If head symbols are polymorphic we need to check if the applied type arguments
+        // are "compatible" in the sense that the resulting new unsolved equations are
+        // have the same type arity. otherwise lambda-detaching in apply(.) is not even and will fail.
+        // (they are not necessarily well-typed, since the new unsolved type equations are not yet solved)
+        var hd1PrefixTypeArgs = args1.takeWhile(_.isRight).map(_.right.get)
+        var hd2PrefixTypeArgs = args2.takeWhile(_.isRight).map(_.right.get)
+        assert(hd1PrefixTypeArgs.size == hd2PrefixTypeArgs.size)
+        while(hd1PrefixTypeArgs.nonEmpty) {
+          val hd1type = hd1PrefixTypeArgs.head
+          val hd2type = hd2PrefixTypeArgs.head
+          /* TODO: This is too restrictive: If the last type in hd[1/2]type.funParamTypesWithResultType.last is a variable
+           * we can (try to) bind it accordingly using type unification directly. */
+          if (hd1type.arity != hd2type.arity) return false
+          else {
+            hd1PrefixTypeArgs = hd1PrefixTypeArgs.tail
+            hd2PrefixTypeArgs = hd2PrefixTypeArgs.tail
+          }
+        }
+        true
+      }
       case _ => false
     }
   }
@@ -445,14 +465,6 @@ object HuetsPreUnification extends Unification {
     */
   object ImitateRule {
     import leo.datastructures.Term.{∙, :::>}
-
-    private final def takePrefixTypeArguments(t: Term): Seq[Type] = {
-      t match {
-        case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
-        case _ :::> body  => takePrefixTypeArguments(body)
-        case _ => Seq()
-      }
-    }
 
     final def apply(vargen: FreshVarGen, e: UEq0): UEq = {
       import leo.datastructures.Term.Bound
@@ -538,6 +550,16 @@ object HuetsPreUnification extends Unification {
         }
   }
 
+  @tailrec
+  private final def takePrefixTypeArguments(t: Term): Seq[Type] = {
+    import leo.datastructures.Term.{∙,:::>}
+    t match {
+      case _ ∙ args => args.takeWhile(_.isRight).map(_.right.get)
+      case _ :::> body  => takePrefixTypeArguments(body)
+      case _ => Seq()
+    }
+  }
+
 //  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
 //    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst), e._3))
   @inline protected[calculus] final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[(Term, Term)]): Seq[(Term, Term)] =
@@ -547,7 +569,7 @@ object HuetsPreUnification extends Unification {
 
   protected[calculus] final def zipArgumentsWithAbstractions(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]],
                                                  abstractions: Seq[Type]): (Seq[UEq], Seq[UTEq]) =
-    zipArgumentsWithAbstractions0(l,r,abstractions, Seq(), Seq())
+    zipArgumentsWithAbstractions0(l,r,abstractions, Vector(), Vector())
 
   @tailrec @inline
   private final def zipArgumentsWithAbstractions0(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]],
@@ -590,7 +612,7 @@ object PatternUnification extends Unification {
     // 1. check if types are unifiable
     val t_ty = t1.ty
     val s_ty = t1.ty
-    val initialTypeSubst = tyDetExhaust(Seq((t_ty, s_ty)), Subst.id)
+    val initialTypeSubst = tyDetExhaust(Vector((t_ty, s_ty)), Subst.id)
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)
       Iterable.empty
@@ -598,7 +620,7 @@ object PatternUnification extends Unification {
       val initialTypeSubst0 = initialTypeSubst.get
       val t = t1.substitute(Subst.id, initialTypeSubst0).etaExpand
       val s = s1.substitute(Subst.id, initialTypeSubst0).etaExpand
-      val unifyResult = unify0(Seq((t,s)),initialTypeSubst0, vargen)
+      val unifyResult = unify0(Vector((t,s)),initialTypeSubst0, vargen)
       if (unifyResult.isDefined) Seq(unifyResult.get)
       else Iterable.empty
     }
@@ -614,7 +636,7 @@ object PatternUnification extends Unification {
       val initialTypeSubst0 = initialTypeSubst.get
       leo.Out.trace(s"initialTypeSubst0: ${initialTypeSubst0.pretty}")
       val constraints0 = constraints.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
-      val unifyResult = unify0(constraints0,initialTypeSubst0, vargen)
+      val unifyResult = unify0(constraints0.toVector,initialTypeSubst0, vargen)
       if (unifyResult.isDefined) Seq(unifyResult.get)
       else Iterable.empty
     }
@@ -622,7 +644,7 @@ object PatternUnification extends Unification {
 
   /** Wrap up the unification result with the initial type substition and return as Option. */
   private final def unify0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[UnificationResult] = {
-    val unifier = unify1(ueqs, Seq(), vargen, Subst.id, Subst.id)
+    val unifier = unify1(ueqs, Vector(), vargen, Subst.id, Subst.id)
     if (unifier.isDefined)
       Some((unifier.get._1.normalize, initialTypeSubst.comp(unifier.get._2).normalize), Seq())
     else
@@ -640,7 +662,7 @@ object PatternUnification extends Unification {
       val tyUnifier = tyDetExhaust(uTyEqs, partialTyUnifier)
       if (tyUnifier.isDefined) {
         val tyUnifier0 = tyUnifier.get
-        unify1(applySubstToList(Subst.id, tyUnifier0, ueqs), Seq(), vargen, partialUnifier.applyTypeSubst(tyUnifier0), partialTyUnifier.comp(tyUnifier0))
+        unify1(applySubstToList(Subst.id, tyUnifier0, ueqs), Vector(), vargen, partialUnifier.applyTypeSubst(tyUnifier0), partialTyUnifier.comp(tyUnifier0))
       }
       else None
     } else {
@@ -650,8 +672,8 @@ object PatternUnification extends Unification {
         val (l0,r0) = ueqs.head
         if (l0 == r0) unify1(ueqs.tail, uTyEqs, vargen, partialUnifier, partialTyUnifier)
         else {
-          val l = l0.substitute(partialUnifier, partialTyUnifier)
-          val r = r0.substitute(partialUnifier, partialTyUnifier)
+          val l = l0.substitute(partialUnifier, partialTyUnifier).etaExpand
+          val r = r0.substitute(partialUnifier, partialTyUnifier).etaExpand
           leo.Out.trace(s"solve: ${l.pretty} = ${r.pretty}")
           // take off the lambdas
           val (leftBody, leftAbstractions) = collectLambdas(l)
@@ -873,7 +895,7 @@ object PatternUnification extends Unification {
     }
   }
   private final def splitArgs(args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) =
-    splitArgs0(args, Seq(), Seq())
+    splitArgs0(args, Vector(), Vector())
   private final def splitArgs0(args: Seq[Either[Term, Type]], tyArgs: Seq[Type], termArgs: Seq[Term]): (Seq[Type], Seq[Term]) = {
     if (args.isEmpty) (tyArgs, termArgs)
     else {

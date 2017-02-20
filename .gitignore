@@ -23,6 +23,9 @@ out/*
 project/project/*
 project/target/*
 
+# Generated parser files
+src/main/java/leo/modules/parsers/antlr/*
+
 # Save Formats
 *.swp
 *~

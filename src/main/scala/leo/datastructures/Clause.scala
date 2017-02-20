@@ -15,7 +15,8 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   def maxImplicitlyBound: Int
   /** The implicitly (universally) quantified type variables.
     * It is assumed that we are in rank-1 polymorphism. */
-  def typeVars: Set[Int]
+  def typeVars: Seq[Int]
+  def maxTypeVar: Int
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
@@ -26,8 +27,8 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   def negLits: Seq[Literal]
 
   // Operations on clauses
-  def substitute(s : Subst) : Clause = Clause.mkClause(lits.map(_.substitute(s)))
-  def substituteOrdered(s : Subst)(implicit sig: Signature) : Clause = Clause.mkClause(lits.map(_.substituteOrdered(s)(sig)))
+  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Clause = Clause.mkClause(lits.map(_.substitute(termSubst, typeSubst)))
+  def substituteOrdered(termSubst: Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature): Clause = Clause.mkClause(lits.map(_.substituteOrdered(termSubst, typeSubst)(sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
   @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
@@ -68,7 +69,7 @@ object Clause {
   @inline final def mkUnit(lit: Literal): Clause = mkClause(Vector(lit), Derived)
 
   /** The empty clause. */
-  @inline final val empty = mkClause(Seq.empty)
+  @inline final val empty: Clause = mkClause(Seq.empty)
 
   // Utility
   /** Returns true iff clause `c` is empty. */

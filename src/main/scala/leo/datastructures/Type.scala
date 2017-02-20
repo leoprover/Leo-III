@@ -111,7 +111,7 @@ object Type {
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
   final def mkType(identifier: Signature#Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
   /** Create type with name `identifier`. */
-  final def mkType(identifier: Signature#Key): Type = mkType(identifier, Seq())
+  final def mkType(identifier: Signature#Key): Type = mkType(identifier, Seq.empty)
 
   /** Build type `in -> out`. */
   final def mkFunType(in: Type, out: Type): Type = TypeImpl.mkFunType(in, out)

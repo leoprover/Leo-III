@@ -34,7 +34,7 @@ trait TptpProver[C <: ClauseProxy] {
     * Calls the external prover on a set of formulas assumed to be correct.
     *
     * @param problem the set of formulas to be checked.
-    * @param timeout the timeout for the prover in milliseconds
+    * @param timeout the timeout for the prover in seconds
     * @param args additional arguments for the prover
     * @param sig the current signature
     * @return A Future with the result of the prover.
@@ -50,7 +50,7 @@ trait TptpProver[C <: ClauseProxy] {
     * Important are the nameing of the timeout and where to put the problem file.
     *
     * @param args Additional arguments for the prover
-    * @param timeout The timeout in milliseconds
+    * @param timeout The timeout in seconds
     * @param problemFileName The name of the problemfile in TPTP syntax
     * @return
     */
@@ -165,7 +165,7 @@ trait TptpProver[C <: ClauseProxy] {
 
   class SZSKillFuture(process : KillableProcess, originalProblem : Set[C], timeout : Int) extends Future[TptpResult[C]] {
 
-    private var result : TptpResult[C] = null
+    private var result : TptpResult[C] = _
     private var isTerminated = false    // If this is true, result has been set
     private val startTime = System.currentTimeMillis()
     private lazy val timeoutMilli = (timeout + ExternalProver.WAITFORTERMINATION) * 1000
@@ -223,19 +223,19 @@ trait TptpResult[C <: ClauseProxy] {
     * The name of the original prover called..
     * @return prover name
     */
-  val proverName : String
+  def proverName : String
 
   /**
     * The path of the original prover.
     * @return prover path
     */
-  val proverPath : String
+  def proverPath : String
 
   /**
     * Returns the original problem, passed to the external prover
     * @return
     */
-  val problem : Set[C]
+  def problem : Set[C]
 
   /**
     * The SZS status of the external prover if one was set
@@ -243,27 +243,27 @@ trait TptpResult[C <: ClauseProxy] {
     *
     * @return SZSStatus of the problem
     */
-  val szsStatus : StatusSZS
+  def szsStatus : StatusSZS
 
   /**
     * The exit value of the prover
     * @return Passed through exitValue
     */
-  val exitValue : Int
+  def exitValue : Int
 
   /**
     * The complete system output of the prover.
     *
     * @return system out
     */
-  val output : Iterable[String]
+  def output : Iterable[String]
 
   /**
     * The complete system error of the prover
     *
     * @return system err
     */
-  val error : Iterable[String]
+  def error : Iterable[String]
 }
 
 /**

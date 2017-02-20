@@ -80,6 +80,6 @@ class SeqFilterPhase extends Phase {
 }
 
 object NegateConjecture extends CalculusRule {
-  override def name: String = "neg_conjecture"
-  override val inferenceStatus = Some(SZS_CounterTheorem)
+  final val name: String = "neg_conjecture"
+  final val inferenceStatus = SZS_CounterTheorem
 }

@@ -57,6 +57,14 @@ To build Leo-III run:
 
     > sbt compile
     > sbt nativeCompile
+    
+The compiled output will be placed at `./target/classes`.
+Alternatively, the build Leo-III for debugging purposes, run
+
+    > sbt debugCompile
+    
+This will include output for fine-grained debug logging messages which granularity
+can be controlled by the `-v` parameter (see Usage below).
 
 Leo-III can then be started by executing
 
@@ -65,13 +73,17 @@ Leo-III can then be started by executing
 use quotation marks to pass arguments to LEO-III
 
     > sbt "run test.thf --seq"
+    
+Note that `sbt run` is only supported for the non-debug build of Leo-III. To run
+the debug version, simply start Leo-III using a stand-alone debug jar (as shown below).
 
 To run the unit tests call
 
     > sbt test
 
 It is possible to generate a standalone `.jar` file which
-contains all dependencies required by Leo-III.
+contains all dependencies required by Leo-III (analogously
+with `sbt debugAssembly`).
 
     > sbt assembly
     > java -jar target/scala-2.11/Leo\ III-assembly-0.1.jar
@@ -97,38 +109,25 @@ To test the bindings run:
     > sbt "testOnly leo.modules.sat_solver.PicoSATTestSuite"
 
 
-Building the project (Maven)
+Usage
 ----------------
+```
+Leo III -- A Higher-Order Theorem Prover.
+Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.
 
-:boom: Building with Maven is currently broken. :boom:
-
-Alternatively [Maven](http://maven.apache.org/) can be
-used to build Leo-III. This option is now deprecated and will be
-removed in the future. Information about downloading and
-installing Maven can be found at [the download section of
-the maven website](http://maven.apache.org/download.cgi).
-
-The project is compiled and built into an executable `.jar` file using
-
-    > mvn compile assembly::single
-
-Or, alternatively, the makefile can be used. Invoking
-
-    > make
-
-will result in the same `.jar`
-
-All test suits are ran by
-
-    > mvn test
-
-The compiled test class files will be placed at `./target/test-classes/`.
-
-The sole compilation process can be started by typing
-
-    > mvn compile
-
-The compiled files (class files) will be placed at `./target/classes/`.
+Usage: ... PROBLEM_FILE [OPTIONS]
+Options:
+-e name=N, --atp-timout name=N		Timeout for an external prover in seconds.
+-s, --sos 		Use SOS heuristic search strategy
+-n N		Maximum number of threads
+-t N		Timeout in seconds
+-a name=call, --atp name=call		Addition of external provers
+-v Lvl		Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)
+-p		Display proof output
+-c Csat		Sets the proof mode to counter satisfiable (Through remote proof
+-h		Display this help message
+```
+Note that verbosity levels greater than 3 are only supported in debug builds.
 
 
 Project's current structure
