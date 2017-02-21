@@ -220,7 +220,7 @@ object SeqPProc {
         }
       }
       // Read problem from file
-      val input2 = Input.readProblem(Configuration.PROBLEMFILE)
+      val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()
       // Split input in conjecture/definitions/axioms etc.
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)

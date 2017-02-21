@@ -26,9 +26,9 @@ class MonotonicityTest extends LeoTestSuite {
     sig.addUninterpreted("b2", Type.mkFunType(monkey, banana))
 
     // create formulae
-    val f1 = Input.parseThf("! [M: monkey]: ((owns @ M @ (b1 @ M)) & (owns @ M @ (b2 @ M)))")
-    val f2 = Input.parseThf("! [M: monkey]: ((b1 @ M) != (b2 @ M))")
-    val f3 = Input.parseThf("! [M1: monkey, M2: monkey, B: banana]:" +
+    val f1 = Input.readFormula("! [M: monkey]: ((owns @ M @ (b1 @ M)) & (owns @ M @ (b2 @ M)))")
+    val f2 = Input.readFormula("! [M: monkey]: ((b1 @ M) != (b2 @ M))")
+    val f3 = Input.readFormula("! [M1: monkey, M2: monkey, B: banana]:" +
       " (((owns @ M1 @ B) & (owns @ M2 @ B)) => (M1 = M2))")
 
     assert(Term.wellTyped(f1))
@@ -65,10 +65,10 @@ class MonotonicityTest extends LeoTestSuite {
     sig.addUninterpreted("tl", ∀(Type.mkType(list, X) ->: Type.mkType(list, X)))
 
     // create formulae
-    val f1 = Input.parseThf("! [A: $tType, X: A, Xs: (list @ A)]: ((nil @ A) != (cons @ A @ X @ Xs))")
-    val f2 = Input.parseThf("! [A: $tType, Xs: (list @ A)]: ((Xs = (nil @ A)) | (? [Y:A, Ys: (list @ A)]: (" +
+    val f1 = Input.readFormula("! [A: $tType, X: A, Xs: (list @ A)]: ((nil @ A) != (cons @ A @ X @ Xs))")
+    val f2 = Input.readFormula("! [A: $tType, Xs: (list @ A)]: ((Xs = (nil @ A)) | (? [Y:A, Ys: (list @ A)]: (" +
       "Xs = (cons @ A @ Y @ Ys))))")
-    val f3 = Input.parseThf("! [A: $tType, X: A, Xs: (list @ A)]: (((hd @ A @ (cons @ A @ X @ Xs)) = X) & " +
+    val f3 = Input.readFormula("! [A: $tType, X: A, Xs: (list @ A)]: (((hd @ A @ (cons @ A @ X @ Xs)) = X) & " +
       "((tl @ A @ (cons @ A @ X @ Xs)) = (Xs)))")
 
     assert(Term.wellTyped(f1))

@@ -39,11 +39,11 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
 
         val it : Iterator[AnnotatedFormula] = {
           if (Files.exists(Input.canonicalPath(prob)))
-            Input.readProblem(prob).iterator
+            Input.parseProblem(prob).iterator
           else {
             val tptpFile = Input.tptpHome.resolve(prob)
             if(Files.exists(tptpFile)) {
-              Input.readProblem(Input.tptpHome.resolve(prob).toString).iterator
+              Input.parseProblem(Input.tptpHome.resolve(prob).toString).iterator
             } else {
               throw new SZSException(SZS_InputError, s"The file ${prob} does not exist.")
             }

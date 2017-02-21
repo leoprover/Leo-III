@@ -23,7 +23,7 @@ object RunExternalProver {
     val p = ExternalProver.createProver(name,path)
 
     implicit val s = Signature.freshWithHOL()
-    val input = Input.readProblem(Configuration.PROBLEMFILE)
+    val input = Input.parseProblem(Configuration.PROBLEMFILE)
     val input2 = Input.processProblem(input)
     var exSeq : Seq[AnnotatedClause] = Seq()
     val it = input2.iterator

@@ -24,7 +24,7 @@ class CNFTestSuite extends LeoTestSuite {
   for(p <- testProblems)
     test(s"Test : ($p)", Checked) {
       implicit val sig: Signature = getFreshSignature
-      val (_,l,_) = Input.parseFormula(p)
+      val (_,l,_) = Input.readAnnotated(p)
       val s : StringBuilder = new StringBuilder
       s.append("CNF on\n  ")
       val pc = Clause(Literal(l,true))
