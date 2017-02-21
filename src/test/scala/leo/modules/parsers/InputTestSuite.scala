@@ -9,7 +9,7 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, Ignored, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.SignatureImpl
-import leo.modules.{Parsing, Utility}
+import leo.modules.Utility
 
 /**
  * This suite tests the parsing and input processing of all the TPTP dialects except for CNF.

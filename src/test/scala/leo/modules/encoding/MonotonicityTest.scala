@@ -2,7 +2,7 @@ package leo.modules.encoding
 
 import leo.{Checked, Ignored, LeoTestSuite}
 import leo.datastructures.{Signature, Term, Type}
-import leo.modules.Parsing
+import leo.modules.parsers.Parsing
 
 /**
   * Checks whether the [[leo.modules.encoding.Monotonicity]] inference rules work as expected.

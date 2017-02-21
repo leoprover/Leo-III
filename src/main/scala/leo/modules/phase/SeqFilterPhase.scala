@@ -5,17 +5,12 @@ import leo.agents.Agent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
 import leo.datastructures.blackboard.{Blackboard, ClauseType, SignatureBlackboard}
-import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.context.Context
-import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.{Parsing, SZSException}
-import leo.modules.agent.relevance_filter.{AnnotatedFormulaType, BlackboardPreFilterSet, RelevanceFilterAgent}
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.{SZS_CounterTheorem, SZS_Error}
+import leo.modules.output.SZS_CounterTheorem
 import leo.modules.parsers.InputProcessing
-import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter, SeqFilter}
+import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
 /**
   * Created by mwisnie on 3/10/16.

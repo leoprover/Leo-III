@@ -1,10 +1,9 @@
 package leo
 
 import leo.datastructures._
-import leo.modules.HOLSignature.Not
-import leo.modules.{CLParameterParser, Parsing}
 import leo.modules.external.ExternalProver
 import leo.modules.output.SZS_Error
+import leo.modules.parsers.Parsing
 
 /**
   * Created by mwisnie on 9/26/16.

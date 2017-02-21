@@ -2,7 +2,7 @@ package leo.modules.calculus
 
 import leo.{Checked, LeoTestSuite}
 import leo.datastructures.{Clause, Literal, Signature}
-import leo.modules.Parsing
+import leo.modules.parsers.Parsing
 
 
 /**

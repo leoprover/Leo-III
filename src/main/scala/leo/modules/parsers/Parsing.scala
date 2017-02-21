@@ -1,12 +1,12 @@
-package leo.modules
-
-import leo.datastructures.{Signature, Role, Term}
-import leo.datastructures.tptp.Commons
-import leo.modules.parsers.{InputProcessing, TPTP}
-import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
+package leo.modules.parsers
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Path, Paths}
+
+import leo.datastructures.tptp.Commons
+import leo.datastructures.{Role, Signature, Term}
+import leo.modules.SZSException
+import leo.modules.output.SZS_InputError
 
 /**
  * This facade object publishes some convenience methods

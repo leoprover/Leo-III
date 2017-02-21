@@ -6,7 +6,8 @@ import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
 import leo.modules.output._
 import leo.modules.control.Control
-import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
+import leo.modules.parsers.Parsing
+import leo.modules.{SZSException, SZSOutput, Utility}
 
 import scala.annotation.tailrec
 

@@ -1,7 +1,7 @@
 package leo.modules.calculus
 
 import leo.datastructures.{Clause, Literal, Signature}
-import leo.modules.Parsing
+import leo.modules.parsers.Parsing
 import leo.{Checked, LeoTestSuite}
 
 /**
