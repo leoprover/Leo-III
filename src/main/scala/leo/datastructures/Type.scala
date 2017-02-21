@@ -151,6 +151,8 @@ object Type {
     case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
   }
 
+  @inline final def ground(ty: Type): Boolean = ty.typeVars.isEmpty
+
   /** Build `forall. ty` (i.e. a universally quantified type) */
   final def mkPolyType(bodyType: Type): Type = TypeImpl.mkPolyType(bodyType)
   /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */

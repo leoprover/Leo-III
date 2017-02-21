@@ -39,18 +39,18 @@ class MonotonicityTest extends LeoTestSuite {
     val cnf = CNF(vargen, termToClause(f1)).toSet union CNF(vargen, termToClause(f2)).toSet union CNF(vargen, termToClause(f3)).toSet
 
     // infinite types
-    val infTypes: Set[Type] = Set.empty // none known
+    val noInfTypes: Set[Type] = Set.empty // none known
 
     // test monotonicity check
-    assert(BBPS.monotone(banana, cnf, infTypes))
-    assert(!BBPS.monotone(monkey, cnf, infTypes))
-    assert(!BBPS.monotone(cnf, infTypes))
+    assert(BBPS.monotone(banana, cnf, noInfTypes))
+    assert(!BBPS.monotone(monkey, cnf, noInfTypes))
   }
 
   test("Algebraic Lists (Ex. 12)", Ignored) {
     implicit val sig: Signature = getFreshSignature
     import leo.datastructures.Kind.*
     import leo.datastructures.Type.∀
+    import leo.modules.HOLSignature.o
     import leo.modules.calculus.{FullCNF => CNF, freshVarGenFromBlank => vargen}
     import leo.modules.Utility.termToClause
 
@@ -80,9 +80,12 @@ class MonotonicityTest extends LeoTestSuite {
 
     println(cnf.map(_.pretty(sig)).mkString("\n"))
     // infinite types
-    val infTypes: Set[Type] = Set.empty // none known
+    val noInfTypes: Set[Type] = Set.empty // none known
 
     // test monotonicity check
-    assert(!BBPS.monotone(cnf, infTypes))
+    assert(!BBPS.monotone(Type.mkType(list, X), cnf, noInfTypes))
+    assert(!BBPS.monotone(X, cnf, noInfTypes))
+    assert(BBPS.monotone(Type.mkType(list, X), cnf, Set(Type.mkType(list, X))))
+    assert(!BBPS.monotone(X, cnf, Set(Type.mkType(list, X))))
   }
 }

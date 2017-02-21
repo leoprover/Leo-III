@@ -707,3 +707,128 @@ object FOMatching {
 
 }
 
+
+trait TypeMatching {
+  type UEq = (Type, Type) // Left one is the only one that can be bound, right is considered rigid.
+  type TypeSubst = Subst
+
+  /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
+  def matching(s: Type, t: Type): Option[TypeSubst]
+}
+object TypeMatching {
+  private val impl: TypeMatching = TypeMatchingImpl
+
+  /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
+  def apply(s: Type, t: Type): Option[TypeMatching#TypeSubst] = impl.matching(s,t)
+}
+
+object TypeMatchingImpl extends TypeMatching {
+  /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
+  override def matching(s: Type, t: Type): Option[TypeSubst] = tyDetExhaust(Vector((s,t)), Subst.id)
+
+
+  @tailrec
+  final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UEq], unifier: TypeSubst): Option[TypeSubst] = {
+    if (uTyProblems.nonEmpty) {
+      val head = uTyProblems.head
+
+      if (TyDeleteRule.canApply(head))
+        tyDetExhaust(uTyProblems.tail, unifier)
+      else if (TyDecompRule.canApply(head))
+        tyDetExhaust(TyDecompRule.apply(head) ++ uTyProblems.tail, unifier)
+      else {
+        val tyFunDecompRuleCanApplyHint = TyFunDecompRule.canApply(head)
+        if (tyFunDecompRuleCanApplyHint != TyFunDecompRule.CANNOT_APPLY) {
+          tyDetExhaust(TyFunDecompRule.apply(head, tyFunDecompRuleCanApplyHint) ++ uTyProblems.tail,unifier)
+        } else if (TyBindRule.canApply(head))
+          tyDetExhaust(uTyProblems.tail, unifier.comp(TyBindRule.apply(head)))
+        else
+          None
+      }
+    } else Some(unifier)
+  }
+
+
+  /**
+    * Delete rule for types
+    * canApply(s,t) iff the equation (s = t) can be deleted
+    */
+  object TyDeleteRule {
+    final def canApply(e: UEq): Boolean = e._1 == e._2
+  }
+
+  object TyDecompRule {
+    import leo.datastructures.Type.ComposedType
+    final def apply(e: UEq): Seq[UEq] = {
+      val args1 = ComposedType.unapply(e._1).get._2
+      val args2 = ComposedType.unapply(e._2).get._2
+      args1.zip(args2)
+    }
+
+    final def canApply(e: UEq): Boolean = e match {
+      case (ComposedType(head1, _), ComposedType(head2, _)) => head1 == head2 // Heads cannot be flexible,
+      // since in TH1 only small types/proper types can be quantified, not type operators
+      case _ => false
+    }
+  }
+
+  object TyFunDecompRule {
+    final val CANNOT_APPLY = -1
+    final val EQUAL_LENGTH = 0
+    final val SECOND_LONGER = 1
+
+    final def apply(e: UEq, hint: Int): Seq[UEq] = {
+      assert(hint != CANNOT_APPLY)
+      if (hint == EQUAL_LENGTH) {
+        e._1.funParamTypesWithResultType.zip(e._2.funParamTypesWithResultType)
+      } else {
+        val shorterTyList = e._1.funParamTypesWithResultType
+        val splittedLongerTy = e._2.splitFunParamTypesAt(shorterTyList.size-1)
+        (shorterTyList.last, splittedLongerTy._2) +: shorterTyList.init.zip(splittedLongerTy._1)
+      }
+    }
+
+    final def canApply(e: UEq): Int = {
+      if (!e._1.isFunType || !e._2.isFunType) CANNOT_APPLY
+      else {
+        val tys1 = e._1.funParamTypesWithResultType
+        val tys2 = e._2.funParamTypesWithResultType
+        if (tys1.size > tys2.size) CANNOT_APPLY /* impossible to match right side */
+        if (tys1.size == tys2.size) EQUAL_LENGTH
+        else { // tys1.size < tys2.size
+          if (tys1.last.isBoundTypeVar) // Only possible if last one is variable
+            SECOND_LONGER
+          else CANNOT_APPLY
+        }
+      }
+    }
+  }
+
+  /**
+    * Bind rule for type equations.
+    * canApply(s,t) iff either s or t is a type variable and not a subtype of the other one.
+    */
+  object TyBindRule {
+    import leo.datastructures.Type.BoundType
+    final def apply(e: UEq): Subst = {
+      val leftIsTypeVar = e._1.isBoundTypeVar
+
+      val tyVar = if (leftIsTypeVar) BoundType.unapply(e._1).get else BoundType.unapply(e._2).get
+      val otherTy = if (leftIsTypeVar) e._2 else e._1
+
+      Subst.singleton(tyVar, otherTy)
+    }
+
+    final def canApply(e: UEq): Boolean = {
+      val leftIsTypeVar = e._1.isBoundTypeVar
+
+      if (!leftIsTypeVar) false
+      else {
+        val tyVar = BoundType.unapply(e._1).get
+        val otherTy = e._2
+        !otherTy.typeVars.contains(tyVar)
+      }
+    }
+  }
+
+}

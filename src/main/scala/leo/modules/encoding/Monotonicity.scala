@@ -9,6 +9,7 @@ import leo.datastructures.{Clause, Type, Signature}
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
 trait Monotonicity[Problem] {
+  type InfTypes = Set[Type]
 
   /**
     * (Approximating) decision procedure for deciding whether
@@ -24,28 +25,19 @@ trait Monotonicity[Problem] {
     * @param problem The problem which `ty` is relatively evaluated to.
     * @return `true` if `ty` can be shown monotonic wrt. `problem`, else `false`.
     */
-  def monotone(ty: Type, problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean
+  def monotone(ty: Type, problem: Problem, infiniteTypes: InfTypes)(implicit sig: Signature): Boolean
 
   /** (Approximating) decision procedure for deciding whether
     * each type `ty` in `types` is monotonic wrt. problem `problem`.
     * Default implementation uses `monotone(Type, Problem)` as allowed by Lemma 56.
     * @see monotone(Type, Problem) for details. */
-  def monotone(types: Set[Type], problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
+  def monotone(types: Set[Type], problem: Problem, infiniteTypes: InfTypes)(implicit sig: Signature): Boolean = {
     val typesIt = types.iterator
     while(typesIt.hasNext) {
       val ty = typesIt.next()
       if (!monotone(ty, problem, infiniteTypes)) return false
     }
     true
-  }
-
-  /** (Approximating) decision procedure for deciding whether
-    * problem `problem` is (globally) monotonic, i.e. each type
-    * in the signature is monotonic wrt. `problem`.
-    * @see monotone(Type, Problem) for details. */
-  def monotone(problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
-    val types = sig.typeSymbols.map(Type.mkType)
-    monotone(types, problem, infiniteTypes)
   }
 }
 
@@ -67,6 +59,8 @@ abstract class ClauseProblemMonotonicity extends Monotonicity[Set[Clause]] {
   * @see [1] Blanchette et al.: Encoding Monomorphic and Polymorphic Types. */
 object BBPS extends ClauseProblemMonotonicity {
   import leo.datastructures.{Literal, Term}
+  import Type.ground
+
   /**
     * (Approximating) decision procedure for deciding whether
     * type `ty` is monotonic wrt. problem `problem`.
@@ -81,18 +75,50 @@ object BBPS extends ClauseProblemMonotonicity {
     * @param problem The problem which `ty` is relatively evaluated to.
     * @return `true` if `ty` can be shown monotonic wrt. `problem`, else `false`.
     */
-  override def monotone(ty: Type, problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
-    val naked = nakedVars(problem)
-    infiniteTypes.contains(ty) || !naked.contains(ty)
+  override def monotone(ty: Type, problem: Problem, infiniteTypes: InfTypes)(implicit sig: Signature): Boolean = {
+    // If `ty` is ground, we can skip all naked vars that are ground and not of type `ty` since they are
+    // irrelevant to the monotonicity check (they have no common instance with `ty`)
+    val naked = if (ground(ty)) {
+        nakedVars(problem).filterNot(nTy => ground(nTy) && nTy != ty)
+    } else {
+      nakedVars(problem)
+    }
+    monotone0(ty, infiniteTypes, naked)
   }
 
   /** (Approximating) decision procedure for deciding whether
     * each type `ty` in `types` is monotonic wrt. problem `problem`.
     * @see monotone(Type, Problem) for details. */
-  override def monotone(types: Set[Type], problem: Problem, infiniteTypes: Set[Type])(implicit sig: Signature): Boolean = {
-    val naked = nakedVars(problem)
-    val naked0 = naked.diff(infiniteTypes)
-    naked0.intersect(types).isEmpty
+  override def monotone(types: Set[Type], problem: Problem, infiniteTypes: InfTypes)(implicit sig: Signature): Boolean = {
+    // Filtering: See comment in monotone(Type, Problem, InfTypes)
+    val naked = nakedVars(problem).filterNot(nTy => ground(nTy) && !types.contains(nTy))
+    val typesIt = types.iterator
+    while (typesIt.hasNext) {
+      val ty = typesIt.next()
+      if (!monotone0(ty, infiniteTypes, naked)) return false
+    }
+    true
+  }
+
+  private final def monotone0(ty: Type, infTypes: InfTypes, nakedVars: Set[Type])(implicit sig: Signature): Boolean = {
+    import leo.datastructures.Subst
+    import leo.datastructures.Type.BoundType
+    leo.Out.info(s"Monotonicity check for ${ty.pretty(sig)}")
+    val nakedIt = nakedVars.iterator
+    while (nakedIt.hasNext) {
+      val maxTyVarInTy = if (ty.typeVars.isEmpty) 0 else ty.typeVars.map(BoundType.unapply(_).get).max
+      val nTy = nakedIt.next().substitute(Subst.shift(maxTyVarInTy))
+      val commonInstance = mgi(ty, nTy)
+      if (commonInstance.isDefined) {
+        val instance = commonInstance.get
+        leo.Out.info(s"mgi(${ty.pretty(sig)}, ${nTy.pretty(sig)}) exists: ${instance.pretty(sig)}")
+        if (!instanceOfInfType(instance, infTypes)) return false
+      } else {
+        leo.Out.info(s"mgi(${ty.pretty(sig)}, ${nTy.pretty(sig)}) does not exist")
+        // everything okay, no common instance existent.
+      }
+    }
+    true
   }
 
   private final def nakedVars(problem: Problem): Set[Type] = {
@@ -139,5 +165,31 @@ object BBPS extends ClauseProblemMonotonicity {
     } else {
       if (r.isVariable) Set(r.ty) else Set()
     }
+  }
+
+  /** This method returns `Some(ty)` where `ty` is the most general instance of both `ty1` and `ty2`
+    * or `None` if no such instance exists. */
+  private final def mgi(ty1: Type, ty2: Type): Option[Type] = {
+    import leo.modules.calculus.{TypeUnification => Uni}
+    if (ty1 == ty2) Some(ty1)
+    else {
+      val unifier = Uni(ty1, ty2)
+      if (unifier.isDefined) {
+        val subst = unifier.get
+        assert(ty1.substitute(subst) == ty2.substitute(subst))
+        Some(ty1.substitute(subst))
+      } else None
+    }
+  }
+
+  private final def instanceOfInfType(ty: Type, infTypes: Set[Type])(implicit sig: Signature): Boolean = {
+    import leo.modules.calculus.TypeMatching
+    leo.Out.info(s"Checking wheter ${ty.pretty(sig)} is an instance of an inifite type ... ")
+    val infTypesIt = infTypes.iterator
+    while (infTypesIt.hasNext) {
+      val infType = infTypesIt.next()
+      if (TypeMatching(infType, ty).isDefined) return true
+    }
+    false
   }
 }
