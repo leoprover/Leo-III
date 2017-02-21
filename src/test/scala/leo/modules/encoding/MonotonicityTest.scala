@@ -46,7 +46,7 @@ class MonotonicityTest extends LeoTestSuite {
     assert(!BBPS.monotone(monkey, cnf, noInfTypes))
   }
 
-  test("Algebraic Lists (Ex. 12)", Ignored) {
+  test("Algebraic Lists (Ex. 12)", Checked) {
     implicit val sig: Signature = getFreshSignature
     import leo.datastructures.Kind.*
     import leo.datastructures.Type.∀
