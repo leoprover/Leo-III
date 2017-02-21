@@ -17,6 +17,14 @@ import leo.modules.output.SZS_InputError
   * - processX: TPTP AST representation -> Term
   * - readX: Raw input (e.g. string) -> Term
   *
+  * The most usual methods may be [[leo.modules.parsers.Input#readProblem]] and
+  * [[leo.modules.parsers.Input#readFormula]] for reading a whole
+  * TPTP problem and readling a single formula, respectively.
+  *
+  * @example {{{implicit val s: Signature = ...
+  * val t: Term = readFormula("! [X:$i]: (p @ X)")
+  * println(t.pretty(s))}}}
+  *
   * @author Alexander Steen <a.steen@fu-berlin.de>
   * @since 29.04.2015
   * @note Updated February 2017: Overhaul
@@ -41,11 +49,14 @@ object Input {
   ///////////////////////////////////////////////////////////////////////////
 
   /**
-    * Reads the file located at `file` and parses it recursively using the `TPTP` parser.
-    * Note that the return value is a sequence of [[Commons.AnnotatedFormula]] since
+    * Reads the file located at `file` and parses it recursively using the `TPTP` parser,
+    * hence the file needs to be in valid TPTP format (e.g. FOF, THF, ...).
+    * Note that the return value is a sequence of [[leo.datastructures.tptp.Commons.AnnotatedFormula]] since
     * all includes are automatically parsed exhaustively.
     * If `file` is a relative path, it is assumed to be equivalent to the path
     * `user.dir`/file.
+    *
+    * @note This method has no side effects.
     *
     * @param file  The absolute or relative path to the problem file.
     * @param assumeRead Implicitly assume that the problem files in this parameter
@@ -89,25 +100,30 @@ object Input {
   }
 
   /**
-    * Reads the file located at `file`  and shallowly parses it using the `TPTP` parser.
-    * Note that include statements are NOT recursively parsed but returned in internal TPTP
-    * syntax instead. For recursive parsing of include statements, use [[parseProblem()]].
+    * Reads the file located at `file`  and shallowly parses it using the `TPTP` parser, hence
+    * the file needs to be in valid tptp format (regardless if FOF, TFF, ...).
+    * Note that include statements are *NOT* recursively parsed but returned as TPTP
+    * AST instead. For recursive parsing of include statements, use [[leo.modules.parsers.Input#parseProblem]].
     * If `file` is a relative path, it is assumed to be equivalent to the path
     * `user.dir`/file.
     *
+    * @note This method has no side effects.
+    *
     * @param file The absolute or relative path to the problem file.
-    * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
+    * @return The TPTP problem file in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
     */
   def parseShallow(file: String): Commons.TPTPInput = {
     TPTP.parseFile(read0(canonicalPath(file)))
   }
 
   /**
-    * Parses the single TPTP syntax formula given by `formula` into internal
-    * tptp syntax representation.
+    * Parses the single TPTP annotated formula given by `formula` into internal
+    * TPTP AST representation.
+    *
+    * @note This method has no side effects.
     *
     * @param formula The formula to be parsed
-    * @return The input formula in internal TPTP syntax representation
+    * @return The input formula in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
     */
   def parseAnnotated(formula: String): Commons.AnnotatedFormula = {
     TPTP.annotatedFormula(formula)
@@ -115,11 +131,14 @@ object Input {
 
   /**
     * Parses the single THF logic formula (i.e. without annotations)
-    * given by `formula` into internal
-    * TPTP AST representation.
+    * given by `formula` into internal TPTP AST representation.
     *
-    * @param formula The formula to be parsed
-    * @return The input formula in internal TPTP syntax representation
+    * @note This method has no side effects.
+    *
+    * @param formula The formula to be parsed without annotations, i.e. a <thf_logic_formula> as given by
+    *                THF BNF.
+    * @return The input formula in internal [[leo.datastructures.tptp.thf.LogicFormula]] representation
+    * @see [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html#thf_logic_formula]] for TPTP THF BNF.
     */
   def parseFormula(formula: String): THFFormula = {
     TPTP.apply(formula)
@@ -133,34 +152,33 @@ object Input {
 
   /**
     * Convert the problem given by the formulae in `problem` to internal term representation.
-    * SIDE-EFFECTS: Type declarations and definitions within `problem` are added to the signature.
-    *
     * Note that the parameter type is `Commons.AnnotatedFormula`, hence
     * all include statements need to be read externally before calling this function.
     *
-    * @param problem The input problem in internal TPTP representation.
-    * @return A triple `(Id, Clause, Role)` for each `AnnotatedFormula` within
-    *         `problem`, such that `Id` is the identifier of the formula, `Clause` is the respective
-    *         singleton clause in internal representation, and `Role` is the role of the formula as defined
-    *         by the TPTP input.
-    *         Note that formulae with role `definition` or `type` are returned as triples
-    *         `(Id, Clause($true), Role)` with their respective identifier and role.
+    * @note  Side effects: Type declarations and definitions within `problem` are added to the signature.
+    * @param problem The input problem in [[leo.datastructures.tptp.Commons.AnnotatedFormula]] representation.
+    * @return A triple `(id, term, role)` for each `formula` within
+    *         `problem`, such that `id` is the identifier of `formula`, `term` is the respective
+    *         [[leo.datastructures.Term]] representation of `formula`, and `role` is the role of `formula`
+    *         as defined by the TPTP input.
+    *         Note that formulae with role [[leo.datastructures.Role_Definition]] or
+    *         [[leo.datastructures.Role_Type]] are returned as triples
+    *         `(id, LitTrue, role)` with their respective identifier and role.
     */
   def processProblem(problem: Seq[Commons.AnnotatedFormula])(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
     InputProcessing.processAll(sig)(problem)
   }
   /**
     * Convert the `formula` to internal term representation.
-    * SIDE-EFFECTS: If `formula` is either a type declaration or a definition,
-    * the respective declarations are added to the signature.
     *
-    * @param formula The input formula in internal TPTP representation.
-    * @return A triple `(Id, Term, Role)`,
-    *         such that `Id` is the identifier of the formula, `Clause` is the respective
-    *         singleton clause in internal representation, and `Role` is the role of the formula as defined
-    *         by the TPTP input.
-    *         Note that a formula with role `definition` or `type` is returned as a triple
-    *         `(Id, Clause($true), Role)` with its respective identifier and role.
+    * @note Side effects: If `formula` is a type declaration or a definition,
+    * @param formula The input formula in [[leo.datastructures.tptp.Commons.AnnotatedFormula]] representation.
+    * @return A triple `(id, term, role)` such that `id` is the identifier of `formula`, `term` is the respective
+    *         [[leo.datastructures.Term]] representation of `formula`, and `role` is the role of `formula`
+    *         as defined by the TPTP input.
+    *         Note that formulae with role [[leo.datastructures.Role_Definition]] or
+    *         [[leo.datastructures.Role_Type]] are returned as triples
+    *         `(id, LitTrue, role)` with their respective identifier and role.
     */
   def processFormula(formula: Commons.AnnotatedFormula)(implicit sig: Signature): (FormulaId, Term, Role) = {
     InputProcessing.process(sig)(formula)
@@ -172,24 +190,26 @@ object Input {
   ///////////////////////////////////////////////////////////////////////////
   /**
     * Reads and recursively parses the file located at `file` and converts its
-    * formulae to internal term presentation.
-    * Note that the return value is a sequence of `(FormulaId, Term, Role)` since
+    * formulae to internal term representation, hence `file` needs to be in valid
+    * TPTP syntax.
+    * Note that the return value is a sequence of `(formulaId, term, role)` since
     * all includes are automatically parsed and converted exhaustively.
     * If `file` is a relative path, it is assumed to be equivalent to the path
     * `user.dir`/file.
     *
-    * SIDE-EFFECTS: Type declarations and definitions within `problem` are added to the signature.
+    * @note Side effect: Type declarations and definitions within `problem` are added to the signature.
     *
     * @param file  The absolute or relative path to the problem file.
     * @param assumeProcessed Implicitly assume that the problem files in this parameter
     *                   have already been read and processed.
     *                   Hence, recursive parsing will skip this includes.
-    * @return A triple `(Id, Term, Role)` for each formula within
-    *         the problem, such that `Id` is the identifier of the formula, `Clause` is the respective
-    *         singleton clause in internal representation, and `Role` is the role of the formula as defined
-    *         by the TPTP input.
-    *         Note that formulae with role `definition` or `type` are returned as triples
-    *         `(Id, Clause($true), Role)` with their respective identifier and role.
+    * @return A triple `(id, term, role)` for each `formula` within
+    *         `file`, such that `id` is the identifier of `formula`, `term` is the respective
+    *         [[leo.datastructures.Term]] representation of `formula`, and `role` is the role of `formula`
+    *         as defined by the TPTP input.
+    *         Note that formulae with role [[leo.datastructures.Role_Definition]] or
+    *         [[leo.datastructures.Role_Type]] are returned as triples
+    *         `(id, LitTrue, role)` with their respective identifier and role.
     */
   def readProblem(file: String, assumeProcessed: Set[Path] = Set())(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
     processProblem(parseProblem(file,assumeProcessed))(sig)
@@ -198,9 +218,9 @@ object Input {
   /**
     * Reads and parses `formula` and converts it to internal term representation.
     *
-    * SIDE-EFFECTS: Type declarations and definitions within `problem` are added to the signature.
+    * @note Side effects: Type declarations and definitions within `problem` are added to the signature.
     *
-    * @param formula The formula to be parsed and converted.
+    * @param formula The annotated formula to be parsed and converted.
     * @return A triple `(Id, Term, Role)`,
     *         such that `Id` is the identifier of the formula, `Clause` is the respective
     *         singleton clause in internal representation, and `Role` is the role of the formula as defined
@@ -212,15 +232,28 @@ object Input {
     processFormula(parseAnnotated(formula))(sig)
   }
 
+  /**
+    * Parses and converts a single THF logic formula (i.e. without annotations)
+    * given by `formula` into internal term representation.
+    *
+    * @note This method has no side effects.
+    *
+    * @param formula The formula to be parsed without annotations, i.e. a <thf_logic_formula> as given by
+    *                THF BNF.
+    * @return The input formula in internal [[leo.datastructures.Term]] representation
+    * @see [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html#thf_logic_formula]] for TPTP THF BNF.
+    */
   def readFormula(formula: String)(implicit sig: Signature): Term = {
     val parsed = TPTP(formula)
     val result = InputProcessing.processTHF(sig)(parsed)
     if (result.isLeft) result.left.get
     else throw new IllegalArgumentException
   }
+  /** Synonym for [[leo.modules.parsers.Input#readFormula]]. */
   def apply(formula: String)(implicit sig: Signature): Term = readFormula(formula)
 
-  final val urlStartRegex:String  = "(\\w+?:\\/\\/)(.*)"
+  final private val urlStartRegex:String  = "(\\w+?:\\/\\/)(.*)"
+
   /** Converts the input path to a canonical path representation */
   def canonicalPath(path: String): Path = {
     if (path.matches(urlStartRegex)) {
@@ -234,7 +267,7 @@ object Input {
     }
   }
 
-  final val urlStartRegex0:String  = "(\\w+?:\\/)(.*)" // removed one slash because it gets removed by Paths.get(.)
+  final private val urlStartRegex0:String  = "(\\w+?:\\/)(.*)" // removed one slash because it gets removed by Paths.get(.)
   private def read0(absolutePath: Path): BufferedReader = {
     if (absolutePath.toString.matches(urlStartRegex0)) {
       // URL
@@ -249,5 +282,4 @@ object Input {
       }
     }
   }
-
 }
