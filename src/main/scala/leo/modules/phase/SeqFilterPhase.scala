@@ -9,7 +9,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.calculus.CalculusRule
 import leo.modules.output.SZS_CounterTheorem
-import leo.modules.parsers.InputProcessing
+import leo.modules.parsers.Input.processFormula
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
 /**
@@ -44,7 +44,7 @@ class SeqFilterPhase extends Phase {
 
         // Translate all taken formulas to clauses
         taken.foreach{f =>
-          val (name, term, role) = InputProcessing.process(SignatureBlackboard.get)(f)
+          val (name, term, role) = processFormula(f)(SignatureBlackboard.get)
           val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
             negateConjecture(name, term, role)
           else

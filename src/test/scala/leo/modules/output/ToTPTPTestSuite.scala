@@ -6,8 +6,6 @@ import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal}
 import leo.{Ignored, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.modules.Utility
-import leo.modules.parsers.TPTP
-import leo.modules.parsers.InputProcessing
 
 /**
 * This suite tests the backward translation of internal formulae.
