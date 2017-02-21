@@ -11,7 +11,7 @@ import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.agent.relevance_filter.AnnotatedFormulaType
 import leo.modules.output.{SZS_Error, SZS_InputError}
-import leo.modules.parsers.Parsing
+import leo.modules.parsers.Input
 import leo.modules.SZSException
 
 class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
@@ -38,12 +38,12 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         val prob = Configuration.PROBLEMFILE
 
         val it : Iterator[AnnotatedFormula] = {
-          if (Files.exists(Parsing.canonicalPath(prob)))
-            Parsing.readProblem(prob).iterator
+          if (Files.exists(Input.canonicalPath(prob)))
+            Input.readProblem(prob).iterator
           else {
-            val tptpFile = Parsing.tptpHome.resolve(prob)
+            val tptpFile = Input.tptpHome.resolve(prob)
             if(Files.exists(tptpFile)) {
-              Parsing.readProblem(Parsing.tptpHome.resolve(prob).toString).iterator
+              Input.readProblem(Input.tptpHome.resolve(prob).toString).iterator
             } else {
               throw new SZSException(SZS_InputError, s"The file ${prob} does not exist.")
             }

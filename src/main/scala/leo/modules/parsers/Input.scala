@@ -4,18 +4,26 @@ import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Path, Paths}
 
 import leo.datastructures.tptp.Commons
+import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
 import leo.datastructures.{Role, Signature, Term}
 import leo.modules.SZSException
 import leo.modules.output.SZS_InputError
 
 /**
- * This facade object publishes some convenience methods
- * for parsing related utility including parsing of strings and problem files,
- *
- * @author Alexander Steen <a.steen@fu-berlin.de>
- * @since 29.04.2015
+  * This facade object publishes various methods for parsing/processing/reading
+  * of TPTP inputs. The method names are as follows by convention:
+  *
+  * - parseX: Raw input (e.g. string) -> TPTP AST representation
+  * - processX: TPTP AST representation -> Term
+  * - readX: Raw input (e.g. string) -> Term
+  *
+  * @author Alexander Steen <a.steen@fu-berlin.de>
+  * @since 29.04.2015
+  * @note Updated February 2017: Overhaul
+  * @see [[leo.datastructures.tptp]]
+  * @see [[leo.datastructures.Term]]
  */
-object Parsing {
+object Input {
 
   /**
     * For parsing objects under TPTP Home
@@ -28,83 +36,100 @@ object Parsing {
     }
   }
 
-    // Functions that go from file/string to unprocessed internal TPTP-syntax
-    // "String -> TPTP"
-    /**
-      * Reads the file located at `file` and parses it recursively using the `TPTP` parser.
-      * Note that the return value is a sequence of [[Commons.AnnotatedFormula]] since
-      * all includes are automatically parsed exhaustively.
-      * If `file` is a relative path, it is assumed to be equivalent to the path
-      * `user.dir`/file.
-      *
-      * @param file  The absolute or relative path to the problem file.
-      * @param assumeRead Implicitly assume that the problem files in this parameter
-      *                   have already been read. Hence, recursive parsing will skip this
-      *                   includes.
-      * @return The sequence of annotated TPTP formulae.
-      */
-    def readProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
-      val canonicalFile = canonicalPath(file)
-      if (!assumeRead.contains(canonicalFile)) {
-        val p: Commons.TPTPInput = try {shallowReadProblem(file)} catch {case e1 : Exception =>
-          if (tptpHome != null){
+  ///////////////////////////////////////////////////////////////////////////
+  // Functions that go from file/string to unprocessed internal TPTP-syntax
+  // "String -> TPTP"
+  ///////////////////////////////////////////////////////////////////////////
+
+  /**
+    * Reads the file located at `file` and parses it recursively using the `TPTP` parser.
+    * Note that the return value is a sequence of [[Commons.AnnotatedFormula]] since
+    * all includes are automatically parsed exhaustively.
+    * If `file` is a relative path, it is assumed to be equivalent to the path
+    * `user.dir`/file.
+    *
+    * @param file  The absolute or relative path to the problem file.
+    * @param assumeRead Implicitly assume that the problem files in this parameter
+    *                   have already been read. Hence, recursive parsing will skip this
+    *                   includes.
+    * @return The sequence of annotated TPTP formulae.
+    */
+  def readProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
+    val canonicalFile = canonicalPath(file)
+    if (!assumeRead.contains(canonicalFile)) {
+      val p: Commons.TPTPInput = try {readShallow(file)} catch {case e1 : Exception =>
+        if (tptpHome != null){
 //            try {
-              val alt = tptpHome.resolve(file)
-              shallowReadProblem(alt.toString)
+            val alt = tptpHome.resolve(file)
+            readShallow(alt.toString)
 //            } catch {case e : Exception => throw new SZSException(SZS_InputError, s"${e.toString}")}
-          } else throw e1
-        }
-        val includes = p.getIncludes
-
-        // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
-
-        val pIncludes = includes.map{case (inc, _) =>
-          try {
-            val next = canonicalFile.getParent.resolve(inc)
-            readProblem(next.toString, assumeRead + canonicalFile)
-          } catch {
-            case _ : Exception =>
-              try {
-                val tnext = tptpHome.resolve(inc)
-                readProblem(tnext.toString, assumeRead + canonicalFile)
-              } catch {
-                case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
-              }
-          }
-        }
-        pIncludes.flatten ++ p.getFormulae
-      } else {
-        Seq()
+        } else throw e1
       }
-    }
+      val includes = p.getIncludes
 
-    /**
-      * Parses the single TPTP syntax formula given by `formula` into internal
-      * tptp syntax representation.
-      *
-      * @param formula The formula to be parsed
-      * @return The input formula in internal TPTP syntax representation
-      */
-    def readFormula(formula: String): Commons.AnnotatedFormula = {
-      TPTP.annotatedFormula(formula)
-    }
+      // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
 
-    /**
-      * Reads the file located at `file`  and shallowly parses it using the `TPTP` parser.
-      * Note that include statements are NOT recursively parsed but returned in internal TPTP
-      * syntax instead. For recursive parsing of include statements, use [[readProblem()]].
-      * If `file` is a relative path, it is assumed to be equivalent to the path
-      * `user.dir`/file.
-      *
-      * @param file The absolute or relative path to the problem file.
-      * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
-      */
-    def shallowReadProblem(file: String): Commons.TPTPInput = {
-      TPTP.parseFile(read0(canonicalPath(file)))
+      val pIncludes = includes.map{case (inc, _) =>
+        try {
+          val next = canonicalFile.getParent.resolve(inc)
+          readProblem(next.toString, assumeRead + canonicalFile)
+        } catch {
+          case _ : Exception =>
+            try {
+              val tnext = tptpHome.resolve(inc)
+              readProblem(tnext.toString, assumeRead + canonicalFile)
+            } catch {
+              case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
+            }
+        }
+      }
+      pIncludes.flatten ++ p.getFormulae
+    } else {
+      Seq()
     }
+  }
 
-    // Functions that go from internal TPTP syntax to processed internal representation (Term)
-    // "TPTP -> Term"
+  /**
+    * Reads the file located at `file`  and shallowly parses it using the `TPTP` parser.
+    * Note that include statements are NOT recursively parsed but returned in internal TPTP
+    * syntax instead. For recursive parsing of include statements, use [[readProblem()]].
+    * If `file` is a relative path, it is assumed to be equivalent to the path
+    * `user.dir`/file.
+    *
+    * @param file The absolute or relative path to the problem file.
+    * @return The TPTP problem file in internal [[Commons.TPTPInput]] representation.
+    */
+  def readShallow(file: String): Commons.TPTPInput = {
+    TPTP.parseFile(read0(canonicalPath(file)))
+  }
+
+  /**
+    * Parses the single TPTP syntax formula given by `formula` into internal
+    * tptp syntax representation.
+    *
+    * @param formula The formula to be parsed
+    * @return The input formula in internal TPTP syntax representation
+    */
+  def readAnnotated(formula: String): Commons.AnnotatedFormula = {
+    TPTP.annotatedFormula(formula)
+  }
+
+  /**
+    * Parses the single THF logic formula (i.e. without annotations)
+    * given by `formula` into internal
+    * TPTP AST representation.
+    *
+    * @param formula The formula to be parsed
+    * @return The input formula in internal TPTP syntax representation
+    */
+  def readFormula(formula: String): THFFormula = {
+    TPTP.apply(formula)
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Functions that go from internal TPTP syntax to processed internal representation (Term)
+  // "TPTP -> Term"
+  ///////////////////////////////////////////////////////////////////////////
     type FormulaId = String
 
     /**
@@ -185,7 +210,7 @@ object Parsing {
       *         `(Id, Clause($true), Role)` with its respective identifier and role.
       */
     def parseFormula(formula: String)(implicit sig: Signature): (FormulaId, Term, Role) = {
-      processFormula(readFormula(formula))(sig)
+      processFormula(readAnnotated(formula))(sig)
     }
 
   def parseThf(formula: String)(implicit sig: Signature): Term = {

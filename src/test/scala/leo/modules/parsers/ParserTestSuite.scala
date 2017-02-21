@@ -33,7 +33,7 @@ class ParserTestSuite extends LeoTestSuite {
       printHeading(s"Parsing test for ${p._2}")
       Out.output(s"## Parsing ${p._1} ...")
 
-      val res = Parsing.shallowReadProblem(source + "/" +  p._1 + ".p")
+      val res = Input.readShallow(source + "/" +  p._1 + ".p")
       Out.output(s"Parsing succeeded. Parsed ${res.getFormulaeCount} formulae and ${res.getIncludeCount} include statements.")
     }
   }

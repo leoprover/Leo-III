@@ -1,7 +1,7 @@
 package leo.modules.calculus
 
 import leo.datastructures.{Clause, Literal, Signature}
-import leo.modules.parsers.Parsing
+import leo.modules.parsers.Input
 import leo.{Checked, LeoTestSuite}
 
 /**
@@ -20,7 +20,7 @@ class RenameCNFTest extends LeoTestSuite{
   for(p <- testProblems)
     test(s"Test : ($p)", Checked) {
       implicit val sig: Signature = getFreshSignature
-      val (_,l,_) = Parsing.parseFormula(p)
+      val (_,l,_) = Input.parseFormula(p)
       val s : StringBuilder = new StringBuilder
       s.append("CNF on\n  ")
       val pc = Clause(Literal(l,true))

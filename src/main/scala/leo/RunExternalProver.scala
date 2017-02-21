@@ -3,7 +3,7 @@ package leo
 import leo.datastructures._
 import leo.modules.external.ExternalProver
 import leo.modules.output.SZS_Error
-import leo.modules.parsers.Parsing
+import leo.modules.parsers.Input
 
 /**
   * Created by mwisnie on 9/26/16.
@@ -23,8 +23,8 @@ object RunExternalProver {
     val p = ExternalProver.createProver(name,path)
 
     implicit val s = Signature.freshWithHOL()
-    val input = Parsing.readProblem(Configuration.PROBLEMFILE)
-    val input2 = Parsing.processProblem(input)
+    val input = Input.readProblem(Configuration.PROBLEMFILE)
+    val input2 = Input.processProblem(input)
     var exSeq : Seq[AnnotatedClause] = Seq()
     val it = input2.iterator
     while(it.hasNext){
