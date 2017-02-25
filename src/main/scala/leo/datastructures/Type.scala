@@ -277,7 +277,7 @@ object Type {
   *
   * where * is the kind of types, # the kind of kinds (for internal use only), and
   * -> the syntactical constructor for function kinds (left-associative).
-  * Theorically this allows higher-order kinds such as (* -> *) -> *. Nevertheless, we
+  * Although this allows higher-order kinds such as (* -> *) -> *, we
   * first restrict ourselves to first-order kinds, i.e. kinds of the form
   * *^k^ -> * (i.e. * -> * -> ... -> *).
   */
