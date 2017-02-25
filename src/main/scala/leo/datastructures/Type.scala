@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.impl._
-
 import scala.language.implicitConversions
 
 /**
@@ -108,6 +106,8 @@ abstract class Type extends Pretty with Prettier {
  * Constructor methods the `Type` class.
  */
 object Type {
+  import leo.datastructures.impl.TypeImpl
+
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
   final def mkType(identifier: Signature#Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
   final def mkType(identifier: Signature#Key, arg: Type): Type = TypeImpl.mkType(identifier, Seq(arg))
@@ -162,15 +162,15 @@ object Type {
   final def mkVarType(scope: Int): Type = TypeImpl.mkVarType(scope)
 
   /** Represents the kind `*` or `type` (i.e. the type of types). */
-  final val typeKind: Kind = TypeKind
-  /** Represents the type of kinds. Only needed internally so that we can type kinds correctly */
-  final val superKind: Kind = SuperKind
+  final val typeKind: Kind = Kind.*
 
   implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
 
   ///////////////////////////////
   // Pattern matchers for types
   ///////////////////////////////
+  import leo.datastructures.impl.{GroundTypeNode, BoundTypeNode, ProductTypeNode,
+  AbstractionTypeNode, UnionTypeNode, ForallTypeNode}
 
   object BaseType {
     def unapply(ty: Type): Option[Signature#Key] = ty match {
@@ -268,34 +268,57 @@ object Type {
 }
 
 
+/**
+  * Kinds are "types of type constructors", i.e. domain restrictions for type constructors.
+  * Type constructors with arity zero are called types and have kind `*`.
+  * Kinds (k) are created by
+  *
+  *   k := * | k -> k | #
+  *
+  * where * is the kind of types, # the kind of kinds (for internal use only), and
+  * -> the syntactical constructor for function kinds (left-associative).
+  * Theorically this allows higher-order kinds such as (* -> *) -> *. Nevertheless, we
+  * first restrict ourselves to first-order kinds, i.e. kinds of the form
+  * *^k^ -> * (i.e. * -> * -> ... -> *).
+  */
 abstract class Kind extends Pretty {
-  val isTypeKind: Boolean
-  val isFunKind: Boolean
-  val isSuperKind: Boolean
+  /** Returns `true` if `this == *`, `false` otherwise. */
+  def isTypeKind: Boolean
+  /** Returns `true` if `this == k1 -> k2` for some `k1, k2`, `false` otherwise. */
+  def isFunKind: Boolean
+  /** Returns `true` if `this == #`, `false` otherwise. */
+  def isSuperKind: Boolean
 
+  /** Returns the arity of the kind. Arity `arity(k)` of a kind `k` is defined by:
+    * {{{
+    * arity(*) = 0
+    * arity(k1 -> k2) = 1 + arity(k2)}}} */
   def arity: Int
 
-  def ->:(hd: Kind): Kind = Kind.mkFunKind(hd, this)
+  /** Given two kinds `k1` and `k2`, `k1 ->: k2` creates the function kind from `k1` two `k2`, i.e.
+    * the kind `k1 -> k2`. */
+  @inline final def ->:(hd: Kind): Kind = Kind.mkFunKind(hd, this)
 }
 
 object Kind {
-
-  val typeKind: Kind = TypeKind
-  val * = TypeKind.asInstanceOf[Kind]
+  import leo.datastructures.impl.{TypeKind, FunKind, SuperKind}
+  final val * : Kind = TypeKind
+  final val superKind : Kind = SuperKind
 
   /** Build kind k1 -> k2  */
-  def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
+  final def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
   /** Build kind `in1 -> in2 -> in3 -> ... -> out`. */
-  def mkFunKind(in: Seq[Kind], out: Kind): Kind = in match {
+  final def mkFunKind(in: Seq[Kind], out: Kind): Kind = in match {
     case Seq()           => out
     case Seq(x, xs @ _*) => mkFunKind(x, mkFunKind(xs, out))
   }
-  def mkFunKind(in: Seq[Kind]): Kind = in match {
+  final def mkFunKind(in: Seq[Kind]): Kind = in match {
     case Seq(ty)            => ty
     case Seq(ty, tys @ _*)  => mkFunKind(ty, mkFunKind(tys))
   }
+
   object -> {
-    def unapply(k: Kind): Option[(Kind, Kind)] = k match {
+    final def unapply(k: Kind): Option[(Kind, Kind)] = k match {
       case FunKind(l,r) => Some((l,r))
       case _ => None
     }

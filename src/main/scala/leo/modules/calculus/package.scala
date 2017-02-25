@@ -132,8 +132,8 @@ package object calculus {
 
   final private def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
   else Type.mkPolyType(mkPolyTyAbstractionType(count-1, body))
-  final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.typeKind
-  else Kind.mkFunKind(Kind.typeKind, mkPolyKindAbstraction(count-1))
+  final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.*
+  else Kind.mkFunKind(Kind.*, mkPolyKindAbstraction(count-1))
 
   /** Checks whether the terms `s` and `t` may be unifiable by a simple syntactic over-approximation.
     * Hence, if {{{!mayUnify(s,t)}}} the terms are not unifiable, otherwise they may be. */

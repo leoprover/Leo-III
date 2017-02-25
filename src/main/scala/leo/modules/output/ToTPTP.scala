@@ -388,7 +388,7 @@ object ToTPTP {
   final private def toTPTP(k: Kind): String = {
     import leo.datastructures.Kind.->
     k match {
-      case Kind.typeKind => "$tType"
+      case Kind.* => "$tType"
       case k1 -> k2 => if (k1.isTypeKind)
         s"$$tType > ${toTPTP(k2)}"
       else
