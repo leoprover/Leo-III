@@ -525,6 +525,9 @@ package object datastructures {
     bindings.foldRight(term)((ty,t) => Exists(λ(ty)(t)))
   }
 
+  final def mkPolyUnivType(count: Int, body: Type): Type = if (count <= 0) body
+  else Type.∀(mkPolyUnivType(count-1, body))
+
   /** For a term `t` return `(t', (ty_i)_i)` where `t'` is the subterm of `t`
     * that is acquired by stripping all prefix-lambdas (term abstraction) and
     * the (ty_i)_i are the respective types that lambdas abstract over. E.g.

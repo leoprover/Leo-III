@@ -14,7 +14,7 @@ import leo.modules.HOLSignature
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-abstract sealed class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
+class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
   protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
@@ -213,5 +213,5 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
 
 object SignatureImpl {
   /** Create an empty signature */
-  def empty: SignatureImpl = new SignatureImpl{}
+  def empty: SignatureImpl = new SignatureImpl
 }
