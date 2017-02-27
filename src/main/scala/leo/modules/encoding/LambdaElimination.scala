@@ -6,7 +6,7 @@ import leo.datastructures.Term
   * Created by lex on 24.02.17.
   */
 trait LambdaEliminationStrategy {
-
+  def eliminateLambda(t: Term): Term = ???
 }
 
 object LES_SKI extends LambdaEliminationStrategy {

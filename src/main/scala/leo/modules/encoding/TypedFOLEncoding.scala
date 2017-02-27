@@ -8,6 +8,7 @@ import scala.annotation.tailrec
   *
   * @author Alexander Steen <a.steen@fu-berlin.de>
   * @since February 2017
+  * @todo Prefixing for safe translation
   */
 object TypedFOLEncoding {
   type Problem = Set[Clause]
@@ -28,7 +29,7 @@ object TypedFOLEncoding {
       foSig.addUninterpreted(fMeta.name, foType)
     }
     // Translate
-    val resultProblem: Problem = problem.map(translate(_)(foSig))
+    val resultProblem: Problem = problem.map(translate(_, les)(sig, foSig))
     // Collect auxiliary definitions from used symbols
     val auxDefs: AuxiliaryDefs = ???
     (foSig, resultProblem, auxDefs)
@@ -53,7 +54,9 @@ object TypedFOLEncoding {
     * when printing TFF of FOF format.
     * @note Side-effects: User types occurring in the problem are inserted into `encodingSignature`
     */
-  private final def foTransformType(typ: Type, arity: EncodingAnalyzer.MinArity)(holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Type = {
+  private final def foTransformType(typ: Type, arity: EncodingAnalyzer.MinArity)
+                                   (holSignature: Signature,
+                                    encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.mkPolyUnivType
     val monoBody = typ.monomorphicBody
     val funParamTypes = monoBody.funParamTypesWithResultType
@@ -77,7 +80,8 @@ object TypedFOLEncoding {
     *
     * @note Side-effects: User types occurring in the problem are inserted into `encodingSignature`
     */
-  private final def foTransformType0(ty: Type)(holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Type = {
+  private final def foTransformType0(ty: Type)(holSignature: Signature,
+                                               encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.Type._
     import leo.modules.HOLSignature
     ty match {
@@ -113,11 +117,13 @@ object TypedFOLEncoding {
     *            This sequence must not be empty.
     * @note Side-effects: See `foTransformType0`.
     * @throws IllegalArgumentException if an empty sequence is passed for `tys`. */
-  private final def encodeFunType(tys: Seq[Type])(holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Type = {
+  private final def encodeFunType(tys: Seq[Type])(holSignature: Signature,
+                                                  encodingSignature: TypedFOLEncodingSignature): Type = {
     if (tys.isEmpty) throw new IllegalArgumentException
     else encodeFunType0(tys)(holSignature, encodingSignature)
   }
-  private final def encodeFunType0(tys: Seq[Type])(holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Type = {
+  private final def encodeFunType0(tys: Seq[Type])(holSignature: Signature,
+                                                   encodingSignature: TypedFOLEncodingSignature): Type = {
     if (tys.size == 1) foTransformType0(tys.head)(holSignature, encodingSignature)
     else encodingSignature.funTy(foTransformType0(tys.head)(holSignature, encodingSignature), encodeFunType0(tys.tail)(holSignature, encodingSignature))
   }
@@ -128,34 +134,169 @@ object TypedFOLEncoding {
     * @note Side-effects: May insert auxiliary operators such as `hApp` or `hBool` to
     *       `encodingSignature`
     */
-  final def translate(cl: Clause)(encodingSignature: TypedFOLEncodingSignature): Clause = Clause(cl.lits.map(translate(_)(encodingSignature)))
+  final def translate(cl: Clause, les: LambdaEliminationStrategy)
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Clause =
+    Clause(cl.lits.map(translate(_, les)(holSignature, encodingSignature)))
 
-  final def translate(lit: Literal)(encodingSignature: TypedFOLEncodingSignature): Literal = if (lit.equational) {
-    val translatedLeft = translate(lit.left)(encodingSignature)
-    val translatedRight = translate(lit.right)(encodingSignature)
+  final def translate(lit: Literal, les: LambdaEliminationStrategy)
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Literal = if (lit.equational) {
+    val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
+    val translatedRight = translate(lit.right, les)(holSignature, encodingSignature)
     Literal.mkLit(translatedLeft, translatedRight, lit.polarity)
   } else {
-    val translatedLeft = translate(lit.left)(encodingSignature)
+    val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
     Literal.mkLit(translatedLeft, lit.polarity)
   }
 
-  final def translate(t: Term)(encodingSignature: TypedFOLEncodingSignature): Term = {
+  final def translate(t: Term, les: LambdaEliminationStrategy)
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
     import Term._
-    import leo.modules.HOLSignature.{Forall, Exists, TyForall}
+    import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
+    & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
+    Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
+    import TypedFOLEncodingSignature._
     t match {
-      case Forall(ty :::> body) => ???
-      case Exists(ty :::> body) => ???
-      case TyForall(body) => ???
-      case ty :::> body => ???
-      case TypeLambda(body) => ???
-      case f ∙ args => ???
+      // cases from here should not really happen if invoked from func-ext treated CNF problem.
+      // But, oh well, why not support it anyway
+      case HOLForall(ty :::> body) =>
+        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val translatedBody = translate(body, les)(holSignature, encodingSignature)
+        Term.mkApp(Forall, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+      case HOLExists(ty :::> body) =>
+        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val translatedBody = translate(body, les)(holSignature, encodingSignature)
+        Term.mkApp(Exists, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+      case HOLTyForall(TypeLambda(body)) =>
+        val translatedBody = translate(body,les)(holSignature, encodingSignature)
+        Term.mkTermApp(TyForall, Λ(translatedBody))
+      case HOLEq(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(Eq, Seq(translatedLeft, translatedRight))
+      case HOLNeq(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(Neq, Seq(translatedLeft, translatedRight))
+      case HOLAnd(l,r) =>
+        val translatedLeft = translate(l,les)(holSignature, encodingSignature)
+        val translatedRight = translate(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(And, Seq(translatedLeft, translatedRight))
+      case HOLOr(l,r) =>
+        val translatedLeft = translate(l,les)(holSignature, encodingSignature)
+        val translatedRight = translate(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(Or, Seq(translatedLeft, translatedRight))
+      case HOLEquiv(l,r) =>
+        val translatedLeft = translate(l,les)(holSignature, encodingSignature)
+        val translatedRight = translate(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(Equiv, Seq(translatedLeft, translatedRight))
+      case HOLImpl(l,r) =>
+        val translatedLeft = translate(l,les)(holSignature, encodingSignature)
+        val translatedRight = translate(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(Impl, Seq(translatedLeft, translatedRight))
+      case HOLIf(l,r) =>
+        val translatedLeft = translate(l,les)(holSignature, encodingSignature)
+        val translatedRight = translate(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(If, Seq(translatedLeft, translatedRight))
+      case HOLNot(body) =>
+        val translatedBody = translate(body,les)(holSignature, encodingSignature)
+        Term.mkTermApp(Not, translatedBody)
+      case HOLFalse() => False
+      case HOLTrue() => True
+      case lambda@(_ :::> _) => les.eliminateLambda(lambda)
+      // Non-CNF cases end
+      // Standard-case begin
+      case f ∙ args =>
+        val encodedHead = f match {
+          case Symbol(id) =>
+            val fName = holSignature(id).name
+            mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case _ => f
+        }
+        assert(encodedHead.isAtom)
+        val translatedArgs: Seq[Either[Term, Type]] = args.map(arg =>
+          if (arg.isLeft) Left(translateTerm(arg.left.get, les)(holSignature, encodingSignature))
+          else Right(foTransformType0(arg.right.get)(holSignature, encodingSignature))  )
+        Term.mkApp(encodedHead, translatedArgs)
+      // Standard-case end, error cases follow
+      case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
+      case _ => throw new IllegalArgumentException("unexpected term occurred")
     }
-    ???
   }
+
+  final def translateTerm(t: Term, les: LambdaEliminationStrategy)
+                         (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
+    import Term._
+    import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
+    & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
+    Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
+    import encodingSignature._
+    t match {
+      // These cases can of course happen as subterms may contain arbitrary formulas in HOL
+      case HOLForall(ty :::> body) =>
+        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
+        Term.mkApp(proxyForall, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+      case HOLExists(ty :::> body) =>
+        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
+        Term.mkApp(proxyExists, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+      case HOLTyForall(TypeLambda(body)) =>
+        ??? // TODO FIXME
+      case HOLEq(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyEq, Seq(translatedLeft, translatedRight))
+      case HOLNeq(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyNeq, Seq(translatedLeft, translatedRight))
+      case HOLAnd(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyAnd, Seq(translatedLeft, translatedRight))
+      case HOLOr(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyOr, Seq(translatedLeft, translatedRight))
+      case HOLEquiv(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyEquiv, Seq(translatedLeft, translatedRight))
+      case HOLImpl(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyImpl, Seq(translatedLeft, translatedRight))
+      case HOLIf(l,r) =>
+        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyIf, Seq(translatedLeft, translatedRight))
+      case HOLNot(body) =>
+        val translatedBody = translateTerm(body,les)(holSignature, encodingSignature)
+        Term.mkTermApp(proxyNot, translatedBody)
+      case HOLFalse() => proxyFalse
+      case HOLTrue() => proxyTrue
+      case lambda@(_ :::> _) => les.eliminateLambda(lambda)
+      // Non-CNF cases end
+      // Standard-case begin
+      case f ∙ args =>
+        val encodedHead = f match {
+          case Symbol(id) =>
+            val fName = holSignature(id).name
+            mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case _ => f
+        }
+        assert(encodedHead.isAtom)
+        val translatedArgs: Seq[Either[Term, Type]] = args.map(arg =>
+          if (arg.isLeft) Left(translateTerm(arg.left.get, les)(holSignature, encodingSignature))
+          else Right(foTransformType0(arg.right.get)(holSignature, encodingSignature))  )
+        Term.mkApp(encodedHead, translatedArgs)
+      // Standard-case end, error cases follow
+      case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
+      case _ => throw new IllegalArgumentException("unexpected term occurred")
+    }
+  }
+
 }
-
-
-
 
 object EncodingAnalyzer {
   type MinArity = Int // term parameter count
@@ -251,6 +392,7 @@ object TypedFOLEncodingSignature {
   private final val ooo: Type = o ->: o ->: o
   private final val aao: Type = ∀(1 ->: 1 ->: o)
   private final val aoo: Type = ∀((1 ->: o) ->: o)
+  private final val faoo: Type = ∀(o) ->: o
 
   import leo.datastructures.Term.mkAtom
   final val True: Term = mkAtom(3, o)
@@ -265,6 +407,7 @@ object TypedFOLEncodingSignature {
   final val Neq: Term = mkAtom(12, aao)
   final val Forall: Term = mkAtom(13, aoo)
   final val Exists: Term = mkAtom(14, aoo)
+  final val TyForall: Term = mkAtom(15, faoo)
 
   final def apply(): TypedFOLEncodingSignature = {
     import leo.datastructures.impl.SignatureImpl
@@ -291,7 +434,8 @@ object TypedFOLEncodingSignature {
     "="       -> aao,
     "!="      -> aao,
     "!"       -> aoo,
-    "?"       -> aoo
+    "?"       -> aoo,
+    "!>"      -> faoo
   )
 }
 
@@ -311,6 +455,7 @@ trait TypedFOLEncodingSignature extends Signature {
   }
 
   // Definitions of auxiliary symbols for FO encoding
+  /// Meta symbols
   ///// fun type constant
   lazy val funTy_id: Signature#Key = {
     val id = addFixedTypeConstructor("$$fun", * ->: * ->: *)
@@ -334,19 +479,107 @@ trait TypedFOLEncodingSignature extends Signature {
     usedAuxSymbols0 += id
     id
   }
-  lazy val hApp: Term = Term.mkAtom(hApp_id, hApp_type)
+  lazy val hApp: Term = Term.mkAtom(hApp_id)(this)
   final def hApp(fun: Term, arg: Term): Term = {
     Term.mkApp(hApp, Seq(Right(fun.ty), Right(arg.ty), Left(fun), Left(arg)))
   }
 
+  import TypedFOLEncodingSignature.o
   ///// hBool constant
-  private final lazy val hBool_type: Type = boolTy ->: TypedFOLEncodingSignature.o
+  private final lazy val hBool_type: Type = boolTy ->: o
   lazy val hBool_id: Signature#Key = {
     val id = addFixed("$$hBool", hBool_type, None, Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }
-  lazy val hBool: Term = Term.mkAtom(hBool_id, hBool_type)
+  lazy val hBool: Term = Term.mkAtom(hBool_id)(this)
   final def hBool(boolTerm: Term): Term = Term.mkTermApp(hBool, boolTerm)
+
+  /// Proxy symbols
+  ///// True/False proxy
+  lazy val proxyTrue_id: Signature#Key = {
+    val id = addUninterpreted("$$true", boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyTrue: Term = Term.mkAtom(proxyTrue_id)(this)
+
+  lazy val proxyFalse_id: Signature#Key = {
+    val id = addUninterpreted("$$false", boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyFalse: Term = Term.mkAtom(proxyFalse_id)(this)
+  ///// Not proxy
+  lazy val proxyNot_id: Signature#Key = {
+    val id = addUninterpreted("$$not", boolTy ->: boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyNot: Term = Term.mkAtom(proxyNot_id)(this)
+  ///// and/or proxy
+  lazy val proxyAnd_id: Signature#Key = {
+    val id = addUninterpreted("$$and", boolTy ->: boolTy ->: boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyAnd: Term = Term.mkAtom(proxyAnd_id)(this)
+
+  lazy val proxyOr_id: Signature#Key = {
+    val id = addUninterpreted("$$or", boolTy ->: boolTy ->: boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyOr: Term = Term.mkAtom(proxyOr_id)(this)
+  ///// impl/if/equiv
+  lazy val proxyImpl_id: Signature#Key = {
+    val id = addUninterpreted("$$impl", boolTy ->: boolTy ->: boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyImpl: Term = Term.mkAtom(proxyImpl_id)(this)
+
+  lazy val proxyIf_id: Signature#Key = {
+    val id = addUninterpreted("$$if", boolTy ->: boolTy ->: boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyIf: Term = Term.mkAtom(proxyIf_id)(this)
+
+  lazy val proxyEquiv_id: Signature#Key = {
+    val id = addUninterpreted("$$equiv", boolTy ->: boolTy ->: boolTy, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyEquiv: Term = Term.mkAtom(proxyEquiv_id)(this)
+  ///// forall/exists
+  lazy val proxyForall_id: Signature#Key = {
+    val id = addUninterpreted("$$forall", ∀((1 ->: o) ->: o), Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyForall: Term = Term.mkAtom(proxyForall_id)(this)
+
+  lazy val proxyExists_id: Signature#Key = {
+    val id = addUninterpreted("$$exists", ∀((1 ->: o) ->: o), Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyExists: Term = Term.mkAtom(proxyExists_id)(this)
+
+  ///// eq / neq
+  lazy val proxyEq_id: Signature#Key = {
+    val id = addUninterpreted("$$eq", ∀(1 ->: 1 ->: o), Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyEq: Term = Term.mkAtom(proxyEq_id)(this)
+
+  lazy val proxyNeq_id: Signature#Key = {
+    val id = addUninterpreted("$$neq", ∀(1 ->: 1 ->: o), Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val proxyNeq: Term = Term.mkAtom(proxyNeq_id)(this)
 }
 
