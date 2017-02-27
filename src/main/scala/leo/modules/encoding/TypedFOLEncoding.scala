@@ -23,9 +23,9 @@ object TypedFOLEncoding {
     val functionTable = EncodingAnalyzer.analyze(problem)
     val fIt = functionTable.iterator
     while (fIt.hasNext) {
-      val (f, arity) = fIt.next()
+      val (f, info) = fIt.next()
       val fMeta = sig(f)
-      val foType = foTransformType(fMeta._ty, arity)(sig, foSig)
+      val foType = foTransformType(fMeta._ty, info)(sig, foSig)
       foSig.addUninterpreted(fMeta.name, foType)
     }
     // Translate
@@ -44,7 +44,9 @@ object TypedFOLEncoding {
     * `(t1' * t2' * ... * tn-1') -> tn'`).
     *
     * The transformed parameter types ti' (1 <= i <= n) are given by:
-    * - `rho(nu1', ..., num')` if ti = `rho(nu1, ... num)` is a applied type operator and the
+    * - `bool` if ti = `o`, 1 <= i < n,
+    * - tn' = `bool` if tn = `o` and this type occurs as subterm, `o` otherwise,
+    * - `rho(nu1', ..., num')` if ti = `rho(nu1, ... num)` is a applied type operator (!= `o`) and the
     * `nui` are recursively transformed this way,
     * - `fun(nu1', nu2')` if ti = `nu1 -> nu2` is a function type (can only happen if `i < n`)
     * - `X` if ti `X` is a type variable.
@@ -54,26 +56,27 @@ object TypedFOLEncoding {
     * when printing TFF of FOF format.
     * @note Side-effects: User types occurring in the problem are inserted into `encodingSignature`
     */
-  private final def foTransformType(typ: Type, symbolInfo: EncodingAnalyzer.SymbolInfo)
+  protected[encoding] final def foTransformType(typ: Type, symbolInfo: EncodingAnalyzer.SymbolInfo)
                                    (holSignature: Signature,
                                     encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.mkPolyUnivType
     val monoBody = typ.monomorphicBody
-    val funParamTypes = monoBody.funParamTypesWithResultType
+    val funParamTypes0 = monoBody.funParamTypesWithResultType
+    val transformedFunParamTypes0 = funParamTypes0.init.map(foTransformType0(_, true)(holSignature, encodingSignature))
+    val transformedFunResultType0 = if (symbolInfo._2) foTransformType0(funParamTypes0.last, true)(holSignature, encodingSignature)
+    else foTransformType0(funParamTypes0.last, false)(holSignature, encodingSignature)
+
+    val funParamTypes = transformedFunParamTypes0 :+ transformedFunResultType0
     // If a minimum arity is known, use the first `arity` parameters as direct FO-like parameters and
-    // the remaining ones as simulated ones (later applies via hApp)
-    // TODO: Subterm o/bool decision
+    // the remaining ones as simulated ones (later applied via hApp)
     val arity = symbolInfo._1
-    if (arity > 0) {
-      assert(arity < funParamTypes.size) // since result type is included
-      val directlyPassedTypes = funParamTypes.take(arity)
-      val transformedDirectlyPassedTypes = directlyPassedTypes.map(foTransformType0(_)(holSignature, encodingSignature))
-      val goalType = funParamTypes.drop(arity)
-      val transformedGoalType = goalType.map(foTransformType0(_)(holSignature, encodingSignature))
-      val funEncodedGoalType = encodeFunType(transformedGoalType)(holSignature, encodingSignature)
-      mkPolyUnivType(typ.polyPrefixArgsCount, Type.mkFunType(transformedDirectlyPassedTypes, funEncodedGoalType))
-    } else mkPolyUnivType(typ.polyPrefixArgsCount, encodeFunType(funParamTypes.map(foTransformType0(_)(holSignature, encodingSignature)))(holSignature, encodingSignature))
+    assert(arity <= funParamTypes.size)
+    val directlyPassedTypes = funParamTypes.take(arity)
+    val goalType = funParamTypes.drop(arity) // the types that need to be encoded via fun
+    val funEncodedGoalType = encodingSignature.funTy(goalType)
+    mkPolyUnivType(typ.polyPrefixArgsCount, Type.mkFunType(directlyPassedTypes, funEncodedGoalType))
   }
+
   /** Transforms a type `t` into its FO-encoded variant given by
     * - `rho(nu1', ..., num')` if t = `rho(nu1, ... num)` is a applied type operator and the
     * `nui` are recursively transformed this way,
@@ -82,12 +85,12 @@ object TypedFOLEncoding {
     *
     * @note Side-effects: User types occurring in the problem are inserted into `encodingSignature`
     */
-  private final def foTransformType0(ty: Type)(holSignature: Signature,
+  private final def foTransformType0(ty: Type, replaceO: Boolean)(holSignature: Signature,
                                                encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.Type._
     import leo.modules.HOLSignature
     ty match {
-      case HOLSignature.o => TypedFOLEncodingSignature.o
+      case HOLSignature.o => if (replaceO) encodingSignature.boolTy else TypedFOLEncodingSignature.o
       case HOLSignature.i => TypedFOLEncodingSignature.i
       case BaseType(tyId) =>
         val name = holSignature(tyId).name
@@ -96,12 +99,12 @@ object TypedFOLEncoding {
       case ComposedType(tyConId, tyArgs) =>
         val tyConstructorMeta = holSignature(tyConId)
         val tyConstructorName = tyConstructorMeta.name
-        val transformedArgTypes = tyArgs.map(foTransformType0(_)(holSignature, encodingSignature))
+        val transformedArgTypes = tyArgs.map(foTransformType0(_, true)(holSignature, encodingSignature))
         if (encodingSignature.exists(tyConstructorName)) Type.mkType(encodingSignature(tyConstructorName).key, transformedArgTypes)
         else Type.mkType(encodingSignature.addTypeConstructor(tyConstructorName, tyConstructorMeta._kind), transformedArgTypes)
       case in -> out =>
-        val transformedIn = foTransformType0(in)(holSignature, encodingSignature)
-        val transformedOut = foTransformType0(out)(holSignature, encodingSignature)
+        val transformedIn = foTransformType0(in,replaceO)(holSignature, encodingSignature)
+        val transformedOut = foTransformType0(out,replaceO)(holSignature, encodingSignature)
         // Return lifted function type fun(in', out')
         encodingSignature.funTy(transformedIn, transformedOut)
       case _ => // bound type var, product type or union type
@@ -109,25 +112,6 @@ object TypedFOLEncoding {
         assert(!ty.isPolyType)
         ty
     }
-  }
-  /** Returns an FO-encoded function type. Given a non-empty sequence of types
-    * `t1`,...,`tn`, this method returns the simulated function type
-    * `fun(t1', fun(..., fun(tn-1', tn')...))`
-    * where the ti' are recursively transformed by `foTransformType0`.
-    *
-    * @param tys A sequence of types representing the uncurried parameter types of a function.
-    *            This sequence must not be empty.
-    * @note Side-effects: See `foTransformType0`.
-    * @throws IllegalArgumentException if an empty sequence is passed for `tys`. */
-  private final def encodeFunType(tys: Seq[Type])(holSignature: Signature,
-                                                  encodingSignature: TypedFOLEncodingSignature): Type = {
-    if (tys.isEmpty) throw new IllegalArgumentException
-    else encodeFunType0(tys)(holSignature, encodingSignature)
-  }
-  private final def encodeFunType0(tys: Seq[Type])(holSignature: Signature,
-                                                   encodingSignature: TypedFOLEncodingSignature): Type = {
-    if (tys.size == 1) foTransformType0(tys.head)(holSignature, encodingSignature)
-    else encodingSignature.funTy(foTransformType0(tys.head)(holSignature, encodingSignature), encodeFunType0(tys.tail)(holSignature, encodingSignature))
   }
 
   /**
@@ -161,11 +145,11 @@ object TypedFOLEncoding {
       // cases from here should not really happen if invoked from func-ext treated CNF problem.
       // But, oh well, why not support it anyway
       case HOLForall(ty :::> body) =>
-        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translate(body, les)(holSignature, encodingSignature)
         Term.mkApp(Forall, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
       case HOLExists(ty :::> body) =>
-        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translate(body, les)(holSignature, encodingSignature)
         Term.mkApp(Exists, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
       case HOLTyForall(TypeLambda(body)) =>
@@ -215,7 +199,7 @@ object TypedFOLEncoding {
           case _ => f
         }
         assert(encodedHead.isAtom)
-        val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get)(holSignature, encodingSignature))
+        val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
         leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
@@ -234,7 +218,7 @@ object TypedFOLEncoding {
     }
   }
 
-  final def translateTerm(t: Term, les: LambdaEliminationStrategy)
+  private final def translateTerm(t: Term, les: LambdaEliminationStrategy)
                          (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
     import Term._
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
@@ -244,11 +228,11 @@ object TypedFOLEncoding {
     t match {
       // These cases can of course happen as subterms may contain arbitrary formulas in HOL
       case HOLForall(ty :::> body) =>
-        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
         Term.mkApp(proxyForall, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
       case HOLExists(ty :::> body) =>
-        val encodedType =  foTransformType0(ty)(holSignature, encodingSignature)
+        val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
         Term.mkApp(proxyExists, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
       case HOLTyForall(TypeLambda(body)) =>
@@ -297,7 +281,7 @@ object TypedFOLEncoding {
           case _ => f
         }
         assert(encodedHead.isAtom)
-        val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get)(holSignature, encodingSignature))
+        val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
         leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
@@ -517,6 +501,22 @@ trait TypedFOLEncodingSignature extends Signature {
     id
   }
   final def funTy(in: Type, out: Type): Type = mkType(funTy_id, Seq(in, out))
+  /** Returns an FO-encoded function type. Given a non-empty sequence of types
+    * `t1`,...,`tn`, this method returns the simulated function type
+    * `fun(t1', fun(..., fun(tn-1', tn')...))`
+    * where the ti' are recursively transformed by `foTransformType0`.
+    *
+    * @param tys A sequence of types representing the uncurried parameter types of a function.
+    *            This sequence must not be empty.
+    * @throws IllegalArgumentException if an empty sequence is passed for `tys`. */
+  final def funTy(tys: Seq[Type]): Type = {
+    if (tys.isEmpty) throw new IllegalArgumentException
+    else funTy0(tys)
+  }
+  private final def funTy0(tys: Seq[Type]): Type = {
+    if (tys.size == 1) tys.head
+    else funTy(tys.head, funTy0(tys.tail))
+  }
 
   ///// bool type constant
   lazy val boolTy_id: Signature#Key = {
