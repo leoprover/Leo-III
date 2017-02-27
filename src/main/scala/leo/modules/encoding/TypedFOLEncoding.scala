@@ -1,13 +1,13 @@
 package leo.modules.encoding
 
-
 import leo.datastructures.{Clause, Literal, Signature, Term, Type}
-import leo.modules.HOLSignature
-
 import scala.annotation.tailrec
 
 /**
-  * Created by lex on 21.02.17.
+  * Object for transforming higher-order problems into polymorphic first-order problems.
+  *
+  * @author Alexander Steen <a.steen@fu-berlin.de>
+  * @since February 2017
   */
 object TypedFOLEncoding {
   type Problem = Set[Clause]
@@ -79,6 +79,7 @@ object TypedFOLEncoding {
     */
   private final def foTransformType0(ty: Type)(holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.Type._
+    import leo.modules.HOLSignature
     ty match {
       case HOLSignature.o => TypedFOLEncodingSignature.o
       case HOLSignature.i => TypedFOLEncodingSignature.i
@@ -298,7 +299,8 @@ trait TypedFOLEncodingSignature extends Signature {
   import leo.datastructures.Kind.*
   import leo.datastructures.Type.{mkType, ∀}
 
-  var usedAuxSymbols: Set[Signature#Key] = Set.empty
+  private var usedAuxSymbols0: Set[Signature#Key] = Set.empty
+  final def usedAuxSymbols: Set[Signature#Key] = usedAuxSymbols0
 
   // Init standard symbols
   for (ty <- TypedFOLEncodingSignature.fixedTypes) {
@@ -309,29 +311,42 @@ trait TypedFOLEncodingSignature extends Signature {
   }
 
   // Definitions of auxiliary symbols for FO encoding
+  ///// fun type constant
   lazy val funTy_id: Signature#Key = {
     val id = addFixedTypeConstructor("$$fun", * ->: * ->: *)
-    usedAuxSymbols += id
+    usedAuxSymbols0 += id
     id
   }
-  def funTy(in: Type, out: Type): Type = mkType(funTy_id, Seq(in, out))
+  final def funTy(in: Type, out: Type): Type = mkType(funTy_id, Seq(in, out))
 
+  ///// bool type constant
   lazy val boolTy_id: Signature#Key = {
     val id = addFixedTypeConstructor("$$bool", *)
-    usedAuxSymbols += id
+    usedAuxSymbols0 += id
     id
   }
   lazy val boolTy: Type = mkType(boolTy_id)
 
-  private final val hApp_type: Type = ∀(∀((funTy(2,1) * 2).->:(1)))
+  ///// hApp constant
+  private final lazy val hApp_type: Type = ∀(∀((funTy(2,1) * 2).->:(1)))
   lazy val hApp_id: Signature#Key = {
     val id = addFixed("$$hApp", hApp_type, None, Signature.PropNoProp)
-    usedAuxSymbols += id
+    usedAuxSymbols0 += id
     id
   }
   lazy val hApp: Term = Term.mkAtom(hApp_id, hApp_type)
-  def hApp(fun: Term, arg: Term): Term = {
+  final def hApp(fun: Term, arg: Term): Term = {
     Term.mkApp(hApp, Seq(Right(fun.ty), Right(arg.ty), Left(fun), Left(arg)))
   }
+
+  ///// hBool constant
+  private final lazy val hBool_type: Type = boolTy ->: TypedFOLEncodingSignature.o
+  lazy val hBool_id: Signature#Key = {
+    val id = addFixed("$$hBool", hBool_type, None, Signature.PropNoProp)
+    usedAuxSymbols0 += id
+    id
+  }
+  lazy val hBool: Term = Term.mkAtom(hBool_id, hBool_type)
+  final def hBool(boolTerm: Term): Term = Term.mkTermApp(hBool, boolTerm)
 }
 
