@@ -54,7 +54,7 @@ object TypedFOLEncoding {
     * when printing TFF of FOF format.
     * @note Side-effects: User types occurring in the problem are inserted into `encodingSignature`
     */
-  private final def foTransformType(typ: Type, arity: EncodingAnalyzer.MinArity)
+  private final def foTransformType(typ: Type, symbolInfo: EncodingAnalyzer.SymbolInfo)
                                    (holSignature: Signature,
                                     encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.mkPolyUnivType
@@ -62,6 +62,8 @@ object TypedFOLEncoding {
     val funParamTypes = monoBody.funParamTypesWithResultType
     // If a minimum arity is known, use the first `arity` parameters as direct FO-like parameters and
     // the remaining ones as simulated ones (later applies via hApp)
+    // TODO: Subterm o/bool decision
+    val arity = symbolInfo._1
     if (arity > 0) {
       assert(arity < funParamTypes.size) // since result type is included
       val directlyPassedTypes = funParamTypes.take(arity)
@@ -213,10 +215,19 @@ object TypedFOLEncoding {
           case _ => f
         }
         assert(encodedHead.isAtom)
-        val translatedArgs: Seq[Either[Term, Type]] = args.map(arg =>
-          if (arg.isLeft) Left(translateTerm(arg.left.get, les)(holSignature, encodingSignature))
-          else Right(foTransformType0(arg.right.get)(holSignature, encodingSignature))  )
-        Term.mkApp(encodedHead, translatedArgs)
+        val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get)(holSignature, encodingSignature))
+        val termArgs = args.dropWhile(_.isRight)
+        leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
+        val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
+        // pass some arguments directly if possible
+        val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
+        assert(translatedTermArgs.size >= encodedHeadParamTypes.size)
+        val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
+        val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
+
+        val tyArgsApplied = Term.mkTypeApp(encodedHead, translatedTyArgs)
+        val directArgsApplied = Term.mkTermApp(tyArgsApplied, directArgs)
+        encodingSignature.hApp(directArgsApplied, indirectArgs)
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
       case _ => throw new IllegalArgumentException("unexpected term occurred")
@@ -286,10 +297,19 @@ object TypedFOLEncoding {
           case _ => f
         }
         assert(encodedHead.isAtom)
-        val translatedArgs: Seq[Either[Term, Type]] = args.map(arg =>
-          if (arg.isLeft) Left(translateTerm(arg.left.get, les)(holSignature, encodingSignature))
-          else Right(foTransformType0(arg.right.get)(holSignature, encodingSignature))  )
-        Term.mkApp(encodedHead, translatedArgs)
+        val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get)(holSignature, encodingSignature))
+        val termArgs = args.dropWhile(_.isRight)
+        leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
+        val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
+        // pass some arguments directly if possible
+        val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
+        assert(translatedTermArgs.size >= encodedHeadParamTypes.size)
+        val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
+        val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
+
+        val tyArgsApplied = Term.mkTypeApp(encodedHead, translatedTyArgs)
+        val directArgsApplied = Term.mkTermApp(tyArgsApplied, directArgs)
+        encodingSignature.hApp(directArgsApplied, indirectArgs)
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
       case _ => throw new IllegalArgumentException("unexpected term occurred")
@@ -300,7 +320,9 @@ object TypedFOLEncoding {
 
 object EncodingAnalyzer {
   type MinArity = Int // term parameter count
-  type ArityTable = Map[Signature#Key, MinArity]
+  type ArgPos = Boolean // does the symbol occur at argument position?
+  type SymbolInfo = (MinArity, ArgPos)
+  type ArityTable = Map[Signature#Key, SymbolInfo]
 
   final def analyze(clauses: Set[Clause]): ArityTable = {
     var result: ArityTable = Map()
@@ -327,16 +349,36 @@ object EncodingAnalyzer {
     } else analyze(lit.left)
   }
 
-  @tailrec
-  final def analyze(t: Term): ArityTable = {
+  private final val fixedConnectives: Set[Signature#Key] = {
+    import leo.modules.HOLSignature._
+    Set(Not.key, &.key, |||.key, Impl.key, <=.key, <=>.key, Forall.key, Exists.key)
+  }
+  @tailrec final def analyze(t: Term): ArityTable = {
     import leo.datastructures.Term._
+
     t match {
       case _ :::> body => analyze(body)
       case TypeLambda(body) => analyze(body)
       case f ∙ args => f match {
         case Symbol(id) =>
           val argArity = arity(args)
-          merge(id -> argArity, analyzeArgs(args))
+          if (fixedConnectives.contains(id))
+            merge(id -> (argArity, false), analyzeArgs(args))
+          else
+            merge(id -> (argArity, false), analyzeTermArgs(args))
+        case _ => analyzeTermArgs(args)
+      }
+    }
+  }
+  @tailrec final def analyzeTerm(t: Term): ArityTable = {
+    import leo.datastructures.Term._
+    t match {
+      case _ :::> body => analyzeTerm(body)
+      case TypeLambda(body) => analyzeTerm(body)
+      case f ∙ args => f match {
+        case Symbol(id) =>
+          val argArity = arity(args)
+          merge(id -> (argArity, true), analyzeArgs(args))
         case _ => analyzeArgs(args)
       }
     }
@@ -359,6 +401,18 @@ object EncodingAnalyzer {
     }
     result
   }
+  private final def analyzeTermArgs(args: Seq[Either[Term, Type]]): ArityTable = {
+    var result: ArityTable = Map()
+    val argsIt = args.iterator
+    while (argsIt.hasNext) {
+      val arg = argsIt.next()
+      if (arg.isLeft) {
+        val arityTable = analyzeTerm(arg.left.get)
+        result = merge(arityTable, result)
+      }
+    }
+    result
+  }
 
   private final def merge(t1: ArityTable, t2: ArityTable): ArityTable = {
     var result: ArityTable = t2
@@ -370,14 +424,14 @@ object EncodingAnalyzer {
     result
   }
 
-  private final def merge(entry: (Signature#Key, MinArity), t2: ArityTable): ArityTable = {
+  private final def merge(entry: (Signature#Key, SymbolInfo), t2: ArityTable): ArityTable = {
     val key = entry._1
-    val arity = entry._2
+    val info = entry._2
+    val arity = info._1
+    val argPos = info._2
     if (t2.contains(key)) {
-      val existingEntry = t2(key)
-      if (existingEntry > arity)
-        t2 + entry // change map entry
-      else t2
+      val (existingArity, existingArgPos) = t2(key)
+      t2 + (key -> (arity.min(existingArity), argPos || existingArgPos))
     } else t2 + entry
   }
 }
@@ -482,6 +536,14 @@ trait TypedFOLEncodingSignature extends Signature {
   lazy val hApp: Term = Term.mkAtom(hApp_id)(this)
   final def hApp(fun: Term, arg: Term): Term = {
     Term.mkApp(hApp, Seq(Right(fun.ty), Right(arg.ty), Left(fun), Left(arg)))
+  }
+  @tailrec
+  final def hApp(fun: Term, args: Seq[Term]): Term = {
+    if (args.isEmpty) fun
+    else {
+      val hd = args.head
+      hApp(hApp(fun, hd), args.tail)
+    }
   }
 
   import TypedFOLEncodingSignature.o
