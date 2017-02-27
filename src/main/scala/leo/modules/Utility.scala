@@ -36,7 +36,7 @@ object Utility {
   def signatureAsString(s: Signature): String = {
     import leo.datastructures.Signature.{lexStatus,multStatus}
     val sb = new StringBuilder()
-    sb.append(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+    sb.append(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties\n")
     s.allConstants.foreach { c => {
       val c1 = s(c)
       sb.append(s"${c1.name}\t|\t")

@@ -78,6 +78,7 @@ object TypedFOLEncoding {
   }
 
   /** Transforms a type `t` into its FO-encoded variant given by
+    * `bool` if t = `o` and replaceO
     * - `rho(nu1', ..., num')` if t = `rho(nu1, ... num)` is a applied type operator and the
     * `nui` are recursively transformed this way,
     * - `fun(nu1', nu2')` if ti = `nu1 -> nu2` is a function type (can only happen if `i < n`)
@@ -211,7 +212,10 @@ object TypedFOLEncoding {
 
         val tyArgsApplied = Term.mkTypeApp(encodedHead, translatedTyArgs)
         val directArgsApplied = Term.mkTermApp(tyArgsApplied, directArgs)
-        encodingSignature.hApp(directArgsApplied, indirectArgs)
+        val allApplied = encodingSignature.hApp(directArgsApplied, indirectArgs)
+        assert(allApplied.ty == o || allApplied.ty == encodingSignature.boolTy)
+        if (allApplied.ty == encodingSignature.boolTy) encodingSignature.hBool(allApplied)
+        else allApplied
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
       case _ => throw new IllegalArgumentException("unexpected term occurred")
@@ -454,13 +458,13 @@ object TypedFOLEncodingSignature {
 
   import leo.datastructures.Kind
   import leo.datastructures.Kind.{superKind, *}
-  private final val fixedTypes: Map[String, Kind] = Map(
+  private final val fixedTypes: Seq[(String, Kind)] = Seq(
     "$tType"  -> superKind,
     "$o"      -> *, // 1
     "$i"      -> * // 2
   )
 
-  private final val fixedSymbols: Map[String, Type] = Map(
+  private final val fixedSymbols: Seq[(String, Type)] = Seq(
     "$true"   -> o, // 3
     "$false"  -> o, // 4
     "~"       -> oo,
@@ -527,7 +531,7 @@ trait TypedFOLEncodingSignature extends Signature {
   lazy val boolTy: Type = mkType(boolTy_id)
 
   ///// hApp constant
-  private final lazy val hApp_type: Type = ∀(∀((funTy(2,1) * 2).->:(1)))
+  private final lazy val hApp_type: Type = ∀(∀(funTy(2,1) ->: Type.mkVarType(2) ->: Type.mkVarType(1)))
   lazy val hApp_id: Signature#Key = {
     val id = addFixed("$$hApp", hApp_type, None, Signature.PropNoProp)
     usedAuxSymbols0 += id
@@ -535,7 +539,10 @@ trait TypedFOLEncodingSignature extends Signature {
   }
   lazy val hApp: Term = Term.mkAtom(hApp_id)(this)
   final def hApp(fun: Term, arg: Term): Term = {
-    Term.mkApp(hApp, Seq(Right(fun.ty), Right(arg.ty), Left(fun), Left(arg)))
+    val (id, tyArgs) = Type.ComposedType.unapply(fun.ty).get
+    assert(id == funTy_id)
+    assert(tyArgs.size == 2)
+    Term.mkApp(hApp, Seq(Right(tyArgs.head), Right(tyArgs.tail.head), Left(fun), Left(arg)))
   }
   @tailrec
   final def hApp(fun: Term, args: Seq[Term]): Term = {
