@@ -4,9 +4,11 @@ import leo.{Configuration, Out}
 import leo.agents.{InterferingLoop, OperationState}
 import leo.datastructures._
 import leo.datastructures.blackboard.{DataType, Delta, Result}
+import leo.modules.calculus._
 import leo.modules.output._
 import leo.modules.seqpproc.State
 import leo.modules.control.Control
+import leo.modules.proof_object.CompressProof
 
 import scala.collection.mutable
 
@@ -49,6 +51,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
   //TODO Remove after merge with alex
   private val movedToProcessed : mutable.Set[Long] = new mutable.HashSet[Long]
+  private final val importantInferences : Set[CalculusRule] = Set(PatternUni, PreUni, Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
@@ -59,9 +62,12 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     if(actRound > maxRound && maxRound > 0) {
       sb.append("-----------------------------------------------------\n")
       sb.append("Finished Rounds\n")
-      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty(sig)).mkString("\n  ")}\n")
-      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty(sig)).mkString("\n  ")}\n")
-      sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty(sig)).mkString("\n  ")}\n")
+      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
+        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+      sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
+        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
       sb.append("-----------------------------------------------------\n")
       leo.Out.debug(sb.toString())
       terminatedFlag = true
@@ -69,9 +75,12 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     }
     sb.append(s" --------------- Round: ${actRound}-------------------\n")
     actRound += 1
-    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty(sig)).mkString("\n  ")}\n")
-    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty(sig)).mkString("\n  ")}\n")
-    sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
+      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
+      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
 
 
 
@@ -82,7 +91,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
 
 
-    sb.append(s"Select next Unprocessed:\n  >  ${select.pretty(sig)}\n")
+    sb.append(s"Select next Unprocessed:\n  >  ${CompressProof.compressAnnotation(select)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)}\n")
     sb.append("-----------------------------------------------------\n\n")
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
     leo.Out.output(sb.toString())

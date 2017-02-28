@@ -18,10 +18,7 @@ package object calculus {
     * methods (for logging the inference steps).
     */
   trait CalculusRule {
-    /** The name of the inference rule. */
     def name: String
-    /** The kind of model-theoric relation of the inference rule's result to its premises.
-      * @see Explanation of values given in [[leo.modules.output.SuccessSZS]]. */
     def inferenceStatus: SuccessSZS
   }
 
