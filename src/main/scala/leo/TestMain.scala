@@ -99,43 +99,7 @@ object TestMain {
       }
       Out.comment(s"Configuration: $config")
 
-
-      val loadphase = new LoadPhase(Configuration.PROBLEMFILE)
-      val filterphase = new SeqFilterPhase()
-
-
-      Blackboard().addDS(FormulaDataStore)
-      Blackboard().addDS(BlackboardPreFilterSet)
-      Blackboard().addDS(SZSDataStore)
-
-      printPhase(loadphase)
-      if (!loadphase.execute()) {
-        Scheduler().killAll()
-        TimeOutProcess.kill()
-        unexpectedEnd(System.currentTimeMillis() - startTime)
-        return
-      }
-
-      val afterParsing = System.currentTimeMillis()
-      val timeWOParsing: Long = afterParsing - startTime
-
-      printPhase(filterphase)
-      if (!filterphase.execute()) {
-        Scheduler().killAll()
-        TimeOutProcess.kill()
-        unexpectedEnd(System.currentTimeMillis() - startTime)
-        return
-      }
-
-      val timeForFilter: Long = System.currentTimeMillis() - afterParsing
-      leo.Out.finest(s"Filter Time : ${timeForFilter}ms")
-
-      leo.Out.debug("Used :")
-      leo.Out.debug(FormulaDataStore.getFormulas.map(_.pretty(sig)).mkString("\n"))
-      leo.Out.debug("Unused : ")
-      leo.Out.debug(PreFilterSet.getFormulas.mkString("\n"))
-
-      val state = BlackboardState.fresh[InterleavingLoop.A](sig)
+      val state = BlackboardState.fresh(sig)
       val uniStore = new UnificationStore[InterleavingLoop.A]()
       val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
       val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
@@ -163,7 +127,7 @@ object TestMain {
 //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
       val szsStatus  = state.state.szsStatus
       Out.output("")
-      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms resp. ${endTime - afterParsing} ms w/o parsing"))
+      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 
 //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
       val proof = state.state.derivationClause

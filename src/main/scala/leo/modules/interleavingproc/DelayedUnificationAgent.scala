@@ -14,7 +14,7 @@ import leo.modules.control.Control
   * @since 11/17/16
   * @author Max Wisniewski
   */
-class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLoop.A], state : BlackboardState[InterleavingLoop.A], sig : Signature) extends AbstractAgent{
+class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLoop.A], state : BlackboardState, sig : Signature) extends AbstractAgent{
   override val name: String = "DelayedUnificationAgent"
   override val interest: Option[Seq[DataType[Any]]] = Some(Seq(OpenUnification))
 
@@ -40,7 +40,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
       val result = Result()
       result.remove(OpenUnification)(ac)
       val newclauses = Control.unifyNewClauses(Set(ac))(sig)
-      val sb = new StringBuilder("\n")
+      val sb = new StringBuilder("\nUnify Clauses:")
 
 
       val newIt = newclauses.iterator
@@ -53,12 +53,14 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
         newCl = Control.rewriteSimp(newCl, rewrite)(sig)
 
         if (!Clause.trivial(newCl.cl)) {
-          sb.append(s"Unified Clause:\n>>   ${ac.pretty(sig)}\n>> to\n++> simp  ${newCl.pretty(sig)}")
+          sb.append(s"\n>>\t${ac.pretty(sig)}\n>> to\n++> simp  ${newCl.pretty(sig)}")
           result.insert(UnprocessedClause)(newCl)
+        }else {
+          sb.append(s"\n>>\tResult ${newCl.pretty(sig)} was trivial.")
         }
       }
       sb.append("\n")
-      leo.Out.debug(sb.toString())
+      leo.Out.output(sb.toString())
       result
 
     }

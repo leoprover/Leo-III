@@ -1,10 +1,10 @@
 package leo.modules.interleavingproc
 
-import leo.Configuration
+import leo.{Configuration, Out}
 import leo.agents.{InterferingLoop, OperationState}
 import leo.datastructures._
 import leo.datastructures.blackboard.{DataType, Delta, Result}
-import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem, SZS_Unknown, StatusSZS}
+import leo.modules.output._
 import leo.modules.seqpproc.State
 import leo.modules.control.Control
 
@@ -26,7 +26,7 @@ object InterleavingLoop {
   * @author Max Wisniewski
   * @since 7/18/16
   */
-class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification : UnificationStore[InterleavingLoop.A], sig : Signature) extends InterferingLoop[StateView[InterleavingLoop.A]] {
+class InterleavingLoop(state : BlackboardState, unification : UnificationStore[InterleavingLoop.A], sig : Signature) extends InterferingLoop[StateView[InterleavingLoop.A]] {
 
   @inline private final val forwardSubsumed = true
   @inline private final val notForwardSubsumed = false
@@ -72,13 +72,20 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(_.pretty(sig)).mkString("\n  ")}\n")
     sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(_.pretty(sig)).mkString("\n  ")}\n")
     sb.append(s"Processed:\n  ${state.state.processed.map(_.pretty(sig)).mkString("\n  ")}\n")
-    if(!state.hasNextUnprocessed) return None
+
+
+
+
+    if(!state.state.unprocessedLeft) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
     movedToProcessed.add(select.id)
+
+
+
     sb.append(s"Select next Unprocessed:\n  >  ${select.pretty(sig)}\n")
     sb.append("-----------------------------------------------------\n\n")
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
-    leo.Out.debug(sb.toString())
+    leo.Out.output(sb.toString())
     // The normal loop from seqpproc
     commonFilter(select)
   }
@@ -86,28 +93,52 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
   private def commonFilter(c : InterleavingLoop.A) : Option[StateView[InterleavingLoop.A]] = {
 
     // Simplify and rewrite
+    var cur = Control.rewriteSimp(c, state.state.rewriteRules)
 
-    val simpRewrite = Control.rewriteSimp(c, state.state.rewriteRules)
 
-    // Check for newly generated empty clause
-    if(Clause.effectivelyEmpty(simpRewrite.cl)){
-      // We found the empty clause
-      if (state.conjecture.isEmpty) {
-        return Some(StateView(c, simpRewrite, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(simpRewrite)), notForwardSubsumed, Set()))
+
+    /* Functional Extensionality */
+    cur = Control.funcext(cur)
+    /* To equality if possible */
+    cur = Control.liftEq(cur)
+
+    val curCNF = Control.cnf(cur)
+
+
+    if (curCNF.size == 1 && curCNF.head == cur) {
+      // No CNF step, do main loop inferences
+      // Check if `cur` is an empty clause
+      if (Clause.effectivelyEmpty(cur.cl)) {
+        if (state.conjecture == null) {Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(cur))))}
+        else {Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
       } else {
-        return Some(StateView(c, simpRewrite, Set(), Set(), Some(SZS_Theorem, Some(simpRewrite)), notForwardSubsumed, Set()))
+        // Not an empty clause, detect choice definition or do reasoning step.
+        val choiceCandidate = Control.detectChoiceClause(cur)
+        if (choiceCandidate.isDefined) {
+          val choiceFun = choiceCandidate.get
+          state.state.addChoiceFunction(choiceFun)  // TODO Insert in transaction
+          leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
+        } else {
+          // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+          // e.g. by forward subsumption
+          if (!Control.redundant(cur, state.state.processed)) {
+            //Control.submit(state.state.processed, state.state)    // TODO External Prover call
+            return mainLoopInferences(c, cur, state.state)
+          } else {
+            Out.debug(s"Clause ${cur.id} redundant, skipping.")
+            Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), None, true))
+          }
+        }
       }
     }
-
-    // Check for forward subsumption
-    val subsumed = Control.forwardSubsumptionTest(simpRewrite, state.state.processed)
-    if(subsumed.nonEmpty){
-      // Create a Forward Subsumption task
-      return Some(StateView(c, simpRewrite, Set(), Set(), None, forwardSubsumed, Set()))
+    else {
+      // TODO Construct work to insert only curCNF
+      // state.addUnprocessed(curCNF)
     }
 
+
     // Main inference tests
-    mainLoopInferences(c, simpRewrite, state.state)
+    mainLoopInferences(c, cur, state.state)
   }
 
   @inline private final def mainLoopInferences(c : InterleavingLoop.A, cl: InterleavingLoop.A, state: State[InterleavingLoop.A]): Option[StateView[InterleavingLoop.A]] = {
@@ -117,7 +148,11 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
 
     // Check backward subsumption
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
-    val considerClauses = state.processed -- backSubsumedClauses
+
+    assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
+
+    val considerClauses = (state.processed -- backSubsumedClauses) + cur  // SeqPProc 463: state.addProcessed(cur)
+    Control.insertIndexed(cur)
 
     cur = Control.funcext(cur)
     cur = Control.liftEq(cur)
@@ -126,7 +161,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     val paramod_result = Control.paramodSet(cur, considerClauses)
     newclauses = newclauses union paramod_result
 
-    Some(StateView(c, cur , newclauses, backSubsumedClauses, None, notForwardSubsumed, actRewrite))
+    Some(StateView[InterleavingLoop.A](c, cur , newclauses, backSubsumedClauses, None, notForwardSubsumed, actRewrite, state.choiceFunctions))
   }
 
 
@@ -177,12 +212,22 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur, 1)
+    val primSubst_result = Control.primsubst(cur, Configuration.PRIMSUBST_LEVEL)
     newclauses = newclauses union primSubst_result
+
 
     newclauses = newclauses union Control.convertDefinedEqualities(newclauses)
 
+    newclauses = newclauses.map(Control.liftEq)
+
+    val choice_result = Control.instantiateChoice(cur, opState.actChoice)
+    // TODO Move to statistics state.incChoiceInstantiations(choice_result.size)
+    newclauses = newclauses union choice_result
+
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
+
+    // Preunify new Clauses
+    // TODO Perform pattern uni here and queue the complete pre unification for later
 
     // Split unifiable and non-unifiable clauses
     val cIt = newclauses.iterator
@@ -192,6 +237,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
       ncl = Control.rewriteSimp(ncl, rewrite)
       if(!Clause.trivial(ncl.cl)) {
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
+          leo.Out.output(s"New Unification : ${ncl.pretty(sig)}")
           result.insert(OpenUnification)(ncl)
         } else {
           newclauses += ncl
@@ -201,8 +247,10 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
 
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+    newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+    Control.updateDescendants(cur, newclauses)
     /* Replace eq symbols on top-level by equational literals. */
-    newclauses = newclauses.map(Control.liftEq)
+//    newclauses = newclauses.map(Control.liftEq)
 
     /* Pre-unify new clauses */
 //    newclauses = Control.preunifyNewClauses(newclauses)
@@ -212,14 +260,25 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
     while (newIt.hasNext) {
       var newCl = newIt.next()
       newCl = Control.rewriteSimp(newCl, rewrite)
-
-      if (!Clause.trivial(newCl.cl)) {
+      assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
+      if (Clause.effectivelyEmpty(newCl.cl)){
+        result.insert(DerivedClause)(newCl)
+        if(state.conjecture.isDefined) {
+          result.insert(SZSStatus)(SZS_Theorem)
+        } else {
+          result.insert(SZSStatus)(SZS_ContradictoryAxioms)
+        }
+      }
+        if (!Clause.trivial(newCl.cl)) {
         result.insert(UnprocessedClause)(newCl)
       }
     }
 
     result
   }
+
+
+
 }
 
 /**
@@ -232,7 +291,7 @@ class InterleavingLoop(state : BlackboardState[InterleavingLoop.A], unification 
   * @param closed The result + an optional reason
   * @tparam T Type of the AnnotatedClauses
   */
-case class StateView[T <: ClauseProxy](select : T, processedSelect : T, paramodPartners : Set[T] = Set(), subsumed : Set[T] = Set(), closed : Option[(StatusSZS, Option[T])] = None, forwardSubsumption : Boolean = false, actRewrite : Set[T] = Set[T]()) extends OperationState {
+case class StateView[T <: ClauseProxy](select : T, processedSelect : T, paramodPartners : Set[T] = Set(), subsumed : Set[T] = Set(), closed : Option[(StatusSZS, Option[T])] = None, forwardSubsumption : Boolean = false, actRewrite : Set[T] = Set[T](), actChoice : Map[Type, Set[Term]] = Map[Type, Set[Term]]()) extends OperationState {
 
   override val toString: String = s"processed = ${select.pretty}"
 

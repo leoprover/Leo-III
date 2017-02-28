@@ -56,6 +56,7 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
         openUnificationsID.add(i.id)
       }
     }
+    println(s"Current unifications : ${openUnifications.size}")
     iti.nonEmpty    // TODO Check in loop for already existence
   }
 
