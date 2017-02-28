@@ -4,7 +4,6 @@ import leo.Configuration
 import leo.Out
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
-import leo.modules.calculus.NegateConjecture
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
@@ -66,7 +65,10 @@ object SeqPProc {
               val translated = Parsing.processFormula(formula)(state.signature)
               val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
               state.setConjecture(conjectureClause)
-              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(NegateConjecture, conjectureClause), ClauseAnnotation.PropSOS)
+              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
+                final val name: String = "neg_conjecture"
+                final val inferenceStatus = SZS_CounterTheorem
+              }, conjectureClause), ClauseAnnotation.PropSOS)
               state.setNegConjecture(negConjectureClause)
               conj = formula
             }

@@ -1,7 +1,7 @@
 package leo.modules.interleavingproc
 
 import leo.{Configuration, Out}
-import leo.agents.{InterferingLoop, OperationState}
+import leo.agents.{InterferingLoop, OperationState, Task}
 import leo.datastructures._
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.calculus._
@@ -73,7 +73,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       terminatedFlag = true
       return None
     }
-    sb.append(s" --------------- Round: ${actRound}-------------------\n")
+    sb.append(s" ------------- Start Round ${actRound}-------------------\n")
     actRound += 1
     sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
       CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
@@ -81,9 +81,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
     sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
       CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-
-
-
 
     if(!state.state.unprocessedLeft) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
@@ -95,6 +92,9 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     sb.append("-----------------------------------------------------\n\n")
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
     leo.Out.output(sb.toString())
+    if(select.id == 23){
+      println("test")
+    }
     // The normal loop from seqpproc
     commonFilter(select)
   }
@@ -103,8 +103,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
     // Simplify and rewrite
     var cur = Control.rewriteSimp(c, state.state.rewriteRules)
-
-
 
     /* Functional Extensionality */
     cur = Control.funcext(cur)
@@ -118,15 +116,21 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       // No CNF step, do main loop inferences
       // Check if `cur` is an empty clause
       if (Clause.effectivelyEmpty(cur.cl)) {
-        if (state.conjecture == null) {Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(cur))))}
-        else {Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
+        if (state.conjecture == null) {
+          println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Contradiction found")
+          return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(cur))))}
+        else {
+          println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Theorem found")
+          return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
       } else {
         // Not an empty clause, detect choice definition or do reasoning step.
         val choiceCandidate = Control.detectChoiceClause(cur)
         if (choiceCandidate.isDefined) {
           val choiceFun = choiceCandidate.get
           state.state.addChoiceFunction(choiceFun)  // TODO Insert in transaction
-          leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
+          leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}\n ====> Invoking next round")
+          state.realeaseUnprocessed
+          canApply
         } else {
           // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
           // e.g. by forward subsumption
@@ -135,19 +139,15 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
             return mainLoopInferences(c, cur, state.state)
           } else {
             Out.debug(s"Clause ${cur.id} redundant, skipping.")
-            Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), None, true))
+            return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), None, true))
           }
         }
       }
     }
     else {
-      // TODO Construct work to insert only curCNF
-      // state.addUnprocessed(curCNF)
+      println(s"Renoremalizing ${c} =>\n  ${curCNF.map(_.pretty(sig)).mkString("\n   ")}")
+      return Some(new StateView(c, cur, Set(), Set(), None, false, Set(), Map(), curCNF))
     }
-
-
-    // Main inference tests
-    mainLoopInferences(c, cur, state.state)
   }
 
   @inline private final def mainLoopInferences(c : InterleavingLoop.A, cl: InterleavingLoop.A, state: State[InterleavingLoop.A]): Option[StateView[InterleavingLoop.A]] = {
@@ -194,8 +194,14 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     // Remove the current processed in any case
     result.remove(UnprocessedClause)(opState.select)
 
+    if(opState.wasNormalized.nonEmpty){
+      opState.wasNormalized.foreach {cl => result.insert(UnprocessedClause)(cl)}  // TODO Real loop
+      return result
+    }
+
     // Forward Subsumption
     if(opState.forwardSubsumption){
+
       result.insert(StatisticType)(Statistic(0,0,0,0,1,0))  // Increase one forward Subsumption TODO Insert the generated clauses nontheless
       return result
     }
@@ -246,7 +252,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       ncl = Control.rewriteSimp(ncl, rewrite)
       if(!Clause.trivial(ncl.cl)) {
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
-          leo.Out.output(s"New Unification : ${ncl.pretty(sig)}")
           result.insert(OpenUnification)(ncl)
         } else {
           newclauses += ncl
@@ -271,6 +276,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       newCl = Control.rewriteSimp(newCl, rewrite)
       assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
       if (Clause.effectivelyEmpty(newCl.cl)){
+        println("\n\n\n------------------------\nEMPTY CLAUSE\n------------------------\n\n\n")
         result.insert(DerivedClause)(newCl)
         if(state.conjecture.isDefined) {
           result.insert(SZSStatus)(SZS_Theorem)
@@ -283,11 +289,23 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       }
     }
 
+    println(s"Result will insert unification:\n   ${result.inserts(OpenUnification).map(cl => CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n   ")}")
+
     result
   }
 
-
-
+  override def taskFinished(t: Task): Unit = {
+    val sb = new StringBuilder
+    sb.append(s" ------------- End Round ${actRound}-------------------\n")
+    actRound += 1
+    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
+      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+    sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
+      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+    leo.Out.output(sb.toString())
+  }
 }
 
 /**
@@ -300,7 +318,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
   * @param closed The result + an optional reason
   * @tparam T Type of the AnnotatedClauses
   */
-case class StateView[T <: ClauseProxy](select : T, processedSelect : T, paramodPartners : Set[T] = Set(), subsumed : Set[T] = Set(), closed : Option[(StatusSZS, Option[T])] = None, forwardSubsumption : Boolean = false, actRewrite : Set[T] = Set[T](), actChoice : Map[Type, Set[Term]] = Map[Type, Set[Term]]()) extends OperationState {
+case class StateView[T <: ClauseProxy](select : T, processedSelect : T, paramodPartners : Set[T] = Set(), subsumed : Set[T] = Set(), closed : Option[(StatusSZS, Option[T])] = None, forwardSubsumption : Boolean = false, actRewrite : Set[T] = Set[T](), actChoice : Map[Type, Set[Term]] = Map[Type, Set[Term]](), wasNormalized : Set[T] = Set[T]()) extends OperationState {
 
   override val toString: String = s"processed = ${select.pretty}"
 

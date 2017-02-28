@@ -1,11 +1,9 @@
 package leo.modules.interleavingproc
 
-import leo.Out
-import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
-import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy, Signature}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta}
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.SZSException
 import leo.modules.output.{SZS_Error, StatusSZS}
-import leo.modules.output.logger.Out
 import leo.modules.seqpproc.State
 import leo.modules.control.Control
 
@@ -33,6 +31,8 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     nextUnprocessed.get
   }
 
+  def realeaseUnprocessed : Unit = {nextUnprocessedSet = false}
+
   @inline def hasNextUnprocessed : Boolean = synchronized {
     state.unprocessedLeft
   }
@@ -43,7 +43,6 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
   }
   override def all[T](t: DataType[T]): Set[T] = ???     // TODO implement
   override def updateResult(r: Delta): Boolean = synchronized {
-    // Unprocessed can only be added
     val newUnprocessed = r.inserts(UnprocessedClause).iterator
     while(newUnprocessed.nonEmpty){
       state.addUnprocessed(newUnprocessed.next())
@@ -60,7 +59,6 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     if(newProcessed.nonEmpty){
       val n = newProcessed.next()
       state.addProcessed(n)
-      if(n.isInstanceOf[AnnotatedClause]) Control.fvIndexInsert(n.asInstanceOf[AnnotatedClause])
     }
 
     // Adding new rewrite Rules

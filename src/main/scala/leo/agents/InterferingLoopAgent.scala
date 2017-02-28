@@ -206,6 +206,8 @@ trait InterferingLoop[A <: OperationState] {
     * @return A Result to insert into the blackboard.
     */
   def apply(opState : A) : Delta
+
+  def taskFinished(t : Task) : Unit = {}
 }
 
 /**
