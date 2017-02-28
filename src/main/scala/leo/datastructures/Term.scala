@@ -116,6 +116,8 @@ trait Term extends Pretty with Prettier {
   def betaNormalize: Term
   /** Return the eta-long-nf of the term */
   def etaExpand: Term
+  /** Return the eta-short-nf of the term */
+  def etaContract: Term
 }
 
 /////////////////////////////
