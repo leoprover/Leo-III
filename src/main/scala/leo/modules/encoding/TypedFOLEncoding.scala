@@ -13,8 +13,7 @@ import scala.annotation.tailrec
 object TypedFOLEncoding {
   type Problem = Set[Clause]
   type EncodedProblem = Problem
-  type AuxiliaryDefs = Seq[Term]
-  type Result = (Signature, EncodedProblem, AuxiliaryDefs)
+  type Result = (EncodedProblem, Signature)
 
   final def apply(problem: Problem, les: LambdaEliminationStrategy)(implicit sig: Signature): Result = {
     // new signature for encoded problem
@@ -31,10 +30,22 @@ object TypedFOLEncoding {
     // Translate
     val resultProblem: Problem = problem.map(translate(_, les)(sig, foSig))
     // Collect auxiliary definitions from used symbols
-    val auxDefs: AuxiliaryDefs = ???
+    val auxDefs: Set[Clause] = collectAuxDefs(foSig)
     // Collect auxiliary definitions from lambda elimination (if any)
-    val auxDefsFromLES: AuxiliaryDefs = ???
-    (foSig, resultProblem, auxDefs ++ auxDefsFromLES)
+    val auxDefsFromLES: Set[Clause] = ???
+    (resultProblem union auxDefs union auxDefsFromLES, foSig)
+  }
+
+  private final def collectAuxDefs(foSig: TypedFOLEncodingSignature): Set[Clause] = {
+    var result: Set[Clause] = Set.empty
+    val symbIt = foSig.usedAuxSymbols.iterator
+    while (symbIt.hasNext) {
+      val symb = symbIt.next()
+      val axiomForSymb = foSig.proxyAxiom(symb)
+      if (axiomForSymb.isDefined)
+        result += Clause(Literal.mkLit(axiomForSymb.get, true))
+    }
+    result
   }
 
   /** Transform a type `t1 -> t2 -> ... -> tn` (tn not a function type) to a "first-order encoding equivalent".
@@ -150,14 +161,14 @@ object TypedFOLEncoding {
       case HOLForall(ty :::> body) =>
         val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translate(body, les)(holSignature, encodingSignature)
-        Term.mkApp(Forall, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+        Forall(λ(encodedType)(translatedBody))
       case HOLExists(ty :::> body) =>
         val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translate(body, les)(holSignature, encodingSignature)
-        Term.mkApp(Exists, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+        Exists(λ(encodedType)(translatedBody))
       case HOLTyForall(TypeLambda(body)) =>
         val translatedBody = translate(body,les)(holSignature, encodingSignature)
-        Term.mkTermApp(TyForall, Λ(translatedBody))
+        TyForall(Λ(translatedBody))
       case HOLEq(l,r) =>
         val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
         val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
@@ -236,13 +247,11 @@ object TypedFOLEncoding {
       case HOLForall(ty :::> body) =>
         val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
-        Term.mkApp(proxyForall, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
+        proxyForall(λ(encodedType)(translatedBody))
       case HOLExists(ty :::> body) =>
         val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
-        Term.mkApp(proxyExists, Seq(Right(encodedType), Left(λ(encodedType)(translatedBody))))
-      case HOLTyForall(TypeLambda(body)) =>
-        ??? // TODO FIXME
+        proxyExists(λ(encodedType)(translatedBody))
       case HOLEq(l,r) =>
         val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
         val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
@@ -302,7 +311,7 @@ object TypedFOLEncoding {
         encodingSignature.hApp(directArgsApplied, indirectArgs)
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
-      case _ => throw new IllegalArgumentException("unexpected term occurred")
+      case _ => throw new IllegalArgumentException("unexpected term occurred") // e.g. ForallTy
     }
   }
 
@@ -458,8 +467,11 @@ object TypedFOLEncodingSignature {
   final val Neq: Term = mkAtom(12, aao)
   final def Neq(l: Term, r: Term): Term = Term.mkApp(Neq, Seq(Right(l.ty), Left(l), Left(r)))
   final val Forall: Term = mkAtom(13, aoo)
+  final def Forall(body: Term): Term = Term.mkApp(Forall, Seq(Right(body.ty._funDomainType), Left(body)))
   final val Exists: Term = mkAtom(14, aoo)
+  final def Exists(body: Term): Term = Term.mkApp(Forall, Seq(Right(body.ty._funDomainType), Left(body)))
   final val TyForall: Term = mkAtom(15, faoo)
+  final def TyForall(body: Term): Term = Term.mkTermApp(TyForall, body)
 
   final def apply(): TypedFOLEncodingSignature = {
     import leo.datastructures.impl.SignatureImpl
@@ -644,6 +656,7 @@ trait TypedFOLEncodingSignature extends Signature {
     id
   }
   lazy val proxyForall: Term = Term.mkAtom(proxyForall_id)(this)
+  final def proxyForall(body: Term): Term = Term.mkApp(proxyForall, Seq(Right(body.ty._funDomainType), Left(body)))
 
   lazy val proxyExists_id: Signature#Key = {
     val id = addUninterpreted("$$exists", ∀((1 ->: o) ->: o), Signature.PropNoProp)
@@ -651,6 +664,7 @@ trait TypedFOLEncodingSignature extends Signature {
     id
   }
   lazy val proxyExists: Term = Term.mkAtom(proxyExists_id)(this)
+  final def proxyExists(body: Term): Term = Term.mkApp(proxyExists, Seq(Right(body.ty._funDomainType), Left(body)))
 
   ///// eq / neq
   lazy val proxyEq_id: Signature#Key = {
@@ -676,6 +690,7 @@ trait TypedFOLEncodingSignature extends Signature {
     val Y = Term.mkBound(boolTy, 2)
     val polyX = Term.mkBound(1, 1)
     val polyY = Term.mkBound(1, 2)
+    import Term.λ
     Map(
       proxyTrue_id -> hBool(proxyTrue),
       proxyFalse_id -> Not(hBool(proxyFalse)),
@@ -686,8 +701,9 @@ trait TypedFOLEncodingSignature extends Signature {
       proxyIf_id -> Equiv(If(hBool(X), hBool(Y)), hBool(proxyIf(X,Y))),
       proxyEquiv_id -> Equiv(Equiv(hBool(X), hBool(Y)), hBool(proxyEquiv(X,Y))),
       proxyEq_id -> Equiv(Eq(hBool(polyX), hBool(polyY)), hBool(proxyEq(polyX,polyY))),
-      proxyNeq_id -> Equiv(Neq(hBool(polyX), hBool(polyY)), hBool(proxyNeq(polyX,polyY)))
-      /// TODO forall / exists
+      proxyNeq_id -> Equiv(Neq(hBool(polyX), hBool(polyY)), hBool(proxyNeq(polyX,polyY))),
+      proxyForall_id -> Equiv(Forall(λ(1)(Term.mkTermApp(Term.mkBound(1 ->: o, 2), Term.mkBound(1,1)))),hBool(proxyForall(Term.mkBound(1 ->: o, 1)))),
+      proxyExists_id -> Equiv(Exists(λ(1)(Term.mkTermApp(Term.mkBound(1 ->: o, 2), Term.mkBound(1,1)))),hBool(proxyExists(Term.mkBound(1 ->: o, 1))))
     )
   }
   final def proxyAxiom(symbol: Signature#Key): Option[Term] = proxyAxioms0.get(symbol)
