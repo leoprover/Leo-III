@@ -307,8 +307,311 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
     for (a <- foSig.usedAuxSymbols) {
       val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined)
+      if (axiom.isDefined) {
         println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Type encoder Test 5", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", i ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("! [X:$i]: (p @ X)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    val pType = TypedFOLEncoding.foTransformType(i ->: o, result(p))(sig, foSig)
+    println(pType.pretty(foSig))
+    assert(pType == TypedFOLEncodingSignature.i ->: TypedFOLEncodingSignature.o)
+    Utility.printSignature(foSig)
+  }
+
+  test("Problem encoder Test 5", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", i ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("! [X:$i]: (p @ X)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(i ->: o, result(p))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Type encoder Test 6", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("! [X:$i>$i]: (p @ X)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    val pType = TypedFOLEncoding.foTransformType((i ->: i) ->: o, result(p))(sig, foSig)
+    println(pType.pretty(foSig))
+    assert(pType == foSig.funTy(TypedFOLEncodingSignature.i,TypedFOLEncodingSignature.i) ->: TypedFOLEncodingSignature.o)
+    Utility.printSignature(foSig)
+  }
+
+  test("Problem encoder Test 6", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("! [X:$i>$i]: (p @ X)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType((i ->: i) ->: o, result(p))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Type encoder Test 7", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", i ->: o)
+    val r = sig.addUninterpreted("r", (i ->: o) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("(! [X:$i]: (p @ X)) & (r @ p)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    val pType = TypedFOLEncoding.foTransformType(i ->: o, result(p))(sig, foSig)
+    println(pType.pretty(foSig))
+    assert(pType == foSig.funTy(TypedFOLEncodingSignature.i,foSig.boolTy))
+    val rType = TypedFOLEncoding.foTransformType((i ->: o) ->: o, result(r))(sig, foSig)
+    println(rType.pretty(foSig))
+    assert(rType == foSig.funTy(TypedFOLEncodingSignature.i,foSig.boolTy) ->: TypedFOLEncodingSignature.o)
+    Utility.printSignature(foSig)
+  }
+
+  test("Problem encoder Test 7", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", i ->: o)
+    val r = sig.addUninterpreted("r", (i ->: o) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("(! [X:$i]: (p @ X)) & (r @ p)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(i ->: o, result(p))(sig, foSig))
+    foSig.addUninterpreted("r", TypedFOLEncoding.foTransformType((i ->: o) ->: o, result(r))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Type encoder Test 8", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", o ->: o)
+    val a = sig.addUninterpreted("a", o)
+    val b = sig.addUninterpreted("b", o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (a & b)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    val pType = TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig)
+    println(pType.pretty(foSig))
+    assert(pType == foSig.boolTy ->: TypedFOLEncodingSignature.o)
+    val aType = TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig)
+    println(aType.pretty(foSig))
+    assert(aType == foSig.boolTy)
+    val bType = TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig)
+    println(bType.pretty(foSig))
+    assert(bType == foSig.boolTy)
+
+    Utility.printSignature(foSig)
+  }
+
+  test("Problem encoder Test 8", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", o ->: o)
+    val a = sig.addUninterpreted("a", o)
+    val b = sig.addUninterpreted("b", o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (a & b)")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig))
+    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig))
+    foSig.addUninterpreted("b", TypedFOLEncoding.foTransformType(o, result(b))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Type encoder Test 9", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", o ->: o)
+    val q = sig.addUninterpreted("q", i ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (! [X:$i]: (q @ X))")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    val pType = TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig)
+    println(pType.pretty(foSig))
+    assert(pType == foSig.boolTy ->: TypedFOLEncodingSignature.o)
+    val qType = TypedFOLEncoding.foTransformType(i ->: o, result(q))(sig, foSig)
+    println(qType.pretty(foSig))
+    assert(qType == TypedFOLEncodingSignature.i ->: foSig.boolTy)
+
+    Utility.printSignature(foSig)
+  }
+
+  test("Problem encoder Test 9", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", o ->: o)
+    val q = sig.addUninterpreted("q", i ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (! [X:$i]: (q @ X))")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig))
+    foSig.addUninterpreted("q", TypedFOLEncoding.foTransformType(i ->: o, result(q))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
     }
   }
 

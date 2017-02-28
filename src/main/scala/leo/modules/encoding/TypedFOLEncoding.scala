@@ -210,6 +210,7 @@ object TypedFOLEncoding {
           case Symbol(id) =>
             val fName = holSignature(id).name
             mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => f
         }
         assert(encodedHead.isAtom)
@@ -293,6 +294,7 @@ object TypedFOLEncoding {
           case Symbol(id) =>
             val fName = holSignature(id).name
             mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => f
         }
         assert(encodedHead.isAtom)
@@ -651,7 +653,7 @@ trait TypedFOLEncodingSignature extends Signature {
   final def proxyEquiv(l: Term, r: Term): Term = Term.mkTermApp(proxyEquiv, Seq(l,r))
   ///// forall/exists
   lazy val proxyForall_id: Signature#Key = {
-    val id = addUninterpreted("$$forall", ∀((1 ->: o) ->: o), Signature.PropNoProp)
+    val id = addUninterpreted("$$forall", ∀((1 ->: boolTy) ->: boolTy), Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }
@@ -659,7 +661,7 @@ trait TypedFOLEncodingSignature extends Signature {
   final def proxyForall(body: Term): Term = Term.mkApp(proxyForall, Seq(Right(body.ty._funDomainType), Left(body)))
 
   lazy val proxyExists_id: Signature#Key = {
-    val id = addUninterpreted("$$exists", ∀((1 ->: o) ->: o), Signature.PropNoProp)
+    val id = addUninterpreted("$$exists", ∀((1 ->: boolTy) ->: boolTy), Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }
@@ -668,7 +670,7 @@ trait TypedFOLEncodingSignature extends Signature {
 
   ///// eq / neq
   lazy val proxyEq_id: Signature#Key = {
-    val id = addUninterpreted("$$eq", ∀(1 ->: 1 ->: o), Signature.PropNoProp)
+    val id = addUninterpreted("$$eq", ∀(1 ->: 1 ->: boolTy), Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }
@@ -676,7 +678,7 @@ trait TypedFOLEncodingSignature extends Signature {
   final def proxyEq(l: Term, r: Term): Term = Term.mkApp(proxyEq, Seq(Right(l.ty), Left(l), Left(r)))
 
   lazy val proxyNeq_id: Signature#Key = {
-    val id = addUninterpreted("$$neq", ∀(1 ->: 1 ->: o), Signature.PropNoProp)
+    val id = addUninterpreted("$$neq", ∀(1 ->: 1 ->: boolTy), Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }
@@ -702,8 +704,8 @@ trait TypedFOLEncodingSignature extends Signature {
       proxyEquiv_id -> Equiv(Equiv(hBool(X), hBool(Y)), hBool(proxyEquiv(X,Y))),
       proxyEq_id -> Equiv(Eq(hBool(polyX), hBool(polyY)), hBool(proxyEq(polyX,polyY))),
       proxyNeq_id -> Equiv(Neq(hBool(polyX), hBool(polyY)), hBool(proxyNeq(polyX,polyY))),
-      proxyForall_id -> Equiv(Forall(λ(1)(Term.mkTermApp(Term.mkBound(1 ->: o, 2), Term.mkBound(1,1)))),hBool(proxyForall(Term.mkBound(1 ->: o, 1)))),
-      proxyExists_id -> Equiv(Exists(λ(1)(Term.mkTermApp(Term.mkBound(1 ->: o, 2), Term.mkBound(1,1)))),hBool(proxyExists(Term.mkBound(1 ->: o, 1))))
+      proxyForall_id -> Equiv(Forall(λ(1)(hBool(Term.mkTermApp(Term.mkBound(1 ->: boolTy, 2), Term.mkBound(1,1))))),hBool(proxyForall(Term.mkBound(1 ->: boolTy, 1)))),
+      proxyExists_id -> Equiv(Exists(λ(1)(hBool(Term.mkTermApp(Term.mkBound(1 ->: boolTy, 2), Term.mkBound(1,1))))),hBool(proxyExists(Term.mkBound(1 ->: boolTy, 1))))
     )
   }
   final def proxyAxiom(symbol: Signature#Key): Option[Term] = proxyAxioms0.get(symbol)
