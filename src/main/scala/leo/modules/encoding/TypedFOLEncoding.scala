@@ -239,7 +239,7 @@ object TypedFOLEncoding {
   private final def translateTerm(t: Term, les: LambdaEliminationStrategy)
                          (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
     import Term._
-    import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
+    import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
     import encodingSignature._
@@ -702,8 +702,8 @@ trait TypedFOLEncodingSignature extends Signature {
       proxyImpl_id -> Equiv(Impl(hBool(X), hBool(Y)), hBool(proxyImpl(X,Y))),
       proxyIf_id -> Equiv(If(hBool(X), hBool(Y)), hBool(proxyIf(X,Y))),
       proxyEquiv_id -> Equiv(Equiv(hBool(X), hBool(Y)), hBool(proxyEquiv(X,Y))),
-      proxyEq_id -> Equiv(Eq(hBool(polyX), hBool(polyY)), hBool(proxyEq(polyX,polyY))),
-      proxyNeq_id -> Equiv(Neq(hBool(polyX), hBool(polyY)), hBool(proxyNeq(polyX,polyY))),
+      proxyEq_id -> Equiv(Eq(polyX, polyY), hBool(proxyEq(polyX,polyY))),
+      proxyNeq_id -> Equiv(Neq(polyX, polyY), hBool(proxyNeq(polyX,polyY))),
       proxyForall_id -> Equiv(Forall(λ(1)(hBool(Term.mkTermApp(Term.mkBound(1 ->: boolTy, 2), Term.mkBound(1,1))))),hBool(proxyForall(Term.mkBound(1 ->: boolTy, 1)))),
       proxyExists_id -> Equiv(Exists(λ(1)(hBool(Term.mkTermApp(Term.mkBound(1 ->: boolTy, 2), Term.mkBound(1,1))))),hBool(proxyExists(Term.mkBound(1 ->: boolTy, 1))))
     )
