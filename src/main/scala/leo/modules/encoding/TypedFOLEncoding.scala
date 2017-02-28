@@ -295,7 +295,7 @@ object TypedFOLEncoding {
             val fName = holSignature(id).name
             mkAtom(encodingSignature(fName).key)(encodingSignature)
           case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
-          case _ => f
+          case _ => assert(false); f
         }
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
@@ -352,7 +352,7 @@ object EncodingAnalyzer {
 
   private final val fixedConnectives: Set[Signature#Key] = {
     import leo.modules.HOLSignature._
-    Set(Not.key, &.key, |||.key, Impl.key, <=.key, <=>.key, Forall.key, Exists.key)
+    Set(Not.key, &.key, |||.key, Impl.key, <=.key, <=>.key, Forall.key, Exists.key, TyForall.key)
   }
   @tailrec final def analyze(t: Term): ArityTable = {
     import leo.datastructures.Term._
