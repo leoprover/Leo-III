@@ -15,7 +15,7 @@ object TypedFOLEncoding {
   type EncodedProblem = Problem
   type Result = (EncodedProblem, Signature)
 
-  final def apply(problem: Problem, les: LambdaEliminationStrategy)(implicit sig: Signature): Result = {
+  final def apply(problem: Problem, les: LambdaElimStrategy)(implicit sig: Signature): Result = {
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
     // Analyze problem and insert problem-specific symbols into signature (encoded types)
@@ -28,7 +28,8 @@ object TypedFOLEncoding {
       foSig.addUninterpreted(fMeta.name, foType)
     }
     // Translate
-    val resultProblem: Problem = problem.map(translate(_, les)(sig, foSig))
+    val lambdaEliminator = les(foSig)
+    val resultProblem: Problem = problem.map(translate(_, lambdaEliminator)(sig, foSig))
     // Collect auxiliary definitions from used symbols
     val auxDefs: Set[Clause] = collectAuxDefs(foSig)
     // Collect auxiliary definitions from lambda elimination (if any)
@@ -99,7 +100,7 @@ object TypedFOLEncoding {
     *
     * @note Side-effects: User types occurring in the problem are inserted into `encodingSignature`
     */
-  private final def foTransformType0(ty: Type, replaceO: Boolean)(holSignature: Signature,
+  protected[encoding] final def foTransformType0(ty: Type, replaceO: Boolean)(holSignature: Signature,
                                                encodingSignature: TypedFOLEncodingSignature): Type = {
     import leo.datastructures.Type._
     import leo.modules.HOLSignature
@@ -134,11 +135,11 @@ object TypedFOLEncoding {
     * @note Side-effects: May insert auxiliary operators such as `hApp` or `hBool` to
     *       `encodingSignature`
     */
-  final def translate(cl: Clause, les: LambdaEliminationStrategy)
+  final def translate(cl: Clause, les: LambdaElimination)
                      (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Clause =
     Clause(cl.lits.map(translate(_, les)(holSignature, encodingSignature)))
 
-  final def translate(lit: Literal, les: LambdaEliminationStrategy)
+  final def translate(lit: Literal, les: LambdaElimination)
                      (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Literal = if (lit.equational) {
     val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
     val translatedRight = translate(lit.right, les)(holSignature, encodingSignature)
@@ -148,7 +149,7 @@ object TypedFOLEncoding {
     Literal.mkLit(translatedLeft, lit.polarity)
   }
 
-  final def translate(t: Term, les: LambdaEliminationStrategy)
+  final def translate(t: Term, les: LambdaElimination)
                      (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
     import Term._
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
@@ -202,7 +203,7 @@ object TypedFOLEncoding {
         Not(translatedBody)
       case HOLFalse() => False
       case HOLTrue() => True
-      case lambda@(_ :::> _) => les.eliminateLambda(lambda)
+      case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
       // Non-CNF cases end
       // Standard-case begin
       case f ∙ args =>
@@ -236,7 +237,7 @@ object TypedFOLEncoding {
     }
   }
 
-  private final def translateTerm(t: Term, les: LambdaEliminationStrategy)
+  protected[encoding] final def translateTerm(t: Term, les: LambdaElimination)
                          (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
     import Term._
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists,
@@ -286,7 +287,7 @@ object TypedFOLEncoding {
         proxyNot(translatedBody)
       case HOLFalse() => proxyFalse
       case HOLTrue() => proxyTrue
-      case lambda@(_ :::> _) => les.eliminateLambda(lambda)
+      case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
       // Non-CNF cases end
       // Standard-case begin
       case f ∙ args =>
@@ -373,13 +374,28 @@ object EncodingAnalyzer {
   }
   @tailrec final def analyzeTerm(t: Term): ArityTable = {
     import leo.datastructures.Term._
+    import leo.modules.HOLSignature.{Forall, Exists}
     t match {
-      case _ :::> body => analyzeTerm(body)
+      case Forall(_ :::> body) => analyzeTerm(body)
+      case Exists(_ :::> body) => analyzeTerm(body)
+      case _ :::> body => analyzeTerm0(body)
       case TypeLambda(body) => analyzeTerm(body)
       case f ∙ args => f match {
         case Symbol(id) =>
           val argArity = arity(args)
           merge(id -> (argArity, true), analyzeTermArgs(args))
+        case _ => analyzeTermArgs(args)
+      }
+    }
+  }
+  @tailrec final def analyzeTerm0(t: Term): ArityTable = {
+    import leo.datastructures.Term._
+    t match {
+      case _ :::> body => analyzeTerm0(body)
+      case TypeLambda(body) => analyzeTerm0(body)
+      case f ∙ args => f match {
+        case Symbol(id) =>
+          merge(id -> (0, true), analyzeTermArgs0(args))
         case _ => analyzeTermArgs(args)
       }
     }
@@ -409,6 +425,18 @@ object EncodingAnalyzer {
       val arg = argsIt.next()
       if (arg.isLeft) {
         val arityTable = analyzeTerm(arg.left.get)
+        result = merge(arityTable, result)
+      }
+    }
+    result
+  }
+  private final def analyzeTermArgs0(args: Seq[Either[Term, Type]]): ArityTable = {
+    var result: ArityTable = Map()
+    val argsIt = args.iterator
+    while (argsIt.hasNext) {
+      val arg = argsIt.next()
+      if (arg.isLeft) {
+        val arityTable = analyzeTerm0(arg.left.get)
         result = merge(arityTable, result)
       }
     }

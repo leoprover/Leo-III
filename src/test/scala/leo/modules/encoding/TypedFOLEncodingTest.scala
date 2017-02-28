@@ -1096,6 +1096,192 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     }
   }
 
+  test("Problem encoder Test 17", Checked) {
+    implicit val sig: Signature = getFreshSignature
+    import leo.datastructures.Kind.*
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (X))")
+
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, LambdaElimStrategy_SKI.apply(foSig))(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Problem encoder Test 18", Checked) {
+    implicit val sig: Signature = getFreshSignature
+    import leo.datastructures.Kind.*
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i,Y:$i]: (Y))")
+
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, LambdaElimStrategy_SKI.apply(foSig))(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+  test("Problem encoder Test 19", Checked) {
+    implicit val sig: Signature = getFreshSignature
+    import leo.datastructures.Kind.*
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", i ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (p2))")
+
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+    printTable(result)
+    println(TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, LambdaElimStrategy_SKI.apply(foSig))(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Problem encoder Test 20", Checked) {
+    implicit val sig: Signature = getFreshSignature
+    import leo.datastructures.Kind.*
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", i ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (^[Y:$i]: (p2 @ Y)))")
+    val f0 = f1.etaContract
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+    println(f0.pretty(sig))
+    assert(Term.wellTyped(f0))
+
+    val result = EncodingAnalyzer.analyze(f0)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    println(TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f0, LambdaElimStrategy_SKI.apply(foSig))(sig, foSig)
+    Utility.printSignature(foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
+  test("Problem encoder Test 21", Checked) {
+    implicit val sig: Signature = getFreshSignature
+    import leo.datastructures.Kind.*
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", (i ->: i) ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (p2 @ (^[Y:$i]: (X))))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyze(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    val translateResult = TypedFOLEncoding.translate(f1, LambdaElimStrategy_SKI.apply(foSig))(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
+    for (a <- foSig.usedAuxSymbols) {
+      val axiom = foSig.proxyAxiom(a)
+      if (axiom.isDefined) {
+        println(axiom.get.pretty(foSig))
+        assert(Term.wellTyped(axiom.get))
+      }
+    }
+  }
+
   private final def printTable(table: EncodingAnalyzer.ArityTable)(implicit sig: Signature): Unit = {
     println(s"symbol\t|\tarity\t|\tsubterm")
     println(s"-------------------------")

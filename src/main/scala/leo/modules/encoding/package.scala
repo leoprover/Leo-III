@@ -4,6 +4,7 @@ package leo.modules
   * This package contains all algorithms related to first-order encoding
   * of higher-order problems. In particular
   *
+  *  - [[leo.modules.encoding.Encoding]] is a facade for the most common use cases,
   *  - [[leo.modules.encoding.Monotonicity]] captures monotonicity inference (for type erasure)
   *  - [[leo.modules.encoding.TypedFOLEncoding]] encodes higher-order problems into polymorphic first-order logic
   *  - [[leo.modules.encoding.UntypedFOLEncoding]] encodes higher-order problems into untyped first-order logic
