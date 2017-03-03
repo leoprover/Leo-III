@@ -227,7 +227,21 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
             C(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
           } else { // occurs in both free
             // S
-            ???
+            println(s"[S] S")
+            assert(termLastArg.ty == allButLastArg.ty._funDomainType)
+            val translatedTy = absType // foTransformType0(absType, true)(holSignature, sig)
+            val translatedAllButLastArgCoDomainType = allButLastArg.ty.codomainType // foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
+            val translatedAllButLastArgDomainType = allButLastArg.ty._funDomainType // foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
+            val translatedAllButLastArg = eliminateLambdaNewShallow(translatedTy,(
+              if (f == sig.hApp) {
+                assert(args.size == 4)
+                args(2).left.get
+              } else {
+                assert(false)
+                allButLastArg
+              }))(holSignature)
+            val translatedTermLastArg = eliminateLambdaNewShallow(translatedTy,termLastArg)(holSignature)
+            S(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
           }
         } else {
           ???
@@ -324,11 +338,15 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     Map(
       combinator_I_key -> Eq(hApp(I(Xty), X), X),
       combinator_K_key -> Eq(hApp(K(Xty, Yty, Y), X),Y),
-      combinator_S_key -> ???,
-      combinator_B_key -> ???,
-      combinator_C_key -> ???
+      combinator_S_key -> Eq(hApp(S(Zty, Yty, Xty, Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Term.mkBound(funTy(Zty, Xty), 2)), Term.mkBound(Zty, 3)),
+        hApp(Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Seq(Term.mkBound(Zty, 3), hApp(Term.mkBound(funTy(Zty, Xty), 2), Term.mkBound(Zty, 3))))),
+      combinator_B_key -> Eq(hApp(B(Zty, Yty, Xty, Term.mkBound(funTy(Xty, Yty), 1), Term.mkBound(funTy(Zty, Xty),2)), Term.mkBound(Zty, 3)),
+        hApp(Term.mkBound(funTy(Xty, Yty), 1), hApp(Term.mkBound(funTy(Zty, Xty),2), Term.mkBound(Zty, 3)))),
+      combinator_C_key -> Eq(hApp(C(Zty, Yty, Xty, Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Term.mkBound(Zty, 2)), Term.mkBound(Xty,3)),
+        hApp(Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Seq(Term.mkBound(Zty, 2),Term.mkBound(Xty,3))))
     )
   }
+  // ∀(∀(∀(funTy(funTy(Zty,funTy(Xty,Yty)), funTy(Zty,funTy(Xty,Yty))))))
 }
 
 protected[encoding] class LambdaElim_Turner(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
