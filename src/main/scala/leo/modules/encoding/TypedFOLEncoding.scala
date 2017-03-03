@@ -287,7 +287,7 @@ object TypedFOLEncoding {
         proxyNot(translatedBody)
       case HOLFalse() => proxyFalse
       case HOLTrue() => proxyTrue
-      case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
+      case lambda@(_ :::> _) => println("lambda");les.eliminateLambda(lambda)(holSignature)
       // Non-CNF cases end
       // Standard-case begin
       case f ∙ args =>
