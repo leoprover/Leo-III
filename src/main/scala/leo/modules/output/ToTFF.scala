@@ -1,23 +1,26 @@
 package leo.modules.output
 
-import leo.datastructures.{ClauseProxy, Signature}
+import leo.datastructures.{Clause, Role, ClauseProxy, Signature}
 
 /**
   * Created by lex on 03.09.16.
   */
 object ToTFF {
-  final def apply(cl: ClauseProxy)(implicit sig: Signature): String = {
-    val res = apply0(cl.cl.implicitlyBound, cl.cl.typeVars, cl.cl.lits)(sig)
-    s"tff(${cl.id},${cl.role.pretty},($res))."
+  final def apply(cl: ClauseProxy)(implicit sig: Signature): String = apply(cl.cl, cl.role, cl.id.toString)(sig)
+
+  final def apply(cl: Clause, role: Role, name: String)(implicit sig: Signature): String = {
+    val res = apply0(cl.implicitlyBound, cl.typeVars, cl.lits)(sig)
+    s"tff($name,${role.pretty},($res))."
   }
 
   import leo.datastructures.{Literal, Type, Term}
   private final def apply0(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], lits: Seq[Literal])(sig: Signature): String = {
-    if (tyFvs.nonEmpty) throw new IllegalArgumentException
-
     val sb = new StringBuffer()
-    if (fvs.nonEmpty) {
+    val freeVarsExist = fvs.nonEmpty || tyFvs.nonEmpty
+    if (freeVarsExist) {
       sb.append("! [")
+      sb.append(tyFvs.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
+      if (fvs.nonEmpty) sb.append(",")
       sb.append(fvs.reverse.map{ case (scope,ty) => s"${intToName(scope-1)}:${typeToTFF(ty)(sig)}" }.mkString(","))
       sb.append("] : (")
     }
@@ -25,46 +28,47 @@ object ToTFF {
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
-      sb.append("(")
-      sb.append(litToTFF(fvs, lit)(sig))
-      sb.append(")")
+      sb.append(litToTFF(fvs, tyFvs, lit)(sig))
       if (litIt.hasNext) sb.append(" | ")
     }
 
-    if (fvs.nonEmpty) {
+    if (freeVarsExist) {
       sb.append(")")
     }
     sb.toString
   }
 
-  private final def litToTFF(fvs: Seq[(Int, Type)], lit: Literal)(sig: Signature): String = {
+  private final def litToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], lit: Literal)(sig: Signature): String = {
     if (!lit.equational) {
-      if (!lit.polarity) {
-        s"~ (${formulaToTFF(fvs, lit.left)(sig)})"
-      } else formulaToTFF(fvs, lit.left)(sig)
+      if (!lit.polarity) s"~${formulaToTFF(fvs, tyFvs, lit.left)(sig)}"
+      else formulaToTFF(fvs, tyFvs, lit.left)(sig)
     } else {
       if (lit.polarity)
-        s"${termToTFF(fvs, lit.left)(sig)} = ${termToTFF(fvs, lit.right)(sig)}"
+        s"${termToTFF(fvs, tyFvs, lit.left)(sig)} = ${termToTFF(fvs, tyFvs, lit.right)(sig)}"
       else
-        s"${termToTFF(fvs, lit.left)(sig)} != ${termToTFF(fvs, lit.right)(sig)}"
+        s"${termToTFF(fvs, tyFvs, lit.left)(sig)} != ${termToTFF(fvs, tyFvs, lit.right)(sig)}"
     }
   }
 
-  private final def formulaToTFF(fvs: Seq[(Int, Type)], t: Term)(sig: Signature): String = {
+  private final def formulaToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], t: Term)(sig: Signature): String = {
     import leo.datastructures.Term.{TermApp, Symbol, :::>}
-    import leo.modules.HOLSignature.{o, Forall, Exists}
+    import leo.modules.HOLSignature.{Forall, Exists}
+    import leo.modules.Utility.myAssert
 
-    if (t.ty != o) throw new IllegalArgumentException
+    myAssert({
+      val oType = Type.mkType(sig("$o").key)
+      t.ty == oType
+    }, "Translating non-boolean term to a TFF formula.")
 
     val interpretedSymbols = sig.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
     t match {
       case Forall(_ :::> body) =>
-        val bodyRes = formulaToTFF(fvs, body)(sig)
+        val bodyRes = formulaToTFF(fvs, tyFvs, body)(sig)
         s"!" // TODO
         throw new IllegalArgumentException
       case Exists(_ :::> body) =>
-        val bodyRes = formulaToTFF(fvs, body)(sig)
+        val bodyRes = formulaToTFF(fvs, tyFvs, body)(sig)
         s"?" // TODO
         throw new IllegalArgumentException
       case TermApp(hd, args) =>
@@ -78,18 +82,18 @@ object ToTFF {
             if (args.isEmpty) {
               meta.name
             } else if (args.size == 1) {
-              s"${meta.name} (${formulaToTFF(fvs,args.head)(sig)})"
+              s"${meta.name} (${formulaToTFF(fvs,tyFvs,args.head)(sig)})"
             } else {
               // two args
               val arg1 = args.head
-              var arg2 = args.tail.head
-              s"(${formulaToTFF(fvs, arg1)(sig)}) ${meta.name} (${formulaToTFF(fvs,arg2)(sig)})"
+              val arg2 = args.tail.head
+              s"(${formulaToTFF(fvs, tyFvs,arg1)(sig)}) ${meta.name} (${formulaToTFF(fvs,tyFvs,arg2)(sig)})"
             }
           } else {
             // start term level, uninterpreted symbol
             val meta = sig(id)
             assert(meta.isUninterpreted)
-            s"${meta.name}(${args.map(termToTFF(fvs, _)(sig)).mkString(",")})"
+            s"${meta.name}(${args.map(termToTFF(fvs, tyFvs, _)(sig)).mkString(",")})"
           }
           case _ => throw new IllegalArgumentException
         }
@@ -97,7 +101,7 @@ object ToTFF {
     }
   }
 
-  private final def termToTFF(fvs: Seq[(Int, Type)], t: Term)(sig: Signature): String = {
+  private final def termToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], t: Term)(sig: Signature): String = {
     import leo.modules.HOLSignature.o
     if (t.ty == o) throw new IllegalArgumentException
 
@@ -111,7 +115,7 @@ object ToTFF {
           case Symbol(id) => if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
           else {
             if (args.isEmpty) sig(id).name
-            else s"${sig(id).name}(${args.map(termToTFF(fvs, _)(sig)).mkString(",")})"
+            else s"${sig(id).name}(${args.map(termToTFF(fvs,tyFvs, _)(sig)).mkString(",")})"
           }
           case _ => throw new IllegalArgumentException
         }
@@ -123,7 +127,7 @@ object ToTFF {
     import leo.datastructures.Type._
 
     ty match {
-      case BoundType(scope) => "T"+intToName(scope)
+      case BoundType(scope) => "T"+intToName(scope-1)
       case BaseType(id) => sig(id).name
       case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF(_)(sig)).mkString(",")})"
       case _ -> _ =>
