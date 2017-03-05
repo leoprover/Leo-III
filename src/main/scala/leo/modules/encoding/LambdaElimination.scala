@@ -150,6 +150,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
           println(s"recurse on: ${body.pretty(holSignature)}")
           val innerElim = eliminateLambdaNew(body)(holSignature)
           println(s"end-recurse on: ${innerElim.pretty(sig)}")
+          assert(Term.wellTyped(innerElim))
           eliminateLambdaNewShallow(ty, innerElim)(holSignature)
         } else eliminateLambdaNew0(ty, body)(holSignature)
       case _ => /* nolambda */ translateTerm(t, this)(holSignature, sig)
@@ -160,88 +161,66 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     * it is assumed that absBody was already recursively transformed to FO. Hence,
     * terms need not to be converted again. */
   def eliminateLambdaNewShallow(absType: Type, absBody: Term)(holSignature: Signature): Term = {
+    println(s"[S] ${absType.pretty(holSignature)} :::> ${absBody.pretty(sig)}")
     import leo.datastructures.Term._
     import leo.modules.encoding.TypedFOLEncoding.foTransformType0
+    import leo.datastructures.Type.ComposedType
     absBody match {
       case Bound(`absType`, 1) => println("[S] I")
         I(foTransformType0(absType, true)(holSignature, sig))
       case _ if !free(absBody, 1) =>
         println("[S] K")
-        val translatedTy = absType //foTransformType0(absType, true)(holSignature, sig)
-        val translatedBody = absBody //eliminateLambdaNew(absBody.lift(-1))(holSignature)
-        K(translatedTy, translatedBody.ty, translatedBody)
+        val translatedTy = foTransformType0(absType, true)(holSignature, sig)
+        K(translatedTy, absBody.ty, absBody)
       case f ∙ args =>
         val lastArg = args.last
         if (lastArg.isLeft) {
           val termLastArg = lastArg.left.get
-          val allButLastArg = Term.mkApp(f, args.init)
+          val allButLastArg = if (f == sig.hApp) {
+            assert(args.size == 4)
+            args(2).left.get
+          } else {
+            assert(false)
+            Term.mkApp(f, args.init)
+          }
+
+          val (funid, tyargs) = ComposedType.unapply(allButLastArg.ty).get
+          assert(funid == sig.funTy_id)
+          assert(tyargs.size == 2)
+          assert(termLastArg.ty == tyargs(0))
+
+          val allButLastArgCoDomainType = tyargs(1)
+          val allButLastArgDomainType = tyargs(0)
+
           println(s"[S] head: " + f.pretty(sig))
-          println(s"head is App: ${f == sig.hApp}")
           println("[S] allButLastArg: " + allButLastArg.pretty(sig))
           println("[S] lastArg: " + termLastArg.pretty(sig))
           if (!free(allButLastArg, 1)) {
             // eta or B
             if (termLastArg.isVariable && Bound.unapply(termLastArg).get._2 == 1) {
               println("[S] eta")
-              if (f == sig.hApp) {
-                assert(args.size == 4)
-                args(2).left.get
-              } else {
-               assert(false)
-                allButLastArg
-              } // eliminateLambdaNew(allButLastArg)(holSignature)
+              allButLastArg.lift(-1)
             } else {
               println("[S] B")
-              assert(termLastArg.ty == allButLastArg.ty._funDomainType)
-              val translatedTy = absType //foTransformType0(absType, true)(holSignature, sig)
-              val translatedAllButLastArgCoDomainType = allButLastArg.ty.codomainType // foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
-              val translatedAllButLastArgDomainType = allButLastArg.ty._funDomainType // foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
-              val translatedAllButLastArg = if (f == sig.hApp) {
-                assert(args.size == 4)
-                args(2).left.get.lift(-1)
-              } else {
-                assert(false)
-                allButLastArg.lift(-1)
-              } // eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
-              val translatedTermLastArg = eliminateLambdaNewShallow(translatedTy, termLastArg)(holSignature) // eliminateLambdaNew(λ(translatedTy)(termLastArg))(holSignature)
-              B(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+              val translatedTy = foTransformType0(absType, true)(holSignature, sig)
+              val translatedAllButLastArg = allButLastArg.lift(-1)
+              val translatedTermLastArg = eliminateLambdaNewShallow(absType, termLastArg)(holSignature)
+              B(translatedTy, allButLastArgCoDomainType, allButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {
             // C
             println("[S] C")
-            assert(termLastArg.ty == allButLastArg.ty._funDomainType)
-            val translatedTy = absType //foTransformType0(absType, true)(holSignature, sig)
-            val translatedAllButLastArgCoDomainType = allButLastArg.ty.codomainType // foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
-            val translatedAllButLastArgDomainType = allButLastArg.ty._funDomainType //foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
-            val translatedAllButLastArg = eliminateLambdaNewShallow(translatedTy,(
-              if (f == sig.hApp) {
-                assert(args.size == 4)
-                args(2).left.get
-              } else {
-                assert(false)
-                allButLastArg
-              }))(holSignature)
-
-            //eliminateLambdaNew(λ(translatedTy)(allButLastArg))(holSignature)
-            val translatedTermLastArg = termLastArg.lift(-1) // eliminateLambdaNew(termLastArg.lift(-1))(holSignature)
-            C(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+            val translatedTy = foTransformType0(absType, true)(holSignature, sig)
+            val translatedAllButLastArg = eliminateLambdaNewShallow(absType,allButLastArg)(holSignature)
+            val translatedTermLastArg = termLastArg.lift(-1)
+            C(translatedTy, allButLastArgCoDomainType, allButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
           } else { // occurs in both free
             // S
             println(s"[S] S")
-            assert(termLastArg.ty == allButLastArg.ty._funDomainType)
-            val translatedTy = absType // foTransformType0(absType, true)(holSignature, sig)
-            val translatedAllButLastArgCoDomainType = allButLastArg.ty.codomainType // foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
-            val translatedAllButLastArgDomainType = allButLastArg.ty._funDomainType // foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
-            val translatedAllButLastArg = eliminateLambdaNewShallow(translatedTy,(
-              if (f == sig.hApp) {
-                assert(args.size == 4)
-                args(2).left.get
-              } else {
-                assert(false)
-                allButLastArg
-              }))(holSignature)
-            val translatedTermLastArg = eliminateLambdaNewShallow(translatedTy,termLastArg)(holSignature)
-            S(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+            val translatedTy = foTransformType0(absType, true)(holSignature, sig)
+            val translatedAllButLastArg = eliminateLambdaNewShallow(absType,allButLastArg)(holSignature)
+            val translatedTermLastArg = eliminateLambdaNewShallow(absType,termLastArg)(holSignature)
+            S(translatedTy, allButLastArgCoDomainType, allButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
           }
         } else {
           ???
@@ -276,7 +255,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
             // eta or B
             if (termLastArg.isVariable && Bound.unapply(termLastArg).get._2 == 1) {
               println("eta")
-              eliminateLambdaNew(allButLastArg)(holSignature)
+              eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
             } else {
               println("B")
               assert(termLastArg.ty == allButLastArg.ty._funDomainType)
@@ -284,7 +263,9 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
               val translatedAllButLastArgCoDomainType = foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
               val translatedAllButLastArgDomainType = foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
               val translatedAllButLastArg = eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
-              val translatedTermLastArg = eliminateLambdaNew(λ(translatedTy)(termLastArg))(holSignature)
+              val x = λ(absType)(termLastArg)
+              println("lambda stuf " + x.pretty(holSignature))
+              val translatedTermLastArg = eliminateLambdaNew(x)(holSignature)
               B(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {
@@ -294,7 +275,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArgCoDomainType = foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
             val translatedAllButLastArgDomainType = foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
-            val translatedAllButLastArg = eliminateLambdaNew(λ(translatedTy)(allButLastArg))(holSignature)
+            val translatedAllButLastArg = eliminateLambdaNew(λ(absType)(allButLastArg))(holSignature)
             val translatedTermLastArg = eliminateLambdaNew(termLastArg.lift(-1))(holSignature)
             C(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
           } else { // occurs in both free
@@ -304,8 +285,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArgCoDomainType = foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
             val translatedAllButLastArgDomainType = foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
-            val translatedAllButLastArg = eliminateLambdaNew(λ(translatedTy)(allButLastArg))(holSignature)
-            val translatedTermLastArg = eliminateLambdaNew(λ(translatedTy)(termLastArg))(holSignature)
+            val translatedAllButLastArg = eliminateLambdaNew(λ(absType)(allButLastArg))(holSignature)
+            val translatedTermLastArg = eliminateLambdaNew(λ(absType)(termLastArg))(holSignature)
             S(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
           }
         } else {
