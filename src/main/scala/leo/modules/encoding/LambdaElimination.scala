@@ -187,10 +187,10 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
           val (funid, tyargs) = ComposedType.unapply(allButLastArg.ty).get
           assert(funid == sig.funTy_id)
           assert(tyargs.size == 2)
-          assert(termLastArg.ty == tyargs(0))
+          assert(termLastArg.ty == tyargs.head)
 
           val allButLastArgCoDomainType = tyargs(1)
-          val allButLastArgDomainType = tyargs(0)
+          val allButLastArgDomainType = tyargs.head
 
           println(s"[S] head: " + f.pretty(sig))
           println("[S] allButLastArg: " + allButLastArg.pretty(sig))

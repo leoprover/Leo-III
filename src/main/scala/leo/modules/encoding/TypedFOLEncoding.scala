@@ -13,7 +13,8 @@ import scala.annotation.tailrec
 object TypedFOLEncoding {
   type Problem = Set[Clause]
   type EncodedProblem = Problem
-  type Result = (EncodedProblem, Signature)
+  type AuxDefinitions = Set[Clause]
+  type Result = (EncodedProblem, AuxDefinitions, Signature)
 
   final def apply(problem: Problem, les: LambdaElimStrategy)(implicit sig: Signature): Result = {
     // new signature for encoded problem
@@ -33,8 +34,8 @@ object TypedFOLEncoding {
     // Collect auxiliary definitions from used symbols
     val auxDefs: Set[Clause] = collectAuxDefs(foSig)
     // Collect auxiliary definitions from lambda elimination (if any)
-    val auxDefsFromLES: Set[Clause] = ???
-    (resultProblem union auxDefs union auxDefsFromLES, foSig)
+    val auxDefsFromLES: Set[Clause] = lambdaEliminator.getAuxiliaryDefinitions.map(leo.modules.Utility.termToClause(_))
+    (resultProblem, auxDefs union auxDefsFromLES, foSig)
   }
 
   private final def collectAuxDefs(foSig: TypedFOLEncodingSignature): Set[Clause] = {
