@@ -553,7 +553,7 @@ trait TypedFOLEncodingSignature extends Signature {
   /// Meta symbols
   ///// fun type constant
   lazy val funTy_id: Signature#Key = {
-    val id = addFixedTypeConstructor("$$fun", * ->: * ->: *)
+    val id = addTypeConstructor("$$fun", * ->: * ->: *)
     usedAuxSymbols0 += id
     id
   }
@@ -577,7 +577,7 @@ trait TypedFOLEncodingSignature extends Signature {
 
   ///// bool type constant
   lazy val boolTy_id: Signature#Key = {
-    val id = addFixedTypeConstructor("$$bool", *)
+    val id = addTypeConstructor("$$bool", *)
     usedAuxSymbols0 += id
     id
   }
@@ -586,7 +586,7 @@ trait TypedFOLEncodingSignature extends Signature {
   ///// hApp constant
   private final lazy val hApp_type: Type = ∀(∀(funTy(2,1) ->: Type.mkVarType(2) ->: Type.mkVarType(1)))
   lazy val hApp_id: Signature#Key = {
-    val id = addFixed("$$hApp", hApp_type, None, Signature.PropNoProp)
+    val id = addUninterpreted("$$hApp", hApp_type, Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }
@@ -610,7 +610,7 @@ trait TypedFOLEncodingSignature extends Signature {
   ///// hBool constant
   private final lazy val hBool_type: Type = boolTy ->: o
   lazy val hBool_id: Signature#Key = {
-    val id = addFixed("$$hBool", hBool_type, None, Signature.PropNoProp)
+    val id = addUninterpreted("$$hBool", hBool_type, Signature.PropNoProp)
     usedAuxSymbols0 += id
     id
   }

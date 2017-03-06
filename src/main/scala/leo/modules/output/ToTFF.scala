@@ -19,18 +19,20 @@ object ToTFF {
   private final def apply0(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], lits: Seq[Literal])(sig: Signature): String = {
     val sb = new StringBuffer()
     val freeVarsExist = fvs.nonEmpty || tyFvs.nonEmpty
-    if (freeVarsExist) {
+    val fvMap: Map[Int, String] = if (freeVarsExist) {
       sb.append("! [")
       sb.append(tyFvs.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
-      if (fvs.nonEmpty) sb.append(",")
-      sb.append(fvs.reverse.map{ case (scope,ty) => s"${intToName(scope-1)}:${typeToTFF(ty)(sig)}" }.mkString(","))
+      if (tyFvs.nonEmpty && fvs.nonEmpty) sb.append(",")
+      val (namedFVEnumeration, fvMap) = clauseVarsToTPTP(fvs, typeToTFF)(sig)
+      sb.append(namedFVEnumeration)
       sb.append("] : (")
-    }
+      fvMap
+    } else Map.empty
 
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
-      sb.append(litToTFF(fvs, tyFvs, lit)(sig))
+      sb.append(litToTFF(fvMap, tyFvs.size, lit)(sig))
       if (litIt.hasNext) sb.append(" | ")
     }
 
@@ -40,46 +42,55 @@ object ToTFF {
     sb.toString
   }
 
-  private final def litToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], lit: Literal)(sig: Signature): String = {
+  private final def litToTFF(fvMap: Map[Int, String], tyFvCount: Int, lit: Literal)(sig: Signature): String = {
     if (!lit.equational) {
-      if (!lit.polarity) s"~${formulaToTFF(fvs, tyFvs, lit.left)(sig)}"
-      else formulaToTFF(fvs, tyFvs, lit.left)(sig)
+      if (!lit.polarity) s"~${formulaToTFF(fvMap, tyFvCount, lit.left)(sig)}"
+      else formulaToTFF(fvMap, tyFvCount, lit.left)(sig)
     } else {
       if (lit.polarity)
-        s"${termToTFF(fvs, tyFvs, lit.left)(sig)} = ${termToTFF(fvs, tyFvs, lit.right)(sig)}"
+        s"${termToTFF(fvMap, lit.left)(sig)} = ${termToTFF(fvMap, lit.right)(sig)}"
       else
-        s"${termToTFF(fvs, tyFvs, lit.left)(sig)} != ${termToTFF(fvs, tyFvs, lit.right)(sig)}"
+        s"${termToTFF(fvMap, lit.left)(sig)} != ${termToTFF(fvMap, lit.right)(sig)}"
     }
   }
 
-  private final def formulaToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], t: Term)(sig: Signature): String = {
-    import leo.datastructures.Term.{Symbol, :::>, TypeLambda,∙}
+
+  private final def formulaToTFF(fvMap: Map[Int, String], tyFvCount: Int, t: Term)(sig: Signature): String = {
+    import leo.datastructures.Term.{Symbol,∙}
     import leo.modules.Utility.myAssert
 
     myAssert({
       val oType = Type.mkType(sig("$o").key)
+      println(s"t.ty: ${t.ty.toString}")
+      println(s"oType: ${oType.toString}")
       t.ty == oType
     }, "Translating non-boolean term to a TFF formula.")
 
     val interpretedSymbols = sig.fixedSymbols // Also contains fixed type ids, but doesnt matter here
 
-    val forall = Term.mkAtom(sig("!").key)
-    val exists = Term.mkAtom(sig("?").key)
-    val tyforall = Term.mkAtom(sig("!>").key)
+    val forall = Term.mkAtom(sig("!").key)(sig)
+    val exists = Term.mkAtom(sig("?").key)(sig)
+    val tyforall = Term.mkAtom(sig("!>").key)(sig)
+    val equality = Term.mkAtom(sig("=").key)(sig)
+    val neg_equality = Term.mkAtom(sig("!=").key)(sig)
 
     t match {
       case `forall` ∙ _ =>
         val (bVarTys, body) = collectForall(t, forall)
-        val newBVars = makeBVarList(bVarTys, fvs.size)
-        s"! [${newBVars.map{case (name,ty) => s"$name:${typeToTFF(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(???, tyFvs, body)})"
-      case `exists` ∙ Seq(Right(_), Left(absType :::> body)) =>
-        val (bVarTys, body) = collectExists(t, forall)
-        val newBVars = makeBVarList(bVarTys, fvs.size)
-        s"? [${newBVars.map{case (name,ty) => s"$name:${typeToTFF(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(???, tyFvs, body)})"
-      case `tyforall` ∙ Seq(Left(TypeLambda(body))) =>
-        val (absCount, body) = collectTyForall(t, forall)
-        val varlist = (1 to absCount).map(i => intToName(i-1+tyFvs.size))
-        s"! [${varlist.map{name => s"T$name:$$tType"}.mkString(",")}]: (${formulaToTFF(???, tyFvs, body)})"
+        val newBVars = makeBVarList(bVarTys, fvMap.size)
+        s"! [${newBVars.map{case (name,ty) => s"$name:${typeToTFF(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body)(sig)})"
+      case `exists` ∙ _ =>
+        val (bVarTys, body0) = collectExists(t, exists)
+        val newBVars = makeBVarList(bVarTys, fvMap.size)
+        s"? [${newBVars.map{case (name,ty) => s"$name:${typeToTFF(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body0)(sig)})"
+      case `tyforall` ∙ _ =>
+        val (absCount, body) = collectTyForall(t, tyforall)
+        val varlist = (1 to absCount).map(i => intToName(i-1+tyFvCount))
+        s"! [${varlist.map{name => s"T$name:$$tType"}.mkString(",")}]: (${formulaToTFF(fvMap, tyFvCount+absCount, body)(sig)})"
+      case `equality` ∙ Seq(Right(_), Left(left), Left(right)) =>
+        s"${termToTFF(fvMap, left)(sig)} = ${termToTFF(fvMap, right)(sig)}"
+      case `neg_equality` ∙ Seq(Right(_), Left(left), Left(right)) =>
+        s"${termToTFF(fvMap, left)(sig)} != ${termToTFF(fvMap, right)(sig)}"
       case Symbol(id) ∙ args =>
         if (interpretedSymbols.contains(id)) {
           // Formula level (binary/unary)
@@ -91,39 +102,40 @@ object ToTFF {
             meta.name
           } else if (args.size == 1) {
             assert(args.head.isLeft)
-            s"${meta.name} (${formulaToTFF(fvs,tyFvs,args.head.left.get)(sig)})"
+            s"${meta.name} (${formulaToTFF(fvMap,tyFvCount,args.head.left.get)(sig)})"
           } else {
             // two args
             val arg1 = args.head
             val arg2 = args.tail.head
             assert(arg1.isLeft); assert(arg2.isLeft)
-            s"(${formulaToTFF(fvs, tyFvs,arg1.left.get)(sig)}) ${meta.name} (${formulaToTFF(fvs,tyFvs,arg2.left.get)(sig)})"
+            s"(${formulaToTFF(fvMap, tyFvCount,arg1.left.get)(sig)}) ${meta.name} (${formulaToTFF(fvMap,tyFvCount,arg2.left.get)(sig)})"
           }
         } else {
           // Term level/predicate level
           val meta = sig(id)
           assert(meta.isUninterpreted)
-          s"${meta.name}(${args.map(termOrTypeToTFF(fvs, tyFvs, _)(sig)).mkString(",")})"
+          if (args.isEmpty) meta.name
+          else s"${meta.name}(${args.map(termOrTypeToTFF(fvMap, _)(sig)).mkString(",")})"
         }
       case _ => throw new IllegalArgumentException
     }
   }
 
-  private final def termOrTypeToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], termOrType: Either[Term, Type])(sig: Signature): String = {
-    if (termOrType.isLeft) termToTFF(fvs, tyFvs, termOrType.left.get)(sig)
+  private final def termOrTypeToTFF(fvMap: Map[Int, String],  termOrType: Either[Term, Type])(sig: Signature): String = {
+    if (termOrType.isLeft) termToTFF(fvMap, termOrType.left.get)(sig)
     else typeToTFF(termOrType.right.get)(sig)
   }
 
-  private final def termToTFF(fvs: Seq[(Int, Type)], tyFvs: Seq[Int], t: Term)(sig: Signature): String = {
+  private final def termToTFF(fvMap: Map[Int, String], t: Term)(sig: Signature): String = {
     import leo.datastructures.Term.{∙, Symbol, Bound}
     val interpretedSymbols = sig.fixedSymbols
     t match {
-      case Bound(_, scope) => intToName(scope-1)
+      case Bound(_, scope) => fvMap(scope)
       case Symbol(id) ∙ args =>
           if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
           else {
             if (args.isEmpty) sig(id).name
-            else s"${sig(id).name}(${args.map(termOrTypeToTFF(fvs,tyFvs, _)(sig)).mkString(",")})"
+            else s"${sig(id).name}(${args.map(termOrTypeToTFF(fvMap, _)(sig)).mkString(",")})"
           }
       case _ => throw new IllegalArgumentException
     }
@@ -202,10 +214,6 @@ object ToTFF {
     }
   }
 
-  private final def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = {
-    tys.zipWithIndex.map {case (ty, idx) => (intToName(offset + idx), ty)}
-  }
-
   // Type quantification collection
   @tailrec
   private final def collectForallTys(count: Int, ty: Type): (Int, Type) = {
@@ -214,28 +222,5 @@ object ToTFF {
       case ∀(t) => collectForallTys(count+1, t)
       case _ => (count, ty)
     }
-  }
-  ///////////////////////////////
-  // Naming of variables
-  ///////////////////////////////
-
-  @inline final private val asciiA = 65
-  @inline final private val asciiZ = 90
-  @inline final private val range = asciiZ - asciiA // range 0,1,....
-
-  /**
-    * Convert index i (variable in de-bruijn format) to a variable name corresponding to ASCII transformation as follows:
-    * 0 ---> "A",
-    * 1 ---> "B",
-    * 25 ---> "Z",
-    * 26 ---> "ZA", ... etc.
-    */
-  final private def intToName(i: Int): String = i match {
-    case n if n <= range => s"${intToChar(i)}"
-    case n if n > range => s"Z${intToName(i-range-1)}"
-  }
-  final private def intToChar(i: Int): Char = i match {
-    case n if n <= range => (n + asciiA).toChar
-    case _ => throw new IllegalArgumentException
   }
 }
