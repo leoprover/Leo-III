@@ -53,7 +53,8 @@ object Monomorphization {
         val newArgs = args.map(arg => apply0(arg.left.get, newSig))
         local.mkTermApp(newF, newArgs)
       }
-      case _ => throw new IllegalArgumentException
+      case Bound(ty, idx) => local.mkBound(convertType(ty, sig, newSig), idx)
+      case _ => throw new IllegalArgumentException(s"${t.pretty(sig)} was given")
     }
   }
 
@@ -66,11 +67,11 @@ object Monomorphization {
         else mkType(newSig.addBaseType(name))
       case ComposedType(id, args) =>
         val meta = oldSig(id)
-        val name = escape(meta.name)
-        val kind = meta._kind
-        val convertedArgs = args.map(convertType(_, oldSig, newSig))
-        if (newSig.exists(name)) mkType(newSig(name).key, convertedArgs)
-        else mkType(newSig.addTypeConstructor(name, kind), convertedArgs)
+        val name = monoInstanceName(id, args)(oldSig) //escape(meta.name)
+//        val kind = meta._kind
+//        val convertedArgs = args.map(convertType(_, oldSig, newSig))
+        if (newSig.exists(name)) mkType(newSig(name).key)
+        else mkType(newSig.addBaseType(name))
       case in -> out =>
         val convertedIn = convertType(in, oldSig,newSig)
         val convertedOut = convertType(out, oldSig, newSig)

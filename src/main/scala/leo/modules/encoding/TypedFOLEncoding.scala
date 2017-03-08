@@ -24,8 +24,10 @@ object TypedFOLEncoding {
     while (fIt.hasNext) {
       val (f, info) = fIt.next()
       val fMeta = sig(f)
-      val foType = foTransformType(fMeta._ty, info)(sig, foSig)
-      foSig.addUninterpreted(escape(fMeta.name), foType)
+      if (!fMeta.isFixedSymbol) {
+        val foType = foTransformType(fMeta._ty, info)(sig, foSig)
+        foSig.addUninterpreted(escape(fMeta.name), foType)
+      }
     }
     // Translate
     val lambdaEliminator = les(foSig)
@@ -152,7 +154,8 @@ object TypedFOLEncoding {
 
   final def translate(t: Term, les: LambdaElimination)
                      (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
-    import Term._
+    import Term.local._
+    import Term.{:::>, TypeLambda, Bound, Symbol, ∙}
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
@@ -211,8 +214,8 @@ object TypedFOLEncoding {
         val encodedHead = f match {
           case Symbol(id) =>
             val fName = escape(holSignature(id).name)
-            local.mkAtom(encodingSignature(fName).key)(encodingSignature)
-          case Bound(boundTy, boundIdx) => local.mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
+            mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => f
         }
         assert(encodedHead.isAtom)
@@ -226,8 +229,8 @@ object TypedFOLEncoding {
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 
-        val tyArgsApplied = local.mkTypeApp(encodedHead, translatedTyArgs)
-        val directArgsApplied = local.mkTermApp(tyArgsApplied, directArgs)
+        val tyArgsApplied = mkTypeApp(encodedHead, translatedTyArgs)
+        val directArgsApplied = mkTermApp(tyArgsApplied, directArgs)
         val allApplied = encodingSignature.hApp(directArgsApplied, indirectArgs)
         assert(allApplied.ty == o || allApplied.ty == encodingSignature.boolTy)
         if (allApplied.ty == encodingSignature.boolTy) encodingSignature.hBool(allApplied)
@@ -294,11 +297,15 @@ object TypedFOLEncoding {
       case f ∙ args =>
         val encodedHead = f match {
           case Symbol(id) =>
+            println(s"f: ${f.pretty(holSignature)}")
+            println(s"matches: ${HOLNot.unapply(f).isDefined}")
+            println(s"id: $id -- HOLNotId: ${HOLNot.key}")
             val fName = escape(holSignature(id).name)
-            local.mkAtom(encodingSignature(fName).key)(encodingSignature)
-          case Bound(boundTy, boundIdx) => local.mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
+            mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => assert(false); f
         }
+        println(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
@@ -310,8 +317,8 @@ object TypedFOLEncoding {
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 
-        val tyArgsApplied = local.mkTypeApp(encodedHead, translatedTyArgs)
-        val directArgsApplied = local.mkTermApp(tyArgsApplied, directArgs)
+        val tyArgsApplied = mkTypeApp(encodedHead, translatedTyArgs)
+        val directArgsApplied = mkTermApp(tyArgsApplied, directArgs)
         encodingSignature.hApp(directArgsApplied, indirectArgs)
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")

@@ -964,7 +964,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(Type.mkType(list, ty) ->: o, result(p))(sig, foSig))
     foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(Type.mkType(list, ty), result(a))(sig, foSig))
-    foSig.addUninterpreted("x", TypedFOLEncoding.foTransformType(ty, result(x))(sig, foSig))
+    foSig.addUninterpreted("xx", TypedFOLEncoding.foTransformType(ty, result(x))(sig, foSig))
     foSig.addUninterpreted("add", TypedFOLEncoding.foTransformType(ty ->: Type.mkType(list, ty) ->: Type.mkType(list, ty), result(add))(sig, foSig))
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
@@ -1097,7 +1097,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
     foSig.addUninterpreted("q", TypedFOLEncoding.foTransformType(sig(q)._ty, result(q))(sig, foSig))
-    foSig.addUninterpreted("x", TypedFOLEncoding.foTransformType(sig(x)._ty, result(x))(sig, foSig))
+    foSig.addUninterpreted("xx", TypedFOLEncoding.foTransformType(sig(x)._ty, result(x))(sig, foSig))
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))

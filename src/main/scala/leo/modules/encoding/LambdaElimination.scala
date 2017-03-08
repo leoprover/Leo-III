@@ -240,6 +240,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   def eliminateLambdaNew0(absType: Type, absBody: Term)(holSignature: Signature): Term = {
     import leo.datastructures.Term._
     import leo.modules.encoding.TypedFOLEncoding.foTransformType0
+    println(s"eliminateLambdaNew0: ${absType.pretty(holSignature)} :::> ${absBody.pretty(holSignature)}")
     absBody match {
       case Bound(`absType`, 1) => println("I")
         I(foTransformType0(absType, true)(holSignature, sig))
@@ -255,6 +256,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
           val allButLastArg = Term.mkApp(f, args.init)
           println(s"head: " + f.pretty(holSignature))
           println("allButLastArg: " + allButLastArg.pretty(holSignature))
+          println(s"matches not: ${leo.modules.HOLSignature.Not.unapply(absBody).isDefined}")
+          println(s"matches not: ${leo.modules.HOLSignature.Not.unapply(allButLastArg).isDefined}")
           println("lastArg: " + termLastArg.pretty(holSignature))
           if (!free(allButLastArg, 1)) {
             // eta or B
