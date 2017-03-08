@@ -1,6 +1,6 @@
 package leo.modules.output
 
-import leo.datastructures.{Clause, ClauseProxy, Role, Signature}
+import leo.datastructures.{Clause, ClauseProxy, Kind, Role, Signature}
 
 import scala.annotation.tailrec
 
@@ -61,8 +61,6 @@ object ToTFF {
 
     myAssert({
       val oType = Type.mkType(sig("$o").key)
-      println(s"t.ty: ${t.ty.toString}")
-      println(s"oType: ${oType.toString}")
       t.ty == oType
     }, "Translating non-boolean term to a TFF formula.")
 
@@ -97,7 +95,7 @@ object ToTFF {
           val meta = sig(id)
           assert(meta.hasType)
           val argCount = meta._ty.arity
-          assert(argCount <= 2); assert(argCount == args.size)
+          assert(argCount <= 2, s"arg count of ${meta.name} > 2"); assert(argCount == args.size, s"argCount of ${meta.name} does not match argsize")
           if (args.isEmpty) {
             meta.name
           } else if (args.size == 1) {
@@ -141,11 +139,28 @@ object ToTFF {
     }
   }
 
+  final private def kindToTFF(k: Kind): String = {
+    import leo.datastructures.Kind.{*,->,superKind}
+    k match {
+      case `*` => "$tType"
+      case `superKind` => "#"
+      case _ -> _ =>  funKindFOStyle(k)
+    }
+  }
+  final private def funKindFOStyle(k: Kind): String = funKindFOStyle0(k, Seq.empty)
+  final private def funKindFOStyle0(k: Kind, acc: Seq[Kind]): String = {
+    import leo.datastructures.Kind.{*,->,superKind}
+    k match {
+      case k1 -> k2 =>  funKindFOStyle0(k2, acc :+ k1)
+      case _ => s"(${acc.map(kindToTFF).mkString(" * ")}) > ${kindToTFF(k)}"
+    }
+  }
+
   final private def typeToTFF(ty: Type)(sig: Signature): String = {
     import leo.datastructures.Type.∀
     ty match {
       case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
-        s"!> [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ":$$tType").mkString(",")}]: ${typeToTFF0(bodyTy)(sig)})"
+        s"!> [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ":$tType").mkString(",")}]: (${typeToTFF0(bodyTy)(sig)})"
       case _ => typeToTFF0(ty)(sig)
     }
   }
@@ -164,6 +179,29 @@ object ToTFF {
       case +(l,r) => ???
       case ∀(_) => throw new IllegalArgumentException("Illegal nested polymorphic type detected.")
     }
+  }
+
+  final def apply(sig: Signature): String = {
+    val sb: StringBuilder = new StringBuilder
+    for (id <- sig.typeConstructors intersect sig.allUserConstants) {
+      sb.append("tff(")
+      sb.append(sig(id).name)
+      sb.append("_type,type,(")
+      sb.append(sig(id).name)
+      sb.append(":")
+      sb.append(kindToTFF(sig(id)._kind))
+      sb.append(")).\n")
+    }
+    for (id <- sig.uninterpretedSymbols) {
+      sb.append("tff(")
+      sb.append(sig(id).name)
+      sb.append("_type,type,(")
+      sb.append(sig(id).name)
+      sb.append(":")
+      sb.append(typeToTFF(sig(id)._ty)(sig))
+      sb.append(")).\n")
+    }
+    sb.toString()
   }
 
   ///////////////////////////////

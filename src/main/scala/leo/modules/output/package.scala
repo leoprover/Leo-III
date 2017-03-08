@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Type, Signature}
+import leo.datastructures.{Kind, Type, Signature}
 
 /**
   * Collection of traits, clases and utility objects relevant for

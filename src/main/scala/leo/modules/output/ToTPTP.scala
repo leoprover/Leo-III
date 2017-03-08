@@ -367,7 +367,16 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of THF types
   ///////////////////////////////
-
+  final private def toTPTP(k: Kind): String = {
+    import leo.datastructures.Kind.{*,->}
+    k match {
+      case * => "$tType"
+      case k1 -> k2 => if (k1.isTypeKind)
+        s"$$tType > ${toTPTP(k2)}"
+      else
+        s"(${toTPTP(k1)}) > ${toTPTP(k2)}"
+    }
+  }
 
   final private def toTPTP(ty: Type)(sig: Signature): String = ty match {
     case ∀(t) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
@@ -383,17 +392,6 @@ object ToTPTP {
     case t1 + t2 => s"(${toTPTP(t1)(sig)} + ${toTPTP(t2)(sig)})"
     case ∀(t) => throw new IllegalArgumentException("Polytype should have been caught before")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
-  }
-
-  final private def toTPTP(k: Kind): String = {
-    import leo.datastructures.Kind.->
-    k match {
-      case Kind.* => "$tType"
-      case k1 -> k2 => if (k1.isTypeKind)
-        s"$$tType > ${toTPTP(k2)}"
-      else
-        s"(${toTPTP(k1)}) > ${toTPTP(k2)}"
-    }
   }
 
   ///////////////////////////////
