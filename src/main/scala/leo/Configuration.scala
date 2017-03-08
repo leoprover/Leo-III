@@ -80,6 +80,7 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   // Predefined parameters
   //////////////////////////
+  def isInit: Boolean = configMap != null
 
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
