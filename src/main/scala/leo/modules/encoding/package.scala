@@ -1,5 +1,7 @@
 package leo.modules
 
+import leo.datastructures.{Signature, Clause, Type}
+
 /**
   * This package contains all algorithms related to first-order encoding
   * of higher-order problems. In particular
@@ -15,4 +17,18 @@ package leo.modules
   *
   * @since February 2017
   */
-package object encoding
+package object encoding {
+  type Problem = Set[Clause]
+
+  final val escapeChar: Char = 'x'
+  @inline protected[encoding] final def escape(name: String): String = {
+    if (name.isEmpty) ""
+    else {
+      if (name.charAt(0) == escapeChar) escapeChar + name
+      else name
+    }
+  }
+
+  @inline protected[encoding] final def safeName(name: String): String = escapeChar + name
+
+}

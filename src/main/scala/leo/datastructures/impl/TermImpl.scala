@@ -658,7 +658,7 @@ protected[impl] case class Atom(id: Signature#Key, ty: Type) extends Head {
   @inline final def δ_expand(sig: Signature) = δ_expand(-1)(sig)
 
   // Pretty printing
-  override lazy val pretty = s"const($id)"
+  override lazy val pretty = s"const($id, ${ty.pretty})"
   final def pretty(sig: Signature) = sig(id).name
 }
 
@@ -1285,7 +1285,7 @@ object TermImpl extends TermBank {
         false
       }
     case App(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take" +
-      s"parameters, but arguments are applied."); false
+      s"parameters (${functionType.pretty}), but arguments (${args.pretty}) are applied."); false
     case TyApp(hd,tail) if functionType.isPolyType =>
       if (canBePolyFunc) {
         wellTypedArgCheck(term, functionType.instantiate(hd), tail, boundVars, canBePolyFunc)

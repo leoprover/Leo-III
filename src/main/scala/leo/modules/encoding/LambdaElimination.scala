@@ -70,7 +70,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // I combinator
   ////////////
-  private final lazy val combinator_I_key: Signature#Key = {sig.addUninterpreted("$$comb_I", ∀(funTy(Xty,Xty)))}
+  final val combinator_I_name: String = "comb_I"
+  private final lazy val combinator_I_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_I_name), ∀(funTy(Xty,Xty)))}
   /** Curry I combinator given by `I x = x`. */
   final lazy val combinator_I: Term = {
     val id = combinator_I_key
@@ -82,7 +83,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // K combinator
   ////////////
-  private final lazy val combinator_K_key: Signature#Key = {sig.addUninterpreted("$$comb_K", ∀(∀(funTy(Xty,funTy(Yty, Xty)))))}
+  final val combinator_K_name: String = "comb_K"
+  private final lazy val combinator_K_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_K_name), ∀(∀(funTy(Xty,funTy(Yty, Xty)))))}
   /** Curry K combinator given by `K x y = x`.
     * `K :: ∀x.∀y. y -> $$fun(x,y)` (`->` only used for readibility. Encoded using $$fun(.)).*/
   final lazy val combinator_K: Term = {
@@ -95,7 +97,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // S combinator
   ////////////
-  private final lazy val combinator_S_key: Signature#Key = {sig.addUninterpreted("$$comb_S",
+  final val combinator_S_name: String = "comb_S"
+  private final lazy val combinator_S_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_S_name),
     ∀(∀(∀(funTy(funTy(Zty,funTy(Xty,Yty)), funTy(funTy(Zty, Xty),funTy(Zty,Yty)))))))}
   /** Curry S combinator given by `S x y z = x z (y z)`. */
   final lazy val combinator_S: Term = {
@@ -110,7 +113,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // B combinator
   ////////////
-  private final lazy val combinator_B_key: Signature#Key = {sig.addUninterpreted("$$comb_B",
+  final val combinator_B_name: String = "comb_B"
+  private final lazy val combinator_B_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_B_name),
     ∀(∀(∀(funTy(funTy(Xty, Yty), funTy(funTy(Zty, Xty),funTy(Zty, Yty)))))))}
   /** Curry B combinator given by `B x y z = x (y z)`.
     * `B :: ∀z.∀y.∀x. $$fun(x,y) -> $$fun(z,x) -> $$fun(z,y)` (`->` only used for readibility. Encoded using $$fun(.)). */
@@ -126,7 +130,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // C combinator
   ////////////
-  private final lazy val combinator_C_key: Signature#Key = {sig.addUninterpreted("$$comb_C",
+  final val combinator_C_name: String = "comb_C"
+  private final lazy val combinator_C_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_C_name),
     ∀(∀(∀(funTy(funTy(Zty,funTy(Xty,Yty)), funTy(Zty,funTy(Xty,Yty)))))))}
   /** Curry C combinator given by `C x y z = x z y`. */
   final lazy val combinator_C: Term = {
