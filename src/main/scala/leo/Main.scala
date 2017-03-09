@@ -3,6 +3,7 @@ package leo
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
+import leo.modules.parsers.CLParameterParser
 
 /**
  * Entry Point for Leo-III as an executable to
@@ -25,7 +26,7 @@ object Main {
     try {
       val beginTime = System.currentTimeMillis()
       hook = sys.addShutdownHook({
-        Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "This one is on you, buddy."))
+        Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
       })
       try {
         Configuration.init(new CLParameterParser(args))
@@ -55,13 +56,15 @@ object Main {
 
       if (Configuration.isSet("seq")) {
         leo.modules.seqpproc.SeqPProc(beginTime)
+      } else if (Configuration.isSet("pure-ext")) {
+        RunExternalProver.runExternal()
       } else {
         throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
       }
       
     } catch {
       case e:SZSException => {
-        Out.comment("Hex: OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+        Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
         Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.toString))
         Out.debug(e.debugMessage)
         Out.trace(stackTraceAsString(e))
@@ -71,7 +74,7 @@ object Main {
         }
       }
       case e:Throwable => {
-        Out.comment("Hex: OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+        Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
         Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {

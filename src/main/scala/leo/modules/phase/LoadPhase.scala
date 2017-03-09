@@ -3,20 +3,16 @@ package leo.modules.phase
 
 import java.nio.file.Files
 
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.TagName
 import leo._
 import leo.agents.Agent
-import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
-import leo.datastructures._
-import leo.datastructures.blackboard.{Blackboard, ClauseType}
+import leo.datastructures.blackboard.{Blackboard}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.context.Context
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.agent.relevance_filter.AnnotatedFormulaType
-import leo.modules.calculus.CalculusRule
-import leo.modules.output.{SZS_Error, SZS_InputError, SZS_Theorem}
-import leo.modules.{Parsing, SZSException}
+import leo.modules.output.{SZS_Error, SZS_InputError}
+import leo.modules.parsers.Input
+import leo.modules.SZSException
 
 class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
   override val name = "LoadPhase"
@@ -42,12 +38,12 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         val prob = Configuration.PROBLEMFILE
 
         val it : Iterator[AnnotatedFormula] = {
-          if (Files.exists(Parsing.canonicalPath(prob)))
-            Parsing.readProblem(prob).iterator
+          if (Files.exists(Input.canonicalPath(prob)))
+            Input.parseProblem(prob).iterator
           else {
-            val tptpFile = Parsing.tptpHome.resolve(prob)
+            val tptpFile = Input.tptpHome.resolve(prob)
             if(Files.exists(tptpFile)) {
-              Parsing.readProblem(Parsing.tptpHome.resolve(prob).toString).iterator
+              Input.parseProblem(Input.tptpHome.resolve(prob).toString).iterator
             } else {
               throw new SZSException(SZS_InputError, s"The file ${prob} does not exist.")
             }

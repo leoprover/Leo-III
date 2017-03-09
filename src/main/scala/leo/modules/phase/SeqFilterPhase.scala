@@ -5,17 +5,12 @@ import leo.agents.Agent
 import leo.datastructures.ClauseAnnotation.{FromFile, InferredFrom}
 import leo.datastructures.{ClauseAnnotation, Literal, _}
 import leo.datastructures.blackboard.{Blackboard, ClauseType, SignatureBlackboard}
-import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.datastructures.context.Context
-import leo.datastructures.impl.SignatureImpl
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.{Parsing, SZSException}
-import leo.modules.agent.relevance_filter.{AnnotatedFormulaType, BlackboardPreFilterSet, RelevanceFilterAgent}
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.{SZS_CounterTheorem, SZS_Error}
-import leo.modules.parsers.InputProcessing
-import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter, SeqFilter}
+import leo.modules.output.SZS_CounterTheorem
+import leo.modules.parsers.Input.processFormula
+import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
 /**
   * Created by mwisnie on 3/10/16.
@@ -45,11 +40,11 @@ class SeqFilterPhase extends Phase {
       while(taken.nonEmpty){
 
         // Take all formulas (save the newly touched symbols
-        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f)(SignatureBlackboard.get))
+        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
 
         // Translate all taken formulas to clauses
         taken.foreach{f =>
-          val (name, term, role) = InputProcessing.process(SignatureBlackboard.get)(f)
+          val (name, term, role) = processFormula(f)(SignatureBlackboard.get)
           val nc : ClauseProxy = if(f.role == Role_Conjecture.pretty || f.role == Role_NegConjecture.pretty)
             negateConjecture(name, term, role)
           else
@@ -80,6 +75,6 @@ class SeqFilterPhase extends Phase {
 }
 
 object NegateConjecture extends CalculusRule {
-  override def name: String = "neg_conjecture"
-  override val inferenceStatus = Some(SZS_CounterTheorem)
+  final val name: String = "neg_conjecture"
+  final val inferenceStatus = SZS_CounterTheorem
 }

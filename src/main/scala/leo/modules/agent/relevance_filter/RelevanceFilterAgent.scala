@@ -8,7 +8,7 @@ import leo.datastructures.blackboard._
 import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.calculus.CalculusRule
 import leo.modules.output.SZS_CounterTheorem
-import leo.modules.parsers.InputProcessing
+import leo.modules.parsers.Input.processFormula
 import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 
 /**
@@ -69,7 +69,7 @@ class RelevanceTask(form : AnnotatedFormula, round : Int, a : Agent, sig : Signa
   override def readSet(): Map[DataType, Set[Any]] = Map()
   override def run: Result = {
     if(!PreFilterSet.isUnused(form)) return Result()
-    val (name, term, role) = InputProcessing.process(sig)(form)
+    val (name, term, role) = processFormula(form)(sig)
     val nc : ClauseProxy = if(role == Role_Conjecture)    // TODO Move somewhere else?
       AnnotatedClause(Clause(Literal(term, false)), Role_NegConjecture, InferredFrom(NegateConjecture, AnnotatedClause(Clause(Literal(term, true)), role, FromFile(Configuration.PROBLEMFILE, name), ClauseAnnotation.PropNoProp)), ClauseAnnotation.PropNoProp)
     else
@@ -88,5 +88,5 @@ object FormulaTakenType extends DataType
 
 object NegateConjecture extends CalculusRule {
   override def name: String = "neg_conjecture"
-  override val inferenceStatus = Some(SZS_CounterTheorem)
+  override val inferenceStatus = SZS_CounterTheorem
 }

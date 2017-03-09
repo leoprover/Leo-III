@@ -3,8 +3,10 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, Subst, Type, _}
-import leo.modules.HOLSignature.{Not, |||, Forall, Exists, &, Impl, ===, LitFalse, LitTrue}
+import leo.modules.HOLSignature.{&, ===, !===, Exists, Forall, TyForall, Impl, LitFalse, LitTrue, Not, |||}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
+
+import scala.annotation.tailrec
 
 /**
   * Created by lex on 5/12/16.
@@ -15,14 +17,15 @@ import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
 ////////////////////////////////////////////////////////////////
 
 object DefExpSimp extends CalculusRule {
-  override val name = "defexp_and_simp_and_etaexpand"
-  override val inferenceStatus = Some(SZS_Theorem)
-  def apply(t: Term)(implicit sig: Signature): Term = {
+  final val name = "defexp_and_simp_and_etaexpand"
+  final val inferenceStatus = SZS_Theorem
+
+  final def apply(t: Term)(implicit sig: Signature): Term = {
     val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
     Simp.normalize(t.δ_expand_upTo(symb).betaNormalize.etaExpand)
   }
 
-  def apply(cl: Clause)(implicit sig: Signature): Clause = {
+  final def apply(cl: Clause)(implicit sig: Signature): Clause = {
     val litsIt = cl.lits.iterator
     var newLits: Seq[Literal] = Seq()
     while (litsIt.hasNext) {
@@ -42,20 +45,20 @@ object DefExpSimp extends CalculusRule {
 // with its ancestor clause.
 
 object PolaritySwitch extends CalculusRule {
-  val name = "polarity_switch"
-  override val inferenceStatus = Some(SZS_Theorem)
-  def canApply(t: Term): Boolean = t match {
+  final val name = "polarity_switch"
+  final val inferenceStatus = SZS_Theorem
+  final def canApply(t: Term): Boolean = t match {
     case Not(_) => true
     case _ => false
   }
-  def canApply(l: Literal): Boolean = canApply(l.left) || canApply(l.right)
+  final def canApply(l: Literal): Boolean = canApply(l.left) || canApply(l.right)
 
-  def apply(t: Term): Term = t match {
+  final def apply(t: Term): Term = t match {
     case Not(t2) => t2
     case _ => t
   }
 
-  def apply(l: Literal): Literal = if (l.equational) {
+  final def apply(l: Literal): Literal = if (l.equational) {
     (l.left, l.right) match {
       case (Not(l2), Not(r2)) => Literal(l2, r2, l.polarity, l.oriented)
       case _ => l
@@ -72,8 +75,8 @@ object PolaritySwitch extends CalculusRule {
   * Created by mwisnie on 11.04.16.
   */
 object  StepCNF extends CalculusRule {
-  override def name: String = "cnf"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val name: String = "cnf"
+  final val inferenceStatus = SZS_Theorem
 
   trait CNF
   case class Alpha(l : Literal, r : Literal) extends CNF
@@ -151,12 +154,73 @@ object  StepCNF extends CalculusRule {
   }
 }
 
+
+object RenameCNF extends CalculusRule {
+  final val name : String = "cnf"
+  final val inferenceStatus = SZS_EquiSatisfiable
+  type FVs = FullCNF.FVs
+  type TyFVS = FullCNF.TyFVS
+
+  @inline
+  final def canApply(l : Literal) : Boolean = FullCNF.canApply(l)
+
+  final def apply(vargen : leo.modules.calculus.FreshVarGen, cl : Clause, THRESHHOLD : Int = 0)(implicit sig: Signature) : Seq[Clause] = {
+    val lits = cl.lits
+    val normLits = apply(vargen, lits, THRESHHOLD)
+    normLits.map{ls => Clause(ls)}
+  }
+
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal], THRESHHOLD : Int)(implicit sig: Signature): (Seq[Seq[Literal]]) = {
+    var acc : Seq[Seq[Literal]] = Seq(Seq())
+    val it : Iterator[Literal] = l.iterator
+    while(it.hasNext){
+      val nl = it.next()
+      apply(vargen, nl, THRESHHOLD) match {
+        case Seq(Seq(lit)) => acc = acc.map{normLits => lit +: normLits}
+        case norms =>  acc = multiply(norms, acc)
+      }
+    }
+    acc
+  }
+
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Literal,THRESHHOLD : Int)(implicit sig: Signature): Seq[Seq[Literal]] = apply0(vargen.existingVars, vargen.existingTyVars, vargen, l, THRESHHOLD)
+
+  @inline
+  final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal, THRESHHOLD : Int)(implicit sig: Signature): Seq[Seq[Literal]] = if(!l.equational){
+    if(FormulaRenaming.canApply(l, THRESHHOLD)) {
+      val (replLit, defl1, defl2) = FormulaRenaming.apply(l)
+      assert(defl1 != null && defl2 != null, "No renaming was performed")
+      apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD) ++ multiply(apply0(fvs, tyFVs, vargen, defl1, THRESHHOLD), apply0(fvs, tyFVs, vargen, defl2, THRESHHOLD))
+    } else {
+    l.left match {
+      case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity), THRESHHOLD)
+      case &(lt,rt) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true), THRESHHOLD) ++ apply0(fvs, tyFVs, vargen, Literal(rt,true), THRESHHOLD)
+      case &(lt,rt) if !l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false), THRESHHOLD), apply0(fvs, tyFVs, vargen, Literal(rt, false), THRESHHOLD))
+      case |||(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,true),THRESHHOLD), apply0(fvs, tyFVs, vargen, Literal(rt, true),THRESHHOLD))
+      case |||(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,false),THRESHHOLD) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false),THRESHHOLD)
+      case Impl(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false),THRESHHOLD), apply0(fvs, tyFVs, vargen, Literal(rt, true),THRESHHOLD))
+      case Impl(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true),THRESHHOLD) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false),THRESHHOLD)
+      case Forall(a@(ty :::> t)) if l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true),THRESHHOLD)
+      case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, false),THRESHHOLD)
+      case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, true),THRESHHOLD)
+      case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false),THRESHHOLD)
+      case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)).betaNormalize.etaExpand, true),THRESHHOLD)
+      case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false),THRESHHOLD)
+      case _ => Seq(Seq(l))
+    }}
+  } else {
+    Seq(Seq(l))
+  }
+
+  private[calculus] final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = FullCNF.multiply(l,r)
+}
+
 /**
   * Created by mwisnie on 4/4/16.
   */
 object FullCNF extends CalculusRule {
-  override def name: String = "cnf"
-  final override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name: String = "cnf"
+  final val inferenceStatus = SZS_EquiSatisfiable
   type FVs = Seq[(Int, Type)]
   type TyFVS = Seq[Int]
 
@@ -168,7 +232,7 @@ object FullCNF extends CalculusRule {
       case _ Impl _ => true
       case Forall(_ :::> _) => true
       case Exists(_ :::> _) => true
-      case TypeLambda(_) => true
+      case TyForall(TypeLambda(_)) => true
       case _ => false
     }
   } else false
@@ -204,19 +268,33 @@ object FullCNF extends CalculusRule {
       case |||(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,false)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
       case Impl(lt,rt) if l.polarity => multiply(apply0(fvs, tyFVs, vargen, Literal(lt,false)), apply0(fvs, tyFVs, vargen, Literal(rt, true)))
       case Impl(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
-      case Forall(a@(ty :::> t)) if l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true))
+      case Forall(a@(ty :::> t)) if l.polarity =>
+        import leo.modules.HOLSignature.{o, LitTrue, LitFalse}
+        if (false /*ty == o*/) {
+          apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitTrue).betaNormalize.etaExpand, true)) ++ apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitFalse).betaNormalize.etaExpand, true))
+        } else {
+          val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true))
+        }
+
       case Forall(a@(ty :::> t)) if !l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, false))
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, true))
-      case Exists(a@(ty :::> t)) if !l.polarity => val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))
-      case TypeLambda(t) if l.polarity => apply0(fvs, tyFVs, vargen, Literal(t, true)) //FIXME add free type variables
-      case term@TypeLambda(t) if !l.polarity => val sko = sig.freshSkolemTypeConst; apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(term, Type.mkType(sko)).betaNormalize.etaExpand, false))
+      case Exists(a@(ty :::> t)) if !l.polarity =>
+        import leo.modules.HOLSignature.{o, LitTrue, LitFalse}
+        if (false /*ty == o*/) {
+          apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitTrue).betaNormalize.etaExpand, false)) ++ apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitFalse).betaNormalize.etaExpand, false))
+        } else {
+          val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))
+        }
+
+      case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)).betaNormalize.etaExpand, true))
+      case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false))
       case _ => Seq(Seq(l))
     }
   } else {
     Seq(Seq(l))
   }
 
-  private final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
+  private[calculus] final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
     var acc : Seq[Seq[A]] = Seq()
     val itl = l.iterator
     while(itl.hasNext) {
@@ -233,52 +311,74 @@ object FullCNF extends CalculusRule {
 
 
 object LiftEq extends CalculusRule {
-  val name = "lifteq"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "lifteq"
+  final val inferenceStatus = SZS_Theorem
 
-  def canApply(t: Term): Boolean = t match {
-    case ===(_,_) => true
-    case _ => false
+  type Lift = Int
+  final val NO_LIFT: Lift = 0
+  final val NEG_LIFT: Lift = -1
+  final val POS_LIFT: Lift = 1
+
+  final def canApply(t: Term): Lift = t match {
+    case ===(_,_) => POS_LIFT
+    case !===(_,_) => NEG_LIFT
+    case _ => NO_LIFT
   }
-  def canApply(lit: Literal): Boolean = !lit.equational && canApply(lit.left)
-  type LiftLits = Seq[Literal]
+  final def canApply(lit: Literal): Lift = if (lit.equational) NO_LIFT else canApply(lit.left)
+
+  type PosLiftLits = Seq[Literal]
+  type NegLiftLits = Seq[Literal]
   type OtherLits = Seq[Literal]
-  def canApply(cl: Clause): (Boolean, LiftLits, OtherLits) = {
+  final def canApply(cl: Clause): (Boolean, PosLiftLits, NegLiftLits, OtherLits) = {
     var can = false
-    var liftLits: LiftLits = Seq()
+    var posLiftLits: PosLiftLits = Seq()
+    var negLiftLits: NegLiftLits = Seq()
     var otherLits: OtherLits = Seq()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
-      if (canApply(l)) {
-        liftLits = liftLits :+ l
+      val canLift = canApply(l)
+      if (canLift == POS_LIFT) {
+        posLiftLits = posLiftLits :+ l
+        can = true
+      } else if (canLift == NEG_LIFT) {
+        negLiftLits = negLiftLits :+ l
         can = true
       } else {
         otherLits = otherLits :+ l
       }
     }
-    (can, liftLits, otherLits)
-  }
-  def apply(liftLits: LiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
-    liftLits.map(l => apply(l.left, l.polarity)(sig)) ++ otherLits
+    (can, posLiftLits, negLiftLits, otherLits)
   }
 
+  final def apply(posLiftLits: PosLiftLits, negLiftLits: NegLiftLits, otherLits: OtherLits)(implicit sig: Signature): Seq[Literal] = {
+    posLiftLits.map(l => apply(POS_LIFT, l.left, l.polarity)(sig)) ++ negLiftLits.map(l => apply(NEG_LIFT, l.left, l.polarity)(sig)) ++ otherLits
+  }
 
-  def apply(left: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
-    val (l,r) = ===.unapply(left).get
-    if (polarity) {
-      Literal.mkOrdered(l,r,true)(sig)
+  final def apply(lift: Lift, t: Term, polarity: Boolean)(implicit sig: Signature): Literal = {
+    assert(lift != NO_LIFT)
+    val (l,r) = if (lift == POS_LIFT) {
+      ===.unapply(t).get
     } else {
-      Literal.mkOrdered(l,r,false)(sig)
+      // lift == NEG_LIFT
+      !===.unapply(t).get
     }
-  }
+    assert(l.isBetaNormal, s"${l.pretty(sig)} // ${l.toString}")
+    assert(r.isBetaNormal, s"${r.pretty(sig)} // ${r.toString}")
+    if (lift == POS_LIFT) {
+      Literal.mkOrdered(l,r,polarity)(sig)
+    } else {
+      // lift == NEG_LIFT
+      Literal.mkOrdered(l,r,!polarity)(sig)
+    }
 
+  }
 }
 
 
 object ReplaceLeibnizEq extends CalculusRule {
-  val name = "replace_leibeq"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "replace_leibeq"
+  final val inferenceStatus = SZS_Theorem
   type Polarity = Boolean
 
 
@@ -327,8 +427,8 @@ object ReplaceLeibnizEq extends CalculusRule {
 }
 
 object ReplaceAndrewsEq extends CalculusRule {
-  val name = "replace_andrewseq"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "replace_andrewseq"
+  final val inferenceStatus = SZS_Theorem
 
   def canApply(cl: Clause): (Boolean, Map[Int, Type]) = {
     import leo.datastructures.Term.{Bound, TermApp}
@@ -367,8 +467,8 @@ object ReplaceAndrewsEq extends CalculusRule {
 }
 
 object RewriteSimp extends CalculusRule {
-  val name = "rewrite"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "rewrite"
+  final val inferenceStatus = SZS_Theorem
 
 //  /**
 //    * Apply a rewrite using `rewriteRule` on a specific literal in `ìntoClause`.
@@ -434,8 +534,8 @@ object RewriteSimp extends CalculusRule {
 }
 
 object ACSimp extends CalculusRule {
-  val name = "ac_simp"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "ac_simp"
+  final val inferenceStatus = SZS_Theorem
 
   def lt(a: Term, b: Term): Boolean = {
     import leo.datastructures.Term.{Bound, Symbol}
@@ -465,13 +565,11 @@ object ACSimp extends CalculusRule {
         f match {
           case Symbol(id) if id == acSymbol =>
             val acArgRes = apply0(args, acSymbol, Set()).toSeq.sortWith(lt)
-
-            val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Seq(arg, term))}
+            val newArgs = acArgRes.tail.foldRight(acArgRes.head) {case (arg,term) => Term.mkTermApp(f, Vector(arg, term))}
             //        Term.mkTermApp(f, newArgs)
             newArgs
-          case _ => t
+          case _ => Term.mkTermApp(f, args.map(apply(_, acSymbol)))
         }
-
       }
       case (f ∙ args) => Term.mkApp(f, args.map {case arg => arg.fold({case t => Left(apply(t, acSymbol))}, {case ty => Right(ty)})})
       case _ => t
@@ -491,14 +589,14 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(lit: Literal, allACSymbols: Set[Signature#Key]): Literal = {
+  def apply(lit: Literal, allACSymbols: Set[Signature#Key])(implicit sig: Signature): Literal = {
     val leftAC = lit.left.symbols.distinct intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
       val rightAC = lit.right.symbols.distinct intersect allACSymbols
       val newRight = if (rightAC.isEmpty) lit.right else apply(lit.right, rightAC)
       if (newLeft == lit.left && newRight == lit.right) lit
-      else Literal(newLeft, newRight, lit.polarity) // TODO: Orient?
+      else Literal.mkOrdered(newLeft, newRight, lit.polarity) // TODO: Orient?
     } else {
       if (leftAC.isEmpty) lit
       else {
@@ -512,14 +610,14 @@ object ACSimp extends CalculusRule {
 
   }
 
-  def apply(cl: Clause, acSymbols: Set[Signature#Key]): Clause = {
-    Clause(cl.lits.map(apply(_, acSymbols)))
+  def apply(cl: Clause, acSymbols: Set[Signature#Key])(implicit sig: Signature): Clause = {
+    Clause(cl.lits.map(apply(_, acSymbols)(sig)))
   }
 }
 
 object Simp extends CalculusRule {
-  val name = "simp"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "simp"
+  final val inferenceStatus = SZS_Theorem
 
   def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
@@ -576,7 +674,7 @@ object Simp extends CalculusRule {
     newLits
   }
 
-  def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
+  final def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
     if (!l.equational) Literal(internalNormalize(l.left), l.polarity)
     else {
       val normLeft = internalNormalize(l.left)
@@ -589,6 +687,61 @@ object Simp extends CalculusRule {
   }
 
 
+  final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+    assert(l.forall(a => !a.polarity))
+    val simpRes = uniLitSimp0(Seq(), l.map(lit => (lit.left, lit.right)))(sig)
+    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+  }
+  /** Given a unification literal `l` where `l = [a,b]^f`
+    * this method returns a sequence of literals (l_i) where each l_i is a (nested)
+    * argument to applications of possibly common head symbols in a and b (Decomp rule).
+    * Also, each l_i has ground type.
+    */
+  final def uniLitSimp(l: Literal)(implicit sig: Signature): Seq[Literal] = {
+    assert(!l.polarity)
+    val simpRes = uniLitSimp0(Seq(), Seq((l.left, l.right)))(sig)
+    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+  }
+
+  @tailrec
+  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)])(sig: Signature): Seq[(Term, Term)] = {
+    if (unprocessed.isEmpty) processed
+    else {
+      val hd = unprocessed.head
+      val left = hd._1; val right = hd._2
+      val (leftBody, leftAbstractions) = collectLambdas(left)
+      val (rightBody, rightAbstractions) = collectLambdas(right)
+      assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
+      if (HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)) {
+        val (newEqs, tyEqs) = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+        if (tyEqs.nonEmpty) {
+          // TODO: Check if we can solve typed equations without looking at all literals again
+          // (e.g. substitution of types within other terms may render them type-incorrect?
+//          // Solve all tyEqs
+//          val tyEqsIt = tyEqs.iterator
+//          var tyUniConflict = false
+//          var tyUniSubst = Subst.id
+//          while (tyEqsIt.hasNext && !tyUniConflict) {
+//            val (tyLeft, tyRight) = tyEqsIt.next()
+//            val adjustedLeft = tyLeft.substitute(tyUniSubst)
+//            val adjustedRight = tyRight.substitute(tyUniSubst)
+//            val uniResult = HuetsPreUnification.unify(adjustedLeft, adjustedRight)
+//            if (uniResult.isDefined) {
+//              tyUniSubst = tyUniSubst.comp(uniResult.get)
+//            } else {
+//              // conflict, abort processing of hd
+//              tyUniConflict = true
+//            }
+//          }
+//          if (tyUniConflict) uniLitSimp0(hd +: processed, unprocessed.tail)
+//          else {
+//            ???
+//          }
+          uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
+        } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)(sig)
+      } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
+    }
+  }
 
   //////////////////////////////////
   //// Simplification implementation by Max
@@ -715,10 +868,10 @@ object Miniscope extends CalculusRule {
   @inline final val LEFT : PUSH_TYPE = 1
   @inline final val RIGHT : PUSH_TYPE = 2
 
-  override val inferenceStatus = Some(SZS_Theorem)
-  val name = "miniscope"
+  final val inferenceStatus = SZS_Theorem
+  final val name = "miniscope"
 
-  def apply(t : Term, pol : Boolean)(implicit sig: Signature): Term = {
+  final def apply(t : Term, pol : Boolean)(implicit sig: Signature): Term = {
     apply0(t, pol, Vector[(Boolean, Type)]())
   }
 

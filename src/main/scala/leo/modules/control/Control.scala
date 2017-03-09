@@ -2,6 +2,8 @@ package leo.modules.control
 
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
+import leo.modules.seqpproc.State
+import leo.modules.Utility.myAssert
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -52,6 +54,8 @@ object Control {
   @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(insertIndexed)
   @inline final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
   @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
+  @inline final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = indexingControl.IndexingControl.updateDescendants(taken, generated)
+  @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = indexingControl.IndexingControl.descendants(cls)
   // TODO: Clean-up all those indexing methods below:
   @deprecated @inline final def fvIndexInit(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.FVIndexControl.init(initClauses.toSet)(sig)
   @deprecated @inline final def fvIndexInsert(cl: AnnotatedClause): Unit = indexingControl.FVIndexControl.insert(cl)
@@ -64,14 +68,16 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
-  @inline final def callExternalLeoII(clauses: Set[AnnotatedClause])(implicit sig: Signature) = externalProverControl.ExternalLEOIIControl.call(clauses)(sig)
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
+  @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
+  @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 }
 
-/** Package collcetion control objects for inference rules.
+/** Package collection control objects for inference rules.
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
-  import leo.datastructures.ClauseAnnotation.{InferredFrom, NoAnnotation}
+  import leo.datastructures.ClauseAnnotation.{InferredFrom}
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -85,8 +91,13 @@ package inferenceControl {
   protected[modules] object CNFControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
-    final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-      Out.trace(s"CNF of ${cl.id}")
+    private lazy val internalCNF: (AnnotatedClause, Signature) => Set[AnnotatedClause] = if (Configuration.RENAMING_SET) cnf2 else cnf1
+    private lazy val threshhold : Int = Configuration.RENAMING_THRESHHOLD
+
+    final def cnf(cl : AnnotatedClause)(implicit sig : Signature) : Set[AnnotatedClause] = internalCNF(cl, sig)
+
+    private final def cnf1(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
+      Out.trace(s"Standard CNF of ${cl.pretty(sig)}")
       val cnfresult = FullCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
@@ -94,11 +105,25 @@ package inferenceControl {
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
-        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, Set(cl)), cl.properties)}
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, cl), cl.properties)}
         Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       }
+    }
 
+    private final def cnf2(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
+      Out.trace(s"Rename CNF of ${cl.pretty(sig)}")
+      val cnfresult = RenameCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
+      if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
+        // no CNF step at all
+        Out.trace(s"CNF result:\n\t${cl.pretty(sig)}")
+        Set(cl)
+      } else {
+        val cnfsimp = cnfresult //.map(Simp.shallowSimp)
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(RenameCNF, cl), cl.properties)} // TODO Definitions other way into the CNF.
+        Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        result
+      }
     }
 
     final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
@@ -129,7 +154,7 @@ package inferenceControl {
         val other = withsetIt.next()
         if (!Configuration.SOS || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, other.properties) ||
           leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties))  {
-          Out.trace(s"Paramod on ${cl.id} and ${other.id}")
+          Out.finest(s"Paramod on ${cl.id} and ${other.id}")
           results = results ++ allParamods(cl, other)
         }
       }
@@ -159,7 +184,7 @@ package inferenceControl {
       val withConfigurationIt = new LiteralSideIterator(withClause, true, true, false)(sig)
       while (withConfigurationIt.hasNext) {
         val (withIndex, withLit, withSide) = withConfigurationIt.next()
-        val withTerm = if (withSide) withLit.left else withLit.right
+        val withTerm = Literal.selectSide(withLit, withSide)
 
         assert(withClause.lits(withIndex) == withLit, s"$withIndex in ${withClause.pretty(sig)}\n lit = ${withLit.pretty(sig)}")
         assert(withLit.polarity)
@@ -167,30 +192,85 @@ package inferenceControl {
         val intoConfigurationIt = intoConfigurationIterator(intoClause)(sig)
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-          leo.Out.finest(s"check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayUnify(withTerm, intoTerm)}")
           assert(!intoLit.flexflex)
           if (intoPos == Position.root &&
             ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
               (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
             /* skip, this generates a redundant clause */
-          } else if (!intoTerm.isVariable && leo.modules.calculus.mayUnify(withTerm, intoTerm)) {
-            Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-            Out.finest(s"with: ${withClause.pretty}")
-            Out.finest(s"withside: ${withSide.toString}")
-            Out.finest(s"into: ${intoClause.pretty}")
-            Out.finest(s"intoside: ${intoSide.toString}")
-            val newCl = OrderedParamod(withClause, withIndex, withSide,
-              intoClause, intoIndex, intoSide, intoPos, intoTerm)(sig)
+          } else {
+            val shouldParamod0 = shouldParamod(withTerm, intoTerm)
+            leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
+            if (!intoTerm.isVariable && shouldParamod0) {
+              leo.Out.finest(s"ordered: ${withLit.oriented} // ${intoLit.oriented}")
+              Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
+              Out.finest(s"with: ${withClause.pretty(sig)}")
+              Out.finest(s"withside: ${withSide.toString}")
+              Out.finest(s"into: ${intoClause.pretty(sig)}")
+              Out.finest(s"intoside: ${intoSide.toString}")
+              // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
+              // We cannot use _.substitute on literal since this will forget the ordering
+              val termShift = Subst.shift(withClause.maxImplicitlyBound)
+              val typeShift = Subst.shift(withClause.maxTypeVar)
+              val shiftedIntoClause: Clause = Clause(
+                intoClause.lits.map {l =>
+                  if (l.equational) {
+                    // since we only lift variables, the orientation property isnt affected
+                    // we may safely assume that the new lits are also orientable if the original ones were orientable.
+                    Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
+                  } else {
+                    Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
+                  }
+                }
+              )
+              val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
+              Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
+              Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
 
-            val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Set(withWrapper, intoWrapper)), ClauseAnnotation.PropSOS | ClauseAnnotation.PropNeedsUnification)
-            Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-            results = results + newClWrapper
+              val newCl = if (withTerm.ty == shiftedIntoTerm.ty) {
+                // No type unification needed at this point
+                OrderedParamod(withClause, withIndex, withSide,
+                  shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
+              } else {
+                import leo.modules.calculus.{TypeUnification => Unification}
+                leo.Out.finest(s"Nonequal type, calculating type unification ...")
+                leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
+                leo.Out.finest(s"intoTerm.ty: ${shiftedIntoTerm.ty.pretty(sig)}")
+                val tyUniResult = Unification(withTerm.ty, shiftedIntoTerm.ty)
+                if (tyUniResult.isDefined) {
+                  leo.Out.finest(s"Type unification succeeded.")
+                  val tySubst = tyUniResult.get
+                  leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
+                  // FIXME the clauses below are not ordered anymore. This needs to be fixed.
+                  val substWithClause = withClause.substitute(Subst.id, tySubst)
+                  val substIntoClause = shiftedIntoClause.substitute(Subst.id, tySubst)
+                  val substIntoTerm = shiftedIntoTerm.substitute(Subst.id, tySubst)
+                  OrderedParamod(substWithClause, withIndex, withSide,
+                    substIntoClause, intoIndex, intoSide, intoPos, substIntoTerm)(sig)
+                } else {
+                  leo.Out.finest(s"Type unification failed.")
+                  null
+                }
+              }
+              if (newCl != null) { // May be null if type unification was not successful
+                val newProperties = if (isPropSet(ClauseAnnotation.PropSOS, withWrapper.properties) || isPropSet(ClauseAnnotation.PropSOS, intoWrapper.properties))
+                  ClauseAnnotation.PropNeedsUnification |  ClauseAnnotation.PropSOS
+                else ClauseAnnotation.PropNeedsUnification
+                val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
+                Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                results = results + newClWrapper
+              }
+            }
           }
-
         }
       }
-
       results
+    }
+    /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
+    private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {
+      val withHd = withTerm.headSymbol
+      val intoHd = intoTerm.headSymbol
+      if (withHd == intoHd && withHd.isConstant && mayUnify(withTerm.ty, intoTerm.ty)) true
+      else leo.modules.calculus.mayUnify(withTerm, intoTerm)
     }
 
     ////////////////////////////////////////////////////////
@@ -275,96 +355,63 @@ package inferenceControl {
 
       while (maxLitIt.hasNext) {
         val (maxLitIndex, maxLit, maxLitSide) = maxLitIt.next()
-        Out.trace(s"maxLit chosen: ${maxLit.pretty}")
+        Out.trace(s"maxLit chosen: ${maxLit.pretty(sig)}")
         val otherLitIt = new LiteralSideIterator(clause, false, true, true)
 
         while (otherLitIt.hasNext) {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
-          Out.trace(s"otherLit chosen: ${otherLit.pretty}")
+          Out.trace(s"otherLit chosen: ${otherLit.pretty(sig)}")
           if (maxLitIndex <= otherLitIndex && maxLitsofClause.contains(otherLit) ) {
-            Out.finest(s"skipped maxLit ${maxLit.pretty} with ${otherLit.pretty}")
+            Out.finest(s"skipped maxLit ${maxLit.pretty(sig)} with ${otherLit.pretty(sig)}")
             /* skipped since already tested */
           } else {
             if (maxLit.polarity == otherLit.polarity) {
               // same polarity, standard
               val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
               val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
-              val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-              val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-              Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-              Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+              val test1 = shouldFactor(maxLitMaxSide, otherLitMaxSide)
+              val test2 = shouldFactor(maxLitOtherSide, otherLitOtherSide)
+              Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+              Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-//                val resultprop = if (leo.datastructures.isPropSet(ClauseAnnotation.PropSOS,cl.properties))
-//                  ClauseAnnotation.PropSOS
-//                else ClauseAnnotation.PropNoProp
-
-                val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
                 res = res + result
               }
               // If equation is oriented, we still need to look at the side-switched version
               // of otherLit, since our iterator does not give us this test. It will give us this test
               // if otherLit is not oriented.
               if (otherLit.oriented) {
-                val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, !otherLitSide)
-                val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-                Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
+                val test1 = shouldFactor(maxLitMaxSide, otherLitOtherSide)
+                val test2 = shouldFactor(maxLitOtherSide, otherLitMaxSide)
+                Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+                Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
                 if (test1 && test2) {
                   val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
-                  //                val resultprop = if (leo.datastructures.isPropSet(ClauseAnnotation.PropSOS,cl.properties))
-                  //                  ClauseAnnotation.PropSOS
-                  //                else ClauseAnnotation.PropNoProp
-
-                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
                   res = res + result
                 }
               }
             } else {
-              // Exactly one is flexhead and negative
-              // attach not to not-flex literal
-              if (maxLit.flexHead) {
-                // TODO
-                // assert(!otherLit.flexHead) NOT TRUE, right?
-                // otherlit is not flexhead
-                //following only makes sense if otherlit is equality between booleans
-                if (otherLit.left.ty == maxLit.left.ty) {
-                  //                  val adjustedOtherLit = Literal.mkLit(Not(otherLit.left), otherLit.right, !otherLit.polarity)
-                  //
-                  //                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
-                  //                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(adjustedOtherLit, otherLitSide)
-                  //                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                  //                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                  //                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-                  //                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
-                  //                  if (test1 && test2) {
-                  //                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-                  //                    val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)))
-                  //                    res = res + result
-                  //                  }
-                }
-              } else {
-                // assert(otherLit.flexHead)
-                // assert(!maxLit.flexHead)
-
-                //following only makes sense if maxLit is equality between booleans
-                if (maxLit.left.ty == otherLit.left.ty) {
-                  //                  val adjustedMaxLit = Literal.mkLit(Not(maxLit.left), maxLit.right, !maxLit.polarity)
-                  //
-                  //                  val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(adjustedMaxLit, maxLitSide)
-                  //                  val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
-                  //                  val test1 = leo.modules.calculus.mayUnify(maxLitMaxSide, otherLitMaxSide)
-                  //                  val test2 = leo.modules.calculus.mayUnify(maxLitOtherSide, otherLitOtherSide)
-                  //                  Out.finest(s"Test unify ($test1): ${maxLitMaxSide.pretty} = ${otherLitMaxSide.pretty}")
-                  //                  Out.finest(s"Test unify ($test2): ${maxLitOtherSide.pretty} = ${otherLitOtherSide.pretty}")
-                  //                  if (test1 && test2) {
-                  //                    val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-                  //                    val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, Set(cl)))
-                  //                    res = res + result
-                  //                  }
+              // Different polarity, this can only work out if at least one of the literals
+              // is a flexhead, i.e. a literal `l` with `l = [s = $true]^alpha` where head(s) is a variable.
+              // The other literal l` must then be non-equational.
+              // This is not traversed again since bot literals are oriented.
+              if (maxLit.flexHead && !otherLit.equational) {
+                assert(maxLit.polarity != otherLit.polarity)
+                import leo.modules.HOLSignature.Not
+                val flexTerm = maxLit.left
+                val otherTerm = otherLit.left
+                val test = shouldFactor(flexTerm, Not(otherTerm))
+                Out.finest(s"Should factor ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
+                if (test) {
+                  val adjustedClause = Clause(clause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
+                  val factor = OrderedEqFac(adjustedClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  res = res + result
                 }
               }
+              // Not clear if we also want the other way around: Since maxlit would be removed by EqFac
             }
           }
         }
@@ -372,6 +419,14 @@ package inferenceControl {
 
       Out.trace(s"Factor result:\n\t${res.map(_.pretty(sig)).mkString("\n\t")}")
       res
+    }
+
+    /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
+    private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
+      val withHd = term.headSymbol
+      val intoHd = otherTerm.headSymbol
+      if (withHd == intoHd && withHd.isConstant && mayUnify(term.ty, otherTerm.ty)) true
+      else leo.modules.calculus.mayUnify(term, otherTerm)
     }
   }
 
@@ -392,14 +447,15 @@ package inferenceControl {
         val cl = clsIt.next()
 
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, cl.properties)) {
-          Out.debug(s"Clause ${cl.id} needs unification. Working on it ...")
-          Out.debug(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
+          Out.trace(s"Clause ${cl.id} needs unification. Working on it ...")
+          Out.trace(s"Clause ${cl.pretty(sig)} needs unification. Working on it ...")
+          Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           val vargen = leo.modules.calculus.freshVarGen(cl.cl)
 
-          val results = if (cl.annotation.fromRule.isEmpty) {
+          val results = if (cl.annotation.fromRule == null) {
             defaultUnify(vargen, cl)(sig)
           } else {
-            val fromRule = cl.annotation.fromRule.get
+            val fromRule = cl.annotation.fromRule
             if (fromRule == OrderedParamod) {
               paramodUnify(vargen, cl)(sig)
             } else if (fromRule == OrderedEqFac) {
@@ -409,6 +465,9 @@ package inferenceControl {
             }
           }
           Out.trace(s"Uni result:\n\t${results.map(_.pretty(sig)).mkString("\n\t")}")
+          results.foreach(cl =>
+            Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
+          )
           resultSet = resultSet union results
         } else resultSet = resultSet + cl
       }
@@ -427,31 +486,81 @@ package inferenceControl {
         Seq((uniLit.left, LitFalse.apply())) /* in case a False was substituted in paramod */
       }
       val uniResult0 = doUnify0(cl0, freshVarGen, uniEq, cl.lits.init)(sig)
-      // TODO: Try again to unify all possibly new unification constraints, is that useful?
-      var uniResult: Set[AnnotatedClause] = Set()
-      val uniResultIt = uniResult0.iterator
-      while (uniResultIt.hasNext) {
-        val uniRes = uniResultIt.next()
-        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+      // 1 if not unifiable, check if uni constraints can be simplified
+      // if it can be simplified, return simplified constraints
+      // if it cannot be simplied, drop clause
+      // 2 if unifiable, reunify again with all literals (simplified)
+      if (uniResult0.isEmpty) {
+        if (!uniLit.polarity) {
+          val simpResult = Simp.uniLitSimp(uniLit)(sig)
+          if (simpResult.size == 1 && simpResult.head == uniLit) Set()
+          else {
+            val resultClause = Clause(cl.lits.init ++ simpResult)
+            val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
+            Out.finest(s"No unification, but Uni Simp result: ${res.pretty(sig)}")
+            Set(res)
+          }
+        } else Set()
+      } else {
+        var uniResult: Set[AnnotatedClause] = Set()
+        val uniResultIt = uniResult0.iterator
+        while (uniResultIt.hasNext) {
+          val uniRes = uniResultIt.next()
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+        }
+        uniResult
       }
-      uniResult
     }
 
     private final def factorUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
+      import leo.modules.HOLSignature.LitFalse
       val cl = cl0.cl
       assert(cl.lits.size >= 2)
       val uniLit1 = cl.lits.last
       val uniLit2 = cl.lits.init.last
-      assert(!uniLit1.polarity && !uniLit2.polarity) //FIXME: Same fix as for paramodUnify above
-      val uniResult0 = doUnify0(cl0, freshVarGen, Seq((uniLit1.left, uniLit1.right), (uniLit2.left, uniLit2.right)), cl.lits.init.init)(sig)
-      // Try again to unify all possibly new unification constraints
-      var uniResult: Set[AnnotatedClause] = Set()
-      val uniResultIt = uniResult0.iterator
-      while (uniResultIt.hasNext) {
-        val uniRes = uniResultIt.next()
-        uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+
+      val uniEq1 = if (!uniLit1.polarity) (uniLit1.left, uniLit1.right) /*standard case*/
+      else {
+        assert(!uniLit1.equational)
+        (uniLit1.left, LitFalse()) /* in case a False was substituted in factor */
       }
-      uniResult
+      val uniEq2 = if (!uniLit2.polarity) (uniLit2.left, uniLit2.right) /*standard case*/
+      else {
+        assert(!uniLit2.equational)
+        (uniLit2.left, LitFalse()) /* in case a False was substituted in factor */
+      }
+      val uniResult0 = doUnify0(cl0, freshVarGen, Seq(uniEq1, uniEq2), cl.lits.init.init)(sig)
+      // 1 if not unifiable, check if uni constraints can be simplified
+      // if it can be simplified, return simplified constraints
+      // if it cannot be simplied, drop clause
+      // 2 if unifiable, reunify again with all literals (simplified)
+      if (uniResult0.isEmpty) {
+        var wasSimplified = false
+        val uniLit1Simp = if (!uniLit1.polarity) {
+          val simpResult1 = Simp.uniLitSimp(uniLit1)(sig)
+          if (simpResult1.size == 1 && simpResult1.head == uniLit1) Seq(uniLit1)
+          else { wasSimplified = true; simpResult1 }
+        } else Seq(uniLit1)
+        val uniLit2Simp = if (!uniLit2.polarity) {
+          val simpResult2 = Simp.uniLitSimp(uniLit2)(sig)
+          if (simpResult2.size == 1 && simpResult2.head == uniLit2) Seq(uniLit2)
+          else { wasSimplified = true; simpResult2 }
+        } else Seq(uniLit2)
+        if (wasSimplified) {
+          val resultClause = Clause(cl.lits.init.init ++ uniLit1Simp ++ uniLit2Simp)
+          val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
+          Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
+          Set(res)
+        } else Set()
+      } else {
+        var uniResult: Set[AnnotatedClause] = Set()
+        val uniResultIt = uniResult0.iterator
+        while (uniResultIt.hasNext) {
+          val uniRes = uniResultIt.next()
+          uniResult = uniResult union defaultUnify(freshVarGen, uniRes)(sig)
+        }
+        uniResult
+      }
     }
 
     private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
@@ -468,14 +577,30 @@ package inferenceControl {
       }
       if (uniLits.nonEmpty) {
         val uniResult = doUnify0(cl, freshVarGen, uniLits, otherLits)(sig)
-        // TODO: Discard those with no unifier here?
-        // i.e. either one of the two options below
-        // at the moment, i prefer (2)
-        // (1)
-        //      uniResult
-        // (2)
-        if (uniResult.isEmpty) Set(cl)
-        else uniResult
+        // all negative literals are taken as unification constraints
+        // if no unifier is found, the original clause is unisimp'd and returned
+        // else the unified clause is unisimp*d and returned
+        if (uniResult.isEmpty) {
+          val uniLits = cl.cl.negLits
+          val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
+          if (uniLits == uniLitsSimp) Set(cl)
+          else {
+            Set(AnnotatedClause(Clause(cl.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, cl), cl.properties))
+          }
+        } else {
+          val resultClausesIt = uniResult.iterator
+          var resultClausesSimp: Set[AnnotatedClause] = Set()
+          while (resultClausesIt.hasNext) {
+            val resultClause = resultClausesIt.next()
+            val uniLits = resultClause.cl.negLits
+            val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
+            if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
+            else {
+              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, resultClause), resultClause.properties)
+            }
+          }
+          resultClausesSimp
+        }
       } else Set(cl)
     }
 
@@ -507,7 +632,7 @@ package inferenceControl {
                                uniResult: UniResult,
                                rule: CalculusRule)(sig: Signature): AnnotatedClause = {
       val (clause, subst) = uniResult
-      AnnotatedClause(clause, InferredFrom(rule, Set((origin, ToTPTP(subst._1, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,origin.properties | ClauseAnnotation.PropUnified))
+      AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,origin.properties | ClauseAnnotation.PropUnified))
     }
 
 
@@ -523,7 +648,7 @@ package inferenceControl {
           val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
           if (cA_boolExt) {
             Out.debug(s"Bool Ext on: ${cw.pretty(sig)}")
-            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cw)),cw.properties | ClauseAnnotation.PropBoolExt))
+            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw),cw.properties | ClauseAnnotation.PropBoolExt))
             Out.trace(s"Bool Ext result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
             result
           } else Set()
@@ -537,23 +662,27 @@ package inferenceControl {
     import leo.modules.output.ToTPTP
     import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
 
-    val standardbindings: Set[Term] = Set(Not, LitFalse, LitTrue, |||)//, Term.mkTypeApp(Forall, Signature.get.i))
-    def eqBindings(tys: Seq[Type]): Set[Term] = {
+    val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||)
+    final def eqBindings(tys: Seq[Type]): Set[Term] = {
+      leo.Out.trace(s"eqBindings on type: ${tys.map(_.pretty)}")
       if (tys.size == 2) {
+        leo.Out.trace(s"eqBindings two arguments")
         val (ty1, ty2) = (tys.head, tys.tail.head)
         if (ty1 == ty2) {
-          Set(
-            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))),
-            Term.λ(ty1, ty1)(Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))))
+          leo.Out.trace(s"same type")
+          Set(  // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
+            /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1))),
+            /*Term.λ(ty1, ty1)*/Term.mkTermApp(Term.mkTypeApp(!===, ty1), Seq(Term.mkBound(ty1, 2),Term.mkBound(ty1, 1)))
           )
         } else Set()
       } else Set()
     }
-    def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
+    final def specialEqBindings(terms: Set[Term], typs: Seq[Type]): Set[Term] = {
       if (typs.size == 1) {
         val typ = typs.head
         val compatibleTerms = terms.filter(_.ty == typ)
-        compatibleTerms.map(t => Term.λ(typ)(Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.substitute(Subst.shift(1)), Term.mkBound(typ, 1)))))
+        // lambda abstraction intentionally removed: they are added by partialBinding call in primSubst(.)
+        compatibleTerms.map(t => Term.mkTermApp(Term.mkTypeApp(===, typ), Seq(t.lift(1), Term.mkBound(typ, 1))))
       } else Set()
     }
 
@@ -561,18 +690,19 @@ package inferenceControl {
       if (level > 0) {
         val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
         if (cA_ps) {
-          Out.debug(s"Prim subst on: ${cw.id}")
+          // Every variable in ps_vars has type a_1 -> ... -> a_n -> o (n >= 0)
+          Out.debug(s"[Prim subst] On ${cw.id}")
           var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
           if (level > 1) {
-            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, eqBindings(h.ty.funParamTypes)))
+            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), eqBindings(h.ty.funParamTypes)))
             if (level > 2) {
-              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
               if (level > 3) {
-                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, ps_vars, specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
               }
             }
           }
-          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Set((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
+          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
           Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty(sig)).mkString("\n\t")}")
           return newCl
         }
@@ -582,18 +712,141 @@ package inferenceControl {
   }
 
   protected[modules] object SpecialInstantiationControl {
+    import leo.modules.calculus.Enumeration._
+    import leo.Configuration.{PRE_PRIMSUBST_LEVEL => LEVEL, PRE_PRIMSUBST_MAX_DEPTH => MAXDEPTH}
+
     final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
-//      if (Configuration.PRE_PRIMSUBST_LEVEL > 0) {
-//
-//      }
-// TODO: shallow simp at end.
-      Set(cl)
+      if (LEVEL != NO_REPLACE) {
+        leo.Out.trace("[Special Instances] Searching ...")
+        val clause = cl.cl
+        assert(Clause.unit(clause))
+        val lit = clause.lits.head
+        assert(!lit.equational)
+        val term = lit.left
+        val instancesResult = instantiateTerm(term, lit.polarity, 0)(sig)
+        val result = instancesResult.map (r =>
+          if (r == term)
+            cl
+          else {
+            val result = AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), cl.properties)
+            val simpResult = SimplificationControl.shallowSimp(result)(sig)
+            simpResult
+          }
+        )
+        leo.Out.debug(s"[Special Instances] Instances used:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        result
+      } else Set(cl)
     }
 
+    final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(sig: Signature): Set[Term] = {
+      import leo.datastructures.Term._
+      import leo.modules.HOLSignature.{Forall, Exists, Not, Impl}
+
+      if (depth >= MAXDEPTH)
+        Set(t)
+      else {
+        t match {
+          case Not(body) =>
+            val erg = instantiateTerm(body, !polarity, depth+1)(sig)
+            erg.map(e => Not(e))
+          case Impl(l,r) =>
+            val ergL = instantiateTerm(l, !polarity, depth+1)(sig)
+            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            var result: Set[Term] = Set()
+            val ergLIt = ergL.iterator
+            while (ergLIt.hasNext) {
+              val eL = ergLIt.next()
+              val ergRIt = ergR.iterator
+              while (ergRIt.hasNext) {
+                val eR = ergRIt.next()
+                val impl = Impl(eL, eR)
+                result = result + impl
+              }
+            }
+            result
+          case Forall(all@(ty :::> _)) if polarity && shouldReplace(ty) =>
+            val r = instantiateAbstractions(all, ty)(sig)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+            if (Enumeration.exhaustive(ty))
+              r2
+            else
+              r2 + t
+          case Exists(all@(ty :::> _)) if !polarity && shouldReplace(ty) =>
+            val r = instantiateAbstractions(all, ty)(sig)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+            if (Enumeration.exhaustive(ty))
+              r2
+            else
+              r2 + t
+          case hd ∙ args =>
+            val argsIt = args.iterator
+            var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
+            while (argsIt.hasNext) {
+              val arg = argsIt.next()
+              if (arg.isRight) {
+                newArgs = newArgs.map(seq => seq :+ arg)
+              } else {
+                val termArg = arg.left.get
+                val erg = instantiateTerm(termArg, polarity, depth+1)(sig)
+                newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
+              }
+            }
+            newArgs.map(erg => Term.mkApp(hd, erg))
+          case ty :::> body =>
+            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+            erg.map(e => Term.mkTermAbs(ty, e))
+          case TypeLambda(body) =>
+            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+            erg.map(e => Term.mkTypeAbs(e))
+          case _ => Set(t)
+        }
+      }
+    }
+
+    private final def instantiateAbstractions(term: Term, ty: Type)(sig: Signature): Set[Term] = {
+      assert(term.ty.isFunType)
+      leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
+      leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(REPLACE_O,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(REPLACE_OO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(REPLACE_AO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
+      if (shouldReplace(ty)) {
+        leo.Out.finest(s"[Special Instances]: Should apply.")
+        val instances = Enumeration.specialInstances(ty, LEVEL)(sig)
+        if (instances.nonEmpty) {
+          leo.Out.trace(s"[Special Instances]: Used (${instances.size}): ${instances.map(_.pretty(sig))}")
+          instances.map(i => Term.mkTermApp(term, i).betaNormalize)
+        } else Set()
+      } else Set()
+    }
+
+    private final def shouldReplace(ty: Type): Boolean = {
+      import leo.modules.HOLSignature.o
+      import leo.modules.calculus.Enumeration._
+
+      val funTyArgs = ty.funParamTypesWithResultType
+      if (funTyArgs.last == o) {
+        if (funTyArgs.size == 1) isPropSet(REPLACE_O, Configuration.PRE_PRIMSUBST_LEVEL) // Booleans
+        else {
+          // funTyArgs.size > 1
+          if (funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          else {
+            if (isPropSet(REPLACE_AO, Configuration.PRE_PRIMSUBST_LEVEL)) true
+            else {
+              if (funTyArgs.size == 3) {
+                val ty1 = funTyArgs.head; val ty2 = funTyArgs.tail.head
+                (ty1 == ty2) && isPropSet(REPLACE_AAO,Configuration.PRE_PRIMSUBST_LEVEL)
+              } else false
+            }
+          }
+        }
+      } else false
+    }
   }
 
   protected[modules] object Choice {
     import leo.modules.calculus.{Choice => ChoiceRule}
+    import leo.datastructures.ClauseAnnotation.FromSystem
     private var acMap: Map[Type, AnnotatedClause] = Map()
     final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
 
@@ -616,7 +869,7 @@ package inferenceControl {
           )
         ))
       )), true)
-      val res = AnnotatedClause(Clause(lit), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("tautology"), ClauseAnnotation.PropNoProp)
       acMap = acMap + ((ty, res))
       res
     }
@@ -648,14 +901,14 @@ package inferenceControl {
               while (choiceFunIt.hasNext) {
                 val choiceFun = choiceFunIt.next()
                 val result0 = ChoiceRule(candPredicate, choiceFun)
-                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
+                val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
                 results = results + result
               }
             } else {
               // No choice function registered, introduce one now
               val choiceFun = registerNewChoiceFunction(choiceType)(sig)
               val result0 = ChoiceRule(candPredicate, choiceFun)
-              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, Set(axiomOfChoice(choiceType))))
+              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
               results = results + result
             }
           }
@@ -690,7 +943,7 @@ package inferenceControl {
         }
       }
       if (wasApplied) {
-        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, cl), cl.properties)
         Out.trace(s"Switch polarity: ${result.pretty}")
         result
       } else
@@ -701,6 +954,7 @@ package inferenceControl {
     /** Pre: Is only called on initial clauses, i.e. clauses are not equaltional and unit. */
     final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       import leo.modules.calculus.Miniscope
+      if (Clause.empty(cl.cl)) return cl
 
       assert(Clause.unit(cl.cl))
       assert(!cl.cl.lits.head.equational)
@@ -709,7 +963,7 @@ package inferenceControl {
       val term = lit.left
       val resultterm = Miniscope.apply(term, lit.polarity)
       val result = if (term != resultterm)
-          AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Miniscope, Set(cl)), cl.properties)
+          AnnotatedClause(Clause(Literal(resultterm, lit.polarity)), InferredFrom(Miniscope, cl), cl.properties)
         else
           cl
       Out.trace(s"Miniscope Result: ${result.pretty(sig)}")
@@ -718,19 +972,22 @@ package inferenceControl {
 
 
     final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      assert(Clause.unit(cl.cl))
-      val lit = cl.cl.lits.head
-      assert(!lit.equational)
-      val newleft = DefExpSimp(lit.left)(sig)
-      val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, Set(cl)), cl.properties)
-      Out.trace(s"Def expansion: ${result.pretty(sig)}")
-      result
+      if (cl.annotation.fromRule != null && cl.annotation.fromRule == DefExpSimp) cl
+      else {
+        assert(Clause.unit(cl.cl))
+        val lit = cl.cl.lits.head
+        assert(!lit.equational)
+        val newleft = DefExpSimp(lit.left)(sig)
+        val result = AnnotatedClause(Clause(Literal(newleft, lit.polarity)), InferredFrom(DefExpSimp, cl), cl.properties)
+        Out.trace(s"Def expansion: ${result.pretty(sig)}")
+        result
+      }
     }
 
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      val (cA_lift, lift, lift_other) = LiftEq.canApply(cl.cl)
+      val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(lift, lift_other)(sig)), InferredFrom(LiftEq, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
@@ -741,7 +998,7 @@ package inferenceControl {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
-        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, Set(cl)), cl.properties)
+        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else
@@ -781,9 +1038,10 @@ package inferenceControl {
           result = result + cl
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
-          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, Set(cl)),cl.properties | ClauseAnnotation.PropBoolExt))
+          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
-          result = result union cnf
+          val lifted = cnf.map(Control.liftEq)
+          result = result union lifted
         }
       }
       result
@@ -830,46 +1088,156 @@ package inferenceControl {
     final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       if (Configuration.isSet("acsimp")) {
         val acSymbols = sig.acSymbols
-        Out.trace(s"AC Simp on ${cl.pretty(sig)}")
-        val pre_result = ACSimp.apply(cl.cl,acSymbols)
-        val result = AnnotatedClause(pre_result, InferredFrom(ACSimp, Set(cl)), cl.properties)
-        Out.finest(s"AC Result: ${result.pretty(sig)}")
+        Out.trace(s"[AC] Simp on ${cl.pretty(sig)}")
+        val pre_result = ACSimp.apply(cl.cl,acSymbols)(sig)
+        val result = if (pre_result == cl.cl) cl
+        else AnnotatedClause(pre_result, InferredFrom(ACSimp, cl), cl.properties)
+        Out.finest(s"[AC] Result: ${result.pretty(sig)}")
         result
       } else
         cl
     }
 
     final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      Out.trace(s"Simp on ${cl.id}")
+      Out.trace(s"[Simp] Processing ${cl.id}")
       val simpresult = Simp(cl.cl)
       val result = if (simpresult != cl.cl)
-        AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
+        AnnotatedClause(simpresult, InferredFrom(Simp, cl), cl.properties)
       else
         cl
-      Out.finest(s"Simp result: ${result.pretty(sig)}")
+      Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
       result
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(simp)
 
     final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      Out.trace(s"Shallow Simp on ${cl.id}")
+      Out.trace(s"[Simp] Shallow processing ${cl.id}")
       val simpresult = Simp.shallowSimp(cl.cl)
       val result = if (simpresult != cl.cl)
-        AnnotatedClause(simpresult, InferredFrom(Simp, Set(cl)), cl.properties)
+        AnnotatedClause(simpresult, InferredFrom(Simp, cl), cl.properties)
       else
         cl
-      Out.trace(s"Shallow Simp result: ${result.pretty(sig)}")
+      Out.trace(s"[Simp] Shallow result: ${result.pretty(sig)}")
       result
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
 
-    final def rewriteSimp(cw: AnnotatedClause, rules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
-      Out.trace(s"Rewrite simp on ${cw.id}")
-      val sim = simp(cw)
-      val rewriteSimp = sim.cl //RewriteSimp.apply(rules.map(_.cl), sim.cl)
-      // TODO: simpl to be simplification by rewriting à la E etc
-      if (rewriteSimp != sim.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, Set(cw)), cw.properties)
-      else sim
+    final def rewriteSimp(cw: AnnotatedClause, rules0: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
+      val plainSimp = simp(cw)
+      Out.trace(s"[Rewriting] Processing ${cw.id}")
+      Out.finest(s"[Rewriting] Rules existent? ${rules0.nonEmpty}")
+      if (rules0.isEmpty) plainSimp
+      else {
+        // get all rewrite rules as literals
+        val rules: Set[Literal] = rules0.map(_.cl.lits.head)
+        myAssert(rules.forall(_.oriented))
+
+        // search in all literals of cw for instances of a rule's left side
+        val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
+        while (intoConfigurationIt.hasNext) {
+          val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
+          val rewriteRulesIt = rules.iterator
+          while (rewriteRulesIt.hasNext) {
+            val rewriteRule = rewriteRulesIt.next()
+            val withTerm = rewriteRule.left
+            val replaceBy = rewriteRule.right
+            leo.Out.finest(s"[Rewriting] check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayMatch(withTerm, intoTerm)}")
+            // TODO What to do with multiple rewrites on same (sub)position?
+          }
+        }
+        val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
+        if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
+        else plainSimp
+      }
+    }
+
+    type Subterm = Term
+    type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
+
+    /** into-Iterator for rewriting literals. Returns all literal-side-subterm configurations
+      * `(i, l_i, s, p, t)` where
+      *
+      *  - `i` is the literal's index in `cl.lits`
+      *  - `l_i` equals `cl.lits(i)`
+      *  - `s` is a side, either `true` (left) or `false` (right)
+      *  - `p` is a position in `cl.lits(i).s` (s = left/right)
+      *  - `t` is the subterm at position `p`
+      *
+      * The iterator gives all such configurations for which `l_i` is either
+      *
+      *  (i) non-maximal, or
+      *  (ii) maximal, but `s` is not a maximal side, or
+      *  (iii) maximal, `s`is a maximal side, but `p = Position.root`.
+      */
+    final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
+
+      import Literal.{leftSide, rightSide, selectSide}
+
+      val maxLits: Seq[Literal] = Literal.maxOf(cl.lits)
+      var litIndex = 0
+      var lits: Seq[Literal] = cl.lits
+      var side: Side = rightSide // minimal side
+      var curSubterms: Set[Term] = _
+      var curPositions: Set[Position] = _
+
+      def hasNext: Boolean = if (lits.isEmpty) false
+      else {
+        val hd = lits.head
+        if (curSubterms == null) {
+          if (side == rightSide && !hd.equational) {
+            side = leftSide
+          }
+          if (side == leftSide && maxLits.contains(hd)) {
+            curSubterms = Set(selectSide(hd, side))
+            curPositions = Set(Position.root)
+          } else {
+            curSubterms = selectSide(hd, side).feasibleOccurrences.keySet
+            curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
+          }
+          true
+        } else {
+          if (curPositions.isEmpty) {
+            curSubterms = curSubterms.tail
+            if (curSubterms.isEmpty) {
+              if (maxLits.contains(hd) && side == rightSide) {
+                // hd is maximal and right side is done,
+                // select left side at root position
+                side = leftSide
+                curSubterms = Set(selectSide(hd, side))
+                curPositions = Set(Position.root)
+                true
+              } else {
+                if (side == leftSide) {
+                  lits = lits.tail
+                  litIndex += 1
+                  side = rightSide
+                } else {
+                  side = leftSide
+                }
+                curSubterms = null
+                curPositions = null
+                hasNext
+              }
+            } else {
+              curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
+              assert(hasNext)
+              true
+            }
+          } else {
+            true
+          }
+        }
+      }
+
+      def next(): IntoConfiguration = {
+        if (hasNext) {
+          val res = (litIndex, lits.head, side, curPositions.head, curSubterms.head)
+          curPositions = curPositions.tail
+          res
+        } else {
+          throw new NoSuchElementException
+        }
+      }
     }
   }
 
@@ -892,7 +1260,7 @@ package inferenceControl {
           if (replaceAndrews) {
             cur_c = convertAndrews0(cur_c)(sig)
           }
-          if (cur_c != cl) {
+          if (cur_c.cl != cl.cl) {
             newClauses = newClauses + cur_c
           }
         }
@@ -910,7 +1278,7 @@ package inferenceControl {
       if (cA_leibniz) {
         Out.trace(s"Replace Leibniz equalities in ${cl.id}")
         val (resCl, subst) = ReplaceLeibnizEq(cl.cl, leibTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"Result: ${res.pretty(sig)}")
         res
       } else
@@ -927,7 +1295,7 @@ package inferenceControl {
       if (cA_Andrews) {
         Out.trace(s"Replace Andrews equalities in ${cl.id}")
         val (resCl, subst) = ReplaceAndrewsEq(cl.cl, andrewsTermMap)(sig)
-        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Set((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
+        val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"Result: ${res.pretty(sig)}")
         res
       } else
@@ -1017,7 +1385,10 @@ package redundancyControl {
     final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause]): Boolean = {
       // Current implementation checks feature-vector index for a pre-filter.
       // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
-      testForwardSubsumptionFVI(cl).nonEmpty
+      val res = testForwardSubsumptionFVI(cl)
+      if (res.nonEmpty)
+        Out.trace(s"[Subsumption]: [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
+      res.nonEmpty
     }
 
     /** Test for subsumption using the feature vector index as a prefilter, then run
@@ -1097,15 +1468,15 @@ package indexingControl {
       * as feature vector index, subsumption index etc.
       * @note method may change in future (maybe more arguments will be needed). */
     final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
-      FVIndexControl.init(initClauses.toSet)(sig)
-      FOIndexControl.foIndexInit()
+      FVIndexControl.init(initClauses)(sig)
+//      FOIndexControl.foIndexInit()
     }
     /** Insert cl to all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
       * as feature vector index, subsumption index etc.*/
     final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.insert(cl)
-      FOIndexControl.index.insert(cl)
+//      FOIndexControl.index.insert(cl) // FIXME There seems to be some error in recognizing real TFF clauses, i.e. some are falsely added
       // TODO: more indexes ...
     }
     /** Remove cl from all relevant indexes used. This is
@@ -1113,8 +1484,51 @@ package indexingControl {
       * as feature vector index, subsumption index etc.*/
     final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
       FVIndexControl.remove(cl)
-      FOIndexControl.index.remove(cl)
+//      FOIndexControl.index.remove(cl)
       // TODO: more indexes ...
+    }
+
+
+    private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map()
+    final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = {
+      var result: Set[AnnotatedClause] = Set()
+      val clsIt = cls.iterator
+      while (clsIt.hasNext) {
+        val cl = clsIt.next()
+        result = result union decendantMap(cl.id)
+      }
+      result
+    }
+
+    final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = {
+      decendantMap = decendantMap + (taken.id -> generated)
+      val generatedIt = generated.iterator
+      while (generatedIt.hasNext) {
+        val cl = generatedIt.next()
+        var parents = cl.annotation.parents
+        var found = false
+        assert(parents.nonEmpty)
+        while (!found) {
+          if (parents.size == 1) {
+            if (parents.head == taken) found = true
+            else parents = parents.head.annotation.parents
+          } else if (parents.size == 2) {
+            val p1 = parents.head; val p2 = parents.tail.head
+            assert(p1.id == taken.id || p2.id == taken.id)
+            if (p1.id == taken.id) {
+              // cl is descendant of p2
+              assert(decendantMap.isDefinedAt(p2.id))
+              decendantMap = decendantMap + (p2.id -> (decendantMap(p2.id) + cl))
+            } else {
+              // p2 == taken
+              // cl is descendant of p1
+              assert(decendantMap.isDefinedAt(p1.id))
+              decendantMap = decendantMap + (p1.id -> (decendantMap(p1.id) + cl))
+            }
+            found = true
+          } else found = true
+        }
+      }
     }
   }
 
@@ -1208,16 +1622,17 @@ package indexingControl {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
         var result: Seq[AnnotatedFormula] = Seq()
-        var round : Int = 1
+        var round : Int = 0
 
-        val conjSymbols = PreFilterSet.useFormula(conjecture)(sig)
+        val conjSymbols = PreFilterSet.useFormula(conjecture)
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
+        round += 1
 
         while (taken.nonEmpty) {
           // From SeqFilter:
           // Take all formulas (save the newly touched symbols
-          val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f)(sig))
+          val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
           taken.foreach(f => result = f +: result)
           // Obtain all formulas, that have a
           val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
@@ -1230,52 +1645,87 @@ package indexingControl {
     }
 
     final def relevanceFilterAdd(formula: AnnotatedFormula)(sig: Signature): Unit = {
-      PreFilterSet.addNewFormula(formula)(sig)
+      PreFilterSet.addNewFormula(formula)
     }
   }
 }
 
 package  externalProverControl {
 
-  import java.util.concurrent.TimeUnit
+  object ExtProverControl {
+    import leo.modules.external._
+    import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
+    private var lastCheck: Long = Long.MinValue
+    private var lastCall: Long = Long.MinValue
 
-  import leo.datastructures.ClauseAnnotation.NoAnnotation
-  import leo.datastructures._
-  import leo.modules.HOLSignature.LitFalse
-  import leo.modules.external._
-  import leo.modules.output._
-
-  object ExternalLEOIIControl {
-    @inline final def call(cls: Set[AnnotatedClause])(implicit sig: Signature): StatusSZS = call(cls, 5)(sig)
-
-    final def call(cls: Set[AnnotatedClause], sec: Long)(sig: Signature): StatusSZS = {
-      val modifyClauses = cls.map { cl =>
-        if (cl.role == Role_NegConjecture) {
-          AnnotatedClause(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
-        } else {
-          AnnotatedClause(cl.id, cl.cl, Role_Axiom, NoAnnotation, cl.properties)
-        }
-      }
-      val submitClauses: Set[AnnotatedClause] = modifyClauses + AnnotatedClause(Clause(Literal(LitFalse(), true)), Role_Conjecture, NoAnnotation, ClauseAnnotation.PropNoProp)
-      val send = ToTPTP(submitClauses)(sig).map(_.apply)
-      Out.finest(s"LEO input:")
-      Out.finest(s"${send.mkString("\n")}")
-      Out.finest("LEO INPUT END")
-      val result = ExternalCall.exec("/home/lex/bin/leo2/bin/leo ", send)
-      val resres = result.waitFor(sec, TimeUnit.SECONDS)
-      if (resres) {
-        Out.finest(s"leo did know: ${exitCodeToSZS(result.exitValue)}")
-        exitCodeToSZS(result.exitValue)
-      } else {
-        Out.finest("leo didnt know")
-        SZS_Unknown
+    final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
+      if (state.externalProvers.isEmpty) None
+      else {
+        val curTime = System.currentTimeMillis()
+        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+          leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
+          lastCheck = curTime
+          val proversIt = openCalls.keys.iterator
+          while (proversIt.hasNext) {
+            val prover = proversIt.next()
+            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
+            val openCallsIt = openCalls(prover).iterator
+            while (openCallsIt.hasNext) {
+              val openCall = openCallsIt.next()
+              if (openCall.isCompleted) {
+                leo.Out.debug(s"[ExtProver]: Job finished.")
+                finished = finished + openCall
+                val result = openCall.value.get
+                if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
+                  leo.Out.debug(s"[ExtProver]: Terminal result.")
+                  return Some(result)
+                } else if (result.szsStatus == SZS_Error) {
+                  leo.Out.warn(result.error.mkString("\n"))
+                }
+              }
+            }
+            if (finished == openCalls(prover)) {
+              openCalls = openCalls.-(prover)
+            } else {
+              openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
+            }
+          }
+          None
+        } else None
       }
     }
 
-    private final def exitCodeToSZS(exitcode: Int): StatusSZS = exitcode match {
-      case 0 => SZS_Theorem
-      case 1 => SZS_Unsatisfiable
-      case _ => SZS_Unknown
+    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+      if (state.externalProvers.nonEmpty && clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
+        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+
+        lastCall = clauses.size
+        state.externalProvers.foreach(prover =>
+          if (openCalls.isDefinedAt(prover)) {
+            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+              val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+              openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+              leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+            }
+          } else {
+            val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+            openCalls = openCalls + (prover -> Set(futureResult))
+            leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+          }
+        )
+      }
+    }
+
+    final def killExternals(): Unit = {
+      Out.info(s"Killing external provers ...")
+      openCalls.keys.foreach(prover =>
+        openCalls(prover).foreach(future =>
+          future.kill()
+        )
+      )
     }
   }
+
+
 }

@@ -13,13 +13,15 @@ import scala.annotation.tailrec
 ////////////////////////////////////////////////////////////////
 
 object FuncExt extends CalculusRule {
-  val name = "func_ext"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name = "func_ext"
+  final val inferenceStatus = SZS_EquiSatisfiable
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty.isFunType
   type ExtLits = Literal
   type OtherLits = Literal
-  def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
+
+  final def canApply(l: Literal): Boolean = l.equational && l.left.ty.isFunType
+
+  final def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
     var can = false
     var extLits:Seq[Literal] = Seq()
     var otherLits: Seq[Literal] = Seq()
@@ -36,14 +38,12 @@ object FuncExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
+  final def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
     assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
     assert(lit.equational, "Trying to apply func ext on non-eq literal")
 
     val funArgTys = lit.left.ty.funParamTypes
     if (lit.polarity) {
-      // TODO: Maybe set implicitly quantified variables manually? Otherwise the whole terms is
-      // traversed again and again
       val newVars = funArgTys.map {ty => vargen(ty)}
       Literal.mkOrdered(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)(sig)
     } else {
@@ -55,22 +55,22 @@ object FuncExt extends CalculusRule {
     }
   }
 
-  def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+  final def apply(vargen: leo.modules.calculus.FreshVarGen, lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     val initFV = vargen.existingVars
     lits.map(apply(_,vargen, initFV)(sig))
   }
-
 }
 
 object BoolExt extends CalculusRule {
-  val name = "bool_ext"
-  override val inferenceStatus = Some(SZS_Theorem)
+  final val name = "bool_ext"
+  final val inferenceStatus = SZS_Theorem
 
-  def canApply(l: Literal): Boolean = l.equational && l.left.ty == o
   type ExtLits = Seq[Literal]
   type OtherLits = Seq[Literal]
 
-  def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
+  final def canApply(l: Literal): Boolean = l.equational && l.left.ty == o
+
+  final def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
     var can = false
     var extLits:Seq[Literal] = Seq()
     var otherLits: Seq[Literal] = Seq()
@@ -87,7 +87,7 @@ object BoolExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  def apply(extLits: ExtLits, otherLits: OtherLits): Set[Clause] = {
+  final def apply(extLits: ExtLits, otherLits: OtherLits): Set[Clause] = {
     var transformed = Set(otherLits)
     val extIt = extLits.iterator
     while (extIt.hasNext) {
@@ -98,7 +98,7 @@ object BoolExt extends CalculusRule {
     transformed.map(Clause.mkClause)
   }
 
-  def apply(l: Literal): (ExtLits, ExtLits) = {
+  final def apply(l: Literal): (ExtLits, ExtLits) = {
     assert(l.equational, "Trying to apply bool ext on non-eq literal")
     assert(l.left.ty == o && l.right.ty == o, "Trying to apply bool ext on non-bool literal")
 
@@ -108,14 +108,13 @@ object BoolExt extends CalculusRule {
       (Seq(Literal.mkLit(l.left, false), Literal.mkLit(l.right, false)), Seq(Literal.mkLit(l.left, true), Literal.mkLit(l.right, true)))
     }
   }
-
 }
 
 ////////////////////////////////////////////////////////////////
 ////////// pre-Unification
 ////////////////////////////////////////////////////////////////
 protected[calculus] abstract class AnyUni extends CalculusRule {
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val inferenceStatus = SZS_Theorem
 
   type UniLits = Seq[(Term, Term)]
   type OtherLits = Seq[Literal]
@@ -148,7 +147,7 @@ object PreUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
-    Out.debug(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    Out.trace(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
@@ -167,7 +166,7 @@ object PatternUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
-    Out.debug(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    Out.trace(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     val result = PatternUnification.unifyAll(vargen, uniLits)
     if (result.isEmpty) None
     else {
@@ -184,8 +183,8 @@ object PatternUni extends AnyUni {
 ////////////////////////////////////////////////////////////////
 
 object Choice extends CalculusRule {
-  val name = "choice"
-  override val inferenceStatus = Some(SZS_EquiSatisfiable)
+  final val name = "choice"
+  final val inferenceStatus = SZS_EquiSatisfiable
 
   final def detectChoice(clause: Clause): Option[Term] = {
     import leo.datastructures.Term.TermApp
@@ -215,7 +214,6 @@ object Choice extends CalculusRule {
 
 
   final def canApply(clause: Clause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[Term] = {
-    import leo.datastructures.Term.{Symbol, Bound,TermApp}
     var result: Set[Term] = Set()
     val litIt = clause.lits.iterator
     while (litIt.hasNext) {
@@ -310,12 +308,11 @@ object Choice extends CalculusRule {
 ////////////////////////////////////////////////////////////////
 
 object PrimSubst extends CalculusRule {
-  val name = "prim_subst"
-  override val inferenceStatus = Some(SZS_Theorem)
-
   type FlexHeads = Set[Term]
+  final val name = "prim_subst"
+  final val inferenceStatus = SZS_Theorem
 
-  def canApply(cl: Clause): (Boolean, FlexHeads) = {
+  final def canApply(cl: Clause): (Boolean, FlexHeads) = {
     var can = false
     var flexheads: FlexHeads = Set()
     val lits = cl.lits.iterator
@@ -326,50 +323,70 @@ object PrimSubst extends CalculusRule {
         can = true
       }
     }
-    Out.finest(s"flexHeads: ${flexheads.map(_.pretty).mkString(",")}")
+    Out.trace(s"flexHeads: ${flexheads.map(_.pretty).mkString(",")}")
     (can, flexheads)
   }
 
-  def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
+  final def apply(cl: Clause, flexHeads: FlexHeads, hdSymbs: Set[Term])(implicit sig: Signature): Set[(Clause, Subst)] = hdSymbs.flatMap {hdSymb =>
     flexHeads.map {hd =>
-//      println(s"${hd.pretty} - ${hd.fv.head._1}")
-//      println(s"max fv: ${cl.maxImplicitlyBound}")
       val vargen = leo.modules.calculus.freshVarGen(cl)
       val binding = leo.modules.calculus.partialBinding(vargen,hd.ty, hdSymb)
       val subst = Subst.singleton(hd.fv.head._1, binding)
-//      println(s"${subst.pretty}")
-//      println(Literal(Term.mkBound(hd.fv.head._2, hd.fv.head._1), true).substitute(subst).pretty)
       (cl.substituteOrdered(subst)(sig),subst)
     }
   }
 }
 
-
+/**
+  * Representation of an (ordered) equality factoring step.
+  * For details, see [[leo.modules.calculus.OrderedEqFac#apply]].
+  */
 object OrderedEqFac extends CalculusRule {
   final val name = "eqfactor_ordered"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val inferenceStatus = SZS_Theorem
 
+  /**
+    * Let `l = cl.lits(maxLitIndex)` and `l' = cl.lits(withLitIndex)` be literals
+    * called `maxLit` and `withLit` in the following.
+    * The method performs a single factoring step between `maxLit` and `withLit`.
+    * Unification constraints `c1 = [a = b]^f` and `c2 = [c = d]^f` are appended to the literal list,
+    * where `a` and `b` are the sides of the `maxLit` and `withLit`, respectively,
+    * according to `maxLitSide` and `withLitSide`. `c` and `d` are the remaining terms in those literals.
+    *
+    * @note Precondition:
+    *       - `maxLit` and `withLit` have the same polarity.
+    *       - `maxLitIndex != otherLitIndex`
+    * @note The rule does not validate that `maxLit` is indeed a maximal literal, i.e.
+    *       this is not required for the soundness of the application.
+    *
+    * @param cl The clause in which the factoring step is performed
+    * @param maxLitIndex The index of the (maximal) literal `l`
+    * @param maxLitSide The side of the literal that is taken as the left side `s` of literal `l`
+    * @param withLitIndex The index of the literal `l'`
+    * @param withLitSide The side of the literal that is taken as the left side `t` of literal `l'`
+    * @param sig The signature
+    * @return A new clause containing of all literals of `cl` except for `maxLit` add two appended unification contraints
+    *         `c1` and `c2`.
+    */
   final def apply(cl: Clause, maxLitIndex: Int, maxLitSide: Side,
                   withLitIndex: Int, withLitSide: Side)(implicit sig: Signature): Clause = {
     assert(cl.lits.isDefinedAt(maxLitIndex))
     assert(cl.lits.isDefinedAt(withLitIndex))
+    assert(maxLitIndex != withLitIndex)
 
     val maxLit = cl.lits(maxLitIndex)
     val withLit = cl.lits(withLitIndex)
-    assert(maxLit.polarity || maxLit.flexHead)
-    assert(withLit.polarity || withLit.flexHead)
+    assert(maxLit.polarity == withLit.polarity)
 
     val (maxLitSide1, maxLitSide2) = Literal.getSidesOrdered(maxLit, maxLitSide)
     val (withLitSide1, withLitSide2) = Literal.getSidesOrdered(withLit, withLitSide)
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
-    * i.e. it is lated eliminated using Simp. */
+    * that is later eliminated using Simp. */
     val lits_without_maxLit = cl.lits.updated(maxLitIndex, Literal.mkLit(LitTrue(),false))
     val unification_task1: Literal = Literal.mkNegOrdered(maxLitSide1, withLitSide1)(sig)
     val unification_task2: Literal = Literal.mkNegOrdered(maxLitSide2, withLitSide2)(sig)
 
-//    val newlits = lits_without_maxLit :+ unification_task1 :+ unification_task2
-//    val newlitsSimp = Simp.shallowSimp(newlits)(sig)
     val newlitsSimp = Simp.shallowSimp(lits_without_maxLit)(sig):+ unification_task1 :+ unification_task2
     Clause(newlitsSimp)
   }
@@ -377,16 +394,22 @@ object OrderedEqFac extends CalculusRule {
 
 }
 
+/**
+  * Representation of an (ordered) paramodulation step.
+  * For details, see [[leo.modules.calculus.OrderedParamod#apply]].
+  */
 object OrderedParamod extends CalculusRule {
   final val name = "paramod_ordered"
-  final override val inferenceStatus = Some(SZS_Theorem)
+  final val inferenceStatus = SZS_Theorem
 
   /**
-    *
+    * Performs a paramodulation step on the given configuration.
+    * @note It is assumed that both clauses have distinct variables. This must be ensured
+    *       before using this method.
     * @note Preconditions:
     * - withClause.lits(withIndex).polarity == true
-    * - withSide == right => !withClause.lits(withIndex).oriented
-    * - intoSide == right => !intoClause.lits(intoIndex).oriented
+    * - withSide == right => !withClause.lits(withIndex).oriented || simulateResolution
+    * - intoSide == right => !intoClause.lits(intoIndex).oriented || simulateResolution
     * - if `t` is the `intoSide` of intoClause.lits(intoIndex), then
     *   u.fv = intoClause.implicitlyBound where `u` is a subterm of `t`
     * @param withClause clause that contains the literal used for rewriting
@@ -398,60 +421,45 @@ object OrderedParamod extends CalculusRule {
     * @param intoPosition position in `side(l=r)` that is rewritten
     */
   final def apply(withClause: Clause, withIndex: Int, withSide: Literal.Side,
-            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term)(implicit sig: Signature): Clause = {
+            intoClause: Clause, intoIndex: Int, intoSide: Literal.Side, intoPosition: Position, intoSubterm: Term,
+                  simulateResolution: Boolean = false)(implicit sig: Signature): Clause = {
     assert(withClause.lits.isDefinedAt(withIndex))
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
-    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented)
-    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented)
+    assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented || simulateResolution)
+    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented || simulateResolution)
 
     val withLiteral = withClause.lits(withIndex)
     val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)
 
-    Out.finest(s"toFind: ${toFind.pretty}")
-    Out.finest(s"replaceBy: ${replaceBy.pretty}")
+    Out.finest(s"toFind: ${toFind.pretty(sig)}")
+    Out.finest(s"replaceBy: ${replaceBy.pretty(sig)}")
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * i.e. it is lated eliminated using Simp. */
     val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false))
-    Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty).mkString("\n\t")}")
+    Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
-    val withMaxTyVar = if (withClause.typeVars.isEmpty) 0 else withClause.typeVars.max
-    val shiftedIntoLits = intoClause.lits.map(_.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar))) // TOFIX reordering done
-    Out.finest(s"IntoLits: ${intoClause.lits.map(_.pretty).mkString("\n\t")}")
-    Out.finest(s"shiftedIntoLits: ${shiftedIntoLits.map(_.pretty).mkString("\n\t")}")
+    val shiftedIntoLits = intoClause.lits
 
-    // val intoLiteral = shiftedIntoLits(intoIndex) // FIXME Avoid reordering
-    val intoLiteral = intoClause.lits(intoIndex)
-    val (findWithin, otherSide) = if (intoSide == Literal.leftSide)
-      (intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)),
-        intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
-    else
-      (intoLiteral.right.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)),
-        intoLiteral.left.substitute(Subst.shift(withClause.maxImplicitlyBound), Subst.shift(withMaxTyVar)))
+    val intoLiteral = shiftedIntoLits(intoIndex)
+    val (findWithin, otherSide) = Literal.getSidesOrdered(intoLiteral, intoSide)
 
-
-    Out.finest(s"findWithin: ${findWithin.pretty}")
-    Out.finest(s"otherSide: ${otherSide.pretty}")
+    Out.finest(s"findWithin: ${findWithin.pretty(sig)}")
+    Out.finest(s"otherSide (rewrittenIntolit right): ${otherSide.pretty(sig)}")
+    Out.finest(s"rewrittenIntoLit left: ${findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize.pretty(sig)}")
     /* Replace subterm (and shift accordingly) */
-    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))),otherSide,intoLiteral.polarity)(sig)
+    val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize,otherSide,intoLiteral.polarity)(sig)
     /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
     val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit)
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
-    Out.finest(s"intoSubterm: ${intoSubterm.pretty}")
-    Out.finest(s"shiftedIntoSubterm: ${intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound)).pretty}")
-    val unificationLit = Literal.mkNegOrdered(toFind, intoSubterm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPosition.abstractionCount), Subst.shift(withMaxTyVar)))(sig)
-
-    Out.finest(s"unificationLit: ${unificationLit.pretty}")
-
-//    val newlits = withLits_without_withLiteral ++ rewrittenIntoLits :+ unificationLit
-//    val newlits_simp = Simp.shallowSimp(newlits)(sig)
+    Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")
+    val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(sig)
+    Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
     val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
-    val resultingClause = Clause(newlits_simp)
-
-    resultingClause
+    Clause(newlits_simp)
   }
 }

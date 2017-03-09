@@ -152,6 +152,28 @@ package object datastructures {
         mult0(gt, s.tail,keepT)
       } else false
     }
+
+    final def lexCombination[A](org1: Ordering[A], ord2: Ordering[A], ords: Ordering[A]*): Ordering[A] = {
+      new Ordering[A] {
+        final def compare(x: A, y: A): Int = {
+          val cmp1Result = org1.compare(x,y)
+          if (cmp1Result != 0) cmp1Result
+          else {
+            val cmp2Result = ord2.compare(x,y)
+            if (cmp2Result != 0) cmp2Result
+            else {
+              val ordsIt = ords.iterator
+              while(ordsIt.hasNext) {
+                val ord = ordsIt.next()
+                val ordResult = ord.compare(x,y)
+                if (ordResult != 0) return ordResult
+              }
+              0 // Equal in all orderings
+            }
+          }
+        }
+      }
+    }
   }
 
 
@@ -196,6 +218,47 @@ package object datastructures {
     final val lex_weightAge: ClauseProxyOrdering = CPO_WeightAge
     final val goalsfirst: ClauseProxyOrdering = CPO_GoalsFirst
     final val nongoalsfirst: ClauseProxyOrdering = CPO_NonGoalsFirst
+
+    // Since the orderings are used in a scala priorityqueue which prefers greater elemens, we need to reverse the
+    // element orderings in the compounds
+    final val oldest_first: ClauseProxyOrdering = CPO_OldestFirst.reverse
+    final def goals_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        CPO_GoalsFirst2.reverse,
+        new CPO_SymbolWeight(varWeight, symbWeight).reverse,
+        oldest_first)
+    final def goals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        CPO_GoalsFirst2.reverse,
+        CPO_SmallerFirst.reverse,
+        new CPO_SymbolWeight(varWeight, symbWeight).reverse,
+        oldest_first)
+    final def nongoals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        CPO_NonGoalsFirst2.reverse,
+        CPO_SmallerFirst.reverse,
+        new CPO_SymbolWeight(varWeight, symbWeight).reverse,
+        oldest_first)
+    final def conjRelSymb(conjSymbols: Set[Signature#Key],
+                                   conjSymbolFactor: Float,
+                                   varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
+        oldest_first)
+    final def litCount_conjRelSymb(conjSymbols: Set[Signature#Key],
+                              conjSymbolFactor: Float,
+                              varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        CPO_SmallerFirst.reverse,
+        new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
+        oldest_first)
+    final def sos_conjRelSymb(conjSymbols: Set[Signature#Key],
+                              conjSymbolFactor: Float,
+                              varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
+      Orderings.lexCombination(
+        CPO_SOSFirst.reverse,
+        new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
+        oldest_first)
   }
 
   ///////////////////////
@@ -405,7 +468,7 @@ package object datastructures {
   ///////////////////////////////
   @inline final def isPropSet(prop: Int, in: Int): Boolean = (prop & in) == prop
   @inline final def addProp(prop: Int, in: Int): Int = prop | in
-  @inline final def deleteProp(prop: Int, in: Int): Int = prop & ~in
+  @inline final def deleteProp(prop: Int, in: Int): Int = ~prop & in
 
   final def fuseMaps[A,B](map1: Map[A,Set[B]], map2: Map[A,Set[B]]): Map[A, Set[B]] = {
     map2.foldLeft(map1)({case (intermediateMap, (k,v)) =>
@@ -427,6 +490,9 @@ package object datastructures {
   @inline final def addMaps[A](map1: Map[A, Int], map2: Map[A, Int]): Map[A, Int] = mergeMapsBy(map1,map2,(a:Int,b:Int) => a+b)(0)
 
   // Further utility functions
+  /** Given a sequence of terms `terms = (t_i)_i` return the nested disjunction
+    * {{{t_1 ∨ (t_2 ∨ ( ... ∨ t_n) ... ) )}}}
+    * `LitFalse` is (t_i)_i is empty. */
   final def mkDisjunction(terms: Seq[Term]): Term = {
     import leo.modules.HOLSignature.{LitFalse, |||}
     terms match {
@@ -434,6 +500,9 @@ package object datastructures {
       case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t2) => |||(disj, t2)})
     }
   }
+  /** Given a sequence of terms `terms = (t_i)_i` return the nested conjunction
+    * {{{t_1 ∧ (t_2 ∧ ( ... ∧ t_n) ... ) )}}}
+    * `LitTrue` is (t_i)_i is empty. */
   final def mkConjunction(terms: Seq[Term]): Term = {
     import leo.modules.HOLSignature.{LitTrue, &}
     terms match {
@@ -441,10 +510,36 @@ package object datastructures {
       case Seq(t, ts@_*) => ts.foldLeft(t)({case (disj, t2) => &(disj, t2)})
     }
   }
+  /** Given a sequence `bindings = (ty_i)_i` of types and a term `term`, return the nested universal quantification
+    * {{{∀ty_1.∀ty_2....∀ty_n. term}}} */
   final def mkPolyUnivQuant(bindings: Seq[Type], term: Term): Term = {
     import leo.datastructures.Term.λ
     import leo.modules.HOLSignature.Forall
     bindings.foldRight(term)((ty,t) => Forall(λ(ty)(t)))
+  }
+  /** Given a sequence `bindings = (ty_i)_i` of types and a term `term`, return the nested existential quantification
+    * {{{∃ty_1.∃ty_2....∃ty_n. term}}} */
+  final def mkPolyExistQuant(bindings: Seq[Type], term: Term): Term = {
+    import leo.datastructures.Term.λ
+    import leo.modules.HOLSignature.Exists
+    bindings.foldRight(term)((ty,t) => Exists(λ(ty)(t)))
+  }
+
+  final def mkPolyUnivType(count: Int, body: Type): Type = if (count <= 0) body
+  else Type.∀(mkPolyUnivType(count-1, body))
+
+  /** For a term `t` return `(t', (ty_i)_i)` where `t'` is the subterm of `t`
+    * that is acquired by stripping all prefix-lambdas (term abstraction) and
+    * the (ty_i)_i are the respective types that lambdas abstract over. E.g.
+    * {{{collectLambdas(λi.λo. t') = (t', (i,o))}}} */
+  final def collectLambdas(t: Term): (Term, Seq[Type]) = collectLambdas0(t, Seq())
+  @tailrec
+  private final def collectLambdas0(t: Term, abstractions: Seq[Type]): (Term, Seq[Type]) = {
+    import leo.datastructures.Term.:::>
+    t match {
+      case ty :::> body => collectLambdas0(body, ty +: abstractions)
+      case _ => (t, abstractions.reverse)
+    }
   }
 
   /** if `term` is eta-equivalent to a (free or bound) variable, return true.

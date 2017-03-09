@@ -9,7 +9,7 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, Ignored, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.SignatureImpl
-import leo.modules.{Parsing, Utility}
+import leo.modules.Utility
 
 /**
  * This suite tests the parsing and input processing of all the TPTP dialects except for CNF.
@@ -42,7 +42,7 @@ class InputTestSuite extends LeoTestSuite {
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
-      var fs = Parsing.parseProblem("/home/lex/dev/Leo-III/target/leo-iii-0.1-tests.jar!/problems" + "/" + p._1 + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
+      var fs = Input.readProblem("/home/lex/dev/Leo-III/target/leo-iii-0.1-tests.jar!/problems" + "/" + p._1 + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
       println("Success!")
       println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${FormulaDataStore.getFormulas.size} formulae added to blackboard.")
       println()

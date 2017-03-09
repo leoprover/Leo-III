@@ -1,54 +1,71 @@
 package leo.modules.calculus
 
-import leo.datastructures._
-import leo.modules.HOLSignature.{&, <=>, o, |||}
-import leo.{Checked, LeoTestSuite}
+import leo.LeoTestSuite
+import leo.datastructures.{Literal, Term}
+import leo.modules.HOLSignature._
 
 /**
-  * Created by mwisnie on 1/13/16.
+  * Created by mwisnie on 1/30/17.
   */
-class FormulaRenamingTest extends LeoTestSuite {
+class FormulaRenamingTest extends LeoTestSuite{
 
-  test("CNF_Size Test 1", Checked){
+  test("No rename"){
     implicit val s = getFreshSignature
-    FormulaRenaming.clearUnitStore()
     val ka = s.addUninterpreted("a", o)
     val a = Term.mkAtom(ka)
     val kb = s.addUninterpreted("b", o)
     val b = Term.mkAtom(kb)
 
-    val t = |||(|||(|||(a,b),|||(a,b)), a)
-    val size = FormulaRenaming.cnf_size(t,true)
+    val t = &(a,b)
+    val l = Literal(t, true)
+    val (l1, left, right) = FormulaRenaming(l)
 
-    assert(size == 1, s"CNF_SIZE(${t.pretty(s)} should be 1 but was $size")
+    assert(left == null && right == null, "There should be no definitions.")
+    assert(l1 == l, "The term should not differ.")
   }
 
-  test("CNF_Size Test 2", Checked){
+  test("Rename or simp"){
     implicit val s = getFreshSignature
-    FormulaRenaming.clearUnitStore()
     val ka = s.addUninterpreted("a", o)
     val a = Term.mkAtom(ka)
     val kb = s.addUninterpreted("b", o)
     val b = Term.mkAtom(kb)
 
-    val t = |||(&(|||(a,b),|||(a,b)), &(a,b))
-    val size = FormulaRenaming.cnf_size(t,true)
+    val t = |||(a,b)
+    val l = Literal(t, true)
+    val (l1, left, right) = FormulaRenaming(l)
 
-    assert(size == 4, s"CNF_SIZE(${t.pretty(s)} should be 4 but was $size")
+    assert(left != null && right != null, "There should be one definition")
+    println(s"${l.pretty(s)} renamed to\n  ${l1.pretty(s)}\n  [${Seq(left, right).map(_.pretty(s)).mkString(", ")}]")
   }
 
-  test("CNF_Size Test 3", Checked){
+  test("Rename and simp"){
     implicit val s = getFreshSignature
-    FormulaRenaming.clearUnitStore()
     val ka = s.addUninterpreted("a", o)
     val a = Term.mkAtom(ka)
     val kb = s.addUninterpreted("b", o)
     val b = Term.mkAtom(kb)
 
-    val t = <=>(a,b)
-    val size = FormulaRenaming.cnf_size(t.δ_expand.betaNormalize,true)
+    val t = &(a,b)
+    val l = Literal(t, false)
+    val (l1, left, right) = FormulaRenaming(l)
 
-    assert(size == 2, s"CNF_SIZE(${t.δ_expand.betaNormalize.pretty(s)} should be 2 but was $size")
+    assert(left != null && right != null, "There should be one definition")
+    println(s"${l.pretty(s)} renamed to\n  ${l1.pretty(s)}\n  [${Seq(left, right).map(_.pretty(s)).mkString(", ")}]")
   }
 
+  test("Rename impl simp"){
+    implicit val s = getFreshSignature
+    val ka = s.addUninterpreted("a", o)
+    val a = Term.mkAtom(ka)
+    val kb = s.addUninterpreted("b", o)
+    val b = Term.mkAtom(kb)
+
+    val t = Impl(a,b)
+    val l = Literal(t, true)
+    val (l1, left, right) = FormulaRenaming(l)
+
+    assert(left != null && right != null, "There should be one definition")
+    println(s"${l.pretty(s)} renamed to\n  ${l1.pretty(s)}\n  [${Seq(left, right).map(_.pretty(s)).mkString(", ")}]")
+  }
 }

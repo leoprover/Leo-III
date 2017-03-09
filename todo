@@ -1,0 +1,10 @@
+todo: 
+
+
+Problem | Status | Output | note
+SEV095^5.p  | Theorem | Unknown | looks trivial, check again
+SWV097^7.p | Theorem | none | NNF cripples, def expansion too, check!
+SEV310^5.p | Theorem | Unknown | looks trivial, check again
+SYO374^5 | Theorem | ... | extensionality, seems trivial, maybe primsubst on initial, split conjecture?
+SYO514^1.p | Theorem | ... | todo: choice
+

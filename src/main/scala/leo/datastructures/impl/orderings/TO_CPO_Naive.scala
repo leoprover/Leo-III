@@ -256,7 +256,8 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
   final private def gt0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
-    import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙,mkApp}
+    import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙}
+    import leo.datastructures.Term.mkApp
 
     if (s == t) return false
     if (s.isVariable) return false
@@ -300,7 +301,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
 
                 case _ if gargList.nonEmpty =>
                   /* case 4*/
-                  return gt0(s, Term.mkApp(g, args2.init), x)(sig) && gt0(s, gargList.last, x)(sig)
+                  return gt0(s, mkApp(g, args2.init), x)(sig) && gt0(s, gargList.last, x)(sig)
               }
             } catch {
               case e:AssertionError => {
@@ -330,7 +331,8 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
         // #############
         case _ if fargList.nonEmpty => {
 
-          if (ge0(mkApp(f,args.init),t,x)(sig) || gteq(fargList.last,t,x)(sig)) return true
+          if (ge0(mkApp(f,args.init),t,x)(sig)) return true
+          if (gteq(fargList.last,t,x)(sig)) return true
 
           if (t.isApp) {
             val (g,args2) = ∙.unapply(t).get
@@ -406,18 +408,18 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
 
-
-
   final private def effectiveArgs(forTy: Type, args: Seq[Either[Term, Type]]): Seq[Term] = {
     assert(args.take(forTy.polyPrefixArgsCount).forall(_.isRight), s"Number of expected type arguments (${forTy.polyPrefixArgsCount}) do not match ty abstraction count: \n\t Type: ${forTy.pretty}\n\tArgs: ${args.map(_.fold(_.pretty,_.pretty))}")
     filterTermArgs(args.drop(forTy.polyPrefixArgsCount))
   }
 
-  final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = args match {
-    case Seq() => Seq()
-    case Seq(h, rest@_*) => h match {
-      case Left(term) => term +: filterTermArgs(rest)
-      case Right(_) => filterTermArgs(rest)
+ final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
+    if (args.isEmpty) Seq.empty
+    else {
+      val hd = args.head
+      if (hd.isLeft) {
+        hd.left.get +: filterTermArgs(args.tail)
+      } else filterTermArgs(args.tail)
     }
   }
 }

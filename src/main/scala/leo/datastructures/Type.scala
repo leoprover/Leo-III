@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.datastructures.impl._
-
 import scala.language.implicitConversions
 
 /**
@@ -69,15 +67,11 @@ abstract class Type extends Pretty with Prettier {
   /** if `this` is a polymorphic type (i.e. a forall type), the method returns the abstracted type where all type parameters bound
     * by the head quantifier are replaced by `by`. In any other case, it does nothing */
   def instantiate(by: Type): Type
-
-  // Other operation
-  /** Right folding on types. This may change if the type system is changed. */
-  def foldRight[A](baseFunc: Signature#Key => A)
-                  (boundFunc: Int => A)
-                  (absFunc: (A,A) => A)
-                  (prodFunc: (A,A) => A)
-                  (unionFunc: (A,A) => A)
-                  (forAllFunc: A => A): A
+  /** if `this` is a n-fold polymorphic type (i.e. nested forall type), the method returns the abstracted type where all type parameters i bound
+    * by (at most) `by.size` prefix quantifiers are replaced by `by(i)`. If `by.size` is smaller than the prefix of
+    * type abstraction, only `by.size` many are instantiated. If `by.size` is larger than the `n` prefix
+    * of type abstraction, only the first `n` types are instantiated, the rest is discarded. */
+  def instantiate(by: Seq[Type]): Type
 
   // Syntactic nice constructors
   /** Create abstraction type from `hd` to `this` */
@@ -112,67 +106,71 @@ abstract class Type extends Pretty with Prettier {
  * Constructor methods the `Type` class.
  */
 object Type {
-  type Impl = Type // fix by introducing super-type on types TODO
+  import leo.datastructures.impl.TypeImpl
 
-  /** Create type with name `identifier`. */
-  def mkType(identifier: Signature#Key): Type = GroundTypeNode(identifier, Seq())
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
-  def mkType(identifier: Signature#Key, args: Seq[Type]): Type = GroundTypeNode(identifier, args)
+  final def mkType(identifier: Signature#Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
+  final def mkType(identifier: Signature#Key, arg: Type): Type = TypeImpl.mkType(identifier, Seq(arg))
+  /** Create type with name `identifier`. */
+  final def mkType(identifier: Signature#Key): Type = mkType(identifier, Seq.empty)
+
   /** Build type `in -> out`. */
-  def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
+  final def mkFunType(in: Type, out: Type): Type = TypeImpl.mkFunType(in, out)
   /** Build type `in1 -> in2 -> in3 -> ... -> out`. */
-  def mkFunType(in: Seq[Type], out: Type): Type = in match {
+  final def mkFunType(in: Seq[Type], out: Type): Type = in match {
     case Seq()           => out
     case Seq(x, xs @ _*) => mkFunType(x, mkFunType(xs, out))
   }
-  def mkFunType(in: Seq[Type]): Type = in match {
+  /** Build type `in(0) -> in(1) -> ... -> in(n-1)` where `n = in.size`. */
+  final def mkFunType(in: Seq[Type]): Type = in match {
     case Seq(ty)            => ty
     case Seq(ty, tys @ _*)  => mkFunType(ty, mkFunType(tys))
   }
 
-  def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
-
+  /** Create product type (t1,t2). */
+  final def mkProdType(t1: Type, t2: Type): Type = TypeImpl.mkProdType(t1,t2)
   /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
-  def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(ProductTypeNode(t1, t2))((arg,f) => ProductTypeNode(arg,f))
+  final def mkProdType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
+    ti.foldLeft(mkProdType(t1, t2))((arg,f) => mkProdType(arg,f))
   }
-
-  def mkProdType(ti: Seq[Type]): Type = ti match {
+  /** Creates a product type ((...((t1 * t2) * t3)....)*tn) */
+  final def mkProdType(ti: Seq[Type]): Type = ti match {
     case Seq(ty)        => ty
     case Seq(ty1, ty2, tys @ _*) => mkProdType(ty1, ty2, tys)
   }
 
-  def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
-
+  /** Create union type (t1+t2). */
+  final def mkUnionType(t1: Type, t2: Type): Type = TypeImpl.mkUnionType(t1,t2)
   /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
-  def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
-    ti.foldLeft(UnionTypeNode(t1, t2))((arg,f) => UnionTypeNode(arg,f))
+  final def mkUnionType(t1: Type, t2: Type, ti: Seq[Type]): Type = {
+    ti.foldLeft(mkUnionType(t1, t2))((arg,f) => mkUnionType(arg,f))
   }
-
-  def mkUnionType(ti: Seq[Type]): Type = ti match {
+  /** Creates a union type ((...((t1 + t2) + t3)....)+tn) */
+  final def mkUnionType(ti: Seq[Type]): Type = ti match {
     case Seq(ty)        => ty
     case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
   }
 
+  @inline final def ground(ty: Type): Boolean = ty.typeVars.isEmpty
+
   /** Build `forall. ty` (i.e. a universally quantified type) */
-  def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
+  final def mkPolyType(bodyType: Type): Type = TypeImpl.mkPolyType(bodyType)
   /** Build `forall. ty` (i.e. a universally quantified type). Pretty variant of `mkPolytype` */
-  def ∀(bodyType: Type): Type = ForallTypeNode(bodyType)
+  final def ∀(bodyType: Type): Type = mkPolyType(bodyType)
 
   /** The (bound) type a type variable represents. This should always be bound by a `mkPolyType`*/
-  def mkVarType(scope: Int): Type = BoundTypeNode(scope)
+  final def mkVarType(scope: Int): Type = TypeImpl.mkVarType(scope)
 
   /** Represents the kind `*` or `type` (i.e. the type of types). */
-  val typeKind: Kind = TypeKind
-  /** Represents the type of kinds. Only needed internally so that we can type kinds correctly */
-  val superKind: Kind = SuperKind
+  final val typeKind: Kind = Kind.*
 
   implicit def typeVarToType(typeVar: Int): Type = mkVarType(typeVar)
-
 
   ///////////////////////////////
   // Pattern matchers for types
   ///////////////////////////////
+  import leo.datastructures.impl.{GroundTypeNode, BoundTypeNode, ProductTypeNode,
+  AbstractionTypeNode, UnionTypeNode, ForallTypeNode}
 
   object BaseType {
     def unapply(ty: Type): Option[Signature#Key] = ty match {
@@ -270,31 +268,57 @@ object Type {
 }
 
 
+/**
+  * Kinds are "types of type constructors", i.e. domain restrictions for type constructors.
+  * Type constructors with arity zero are called types and have kind `*`.
+  * Kinds (k) are created by
+  *
+  *   k := * | k -> k | #
+  *
+  * where * is the kind of types, # the kind of kinds (for internal use only), and
+  * -> the syntactical constructor for function kinds (left-associative).
+  * Although this allows higher-order kinds such as (* -> *) -> *, we
+  * first restrict ourselves to first-order kinds, i.e. kinds of the form
+  * *^k^ -> * (i.e. * -> * -> ... -> *).
+  */
 abstract class Kind extends Pretty {
-  val isTypeKind: Boolean
-  val isFunKind: Boolean
-  val isSuperKind: Boolean
+  /** Returns `true` if `this == *`, `false` otherwise. */
+  def isTypeKind: Boolean
+  /** Returns `true` if `this == k1 -> k2` for some `k1, k2`, `false` otherwise. */
+  def isFunKind: Boolean
+  /** Returns `true` if `this == #`, `false` otherwise. */
+  def isSuperKind: Boolean
 
+  /** Returns the arity of the kind. Arity `arity(k)` of a kind `k` is defined by:
+    * {{{
+    * arity(*) = 0
+    * arity(k1 -> k2) = 1 + arity(k2)}}} */
   def arity: Int
+
+  /** Given two kinds `k1` and `k2`, `k1 ->: k2` creates the function kind from `k1` two `k2`, i.e.
+    * the kind `k1 -> k2`. */
+  @inline final def ->:(hd: Kind): Kind = Kind.mkFunKind(hd, this)
 }
 
 object Kind {
-
-  val typeKind: Kind = TypeKind
+  import leo.datastructures.impl.{TypeKind, FunKind, SuperKind}
+  final val * : Kind = TypeKind
+  final val superKind : Kind = SuperKind
 
   /** Build kind k1 -> k2  */
-  def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
+  final def mkFunKind(k1: Kind, k2: Kind): Kind = FunKind(k1, k2)
   /** Build kind `in1 -> in2 -> in3 -> ... -> out`. */
-  def mkFunKind(in: Seq[Kind], out: Kind): Kind = in match {
+  final def mkFunKind(in: Seq[Kind], out: Kind): Kind = in match {
     case Seq()           => out
     case Seq(x, xs @ _*) => mkFunKind(x, mkFunKind(xs, out))
   }
-  def mkFunKind(in: Seq[Kind]): Kind = in match {
+  final def mkFunKind(in: Seq[Kind]): Kind = in match {
     case Seq(ty)            => ty
     case Seq(ty, tys @ _*)  => mkFunKind(ty, mkFunKind(tys))
   }
+
   object -> {
-    def unapply(k: Kind): Option[(Kind, Kind)] = k match {
+    final def unapply(k: Kind): Option[(Kind, Kind)] = k match {
       case FunKind(l,r) => Some((l,r))
       case _ => None
     }

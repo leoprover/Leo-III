@@ -1,11 +1,9 @@
 package leo.modules.relevance_filter
 
-import leo.datastructures.Signature
 import leo.datastructures.tptp.tff.Atomic
-import leo.datastructures.{Role_Type, Role_Definition}
+import leo.datastructures.{Role_Definition}
 import leo.datastructures.tptp.Commons._
-import leo.datastructures.tptp.thf.{Eq, Term, Binary}
-import leo.modules.parsers.InputProcessing
+import leo.datastructures.tptp.thf.{Eq, Term, Binary, Function}
 
 /**
   *
@@ -32,9 +30,9 @@ object PreFilterSet {
   private val freq : FuncFrequency = new FuncFrequency()
 
   /**
-    * Filtered definitions
+    * Definition_name -> Set of used symbols
     */
-  private val defn : mutable.Map[String, AnnotatedFormula] = mutable.HashMap[String, AnnotatedFormula]()
+  private val defn : mutable.Map[String, Set[String]] = mutable.HashMap[String, Set[String]]()
 
   /**
     * Variable -> Set(FormulaName)
@@ -45,22 +43,32 @@ object PreFilterSet {
 
 
   /**
-    * Adds a new TPTPFormula to the set of Unused Formulas.
+    * Adds Axioms, Conjectures and Definitions to the prefilter set.
+    *
+    * If definitions are used inside the formulas it is required
+    * to add them beforehand.
     *
     * @param formula New TPTPFormula
     */
-  def addNewFormula(formula : AnnotatedFormula)(implicit sig: Signature) : Unit = synchronized {
-    if(formula.role == Role_Type.pretty){
-      InputProcessing.process(sig)(formula)
-    } else {
-      isDefinition(formula) match {
-        // TODO Not immediatly add new typ definitions, but postpone
-        case Some(name) => defn.put(name, formula)
-        case None =>
-          unused.put(formula.name, formula)
-          formula.function_symbols.foreach{symb => reverse.put(symb, reverse.getOrElse(symb,Set[String]()) + formula.name)}
-          freq.addFormula(formula)
-      }
+  def addNewFormula(formula : AnnotatedFormula) : Unit = synchronized {
+    isDefinition(formula) match {
+      case Some(name) =>
+        // Delta search
+        var todo = (formula.function_symbols - name).toIterator // Cut the own name away
+        var delta_symbs : Set[String] = Set[String]() // All symbols with delta expansion
+        while(todo.hasNext) {
+          val next = todo.next()
+          defn.get(next) match {                      // This method requires the input to be ordered correctly
+            case Some(symbs) => delta_symbs |= symbs
+            case None => delta_symbs += next
+          }
+        }
+        defn.put(name, delta_symbs)
+      case None =>
+        unused.put(formula.name, formula)
+        // Symbols from the delta exanded term
+        expaned_symbols(formula).foreach{symb => reverse.put(symb, reverse.getOrElse(symb,Set[String]()) + formula.name)}
+        freq.addFormula(formula)
     }
   }
 
@@ -85,9 +93,10 @@ object PreFilterSet {
     * @param formula
     * @return A set of newly taken symbols
     */
-  def useFormula(formula : AnnotatedFormula)(implicit sig: Signature) : Set[String] = synchronized {
+  def useFormula(formula : AnnotatedFormula) : Set[String] = synchronized {
     unused.remove(formula.name)
-    formula.function_symbols.foreach{symb => reverse.get(symb).foreach{s =>
+    val f_symbols = expaned_symbols(formula)
+    f_symbols.foreach{symb => reverse.get(symb).foreach{s =>
       val s1 = s - formula.name
       if(s.isEmpty){
         reverse.remove(symb)
@@ -95,12 +104,11 @@ object PreFilterSet {
         reverse.put(symb, s1)
       }
     }}
-    val newSymbs = formula.function_symbols -- usedSymbs
+    val newSymbs = f_symbols -- usedSymbs
     val it = newSymbs.iterator
     while(it.hasNext){
       val s = it.next
       usedSymbs.add(s)
-      defn.get(s).foreach(defi => InputProcessing.process(sig)(defi))
     }
     newSymbs
   }
@@ -141,6 +149,7 @@ object PreFilterSet {
         case f : THFAnnotated =>
           import leo.datastructures.tptp.thf.Logical
           f.formula match {
+            case Logical(Binary(Function(name, Seq()), Eq, right)) => Some(name)
           case Logical(Binary(Term(Func(name, Seq())), Eq, right)) => Some(name)
           case _ => None
         }
@@ -153,6 +162,19 @@ object PreFilterSet {
         case _ => None
       }
     }
+  }
+
+  private def expaned_symbols(formula : AnnotatedFormula) : Set[String] = {
+    var todo = formula.function_symbols.toIterator
+    var delta_symbs : Set[String] = Set[String]() // All symbols with delta expansion
+    while(todo.hasNext) {
+      val next = todo.next()
+      defn.get(next) match {                      // This method requires the input to be ordered correctly
+        case Some(symbs) => delta_symbs |= symbs
+        case None => delta_symbs += next
+      }
+    }
+    delta_symbs
   }
 
   /**

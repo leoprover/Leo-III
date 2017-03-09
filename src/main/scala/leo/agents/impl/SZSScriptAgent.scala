@@ -101,7 +101,7 @@ class SZSScriptAgent(name1 : String, cmd : String)(encodeOutput : Set[ClauseProx
           Out.debug(s"[$name]: Got positive ${status.apply} from the external prover.")
           var r =  Result()
             .insert(StatusType)(SZSStore(reinterpreteResult(status)))
-            .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs), ClauseAnnotation.PropNoProp))
+            .insert(ClauseType)(AnnotatedClause(Clause(Seq()), Role_Plain, InferredFrom(ExternalRule(name1), fs.toSeq), ClauseAnnotation.PropNoProp))
           return r
         case Some(status)      =>
           ()
@@ -172,5 +172,6 @@ case class SZSScriptMessage(f: ClauseProxy) extends Message
 case class CallExternal(clauses : Set[ClauseProxy]) extends Message
 
 case class ExternalRule(prover : String) extends CalculusRule {
-  override def name: String = s"external($prover)"
+  override val name: String = s"external($prover)"
+  override val inferenceStatus = SZS_Theorem
 }
