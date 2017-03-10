@@ -67,61 +67,74 @@ object Commons {
   // First-order atoms
   sealed abstract class AtomicFormula {
     def function_symbols : Set[String]
+    def vars: Set[String]
   }
   case class Plain(data: Func) extends AtomicFormula {
     override def toString = data.toString
 
     override val function_symbols: Set[String] = data.function_symbols
+    def vars = data.vars
   }
   case class DefinedPlain(data: DefinedFunc) extends AtomicFormula {
     override def toString = data.toString
 
     override val function_symbols: Set[String] = data.function_symbols
+    def vars = data.vars
   }
   case class Equality(left: Term, right: Term) extends AtomicFormula {
     override def toString = left.toString + " = " + right.toString
 
     override val function_symbols: Set[String] = left.function_symbols union right.function_symbols
+    def vars = left.vars union right.vars
   }
   case class SystemPlain(data: SystemFunc) extends AtomicFormula {
     override def toString = data.toString
 
     override val function_symbols: Set[String] = data.function_symbols
+    def vars = data.vars
   }
 
   // First-order terms
   sealed abstract class Term {
     def function_symbols : Set[String]
+    def vars: Set[String]
   }
   case class Func(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
 
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
+    def vars = args.flatMap(_.vars).toSet
   }
   case class DefinedFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
+    def vars = args.flatMap(_.vars).toSet
   }
   case class SystemFunc(name: String, args: Seq[Term]) extends Term {
     override def toString = funcToString(name, args)
     override val function_symbols: Set[String] =  args.flatMap(_.function_symbols).toSet + name
+    def vars = args.flatMap(_.vars).toSet
   }
   case class Var(name: Variable) extends Term {
     override def toString = name.toString
     override val function_symbols: Set[String] =  Set(name)
+    def vars = Set(name)
   }
   case class NumberTerm(value: Number) extends Term {
     override def toString = value.toString
     override val function_symbols: Set[String] =  Set()
+    def vars = Set.empty
   }
   case class Distinct(data: String) extends Term {
     override def toString = data.toString
     override val function_symbols: Set[String] =  Set()
+    def vars = Set.empty
   }
   /** Used by TFF only */
   case class Cond(cond: tff.LogicFormula, thn: Term, els: Term) extends Term {
     override def toString = "$ite_t(" + List(cond,thn,els).mkString(",") + ")"
     override val function_symbols: Set[String] =  cond.function_symbols union thn.function_symbols union els.function_symbols
+    def vars = thn.vars union els.vars // dont care, not used in TFF
   }
   /** Used by TFF only */
   case class Let(binding: tff.Formula#LetBinding, in: Term) extends Term {
@@ -133,11 +146,13 @@ object Commons {
       })
       (in.function_symbols -- definedSymbols) union newSymbols
     }
+    def vars = Set.empty // dont care, not used in TFF
   }
   case class Tuple(entries: Seq[Term]) extends Term {
     override def toString: Role = s"{${entries.map(_.toString).mkString(",")}"
 
     override def function_symbols: Set[String] = entries.flatMap(_.function_symbols).toSet
+    def vars = entries.flatMap(_.vars).toSet // dont care, not used in TFF
   }
 
   type Variable = String

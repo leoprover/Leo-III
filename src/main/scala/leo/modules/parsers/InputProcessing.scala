@@ -634,7 +634,7 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         mkPolyQuantified(quantifier, processedVars, processTFF0(sig)(matrix, newReplaces))
       }
       case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
-      case Inequality(left, right) => { 
+      case Inequality(left, right) => {
         val convertedLeft = processTermArgs(sig)(left, replaces, false)
         val convertedRight = processTermArgs(sig)(right, replaces, false)
         assert(convertedLeft.isLeft && convertedRight.isLeft)
@@ -867,24 +867,33 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   // CNF Formula processing
   //////////////////////////
 
-  import leo.datastructures.tptp.cnf.{ Formula => CNFLogicalFormula}
+  import leo.datastructures.tptp.cnf.{ Formula => CNFLogicalFormula, Literal => CNFLiteral}
   protected[parsers] final def processCNF(sig: Signature)(input: CNFAnnotated): Option[Result] = {
     val role = processRole(input.role)
-    ???
-//    Some((input.name, processCNF0(sig)(input.formula, roleToClauseOrigin(role)), role))
+    val varsInClause = input.formula.vars
+    Some((input.name, processCNF0(sig)(input.formula, varsInClause), role))
   }
 
-  protected[InputProcessing] final def processCNF0(sig: Signature)(input: CNFLogicalFormula, origin: ClauseOrigin): Clause = {
+  protected[InputProcessing] final def processCNF0(sig: Signature)(input: CNFLogicalFormula, vars: Set[String]): Term = {
+    val indexSeq: Seq[(Type, Int)] = (1 to vars.size).map{idx => (i, idx)}
+    val varMap: TermVarReplaces = (vars.toSeq.zip(indexSeq).toMap, 0)
+    val replaces: Replaces = (varMap, (Map.empty, 0))
+    val lits = input.literals.map(processLiteral(sig)(_, replaces))
+    leo.datastructures.mkDisjunction(lits)
+  }
+
+  protected[InputProcessing] final def processLiteral(sig: Signature)(lit: CNFLiteral, replaces: Replaces): Term = {
     import leo.datastructures.tptp.cnf.{Positive, Negative, Inequality}
-//    val lits = input.literals.map { _ match {
-//      case Positive(f) => mkPosLit(processAtomicFormula(sig)(f, ???))
-//      case Negative(f) => mkNegLit(processAtomicFormula(sig)(f, ???))
-//      case Inequality(l, r) => mkUniLit(processTerm(sig)(l, ???), processTerm(sig)(r, ???))
-//    }
-//    }
-//    import leo.datastructures.Clause.{mkClause}
-//    mkClause(lits, origin)
-    ???
+    import leo.modules.HOLSignature.Not
+    lit match {
+      case Positive(f) => processAtomicFormula(sig)(f, replaces)
+      case Negative(f) => Not(processAtomicFormula(sig)(f, replaces))
+      case Inequality(l, r) =>
+        val convertedLeft = processTermArgs(sig)(l, replaces)
+        val convertedRight = processTermArgs(sig)(r, replaces)
+        assert(convertedLeft.isLeft && convertedRight.isLeft)
+        leo.modules.HOLSignature.!===(convertedLeft.left.get,convertedRight.left.get)
+    }
   }
 
 
