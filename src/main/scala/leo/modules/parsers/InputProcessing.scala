@@ -634,10 +634,12 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
         mkPolyQuantified(quantifier, processedVars, processTFF0(sig)(matrix, newReplaces))
       }
       case Unary(conn, formula) => processTFFUnary(conn).apply(processTFF0(sig)(formula,replaces))
-      case Inequality(left, right) => {
-        val (l,r) = (processTerm(sig)(left, replaces, false),processTerm(sig)(right, replaces, false))
+      case Inequality(left, right) => { 
+        val convertedLeft = processTermArgs(sig)(left, replaces, false)
+        val convertedRight = processTermArgs(sig)(right, replaces, false)
+        assert(convertedLeft.isLeft && convertedRight.isLeft)
         import leo.modules.HOLSignature.{Not, ===}
-        Not(===(l,r))
+        Not(===(convertedLeft.left.get, convertedRight.left.get))
       }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces, false)
       case Cond(cond, thn, els) => {
@@ -686,31 +688,59 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   }
 
   // Type processing
-  import leo.datastructures.tptp.tff.{Type => TFFType}
+  import leo.datastructures.tptp.tff.{Type => TFFType, AtomicType => TFFAtomicType}
+
+  protected[InputProcessing] final def convertTFFAtomicType(sig: Signature)(atomicType: TFFAtomicType, replace: Replaces): Either[Type, Kind] = {
+    import leo.datastructures.tptp.tff.AtomicType
+    atomicType match {
+      case AtomicType(ty, Seq()) if ty.charAt(0).isUpper => mkVarType(typeMapping(replace).size + typeOffset(replace) - typeMapping(replace)(ty)._2 + 1)  // Type Variable
+      case AtomicType(ty, Seq()) if ty == "$tType" => typeKind // kind *
+      case AtomicType(ty, Seq())  => mkType(sig.meta(ty).key)  // Base type
+      case AtomicType(ty, args) =>
+        val convertedArgs = args.map(convertTFFAtomicType(sig)(_, replace))
+        mkType(sig.meta(ty).key, convertedArgs.map(_.left.get))
+    }
+  }
   type TFFBoundTyReplaces = Seq[Variable]
   protected[InputProcessing] final def convertTFFType(sig: Signature)(tffType: TFFType, replace: Replaces): Either[Type,Kind] = {
     import leo.datastructures.tptp.tff.{AtomicType,->,*,QuantifiedType}
     tffType match {
       // "AtomicType" constructs: Type variables, Base types, type kinds, or type/kind applications
-      case AtomicType(ty, List()) if ty.charAt(0).isUpper => mkVarType(typeMapping(replace).size + typeOffset(replace) - typeMapping(replace)(ty)._2 + 1)  // Type Variable
-      case AtomicType(ty, List()) if ty == "$tType" => typeKind // kind *
-      case AtomicType(ty, List())  => mkType(sig.meta(ty).key)  // Base type
-      case AtomicType(_, _) => throw new IllegalArgumentException("Processing of applied types not implemented yet") // TODO
+      case at@AtomicType(_,_) => convertTFFAtomicType(sig)(at, replace)
       // Function type / kind
-      case ->(tys) => { // Tricky here: It might be functions of "sort" * -> [], * -> *, [] -> [], [] -> *
+      case ->(Seq(in,out)) => { // Tricky here: It might be functions of "sort" * -> [], * -> *, [] -> [], [] -> *
                         // We only plan to support variant 1 (polymorphism),2 (constructors), 3 (ordinary functions) in a medium time range (4 is dependent type)
                         // Case 1 is captured by 'case QuantifiedType' due to TFF1's syntax
                         // So, only consider case 3 for now, but keep case 2 in mind
-        val convertedTys = tys.map(convertTFFType(sig)(_, replace))
-        require(convertedTys.forall(_.isLeft), "Constructors are not yet supported, but kind found inside a function: " +tffType.toString) // TODO
-        mkFunType(convertedTys.map(_.left.get)) // since we only want case 3
+        val convertedOut = convertTFFType(sig)(out, replace)
+        in match {
+          case at@AtomicType(_,_) =>
+            val convertedIn = convertTFFAtomicType(sig)(at, replace)
+            require((convertedIn.isLeft && convertedOut.isLeft) || (convertedIn.isRight && convertedOut.isRight), "mixed type/kind setting in abstractin type " +tffType.toString)
+            if (convertedIn.isLeft)
+              mkFunType(convertedIn.left.get, convertedOut.left.get) // case 3
+            else
+              Kind.mkFunKind(convertedIn.right.get, convertedOut.right.get) // case 2
+          case *(tys) =>
+            val convertedIns = tys.map(convertTFFType(sig)(_, replace))
+            require((convertedIns.forall(_.isLeft) && convertedOut.isLeft) || (convertedIns.forall(_.isRight) && convertedOut.isRight), "mixed type/kind setting in abstractin type " +tffType.toString)
+            if (convertedIns.head.isLeft)
+              mkFunType(convertedIns.map(_.left.get), convertedOut.left.get) // case 3
+            else
+              Kind.mkFunKind(convertedIns.map(_.right.get), convertedOut.right.get) // case 2
+        }
       }
+      case ->(_) => throw new IllegalArgumentException("more than two arguments in function type or kind. should not happen in first-order.")
       // Product type / kind
       case *(tys) => {
+        assert(false, tffType.toString)
         val converted = tys.map(convertTFFType(sig)(_, replace))
-        // TODO: we consider only types here, is this correct?
-        require(converted.forall(_.isLeft), "Sum constructor only allowed on types")
-        mkProdType(converted.map(_.left.get))
+
+        require(converted.forall(i => i.isLeft || i.isRight), "Sum constructor only allowed on mixed type/kind")
+        if (converted.head.isLeft)
+          mkProdType(converted.map(_.left.get))
+        else
+          Kind.mkFunKind(converted.map(_.right.get))
       }
       // Quantified type
       case QuantifiedType(vars, body) => {
@@ -786,8 +816,10 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       }
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Inequality(left,right) => {
-        val (l,r) = (processTermArgs(sig)(left, replaces),processTermArgs(sig)(right, replaces))
-        leo.modules.HOLSignature.!===(l,r)
+        val convertedLeft = processTermArgs(sig)(left, replaces)
+        val convertedRight = processTermArgs(sig)(right, replaces)
+        assert(convertedLeft.isLeft && convertedRight.isLeft)
+        leo.modules.HOLSignature.!===(convertedLeft.left.get,convertedRight.left.get)
       }
     }
   }
@@ -862,25 +894,51 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
   import leo.datastructures.tptp.Commons.{NumberTerm, RationalNumber, IntegerNumber, DoubleNumber}
   import leo.datastructures.tptp.Commons.{Distinct, Cond, Let, Plain, DefinedPlain, SystemPlain, AtomicFormula}
 
-  protected[InputProcessing] final def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
+  // process term level
+  protected[InputProcessing] final def processTermArgs(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): TermOrType = input match {
+    case Func(name, Seq()) =>
+      if (sig.exists(name) || !adHocDefs) {
+        val meta = sig(name)
+        if (meta.hasType) mkAtom(meta.key)(sig)
+        else Type.mkType(meta.key)
+      } else {
+        // fof world here
+        mkAtom(sig.addUninterpreted(name, i))(sig)
+      }
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
-        mkTermApp(mkAtom(sig(name).key)(sig), converted)
+        val meta = sig(name)
+        if (meta.hasType) mkApp(mkAtom(sig(name).key)(sig), converted)
+        else Type.mkType(meta.key, converted.map(_.right.get))
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), i)))(sig), converted)
+        // fof world here
+        assert(converted.forall(_.isLeft))
+        mkApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), i)))(sig), converted)
+      }
+    }
+    case Var(name) => termMapping(replace).get(name) match {
+      case None => typeMapping(replace).get(name) match {
+        case Some((k, scope))  => assert(k == Kind.*); Type.mkVarType(typeMapping(replace).size + typeOffset(replace) - scope + 1)
+        case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
+      }
+      case Some((ty, scope)) => {
+        assert(typeMapping(replace).get(name).isEmpty)
+        mkBound(ty, termMapping(replace).size + termOffset(replace) - scope +1)
       }
     }
     case other => processTerm(sig)(other, replace, adHocDefs)
   }
 
+  // should actually be called processFormula since we are at formula level here
   protected[InputProcessing] final def processTerm(sig: Signature)(input: TPTPTerm, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
     case Func(name, vars) => {
       val converted = vars.map(processTermArgs(sig)(_, replace, adHocDefs))
       if (sig.exists(name) || !adHocDefs) {
-        mkTermApp(mkAtom(sig(name).key)(sig), converted)
+        mkApp(mkAtom(sig(name).key)(sig), converted)
       } else {
-        mkTermApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), o)))(sig), converted)
+        assert(converted.forall(_.isLeft))
+        mkApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), o)))(sig), converted)
       }
 
     }
@@ -944,9 +1002,9 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
       val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key)(sig), converted)
     }
-    case Var(name) => termMapping(replace).get(name) match {
+    case Var(name) => assert(false, name);termMapping(replace).get(name) match {
       case None => typeMapping(replace).get(name) match {
-        case Some((k, scope))  => ???
+        case Some((k, scope))  => assert(k == Kind.*); ???
         case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
       }
       case Some((ty, scope)) => {
@@ -1017,7 +1075,10 @@ val role = processRole("axiom"); Some((input.name, processTFF0(sig)(lf, noRep), 
     case SystemPlain(func) => processTerm(sig)(func, replace, adHocDefs)
     case Equality(left,right) => {
       import leo.modules.HOLSignature.===
-      ===(processTermArgs(sig)(left, replace, adHocDefs),processTermArgs(sig)(right, replace, adHocDefs))
+      val convertedLeft = processTermArgs(sig)(left, replace, adHocDefs)
+      val convertedRight = processTermArgs(sig)(right, replace, adHocDefs)
+      assert(convertedLeft.isLeft && convertedRight.isLeft)
+      ===(convertedLeft.left.get, convertedRight.left.get)
     }
   }
 

@@ -813,7 +813,7 @@ object TPTPASTConstructor {
   }
   final def tffVariable(ctx: tptpParser.Tff_variableContext): (Variable, Option[tff.AtomicType]) = {
     val varname = ctx.variable().getText
-    val ty = if (ctx.tff_atomic_type() != null) None else Some(tffAtomicType(ctx.tff_atomic_type()))
+    val ty = if (ctx.tff_atomic_type() == null) None else Some(tffAtomicType(ctx.tff_atomic_type()))
     (varname, ty)
   }
 
@@ -853,10 +853,14 @@ object TPTPASTConstructor {
     tff.->(Seq(left, right))
   }
   final def tffProdType(ctx: tptpParser.Tff_xprod_typeContext): tff.* = {
-    val left = if (ctx.tff_unitary_type() != null) tffUnitaryType(ctx.tff_unitary_type())
-    else tffProdType(ctx.tff_xprod_type())
     val right = tffAtomicType(ctx.tff_atomic_type())
-    tff.*(Seq(left,right))
+    if (ctx.tff_unitary_type() != null) {
+      val left = tffUnitaryType(ctx.tff_unitary_type())
+      tff.*(Seq(left,right))
+    } else {
+      val left = tffProdType(ctx.tff_xprod_type())
+      tff.*(left.t :+ right)
+    }
   }
 
   final def tffTypedAtom(ctx: tptpParser.Tff_typed_atomContext): tff.TypedAtom = {
