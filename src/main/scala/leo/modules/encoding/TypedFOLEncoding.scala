@@ -249,7 +249,7 @@ object TypedFOLEncoding {
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
     import encodingSignature._
     t match {
-      // These cases can of course happen as subterms may contain arbitrary formulas in HOL
+      /*// These cases can of course happen as subterms may contain arbitrary formulas in HOL
       case HOLForall(ty :::> body) =>
         val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
         val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
@@ -291,21 +291,32 @@ object TypedFOLEncoding {
         proxyNot(translatedBody)
       case HOLFalse() => proxyFalse
       case HOLTrue() => proxyTrue
+      */
       case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
-      // Non-CNF cases end
-      // Standard-case begin
       case f ∙ args =>
         val encodedHead = f match {
-          case Symbol(id) =>
-            println(s"f: ${f.pretty(holSignature)}")
-            println(s"matches: ${HOLNot.unapply(f).isDefined}")
-            println(s"id: $id -- HOLNotId: ${HOLNot.key}")
-            val fName = escape(holSignature(id).name)
-            mkAtom(encodingSignature(fName).key)(encodingSignature)
+          case Symbol(id) => id match {
+            case HOLTrue.key => proxyTrue
+            case HOLFalse.key => proxyFalse
+            case HOLNot.key => proxyNot
+            case HOLOr.key => proxyOr
+            case HOLAnd.key => proxyAnd
+            case HOLEq.key => proxyEq
+            case HOLNeq.key => proxyNeq
+            case HOLForall.key => proxyForall
+            case HOLExists.key => proxyExists
+            case HOLImpl.key => proxyImpl
+            case HOLIf.key => proxyIf
+            case HOLEquiv.key => proxyEquiv
+            case _ =>
+              val fName = escape(holSignature(id).name)
+              mkAtom(encodingSignature(fName).key)(encodingSignature)
+          }
           case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => assert(false); f
         }
         println(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
+        println(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
@@ -313,7 +324,7 @@ object TypedFOLEncoding {
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
         // pass some arguments directly if possible
         val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
-        assert(translatedTermArgs.size >= encodedHeadParamTypes.size)
+        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"arg size ${translatedTermArgs.size}")
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 
@@ -325,7 +336,6 @@ object TypedFOLEncoding {
       case _ => throw new IllegalArgumentException("unexpected term occurred") // e.g. ForallTy
     }
   }
-
 }
 
 object EncodingAnalyzer {
