@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Type, Term, Kind, Clause, Signature}
+import leo.datastructures.{Type, Term, Kind, Clause, Signature, Subst}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -11,6 +11,9 @@ import leo.modules.output.SuccessSZS
   * @since 20.05.15
   */
 package object calculus {
+
+  type TypeSubst = Subst
+  type TermSubst = Subst
 
   /**
     * Base type for calculus rules wrapped in objects/classes.

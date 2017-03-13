@@ -607,7 +607,6 @@ object ACSimp extends CalculusRule {
           lit
       }
     }
-
   }
 
   def apply(cl: Clause, acSymbols: Set[Signature#Key])(implicit sig: Signature): Clause = {
@@ -687,25 +686,26 @@ object Simp extends CalculusRule {
   }
 
 
-  final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    assert(l.forall(a => !a.polarity))
-    val simpRes = uniLitSimp0(Seq(), l.map(lit => (lit.left, lit.right)))(sig)
-    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+  final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
+    leo.modules.Utility.myAssert(l.forall(a => !a.polarity))
+    val (subst, simpRes) = uniLitSimp0(Vector(), l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    (subst, simpResAsLits)
   }
   /** Given a unification literal `l` where `l = [a,b]^f`
     * this method returns a sequence of literals (l_i) where each l_i is a (nested)
     * argument to applications of possibly common head symbols in a and b (Decomp rule).
-    * Also, each l_i has ground type.
     */
-  final def uniLitSimp(l: Literal)(implicit sig: Signature): Seq[Literal] = {
+  final def uniLitSimp(l: Literal)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     assert(!l.polarity)
-    val simpRes = uniLitSimp0(Seq(), Seq((l.left, l.right)))(sig)
-    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    val (subst, simpRes) = uniLitSimp0(Vector(), Vector((l.left, l.right)), Subst.id)(sig)
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    (subst, simpResAsLits)
   }
 
   @tailrec
-  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)])(sig: Signature): Seq[(Term, Term)] = {
-    if (unprocessed.isEmpty) processed
+  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)], subst: TypeSubst)(sig: Signature): (TypeSubst, Seq[(Term, Term)]) = {
+    if (unprocessed.isEmpty) (subst, processed)
     else {
       val hd = unprocessed.head
       val left = hd._1; val right = hd._2
@@ -720,14 +720,10 @@ object Simp extends CalculusRule {
             val tySubst = tyUniResult.get
             leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
             val newUnprocessed = (newEqs ++ processed).map{case (l,r) => (l.substitute(Subst.id, tySubst), r.substitute(Subst.id, tySubst))}
-            uniLitSimp0(Seq(), newUnprocessed)(sig)
-          } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
-          // TODO: Check if we can solve typed equations without looking at all literals again
-          // (e.g. substitution of types within other terms may render them type-incorrect?
-
-//          uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
-        } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)(sig)
-      } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
+            uniLitSimp0(Seq(), newUnprocessed, subst.comp(tySubst))(sig)
+          } else uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
+        } else uniLitSimp0(processed, newEqs ++ unprocessed.tail, subst)(sig)
+      } else uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
     }
   }
 
