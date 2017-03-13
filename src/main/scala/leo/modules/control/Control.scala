@@ -257,6 +257,8 @@ package inferenceControl {
                 else ClauseAnnotation.PropNeedsUnification
                 val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
                 Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                myAssert(Clause.wellTyped(newCl), "paramod not well-typed")
+                myAssert(uniqueFVTypes(newCl), "not unique free var types")
                 results = results + newClWrapper
               }
             }
@@ -491,13 +493,16 @@ package inferenceControl {
       // if it cannot be simplied, drop clause
       // 2 if unifiable, reunify again with all literals (simplified)
       if (uniResult0.isEmpty) {
+        Out.finest(s"Unification failed, but looking for uni simp.")
         if (!uniLit.polarity) {
           val simpResult = Simp.uniLitSimp(uniLit)(sig)
+          Out.finest(s"Unification simp: ${simpResult.map(_.pretty)}")
           if (simpResult.size == 1 && simpResult.head == uniLit) Set()
           else {
             val resultClause = Clause(cl.lits.init ++ simpResult)
             val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
             Out.finest(s"No unification, but Uni Simp result: ${res.pretty(sig)}")
+            myAssert(Clause.wellTyped(res.cl), "uniSimp not well-typed")
             Set(res)
           }
         } else Set()
@@ -999,6 +1004,7 @@ package inferenceControl {
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
         val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else

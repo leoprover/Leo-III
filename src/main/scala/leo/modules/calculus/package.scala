@@ -242,4 +242,9 @@ package object calculus {
       case _ => false
     }
   }
+
+  final def uniqueFVTypes(cl: Clause): Boolean = {
+    val fvs = cl.implicitlyBound
+    fvs.size == fvs.toSet.size
+  }
 }

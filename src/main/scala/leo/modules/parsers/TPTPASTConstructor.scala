@@ -631,6 +631,8 @@ object TPTPASTConstructor {
       thf.BinType(thfMappingType(ctx.thf_mapping_type()))
     } else if (ctx.thf_unitary_type() != null) {
       thfUnitaryType(ctx.thf_unitary_type())
+    } else if (ctx.thf_apply_type() != null) {
+      thfApply(ctx.thf_apply_type().thf_apply_formula())
     } else throw new IllegalArgumentException
   }
   final def thfUnitaryType(typ: tptpParser.Thf_unitary_typeContext): thf.LogicFormula = {

@@ -715,29 +715,17 @@ object Simp extends CalculusRule {
       if (HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)) {
         val (newEqs, tyEqs) = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
         if (tyEqs.nonEmpty) {
+          val tyUniResult = TypeUnification(tyEqs)
+          if (tyUniResult.isDefined) {
+            val tySubst = tyUniResult.get
+            leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
+            val newUnprocessed = (newEqs ++ processed).map{case (l,r) => (l.substitute(Subst.id, tySubst), r.substitute(Subst.id, tySubst))}
+            uniLitSimp0(Seq(), newUnprocessed)(sig)
+          } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
           // TODO: Check if we can solve typed equations without looking at all literals again
           // (e.g. substitution of types within other terms may render them type-incorrect?
-//          // Solve all tyEqs
-//          val tyEqsIt = tyEqs.iterator
-//          var tyUniConflict = false
-//          var tyUniSubst = Subst.id
-//          while (tyEqsIt.hasNext && !tyUniConflict) {
-//            val (tyLeft, tyRight) = tyEqsIt.next()
-//            val adjustedLeft = tyLeft.substitute(tyUniSubst)
-//            val adjustedRight = tyRight.substitute(tyUniSubst)
-//            val uniResult = HuetsPreUnification.unify(adjustedLeft, adjustedRight)
-//            if (uniResult.isDefined) {
-//              tyUniSubst = tyUniSubst.comp(uniResult.get)
-//            } else {
-//              // conflict, abort processing of hd
-//              tyUniConflict = true
-//            }
-//          }
-//          if (tyUniConflict) uniLitSimp0(hd +: processed, unprocessed.tail)
-//          else {
-//            ???
-//          }
-          uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
+
+//          uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
         } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)(sig)
       } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
     }
