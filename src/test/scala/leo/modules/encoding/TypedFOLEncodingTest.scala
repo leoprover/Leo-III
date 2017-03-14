@@ -23,7 +23,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -47,7 +47,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -74,7 +74,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -100,7 +100,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -129,7 +129,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -159,7 +159,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -188,7 +188,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -224,7 +224,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -257,7 +257,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -295,29 +295,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("q", TypedFOLEncoding.foTransformType(o ->: o, result(q))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig))
-    foSig.addUninterpreted("b", TypedFOLEncoding.foTransformType(o, result(b))(sig, foSig))
-    foSig.addUninterpreted("r", TypedFOLEncoding.foTransformType((o ->: o) ->: o, result(r))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -332,7 +326,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -355,7 +349,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -366,14 +360,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -388,7 +375,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -411,7 +398,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
@@ -422,14 +409,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -445,7 +425,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -472,26 +452,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(i ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("r", TypedFOLEncoding.foTransformType((i ->: o) ->: o, result(r))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -508,7 +485,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -540,27 +517,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig))
-    foSig.addUninterpreted("b", TypedFOLEncoding.foTransformType(o, result(b))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -576,7 +549,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -587,7 +560,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     assert(pType == foSig.boolTy ->: TypedFOLEncodingSignature.o)
     val qType = TypedFOLEncoding.foTransformType(i ->: o, result(q))(sig, foSig)
     println(qType.pretty(foSig))
-    assert(qType == TypedFOLEncodingSignature.i ->: foSig.boolTy)
+    assert(qType == foSig.funTy(TypedFOLEncodingSignature.i, foSig.boolTy))
 
     Utility.printSignature(foSig)
   }
@@ -604,26 +577,25 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
+    printTable(result)
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("q", TypedFOLEncoding.foTransformType(i ->: o, result(q))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol) {
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      }
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
-    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, LambdaElimStrategy_SKI(foSig))(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -639,7 +611,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -647,7 +619,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     val pType = TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig)
     println(pType.pretty(foSig))
-    assert(pType == foSig.boolTy ->: foSig.boolTy)
+    assert(pType == foSig.boolTy ->: o)
     val aType = TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig)
     println(aType.pretty(foSig))
     assert(aType == foSig.boolTy)
@@ -668,26 +640,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(o ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(o, result(a))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -705,7 +674,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -736,26 +705,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(Type.mkType(list, i) ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(Type.mkType(list, i), result(a))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -773,7 +739,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -804,26 +770,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(Type.mkType(list, o) ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(Type.mkType(list, o), result(a))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -842,7 +805,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -877,27 +840,23 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(Type.mkType(list, o) ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(Type.mkType(list, o), result(a))(sig, foSig))
-    foSig.addUninterpreted("add", TypedFOLEncoding.foTransformType(o ->: Type.mkType(list, o) ->: Type.mkType(list, o), result(add))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -918,7 +877,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -958,34 +917,28 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(Type.mkType(list, ty) ->: o, result(p))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(Type.mkType(list, ty), result(a))(sig, foSig))
-    foSig.addUninterpreted("xx", TypedFOLEncoding.foTransformType(ty, result(x))(sig, foSig))
-    foSig.addUninterpreted("add", TypedFOLEncoding.foTransformType(ty ->: Type.mkType(list, ty) ->: Type.mkType(list, ty), result(add))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(escape(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
   test("Type encoder Test 15", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", Type.∀(1 ->: o))
@@ -995,7 +948,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -1010,7 +963,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 15", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", Type.∀(1 ->: o))
@@ -1021,31 +973,28 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(Type.∀(1 ->: o), result(p))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
   test("Type encoder Test 16", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", Type.∀((Type.mkVarType(1) ->: Type.mkVarType(1)) ->: 1 ->: o))
@@ -1057,7 +1006,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
 
     printTable(result)
     // new signature for encoded problem
@@ -1078,7 +1027,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 16", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", Type.∀((Type.mkVarType(1) ->: Type.mkVarType(1)) ->: 1 ->: o))
@@ -1091,33 +1039,28 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("q", TypedFOLEncoding.foTransformType(sig(q)._ty, result(q))(sig, foSig))
-    foSig.addUninterpreted("xx", TypedFOLEncoding.foTransformType(sig(x)._ty, result(x))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(escape(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
   test("Problem encoder Test 17", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i) ->: o)
@@ -1128,11 +1071,16 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1140,14 +1088,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1157,7 +1098,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 18", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
@@ -1168,11 +1108,16 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1180,14 +1125,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1196,7 +1134,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
   }
   test("Problem encoder Test 19", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
@@ -1208,14 +1145,18 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
     printTable(result)
     println(TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1223,14 +1164,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1240,7 +1174,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 20", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
@@ -1255,15 +1188,19 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(f0.pretty(sig))
     assert(Term.wellTyped(f0))
 
-    val result = EncodingAnalyzer.analyze(f0)
+    val result = EncodingAnalyzer.analyzeFormula(f0)
     printTable(result)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
     println(TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f0, le)(sig, foSig)
@@ -1272,14 +1209,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1289,7 +1219,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 21", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i) ->: o)
@@ -1301,13 +1230,17 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1316,14 +1249,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1333,7 +1259,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 22", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", ((i ->: i) ->: i) ->: o)
@@ -1345,13 +1270,17 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1360,14 +1289,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1377,7 +1299,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 23", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", ((i ->: i) ->: i) ->: o)
@@ -1389,13 +1310,17 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1404,14 +1329,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1421,7 +1339,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 24", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i) ->: o)
@@ -1434,14 +1351,17 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(sig(a)._ty, result(a))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1450,14 +1370,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
@@ -1467,7 +1380,6 @@ class TypedFOLEncodingTest extends LeoTestSuite {
 
   test("Problem encoder Test 25", Checked) {
     implicit val sig: Signature = getFreshSignature
-    import leo.datastructures.Kind.*
 
     // Introduced symbols to signature
     val p = sig.addUninterpreted("p", (i ->: i) ->: o)
@@ -1480,14 +1392,17 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
 
-    foSig.addUninterpreted("p", TypedFOLEncoding.foTransformType(sig(p)._ty, result(p))(sig, foSig))
-    foSig.addUninterpreted("p2", TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
-    foSig.addUninterpreted("a", TypedFOLEncoding.foTransformType(sig(a)._ty, result(a))(sig, foSig))
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
 
     val le = LambdaElimStrategy_SKI.apply(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
@@ -1496,18 +1411,76 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     Utility.printSignature(foSig)
     assert(Term.wellTyped(translateResult))
 
-    println(s"Additional axioms: ${foSig.usedAuxSymbols.toString()}")
-    for (a <- foSig.usedAuxSymbols) {
-      val axiom = foSig.proxyAxiom(a)
-      if (axiom.isDefined) {
-        println(axiom.get.pretty(foSig))
-        assert(Term.wellTyped(axiom.get))
-      }
-    }
+    proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
       assert(Term.wellTyped(a))
     }
+    println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+
+  test("Problem encoder Test 26", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val vargen = leo.modules.calculus.freshVarGenFromBlank
+    val X = vargen(i ->: i)
+    val p = sig.addUninterpreted("p", i->: o)
+    val c = sig.addUninterpreted("c", i)
+
+    // create formulae
+    val f1 = Input.readFormula("![X:$i>$i]: (p @ (X @ c))")
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+    println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 27", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val vargen = leo.modules.calculus.freshVarGenFromBlank
+    val X = vargen(i ->: i)
+    val p = sig.addUninterpreted("p", i->: o)
+    val c = sig.addUninterpreted("c", i)
+
+    // create formulae
+    val f1 = Term.mkTermApp(Term.mkAtom(p)(sig), Term.mkTermApp(X, Term.mkAtom(c)(sig)))
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    Utility.printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
     println(ToTFF(leo.modules.Utility.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
@@ -1517,6 +1490,15 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     for (entry <- table) {
       val (id, (arity, subterm)) = entry
       println(s"${sig(id).name}\t|\t$arity\t|\t$subterm")
+    }
+  }
+
+  final def proxyAxiomCheck(foSig: TypedFOLEncodingSignature): Unit = {
+    println(s"Additional axioms: ${foSig.proxiesUsed.toString()}")
+    for (a <- foSig.proxiesUsed) {
+      val axiom = foSig.proxyAxiomOf(a)
+      println(axiom.pretty(foSig))
+      assert(Term.wellTyped(axiom))
     }
   }
 }

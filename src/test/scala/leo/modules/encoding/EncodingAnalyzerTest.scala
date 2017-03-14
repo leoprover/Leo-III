@@ -23,7 +23,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     assert(result.contains(a))
     assert(result.contains(p))
@@ -48,7 +48,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     assert(result.contains(a))
     assert(result.contains(b))
@@ -76,7 +76,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     assert(result.contains(a))
     assert(result.contains(b))
@@ -110,7 +110,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
 
     assert(Term.wellTyped(f1))
 
-    val result = EncodingAnalyzer.analyze(f1)
+    val result = EncodingAnalyzer.analyzeFormula(f1)
     printTable(result)
     assert(result.contains(a))
     assert(result.contains(p))
