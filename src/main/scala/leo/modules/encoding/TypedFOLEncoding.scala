@@ -38,7 +38,19 @@ object TypedFOLEncoding {
         foSig.addUninterpreted(escape(fMeta.name), foType)
       }
     }
-    leo.modules.Utility.printSignature(foSig)
+    if (foSig.exists(safeName(TypedFOLEncodingSignature.boolTy_name))) {
+      val trueProxy = TypedFOLEncodingSignature.proxyOf("$true")
+      val falseProxy = TypedFOLEncodingSignature.proxyOf("$false")
+      if (!foSig.exists(trueProxy)) {
+        val id = foSig.addUninterpreted(trueProxy, foSig.boolTy)
+        proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
+      }
+      if (!foSig.exists(falseProxy)) {
+        val id = foSig.addUninterpreted(falseProxy, foSig.boolTy)
+        proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
+      }
+    }
+//    leo.modules.Utility.printSignature(foSig)
     // Translate
     val lambdaEliminator = les(foSig)
     val resultProblem: Problem = problem.map(translate(_, lambdaEliminator)(sig, foSig))
@@ -336,8 +348,8 @@ object TypedFOLEncoding {
           case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => assert(false); f
         }
-        println(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
-        println(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
+//        println(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
+//        println(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
