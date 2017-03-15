@@ -70,8 +70,13 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // I combinator
   ////////////
+  /** The name of combinator I.
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_I]] */
   final val combinator_I_name: String = "comb_I"
-  private final lazy val combinator_I_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_I_name), ∀(funTy(Xty,Xty)))}
+  /** Combinator I's type:  `∀a. fun(a,a)`
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_I]] */
+  final lazy val combinator_I_type: Type = ∀(funTy(Xty,Xty))
+  private final lazy val combinator_I_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_I_name), combinator_I_type)}
   /** Curry I combinator given by `I x = x`. */
   final lazy val combinator_I: Term = {
     val id = combinator_I_key
@@ -83,23 +88,40 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // K combinator
   ////////////
+  /** The name of combinator K.
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
   final val combinator_K_name: String = "comb_K"
-  private final lazy val combinator_K_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_K_name), ∀(∀(funTy(Xty,funTy(Yty, Xty)))))}
-  /** Curry K combinator given by `K x y = x`.
-    * `K :: ∀x.∀y. y -> $$fun(x,y)` (`->` only used for readibility. Encoded using $$fun(.)).*/
+  /** Combinator K's type: `∀a.∀b. fun(a,fun(b,a))`
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
+  final lazy val combinator_K_type: Type = ∀(∀(funTy(Yty,funTy(Xty, Yty))))
+  private final lazy val combinator_K_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_K_name), combinator_K_type)}
+  /** Curry K combinator given by `K x y = x`, where
+    * `K : ∀a.∀b. fun(a,fun(b,a))` */
   final lazy val combinator_K: Term = {
     val id = combinator_K_key
     usedSymbols += id
     mkAtom(id)(sig)
   }
-  final def K(ty1: Type, ty2: Type, arg: Term): Term = hApp(mkTypeApp(combinator_K, Seq(ty1, ty2)),arg)
+  final def K(ty1: Type, ty2: Type, arg: Term): Term = {
+    println("application of K")
+    println(s"ty1: ${ty1.pretty}")
+    println(s"ty2: ${ty2.pretty}")
+    println(s"arg: ${arg.pretty}")
+    println(s"K instance type: ${mkTypeApp(combinator_K, Seq(ty1, ty2)).ty.pretty}")
+
+    hApp(mkTypeApp(combinator_K, Seq(ty1, ty2)),arg)
+  }
 
   ////////////
   // S combinator
   ////////////
+  /** The name of combinator S.
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
   final val combinator_S_name: String = "comb_S"
-  private final lazy val combinator_S_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_S_name),
-    ∀(∀(∀(funTy(funTy(Zty,funTy(Xty,Yty)), funTy(funTy(Zty, Xty),funTy(Zty,Yty)))))))}
+  /** Combinator S's type:  `∀a.∀b.∀c. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_S]] */
+  final lazy val combinator_S_type: Type = ∀(∀(∀(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(funTy(Zty, Yty),funTy(Zty, Xty))))))
+  private final lazy val combinator_S_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_S_name),combinator_S_type)}
   /** Curry S combinator given by `S x y z = x z (y z)`. */
   final lazy val combinator_S: Term = {
     val id = combinator_S_key
@@ -113,11 +135,15 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // B combinator
   ////////////
+  /** The name of combinator B.
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_B]] */
   final val combinator_B_name: String = "comb_B"
-  private final lazy val combinator_B_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_B_name),
-    ∀(∀(∀(funTy(funTy(Xty, Yty), funTy(funTy(Zty, Xty),funTy(Zty, Yty)))))))}
-  /** Curry B combinator given by `B x y z = x (y z)`.
-    * `B :: ∀z.∀y.∀x. $$fun(x,y) -> $$fun(z,x) -> $$fun(z,y)` (`->` only used for readibility. Encoded using $$fun(.)). */
+  /** Combinator B's type:  `∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_B]] */
+  final lazy val combinator_B_type: Type = ∀(∀(∀(funTy(funTy(Yty,Xty),funTy(funTy(Zty,Yty),funTy(Zty,Xty))))))
+  private final lazy val combinator_B_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_B_name),combinator_B_type)}
+  /** Curry B combinator given by `B x y z = x (y z)` where
+    * `B: ∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`. */
   final lazy val combinator_B: Term = {
     val id = combinator_B_key
     usedSymbols += id
@@ -130,9 +156,13 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   ////////////
   // C combinator
   ////////////
+  /** The name of combinator C.
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_C]] */
   final val combinator_C_name: String = "comb_C"
-  private final lazy val combinator_C_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_C_name),
-    ∀(∀(∀(funTy(funTy(Zty,funTy(Xty,Yty)), funTy(Zty,funTy(Xty,Yty)))))))}
+  /** Combinator C's type:  `∀a.∀b.∀c. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
+    * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_C]] */
+  final lazy val combinator_C_type: Type = ∀(∀(∀(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(Yty, funTy(Zty, Xty))))))
+  private final lazy val combinator_C_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_C_name),combinator_C_type)}
   /** Curry C combinator given by `C x y z = x z y`. */
   final lazy val combinator_C: Term = {
     val id = combinator_C_key
@@ -166,7 +196,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     * it is assumed that absBody was already recursively transformed to FO. Hence,
     * terms need not to be converted again. */
   def eliminateLambdaNewShallow(absType: Type, absBody: Term)(holSignature: Signature): Term = {
-//    println(s"[S] ${absType.pretty(holSignature)} :::> ${absBody.pretty(sig)}")
+    println(s"[S] ${absType.pretty(holSignature)} :::> ${absBody.pretty(sig)}")
     import leo.datastructures.Term._
     import leo.modules.encoding.TypedFOLEncoding.foTransformType0
     import leo.datastructures.Type.ComposedType
@@ -174,9 +204,10 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
       case Bound(`absType`, 1) => //println("[S] I")
         I(foTransformType0(absType, true)(holSignature, sig))
       case _ if !free(absBody, 1) =>
-//        println("[S] K")
+        println("[S] K")
         val translatedTy = foTransformType0(absType, true)(holSignature, sig)
-        K(translatedTy, absBody.ty, absBody)
+        println(s"translatedTy: ${translatedTy.pretty(sig)}")
+        K(absBody.ty, translatedTy, absBody)
       case f ∙ args =>
         val lastArg = args.last
         if (lastArg.isLeft) {
@@ -197,35 +228,38 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
           val allButLastArgCoDomainType = tyargs(1)
           val allButLastArgDomainType = tyargs.head
 
-//          println(s"[S] head: " + f.pretty(sig))
-//          println("[S] allButLastArg: " + allButLastArg.pretty(sig))
-//          println("[S] lastArg: " + termLastArg.pretty(sig))
+          println(s"[S] head: " + f.pretty(sig))
+          println("[S] allButLastArg: " + allButLastArg.pretty(sig))
+          println("[S] lastArg: " + termLastArg.pretty(sig))
           if (!free(allButLastArg, 1)) {
             // eta or B
             if (termLastArg.isVariable && Bound.unapply(termLastArg).get._2 == 1) {
-//              println("[S] eta")
+              println("[S] eta")
               allButLastArg.lift(-1)
             } else {
-//              println("[S] B")
+              println("[S] B")
+//              `∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
               val translatedTy = foTransformType0(absType, true)(holSignature, sig)
               val translatedAllButLastArg = allButLastArg.lift(-1)
               val translatedTermLastArg = eliminateLambdaNewShallow(absType, termLastArg)(holSignature)
-              B(translatedTy, allButLastArgCoDomainType, allButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+              B(translatedTy, allButLastArgDomainType, allButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {
             // C
-//            println("[S] C")
+            println("[S] C")
+            // `∀a.∀b.∀c. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArg = eliminateLambdaNewShallow(absType,allButLastArg)(holSignature)
             val translatedTermLastArg = termLastArg.lift(-1)
-            C(translatedTy, allButLastArgCoDomainType, allButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+            C(translatedTy, allButLastArgDomainType, allButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
           } else { // occurs in both free
             // S
-//            println(s"[S] S")
+            println(s"[S] S")
+//            `∀a.∀b.∀c. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArg = eliminateLambdaNewShallow(absType,allButLastArg)(holSignature)
             val translatedTermLastArg = eliminateLambdaNewShallow(absType,termLastArg)(holSignature)
-            S(translatedTy, allButLastArgCoDomainType, allButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+            S(translatedTy, allButLastArgDomainType, allButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
           }
         } else {
           ???
@@ -240,62 +274,63 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   def eliminateLambdaNew0(absType: Type, absBody: Term)(holSignature: Signature): Term = {
     import leo.datastructures.Term._
     import leo.modules.encoding.TypedFOLEncoding.foTransformType0
-//    println(s"eliminateLambdaNew0: ${absType.pretty(holSignature)} :::> ${absBody.pretty(holSignature)}")
+    println(s"eliminateLambdaNew0: ${absType.pretty(holSignature)} :::> ${absBody.pretty(holSignature)}")
     absBody match {
-      case Bound(`absType`, 1) => println("I")
+      case Bound(`absType`, 1) =>
+        println("I")
         I(foTransformType0(absType, true)(holSignature, sig))
       case _ if !free(absBody, 1) =>
-//        println("K")
+        println("K")
         val translatedTy = foTransformType0(absType, true)(holSignature, sig)
         val translatedBody = eliminateLambdaNew(absBody.lift(-1))(holSignature)
-        K(translatedTy, translatedBody.ty, translatedBody)
+        K(translatedBody.ty, translatedTy, translatedBody)
       case f ∙ args =>
         val lastArg = args.last
         if (lastArg.isLeft) {
           val termLastArg = lastArg.left.get
           val allButLastArg = Term.mkApp(f, args.init)
-//          println(s"head: " + f.pretty(holSignature))
-//          println("allButLastArg: " + allButLastArg.pretty(holSignature))
-//          println(s"matches not: ${leo.modules.HOLSignature.Not.unapply(absBody).isDefined}")
-//          println(s"matches not: ${leo.modules.HOLSignature.Not.unapply(allButLastArg).isDefined}")
-//          println("lastArg: " + termLastArg.pretty(holSignature))
+          println(s"head: " + f.pretty(holSignature))
+          println("allButLastArg: " + allButLastArg.pretty(holSignature))
+          println(s"matches not: ${leo.modules.HOLSignature.Not.unapply(absBody).isDefined}")
+          println(s"matches not: ${leo.modules.HOLSignature.Not.unapply(allButLastArg).isDefined}")
+          println("lastArg: " + termLastArg.pretty(holSignature))
           if (!free(allButLastArg, 1)) {
             // eta or B
             if (termLastArg.isVariable && Bound.unapply(termLastArg).get._2 == 1) {
-//              println("eta")
+              println("eta")
               eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
             } else {
-//              println("B")
+              println("B")
               assert(termLastArg.ty == allButLastArg.ty._funDomainType)
               val translatedTy = foTransformType0(absType, true)(holSignature, sig)
               val translatedAllButLastArgCoDomainType = foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
               val translatedAllButLastArgDomainType = foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
               val translatedAllButLastArg = eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
               val x = λ(absType)(termLastArg)
-//              println("lambda stuf " + x.pretty(holSignature))
+              println("lambda stuf " + x.pretty(holSignature))
               val translatedTermLastArg = eliminateLambdaNew(x)(holSignature)
-              B(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+              B(translatedTy, translatedAllButLastArgDomainType, translatedAllButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {
             // C
-//            println(s"C")
+            println(s"C")
             assert(termLastArg.ty == allButLastArg.ty._funDomainType)
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArgCoDomainType = foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
             val translatedAllButLastArgDomainType = foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
             val translatedAllButLastArg = eliminateLambdaNew(λ(absType)(allButLastArg))(holSignature)
             val translatedTermLastArg = eliminateLambdaNew(termLastArg.lift(-1))(holSignature)
-            C(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+            C(translatedTy, translatedAllButLastArgDomainType, translatedAllButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
           } else { // occurs in both free
             // S
-//            println(s"S")
+            println(s"S")
             assert(termLastArg.ty == allButLastArg.ty._funDomainType)
             val translatedTy = foTransformType0(absType, true)(holSignature, sig)
             val translatedAllButLastArgCoDomainType = foTransformType0(allButLastArg.ty.codomainType, true)(holSignature, sig)
             val translatedAllButLastArgDomainType = foTransformType0(allButLastArg.ty._funDomainType, true)(holSignature, sig)
             val translatedAllButLastArg = eliminateLambdaNew(λ(absType)(allButLastArg))(holSignature)
             val translatedTermLastArg = eliminateLambdaNew(λ(absType)(termLastArg))(holSignature)
-            S(translatedTy, translatedAllButLastArgCoDomainType, translatedAllButLastArgDomainType, translatedAllButLastArg, translatedTermLastArg)
+            S(translatedTy, translatedAllButLastArgDomainType, translatedAllButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
           }
         } else {
           ???
@@ -314,28 +349,36 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   override def getAuxiliaryDefinitions: Set[Term] = {
     var result: Set[Term] = Set.empty
     for (usedSymbol <- usedSymbols) {
-      result += axioms(usedSymbol)
+      result += axiomOf(usedSymbol)
     }
     result
   }
 
-  private final lazy val axioms: Map[Signature#Key, Term] = {
-    val X: Term = Term.mkBound(Xty,1)
-    val Y: Term = Term.mkBound(Yty,2)
-    val Z: Term = Term.mkBound(Zty,3)
+  private final def axiomOf(comb: Signature#Key): Term = {
+    import Term.local.mkBound
+    val X: Term = mkBound(Xty,1)
+    val Y: Term = mkBound(Yty,2)
+    val Z: Term = mkBound(Zty,3)
     import TypedFOLEncodingSignature._
-    Map(
-      combinator_I_key -> Eq(hApp(I(Xty), X), X),
-      combinator_K_key -> Eq(hApp(K(Xty, Yty, Y), X),Y),
-      combinator_S_key -> Eq(hApp(S(Zty, Yty, Xty, Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Term.mkBound(funTy(Zty, Xty), 2)), Term.mkBound(Zty, 3)),
-        hApp(Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Seq(Term.mkBound(Zty, 3), hApp(Term.mkBound(funTy(Zty, Xty), 2), Term.mkBound(Zty, 3))))),
-      combinator_B_key -> Eq(hApp(B(Zty, Yty, Xty, Term.mkBound(funTy(Xty, Yty), 1), Term.mkBound(funTy(Zty, Xty),2)), Term.mkBound(Zty, 3)),
-        hApp(Term.mkBound(funTy(Xty, Yty), 1), hApp(Term.mkBound(funTy(Zty, Xty),2), Term.mkBound(Zty, 3)))),
-      combinator_C_key -> Eq(hApp(C(Zty, Yty, Xty, Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Term.mkBound(Zty, 2)), Term.mkBound(Xty,3)),
-        hApp(Term.mkBound(funTy(Zty,funTy(Xty,Yty)), 1), Seq(Term.mkBound(Zty, 2),Term.mkBound(Xty,3))))
-    )
+    val combName = sig(comb).name
+    deSafeName(combName) match {
+      case `combinator_I_name` => Eq(hApp(I(Xty), X), X)
+      case `combinator_K_name` => Eq(hApp(K(Yty, Xty, Y), X), Y)
+      case `combinator_S_name` => Eq( // `S x y z = x z (y z)`
+        hApp(S(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)),3), mkBound(funTy(Zty, Yty),2)), mkBound(Zty,1)),
+        hApp(mkBound(funTy(Zty, funTy(Yty, Xty)),3),Seq(mkBound(Zty,1), hApp(mkBound(funTy(Zty, Yty),2), mkBound(Zty, 1))))
+      )
+      case `combinator_B_name` => Eq(
+        hApp(B(Zty, Yty, Xty, mkBound(funTy(Yty, Xty), 3), mkBound(funTy(Zty, Yty), 2)), mkBound(Zty,1)),
+        hApp(mkBound(funTy(Yty, Xty), 3),hApp(mkBound(funTy(Zty, Yty), 2),mkBound(Zty,1)))
+      )
+      case `combinator_C_name` => Eq(
+        hApp(C(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)), 3), mkBound(Yty,2)), mkBound(Zty,1)),
+        hApp(mkBound(funTy(Zty, funTy(Yty, Xty)), 3), Seq(mkBound(Zty,1), mkBound(Yty,2)))
+      )
+      case _ => throw new IllegalArgumentException
+    }
   }
-  // ∀(∀(∀(funTy(funTy(Zty,funTy(Xty,Yty)), funTy(Zty,funTy(Xty,Yty))))))
 }
 
 protected[encoding] class LambdaElim_Turner(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {

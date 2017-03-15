@@ -264,8 +264,8 @@ object TypedFOLEncoding {
         val tyArgsApplied = mkTypeApp(encodedHead, translatedTyArgs)
         val directArgsApplied = mkTermApp(tyArgsApplied, directArgs)
         val allApplied = encodingSignature.hApp(directArgsApplied, indirectArgs)
-        assert(allApplied.ty == o || allApplied.ty == encodingSignature.boolTy)
-        if (allApplied.ty == encodingSignature.boolTy) encodingSignature.hBool(allApplied)
+        leo.modules.Utility.myAssert(allApplied.ty == o || allApplied.ty == encodingSignature.boolTy)
+        if (allApplied.ty != o) encodingSignature.hBool(allApplied)
         else allApplied
       // Standard-case end, error cases follow
       case _ :::> _ => throw new IllegalArgumentException("naked lambda at top level")//les.eliminateLambda(lambda)(holSignature)
@@ -698,6 +698,14 @@ trait TypedFOLEncodingSignature extends Signature {
     val (id, tyArgs) = Type.ComposedType.unapply(fun.ty).get
     assert(id == funTy_id)
     assert(tyArgs.size == 2)
+//    println(s"hApp call")
+//    println(s"fun: ${fun.pretty}")
+//    println(s"funty: ${fun.ty.pretty}")
+//    println(s"arg: ${arg.pretty}")
+//    println(s"argty: ${arg.ty.pretty}")
+//    println(s"fun tyArg(0): ${tyArgs.head.pretty}")
+//    println(s"fun tyArg(1): ${tyArgs.tail.head.pretty}")
+//    println(s"hApp instance: ${mkApp(hApp, Seq(Right(tyArgs.head), Right(tyArgs.tail.head))).ty.pretty}")
     mkApp(hApp, Seq(Right(tyArgs.head), Right(tyArgs.tail.head), Left(fun), Left(arg)))
   }
   @tailrec
