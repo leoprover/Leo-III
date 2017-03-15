@@ -42,7 +42,7 @@ class MonoTFFTest extends LeoTestSuite {
     }
     var i_prob = 0
     encodedProblem.foreach { prob =>
-      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(encodingSig))
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
       i_prob += 1
     }
 

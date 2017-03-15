@@ -23,7 +23,7 @@ object ToTFF {
       sb.append("! [")
       sb.append(tyFvs.reverse.map(i => s"T${intToName(i-1)}:$$tType").mkString(","))
       if (tyFvs.nonEmpty && fvs.nonEmpty) sb.append(",")
-      val (namedFVEnumeration, fvMap) = clauseVarsToTPTP(fvs, typeToTFF)(sig)
+      val (namedFVEnumeration, fvMap) = clauseVarsToTPTP(fvs, typeToTFF0(_, tyFvs.size))(sig)
       sb.append(namedFVEnumeration)
       sb.append("] : (")
       fvMap
@@ -48,9 +48,9 @@ object ToTFF {
       else formulaToTFF(fvMap, tyFvCount, lit.left)(sig)
     } else {
       if (lit.polarity)
-        s"${termToTFF(fvMap, lit.left)(sig)} = ${termToTFF(fvMap, lit.right)(sig)}"
+        s"${termToTFF(fvMap, tyFvCount, lit.left)(sig)} = ${termToTFF(fvMap, tyFvCount, lit.right)(sig)}"
       else
-        s"${termToTFF(fvMap, lit.left)(sig)} != ${termToTFF(fvMap, lit.right)(sig)}"
+        s"${termToTFF(fvMap, tyFvCount, lit.left)(sig)} != ${termToTFF(fvMap, tyFvCount, lit.right)(sig)}"
     }
   }
 
@@ -76,19 +76,19 @@ object ToTFF {
       case `forall` ∙ _ =>
         val (bVarTys, body) = collectForall(t, forall)
         val newBVars = makeBVarList(bVarTys, fvMap.size)
-        s"! [${newBVars.map{case (name,ty) => s"$name:${typeToTFF(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body)(sig)})"
+        s"! [${newBVars.map{case (name,ty) => s"$name:${typeToTFF0(ty, tyFvCount)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body)(sig)})"
       case `exists` ∙ _ =>
         val (bVarTys, body0) = collectExists(t, exists)
         val newBVars = makeBVarList(bVarTys, fvMap.size)
-        s"? [${newBVars.map{case (name,ty) => s"$name:${typeToTFF(ty)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body0)(sig)})"
+        s"? [${newBVars.map{case (name,ty) => s"$name:${typeToTFF0(ty, tyFvCount)(sig)}"}.mkString(",")}]: (${formulaToTFF(fusebVarListwithMap(newBVars, fvMap), tyFvCount, body0)(sig)})"
       case `tyforall` ∙ _ =>
         val (absCount, body) = collectTyForall(t, tyforall)
         val varlist = (1 to absCount).map(i => intToName(i-1+tyFvCount))
         s"! [${varlist.map{name => s"T$name:$$tType"}.mkString(",")}]: (${formulaToTFF(fvMap, tyFvCount+absCount, body)(sig)})"
       case `equality` ∙ Seq(Right(_), Left(left), Left(right)) =>
-        s"${termToTFF(fvMap, left)(sig)} = ${termToTFF(fvMap, right)(sig)}"
+        s"${termToTFF(fvMap, tyFvCount, left)(sig)} = ${termToTFF(fvMap, tyFvCount, right)(sig)}"
       case `neg_equality` ∙ Seq(Right(_), Left(left), Left(right)) =>
-        s"${termToTFF(fvMap, left)(sig)} != ${termToTFF(fvMap, right)(sig)}"
+        s"${termToTFF(fvMap, tyFvCount, left)(sig)} != ${termToTFF(fvMap, tyFvCount, right)(sig)}"
       case Symbol(id) ∙ args =>
         if (interpretedSymbols.contains(id)) {
           // Formula level (binary/unary)
@@ -113,18 +113,18 @@ object ToTFF {
           val meta = sig(id)
           assert(meta.isUninterpreted)
           if (args.isEmpty) meta.name
-          else s"${meta.name}(${args.map(termOrTypeToTFF(fvMap, _)(sig)).mkString(",")})"
+          else s"${meta.name}(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
         }
       case _ => throw new IllegalArgumentException
     }
   }
 
-  private final def termOrTypeToTFF(fvMap: Map[Int, String],  termOrType: Either[Term, Type])(sig: Signature): String = {
-    if (termOrType.isLeft) termToTFF(fvMap, termOrType.left.get)(sig)
-    else typeToTFF(termOrType.right.get)(sig)
+  private final def termOrTypeToTFF(fvMap: Map[Int, String],  tyFvCount: Int, termOrType: Either[Term, Type])(sig: Signature): String = {
+    if (termOrType.isLeft) termToTFF(fvMap, tyFvCount, termOrType.left.get)(sig)
+    else typeToTFF0(termOrType.right.get, tyFvCount)(sig)
   }
 
-  private final def termToTFF(fvMap: Map[Int, String], t: Term)(sig: Signature): String = {
+  private final def termToTFF(fvMap: Map[Int, String], tyFvCount: Int, t: Term)(sig: Signature): String = {
     import leo.datastructures.Term.{∙, Symbol, Bound}
     val interpretedSymbols = sig.fixedSymbols
     t match {
@@ -133,7 +133,7 @@ object ToTFF {
           if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
           else {
             if (args.isEmpty) sig(id).name
-            else s"${sig(id).name}(${args.map(termOrTypeToTFF(fvMap, _)(sig)).mkString(",")})"
+            else s"${sig(id).name}(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
           }
       case _ => throw new IllegalArgumentException
     }
@@ -160,21 +160,21 @@ object ToTFF {
     import leo.datastructures.Type.∀
     ty match {
       case ∀(_) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
-        s"!> [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ":$tType").mkString(",")}]: (${typeToTFF0(bodyTy)(sig)})"
-      case _ => typeToTFF0(ty)(sig)
+        s"!> [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ":$tType").mkString(",")}]: (${typeToTFF0(bodyTy, tyAbsCount)(sig)})"
+      case _ => typeToTFF0(ty,0)(sig)
     }
   }
 
-  final private def typeToTFF0(ty: Type)(sig: Signature): String = {
+  final private def typeToTFF0(ty: Type, depth: Int)(sig: Signature): String = {
     import leo.datastructures.Type._
 
     ty match {
-      case BoundType(scope) => "T"+intToName(scope-1)
+      case BoundType(scope) => "T"+intToName(depth-scope)
       case BaseType(id) => sig(id).name
-      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF0(_)(sig)).mkString(",")})"
+      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF0(_, depth)(sig)).mkString(",")})"
       case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
-        s"((${paramTypes.init.map(typeToTFF0(_)(sig)).mkString(" * ")}) > ${typeToTFF0(paramTypes.last)(sig)})"
+        s"((${paramTypes.init.map(typeToTFF0(_, depth)(sig)).mkString(" * ")}) > ${typeToTFF0(paramTypes.last, depth)(sig)})"
       case *(l,r) => ???
       case +(l,r) => ???
       case ∀(_) => throw new IllegalArgumentException("Illegal nested polymorphic type detected.")
