@@ -31,6 +31,7 @@ class MonoTFFTest extends LeoTestSuite {
     println("---")
     printSignature(encodingSig)
     assert(encodedProblem.forall(Clause.wellTyped))
+    assert(auxDefs.forall(Clause.wellTyped))
     println("########")
     println(s"aufDefs size: ${auxDefs.size}")
 
@@ -46,7 +47,7 @@ class MonoTFFTest extends LeoTestSuite {
       i_prob += 1
     }
 
-    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem)(encodingSig)
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
 
     println("########")
     println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
@@ -86,6 +87,7 @@ class MonoTFFTest extends LeoTestSuite {
     println("########")
     println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))
+    assert(auxDefs.forall(Clause.wellTyped))
     println("########")
 
     println(leo.modules.output.ToTFF(encodingSig))
@@ -100,13 +102,25 @@ class MonoTFFTest extends LeoTestSuite {
       i_prob += 1
     }
 
-    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem)(encodingSig)
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
 
     println("########")
     println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
     println("---")
     printSignature(monoSig)
-    assert(monoProblem.forall(Clause.wellTyped))
+    monoProblem.foreach(cl =>
+      if (Clause.unit(cl)) {
+        val lit = cl.lits.head
+        if (!lit.equational) {
+          assert(Term.wellTyped(lit.left), s"Non-equational Not well typed: ${lit.left.pretty(monoSig)}")
+        } else {
+          assert(Term.wellTyped(lit.left), s"equational Not well typed: ${lit.left.pretty(monoSig)}")
+          assert(Term.wellTyped(lit.right), s"equational Not well typed: ${lit.right.pretty(monoSig)}")
+          assert(lit.left.ty == lit.right.ty)
+        }
+      }
+      else
+        assert(Clause.wellTyped(cl), s"Not well typed: ${cl.pretty(monoSig)}"))
     println("########")
 
     println(leo.modules.output.ToTFF(monoSig))

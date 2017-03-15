@@ -395,7 +395,7 @@ object HOLSignature {
   val lexProp = lexStatus * Signature.PropStatus
 
   // Built-in types
-  final val types = List(("$tType", superKind),
+  final val types = List(
     ("$o", typeKind),
     ("$i", typeKind),
     ("$real", typeKind),

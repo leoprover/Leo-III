@@ -117,7 +117,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
     assert(result(a)._1 == 0)
     assert(result(p)._1 == 1)
     assert(result(a)._2)
-    assert(result(p)._2)
+    assert(!result(p)._2)
   }
 
 

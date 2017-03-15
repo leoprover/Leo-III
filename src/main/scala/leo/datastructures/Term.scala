@@ -172,7 +172,10 @@ object Term extends TermBank {
     try {
       TermImpl.wellTyped(t.asInstanceOf[TermImpl])
     } catch {
-      case e: NotWellTypedException => false
+      case e: NotWellTypedException =>
+        leo.Out.severe(s"Term ${t.pretty} not well typed:")
+        leo.Out.severe(e.toString)
+        false
     }
   }
 

@@ -17,6 +17,6 @@ class HOLSignatureTest extends LeoTestSuite {
     assertResult(9)(definedConsts.length)
   }
   test("cardinality of type symbols",Checked) {
-    assertResult(6)(types.length)
+    assertResult(5)(types.length)
   }
 }

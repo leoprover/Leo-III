@@ -8,49 +8,77 @@ import scala.annotation.tailrec
   * monomorphic first-order problems.
   */
 object Monomorphization {
+  import scala.collection.mutable
+
   type MonoResult = (Problem, Signature)
+  type Instance = Seq[Type]
+  type InstanceInfo = mutable.Map[Signature#Key, Set[Instance]]
+
   final def apply(problem: Problem)(implicit sig: Signature): (Problem, Signature) = {
     val clsIt = problem.iterator
-    val newSig: Signature = TypedFOLEncodingSignature()
+    val newSig: Signature = Signature.freshWithHOL() // Even if problem is not formulated in HOL
+    // we dont care: Since only non-fixed constants will be printed out and
+    // ids are re-calculated anyway in apply0(term)
     var monoProblem: Problem = Set.empty
+    var polyAxioms: Set[Clause] = Set.empty
+    val instanceInfo: InstanceInfo = mutable.Map()
     while (clsIt.hasNext) {
       val cl = clsIt.next()
-      monoProblem = monoProblem + apply0(cl, newSig)(sig)
+      if (cl.typeVars.isEmpty) monoProblem += apply0(cl, newSig, instanceInfo)(sig)
+      else {
+        polyAxioms += cl
+      }
     }
+    monoProblem = monoProblem union generateMonoAxioms(polyAxioms, instanceInfo, newSig)(sig)
     (monoProblem, newSig)
   }
 
-  private final def apply0(cl: Clause, newSig: Signature)(sig: Signature): Clause = {
-    Clause(cl.lits.map(apply0(_, newSig)(sig)))
+  private final def generateMonoAxioms(polyAxioms: Set[Clause], instanceInfo: InstanceInfo, newSig: Signature)(sig: Signature): Problem = {
+    println(s"Mono instances:")
+    for ((id, instances) <- instanceInfo) {
+      println(s"${sig(id).name}:")
+      println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
+    }
+    println(s"Poly axioms:")
+    for (ax <- polyAxioms) {
+      println("\t" + ax.pretty(sig))
+    }
+
+    Set()
   }
 
-  private final def apply0(lit: Literal, newSig: Signature)(sig: Signature): Literal = {
+  private final def apply0(cl: Clause, newSig: Signature, instanceInfo: InstanceInfo)(sig: Signature): Clause = {
+    Clause(cl.lits.map(apply0(_, newSig, instanceInfo)(sig)))
+  }
+
+  private final def apply0(lit: Literal, newSig: Signature, instanceInfo: InstanceInfo)(sig: Signature): Literal = {
     if (lit.equational) {
-      val newLeft = apply0(lit.left, newSig)(sig)
-      val newRight = apply0(lit.right, newSig)(sig)
+      val newLeft = apply0(lit.left, newSig, instanceInfo)(sig)
+      val newRight = apply0(lit.right, newSig, instanceInfo)(sig)
       Literal.mkLit(newLeft, newRight, lit.polarity)
     } else {
-      Literal.mkLit(apply0(lit.left, newSig)(sig), lit.polarity)
+      Literal.mkLit(apply0(lit.left, newSig, instanceInfo)(sig), lit.polarity)
     }
   }
 
-  private final def apply0(t: Term, newSig: Signature)(implicit sig: Signature): Term = {
+  private final def apply0(t: Term, newSig: Signature, instanceInfo: InstanceInfo)(implicit sig: Signature): Term = {
     import Term._
     t match {
       case (f@Symbol(id)) ∙ args => if (f.ty.isPolyType) {
         val (tyArgs, termArgs) = partitionArgs(args)
         val monoType = f.ty.instantiate(tyArgs)
         val name = monoInstanceName(id, tyArgs)(sig)
+        updateInstanceInfo(instanceInfo, id, tyArgs)
         val newF = if (newSig.exists(name)) local.mkAtom(newSig(name).key)(newSig)
         else local.mkAtom(newSig.addUninterpreted(name, convertType(monoType, sig, newSig)))(newSig)
-        val newArgs = termArgs.map(arg => apply0(arg, newSig))
+        val newArgs = termArgs.map(arg => apply0(arg, newSig, instanceInfo))
         local.mkTermApp(newF, newArgs)
       } else {
         assert(args.forall(_.isLeft), s"not all arguments of ${f.pretty(sig)} (type: ${f.ty.pretty(sig)}) terms in: ${t.pretty(sig)}")
         val name = escape(sig(id).name)
         val newF = if (newSig.exists(name)) local.mkAtom(newSig(name).key)(newSig)
         else local.mkAtom(newSig.addUninterpreted(name, convertType(sig(id)._ty, sig, newSig)))(newSig)
-        val newArgs = args.map(arg => apply0(arg.left.get, newSig))
+        val newArgs = args.map(arg => apply0(arg.left.get, newSig, instanceInfo))
         local.mkTermApp(newF, newArgs)
       }
       case Bound(ty, idx) => local.mkBound(convertType(ty, sig, newSig), idx)
@@ -108,6 +136,15 @@ object Monomorphization {
       case BaseType(id) => sig(id).name.replaceAll("\\$", "D")
       case ComposedType(id, args) => s"${sig(id).name}_${args.map(canonicalTyName(_)(sig)).mkString("_")}"
       case _ => throw new IllegalArgumentException // bound, poly cannot happen, -> types should at this level be encoded to fun
+    }
+  }
+
+  private final def updateInstanceInfo(instanceInfo: InstanceInfo, symbol: Signature#Key, tyArgs: Seq[Type]): Unit = {
+    if (instanceInfo.contains(symbol)) {
+      val entry = instanceInfo(symbol)
+      instanceInfo.+=(symbol -> (entry+tyArgs))
+    } else {
+      instanceInfo.+=(symbol -> Set(tyArgs))
     }
   }
 }
