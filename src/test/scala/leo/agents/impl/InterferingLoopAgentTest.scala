@@ -11,73 +11,81 @@ import leo.datastructures.blackboard._
 class InterferingLoopAgentTest extends LeoTestSuite {
 
   test("Count to 10", Ignored){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     NumberStore.clear()
-    Blackboard().addDS(NumberStore)
-    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(10))
-    incAgent.register()
+    blackboard.addDS(NumberStore)
+    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(10), blackboard)
+    blackboard.registerAgent(incAgent)
+    blackboard.registerAgent(
     new AbstractAgent {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
-
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
-    Scheduler().killAll()
+    scheduler.signal()
+    self.synchronized(while(!done) self.wait())
+    scheduler.killAll()
     assert(NumberStore.getNumber == 10, "Incrementing to 10 should hold 10.")
   }
 
   test("Ripple count to 10", Ignored){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     NumberStore.clear()
-    Blackboard().addDS(NumberStore)
-    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(10))
-    incAgent.register()
-    AnoyingAgent.register()
+    blackboard.addDS(NumberStore)
+    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(10), blackboard)
+    blackboard.registerAgent(incAgent)
+    blackboard.registerAgent(AnoyingAgent)
+    blackboard.registerAgent(
     new AbstractAgent {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
-    Scheduler().killAll()
+    scheduler.signal()
+    self.synchronized{while(!done) self.wait()}
+    scheduler.killAll()
     val n = NumberStore.getNumber
     assert(n == 10 || n == 11 || n == 14, "Incrementing to 10 should hold 10.")
   }
 
   test("Count to 100", Ignored){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     NumberStore.clear()
-    Blackboard().addDS(NumberStore)
-    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(100))
-    incAgent.register()
+    blackboard.addDS(NumberStore)
+    val incAgent = new InterferingLoopAgent[LoopState](new IncrementLoop(100), blackboard)
+    blackboard.registerAgent(incAgent)
+    blackboard.registerAgent(
     new AbstractAgent {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
+    scheduler.signal()
     self.synchronized(self.wait())
-    Scheduler().killAll()
+    scheduler.killAll()
     assert(NumberStore.getNumber == 100, "Incrementing to 100 should hold 100.")
   }
 

@@ -2,8 +2,8 @@ package leo
 
 import leo.datastructures.ClauseProxy
 import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard}
-import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSDataStore}
-import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.blackboard.impl.{AuctionBlackboard, FormulaDataStore, SZSDataStore}
+import leo.datastructures.blackboard.scheduler.{Scheduler, SchedulerImpl}
 import leo.datastructures.context.{BetaSplit, Context}
 import leo.modules.agent.relevance_filter.BlackboardPreFilterSet
 import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
@@ -72,7 +72,6 @@ object TestMain {
 //          Out.trace(Utility.userDefinedSignatureAsString)
         }
       } finally {
-        Scheduler().killAll()
         System.exit(0)
       }
     } else if(Configuration.isSet("exttest")){
@@ -84,7 +83,10 @@ object TestMain {
       SignatureBlackboard.set(sig)
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
-      val TimeOutProcess = new DeferredKill(timeout, timeout)
+      // Blackboard and Scheduler
+      val (blackboard, scheduler) = Blackboard.newBlackboard
+
+      val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
       TimeOutProcess.start()
 
       val interval = 10
@@ -99,21 +101,25 @@ object TestMain {
       }
       Out.comment(s"Configuration: $config")
 
+
+
+
+      // Datastrucutres
       val state = BlackboardState.fresh(sig)
       val uniStore = new UnificationStore[InterleavingLoop.A]()
       val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
-      val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop)
+      val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop, blackboard)
       val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
 
-      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent)(blackboard, scheduler)
 
 
-      Blackboard().addDS(state)
-      Blackboard().addDS(uniStore)
+      blackboard.addDS(state)
+      blackboard.addDS(uniStore)
 
       printPhase(iPhase)
       if(!iPhase.execute()){
-        Scheduler().killAll()
+        scheduler.killAll()
           TimeOutProcess.kill()
           unexpectedEnd(System.currentTimeMillis() - startTime)
           return
@@ -122,7 +128,7 @@ object TestMain {
       TimeOutProcess.kill()
       val endTime = System.currentTimeMillis()
       val time = System.currentTimeMillis() - startTime
-      Scheduler().killAll()
+      scheduler.killAll()
 
 //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
       val szsStatus  = state.state.szsStatus
@@ -130,6 +136,15 @@ object TestMain {
       Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 
 //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+      Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
+      Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
+      Out.comment(s"No. of forward subsumed clauses: ${state.state.noForwardSubsumedCl}")
+      Out.comment(s"No. of backward subsumed clauses: ${state.state.noBackwardSubsumedCl}")
+      Out.comment(s"No. of subsumed descendants deleted: ${state.state.noDescendantsDeleted}")
+      Out.comment(s"No. of rewrite rules in store: ${state.state.rewriteRules.size}")
+      Out.comment(s"No. of other units in store: ${state.state.nonRewriteUnits.size}")
+      Out.comment(s"No. of choice functions detected: ${state.state.choiceFunctionCount}")
+      Out.comment(s"No. of choice instantiations: ${state.state.choiceInstantiations}")
       val proof = state.state.derivationClause
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
@@ -161,12 +176,12 @@ object TestMain {
   }
 
   /**
-    * Thread to kill leo.
+    * Thread to kill leo.Scheduler()
     *
     * @param interval
     * @param timeout
     */
-  private class DeferredKill(interval : Double, timeout : Double) extends Thread {
+  private class DeferredKill(interval : Double, timeout : Double, blackboard: Blackboard, scheduler: Scheduler) extends Thread {
 
     var remain : Double = timeout
     var exit : Boolean = false
@@ -180,8 +195,8 @@ object TestMain {
         exit = true
         this.interrupt()
         Out.finest("Scheduler killed before timeout.")
-        Blackboard().filterAll(_.filter(DoneEvent))
-        Scheduler().killAll()
+        blackboard.filterAll(_.filter(DoneEvent))
+        scheduler.killAll()
       }
     }
 
@@ -197,7 +212,7 @@ object TestMain {
             case _: Throwable => ()
           } finally {
             if(!exit) {
-              Scheduler().signal()
+              scheduler.signal()
               //agentStatus()
               remain -= interval
               Out.finest(s"Leo-III is still working. (Remain=$remain)")
@@ -208,8 +223,8 @@ object TestMain {
         Out.finest(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism
-        Blackboard().filterAll(_.filter(DoneEvent))
-        Scheduler().killAll()
+        blackboard.filterAll(_.filter(DoneEvent))
+        scheduler.killAll()
       }
     }
   }

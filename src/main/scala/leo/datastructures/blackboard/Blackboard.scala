@@ -1,12 +1,18 @@
 package leo.datastructures.blackboard
 
+import leo.Configuration
 import leo.agents.{Agent, Task}
+import leo.datastructures.blackboard.impl.AuctionBlackboard
+import leo.datastructures.blackboard.scheduler.{Scheduler, SchedulerImpl}
 
-// Singleton Blackboards
 object Blackboard {
-  private val single : Blackboard = new impl.AuctionBlackboard()
-
-  def apply() : Blackboard = single
+  def newBlackboard : (Blackboard, Scheduler) = {
+    val bl = new AuctionBlackboard
+    val sc = new SchedulerImpl(Configuration.THREADCOUNT, bl)
+    sc.start()
+    bl.setScheduler(sc)
+    (bl, sc)
+  }
 }
 
 /**
@@ -132,7 +138,7 @@ trait TaskOrganize {
  * The DataBlackboard handels publishing of data structures
  * through the blackboard and the execution interface.
  */
-trait DataBlackboard {
+trait DataBlackboard extends TaskOrganize {
 
   /**
    * Adds a data structure to the blackboard.
@@ -182,8 +188,8 @@ trait DataBlackboard {
     val result = Result().insert(dataType)(d)
     val isNew = getDS(Set(dataType)) exists (ds => ds.updateResult(result)) // TODO forall or exist?
     if(isNew)
-      Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(result).toSet)
+      filterAll{a =>
+        submitTasks(a, a.filter(result).toSet)
       }
     isNew
   }
@@ -201,8 +207,8 @@ trait DataBlackboard {
     val result = Result().update(dataType)(d1)(d2)
     val isNew = getDS(Set(dataType)) exists {ds => ds.updateResult(result)} // TODO forall or exist?
     if(isNew)
-      Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(result).toSet)
+      filterAll{a =>
+        submitTasks(a, a.filter(result).toSet)
       }
     isNew
   }
@@ -218,8 +224,8 @@ trait DataBlackboard {
     val result = Result().remove(dataType)(d)
     val wasDel = getDS(Set(dataType)) exists {d => d.updateResult(result) }
     if(wasDel)
-      Blackboard().filterAll{a =>
-        Blackboard().submitTasks(a, a.filter(result).toSet)
+      filterAll{a =>
+        submitTasks(a, a.filter(result).toSet)
       }
   }
 }

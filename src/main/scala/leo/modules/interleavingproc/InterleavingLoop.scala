@@ -51,7 +51,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
   //TODO Remove after merge with alex
   private val movedToProcessed : mutable.Set[Long] = new mutable.HashSet[Long]
-  private final val importantInferences : Set[CalculusRule] = Set(PatternUni, PreUni, Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
+  final val importantInferences : Set[CalculusRule] = Set(PatternUni, PreUni, Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
@@ -92,9 +92,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     sb.append("-----------------------------------------------------\n\n")
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
     leo.Out.output(sb.toString())
-    if(select.id == 23){
-      println("test")
-    }
     // The normal loop from seqpproc
     commonFilter(select)
   }
@@ -117,10 +114,8 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       // Check if `cur` is an empty clause
       if (Clause.effectivelyEmpty(cur.cl)) {
         if (state.conjecture == null) {
-          println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Contradiction found")
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(cur))))}
         else {
-          println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Theorem found")
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
       } else {
         // Not an empty clause, detect choice definition or do reasoning step.
@@ -145,7 +140,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       }
     }
     else {
-      println(s"Renoremalizing ${c} =>\n  ${curCNF.map(_.pretty(sig)).mkString("\n   ")}")
       return Some(new StateView(c, cur, Set(), Set(), None, false, Set(), Map(), curCNF))
     }
   }
@@ -210,13 +204,18 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     result.insert(ProcessedClause)(Control.rewriteSimp(opState.select, opState.actRewrite))  // TODO Store this simplified version?
     // Remove backward subsumed
     val subIt : Iterator[InterleavingLoop.A] = opState.subsumed.iterator
-    while(subIt.hasNext)
+    while(subIt.hasNext) {
       result.remove(ProcessedClause)(subIt.next())
-
+    }
 
     // Otherwise do real work
     val cur = opState.processedSelect
-    val rewrite = opState.actRewrite
+
+    val rewrite =
+    if(Clause.unit(cur.cl) && Clause.rewriteRule(cur.cl)){
+      result.insert(RewriteRule)(cur)
+      opState.actRewrite + cur
+    } else {opState.actRewrite}
 
     var newclauses = opState.paramodPartners                    // TODO Perform real paramod after splitting the step
 
@@ -276,7 +275,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       newCl = Control.rewriteSimp(newCl, rewrite)
       assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
       if (Clause.effectivelyEmpty(newCl.cl)){
-        println("\n\n\n------------------------\nEMPTY CLAUSE\n------------------------\n\n\n")
         result.insert(DerivedClause)(newCl)
         if(state.conjecture.isDefined) {
           result.insert(SZSStatus)(SZS_Theorem)
@@ -289,7 +287,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       }
     }
 
-    println(s"Result will insert unification:\n   ${result.inserts(OpenUnification).map(cl => CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n   ")}")
+    println(s"To Unify:\n  >>${result.inserts(OpenUnification).map(_.pretty(sig)).mkString("\n   >>")}")
 
     result
   }
@@ -304,7 +302,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
     sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
       CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-    leo.Out.output(sb.toString())
+//    leo.Out.info(sb.toString())
   }
 }
 

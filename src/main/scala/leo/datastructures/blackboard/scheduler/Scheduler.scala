@@ -16,26 +16,6 @@ import leo.modules.SZSException
 
 
 /**
- * Singleton Scheduler
- */
-object Scheduler {
-
-  private[scheduler] lazy val s : Scheduler = {val s = new SchedulerImpl(n); s.start(); s}
-  private lazy val n : Int = try {Configuration.THREADCOUNT} catch { case _ : Exception => Configuration.DEFAULT_THREADCOUNT}
-
-  /**
-   * Creates a Scheduler for 5 Threads or a get for the singleton,
-   * if the scheduler already exists.
-    *
-    * @return
-   */
-  def apply() : Scheduler = {
-    s
-  }
-}
-
-
-/**
  * Scheduler Interface
  */
 
@@ -98,8 +78,9 @@ trait Scheduler {
   * @author Max Wisniewski
  * @since 5/15/14
  */
-protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Scheduler {
+private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboard : Blackboard) extends Scheduler {
   import leo.agents._
+  val scheduler = this
 
   private var exe = Executors.newFixedThreadPool(numberOfThreads, MyThreadFactory)
   private val s : SchedulerRun = new SchedulerRun()
@@ -150,7 +131,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
     }
     synchronized(freeThreads foreach {t => t.interrupt(); t.stop()})
     AgentWork.executingAgents() foreach(_.kill())
-    Blackboard().filterAll(a => a.filter(DoneEvent))
+    blackboard.filterAll(a => a.filter(DoneEvent))
     curExec.clear()
     AgentWork.clear()
     ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
@@ -171,13 +152,13 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
 
   def clear() : Unit = {
     pause()
-    Blackboard().forceCheck()
+    blackboard.forceCheck()
     curExec.clear()
     AgentWork.executingAgents() foreach(_.kill())
     AgentWork.clear()
   }
 
-  protected[scheduler] def start() {
+  protected[blackboard] def start() {
 //    println("Scheduler started.")
     sT = new Thread(s)
     sT.start()      // Start Scheduler
@@ -206,7 +187,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       }
 
       // Blocks until a task is available
-      val tasks = Blackboard().getTask
+      val tasks = blackboard.getTask
       tasks foreach {case (a, _) => AgentWork.inc(a)}
 //      println(tasks)
       try {
@@ -268,7 +249,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
         ) {
         work = true
 
-        val dsIT = Blackboard().getDS(result.types.toSet).iterator
+        val dsIT = blackboard.getDS(result.types.toSet).iterator
         while(dsIT.hasNext){
           val ds = dsIT.next()
           ds.updateResult(result)
@@ -280,13 +261,13 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
         task match {
           case ct : CompressTask => ct.tasks.foreach{t =>
             LockSet.releaseTask(t) // TODO right position?
-            Blackboard().finishTask(t)
+            blackboard.finishTask(t)
             curExec.remove(t)
             agent.taskFinished(t)
           }
           case _ =>
             LockSet.releaseTask(task) // TODO right position?
-            Blackboard().finishTask(task)
+            blackboard.finishTask(task)
             curExec.remove(task)
             agent.taskFinished(task)
         }
@@ -294,7 +275,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
 
 
         try {
-          Blackboard().filterAll { a => // Informing agents of the changes
+          blackboard.filterAll { a => // Informing agents of the changes
             a.interest match {
               case Some(xs) if xs.isEmpty || (xs.toSet & result.types.toSet).nonEmpty=>
                 ActiveTracker.incAndGet(s"Filter new data\n\t\tin Agent ${a.name}\n\t\tfrom Task ${task.name}")
@@ -314,9 +295,9 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
         case ct : CompressTask => ct.tasks.foreach(_ => workCount.decrementAndGet())
         case _ =>  workCount.decrementAndGet()
       }
-      Scheduler().signal()  // Get new task
+      scheduler.signal()  // Get new task
       work = false
-      Blackboard().forceCheck()
+      blackboard.forceCheck()
     }
   }
 
@@ -343,20 +324,20 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
           SZSDataStore.forceStatus(e.status)
           Out.severe(e.getMessage)
           LockSet.releaseTask(t)
-          Blackboard().finishTask(t)
+          blackboard.finishTask(t)
           ActiveTracker.decAndGet(s"${a.name} killed with exception.")
-          Blackboard().filterAll(_.filter(DoneEvent))
-          Scheduler().killAll()
+          blackboard.filterAll(_.filter(DoneEvent))
+          scheduler.killAll()
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
           if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
           LockSet.releaseTask(t)
-          Blackboard().finishTask(t)
+          blackboard.finishTask(t)
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
-            Blackboard().forceCheck()
+            blackboard.forceCheck()
           }
-          Blackboard().filterAll(_.filter(DoneEvent))
-          Scheduler().killAll()
+          blackboard.filterAll(_.filter(DoneEvent))
+          scheduler.killAll()
       }
     }
   }
@@ -366,7 +347,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       // Sync and trigger on last check
       try {
         val ts = a.filter(r)
-        Blackboard().submitTasks(a, ts.toSet)
+        blackboard.submitTasks(a, ts.toSet)
       } catch {
         case e : SZSException =>
 //          SZSDataStore.forceStatus(Context())(e.status) TODO comment in after CASC
@@ -381,7 +362,7 @@ protected[scheduler] class SchedulerImpl (val numberOfThreads : Int) extends Sch
       }
       ActiveTracker.decAndGet(s"Done Filtering data \n\t\t from ${from.name}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
       workCount.decrementAndGet()
-      Blackboard().forceCheck()
+      blackboard.forceCheck()
 
       //Release sync
     }

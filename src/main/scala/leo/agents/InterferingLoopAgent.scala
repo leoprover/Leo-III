@@ -30,7 +30,7 @@ import leo.datastructures.blackboard._
   * For consistency it is adviced to obtain and flag the used data after the filter phase.
   *
   */
-class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) extends Agent {
+class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A], bl : Blackboard) extends Agent {
   override val name: String = loop.name
   override val maxParTasks : Option[Int] = Some(1)
   private val self = this
@@ -55,12 +55,8 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       ActiveTracker.incAndGet(s"$name: Loop condition initially positive.")
     }
     taskExisting = r.nonEmpty
-    if(loop.terminated) unregister()
+    if(loop.terminated) bl.unregisterAgent(this)
     r
-  }
-
-  override def register() : Unit = {
-    super.register()
   }
 
   /**
@@ -83,7 +79,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
         ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
       }
       taskExisting = r.nonEmpty
-      if(loop.terminated) unregister()
+      if(loop.terminated) bl.unregisterAgent(this)
       r
     case _ if !taskExisting =>                // Case of a cancel and no other possible match
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
@@ -96,7 +92,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       }
       firstAttempt = false    // Race condition
       taskExisting = r.nonEmpty
-      if(loop.terminated) unregister()
+      if(loop.terminated) bl.unregisterAgent(this)
       r
     case _ => Nil
   })
@@ -138,7 +134,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
 //    println(s"Task finished ${t.pretty}")
     taskExisting = false
     firstAttempt = true
-    Blackboard().send(NextIteration, this)
+    bl.send(NextIteration, this)
   }
 
 

@@ -9,7 +9,7 @@ import scala.collection.TraversableOnce
   *
   * @tparam A
   */
-trait MultiPriorityQueue[A] {
+trait MultiPriorityQueue[A] extends Pretty {
   type OrderingKey = Int
 
   def insert(x: A): Unit

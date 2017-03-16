@@ -13,15 +13,20 @@ import scala.collection.mutable
 class SimpleRuleTest extends LeoTestSuite {
 
   test("Double Insertion of ds.", Checked) {
+    val (blackboard, scheduler) = Blackboard.newBlackboard
+    val self = this
+    var done = false
     val store = new SimpleStore
-    Blackboard().addDS(store)
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
+    blackboard.addDS(store)
 
-    assert(Blackboard().getDS.size == 1, "A double inserted data structure should only be contained once.")
+    assert(blackboard.getDS.size == 1, "A double inserted data structure should only be contained once.")
   }
 
   test("Prepend: a", Checked){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     val store = new SimpleStore
     val prep = new PrependRule("a", store)
 
@@ -29,23 +34,24 @@ class SimpleRuleTest extends LeoTestSuite {
     store.strings.add("test")
     store.strings.add("nice")
 
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val prepAgent = new RuleAgent(prep)
-    prepAgent.register()
+    blackboard.registerAgent(prepAgent)
 
+    blackboard.registerAgent(
     new AbstractAgent {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
+    scheduler.signal()
+    self.synchronized{while(!done) self.wait()}
 
 
     assert(store.strings.size == 3, "The store should only contain 3 strings.")
@@ -56,7 +62,9 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Append: b", Checked){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     val store = new SimpleStore
     val prep = new AppendRule("b", store)
 
@@ -64,23 +72,24 @@ class SimpleRuleTest extends LeoTestSuite {
     store.strings.add("test")
     store.strings.add("nice")
 
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val prepAgent = new RuleAgent(prep)
-    prepAgent.register()
+    blackboard.registerAgent(prepAgent)
 
+    blackboard.registerAgent(
     new AbstractAgent {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
+    scheduler.signal()
+    self.synchronized{ while(!done) self.wait()}
 
 
     assert(store.strings.size == 3, "The store should only contain 3 strings.")
@@ -91,7 +100,9 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Pre/Append: a/b"){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     val store = new SimpleStore
     val prep = new PrependRule("a", store)
     val app = new AppendRule("b", store)
@@ -100,25 +111,26 @@ class SimpleRuleTest extends LeoTestSuite {
     store.strings.add("test")
     store.strings.add("nice")
 
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val prepAgent = new RuleAgent(prep)
     val appAgent = new RuleAgent(app)
-    prepAgent.register()
-    appAgent.register()
+    blackboard.registerAgent(prepAgent)
+    blackboard.registerAgent(appAgent)
 
+    blackboard.registerAgent(
     new AbstractAgent {
       override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case DoneEvent => println("Done"); self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => println("Done"); self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
+    scheduler.signal()
+    self.synchronized{while(!done) self.wait()}
 
 
     assert(store.strings.size == 3, "The store should only contain 3 strings.")

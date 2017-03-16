@@ -1,7 +1,7 @@
 package leo.modules.interleavingproc
 
 import leo.datastructures.blackboard.{DataStore, DataType, Delta}
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.modules.SZSException
 import leo.modules.output.{SZS_Error, StatusSZS}
 import leo.modules.seqpproc.State
@@ -43,7 +43,9 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
   }
   override def all[T](t: DataType[T]): Set[T] = ???     // TODO implement
   override def updateResult(r: Delta): Boolean = synchronized {
-    val newUnprocessed = r.inserts(UnprocessedClause).iterator
+    val newUnprocessedSeq = r.inserts(UnprocessedClause)
+    state.incGeneratedCl(newUnprocessedSeq.size)
+    val newUnprocessed = newUnprocessedSeq.iterator
     while(newUnprocessed.nonEmpty){
       state.addUnprocessed(newUnprocessed.next())
     }
@@ -59,6 +61,9 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     if(newProcessed.nonEmpty){
       val n = newProcessed.next()
       state.addProcessed(n)
+      if(Clause.unit(n.cl) && !Clause.rewriteRule(n.cl)){
+        state.addNonRewriteUnit(n)
+      }
     }
 
     // Adding new rewrite Rules

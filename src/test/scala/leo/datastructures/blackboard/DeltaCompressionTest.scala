@@ -11,33 +11,39 @@ class DeltaCompressionTest extends LeoTestSuite{
 
 
   test("No compression") {
+    val (blackboard, scheduler) = Blackboard.newBlackboard
+    val self = this
+    var done = false
     val store = new StringStore
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val agent = new ManyTaskAgent(Seq("a", "b"),
       {d => d.inserts(StringType).size == 1},
       {d => s"Each Delta should hold 1 insert, but it only holds ${d.inserts(StringType).size} inserts."},
       2)
-    agent.register()
+    blackboard.registerAgent(agent)
 
-    Scheduler().signal()
+    scheduler.signal()
     agent.synchronized(agent.wait(3000))
-    Scheduler().killAll()
+    scheduler.killAll()
     assert(agent.fcond, agent.fmsg)
   }
 
   test("Compression") {
+    val (blackboard, scheduler) = Blackboard.newBlackboard
+    val self = this
+    var done = false
     val store = new StringStore
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val agent = new ManyTaskAgent(Seq("a", "b", "c", "d"),
       {d => d.inserts(StringType).size != 0},
       {d => s"Each Delta should hold 4 insert, but it only holds ${d.inserts(StringType).size} inserts."},
       4)
-    agent.register()
+    blackboard.registerAgent(agent)
 
-    Scheduler().signal()
+    scheduler.signal()
     agent.synchronized(agent.wait(6000))
 //    println("Kill all")
-    Scheduler().killAll()
+    scheduler.killAll()
     assert(agent.fcond, agent.fmsg)
   }
 

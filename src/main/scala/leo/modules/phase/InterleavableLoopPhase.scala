@@ -4,6 +4,7 @@ import leo.agents.{Agent, InterferingLoopAgent}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures._
 import leo.datastructures.blackboard.impl.FormulaDataStore
+import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.modules.Parsing
 import leo.modules.interleavingproc.{BlackboardState, StateView, UnprocessedClause}
 import leo.modules.seqpproc.SeqPProc
@@ -12,7 +13,7 @@ import leo.modules.control.Control
 /**
   * Created by mwisnie on 9/28/16.
   */
-class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]], state : BlackboardState, sig : Signature, interleavingAgents : Agent*) extends CompletePhase {
+class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]], state : BlackboardState, sig : Signature, interleavingAgents : Agent*)(blackboard: Blackboard, scheduler: Scheduler) extends CompletePhase(blackboard, scheduler) {
   /**
     * Returns the name of the phase.
     *

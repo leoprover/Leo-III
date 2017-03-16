@@ -34,15 +34,15 @@ trait Agent {
   */
   def kill()
 
-  /**
-  * Registers this agent in the System for execution.
-  */
-  def register() : Unit = Blackboard().registerAgent(this)
-
-  /**
-  * Unregisteres this agent in the system.
-  */
-  def unregister() : Unit = Blackboard().unregisterAgent(this)
+//  /**
+//  * Registers this agent in the System for execution.
+//  */
+//  def register() : Unit = Blackboard().registerAgent(this)
+//
+//  /**
+//  * Unregisteres this agent in the system.
+//  */
+//  def unregister() : Unit = Blackboard().unregisterAgent(this)
 
   /**
    * Declares the agents interest in specific data.
