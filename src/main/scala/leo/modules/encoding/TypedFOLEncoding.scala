@@ -8,7 +8,6 @@ import scala.annotation.tailrec
   *
   * @author Alexander Steen <a.steen@fu-berlin.de>
   * @since February 2017
-  * @todo Prefixing for safe translation
   */
 object TypedFOLEncoding {
   type EncodedProblem = Problem
@@ -732,6 +731,16 @@ trait TypedFOLEncodingSignature extends Signature {
     }
     else throw new IllegalArgumentException
   }
+
+  final private def applyArgs(func: Term, args: Seq[Term]): Term = {
+    val funcTyArgTypes = func.ty.funParamTypes
+    val directArgCount = funcTyArgTypes.size
+    assert(args.size >= directArgCount)
+    val directArgs = args.take(directArgCount)
+    val indirectArgs = args.drop(directArgCount)
+    val partiallyAppliedFunc = mkTermApp(func, directArgs)
+    hApp(partiallyAppliedFunc, indirectArgs)
+  }
   ///// True/False proxy
   lazy val proxyTrue_id: Signature#Key = proxyId(proxyTrue_name)
   lazy val proxyTrue: Term = mkAtom(proxyTrue_id)(this)
@@ -742,47 +751,47 @@ trait TypedFOLEncodingSignature extends Signature {
   ///// Not proxy
   lazy val proxyNot_id: Signature#Key = proxyId(proxyNot_name)
   lazy val proxyNot: Term = mkAtom(proxyNot_id)(this)
-  final def proxyNot(body: Term): Term = mkTermApp(proxyNot, body)
+  final def proxyNot(body: Term): Term = applyArgs(proxyNot, Seq(body))
 
   ///// and/or proxy
   lazy val proxyAnd_id: Signature#Key = proxyId(proxyAnd_name)
   lazy val proxyAnd: Term = mkAtom(proxyAnd_id)(this)
-  final def proxyAnd(l: Term, r: Term): Term = mkTermApp(proxyAnd, Seq(l,r))
+  final def proxyAnd(l: Term, r: Term): Term = applyArgs(proxyAnd, Seq(l,r))
 
   lazy val proxyOr_id: Signature#Key = proxyId(proxyOr_name)
   lazy val proxyOr: Term = mkAtom(proxyOr_id)(this)
-  final def proxyOr(l: Term, r: Term): Term = mkTermApp(proxyOr, Seq(l,r))
+  final def proxyOr(l: Term, r: Term): Term = applyArgs(proxyOr, Seq(l,r))
 
   ///// impl/if/equiv
   lazy val proxyImpl_id: Signature#Key = proxyId(proxyImpl_name)
   lazy val proxyImpl: Term = mkAtom(proxyImpl_id)(this)
-  final def proxyImpl(l: Term, r: Term): Term = mkTermApp(proxyImpl, Seq(l,r))
+  final def proxyImpl(l: Term, r: Term): Term = applyArgs(proxyImpl, Seq(l,r))
 
   lazy val proxyIf_id: Signature#Key = proxyId(proxyIf_name)
   lazy val proxyIf: Term = mkAtom(proxyIf_id)(this)
-  final def proxyIf(l: Term, r: Term): Term = mkTermApp(proxyIf, Seq(l,r))
+  final def proxyIf(l: Term, r: Term): Term = applyArgs(proxyIf, Seq(l,r))
 
   lazy val proxyEquiv_id: Signature#Key = proxyId(proxyEquiv_name)
   lazy val proxyEquiv: Term = mkAtom(proxyEquiv_id)(this)
-  final def proxyEquiv(l: Term, r: Term): Term = mkTermApp(proxyEquiv, Seq(l,r))
+  final def proxyEquiv(l: Term, r: Term): Term = applyArgs(proxyEquiv, Seq(l,r))
 
   ///// forall/exists
   lazy val proxyForall_id: Signature#Key = proxyId(proxyForall_name)
   lazy val proxyForall: Term = mkAtom(proxyForall_id)(this)
-  final def proxyForall(body: Term): Term = mkApp(proxyForall, Seq(Right(body.ty._funDomainType), Left(body)))
+  final def proxyForall(body: Term): Term = applyArgs(mkTypeApp(proxyForall, body.ty._funDomainType), Seq(body))
 
   lazy val proxyExists_id: Signature#Key = proxyId(proxyExists_name)
   lazy val proxyExists: Term = mkAtom(proxyExists_id)(this)
-  final def proxyExists(body: Term): Term = mkApp(proxyExists, Seq(Right(body.ty._funDomainType), Left(body)))
+  final def proxyExists(body: Term): Term = applyArgs(mkTypeApp(proxyExists, body.ty._funDomainType), Seq(body))
 
   ///// eq / neq
   lazy val proxyEq_id: Signature#Key = proxyId(proxyEq_name)
   lazy val proxyEq: Term = mkAtom(proxyEq_id)(this)
-  final def proxyEq(l: Term, r: Term): Term = mkApp(proxyEq, Seq(Right(l.ty), Left(l), Left(r)))
+  final def proxyEq(l: Term, r: Term): Term = applyArgs(mkTypeApp(proxyEq, l.ty), Seq(l, r))
 
   lazy val proxyNeq_id: Signature#Key = proxyId(proxyNeq_name)
   lazy val proxyNeq: Term = mkAtom(proxyNeq_id)(this)
-  final def proxyNeq(l: Term, r: Term): Term = mkApp(proxyNeq, Seq(Right(l.ty), Left(l), Left(r)))
+  final def proxyNeq(l: Term, r: Term): Term = applyArgs(mkTypeApp(proxyNeq, l.ty), Seq(l, r))
 
   private var usedProxies: Set[Signature#Key] = Set.empty
   final def proxiesUsed: Set[Signature#Key] = usedProxies
@@ -793,7 +802,6 @@ trait TypedFOLEncodingSignature extends Signature {
     val Y = mkBound(boolTy, 2)
     val polyX = mkBound(1, 1)
     val polyY = mkBound(1, 2)
-    import Term.λ
     deSafeName(meta(proxyId).name) match {
       case `proxyTrue_name` => hBool(proxyTrue)
       case `proxyFalse_name` => Not(hBool(proxyFalse))
