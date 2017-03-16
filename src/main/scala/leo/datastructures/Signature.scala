@@ -31,21 +31,21 @@ trait Signature {
     /** Flag holding additional information in bit-encoding */
     def flag: SymbProp
     // Additional information about the symbol
-    /** Returns the type saved with the symbol if any, [[None]] otherwise */
+    /** Returns the type associated with the symbol if any, [[None]] otherwise */
     def ty: Option[Type]
     /** Unsafe variant of [[ty]].
       * @throws NoSuchElementException if no type is available
       */
     def _ty: Type = ty.get
 
-    /** Returns the kind saved with the symbol if any, [[None]] otherwise */
+    /** Returns the kind associated with the symbol if any, [[None]] otherwise */
     def kind: Option[Kind]
     /** Unsafe variant of [[kind]].
       * @throws NoSuchElementException if no type is available
       */
     def _kind: Kind = kind.get
 
-    /** Returns the definition saved with the symbol if any, [[None]] otherwise */
+    /** Returns the definition associated with the symbol if any, [[None]] otherwise */
     def defn: Option[Term]
     /**
      * Unsafe variant of [[defn]]. Gets the definition term directly
@@ -99,7 +99,6 @@ trait Signature {
     @inline final def isType: Boolean             = isTypeConstructor && _kind.isTypeKind
   }
 
-
   ///////////////////////////////
   // Maintenance methods for the signature
   ///////////////////////////////
@@ -123,11 +122,6 @@ trait Signature {
   /** Returns true iff a indexed constant symbol with name `identifier` exists */
   def exists(identifier: String): Boolean
 
-  ///** Returns the symbol type of  `identifier`, if it exists in signature */
-  //def symbolType(identifier: String): SymbolType
-  ///** Returns the symbol type of  `identifier`, if it exists in signature */
-  //def symbolType(identifier: Key): SymbolType
-
   ///////////////////////////////
   // Utility methods
   ///////////////////////////////
@@ -135,24 +129,36 @@ trait Signature {
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
     */
-  final def addDefined(identifier: String, defn: Term, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key = addConstant0(identifier, Left(typ), Some(defn), prop)
+  final def addDefined(identifier: String, defn: Term, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key =
+    addConstant0(identifier, Left(typ), Some(defn), prop)
   /** Adds an uninterpreted constant with type `typ` to the signature,
     * multiset status is default, but can be overridden by `status` parameter.
     * @return The key the symbol is indexed by
     */
-  final def addUninterpreted(identifier: String, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key       = addConstant0(identifier, Left(typ), None, prop)
+  final def addUninterpreted(identifier: String, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key =
+    addConstant0(identifier, Left(typ), None, prop)
   /** Adds an uninterpreted constant with kind `k` to the signature.
     * @return The key the symbol is indexed by
     */
-  final def addTypeConstructor(identifier: String, k: Kind): Key         = addConstant0(identifier, Right(k), None, -1)
+  final def addTypeConstructor(identifier: String, k: Kind): Key =
+    addConstant0(identifier, Right(k), None, Signature.PropNoProp)
   /** Adds a base type constant (i.e. of type `*`) to the signature.
     * @return The key the symbol is indexed by
     */
-  final def addBaseType(identifier: String): Key                       = addConstant0(identifier, Right(Type.typeKind), None, -1)
+  final def addBaseType(identifier: String): Key =
+    addConstant0(identifier, Right(Type.typeKind), None, Signature.PropNoProp)
 
   /** If the symbol indexed by `key` is a uninterpreted symbol, then `addDefinition(key, defn)` turns this symbol
     * into a defined symbol with definition `defn`.*/
   def addDefinition(key: Key, defn: Term): Key
+
+  /** Adds a term symbol to the signature that is additionally marked as system-fixed. */
+  def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: Signature.SymbProp): Key =
+    addConstant0(identifier, Left(typ), defn, flag | Signature.PropFixed)
+
+  /** Adds a type (constructor) symbol to the signature that is additionally marked as system-fixed. */
+  def addFixedTypeConstructor(identifier: String, k: Kind): Key =
+    addConstant0(identifier, Right(k), None, Signature.PropFixed)
 
   /** Shorthand for meta */
   final def apply(identifier: String): Meta = meta(identifier)
@@ -280,11 +286,11 @@ object Signature {
     }
 
     for ((name, ty, flag) <- HOLSignature.fixedConsts) {
-      sig.addFixed(name, ty, None, flag | Signature.PropFixed)
+      sig.addFixed(name, ty, None, flag)
     }
 
     for ((name, fed, ty, flag) <- HOLSignature.definedConsts) {
-      sig.addFixed(name, ty, Some(fed), flag | Signature.PropFixed)
+      sig.addFixed(name, ty, Some(fed), flag)
     }
     sig
   }

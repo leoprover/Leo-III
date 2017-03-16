@@ -3,6 +3,7 @@ package leo
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
+import leo.modules.parsers.CLParameterParser
 
 /**
  * Entry Point for Leo-III as an executable to

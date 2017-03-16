@@ -2,8 +2,8 @@ package leo
 
 import java.util.logging.Level
 
-import leo.modules.CLParameterParser
 import leo.modules.output.Output
+import leo.modules.parsers.CLParameterParser
 
 /**
  * Configuration access point where central parameter settings of Leo-III

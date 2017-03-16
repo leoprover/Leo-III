@@ -34,12 +34,6 @@ trait Unification {
     * is empty, if the equation `t = s` is not unifiable.
     */
   def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
-
-  /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
-  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Vector((t,s)))
-
-  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
-  def unify(constraints: Seq[UTEq]): Option[TypeSubst]
 }
 
 
@@ -100,7 +94,7 @@ object HuetsPreUnification extends Unification {
     // 1. check if types are unifiable
     val t_ty = t1.ty
     val s_ty = t1.ty
-    val initialTypeSubst = tyDetExhaust(Vector((t_ty, s_ty)), Subst.id)
+    val initialTypeSubst = TypeUnification(t_ty, s_ty)
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)
       Iterable.empty
@@ -114,7 +108,7 @@ object HuetsPreUnification extends Unification {
 
   final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
     // 1. check if types are unifiable
-    val initialTypeSubst = tyDetExhaust(constraints.map(e => (e._1.ty, e._2.ty)), Subst.id)
+    val initialTypeSubst = TypeUnification(constraints.map(e => (e._1.ty, e._2.ty)))
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)
       Iterable.empty
@@ -287,6 +281,7 @@ object HuetsPreUnification extends Unification {
   /////////////////////////////////////
   // Huets rules
   /////////////////////////////////////
+  // TODO Delete type rules from here and use only TypeUnification
   /**
     * Delete rule for types
     * canApply(s,t) iff the equation (s = t) can be deleted
@@ -530,13 +525,6 @@ object HuetsPreUnification extends Unification {
   }
 
   /////////////////////////////////////
-  // Type unification
-  /////////////////////////////////////
-
-  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
-  final def unify(constraints: Seq[UTEq]): Option[TypeSubst] = tyDetExhaust(constraints, Subst.id)
-
-  /////////////////////////////////////
   // Internal utility functions
   /////////////////////////////////////
   @inline protected[calculus] final def flexflex(e: UEq, depth: Int): Boolean = isFlexible(e._1, depth) && isFlexible(e._2, depth)
@@ -612,7 +600,7 @@ object PatternUnification extends Unification {
     // 1. check if types are unifiable
     val t_ty = t1.ty
     val s_ty = t1.ty
-    val initialTypeSubst = tyDetExhaust(Vector((t_ty, s_ty)), Subst.id)
+    val initialTypeSubst = TypeUnification(t_ty, s_ty)
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)
       Iterable.empty
@@ -628,7 +616,7 @@ object PatternUnification extends Unification {
 
   final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
     // 1. check if types are unifiable
-    val initialTypeSubst = tyDetExhaust(constraints.map(e => (e._1.ty, e._2.ty)), Subst.id)
+    val initialTypeSubst = TypeUnification(constraints.map(e => (e._1.ty, e._2.ty)))
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)
       Iterable.empty
@@ -994,11 +982,141 @@ object PatternUnification extends Unification {
       }
     }
   }
+}
 
-  /////////////////////////////////////
-  // Type unification
-  /////////////////////////////////////
+
+
+trait TypeUnification {
+  /** A `UEq` is an unsolved equation. */
+  type UEq = (Type, Type)
+  type TypeSubst = Subst
+
+  /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
+  def unify(t: Type, s: Type): Option[TypeSubst] = unify(Vector((t,s)))
 
   /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
-  final def unify(constraints: Seq[UTEq]): Option[TypeSubst] = tyDetExhaust(constraints, Subst.id)
+  def unify(constraints: Seq[UEq]): Option[TypeSubst]
+}
+
+object TypeUnification {
+  private val impl: TypeUnification = TypeUniImpl
+
+  /** Returns Some(σ) where σ = mgu(t,s) if such a substitution exists, None otherwise. */
+  final def apply(t: Type, s: Type): Option[TypeUnification#TypeSubst] = impl.unify(t,s)
+  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
+  final def apply(constraints: Seq[TypeUnification#UEq]): Option[TypeUnification#TypeSubst] = impl.unify(constraints)
+}
+
+object TypeUniImpl extends TypeUnification {
+  /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
+  def unify(constraints: Seq[UEq]): Option[TypeSubst] = tyDetExhaust(constraints, Subst.id)
+
+  @tailrec
+  final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UEq], unifier: TypeSubst): Option[TypeSubst] = {
+    if (uTyProblems.nonEmpty) {
+      val head = uTyProblems.head
+
+      if (TyDeleteRule.canApply(head))
+        tyDetExhaust(uTyProblems.tail, unifier)
+      else if (TyDecompRule.canApply(head))
+        tyDetExhaust(TyDecompRule.apply(head) ++ uTyProblems.tail, unifier)
+      else {
+        val tyFunDecompRuleCanApplyHint = TyFunDecompRule.canApply(head)
+        if (tyFunDecompRuleCanApplyHint != TyFunDecompRule.CANNOT_APPLY) {
+          tyDetExhaust(TyFunDecompRule.apply(head, tyFunDecompRuleCanApplyHint) ++ uTyProblems.tail,unifier)
+        } else if (TyBindRule.canApply(head))
+          tyDetExhaust(uTyProblems.tail, unifier.comp(TyBindRule.apply(head)))
+        else
+          None
+      }
+    } else Some(unifier)
+  }
+
+
+  /**
+    * Delete rule for types
+    * canApply(s,t) iff the equation (s = t) can be deleted
+    */
+  object TyDeleteRule {
+    final def canApply(e: UEq): Boolean = e._1 == e._2
+  }
+
+  object TyDecompRule {
+    import leo.datastructures.Type.ComposedType
+    final def apply(e: UEq): Seq[UEq] = {
+      val args1 = ComposedType.unapply(e._1).get._2
+      val args2 = ComposedType.unapply(e._2).get._2
+      args1.zip(args2)
+    }
+
+    final def canApply(e: UEq): Boolean = e match {
+      case (ComposedType(head1, arg1), ComposedType(head2, args2)) => head1 == head2 // Heads cannot be flexible,
+      // since in TH1 only small types/proper types can be quantified, not type operators
+      case _ => false
+    }
+  }
+
+  object TyFunDecompRule {
+    final val CANNOT_APPLY = -1
+    final val EQUAL_LENGTH = 0
+    final val FIRST_LONGER = 1
+    final val SECOND_LONGER = 2
+
+    final def apply(e: UEq, hint: Int): Seq[UEq] = {
+      assert(hint != CANNOT_APPLY)
+      if (hint == EQUAL_LENGTH) {
+        e._1.funParamTypesWithResultType.zip(e._2.funParamTypesWithResultType)
+      } else {
+        val shorterTyList = if (hint == FIRST_LONGER) e._2.funParamTypesWithResultType
+        else e._1.funParamTypesWithResultType
+        val longerTy = if (hint == FIRST_LONGER) e._1 else e._2
+        val splittedLongerTy = longerTy.splitFunParamTypesAt(shorterTyList.size-1)
+        (shorterTyList.last, splittedLongerTy._2) +: shorterTyList.init.zip(splittedLongerTy._1)
+      }
+    }
+
+    final def canApply(e: UEq): Int = {
+      if (!e._1.isFunType || !e._2.isFunType) CANNOT_APPLY
+      else {
+        val tys1 = e._1.funParamTypesWithResultType
+        val tys2 = e._2.funParamTypesWithResultType
+        if (tys1.size == tys2.size) EQUAL_LENGTH
+        else {
+          val tys1Longer = tys1.size > tys2.size
+          val shorterTyList = if (tys1Longer) tys2 else tys1
+          if (shorterTyList.last.isBoundTypeVar) // Only possible if last one is variable
+            if (tys1Longer) FIRST_LONGER
+            else SECOND_LONGER
+          else CANNOT_APPLY
+        }
+      }
+    }
+  }
+
+  /**
+    * Bind rule for type equations.
+    * canApply(s,t) iff either s or t is a type variable and not a subtype of the other one.
+    */
+  object TyBindRule {
+    final def apply(e: UEq): Subst = {
+      val leftIsTypeVar = e._1.isBoundTypeVar
+
+      val tyVar = if (leftIsTypeVar) BoundType.unapply(e._1).get else BoundType.unapply(e._2).get
+      val otherTy = if (leftIsTypeVar) e._2 else e._1
+
+      Subst.singleton(tyVar, otherTy)
+    }
+
+    final def canApply(e: UEq): Boolean = {
+      val leftIsTypeVar = e._1.isBoundTypeVar
+      val rightIsTypeVar = e._2.isBoundTypeVar
+
+      if (!leftIsTypeVar && !rightIsTypeVar) false
+      else {
+        val tyVar = if (leftIsTypeVar) BoundType.unapply(e._1).get else BoundType.unapply(e._2).get
+        val otherTy = if (leftIsTypeVar) e._2 else e._1
+        !otherTy.typeVars.contains(tyVar)
+      }
+    }
+  }
 }

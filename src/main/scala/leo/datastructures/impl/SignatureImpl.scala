@@ -14,7 +14,7 @@ import leo.modules.HOLSignature
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-abstract sealed class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
+class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
   protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
@@ -74,6 +74,7 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   ///////////////////////////////
 
   protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], prop: Signature.SymbProp): Key = {
+    import leo.datastructures.isPropSet
     if (keyMap.contains(identifier)) {
       throw new IllegalArgumentException("Identifier " + identifier + " is already present in signature.")
     }
@@ -82,24 +83,33 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
     curConstKey += 1
     keyMap += ((identifier, key))
 
-    defn match {
+    val meta = defn match {
       case None => // Uninterpreted or type
         typ match {
           case Right(k:Kind) => // Type
-          val meta = TypeMeta(identifier, key, k, Signature.PropNoProp)
-            metaMap += ((key, meta))
             typeSet += key
-          case Left(t:Type) =>  // Uninterpreted symbol
-          val meta = UninterpretedMeta(identifier, key, t, prop)
-            metaMap += ((key, meta))
+            TypeMeta(identifier, key, k, prop)
+          case Left(t:Type) =>  // (possibly) uninterpreted symbol
             uiSet += key
+            UninterpretedMeta(identifier, key, t, prop)
         }
       case Some(fed) => // Defined
-        val ty = typ.left.get
-        val meta = DefinedMeta(identifier, key, ty, fed, prop)
-          metaMap += ((key, meta))
+        if (typ.isLeft) {
+          val ty = typ.left.get
           definedSet += key
+          DefinedMeta(identifier, key, ty, fed, prop)
+        } else {
+          // Type constructor definitions not supported
+          throw new IllegalArgumentException("Type constructor definitions not supported")
+        }
     }
+    metaMap += ((key, meta))
+    if (isPropSet(Signature.PropFixed, prop)) {
+      fixedSet += key
+      uiSet -= key // This may be set if no definition was provided. If not, it has no effect since key is not contained
+    }
+    if (isPropSet(Signature.PropAssociative, prop)) aSet += key
+    if (isPropSet(Signature.PropCommutative, prop)) cSet += key
     key
   }
 
@@ -135,36 +145,6 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   }
 
   def exists(identifier: String): Boolean = keyMap.contains(identifier)
-
-  /** Adds a term symbol to the signature that is then marked as system symbol type */
-  protected[datastructures] def addFixed(identifier: String, typ: Type, defn: Option[Term], flag: Signature.SymbProp): Unit = {
-    val key = curConstKey
-    curConstKey += 1
-    keyMap += ((identifier, key))
-    if (defn.isDefined) {
-      val deff = defn.get
-      val meta = DefinedMeta(identifier, key, typ, deff, flag)
-      metaMap += ((key, meta))
-      definedSet += key
-    } else {
-      val meta = UninterpretedMeta(identifier, key, typ, flag)
-      metaMap += ((key, meta))
-    }
-    fixedSet += key
-    if (leo.datastructures.isPropSet(Signature.PropAssociative, flag)) aSet += key
-    if (leo.datastructures.isPropSet(Signature.PropCommutative, flag)) cSet += key
-  }
-
-  /** Adds a type contructor symbol to the signature that is then marked as system symbol type */
-  protected[datastructures] def addFixedTypeConstructor(identifier: String, kind: Kind): Unit = {
-    val key = curConstKey
-    curConstKey += 1
-    keyMap += ((identifier, key))
-    val meta = TypeMeta(identifier, key, kind, Signature.PropFixed)
-    metaMap += ((key, meta))
-    fixedSet += key // since its system-provided
-    typeSet += key // since its a type constructor
-  }
 
   ///////////////////////////////
   // Utility methods for constant symbols
@@ -210,19 +190,19 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
   val skolemVarPrefix = "sk"
   /** Returns a fresh uninterpreted symbol of type `ty`. That symbol will be
     * named `SKi` where i is some positive number. */
-  def freshSkolemConst(ty: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key = synchronized {      // TODO Whole Signature thread save
+  def freshSkolemConst(ty: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key = synchronized {
     while(exists(skolemVarPrefix + (skolemVarCounter +1).toString)) {
       skolemVarCounter += 1
     }
     skolemVarCounter += 1
-    addUninterpreted(skolemVarPrefix + skolemVarCounter.toString, ty, prop | Signature.PropSkolemConstant)
+    addUninterpreted(skolemVarPrefix + skolemVarCounter.toString, ty, prop | Signature.PropSkolemConstant | Signature.PropStatus)
   }
   // Skolem variables start with 'tv'
   var typeVarCounter = 0
   val typeVarPrefix = "skt"
   /** Returns a fresh base type symbol. That symbol will be
     * named `tvi` where i is some positive number. */
-  def freshSkolemTypeConst(k: Kind): Key = {
+  def freshSkolemTypeConst(k: Kind): Key = synchronized {
     while(exists(typeVarPrefix + (typeVarCounter + 1).toString)) {
       typeVarCounter += 1
     }
@@ -232,24 +212,6 @@ abstract sealed class SignatureImpl extends Signature with Function1[Int, Signat
 }
 
 object SignatureImpl {
-  private case class Nil() extends SignatureImpl
-
   /** Create an empty signature */
-  def empty: SignatureImpl = Nil()
-
-  /** Enriches the given signature with predefined symbols as described by [[leo.modules.HOLSignature]] */
-  def withHOL(sig: SignatureImpl): SignatureImpl = {
-    for ((name, k) <- HOLSignature.types) {
-      sig.addFixedTypeConstructor(name, k)
-    }
-
-    for ((name, ty, flag) <- HOLSignature.fixedConsts) {
-      sig.addFixed(name, ty, None, flag | Signature.PropFixed)
-    }
-
-    for ((name, fed, ty, flag) <- HOLSignature.definedConsts) {
-      sig.addFixed(name, ty, Some(fed), flag | Signature.PropFixed)
-    }
-   sig
-  }
+  def empty: SignatureImpl = new SignatureImpl
 }

@@ -1,8 +1,9 @@
 package leo.modules
 
-import leo.datastructures.{Term, Type, Signature}
+import leo.datastructures.{Term, Type, Signature, Kind}
 import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ,Symbol,∙}
-import Type.{superKind, typeKind, typeVarToType}
+import Kind.{superKind, * => typeKind}
+import Type.typeVarToType
 
 import scala.language.implicitConversions
 

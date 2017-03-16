@@ -270,7 +270,7 @@ object FullCNF extends CalculusRule {
       case Impl(lt,rt) if !l.polarity => apply0(fvs, tyFVs, vargen, Literal(lt,true)) ++ apply0(fvs, tyFVs, vargen, Literal(rt,false))
       case Forall(a@(ty :::> t)) if l.polarity =>
         import leo.modules.HOLSignature.{o, LitTrue, LitFalse}
-        if (ty == o) {
+        if (false /*ty == o*/) {
           apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitTrue).betaNormalize.etaExpand, true)) ++ apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitFalse).betaNormalize.etaExpand, true))
         } else {
           val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, true))
@@ -280,7 +280,7 @@ object FullCNF extends CalculusRule {
       case Exists(a@(ty :::> t)) if l.polarity => val sko = leo.modules.calculus.skTerm(ty, fvs, tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, sko).betaNormalize.etaExpand, true))
       case Exists(a@(ty :::> t)) if !l.polarity =>
         import leo.modules.HOLSignature.{o, LitTrue, LitFalse}
-        if (ty == o) {
+        if (false /*ty == o*/) {
           apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitTrue).betaNormalize.etaExpand, false)) ++ apply0(fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, LitFalse).betaNormalize.etaExpand, false))
         } else {
           val v = vargen.next(ty); apply0(v +: fvs, tyFVs, vargen, Literal(Term.mkTermApp(a, Term.mkBound(v._2, v._1)).betaNormalize.etaExpand, false))

@@ -1,4 +1,4 @@
-package leo.modules
+package leo.modules.parsers
 
 import leo.modules.output.logger.Out
 

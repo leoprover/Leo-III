@@ -1,4 +1,4 @@
-package leo.modules
+package leo.modules.output
 
 import leo.datastructures.Term._
 import leo.datastructures._

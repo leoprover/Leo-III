@@ -3,12 +3,11 @@ import leo.{Configuration, Out}
 import leo.agents.{Agent, InterferingLoopAgent}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures._
-import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.modules.Parsing
-import leo.modules.interleavingproc.{BlackboardState, StateView, UnprocessedClause}
+import leo.modules.interleavingproc.{BlackboardState, StateView}
 import leo.modules.seqpproc.SeqPProc
 import leo.modules.control.Control
+import leo.modules.parsers.Input
 
 /**
   * Created by mwisnie on 9/28/16.
@@ -35,7 +34,7 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
     implicit val s = sig
 
     // TODO Read external Provers / Implement external Provers
-    val input2 = Parsing.readProblem(Configuration.PROBLEMFILE)
+    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
     val remainingInput = SeqPProc.effectiveInput(input2, state.state)
     // Typechecking: Throws and exception if not well-typed
     SeqPProc.typeCheck(remainingInput, state.state)

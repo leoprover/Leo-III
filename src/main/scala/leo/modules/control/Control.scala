@@ -231,11 +231,11 @@ package inferenceControl {
                 OrderedParamod(withClause, withIndex, withSide,
                   shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
               } else {
-                import leo.modules.calculus.{HuetsPreUnification => Unification}
+                import leo.modules.calculus.{TypeUnification => Unification}
                 leo.Out.finest(s"Nonequal type, calculating type unification ...")
                 leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
                 leo.Out.finest(s"intoTerm.ty: ${shiftedIntoTerm.ty.pretty(sig)}")
-                val tyUniResult = Unification.unify(withTerm.ty, shiftedIntoTerm.ty)
+                val tyUniResult = Unification(withTerm.ty, shiftedIntoTerm.ty)
                 if (tyUniResult.isDefined) {
                   leo.Out.finest(s"Type unification succeeded.")
                   val tySubst = tyUniResult.get

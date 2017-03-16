@@ -6,7 +6,8 @@ import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
 import leo.modules.output._
 import leo.modules.control.Control
-import leo.modules.{Parsing, SZSException, SZSOutput, Utility}
+import leo.modules.parsers.Input
+import leo.modules.{SZSException, SZSOutput, Utility}
 
 import scala.annotation.tailrec
 
@@ -50,9 +51,9 @@ object SeqPProc {
     while (inputIt.hasNext) {
       val formula = inputIt.next()
       formula.role match {
-        case Role_Type.pretty => Parsing.processFormula(formula)(state.signature)
+        case Role_Type.pretty => Input.processFormula(formula)(state.signature)
         case Role_Definition.pretty => Control.relevanceFilterAdd(formula)(state.signature)
-          Parsing.processFormula(formula)(state.signature)
+          Input.processFormula(formula)(state.signature)
         case Role_Conjecture.pretty =>
           if (state.negConjecture == null) {
             if (Configuration.CONSISTENCY_CHECK) {
@@ -62,7 +63,7 @@ object SeqPProc {
               // Convert and negate and add conjecture
               import leo.modules.calculus.CalculusRule
               Control.relevanceFilterAdd(formula)(state.signature)
-              val translated = Parsing.processFormula(formula)(state.signature)
+              val translated = Input.processFormula(formula)(state.signature)
               val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
               state.setConjecture(conjectureClause)
               val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
@@ -80,7 +81,7 @@ object SeqPProc {
               /* skip */
             } else {
               Control.relevanceFilterAdd(formula)(state.signature)
-              val translated = Parsing.processFormula(formula)(state.signature)
+              val translated = Input.processFormula(formula)(state.signature)
               val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
               state.setNegConjecture(negConjectureClause)
               conj = formula
@@ -98,7 +99,7 @@ object SeqPProc {
   final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
     import leo.modules.Utility.termToClause
     import leo.datastructures.ClauseAnnotation.FromFile
-    val formula = Parsing.processFormula(input)(state.signature)
+    val formula = Input.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
   }
   final def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
@@ -219,7 +220,7 @@ object SeqPProc {
         }
       }
       // Read problem from file
-      val input2 = Parsing.readProblem(Configuration.PROBLEMFILE)
+      val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()
       // Split input in conjecture/definitions/axioms etc.
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
