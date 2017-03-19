@@ -34,11 +34,13 @@ object Monomorphization {
       if (cl.typeVars.isEmpty) monoProblem += apply0(cl, newSig, instanceInfo)(sig)
       else polyAxioms += cl
     }
-    monoProblem = monoProblem union generateMonoAxioms(polyAxioms, instanceInfo, newSig)(sig)
+    val monoAxioms = generateMonoAxioms(polyAxioms, instanceInfo, newSig)(sig)
+    println(s"monoAxioms: ${monoAxioms.map(_.pretty(newSig)).mkString("\n\t")}")
+    monoProblem = monoProblem union monoAxioms
     (monoProblem, newSig)
   }
 
-  private final val blackListedConsts: Seq[String] = Seq("xapp")
+  private final val blackListedConsts: Seq[String] = Seq(safeName(TypedFOLEncodingSignature.hApp_name))
 
   private final def generateMonoAxioms(polyAxioms: Set[Clause], instanceInfo: InstanceInfo, newSig: Signature)(sig: Signature): Problem = {
     println(s"Mono instances:")
@@ -60,6 +62,29 @@ object Monomorphization {
       for ((id, instances) <- polySymbs) {
         println(s"${sig(id).name}:")
         println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
+        if (blackListedConsts.contains(sig(id).name)) {
+          println("skipped")
+        } else {
+          if (instanceInfo.contains(id)) {
+            println("monomorph instance exists")
+            val monoInstances = instanceInfo(id)
+            for (poly <- instances) {
+              for (elem <- monoInstances) {
+                println(s"poly: ${poly.map(_.pretty(sig)).mkString(",")}")
+                println(s"mono instance: ${elem.map(_.pretty(sig)).mkString(",")}")
+                val unifiable = TypeUnification.apply(poly.zip(elem))
+                if (unifiable.isDefined) {
+                  println(s"unifiable: ${unifiable.get.pretty}")
+                  val axiomInstance = polyAxiom.substitute(Subst.id, unifiable.get)
+                  println(s"axiom instance: ${axiomInstance.pretty(sig)}")
+                  if (axiomInstance.typeVars.isEmpty)
+                    monoAxioms += apply0(axiomInstance, newSig, instanceInfo)(sig)
+                } else println(s"not unifiable")
+              }
+            }
+
+          } else println("no monomorph instance exists")
+        }
       }
 
 //      val tySubstsIt = tySubsts.iterator
@@ -211,13 +236,22 @@ object Monomorphization {
       case f ∙ args => f match {
         case Symbol(id) => if (f.ty.isPolyType) {
           val (tyArgs, termArgs) = partitionArgs(args)
-          val monoType = f.ty.instantiate(tyArgs)
-          val name = monoInstanceName(id, tyArgs)(sig)
-          updateInstanceInfo(instanceInfo, id, tyArgs)
-          val newF = if (newSig.exists(name)) mkAtom(newSig(name).key)(newSig)
-          else mkAtom(newSig.addUninterpreted(name, convertType(monoType, sig, newSig)))(newSig)
-          val newArgs = termArgs.map(arg => apply0(arg, newSig, instanceInfo))
-          mkTermApp(newF, newArgs)
+          if (sig(id).isFixedSymbol) {
+            val name = sig(id).name
+            val newF = mkAtom(newSig(name).key)(newSig)
+            val newArgs = termArgs.map(arg => apply0(arg, newSig, instanceInfo))
+            val newFTyApplied = mkTypeApp(newF, tyArgs.map(ty => convertType(ty, sig, newSig)))
+            mkTermApp(newFTyApplied, newArgs)
+          } else {
+            val monoType = f.ty.instantiate(tyArgs)
+            val name = monoInstanceName(id, tyArgs)(sig)
+            updateInstanceInfo(instanceInfo, id, tyArgs)
+            val newF = if (newSig.exists(name)) mkAtom(newSig(name).key)(newSig)
+            else mkAtom(newSig.addUninterpreted(name, convertType(monoType, sig, newSig)))(newSig)
+            val newArgs = termArgs.map(arg => apply0(arg, newSig, instanceInfo))
+            mkTermApp(newF, newArgs)
+          }
+
         } else {
           assert(args.forall(_.isLeft), s"not all arguments of ${f.pretty(sig)} (type: ${f.ty.pretty(sig)}) terms in: ${t.pretty(sig)}")
           val name = escape(sig(id).name)
