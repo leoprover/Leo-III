@@ -281,49 +281,6 @@ object TypedFOLEncoding {
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
     import encodingSignature._
     t match {
-      /*// These cases can of course happen as subterms may contain arbitrary formulas in HOL
-      case HOLForall(ty :::> body) =>
-        val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
-        val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
-        proxyForall(λ(encodedType)(translatedBody))
-      case HOLExists(ty :::> body) =>
-        val encodedType =  foTransformType0(ty, true)(holSignature, encodingSignature)
-        val translatedBody = translateTerm(body, les)(holSignature, encodingSignature)
-        proxyExists(λ(encodedType)(translatedBody))
-      case HOLEq(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyEq(translatedLeft, translatedRight)
-      case HOLNeq(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyNeq(translatedLeft, translatedRight)
-      case HOLAnd(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyAnd(translatedLeft, translatedRight)
-      case HOLOr(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyOr(translatedLeft, translatedRight)
-      case HOLEquiv(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyEquiv(translatedLeft, translatedRight)
-      case HOLImpl(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyImpl(translatedLeft, translatedRight)
-      case HOLIf(l,r) =>
-        val translatedLeft = translateTerm(l,les)(holSignature, encodingSignature)
-        val translatedRight = translateTerm(r,les)(holSignature, encodingSignature)
-        proxyIf(translatedLeft, translatedRight)
-      case HOLNot(body) =>
-        val translatedBody = translateTerm(body,les)(holSignature, encodingSignature)
-        proxyNot(translatedBody)
-      case HOLFalse() => proxyFalse
-      case HOLTrue() => proxyTrue
-      */
       case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
       case f ∙ args =>
         val encodedHead = f match {
@@ -445,7 +402,7 @@ object EncodingAnalyzer {
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at formula level")  // analyzeFormula(body)
     }
   }
-  final def analyzeTerm(t: Term): ArityTable = {
+  @tailrec final def analyzeTerm(t: Term): ArityTable = {
     import leo.datastructures.Term._
     t match {
       case f ∙ args => f match {
