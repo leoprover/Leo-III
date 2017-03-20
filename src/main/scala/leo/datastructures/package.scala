@@ -14,7 +14,6 @@ package object datastructures {
 
   /** Supplement trait for custom toString methods. */
   trait Pretty {
-    /** Pretty representation of the underlying object as string. */
     def pretty: String
   }
   /** Another supplement trait for custom toString methods for signature-dependent

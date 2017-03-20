@@ -15,17 +15,17 @@ import leo.modules.relevance_filter.{PreFilterSet, RelevanceFilter}
 /**
   * Created by mwisnie on 3/10/16.
   */
-class SeqFilterPhase extends Phase {
+class SeqFilterPhase(blackboard: Blackboard, scheduler: Scheduler) extends Phase(blackboard, scheduler) {
   override def name: String = "relevance_filter_phase"
   override val agents : Seq[Agent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
 
   var finish : Boolean = false
 
   override def execute(): Boolean = {
-    val f = Scheduler().submitIndependent(new FilterRun)
+    val f = scheduler.submitIndependent(new FilterRun)
 
     f.get()
-    !Scheduler().isTerminated
+    !scheduler.isTerminated
   }
 
   private class FilterRun extends Runnable {
@@ -61,7 +61,7 @@ class SeqFilterPhase extends Phase {
         round += 1
       }
 
-      res foreach {form => Blackboard().addData(ClauseType)(form) }
+      res foreach {form => blackboard.addData(ClauseType)(form) }
     } catch {
       case e : ThreadDeath => return
       case _ : Throwable => return

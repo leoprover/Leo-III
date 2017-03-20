@@ -13,15 +13,20 @@ import scala.collection.mutable
 class SimpleRuleTest extends LeoTestSuite {
 
   test("Double Insertion of ds.", Checked) {
+    val (blackboard, scheduler) = Blackboard.newBlackboard
+    val self = this
+    var done = false
     val store = new SimpleStore
-    Blackboard().addDS(store)
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
+    blackboard.addDS(store)
 
-    assert(Blackboard().getDS.size == 1, "A double inserted data structure should only be contained once.")
+    assert(blackboard.getDS.size == 1, "A double inserted data structure should only be contained once.")
   }
 
   test("Prepend: a", Checked){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     val store = new SimpleStore
     val prep = new PrependRule("a", store)
 
@@ -29,23 +34,24 @@ class SimpleRuleTest extends LeoTestSuite {
     store.strings.add("test")
     store.strings.add("nice")
 
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val prepAgent = new RuleAgent(prep)
-    prepAgent.register()
+    blackboard.registerAgent(prepAgent)
 
+    blackboard.registerAgent(
     new AbstractAgent {
-      override val interest : Option[Seq[DataType]] = None
+      override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
+    scheduler.signal()
+    self.synchronized{while(!done) self.wait()}
 
 
     assert(store.strings.size == 3, "The store should only contain 3 strings.")
@@ -56,7 +62,9 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Append: b", Checked){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     val store = new SimpleStore
     val prep = new AppendRule("b", store)
 
@@ -64,23 +72,24 @@ class SimpleRuleTest extends LeoTestSuite {
     store.strings.add("test")
     store.strings.add("nice")
 
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val prepAgent = new RuleAgent(prep)
-    prepAgent.register()
+    blackboard.registerAgent(prepAgent)
 
+    blackboard.registerAgent(
     new AbstractAgent {
-      override val interest : Option[Seq[DataType]] = None
+      override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
+    scheduler.signal()
+    self.synchronized{ while(!done) self.wait()}
 
 
     assert(store.strings.size == 3, "The store should only contain 3 strings.")
@@ -91,7 +100,9 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Pre/Append: a/b"){
+    val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
+    var done = false
     val store = new SimpleStore
     val prep = new PrependRule("a", store)
     val app = new AppendRule("b", store)
@@ -100,25 +111,26 @@ class SimpleRuleTest extends LeoTestSuite {
     store.strings.add("test")
     store.strings.add("nice")
 
-    Blackboard().addDS(store)
+    blackboard.addDS(store)
     val prepAgent = new RuleAgent(prep)
     val appAgent = new RuleAgent(app)
-    prepAgent.register()
-    appAgent.register()
+    blackboard.registerAgent(prepAgent)
+    blackboard.registerAgent(appAgent)
 
+    blackboard.registerAgent(
     new AbstractAgent {
-      override val interest : Option[Seq[DataType]] = None
+      override val interest : Option[Seq[DataType[Any]]] = None
       override def init(): Iterable[Task] = Seq()
       override def filter(event: Event): Iterable[Task] = event match{
-        case _ : DoneEvent => self.synchronized(self.notifyAll()); Seq()
+        case DoneEvent => println("Done"); self.synchronized{done = true; self.notifyAll()}; Seq()
         case _ => Seq()
       }
 
       override def name: String = "termination"
-    }.register()
+    })
 
-    Scheduler().signal()
-    self.synchronized(self.wait())
+    scheduler.signal()
+    self.synchronized{while(!done) self.wait()}
 
 
     assert(store.strings.size == 3, "The store should only contain 3 strings.")
@@ -130,13 +142,15 @@ class SimpleRuleTest extends LeoTestSuite {
 }
 
 
-case object StringType extends DataType
+case object StringType extends DataType[String]{
+  override def convert(d: Any): String = d.asInstanceOf[String]
+}
 class SimpleStore extends DataStore {
 
   val strings : mutable.Set[String] = mutable.HashSet[String]()
 
-  override val storedTypes: Seq[DataType] = Seq(StringType)
-  override def updateResult(r: Result): Boolean = synchronized{
+  override val storedTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def updateResult(r: Delta): Boolean = synchronized{
     var (del, ins) : (Seq[String], Seq[String])= r.updates(StringType).map{case (a,b) => (a.asInstanceOf[String], b.asInstanceOf[String])}.unzip
     del = del ++ r.removes(StringType).map(_.asInstanceOf[String])
     ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
@@ -147,7 +161,7 @@ class SimpleStore extends DataStore {
     true
   }
   override def clear(): Unit = synchronized(strings.clear())
-  override def all(t: DataType): Set[Any] = if(t == StringType) synchronized(strings.toSet) else Set()
+  override def all[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
 }
 
 
@@ -186,9 +200,9 @@ class AppendRule(letter : String, observe : SimpleStore) extends Rule {
 }
 
 class ChangeStringHint(olds : String, news : String) extends Hint {
-  override def apply(): Result = {
+  override def apply(): Delta = {
     Result().update(StringType)(olds)(news)
   }
-  override val read: Map[DataType, Set[Any]] = Map()
-  override val write: Map[DataType, Set[Any]] = Map(StringType -> Set(olds))
+  override val read: Map[DataType[Any], Set[Any]] = Map()
+  override val write: Map[DataType[Any], Set[Any]] = Map(StringType -> Set(olds))
 }

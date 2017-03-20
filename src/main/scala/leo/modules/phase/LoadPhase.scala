@@ -14,7 +14,7 @@ import leo.modules.output.{SZS_Error, SZS_InputError}
 import leo.modules.parsers.Input
 import leo.modules.SZSException
 
-class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
+class LoadPhase(problemfile: String = Configuration.PROBLEMFILE, blackboard: Blackboard, scheduler: Scheduler) extends Phase(blackboard, scheduler) {
   override val name = "LoadPhase"
 
   override val agents : Seq[Agent] = Nil // if(negateConjecture) List(new FifoController(new ConjectureAgent)) else Nil
@@ -23,9 +23,9 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
 
   override def execute(): Boolean = {
     val run = new LoadRun
-    val f = Scheduler().submitIndependent(run)
+    val f = scheduler.submitIndependent(run)
     f.get()
-    run.ret_def && !Scheduler().isTerminated
+    run.ret_def && !scheduler.isTerminated
   }
 
   private class LoadRun extends Runnable{
@@ -51,7 +51,7 @@ class LoadPhase(problemfile: String = Configuration.PROBLEMFILE) extends Phase{
         }
         while(it.hasNext){
           val form = it.next()
-          Blackboard().addData(AnnotatedFormulaType)(form)
+          blackboard.addData(AnnotatedFormulaType)(form)
         }
       } catch {
         case e : SZSException =>

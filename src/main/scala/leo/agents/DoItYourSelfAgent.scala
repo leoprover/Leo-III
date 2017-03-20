@@ -12,7 +12,7 @@ import leo.datastructures.context.Context
   */
 class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
   override def name: String = procedure.name
-  override val interest : Option[Seq[DataType]] = None
+  override val interest : Option[Seq[DataType[Any]]] = None
 
   override def init(): Iterable[Task] = {
     val forms = FormulaDataStore.getFormulas
@@ -49,13 +49,13 @@ case class DoItYourSelfMessage(c : Context) extends Message
 class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy]) extends Task{
   override val name: String = a.procedure.name+"Task"
   override val getAgent: Agent = a
-  override val writeSet: Map[DataType, Set[Any]] = Map.empty
-  override val readSet: Map[DataType, Set[Any]] = Map.empty
-  override def run: Result = {
+  override val writeSet: Map[DataType[Any], Set[Any]] = Map.empty
+  override val readSet: Map[DataType[Any], Set[Any]] = Map.empty
+  override def run: Delta = {
     val fs1 = fs.map(_.asInstanceOf[AnnotatedClause])
     val (status, res) = a.procedure.execute(fs1)
     if(res.isEmpty) return Result()
-    var r = Result().insert(StatusType)(SZSStore(status))
+    var r = Result().insert(StatusType)(status)
     if(res.nonEmpty){
       val it = res.get.iterator
       while(it.hasNext){

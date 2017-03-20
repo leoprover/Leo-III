@@ -19,7 +19,7 @@ import scala.collection.mutable
   * @author Max WIsniewski
   * @since 5/23/16
   */
-class SimpleTaskSet extends TaskSet{
+class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
 
   // TODO Save blocked tasks in extra queue (no unnecessary looping in scheduler)
 
@@ -84,7 +84,7 @@ class SimpleTaskSet extends TaskSet{
     agentExec.put(t.getAgent, agentExec.getOrElse(t.getAgent, 1)-1)
     LockSet.releaseTask(t)
     if(ActiveTracker.decAndGet(s"Finished:\n  ${t.pretty}") <= 0)
-      Blackboard().forceCheck()
+      blackboard.forceCheck()
   }
 
 

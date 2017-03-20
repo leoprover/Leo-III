@@ -1,11 +1,18 @@
 package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.AnnotatedClause
-import leo.datastructures.blackboard.{DataStore, DataType, Result}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
+import leo.modules.SZSException
+import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
 
-case object Unify extends DataType
+case object Unify extends DataType[AnnotatedClause]{
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 
 /**
   * Stores Formulas that are potentially to unify with
@@ -28,7 +35,7 @@ class UnificationSet extends DataStore{
     *
     * @return all stored types
     */
-  override val storedTypes: Seq[DataType] = Seq(Unify)
+  override val storedTypes: Seq[DataType[Any]] = Seq(Unify)
 
   /**
     *
@@ -36,7 +43,7 @@ class UnificationSet extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Result): Boolean = synchronized {
+  override def updateResult(r: Delta): Boolean = synchronized {
     val ins1 = r.inserts(Unify)
     val del1 = r.removes(Unify)
     val (del2, ins2) = r.updates(Unify).unzip
@@ -78,8 +85,8 @@ class UnificationSet extends DataStore{
     * @param t
     * @return
     */
-  override def all(t: DataType): Set[Any] = t match{
-    case Unify => synchronized(set.toSet)
+  override def all[T](t: DataType[T]): Set[T] = t match{
+    case Unify => synchronized(set.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }

@@ -1,11 +1,18 @@
 package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, MultiPriorityQueue}
-import leo.datastructures.blackboard.{DataStore, DataType, Result}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
+import leo.modules.SZSException
+import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
 
-case object Unprocessed extends DataType
+case object Unprocessed extends DataType[AnnotatedClause]{
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}
 
 /**
   * Stores the unprocessed Formulas for
@@ -51,7 +58,7 @@ class UnprocessedSet extends DataStore{
     *
     * @return all stored types
     */
-  override val storedTypes: Seq[DataType] = Seq(Unprocessed)
+  override val storedTypes: Seq[DataType[Any]] = Seq(Unprocessed)
 
   /**
     *
@@ -59,7 +66,7 @@ class UnprocessedSet extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Result): Boolean = synchronized {
+  override def updateResult(r: Delta): Boolean = synchronized {
     val ins1 = r.inserts(Unprocessed)
     val del1 = r.removes(Unprocessed)
     val ins2 = r.updates(Unprocessed).map(_._2)
@@ -92,8 +99,8 @@ class UnprocessedSet extends DataStore{
     * @param t
     * @return
     */
-  override def all(t: DataType): Set[Any] = t match{
-    case Unprocessed => synchronized(mpq.toSet.toSet)
+  override def all[T](t: DataType[T]): Set[T] = t match{
+    case Unprocessed => synchronized(mpq.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }

@@ -130,7 +130,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var cur_prio = 0
   private var cur_weight = 0
   final def nextUnprocessed: T = {
-    leo.Out.debug(s"[###] Selecting with priority $cur_prio: element $cur_weight")
+    leo.Out.trace(s"[###] Selecting with priority $cur_prio: element $cur_weight")
     if (cur_weight >= prio_weights(cur_prio)) {
       cur_weight = 0
       cur_prio = (cur_prio + 1) % mpq.priorities

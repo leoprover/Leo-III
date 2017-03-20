@@ -1,7 +1,9 @@
 package leo.modules.interleavingproc
 
 import leo.datastructures.AnnotatedClause
-import leo.datastructures.blackboard.{DataStore, DataType, Result}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta}
+import leo.modules.SZSException
+import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
 
@@ -28,7 +30,7 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     *
     * @return all stored types
     */
-  override val storedTypes: Seq[DataType] = Seq(OpenUnification)
+  override val storedTypes: Seq[DataType[Any]] = Seq(OpenUnification)
 
   /**
     *
@@ -36,7 +38,7 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Result): Boolean = synchronized {
+  override def updateResult(r: Delta): Boolean = synchronized {
     val itr = r.removes(OpenUnification).iterator
     while(itr.hasNext){
       val r = itr.next().asInstanceOf[T]
@@ -69,7 +71,12 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     * @param t
     * @return
     */
-  override def all(t: DataType): Set[Any] = if(t == OpenUnification) synchronized(openUnifications.toSet) else Set.empty
+  override def all[T](t: DataType[T]): Set[T] = if(t == OpenUnification) synchronized(openUnifications.toSet.asInstanceOf[Set[T]]) else Set.empty
 }
 
-case object OpenUnification extends DataType {}
+case object OpenUnification extends DataType [AnnotatedClause] {
+  override def convert(d: Any): AnnotatedClause = d match {
+    case c : AnnotatedClause => c
+    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+  }
+}

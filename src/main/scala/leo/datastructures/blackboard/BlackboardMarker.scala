@@ -63,8 +63,4 @@ trait Message extends Event {
 //  }
 //}
 
-class DoneEvent() extends Event {}
-
-object DoneEvent {
-  def apply() = new DoneEvent()
-}
+case object DoneEvent extends Event {}

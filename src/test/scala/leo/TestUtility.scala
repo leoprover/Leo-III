@@ -26,7 +26,8 @@ trait TestUtility {
 
   def resetTermBank: Unit = {Term.reset()}
 
-  def resetBlackBoard: Unit = {leo.datastructures.blackboard.Blackboard().clear()}
+  @deprecated
+  def resetBlackBoard: Unit = {}  // Obsolete: Blackboard is now a class and has to be created anew each test
 
   val hLine: String = "#" * 30
   def printHLine(): Unit = println(hLine)

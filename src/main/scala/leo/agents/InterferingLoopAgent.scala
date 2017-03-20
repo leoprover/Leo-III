@@ -30,7 +30,7 @@ import leo.datastructures.blackboard._
   * For consistency it is adviced to obtain and flag the used data after the filter phase.
   *
   */
-class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) extends Agent {
+class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A], bl : Blackboard) extends Agent {
   override val name: String = loop.name
   override val maxParTasks : Option[Int] = Some(1)
   private val self = this
@@ -55,12 +55,8 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       ActiveTracker.incAndGet(s"$name: Loop condition initially positive.")
     }
     taskExisting = r.nonEmpty
-    if(loop.terminated) unregister()
+    if(loop.terminated) bl.unregisterAgent(this)
     r
-  }
-
-  override def register() : Unit = {
-    super.register()
   }
 
   /**
@@ -83,7 +79,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
         ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
       }
       taskExisting = r.nonEmpty
-      if(loop.terminated) unregister()
+      if(loop.terminated) bl.unregisterAgent(this)
       r
     case _ if !taskExisting =>                // Case of a cancel and no other possible match
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
@@ -96,7 +92,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
       }
       firstAttempt = false    // Race condition
       taskExisting = r.nonEmpty
-      if(loop.terminated) unregister()
+      if(loop.terminated) bl.unregisterAgent(this)
       r
     case _ => Nil
   })
@@ -108,7 +104,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
     *         Some(Nil) -> The agent registers for all data changes. <br />
     *         Some(xs) -> The agent registers only for data changes for any type in xs.
     */
-  override def interest: Option[Seq[DataType]] = Some(Nil)
+  override def interest: Option[Seq[DataType[Any]]] = Some(Nil)
 
   /**
     * Each task can define a maximum amount of money, they
@@ -138,7 +134,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
 //    println(s"Task finished ${t.pretty}")
     taskExisting = false
     firstAttempt = true
-    Blackboard().send(NextIteration, this)
+    bl.send(NextIteration, this)
   }
 
 
@@ -161,9 +157,9 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A]) exte
   class InterferringLoopTask(opState : A) extends Task {
     override lazy val name: String = loop.name+ s"(${opState.toString})" + "-task"
     override lazy val getAgent: Agent = self
-    override lazy val writeSet : Map[DataType, Set[Any]] = opState.write
-    override lazy val readSet : Map[DataType, Set[Any]] = opState.read
-    override def run: Result = loop(opState)
+    override lazy val writeSet : Map[DataType[Any], Set[Any]] = opState.write
+    override lazy val readSet : Map[DataType[Any], Set[Any]] = opState.read
+    override def run: Delta = loop(opState)
     override def bid: Double = 1    // Since we only need one task, we can spend all our money
 
     override lazy val pretty: String = name
@@ -205,7 +201,9 @@ trait InterferingLoop[A <: OperationState] {
     * @param opState Snapshot of the current data
     * @return A Result to insert into the blackboard.
     */
-  def apply(opState : A) : Result
+  def apply(opState : A) : Delta
+
+  def taskFinished(t : Task) : Unit = {}
 }
 
 /**
@@ -217,22 +215,22 @@ trait OperationState {
     * Set of datatypes the loop works on
     * @return All touched datatypes
     */
-  def datatypes : Iterable[DataType]
+  def datatypes : Iterable[DataType[Any]]
 
   /**
     * The set of data the method looks at.
     * @param ty Type of the data to look at
     * @return Set of data the operation reads
     */
-  def readData(ty : DataType) : Set[Any]
+  def readData[T](ty : DataType[T]) : Set[T]
 
   /**
     * Set of data the method wishes to write.
     * @param ty Type of the data the operation writes
     * @return Set of data the operation writes
     */
-  def writeData(ty : DataType) : Set[Any]
+  def writeData[T](ty : DataType[T]) : Set[T]
 
-  private[agents] final lazy val read : Map[DataType, Set[Any]] = datatypes.map(d => (d,readData(d))).filter(_._2.nonEmpty).toMap
-  private[agents] final lazy val write : Map[DataType, Set[Any]] = datatypes.map(d => (d,writeData(d))).filter(_._2.nonEmpty).toMap
+  private[agents] final lazy val read : Map[DataType[Any], Set[Any]] = datatypes.map(d => (d,readData(d))).filter(_._2.nonEmpty).toMap
+  private[agents] final lazy val write : Map[DataType[Any], Set[Any]] = datatypes.map(d => (d,writeData(d))).filter(_._2.nonEmpty).toMap
 }

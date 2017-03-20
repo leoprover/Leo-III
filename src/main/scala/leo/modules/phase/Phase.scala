@@ -23,7 +23,7 @@ object Phase {
    * @param dagents - Agents to be used in this phase.
    * @return - A phase executing all agents until nothing is left to do.
    */
-  def apply(dname : String, dagents : Seq[Agent]): Phase = new CompletePhase {
+  def apply(dname : String, dagents : Seq[Agent])(blackboard: Blackboard, scheduler: Scheduler): Phase = new CompletePhase(blackboard, scheduler) {
     override protected def agents: Seq[Agent] = dagents
     override def name: String = dname
   }
@@ -35,7 +35,7 @@ object Phase {
  * @author Max Wisniewski
  * @since 12/1/14
  */
-trait Phase {
+abstract class Phase(val blackboard: Blackboard, val scheduler : Scheduler) {
   /**
    * Executes the Phase.
    *
@@ -69,16 +69,16 @@ trait Phase {
    * Method to start the agents, defined in `agents`
    */
   protected def init() : Unit = {
-    agents.foreach(_.register())
+    agents.foreach{a => blackboard.registerAgent(a)}
   }
 
   /**
    * Method to finish the agents.
    */
   protected def end() : Unit = {
-    Scheduler().pause()
-    agents.foreach(_.unregister())
-    Scheduler().clear()
+    scheduler.pause()
+    agents.foreach(a => blackboard.unregisterAgent(a))
+    scheduler.clear()
   }
 }
 
@@ -86,19 +86,19 @@ trait Phase {
  * Abstract Phase, that implements
  * the execute to start the agents and wait for all to finish.
  */
-trait CompletePhase extends Phase {
+abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) extends Phase(blackboard, scheduler) {
   private def getName = name
   protected var waitAgent : CompleteWait = null
 
 
   def initWait() : Unit = {
     waitAgent = new CompleteWait
-    waitAgent.register()
+    blackboard.registerAgent(waitAgent)
   }
 
   override def end() : Unit = {
     super.end()
-    waitAgent.unregister()
+    blackboard.unregisterAgent(waitAgent)
     waitAgent = null
     waitAgent = null
   }
@@ -110,7 +110,7 @@ trait CompletePhase extends Phase {
    * @return true, if the execution was sucessfull, false otherwise
    */
   def waitTillEnd() : Boolean = {
-    Scheduler().signal()
+    scheduler.signal()
     waitAgent.synchronized{while(!waitAgent.finish) waitAgent.wait()}
     if(waitAgent.scedKill) return false
     return true
@@ -138,12 +138,12 @@ trait CompletePhase extends Phase {
   protected class CompleteWait extends AbstractAgent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType]] = Some(Seq(StatusType))
+    override def interest : Option[Seq[DataType[Any]]] = Some(Seq(StatusType))
     @inline override val init: Iterable[Task] = Seq()
     override def filter(event: Event): Iterable[Task] = event match {
-      case d : DoneEvent =>
+      case DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
-      case r : Result =>
+      case r : Delta =>
         if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty){
           synchronized{finish = true; notifyAll()}
         }

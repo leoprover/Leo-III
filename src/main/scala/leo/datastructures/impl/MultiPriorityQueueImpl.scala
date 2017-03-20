@@ -1,7 +1,9 @@
 package leo.datastructures.impl
 
 import java.util.NoSuchElementException
-import leo.datastructures.MultiPriorityQueue
+
+import leo.datastructures.{ClauseProxy, MultiPriorityQueue, Prettier, Signature}
+
 import scala.collection.mutable
 
 /**
@@ -125,4 +127,25 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   }
 
   def toSet: Set[A] = if (priorityQueues.isEmpty) Set() else priorityQueues.head.view.filterNot(elem => elem.get == null || deletedObjects.contains(elem.get)).map(_.get).toSet
+
+  def pretty : String = {
+    val sb = new StringBuilder
+    sb.append("Multipriority Queue:")
+    var qC = 0
+    val it = priorityQueues.iterator
+    while(it.hasNext){
+      val q = it.next
+      sb.append("\n > Queue "+qC+" : ")
+      qC += 1
+      val itE = q.iterator
+      while(itE.hasNext){
+        val e = itE.next().get
+        if(e != null && !deletedObjects.contains(e)){
+          sb.append(if(e.isInstanceOf[ClauseProxy]) s"[${e.asInstanceOf[ClauseProxy].id}]" else e.toString)
+          if(itE.hasNext) {sb.append(", ")}
+        }
+      }
+    }
+    sb.toString()
+  }
 }
