@@ -131,69 +131,6 @@ object Monomorphization {
       curIteration += 1
     }
     monoInstances
-
-
-
-
-
-
-
-
-
-
-//    println(s"Mono instances:")
-//    for ((id, instances) <- instanceInfo) {
-//      println(s"${sig(id).name}:")
-//      println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
-//    }
-//    println(s"Poly axioms:")
-//    for (ax <- polyAxioms) {
-//      println("\t" + ax.pretty(sig))
-//    }
-//    var monoAxioms: Set[Clause] = Set.empty
-//    val polyAxiomsIt = polyAxioms.iterator
-////    val newInstanceInfo: InstanceInfo = mutable.Map()
-//    while (polyAxiomsIt.hasNext) {
-//      val polyAxiom = polyAxiomsIt.next()
-//      println(s"Poly ax: ${polyAxiom.pretty(sig)}")
-//      val polySymbs = polySymbols(polyAxiom, instanceInfo)
-//      for ((id, instances) <- polySymbs) {
-//        println(s"${sig(id).name}:")
-//        println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
-//        if (blackListedConsts.contains(sig(id).name)) {
-//          println("skipped")
-//        } else {
-//          if (instanceInfo.contains(id)) {
-//            println("monomorph instance exists")
-//            val monoInstances = instanceInfo(id)
-//            for (poly <- instances) {
-//              for (elem <- monoInstances) {
-//                println(s"poly: ${poly.map(_.pretty(sig)).mkString(",")}")
-//                println(s"mono instance: ${elem.map(_.pretty(sig)).mkString(",")}")
-//                val unifiable = TypeUnification.apply(poly.zip(elem))
-//                if (unifiable.isDefined) {
-//                  println(s"unifiable: ${unifiable.get.pretty}")
-//                  val axiomInstance = polyAxiom.substitute(Subst.id, unifiable.get)
-//                  println(s"axiom instance: ${axiomInstance.pretty(sig)}")
-//                  if (axiomInstance.typeVars.isEmpty)
-//                    monoAxioms += apply0(axiomInstance, newSig, instanceInfo)(sig)
-//                } else println(s"not unifiable")
-//              }
-//            }
-//
-//          } else println("no monomorph instance exists")
-//        }
-//      }
-
-//      val tySubstsIt = tySubsts.iterator
-//      while (tySubstsIt.hasNext) {
-//        val tySubst = tySubstsIt.next()
-//        val newAxiom = polyAxiom.substitute(Subst.id, tySubst)
-//        if (newAxiom.typeVars.isEmpty) monoAxioms += newAxiom
-//      }
-//    }
-
-//    monoAxioms
   }
 
   private final val blackListedConsts: Seq[String] = Seq(safeName(TypedFOLEncodingSignature.hApp_name))
@@ -266,76 +203,7 @@ object Monomorphization {
       case _ :::> body => polySymbols(body, instanceInfo, polySymbolTable)
     }
   }
-//  private final def mergeMaps(map1: Map[Signature#Key, Set[Seq[Type]]], map2: Map[Signature#Key, Set[Seq[Type]]]): Map[Signature#Key, Set[Seq[Type]]] = {
-//    var result = map1
-//    val map2It = map2.iterator
-//    while (map2It.hasNext) {
-//      val (id, entry) = map2It.next()
-//      if (result.contains(id)) {
-//        val newEntry = result(id) union entry
-//        result = result + (id -> newEntry)
-//      } else result = result + (id -> entry)
-//    }
-//    result
-//  }
 
-//  private final def instances0(t: Term, instanceInfo: InstanceInfo): Set[TypeSubst] =  {
-//    import leo.datastructures.Term.{∙, Symbol, :::>}
-//    import Term.local.mkTypeApp
-//    t match {
-//      case f ∙ args => f match {
-//        case Symbol(id) =>
-//          if (instanceInfo.contains(id)) {
-//            val knownMonoArgs = instanceInfo(id)
-//            val (typeArgs, termArgs) = partitionArgs(args)
-//            val polyF = mkTypeApp(f, typeArgs)
-//            knownMonoArgs.map { instance =>
-//              val freshVargen = leo.modules.calculus.freshVarGenFromBlank
-//              HuetsPreUnification.unify(freshVargen, polyF, instance)
-//            }
-//          } else {
-//            val argsIt = args.iterator
-//            var result: Set[TypeSubst] = Set.empty
-//            while (argsIt.hasNext) {
-//              val arg = argsIt.next()
-//              if (arg.isLeft) {
-//                val termArg = arg.left.get
-//                val localResult = instances0(termArg, instanceInfo)
-//                result = multiply(result, localResult)
-//              }
-//            }
-//            result
-//          }
-//        case _ =>
-//          val argsIt = args.iterator
-//          var result: Set[TypeSubst] = Set.empty
-//          while (argsIt.hasNext) {
-//            val arg = argsIt.next()
-//            if (arg.isLeft) {
-//              val termArg = arg.left.get
-//              val localResult = instances0(termArg, instanceInfo)
-//              result = multiply(result, localResult)
-//            }
-//          }
-//          result
-//      }
-//      case ty :::> body => instances0(body, instanceInfo)
-//      case _ => ???
-//    }
-//  }
-  private final def multiply(set1: Set[TypeSubst], set2: Set[TypeSubst]): Set[TypeSubst] = {
-    var result: Set[TypeSubst] = Set.empty
-    val set1It = set1.iterator
-    while (set1It.hasNext) {
-      val elem1 = set1It.next()
-      val set2It = set2.iterator
-      while(set2It.hasNext) {
-        val elem2 = set2It.next()
-        result = result + elem1.comp(elem2).normalize + elem2.comp(elem1).normalize
-      }
-    }
-    result
-  }
   private final def multiply(set: Set[TypeSubst], subst: TypeSubst): Set[TypeSubst] = {
     var result: Set[TypeSubst] = Set.empty
     val setIt = set.iterator
@@ -401,7 +269,6 @@ object Monomorphization {
       case ty :::> body =>
         val convertedType = convertType(ty, sig, newSig)
         λ(convertedType)(apply0(body, newSig, instanceInfo)(sig))
-//      case Bound(ty, idx) => mkBound(convertType(ty, sig, newSig), idx)
       case _ => throw new IllegalArgumentException(s"${t.pretty(sig)} was given")
     }
   }
