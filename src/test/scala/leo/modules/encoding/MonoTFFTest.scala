@@ -53,6 +53,9 @@ class MonoTFFTest extends LeoTestSuite {
     println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
     println("---")
     printSignature(monoSig)
+    monoProblem.foreach { cl =>
+      assert(Clause.wellTyped(cl), s"${cl.pretty(monoSig)} not well typed")
+    }
     assert(monoProblem.forall(Clause.wellTyped))
     println("########")
 
