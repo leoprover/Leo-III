@@ -70,10 +70,14 @@ class MonoTFFTest extends LeoTestSuite {
 
 
     // create formulae, taken from the proof
-    Input.readAnnotated("thf(sk1_type, type, sk1: ($i > ($i > $o))).")
-    Input.readAnnotated("thf(sk2_type, type, sk2: (($i > $o) > $i)).")
-    val (_,f1,_) = Input.readAnnotated("thf(62,plain,(! [A:$i,B:($i > $o)]: ((B @ A) | (sk1 @ (sk2 @ (^ [C:$i]: ~ (B @ C))) @ A))),inference(simp,[status(thm)],[26])).")
-    val (_,f2,_) = Input.readAnnotated("thf(35,plain,(! [A:$i,B:($i > $o)]: ((~ (B @ A)) | (~ (sk1 @ (sk2 @ (^ [C:$i]: ~ (B @ C))) @ A)))),inference(simp,[status(thm)],[14])).")
+//    Input.readAnnotated("thf(sk1_type, type, sk1: ($i > ($i > $o))).")
+//    Input.readAnnotated("thf(sk2_type, type, sk2: (($i > $o) > $i)).")
+    Input.readAnnotated("thf(sk5_type, type, sk5: ($i > ($i > $o))).")
+    Input.readAnnotated("thf(sk6_type, type, sk6: (($i > $o) > $i)).")
+//    val (_,f1,_) = Input.readAnnotated("thf(62,plain,(! [A:$i,B:($i > $o)]: ((B @ A) | (sk1 @ (sk2 @ (^ [C:$i]: ~ (B @ C))) @ A))),inference(simp,[status(thm)],[26])).")
+//    val (_,f2,_) = Input.readAnnotated("thf(35,plain,(! [A:$i,B:($i > $o)]: ((~ (B @ A)) | (~ (sk1 @ (sk2 @ (^ [C:$i]: ~ (B @ C))) @ A)))),inference(simp,[status(thm)],[14])).")
+    val (_,f1,_) = Input.readAnnotated("thf(72,plain,(! [A:$i,B:($i > $o)]: ((B @ A) | (sk5 @ (sk6 @ (^ [C:$i]: ~ (B @ C))) @ A))),inference(simp,[status(thm)],[34])).")
+    val (_,f2,_) = Input.readAnnotated("thf(98,plain,((~ (sk5 @ (sk6 @ (^ [A:$i]: ~ (sk5 @ A @ A))) @ (sk6 @ (^ [A:$i]: ~ (sk5 @ A @ A)))))),inference(pattern_uni,[status(thm)],[94:[bind(A, $thf(sk6 @ (^ [C:$i]: ~ (sk5 @ C @ C)))),bind(B, $thf(^ [C:$i]: (sk5 @ C @ C)))]])).")
 
     println(f1.pretty(sig))
     assert(Term.wellTyped(f1))

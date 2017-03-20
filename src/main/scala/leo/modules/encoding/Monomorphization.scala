@@ -21,6 +21,53 @@ object Monomorphization {
   type InstanceInfo = mutable.Map[Signature#Key, Instances]
   type PolySymbols = InstanceInfo
 
+  /**
+    * Given a (possibly) polymorphic problem `problem`, this method returns
+    * an monomorphic problem `p'` which contains all monomorphic formulae
+    * of `problem` as well as heuristically instantiated (monomorphic)
+    * formulae that occurred polymorphically in `problem`. Also,
+    * a fresh signature is returned under which the new problem is
+    * stated.
+    *
+    *
+    * The algorithm works as follows:
+    * {{{
+    *   monoFormulae := monoFormulae(problem) // Set(Clauses)
+    *   freshMonoinstances := monoInstances(monoFormulae) // Map(id -> Set(instances))
+    *   PA := polyAxioms(problem) // Set(Clauses)
+    *   monoinstances := ∅ // Set(Clauses)
+    *   WHILE (freshMonoInstances != emptyMap AND iterationLimit not reached) DO
+    *     newMonoInstances := ∅ // Set(clauses)
+    *     FOR pa ∈ PA DO
+    *       PS := collectPolySymbols(pa) // Map(id -> Set(polyparams))
+    *       newSubsts := ∅ // Set(substitution)
+    *       FOR ps ∈ PS
+    *         IF head(ps) ∈ freshMonoInstances AND head(ps) not blacklisted
+    *           instances := freshMonoInstances(head(ps)) // Set(Instances)
+    *           polyParams := PS(head(ps)) // Set(polyparams)
+    *           FOR pP ∈ polyParams DO
+    *             FOR i ∈ instances DO
+    *               σ := unify(pP, i)
+    *               IF σ is defined
+    *                 newSubsts := multiply(newSubsts, σ)
+    *               ENDIF
+    *             DONE
+    *           DONE
+    *         ENDIF
+    *       DONE
+    *       newMonoInstances := newMonoInstances ∪ substituteAll(pa, newSubsts).filter(tyGround)
+    *     DONE
+    *     freshMonoInstances := monoInstances(newMonoInstances) `mapDifference` freshMonoInstances
+    *     monoInstances := monoInstances ∪ newMonoInstances
+    *   DONE
+    *   RETURN monoFormulae ∪ monoInstances
+    * }}}
+    *
+    * @param problem  The polymorphic input problem
+    * @param sig The signature of the input problem
+    * @return A tuple `(p', s)` where `p'` is a heuristically monomorpized version of `problem`
+    *         and `s` a signature under which it is stated.
+    */
   final def apply(problem: Problem)(implicit sig: Signature): (Problem, Signature) = {
     val clsIt = problem.iterator
     val newSig: Signature = Signature.freshWithHOL() // Even if problem is not formulated in HOL
@@ -40,52 +87,103 @@ object Monomorphization {
     (monoProblem, newSig)
   }
 
-  private final val blackListedConsts: Seq[String] = Seq(safeName(TypedFOLEncodingSignature.hApp_name))
 
+
+  private final val iterationLimit: Int = 2
   private final def generateMonoAxioms(polyAxioms: Set[Clause], instanceInfo: InstanceInfo, newSig: Signature)(sig: Signature): Problem = {
-    println(s"Mono instances:")
-    for ((id, instances) <- instanceInfo) {
-      println(s"${sig(id).name}:")
-      println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
-    }
-    println(s"Poly axioms:")
-    for (ax <- polyAxioms) {
-      println("\t" + ax.pretty(sig))
-    }
-    var monoAxioms: Set[Clause] = Set.empty
-    val polyAxiomsIt = polyAxioms.iterator
-//    val newInstanceInfo: InstanceInfo = mutable.Map()
-    while (polyAxiomsIt.hasNext) {
-      val polyAxiom = polyAxiomsIt.next()
-      println(s"Poly ax: ${polyAxiom.pretty(sig)}")
-      val polySymbs = polySymbols(polyAxiom, instanceInfo)
-      for ((id, instances) <- polySymbs) {
-        println(s"${sig(id).name}:")
-        println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
-        if (blackListedConsts.contains(sig(id).name)) {
-          println("skipped")
-        } else {
-          if (instanceInfo.contains(id)) {
-            println("monomorph instance exists")
-            val monoInstances = instanceInfo(id)
-            for (poly <- instances) {
-              for (elem <- monoInstances) {
-                println(s"poly: ${poly.map(_.pretty(sig)).mkString(",")}")
-                println(s"mono instance: ${elem.map(_.pretty(sig)).mkString(",")}")
-                val unifiable = TypeUnification.apply(poly.zip(elem))
-                if (unifiable.isDefined) {
-                  println(s"unifiable: ${unifiable.get.pretty}")
-                  val axiomInstance = polyAxiom.substitute(Subst.id, unifiable.get)
-                  println(s"axiom instance: ${axiomInstance.pretty(sig)}")
-                  if (axiomInstance.typeVars.isEmpty)
-                    monoAxioms += apply0(axiomInstance, newSig, instanceInfo)(sig)
-                } else println(s"not unifiable")
+    var monoInstances: Set[Clause] = Set.empty
+    var freshMonoInstanceInfo: InstanceInfo = instanceInfo
+    var curIteration: Int = 0
+    while (freshMonoInstanceInfo.nonEmpty && curIteration < iterationLimit) {
+      var newMonoInstances: Set[Clause] = Set.empty
+      val polyAxiomsIt = polyAxioms.iterator
+      val freshestMonoInstanceInfo: InstanceInfo = mutable.Map.empty
+      while (polyAxiomsIt.hasNext) {
+        val polyAxiom = polyAxiomsIt.next()
+        val polySymbs = polySymbols(polyAxiom, instanceInfo) // side-effect: update instanceInfo
+        var newSubsts: Set[TypeSubst] = Set(Subst.id)
+        val polySymbsIt = polySymbs.iterator
+        while (polySymbsIt.hasNext) {
+          val (polySymbHead, polySymbTypeParams) = polySymbsIt.next()
+          if (freshMonoInstanceInfo.contains(polySymbHead) && !blacklisted(polySymbHead, sig)) {
+            val instances = freshMonoInstanceInfo(polySymbHead)
+            val polySymbTypeParamsIt = polySymbTypeParams.iterator
+            while (polySymbTypeParamsIt.hasNext) {
+              val polySymbTypeParam = polySymbTypeParamsIt.next()
+              val instancesIt = instances.iterator
+              while (instancesIt.hasNext) {
+                val i = instancesIt.next()
+                assert(polySymbTypeParam.size == i.size)
+                val zippedUniTask = polySymbTypeParam.zip(i)
+                val uniResult = TypeUnification(zippedUniTask)
+                if (uniResult.isDefined) {
+                  newSubsts = multiply(newSubsts, uniResult.get)
+                }
               }
             }
-
-          } else println("no monomorph instance exists")
+          }
         }
+        val preNewMonoInstances = newSubsts.map(polyAxiom.substitute(Subst.id, _)).filter(_.typeVars.isEmpty)
+        newMonoInstances = newMonoInstances union preNewMonoInstances.map(apply0(_, newSig, freshestMonoInstanceInfo)(sig))
       }
+      freshMonoInstanceInfo = mapDifference(freshestMonoInstanceInfo, freshMonoInstanceInfo)
+      monoInstances = monoInstances union newMonoInstances
+      curIteration += 1
+    }
+    monoInstances
+
+
+
+
+
+
+
+
+
+
+//    println(s"Mono instances:")
+//    for ((id, instances) <- instanceInfo) {
+//      println(s"${sig(id).name}:")
+//      println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
+//    }
+//    println(s"Poly axioms:")
+//    for (ax <- polyAxioms) {
+//      println("\t" + ax.pretty(sig))
+//    }
+//    var monoAxioms: Set[Clause] = Set.empty
+//    val polyAxiomsIt = polyAxioms.iterator
+////    val newInstanceInfo: InstanceInfo = mutable.Map()
+//    while (polyAxiomsIt.hasNext) {
+//      val polyAxiom = polyAxiomsIt.next()
+//      println(s"Poly ax: ${polyAxiom.pretty(sig)}")
+//      val polySymbs = polySymbols(polyAxiom, instanceInfo)
+//      for ((id, instances) <- polySymbs) {
+//        println(s"${sig(id).name}:")
+//        println("\t" + instances.map(_.map(_.pretty(sig)).mkString(",")).mkString("\n\t"))
+//        if (blackListedConsts.contains(sig(id).name)) {
+//          println("skipped")
+//        } else {
+//          if (instanceInfo.contains(id)) {
+//            println("monomorph instance exists")
+//            val monoInstances = instanceInfo(id)
+//            for (poly <- instances) {
+//              for (elem <- monoInstances) {
+//                println(s"poly: ${poly.map(_.pretty(sig)).mkString(",")}")
+//                println(s"mono instance: ${elem.map(_.pretty(sig)).mkString(",")}")
+//                val unifiable = TypeUnification.apply(poly.zip(elem))
+//                if (unifiable.isDefined) {
+//                  println(s"unifiable: ${unifiable.get.pretty}")
+//                  val axiomInstance = polyAxiom.substitute(Subst.id, unifiable.get)
+//                  println(s"axiom instance: ${axiomInstance.pretty(sig)}")
+//                  if (axiomInstance.typeVars.isEmpty)
+//                    monoAxioms += apply0(axiomInstance, newSig, instanceInfo)(sig)
+//                } else println(s"not unifiable")
+//              }
+//            }
+//
+//          } else println("no monomorph instance exists")
+//        }
+//      }
 
 //      val tySubstsIt = tySubsts.iterator
 //      while (tySubstsIt.hasNext) {
@@ -93,9 +191,33 @@ object Monomorphization {
 //        val newAxiom = polyAxiom.substitute(Subst.id, tySubst)
 //        if (newAxiom.typeVars.isEmpty) monoAxioms += newAxiom
 //      }
-    }
+//    }
 
-    monoAxioms
+//    monoAxioms
+  }
+
+  private final val blackListedConsts: Seq[String] = Seq(safeName(TypedFOLEncodingSignature.hApp_name))
+  private final def blacklisted(symb: Signature#Key, sig: Signature): Boolean = {
+    val meta = sig(symb)
+    if (meta.isFixedSymbol) true
+    else {
+      val name = meta.name
+      blackListedConsts.contains(name)
+    }
+  }
+
+  private final def mapDifference(subtractFrom: InstanceInfo, subtract: InstanceInfo): InstanceInfo = {
+    val newMap: InstanceInfo = mutable.Map.empty
+    val subtractFromIt = subtractFrom.iterator
+    while(subtractFromIt.hasNext) {
+      val (key,entry) = subtractFromIt.next()
+      if (subtract.contains(key)) {
+        val otherEntry = subtract(key)
+        val newEntry = entry diff otherEntry
+        if (newEntry.nonEmpty) newMap.+=((key, newEntry))
+      } else newMap.+=((key, entry))
+    }
+    newMap
   }
 
   private final def polySymbols(polyAxiom: Clause, instanceInfo: InstanceInfo): PolySymbols = {
@@ -211,6 +333,15 @@ object Monomorphization {
         val elem2 = set2It.next()
         result = result + elem1.comp(elem2).normalize + elem2.comp(elem1).normalize
       }
+    }
+    result
+  }
+  private final def multiply(set: Set[TypeSubst], subst: TypeSubst): Set[TypeSubst] = {
+    var result: Set[TypeSubst] = Set.empty
+    val setIt = set.iterator
+    while (setIt.hasNext) {
+      val subst1 = setIt.next()
+      result = result + subst1.comp(subst).normalize + subst.comp(subst1).normalize
     }
     result
   }
