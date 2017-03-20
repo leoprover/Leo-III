@@ -20,6 +20,7 @@ object TypedFOLEncoding {
     val foSig = TypedFOLEncodingSignature()
     // Analyze problem and insert problem-specific symbols into signature (encoded types)
     val functionTable = EncodingAnalyzer.analyze(problem)
+    println(s"functionTable: ${functionTable.map{case (key, info) => sig(key).name + " : " + info.toString()}.mkString("\n")}")
     val fIt = functionTable.iterator
     var proxyAxioms: Set[Clause] = Set.empty
     while (fIt.hasNext) {
@@ -382,12 +383,12 @@ object EncodingAnalyzer {
         analyzeFormula(body)
       case l === r =>
         assert(l.ty == r.ty)
-        if (l.ty == o) merge(analyzeFormula(r), analyzeFormula(r))
-        else merge(analyzeTerm(r), analyzeTerm(r))
+        if (l.ty == o) merge(analyzeFormula(l), analyzeFormula(r))
+        else merge(analyzeTerm(l), analyzeTerm(r))
       case l !=== r =>
         assert(l.ty == r.ty)
-        if (l.ty == o) merge(analyzeFormula(r), analyzeFormula(r))
-        else merge(analyzeTerm(r), analyzeTerm(r))
+        if (l.ty == o) merge(analyzeFormula(l), analyzeFormula(r))
+        else merge(analyzeTerm(l), analyzeTerm(r))
       case f ∙ args => f match {
         case Symbol(id) =>
           val argArity = arity(args)
@@ -423,7 +424,7 @@ object EncodingAnalyzer {
         case Symbol(id) =>
           val argArity = safeArity(args, depth)
           merge(id -> (argArity, true), analyzeTermArgs0(args, depth))
-        case _ => analyzeTermArgs(args)
+        case _ => analyzeTermArgs0(args,depth)
       }
       case TypeLambda(body) => analyzeTerm0(body, depth) // TODO: ???
     }

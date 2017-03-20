@@ -138,4 +138,130 @@ class MonoTFFTest extends LeoTestSuite {
     }
 
   }
+
+  test("Test b_eta") {
+    implicit val sig: Signature = getFreshSignature
+
+    val (_,f1,_) = Input.readAnnotated("thf(conj, conjecture, ((^ [X: $o, Y: $o]: (X | Y)) != (^ [X: $o, Y: $o]: (Y | X)) )).")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))).toSet
+
+    println(cnf.map(_.pretty(sig)).mkString("\n"))
+
+
+    val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
+    leo.modules.Utility.printSignature(encodingSig)
+    println("########")
+    println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
+    assert(encodedProblem.forall(Clause.wellTyped))
+    assert(auxDefs.forall(Clause.wellTyped))
+    println("########")
+
+    println(leo.modules.output.ToTFF(encodingSig))
+    var i_def = 0
+    auxDefs.foreach { defi =>
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
+      i_def += 1
+    }
+    var i_prob = 0
+    encodedProblem.foreach { prob =>
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
+      i_prob += 1
+    }
+
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
+
+    println("########")
+    println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
+    println("---")
+    printSignature(monoSig)
+    monoProblem.foreach(cl =>
+      if (Clause.unit(cl)) {
+        val lit = cl.lits.head
+        if (!lit.equational) {
+          assert(Term.wellTyped(lit.left), s"Non-equational Not well typed: ${lit.left.pretty(monoSig)}")
+        } else {
+          assert(Term.wellTyped(lit.left), s"equational Not well typed: ${lit.left.pretty(monoSig)}")
+          assert(Term.wellTyped(lit.right), s"equational Not well typed: ${lit.right.pretty(monoSig)}")
+          assert(lit.left.ty == lit.right.ty)
+        }
+      }
+      else
+        assert(Clause.wellTyped(cl), s"Not well typed: ${cl.pretty(monoSig)}"))
+    println("########")
+
+    println(leo.modules.output.ToTFF(monoSig))
+
+    monoProblem.foreach { prob =>
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(monoSig))
+      i_prob += 1
+    }
+
+  }
+
+  test("Test Cantor 2") {
+    implicit val sig: Signature = getFreshSignature
+
+    val (_,f1,_) = Input.readAnnotated("thf(sur_cantor, conjecture, (( ? [F: $i > ($i > $o)] : (\n                                   ! [Y: $i > $o] :\n                                    ? [X: $i] : (\n                                      (F @ X) = Y\n                                    )\n                                 ) ))).")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(sig)).toSet
+
+    println(cnf.map(_.pretty(sig)).mkString("\n"))
+
+
+    val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
+    leo.modules.Utility.printSignature(encodingSig)
+    println("########")
+    println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
+    assert(encodedProblem.forall(Clause.wellTyped))
+    assert(auxDefs.forall(Clause.wellTyped))
+    println("########")
+
+    println(leo.modules.output.ToTFF(encodingSig))
+    var i_def = 0
+    auxDefs.foreach { defi =>
+      println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
+      i_def += 1
+    }
+    var i_prob = 0
+    encodedProblem.foreach { prob =>
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"prob_$i_prob")(encodingSig))
+      i_prob += 1
+    }
+
+    val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
+
+    println("########")
+    println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
+    println("---")
+    printSignature(monoSig)
+    monoProblem.foreach(cl =>
+      if (Clause.unit(cl)) {
+        val lit = cl.lits.head
+        if (!lit.equational) {
+          assert(Term.wellTyped(lit.left), s"Non-equational Not well typed: ${lit.left.pretty(monoSig)}")
+        } else {
+          assert(Term.wellTyped(lit.left), s"equational Not well typed: ${lit.left.pretty(monoSig)}")
+          assert(Term.wellTyped(lit.right), s"equational Not well typed: ${lit.right.pretty(monoSig)}")
+          assert(lit.left.ty == lit.right.ty)
+        }
+      }
+      else
+        assert(Clause.wellTyped(cl), s"Not well typed: ${cl.pretty(monoSig)}"))
+    println("########")
+
+    println(leo.modules.output.ToTFF(monoSig))
+
+    monoProblem.foreach { prob =>
+      println(leo.modules.output.ToTFF(prob, Role_Axiom, s"ax_$i_prob")(monoSig))
+      i_prob += 1
+    }
+
+  }
 }

@@ -120,6 +120,25 @@ class EncodingAnalyzerTest extends LeoTestSuite {
     assert(!result(p)._2)
   }
 
+  test("Analyzer Test 5", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // create formulae
+    val (_,f1,_) = Input.readAnnotated("thf(sur_cantor, conjecture, (~ ( ? [F: $i > ($i > $o)] : (\n                                   ! [Y: $i > $o] :\n                                    ? [X: $i] : (\n                                      (F @ X) = Y\n                                    )\n                                 ) ))).")
+    import leo.modules.Utility.termToClause
+    import leo.datastructures.Clause
+    assert(Term.wellTyped(f1))
+    println(f1.pretty(sig))
+    val cnf = leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(sig).toSet
+    assert(cnf.forall(Clause.wellTyped))
+    cnf.foreach{cl => println(cl.pretty(sig))}
+    val result = EncodingAnalyzer.analyze(cnf)
+    printTable(result)
+
+  }
+
+
+
 
 
   private final def printTable(table: EncodingAnalyzer.ArityTable)(implicit sig: Signature): Unit = {
