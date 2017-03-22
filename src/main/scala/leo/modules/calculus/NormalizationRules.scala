@@ -637,19 +637,38 @@ object Simp extends CalculusRule {
     Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
 
+    val tyFVs = lits.flatMap(_.tyFV).distinct.sortWith {case (a,b) => a > b}
+    Out.finest(s"TYFVS:\n\t${tyFVs.mkString("\n\t")}")
+
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
-    if (fvs.nonEmpty) {
-      if (fvs.size != fvs.head) {
+
+    if (tyFVs.nonEmpty && tyFVs.size != tyFVs.head) {
+      Out.finest(s"Ty FV Optimization needed")
+      Out.finest(s"Old: \t${tyFVs.mkString("-")}")
+      val newTyFvs = Seq.range(tyFVs.size, 0, -1)
+      val tySubst = Subst.fromShiftingSeq(tyFVs.zip(newTyFvs))
+      Out.finest(s"New: \t${newTyFvs.mkString("-")} ... subst: ${tySubst.pretty}")
+      // Same with term variables
+      if (fvs.nonEmpty && fvs.size != fvs.head) {
         Out.finest(s"FV Optimization needed")
         Out.finest(s"Old: \t${fvs.mkString("-")}")
         // gaps in fvs
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        return newLits.map(_.substituteOrdered(subst)(sig))
+        newLits.map(_.substituteOrdered(subst.applyTypeSubst(tySubst), tySubst)(sig))
+      } else {
+        newLits.map(_.substituteOrdered(Subst.id, tySubst)(sig))
       }
-    }
-    newLits
+    } else  if (fvs.nonEmpty && fvs.size != fvs.head) {
+      Out.finest(s"FV Optimization needed")
+      Out.finest(s"Old: \t${fvs.mkString("-")}")
+      // gaps in fvs
+      val newFvs = Seq.range(fvs.size, 0, -1)
+      val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
+      Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
+      newLits.map(_.substituteOrdered(subst)(sig))
+    } else newLits
   }
 
   final def apply(cl: Clause)(implicit sig: Signature): Clause  = Clause(apply(cl.lits)(sig))
