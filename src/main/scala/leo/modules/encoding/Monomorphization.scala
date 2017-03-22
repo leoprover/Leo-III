@@ -82,7 +82,7 @@ object Monomorphization {
       else polyAxioms += cl
     }
     val monoAxioms = generateMonoAxioms(polyAxioms, instanceInfo, newSig)(sig)
-    println(s"monoAxioms: ${monoAxioms.map(_.pretty(newSig)).mkString("\n\t")}")
+    leo.Out.finest(s"monoAxioms: ${monoAxioms.map(_.pretty(newSig)).mkString("\n\t")}")
     monoProblem = monoProblem union monoAxioms
     (monoProblem, newSig)
   }

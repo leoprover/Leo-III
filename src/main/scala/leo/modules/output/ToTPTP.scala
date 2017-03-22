@@ -80,24 +80,23 @@ object ToTPTP {
 
   final def apply(k: Signature#Key)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
-    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
-      "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
-    } else {
-      constant.name
-    }
+    val cname = tptpEscapeName(constant.name)
     if (constant.hasType) {
+      val cname_ty_name = tptpEscapeName(constant.name + "_type")
       // Its a term constant or a definition
       // Print out type declaration (needed in all cases)
-      val tyDecl = s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)(sig)})."
+      val tyDecl = s"thf($cname_ty_name, type, $cname: ${toTPTP(constant._ty)(sig)})."
       // If its a definition, also print definition afterwards
       if (constant.hasDefn) {
-        tyDecl + s"\nthf(${cname}_def, definition, ($cname = (${toTPTP0(constant._defn)(sig)})))."
+        val cname_def_name = tptpEscapeName(constant.name + "_def")
+        tyDecl + s"\nthf($cname_def_name, definition, ($cname = (${toTPTP0(constant._defn)(sig)})))."
       } else
         tyDecl
     } else {
       // Its a type constant
       assert(constant.hasKind)
-      s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
+      val cname_ty_name = tptpEscapeName(constant.name + "_type")
+      s"thf($cname_ty_name, type, $cname: ${toTPTP(constant._kind)})."
     }
   }
 
@@ -107,17 +106,14 @@ object ToTPTP {
 
   private def typeToTPTP(k: Signature#Key)(implicit sig : Signature) : String = {
     val constant = sig.apply(k)
-    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
-      "'" + constant.name.substring(1, constant.name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
-    } else {
-      constant.name
-    }
+    val cname = tptpEscapeName(constant.name)
+    val cname_ty_name = tptpEscapeName(constant.name + "_type")
     if (constant.hasType) {
-      s"thf(${cname}_type, type, $cname: ${toTPTP(constant._ty)(sig)})."
+      s"thf($cname_ty_name, type, $cname: ${toTPTP(constant._ty)(sig)})."
     } else {
       // Its a type constant
       assert(constant.hasKind)
-      s"thf($cname, ${Role_Type.pretty}, $cname: ${toTPTP(constant._kind)})."
+      s"thf($cname_ty_name, type, $cname: ${toTPTP(constant._kind)})."
     }
   }
 
@@ -127,13 +123,10 @@ object ToTPTP {
 
   private def definitionToTPTP(k: Signature#Key)(implicit sig : Signature) : Option[String] = {
     val constant = sig.apply(k)
-    val cname = if (constant.name.startsWith("'") && constant.name.endsWith("'")) {
-      "'" + constant.name.substring(1, constant.name.length - 1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
-    } else {
-      constant.name
-    }
+    val cname = tptpEscapeName(constant.name)
+    val cname_ty_name = tptpEscapeName(constant.name + "_def")
     if (constant.hasDefn) {
-      Some(s"\nthf(${cname}_def, definition, ($cname = (${toTPTP0(constant._defn)(sig)}))).")
+      Some(s"\nthf($cname_ty_name, definition, ($cname = (${toTPTP0(constant._defn)(sig)}))).")
     } else {
       None
     }
@@ -147,25 +140,29 @@ object ToTPTP {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
+      val name = tptpEscapeName(sig(id).name)
       sb.append("thf(")
-      sb.append(sig(id).name)
-      sb.append("_type,type,(")
-      sb.append(sig(id).name)
-      sb.append(":")
+      sb.append(name)
+      sb.append("_type',type,(")
+      sb.append(name)
+      sb.append("':")
       sb.append(toTPTP(sig(id)._kind))
       sb.append(")).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
+      val name = tptpEscapeName(sig(id).name)
       sb.append("thf(")
-      sb.append(sig(id).name)
+      sb.append(name)
       sb.append("_type,type,(")
-      sb.append(sig(id).name)
+      sb.append(name)
       sb.append(":")
       sb.append(toTPTP(sig(id)._ty)(sig))
       sb.append(")).\n")
     }
     sb.toString()
   }
+
+
 
 
   ///////////////////////////////
@@ -225,13 +222,14 @@ object ToTPTP {
     }
 
     // Output whole tptp thf statement
+    val escapedName = tptpEscapeName(name)
     if (clauseAnnotation == null)
-      s"thf($name,${role.pretty},(${sb.toString}))."
+      s"thf($escapedName,${role.pretty},(${sb.toString}))."
     else {
       if (clauseAnnotation == ClauseAnnotation.NoAnnotation)
-        s"thf($name,${role.pretty},(${sb.toString}))."
+        s"thf($escapedName,${role.pretty},(${sb.toString}))."
       else
-        s"thf($name,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
+        s"thf($escapedName,${role.pretty},(${sb.toString}),${clauseAnnotation.pretty})."
     }
   }
 
@@ -291,11 +289,7 @@ object ToTPTP {
     t match {
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
-        if (name.startsWith("'") && name.endsWith("'")) {
-          "'" + name.substring(1, name.length-1).replaceAll("\\\\", """\\\\""").replaceAll("\\'", """\\'""") + "'"
-        } else {
-          name
-        }
+        tptpEscapeExpression(name)
       // Give Bound variables names
       case Bound(ty, scope) => bVars(scope)
       // Unary connectives
@@ -406,8 +400,8 @@ object ToTPTP {
     case _ => toTPTP0(ty)(sig)
   }
   final private def toTPTP0(ty: Type)(sig: Signature): String = ty match {
-    case BaseType(id) => sig(id).name
-    case ComposedType(id, args) => s"${sig(id).name} @ ${args.map(toTPTP0(_)(sig)).mkString(" @ ")}"
+    case BaseType(id) => tptpEscapeExpression(sig(id).name)
+    case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)} @ ${args.map(toTPTP0(_)(sig)).mkString(" @ ")}"
     case BoundType(scope) => "T" + intToName(scope- 1)
     case t1 -> t2 => s"(${toTPTP(t1)(sig)} > ${toTPTP(t2)(sig)})"
     case t1 * t2 => s"(${toTPTP(t1)(sig)} * ${toTPTP(t2)(sig)})"

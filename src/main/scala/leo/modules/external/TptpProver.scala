@@ -67,7 +67,7 @@ trait TptpProver[C <: ClauseProxy] {
   final private def startProver(parsedProblem : Seq[String], problem : Set[C], timeout : Int, args : Seq[String] = Seq()) : Future[TptpResult[C]] = {
     val process : KillableProcess = {
       val file = File.createTempFile("remoteInvoke", ".p")
-      file.deleteOnExit()
+//      file.deleteOnExit()
       val writer = new PrintWriter(file)
       try {
         parsedProblem foreach { out =>

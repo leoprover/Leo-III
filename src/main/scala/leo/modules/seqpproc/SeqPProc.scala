@@ -6,6 +6,7 @@ import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
 import leo.modules.output._
 import leo.modules.control.Control
+import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.parsers.Input
 import leo.modules.{SZSException, SZSOutput, Utility}
 
@@ -362,6 +363,36 @@ object SeqPProc {
             }
           }
         }
+      }
+
+
+      if (ExtProverControl.openCallsExist) {
+        var wait = true
+        Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
+        Out.info(s"$wait")
+        Out.info(s"${System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT}")
+        Out.info(s"${ExtProverControl.openCallsExist}")
+        while (wait && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+          Out.finest(s"[ExtProver] Check for answer")
+          val extRes = Control.checkExternalResults(state)
+          if (extRes.isDefined) {
+            Out.finest(s"[ExtProver] Got answer! ${extRes.get.szsStatus.pretty}")
+            if (extRes.get.szsStatus == SZS_Unsatisfiable || extRes.get.szsStatus == SZS_Theorem) {
+              wait = false
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes.get.proverName, extRes.get.problem))
+              endplay(emptyClause, state)
+            } else {
+              Out.info(s"[ExtProver] Still waiting ...")
+              Thread.sleep(5000)
+            }
+          } else {
+            Out.info(s"[ExtProver] Still waiting ...")
+            Thread.sleep(5000)
+          }
+
+        }
+        if (wait) Out.info(s"No helpful answer from external systems within timeout. Terminating ...")
+        else Out.info(s"Helpful answer from external systems within timeout. Terminating ...")
       }
 
       /////////////////////////////////////////

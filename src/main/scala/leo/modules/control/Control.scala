@@ -1663,7 +1663,8 @@ package indexingControl {
 
 package  externalProverControl {
 
-  import leo.datastructures.{ClauseAnnotation, Role_Axiom, Role}
+  import leo.datastructures.ClauseAnnotation.NoAnnotation
+  import leo.datastructures.{ClauseAnnotation, Role, Role_Axiom}
 
   object ExtProverControl {
     import leo.modules.external._
@@ -1671,6 +1672,8 @@ package  externalProverControl {
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
     private var lastCall: Long = Long.MinValue
+
+    final def openCallsExist: Boolean = openCalls.nonEmpty
 
     final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
       if (state.externalProvers.isEmpty) None
@@ -1736,7 +1739,7 @@ package  externalProverControl {
         // monomorphize the problem
         val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
         val asAnnotated = monoResult._1.map(cl =>
-          AnnotatedClause(cl, Role_Axiom, ClauseAnnotation.FromSystem.asInstanceOf[ClauseAnnotation], ClauseAnnotation.PropNoProp))
+          AnnotatedClause(cl, Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp))
         prover.call(asAnnotated, timeout)(monoResult._3)
       } else prover.call(problem, timeout)(state.signature)
     }
