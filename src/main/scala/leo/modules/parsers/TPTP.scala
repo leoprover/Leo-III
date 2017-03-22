@@ -136,8 +136,8 @@ object TPTP {
   final private class ParserErrorListener extends BaseErrorListener {
     override def syntaxError(recognizer: Recognizer[_, _], o: scala.Any, line: Int, pos: Int, s: String, e: RecognitionException): Unit = {
       var sourceName = recognizer.getInputStream.getSourceName
-      if (sourceName != "<unknown>") sourceName = s"$sourceName:$line:$pos"
-      else sourceName = s"${leo.Configuration.PROBLEMFILE}:$line:$pos"
+      if (sourceName == "<unknown>") sourceName = s"$sourceName:$line:$pos"
+      else if (leo.Configuration.isInit) sourceName = s"${leo.Configuration.PROBLEMFILE}:$line:$pos"
       if (e == null) throw new SZSException(SZS_InputError, s"$s in $sourceName")
       else throw new SZSException(SZS_InputError, s"$s in $sourceName", e.toString)
     }

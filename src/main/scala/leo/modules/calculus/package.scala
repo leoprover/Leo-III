@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Type, Term, Kind, Clause, Signature}
+import leo.datastructures.{Type, Term, Kind, Clause, Signature, Subst}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -11,6 +11,9 @@ import leo.modules.output.SuccessSZS
   * @since 20.05.15
   */
 package object calculus {
+
+  type TypeSubst = Subst
+  type TermSubst = Subst
 
   /**
     * Base type for calculus rules wrapped in objects/classes.
@@ -241,5 +244,10 @@ package object calculus {
       case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayMatch(ts._1, ts._2))
       case _ => false
     }
+  }
+
+  final def uniqueFVTypes(cl: Clause): Boolean = {
+    val fvs = cl.implicitlyBound
+    fvs.size == fvs.toSet.size
   }
 }

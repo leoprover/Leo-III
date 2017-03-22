@@ -257,6 +257,8 @@ package inferenceControl {
                 else ClauseAnnotation.PropNeedsUnification
                 val newClWrapper = AnnotatedClause(newCl, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
                 Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
+                myAssert(Clause.wellTyped(newCl), "paramod not well-typed")
+                myAssert(uniqueFVTypes(newCl), "not unique free var types")
                 results = results + newClWrapper
               }
             }
@@ -480,7 +482,7 @@ package inferenceControl {
       assert(cl.lits.nonEmpty)
       val uniLit = cl.lits.last
 
-      val uniEq = if (!uniLit.polarity) Seq((uniLit.left, uniLit.right)) /*standard case*/
+      val uniEq = if (!uniLit.polarity) Vector((uniLit.left, uniLit.right)) /*standard case*/
       else {
         assert(!uniLit.equational)
         Seq((uniLit.left, LitFalse.apply())) /* in case a False was substituted in paramod */
@@ -491,13 +493,18 @@ package inferenceControl {
       // if it cannot be simplied, drop clause
       // 2 if unifiable, reunify again with all literals (simplified)
       if (uniResult0.isEmpty) {
+        Out.finest(s"Unification failed, but looking for uni simp.")
         if (!uniLit.polarity) {
-          val simpResult = Simp.uniLitSimp(uniLit)(sig)
+          val (simpSubst, simpResult) = Simp.uniLitSimp(uniLit)(sig)
+          Out.finest(s"Unification simp: ${simpResult.map(_.pretty)}")
           if (simpResult.size == 1 && simpResult.head == uniLit) Set()
           else {
-            val resultClause = Clause(cl.lits.init ++ simpResult)
+            val substitutedRemainingLits = if (simpSubst == Subst.id) cl.lits.init
+            else cl.lits.init.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
+            val resultClause = Clause(substitutedRemainingLits ++ simpResult)
             val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
             Out.finest(s"No unification, but Uni Simp result: ${res.pretty(sig)}")
+            myAssert(Clause.wellTyped(res.cl), "uniSimp not well-typed")
             Set(res)
           }
         } else Set()
@@ -529,25 +536,26 @@ package inferenceControl {
         assert(!uniLit2.equational)
         (uniLit2.left, LitFalse()) /* in case a False was substituted in factor */
       }
-      val uniResult0 = doUnify0(cl0, freshVarGen, Seq(uniEq1, uniEq2), cl.lits.init.init)(sig)
+      val uniResult0 = doUnify0(cl0, freshVarGen, Vector(uniEq1, uniEq2), cl.lits.init.init)(sig)
       // 1 if not unifiable, check if uni constraints can be simplified
       // if it can be simplified, return simplified constraints
       // if it cannot be simplied, drop clause
       // 2 if unifiable, reunify again with all literals (simplified)
       if (uniResult0.isEmpty) {
         var wasSimplified = false
-        val uniLit1Simp = if (!uniLit1.polarity) {
-          val simpResult1 = Simp.uniLitSimp(uniLit1)(sig)
-          if (simpResult1.size == 1 && simpResult1.head == uniLit1) Seq(uniLit1)
-          else { wasSimplified = true; simpResult1 }
-        } else Seq(uniLit1)
-        val uniLit2Simp = if (!uniLit2.polarity) {
-          val simpResult2 = Simp.uniLitSimp(uniLit2)(sig)
-          if (simpResult2.size == 1 && simpResult2.head == uniLit2) Seq(uniLit2)
-          else { wasSimplified = true; simpResult2 }
-        } else Seq(uniLit2)
+        val (simpSubst1, uniLit1Simp) = if (!uniLit1.polarity) {
+          val (simpSubst1, simpResult1) = Simp.uniLitSimp(uniLit1)(sig)
+          if (simpResult1.size == 1 && simpResult1.head == uniLit1) (Subst.id, Seq(uniLit1))
+          else { wasSimplified = true; (simpSubst1,simpResult1) }
+        } else (Subst.id, Seq(uniLit1))
+        val (simpSubst2, uniLit2Simp) = if (!uniLit2.polarity) {
+          val (simpSubst2, simpResult2) = Simp.uniLitSimp(uniLit2.substitute(Subst.id, simpSubst1))(sig)
+          if (simpResult2.size == 1 && simpResult2.head == uniLit2) (Subst.id, Seq(uniLit2))
+          else { wasSimplified = true; (simpSubst2, simpResult2) }
+        } else (Subst.id,Seq(uniLit2.substituteOrdered(Subst.id, simpSubst1)(sig)))
         if (wasSimplified) {
-          val resultClause = Clause(cl.lits.init.init ++ uniLit1Simp ++ uniLit2Simp)
+          val substitutedRemainingLits = cl.lits.init.init.map(_.substituteOrdered(Subst.id, simpSubst1.comp(simpSubst2))(sig))
+          val resultClause = Clause(substitutedRemainingLits ++ uniLit1Simp ++ uniLit2Simp)
           val res = AnnotatedClause(resultClause, InferredFrom(Simp, cl0), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,cl0.properties | ClauseAnnotation.PropUnified))
           Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
           Set(res)
@@ -582,10 +590,11 @@ package inferenceControl {
         // else the unified clause is unisimp*d and returned
         if (uniResult.isEmpty) {
           val uniLits = cl.cl.negLits
-          val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
+          val (simpSubst, uniLitsSimp) = Simp.uniLitSimp(uniLits)(sig)
           if (uniLits == uniLitsSimp) Set(cl)
           else {
-            Set(AnnotatedClause(Clause(cl.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, cl), cl.properties))
+            val substPosLits = cl.cl.posLits.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
+            Set(AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, cl), cl.properties))
           }
         } else {
           val resultClausesIt = uniResult.iterator
@@ -593,10 +602,11 @@ package inferenceControl {
           while (resultClausesIt.hasNext) {
             val resultClause = resultClausesIt.next()
             val uniLits = resultClause.cl.negLits
-            val uniLitsSimp = Simp.uniLitSimp(uniLits)(sig)
+            val (simpSubst, uniLitsSimp) = Simp.uniLitSimp(uniLits)(sig)
             if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
             else {
-              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(resultClause.cl.posLits ++ uniLitsSimp), InferredFrom(Simp, resultClause), resultClause.properties)
+              val substPosLits = resultClause.cl.posLits.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
+              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, resultClause), resultClause.properties)
             }
           }
           resultClausesSimp
@@ -999,6 +1009,7 @@ package inferenceControl {
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
         val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
       } else

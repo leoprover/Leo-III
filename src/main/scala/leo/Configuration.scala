@@ -80,6 +80,7 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   // Predefined parameters
   //////////////////////////
+  def isInit: Boolean = configMap != null
 
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
@@ -278,7 +279,7 @@ object Configuration extends DefaultConfiguration {
 
 trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
-  val DEFAULT_VERBOSITY = java.util.logging.Level.FINEST
+  val DEFAULT_VERBOSITY = java.util.logging.Level.CONFIG
   val DEFAULT_TIMEOUT = 60
   val DEFAULT_UNIFICATIONDEPTH = 8
   val DEFAULT_MATCHINGDEPTH = 4

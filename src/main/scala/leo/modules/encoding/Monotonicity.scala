@@ -42,9 +42,7 @@ trait Monotonicity[Problem] {
 }
 
 /** Monotonicity inference system for CNF problems. */
-abstract class ClauseProblemMonotonicity extends Monotonicity[Set[Clause]] {
-  type Problem = Set[Clause]
-}
+abstract class ClauseProblemMonotonicity extends Monotonicity[Problem]
 
 /** Monotonicity inference calculus by Blanchette, Böhme, Popescu and Smallbone (BBPS) for
   * polymorphic first-order logic.

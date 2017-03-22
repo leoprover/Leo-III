@@ -53,6 +53,9 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   }
   protected[datastructures] def etaExpand0: TermImpl
 
+  final def etaContract: Term = this.betaNormalize.asInstanceOf[TermImpl].etaContract0
+  protected[datastructures] def etaContract0: TermImpl
+
   final def isBetaNormal: Boolean = normal
   protected[impl] def markBetaNormal(): Unit
   protected[impl] def markBetaEtaNormal(): Unit
@@ -230,6 +233,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
       case _ => throw new IllegalArgumentException
     }
   }
+  def etaContract0: TermImpl = Root(hd, args.etaContract)
 
   final def replace(what: Term, by: Term): Term = if (this == what)
                                               by
@@ -326,6 +330,7 @@ protected[impl] case class Redex(body: Term, args: Spine) extends TermImpl {
   lazy val feasibleOccurrences = fuseMaps(fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root)), body.feasibleOccurrences.mapValues(_.map(_.prependHeadPos))), args.feasibleOccurences)
   // Other operations
   def etaExpand0: TermImpl = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
+  def etaContract0: TermImpl = throw new IllegalArgumentException("this should not have happend. calling eta expand on not beta normalized term")
 
   final def replace(what: Term, by: Term): Term = if (this == what)
                                               by
@@ -421,6 +426,46 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   // Other operations
   lazy val etaExpand0: TermImpl = TermAbstr(typ, body.asInstanceOf[TermImpl].etaExpand0)
 
+  final def etaContract0: TermImpl = {
+    import Term.{∙, TypeLambda, Bound}
+    val (body0, abstractedTypes) = collectLambdas(this)
+    println(s"body0: ${body0.pretty}")
+    body0 match {
+      case Root(f, args) =>
+        var revArgs = args.asTerms.reverse
+        var curEtaArg = 0
+        var done = false
+        while(revArgs.nonEmpty && !done) {
+          val arg = revArgs.head
+          if (arg.isRight) done = true
+          else {
+            val termArg = arg.left.get
+            val maybeBound = Bound.unapply(termArg)
+            if (maybeBound.isDefined) {
+              val idx = maybeBound.get._2
+              if (idx == curEtaArg + 1) {
+                val freevarsInRestTerm = TermImpl.headToTerm(f).looseBounds union revArgs.tail.flatMap(_.fold(_.looseBounds, _ => Set[Int]())).toSet
+                if (!freevarsInRestTerm.contains(idx)) {
+                  curEtaArg += 1
+                  revArgs = revArgs.tail
+                } else done = true
+              } else done = true
+            } else done = true
+          }
+        }
+        println(s"curetaarg after finish: $curEtaArg")
+        println(s"abstracted types: ${abstractedTypes.size}")
+        if (curEtaArg > 0) {
+          val contractedArgs = args.dropRight(curEtaArg).etaContract
+          val result = Root(f, contractedArgs)
+          val lowered = result.substitute(Subst.shift(-curEtaArg)) // TODO: Check
+          abstractedTypes.dropRight(curEtaArg).foldRight(lowered.asInstanceOf[TermImpl]){case (ty, term) => TermAbstr(ty, term)}
+        } else abstractedTypes.foldRight(body0.asInstanceOf[TermImpl].etaContract0){case (ty, term) => TermAbstr(ty, term)}
+      case TypeLambda(_) => assert(false); throw new IllegalArgumentException
+      case _ => assert(false); throw new IllegalArgumentException
+    }
+  }
+
   final def replace(what: Term, by: Term): Term = if (this == what)
                                               by
                                             else
@@ -480,6 +525,8 @@ protected[impl] case class TypeAbstr(body: Term) extends TermImpl {
   // Other operations
   lazy val etaExpand0: TermImpl = TypeAbstr(body.asInstanceOf[TermImpl].etaExpand0)
 
+  final def etaContract0: TermImpl = TypeAbstr(body.asInstanceOf[TermImpl].etaContract0)
+
   final def replace(what: Term, by: Term): Term = if (this == what)
                                               by
                                             else
@@ -534,6 +581,8 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
 
   // Other operations
   final def etaExpand0: TermImpl = betaNormalize.asInstanceOf[TermImpl].etaExpand0
+
+  final def etaContract0: TermImpl = betaNormalize.asInstanceOf[TermImpl].etaContract0
 
   final def replace(what: Term, by: Term): Term = betaNormalize.replace(what, by)
   final def replaceAt(at: Position, by: Term): Term = betaNormalize.replaceAt(at, by)
@@ -609,7 +658,7 @@ protected[impl] case class Atom(id: Signature#Key, ty: Type) extends Head {
   @inline final def δ_expand(sig: Signature) = δ_expand(-1)(sig)
 
   // Pretty printing
-  override lazy val pretty = s"const($id)"
+  override lazy val pretty = s"const($id, ${ty.pretty})"
   final def pretty(sig: Signature) = sig(id).name
 }
 
@@ -645,6 +694,7 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
 
   def normalize(termSubst: Subst, typeSubst: Subst): Spine
   def etaExpand: Spine
+  def etaContract: Spine
 
   // Handling def. expansion
   def δ_expandable(sig: Signature): Boolean
@@ -670,6 +720,12 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
 
   /** Drop n arguments from spine, fails with IllegalArgumentException if n > length */
   def drop(n: Int): Spine
+  def dropRight(n: Int): Spine = {
+    val l = this.length
+    if (n > l) throw new IllegalArgumentException
+    else dropRight0(n, l)
+  }
+  protected[impl] def dropRight0(n: Int, length: Int): Spine
 
   def last: Either[Term, Type]
   def init: Spine
@@ -687,6 +743,7 @@ protected[impl] sealed abstract class Spine extends Pretty with Prettier {
 protected[impl] case object SNil extends Spine {
   final def normalize(termSubst: Subst, typeSubst: Subst) = SNil
   final val etaExpand: Spine = this
+  final val etaContract: Spine = this
 
   final protected[impl] def markBetaNormal(): Unit = {}
   final protected[impl] def markBetaEtaNormal(): Unit = {}
@@ -711,6 +768,10 @@ protected[impl] case object SNil extends Spine {
   final def ++(sp: Spine) = sp
 
   final def drop(n: Int) = n match {
+    case 0 => SNil
+    case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
+  }
+  final def dropRight0(n: Int, length: Int) = n match {
     case 0 => SNil
     case _ => throw new IllegalArgumentException("Trying to drop elements from nil spine.")
   }
@@ -748,6 +809,7 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
   }
 
   lazy val etaExpand: Spine = App(hd.etaExpand,  tail.etaExpand)
+  def etaContract: Spine = App(hd.asInstanceOf[TermImpl].etaContract0, tail.etaContract)
 
   // Handling def. expansion
   @inline final def δ_expandable(sig: Signature) = hd.δ_expandable(sig) || tail.δ_expandable(sig)
@@ -772,6 +834,8 @@ protected[impl] case class App(hd: Term, tail: Spine) extends Spine {
     case 0 => this
     case _ => tail.drop(n-1)
   }
+  final def dropRight0(n: Int, length: Int) = if (length == n) SNil
+  else App(hd, tail.dropRight0(n,length-1))
   lazy val last = tail match {
     case SNil => Left(hd)
     case _ => tail.last
@@ -814,6 +878,7 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
     cons(Right(hd.substitute(typeSubst)), tail.normalize(termSubst, typeSubst))
   }
   lazy val etaExpand: Spine = TyApp(hd,  tail.etaExpand)
+  def etaContract: Spine = TyApp(hd, tail.etaContract)
 
   // Handling def. expansion
   @inline final def δ_expandable(sig: Signature) = tail.δ_expandable(sig)
@@ -838,6 +903,8 @@ protected[impl] case class TyApp(hd: Type, tail: Spine) extends Spine {
     case 0 => this
     case _ => tail.drop(n-1)
   }
+  final def dropRight0(n: Int, length: Int) = if (length == n) SNil
+  else TyApp(hd, tail.dropRight0(n,length-1))
   lazy val last = tail match {
     case SNil => Right(hd)
     case _ => tail.last
@@ -876,6 +943,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
     sp.normalize(s._1 o termSubst, s._2 o typeSubst)
   }
   lazy val etaExpand: Spine = ???
+  def etaContract: Spine = ???
 
   // Handling def. expansion
   final def δ_expandable(sig: Signature) = false // TODO
@@ -896,6 +964,7 @@ protected[impl] case class SpineClos(sp: Spine, s: (Subst, Subst)) extends Spine
   def ++(sp: Spine) = ???
 
   def drop(n: Int) = ???
+  final def dropRight0(n: Int, length: Int) = ???
   def last = ???
   def init = ???
 
@@ -1216,7 +1285,7 @@ object TermImpl extends TermBank {
         false
       }
     case App(_,_) => leo.Out.trace(s"Application ${term.pretty} is ill-typed: The head does not take" +
-      s"parameters, but arguments are applied."); false
+      s"parameters (${functionType.pretty}), but arguments (${args.pretty}) are applied."); false
     case TyApp(hd,tail) if functionType.isPolyType =>
       if (canBePolyFunc) {
         wellTypedArgCheck(term, functionType.instantiate(hd), tail, boundVars, canBePolyFunc)

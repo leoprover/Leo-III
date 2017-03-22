@@ -277,10 +277,14 @@ object Signature {
   ///////////////////
   import leo.datastructures.impl.{SignatureImpl => Impl}
 
-  final def fresh(): Signature = Impl.empty
+  final def fresh(): Signature = {
+    val sig = Impl.empty
+    sig.addFixedTypeConstructor("$tType", Kind.superKind)
+    sig
+  }
   final def freshWithHOL(): Signature = {
     import leo.modules.HOLSignature
-    val sig = Impl.empty
+    val sig = fresh()
     for ((name, k) <- HOLSignature.types) {
       sig.addFixedTypeConstructor(name, k)
     }

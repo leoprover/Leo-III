@@ -367,7 +367,16 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of THF types
   ///////////////////////////////
-
+  final private def toTPTP(k: Kind): String = {
+    import leo.datastructures.Kind.{*,->}
+    k match {
+      case * => "$tType"
+      case k1 -> k2 => if (k1.isTypeKind)
+        s"$$tType > ${toTPTP(k2)}"
+      else
+        s"(${toTPTP(k1)}) > ${toTPTP(k2)}"
+    }
+  }
 
   final private def toTPTP(ty: Type)(sig: Signature): String = ty match {
     case ∀(t) => val (tyAbsCount, bodyTy) = collectForallTys(0, ty)
@@ -383,17 +392,6 @@ object ToTPTP {
     case t1 + t2 => s"(${toTPTP(t1)(sig)} + ${toTPTP(t2)(sig)})"
     case ∀(t) => throw new IllegalArgumentException("Polytype should have been caught before")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
-  }
-
-  final private def toTPTP(k: Kind): String = {
-    import leo.datastructures.Kind.->
-    k match {
-      case Kind.* => "$tType"
-      case k1 -> k2 => if (k1.isTypeKind)
-        s"$$tType > ${toTPTP(k2)}"
-      else
-        s"(${toTPTP(k1)}) > ${toTPTP(k2)}"
-    }
   }
 
   ///////////////////////////////
@@ -471,15 +469,6 @@ object ToTPTP {
   }
 
 
-  private final def makeBVarList(tys: Seq[Type], offset: Int): Seq[(String, Type)] = {
-    tys.zipWithIndex.map {case (ty, idx) => (intToName(offset + idx), ty)}
-  }
-  private final def fusebVarListwithMap(bvarList: Seq[(String, Type)], oldbvarMap: Map[Int,String]): Map[Int, String] = {
-    val newVarCount = bvarList.size
-    val newVarsAsKeyValueList = bvarList.zipWithIndex.map {case ((name, ty),idx) => (newVarCount - idx, name)}
-    oldbvarMap.map {case (k,v) => (k+newVarCount, v)} ++ Map(newVarsAsKeyValueList:_*)
-  }
-
   final private def clauseImplicitsToTPTPQuantifierList(implicitlyQuantified: Seq[(Int, Type)])(sig: Signature): (String, Map[Int, String]) = {
     val count = implicitlyQuantified.size
     var sb: Seq[String] = Seq()
@@ -491,35 +480,10 @@ object ToTPTP {
       val (scope,ty) = curImplicitlyQuantified.head
       curImplicitlyQuantified = curImplicitlyQuantified.tail
       val name = intToName(count - i - 1)
-      sb = s"$name: ${toTPTP(ty)(sig)}" +: sb
+      sb = s"$name:${toTPTP(ty)(sig)}" +: sb
       resultBindingMap = resultBindingMap + (scope -> name)
       i = i + 1
     }
     (sb.mkString(","), resultBindingMap)
-  }
-
-
-  ///////////////////////////////
-  // Naming of variables
-  ///////////////////////////////
-
-  @inline final private val asciiA = 65
-  @inline final private val asciiZ = 90
-  @inline final private val range = asciiZ - asciiA // range 0,1,....
-
-  /**
-    * Convert index i (variable in de-bruijn format) to a variable name corresponding to ASCII transformation as follows:
-    * 0 ---> "A",
-    * 1 ---> "B",
-    * 25 ---> "Z",
-    * 26 ---> "ZA", ... etc.
-    */
-  final private def intToName(i: Int): String = i match {
-    case n if n <= range => s"${intToChar(i)}"
-    case n if n > range => s"Z${intToName(i-range-1)}"
-  }
-  final private def intToChar(i: Int): Char = i match {
-    case n if n <= range => (n + asciiA).toChar
-    case _ => throw new IllegalArgumentException
   }
 }
