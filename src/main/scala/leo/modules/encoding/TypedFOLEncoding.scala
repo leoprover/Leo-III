@@ -11,9 +11,7 @@ import scala.annotation.tailrec
   * @since February 2017
   */
 object TypedFOLEncoding {
-  type EncodedProblem = Problem
-  type AuxDefinitions = Set[Clause]
-  type Result = (EncodedProblem, AuxDefinitions, Signature)
+  type Result = (EncodedProblem, AuxiliaryFormulae, EncodingSignature)
 
   final def apply(problem: Problem, les: LambdaElimStrategy)(implicit sig: Signature): Result = {
     import leo.modules.Utility.termToClause

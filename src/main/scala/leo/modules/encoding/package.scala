@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Signature, Clause, Type}
+import leo.datastructures.{Signature, Clause}
 
 /**
   * This package contains all algorithms related to first-order encoding
@@ -19,6 +19,17 @@ import leo.datastructures.{Signature, Clause, Type}
   */
 package object encoding {
   type Problem = Set[Clause]
+  type EncodedProblem = Problem
+  /** Set of clauses that represent artificially introduced symbols by a translation process. */
+  type AuxiliaryFormulae = Problem
+  type EncodingSignature = Signature
+
+  /** Representation of optional processing steps (on the HOL problem)
+    * before an actual first-order encoding. Currently, only "no processing" (EP_None)
+    * and "monomorphization" (EP_Monomorphization) are supported. */
+  abstract sealed class EncodingPreplay
+  case object EP_None extends EncodingPreplay
+  case object EP_Monomorphization extends EncodingPreplay
 
   final val escapeChar: Char = 'x'
   @inline protected[encoding] final def escape(name: String): String = {
