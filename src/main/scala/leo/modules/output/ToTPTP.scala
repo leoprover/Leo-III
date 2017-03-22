@@ -144,6 +144,28 @@ object ToTPTP {
       final def apply() = x
     })
 
+  final def apply(sig: Signature): String = {
+    val sb: StringBuilder = new StringBuilder
+    for (id <- sig.typeConstructors intersect sig.allUserConstants) {
+      sb.append("tff(")
+      sb.append(sig(id).name)
+      sb.append("_type,type,(")
+      sb.append(sig(id).name)
+      sb.append(":")
+      sb.append(toTPTP(sig(id)._kind))
+      sb.append(")).\n")
+    }
+    for (id <- sig.uninterpretedSymbols) {
+      sb.append("tff(")
+      sb.append(sig(id).name)
+      sb.append("_type,type,(")
+      sb.append(sig(id).name)
+      sb.append(":")
+      sb.append(toTPTP(sig(id)._ty)(sig))
+      sb.append(")).\n")
+    }
+    sb.toString()
+  }
 
 
   ///////////////////////////////
@@ -189,7 +211,7 @@ object ToTPTP {
   ///////////////////////////////
   // Translation of clause to THF formula
   ///////////////////////////////
-  final private def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = null)(sig: Signature): String = {
+  final def toTPTP(name: String, cl: Clause, role: Role, clauseAnnotation: ClauseAnnotation = null)(sig: Signature): String = {
     val sb = new StringBuffer()
     if (cl.implicitlyBound.nonEmpty) {
       // make universal quantification and then print term
