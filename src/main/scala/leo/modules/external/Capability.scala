@@ -30,7 +30,12 @@ object Capability {
     leo.datastructures.isPropSet(feature, features)
   }
 
-  final def apply(capabilities: Map[Language, Seq[Feature]]): Capability = {
-    Capability(capabilities.mapValues(_.foldLeft(0){case (r,f) => r | f}))
+  final def apply(capability1: (Language, Seq[Feature]), capas: (Language, Seq[Feature])*): Capability = {
+    var map: Map[Language, Features] = Map.empty
+    val allCaps: Seq[(Language, Seq[Feature])] = capability1 +: capas
+    allCaps.foreach { case (l, fs) =>
+      map = map + (l -> fs.foldLeft(0){case (l,r) => l | r})
+    }
+    Capability(map)
   }
 }

@@ -273,7 +273,7 @@ object Monomorphization {
     }
   }
 
-  final def convertType(ty: Type, oldSig: Signature, newSig: Signature): Type = {
+  private final def convertType(ty: Type, oldSig: Signature, newSig: Signature): Type = {
     import Type._
     ty match {
       case BaseType(id) =>
@@ -293,7 +293,7 @@ object Monomorphization {
   }
 
   private final def partitionArgs(args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = partitionArgs0(Seq(), args)
-  @tailrec final def partitionArgs0(acc: Seq[Type], args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = {
+  @tailrec private final def partitionArgs0(acc: Seq[Type], args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = {
     if (args.isEmpty) (acc, Seq.empty)
     else {
       val hd = args.head

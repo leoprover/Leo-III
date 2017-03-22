@@ -1663,6 +1663,8 @@ package indexingControl {
 
 package  externalProverControl {
 
+  import leo.datastructures.{ClauseAnnotation, Role_Axiom, Role}
+
   object ExtProverControl {
     import leo.modules.external._
     import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
@@ -1730,7 +1732,13 @@ package  externalProverControl {
     private final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
-      prover.call(problem, timeout)(state.signature)
+      if (state.isPolymorphic) { // FIXME: Hack, implement with capabilities
+        // monomorphize the problem
+        val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
+        val asAnnotated = monoResult._1.map(cl =>
+          AnnotatedClause(cl, Role_Axiom, ClauseAnnotation.FromSystem.asInstanceOf[ClauseAnnotation], ClauseAnnotation.PropNoProp))
+        prover.call(asAnnotated, timeout)(monoResult._3)
+      } else prover.call(problem, timeout)(state.signature)
     }
 
     final def killExternals(): Unit = {

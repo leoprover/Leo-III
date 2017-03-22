@@ -46,7 +46,7 @@ package object external {
     var counter: Int = 1
     while (problemIt.hasNext) {
       val cl = problemIt.next()
-      sb.append(ToTPTP.toTPTP(s"ax_$counter", cl, Role_Axiom))
+      sb.append(ToTPTP.toTPTP(s"ax_$counter", cl, Role_Axiom)(sig))
       sb.append("\n")
       counter += 1
     }
