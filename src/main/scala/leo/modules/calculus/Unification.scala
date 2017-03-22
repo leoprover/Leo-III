@@ -663,7 +663,8 @@ object PatternUnification extends Unification {
   @tailrec
   private final def unify1(ueqs: Seq[UEq], uTyEqs: Seq[UTEq], vargen: FreshVarGen, partialUnifier: TermSubst, partialTyUnifier: TypeSubst): Option[PartialUniResult] = {
     import leo.datastructures.Term.{Bound, ∙}
-    import HuetsPreUnification.zipArgumentsWithAbstractions
+    import leo.datastructures.partitionArgs
+    import HuetsPreUnification.zipWithAbstractions
     if (uTyEqs.nonEmpty) {
       val tyUnifier = tyDetExhaust(uTyEqs, partialTyUnifier)
       if (tyUnifier.isDefined) {
@@ -725,10 +726,30 @@ object PatternUnification extends Unification {
               case _ => /* rigid-rigid */
                 if (hd1 == hd2) {
                   leo.Out.finest("Apply rigid-rigid")
-                  val (newUeqs, newTyUeqs) = zipArgumentsWithAbstractions(args1, args2, leftAbstractions)
-                  leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-                  leo.Out.finest(s"New unsolved type:\n\t${newTyUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-                  unify1(newUeqs ++ ueqs.tail, newTyUeqs, vargen, partialUnifier, partialTyUnifier)
+                  if (hd1.ty.isPolyType) {
+                    leo.Out.finest(s"Poly rigid-rigid")
+                    val (tyArgs1, termArgs1) = partitionArgs(args1)
+                    val (tyArgs2, termArgs2) = partitionArgs(args2)
+                    assert(tyArgs1.size == tyArgs2.size)
+                    val tyUniConstraints = tyArgs1.zip(tyArgs2)
+                    val tyUniResult = TypeUnification(tyUniConstraints)
+                    if (tyUniResult.isDefined) {
+                      leo.Out.finest(s"Poly rigid-rigid uni succeeded")
+                      val tySubst = tyUniResult.get
+                      val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
+                      leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+                      unify1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), Seq(), vargen, partialUnifier.applyTypeSubst(tySubst), partialTyUnifier.comp(tySubst))
+                    } else {
+                      leo.Out.finest(s"Poly rigid-rigid uni failed")
+                      None
+                    }
+                  } else {
+                    val termArgs1 = args1.map(_.left.get)
+                    val termArgs2 = args2.map(_.left.get)
+                    val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
+                    leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+                    unify1(newUeqs ++ ueqs.tail, Seq(), vargen, partialUnifier, partialTyUnifier)
+                  }
                 } else None
 
             }
