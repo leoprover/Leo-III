@@ -103,9 +103,9 @@ object FormulaDataStore extends DataStore {
   //
   //========================================================
 
-  override def storedTypes: Seq[DataType] = List(ClauseType)
+  override def storedTypes: Seq[DataType[Any]] = List(ClauseType)
 
-  override def updateResult(r: Result): Boolean = {
+  override def updateResult(r: Delta): Boolean = {
     val del = r.removes(ClauseType).iterator
     val up = r.updates(ClauseType).iterator
     val ins = r.inserts(ClauseType).iterator
@@ -113,22 +113,22 @@ object FormulaDataStore extends DataStore {
     var doneSmth = false
 
     while(del.nonEmpty)
-      doneSmth |= removeFormula(del.next().asInstanceOf[ClauseProxy])   // TODO correct?
+      doneSmth |= removeFormula(del.next())   // TODO correct?
     while(up.nonEmpty) {
-      val (oldV, newV) = up.next().asInstanceOf[(ClauseProxy, ClauseProxy)]
+      val (oldV, newV) = up.next()
       removeFormula(oldV)
       doneSmth |= addNewFormula(newV)
     }
     while(ins.nonEmpty)
-      doneSmth |= addNewFormula(ins.next().asInstanceOf[ClauseProxy])
+      doneSmth |= addNewFormula(ins.next())
 
     doneSmth
   }
 
-  override def clear(): Unit = TaskSet.clear()
+  override def clear(): Unit = formulaStore.clear()
 
-  override protected[blackboard] def all(t: DataType): Set[Any] = t match {
-    case ClauseType => getFormulas.toSet
+  override protected[blackboard] def all[T](t: DataType[T]): Set[T] = t match {
+    case ClauseType => getFormulas.toSet.asInstanceOf[Set[T]]
     case _ => Set()
   }
 

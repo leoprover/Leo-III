@@ -153,8 +153,6 @@ object AnnotatedClause {
 }
 
 abstract sealed class ClauseAnnotation extends Pretty {
-  /** A [[leo.modules.calculus.CalculusRule]] that generated the AnnotatedClause annotated with the
-    * ClauseAnnotation. May be `null` if no such rule is known. */
   def fromRule: leo.modules.calculus.CalculusRule
   def parents: Seq[_ <: ClauseProxy]
 }
@@ -180,6 +178,35 @@ object ClauseAnnotation {
 
     def apply[A <: ClauseProxy](rule: leo.modules.calculus.CalculusRule, c: A): ClauseAnnotation =
       InferredFrom(rule, Seq((c,null)))
+  }
+
+  /**
+    * A rule that compresses a linear sequence of CalculusRule Applications to
+    * one singe application, queuing all of the Rules together.
+    *
+    */
+  case class CompressedRule[A <: ClauseProxy](rules : Seq[(leo.modules.calculus.CalculusRule, Output)], annotation : ClauseAnnotation) extends ClauseAnnotation {
+    final val pretty : String = {
+      val sb : StringBuilder = new StringBuilder
+      val remainingBrackets : StringBuilder = new StringBuilder
+      val it = rules.iterator
+      while(it.hasNext){
+        val (rule, info) = it.next()
+        remainingBrackets.append(')')
+        sb.append("inference(")
+        sb.append(rule.name)
+        sb.append(",[status(")
+        sb.append(rule.inferenceStatus.pretty.toLowerCase)
+        sb.append(")]")
+        if(info != null) sb.append(s":[${info.apply}]")
+        sb.append(", ")
+      }
+      sb.append(annotation.pretty)
+      sb.append(remainingBrackets)
+      sb.toString()
+    }
+    final val fromRule : CalculusRule = annotation.fromRule
+    final def parents = annotation.parents
   }
 
   case object NoAnnotation extends ClauseAnnotation {

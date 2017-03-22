@@ -4,7 +4,7 @@ import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
 import leo.modules.HOLSignature.{LitTrue, o}
-import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
+import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem}
 
 import scala.annotation.tailrec
 
@@ -462,4 +462,9 @@ object OrderedParamod extends CalculusRule {
     val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
     Clause(newlits_simp)
   }
+}
+
+object NegateConjecture extends CalculusRule {
+  final val name: String = "neg_conjecture"
+  final val inferenceStatus = SZS_CounterTheorem
 }

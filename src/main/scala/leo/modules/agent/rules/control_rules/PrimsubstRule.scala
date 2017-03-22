@@ -10,7 +10,7 @@ import leo.modules.control.Control
   * Created by mwisnie on 1/10/17.
   */
 class PrimsubstRule(implicit signature : Signature) extends Rule{
-  override final val interest: Seq[DataType] = Seq(Processed)
+  override final val interest: Seq[DataType[Any]] = Seq(Processed)
 
   private lazy val primsubstlevel = Configuration.PRIMSUBST_LEVEL
 
@@ -30,7 +30,7 @@ class PrimsubstRule(implicit signature : Signature) extends Rule{
 }
 
 class PrimsubstHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
-  override def apply(): Result = {
+  override def apply(): Delta = {
     val r = Result()
     val it = nClauses.iterator
     while(it.hasNext){
@@ -43,6 +43,6 @@ class PrimsubstHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) 
     r
   }
 
-  override lazy val read: Map[DataType, Set[Any]] = Map(Processed -> Set(sClause))
-  override lazy val write: Map[DataType, Set[Any]] = Map()
+  override lazy val read: Map[DataType[Any], Set[Any]] = Map(Processed -> Set(sClause))
+  override lazy val write: Map[DataType[Any], Set[Any]] = Map()
 }

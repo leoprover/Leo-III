@@ -16,7 +16,7 @@ import scala.collection.mutable
  * @author Max Wisniewski <max.wisniewski@fu-berlin.de>
  * @since 19.08.2015
  */
-protected[blackboard] class AuctionBlackboard extends Blackboard {
+private[blackboard] class AuctionBlackboard extends Blackboard {
 
   /**
    * Register a new Handler for Formula adding Handlers.
@@ -24,12 +24,12 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param a - The Handler that is to register
    */
   override def registerAgent(a: Agent) : Unit = {
-    TaskSet.addAgent(a)
+    taskSelectionSet.addAgent(a)
     freshAgent(a)
   }
 
   override def unregisterAgent(a: Agent): Unit = {
-    TaskSet.removeAgent(a)
+    taskSelectionSet.removeAgent(a)
   }
 
   /**
@@ -37,11 +37,11 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    *
    * @return Not yet executed Task
    */
-  override def getTask: Iterable[(Agent,Task)] = TaskSet.getTask
+  override def getTask: Iterable[(Agent,Task)] = taskSelectionSet.getTask
 
   override def clear() : Unit = {
     dsset.foreach(_.clear())
-    TaskSet.clear()
+    taskSelectionSet.clear()
   }
 
   /**
@@ -51,18 +51,18 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param t - Function that generates for each agent a set of tasks.
    */
   override def filterAll(t: (Agent) => Unit): Unit = {
-    TaskSet.agents.foreach{ a =>
+    taskSelectionSet.agents.foreach{ a =>
       t(a)
     }
   }
 
   override def submitTasks(a: Agent, ts : Set[Task]) : Unit = {
-    TaskSet.taskSet.submit(ts)  // TODO Synchronizing?
+    taskSelectionSet.taskSet.submit(ts)  // TODO Synchronizing?
     signalTask()      // WHO HAS THE LOCK?=????
   }
 
   override def finishTask(t : Task) : Unit = {
-    TaskSet.taskSet.finish(t)     // TODO synchronizing?
+    taskSelectionSet.taskSet.finish(t)     // TODO synchronizing?
     LockSet.releaseTask(t)        // TODO Still necessary?
   }
 
@@ -80,13 +80,13 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     }
   }
 
-  override def signalTask() : Unit = TaskSet.signalTask()
+  override def signalTask() : Unit = taskSelectionSet.signalTask()
 
   /**
    *
    * @return all registered agents
    */
-  override def getAgents(): Iterable[(Agent,Double)] = TaskSet.regAgents.toSeq
+  override def getAgents(): Iterable[(Agent,Double)] = taskSelectionSet.regAgents.toSeq
 
   /**
    * Sends a message to an agent.
@@ -108,11 +108,11 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * Allows a force check for new Tasks. Necessary for the DoneEvent to be
    * thrown correctly.
    */
-  override protected[blackboard] def forceCheck(): Unit = TaskSet.synchronized(TaskSet.notifyAll())
+  override protected[blackboard] def forceCheck(): Unit = taskSelectionSet.synchronized(taskSelectionSet.notifyAll())
 
 
   private val dsset : mutable.Set[DataStore] = new mutable.HashSet[DataStore]
-  private val dsmap : mutable.Map[DataType, Set[DataStore]] = new mutable.HashMap[DataType, Set[DataStore]]
+  private val dsmap : mutable.Map[DataType[Any], Set[DataStore]] = new mutable.HashMap[DataType[Any], Set[DataStore]]
 
   /**
    * Adds a data structure to the blackboard.
@@ -140,8 +140,8 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
    * @param d is the type that we are interested in.
    * @return a list of all data structures, which store this type.
    */
-  override def getDS(d: Set[DataType]): Iterable[DataStore] = {
-    dsmap.filterKeys(k => d.contains(k)).values.flatten
+  override def getDS(d: Set[DataType[Any]]): Iterable[DataStore] = {
+    dsmap.filterKeys(k => d.contains(k)).values.flatten.toSet
   }
 
   /**
@@ -150,14 +150,22 @@ protected[blackboard] class AuctionBlackboard extends Blackboard {
     *
     * @return list of all data structures registered in the blackboard
     */
-  override def getDS: Iterable[DataStore] = dsmap.values.flatten
+  override def getDS: Iterable[DataStore] = dsmap.values.flatten.toSet
+
+  private var scheduler : Scheduler = null
+  private var taskSelectionSet : TaskSelectionSet = null
+
+  private[blackboard] def setScheduler(scheduler : Scheduler) : Unit = {
+    this.scheduler = scheduler
+    this.taskSelectionSet = new TaskSelectionSet(this, scheduler)
+  }
 }
 
 
 
 
 
-private object TaskSet {
+private class TaskSelectionSet(blackboard: Blackboard, scheduler: Scheduler) {
 
   // Number of tasks to queue in the scheduler = taskTakenFactor * ThreadCount
   val taskTakenFactor : Int = 2
@@ -168,7 +176,7 @@ private object TaskSet {
   /**
     * The set containing all dependencies on agents
     */
-  val taskSet : TaskSet = new SimpleTaskSet()
+  val taskSet : SimpleTaskSet = new SimpleTaskSet(blackboard)
   private val AGENT_SALARY : Double = 5   // TODO changeable
 
   /**
@@ -204,7 +212,7 @@ private object TaskSet {
     val agents = regAgents.toList.map(_._1).toIterator
     while(agents.hasNext){
       val a = agents.next()
-      taskSet.submit(a.filter(DoneEvent()))
+      taskSet.submit(a.filter(DoneEvent))
     }
   }
 
@@ -222,7 +230,7 @@ private object TaskSet {
    */
   def getTask : Iterable[(Agent,Task)] = {
 
-    while(!Scheduler().isTerminated) {
+    while(!scheduler.isTerminated) {
       try {
         this.synchronized {
 
@@ -230,8 +238,8 @@ private object TaskSet {
           // 1. Get all Tasks the Agents want to bid on during the auction with their current money
           //
           var r: List[(Double, Agent, Task)] = Nil
-          while(waitForAll && Scheduler().getCurrentWork > 0) {
-            TaskSet.wait()
+          while(waitForAll && scheduler.getCurrentWork > 0) {
+            wait()
           }
           while (r.isEmpty) {
             val ts = taskSet.executableTasks    // TODO Filter if no one can execute (simple done)
@@ -241,11 +249,11 @@ private object TaskSet {
               val budget = regAgents.getOrElse(a, 0.0)
               r = (t.bid * budget, a, t) :: r  }
             if (r.isEmpty) {
-              if (ActiveTracker.get <= 0 && Scheduler().getCurrentWork <= 0) {
+              if (ActiveTracker.get <= 0 && scheduler.getCurrentWork <= 0) {
               //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 sendDoneEvents()
               }
-              TaskSet.wait()
+              wait()
               regAgents.foreach { case (a, budget) => regAgents.update(a, math.max(budget, budget + AGENT_SALARY)) }
             }
           }
@@ -262,7 +270,7 @@ private object TaskSet {
           //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
           var taken : Map[Agent, Int] = HashMap[Agent, Int]()
 
-          var openSlots = Scheduler().numberOfThreads * taskTakenFactor - Scheduler().openTasks
+          var openSlots = scheduler.numberOfThreads * taskTakenFactor - scheduler.openTasks
           // 3. Take from beginning to front only the non colliding tasks
           // Check the currenlty executing tasks too.
           var newTask: Seq[(Agent, Task)] = Nil
@@ -296,7 +304,7 @@ private object TaskSet {
               regAgents.put(a, b + AGENT_SALARY)
             }
           }
-          //        println("Sending "+newTask.size+" tasks to scheduler.")
+//                  println("Sending "+newTask.size+" tasks to scheduler.")
           return newTask
         }
         //Lastly interrupt recovery

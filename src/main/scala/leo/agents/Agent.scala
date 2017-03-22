@@ -1,7 +1,7 @@
 package leo.agents
 
 import leo.datastructures.Pretty
-import leo.datastructures.blackboard.{Event, DataType, Blackboard, Result}
+import leo.datastructures.blackboard._
 
 /**
  * Interface to any agent in the architecture.
@@ -34,15 +34,15 @@ trait Agent {
   */
   def kill()
 
-  /**
-  * Registers this agent in the System for execution.
-  */
-  def register() : Unit = Blackboard().registerAgent(this)
-
-  /**
-  * Unregisteres this agent in the system.
-  */
-  def unregister() : Unit = Blackboard().unregisterAgent(this)
+//  /**
+//  * Registers this agent in the System for execution.
+//  */
+//  def register() : Unit = Blackboard().registerAgent(this)
+//
+//  /**
+//  * Unregisteres this agent in the system.
+//  */
+//  def unregister() : Unit = Blackboard().unregisterAgent(this)
 
   /**
    * Declares the agents interest in specific data.
@@ -51,7 +51,7 @@ trait Agent {
    *         Some(Nil) -> The agent registers for all data changes. <br />
    *         Some(xs) -> The agent registers only for data changes for any type in xs.
    */
-  def interest : Option[Seq[DataType]]    // TODO Swap None and Some(Nil)
+  def interest : Option[Seq[DataType[Any]]]    // TODO Swap None and Some(Nil)
 
   /**
     * Flags the maximal number of parallel executed tasks
@@ -140,36 +140,13 @@ trait Agent {
   */
 abstract class Task extends Pretty  {
 
-  /**
-    * Prints a short name of the task
- *
-    * @return
-    */
   def name : String
 
-  /**
-    * Computes the result, a delta on the blackboard state,
-    * of the task.
- *
-    * @return
-    */
-  def run : Result
+  def run : Delta
 
-  /**
-    *
-    * Returns a set of all Formulas that are read for the task.
-    *
-    * @return Read set for the Task.
-    */
-  def readSet() : Map[DataType, Set[Any]]
+  def readSet() : Map[DataType[Any], Set[Any]]
 
-  /**
-    *
-    * Returns a set of all Formulas, that will be written by the task.
-    *
-    * @return Write set for the task
-    */
-  def writeSet() : Map[DataType, Set[Any]]
+  def writeSet() : Map[DataType[Any], Set[Any]]
 
   /**
     *
@@ -177,7 +154,7 @@ abstract class Task extends Pretty  {
     *
     * @return all [[DataType]] contained in this task.
     */
-  lazy val lockedTypes : Set[DataType] = readSet().keySet.union(writeSet().keySet)
+  lazy val lockedTypes : Set[DataType[Any]] = readSet().keySet.union(writeSet().keySet)
 
   /**
     * Checks for two tasks, if they are in conflict with each other.
@@ -219,20 +196,8 @@ abstract class Task extends Pretty  {
     }
   }
 
-  /**
-    *
-    * Defines the realtive bid of an agent for a task.
-    * The result has to in [0,1].
-    *
-    * @return - Possible profit, if the task is executed
-    */
   def bid : Double
 
-  /**
-    * Returns the agent, that will execute this task.
- *
-    * @return
-    */
   def getAgent : Agent
 }
 

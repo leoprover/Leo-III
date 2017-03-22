@@ -9,11 +9,11 @@ import leo.modules.control.Control
   */
 class BoolextRule(implicit signature : Signature) extends Rule{
 
-  override final val interest: Seq[DataType] = Seq(Processed)
+  override final val interest: Seq[DataType[Any]] = Seq(Processed)
 
   override def name: String = "boolext"
   override def canApply(r: Delta): Seq[Hint] = {
-    val ins = r.inserts(Processed).map(x => x.asInstanceOf[AnnotatedClause]).iterator
+    val ins = r.inserts(Processed).iterator
 
     var res : Seq[BoolextHint] = Seq()
     //
@@ -27,7 +27,7 @@ class BoolextRule(implicit signature : Signature) extends Rule{
 }
 
 class BoolextHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
-  override def apply(): Result = {
+  override def apply(): Delta = {
     val r = Result()
     val it = nClauses.iterator
     while(it.hasNext){
@@ -36,6 +36,6 @@ class BoolextHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) ex
     r
   }
 
-  override lazy val read: Map[DataType, Set[Any]] = Map(Processed -> Set(sClause))
-  override lazy val write: Map[DataType, Set[Any]] = Map()
+  override lazy val read: Map[DataType[Any], Set[Any]] = Map(Processed -> Set(sClause))
+  override lazy val write: Map[DataType[Any], Set[Any]] = Map()
 }

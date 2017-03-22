@@ -10,7 +10,7 @@ trait Rule {
     * The interessting datapoints for this Rule
     * @return The Sequence of Interests. (Nil - everything, x:xs - exactly the enumerated types
     */
-  def interest : Seq[DataType] = Nil  // Default is everything
+  def interest : Seq[DataType[Any]] = Nil  // Default is everything
 
   /**
     * A List of search structures to search more efficiently in the data.
@@ -34,7 +34,7 @@ trait Rule {
     * @param r - The data directly passed into the rule
     * @return sequence of new data, sequence of deleted data
     */
-  def apply(r : Delta) : Seq[Result] = canApply(r) map (_.apply())
+  def apply(r : Delta) : Seq[Delta] = canApply(r) map (_.apply())
 }
 
 
@@ -51,17 +51,17 @@ trait Hint {
     *
     * @return A sequence of generated ClauseProxies and deleted ClauseProxies
     */
-  def apply() : Result
+  def apply() : Delta
 
   /**
     * Data only read by the hint
     */
-  def read : Map[DataType, Set[Any]]
+  def read : Map[DataType[Any], Set[Any]]
 
   /**
     * Data written by the hint
     */
-  def write : Map[DataType, Set[Any]]
+  def write : Map[DataType[Any], Set[Any]]
 }
 
 /**
@@ -115,14 +115,14 @@ class WhileRule(cond : Delta => Boolean, a : Rule) extends Rule {
   override def canApply(r: Delta): Seq[Hint] = if(cond(r)) a.canApply(r).map(x => WhileHint(x)) else Seq()
 
   case class WhileHint(h : Hint) extends Hint {
-    override def apply(): Result = {
+    override def apply(): Delta = {
       var r = h.apply()
 //      while()
 
       r
     }
-    override val read: Map[DataType, Set[Any]] = h.read
-    override val write: Map[DataType, Set[Any]] = h.write
+    override val read: Map[DataType[Any], Set[Any]] = h.read
+    override val write: Map[DataType[Any], Set[Any]] = h.write
   }
 
   override def name: String = s"while (cond) ${a.name}"
@@ -142,14 +142,14 @@ class ComposedRule(a : Rule, b : Rule) extends Rule {
   override def canApply(r: Delta): Seq[Hint] = a.canApply(r).map(x => ComposedHint(x))
 
   case class ComposedHint(h : Hint) extends Hint {
-    override def apply(): Result = {
+    override def apply(): Delta = {
       val r = h.apply()
       val r2 = b.apply(r)
       // TODO Merge!!!
       r2.head
     }
-    override def read: Map[DataType, Set[Any]] = ???
-    override def write: Map[DataType, Set[Any]] = ???
+    override def read: Map[DataType[Any], Set[Any]] = ???
+    override def write: Map[DataType[Any], Set[Any]] = ???
   }
 
   override def name: String = s"${a.name}; ${b.name}"

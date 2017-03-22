@@ -23,7 +23,7 @@ object SeqPProc {
   //// Loading and converting the problem
   ////////////////////////////////////
   /** Converts the input into clauses and filters the axioms if applicable. */
-  final private def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
+  final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conj) = effectiveInput0(input, state)
     if (state.negConjecture != null) {
@@ -102,7 +102,7 @@ object SeqPProc {
     val formula = Input.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
   }
-  final private def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
+  final def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
     if (state.negConjecture != null) typeCheck0(state.negConjecture +: input)
     else typeCheck0(input)
   }

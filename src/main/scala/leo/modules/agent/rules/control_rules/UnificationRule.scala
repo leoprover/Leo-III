@@ -8,7 +8,7 @@ import leo.modules.control.Control
   * Created by mwisnie on 1/10/17.
   */
 class UnificationRule(implicit signature : Signature) extends Rule{
-  override final val interest: Seq[DataType] = Seq(Unify)
+  override final val interest: Seq[DataType[Any]] = Seq(Unify)
 
   override def name: String = "unify"
   override def canApply(r: Delta): Seq[Hint] = {
@@ -26,7 +26,7 @@ class UnificationRule(implicit signature : Signature) extends Rule{
 }
 
 class UnificationHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
-  override def apply(): Result = {
+  override def apply(): Delta = {
     val r = Result()
     val it = nClauses.iterator
     while(it.hasNext){
@@ -36,13 +36,13 @@ class UnificationHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]
     r
   }
 
-  override lazy val read: Map[DataType, Set[Any]] = Map(Unify -> Set(sClause))
-  override lazy val write: Map[DataType, Set[Any]] = Map()
+  override lazy val read: Map[DataType[Any], Set[Any]] = Map(Unify -> Set(sClause))
+  override lazy val write: Map[DataType[Any], Set[Any]] = Map()
 }
 
 
 class RewriteRule(implicit signature : Signature) extends Rule{
-  override final val interest: Seq[DataType] = Seq(Processed)
+  override final val interest: Seq[DataType[Any]] = Seq(Processed)
 
   override def name: String = "unify"
   override def canApply(r: Delta): Seq[Hint] = {

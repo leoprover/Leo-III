@@ -15,48 +15,27 @@ package leo.datastructures.blackboard
  */
 trait DataStore {
 
-  /**
-   * This method returns all Types stored by this data structure.
-   *
-   * @return all stored types
-   */
-  def storedTypes : Seq[DataType]
+  def storedTypes : Seq[DataType[Any]]
 
-  /**
-    *
-    * Inserts all results produced by an agent into the datastructure.
-    *
-    * @param r - A result inserted into the datastructure
-    */
-  def updateResult(r : Result) : Boolean  // TODO Return really updated values for further consideration not only Bool
+  def updateResult(r : Delta) : Boolean  // TODO Return really updated values for further consideration not only Bool
 
-  /**
-   * Removes everything from the data structure.
-   * After this call the ds should behave as if it was newly created.
-   */
   def clear()
 
-  /**
-   * Returns a list of all stored data.
-   *
-   * @param t
-   * @return
-   */
-  protected[blackboard] def all(t : DataType) : Set[Any]
+  protected[blackboard] def all[T](t : DataType[T]) : Set[T]
 
-  def insertData(d : DataType)(n : Any) : Boolean = {
+  def insertData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().insert(d)(n)
     updateResult(r)
     true
   }
 
-  def deleteData(d : DataType)(n : Any) : Boolean = {
+  def deleteData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().remove(d)(n)
     updateResult(r)
     true
   }
 
-  def updateData(d : DataType)(o : Any)(n : Any) : Boolean = {
+  def updateData[T](d : DataType[T])(o : T)(n : T) : Boolean = {
     val r = Result().update(d)(o)(n)
     updateResult(r)
     true
