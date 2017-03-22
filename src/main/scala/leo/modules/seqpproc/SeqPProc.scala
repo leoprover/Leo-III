@@ -184,7 +184,9 @@ object SeqPProc {
         }
       }
       result = Control.acSimp(result)
-      Control.simp(result)
+      result = Control.simp(result)
+      if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic
+      result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
     result = Control.extPreprocessUnify(result)

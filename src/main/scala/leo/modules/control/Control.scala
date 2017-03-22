@@ -1715,17 +1715,22 @@ package  externalProverControl {
         state.externalProvers.foreach(prover =>
           if (openCalls.isDefinedAt(prover)) {
             if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
-              val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+              val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
               openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
               leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
             }
           } else {
-            val futureResult = prover.call(state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name))(state.signature)
+            val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
             openCalls = openCalls + (prover -> Set(futureResult))
             leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
           }
         )
       }
+    }
+    private final def callProver(prover: TptpProver[AnnotatedClause],
+                                 problem: Set[AnnotatedClause], timeout : Int,
+                                 state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
+      prover.call(problem, timeout)(state.signature)
     }
 
     final def killExternals(): Unit = {

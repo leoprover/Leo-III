@@ -18,6 +18,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
+  def isPolymorphic: Boolean
+  def setPolymorphic: Unit
+
   def defConjSymbols(negConj: T): Unit
   def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
@@ -100,6 +103,10 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+
+  private var poly: Boolean = false
+  final def isPolymorphic: Boolean = poly
+  final def setPolymorphic: Unit = {poly = true}
 
   final def defConjSymbols(negConj: T): Unit = {
     assert(Clause.unit(negConj.cl))

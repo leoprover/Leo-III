@@ -82,6 +82,8 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   def isInit: Boolean = configMap != null
 
+  final val VERSION: String = "1.1"
+
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
   lazy val PROBLEMFILE: String = configMap.get(CLParameterParser.ARG0Name) match {
