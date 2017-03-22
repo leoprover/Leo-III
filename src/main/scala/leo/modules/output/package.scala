@@ -31,12 +31,12 @@ package object output {
     case _ => throw new IllegalArgumentException
   }
 
-  private final val simpleNameRegex = "^[a-z]([a-zA-Z\\d]*)$"
+  private final val simpleNameRegex = "^[a-z]([a-zA-Z\\d_]*)$"
   final def tptpEscapeName(str: String): String = {
     if (str.matches(simpleNameRegex)) str
     else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
   }
-  private final val simpleExpressionRegex = "^([a-z]|\\${1,2}[a-z])([a-zA-Z\\d]*)$"
+  private final val simpleExpressionRegex = "^([a-z]|\\${1,2}[a-z])([a-zA-Z\\d_]*)$"
   final def tptpEscapeExpression(str: String): String = {
     if (str.matches(simpleExpressionRegex)) str
     else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
