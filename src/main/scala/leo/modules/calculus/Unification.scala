@@ -133,7 +133,7 @@ object HuetsPreUnification extends Unification {
       // we always assume conf.uproblems is sorted and that delete, decomp and bind were applied exaustively
       val (fail, flexRigid, flexFlex, partialUnifier, partialTyUnifier) = detExhaust(conf.unprocessed,
                                                                                           conf.flexRigid, conf.flexFlex,
-                                                                                          conf.solved, Vector(), conf.solvedTy)
+                                                                                          conf.solved, conf.solvedTy)
       leo.Out.finest(s"Finished detExhaust")
       // if uTyProblems is non-empty fail
       if (fail) {
@@ -193,87 +193,69 @@ object HuetsPreUnification extends Unification {
   @tailrec
   final protected[calculus] def detExhaust(unprocessed: Seq[UEq],
                          flexRigid: Seq[UEq0], flexFlex: Seq[UEq],
-                         solved: TermSubst,
-                         uTyProblems: Seq[UTEq], solvedTy: TypeSubst):
+                         solved: TermSubst, solvedTy: TypeSubst):
                         (Boolean, Seq[UEq0], Seq[UEq], TermSubst, TypeSubst) = {
     //                  (fail, flexRigid, flexflex, solved, solvedTy)
     import leo.datastructures.collectLambdas
     leo.Out.finest(s"Unsolved (term eqs): ${unprocessed.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    leo.Out.finest(s"Unsolved (type eqs): ${uTyProblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    if (uTyProblems.nonEmpty) {
-      val head = uTyProblems.head
+    // check unprocessed
+    if (unprocessed.nonEmpty) {
+      val head0 = unprocessed.head
+      leo.Out.finest(s"detExhaust on: ${head0._1.pretty} = ${head0._2.pretty}")
+      // Try all term rules
+      if (DeleteRule.canApply(head0)) {
+        leo.Out.finest("Apply delete")
+        detExhaust(unprocessed.tail, flexRigid, flexFlex, solved, solvedTy)
+      } else {
+        val left = head0._1.etaExpand
+        val right = head0._2.etaExpand
 
-      // Try all type rules
-      if (TyDeleteRule.canApply(head))
-        detExhaust(unprocessed, flexRigid, flexFlex, solved, uTyProblems.tail, solvedTy)
-      else if (TyDecompRule.canApply(head))
-        detExhaust(unprocessed, flexRigid, flexFlex, solved, TyDecompRule.apply(head) ++ uTyProblems.tail, solvedTy)
-      else {
-        val tyFunDecompRuleCanApplyHint = TyFunDecompRule.canApply(head)
-        if (tyFunDecompRuleCanApplyHint != TyFunDecompRule.CANNOT_APPLY) {
-          detExhaust(unprocessed, flexRigid, flexFlex, solved,
-            TyFunDecompRule.apply(head, tyFunDecompRuleCanApplyHint) ++ uTyProblems.tail, solvedTy)
-        } else if (TyBindRule.canApply(head)) {
-          val subst = TyBindRule.apply(head)
-          leo.Out.finest(s"Ty Bind: ${subst.pretty}")
-          detExhaust(applySubstToList(Subst.id, subst, unprocessed),
-            applyTySubstToList(subst, flexRigid), applySubstToList(Subst.id, subst, flexFlex),
-            solved.applyTypeSubst(subst), uTyProblems.tail, solvedTy.comp(subst))
-        }
-        else // No type rule applicable for head, so it's a fail, just return a fail state
-          (true, flexRigid, flexFlex, solved, solvedTy)
-      }
-    } else {
-      // check unprocessed
-      if (unprocessed.nonEmpty) {
-        val head0 = unprocessed.head
-        leo.Out.finest(s"detExhaust on: ${head0._1.pretty} = ${head0._2.pretty}")
-        // Try all term rules
-        if (DeleteRule.canApply(head0)) {
-          leo.Out.finest("Apply delete")
-          detExhaust(unprocessed.tail, flexRigid, flexFlex, solved, uTyProblems, solvedTy)
-        } else {
-          val left = head0._1.etaExpand
-          val right = head0._2.etaExpand
+        val (leftBody, leftAbstractions) = collectLambdas(left)
+        val (rightBody, rightAbstractions) = collectLambdas(right)
+        assert(leftAbstractions == rightAbstractions)
+        val abstractionCount = leftAbstractions.size
 
-          val (leftBody, leftAbstractions) = collectLambdas(left)
-          val (rightBody, rightAbstractions) = collectLambdas(right)
-          assert(leftAbstractions == rightAbstractions)
-          val abstractionCount = leftAbstractions.size
-
-          if (DecompRule.canApply((leftBody, rightBody), abstractionCount)) {
+        val decompHint = DecompRule.canApply((leftBody, rightBody), abstractionCount)
+        if (decompHint._1) {
+          if (decompHint._2.isDefined) {
             leo.Out.finest("Apply decomp")
-            val (newUnsolvedTermEqs, newUnsolvedTypeEqs) = DecompRule.apply((leftBody, rightBody), leftAbstractions)
-            detExhaust(newUnsolvedTermEqs ++ unprocessed.tail, flexRigid, flexFlex,
-              solved, newUnsolvedTypeEqs ++ uTyProblems, solvedTy)
+            val typeSubst = decompHint._2.get
+            val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions)
+            detExhaust(newUnsolvedTermEqs ++ applySubstToList(Subst.id, typeSubst, unprocessed.tail),
+              applyTySubstToList(typeSubst, flexRigid),
+              applySubstToList(Subst.id, typeSubst, flexFlex),
+              solved.applyTypeSubst(typeSubst), solvedTy.comp(typeSubst))
           } else {
-            val bindHint = BindRule.canApply(leftBody, rightBody, abstractionCount)
-            if (bindHint != BindRule.CANNOT_APPLY) {
-              val subst = BindRule.apply(head0, abstractionCount, bindHint)
-              leo.Out.finest(s"Bind: ${subst.pretty}")
-              detExhaust(
-                applySubstToList(subst, Subst.id, flexRigid.map(e => (e._1, e._2)) ++ flexFlex ++ unprocessed.tail),
-                Vector(), Vector(),
-                solved.comp(subst), uTyProblems, solvedTy)
-            } else {
-              // ... move to according list if nothing applies
-              if (flexflex(head0, abstractionCount))
-                detExhaust(unprocessed.tail, flexRigid, head0 +: flexFlex,
-                  solved, uTyProblems, solvedTy)
-              else if (rigidrigid(head0, abstractionCount))
-                (true, flexRigid, flexFlex, solved, solvedTy) // fail
-              else {
-                assert(flexrigid(head0, abstractionCount))
-                detExhaust(unprocessed.tail, (left, right, abstractionCount) +: flexRigid, flexFlex,
-                  solved, uTyProblems, solvedTy)
-              }
+            leo.Out.finest("Decomp failed due to type (non-)unifiablity")
+            (true, flexRigid, flexFlex, solved, solvedTy)
+          }
+        } else {
+          val bindHint = BindRule.canApply(leftBody, rightBody, abstractionCount)
+          if (bindHint != BindRule.CANNOT_APPLY) {
+            val subst = BindRule.apply(head0, abstractionCount, bindHint)
+            leo.Out.finest(s"Bind: ${subst.pretty}")
+            detExhaust(
+              applySubstToList(subst, Subst.id, flexRigid.map(e => (e._1, e._2)) ++ flexFlex ++ unprocessed.tail),
+              Vector(), Vector(),
+              solved.comp(subst), solvedTy)
+          } else {
+            // ... move to according list if nothing applies
+            if (flexflex(head0, abstractionCount))
+              detExhaust(unprocessed.tail, flexRigid, head0 +: flexFlex,
+                solved, solvedTy)
+            else if (rigidrigid(head0, abstractionCount))
+              (true, flexRigid, flexFlex, solved, solvedTy) // fail
+            else {
+              assert(flexrigid(head0, abstractionCount))
+              detExhaust(unprocessed.tail, (left, right, abstractionCount) +: flexRigid, flexFlex,
+                solved, solvedTy)
             }
           }
         }
-      } else {
-        // no unprocessed left, return sets
-        (false, flexRigid, flexFlex, solved, solvedTy)
       }
+    } else {
+      // no unprocessed left, return sets
+      (false, flexRigid, flexFlex, solved, solvedTy)
     }
   }
 
@@ -383,33 +365,48 @@ object HuetsPreUnification extends Unification {
     */
   object DecompRule {
     import leo.datastructures.Term.∙
-    final def apply(e: UEq, abstractions: Seq[Type]): (Seq[UEq], Seq[UTEq]) = e match {
-      case (_ ∙ sq1, _ ∙ sq2) => zipArgumentsWithAbstractions(sq1, sq2, abstractions)
+    import leo.datastructures.{termArgs, typeArgs}
+
+    final def apply(e: UEq, abstractions: Seq[Type]): Seq[UEq] = e match {
+      case (_ ∙ sq1, _ ∙ sq2) =>
+        val termArgs1 = termArgs(sq1)
+        val termArgs2 = termArgs(sq2)
+        zipWithAbstractions(termArgs1, termArgs2, abstractions)
       case _ => throw new IllegalArgumentException("impossible")
     }
-    final def canApply(e: UEq, depth: Depth): Boolean = e match {
-      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 && !isFlexible(hd1, depth) => if (!hd1.ty.isPolyType) true else {
-        // If head symbols are polymorphic we need to check if the applied type arguments
-        // are "compatible" in the sense that the resulting new unsolved equations are
-        // have the same type arity. otherwise lambda-detaching in apply(.) is not even and will fail.
-        // (they are not necessarily well-typed, since the new unsolved type equations are not yet solved)
-        var hd1PrefixTypeArgs = args1.takeWhile(_.isRight).map(_.right.get)
-        var hd2PrefixTypeArgs = args2.takeWhile(_.isRight).map(_.right.get)
-        assert(hd1PrefixTypeArgs.size == hd2PrefixTypeArgs.size)
-        while(hd1PrefixTypeArgs.nonEmpty) {
-          val hd1type = hd1PrefixTypeArgs.head
-          val hd2type = hd2PrefixTypeArgs.head
-          /* TODO: This is too restrictive: If the last type in hd[1/2]type.funParamTypesWithResultType.last is a variable
-           * we can (try to) bind it accordingly using type unification directly. */
-          if (hd1type.arity != hd2type.arity) return false
-          else {
-            hd1PrefixTypeArgs = hd1PrefixTypeArgs.tail
-            hd2PrefixTypeArgs = hd2PrefixTypeArgs.tail
-          }
-        }
-        true
+    final def canApply(e: UEq, depth: Depth): (Boolean, Option[TypeSubst]) = e match {
+      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 && !isFlexible(hd1, depth) =>
+        if (!hd1.ty.isPolyType) (true, None)
+        else {
+          val typeArgs1 = typeArgs(args1)
+          val typeArgs2 = typeArgs(args2)
+          val uniConstraints: Seq[UTEq] = typeArgs1.zip(typeArgs2)
+          val uniResult = TypeUnification(uniConstraints)
+          if (uniResult.isDefined) {
+            (true, uniResult)
+          } else (true, None) // This encodes: Applicable but not successful
+//
+//        // If head symbols are polymorphic we need to check if the applied type arguments
+//        // are "compatible" in the sense that the resulting new unsolved equations are
+//        // have the same type arity. otherwise lambda-detaching in apply(.) is not even and will fail.
+//        // (they are not necessarily well-typed, since the new unsolved type equations are not yet solved)
+//        var hd1PrefixTypeArgs = args1.takeWhile(_.isRight).map(_.right.get)
+//        var hd2PrefixTypeArgs = args2.takeWhile(_.isRight).map(_.right.get)
+//        assert(hd1PrefixTypeArgs.size == hd2PrefixTypeArgs.size)
+//        while(hd1PrefixTypeArgs.nonEmpty) {
+//          val hd1type = hd1PrefixTypeArgs.head
+//          val hd2type = hd2PrefixTypeArgs.head
+//          /* TODO: This is too restrictive: If the last type in hd[1/2]type.funParamTypesWithResultType.last is a variable
+//           * we can (try to) bind it accordingly using type unification directly. */
+//          if (hd1type.arity != hd2type.arity) return false
+//          else {
+//            hd1PrefixTypeArgs = hd1PrefixTypeArgs.tail
+//            hd2PrefixTypeArgs = hd2PrefixTypeArgs.tail
+//          }
+//        }
+//        true
       }
-      case _ => false
+      case _ => (false, None)
     }
   }
 
@@ -551,11 +548,32 @@ object HuetsPreUnification extends Unification {
 //  private final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
 //    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst), e._3))
   @inline protected[calculus] final def applySubstToList(termSubst: Subst, typeSubst: Subst, l: Seq[(Term, Term)]): Seq[(Term, Term)] =
-    l.map(e => (e._1.substitute(termSubst,typeSubst),e._2.substitute(termSubst,typeSubst)))
+    l.map(e => (e._1.substitute(termSubst,typeSubst).etaExpand,e._2.substitute(termSubst,typeSubst).etaExpand))
   @inline private final def applyTySubstToList(typeSubst: Subst, l: Seq[UEq0]): Seq[UEq0] =
-    l.map(e => (e._1.substitute(Subst.id, typeSubst),e._2.substitute(Subst.id, typeSubst), e._3))
+    l.map(e => (e._1.substitute(Subst.id, typeSubst).etaExpand,e._2.substitute(Subst.id, typeSubst).etaExpand, e._3))
 
-  protected[calculus] final def zipArgumentsWithAbstractions(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]],
+
+  protected[calculus] final def zipWithAbstractions(l: Seq[Term], r: Seq[Term], abstractions: Seq[Type]): Seq[UEq] = {
+    zipWithAbstractions0(l,r,abstractions, Vector())
+  }
+
+  @tailrec private final def zipWithAbstractions0(l: Seq[Term], r: Seq[Term],
+                                                  abstractions: Seq[Type],
+                                                  acc: Seq[UEq]): Seq[UEq] = {
+    import leo.datastructures.Term.local.λ
+    if (l.isEmpty) {
+      assert(r.isEmpty, "Decomp on differently sized argument lists, failing.")
+      acc
+    } else {
+      assert(r.nonEmpty, "Decomp on differently sized argument lists, failing.")
+      val hdl = l.head; val hdr = r.head
+      val left = λ(abstractions)(hdl).etaExpand
+      val right = λ(abstractions)(hdr).etaExpand
+      zipWithAbstractions0(l.tail, r.tail, abstractions, acc :+ (left,right))
+    }
+  }
+
+  @deprecated protected[calculus] final def zipArgumentsWithAbstractions(l: Seq[Either[Term, Type]], r: Seq[Either[Term, Type]],
                                                  abstractions: Seq[Type]): (Seq[UEq], Seq[UTEq]) =
     zipArgumentsWithAbstractions0(l,r,abstractions, Vector(), Vector())
 
@@ -836,6 +854,7 @@ object PatternUnification extends Unification {
 
   /** Flex-rigid rule: May fail, returns null of not sucessful. */
   private final def flexrigid(idx1: Int, ty1: Type, args1: Seq[Either[Term, Type]], rigidHd: Term, rigidArgs: Seq[Either[Term, Type]], rigidAsTerm: Term, vargen: FreshVarGen, depth: Seq[Type]): (PartialUniResult, Seq[UEq]) = {
+    import leo.datastructures.partitionArgs
     try {
       val args10 = args1.map(_.left.get)
       // This is a bit hacky: We need the new fresh variables
@@ -861,7 +880,7 @@ object PatternUnification extends Unification {
       } else {
         assert(rigidHd.isConstant)
         // Constants may be polymorphic: Apply types before calculating imitation binding.
-        val rigidArgs0 = splitArgs(rigidArgs)
+        val rigidArgs0 = partitionArgs(rigidArgs)
         assert(rigidArgs0._1.isEmpty || rigidHd.ty.isPolyType)
         val rigidHd0 = if (rigidHd.ty.isPolyType) {
           leo.Out.finest(s"head symbol is polymorphic")
@@ -880,21 +899,6 @@ object PatternUnification extends Unification {
       }
     } catch {
       case _:NoSuchElementException => null
-    }
-  }
-  private final def splitArgs(args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) =
-    splitArgs0(args, Vector(), Vector())
-  private final def splitArgs0(args: Seq[Either[Term, Type]], tyArgs: Seq[Type], termArgs: Seq[Term]): (Seq[Type], Seq[Term]) = {
-    if (args.isEmpty) (tyArgs, termArgs)
-    else {
-      val hd = args.head
-      if (hd.isLeft) {
-        // all remaining are should be left
-        assert(args.forall(_.isLeft))
-        (tyArgs, args.map(_.left.get))
-      } else {
-        splitArgs0(args.tail, tyArgs :+ hd.right.get, termArgs)
-      }
     }
   }
 

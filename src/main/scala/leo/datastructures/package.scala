@@ -583,4 +583,32 @@ package object datastructures {
     }
   }
 
+  final def partitionArgs(args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = partitionArgs0(Vector(), args)
+  @tailrec private final def partitionArgs0(acc: Seq[Type], args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = {
+    if (args.isEmpty) (acc, Seq.empty)
+    else {
+      val hd = args.head
+      if (hd.isLeft) (acc, args.map(_.left.get))
+      else partitionArgs0(acc :+ hd.right.get, args.tail)
+    }
+  }
+
+  final def typeArgs(args: Seq[Either[Term, Type]]): Seq[Type] = typeArgs0(Vector(), args)
+  @tailrec private final def typeArgs0(acc: Seq[Type], args: Seq[Either[Term, Type]]): Seq[Type] = {
+    if (args.isEmpty) acc
+    else {
+      val hd = args.head
+      if (hd.isLeft) acc
+      else typeArgs0(acc :+ hd.right.get, args.tail)
+    }
+  }
+
+  @tailrec final def termArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
+    if (args.isEmpty) Seq.empty
+    else {
+      val hd = args.head
+      if (hd.isLeft) args.map(_.left.get)
+      else termArgs(args.tail)
+    }
+  }
 }

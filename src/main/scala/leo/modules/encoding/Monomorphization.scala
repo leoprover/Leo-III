@@ -1,6 +1,6 @@
 package leo.modules.encoding
 
-import leo.datastructures.{Clause, Literal, Signature, Subst, Term, Type}
+import leo.datastructures.{Clause, Literal, Signature, Subst, Term, Type, partitionArgs}
 import leo.modules.calculus.{TypeUnification, TypeSubst}
 
 import scala.annotation.tailrec
@@ -289,16 +289,6 @@ object Monomorphization {
         val convertedOut = convertType(out, oldSig, newSig)
         mkFunType(convertedIn, convertedOut)
       case _ => throw new IllegalArgumentException
-    }
-  }
-
-  private final def partitionArgs(args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = partitionArgs0(Seq(), args)
-  @tailrec private final def partitionArgs0(acc: Seq[Type], args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = {
-    if (args.isEmpty) (acc, Seq.empty)
-    else {
-      val hd = args.head
-      if (hd.isLeft) (acc, args.map(_.left.get))
-      else partitionArgs0(acc :+ hd.right.get, args.tail)
     }
   }
 
