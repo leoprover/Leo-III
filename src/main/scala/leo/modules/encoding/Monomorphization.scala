@@ -319,7 +319,8 @@ object Monomorphization {
     ty match {
       case BaseType(id) => sig(id).name.replaceAll("\\$", "D")
       case ComposedType(id, args) => s"${sig(id).name}_${args.map(canonicalTyName(_)(sig)).mkString("_")}"
-      case _ => throw new IllegalArgumentException // bound, poly cannot happen, -> types should at this level be encoded to fun
+      case in -> out => s"func_${canonicalTyName(in)(sig)}_${canonicalTyName(out)(sig)}"
+      case _ => throw new IllegalArgumentException(s"Spooky type: ${ty.pretty(sig)}") // bound, poly cannot happen, -> types should at this level be encoded to fun
     }
   }
 
