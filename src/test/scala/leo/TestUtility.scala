@@ -1,6 +1,7 @@
 package leo
 
 import leo.datastructures.{Term, Signature}
+import leo.modules.output.logger
 import org.scalatest.Tag
 
 /**
@@ -18,6 +19,8 @@ trait TestUtility {
     val result = a
     ((System.nanoTime - now) / 1000, result)
   }
+
+  def Out = leo.Out
 
 
   def getFreshSignature: Signature = {

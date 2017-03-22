@@ -1,5 +1,6 @@
 package leo.modules.encoding
 
+import leo.Out
 import leo.datastructures.{Clause, Literal, Signature, Term, Type}
 import scala.annotation.tailrec
 
@@ -20,7 +21,7 @@ object TypedFOLEncoding {
     val foSig = TypedFOLEncodingSignature()
     // Analyze problem and insert problem-specific symbols into signature (encoded types)
     val functionTable = EncodingAnalyzer.analyze(problem)
-    println(s"functionTable: ${functionTable.map{case (key, info) => sig(key).name + " : " + info.toString()}.mkString("\n")}")
+    Out.finest(s"functionTable: ${functionTable.map{case (key, info) => sig(key).name + " : " + info.toString()}.mkString("\n")}")
     val fIt = functionTable.iterator
     var proxyAxioms: Set[Clause] = Set.empty
     while (fIt.hasNext) {
@@ -305,8 +306,8 @@ object TypedFOLEncoding {
           case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => assert(false); f
         }
-//        println(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
-//        println(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
+//        Out.finest(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
+//        Out.finest(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
@@ -655,14 +656,14 @@ trait TypedFOLEncodingSignature extends Signature {
     val (id, tyArgs) = Type.ComposedType.unapply(fun.ty).get
     assert(id == funTy_id)
     assert(tyArgs.size == 2)
-//    println(s"hApp call")
-//    println(s"fun: ${fun.pretty}")
-//    println(s"funty: ${fun.ty.pretty}")
-//    println(s"arg: ${arg.pretty}")
-//    println(s"argty: ${arg.ty.pretty}")
-//    println(s"fun tyArg(0): ${tyArgs.head.pretty}")
-//    println(s"fun tyArg(1): ${tyArgs.tail.head.pretty}")
-//    println(s"hApp instance: ${mkApp(hApp, Seq(Right(tyArgs.head), Right(tyArgs.tail.head))).ty.pretty}")
+//    Out.finest(s"hApp call")
+//    Out.finest(s"fun: ${fun.pretty}")
+//    Out.finest(s"funty: ${fun.ty.pretty}")
+//    Out.finest(s"arg: ${arg.pretty}")
+//    Out.finest(s"argty: ${arg.ty.pretty}")
+//    Out.finest(s"fun tyArg(0): ${tyArgs.head.pretty}")
+//    Out.finest(s"fun tyArg(1): ${tyArgs.tail.head.pretty}")
+//    Out.finest(s"hApp instance: ${mkApp(hApp, Seq(Right(tyArgs.head), Right(tyArgs.tail.head))).ty.pretty}")
     mkApp(hApp, Seq(Right(tyArgs.head), Right(tyArgs.tail.head), Left(fun), Left(arg)))
   }
   @tailrec

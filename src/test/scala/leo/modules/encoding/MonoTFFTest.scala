@@ -21,21 +21,21 @@ class MonoTFFTest extends LeoTestSuite {
     // create formulae
     val f1 = Input.readFormula("p @ (^[X: $i]: (p2 @ X @ (a @ X)))")
 
-    println(f1.pretty(sig))
+    Out.finest(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(Set(termToClause(f1)), LambdaElimStrategy_SKI)
 
-    println("########")
-    println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
-    println("---")
+    Out.finest("########")
+    Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
+    Out.finest("---")
     printSignature(encodingSig)
     assert(encodedProblem.forall(Clause.wellTyped))
     assert(auxDefs.forall(Clause.wellTyped))
-    println("########")
-    println(s"aufDefs size: ${auxDefs.size}")
+    Out.finest("########")
+    Out.finest(s"aufDefs size: ${auxDefs.size}")
 
-    println(leo.modules.output.ToTFF(encodingSig))
+    Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
       println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
@@ -49,15 +49,15 @@ class MonoTFFTest extends LeoTestSuite {
 
     val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
 
-    println("########")
-    println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
-    println("---")
+    Out.finest("########")
+    Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
+    Out.finest("---")
     printSignature(monoSig)
     monoProblem.foreach { cl =>
       assert(Clause.wellTyped(cl), s"${cl.pretty(monoSig)} not well typed")
     }
     assert(monoProblem.forall(Clause.wellTyped))
-    println("########")
+    Out.finest("########")
 
     println(leo.modules.output.ToTFF(monoSig))
     println(monoProblem.map(leo.modules.output.ToTFF(_, Role_Plain, "a")(monoSig)).mkString("\n"))
@@ -79,25 +79,25 @@ class MonoTFFTest extends LeoTestSuite {
     val (_,f1,_) = Input.readAnnotated("thf(72,plain,(! [A:$i,B:($i > $o)]: ((B @ A) | (sk5 @ (sk6 @ (^ [C:$i]: ~ (B @ C))) @ A))),inference(simp,[status(thm)],[34])).")
     val (_,f2,_) = Input.readAnnotated("thf(98,plain,((~ (sk5 @ (sk6 @ (^ [A:$i]: ~ (sk5 @ A @ A))) @ (sk6 @ (^ [A:$i]: ~ (sk5 @ A @ A)))))),inference(pattern_uni,[status(thm)],[94:[bind(A, $thf(sk6 @ (^ [C:$i]: ~ (sk5 @ C @ C)))),bind(B, $thf(^ [C:$i]: (sk5 @ C @ C)))]])).")
 
-    println(f1.pretty(sig))
+    Out.finest(f1.pretty(sig))
     assert(Term.wellTyped(f1))
-    println(f2.pretty(sig))
+    Out.finest(f2.pretty(sig))
     assert(Term.wellTyped(f2))
 
     val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1)) union leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f2))).toSet
 
-    println(cnf.map(_.pretty(sig)).mkString("\n"))
+    Out.finest(cnf.map(_.pretty(sig)).mkString("\n"))
 
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
     leo.modules.Utility.printSignature(encodingSig)
-    println("########")
-    println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
+    Out.finest("########")
+    Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))
     assert(auxDefs.forall(Clause.wellTyped))
-    println("########")
+    Out.finest("########")
 
-    println(leo.modules.output.ToTFF(encodingSig))
+    Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
       println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
@@ -111,9 +111,9 @@ class MonoTFFTest extends LeoTestSuite {
 
     val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
 
-    println("########")
-    println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
-    println("---")
+    Out.finest("########")
+    Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
+    Out.finest("---")
     printSignature(monoSig)
     monoProblem.foreach(cl =>
       if (Clause.unit(cl)) {
@@ -128,7 +128,7 @@ class MonoTFFTest extends LeoTestSuite {
       }
       else
         assert(Clause.wellTyped(cl), s"Not well typed: ${cl.pretty(monoSig)}"))
-    println("########")
+    Out.finest("########")
 
     println(leo.modules.output.ToTFF(monoSig))
 
@@ -144,23 +144,23 @@ class MonoTFFTest extends LeoTestSuite {
 
     val (_,f1,_) = Input.readAnnotated("thf(conj, conjecture, ((^ [X: $o, Y: $o]: (X | Y)) != (^ [X: $o, Y: $o]: (Y | X)) )).")
 
-    println(f1.pretty(sig))
+    Out.finest(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
     val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))).toSet
 
-    println(cnf.map(_.pretty(sig)).mkString("\n"))
+    Out.finest(cnf.map(_.pretty(sig)).mkString("\n"))
 
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
     leo.modules.Utility.printSignature(encodingSig)
-    println("########")
-    println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
+    Out.finest("########")
+    Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))
     assert(auxDefs.forall(Clause.wellTyped))
-    println("########")
+    Out.finest("########")
 
-    println(leo.modules.output.ToTFF(encodingSig))
+    Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
       println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
@@ -174,9 +174,9 @@ class MonoTFFTest extends LeoTestSuite {
 
     val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
 
-    println("########")
-    println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
-    println("---")
+    Out.finest("########")
+    Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
+    Out.finest("---")
     printSignature(monoSig)
     monoProblem.foreach(cl =>
       if (Clause.unit(cl)) {
@@ -191,7 +191,7 @@ class MonoTFFTest extends LeoTestSuite {
       }
       else
         assert(Clause.wellTyped(cl), s"Not well typed: ${cl.pretty(monoSig)}"))
-    println("########")
+    Out.finest("########")
 
     println(leo.modules.output.ToTFF(monoSig))
 
@@ -207,23 +207,23 @@ class MonoTFFTest extends LeoTestSuite {
 
     val (_,f1,_) = Input.readAnnotated("thf(sur_cantor, conjecture, (( ? [F: $i > ($i > $o)] : (\n                                   ! [Y: $i > $o] :\n                                    ? [X: $i] : (\n                                      (F @ X) = Y\n                                    )\n                                 ) ))).")
 
-    println(f1.pretty(sig))
+    Out.finest(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
     val cnf = (leo.modules.calculus.FullCNF.apply(leo.modules.calculus.freshVarGenFromBlank, termToClause(f1))(sig)).toSet
 
-    println(cnf.map(_.pretty(sig)).mkString("\n"))
+    Out.finest(cnf.map(_.pretty(sig)).mkString("\n"))
 
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
     leo.modules.Utility.printSignature(encodingSig)
-    println("########")
-    println(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
+    Out.finest("########")
+    Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))
     assert(auxDefs.forall(Clause.wellTyped))
-    println("########")
+    Out.finest("########")
 
-    println(leo.modules.output.ToTFF(encodingSig))
+    Out.finest(leo.modules.output.ToTFF(encodingSig))
     var i_def = 0
     auxDefs.foreach { defi =>
       println(leo.modules.output.ToTFF(defi, Role_Axiom, s"ax_$i_def")(encodingSig))
@@ -237,9 +237,9 @@ class MonoTFFTest extends LeoTestSuite {
 
     val (monoProblem, monoSig) = Monomorphization.apply(encodedProblem union auxDefs)(encodingSig)
 
-    println("########")
-    println(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
-    println("---")
+    Out.finest("########")
+    Out.finest(monoProblem.map(_.pretty(monoSig)).mkString("\n"))
+    Out.finest("---")
     printSignature(monoSig)
     monoProblem.foreach(cl =>
       if (Clause.unit(cl)) {
@@ -254,7 +254,7 @@ class MonoTFFTest extends LeoTestSuite {
       }
       else
         assert(Clause.wellTyped(cl), s"Not well typed: ${cl.pretty(monoSig)}"))
-    println("########")
+    Out.finest("########")
 
     println(leo.modules.output.ToTFF(monoSig))
 
