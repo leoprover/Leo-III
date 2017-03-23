@@ -160,11 +160,22 @@ object InputProcessing {
           val processedLeft2 = processedLeft.left.get
           import leo.datastructures.Term.{mkTermApp, mkTypeApp}
           if (processedLeft2.ty.isPolyType) {
-            val processedRight = convertTHFType(sig)(right, replaces)
-            if (processedRight.isLeft)
-              mkTypeApp(processedLeft2, processedRight.left.get)
-            else
-              throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+            // FIXME: Hack! We know that if left is a fixed symbol, then the first argument is a term
+            // hence we need to manually give it as argument the type of that term.
+            import leo.datastructures.Term.Symbol
+            val maybeSymbol = Symbol.unapply(processedLeft2)
+            if (maybeSymbol.isDefined && sig(maybeSymbol.get).isFixedSymbol) {
+              // FIXME Hack^2: This only works for simple poly types where the first argument's type is indeed
+              // the type required to pass to left. This wont work for choice etc.
+              val processedRight = processTHF(sig)(right, replaces).left.get
+              mkApp(processedLeft2, Seq(Right(processedRight.ty), Left(processedRight)))
+            } else {
+              val processedRight = convertTHFType(sig)(right, replaces)
+              if (processedRight.isLeft)
+                mkTypeApp(processedLeft2, processedRight.left.get)
+              else
+                throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+            }
           }
           else {
             val res = processTHF(sig)(right, replaces)
@@ -176,12 +187,8 @@ object InputProcessing {
           }
         } else throw new SZSException(SZS_InputError, "THFAPP left side type.")
       case Binary(left, conn, right) => //try {
-        leo.Out.finest(s"toProcess left: ${left.toString}")
-        leo.Out.finest(s"toProcess right: ${right.toString}")
         val processedLeft = processTHF(sig)(left, replaces)
-        leo.Out.finest(s"processedLeft: ${processedLeft.toString}")
         val processedRight = processTHF(sig)(right, replaces)
-        leo.Out.finest(s"processedRight: ${processedRight.toString}")
         processTHFBinaryConn(conn).apply(processedLeft.left.get, processedRight.left.get)
 //        } catch {
 //          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString, s"Inout: ${input.toString}\n" +
@@ -259,13 +266,16 @@ object InputProcessing {
           } else throw new SZSException(SZS_InputError, s"System function $func is unknown.")
         } else if (func.startsWith("$")) {
           // Defined function
-          if (!sig.exists(func)) throw new SZSException(SZS_InputError, s"Defined function $func is unknown.")
+          if (!sig.exists(func)) throw new SZSException(SZS_Inappropriate, s"TPTP functor $func not supported.")
           else {
             val f = sig(func)
             if (f._ty.isPolyType) {
               leo.Out.finest(s"func: ${func.toString}, args: ${args.map(_.toString).mkString(",")}")
               val convertedArgs = args.map(processTHF(sig)(_, replaces))
-              mkApp(mkAtom(f.key)(sig), Right(convertedArgs.head.left.get.ty) +: convertedArgs)
+              if (convertedArgs.nonEmpty)
+                mkApp(mkAtom(f.key)(sig), Right(convertedArgs.head.left.get.ty) +: convertedArgs)
+              else
+                mkAtom(f.key)(sig)
             } else {
               val convertedArgs = args.map(processTHF(sig)(_, replaces))
               mkApp(mkAtom(f.key)(sig), convertedArgs)
@@ -297,9 +307,9 @@ object InputProcessing {
           if (sig.exists(constName)) mkAtom(sig(constName).key)(sig)
           else mkAtom(sig.addUninterpreted(constName, rat))(sig)
       }
-      case Tuple(_) => Out.severe("Unsupported tuple-definition, treated as $true."); LitTrue() // TODO: New tuples
+      case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Tuples are not supported")
       case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
-      case Subtype(left,right) => Out.severe("Unsupported subtype declaration, treated as $true."); LitTrue() // Not supported
+      case Subtype(left,right) => throw new SZSException(SZS_Inappropriate, "Subtyping is not supported")
       case Cond(c, thn, els) =>
         try {
           val convertedCondition = processTHF(sig)(c, replaces).left.get
@@ -471,7 +481,7 @@ object InputProcessing {
           } else if (func.startsWith("$")) {
             if (func == "$tType") typeKind
             else if (sig.exists(func)) mkType(sig(func).key)
-            else throw new SZSException(SZS_InputError, s"Unknown defined type/type operator $func")
+            else throw new SZSException(SZS_Inappropriate, s"Unknown TPTP type/type operator $func")
           } else {
             if (sig.exists(func)) mkType(sig(func).key)
             else throw new SZSException(SZS_InputError, s"Unknown type/type operator $func, please specify its kind before.")
@@ -615,7 +625,7 @@ object InputProcessing {
         Not(===(convertedLeft.left.get, convertedRight.left.get))
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces, false)
       case Cond(cond, thn, els) => IF_THEN_ELSE(processTFF0(sig)(cond, replaces),processTFF0(sig)(thn, replaces),processTFF0(sig)(els, replaces))
-      case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
+      case Let(_, _) => throw new SZSException(SZS_Inappropriate, "TFF Tuples not supported at the moment.")
     }
   }
 
@@ -753,7 +763,7 @@ object InputProcessing {
 //                                                        }
 //      case Logical(lf) => val role = processRole(input.role); Some((input.name, singleTermToClause(processFOF0(sig)(lf, noRep), role), role))
       case Logical(lf) => val role = processRole(input.role); Some((input.name, processFOF0(sig)(lf, noRep), role))
-      case Sequent(_,_) => throw new IllegalArgumentException("Processing of fof sequents not yet implemented.")
+      case Sequent(_,_) => throw new SZSException(SZS_Inappropriate,"Processing of fof sequents not supported.")
     }
   }
 
@@ -894,7 +904,7 @@ object InputProcessing {
     case Var(name) => termMapping(replace).get(name) match {
       case None => typeMapping(replace).get(name) match {
         case Some((k, scope))  => assert(k == Kind.*); Type.mkVarType(typeMapping(replace).size + typeOffset(replace) - scope + 1)
-        case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
+        case _ => throw new SZSException(SZS_InputError,"Unbound variable found in formula: "+input.toString)
       }
       case Some((ty, scope)) =>
         assert(typeMapping(replace).get(name).isEmpty)
@@ -914,60 +924,64 @@ object InputProcessing {
         mkApp(mkAtom(sig.addUninterpreted(name, mkFunType(vars.map(_ => i), o)))(sig), converted)
       }
     case DefinedFunc(name, vars) =>
-      import leo.modules.HOLSignature.{HOLUnaryMinus, HOLFloor, HOLCeiling, HOLTruncate, HOLRound, HOLToInt, HOLToRat, HOLToReal}
-      import leo.modules.HOLSignature.{HOLIsRat, HOLIsInt, HOLLess, HOLLessEq, HOLGreater, HOLGreaterEq, HOLSum, HOLDifference}
-      import leo.modules.HOLSignature.{HOLProduct, HOLQuotient, HOLQuotientE, HOLQuotientF, HOLQuotientT, HOLRemainderE}
-      import leo.modules.HOLSignature.{HOLRemainderF, HOLRemainderT}
-      if (sig(name)._ty.isPolyType) {
-        val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
-        // converted only contains terms
-        // currently, there are only unary and binary TPTP defined functions (Dollarwords) that are polymorphic (all arithmetic related)
-        if (converted.size == 1) {
-          val func = name match {
-            case "$uminus" => HOLUnaryMinus
-            case "$floor" => HOLFloor
-            case "$ceiling" => HOLCeiling
-            case "$truncate" => HOLTruncate
-            case "$round" => HOLRound
-            case "$to_int" => HOLToInt
-            case "$to_rat" => HOLToRat
-            case "$to_real" => HOLToReal
-            case "$is_rat" => HOLIsRat
-            case "$is_int" => HOLIsInt
-            case _ => Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity = 1");
-              throw new SZSException(SZS_InputError)
-          }
-          func.apply(converted.head)
-        } else if (converted.size == 2) {
-          val func = name match {
-            case "$less" => HOLLess
-            case "$lesseq" => HOLLessEq
-            case "$greater" => HOLGreater
-            case "$greatereq" => HOLGreaterEq
-            case "$sum" => HOLSum
-            case "$difference" => HOLDifference
-            case "$product" => HOLProduct
-            case "$quotient" => HOLQuotient
-            case "$quotient_e" => HOLQuotientE
-            case "$quotient_t" => HOLQuotientT
-            case "$quotient_f" => HOLQuotientF
-            case "$remainder_e" => HOLRemainderE
-            case "$remainder_t" => HOLRemainderT
-            case "$remainder_f" => HOLRemainderF
-            case _ => Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity = 2");
-              throw new SZSException(SZS_InputError)
-          }
-          func.apply(converted.head, converted(1))
-        } else {
-          // This should not happen
-          Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity > 2")
-          throw new SZSException(SZS_InputError)
-        }
+      if (sig.exists(name)) {
+        // FIXME: Legacy code
+        if (sig(name)._ty.isPolyType) {
 
-      } else {
-        val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
-        mkTermApp(mkAtom(sig(name).key)(sig), converted)
-      }
+          val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
+          // FIXME: Hack
+          val intermediate = Term.mkTypeApp(mkAtom(sig(name).key)(sig), converted.head.ty)
+          mkTermApp(intermediate, converted)
+          /*// converted only contains terms
+          // currently, there are only unary and binary TPTP defined functions (Dollarwords) that are polymorphic (all arithmetic related)
+          if (converted.size == 1) {
+            val func = name match {
+              case "$uminus" => HOLUnaryMinus
+              case "$floor" => HOLFloor
+              case "$ceiling" => HOLCeiling
+              case "$truncate" => HOLTruncate
+              case "$round" => HOLRound
+              case "$to_int" => HOLToInt
+              case "$to_rat" => HOLToRat
+              case "$to_real" => HOLToReal
+              case "$is_rat" => HOLIsRat
+              case "$is_int" => HOLIsInt
+              case _ => Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity = 1");
+                throw new SZSException(SZS_InputError)
+            }
+            func.apply(converted.head)
+          } else if (converted.size == 2) {
+            val func = name match {
+              case "$less" => HOLLess
+              case "$lesseq" => HOLLessEq
+              case "$greater" => HOLGreater
+              case "$greatereq" => HOLGreaterEq
+              case "$sum" => HOLSum
+              case "$difference" => HOLDifference
+              case "$product" => HOLProduct
+              case "$quotient" => HOLQuotient
+              case "$quotient_e" => HOLQuotientE
+              case "$quotient_t" => HOLQuotientT
+              case "$quotient_f" => HOLQuotientF
+              case "$remainder_e" => HOLRemainderE
+              case "$remainder_t" => HOLRemainderT
+              case "$remainder_f" => HOLRemainderF
+              case _ => Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity = 2");
+                throw new SZSException(SZS_InputError)
+            }
+            func.apply(converted.head, converted(1))
+          } else {
+            // This should not happen
+            Out.severe("A problem used an unknown polymorphic TPTP-defined function (Dollarword) with arity > 2")
+            throw new SZSException(SZS_InputError)
+          }*/
+
+        } else {
+          val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
+          mkTermApp(mkAtom(sig(name).key)(sig), converted)
+        }
+      } else throw new SZSException(SZS_Inappropriate, s"TPTP functor $name not supported")
+
     case SystemFunc(name, vars) =>
       val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key)(sig), converted)
@@ -1033,7 +1047,7 @@ object InputProcessing {
                             }
     case Cond(cond, thn, els) =>
       IF_THEN_ELSE(processTFF0(sig)(cond, replace),processTerm(sig)(thn, replace, adHocDefs),processTerm(sig)(els, replace, adHocDefs))
-    case Let(binding, in) =>  Out.warn("Unsupported let-definition in term, treated as $true."); LitTrue()
+    case Let(_, _) =>  throw new SZSException(SZS_Inappropriate, "Unsupported let-definition.")
   }
 
   protected[InputProcessing] final def processAtomicFormula(sig: Signature)(input: AtomicFormula, replace: Replaces, adHocDefs: Boolean = true): Term = input match {
