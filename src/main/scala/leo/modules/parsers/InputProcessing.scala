@@ -160,22 +160,11 @@ object InputProcessing {
           val processedLeft2 = processedLeft.left.get
           import leo.datastructures.Term.{mkTermApp, mkTypeApp}
           if (processedLeft2.ty.isPolyType) {
-            // FIXME: Hack! We know that if left is a fixed symbol, then the first argument is a term
-            // hence we need to manually give it as argument the type of that term.
-            import leo.datastructures.Term.Symbol
-            val maybeSymbol = Symbol.unapply(processedLeft2)
-            if (maybeSymbol.isDefined && sig(maybeSymbol.get).isFixedSymbol) {
-              // FIXME Hack^2: This only works for simple poly types where the first argument's type is indeed
-              // the type required to pass to left. This wont work for choice etc.
-              val processedRight = processTHF(sig)(right, replaces).left.get
-              mkApp(processedLeft2, Seq(Right(processedRight.ty), Left(processedRight)))
-            } else {
-              val processedRight = convertTHFType(sig)(right, replaces)
-              if (processedRight.isLeft)
-                mkTypeApp(processedLeft2, processedRight.left.get)
-              else
-                throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
-            }
+            val processedRight = convertTHFType(sig)(right, replaces)
+            if (processedRight.isLeft)
+              mkTypeApp(processedLeft2, processedRight.left.get)
+            else
+              throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
           }
           else {
             val res = processTHF(sig)(right, replaces)

@@ -1036,7 +1036,8 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     // create formulae
     val f1 = Input.readFormula("! [T:$tType, X:(T>T)]: ((q @ T @ (p @ T @ X)) | (p @ T @ X @ (x @ T)))")
 
-
+    Utility.printSignature(sig)
+    println(f1.pretty(sig))
     assert(Term.wellTyped(f1))
 
     val result = EncodingAnalyzer.analyzeFormula(f1)
@@ -1049,7 +1050,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
       else
         foSig.addUninterpreted(escape(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
     }
-
+    Utility.printSignature(foSig)
     val translateResult = TypedFOLEncoding.translate(f1, null)(sig, foSig)
     println(translateResult.pretty(foSig))
     Utility.printSignature(foSig)

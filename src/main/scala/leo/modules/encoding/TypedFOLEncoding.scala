@@ -313,7 +313,7 @@ object TypedFOLEncoding {
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
         // pass some arguments directly if possible
         val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
-        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"arg size ${translatedTermArgs.size}")
+        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"head: ${encodedHead.pretty(encodingSignature)}, arg size ${translatedTermArgs.size}")
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 
