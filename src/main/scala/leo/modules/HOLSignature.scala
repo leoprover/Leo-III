@@ -41,11 +41,11 @@ object HOLSignature {
   private final val eqKey = orKey + 1
   private final val letKey = eqKey + 1
   private final val iteKey = letKey + 1
-  private final val lessKey = iteKey + 1
+ /* private final val lessKey = iteKey + 1
   private final val lessEqKey = lessKey + 1
   private final val greaterKey = lessEqKey + 1
-  private final val greaterEqKey = greaterKey + 1
-  private final val choiceKey = greaterEqKey + 1
+  private final val greaterEqKey = greaterKey + 1*/
+  private final val choiceKey = iteKey + 1
   private final val descKey = choiceKey + 1
 
   // TODO: Arithmetic symbols not used for now
@@ -325,7 +325,7 @@ object HOLSignature {
   // other HOL defined constants
   ///////////////////
 
-  /** $less */
+  /*/** $less */
   object HOLLess extends PolyBinaryConnective { val key = lessKey; val ty = aao }
   /** $lesseq */
   object HOLLessEq extends PolyBinaryConnective { val key = lessEqKey; val ty = aao }
@@ -333,7 +333,7 @@ object HOLSignature {
   object HOLGreater extends PolyBinaryConnective { val key = greaterKey; val ty = aao }
   /** $greatereq */
   object HOLGreaterEq extends PolyBinaryConnective { val key = greaterEqKey; val ty = aao }
-
+*/
   // Further TF with arithmetic constants
   // TODO: Arithmetic symbols not used for now
   /** $uminus | $sum | $difference | $product |
@@ -419,10 +419,10 @@ object HOLSignature {
     ("=", ===.ty, multProp | c),
     ("$$let", forall(forall(2 ->: 1 ->: 1)), multProp),
     ("$$ite", IF_THEN_ELSE.ty, multProp),
-    ("$less", HOLLess.ty, lexProp),
+    /*("$less", HOLLess.ty, lexProp),
     ("$lesseq", HOLLessEq.ty, lexProp),
     ("$greater", HOLGreater.ty, lexProp),
-    ("$greatereq", HOLGreaterEq.ty, lexProp),
+    ("$greatereq", HOLGreaterEq.ty, lexProp),*/
     ("@+", forall((1 ->: o) ->: 1), multProp),
     ("@-", forall((1 ->: o) ->: 1), multProp),
     // TODO: Arithmetic symbols not used for now
