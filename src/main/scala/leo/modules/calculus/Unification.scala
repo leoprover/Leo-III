@@ -565,10 +565,11 @@ object PatternUnification extends Unification {
                   val (tyArgs2, termArgs2) = partitionArgs(args2)
                   assert(tyArgs1.size == tyArgs2.size)
                   val tyUniConstraints = tyArgs1.zip(tyArgs2)
+                  leo.Out.finest(s"ty constraints: ${tyUniConstraints.map(c => c._1.pretty + " = " + c._2.pretty).mkString(",")}")
                   val tyUniResult = TypeUnification(tyUniConstraints)
                   if (tyUniResult.isDefined) {
-                    leo.Out.finest(s"Poly rigid-rigid uni succeeded")
                     val tySubst = tyUniResult.get
+                    leo.Out.finest(s"Poly rigid-rigid uni succeeded: ${tySubst.pretty}")
                     val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
                     leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
                     unify1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen, partialUnifier.applyTypeSubst(tySubst), partialTyUnifier.comp(tySubst))
@@ -705,7 +706,7 @@ object PatternUnification extends Unification {
     }
   }
 
-  /** Flex-rigid rule: May fail, returns null of not sucessful. */
+  /** Flex-rigid rule: May fail, returns null if not sucessful. */
   private final def flexrigid(idx1: Int, ty1: Type, args1: Seq[Either[Term, Type]], rigidHd: Term, rigidArgs: Seq[Either[Term, Type]], rigidAsTerm: Term, vargen: FreshVarGen, depth: Seq[Type]): (PartialUniResult, Seq[UEq]) = {
     import leo.datastructures.partitionArgs
     try {
@@ -865,29 +866,43 @@ object TypeUnification {
 }
 
 object TypeUniImpl extends TypeUnification {
+  import leo.modules.calculus.HuetsPreUnification.applySubstToList
   /** Returns Some(σ) where σ = mgu({t_i,s_i}) if such a substitution exists, None otherwise. */
   def unify(constraints: Seq[UEq]): Option[TypeSubst] = tyDetExhaust(constraints, Subst.id)
 
   @tailrec
   final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UEq], unifier: TypeSubst): Option[TypeSubst] = {
+    leo.Out.finest(s"Unsolved type equations: ${uTyProblems.map(ueq => ueq._1.pretty + " = " + ueq._2.pretty).mkString(" , ")}")
     if (uTyProblems.nonEmpty) {
       val head = uTyProblems.head
-
-      if (TyDeleteRule.canApply(head))
+      leo.Out.finest(s"Taken: ${head._1} = ${head._2}")
+      if (TyDeleteRule.canApply(head)) {
+        leo.Out.finest(s"Apply delete")
         tyDetExhaust(uTyProblems.tail, unifier)
-      else if (TyDecompRule.canApply(head))
+      } else if (TyDecompRule.canApply(head)) {
+        leo.Out.finest(s"Apply Decomp")
         tyDetExhaust(TyDecompRule.apply(head) ++ uTyProblems.tail, unifier)
-      else {
+      } else {
         val tyFunDecompRuleCanApplyHint = TyFunDecompRule.canApply(head)
         if (tyFunDecompRuleCanApplyHint != TyFunDecompRule.CANNOT_APPLY) {
+
           tyDetExhaust(TyFunDecompRule.apply(head, tyFunDecompRuleCanApplyHint) ++ uTyProblems.tail,unifier)
-        } else if (TyBindRule.canApply(head))
-          tyDetExhaust(uTyProblems.tail, unifier.comp(TyBindRule.apply(head)))
-        else
-          None
+        } else if (TyBindRule.canApply(head)) {
+          leo.Out.finest(s"Apply bind")
+          val bindResult = TyBindRule.apply(head)
+          leo.Out.finest(s"Bind result: ${bindResult.pretty}")
+          val newUnsolved = applyTySubstToList(bindResult,uTyProblems.tail)
+          tyDetExhaust(newUnsolved, unifier.comp(bindResult))
+        } else None
       }
-    } else Some(unifier)
+    } else {
+      leo.Out.finest(s"Solved: ${unifier.pretty}")
+      Some(unifier)
+    }
   }
+
+  @inline private final def applyTySubstToList(typeSubst: TypeSubst, list: Seq[UEq]): Seq[UEq] =
+    list.map {case (l,r) => (l.substitute(typeSubst), r.substitute(typeSubst))}
 
 
   /**
