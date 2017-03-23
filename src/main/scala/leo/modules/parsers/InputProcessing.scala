@@ -175,11 +175,20 @@ object InputProcessing {
               //throw new SZSException(SZS_InputError, "type on non-poly left side found.")
           }
         } else throw new SZSException(SZS_InputError, "THFAPP left side type.")
-      case Binary(left, conn, right) => try {
-        processTHFBinaryConn(conn).apply(processTHF(sig)(left, replaces).left.get,processTHF(sig)(right, replaces).left.get)
-        } catch {
-          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString, input.toString)
-        }
+      case Binary(left, conn, right) => //try {
+        leo.Out.finest(s"toProcess left: ${left.toString}")
+        leo.Out.finest(s"toProcess right: ${right.toString}")
+        val processedLeft = processTHF(sig)(left, replaces)
+        leo.Out.finest(s"processedLeft: ${processedLeft.toString}")
+        val processedRight = processTHF(sig)(right, replaces)
+        leo.Out.finest(s"processedRight: ${processedRight.toString}")
+        processTHFBinaryConn(conn).apply(processedLeft.left.get, processedRight.left.get)
+//        } catch {
+//          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString, s"Inout: ${input.toString}\n" +
+//            s"Left:${left.toString}\nRight:${right.toString}\nConn:${conn.toString}\n") //+
+//            //s"Transformed left: ${processTHF(sig)(left, replaces).toString}\n" +
+//            //s"Transformed right: ${processTHF(sig)(right, replaces).toString}")
+//        }
       case Unary(conn, f) => try {
         processTHFUnaryConn(conn).apply(processTHF(sig)(f, replaces).left.get)
         } catch {
@@ -254,6 +263,7 @@ object InputProcessing {
           else {
             val f = sig(func)
             if (f._ty.isPolyType) {
+              leo.Out.finest(s"func: ${func.toString}, args: ${args.map(_.toString).mkString(",")}")
               val convertedArgs = args.map(processTHF(sig)(_, replaces))
               mkApp(mkAtom(f.key)(sig), Right(convertedArgs.head.left.get.ty) +: convertedArgs)
             } else {
