@@ -275,7 +275,8 @@ object TypedFOLEncoding {
 
   protected[encoding] final def translateTerm(t: Term, les: LambdaElimination)
                          (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
-    import Term._
+    import Term.local._
+    import Term.{Bound, :::>, ∙, Symbol, TypeLambda}
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
@@ -313,7 +314,10 @@ object TypedFOLEncoding {
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
         // pass some arguments directly if possible
         val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
-        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"head: ${encodedHead.pretty(encodingSignature)}, arg size ${translatedTermArgs.size}")
+        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"original head: ${f.pretty(holSignature)}\n" +
+          s"original type: ${f.ty.pretty(holSignature)}" +
+          s"\nencodedhead: ${encodedHead.pretty(encodingSignature)},\n encodedHeadParamsize: ${encodedHeadParamTypes.size},\n" +
+          s" encodedHeadTy:${encodedHead.ty.pretty(encodingSignature)},\n arg size ${translatedTermArgs.size}")
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 

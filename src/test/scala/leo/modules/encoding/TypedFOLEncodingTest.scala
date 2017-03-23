@@ -1043,7 +1043,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     val result = EncodingAnalyzer.analyzeFormula(f1)
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
-
+    printTable(result)
     for ((key, info) <- result) {
       if (sig(key).isFixedSymbol)
         foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
