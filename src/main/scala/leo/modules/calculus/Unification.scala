@@ -199,11 +199,20 @@ object HuetsPreUnification extends Unification {
           if (decompHint._2.isDefined) {
             leo.Out.finest("Apply decomp")
             val typeSubst = decompHint._2.get
-            val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions)
-            detExhaust(newUnsolvedTermEqs ++ applySubstToList(Subst.id, typeSubst, unprocessed.tail),
-              applyTySubstToList(typeSubst, flexRigid),
-              applySubstToList(Subst.id, typeSubst, flexFlex),
-              solved.applyTypeSubst(typeSubst), solvedTy.comp(typeSubst))
+            if (typeSubst == Subst.id) {
+              // no need to apply
+              val newUnsolvedTermEqs = DecompRule.apply((leftBody, rightBody), leftAbstractions)
+              detExhaust(newUnsolvedTermEqs ++ unprocessed.tail,
+                flexRigid,
+                flexFlex,
+                solved, solvedTy)
+            } else {
+              val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions)
+              detExhaust(newUnsolvedTermEqs ++ applySubstToList(Subst.id, typeSubst, unprocessed.tail),
+                applyTySubstToList(typeSubst, flexRigid),
+                applySubstToList(Subst.id, typeSubst, flexFlex),
+                solved.applyTypeSubst(typeSubst), solvedTy.comp(typeSubst))
+            }
           } else {
             leo.Out.finest("Decomp failed due to type (non-)unifiablity")
             (true, flexRigid, flexFlex, solved, solvedTy)
@@ -256,7 +265,7 @@ object HuetsPreUnification extends Unification {
     */
   object DecompRule {
     import leo.datastructures.Term.∙
-    import leo.datastructures.{termArgs, typeArgs}
+    import leo.datastructures.{termArgs, typeArgs, Subst}
 
     final def apply(e: UEq, abstractions: Seq[Type]): Seq[UEq] = e match {
       case (_ ∙ sq1, _ ∙ sq2) =>
@@ -267,7 +276,7 @@ object HuetsPreUnification extends Unification {
     }
     final def canApply(e: UEq, depth: Depth): (Boolean, Option[TypeSubst]) = e match {
       case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 && !isFlexible(hd1, depth) =>
-        if (!hd1.ty.isPolyType) (true, None)
+        if (!hd1.ty.isPolyType) (true, Some(Subst.id))
         else {
           val typeArgs1 = typeArgs(args1)
           val typeArgs2 = typeArgs(args2)

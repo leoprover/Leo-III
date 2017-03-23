@@ -727,20 +727,35 @@ object Simp extends CalculusRule {
     if (unprocessed.isEmpty) (subst, processed)
     else {
       val hd = unprocessed.head
+      leo.Out.finest(s"[UniLitSimp] Next unsolved: ${hd._1.pretty(sig)} = ${hd._2.pretty(sig)}")
       val left = hd._1; val right = hd._2
       val (leftBody, leftAbstractions) = collectLambdas(left)
       val (rightBody, rightAbstractions) = collectLambdas(right)
       assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
       val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
       if (canApplyDecomp._1) {
+        leo.Out.finest(s"[UniLitSimp] Can apply Decomp")
         if (canApplyDecomp._2.isDefined) {
           val tySubst = canApplyDecomp._2.get
-          val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
-          leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
-          val newUnprocessed = (newEqs ++ processed).map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}
-          uniLitSimp0(Seq(), newUnprocessed, subst.comp(tySubst))(sig)
-        } else uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
-      } else uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
+          if (tySubst == Subst.id) {
+            // not need to apply tySubst
+            val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+            val newUnprocessed = newEqs ++ processed
+            uniLitSimp0(Vector.empty, newUnprocessed, subst.comp(tySubst))(sig)
+          } else {
+            val newEqs = HuetsPreUnification.DecompRule((leftBody.typeSubst(tySubst), rightBody.typeSubst(tySubst)), leftAbstractions)
+            leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
+            val newUnprocessed = newEqs ++ processed.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}
+            uniLitSimp0(Vector.empty, newUnprocessed, subst.comp(tySubst))(sig)
+          }
+        } else {
+          leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
+          uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
+        }
+      } else {
+        leo.Out.finest(s"[UniLitSimp] Cannot apply Decomp")
+        uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
+      }
     }
   }
 

@@ -178,7 +178,7 @@ object InputProcessing {
       case Binary(left, conn, right) => try {
         processTHFBinaryConn(conn).apply(processTHF(sig)(left, replaces).left.get,processTHF(sig)(right, replaces).left.get)
         } catch {
-          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString)
+          case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError, e.toString, input.toString)
         }
       case Unary(conn, f) => try {
         processTHFUnaryConn(conn).apply(processTHF(sig)(f, replaces).left.get)
