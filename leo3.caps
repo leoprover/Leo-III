@@ -1,0 +1,30 @@
+{
+  "name"         : "Leo-III",
+  "version"      : "1.1",
+  "applications" : ["prover"],
+  "languages"    : [
+    {
+      "language" : "tptp_cnf",
+      "roles"    : ["axiom", "conjecture", "negated_conjecture"],
+      "features" : []
+    },
+    { 
+      "language" : "tptp_fof",
+      "roles"    : ["axiom", "definition", "negated_conjecture", "conjecture"],
+      "features" : []
+    },
+    { 
+      "language" : "tptp_tff",
+      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
+      "features" : ["polytypes", "conditional"]
+    },
+    { 
+      "language" : "tptp_thf",
+      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
+      "features" : [
+        "polytypes", "conditional", "let", 
+        "definite_description", "indefinite_description", "th1_combinators"
+      ]
+    }
+  ]
+}
