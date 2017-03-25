@@ -170,8 +170,8 @@ object ToTFF {
 
     ty match {
       case BoundType(scope) => "T"+intToName(depth-scope)
-      case BaseType(id) => sig(id).name
-      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF0(_, depth)(sig)).mkString(",")})"
+      case BaseType(id) => tptpEscapeExpression(sig(id).name)
+      case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)}(${args.map(typeToTFF0(_, depth)(sig)).mkString(",")})"
       case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
         s"((${paramTypes.init.map(typeToTFF0(_, depth)(sig)).mkString(" * ")}) > ${typeToTFF0(paramTypes.last, depth)(sig)})"

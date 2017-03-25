@@ -1008,6 +1008,7 @@ package inferenceControl {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
+        Out.finest(s"TyFV(${cl.id}): ${cl.cl.typeVars.toString()}")
         val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
@@ -1024,16 +1025,16 @@ package inferenceControl {
       while(clIt.hasNext) {
         val cl = clIt.next
 
-        var uniLits: Seq[(Term, Term)] = Seq()
-        var nonUniLits: Seq[Literal] = Seq()
-        var boolExtLits: Seq[Literal] = Seq()
-        var nonBoolExtLits: Seq[Literal] = Seq()
+        var uniLits: Seq[Literal] = Vector()
+        var nonUniLits: Seq[Literal] = Vector()
+        var boolExtLits: Seq[Literal] = Vector()
+        var nonBoolExtLits: Seq[Literal] = Vector()
 
         val litIt = cl.cl.lits.iterator
 
         while(litIt.hasNext) {
           val lit = litIt.next()
-          if (!lit.polarity && lit.equational) uniLits = (lit.left, lit.right) +: uniLits
+          if (!lit.polarity && lit.equational) uniLits = lit +: uniLits
           else nonUniLits = lit +: nonUniLits
           if (BoolExt.canApply(lit)) boolExtLits = lit +: boolExtLits
           else nonBoolExtLits = lit +: nonBoolExtLits
@@ -1043,16 +1044,34 @@ package inferenceControl {
         // and add it to the solutions
         // (B) if also boolean extensionality literals present, add (BE/cnf) treated clause to result set, else
         // insert the original clause.
-        if (uniLits.nonEmpty) result = result union doUnify0(cl, freshVarGen(cl.cl), uniLits, nonUniLits)(sig)
+        if (uniLits.nonEmpty) result = result union doUnify0(cl, freshVarGen(cl.cl), uniLits.map(l => (l.left, l.right)), nonUniLits)(sig)
 
         if (boolExtLits.isEmpty) {
-          result = result + cl
+          val (tySubst, res) = Simp.uniLitSimp(uniLits)(sig)
+          if (res == uniLits) result = result + cl
+          else {
+            val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
+            val simpNewCl = Control.simp(newCl)(sig)
+            result = result + simpNewCl
+          }
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
           val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
           val lifted = cnf.map(Control.liftEq)
-          result = result union lifted
+          val liftedIt = lifted.iterator
+          while (liftedIt.hasNext) {
+            val liftedCl = liftedIt.next()
+            val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
+            val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
+            if (res == liftedClUniLits) result = result + liftedCl
+            else {
+              val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
+              val simpNewCl = Control.simp(newCl)(sig)
+              result = result + simpNewCl
+            }
+          }
+//          result = result union lifted
         }
       }
       result

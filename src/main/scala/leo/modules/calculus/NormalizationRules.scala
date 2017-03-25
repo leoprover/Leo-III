@@ -764,9 +764,10 @@ object Simp extends CalculusRule {
   //////////////////////////////////
   def normalize(t: Term): Term = internalNormalize(t)
 
-  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize).betaNormalize
+  private def internalNormalize(formula: Term): Term = Term.insert(norm(formula.betaNormalize).betaNormalize)
 
-  import leo.datastructures.Term.{mkTermAbs, Symbol, Bound, ∙, mkBound, mkTermApp}
+  import leo.datastructures.Term.{Symbol, Bound, ∙}
+  import leo.datastructures.Term.local._
   import leo.modules.HOLSignature.<=>
   private def norm(formula : Term) : Term = formula match {
     // First normalize, then match

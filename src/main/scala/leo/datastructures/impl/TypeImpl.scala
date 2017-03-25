@@ -227,7 +227,7 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
   }
 
   // Queries on types
-  final lazy val typeVars = body.typeVars
+  final lazy val typeVars: Set[Type] = body.typeVars.map(t => BoundTypeNode.unapply(t.asInstanceOf[BoundTypeNode]).get-1).filter(_ > 0).map(BoundTypeNode)
   final lazy val symbols = body.symbols
 
   final val funDomainType   = None

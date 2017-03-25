@@ -45,13 +45,21 @@ object FuncExt extends CalculusRule {
     val funArgTys = lit.left.ty.funParamTypes
     if (lit.polarity) {
       val newVars = funArgTys.map {ty => vargen(ty)}
-      Literal.mkOrdered(Term.mkTermApp(lit.left, newVars).betaNormalize, Term.mkTermApp(lit.right, newVars).betaNormalize, true)(sig)
+      val appliedLeft = Term.mkTermApp(lit.left, newVars).betaNormalize
+      val appliedRight = Term.mkTermApp(lit.right, newVars).betaNormalize
+      assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Positive polarity left result not well typed: ${appliedLeft.pretty(sig)}")
+      assert(Term.wellTyped(appliedRight), s"[FuncExt]: Positive polarity right result not well typed: ${appliedRight.pretty(sig)}")
+      Literal.mkOrdered(appliedLeft, appliedRight, true)(sig)
     } else {
       val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, initFV, vargen.existingTyVars)(sig)) //initFV: We only use the
       // free vars that were existent at the very beginning, i.e. simulating
       // that we applies func_ext to all negative literals first
       // in order to minimize the FVs inside the sk-term
-      Literal.mkOrdered(Term.mkTermApp(lit.left, skTerms).betaNormalize, Term.mkTermApp(lit.right, skTerms).betaNormalize, false)(sig)
+      val appliedLeft = Term.mkTermApp(lit.left, skTerms).betaNormalize
+      val appliedRight = Term.mkTermApp(lit.right, skTerms).betaNormalize
+      assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Negative polarity left result not well typed: ${appliedLeft.pretty(sig)}")
+      assert(Term.wellTyped(appliedRight), s"[FuncExt]: Negative polarity right result not well typed: ${appliedRight.pretty(sig)}")
+      Literal.mkOrdered(appliedLeft, appliedRight, false)(sig)
     }
   }
 
