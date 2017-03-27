@@ -23,8 +23,8 @@ object FuncExt extends CalculusRule {
 
   final def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
     var can = false
-    var extLits:Seq[Literal] = Seq()
-    var otherLits: Seq[Literal] = Seq()
+    var extLits:Seq[Literal] = Vector()
+    var otherLits: Seq[Literal] = Vector()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
@@ -80,8 +80,8 @@ object BoolExt extends CalculusRule {
 
   final def canApply(cl: Clause): (Boolean, ExtLits, OtherLits) = {
     var can = false
-    var extLits:Seq[Literal] = Seq()
-    var otherLits: Seq[Literal] = Seq()
+    var extLits:Seq[Literal] = Vector()
+    var otherLits: Seq[Literal] = Vector()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
@@ -132,8 +132,8 @@ protected[calculus] abstract class AnyUni extends CalculusRule {
 
   final def canApply(cl: Clause): (Boolean, UniLits, OtherLits) = {
     var can = false
-    var uniLits: UniLits = Seq()
-    var otherLits: OtherLits = Seq()
+    var uniLits: UniLits = Vector()
+    var otherLits: OtherLits = Vector()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
@@ -307,7 +307,7 @@ object Choice extends CalculusRule {
     val lit1 = Literal.mkLit(Term.mkTermApp(term, newVar).betaNormalize.etaExpand, false)
     // lit2: [term (choicefun term)]^t
     val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)).betaNormalize.etaExpand, true)
-    Clause(Seq(lit1, lit2))
+    Clause(Vector(lit1, lit2))
   }
 }
 

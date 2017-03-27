@@ -27,7 +27,7 @@ object DefExpSimp extends CalculusRule {
 
   final def apply(cl: Clause)(implicit sig: Signature): Clause = {
     val litsIt = cl.lits.iterator
-    var newLits: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Vector()
     while (litsIt.hasNext) {
       val lit = litsIt.next()
       if (lit.equational) {
@@ -244,7 +244,7 @@ object FullCNF extends CalculusRule {
   }
 
   final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal])(implicit sig: Signature): (Seq[Seq[Literal]]) = {
-    var acc : Seq[Seq[Literal]] = Seq(Seq())
+    var acc : Seq[Seq[Literal]] = Vector(Vector())
     val it : Iterator[Literal] = l.iterator
     while(it.hasNext){
       val nl = it.next()
@@ -288,14 +288,14 @@ object FullCNF extends CalculusRule {
 
       case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)).betaNormalize.etaExpand, true))
       case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false))
-      case _ => Seq(Seq(l))
+      case _ => Vector(Vector(l))
     }
   } else {
-    Seq(Seq(l))
+    Vector(Vector(l))
   }
 
   private[calculus] final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
-    var acc : Seq[Seq[A]] = Seq()
+    var acc : Seq[Seq[A]] = Vector()
     val itl = l.iterator
     while(itl.hasNext) {
       val llist = itl.next()
@@ -331,9 +331,9 @@ object LiftEq extends CalculusRule {
   type OtherLits = Seq[Literal]
   final def canApply(cl: Clause): (Boolean, PosLiftLits, NegLiftLits, OtherLits) = {
     var can = false
-    var posLiftLits: PosLiftLits = Seq()
-    var negLiftLits: NegLiftLits = Seq()
-    var otherLits: OtherLits = Seq()
+    var posLiftLits: PosLiftLits = Vector()
+    var negLiftLits: NegLiftLits = Vector()
+    var otherLits: OtherLits = Vector()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
@@ -622,7 +622,7 @@ object Simp extends CalculusRule {
 
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
-    var newLits: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Vector()
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = apply(litIt.next())(sig)
@@ -678,7 +678,7 @@ object Simp extends CalculusRule {
   }
 
   final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    var newLits: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Vector()
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()

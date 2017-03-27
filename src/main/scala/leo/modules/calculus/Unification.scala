@@ -445,6 +445,8 @@ object HuetsPreUnification extends Unification {
       val hdl = l.head; val hdr = r.head
       val left = λ(abstractions)(hdl).etaExpand
       val right = λ(abstractions)(hdr).etaExpand
+//      leo.Out.finest(s"left: ${left.pretty} (${left.isEtaNormal})")
+//      leo.Out.finest(s"right: ${right.pretty} (${right.isEtaNormal})")
       zipWithAbstractions0(l.tail, r.tail, abstractions, acc :+ (left,right))
     }
   }

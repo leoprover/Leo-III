@@ -39,6 +39,7 @@ trait Term extends Pretty with Prettier {
   /** `true` is the term is known to be in beta-normal form, else false.
     * @note Might return false if the term is in beta normal form but .betaNormalize was never invoked in it. */
   def isBetaNormal: Boolean
+  def isEtaNormal: Boolean
 
   type Sharing = Boolean
   def sharing: Sharing

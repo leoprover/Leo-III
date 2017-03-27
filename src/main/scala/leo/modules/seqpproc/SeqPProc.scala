@@ -46,7 +46,7 @@ object SeqPProc {
     import leo.modules.Utility.termToClause
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
-    var result: Seq[tptp.Commons.AnnotatedFormula] = Seq()
+    var result: Seq[tptp.Commons.AnnotatedFormula] = Vector()
     var conj: tptp.Commons.AnnotatedFormula = null
     val inputIt = input.iterator
     while (inputIt.hasNext) {

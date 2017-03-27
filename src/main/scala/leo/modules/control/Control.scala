@@ -573,8 +573,8 @@ package inferenceControl {
 
     private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
       val litIt = cl.cl.lits.iterator
-      var uniLits: UniLits = Seq()
-      var otherLits:OtherLits = Seq()
+      var uniLits: UniLits = Vector()
+      var otherLits:OtherLits = Vector()
       while(litIt.hasNext) {
         val lit = litIt.next()
         if (lit.equational && !lit.polarity) {
@@ -1568,7 +1568,7 @@ package indexingControl {
 
     private val maxFeatures: Int = 100
     private var initialized = false
-    private var features: Seq[CFF] = Seq()
+    private var features: Seq[CFF] = Vector()
     final protected[modules] val index = FVIndex()
     def clauseFeatures: Seq[CFF] = features
 
@@ -1580,7 +1580,7 @@ package indexingControl {
         symbs.flatMap {symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
           FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}
 
-      var initFeatures: Seq[Set[Int]] = Seq()
+      var initFeatures: Seq[Set[Int]] = Vector()
       val featureFunctionIt = featureFunctions.iterator
       var i = 0
       while (featureFunctionIt.hasNext) {
@@ -1651,7 +1651,7 @@ package indexingControl {
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
-        var result: Seq[AnnotatedFormula] = Seq()
+        var result: Seq[AnnotatedFormula] = Vector()
         var round : Int = 0
 
         val conjSymbols = PreFilterSet.useFormula(conjecture)

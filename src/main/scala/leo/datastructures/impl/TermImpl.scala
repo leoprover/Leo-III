@@ -57,6 +57,7 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   protected[datastructures] def etaContract0: TermImpl
 
   final def isBetaNormal: Boolean = normal
+  final def isEtaNormal: Boolean = etanormal
   protected[impl] def markBetaNormal(): Unit
   protected[impl] def markBetaEtaNormal(): Unit
 
