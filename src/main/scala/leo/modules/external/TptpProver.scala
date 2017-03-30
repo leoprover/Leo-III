@@ -2,7 +2,7 @@ package leo.modules.external
 
 import java.io.{File, PrintWriter}
 
-import leo.datastructures.{ClauseProxy, Signature}
+import leo.datastructures.{ClauseProxy, Clause, Signature}
 import leo.modules.output.{SZS_Error, SZS_Forced, SZS_GaveUp, StatusSZS}
 
 /**
@@ -13,7 +13,7 @@ import leo.modules.output.{SZS_Error, SZS_Forced, SZS_GaveUp, StatusSZS}
   * @author Max Wisniewski
   *
   */
-trait TptpProver[C <: ClauseProxy] {
+trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
   /**
     *
     * The name of the prover
@@ -33,15 +33,17 @@ trait TptpProver[C <: ClauseProxy] {
     *
     * Calls the external prover on a set of formulas assumed to be correct.
     *
-    * @param problem the set of formulas to be checked.
+    * @param problemOrigin the clauseproxys the `concreteProblem` originates from
+    * @param concreteProblem the set of clauses to be sent to the prover
+    * @param sig the signature under which `concreteProblem` is represented
+    * @param callLanguage The TPTP language in which the call should be formatted
     * @param timeout the timeout for the prover in seconds
-    * @param args additional arguments for the prover
-    * @param sig the current signature
+    *
     * @return A Future with the result of the prover.
     */
-  def call(problem : Set[C], timeout : Int, args : Seq[String] = Seq())(implicit sig : Signature) : Future[TptpResult[C]] = {
-    val parsedProblem = translateProblem(problem)
-    startProver(parsedProblem, problem, timeout, args)
+  def call(problemOrigin: Set[C], concreteProblem: Set[Clause], sig: Signature, callLanguage: Capabilities.Language, timeout : Int): Future[TptpResult[C]] = {
+    val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
+    startProver(translatedProblem, problemOrigin, timeout)
   }
 
 
@@ -62,17 +64,26 @@ trait TptpProver[C <: ClauseProxy] {
     * @param problem Set of clauses to be checked.
     * @return
     */
-  protected def translateProblem(problem : Set[C])(implicit sig : Signature) : Seq[String]
+  protected[external] def translateProblem(problem : Set[Clause], language: Capabilities.Language)(implicit sig : Signature) : String = {
+    if (!capabilities.contains(language)) throw new IllegalArgumentException(s"Prover $name does not support the given language.")
+    else {
+      if (language == Capabilities.THF) createTHFProblem(problem)(sig)
+      else if (language == Capabilities.TFF) createTFFProblem(problem)(sig)
+      else if (language == Capabilities.FOF) throw new NotImplementedError("FOF export not yet implemented")
+      else throw new IllegalArgumentException("unexpected TPTP output format")
+    }
+  }
 
-  final private def startProver(parsedProblem : Seq[String], problem : Set[C], timeout : Int, args : Seq[String] = Seq()) : Future[TptpResult[C]] = {
+  final private def startProver(parsedProblem : String, problem : Set[C], timeout : Int, args : Seq[String] = Seq()) : Future[TptpResult[C]] = {
     val process : KillableProcess = {
       val file = File.createTempFile("remoteInvoke", ".p")
-      file.deleteOnExit()
+//      file.deleteOnExit()
       val writer = new PrintWriter(file)
       try {
-        parsedProblem foreach { out =>
-          writer.println(out)
-        }
+        writer.print(parsedProblem)
+//        parsedProblem foreach { out =>
+//          writer.println(out)
+//        }
       } finally writer.close()
       // FIX ME : If a better solution for obtaining the processID is found
       val res = constructCall(args, timeout, file.getAbsolutePath)

@@ -299,6 +299,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
             // eta or B
             if (termLastArg.isVariable && Bound.unapply(termLastArg).get._2 == 1) {
               Out.finest("eta")
+              Out.finest(s"Remaining: ${allButLastArg.lift(-1).pretty(holSignature)}")
               eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
             } else {
               Out.finest("B")
@@ -310,6 +311,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
               val x = λ(absType)(termLastArg)
               Out.finest("lambda stuf " + x.pretty(holSignature))
               val translatedTermLastArg = eliminateLambdaNew(x)(holSignature)
+              Out.finest(s"translatedTermLastArg: ${translatedAllButLastArg.pretty(sig)}")
               B(translatedTy, translatedAllButLastArgDomainType, translatedAllButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {

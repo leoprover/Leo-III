@@ -49,7 +49,7 @@ object TypedFOLEncoding {
         proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
       }
     }
-//    leo.modules.Utility.printSignature(foSig)
+    leo.Out.finest(s"toTFF signature:\n${leo.modules.Utility.signatureAsString(foSig)}")
     // Translate
     val lambdaEliminator = les(foSig)
     val resultProblem: Problem = problem.map(translate(_, lambdaEliminator)(sig, foSig))
@@ -146,26 +146,32 @@ object TypedFOLEncoding {
     *       `encodingSignature`
     */
   final def translate(cl: Clause, les: LambdaElimination)
-                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Clause =
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Clause = {
+    leo.Out.finest(s"Translating clause: ${cl.pretty(holSignature)}")
     Clause(cl.lits.map(translate(_, les)(holSignature, encodingSignature)))
+  }
 
   final def translate(lit: Literal, les: LambdaElimination)
-                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Literal = if (lit.equational) {
-    assert(lit.left.ty == lit.right.ty)
-    if (lit.left.ty == leo.modules.HOLSignature.o) {
-      // this is actually an equivalence in first-order world
-      val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
-      val translatedRight = translate(lit.right, les)(holSignature, encodingSignature)
-      Literal.mkLit(TypedFOLEncodingSignature.Equiv(translatedLeft, translatedRight), lit.polarity)
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Literal = {
+    leo.Out.finest(s"Translating literal: ${lit.pretty(holSignature)}")
+    if (lit.equational) {
+      assert(lit.left.ty == lit.right.ty)
+      if (lit.left.ty == leo.modules.HOLSignature.o) {
+        // this is actually an equivalence in first-order world
+        val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
+        val translatedRight = translate(lit.right, les)(holSignature, encodingSignature)
+        Literal.mkLit(TypedFOLEncodingSignature.Equiv(translatedLeft, translatedRight), lit.polarity)
+      } else {
+        // standard equality between terms
+        val translatedLeft = translateTerm(lit.left, les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(lit.right, les)(holSignature, encodingSignature)
+        Literal.mkLit(translatedLeft, translatedRight, lit.polarity)
+      }
     } else {
-      // standard equality between terms
-      val translatedLeft = translateTerm(lit.left, les)(holSignature, encodingSignature)
-      val translatedRight = translateTerm(lit.right, les)(holSignature, encodingSignature)
-      Literal.mkLit(translatedLeft, translatedRight, lit.polarity)
+      val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
+      leo.Out.finest(s"TranslatedLeft: ${translatedLeft.pretty(encodingSignature)}")
+      Literal.mkLit(translatedLeft, lit.polarity)
     }
-  } else {
-    val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
-    Literal.mkLit(translatedLeft, lit.polarity)
   }
 
   final def translate(t: Term, les: LambdaElimination)
@@ -281,11 +287,12 @@ object TypedFOLEncoding {
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
     import encodingSignature._
+    leo.Out.finest(s"TranslateTerm: ${t.pretty(holSignature)}")
     t match {
       case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
       case f ∙ args =>
         val encodedHead = f match {
-          case Symbol(id) => id match {
+          case Symbol(id) => leo.Out.finest(s"Translate symbol: $id"); id match {
             case HOLTrue.key => proxyTrue
             case HOLFalse.key => proxyFalse
             case HOLNot.key => proxyNot
@@ -302,11 +309,11 @@ object TypedFOLEncoding {
               val fName = escape(holSignature(id).name)
               mkAtom(encodingSignature(fName).key)(encodingSignature)
           }
-          case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
+          case Bound(boundTy, boundIdx) => leo.Out.finest(s"Translate bound $boundIdx of type ${boundTy.pretty(holSignature)}"); mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => assert(false); f
         }
-//        Out.finest(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
-//        Out.finest(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
+        Out.finest(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
+        Out.finest(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
@@ -319,11 +326,16 @@ object TypedFOLEncoding {
           s"\nencodedhead: ${encodedHead.pretty(encodingSignature)},\n encodedHeadParamsize: ${encodedHeadParamTypes.size},\n" +
           s" encodedHeadTy:${encodedHead.ty.pretty(encodingSignature)},\n arg size ${translatedTermArgs.size}")
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
+
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 
         val tyArgsApplied = mkTypeApp(encodedHead, translatedTyArgs)
+        leo.Out.finest(s"tyArgsApplied: ${tyArgsApplied.pretty(encodingSignature)}")
         val directArgsApplied = mkTermApp(tyArgsApplied, directArgs)
-        encodingSignature.hApp(directArgsApplied, indirectArgs)
+        leo.Out.finest(s"directArgsApplied: ${directArgsApplied.pretty(encodingSignature)}")
+        val result = encodingSignature.hApp(directArgsApplied, indirectArgs)
+        leo.Out.finest(s"result: ${result.pretty(encodingSignature)}")
+        result
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
       case _ => throw new IllegalArgumentException("unexpected term occurred") // e.g. ForallTy

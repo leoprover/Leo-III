@@ -299,6 +299,7 @@ object SeqPProc {
       /////////////////////////////////////////
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
+        state.incProofLoopCount()
         if (System.currentTimeMillis() - startTime > 1000 * Configuration.TIMEOUT) {
           loop = false
           state.setSZSStatus(SZS_Timeout)
@@ -487,10 +488,10 @@ object SeqPProc {
       state.removeProcessed(backSubsumedClauses)
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
-      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
-      val descendants = Control.descendants(backSubsumedClauses)
-      state.incDescendantsDeleted(descendants.size)
-      state.removeUnprocessed(descendants)
+//      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
+//      val descendants = Control.descendants(backSubsumedClauses)
+//      state.incDescendantsDeleted(descendants.size)
+//      state.removeUnprocessed(descendants)
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
@@ -559,7 +560,7 @@ object SeqPProc {
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
-    Control.updateDescendants(cur, newclauses)
+//    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause

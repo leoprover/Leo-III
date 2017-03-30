@@ -1,7 +1,7 @@
 package leo
 
 import leo.datastructures._
-import leo.modules.external.ExternalProver
+import leo.modules.external.{Capabilities, ExternalProver}
 import leo.modules.output.SZS_Error
 import leo.modules.parsers.Input
 
@@ -45,7 +45,7 @@ object RunExternalProver {
 
     val max = Configuration.ATP_TIMEOUT.getOrElse(name, Configuration.ATP_STD_TIMEOUT) * 1000
 
-    val fres = p.call(example, max)
+    val fres = p.call(example, example.map(_.cl), s, Capabilities.THF, max)
 
     // Test the non-blocking waiting for the result.
     var time = 0

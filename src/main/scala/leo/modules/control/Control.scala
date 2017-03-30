@@ -1688,9 +1688,10 @@ package  externalProverControl {
   object ExtProverControl {
     import leo.modules.external._
     import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
-    private var lastCall: Long = Long.MinValue
+    private var lastCall: Long = 0
 
     final def openCallsExist: Boolean = openCalls.nonEmpty
 
@@ -1730,37 +1731,66 @@ package  externalProverControl {
         } else None
       }
     }
-
+    private final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
+      state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
+    }
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
-      if (state.externalProvers.nonEmpty && clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
-        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
-
-        lastCall = clauses.size
-        state.externalProvers.foreach(prover =>
-          if (openCalls.isDefinedAt(prover)) {
-            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+      if (state.externalProvers.nonEmpty) {
+        if (shouldRun(clauses, state)) {
+          leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+          lastCall = state.noProofLoops
+          state.externalProvers.foreach(prover =>
+            if (openCalls.isDefinedAt(prover)) {
+              if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+                val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+                if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+                leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+              }
+            } else {
               val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-              openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+              if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
               leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
             }
-          } else {
-            val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-            openCalls = openCalls + (prover -> Set(futureResult))
-            leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
-          }
-        )
+          )
+        }
       }
     }
     private final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
-      if (state.isPolymorphic) { // FIXME: Hack, implement with capabilities
-        // monomorphize the problem
-        val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
-        val asAnnotated = monoResult._1.map(cl =>
-          AnnotatedClause(cl, Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp))
-        prover.call(asAnnotated, timeout)(monoResult._3)
-      } else prover.call(problem, timeout)(state.signature)
+      import leo.modules.encoding._
+      import leo.modules.external.Capabilities._
+      // Check what the provers speaks, translate only to first-order if necessary
+      val proverCaps = prover.capabilities
+      if (proverCaps.contains(THF)) {
+        prover.call(problem, problem.map(_.cl), sig, THF, timeout)
+      } else if (proverCaps.contains(TFF)) {
+        Out.finest(s"Translating problem ...")
+        val (translatedProblem, auxDefs, translatedSig) =
+          if (supportsFeature(proverCaps, TFF)(Polymorphism))
+            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
+          else
+            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
+          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout)
+      } else if (proverCaps.contains(FOF)) {
+        Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
+        null
+      } else {
+        Out.warn(s"$prefix Prover ${prover.name} input syntax not supported.")
+        null
+      }
+
+
+
+
+
+//      if (state.isPolymorphic) { // FIXME: Hack, implement with capabilities
+//        // monomorphize the problem
+//        val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
+//        val asAnnotated = monoResult._1.map(cl =>
+//          AnnotatedClause(cl, Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp))
+//        prover.call(asAnnotated, timeout)(monoResult._3)
+//      } else prover.call(problem, timeout)(state.signature)
     }
 
     final def killExternals(): Unit = {
