@@ -144,7 +144,7 @@ object AnnotatedClause {
   private var counter: Long = 0
 
   def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
-    counter += 1
+    synchronized{counter += 1}  // TODO To heavy?
     AnnotatedClause(counter, cl, r, annotation, propFlag)
   }
 

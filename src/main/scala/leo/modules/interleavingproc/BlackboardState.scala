@@ -21,8 +21,6 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
   protected var nextUnprocessed : Option[AnnotatedClause] = None  // TODO ClauseProxy inherits AnyRef for null reference
   protected var nextUnprocessedSet : Boolean = false
 
-  var conjecture : Option[AnnotatedClause] = None
-
   def getNextUnprocessed : AnnotatedClause = synchronized{
     if(!nextUnprocessedSet){
       nextUnprocessed = Some(state.nextUnprocessed)

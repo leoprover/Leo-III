@@ -98,7 +98,6 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
       }
     }
     Out.finest(s"################")
-
     super.execute()
   }
 }

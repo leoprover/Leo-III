@@ -113,7 +113,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       // No CNF step, do main loop inferences
       // Check if `cur` is an empty clause
       if (Clause.effectivelyEmpty(cur.cl)) {
-        if (state.conjecture == null) {
+        if (state.state.conjecture == null) {
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(cur))))}
         else {
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
@@ -244,20 +244,23 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     // TODO Perform pattern uni here and queue the complete pre unification for later
 
     // Split unifiable and non-unifiable clauses
-    val cIt = newclauses.iterator
-    newclauses = Set.empty
-    while(cIt.hasNext){
-      var ncl = cIt.next()
-      ncl = Control.rewriteSimp(ncl, rewrite)
-      if(!Clause.trivial(ncl.cl)) {
-        if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
-          result.insert(OpenUnification)(ncl)
-        } else {
-          newclauses += ncl
+    if(!Configuration.isSet("nopar")) {
+      val cIt = newclauses.iterator
+      newclauses = Set.empty
+      while (cIt.hasNext) {
+        var ncl = cIt.next()
+        ncl = Control.rewriteSimp(ncl, rewrite)
+        if (!Clause.trivial(ncl.cl)) {
+          if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
+            result.insert(OpenUnification)(ncl)
+          } else {
+            newclauses += ncl
+          }
         }
       }
+    } else {
+      newclauses = Control.unifyNewClauses(newclauses)
     }
-
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
     newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
@@ -276,7 +279,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
       if (Clause.effectivelyEmpty(newCl.cl)){
         result.insert(DerivedClause)(newCl)
-        if(state.conjecture.isDefined) {
+        if(state.state.conjecture != null) {
           result.insert(SZSStatus)(SZS_Theorem)
         } else {
           result.insert(SZSStatus)(SZS_ContradictoryAxioms)
