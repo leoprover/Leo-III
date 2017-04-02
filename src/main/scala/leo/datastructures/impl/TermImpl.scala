@@ -763,7 +763,7 @@ protected[impl] case object SNil extends Spine {
   final val tyFV: Set[Int] = Set()
   final val symbolMap: Map[Signature#Key, (Int, Int)] = Map.empty
   final val length = 0
-  final val asTerms = Seq()
+  final val asTerms = Vector.empty
   final val size = 1
   final def feasibleOccurrences0(pos: Int) = Map()
 

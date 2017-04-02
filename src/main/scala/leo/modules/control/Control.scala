@@ -1700,7 +1700,7 @@ package  externalProverControl {
       else {
         val curTime = System.currentTimeMillis()
         if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
-          leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
+          leo.Out.info(s"[ExtProver]: Checking for finished jobs.")
           lastCheck = curTime
           val proversIt = openCalls.keys.iterator
           while (proversIt.hasNext) {
@@ -1710,15 +1710,12 @@ package  externalProverControl {
             while (openCallsIt.hasNext) {
               val openCall = openCallsIt.next()
               if (openCall.isCompleted) {
-                leo.Out.debug(s"[ExtProver]: Job finished.")
+                leo.Out.info(s"[ExtProver]: Job finished.")
                 finished = finished + openCall
                 val result = openCall.value.get
-                if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
-                  leo.Out.debug(s"[ExtProver]: Terminal result.")
-                  return Some(result)
-                } else if (result.szsStatus == SZS_Error) {
-                  leo.Out.warn(result.error.mkString("\n"))
-                }
+                leo.Out.info(s"[ExtProver]: Result ${result.szsStatus.pretty}")
+                if (result.szsStatus == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
+                return Some(result)
               }
             }
             if (finished == openCalls(prover)) {
@@ -1744,12 +1741,12 @@ package  externalProverControl {
               if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
                 val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
                 if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
-                leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+                leo.Out.info(s"[ExtProver]: ${prover.name} started.")
               }
             } else {
               val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
               if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
-              leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+              leo.Out.info(s"[ExtProver]: ${prover.name} started.")
             }
           )
         }

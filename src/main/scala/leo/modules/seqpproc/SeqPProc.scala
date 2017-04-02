@@ -7,6 +7,7 @@ import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, S
 import leo.modules.output._
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
+import leo.modules.external.TptpResult
 import leo.modules.parsers.Input
 import leo.modules.{SZSException, SZSOutput, Utility}
 
@@ -310,17 +311,14 @@ object SeqPProc {
           val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
             val extResAnwers = extRes.get
-            // Other than THM or CSA are filter out by control
-            assert(extResAnwers.szsStatus == SZS_Theorem || extResAnwers.szsStatus == SZS_CounterSatisfiable)
-            loop = false
-            if (extResAnwers.szsStatus == SZS_Theorem) {
+            if (endgameAnswer(extResAnwers)) {
+              assert(extResAnwers.szsStatus == SZS_Unsatisfiable, "other than UNS was trapped")
+              // CounterSat cnanot happen since we do not send a conjecture
+              // Theorem ditto
+              loop = false
               val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnwers.proverName, extResAnwers.problem))
               endplay(emptyClause, state)
-            } else {
-              assert(extResAnwers.szsStatus == SZS_CounterSatisfiable)
-              state.setSZSStatus(SZS_CounterSatisfiable)
             }
-
           } else {
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
@@ -585,6 +583,13 @@ object SeqPProc {
     if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
     else state.setSZSStatus(SZS_Theorem)
     state.setDerivationClause(emptyClause)
+  }
+
+  final private def endgameAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+    result.szsStatus match {
+      case SZS_CounterSatisfiable | SZS_Theorem | SZS_Unsatisfiable => true
+      case _ => false
+    }
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {

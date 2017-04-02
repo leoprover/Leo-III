@@ -667,6 +667,11 @@ trait TypedFOLEncodingSignature extends Signature {
   import leo.datastructures.Term.local._
   lazy val hApp: Term = mkAtom(hApp_id)(this)
   final def hApp(fun: Term, arg: Term): Term = {
+    leo.Out.finest(s"hApp fun/arg invoke with ...")
+    leo.Out.finest(s"fun ${fun.pretty}")
+    leo.Out.finest(s"fun.ty ${fun.ty.pretty}")
+    leo.Out.finest(s"arg ${arg.pretty}")
+    leo.Out.finest(s"arg.ty ${arg.ty.pretty}")
     val (id, tyArgs) = Type.ComposedType.unapply(fun.ty).get
     assert(id == funTy_id)
     assert(tyArgs.size == 2)
@@ -685,7 +690,8 @@ trait TypedFOLEncodingSignature extends Signature {
     if (args.isEmpty) fun
     else {
       val hd = args.head
-      hApp(hApp(fun, hd), args.tail)
+      val partiallyApplied = hApp(fun, hd)
+      hApp(partiallyApplied, args.tail)
     }
   }
 

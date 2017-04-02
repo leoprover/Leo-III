@@ -231,7 +231,7 @@ object Choice extends CalculusRule {
       val leftOccIt = leftOcc.keysIterator
       while (leftOccIt.hasNext) {
         val occ = leftOccIt.next()
-//        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
+        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
         val findResult = findChoice(occ, choiceFuns, leftOcc(occ).head)
         if (findResult != null)
           result = result + findResult

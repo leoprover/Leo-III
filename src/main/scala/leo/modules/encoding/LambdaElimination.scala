@@ -2,6 +2,7 @@ package leo.modules.encoding
 
 import leo.datastructures.{Signature, Term, Type}
 import leo.Out
+import leo.modules.Utility
 
 
 /**
@@ -56,7 +57,7 @@ protected[encoding] abstract class LambdaElimination(sig: TypedFOLEncodingSignat
 }
 
 protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
-  import leo.datastructures.Term.{mkAtom, mkTypeApp}
+  import leo.datastructures.Term.local._
   import leo.datastructures.Type.{∀, mkVarType}
   import sig.{hApp,funTy}
 
@@ -151,7 +152,12 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     mkAtom(id)(sig)
   }
   final def B(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
-    hApp(mkTypeApp(combinator_B, Seq(ty1, ty2, ty3)), Seq(arg1,arg2))
+    leo.Out.finest(s"doing B with ${ty1} ${ty2} ${ty3}")
+    val tyAppliedB: Term = mkTypeApp(combinator_B, Seq(ty1, ty2, ty3))
+    leo.Out.finest(s"concrete B: ${tyAppliedB.pretty(sig)}")
+    leo.Out.finest(s"signature: ${Utility.signatureAsString(sig)}")
+    leo.Out.finest(s"concrete B ty: ${tyAppliedB.ty.pretty(sig)}")
+    hApp(tyAppliedB, Seq(arg1,arg2))
   }
 
   ////////////
@@ -311,7 +317,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
               val x = λ(absType)(termLastArg)
               Out.finest("lambda stuf " + x.pretty(holSignature))
               val translatedTermLastArg = eliminateLambdaNew(x)(holSignature)
-              Out.finest(s"translatedTermLastArg: ${translatedAllButLastArg.pretty(sig)}")
+              Out.finest(s"translatedTermLastArg: ${translatedTermLastArg.pretty(sig)}")
               B(translatedTy, translatedAllButLastArgDomainType, translatedAllButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {
