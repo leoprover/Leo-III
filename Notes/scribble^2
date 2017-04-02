@@ -1,0 +1,30 @@
+[? [C1: ( a > b > $o ) > a,C2: ( a > b > $o ) > b] :
+    ! [R: a > b > $o] :
+      ( ? [X: a,Y: b] :
+          ( R @ X @ Y )
+     => ( R @ ( C1 @ R ) @ ( C2 @ R ) ) )]^f
+     
+[( ? [X: a,Y: b] :
+          ( r(C1,C2) @ X @ Y )
+     => ( r(C1,C2) @ ( C1 @ r(C1,C2) ) @ ( C2 @ r(C1,C2) ) ) )]^f
+     
+     
+     
+[ ? [X: a,Y: b] : ( r(C1,C2) @ X @ Y )]^t,
+[( r(C1,C2) @ ( C1 @ r(C1,C2) ) @ ( C2 @ r(C1,C2) ) )]^f
+
+
+C1, C2: (a > b >o) > a/b
+====================================================
+[ r(C1,C2) @ skX(C1,C2) @ skY(C1,C2)]^t,
+[ r(C1,C2) @ ( C1 @ r(C1,C2) ) @ ( C2 @ r(C1,C2) )]^f
+======================================================
+                ^choice             ^choice
+                
+-- idea: abstract over other param by existential quantification, doesnt work
+Add: [r(C1,C2) X Y]^f \/ [?[X:b]: r(C1,C2) @ (e(r(C1,C2))) @ (X)]^t
+
+Works:
+
+Add [r(C1,C2) X Y]^f \/ [r(C1,C2) @ (e(r(C1,C2))) @ (e2(r(C1,C2))]^t
+
