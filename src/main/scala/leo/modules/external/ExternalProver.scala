@@ -92,10 +92,11 @@ object ExternalProver {
 class CVC4(val path: String) extends TptpProver[AnnotatedClause] {
   final val name: String = "cvc4"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
+  final private val executeScript = getClass.getResource("/scripts/run-script-cascj8-tfa").getPath
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    Seq(path, problemFileName)
+    Seq(executeScript, path, problemFileName)
   }
 }
 object CVC4 {
