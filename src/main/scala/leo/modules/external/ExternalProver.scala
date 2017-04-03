@@ -1,5 +1,7 @@
 package leo.modules.external
 
+import java.io.{File, PrintWriter}
+
 import leo.datastructures._
 import leo.modules.output._
 import java.nio.file.{Files, Paths}
@@ -80,7 +82,14 @@ object ExternalProver {
     if(Files.exists(p) && Files.isExecutable(p)) {
       val convert = p.toAbsolutePath.toString
       leo.Out.debug(s"Created CVC4 prover with path '$convert'")
-      CVC4(convert)
+      val execScript = File.createTempFile("cvc4Call", "sh")
+      execScript.setExecutable(true)
+      val writer = new PrintWriter(execScript)
+      try {
+        writer.print(CVC4.executeScript.mkString)
+      } finally writer.close()
+      execScript.deleteOnExit()
+      CVC4(execScript.getAbsolutePath, convert)
     } else {
       throw new NoSuchMethodException(s"There is no prover '${path}' is not exectuable or does not exist.")
     }
@@ -89,18 +98,18 @@ object ExternalProver {
 }
 
 
-class CVC4(val path: String) extends TptpProver[AnnotatedClause] {
+class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedClause] {
   final val name: String = "cvc4"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
-  final private val executeScript = getClass.getResource("/scripts/run-script-cascj8-tfa").getPath
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    Seq(executeScript, path, problemFileName)
+    Seq(execScript, path, problemFileName)
   }
 }
 object CVC4 {
-  @inline final def apply(path: String): CVC4 = new CVC4(path)
+  @inline final def apply(execScript: String, path: String): CVC4 = new CVC4(execScript, path)
+  final def executeScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/run-script-cascj8-tfa"))
 }
 
 class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {

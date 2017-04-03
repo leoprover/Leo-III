@@ -46,6 +46,9 @@
 cvc4="$1"
 bench="$2"
 
+echo "cvc4 is $cvc4"
+echo "bench is $bench"
+
 file=${bench##*/}
 filename=${file%.*}
 

@@ -364,8 +364,11 @@ object SeqPProc {
         }
       }
 
+      /////////////////////////////////////////
+      // Main loop terminated, check if any prover result is pending
+      /////////////////////////////////////////
 
-      if (ExtProverControl.openCallsExist) {
+      if (state.szsStatus == SZS_Unknown && ExtProverControl.openCallsExist) {
         var wait = true
         Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
         Out.info(s"$wait")
@@ -375,7 +378,7 @@ object SeqPProc {
           Out.finest(s"[ExtProver] Check for answer")
           val extRes = Control.checkExternalResults(state)
           if (extRes.isDefined) {
-            Out.finest(s"[ExtProver] Got answer! ${extRes.get.szsStatus.pretty}")
+            Out.debug(s"[ExtProver] Got answer! ${extRes.get.szsStatus.pretty}")
             if (extRes.get.szsStatus == SZS_Unsatisfiable || extRes.get.szsStatus == SZS_Theorem) {
               wait = false
               val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes.get.proverName, extRes.get.problem))
@@ -395,7 +398,7 @@ object SeqPProc {
       }
 
       /////////////////////////////////////////
-      // Main loop terminated, print result
+      // All finished, print result
       /////////////////////////////////////////
 
       val time = System.currentTimeMillis() - startTime
