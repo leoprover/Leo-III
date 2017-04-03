@@ -34,7 +34,7 @@ node {
     env.TPTP = tool name: 'TPTP'
     def benchmark = tool name: 'Benchmark'
 
-    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o soundness_logs -r soundness_results -s -x='--atp cvc4=/opt/cvc4/cvc4-2017-03-20/builds/x86_64-pc-linux-gnu/production/bin' ${benchmark}/Lists/csa_default"
+    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o soundness_logs -r soundness_results -s -x='--atp cvc4=/opt/cvc4/cvc4-2017-03-20/builds/x86_64-pc-linux-gnu/production/bin/cvc4' ${benchmark}/Lists/csa_default"
     archiveArtifacts artifacts: 'soundness_*', fingerprint: true
 
     stage 'Small Benchmark'
@@ -43,7 +43,7 @@ node {
     sh "rm -f benchmark_logs"
 
     def b = {l ->
-      sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o ${l}_logs -r ${l}_results -x='--atp cvc4=/opt/cvc4/cvc4-2017-03-20/builds/x86_64-pc-linux-gnu/production/bin' ${benchmark}/Lists/${l}"
+      sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o ${l}_logs -r ${l}_results -x='--atp cvc4=/opt/cvc4/cvc4-2017-03-20/builds/x86_64-pc-linux-gnu/production/bin/cvc4' ${benchmark}/Lists/${l}"
       sh "echo >> benchmark_results"
       sh "echo Results for ${l}: >> benchmark_results"
       sh "cat ${l}_results >> benchmark_results"
