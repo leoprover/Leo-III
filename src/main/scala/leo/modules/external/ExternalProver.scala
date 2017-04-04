@@ -1,16 +1,12 @@
 package leo.modules.external
 
-import java.io.{File, PrintWriter}
+import java.nio.file.{Files, Paths, Path}
+import java.nio.charset.StandardCharsets
 
+import scala.io.{BufferedSource, Codec}
+import leo.Configuration
 import leo.datastructures._
 import leo.modules.output._
-import java.nio.file.{Files, Paths}
-
-import leo.Configuration
-import leo.modules.HOLSignature.LitTrue
-
-import scala.io.BufferedSource
-
 
 /**
   * Object to construct provers from their paths.
@@ -22,6 +18,8 @@ object ExternalProver {
     * Additional time added to the timeout to wait for termination
     */
   final val WAITFORTERMINATION = 1
+  final val SCRIPTDIR_NAME: String = "scripts"
+  final val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
 
   /**
     * Creates a prover `name` with an executable at the path `path`.
@@ -32,12 +30,33 @@ object ExternalProver {
     * @return an abstracted prover `name`
     */
   @throws[NoSuchMethodException]
-  def createProver(name : String, path : String) : TptpProver[AnnotatedClause] = name match {
-    case "leo2" => createLeo2(path)
-    case "nitpick" => createNitpickProver(path)
-    case "cvc4" => createCVC4(path)
-    case "alt-ergo" => createAltErgo(path)
-    case _ => throw new NoSuchMethodException(s"There is no prover ${name} registered in the system.")
+  def createProver(name : String, path : String) : TptpProver[AnnotatedClause] = {
+    createDirectories()
+    name match {
+      case "leo2" => createLeo2(path)
+      case "nitpick" => createNitpickProver(path)
+      case "cvc4" => createCVC4(path)
+      case "alt-ergo" => createAltErgo(path)
+      case _ => throw new NoSuchMethodException(s"$name not supported by the system.")
+    }
+  }
+  private final def createDirectories(): Unit = {
+    val scriptsPath = SCRIPTDIR
+    if (!Files.exists(scriptsPath)) Files.createDirectory(scriptsPath)
+    // Concrete files to create if not existent:
+    val limitedRunPath = scriptsPath.resolve("TreeLimitedRun")
+    if (!Files.exists(limitedRunPath)) {
+      val file = Files.createFile(limitedRunPath)
+      val limitedRunScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/TreeLimitedRun"))(Codec.ISO8859)
+      Files.write(file, limitedRunScript.mkString.getBytes(StandardCharsets.ISO_8859_1))
+      file.toFile.setExecutable(true)
+    }
+    val cvc4RunPath = scriptsPath.resolve(CVC4.executeScriptName)
+    if (!Files.exists(cvc4RunPath)) {
+      val file = Files.createFile(cvc4RunPath)
+      Files.write(file, CVC4.executeScript.mkString.getBytes(StandardCharsets.UTF_8))
+      file.toFile.setExecutable(true)
+    }
   }
 
   /**
@@ -55,7 +74,7 @@ object ExternalProver {
       leo.Out.debug(s"Created Leo2 prover with path '$convert'")
       new Leo2Prover(convert)
     } else {
-      throw new NoSuchMethodException(s"There is no prover '${path}' is not exectuable or does not exist.")
+      throw new NoSuchMethodException(s"'$path' is not exectuable or does not exist.")
     }
   }
 
@@ -76,7 +95,7 @@ object ExternalProver {
       leo.Out.debug(s"Created Nitpick prover with path '$convert' (Isabelle)")
       new NitpickProver(convert)
     } else {
-      throw new NoSuchMethodException(s"There is no prover '${path}' is not exectuable or does not exist.\nTip: Reference only to isablle and not nitpick directly.")
+      throw new NoSuchMethodException(s"'$path' is not exectuable or does not exist.\nTip: Reference only to isablle and not nitpick directly.")
     }
   }
 
@@ -85,16 +104,9 @@ object ExternalProver {
     if(Files.exists(p) && Files.isExecutable(p)) {
       val convert = p.toAbsolutePath.toString
       leo.Out.debug(s"Created CVC4 prover with path '$convert'")
-      val execScript = File.createTempFile("cvc4Call", "sh")
-      execScript.setExecutable(true)
-      val writer = new PrintWriter(execScript)
-      try {
-        writer.print(CVC4.executeScript.mkString)
-      } finally writer.close()
-      execScript.deleteOnExit()
-      CVC4(execScript.getAbsolutePath, convert)
+      CVC4(SCRIPTDIR.resolve(CVC4.executeScriptName).toString, convert)
     } else {
-      throw new NoSuchMethodException(s"There is no prover '${path}'. It is not exectuable or it does not exist.")
+      throw new NoSuchMethodException(s"'$path' is not exectuable or it does not exist.")
     }
   }
 
@@ -120,7 +132,6 @@ object ExternalProver {
       throw new NoSuchMethodException(s"There is no prover '$path'. It is not exectuable or it does not exist.")
     }
   }
-
 }
 
 
@@ -135,7 +146,8 @@ class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedCla
 }
 object CVC4 {
   @inline final def apply(execScript: String, path: String): CVC4 = new CVC4(execScript, path)
-  final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/run-script-cascj8-tfa"))
+  final val executeScriptName: String = "run-script-cascj8-tfa"
+  final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/" + executeScriptName))
 }
 
 class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
@@ -152,17 +164,6 @@ object AltErgo {
 }
 
 
-//abstract class THFProver extends TptpProver[AnnotatedClause]{
-//  val falseClause = AnnotatedClause(Clause(Seq(Literal.mkLit(LitTrue(), false))), Role_Conjecture, ClauseAnnotation.NoAnnotation, ClauseAnnotation.PropNoProp)
-//
-//  override protected[external] def translateProblem(problem: Set[AnnotatedClause])(implicit sig : Signature): Seq[String] = {
-//    val toAxiom = problem map (c => AnnotatedClause(c.cl, Role_Axiom, c.annotation, c.properties))
-//    val outTPTP : Seq[Output] = ToTPTP(toAxiom + falseClause)
-//    val res = outTPTP.map{x => x()}
-//    res
-//  }
-//}
-
 
 class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   override val name: String = "leo2"
@@ -170,7 +171,7 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
 
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    Seq(path, "-t", (timeout).toString) ++ args ++ Seq(problemFileName)
+    Seq(path, "-t", timeout.toString) ++ args ++ Seq(problemFileName)
   }
 
   /**
@@ -219,6 +220,6 @@ class NitpickProver(val path : String) extends TptpProver[AnnotatedClause] {
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
 
   override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    Seq(path, "tptp_nitpick", (timeout).toString) ++ Seq(problemFileName)
+    Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName)
   }
 }

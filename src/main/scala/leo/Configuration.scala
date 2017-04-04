@@ -1,6 +1,7 @@
 package leo
 
 import java.util.logging.Level
+import java.nio.file.{Path, Paths}
 
 import leo.modules.output.Output
 import leo.modules.parsers.CLParameterParser
@@ -83,6 +84,9 @@ object Configuration extends DefaultConfiguration {
   def isInit: Boolean = configMap != null
 
   final val VERSION: String = "1.1"
+  final val USER_HOME: String = System.getProperty("user.home")
+  final val LEODIR_NAME: String = ".leo3"
+  final val LEODIR: Path = Paths.get(USER_HOME, LEODIR_NAME)
 
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
