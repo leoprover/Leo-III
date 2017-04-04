@@ -20,6 +20,7 @@ object ExternalProver {
   final val WAITFORTERMINATION = 1
   final val SCRIPTDIR_NAME: String = "scripts"
   final val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
+  final val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
 
   /**
     * Creates a prover `name` with an executable at the path `path`.
@@ -132,6 +133,10 @@ object ExternalProver {
       throw new NoSuchMethodException(s"There is no prover '$path'. It is not exectuable or it does not exist.")
     }
   }
+
+  final def limitedRun(timeout: Int, args: Seq[String]): Seq[String] = {
+    Seq(LIMITEDRUN.toString, String.valueOf(timeout), String.valueOf(timeout)) ++ args
+  }
 }
 
 
@@ -141,7 +146,7 @@ class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedCla
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    Seq(execScript, path, problemFileName)
+    ExternalProver.limitedRun(timeout, Seq(execScript, path, problemFileName))
   }
 }
 object CVC4 {
