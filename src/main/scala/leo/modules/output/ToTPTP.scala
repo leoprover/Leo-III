@@ -143,9 +143,9 @@ object ToTPTP {
       val name = tptpEscapeName(sig(id).name)
       sb.append("thf(")
       sb.append(name)
-      sb.append("_type',type,(")
+      sb.append("_type,type,(")
       sb.append(name)
-      sb.append("':")
+      sb.append(":")
       sb.append(toTPTP(sig(id)._kind))
       sb.append(")).\n")
     }

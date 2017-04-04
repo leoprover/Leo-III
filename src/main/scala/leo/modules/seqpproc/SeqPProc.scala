@@ -379,17 +379,19 @@ object SeqPProc {
           val extRes = Control.checkExternalResults(state)
           if (extRes.isDefined) {
             Out.debug(s"[ExtProver] Got answer! ${extRes.get.szsStatus.pretty}")
-            if (extRes.get.szsStatus == SZS_Unsatisfiable || extRes.get.szsStatus == SZS_Theorem) {
+            if (extRes.get.szsStatus == SZS_Unsatisfiable) {
               wait = false
               val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes.get.proverName, extRes.get.problem))
               endplay(emptyClause, state)
-            } else {
+            } else if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
               Out.info(s"[ExtProver] Still waiting ...")
               Thread.sleep(5000)
             }
           } else {
-            Out.info(s"[ExtProver] Still waiting ...")
-            Thread.sleep(5000)
+            if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+              Out.info(s"[ExtProver] Still waiting ...")
+              Thread.sleep(5000)
+            }
           }
 
         }
