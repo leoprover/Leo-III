@@ -1681,9 +1681,7 @@ package indexingControl {
 }
 
 package  externalProverControl {
-
-  import leo.datastructures.ClauseAnnotation.NoAnnotation
-  import leo.datastructures.{ClauseAnnotation, Role, Role_Axiom}
+  import leo.modules.output.SuccessSZS
 
   object ExtProverControl {
     import leo.modules.external._
@@ -1695,17 +1693,24 @@ package  externalProverControl {
 
     final def openCallsExist: Boolean = openCalls.nonEmpty
 
+    final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+      result.szsStatus match {
+        case _:SuccessSZS => true
+        case _ => false
+      }
+    }
+
     final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
       if (state.externalProvers.isEmpty) None
       else {
         val curTime = System.currentTimeMillis()
-        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL * 1000) {
           leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
           lastCheck = curTime
           val proversIt = openCalls.keys.iterator
           while (proversIt.hasNext) {
             val prover = proversIt.next()
-            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
+            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
             val openCallsIt = openCalls(prover).iterator
             while (openCallsIt.hasNext) {
               val openCall = openCallsIt.next()
@@ -1715,14 +1720,19 @@ package  externalProverControl {
                 val result = openCall.value.get
                 leo.Out.debug(s"[ExtProver]: Result ${result.szsStatus.pretty}")
                 if (result.szsStatus == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
-                return Some(result)
+                if (helpfulAnswer(result)) {
+                  val oldOpenCalls = openCalls(prover)
+                  val newOpenCalls = oldOpenCalls diff finished
+                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
+                  else openCalls = openCalls.updated(prover, newOpenCalls)
+                  return Some(result)
+                }
               }
             }
-            if (finished == openCalls(prover)) {
-              openCalls = openCalls.-(prover)
-            } else {
-              openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
-            }
+            val oldOpenCalls = openCalls(prover)
+            val newOpenCalls = oldOpenCalls diff finished
+            if (newOpenCalls.isEmpty) openCalls = openCalls - prover
+            else openCalls = openCalls.updated(prover, newOpenCalls)
           }
           None
         } else None

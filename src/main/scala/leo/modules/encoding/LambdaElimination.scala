@@ -152,11 +152,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     mkAtom(id)(sig)
   }
   final def B(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
-    leo.Out.finest(s"doing B with ${ty1} ${ty2} ${ty3}")
     val tyAppliedB: Term = mkTypeApp(combinator_B, Seq(ty1, ty2, ty3))
-    leo.Out.finest(s"concrete B: ${tyAppliedB.pretty(sig)}")
-    leo.Out.finest(s"signature: ${Utility.signatureAsString(sig)}")
-    leo.Out.finest(s"concrete B ty: ${tyAppliedB.ty.pretty(sig)}")
     hApp(tyAppliedB, Seq(arg1,arg2))
   }
 
@@ -208,8 +204,10 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     import leo.modules.encoding.TypedFOLEncoding.foTransformType0
     import leo.datastructures.Type.ComposedType
     absBody match {
-      case Bound(`absType`, 1) => //Out.finest("[S] I")
-        I(foTransformType0(absType, true)(holSignature, sig))
+      case Bound(varTy, 1) => //Out.finest("[S] I")
+        val translatedTy = foTransformType0(absType, true)(holSignature, sig)
+        assert(varTy == translatedTy)
+        I(translatedTy)
       case _ if !free(absBody, 1) =>
         Out.finest("[S] K")
         val translatedTy = foTransformType0(absType, true)(holSignature, sig)

@@ -368,12 +368,12 @@ object SeqPProc {
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
 
-      if (state.szsStatus == SZS_Unknown && ExtProverControl.openCallsExist) {
+      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT) {
+        if (!ExtProverControl.openCallsExist) {
+          Control.submit(state.processed, state)
+          Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
+        } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
         var wait = true
-        Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
-        Out.info(s"$wait")
-        Out.info(s"${System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT}")
-        Out.info(s"${ExtProverControl.openCallsExist}")
         while (wait && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
           Out.finest(s"[ExtProver] Check for answer")
           val extRes = Control.checkExternalResults(state)
