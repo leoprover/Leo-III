@@ -6,6 +6,7 @@ import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.{Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Event, Result}
 import leo.modules.control.Control
+import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem}
 
 /**
   *
@@ -15,6 +16,7 @@ import leo.modules.control.Control
   * @author Max Wisniewski
   */
 class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLoop.A], state : BlackboardState, sig : Signature) extends AbstractAgent{
+  implicit val s = sig
   override val name: String = "DelayedUnificationAgent"
   override val interest: Option[Seq[DataType[Any]]] = Some(Seq(OpenUnification))
 
@@ -39,10 +41,13 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
     override def run: Delta = {
       val result = Result()
       result.remove(OpenUnification)(ac)
-      val newclauses = Control.unifyNewClauses(Set(ac))(sig)
-      val sb = new StringBuilder("\nUnify Clauses:")
+      var newclauses = Control.unifyNewClauses(Set(ac))(sig)
+//      val sb = new StringBuilder("\nUnify Clauses:")
 
 
+
+      newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+      newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
       val newIt = newclauses.iterator
       if(newIt.isEmpty){
         // Not unifiable. Insert Result
@@ -50,17 +55,25 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
       }
       while (newIt.hasNext) {
         var newCl = newIt.next()
-        newCl = Control.rewriteSimp(newCl, rewrite)(sig)
-
+        newCl = Control.rewriteSimp(newCl, rewrite)
+        assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
+        if (Clause.effectivelyEmpty(newCl.cl)){
+          result.insert(DerivedClause)(newCl)
+          if(state.state.conjecture != null) {
+            result.insert(SZSStatus)(SZS_Theorem)
+          } else {
+            result.insert(SZSStatus)(SZS_ContradictoryAxioms)
+          }
+        }
         if (!Clause.trivial(newCl.cl)) {
-          sb.append(s"\n>>\t${ac.pretty(sig)}\n>> to\n++> simp  ${newCl.pretty(sig)}")
+//          sb.append(s"   ${ac.pretty(sig)}\n -->\n   ${newCl.pretty(sig)}")
           result.insert(UnprocessedClause)(newCl)
-        }else {
-          sb.append(s"\n>>\tResult ${newCl.pretty(sig)} was trivial.")
+        } else {
+//          sb.append(s"${ac.pretty(sig)} was trivial")
         }
       }
-      sb.append("\n")
-      leo.Out.output(sb.toString())
+//      sb.append("\n")
+//      leo.Out.output(sb.toString())
       result
 
     }

@@ -11,6 +11,7 @@ import scala.collection.mutable
   */
 class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   private final class ObjectProxy(x: A) {
+    protected[impl] val eternalElem : A = x
     private var elem: A = x
     def get: A = elem
     def clear(): Unit = {elem = null.asInstanceOf[A]}
@@ -22,10 +23,9 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
   }
   private final def toProxyOrdering(ord: Ordering[A]): Ordering[ObjectProxy] = {
     new Ordering[ObjectProxy] {
-      @inline final def compare(x: ObjectProxy, y: ObjectProxy): OrderingKey =
-        if (x.get == null) -1
-        else if (y.get == null) -1
-        else ord.compare(x.get, y.get)
+      @inline final def compare(x: ObjectProxy, y: ObjectProxy): OrderingKey = {
+        ord.compare(x.eternalElem, y.eternalElem)
+      }
     }
   }
 
@@ -137,7 +137,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
       val q = it.next
       sb.append("\n > Queue "+qC+" : ")
       qC += 1
-      val itE = q.iterator
+      val itE = q.clone().dequeueAll.iterator
       while(itE.hasNext){
         val e = itE.next().get
         if(e != null && !deletedObjects.contains(e)){
