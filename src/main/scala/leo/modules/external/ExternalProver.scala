@@ -9,6 +9,8 @@ import java.nio.file.{Files, Paths}
 import leo.Configuration
 import leo.modules.HOLSignature.LitTrue
 
+import scala.io.BufferedSource
+
 
 /**
   * Object to construct provers from their paths.
@@ -34,6 +36,7 @@ object ExternalProver {
     case "leo2" => createLeo2(path)
     case "nitpick" => createNitpickProver(path)
     case "cvc4" => createCVC4(path)
+    case "alt-ergo" => createAltErgo(path)
     case _ => throw new NoSuchMethodException(s"There is no prover ${name} registered in the system.")
   }
 
@@ -77,7 +80,7 @@ object ExternalProver {
     }
   }
 
-  def createCVC4(path : String) : CVC4 = {
+  final def createCVC4(path : String) : CVC4 = {
     val p = Paths.get(path)
     if(Files.exists(p) && Files.isExecutable(p)) {
       val convert = p.toAbsolutePath.toString
@@ -91,7 +94,30 @@ object ExternalProver {
       execScript.deleteOnExit()
       CVC4(execScript.getAbsolutePath, convert)
     } else {
-      throw new NoSuchMethodException(s"There is no prover '${path}' is not exectuable or does not exist.")
+      throw new NoSuchMethodException(s"There is no prover '${path}'. It is not exectuable or it does not exist.")
+    }
+  }
+
+  final def createAltErgo(path: String): AltErgo = {
+    val p = Paths.get(path)
+    if(Files.exists(p) && Files.isExecutable(p)) {
+      val convert = p.toAbsolutePath.toString
+      val proc = Command("which why3").exec()
+      proc.waitFor()
+      if (proc.exitValue != 0) throw new NoSuchMethodException("Why3 executable not found in path. why3 is necessary to run AltErgo. Please add why3 to PATH and retry.")
+      else {
+        val proc = Command("why3 --list-provers | grep Alt-Ergo").exec()
+        proc.waitFor()
+        if (proc.exitValue != 0) {
+          val proc = Command(s"why3 config --add-prover alt-ergo $convert").exec()
+          proc.waitFor()
+          if (proc.exitValue != 0) throw new NoSuchMethodException("Registration of AltErgo in why3 not successful. Check debug logs.")
+        }
+        leo.Out.debug(s"Create AltErgo prover with path '$convert'")
+        AltErgo(convert)
+      }
+    } else {
+      throw new NoSuchMethodException(s"There is no prover '$path'. It is not exectuable or it does not exist.")
     }
   }
 
@@ -109,16 +135,16 @@ class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedCla
 }
 object CVC4 {
   @inline final def apply(execScript: String, path: String): CVC4 = new CVC4(execScript, path)
-  final def executeScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/run-script-cascj8-tfa"))
+  final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/run-script-cascj8-tfa"))
 }
 
 class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
-  final val name: String = "alt-ergo"
+  final val name: String = "AltErgo"
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(Capabilities.Polymorphism))
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    Seq(path, String.valueOf(timeout), problemFileName)
+    Seq("why3", "prove", "-F", "tptp", "-t", String.valueOf(timeout), "-P", "Alt-Ergo", problemFileName)
   }
 }
 object AltErgo {
