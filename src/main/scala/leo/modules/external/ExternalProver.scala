@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets
 import scala.io.{BufferedSource, Codec}
 import leo.Configuration
 import leo.datastructures._
-import leo.modules.output._
 
 /**
   * Object to construct provers from their paths.
@@ -161,7 +160,7 @@ class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    Seq("why3", "prove", "-F", "tptp", "-t", String.valueOf(timeout), "-P", "Alt-Ergo", problemFileName)
+    ExternalProver.limitedRun(timeout, Seq("why3", "prove", "-F", "tptp", "-t", String.valueOf(timeout), "-P", "Alt-Ergo", problemFileName))
   }
 }
 object AltErgo {
@@ -176,10 +175,10 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
 
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    Seq(path, "-t", timeout.toString) ++ args ++ Seq(problemFileName)
+    ExternalProver.limitedRun(timeout, Seq(path, "-t", timeout.toString) ++ args ++ Seq(problemFileName))
   }
 
-  /**
+  /*/**
     * Performs a translation of the result of the external process.
     *
     * Reads the exitValue of Leo2 and translates it to a result.
@@ -215,7 +214,7 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
       case e: Exception =>
         new TptpResultImpl(originalProblem, SZS_Error, 127, Seq(), Seq(e.getMessage))
     }
-  }
+  }*/
 }
 
 
@@ -225,6 +224,6 @@ class NitpickProver(val path : String) extends TptpProver[AnnotatedClause] {
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
 
   override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName)
+    ExternalProver.limitedRun(timeout, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
   }
 }

@@ -2,7 +2,8 @@ package leo.modules.external
 
 import java.io.{File, PrintWriter}
 
-import leo.datastructures.{ClauseProxy, Clause, Signature}
+import leo.Configuration
+import leo.datastructures.{Clause, ClauseProxy, Signature}
 import leo.modules.output.{SZS_Error, SZS_Forced, SZS_GaveUp, StatusSZS}
 
 /**
@@ -78,7 +79,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     val process : KillableProcess = {
       val safeProverName = java.net.URLEncoder.encode(name, "UTF-8")
       val file = File.createTempFile(s"remoteInvoke_${safeProverName}_", ".p")
-      file.deleteOnExit()
+      if (!Configuration.isSet("overlord")) file.deleteOnExit()
       val writer = new PrintWriter(file)
       try {
         writer.print(parsedProblem)

@@ -1715,7 +1715,7 @@ package  externalProverControl {
             while (openCallsIt.hasNext) {
               val openCall = openCallsIt.next()
               if (openCall.isCompleted) {
-                leo.Out.debug(s"[ExtProver]: Job finished.")
+                leo.Out.debug(s"[ExtProver]: Job finished (${prover.name}).")
                 finished = finished + openCall
                 val result = openCall.value.get
                 leo.Out.debug(s"[ExtProver]: Result ${result.szsStatus.pretty}")
