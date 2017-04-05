@@ -2,7 +2,7 @@ package leo.modules.proof_object
 
 import leo.datastructures.ClauseAnnotation.{CompressedRule, InferredFrom}
 import leo.datastructures.{AnnotatedClause, ClauseAnnotation, ClauseProxy, Signature}
-import leo.modules.calculus.CalculusRule
+import leo.modules.calculus._
 import leo.modules.output.{Output, SuccessSZS}
 
 /**
@@ -14,6 +14,8 @@ import leo.modules.output.{Output, SuccessSZS}
   * @since 28/2/2017
   */
 object CompressProof {
+
+  final val stdImportantInferences : Set[CalculusRule] = Set(PatternUni, PreUni, Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   /**
     *
