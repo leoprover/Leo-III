@@ -34,6 +34,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
   @inline private final val notForwardSubsumed = false
 
   private lazy val parUni = !Configuration.isSet("nopar")
+//  private var lastIt : Long = Long.MaxValue
 
   implicit val signature : Signature = sig
 
@@ -53,21 +54,22 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
   //TODO Remove after merge with alex
   private val movedToProcessed : mutable.Set[Long] = new mutable.HashSet[Long]
-  final val importantInferences : Set[CalculusRule] = Set(PatternUni, PreUni, Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
+  final val importantInferences : Set[CalculusRule] = Set(Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
     if(unification.getOpenUni.nonEmpty) {
       return None
     }
+    val millis = System.currentTimeMillis()
 //    val sb = new StringBuilder("\n")
     if(actRound > maxRound && maxRound > 0) {
-//      sb.append("-----------------------------------------------------\n")
+//      sb.append(s"-------------------${Math.max(0, millis-lastIt)} ms----------------------------------\n")
 //      sb.append("Finished Rounds\n")
 //      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
 //        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-//      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
-//        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+////      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+////        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
 //      sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
 //        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
 //      sb.append("-----------------------------------------------------\n")
@@ -75,14 +77,16 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       terminatedFlag = true
       return None
     }
-//    sb.append(s" ------------- Start Round ${actRound}-------------------\n")
-    actRound += 1
+//    sb.append(s" ------------- Start Round ${actRound} : ${Math.max(0, millis-lastIt)} ms -------------------\n")
 //    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
 //      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-//    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+////    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+////      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+//    sb.append(s"\nProcessed:\n  ${state.state.processed.map(cl =>
 //      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-//    sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
-//      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+
+//    lastIt = millis
+    actRound += 1
 
     if(!state.state.unprocessedLeft) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
@@ -322,6 +326,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     result
   }
 
+  // TODO Never called?
   override def taskFinished(t: Task): Unit = {
     val sb = new StringBuilder
     sb.append(s" ------------- End Round ${actRound}-------------------\n")
