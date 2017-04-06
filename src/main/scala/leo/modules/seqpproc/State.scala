@@ -54,6 +54,8 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
 trait StateStatistics {
   // Statistics
+  def noProofLoops: Long
+  def incProofLoopCount(): Unit
   def noProcessedCl: Int
   def incTrivialCl(): Unit
   def noTrivialCl: Int
@@ -187,7 +189,8 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   }
   // Statistics
   private var generatedCount: Int = 0
-  private var rewriteCount: Int = 0
+  private var loopCount: Int = 0
+  private var rewriteCount: Long = 0L
   private var trivialCount: Int = 0
   private var forwardSubsumedCount: Int = 0
   private var backwardSubsumedCount: Int = 0
@@ -196,6 +199,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var paramodCount: Int = 0
   private var choiceInstantiations0: Int = 0
 
+  final def noProofLoops: Long = loopCount
   final def noProcessedCl: Int = processed.size
   final def noGeneratedCl: Int = generatedCount
   final def noTrivialCl: Int = trivialCount
@@ -206,6 +210,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def noDescendantsDeleted: Int = descendantsDeleted
   final def choiceInstantiations: Int = choiceInstantiations0
 
+  final def incProofLoopCount(): Unit = {loopCount += 1}
   final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
   final def incTrivialCl(): Unit = {trivialCount += 1}
   final def incParamod(by: Int): Unit = {paramodCount += by}

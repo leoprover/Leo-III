@@ -31,6 +31,17 @@ package object output {
     case _ => throw new IllegalArgumentException
   }
 
+  private final val simpleNameRegex = "^([a-z]([a-zA-Z\\d_]*))|[\\d]*$"
+  final def tptpEscapeName(str: String): String = {
+    if (str.matches(simpleNameRegex)) str
+    else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
+  }
+  private final val simpleExpressionRegex = "^([a-z]|\\${1,2}[a-z])([a-zA-Z\\d_]*)$"
+  final def tptpEscapeExpression(str: String): String = {
+    if (str.matches(simpleExpressionRegex)) str
+    else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
+  }
+
   /**
     * For a sequence `fvs` of free vars (implicitly universally quantified) and a function
     * `typeToTPTP`, return a tuple `(rep,map)` where

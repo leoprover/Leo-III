@@ -48,8 +48,6 @@ abstract class Type extends Pretty with Prettier {
   def funParamTypes: Seq[Type] = funParamTypesWithResultType.init
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type)
 
-  def scopeNumber: Int
-
   /** Returns true iff `ty` appears somewhere as subtype (e.g. as part of an abstraction type). */
   def occurs(ty: Type): Boolean
 
@@ -75,12 +73,12 @@ abstract class Type extends Pretty with Prettier {
 
   // Syntactic nice constructors
   /** Create abstraction type from `hd` to `this` */
-  def ->:(hd: Type) = Type.mkFunType(hd, this)
+  def ->:(hd: Type): Type = Type.mkFunType(hd, this)
 
   /** Create product type `this * ty` */
-  def *(ty: Type) = Type.mkProdType(this, ty)
+  def *(ty: Type): Type = Type.mkProdType(this, ty)
   /** Create union type `this + ty`*/
-  def +(ty: Type) = Type.mkUnionType(this, ty)
+  def +(ty: Type): Type = Type.mkUnionType(this, ty)
   /** Create type application: If `this` is a sort symbol t = `s` of non-zero arity (or not fully applied type t = `s a1 a2 ...`)
     * the, it creates the type application t @ ty. Otherwise, it fails. */
   def app(ty: Type): Type

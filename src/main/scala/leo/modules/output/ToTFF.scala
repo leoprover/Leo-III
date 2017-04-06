@@ -44,7 +44,7 @@ object ToTFF {
 
   private final def litToTFF(fvMap: Map[Int, String], tyFvCount: Int, lit: Literal)(sig: Signature): String = {
     if (!lit.equational) {
-      if (!lit.polarity) s"~${formulaToTFF(fvMap, tyFvCount, lit.left)(sig)}"
+      if (!lit.polarity) s"~(${formulaToTFF(fvMap, tyFvCount, lit.left)(sig)})"
       else formulaToTFF(fvMap, tyFvCount, lit.left)(sig)
     } else {
       if (lit.polarity)
@@ -170,11 +170,25 @@ object ToTFF {
 
     ty match {
       case BoundType(scope) => "T"+intToName(depth-scope)
-      case BaseType(id) => sig(id).name
-      case ComposedType(id, args) => s"${sig(id).name}(${args.map(typeToTFF0(_, depth)(sig)).mkString(",")})"
+      case BaseType(id) => tptpEscapeExpression(sig(id).name)
+      case ComposedType(id, args) => s"${tptpEscapeExpression(sig(id).name)}(${args.map(typeToTFF0(_, depth)(sig)).mkString(",")})"
       case _ -> _ =>
         val paramTypes = ty.funParamTypesWithResultType
-        s"((${paramTypes.init.map(typeToTFF0(_, depth)(sig)).mkString(" * ")}) > ${typeToTFF0(paramTypes.last, depth)(sig)})"
+        val inTypes = paramTypes.init
+        val inTypesIt = inTypes.iterator
+        val outType = paramTypes.last
+        val sb: StringBuffer = new StringBuffer()
+        if (inTypes.size > 1) sb.append("(")
+        while (inTypesIt.hasNext) {
+          val inTy = inTypesIt.next()
+          if (inTy.isFunType) sb.append(s"(${typeToTFF0(inTy, depth)(sig)})")
+          else sb.append(typeToTFF0(inTy, depth)(sig))
+          if (inTypesIt.hasNext) sb.append("*")
+        }
+        if (inTypes.size > 1) sb.append(")")
+        sb.append(">")
+        sb.append(typeToTFF0(outType, depth)(sig))
+        sb.toString
       case *(l,r) => ???
       case +(l,r) => ???
       case ∀(_) => throw new IllegalArgumentException("Illegal nested polymorphic type detected.")

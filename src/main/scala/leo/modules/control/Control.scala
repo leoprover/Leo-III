@@ -573,8 +573,8 @@ package inferenceControl {
 
     private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
       val litIt = cl.cl.lits.iterator
-      var uniLits: UniLits = Seq()
-      var otherLits:OtherLits = Seq()
+      var uniLits: UniLits = Vector()
+      var otherLits:OtherLits = Vector()
       while(litIt.hasNext) {
         val lit = litIt.next()
         if (lit.equational && !lit.polarity) {
@@ -1008,6 +1008,7 @@ package inferenceControl {
       val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
+        Out.finest(s"TyFV(${cl.id}): ${cl.cl.typeVars.toString()}")
         val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
@@ -1024,16 +1025,16 @@ package inferenceControl {
       while(clIt.hasNext) {
         val cl = clIt.next
 
-        var uniLits: Seq[(Term, Term)] = Seq()
-        var nonUniLits: Seq[Literal] = Seq()
-        var boolExtLits: Seq[Literal] = Seq()
-        var nonBoolExtLits: Seq[Literal] = Seq()
+        var uniLits: Seq[Literal] = Vector()
+        var nonUniLits: Seq[Literal] = Vector()
+        var boolExtLits: Seq[Literal] = Vector()
+        var nonBoolExtLits: Seq[Literal] = Vector()
 
         val litIt = cl.cl.lits.iterator
 
         while(litIt.hasNext) {
           val lit = litIt.next()
-          if (!lit.polarity && lit.equational) uniLits = (lit.left, lit.right) +: uniLits
+          if (!lit.polarity && lit.equational) uniLits = lit +: uniLits
           else nonUniLits = lit +: nonUniLits
           if (BoolExt.canApply(lit)) boolExtLits = lit +: boolExtLits
           else nonBoolExtLits = lit +: nonBoolExtLits
@@ -1043,16 +1044,34 @@ package inferenceControl {
         // and add it to the solutions
         // (B) if also boolean extensionality literals present, add (BE/cnf) treated clause to result set, else
         // insert the original clause.
-        if (uniLits.nonEmpty) result = result union doUnify0(cl, freshVarGen(cl.cl), uniLits, nonUniLits)(sig)
+        if (uniLits.nonEmpty) result = result union doUnify0(cl, freshVarGen(cl.cl), uniLits.map(l => (l.left, l.right)), nonUniLits)(sig)
 
         if (boolExtLits.isEmpty) {
-          result = result + cl
+          val (tySubst, res) = Simp.uniLitSimp(uniLits)(sig)
+          if (res == uniLits) result = result + cl
+          else {
+            val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
+            val simpNewCl = Control.simp(newCl)(sig)
+            result = result + simpNewCl
+          }
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
           val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
           val lifted = cnf.map(Control.liftEq)
-          result = result union lifted
+          val liftedIt = lifted.iterator
+          while (liftedIt.hasNext) {
+            val liftedCl = liftedIt.next()
+            val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
+            val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
+            if (res == liftedClUniLits) result = result + liftedCl
+            else {
+              val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
+              val simpNewCl = Control.simp(newCl)(sig)
+              result = result + simpNewCl
+            }
+          }
+//          result = result union lifted
         }
       }
       result
@@ -1549,7 +1568,7 @@ package indexingControl {
 
     private val maxFeatures: Int = 100
     private var initialized = false
-    private var features: Seq[CFF] = Seq()
+    private var features: Seq[CFF] = Vector()
     final protected[modules] val index = FVIndex()
     def clauseFeatures: Seq[CFF] = features
 
@@ -1561,7 +1580,7 @@ package indexingControl {
         symbs.flatMap {symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
           FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}
 
-      var initFeatures: Seq[Set[Int]] = Seq()
+      var initFeatures: Seq[Set[Int]] = Vector()
       val featureFunctionIt = featureFunctions.iterator
       var i = 0
       while (featureFunctionIt.hasNext) {
@@ -1632,7 +1651,7 @@ package indexingControl {
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
-        var result: Seq[AnnotatedFormula] = Seq()
+        var result: Seq[AnnotatedFormula] = Vector()
         var round : Int = 0
 
         val conjSymbols = PreFilterSet.useFormula(conjecture)
@@ -1662,75 +1681,123 @@ package indexingControl {
 }
 
 package  externalProverControl {
+  import leo.modules.output.SuccessSZS
 
   object ExtProverControl {
     import leo.modules.external._
     import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
-    private var lastCall: Long = Long.MinValue
+    private var lastCall: Long = 0
+
+    final def openCallsExist: Boolean = openCalls.nonEmpty
+
+    final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+      result.szsStatus match {
+        case _:SuccessSZS => true
+        case _ => false
+      }
+    }
 
     final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
       if (state.externalProvers.isEmpty) None
       else {
         val curTime = System.currentTimeMillis()
-        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL*1000) {
+        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL * 1000) {
           leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
           lastCheck = curTime
           val proversIt = openCalls.keys.iterator
           while (proversIt.hasNext) {
             val prover = proversIt.next()
-            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set()
+            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
             val openCallsIt = openCalls(prover).iterator
             while (openCallsIt.hasNext) {
               val openCall = openCallsIt.next()
               if (openCall.isCompleted) {
-                leo.Out.debug(s"[ExtProver]: Job finished.")
+                leo.Out.debug(s"[ExtProver]: Job finished (${prover.name}).")
                 finished = finished + openCall
                 val result = openCall.value.get
-                if (result.szsStatus == SZS_Theorem || result.szsStatus == SZS_CounterSatisfiable) {
-                  leo.Out.debug(s"[ExtProver]: Terminal result.")
+                leo.Out.debug(s"[ExtProver]: Result ${result.szsStatus.pretty}")
+                if (result.szsStatus == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
+                if (helpfulAnswer(result)) {
+                  val oldOpenCalls = openCalls(prover)
+                  val newOpenCalls = oldOpenCalls diff finished
+                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
+                  else openCalls = openCalls.updated(prover, newOpenCalls)
                   return Some(result)
-                } else if (result.szsStatus == SZS_Error) {
-                  leo.Out.warn(result.error.mkString("\n"))
                 }
               }
             }
-            if (finished == openCalls(prover)) {
-              openCalls = openCalls.-(prover)
-            } else {
-              openCalls = openCalls + (prover -> (openCalls(prover) -- finished))
-            }
+            val oldOpenCalls = openCalls(prover)
+            val newOpenCalls = oldOpenCalls diff finished
+            if (newOpenCalls.isEmpty) openCalls = openCalls - prover
+            else openCalls = openCalls.updated(prover, newOpenCalls)
           }
           None
         } else None
       }
     }
-
+    private final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
+      state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
+    }
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
-      if (state.externalProvers.nonEmpty && clauses.size >= lastCall + Configuration.ATP_CALL_INTERVAL) {
-        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
-
-        lastCall = clauses.size
-        state.externalProvers.foreach(prover =>
-          if (openCalls.isDefinedAt(prover)) {
-            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+      if (state.externalProvers.nonEmpty) {
+        if (shouldRun(clauses, state)) {
+          leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+          lastCall = state.noProofLoops
+          state.externalProvers.foreach(prover =>
+            if (openCalls.isDefinedAt(prover)) {
+              if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+                val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+                if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+                leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+              }
+            } else {
               val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-              openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
-              leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
+              if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
+              leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
             }
-          } else {
-            val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-            openCalls = openCalls + (prover -> Set(futureResult))
-            leo.Out.trace(s"[ExtProver]: ${prover.name} started.")
-          }
-        )
+          )
+        }
       }
     }
     private final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
-      prover.call(problem, timeout)(state.signature)
+      import leo.modules.encoding._
+      import leo.modules.external.Capabilities._
+      // Check what the provers speaks, translate only to first-order if necessary
+      val proverCaps = prover.capabilities
+      if (proverCaps.contains(THF)) {
+        prover.call(problem, problem.map(_.cl), sig, THF, timeout)
+      } else if (proverCaps.contains(TFF)) {
+        Out.finest(s"Translating problem ...")
+        val (translatedProblem, auxDefs, translatedSig) =
+          if (supportsFeature(proverCaps, TFF)(Polymorphism))
+            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
+          else
+            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
+          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout)
+      } else if (proverCaps.contains(FOF)) {
+        Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
+        null
+      } else {
+        Out.warn(s"$prefix Prover ${prover.name} input syntax not supported.")
+        null
+      }
+
+
+
+
+
+//      if (state.isPolymorphic) { // FIXME: Hack, implement with capabilities
+//        // monomorphize the problem
+//        val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
+//        val asAnnotated = monoResult._1.map(cl =>
+//          AnnotatedClause(cl, Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp))
+//        prover.call(asAnnotated, timeout)(monoResult._3)
+//      } else prover.call(problem, timeout)(state.signature)
     }
 
     final def killExternals(): Unit = {

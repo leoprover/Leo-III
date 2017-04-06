@@ -1,0 +1,30 @@
+thf(a,type,(
+    a: $tType )).
+
+thf(b,type,(
+    b: $tType )).
+
+thf(skX,type,skX: (( a > b > $o ) > a) > (( a > b > $o ) > b) > a).
+thf(skY,type,skY: (( a > b > $o ) > a) > (( a > b > $o ) > b) > b).
+thf(r,type,r:(( a > b > $o ) > a) > (( a > b > $o ) > b) > a > b > $o).
+
+thf(ex,axiom,![C1: ( a > b > $o ) > a,C2: ( a > b > $o ) > b]: ((r @ C1 @ C2) @ (skX @ C1 @ C2) @ (skY @ C1 @ C2))).
+thf(choice,axiom,(![C1: ( a > b > $o ) > a,C2: ( a > b > $o ) > b]: ~(
+  (r @ C1 @ C2) @ (C1 @ (r @ C1 @ C2)) @ (C2 @ (r @ C1 @ C2))
+  ))).
+
+thf(e,type,(e:(a > b > $o)>a )).
+thf(e2,type,(e2:(a > b > $o)>b )).
+thf(choice1,axiom,![C1: ( a > b > $o ) > a,C2: ( a > b > $o ) > b]: (
+  (~(? [X:a,Y:b]: ((r @ C1 @ C2) @ X @ Y))) | (((r @ C1 @ C2) @ (e @ (r @ C1 @ C2)) @ (e2 @ (r @ C1 @ C2))))
+)).
+
+
+thf(a,type,a:$i).
+thf(b,type,b:$i).
+thf(ax,axiom,(![F:$i>$i]: ( ~((F @ a) = b) | ~((F @ b) = a)))).
+
+
+
+
+

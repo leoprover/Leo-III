@@ -1,6 +1,6 @@
 package leo.modules.encoding
 
-import leo.datastructures.{Clause, Literal, Signature, Subst, Term, Type}
+import leo.datastructures.{Clause, Literal, Signature, Subst, Term, Type, partitionArgs}
 import leo.modules.calculus.{TypeUnification, TypeSubst}
 
 import scala.annotation.tailrec
@@ -82,7 +82,7 @@ object Monomorphization {
       else polyAxioms += cl
     }
     val monoAxioms = generateMonoAxioms(polyAxioms, instanceInfo, newSig)(sig)
-    println(s"monoAxioms: ${monoAxioms.map(_.pretty(newSig)).mkString("\n\t")}")
+    leo.Out.finest(s"monoAxioms: ${monoAxioms.map(_.pretty(newSig)).mkString("\n\t")}")
     monoProblem = monoProblem union monoAxioms
     (monoProblem, newSig)
   }
@@ -273,7 +273,7 @@ object Monomorphization {
     }
   }
 
-  final def convertType(ty: Type, oldSig: Signature, newSig: Signature): Type = {
+  private final def convertType(ty: Type, oldSig: Signature, newSig: Signature): Type = {
     import Type._
     ty match {
       case BaseType(id) =>
@@ -289,16 +289,6 @@ object Monomorphization {
         val convertedOut = convertType(out, oldSig, newSig)
         mkFunType(convertedIn, convertedOut)
       case _ => throw new IllegalArgumentException
-    }
-  }
-
-  private final def partitionArgs(args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = partitionArgs0(Seq(), args)
-  @tailrec final def partitionArgs0(acc: Seq[Type], args: Seq[Either[Term, Type]]): (Seq[Type], Seq[Term]) = {
-    if (args.isEmpty) (acc, Seq.empty)
-    else {
-      val hd = args.head
-      if (hd.isLeft) (acc, args.map(_.left.get))
-      else partitionArgs0(acc :+ hd.right.get, args.tail)
     }
   }
 
@@ -319,7 +309,8 @@ object Monomorphization {
     ty match {
       case BaseType(id) => sig(id).name.replaceAll("\\$", "D")
       case ComposedType(id, args) => s"${sig(id).name}_${args.map(canonicalTyName(_)(sig)).mkString("_")}"
-      case _ => throw new IllegalArgumentException // bound, poly cannot happen, -> types should at this level be encoded to fun
+      case in -> out => s"func_${canonicalTyName(in)(sig)}_${canonicalTyName(out)(sig)}"
+      case _ => throw new IllegalArgumentException(s"Spooky type: ${ty.pretty(sig)}") // bound, poly cannot happen, -> types should at this level be encoded to fun
     }
   }
 

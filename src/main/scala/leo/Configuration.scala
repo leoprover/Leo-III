@@ -1,6 +1,7 @@
 package leo
 
 import java.util.logging.Level
+import java.nio.file.{Path, Paths}
 
 import leo.modules.output.Output
 import leo.modules.parsers.CLParameterParser
@@ -83,6 +84,9 @@ object Configuration extends DefaultConfiguration {
   def isInit: Boolean = configMap != null
 
   final val VERSION: String = "1.1"
+  final val USER_HOME: String = System.getProperty("user.home")
+  final val LEODIR_NAME: String = ".leo3"
+  final val LEODIR: Path = Paths.get(USER_HOME, LEODIR_NAME)
 
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
@@ -169,7 +173,7 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
-  final val ATP_STD_TIMEOUT : Int = 30
+  final val ATP_STD_TIMEOUT : Int = 40
   lazy val ATP_TIMEOUT : Map[String, Int] = {
     val a = valueOf("e")
     if(a.nonEmpty) {
@@ -291,5 +295,5 @@ trait DefaultConfiguration {
   val DEFAULT_PRE_PRIMSUBST_MAXDEPTH = 5
   val DEFAULT_ATPCHECKINTERVAL = 3
   val DEFAULT_ATPCALLINTERVAL = 10
-  val DEFAULT_ATPMAXJOBS = 3
+  val DEFAULT_ATPMAXJOBS = 2
 }

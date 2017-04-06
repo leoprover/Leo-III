@@ -19,7 +19,6 @@ object TypedFOLEncoding {
     val foSig = TypedFOLEncodingSignature()
     // Analyze problem and insert problem-specific symbols into signature (encoded types)
     val functionTable = EncodingAnalyzer.analyze(problem)
-    Out.finest(s"functionTable: ${functionTable.map{case (key, info) => sig(key).name + " : " + info.toString()}.mkString("\n")}")
     val fIt = functionTable.iterator
     var proxyAxioms: Set[Clause] = Set.empty
     while (fIt.hasNext) {
@@ -49,13 +48,11 @@ object TypedFOLEncoding {
         proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
       }
     }
-//    leo.modules.Utility.printSignature(foSig)
     // Translate
     val lambdaEliminator = les(foSig)
     val resultProblem: Problem = problem.map(translate(_, lambdaEliminator)(sig, foSig))
     // Collect auxiliary definitions from lambda elimination (if any)
     val auxDefsFromLES: Set[Clause] = lambdaEliminator.getAuxiliaryDefinitions.map(leo.modules.Utility.termToClause(_))
-
     (resultProblem, proxyAxioms union auxDefsFromLES, foSig)
   }
 
@@ -146,26 +143,32 @@ object TypedFOLEncoding {
     *       `encodingSignature`
     */
   final def translate(cl: Clause, les: LambdaElimination)
-                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Clause =
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Clause = {
+    leo.Out.finest(s"Translating clause: ${cl.pretty(holSignature)}")
     Clause(cl.lits.map(translate(_, les)(holSignature, encodingSignature)))
+  }
 
   final def translate(lit: Literal, les: LambdaElimination)
-                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Literal = if (lit.equational) {
-    assert(lit.left.ty == lit.right.ty)
-    if (lit.left.ty == leo.modules.HOLSignature.o) {
-      // this is actually an equivalence in first-order world
-      val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
-      val translatedRight = translate(lit.right, les)(holSignature, encodingSignature)
-      Literal.mkLit(TypedFOLEncodingSignature.Equiv(translatedLeft, translatedRight), lit.polarity)
+                     (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Literal = {
+    leo.Out.finest(s"Translating literal: ${lit.pretty(holSignature)}")
+    if (lit.equational) {
+      assert(lit.left.ty == lit.right.ty)
+      if (lit.left.ty == leo.modules.HOLSignature.o) {
+        // this is actually an equivalence in first-order world
+        val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
+        val translatedRight = translate(lit.right, les)(holSignature, encodingSignature)
+        Literal.mkLit(TypedFOLEncodingSignature.Equiv(translatedLeft, translatedRight), lit.polarity)
+      } else {
+        // standard equality between terms
+        val translatedLeft = translateTerm(lit.left, les)(holSignature, encodingSignature)
+        val translatedRight = translateTerm(lit.right, les)(holSignature, encodingSignature)
+        Literal.mkLit(translatedLeft, translatedRight, lit.polarity)
+      }
     } else {
-      // standard equality between terms
-      val translatedLeft = translateTerm(lit.left, les)(holSignature, encodingSignature)
-      val translatedRight = translateTerm(lit.right, les)(holSignature, encodingSignature)
-      Literal.mkLit(translatedLeft, translatedRight, lit.polarity)
+      val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
+      leo.Out.finest(s"TranslatedLeft: ${translatedLeft.pretty(encodingSignature)}")
+      Literal.mkLit(translatedLeft, lit.polarity)
     }
-  } else {
-    val translatedLeft = translate(lit.left, les)(holSignature, encodingSignature)
-    Literal.mkLit(translatedLeft, lit.polarity)
   }
 
   final def translate(t: Term, les: LambdaElimination)
@@ -275,16 +278,18 @@ object TypedFOLEncoding {
 
   protected[encoding] final def translateTerm(t: Term, les: LambdaElimination)
                          (holSignature: Signature, encodingSignature: TypedFOLEncodingSignature): Term = {
-    import Term._
+    import Term.local._
+    import Term.{Bound, :::>, ∙, Symbol, TypeLambda}
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
     Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
     import encodingSignature._
+    leo.Out.finest(s"TranslateTerm: ${t.pretty(holSignature)}")
     t match {
       case lambda@(_ :::> _) => les.eliminateLambda(lambda)(holSignature)
       case f ∙ args =>
         val encodedHead = f match {
-          case Symbol(id) => id match {
+          case Symbol(id) => leo.Out.finest(s"Translate symbol: $id"); id match {
             case HOLTrue.key => proxyTrue
             case HOLFalse.key => proxyFalse
             case HOLNot.key => proxyNot
@@ -301,11 +306,11 @@ object TypedFOLEncoding {
               val fName = escape(holSignature(id).name)
               mkAtom(encodingSignature(fName).key)(encodingSignature)
           }
-          case Bound(boundTy, boundIdx) => mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
+          case Bound(boundTy, boundIdx) => leo.Out.finest(s"Translate bound $boundIdx of type ${boundTy.pretty(holSignature)}"); mkBound(foTransformType0(boundTy, true)(holSignature, encodingSignature), boundIdx)
           case _ => assert(false); f
         }
-//        Out.finest(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
-//        Out.finest(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
+        Out.finest(s"encodedHead: ${encodedHead.pretty(encodingSignature)}")
+        Out.finest(s"encodedHead: ${encodedHead.ty.pretty(encodingSignature)}")
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
@@ -313,13 +318,21 @@ object TypedFOLEncoding {
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
         // pass some arguments directly if possible
         val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
-        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"arg size ${translatedTermArgs.size}")
+        assert(translatedTermArgs.size >= encodedHeadParamTypes.size, s"original head: ${f.pretty(holSignature)}\n" +
+          s"original type: ${f.ty.pretty(holSignature)}" +
+          s"\nencodedhead: ${encodedHead.pretty(encodingSignature)},\n encodedHeadParamsize: ${encodedHeadParamTypes.size},\n" +
+          s" encodedHeadTy:${encodedHead.ty.pretty(encodingSignature)},\n arg size ${translatedTermArgs.size}")
         val directArgs = translatedTermArgs.take(encodedHeadParamTypes.size)
+
         val indirectArgs = translatedTermArgs.drop(encodedHeadParamTypes.size)
 
         val tyArgsApplied = mkTypeApp(encodedHead, translatedTyArgs)
+        leo.Out.finest(s"tyArgsApplied: ${tyArgsApplied.pretty(encodingSignature)}")
         val directArgsApplied = mkTermApp(tyArgsApplied, directArgs)
-        encodingSignature.hApp(directArgsApplied, indirectArgs)
+        leo.Out.finest(s"directArgsApplied: ${directArgsApplied.pretty(encodingSignature)}")
+        val result = encodingSignature.hApp(directArgsApplied, indirectArgs)
+        leo.Out.finest(s"result: ${result.pretty(encodingSignature)}")
+        result
       // Standard-case end, error cases follow
       case TypeLambda(_) => throw new IllegalArgumentException("naked type lambda at top level")
       case _ => throw new IllegalArgumentException("unexpected term occurred") // e.g. ForallTy
@@ -651,6 +664,11 @@ trait TypedFOLEncodingSignature extends Signature {
   import leo.datastructures.Term.local._
   lazy val hApp: Term = mkAtom(hApp_id)(this)
   final def hApp(fun: Term, arg: Term): Term = {
+    leo.Out.finest(s"hApp fun/arg invoke with ...")
+    leo.Out.finest(s"fun ${fun.pretty}")
+    leo.Out.finest(s"fun.ty ${fun.ty.pretty}")
+    leo.Out.finest(s"arg ${arg.pretty}")
+    leo.Out.finest(s"arg.ty ${arg.ty.pretty}")
     val (id, tyArgs) = Type.ComposedType.unapply(fun.ty).get
     assert(id == funTy_id)
     assert(tyArgs.size == 2)
@@ -669,8 +687,21 @@ trait TypedFOLEncodingSignature extends Signature {
     if (args.isEmpty) fun
     else {
       val hd = args.head
-      hApp(hApp(fun, hd), args.tail)
+      val partiallyApplied = hApp(fun, hd)
+      hApp(partiallyApplied, args.tail)
     }
+  }
+  private final def encodedFunSpaces(ty: Type): (Type, Type) = {
+    import leo.datastructures.Type.ComposedType
+    val res = ComposedType.unapply(ty)
+    if (res.isDefined) {
+      val id = res.get._1
+      if (id == funTy_id) {
+        val args = res.get._2
+        assert(args.size == 2)
+        (args.head, args.tail.head)
+      } else throw new IllegalArgumentException(s"Invoking domain/codomain type on non-functional type ${ty.pretty} in TypedFOLEncoding.")
+    } else throw new IllegalArgumentException(s"Invoking domain/codomain type on non-functional type ${ty.pretty} in TypedFOLEncoding.")
   }
 
   ///// hBool constant
@@ -735,11 +766,17 @@ trait TypedFOLEncodingSignature extends Signature {
   ///// forall/exists
   lazy val proxyForall_id: Signature#Key = proxyId(proxyForall_name)
   lazy val proxyForall: Term = mkAtom(proxyForall_id)(this)
-  final def proxyForall(body: Term): Term = applyArgs(mkTypeApp(proxyForall, body.ty._funDomainType), Seq(body))
+  final def proxyForall(body: Term): Term = {
+    val domainType = encodedFunSpaces(body.ty)._1
+    applyArgs(mkTypeApp(proxyForall, domainType), Seq(body))
+  }
 
   lazy val proxyExists_id: Signature#Key = proxyId(proxyExists_name)
   lazy val proxyExists: Term = mkAtom(proxyExists_id)(this)
-  final def proxyExists(body: Term): Term = applyArgs(mkTypeApp(proxyExists, body.ty._funDomainType), Seq(body))
+  final def proxyExists(body: Term): Term = {
+    val domainType = encodedFunSpaces(body.ty)._1
+    applyArgs(mkTypeApp(proxyExists,domainType), Seq(body))
+  }
 
   ///// eq / neq
   lazy val proxyEq_id: Signature#Key = proxyId(proxyEq_name)
@@ -770,8 +807,8 @@ trait TypedFOLEncodingSignature extends Signature {
       case `proxyEquiv_name` => Equiv(Equiv(hBool(X), hBool(Y)), hBool(proxyEquiv(X,Y)))
       case `proxyEq_name` => Equiv(Eq(polyX, polyY), hBool(proxyEq(polyX,polyY)))
       case `proxyNeq_name` => Equiv(Neq(polyX, polyY), hBool(proxyNeq(polyX,polyY)))
-      case `proxyForall_name` => Equiv(Forall(λ(1)(hBool(hApp(mkBound(funTy(1,boolTy), 2), mkBound(1,1))))),hBool(Term.mkApp(proxyForall, Seq(Right(1), Left(mkBound(funTy(1,boolTy), 1))))))
-      case `proxyExists_name` => Equiv(Exists(λ(1)(hBool(hApp(mkBound(funTy(1,boolTy), 2), mkBound(1,1))))),hBool(Term.mkApp(proxyExists, Seq(Right(1), Left(mkBound(funTy(1,boolTy), 1))))))
+      case `proxyForall_name` => Equiv(Forall(λ(1)(hBool(hApp(mkBound(funTy(1,boolTy), 2), mkBound(1,1))))),hBool(proxyForall(mkBound(funTy(1,boolTy), 1))))
+      case `proxyExists_name` => Equiv(Exists(λ(1)(hBool(hApp(mkBound(funTy(1,boolTy), 2), mkBound(1,1))))),hBool(proxyExists(mkBound(funTy(1,boolTy), 1))))
       case _ => throw new IllegalArgumentException("Given id is not an proxy.")
     }
   }

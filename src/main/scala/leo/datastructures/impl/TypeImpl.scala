@@ -8,31 +8,25 @@ protected[datastructures] abstract class TypeImpl extends Type {
     throw new UnsupportedOperationException("splitFunParamTypesAt0 with non-zero n on non-Function type")
   // to be overridden by abstraction type below
 
-  final def closure(subst: Subst) = substitute(subst)
+  final def closure(subst: Subst): Type = substitute(subst)
   def instantiate(by: Seq[Type]): Type = this
   final def instantiate(by: Type): Type =  instantiate(Seq(by))
   def monomorphicBody: Type = this
 }
 
-/** Literal type, i.e. `$o` */
+/** Ground type, e.g. `$o` or `list @ $i`. */
 protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
-  lazy val pretty = {
-    if (args.isEmpty)
-      s"ty($id)"
-    else
-      s"ty($id)" +"(" + args.map(_.pretty).mkString(",") + ")"
-  }
-  final def pretty(sig: Signature) = {
-    if (args.isEmpty)
-      sig(id).name
-    else
-      s"${sig(id).name}(${args.map(_.pretty(sig)).mkString(",")})"
+  final def pretty: String = if (args.isEmpty) s"ty($id)"
+                            else s"ty($id)(${args.map(_.pretty).mkString(",")})"
+  final def pretty(sig: Signature): String = {
+    if (args.isEmpty) sig(id).name
+    else s"${sig(id).name}(${args.map(_.pretty(sig)).mkString(",")})"
   }
 
   // Predicates on types
-  override final val isBaseType         = args.isEmpty
-  override final val isComposedType     = args.nonEmpty
+  override final val isBaseType: Boolean     = args.isEmpty
+  override final val isComposedType: Boolean = args.nonEmpty
   final def isApplicableWith(arg: Type) = false
 
   // Queries on types
@@ -42,21 +36,18 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
   final val funDomainType = None
   final val codomainType  = this
   final val arity         = 0
-  final val funParamTypesWithResultType = Seq(this)
+  final val funParamTypesWithResultType = Vector(this)
   final val order         = 0
   final val polyPrefixArgsCount = 0
 
-  final val scopeNumber = 0
-
   final def app(ty: Type): Type = GroundTypeNode(id, args :+ ty)
-
-  final def occurs(ty: Type) = ty match {
-    case GroundTypeNode(key, args2) if key == id => args == args2
+  final def occurs(ty: Type): Boolean = ty match {
+    case GroundTypeNode(key, args2) if key == id => args == args2 || args.exists(_.occurs(ty))
     case _ => args.exists(_.occurs(ty))
   }
 
   // Substitutions
-  final def replace(what: Type, by: Type) = if (what == this) by
+  final def replace(what: Type, by: Type): Type = if (what == this) by
     else GroundTypeNode(id, args.map(_.replace(what, by)))
 
   final def substitute(subst: Subst) = GroundTypeNode(id, args.map(_.substitute(subst)))
@@ -65,8 +56,8 @@ protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq
 /** Type of a (bound) type variable when itself used as type in polymorphic function */
 protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl {
   // Pretty printing
-  final def pretty = scope.toString
-  final def pretty(sig: Signature) = scope.toString
+  final def pretty: String = scope.toString
+  final def pretty(sig: Signature): String = scope.toString
 
   // Predicates on types
   override final val isBoundTypeVar     = true
@@ -74,25 +65,22 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl 
 
   // Queries on types
   final val typeVars: Set[Type] = Set(this)
-  final val symbols = Set[Signature#Key]()
+  final val symbols: Set[Signature#Key] = Set.empty
 
-  final val funDomainType   = None
-  final val codomainType = this
+  final val funDomainType = None
+  final val codomainType: Type = this
   final val arity = 0
-  final val funParamTypesWithResultType = Seq(this)
+  final val funParamTypesWithResultType = Vector(this)
   final val order = 0
   final val polyPrefixArgsCount = 0
 
-  final val scopeNumber = -scope
-
   final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to type variable")
-
   final def occurs(ty: Type) = false
 
   // Substitutions
-  final def replace(what: Type, by: Type) = if (what == this) by else this
+  final def replace(what: Type, by: Type): Type = if (what == this) by else this
   import leo.datastructures.{BoundFront, TypeFront}
-  final def substitute(subst: Subst) = subst.substBndIdx(scope) match {
+  final def substitute(subst: Subst): Type = subst.substBndIdx(scope) match {
     case BoundFront(j) => BoundTypeNode(j)
     case TypeFront(t)  => t
     case _ => throw new IllegalArgumentException("type substitution contains terms")
@@ -102,22 +90,22 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl 
 /** Function type `in -> out` */
 protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) extends TypeImpl {
   // Pretty printing
-  def pretty = in match {
-    case funTy:AbstractionTypeNode => "(" + funTy.pretty + ") -> " + out.pretty
-    case otherTy:Type              => otherTy.pretty + " -> " + out.pretty
+  final def pretty: String = in match {
+    case _:AbstractionTypeNode => s"(${in.pretty}) -> ${out.pretty}"
+    case _              => s"${in.pretty} -> ${out.pretty}"
   }
-  final def pretty(sig: Signature) = in match {
-    case funTy:AbstractionTypeNode => "(" + funTy.pretty(sig) + ") -> " + out.pretty(sig)
-    case otherTy:Type              => otherTy.pretty(sig) + " -> " + out.pretty(sig)
+  final def pretty(sig: Signature): String = in match {
+    case _:AbstractionTypeNode => s"(${in.pretty}) -> ${out.pretty}"
+    case _:Type              => s"${in.pretty} -> ${out.pretty}"
   }
 
   // Predicates on types
   override final val isFunType          = true
-  final def isApplicableWith(arg: Type) = arg == in
+  final def isApplicableWith(arg: Type): Boolean = arg == in
 
   // Queries on types
-  final lazy val typeVars = in.typeVars ++ out.typeVars
-  final lazy val symbols = in.symbols ++ out.symbols
+  final lazy val typeVars: Set[Type] = in.typeVars ++ out.typeVars
+  final lazy val symbols: Set[Signature#Key] = in.symbols ++ out.symbols
 
   final val funDomainType   = Some(in)
   final val codomainType = out
@@ -129,14 +117,11 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
   final override protected[impl] def splitFunParamTypesAt0(n: Int, acc: Seq[Type]): (Seq[Type], Type) = if (n == 0) (acc, this) else
     out.asInstanceOf[TypeImpl].splitFunParamTypesAt0(n-1, in +: acc)
 
-  final lazy val scopeNumber = Math.min(in.scopeNumber, out.scopeNumber)
-
   final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to abstraction type")
-
-  final def occurs(ty: Type) = in.occurs(ty) || out.occurs(ty)
+  final def occurs(ty: Type): Boolean = in.occurs(ty) || out.occurs(ty)
 
   // Substitutions
-  final def replace(what: Type, by: Type) = if (what == this) by
+  final def replace(what: Type, by: Type): Type = if (what == this) by
   else AbstractionTypeNode(in.replace(what,by), out.replace(what,by))
   final def substitute(subst: Subst) = AbstractionTypeNode(in.substitute(subst), out.substitute(subst))
 }
@@ -158,14 +143,11 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
   final val funDomainType   = None
   final val codomainType = this
   final val arity = 0
-  final val funParamTypesWithResultType = Seq(this)
+  final val funParamTypesWithResultType = Vector(this)
   final val order = 0
   final val polyPrefixArgsCount = 0
 
-  final lazy val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
-
   final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to product type")
-
   final def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
   // Substitutions
@@ -180,8 +162,8 @@ protected[datastructures] case class ProductTypeNode(l: Type, r: Type) extends T
 /** Product type `l + r` */
 protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends TypeImpl {
   // Pretty printing
-  final def pretty = s"(${l.pretty} + ${r.pretty})"
-  final def pretty(sig: Signature) =  s"(${l.pretty(sig)} + ${r.pretty(sig)})"
+  final def pretty: String = s"(${l.pretty} + ${r.pretty})"
+  final def pretty(sig: Signature): String =  s"(${l.pretty(sig)} + ${r.pretty(sig)})"
 
   // Predicates on types
   final override val isUnionType        = true
@@ -194,18 +176,15 @@ protected[datastructures] case class UnionTypeNode(l: Type, r: Type) extends Typ
   final val funDomainType   = None
   final val codomainType = this
   final val arity = 0
-  final val funParamTypesWithResultType = Seq(this)
+  final val funParamTypesWithResultType = Vector(this)
   final val order = 0
   final val polyPrefixArgsCount = 0
 
-  final lazy val scopeNumber = Math.min(l.scopeNumber, r.scopeNumber)
-
   final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to union type")
-
   final def occurs(ty: Type) = l.occurs(ty) || r.occurs(ty)
 
   // Substitutions
-  final def replace(what: Type, by: Type) = if (what == this) by
+  final def replace(what: Type, by: Type): Type = if (what == this) by
   else UnionTypeNode(l.replace(what,by), r.replace(what,by))
   final def substitute(subst: Subst) = UnionTypeNode(l.substitute(subst), r.substitute(subst))
 }
@@ -227,22 +206,19 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
   }
 
   // Queries on types
-  final lazy val typeVars = body.typeVars
+  final lazy val typeVars: Set[Type] = body.typeVars.map(t => BoundTypeNode.unapply(t.asInstanceOf[BoundTypeNode]).get-1).filter(_ > 0).map(BoundTypeNode)
   final lazy val symbols = body.symbols
 
   final val funDomainType   = None
   final val codomainType = this
   final val arity = 0
-  final val funParamTypesWithResultType = Seq(this)
+  final val funParamTypesWithResultType = Vector(this)
   final val order = 0
   final lazy val polyPrefixArgsCount = 1 + body.polyPrefixArgsCount
 
   final override lazy val monomorphicBody: Type = body.monomorphicBody
 
-  final lazy val scopeNumber = body.scopeNumber + 1
-
-  final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to type abstraction") //TODO: refine, since its basically beta reduction
-
+  final def app(ty: Type): Type = throw new IllegalArgumentException("Typed applied to type abstraction")
   final def occurs(ty: Type) = body.occurs(ty)
 
   // Substitutions
@@ -307,13 +283,13 @@ protected[datastructures] case object TypeKind extends Kind {
 }
 
 protected[datastructures] case class FunKind(from: Kind, to: Kind) extends Kind {
-  final def pretty = from.pretty + " > " + to.pretty
+  final def pretty = s"${from.pretty} > ${to.pretty}"
 
   final val isTypeKind = false
   final val isSuperKind = false
   final val isFunKind = true
 
-  lazy val arity = 1 + to.arity
+  final def arity: Int = 1 + to.arity
 }
 
 /** Artificial kind that models the type of `*` (i.e. []) */

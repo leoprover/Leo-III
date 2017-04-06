@@ -57,6 +57,7 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   protected[datastructures] def etaContract0: TermImpl
 
   final def isBetaNormal: Boolean = normal
+  final def isEtaNormal: Boolean = etanormal
   protected[impl] def markBetaNormal(): Unit
   protected[impl] def markBetaEtaNormal(): Unit
 
@@ -146,7 +147,10 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
     case BoundIndex(ty,i) => args.fv + ((i, ty))
     case _ => args.fv
   }
-  lazy val tyFV: Set[Int] = args.tyFV
+  lazy val tyFV: Set[Int] = hd.ty match {
+    case BoundType(idx) => args.tyFV + idx
+    case _ => args.tyFV
+  }
 
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = {
     hd match {
@@ -400,7 +404,7 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   // Queries on terms
   lazy val ty = typ ->: body.ty
   lazy val fv: Set[(Int, Type)] = body.fv.map{case (i,t) => (i-1,t)}.filter(_._1 > 0)
-  lazy val tyFV: Set[Int] = body.tyFV
+  lazy val tyFV: Set[Int] = typ.typeVars.map(BoundType.unapply(_).get) union body.tyFV
   lazy val symbolMap: Map[Signature#Key, (Count, Depth)] = body.asInstanceOf[TermImpl].symbolMap.mapValues {case (c,d) => (c,d+1)}
   lazy val headSymbol = body.headSymbol
   lazy val headSymbolDepth = 1 + body.headSymbolDepth
@@ -759,7 +763,7 @@ protected[impl] case object SNil extends Spine {
   final val tyFV: Set[Int] = Set()
   final val symbolMap: Map[Signature#Key, (Int, Int)] = Map.empty
   final val length = 0
-  final val asTerms = Seq()
+  final val asTerms = Vector.empty
   final val size = 1
   final def feasibleOccurrences0(pos: Int) = Map()
 

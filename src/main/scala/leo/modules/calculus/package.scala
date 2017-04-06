@@ -122,8 +122,14 @@ package object calculus {
 
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
     val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy))))
+    assert(skFunc.ty.typeVars.isEmpty,
+      s"Fresh SK symbol has free type vars: ${skFunc.pretty(sig)}, type: ${skFunc.ty.pretty(sig)}, free ty vars: ${skFunc.ty.typeVars.toString}\n" +
+        s"% goalTy: ${goalTy.pretty(sig)}, fvs: ${fvs.toString()}, tyFvs: ${tyFvs.toString()}")
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
-    Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
+    val result = Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
+    assert(Term.wellTyped(result), s"skTerm Result not well-typed: ${result.pretty(sig)}\n" +
+      s"% skFunc: ${skFunc.pretty}, type: ${skFunc.ty.pretty(sig)}")
+    result
   }
   final def skType(tyFvs: Seq[Int])(implicit sig: Signature): Type = {
     val freshTypeOp: Signature#Key = sig.freshSkolemTypeConst(mkPolyKindAbstraction(tyFvs.size))

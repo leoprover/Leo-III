@@ -2,6 +2,7 @@ package leo.modules.encoding
 
 import leo.datastructures.{Signature, Term, Type}
 import leo.Out
+import leo.modules.Utility
 
 
 /**
@@ -56,7 +57,7 @@ protected[encoding] abstract class LambdaElimination(sig: TypedFOLEncodingSignat
 }
 
 protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
-  import leo.datastructures.Term.{mkAtom, mkTypeApp}
+  import leo.datastructures.Term.local._
   import leo.datastructures.Type.{∀, mkVarType}
   import sig.{hApp,funTy}
 
@@ -151,7 +152,8 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     mkAtom(id)(sig)
   }
   final def B(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
-    hApp(mkTypeApp(combinator_B, Seq(ty1, ty2, ty3)), Seq(arg1,arg2))
+    val tyAppliedB: Term = mkTypeApp(combinator_B, Seq(ty1, ty2, ty3))
+    hApp(tyAppliedB, Seq(arg1,arg2))
   }
 
   ////////////
@@ -202,8 +204,10 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     import leo.modules.encoding.TypedFOLEncoding.foTransformType0
     import leo.datastructures.Type.ComposedType
     absBody match {
-      case Bound(`absType`, 1) => //Out.finest("[S] I")
-        I(foTransformType0(absType, true)(holSignature, sig))
+      case Bound(varTy, 1) => //Out.finest("[S] I")
+        val translatedTy = foTransformType0(absType, true)(holSignature, sig)
+        assert(varTy == translatedTy)
+        I(translatedTy)
       case _ if !free(absBody, 1) =>
         Out.finest("[S] K")
         val translatedTy = foTransformType0(absType, true)(holSignature, sig)
@@ -299,6 +303,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
             // eta or B
             if (termLastArg.isVariable && Bound.unapply(termLastArg).get._2 == 1) {
               Out.finest("eta")
+              Out.finest(s"Remaining: ${allButLastArg.lift(-1).pretty(holSignature)}")
               eliminateLambdaNew(allButLastArg.lift(-1))(holSignature)
             } else {
               Out.finest("B")
@@ -310,6 +315,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
               val x = λ(absType)(termLastArg)
               Out.finest("lambda stuf " + x.pretty(holSignature))
               val translatedTermLastArg = eliminateLambdaNew(x)(holSignature)
+              Out.finest(s"translatedTermLastArg: ${translatedTermLastArg.pretty(sig)}")
               B(translatedTy, translatedAllButLastArgDomainType, translatedAllButLastArgCoDomainType, translatedAllButLastArg, translatedTermLastArg)
             }
           } else if (!free(termLastArg,1)) {

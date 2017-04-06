@@ -39,6 +39,7 @@ trait Term extends Pretty with Prettier {
   /** `true` is the term is known to be in beta-normal form, else false.
     * @note Might return false if the term is in beta normal form but .betaNormalize was never invoked in it. */
   def isBetaNormal: Boolean
+  def isEtaNormal: Boolean
 
   type Sharing = Boolean
   def sharing: Sharing
@@ -98,6 +99,8 @@ trait Term extends Pretty with Prettier {
     * I.e. each free variable `i` (NOT meta-vars!) occurring within `this` is replaced by `subst(i)`,
     * The term is then beta normalized */
   def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
+  def termSubst(termSubst: Subst): Term = closure(termSubst, Subst.id).betaNormalize
+  def typeSubst(typeSubst: Subst): Term = closure(Subst.id, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
   /** Apply a shifting substitution by `by`, i.e. return this.substitute(Subst.shift(by)).betanormalize*/
