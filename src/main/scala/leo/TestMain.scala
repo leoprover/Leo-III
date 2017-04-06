@@ -1,12 +1,9 @@
 package leo
 
-import leo.datastructures.ClauseProxy
 import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard}
-import leo.datastructures.blackboard.impl.{AuctionBlackboard, FormulaDataStore, SZSDataStore}
-import leo.datastructures.blackboard.scheduler.{Scheduler, SchedulerImpl}
-import leo.datastructures.context.{BetaSplit, Context}
-import leo.modules.agent.relevance_filter.BlackboardPreFilterSet
-import leo.modules.relevance_filter.{PreFilterSet, SeqFilter}
+import leo.datastructures.blackboard.impl.{SZSDataStore}
+import leo.datastructures.blackboard.scheduler.{Scheduler}
+import leo.datastructures.context.{Context}
 import leo.modules._
 import leo.modules.external.ExternalCall
 import leo.modules.output._
@@ -15,12 +12,15 @@ import leo.modules.Utility._
 import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
 import leo.modules.parsers.CLParameterParser
+import leo.modules.proof_object.CompressProof
 
 
 /**
   * Created by mwisnie on 3/7/16.
   */
 object TestMain {
+  private var hook: scala.sys.ShutdownHookThread = _
+
   def main(args : Array[String]): Unit ={
     try {
       Configuration.init(new CLParameterParser(args))
@@ -103,6 +103,10 @@ object TestMain {
       Out.comment(s"Configuration: $config")
 
 
+      try {
+        hook = sys.addShutdownHook({
+          Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
+        })
 
 
       // Datastrucutres
@@ -115,44 +119,67 @@ object TestMain {
       val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent)(blackboard, scheduler)
 
 
-      blackboard.addDS(state)
-      blackboard.addDS(uniStore)
+        blackboard.addDS(state)
+        blackboard.addDS(uniStore)
 
-      printPhase(iPhase)
-      if(!iPhase.execute()){
-        scheduler.killAll()
+        printPhase(iPhase)
+        if (!iPhase.execute()) {
+          scheduler.killAll()
           TimeOutProcess.kill()
           unexpectedEnd(System.currentTimeMillis() - startTime)
           return
-      }
+        }
 
-      TimeOutProcess.kill()
-      val endTime = System.currentTimeMillis()
-      val time = System.currentTimeMillis() - startTime
-      scheduler.killAll()
+        TimeOutProcess.kill()
+        val endTime = System.currentTimeMillis()
+        val time = System.currentTimeMillis() - startTime
+        scheduler.killAll()
 
-//      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
-      val szsStatus  = state.state.szsStatus
-      Out.output("")
-      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+  //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+        val szsStatus  = state.state.szsStatus
+        Out.output("")
+        Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 
-//      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
-      Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
-      Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
-      Out.comment(s"No. of forward subsumed clauses: ${state.state.noForwardSubsumedCl}")
-      Out.comment(s"No. of backward subsumed clauses: ${state.state.noBackwardSubsumedCl}")
-      Out.comment(s"No. of subsumed descendants deleted: ${state.state.noDescendantsDeleted}")
-      Out.comment(s"No. of rewrite rules in store: ${state.state.rewriteRules.size}")
-      Out.comment(s"No. of other units in store: ${state.state.nonRewriteUnits.size}")
-      Out.comment(s"No. of choice functions detected: ${state.state.choiceFunctionCount}")
-      Out.comment(s"No. of choice instantiations: ${state.state.choiceInstantiations}")
-      val proof = state.state.derivationClause
-      if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
-        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(Utility.userConstantsForProof(sig))
-        Out.output(Utility.proofToTPTP(Utility.proofOf(proof.get)))
-        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+  //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+        Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
+        Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
+        Out.comment(s"No. of forward subsumed clauses: ${state.state.noForwardSubsumedCl}")
+        Out.comment(s"No. of backward subsumed clauses: ${state.state.noBackwardSubsumedCl}")
+        Out.comment(s"No. of subsumed descendants deleted: ${state.state.noDescendantsDeleted}")
+        Out.comment(s"No. of rewrite rules in store: ${state.state.rewriteRules.size}")
+        Out.comment(s"No. of other units in store: ${state.state.nonRewriteUnits.size}")
+        Out.comment(s"No. of choice functions detected: ${state.state.choiceFunctionCount}")
+        Out.comment(s"No. of choice instantiations: ${state.state.choiceInstantiations}")
+        val proof = state.state.derivationClause
+        if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
+          Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+          //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+          Out.output(Utility.userConstantsForProof(sig))
+          Out.output(Utility.proofToTPTP(Utility.compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
+          Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+        }
+      } catch {
+        case e:SZSException =>
+          Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+          Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.toString))
+          Out.debug(e.debugMessage)
+          Out.trace(stackTraceAsString(e))
+          if (e.getCause != null) {
+            Out.trace("Caused by: " + e.getCause.getMessage)
+            Out.trace("at: " + e.getCause.getStackTrace.toString)
+          }
+          scheduler.killAll()
+        case e : Exception =>
+          Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+          Out.trace(stackTraceAsString(e))
+          if (e.getCause != null) {
+            Out.trace("Caused by: " + e.getCause.getMessage)
+            Out.trace("at: " + e.getCause.getStackTrace.toString)
+          }
+          scheduler.killAll()
+      } finally {
+        hook.remove()
       }
     }
   }

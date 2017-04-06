@@ -7,7 +7,9 @@ import leo.datastructures.ClauseAnnotation._
 import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.datastructures._
 import leo.datastructures.context.Context
+import leo.modules.calculus.CalculusRule
 import leo.modules.output._
+import leo.modules.proof_object.CompressProof
 
 import scala.annotation.elidable
 import scala.collection.immutable.HashSet
@@ -113,6 +115,29 @@ object Utility {
   /////////////////////////////////////////////////////////////
   type Proof = Seq[ClauseProxy]
 
+  final def compressedProofOf(important : Set[CalculusRule])(cl: ClauseProxy) : Proof = {
+    var sf : Set[ClauseProxy] = new HashSet[ClauseProxy]
+    var proof : Proof = Vector()
+    def compress(cl : ClauseProxy) : ClauseProxy = CompressProof.compressAnnotation(cl.asInstanceOf[AnnotatedClause])(CompressProof.lastImportantStep(important))
+
+    def derivationProof(f: ClauseProxy): Unit = {
+      if (!sf.exists(c => c.id == f.id)) {
+        sf = sf + f
+        f.annotation.parents.foreach(f => derivationProof(compress(f)))
+        proof = f +: proof
+        //        f.annotation match {
+        //          case InferredFrom(_, fs) =>
+        //            fs.foreach(f => derivationProof(f._1))
+        //              proof = f +: proof
+        //          case _ =>
+        //              proof = f +: proof
+        //        }
+      }
+    }
+    derivationProof(compress(cl))
+    proof.reverse
+  }
+
   final def proofOf(cl: ClauseProxy): Proof = {
     var sf : Set[ClauseProxy] = new HashSet[ClauseProxy]
     var proof : Proof = Vector()
@@ -120,13 +145,15 @@ object Utility {
     def derivationProof(f: ClauseProxy): Unit = {
       if (!sf.exists(c => c.id == f.id)) {
         sf = sf + f
-        f.annotation match {
-          case InferredFrom(_, fs) =>
-            fs.foreach(f => derivationProof(f._1))
-              proof = f +: proof
-          case _ =>
-              proof = f +: proof
-        }
+        f.annotation.parents.foreach(f => derivationProof(f))
+        proof = f +: proof
+//        f.annotation match {
+//          case InferredFrom(_, fs) =>
+//            fs.foreach(f => derivationProof(f._1))
+//              proof = f +: proof
+//          case _ =>
+//              proof = f +: proof
+//        }
       }
     }
     derivationProof(cl)

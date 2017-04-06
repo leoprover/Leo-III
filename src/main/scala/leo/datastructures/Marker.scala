@@ -201,7 +201,7 @@ object ClauseAnnotation {
         sb.append(",[status(")
         sb.append(rule.inferenceStatus.pretty.toLowerCase)
         sb.append(")]")
-        if(info != null) sb.append(s":[${info.apply}]")
+        if(info != null && info.apply() != "") remainingBrackets.insert(0, s":[${info.apply}]")
         sb.append(", ")
       }
       sb.append(annotation.pretty)
