@@ -57,6 +57,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
   final val importantInferences : Set[CalculusRule] = Set(Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
+    if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
     // Selecting the next Clause from unprocessed
     if(unification.getOpenUni.nonEmpty) {
       return None
@@ -96,7 +97,6 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
 //    sb.append(s"Select next Unprocessed:\n  >  ${CompressProof.compressAnnotation(select)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)}\n")
 //    sb.append("-----------------------------------------------------\n\n")
-    if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
 //    leo.Out.output(sb.toString())
     // The normal loop from seqpproc
     commonFilter(select)

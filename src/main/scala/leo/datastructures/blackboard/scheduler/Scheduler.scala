@@ -134,7 +134,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     blackboard.filterAll(a => a.filter(DoneEvent))
     curExec.clear()
     AgentWork.clear()
-    ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
+    ExecTask.put(EmptyDelta,ExitTask, null)   // For the writer to exit, if he is waiting for a result
     sT.interrupt()
     s.notifyAll()
     AgentWork.synchronized(AgentWork.notifyAll())
@@ -426,7 +426,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       // 3. Calculate compressed Delta
 
       val it = results.iterator
-      var cd : Delta = new EmptyDelta
+      var cd : Delta = EmptyDelta
       while(it.hasNext){
         val (d, _ , _) = it.next()
         cd = cd.merge(d)
@@ -539,11 +539,6 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
   }
 
   /**
-   * Marker for the writer to end itself
-   */
-  private object ExitResult extends EmptyDelta {}
-
-  /**
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
@@ -553,7 +548,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     override def name: String = "ExitTask"
 
     override def run : Delta = {
-      new EmptyDelta
+      EmptyDelta
     }
 
     override def pretty: String = "Exit Task"

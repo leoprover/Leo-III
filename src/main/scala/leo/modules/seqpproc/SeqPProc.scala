@@ -605,7 +605,7 @@ object SeqPProc {
     }
   }
 
-  private def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
+  def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
     InferredFrom(new leo.modules.calculus.CalculusRule {
       final val name: String = prover
       final val inferenceStatus = SZS_Theorem

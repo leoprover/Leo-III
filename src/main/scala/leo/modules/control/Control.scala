@@ -1738,7 +1738,7 @@ package  externalProverControl {
         } else None
       }
     }
-    private final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
+    final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
       state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
     }
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
@@ -1762,7 +1762,7 @@ package  externalProverControl {
         }
       }
     }
-    private final def callProver(prover: TptpProver[AnnotatedClause],
+    final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
       import leo.modules.encoding._
