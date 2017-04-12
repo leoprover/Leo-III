@@ -1,9 +1,11 @@
 package leo
 
+import java.nio.file.Files
+
 import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard}
-import leo.datastructures.blackboard.impl.{SZSDataStore}
-import leo.datastructures.blackboard.scheduler.{Scheduler}
-import leo.datastructures.context.{Context}
+import leo.datastructures.blackboard.impl.SZSDataStore
+import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.context.Context
 import leo.modules._
 import leo.modules.external.ExternalCall
 import leo.modules.output._
@@ -34,6 +36,8 @@ object TestMain {
       Configuration.help()
       return
     }
+    val leodir = Configuration.LEODIR
+    if (!Files.exists(leodir)) Files.createDirectory(leodir)
 
     val startTime : Long = System.currentTimeMillis()
 
@@ -115,8 +119,9 @@ object TestMain {
       val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
       val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop, blackboard)
       val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
+      val extAgent = new ExternalAgent(state, sig)
 
-      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent)(blackboard, scheduler)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
 
 
         blackboard.addDS(state)
@@ -141,6 +146,7 @@ object TestMain {
         Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 
   //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+        Out.comment(s"No. of loop iterations: ${state.state.noProofLoops}")
         Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
         Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
         Out.comment(s"No. of forward subsumed clauses: ${state.state.noForwardSubsumedCl}")

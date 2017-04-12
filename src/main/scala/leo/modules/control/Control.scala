@@ -1762,6 +1762,24 @@ package  externalProverControl {
         }
       }
     }
+
+    final def submitSingleProver(prover : TptpProver[AnnotatedClause],
+                                 clauses: Set[AnnotatedClause],
+                                 state: State[AnnotatedClause]) : Unit = {
+      leo.Out.debug(s"[ExtProver]: Staring job ${prover.name}")
+      lastCall = state.noProofLoops
+      if (openCalls.isDefinedAt(prover)) {
+        if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+          val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+          if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+          leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+        }
+      } else {
+        val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+        if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
+        leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+      }
+    }
     final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {

@@ -130,8 +130,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       MyThreadFactory.killAll()
     }
     synchronized(freeThreads foreach {t => t.interrupt(); t.stop()})
-    AgentWork.executingAgents() foreach(_.kill())
-    blackboard.filterAll(a => a.filter(DoneEvent))
+    blackboard.filterAll{a => a.filter(DoneEvent)}
     curExec.clear()
     AgentWork.clear()
     ExecTask.put(EmptyDelta,ExitTask, null)   // For the writer to exit, if he is waiting for a result

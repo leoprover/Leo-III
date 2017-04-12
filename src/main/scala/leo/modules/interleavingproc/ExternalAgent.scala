@@ -4,9 +4,7 @@ import leo.Configuration
 import leo.agents.{AbstractAgent, Agent, Task}
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard._
-import leo.modules.agent.relevance_filter.AnnotatedFormulaType
 import leo.modules.control.externalProverControl.ExtProverControl
-import leo.modules.control.externalProverControl.ExtProverControl.lastCall
 import leo.modules.external.{Future, TptpProver, TptpResult}
 import leo.modules.output.SZS_Unsatisfiable
 import leo.modules.seqpproc.SeqPProc.extCallInference
@@ -57,7 +55,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
   class ExtCallTask(ext : TptpProver[AnnotatedClause], problem : Set[AnnotatedClause]) extends Task {
     override val name: String = "extCall"
     override def run: Delta = {
-      ExtProverControl.callProver(ext, problem, Configuration.ATP_TIMEOUT(ext.name), state.state, sig)
+      ExtProverControl.submitSingleProver(ext, problem, state.state)
       EmptyDelta
     }
     override val readSet: Map[DataType[Any], Set[Any]] = Map()
@@ -69,6 +67,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
 
   class ExtResultTask(res : TptpResult[AnnotatedClause]) extends Task {
     override val name: String = "extResult"
+    println("Create")
     override def run: Delta = {
       val d = Result()
       val szs = res.szsStatus // TODO Check again here for correct szs status?

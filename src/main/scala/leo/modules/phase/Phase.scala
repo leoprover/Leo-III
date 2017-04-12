@@ -99,6 +99,7 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) exten
 
   override def end() : Unit = {
     super.end()
+    agents foreach {a => a.kill()}
     blackboard.unregisterAgent(waitAgent)
     waitAgent = null
     waitAgent = null
@@ -127,6 +128,7 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) exten
 
     if(!waitTillEnd()) {
       Out.info(s"$name will be terminated and program is quitting.")
+      agents foreach {a => a.kill()}
       return false
     }
     // Ending all agents and clear the scheduler
