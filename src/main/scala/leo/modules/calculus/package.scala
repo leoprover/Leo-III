@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Type, Term, Kind, Clause, Signature}
+import leo.datastructures.{Type, Term, Kind, Clause, Signature, Subst}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -11,6 +11,9 @@ import leo.modules.output.SuccessSZS
   * @since 20.05.15
   */
 package object calculus {
+
+  type TypeSubst = Subst
+  type TermSubst = Subst
 
   /**
     * Base type for calculus rules wrapped in objects/classes.
@@ -119,8 +122,14 @@ package object calculus {
 
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
     val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy))))
+    assert(skFunc.ty.typeVars.isEmpty,
+      s"Fresh SK symbol has free type vars: ${skFunc.pretty(sig)}, type: ${skFunc.ty.pretty(sig)}, free ty vars: ${skFunc.ty.typeVars.toString}\n" +
+        s"% goalTy: ${goalTy.pretty(sig)}, fvs: ${fvs.toString()}, tyFvs: ${tyFvs.toString()}")
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
-    Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
+    val result = Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
+    assert(Term.wellTyped(result), s"skTerm Result not well-typed: ${result.pretty(sig)}\n" +
+      s"% skFunc: ${skFunc.pretty}, type: ${skFunc.ty.pretty(sig)}")
+    result
   }
   final def skType(tyFvs: Seq[Int])(implicit sig: Signature): Type = {
     val freshTypeOp: Signature#Key = sig.freshSkolemTypeConst(mkPolyKindAbstraction(tyFvs.size))
@@ -238,5 +247,10 @@ package object calculus {
       case (ComposedType(id1, args1), ComposedType(id2, args2)) if id1 == id2 => args1.zip(args2).forall(ts => mayMatch(ts._1, ts._2))
       case _ => false
     }
+  }
+
+  final def uniqueFVTypes(cl: Clause): Boolean = {
+    val fvs = cl.implicitlyBound
+    fvs.size == fvs.toSet.size
   }
 }

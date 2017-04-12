@@ -52,7 +52,7 @@ class ExternalProverTest extends LeoTestSuite {
     implicit val s = getFreshSignature
 
     val example = createSmallProblem
-    val trans = p.translateProblem(example)
+    val trans = p.translateProblem(example.map(_.cl), Capabilities.THF)
 
     println(s"Translate problem : \n${trans.mkString("\n")}")
   }
@@ -62,7 +62,7 @@ class ExternalProverTest extends LeoTestSuite {
     implicit val s = getFreshSignature
 
     val example = createSmallProblem
-    val fres = p.call(example, 1000)
+    val fres = p.call(example, example.map(_.cl), s, Capabilities.THF, 1000)
 
     // Test the non-blocking waiting for the result.
     while(!fres.isCompleted) {
@@ -84,7 +84,7 @@ class ExternalProverTest extends LeoTestSuite {
     implicit val s = getFreshSignature
 
     val example = createSmallCSAProblem
-    val fres = p.call(example, 1000)
+    val fres = p.call(example, example.map(_.cl), s, Capabilities.THF, 1000)
 
     // Test the non-blocking waiting for the result.
     while(!fres.isCompleted) {

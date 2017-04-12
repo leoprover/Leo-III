@@ -373,8 +373,9 @@ thf_subtype : thf_atom '<<' thf_atom;
 //                            <thf_xprod_type> <star> <thf_unitary_type>
 // <thf_union_type>       ::= <thf_unitary_type> <plus> <thf_unitary_type> |
 //                            <thf_union_type> <plus> <thf_unitary_type>
-thf_top_level_type : thf_unitary_type | thf_mapping_type;
+thf_top_level_type : thf_unitary_type | thf_mapping_type | thf_apply_type;
 thf_unitary_type : thf_unitary_formula;
+thf_apply_type: thf_apply_formula;
 thf_binary_type : thf_mapping_type | thf_xprod_type | thf_union_type;
 thf_mapping_type : thf_unitary_type '>' thf_unitary_type
                  | thf_unitary_type '>' thf_mapping_type;

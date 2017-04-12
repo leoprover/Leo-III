@@ -18,6 +18,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
+  def isPolymorphic: Boolean
+  def setPolymorphic: Unit
+
   def defConjSymbols(negConj: T): Unit
   def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
@@ -51,6 +54,8 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
 
 trait StateStatistics {
   // Statistics
+  def noProofLoops: Long
+  def incProofLoopCount(): Unit
   def noProcessedCl: Int
   def incTrivialCl(): Unit
   def noTrivialCl: Int
@@ -100,6 +105,10 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+
+  private var poly: Boolean = false
+  final def isPolymorphic: Boolean = poly
+  final def setPolymorphic: Unit = {poly = true}
 
   final def defConjSymbols(negConj: T): Unit = {
     assert(Clause.unit(negConj.cl))
@@ -180,7 +189,8 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   }
   // Statistics
   private var generatedCount: Int = 0
-  private var rewriteCount: Int = 0
+  private var loopCount: Int = 0
+  private var rewriteCount: Long = 0L
   private var trivialCount: Int = 0
   private var forwardSubsumedCount: Int = 0
   private var backwardSubsumedCount: Int = 0
@@ -189,6 +199,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var paramodCount: Int = 0
   private var choiceInstantiations0: Int = 0
 
+  final def noProofLoops: Long = loopCount
   final def noProcessedCl: Int = processed.size
   final def noGeneratedCl: Int = generatedCount
   final def noTrivialCl: Int = trivialCount
@@ -199,6 +210,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def noDescendantsDeleted: Int = descendantsDeleted
   final def choiceInstantiations: Int = choiceInstantiations0
 
+  final def incProofLoopCount(): Unit = {loopCount += 1}
   final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
   final def incTrivialCl(): Unit = {trivialCount += 1}
   final def incParamod(by: Int): Unit = {paramodCount += by}

@@ -187,6 +187,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       }
 
       // Blocks until a task is available
+      this.synchronized{while (curExec.size > numberOfThreads) this.wait()}
       val tasks = blackboard.getTask
       tasks foreach {case (a, _) => AgentWork.inc(a)}
 //      println(tasks)
@@ -194,7 +195,6 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         for ((a, t) <- tasks) {
           this.synchronized {
             curExec.add(t)
-            while (curExec.size > numberOfThreads) this.wait()
             if (endFlag) return // Savely exit
             if (pauseFlag) {
               Out.trace("Scheduler paused.")
@@ -229,15 +229,21 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     override def run(): Unit = while(!endFlag) {
       val start : Long = System.currentTimeMillis()
       var end = start
-      while((end - start) < MAX_WAITING_TIME && (AgentWork.overallWork.toDouble / maxThreads > workLoad || curExec.size == 0)) {
-        val rest = Math.max(MAX_WAITING_TIME - end + start, 0)
-//        println(s"------\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${rest} ms")
-        AgentWork.synchronized(AgentWork.wait(rest))
-        if(endFlag) return
-        end = System.currentTimeMillis()
+      AgentWork.synchronized {
+        while ((end - start) < MAX_WAITING_TIME && (AgentWork.overallWork.toDouble / maxThreads > workLoad || curExec.size == 0)) {
+          val rest = Math.max(MAX_WAITING_TIME - end + start, 0)
+//          println(s"------\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${rest} ms")
+//          val millis1 = System.currentTimeMillis()
+//          println(s"+++++++++++ Waiting for Results... ${(millis1 / 60000) % 60} min ${(millis1 / 1000) % 60} s ${millis1 % 1000} ms")
+          AgentWork.wait(rest)
+          if (endFlag) return
+          end = System.currentTimeMillis()
+        }
       }
 //      println(s"--- OUT ---\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${Math.max(MAX_WAITING_TIME - end + start, 0)} ms")
       val (result,task, agent) = ExecTask.get()
+//      val millis1 = System.currentTimeMillis()
+//      println(s"+++++++++++ Result start [${agent.name}] writing: ${(millis1 / 60000) % 60} min ${(millis1 / 1000)%60} s ${millis1 % 1000} ms")
       if(endFlag) return              // Savely exit
       var doneSmth = false
 //      println(result)
@@ -272,6 +278,8 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
             agent.taskFinished(task)
         }
 
+//        val millis = System.currentTimeMillis()
+//        println(s"+++++++++++ Result end [${agent.name}] writing: ${(millis / 60000) % 60} min ${(millis / 1000)%60} s ${millis % 1000} ms")
 
 
         try {
@@ -313,9 +321,8 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
 //        println(s"--- ${a.name} ---\n  Start : ${t.pretty}\n-------")
         val res = t.run
         ExecTask.put(res.immutable, t, a)
-        AgentWork.dec(a)
+
 //        println(s"--- ${a.name} ---\n  Done : ${t.pretty}\n-------")
-        AgentWork.synchronized(AgentWork.notifyAll()) // Signals the writer over one finished Task
       } catch {
         case e : InterruptedException => {
           throw e
@@ -338,6 +345,10 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           }
           blackboard.filterAll(_.filter(DoneEvent))
           scheduler.killAll()
+      }
+      AgentWork.synchronized {
+        AgentWork.dec(a)
+        AgentWork.notifyAll() // Signals the writer over one finished Task
       }
     }
   }
@@ -405,7 +416,6 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       // 1. When to compress?
 //      println("Before compress: "+results)
       if(results.isEmpty || results.size < threshHold) return
-
       // 2a. What to Compress
       // TODO Only take maxMerge tasks
 
@@ -504,18 +514,16 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
      */
     def inc(a : Agent) : Int = synchronized{
       work += 1
-//      println(s"WORK : $work !!!!")
       agentWork.get(a) match {
       case Some(v)  => agentWork.update(a,v+1); return v+1
-      case None     => agentWork.put(a,1); return 1
+      case None     => agentWork.put(a,1);   return 1
     }}
 
     def dec(a : Agent) : Int = synchronized{
       work -= 1
-//      println(s"WORK : $work !!!!")
       agentWork.get(a) match {
-      case Some(v)  if v > 2  => agentWork.update(a,v-1); return v-1
-      case Some(v)  if v == 1 => agentWork.remove(a); return 0
+      case Some(v)  if v > 1  => agentWork.update(a,v-1); return v-1
+      case Some(v)  if v == 1 => agentWork.remove(a);  return 0
       case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
     }}
 
@@ -562,7 +570,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         try {
           t.stop()
         } catch {
-          case _:Throwable => () // TODO FIX. IMPORTANT. DO NOT USE FURTHER ON
+          case _:Throwable => ()
         }
         }
     }

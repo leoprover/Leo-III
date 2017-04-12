@@ -1,6 +1,7 @@
 Jenkinsfile
 *.class
 *.log
+src/main/resources/scripts/TreeLimitedRun
 
 # sbt specific
 dist/*

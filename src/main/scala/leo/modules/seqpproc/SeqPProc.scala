@@ -4,8 +4,11 @@ import leo.Configuration
 import leo.Out
 import leo.datastructures.ClauseAnnotation.InferredFrom
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
+import leo.modules.calculus.NegateConjecture
 import leo.modules.output._
 import leo.modules.control.Control
+import leo.modules.control.externalProverControl.ExtProverControl
+import leo.modules.external.TptpResult
 import leo.modules.parsers.Input
 import leo.modules.{SZSException, SZSOutput, Utility}
 
@@ -45,7 +48,7 @@ object SeqPProc {
     import leo.modules.Utility.termToClause
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
-    var result: Seq[tptp.Commons.AnnotatedFormula] = Seq()
+    var result: Seq[tptp.Commons.AnnotatedFormula] = Vector()
     var conj: tptp.Commons.AnnotatedFormula = null
     val inputIt = input.iterator
     while (inputIt.hasNext) {
@@ -66,10 +69,7 @@ object SeqPProc {
               val translated = Input.processFormula(formula)(state.signature)
               val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
               state.setConjecture(conjectureClause)
-              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(new CalculusRule {
-                final val name: String = "neg_conjecture"
-                final val inferenceStatus = SZS_CounterTheorem
-              }, conjectureClause), ClauseAnnotation.PropSOS)
+              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(NegateConjecture, conjectureClause), ClauseAnnotation.PropSOS)
               state.setNegConjecture(negConjectureClause)
               conj = formula
             }
@@ -184,7 +184,9 @@ object SeqPProc {
         }
       }
       result = Control.acSimp(result)
-      Control.simp(result)
+      result = Control.simp(result)
+      if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic
+      result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
     result = Control.extPreprocessUnify(result)
@@ -296,6 +298,7 @@ object SeqPProc {
       /////////////////////////////////////////
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
+        state.incProofLoopCount()
         if (System.currentTimeMillis() - startTime > 1000 * Configuration.TIMEOUT) {
           loop = false
           state.setSZSStatus(SZS_Timeout)
@@ -306,17 +309,14 @@ object SeqPProc {
           val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
             val extResAnwers = extRes.get
-            // Other than THM or CSA are filter out by control
-            assert(extResAnwers.szsStatus == SZS_Theorem || extResAnwers.szsStatus == SZS_CounterSatisfiable)
-            loop = false
-            if (extResAnwers.szsStatus == SZS_Theorem) {
+            if (endgameAnswer(extResAnwers)) {
+              assert(extResAnwers.szsStatus == SZS_Unsatisfiable, "other than UNS was trapped")
+              // CounterSat cnanot happen since we do not send a conjecture
+              // Theorem ditto
+              loop = false
               val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnwers.proverName, extResAnwers.problem))
               endplay(emptyClause, state)
-            } else {
-              assert(extResAnwers.szsStatus == SZS_CounterSatisfiable)
-              state.setSZSStatus(SZS_CounterSatisfiable)
             }
-
           } else {
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
@@ -363,7 +363,42 @@ object SeqPProc {
       }
 
       /////////////////////////////////////////
-      // Main loop terminated, print result
+      // Main loop terminated, check if any prover result is pending
+      /////////////////////////////////////////
+
+      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT) {
+        if (!ExtProverControl.openCallsExist) {
+          Control.submit(state.processed, state)
+          Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
+        } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
+        var wait = true
+        while (wait && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+          Out.finest(s"[ExtProver] Check for answer")
+          val extRes = Control.checkExternalResults(state)
+          if (extRes.isDefined) {
+            Out.debug(s"[ExtProver] Got answer! ${extRes.get.szsStatus.pretty}")
+            if (extRes.get.szsStatus == SZS_Unsatisfiable) {
+              wait = false
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes.get.proverName, extRes.get.problem))
+              endplay(emptyClause, state)
+            } else if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+              Out.info(s"[ExtProver] Still waiting ...")
+              Thread.sleep(5000)
+            }
+          } else {
+            if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+              Out.info(s"[ExtProver] Still waiting ...")
+              Thread.sleep(5000)
+            }
+          }
+
+        }
+        if (wait) Out.info(s"No helpful answer from external systems within timeout. Terminating ...")
+        else Out.info(s"Helpful answer from external systems within timeout. Terminating ...")
+      }
+
+      /////////////////////////////////////////
+      // All finished, print result
       /////////////////////////////////////////
 
       val time = System.currentTimeMillis() - startTime
@@ -454,10 +489,10 @@ object SeqPProc {
       state.removeProcessed(backSubsumedClauses)
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
-      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
-      val descendants = Control.descendants(backSubsumedClauses)
-      state.incDescendantsDeleted(descendants.size)
-      state.removeUnprocessed(descendants)
+//      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
+//      val descendants = Control.descendants(backSubsumedClauses)
+//      state.incDescendantsDeleted(descendants.size)
+//      state.removeUnprocessed(descendants)
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
@@ -526,7 +561,7 @@ object SeqPProc {
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
-    Control.updateDescendants(cur, newclauses)
+//    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause
@@ -551,6 +586,13 @@ object SeqPProc {
     if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
     else state.setSZSStatus(SZS_Theorem)
     state.setDerivationClause(emptyClause)
+  }
+
+  final private def endgameAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+    result.szsStatus match {
+      case SZS_CounterSatisfiable | SZS_Theorem | SZS_Unsatisfiable => true
+      case _ => false
+    }
   }
 
   @inline final def prematureCancel(counter: Int): Boolean = {

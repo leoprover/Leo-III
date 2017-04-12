@@ -1,5 +1,7 @@
 package leo
 
+import java.nio.file.Files
+
 import leo.modules._
 import leo.modules.Utility._
 import leo.modules.output._
@@ -41,6 +43,8 @@ object Main {
         Configuration.help()
         return
       }
+      val leodir = Configuration.LEODIR
+      if (!Files.exists(leodir)) Files.createDirectory(leodir)
 
       val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
       val config = {

@@ -123,9 +123,10 @@ object Literal {
     * Note that the resulting literal is only
     * equational if both terms t1 and t2 and not equivalent to $true/$false. */
   @inline final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = {
-    assert(Term.wellTyped(t1))
-    assert(Term.wellTyped(t2))
-    assert(t1.ty == t2.ty)
+    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty(sig)}")
+    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty(sig)}")
+//    assert(t1.ty == t2.ty) //FIXME Commented out for now since this invariant is currently not given
+    // but thats not that bad... believe me :)
     LitImpl.mkOrdered(t1,t2,pol)(sig)
   }
   /** Create new (non-equational) literal with equation

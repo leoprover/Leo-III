@@ -27,7 +27,7 @@ object DefExpSimp extends CalculusRule {
 
   final def apply(cl: Clause)(implicit sig: Signature): Clause = {
     val litsIt = cl.lits.iterator
-    var newLits: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Vector()
     while (litsIt.hasNext) {
       val lit = litsIt.next()
       if (lit.equational) {
@@ -244,7 +244,7 @@ object FullCNF extends CalculusRule {
   }
 
   final def apply(vargen: leo.modules.calculus.FreshVarGen, l : Seq[Literal])(implicit sig: Signature): (Seq[Seq[Literal]]) = {
-    var acc : Seq[Seq[Literal]] = Seq(Seq())
+    var acc : Seq[Seq[Literal]] = Vector(Vector())
     val it : Iterator[Literal] = l.iterator
     while(it.hasNext){
       val nl = it.next()
@@ -288,14 +288,14 @@ object FullCNF extends CalculusRule {
 
       case TyForall(a@TypeLambda(t)) if l.polarity => val ty = vargen.next(); apply0(fvs, ty +: tyFVs, vargen, Literal(Term.mkTypeApp(a, Type.mkVarType(ty)).betaNormalize.etaExpand, true))
       case TyForall(a@TypeLambda(t)) if !l.polarity => val sko = leo.modules.calculus.skType(tyFVs); apply0(fvs, tyFVs, vargen, Literal(Term.mkTypeApp(a, sko).betaNormalize.etaExpand, false))
-      case _ => Seq(Seq(l))
+      case _ => Vector(Vector(l))
     }
   } else {
-    Seq(Seq(l))
+    Vector(Vector(l))
   }
 
   private[calculus] final def multiply[A](l : Seq[Seq[A]], r : Seq[Seq[A]]) : Seq[Seq[A]] = {
-    var acc : Seq[Seq[A]] = Seq()
+    var acc : Seq[Seq[A]] = Vector()
     val itl = l.iterator
     while(itl.hasNext) {
       val llist = itl.next()
@@ -331,9 +331,9 @@ object LiftEq extends CalculusRule {
   type OtherLits = Seq[Literal]
   final def canApply(cl: Clause): (Boolean, PosLiftLits, NegLiftLits, OtherLits) = {
     var can = false
-    var posLiftLits: PosLiftLits = Seq()
-    var negLiftLits: NegLiftLits = Seq()
-    var otherLits: OtherLits = Seq()
+    var posLiftLits: PosLiftLits = Vector()
+    var negLiftLits: NegLiftLits = Vector()
+    var otherLits: OtherLits = Vector()
     val lits = cl.lits.iterator
     while (lits.hasNext) {
       val l = lits.next()
@@ -607,7 +607,6 @@ object ACSimp extends CalculusRule {
           lit
       }
     }
-
   }
 
   def apply(cl: Clause, acSymbols: Set[Signature#Key])(implicit sig: Signature): Clause = {
@@ -623,7 +622,7 @@ object Simp extends CalculusRule {
 
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
-    var newLits: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Vector()
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = apply(litIt.next())(sig)
@@ -638,19 +637,38 @@ object Simp extends CalculusRule {
     Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
 
+    val tyFVs = lits.flatMap(_.tyFV).distinct.sortWith {case (a,b) => a > b}
+    Out.finest(s"TYFVS:\n\t${tyFVs.mkString("\n\t")}")
+
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
-    if (fvs.nonEmpty) {
-      if (fvs.size != fvs.head) {
+
+    if (tyFVs.nonEmpty && tyFVs.size != tyFVs.head) {
+      Out.finest(s"Ty FV Optimization needed")
+      Out.finest(s"Old: \t${tyFVs.mkString("-")}")
+      val newTyFvs = Seq.range(tyFVs.size, 0, -1)
+      val tySubst = Subst.fromShiftingSeq(tyFVs.zip(newTyFvs))
+      Out.finest(s"New: \t${newTyFvs.mkString("-")} ... subst: ${tySubst.pretty}")
+      // Same with term variables
+      if (fvs.nonEmpty && fvs.size != fvs.head) {
         Out.finest(s"FV Optimization needed")
         Out.finest(s"Old: \t${fvs.mkString("-")}")
         // gaps in fvs
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        return newLits.map(_.substituteOrdered(subst)(sig))
+        newLits.map(_.substituteOrdered(subst.applyTypeSubst(tySubst), tySubst)(sig))
+      } else {
+        newLits.map(_.substituteOrdered(Subst.id, tySubst)(sig))
       }
-    }
-    newLits
+    } else  if (fvs.nonEmpty && fvs.size != fvs.head) {
+      Out.finest(s"FV Optimization needed")
+      Out.finest(s"Old: \t${fvs.mkString("-")}")
+      // gaps in fvs
+      val newFvs = Seq.range(fvs.size, 0, -1)
+      val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
+      Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
+      newLits.map(_.substituteOrdered(subst)(sig))
+    } else newLits
   }
 
   final def apply(cl: Clause)(implicit sig: Signature): Clause  = Clause(apply(cl.lits)(sig))
@@ -660,7 +678,7 @@ object Simp extends CalculusRule {
   }
 
   final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    var newLits: Seq[Literal] = Seq()
+    var newLits: Seq[Literal] = Vector()
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
@@ -687,59 +705,57 @@ object Simp extends CalculusRule {
   }
 
 
-  final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    assert(l.forall(a => !a.polarity))
-    val simpRes = uniLitSimp0(Seq(), l.map(lit => (lit.left, lit.right)))(sig)
-    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+  final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
+    leo.modules.Utility.myAssert(l.forall(a => !a.polarity))
+    val (subst, simpRes) = uniLitSimp0(Vector(), l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    (subst, simpResAsLits)
   }
   /** Given a unification literal `l` where `l = [a,b]^f`
     * this method returns a sequence of literals (l_i) where each l_i is a (nested)
     * argument to applications of possibly common head symbols in a and b (Decomp rule).
-    * Also, each l_i has ground type.
     */
-  final def uniLitSimp(l: Literal)(implicit sig: Signature): Seq[Literal] = {
+  final def uniLitSimp(l: Literal)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     assert(!l.polarity)
-    val simpRes = uniLitSimp0(Seq(), Seq((l.left, l.right)))(sig)
-    simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    val (subst, simpRes) = uniLitSimp0(Vector(), Vector((l.left, l.right)), Subst.id)(sig)
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    (subst, simpResAsLits)
   }
 
   @tailrec
-  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)])(sig: Signature): Seq[(Term, Term)] = {
-    if (unprocessed.isEmpty) processed
+  private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)], subst: TypeSubst)(sig: Signature): (TypeSubst, Seq[(Term, Term)]) = {
+    if (unprocessed.isEmpty) (subst, processed)
     else {
       val hd = unprocessed.head
+      leo.Out.finest(s"[UniLitSimp] Next unsolved: ${hd._1.pretty(sig)} = ${hd._2.pretty(sig)}")
       val left = hd._1; val right = hd._2
       val (leftBody, leftAbstractions) = collectLambdas(left)
       val (rightBody, rightAbstractions) = collectLambdas(right)
       assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
-      if (HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)) {
-        val (newEqs, tyEqs) = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
-        if (tyEqs.nonEmpty) {
-          // TODO: Check if we can solve typed equations without looking at all literals again
-          // (e.g. substitution of types within other terms may render them type-incorrect?
-//          // Solve all tyEqs
-//          val tyEqsIt = tyEqs.iterator
-//          var tyUniConflict = false
-//          var tyUniSubst = Subst.id
-//          while (tyEqsIt.hasNext && !tyUniConflict) {
-//            val (tyLeft, tyRight) = tyEqsIt.next()
-//            val adjustedLeft = tyLeft.substitute(tyUniSubst)
-//            val adjustedRight = tyRight.substitute(tyUniSubst)
-//            val uniResult = HuetsPreUnification.unify(adjustedLeft, adjustedRight)
-//            if (uniResult.isDefined) {
-//              tyUniSubst = tyUniSubst.comp(uniResult.get)
-//            } else {
-//              // conflict, abort processing of hd
-//              tyUniConflict = true
-//            }
-//          }
-//          if (tyUniConflict) uniLitSimp0(hd +: processed, unprocessed.tail)
-//          else {
-//            ???
-//          }
-          uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
-        } else uniLitSimp0(newEqs ++ processed, unprocessed.tail)(sig)
-      } else uniLitSimp0(hd +: processed, unprocessed.tail)(sig)
+      val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
+      if (canApplyDecomp._1) {
+        leo.Out.finest(s"[UniLitSimp] Can apply Decomp")
+        if (canApplyDecomp._2.isDefined) {
+          val tySubst = canApplyDecomp._2.get
+          if (tySubst == Subst.id) {
+            // not need to apply tySubst
+            val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+            val newUnprocessed = newEqs ++ unprocessed.tail
+            uniLitSimp0(processed, newUnprocessed, subst.comp(tySubst))(sig)
+          } else {
+            val newEqs = HuetsPreUnification.DecompRule((leftBody.typeSubst(tySubst), rightBody.typeSubst(tySubst)), leftAbstractions)
+            leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
+            val newUnprocessed = newEqs ++ unprocessed.tail.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}
+            uniLitSimp0(processed.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}, newUnprocessed, subst.comp(tySubst))(sig)
+          }
+        } else {
+          leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
+          uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
+        }
+      } else {
+        leo.Out.finest(s"[UniLitSimp] Cannot apply Decomp")
+        uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
+      }
     }
   }
 
@@ -748,9 +764,10 @@ object Simp extends CalculusRule {
   //////////////////////////////////
   def normalize(t: Term): Term = internalNormalize(t)
 
-  private def internalNormalize(formula: Term): Term = norm(formula.betaNormalize).betaNormalize
+  private def internalNormalize(formula: Term): Term = Term.insert(norm(formula.betaNormalize).betaNormalize)
 
-  import leo.datastructures.Term.{mkTermAbs, Symbol, Bound, ∙, mkBound, mkTermApp}
+  import leo.datastructures.Term.{Symbol, Bound, ∙}
+  import leo.datastructures.Term.local._
   import leo.modules.HOLSignature.<=>
   private def norm(formula : Term) : Term = formula match {
     // First normalize, then match

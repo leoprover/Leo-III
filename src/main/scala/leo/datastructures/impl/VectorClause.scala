@@ -17,7 +17,7 @@ import leo.datastructures._
     fvs.toVector.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
   }
   @inline final def maxImplicitlyBound: Int = if (implicitlyBound.isEmpty) 0 else implicitlyBound.head._1
-  @inline final def maxTypeVar = if (typeVars.isEmpty) 0 else typeVars.head
+  @inline final def maxTypeVar: Int = if (typeVars.isEmpty) 0 else typeVars.head
 
   @inline final lazy val typeVars: Seq[Int] = lits.flatMap(_.tyFV).distinct.sortWith{case (x,y) => x > y}
 
