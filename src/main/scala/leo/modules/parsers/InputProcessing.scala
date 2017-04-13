@@ -158,7 +158,6 @@ object InputProcessing {
         val processedLeft = processTHF(sig)(left, replaces)
         if (processedLeft.isLeft) {
           val processedLeft2 = processedLeft.left.get
-          leo.Out.finest(input.toString)
           import leo.datastructures.Term.{mkTermApp, mkTypeApp}
           if (processedLeft2.ty.isPolyType) {
             val processedRight = convertTHFType(sig)(right, replaces)
