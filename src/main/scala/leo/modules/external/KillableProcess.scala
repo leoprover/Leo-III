@@ -143,7 +143,6 @@ private class KillableProcessImpl(process : Process) extends KillableProcess {
         val f : Field = process.getClass().getDeclaredField("pid")
         f.setAccessible(true)
         val p = f.getInt(process)
-        println(s"PID = ${p}")
         return Some(p)
       } catch {
         case _ : Throwable => return None
