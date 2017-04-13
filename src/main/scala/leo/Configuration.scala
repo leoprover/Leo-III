@@ -52,7 +52,8 @@ object Configuration extends DefaultConfiguration {
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
       's' -> ("sos", "", "Use SOS heuristic search strategy"),
       'a' -> ("atp", "name=call", "Addition of external provers"),
-      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds.")
+      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds."),
+      'x' -> ("atp-args", "name=\"args\"", "Arguments directly passed to the external prover.")
     )
   }
 
@@ -159,8 +160,7 @@ object Configuration extends DefaultConfiguration {
         val eses = s.split("=",2)
         (eses(0), eses(1))
       }
-    }
-    else {
+    } else {
       val b = valueOf("atp")
       if(b.nonEmpty) {
         val atps = b.get
@@ -170,6 +170,26 @@ object Configuration extends DefaultConfiguration {
         }
       }
       else Seq()
+    }
+  }
+  lazy val ATP_ARGS : Map[String, String] = {
+    val a = valueOf("x")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1))
+      }.toMap.withDefault(_ => "")
+    } else {
+      val b = valueOf("atp-args")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1))
+        }
+      }.toMap.withDefault(_ => "")
+      else Map.empty.withDefault(_ => "")
     }
   }
 

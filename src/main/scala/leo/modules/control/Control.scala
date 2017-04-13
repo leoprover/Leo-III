@@ -68,7 +68,7 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
-  @inline final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 }
@@ -1700,12 +1700,13 @@ package  externalProverControl {
       }
     }
 
-    final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
-      if (state.externalProvers.isEmpty) None
+    final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {
+      if (state.externalProvers.isEmpty) Seq.empty
       else {
         val curTime = System.currentTimeMillis()
         if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL * 1000) {
           leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
+          var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
           lastCheck = curTime
           val proversIt = openCalls.keys.iterator
           while (proversIt.hasNext) {
@@ -1718,14 +1719,16 @@ package  externalProverControl {
                 leo.Out.debug(s"[ExtProver]: Job finished (${prover.name}).")
                 finished = finished + openCall
                 val result = openCall.value.get
-                leo.Out.debug(s"[ExtProver]: Result ${result.szsStatus.pretty}")
-                if (result.szsStatus == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
+                val resultSZS = result.szsStatus
+                leo.Out.debug(s"[ExtProver]: Result ${resultSZS.pretty}")
+                if (resultSZS == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
                 if (helpfulAnswer(result)) {
-                  val oldOpenCalls = openCalls(prover)
-                  val newOpenCalls = oldOpenCalls diff finished
-                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
-                  else openCalls = openCalls.updated(prover, newOpenCalls)
-                  return Some(result)
+                  results = results :+ result
+//                  val oldOpenCalls = openCalls(prover)
+//                  val newOpenCalls = oldOpenCalls diff finished
+//                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
+//                  else openCalls = openCalls.updated(prover, newOpenCalls)
+//                  return Some(result)
                 }
               }
             }
@@ -1734,8 +1737,8 @@ package  externalProverControl {
             if (newOpenCalls.isEmpty) openCalls = openCalls - prover
             else openCalls = openCalls.updated(prover, newOpenCalls)
           }
-          None
-        } else None
+          results
+        } else Seq.empty
       }
     }
     private final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
@@ -1769,8 +1772,9 @@ package  externalProverControl {
       import leo.modules.external.Capabilities._
       // Check what the provers speaks, translate only to first-order if necessary
       val proverCaps = prover.capabilities
+      val extraArgs = Seq(Configuration.ATP_ARGS(prover.name))
       if (proverCaps.contains(THF)) {
-        prover.call(problem, problem.map(_.cl), sig, THF, timeout)
+        prover.call(problem, problem.map(_.cl), sig, THF, timeout, extraArgs)
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
         val (translatedProblem, auxDefs, translatedSig) =
@@ -1778,7 +1782,7 @@ package  externalProverControl {
             Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
           else
             Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
-          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout)
+          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
       } else if (proverCaps.contains(FOF)) {
         Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
         null
