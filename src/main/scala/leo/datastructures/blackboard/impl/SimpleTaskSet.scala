@@ -168,9 +168,9 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     val sharedTypes = takeTask.lockedTypes.intersect(obsoleteTask.lockedTypes)
     if(sharedTypes.isEmpty) return false
     sharedTypes.exists { d =>
-      val w1: Set[Any] = takeTask.writeSet().getOrElse(d, Set.empty[Any])
-      val r2 : Set[Any] = obsoleteTask.readSet().getOrElse(d, Set.empty[Any])
-      val w2: Set[Any] = obsoleteTask.writeSet().getOrElse(d, Set.empty[Any])
+      val w1: Set[Any] = takeTask.writeSet.getOrElse(d, Set.empty[Any])
+      val r2 : Set[Any] = obsoleteTask.readSet.getOrElse(d, Set.empty[Any])
+      val w2: Set[Any] = obsoleteTask.writeSet.getOrElse(d, Set.empty[Any])
       (w1 & w2).nonEmpty || (w1 & r2).nonEmpty
     }
   }

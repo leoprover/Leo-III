@@ -238,7 +238,7 @@ private class TaskSelectionSet(blackboard: Blackboard, scheduler: Scheduler) {
           // 1. Get all Tasks the Agents want to bid on during the auction with their current money
           //
           var r: List[(Double, Agent, Task)] = Nil
-          while(waitForAll && scheduler.getCurrentWork > 0) {
+          while(waitForAll && scheduler.getActiveWork > 0) {
             wait()
           }
           while (r.isEmpty) {
@@ -266,7 +266,7 @@ private class TaskSelectionSet(blackboard: Blackboard, scheduler: Scheduler) {
           // Sort them by their value (Approximate best Solution by : (value) / (sqrt |WriteSet|)).
           // Value should be positive, s.t. we can square the values without changing order
           //
-          val queue: Iterator[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet().size) }.reverse.toIterator    // TODO Order in reverse directly
+          val queue: Iterator[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1+t.writeSet.size) }.reverse.toIterator    // TODO Order in reverse directly
           //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
           var taken : Map[Agent, Int] = HashMap[Agent, Int]()
 

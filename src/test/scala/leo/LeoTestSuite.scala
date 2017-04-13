@@ -13,11 +13,11 @@ abstract class LeoTestSuite extends FunSuite with BeforeAndAfter with BeforeAndA
   before {
     resetBlackBoard
     resetTermBank
-    leo.Out.setLogLevel(java.util.logging.Level.FINEST)
+    leo.Out.setLogLevel(java.util.logging.Level.FINER)
   }
 
   override def beforeAll: Unit = {
-    leo.Out.setLogLevel(java.util.logging.Level.FINEST)
+    leo.Out.setLogLevel(java.util.logging.Level.FINER)
   }
 
 }
