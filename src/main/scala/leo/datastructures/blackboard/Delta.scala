@@ -139,7 +139,7 @@ class MutableDelta extends Delta {
    * @param d is the data itself
    */
   def insert[T](t : DataType[T])(d : T): MutableDelta = {
-    insertM.put(t, d +: insertM.getOrElse(t, Nil))
+    insertM.put(t, insertM.getOrElse(t, Vector()) :+ d)
     this
   }
 
@@ -152,7 +152,7 @@ class MutableDelta extends Delta {
    * @param d2 is the new data
    */
   def update[T](t : DataType[T])(d1 : T)(d2 : T): MutableDelta = {
-    updateM.put(t, (d1,d2) +: updateM.getOrElse(t, Nil))
+    updateM.put(t, updateM.getOrElse(t, Vector()):+ (d1,d2))
     this
   }
 
@@ -163,7 +163,7 @@ class MutableDelta extends Delta {
    * @param d is the data itself.
    */
   def remove[T](t : DataType[T])(d : T): MutableDelta = {
-    removeM.put(t, d +: removeM.getOrElse(t, Nil))
+    removeM.put(t, removeM.getOrElse(t, Vector()) :+ d)
     this
   }
 
@@ -174,7 +174,7 @@ class MutableDelta extends Delta {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  def inserts[T](t : DataType[T]) : Seq[T] = insertM.getOrElse(t, Nil).map(x => t.convert(x))
+  def inserts[T](t : DataType[T]) : Seq[T] = insertM.getOrElse(t, Vector()).map(x => t.convert(x))
 
   /**
    *
@@ -183,7 +183,7 @@ class MutableDelta extends Delta {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  def updates[T](t : DataType[T]) : Seq[(T, T)] = updateM.getOrElse(t,Nil).map{ case (x,y) => (t.convert(x), t.convert(y))}
+  def updates[T](t : DataType[T]) : Seq[(T, T)] = updateM.getOrElse(t,Vector()).map{ case (x,y) => (t.convert(x), t.convert(y))}
 
   /**
    *
@@ -192,7 +192,7 @@ class MutableDelta extends Delta {
    * @param t is the requested type.
    * @return all inserted data of type t.
    */
-  def removes[T](t : DataType[T]) : Seq[T] = removeM.getOrElse(t,Nil).map(x => t.convert(x))
+  def removes[T](t : DataType[T]) : Seq[T] = removeM.getOrElse(t,Vector()).map(x => t.convert(x))
 
   /**
    * Returns a sequence of all stored datatypes by this result.
@@ -213,11 +213,11 @@ class MutableDelta extends Delta {
     while(dtypes.nonEmpty){
       val dty = dtypes.next()
       val dins = d.inserts(dty)
-      insertM.put(dty, insertM.getOrElse(dty, Seq[Any]()) ++ dins)
+      insertM.put(dty, insertM.getOrElse(dty, Vector()) ++ dins)
       val dup = d.updates(dty)
-      updateM.put(dty, updateM.getOrElse(dty, Seq[(Any,Any)]()) ++ dup)
+      updateM.put(dty, updateM.getOrElse(dty, Vector()) ++ dup)
       val drem = d.removes(dty)
-      removeM.put(dty, removeM.getOrElse(dty, Seq[Any]()) ++ drem)
+      removeM.put(dty, removeM.getOrElse(dty, Vector()) ++ drem)
     }
     this
   }

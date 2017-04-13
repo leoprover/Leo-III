@@ -1,8 +1,8 @@
 package leo.modules.proof_object
 
 import leo.datastructures.ClauseAnnotation.{CompressedRule, InferredFrom}
-import leo.datastructures.{AnnotatedClause, ClauseAnnotation, ClauseProxy, Signature}
-import leo.modules.calculus.CalculusRule
+import leo.datastructures._
+import leo.modules.calculus._
 import leo.modules.output.{Output, SuccessSZS}
 
 /**
@@ -14,6 +14,8 @@ import leo.modules.output.{Output, SuccessSZS}
   * @since 28/2/2017
   */
 object CompressProof {
+
+  final val stdImportantInferences : Set[CalculusRule] = Set(Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   /**
     *
@@ -34,7 +36,7 @@ object CompressProof {
           assert(cws.nonEmpty, "An empty inferred from occured")
           // If it is branching we cannot compress with this method
           // or we reached an important rule
-          if(cws.size > 1 || important.contains(rule)) {
+          if(cws.size > 1 || important.contains(rule) || cws.head._1.role == Role_NegConjecture) {
             return CompressedRule(pickedUpRules.reverse, anno)
           } else {
             // Otherwise compress further

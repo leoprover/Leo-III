@@ -33,6 +33,9 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
   @inline private final val forwardSubsumed = true
   @inline private final val notForwardSubsumed = false
 
+  private lazy val parUni = !Configuration.isSet("nopar")
+//  private var lastIt : Long = Long.MaxValue
+
   implicit val signature : Signature = sig
 
   override def terminated : Boolean = synchronized(terminatedFlag)
@@ -51,36 +54,39 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
   //TODO Remove after merge with alex
   private val movedToProcessed : mutable.Set[Long] = new mutable.HashSet[Long]
-  final val importantInferences : Set[CalculusRule] = Set(PatternUni, PreUni, Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
+  final val importantInferences : Set[CalculusRule] = Set(Choice, PrimSubst, OrderedEqFac, OrderedParamod, NegateConjecture)
 
   override def canApply: Option[StateView[InterleavingLoop.A]] = {
     // Selecting the next Clause from unprocessed
     if(unification.getOpenUni.nonEmpty) {
       return None
     }
-    val sb = new StringBuilder("\n")
+    val millis = System.currentTimeMillis()
+//    val sb = new StringBuilder("\n")
     if(actRound > maxRound && maxRound > 0) {
-      sb.append("-----------------------------------------------------\n")
-      sb.append("Finished Rounds\n")
-      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
-        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
-        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-      sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
-        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-      sb.append("-----------------------------------------------------\n")
-      leo.Out.debug(sb.toString())
+//      sb.append(s"-------------------${Math.max(0, millis-lastIt)} ms----------------------------------\n")
+//      sb.append("Finished Rounds\n")
+//      sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
+//        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+////      sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+////        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+//      sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
+//        CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+//      sb.append("-----------------------------------------------------\n")
+//      leo.Out.debug(sb.toString())
       terminatedFlag = true
       return None
     }
-    sb.append(s" ------------- Start Round ${actRound}-------------------\n")
+//    sb.append(s" ------------- Start Round ${actRound} : ${Math.max(0, millis-lastIt)} ms -------------------\n")
+//    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
+//      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+////    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
+////      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+//    sb.append(s"\nProcessed:\n  ${state.state.processed.map(cl =>
+//      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
+
+//    lastIt = millis
     actRound += 1
-    sb.append(s"Unprocessed:\n  ${state.state.unprocessed.filter{cl => !movedToProcessed.contains(cl.id)}.map(cl =>
-      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-    sb.append(s"Open Unifications:\n  ${unification.getOpenUni.map(cl =>
-      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-    sb.append(s"Processed:\n  ${state.state.processed.map(cl =>
-      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
 
     if(!state.state.unprocessedLeft) return None
     val select = state.getNextUnprocessed // Last if not yet reinserted
@@ -88,10 +94,10 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
 
 
-    sb.append(s"Select next Unprocessed:\n  >  ${CompressProof.compressAnnotation(select)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)}\n")
-    sb.append("-----------------------------------------------------\n\n")
+//    sb.append(s"Select next Unprocessed:\n  >  ${CompressProof.compressAnnotation(select)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)}\n")
+//    sb.append("-----------------------------------------------------\n\n")
     if(state.state.szsStatus != SZS_Unknown) return None      // TODO Check for less failure prone value
-    leo.Out.output(sb.toString())
+//    leo.Out.output(sb.toString())
     // The normal loop from seqpproc
     commonFilter(select)
   }
@@ -113,7 +119,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       // No CNF step, do main loop inferences
       // Check if `cur` is an empty clause
       if (Clause.effectivelyEmpty(cur.cl)) {
-        if (state.conjecture == null) {
+        if (state.state.conjecture == null) {
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_ContradictoryAxioms, Some(cur))))}
         else {
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
@@ -243,25 +249,30 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     // Preunify new Clauses
     // TODO Perform pattern uni here and queue the complete pre unification for later
 
+
+
     // Split unifiable and non-unifiable clauses
+    var toUnify = Set[AnnotatedClause]()
     val cIt = newclauses.iterator
     newclauses = Set.empty
-    while(cIt.hasNext){
+    while (cIt.hasNext) {
       var ncl = cIt.next()
-      ncl = Control.rewriteSimp(ncl, rewrite)
-      if(!Clause.trivial(ncl.cl)) {
+      if (!Clause.trivial(ncl.cl)) {
         if (leo.datastructures.isPropSet(ClauseAnnotation.PropNeedsUnification, ncl.properties)) {
-          result.insert(OpenUnification)(ncl)
+//            ncl = Control.rewriteSimp(ncl, rewrite)
+          if(parUni) {
+            result.insert(OpenUnification)(ncl)
+          } else {
+            toUnify += ncl
+          }
         } else {
           newclauses += ncl
         }
       }
     }
-
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(cw => Control.cnf(cw))
     newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
-    Control.updateDescendants(cur, newclauses)
     /* Replace eq symbols on top-level by equational literals. */
 //    newclauses = newclauses.map(Control.liftEq)
 
@@ -276,7 +287,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
       if (Clause.effectivelyEmpty(newCl.cl)){
         result.insert(DerivedClause)(newCl)
-        if(state.conjecture.isDefined) {
+        if(state.state.conjecture != null) {
           result.insert(SZSStatus)(SZS_Theorem)
         } else {
           result.insert(SZSStatus)(SZS_ContradictoryAxioms)
@@ -287,11 +298,35 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       }
     }
 
-    println(s"To Unify:\n  >>${result.inserts(OpenUnification).map(_.pretty(sig)).mkString("\n   >>")}")
+    if(!parUni) {
+      toUnify = Control.unifyNewClauses(toUnify)
+      toUnify = toUnify.flatMap(cw => Control.cnf(cw))
+      toUnify = toUnify.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+      val newIt2 = toUnify.iterator
+      while (newIt2.hasNext) {
+        var newCl = newIt2.next()
+        newCl = Control.rewriteSimp(newCl, rewrite)
+        assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
+        if (Clause.effectivelyEmpty(newCl.cl)) {
+          result.insert(DerivedClause)(newCl)
+          if (state.state.conjecture != null) {
+            result.insert(SZSStatus)(SZS_Theorem)
+          } else {
+            result.insert(SZSStatus)(SZS_ContradictoryAxioms)
+          }
+        }
+        if (!Clause.trivial(newCl.cl)) {
+          result.insert(UnprocessedClause)(newCl)
+        }
+      }
+    }
+
+//    println(s"To Unify:\n  >>${result.inserts(OpenUnification).map(_.pretty(sig)).mkString("\n   >>")}")
 
     result
   }
 
+  // TODO Never called?
   override def taskFinished(t: Task): Unit = {
     val sb = new StringBuilder
     sb.append(s" ------------- End Round ${actRound}-------------------\n")
