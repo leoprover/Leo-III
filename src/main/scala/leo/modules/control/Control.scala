@@ -283,15 +283,14 @@ package inferenceControl {
     type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
 
     final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
-
       import Literal.{leftSide, rightSide, selectSide}
 
-      val maxLits = Literal.maxOf(cl.lits)
-      var litIndex = 0
-      var lits = cl.lits
-      var side = leftSide
-      var curSubterms: Set[Term] = _
-      var curPositions: Set[Position] = _
+      private val maxLits = Literal.maxOf(cl.lits)
+      private var litIndex = 0
+      private var lits = cl.lits
+      private var side = leftSide
+      private var curSubterms: Set[Term] = _
+      private var curPositions: Set[Position] = _
 
       def hasNext: Boolean = if (lits.isEmpty) false
       else {
@@ -1351,10 +1350,10 @@ package inferenceControl {
   protected final class LiteralSideIterator(cl: Clause, onlyMax: Boolean, onlyPositive: Boolean, alsoFlexheads: Boolean)(implicit sig: Signature) extends Iterator[inferenceControl.WithConfiguration] {
     import Literal.{leftSide, rightSide}
 
-    val maxLits = Literal.maxOf(cl.lits)
-    var litIndex = 0
-    var lits = cl.lits
-    var side = leftSide
+    private val maxLits = Literal.maxOf(cl.lits)
+    private var litIndex = 0
+    private var lits = cl.lits
+    private var side = leftSide
 
     def hasNext: Boolean = {
       if (lits.isEmpty) false
@@ -1519,9 +1518,9 @@ package indexingControl {
     }
 
 
-    private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map()
+    private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map.empty
     final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = {
-      var result: Set[AnnotatedClause] = Set()
+      var result: Set[AnnotatedClause] = Set.empty
       val clsIt = cls.iterator
       while (clsIt.hasNext) {
         val cl = clsIt.next()
@@ -1568,7 +1567,7 @@ package indexingControl {
 
     private val maxFeatures: Int = 100
     private var initialized = false
-    private var features: Seq[CFF] = Vector()
+    private var features: Seq[CFF] = Vector.empty
     final protected[modules] val index = FVIndex()
     def clauseFeatures: Seq[CFF] = features
 
@@ -1580,7 +1579,7 @@ package indexingControl {
         symbs.flatMap {symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
           FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}
 
-      var initFeatures: Seq[Set[Int]] = Vector()
+      var initFeatures: Seq[Set[Int]] = Vector.empty
       val featureFunctionIt = featureFunctions.iterator
       var i = 0
       while (featureFunctionIt.hasNext) {
@@ -1594,12 +1593,6 @@ package indexingControl {
       Out.trace(s"sorted Features: ${sortedFeatures.toString()}")
       this.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
       initialized = true
-
-//      val initIt = initClauses.iterator
-//      while (initIt.hasNext) {
-//        val initCl = initIt.next()
-//        insert(initCl)
-//      }
     }
 
     final def insert(cl: AnnotatedClause): Unit = {
@@ -1685,7 +1678,7 @@ package  externalProverControl {
 
   object ExtProverControl {
     import leo.modules.external._
-    import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    import leo.modules.output.SZS_Error
     private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
