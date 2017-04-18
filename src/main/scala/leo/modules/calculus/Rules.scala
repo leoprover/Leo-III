@@ -176,9 +176,12 @@ object PatternUni extends AnyUni {
                   otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
     Out.trace(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     val result = PatternUnification.unifyAll(vargen, uniLits)
-    if (result.isEmpty) None
-    else {
+    if (result.isEmpty) {
+      Out.debug(s"Pattern unification failed.")
+      None
+    } else {
       val subst = result.head._1
+      Out.debug(s"Pattern unification successful: ${subst._1.pretty}")
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
       val resultClause = Clause(updatedOtherLits)
       Some((resultClause, subst))

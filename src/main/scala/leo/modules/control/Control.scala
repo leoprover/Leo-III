@@ -1051,7 +1051,7 @@ package inferenceControl {
           else {
             val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
             val simpNewCl = Control.simp(newCl)(sig)
-            result = result + simpNewCl
+            result = result + cl + simpNewCl
           }
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
@@ -1067,10 +1067,9 @@ package inferenceControl {
             else {
               val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
               val simpNewCl = Control.simp(newCl)(sig)
-              result = result + simpNewCl
+              result = result + liftedCl + simpNewCl
             }
           }
-//          result = result union lifted
         }
       }
       result
