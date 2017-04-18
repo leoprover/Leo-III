@@ -1024,6 +1024,7 @@ package inferenceControl {
       while(clIt.hasNext) {
         val cl = clIt.next
 
+        leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
         var uniLits: Seq[Literal] = Vector()
         var nonUniLits: Seq[Literal] = Vector()
         var boolExtLits: Seq[Literal] = Vector()
@@ -1061,13 +1062,18 @@ package inferenceControl {
           val liftedIt = lifted.iterator
           while (liftedIt.hasNext) {
             val liftedCl = liftedIt.next()
+            result = result + liftedCl
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
-            val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
-            if (res == liftedClUniLits) result = result + liftedCl
-            else {
-              val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
-              val simpNewCl = Control.simp(newCl)(sig)
-              result = result + liftedCl + simpNewCl
+            val liftedUnified = doUnify0(cl, freshVarGen(cl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
+            if (liftedUnified.isEmpty) {
+              val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
+              if (res != liftedClUniLits) {
+                val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
+                val simpNewCl = Control.simp(newCl)(sig)
+                result = result + simpNewCl
+              }
+            } else {
+              result = result union liftedUnified
             }
           }
         }
