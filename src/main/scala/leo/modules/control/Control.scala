@@ -1643,10 +1643,12 @@ package indexingControl {
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
-        var result: Seq[AnnotatedFormula] = Vector()
+        var result: Seq[AnnotatedFormula] = Vector.empty
         var round : Int = 0
 
+        leo.Out.finest(s"Conjecture: ${conjecture.toString}")
         val conjSymbols = PreFilterSet.useFormula(conjecture)
+        leo.Out.finest(s"Symbols in conjecture: ${conjSymbols.mkString(",")}")
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
         round += 1
