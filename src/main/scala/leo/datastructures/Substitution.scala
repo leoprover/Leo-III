@@ -48,21 +48,10 @@ sealed abstract class Subst extends Pretty {
   /** Return all fronts as linear list */
   def fronts: Seq[Front]
 
-  override def equals(o: Any) = o match {
-    case ot : Subst => {
-      shiftedBy == ot.shiftedBy && fronts == ot.fronts
-    }
+  override def equals(o: Any): Boolean = o match {
+    case ot: Subst => shiftedBy == ot.shiftedBy && fronts == ot.fronts
     case _ => false
   }
-
-//  /** Convecience method: Convert all fronts in substitution to terms (if not a type substitution) */
-//  def terms: Seq[Term] = {
-//    fronts.map {
-//      case BoundFront(i) => Term.mkBound(???, i)
-//      case TermFront(t) => t
-//      case _ => throw new IllegalArgumentException("#terms called on type substitution.")
-//    }
-//  }
 }
 
 /** Generic factory methods for substitutions. Current default implementation are
@@ -70,31 +59,21 @@ sealed abstract class Subst extends Pretty {
 object Subst {
   import leo.datastructures.{RASubst => SubstImpl}
 
-  val id: Subst    = SubstImpl.id
-  val shift: Subst = SubstImpl.shift
-  def shift(n: Int): Subst = SubstImpl.shift(n)
+  final def id: Subst    = SubstImpl.id
+  final def shift: Subst = SubstImpl.shift
+  final def shift(n: Int): Subst = SubstImpl.shift(n)
 
-  def singleton(what: Int, by: Term): Subst = {
-    var i = 1
-    var subst: Vector[Front] = Range(1, what).map(BoundFront(_)).toVector
+  final def singleton(what: Int, by: Term): Subst = {
+    val subst: Vector[Front] = Range(1, what).map(BoundFront).toVector
     new SubstImpl(what,subst :+ TermFront(by))
-
-//
-//    var s = Subst.id
-//    for(idx <- 1 to (what-1)) {
-//      s = BoundFront(idx) +: s
-//    }
-//
-//    TermFront(by) +: s
   }
 
-  def singleton(what: Int, by: Type): Subst = {
-    var i = 1
-    var subst: Vector[Front] = Range(1, what).map(BoundFront(_)).toVector
+  final def singleton(what: Int, by: Type): Subst = {
+    val subst: Vector[Front] = Range(1, what).map(BoundFront).toVector
     new SubstImpl(what,subst :+ TypeFront(by))
   }
 
-  def fromMap(map: Map[Int, Term]): Subst = {
+  final def fromMap(map: Map[Int, Term]): Subst = {
     if (map.isEmpty) {
       Subst.id
     } else {
@@ -109,7 +88,7 @@ object Subst {
     }
   }
 
-  def fromMaps(termMap: Map[Int, Term], boundMap: Map[Int, Int]): Subst = {
+  final def fromMaps(termMap: Map[Int, Term], boundMap: Map[Int, Int]): Subst = {
     if (termMap.isEmpty && boundMap.isEmpty) {
       Subst.id
     } else {
@@ -131,21 +110,15 @@ object Subst {
     }
   }
 
-  def fromShiftingSeq(seq: Seq[(Int, Int)]): Subst = {
+  final def fromShiftingSeq(seq: Seq[(Int, Int)]): Subst = {
     val map : Map[Int, Int] = Map.apply(seq:_*)
     fromMaps(Map(), map)
   }
 
-  def fromSeq(seq: Seq[(Int, Term)]): Subst = {
+  final def fromSeq(seq: Seq[(Int, Term)]): Subst = {
     val map : Map[Int, Term] = Map.apply(seq:_*)
     fromMap(map)
   }
-
-  // legacy
-  //  def consWithEta(ft: Front, onto: Subst): Subst = ft match {
-  //    case tf@TermFront(t) => Cons(TermFront(t.weakEtaContract(Subst.id, 0)), onto)
-  //    case a => Cons(a, onto)
-  //  }
 }
 
 /////////////////////////////////////////////////
@@ -157,10 +130,10 @@ object Subst {
 /** Substitutions as constant-time accessible vectors */
 sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
-  lazy val normalize: Subst = new RASubst(shift, fts.map({_ match {
+  final def normalize: Subst = new RASubst(shift, fts.map({
     case TermFront(t) => TermFront(t.betaNormalize)
     case a => a
-  } }))
+  }))
 
   def comp(other: Subst): Subst = other.isShift match {
     case true if other.shiftedBy == 0 => this
@@ -173,134 +146,38 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
     }
   }
 
-  def applyTypeSubst(typeSubst: Subst): Subst = new RASubst(shift, fts.map {
+  final def applyTypeSubst(typeSubst: Subst): Subst = new RASubst(shift, fts.map {
     case TermFront(term) => TermFront(term.typeClosure(typeSubst))
     case TypeFront(_) => throw new UnsupportedOperationException("applyTypeSubst on typeSubst")
     case other => other
   })
 
-  def cons(ft: Front): Subst = new RASubst(shift, ft +: fts)
-  lazy val sink: Subst = BoundFront(1) +: (this o new RASubst(1))
+  final def cons(ft: Front): Subst = new RASubst(shift, ft +: fts)
+  final def sink: Subst = BoundFront(1) +: (this o new RASubst(1))
 
-  lazy val pretty: String = fts.isEmpty match {
-    case true => shift match {
+  final def pretty: String = if (fts.isEmpty) {
+    shift match {
       case 0 => "id"
       case k => s"↑$k"
     }
-    case false => fts.map(_.pretty).mkString("•") ++ s"↑$shift"
-  }
+  } else fts.map(_.pretty).mkString("•") ++ s"↑$shift"
 
-  lazy val isShift = fts.isEmpty
-  lazy val shiftedBy = shift
-  lazy val length = fts.length
-  def drop(n: Int): Subst = new RASubst(shift, fts.drop(n))
+  final def isShift = fts.isEmpty
+  final def shiftedBy = shift
+  final def length = fts.length
+  final def drop(n: Int): Subst = new RASubst(shift, fts.drop(n))
 
-  def substBndIdx(i: Int) = fts.length >= i match {
-    case true => fts(i-1)
-    case false => BoundFront(i+shift-fts.length)
-  }
-  lazy val fronts = fts
+  final def substBndIdx(i: Int) = if (fts.length >= i) fts(i-1)
+  else BoundFront(i+shift-fts.length)
+  final def fronts = fts
 }
-
 
 /** Factory methods for `RASubst`. */
 object RASubst {
-  val id: Subst    = new RASubst(0)
-  val shift: Subst = new RASubst(1)
-  def shift(n: Int): Subst = new RASubst(n)
+  final val id: Subst    = shift(0)
+  final val shift: Subst = shift(1)
+  final def shift(n: Int): Subst = new RASubst(n)
 }
-
-
-
-/////////////////////////////////////////////////
-// Substitutions as lists
-// Are more straight-forward but suffer from
-// linear traversal of fronts
-/////////////////////////////////////////////////
-
-/** Substitutions as algebraic data types (lists). */
-sealed abstract class AlgebraicSubst extends Subst {
-  def sink: Subst = (this o Shift(1)).cons(BoundFront(1))
-}
-
-/** Factory methods for `AlgebraicSubst` */
-object AlgebraicSubst {
-  def id: Subst    = Shift(0)
-  def shift: Subst = shift(1)
-  def shift(n: Int): Subst = Shift(n)
-}
-
-// Implementation of substitutions as lists
-
-case class Shift(n: Int) extends AlgebraicSubst {
-  def comp(other: Subst) = n match {
-    case 0 => other
-    case _ => other match {
-      case Shift(0) => this
-      case Shift(m) => Shift(n+m)
-      case Cons(ft, s) => Shift(n-1).comp(s)
-    }
-  }
-  def applyTypeSubst(typeSubst: Subst): Subst = this
-
-  def cons(ft: Front) = Cons(ft, this)
-
-  val normalize = this
-
-  val fronts = Seq.empty
-  def substBndIdx(i: Int) = BoundFront(i + n)
-  def drop(n: Int) = throw new IllegalArgumentException("Shift substitution does not contain any fronts to drop")
-  val length = 0
-
-  val shiftedBy = n
-  val isShift = true
-
-  /** Pretty */
-  override def pretty = n match {
-    case 0 => "id"
-    case k => s"↑$k"
-  }
-}
-
-
-case class Cons(ft: Front, subst: Subst) extends AlgebraicSubst {
-  def comp(other: Subst) = other match {
-    case Shift(0) => this
-    case s => Cons(ft.substitute(s), subst.comp(s))
-  }
-
-  def applyTypeSubst(typeSubst: Subst): Subst = ft match {
-    case TermFront(term) => Cons(TermFront(term.typeClosure(typeSubst)), subst.applyTypeSubst(typeSubst))
-    case TypeFront(_) => throw new UnsupportedOperationException("applyTypeSubst on type substitution")
-    case other => Cons(other, subst.applyTypeSubst(typeSubst))
-  }
-
-  def cons(ft: Front) = Cons(ft, this)
-
-  lazy val normalize = ft match {
-    case BoundFront(_) => Cons(ft, subst.normalize)
-    case TermFront(t)  => Cons(TermFront(t.betaNormalize), subst.normalize) //TODO: eta contract here
-    case TypeFront(_) => Cons(ft, subst.normalize)
-  }
-
-  lazy val fronts = ft +: subst.fronts
-  def substBndIdx(i: Int) = i match {
-    case 1 => ft
-    case _ => subst.substBndIdx(i-1)
-  }
-  def drop(n: Int) = n match {
-    case 0 => this
-    case _ => subst.drop(n-1)
-  }
-  lazy val length = 1 + subst.length
-
-  lazy val shiftedBy = subst.shiftedBy
-  val isShift = false
-
-  /** Pretty */
-  override def pretty = s"${ft.pretty}•${subst.pretty}"
-}
-
 
 
 ///////////////////////////////////////
@@ -313,20 +190,20 @@ sealed abstract class Front extends Pretty {
   def substitute(subst: Subst): Front
 }
 case class BoundFront(n: Int) extends Front {
-  def substitute(subst: Subst) = subst.substBndIdx(n)
+  def substitute(subst: Subst): Front = subst.substBndIdx(n)
 
   /** Pretty */
-  override def pretty = s"$n"
+  final def pretty: String = s"$n"
 }
 case class TermFront(term: Term) extends Front {
-  def substitute(subst: Subst) = TermFront(term.termClosure((subst)))
+  def substitute(subst: Subst) = TermFront(term.termClosure(subst))
 
   /** Pretty */
-  override def pretty = term.pretty
+  final def pretty: String = term.pretty
 }
 case class TypeFront(typ: Type) extends Front {
-  def substitute(subst: Subst) = TypeFront(typ.closure((subst)))
+  def substitute(subst: Subst) = TypeFront(typ.closure(subst))
 
   /** Pretty */
-  override def pretty = typ.pretty
+  final def pretty: String = typ.pretty
 }
