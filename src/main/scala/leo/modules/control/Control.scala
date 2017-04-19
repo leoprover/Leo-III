@@ -352,12 +352,12 @@ package inferenceControl {
       var res: Set[AnnotatedClause] = Set()
       val clause = cl.cl
       val maxLitsofClause = Literal.maxOf(clause.lits)
-      val maxLitIt = new LiteralSideIterator(clause, true, true, true)
+      val maxLitIt = new LiteralSideIterator(clause, true, false, true)
 
       while (maxLitIt.hasNext) {
         val (maxLitIndex, maxLit, maxLitSide) = maxLitIt.next()
         Out.trace(s"maxLit chosen: ${maxLit.pretty(sig)}")
-        val otherLitIt = new LiteralSideIterator(clause, false, true, true)
+        val otherLitIt = new LiteralSideIterator(clause, false, false, true)
 
         while (otherLitIt.hasNext) {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
@@ -1070,7 +1070,7 @@ package inferenceControl {
           val lifted = cnf.map(Control.liftEq)
           val liftedIt = lifted.iterator
           while (liftedIt.hasNext) {
-            val liftedCl = liftedIt.next()
+            val liftedCl = Control.shallowSimp(liftedIt.next())
             result = result + liftedCl
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
             val liftedUnified = doUnify0(cl, freshVarGen(cl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
