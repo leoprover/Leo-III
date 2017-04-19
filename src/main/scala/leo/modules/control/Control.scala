@@ -703,11 +703,20 @@ package inferenceControl {
           Out.debug(s"[Prim subst] On ${cw.id}")
           var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
           if (level > 1) {
-            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), eqBindings(h.ty.funParamTypes)))
+            primsubstResult = primsubstResult union ps_vars.flatMap{h =>
+              val (ty,idx) = Term.Bound.unapply(h).get
+              val eligibleConstants = sig.uninterpretedSymbolsOfType(ty).map(Term.mkAtom)
+              eligibleConstants.map{c =>
+                val subst = Subst.singleton(idx, c)
+                (cw.cl.substituteOrdered(subst),subst)}
+            }
             if (level > 2) {
-              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), eqBindings(h.ty.funParamTypes)))
               if (level > 3) {
-                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+                if (level > 4) {
+                  primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+                }
               }
             }
           }
