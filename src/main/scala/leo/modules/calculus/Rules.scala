@@ -319,7 +319,7 @@ object SolveFuncSpec extends CalculusRule {
   import leo.modules.HOLSignature.{Choice => ε, Impl, &, ===}
 
   final val name: String = "solveFuncSpec"
-  final val inferenceStatus: StatusSZS = SZS_Theorem
+  override final val inferenceStatus = SZS_Theorem
 
   type Argument = Term
   type Result = Term
