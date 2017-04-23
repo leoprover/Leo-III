@@ -942,6 +942,19 @@ package inferenceControl {
       val newSymb = sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice)
       Term.mkAtom(newSymb)(sig)
     }
+
+    final def addFuncSpec(cw: AnnotatedClause)(sig: Signature): AnnotatedClause = {
+      val cl = cw.cl
+      val uniLits = cl.negLits.filter(_.uni)
+      var collectedSpecs: Seq[(Term, Term)] = Vector.empty
+      val uniLitsIt = uniLits.iterator
+      while (uniLitsIt.hasNext) {
+        val uniLit = uniLitsIt.next()
+        val (l,r) = Literal.getSidesOrdered(uniLit, Literal.leftSide)
+        
+      }
+      ???
+    }
   }
 
   protected[modules] object SimplificationControl {

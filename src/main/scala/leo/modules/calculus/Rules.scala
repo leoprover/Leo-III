@@ -4,7 +4,7 @@ import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
 import leo.modules.HOLSignature.{LitTrue, o}
-import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem}
+import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem, StatusSZS}
 
 import scala.annotation.tailrec
 
@@ -311,6 +311,36 @@ object Choice extends CalculusRule {
     // lit2: [term (choicefun term)]^t
     val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)).betaNormalize.etaExpand, true)
     Clause(Vector(lit1, lit2))
+  }
+}
+
+object SolveFuncSpec extends CalculusRule {
+  import leo.datastructures.Term.{λ, mkBound}
+  import leo.modules.HOLSignature.{Choice => ε, Impl, &, ===}
+
+  final val name: String = "solveFuncSpec"
+  final val inferenceStatus: StatusSZS = SZS_Theorem
+
+  type Argument = Term
+  type Result = Term
+  final def apply(funTy: Type, spec: Seq[(Argument, Result)])
+                 (implicit sig: Signature): Term = {
+    val specIt = spec.iterator
+    val (paramTypes, resultType) = funTy.splitFunParamTypes
+    var choiceTerm: Term = null
+    val param: Term = mkBound(resultType, 1)
+    while (specIt.hasNext) {
+      val (arg,res) = specIt.next()
+      val caseTerm: Term = Impl(===(param, arg), ===(param,res))
+      if (choiceTerm == null) {
+        choiceTerm = caseTerm
+      } else {
+        choiceTerm = &(choiceTerm, caseTerm)
+      }
+    }
+    val result: Term = λ(paramTypes)(ε(λ(resultType)(choiceTerm)))
+    leo.Out.trace(s"[SolveFuncSpec] Result: ${result.pretty(sig)}")
+    result
   }
 }
 
