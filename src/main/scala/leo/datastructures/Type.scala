@@ -46,6 +46,10 @@ abstract class Type extends Pretty with Prettier {
   def arity: Int
   def funParamTypesWithResultType: Seq[Type]
   def funParamTypes: Seq[Type] = funParamTypesWithResultType.init
+  def splitFunParamTypes: (Seq[Type], Type) = {
+    val tys = funParamTypesWithResultType
+    (tys.init, tys.last)
+  }
   def splitFunParamTypesAt(n: Int): (Seq[Type], Type)
 
   /** Returns true iff `ty` appears somewhere as subtype (e.g. as part of an abstraction type). */
