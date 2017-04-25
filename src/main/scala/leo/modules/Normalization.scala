@@ -26,7 +26,9 @@ object Normalization {
     val newConjecture: AnnotatedClause = if (conjecture != null) {
       val localResult = process(conjecture)(sig)
       assert(localResult.count(_.role == Role_Conjecture) == 1)
-      val (otherClauses, conjClause) = localResult.partition(_.role == Role_Conjecture)
+      val (conjClause, otherClauses) = localResult.partition(_.role == Role_Conjecture)
+      println(otherClauses)
+      println(conjClause)
       assert(conjClause.size == 1)
       resultClauses = resultClauses union otherClauses
       conjClause.head
