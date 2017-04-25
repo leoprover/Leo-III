@@ -14,6 +14,11 @@ object Normalization {
   type Axiom = Term
   type Conjecture = Term
 
+  val renamingThreshold: Int = Configuration.RENAMING_THRESHHOLD
+  val doCNF: Boolean = Configuration.isSet("cnf")
+  val extractionType: Int = Configuration.EXTRACTION_TYPE
+  val localXtract: Boolean = Configuration.isSet(s"xLocal")
+
   final def apply(): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     val input0 = Input.parseProblem(Configuration.PROBLEMFILE)
@@ -39,12 +44,51 @@ object Normalization {
       val ax = axiomsIt.next()
       resultClauses = resultClauses union process(ax)(sig)
     }
+    val finalAxResult = exhaustive(resultClauses)
 
     import leo.modules.external.{createTHFProblem, TPTPProblem}
-    val newProb = if (newConjecture == null) createTHFProblem(resultClauses, TPTPProblem.WITHDEF)
-    else createTHFProblem(resultClauses, TPTPProblem.WITHDEF, termToClause(newConjecture))
+    val newProb = if (newConjecture == null) createTHFProblem(finalAxResult, TPTPProblem.WITHDEF)
+    else createTHFProblem(finalAxResult, TPTPProblem.WITHDEF, termToClause(newConjecture))
 
     println(newProb)
+  }
+
+  private final def exhaustive(cls: Set[Clause])(implicit sig: Signature): Set[Clause] = {
+    import leo.modules.calculus.{RenameCNF, FuncExt, BoolExt, freshVarGen}
+    var changed = true
+    var intermediate: Set[Clause] = cls
+
+    while(changed) {
+      changed = false
+      val clsIt = intermediate.iterator
+      intermediate = Set.empty
+      while (clsIt.hasNext) {
+        val cl = clsIt.next()
+        val (ca, fELits, otherLits) = FuncExt.canApply(cl)
+        val funcCl = if (ca) {
+          changed = true
+          val vargen = freshVarGen(cl)
+          val funcLits = FuncExt(vargen, fELits)
+          Clause(funcLits ++ otherLits)
+        } else cl
+
+        val (ca2, bELits, otherLits2) = BoolExt.canApply(funcCl)
+        val boolExtCls = if (ca2) {
+          changed = true
+          BoolExt(bELits, otherLits2)
+        } else Set(funcCl)
+
+        val cnf = if (doCNF) {boolExtCls.flatMap{c =>
+          if (RenameCNF.canApply(c)) {
+            changed = true
+            RenameCNF(freshVarGen(c), c, renamingThreshold)
+          } else Set(c)
+        }} else boolExtCls
+        intermediate = intermediate union cnf
+      }
+    }
+
+    intermediate
   }
 
   private final def process(t: Term)(implicit sig: Signature): Set[Clause] = {
@@ -54,11 +98,19 @@ object Normalization {
     // Miniscope
     val mini = Miniscope.apply(simplified, true)
     // Argument extraction
-    val (newC, additionalAxioms) = ArgumentExtraction.apply(mini, ???,???)
-    val cl = termToClause(newC)
-    val vargen = freshVarGen(cl)
-    val res0 = RenameCNF.apply(vargen, termToClause(newC), ???)
-    res0.toSet union additionalAxioms.map(Clause.apply).toSet
+    val (newC, additionalAxioms) = ArgumentExtraction.apply(mini, localXtract, extractionType)
+    val x = additionalAxioms.flatMap(ax => process(Literal.asTerm(ax))).toSet
+    // Renaming and CNF
+    if (doCNF) {
+      val cl = termToClause(newC)
+      val vargen = freshVarGen(cl)
+      val res0 = RenameCNF.apply(vargen, termToClause(newC), renamingThreshold)
+      res0.toSet union x
+    } else {
+      val cl = termToClause(newC)
+      x + cl
+    }
+
   }
 
   private final def processConjecture(c: Conjecture)(implicit sig: Signature): (Term, Set[Term]) = {
@@ -68,7 +120,7 @@ object Normalization {
     // Miniscope
     val mini = Miniscope.apply(simplified, true)
     // Argument extraction
-    val (newC, additionalAxioms) = ArgumentExtraction.apply(mini, ???,???)
+    val (newC, additionalAxioms) = ArgumentExtraction.apply(mini, localXtract, extractionType)
     (newC, additionalAxioms.map(Literal.asTerm).toSet)
   }
 

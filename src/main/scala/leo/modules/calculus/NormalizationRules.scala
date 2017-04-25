@@ -164,6 +164,8 @@ object RenameCNF extends CalculusRule {
   @inline
   final def canApply(l : Literal) : Boolean = FullCNF.canApply(l)
 
+  final def canApply(cl: Clause): Boolean = cl.lits.exists(canApply)
+
   final def apply(vargen : leo.modules.calculus.FreshVarGen, cl : Clause, THRESHHOLD : Int = 0)(implicit sig: Signature) : Seq[Clause] = {
     val lits = cl.lits
     val normLits = apply(vargen, lits, THRESHHOLD)

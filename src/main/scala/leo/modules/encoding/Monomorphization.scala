@@ -118,7 +118,7 @@ object Monomorphization {
                 val zippedUniTask = polySymbTypeParam.zip(i)
                 val uniResult = TypeUnification(zippedUniTask)
                 if (uniResult.isDefined) {
-                  newSubsts = multiply(newSubsts, uniResult.get)
+                  newSubsts = multiply(newSubsts.take(maxSize), uniResult.get)
                 }
               }
             }

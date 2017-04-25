@@ -49,7 +49,7 @@ package object external {
     if (leo.datastructures.isPropSet(TPTPProblem.WITHDEF, flag)) {
       sb.append(s"%% Definitions")
       sb.append("\n")
-      sb.append(""); ???
+//      sb.append(""); ???
       sb.append("\n\n")
     }
     sb.append(s"%% User axioms")
