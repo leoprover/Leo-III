@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.Configuration
-import leo.datastructures.{Clause, Role_Axiom, Signature}
+import leo.datastructures.{Clause, Role_Axiom, Role_Conjecture, Signature}
 import leo.modules.output.{ToTFF, ToTPTP}
 
 /**
@@ -31,7 +31,7 @@ package object external {
     sb.toString
   }
 
-  final def createTHFProblem(problem: Set[Clause])(implicit sig: Signature): String = {
+  final def createTHFProblem(problem: Set[Clause], conjecture: Clause = null)(implicit sig: Signature): String = {
     val problemIt = problem.iterator
     val leoVersion = Configuration.VERSION
     val sb: StringBuffer = new StringBuffer
@@ -49,6 +49,10 @@ package object external {
       sb.append(ToTPTP.toTPTP(s"ax_$counter", cl, Role_Axiom)(sig))
       sb.append("\n")
       counter += 1
+    }
+    if (conjecture != null) {
+      sb.append("\n")
+      sb.append(ToTPTP.toTPTP("conjecture", conjecture, Role_Conjecture)(sig))
     }
     sb.toString
   }

@@ -67,6 +67,8 @@ object Main {
         RunExternalProver.runExternal()
       } else if (Configuration.isSet("par")) {
         ParallelMain.runParallel(beginTime)
+      } else if (Configuration.isSet("processOnly")) {
+        leo.modules.Normalization()
       } else {
         throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
       }
