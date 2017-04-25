@@ -1034,6 +1034,7 @@ package inferenceControl {
         val cl = clIt.next
 
         leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
+        leo.Out.finest(s"${cl.pretty(sig)}")
         var uniLits: Seq[Literal] = Vector()
         var nonUniLits: Seq[Literal] = Vector()
         var boolExtLits: Seq[Literal] = Vector()
@@ -1073,7 +1074,7 @@ package inferenceControl {
             val liftedCl = Control.shallowSimp(liftedIt.next())
             result = result + liftedCl
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
-            val liftedUnified = doUnify0(cl, freshVarGen(cl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
+            val liftedUnified = doUnify0(cl, freshVarGen(liftedCl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
             if (liftedUnified.isEmpty) {
               val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
               if (res != liftedClUniLits) {
