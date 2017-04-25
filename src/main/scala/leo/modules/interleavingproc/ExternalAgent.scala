@@ -23,8 +23,8 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
     if(ExtProverControl.openCallsExist) {
       // ATM checkExternalResult returns only positive results
       val res = ExtProverControl.checkExternalResults(state.state)
-      if(res.nonEmpty){
-        val rres = res.get
+      if(res.nonEmpty && res.headOption.nonEmpty){  // TODO Update
+        val rres = res.head
         if(rres.szsStatus == SZS_Unsatisfiable) {
           tasks = new ExtResultTask(rres) +: tasks
         }
