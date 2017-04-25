@@ -231,10 +231,14 @@ object ArgumentExtraction extends CalculusRule {
     (Clause(ergLits), defs)
   }
 
-  private def shallowApply(t : Term, lambdas : Int, extractLocal : Boolean, extType : ExtractionType)(implicit sig : Signature) : (Term, Seq[Literal]) = t match {
+  private def shallowApply(t : Term, lambdas : Int,
+                           extractLocal : Boolean,
+                           extType : ExtractionType)
+                          (implicit sig : Signature) : (Term, Seq[Literal]) = t match {
     case s@Symbol(_)            => (s, Seq())
     case s@Bound(_,_)           => (s, Seq())
-    case f ∙ args   =>
+    case f ∙ args  =>
+//      println(s"Called @ ${t.pretty(sig)}")
       var defs : Seq[Literal] = Seq()
       val it = args.iterator
       var args1 : Seq[Either[Term, Type]] = Seq()
@@ -242,6 +246,7 @@ object ArgumentExtraction extends CalculusRule {
       while(it.hasNext){
         it.next() match {
           case Left(lt) if fapplicable & shouldExtract(lt, lambdas, extractLocal, extType) =>
+//            println(s" + Arg Was term @ ${lt.pretty(sig)} and applicable")
             if(cashExtracts.contains(lt)){
               args1 = Left(cashExtracts(lt)) +: args1
             } else {
@@ -256,10 +261,13 @@ object ArgumentExtraction extends CalculusRule {
               args1 = Left(newT) +: args1
             }
           case Left(lt) =>
+//            println(s"   Arg was term @ ${lt.pretty(sig)} but not applicable (headApplicable ${fapplicable})")
             val (t1, defs1) = shallowApply(lt, lambdas, extractLocal, extType)
             args1 = Left(t1) +: args1
             defs = defs1 ++ defs
-          case Right(rt) => args1 = Right(rt) +: args1
+          case Right(rt) =>
+//            println(s"   Arg was type @ ${rt.pretty(sig)} hence dropped")
+            args1 = Right(rt) +: args1
         }
       }
       (Term.mkApp(f, args1.reverse), defs)

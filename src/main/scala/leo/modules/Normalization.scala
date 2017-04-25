@@ -54,7 +54,7 @@ object Normalization {
   }
 
   private final def exhaustive(cls: Set[Clause])(implicit sig: Signature): Set[Clause] = {
-    import leo.modules.calculus.{RenameCNF, FuncExt, BoolExt, freshVarGen}
+    import leo.modules.calculus.{RenameCNF, FuncExt, BoolExt, freshVarGen, LiftEq}
     var changed = true
     var intermediate: Set[Clause] = cls
 
@@ -64,13 +64,25 @@ object Normalization {
       intermediate = Set.empty
       while (clsIt.hasNext) {
         val cl = clsIt.next()
-        val (ca, fELits, otherLits) = FuncExt.canApply(cl)
+//        println(s"Process ${cl.pretty(sig)}")
+        // Lift Eq first
+
+        val (ca3, pLits, nLits, oLits) = LiftEq.canApply(cl)
+        val liftCl = if(ca3) {
+          Clause(LiftEq.apply(pLits, nLits, oLits))
+        } else cl
+
+//        println(s"  After lift ${liftCl.pretty(sig)}")
+
+        val (ca, fELits, otherLits) = FuncExt.canApply(liftCl)
         val funcCl = if (ca) {
           changed = true
-          val vargen = freshVarGen(cl)
+          val vargen = freshVarGen(liftCl)
           val funcLits = FuncExt(vargen, fELits)
           Clause(funcLits ++ otherLits)
-        } else cl
+        } else liftCl
+
+//        println(s"  After funcExt ${funcCl.pretty(sig)}")
 
         val (ca2, bELits, otherLits2) = BoolExt.canApply(funcCl)
         val boolExtCls = if (ca2) {
@@ -78,12 +90,17 @@ object Normalization {
           BoolExt(bELits, otherLits2)
         } else Set(funcCl)
 
+//        println(s"  After boolExt\n    ${boolExtCls.map(c => c.pretty(sig)).mkString("\n    ")}")
+
         val cnf = if (doCNF) {boolExtCls.flatMap{c =>
           if (RenameCNF.canApply(c)) {
             changed = true
             RenameCNF(freshVarGen(c), c, renamingThreshold)
           } else Set(c)
         }} else boolExtCls
+
+//        println(s"  After cnf\n    ${cnf.map(c => c.pretty(sig)).mkString("\n    ")}")
+
         intermediate = intermediate union cnf
       }
     }
