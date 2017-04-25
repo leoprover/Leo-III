@@ -189,8 +189,12 @@ object RenameCNF extends CalculusRule {
   final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal, THRESHHOLD : Int)(implicit sig: Signature): Seq[Seq[Literal]] = if(!l.equational){
     if(FormulaRenaming.canApply(l, THRESHHOLD)) {
       val (replLit, defl1, defl2) = FormulaRenaming.apply(l)
-      assert(defl1 != null && defl2 != null, "No renaming was performed")
-      apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD) ++ multiply(apply0(fvs, tyFVs, vargen, defl1, THRESHHOLD), apply0(fvs, tyFVs, vargen, defl2, THRESHHOLD))
+      if(defl1 == null && defl2 == null){
+        apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD)
+      } else {
+        assert(defl1 != null && defl2 != null, "Non consistent definition returend in formula renaming.")
+        apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD) ++ multiply(apply0(fvs, tyFVs, vargen, defl1, THRESHHOLD), apply0(fvs, tyFVs, vargen, defl2, THRESHHOLD))
+      }
     } else {
     l.left match {
       case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity), THRESHHOLD)
