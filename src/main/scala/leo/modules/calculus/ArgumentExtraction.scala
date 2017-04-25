@@ -98,20 +98,20 @@ object ArgumentExtraction extends CalculusRule {
         case BooleanType =>
           if(t.ty != o) return false
           t.headSymbol match {
-            case Symbol(k) => !sig.allUserConstants.contains(k)
+            case hd@Symbol(k) => !sig.allUserConstants.contains(k) && !hd.ty.isBaseType
             case _ => false
           }
         case PredicateType =>
           if(t.ty.funParamTypesWithResultType.last != o) return false
           t.headSymbol match {
-            case Symbol(k) => !sig.allUserConstants.contains(k)
+            case hd@Symbol(k) => !sig.allUserConstants.contains(k) && !hd.ty.isBaseType
             case _ => false
           }
         case FunctionType =>
           if(!t.ty.isFunType) {
             if(t.ty != o) return false
             t.headSymbol match {
-              case Symbol(k) => !sig.allUserConstants.contains(k)
+              case hd@Symbol(k) => !sig.allUserConstants.contains(k) && !hd.ty.isBaseType
               case _ => false
             }
           } else {
