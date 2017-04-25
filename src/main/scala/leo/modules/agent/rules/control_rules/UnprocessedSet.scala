@@ -70,21 +70,15 @@ class UnprocessedSet extends DataStore{
     val ins1 = r.inserts(Unprocessed)
     val del1 = r.removes(Unprocessed)
     val ins2 = r.updates(Unprocessed).map(_._2)
+    val del2 = r.updates(Unprocessed).map(_._1)
 
     val ins = (ins1 ++ ins2).iterator
+    val del = (del1 ++ del2).iterator
 
+    mpq.remove(del1)
+    mpq.insert(ins)
 
-    var change = false
-
-    while(ins.hasNext) {
-      ins.next match {
-        case c: AnnotatedClause =>
-          mpq.insert(c)
-          change |= true
-        case x => leo.Out.debug(s"Tried to add $x to Unprocessed Set, but was no clause.")
-      }
-    }
-    change
+    ins.nonEmpty || del.nonEmpty
   }
 
   /**

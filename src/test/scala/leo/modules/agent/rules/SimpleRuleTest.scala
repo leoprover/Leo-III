@@ -152,8 +152,8 @@ class SimpleStore extends DataStore {
   override val storedTypes: Seq[DataType[Any]] = Seq(StringType)
   override def updateResult(r: Delta): Boolean = synchronized{
     var (del, ins) : (Seq[String], Seq[String])= r.updates(StringType).map{case (a,b) => (a.asInstanceOf[String], b.asInstanceOf[String])}.unzip
-    del = del ++ r.removes(StringType).map(_.asInstanceOf[String])
-    ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
+    del = del ++ r.removes(StringType)
+    ins = ins ++ r.inserts(StringType)
 
     del foreach (strings.remove(_))
     ins foreach (strings.add(_))
@@ -167,6 +167,9 @@ class SimpleStore extends DataStore {
 
 class PrependRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Prepend(${letter})"
+  override def inTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def outTypes: Seq[DataType[Any]] = Seq(StringType)
+
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){
       synchronized{
@@ -175,7 +178,7 @@ class PrependRule(letter : String, observe : SimpleStore) extends Rule {
       }
     } else {
       var (_, ins): (Seq[String], Seq[String]) = r.updates(StringType).map { case (a, b) => (a.asInstanceOf[String], b.asInstanceOf[String]) }.unzip
-      ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
+      ins = ins ++ r.inserts(StringType)
       val undone = observe.strings.filterNot(s => s.startsWith(letter)).toSeq
       undone map {s => new ChangeStringHint(s, letter + s)}
     }
@@ -184,6 +187,9 @@ class PrependRule(letter : String, observe : SimpleStore) extends Rule {
 
 class AppendRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Append(${letter})"
+  override def inTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def outTypes: Seq[DataType[Any]] = Seq(StringType)
+
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){
       synchronized{
@@ -192,7 +198,7 @@ class AppendRule(letter : String, observe : SimpleStore) extends Rule {
       }
     } else {
       var (_, ins): (Seq[String], Seq[String]) = r.updates(StringType).map { case (a, b) => (a.asInstanceOf[String], b.asInstanceOf[String]) }.unzip
-      ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
+      ins = ins ++ r.inserts(StringType)
       val undone = observe.strings.filterNot(s => s.endsWith(letter)).toSeq
       undone map {s => new ChangeStringHint(s, s + letter)}
     }

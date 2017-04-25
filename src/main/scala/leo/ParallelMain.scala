@@ -13,6 +13,7 @@ import leo.modules.phase._
 import leo.modules.Utility._
 import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
+import leo.modules.agent.rules.control_rules._
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
 
@@ -39,6 +40,21 @@ object ParallelMain {
     val leodir = Configuration.LEODIR
     if (!Files.exists(leodir)) Files.createDirectory(leodir)
 
+    val config = {
+      val sb = new StringBuilder()
+      sb.append(s"problem(${Configuration.PROBLEMFILE}),")
+      sb.append(s"time(${Configuration.TIMEOUT}),")
+      sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
+      sb.append(s"sos(${Configuration.SOS}),")
+      // TBA ...
+      sb.init.toString()
+    }
+    Out.config(s"Configuration: $config")
+
+    hook = sys.addShutdownHook({
+      Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
+    })
+
     val startTime: Long = System.currentTimeMillis()
     runParallel(startTime)
   }
@@ -56,39 +72,20 @@ object ParallelMain {
     val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
     TimeOutProcess.start()
 
-    val interval = 10
-    val config = {
-      val sb = new StringBuilder()
-      sb.append(s"problem(${Configuration.PROBLEMFILE}),")
-      sb.append(s"time(${Configuration.TIMEOUT}),")
-      sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
-      sb.append(s"sos(${Configuration.SOS}),")
-      // TBA ...
-      sb.init.toString()
-    }
-    Out.comment(s"Configuration: $config")
-
-
-    try {
-      hook = sys.addShutdownHook({
-        Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
-      })
-
-
+    try{
     // Datastrucutres
-    val state = BlackboardState.fresh(sig)
-    val uniStore = new UnificationStore[InterleavingLoop.A]()
-    val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
-    val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop, blackboard)
-    val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
-    val extAgent = new ExternalAgent(state, sig)
+      val state = BlackboardState.fresh(sig)
+      val uniStore = new UnificationStore[InterleavingLoop.A]()
+      val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
+      val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop, blackboard)
+      val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
+      val extAgent = new ExternalAgent(state, sig)
 
-    val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
 
 
       blackboard.addDS(state)
       blackboard.addDS(uniStore)
-
       printPhase(iPhase)
       if (!iPhase.execute()) {
         scheduler.killAll()
@@ -149,6 +146,60 @@ object ParallelMain {
     } finally {
       hook.remove()
     }
+
+  }
+
+  def agentRuleRun(startTime : Long): Unit ={
+    import leo.datastructures.Signature
+
+    implicit val sig: Signature = Signature.freshWithHOL()
+    val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
+
+    // Blackboard and Scheduler
+    val (blackboard, scheduler) = Blackboard.newBlackboard
+
+    val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
+    TimeOutProcess.start()
+
+    try {
+      // Datastructures
+      val unprocessedSet = new UnprocessedSet()
+      val processedSet = new ProcessedSet()
+      val unificationSet = new UnificationSet()
+
+      // val Rules
+      val boolextRule = new BoolextRule(Unprocessed, Unprocessed)
+      val cnfRule = new CNFRule(Unprocessed, Unprocessed)
+      val factorRule = new FactorRule(Processed, Unprocessed)
+      val funcExtRule = new FuncExtRule(Unprocessed, Unprocessed)
+      val liftEqRule = new LiftEqRule(Unprocessed, Unprocessed)
+      val paramodRule = ???
+
+
+    } catch {
+        case e:SZSException =>
+          Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+          Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.toString))
+          Out.debug(e.debugMessage)
+          Out.trace(stackTraceAsString(e))
+          if (e.getCause != null) {
+            Out.trace("Caused by: " + e.getCause.getMessage)
+            Out.trace("at: " + e.getCause.getStackTrace.toString)
+          }
+          scheduler.killAll()
+        case e : Exception =>
+          Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+          Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+          Out.trace(stackTraceAsString(e))
+          if (e.getCause != null) {
+            Out.trace("Caused by: " + e.getCause.getMessage)
+            Out.trace("at: " + e.getCause.getStackTrace.toString)
+          }
+          scheduler.killAll()
+      } finally {
+        hook.remove()
+      }
+
 
   }
 

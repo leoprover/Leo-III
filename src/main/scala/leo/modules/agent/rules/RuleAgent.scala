@@ -16,7 +16,7 @@ class RuleAgent(rule : Rule) extends Agent {
   override val name: String = s"RuleAgent(${rule.name})"
   private val rthis = this
   override def kill(): Unit = {}
-  override def interest: Option[Seq[DataType[Any]]] = Some(rule.interest)
+  override def interest: Option[Seq[DataType[Any]]] = Some(rule.inTypes)
   override def filter(event: Event): Iterable[Task] = event match {
     case r : Delta =>
       val hints = rule.canApply(r)

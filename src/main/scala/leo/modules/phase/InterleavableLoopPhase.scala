@@ -12,7 +12,15 @@ import leo.modules.parsers.Input
 /**
   * Created by mwisnie on 9/28/16.
   */
-class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]], state : BlackboardState, sig : Signature, interleavingAgents : Agent*)(blackboard: Blackboard, scheduler: Scheduler) extends CompletePhase(blackboard, scheduler) {
+class InterleavableLoopPhase
+  (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]]
+   , state : BlackboardState
+   , sig : Signature
+   , interleavingAgents : Agent*)
+  (blackboard: Blackboard
+   , scheduler: Scheduler)
+  extends CompletePhase(blackboard, scheduler)
+{
   /**
     * Returns the name of the phase.
     *
