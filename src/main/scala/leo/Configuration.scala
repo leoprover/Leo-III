@@ -40,6 +40,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_ATPMAXJOBS = "atp-max-jobs"
   private val RENAMING = "renaming"
   private val PARAM_CONSISTENCYCHECK = "consistency-only"
+  private val EXTRACTION_TYPE_PARAM = "xType"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -148,6 +149,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val RENAMING_SET : Boolean = isSet(RENAMING)
   lazy val RENAMING_THRESHHOLD : Int = valueOf(RENAMING).fold(0)(_.headOption.fold(0)(_.toInt))
+  lazy val EXTRACTION_TYPE: Int = uniqueIntFor(EXTRACTION_TYPE_PARAM, 1)
 
   lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
   lazy val ATP_MAX_JOBS: Int = uniqueIntFor(PARAM_ATPMAXJOBS, DEFAULT_ATPMAXJOBS)
