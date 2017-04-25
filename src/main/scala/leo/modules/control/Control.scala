@@ -943,17 +943,42 @@ package inferenceControl {
       Term.mkAtom(newSymb)(sig)
     }
 
-    final def addFuncSpec(cw: AnnotatedClause)(sig: Signature): AnnotatedClause = {
+    final def addFuncSpec(cw: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
+      import leo.datastructures.Term.TermApp
+
       val cl = cw.cl
       val uniLits = cl.negLits.filter(_.uni)
-      var collectedSpecs: Seq[(Term, Term)] = Vector.empty
+      var collectedSpecs: Map[Term, Seq[(Seq[Term], Term)]] = Map.empty.withDefaultValue(Seq.empty)
       val uniLitsIt = uniLits.iterator
       while (uniLitsIt.hasNext) {
         val uniLit = uniLitsIt.next()
+        leo.Out.finest(s"check: ${uniLit.pretty(sig)}")
         val (l,r) = Literal.getSidesOrdered(uniLit, Literal.leftSide)
-        
+        val (flexSide, otherSide) = if (l.flexHead && l.isApp) (l,r) else (r,l)
+        leo.Out.finest(s"flexSide: ${flexSide.pretty(sig)}")
+        leo.Out.finest(s"otherSide: ${otherSide.pretty(sig)}")
+        if (flexSide.flexHead && flexSide.isApp) {
+          val maybeArgs = TermApp.unapply(flexSide)
+          if (maybeArgs.isDefined) {
+            val (hd, args) = maybeArgs.get
+            assert(hd.isVariable)
+            val alreadyCollected = collectedSpecs(hd)
+            val alreadyCollected0 = alreadyCollected :+ (args, otherSide)
+            collectedSpecs = collectedSpecs + (hd -> alreadyCollected0)
+          }
+        }
       }
-      ???
+      Out.finest(s"Collected specs:\n" +
+        collectedSpecs.map {case (hd, spec) => hd.pretty + ":\n" + spec.map(s => s._1.map(_.pretty(sig)).mkString(",") + " = " + s._2.pretty(sig)).mkString("\t\n")}.mkString("\n\n"))
+      var result: Set[AnnotatedClause] = Set.empty
+      collectedSpecs.foreach {case (hd, specs) =>
+        val a = SolveFuncSpec.apply(hd.ty, specs)(sig)
+        val hdIdx = Term.Bound.unapply(hd).get._2
+          result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(sig), FromSystem("choice instance"), cw.properties)
+      }
+      Out.finest(s"FunSpec result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+
+      result
     }
   }
 
