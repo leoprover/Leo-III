@@ -323,19 +323,48 @@ object SolveFuncSpec extends CalculusRule {
 
   type Argument = Term
   type Result = Term
-  final def apply(funTy: Type, spec: Seq[(Argument, Result)])
+
+  /**
+    * For inputs `((s_ij)_{1<=j<=J},t_i)_{1<=i<=N}` return the term
+    * `λx_1....λ.x_J.ε(λy. ⋀_i<=N. (⋀_j<=J. x_j = s_ij) => y = t_i)`.
+    *
+    * @param funTy
+    * @param spec
+    * @param sig
+    * @return
+    */
+  final def apply(funTy: Type, spec: Seq[(Seq[Argument], Result)])
                  (implicit sig: Signature): Term = {
-    val specIt = spec.iterator
+    assert(spec.nonEmpty)
+    assert(spec.forall(e => e._1.size == spec.head._1.size && e._2.ty == spec.head._2.ty))
+
     val (paramTypes, resultType) = funTy.splitFunParamTypes
+    val paramCount = paramTypes.size
+    val resultVar: Term = mkBound(resultType, 1)
+
+    val specIt = spec.iterator
     var choiceTerm: Term = null
-    val param: Term = mkBound(resultType, 1)
+
+    def paramVar(i: Int) = mkBound(paramTypes(i), paramCount-i+1)
     while (specIt.hasNext) {
-      val (arg,res) = specIt.next()
-      val caseTerm: Term = Impl(===(param, arg), ===(param,res))
+      val (args,res) = specIt.next()
+      val argsIt = args.iterator
+      var i = 0
+      var caseTerm: Term = null
+      while (argsIt.hasNext) {
+        val arg = argsIt.next()
+        if (caseTerm == null) {
+          caseTerm = ===(paramVar(i), arg)
+        } else {
+          caseTerm = &(caseTerm, ===(paramVar(i), arg))
+        }
+        i = i+1
+      }
+      val caseTerm0: Term = Impl(caseTerm, ===(resultVar,res))
       if (choiceTerm == null) {
-        choiceTerm = caseTerm
+        choiceTerm = caseTerm0
       } else {
-        choiceTerm = &(choiceTerm, caseTerm)
+        choiceTerm = &(choiceTerm, caseTerm0)
       }
     }
     val result: Term = λ(paramTypes)(ε(λ(resultType)(choiceTerm)))
