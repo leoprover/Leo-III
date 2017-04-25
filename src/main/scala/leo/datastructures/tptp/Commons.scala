@@ -23,6 +23,8 @@ object Commons {
       * @return All function symbols of the formula
       */
     def function_symbols : Set[String]
+
+    def updateRole(role: Role): AnnotatedFormula
   }
   case class TPIAnnotated(override val name: Name,override val role: Role,formula: fof.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
     override type FormulaType = fof.Formula
@@ -31,6 +33,8 @@ object Commons {
     override def toString = "tpi" + rep
 
     override val function_symbols : Set[String] = formula.function_symbols
+
+    def updateRole(newRole: Role): AnnotatedFormula = TPIAnnotated(name, newRole, formula, annotations)
   }
   case class THFAnnotated(override val name: Name, override val role: Role, formula: thf.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
     override type FormulaType = thf.Formula
@@ -38,6 +42,8 @@ object Commons {
 
     override def toString = "thf" + rep
     override val function_symbols : Set[String] = formula.function_symbols
+
+    def updateRole(newRole: Role): AnnotatedFormula = THFAnnotated(name, newRole, formula, annotations)
   }
   case class TFFAnnotated(override val name: Name, override val role: Role, formula: tff.Formula, override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
     override type FormulaType = tff.Formula
@@ -45,6 +51,8 @@ object Commons {
 
     override def toString = "tff" + rep
     override val function_symbols : Set[String] = formula.function_symbols
+
+    def updateRole(newRole: Role): AnnotatedFormula = TFFAnnotated(name, newRole, formula, annotations)
   }
   case class FOFAnnotated(override val name: Name, override val role: Role, formula: fof.Formula, override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
     override type FormulaType = fof.Formula
@@ -52,6 +60,8 @@ object Commons {
 
     override def toString = "fof" + rep
     override val function_symbols : Set[String] = formula.function_symbols
+
+    def updateRole(newRole: Role): AnnotatedFormula = FOFAnnotated(name, newRole, formula, annotations)
   }
   case class CNFAnnotated(override val name: Name, override val role: Role, formula: cnf.Formula,override val annotations: Annotations) extends AnnotatedFormula(name, role, annotations) {
     override type FormulaType = cnf.Formula
@@ -59,6 +69,8 @@ object Commons {
 
     override def toString = "cnf" + rep
     override val function_symbols : Set[String] = formula.function_symbols
+
+    def updateRole(newRole: Role): AnnotatedFormula = CNFAnnotated(name, newRole, formula, annotations)
   }
 
   type Annotations = Option[(Source, Seq[GeneralTerm])]
