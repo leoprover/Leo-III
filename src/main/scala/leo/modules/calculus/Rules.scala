@@ -155,7 +155,9 @@ object PreUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
+    import leo.modules.Utility.myAssert
     Out.trace(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
     val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
@@ -174,11 +176,16 @@ object PatternUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
+    import leo.modules.Utility.myAssert
     Out.trace(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
+    myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
     val result = PatternUnification.unifyAll(vargen, uniLits)
-    if (result.isEmpty) None
-    else {
+    if (result.isEmpty) {
+      Out.debug(s"Pattern unification failed.")
+      None
+    } else {
       val subst = result.head._1
+      Out.debug(s"Pattern unification successful: ${subst._1.pretty}")
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
       val resultClause = Clause(updatedOtherLits)
       Some((resultClause, subst))

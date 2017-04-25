@@ -43,9 +43,12 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     *
     * @return A Future with the result of the prover.
     */
-  def call(problemOrigin: Set[C], concreteProblem: Set[Clause], sig: Signature, callLanguage: Capabilities.Language, timeout : Int): Future[TptpResult[C]] = {
+  def call(problemOrigin: Set[C], concreteProblem: Set[Clause],
+           sig: Signature, callLanguage: Capabilities.Language,
+           timeout : Int,
+          extraArgs: Seq[String] = Seq.empty): Future[TptpResult[C]] = {
     val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
-    startProver(translatedProblem, problemOrigin, timeout)
+    startProver(translatedProblem, problemOrigin, timeout, extraArgs)
   }
 
 
@@ -81,12 +84,14 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val safeProverName = java.net.URLEncoder.encode(name, "UTF-8")
       val file = File.createTempFile(s"remoteInvoke_${safeProverName}_", ".p")
       if (!Configuration.isSet("overlord")) file.deleteOnExit()
+      leo.Out.debug(s"Sending proof obligation ${file.toString}")
       val writer = new PrintWriter(file)
       try {
         writer.print(parsedProblem)
       } finally writer.close()
       // FIX ME : If a better solution for obtaining the processID is found
       val res = constructCall(args, timeout, file.getAbsolutePath)
+      leo.Out.debug(s"Call constructed: ${res.mkString(" ")}")
       KillableProcess(res.mkString(" "))
     }
     new SZSKillFuture(process, problem, timeout)

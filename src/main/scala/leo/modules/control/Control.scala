@@ -68,7 +68,7 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
-  @inline final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
+  @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 }
@@ -283,15 +283,14 @@ package inferenceControl {
     type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
 
     final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
-
       import Literal.{leftSide, rightSide, selectSide}
 
-      val maxLits = Literal.maxOf(cl.lits)
-      var litIndex = 0
-      var lits = cl.lits
-      var side = leftSide
-      var curSubterms: Set[Term] = _
-      var curPositions: Set[Position] = _
+      private val maxLits = Literal.maxOf(cl.lits)
+      private var litIndex = 0
+      private var lits = cl.lits
+      private var side = leftSide
+      private var curSubterms: Set[Term] = _
+      private var curPositions: Set[Position] = _
 
       def hasNext: Boolean = if (lits.isEmpty) false
       else {
@@ -353,12 +352,12 @@ package inferenceControl {
       var res: Set[AnnotatedClause] = Set()
       val clause = cl.cl
       val maxLitsofClause = Literal.maxOf(clause.lits)
-      val maxLitIt = new LiteralSideIterator(clause, true, true, true)
+      val maxLitIt = new LiteralSideIterator(clause, true, false, true)
 
       while (maxLitIt.hasNext) {
         val (maxLitIndex, maxLit, maxLitSide) = maxLitIt.next()
         Out.trace(s"maxLit chosen: ${maxLit.pretty(sig)}")
-        val otherLitIt = new LiteralSideIterator(clause, false, true, true)
+        val otherLitIt = new LiteralSideIterator(clause, false, false, true)
 
         while (otherLitIt.hasNext) {
           val (otherLitIndex, otherLit, otherLitSide) = otherLitIt.next()
@@ -704,11 +703,20 @@ package inferenceControl {
           Out.debug(s"[Prim subst] On ${cw.id}")
           var primsubstResult = PrimSubst(cw.cl, ps_vars, standardbindings)
           if (level > 1) {
-            primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), eqBindings(h.ty.funParamTypes)))
+            primsubstResult = primsubstResult union ps_vars.flatMap{h =>
+              val (ty,idx) = Term.Bound.unapply(h).get
+              val eligibleConstants = sig.uninterpretedSymbolsOfType(ty).map(Term.mkAtom)
+              eligibleConstants.map{c =>
+                val subst = Subst.singleton(idx, c)
+                (cw.cl.substituteOrdered(subst),subst)}
+            }
             if (level > 2) {
-              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+              primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), eqBindings(h.ty.funParamTypes)))
               if (level > 3) {
-                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+                primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(cw.cl.implicitlyBound.map(a => Term.mkBound(a._2, a._1)).toSet, h.ty.funParamTypes)))
+                if (level > 4) {
+                  primsubstResult = primsubstResult union ps_vars.flatMap(h => PrimSubst(cw.cl, Set(h), specialEqBindings(sig.uninterpretedSymbols.map(Term.mkAtom), h.ty.funParamTypes)))
+                }
               }
             }
           }
@@ -1025,6 +1033,8 @@ package inferenceControl {
       while(clIt.hasNext) {
         val cl = clIt.next
 
+        leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
+        leo.Out.finest(s"${cl.pretty(sig)}")
         var uniLits: Seq[Literal] = Vector()
         var nonUniLits: Seq[Literal] = Vector()
         var boolExtLits: Seq[Literal] = Vector()
@@ -1052,7 +1062,7 @@ package inferenceControl {
           else {
             val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
             val simpNewCl = Control.simp(newCl)(sig)
-            result = result + simpNewCl
+            result = result + cl + simpNewCl
           }
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
@@ -1061,17 +1071,21 @@ package inferenceControl {
           val lifted = cnf.map(Control.liftEq)
           val liftedIt = lifted.iterator
           while (liftedIt.hasNext) {
-            val liftedCl = liftedIt.next()
+            val liftedCl = Control.shallowSimp(liftedIt.next())
+            result = result + liftedCl
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
-            val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
-            if (res == liftedClUniLits) result = result + liftedCl
-            else {
-              val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
-              val simpNewCl = Control.simp(newCl)(sig)
-              result = result + simpNewCl
+            val liftedUnified = doUnify0(cl, freshVarGen(liftedCl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
+            if (liftedUnified.isEmpty) {
+              val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
+              if (res != liftedClUniLits) {
+                val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
+                val simpNewCl = Control.simp(newCl)(sig)
+                result = result + simpNewCl
+              }
+            } else {
+              result = result union liftedUnified
             }
           }
-//          result = result union lifted
         }
       }
       result
@@ -1351,10 +1365,10 @@ package inferenceControl {
   protected final class LiteralSideIterator(cl: Clause, onlyMax: Boolean, onlyPositive: Boolean, alsoFlexheads: Boolean)(implicit sig: Signature) extends Iterator[inferenceControl.WithConfiguration] {
     import Literal.{leftSide, rightSide}
 
-    val maxLits = Literal.maxOf(cl.lits)
-    var litIndex = 0
-    var lits = cl.lits
-    var side = leftSide
+    private val maxLits = Literal.maxOf(cl.lits)
+    private var litIndex = 0
+    private var lits = cl.lits
+    private var side = leftSide
 
     def hasNext: Boolean = {
       if (lits.isEmpty) false
@@ -1519,9 +1533,9 @@ package indexingControl {
     }
 
 
-    private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map()
+    private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map.empty
     final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = {
-      var result: Set[AnnotatedClause] = Set()
+      var result: Set[AnnotatedClause] = Set.empty
       val clsIt = cls.iterator
       while (clsIt.hasNext) {
         val cl = clsIt.next()
@@ -1568,7 +1582,7 @@ package indexingControl {
 
     private val maxFeatures: Int = 100
     private var initialized = false
-    private var features: Seq[CFF] = Vector()
+    private var features: Seq[CFF] = Vector.empty
     final protected[modules] val index = FVIndex()
     def clauseFeatures: Seq[CFF] = features
 
@@ -1580,7 +1594,7 @@ package indexingControl {
         symbs.flatMap {symb => Seq(FVIndex.posLitsSymbolCountFeature(symb,_:Clause),
           FVIndex.posLitsSymbolDepthFeature(symb,_:Clause), FVIndex.negLitsSymbolCountFeature(symb,_:Clause), FVIndex.negLitsSymbolDepthFeature(symb,_:Clause))}
 
-      var initFeatures: Seq[Set[Int]] = Vector()
+      var initFeatures: Seq[Set[Int]] = Vector.empty
       val featureFunctionIt = featureFunctions.iterator
       var i = 0
       while (featureFunctionIt.hasNext) {
@@ -1594,12 +1608,6 @@ package indexingControl {
       Out.trace(s"sorted Features: ${sortedFeatures.toString()}")
       this.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
       initialized = true
-
-//      val initIt = initClauses.iterator
-//      while (initIt.hasNext) {
-//        val initCl = initIt.next()
-//        insert(initCl)
-//      }
     }
 
     final def insert(cl: AnnotatedClause): Unit = {
@@ -1651,10 +1659,12 @@ package indexingControl {
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
-        var result: Seq[AnnotatedFormula] = Vector()
+        var result: Seq[AnnotatedFormula] = Vector.empty
         var round : Int = 0
 
+        leo.Out.finest(s"Conjecture: ${conjecture.toString}")
         val conjSymbols = PreFilterSet.useFormula(conjecture)
+        leo.Out.finest(s"Symbols in conjecture: ${conjSymbols.mkString(",")}")
         val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
         var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
         round += 1
@@ -1685,7 +1695,7 @@ package  externalProverControl {
 
   object ExtProverControl {
     import leo.modules.external._
-    import leo.modules.output.{SZS_Theorem, SZS_CounterSatisfiable, SZS_Error}
+    import leo.modules.output.SZS_Error
     private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
@@ -1700,12 +1710,13 @@ package  externalProverControl {
       }
     }
 
-    final def checkExternalResults(state: State[AnnotatedClause]): Option[leo.modules.external.TptpResult[AnnotatedClause]] = {
-      if (state.externalProvers.isEmpty) None
+    final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {
+      if (state.externalProvers.isEmpty) Seq.empty
       else {
         val curTime = System.currentTimeMillis()
         if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL * 1000) {
           leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
+          var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
           lastCheck = curTime
           val proversIt = openCalls.keys.iterator
           while (proversIt.hasNext) {
@@ -1718,14 +1729,16 @@ package  externalProverControl {
                 leo.Out.debug(s"[ExtProver]: Job finished (${prover.name}).")
                 finished = finished + openCall
                 val result = openCall.value.get
-                leo.Out.debug(s"[ExtProver]: Result ${result.szsStatus.pretty}")
-                if (result.szsStatus == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
+                val resultSZS = result.szsStatus
+                leo.Out.debug(s"[ExtProver]: Result ${resultSZS.pretty}")
+                if (resultSZS == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
                 if (helpfulAnswer(result)) {
-                  val oldOpenCalls = openCalls(prover)
-                  val newOpenCalls = oldOpenCalls diff finished
-                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
-                  else openCalls = openCalls.updated(prover, newOpenCalls)
-                  return Some(result)
+                  results = results :+ result
+//                  val oldOpenCalls = openCalls(prover)
+//                  val newOpenCalls = oldOpenCalls diff finished
+//                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
+//                  else openCalls = openCalls.updated(prover, newOpenCalls)
+//                  return Some(result)
                 }
               }
             }
@@ -1734,8 +1747,8 @@ package  externalProverControl {
             if (newOpenCalls.isEmpty) openCalls = openCalls - prover
             else openCalls = openCalls.updated(prover, newOpenCalls)
           }
-          None
-        } else None
+          results
+        } else Seq.empty
       }
     }
     final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
@@ -1787,8 +1800,9 @@ package  externalProverControl {
       import leo.modules.external.Capabilities._
       // Check what the provers speaks, translate only to first-order if necessary
       val proverCaps = prover.capabilities
+      val extraArgs = Seq(Configuration.ATP_ARGS(prover.name))
       if (proverCaps.contains(THF)) {
-        prover.call(problem, problem.map(_.cl), sig, THF, timeout)
+        prover.call(problem, problem.map(_.cl), sig, THF, timeout, extraArgs)
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
         val (translatedProblem, auxDefs, translatedSig) =
@@ -1796,7 +1810,7 @@ package  externalProverControl {
             Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
           else
             Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
-          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout)
+          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
       } else if (proverCaps.contains(FOF)) {
         Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
         null

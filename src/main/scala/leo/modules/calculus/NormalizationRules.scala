@@ -707,7 +707,7 @@ object Simp extends CalculusRule {
 
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     leo.modules.Utility.myAssert(l.forall(a => !a.polarity))
-    val (subst, simpRes) = uniLitSimp0(Vector(), l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
+    val (subst, simpRes) = uniLitSimp0(Vector.empty, l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
     val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
     (subst, simpResAsLits)
   }

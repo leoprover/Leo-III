@@ -170,7 +170,8 @@ object PreFilterSet {
     while(todo.hasNext) {
       val next = todo.next()
       defn.get(next) match {                      // This method requires the input to be ordered correctly
-        case Some(symbs) => delta_symbs |= symbs
+        case Some(symbs) => delta_symbs = (delta_symbs union symbs) + next // Also put "next" in to consider formulas that use
+          // the same defined symbol
         case None => delta_symbs += next
       }
     }
