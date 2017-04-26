@@ -137,6 +137,30 @@ object ToTPTP {
       final def apply() = x
     })
 
+  final def printDefinitions(sig : Signature) : String = {
+    val sb : StringBuilder = new StringBuilder
+    val consts = sig.allUserConstants
+    val keys1 = sig.allUserConstants.iterator
+    val keys2 = sig.allUserConstants.iterator
+    while(keys1.hasNext){
+      val k = keys1.next()
+      if(sig(k).hasDefn) {
+        val name = tptpEscapeName(sig(k).name)
+        sb.append(s"thf(${name}_type, type, (${name} : ${typeToTHF(sig(k)._ty)(sig)})).\n")
+      }
+    }
+    while(keys2.hasNext){
+      val k = keys2.next()
+      if(sig(k).hasDefn){
+        val name = tptpEscapeName(sig(k).name)
+        val cl = Clause(Literal(Term.mkAtom(k)(sig), sig(k)._defn, true))
+        sb.append(ToTPTP.toTPTP(s"${name}_def", cl, Role_Definition)(sig))
+        sb.append("\n")
+      }
+    }
+    sb.toString()
+  }
+
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {

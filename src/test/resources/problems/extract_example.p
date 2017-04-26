@@ -7,6 +7,12 @@ thf(b_type,type,(
 thf(p_type,type,(
     p: $o > $o )).
 
+thf(c_type, type, (
+    c : $i > $i)).
+
+thf(c_def, definition, (
+    (c = ^[X : $i] : (X)))).
+
 
 %
 % Result : 

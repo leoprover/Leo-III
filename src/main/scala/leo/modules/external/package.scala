@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.Configuration
-import leo.datastructures.{Clause, Role_Axiom, Role_Conjecture, Signature}
+import leo.datastructures._
 import leo.modules.output.{ToTFF, ToTPTP}
 
 /**
@@ -49,7 +49,7 @@ package object external {
     if (leo.datastructures.isPropSet(TPTPProblem.WITHDEF, flag)) {
       sb.append(s"%% Definitions")
       sb.append("\n")
-//      sb.append(""); ???
+      sb.append(ToTPTP.printDefinitions(sig))
       sb.append("\n\n")
     }
     sb.append(s"%% User axioms")
