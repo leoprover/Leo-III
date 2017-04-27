@@ -32,6 +32,7 @@ class LiftEqRule(inType : DataType[AnnotatedClause],
 
   class LiftEqHint(oldClause : AnnotatedClause, newClause : AnnotatedClause) extends Hint{
     override def apply(): Delta = {
+      println(s"[FuncExt] on ${oldClause.pretty(sig)}\n  > ${newClause.pretty(sig)}")
       val r = Result()
       r.remove(inType)(oldClause)
       r.insert(outType)(Control.simp(newClause))

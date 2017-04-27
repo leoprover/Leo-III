@@ -37,6 +37,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
   // Paramodulation of all processed clauses with a new one
   class ParamodHint(sClause: AnnotatedClause, nClauses: Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
+      println(s"[Paramod] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
       while (it.hasNext) {

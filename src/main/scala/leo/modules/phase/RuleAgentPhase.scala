@@ -2,12 +2,20 @@ package leo.modules.phase
 import leo.{Configuration, Out}
 import leo.agents.Agent
 import leo.datastructures.{AnnotatedClause, Clause, Literal, Signature}
-import leo.datastructures.blackboard.{Blackboard, DataStore, DataType, Result}
+import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.modules.agent.rules.RuleAgent
+import leo.modules.agent.rules.control_rules.{Processed, Unify, Unprocessed}
 import leo.modules.control.Control
 import leo.modules.parsers.Input
 import leo.modules.seqpproc.{SeqPProc, State}
+
+object RuleAgentPhase {
+  def endOn(d : Delta) : Boolean = {
+    val clauses : Seq[AnnotatedClause] = d.inserts(Processed) ++ d.inserts(Unify) ++ d.inserts(Unprocessed)
+    clauses.exists(c => Clause.empty(c.cl))
+  }
+}
 
 /**
   * Created by mwisnie on 4/24/17.
@@ -18,7 +26,7 @@ class RuleAgentPhase
 , initType : DataType[AnnotatedClause])
 (blackboard: Blackboard
 , scheduler: Scheduler)
-extends CompletePhase(blackboard, scheduler)
+extends CompletePhase(blackboard, scheduler, RuleAgentPhase.endOn)
 {
   override def name: String = "rule_agent_phase"
   override protected final val agents: Seq[Agent] = ruleAgents

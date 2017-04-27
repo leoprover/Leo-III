@@ -34,6 +34,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
 
   class PrimsubstHint(sClause: AnnotatedClause, nClauses: Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
+      println(s"[PrimSubst] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
       while (it.hasNext) {

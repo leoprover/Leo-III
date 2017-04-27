@@ -32,6 +32,7 @@ class UnificationRule(inType : DataType[AnnotatedClause], outType : DataType[Ann
 
   class UnificationHint(sClause: AnnotatedClause, nClauses: Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
+      println(s"[Unification] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
       if(withUpdate) {

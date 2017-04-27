@@ -31,6 +31,7 @@ class BoolextRule(inType : DataType[AnnotatedClause], outType : DataType[Annotat
 
   class BoolextHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
     override def apply(): Delta = {
+      println(s"[BoolExt] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       if(withUpdate) {
         val simpClause = Control.simp(sClause)

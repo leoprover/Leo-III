@@ -22,7 +22,10 @@ class CNFRule(inType : DataType[AnnotatedClause],
       val org = ins.next()
       val cnf = Control.cnf(org)
       if(!(cnf.size == 1 && cnf.head == org) || withUpdate) {
+        println(s"[CNF] can apply on ${org.pretty(sig)}")
         res = new CNFHint(org, cnf) +: res
+      } else {
+        println(s"[CNF] cannot apply on ${org.pretty(sig)}")
       }
     }
     res
@@ -30,6 +33,7 @@ class CNFRule(inType : DataType[AnnotatedClause],
 
   class CNFHint(oldClause : AnnotatedClause, newClauses : Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
+      println(s"[CNF] on ${oldClause.pretty(sig)}\n  > ${newClauses.map(_.pretty(sig)).mkString("\n  > ")}")
       val r = Result()
       r.remove(inType)(oldClause)
       val it = newClauses.iterator
