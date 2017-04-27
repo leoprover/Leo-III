@@ -372,19 +372,19 @@ object InputProcessing {
   import leo.datastructures.tptp.thf.{BinaryConnective => THFBinaryConnective}
   protected[InputProcessing] final def processTHFBinaryConn(conn: THFBinaryConnective): HOLBinaryConnective = {
     import leo.datastructures.tptp.thf.{:= => THFAssign, Eq => THFEq, Neq => THFNeq, <=> => THFEquiv, Impl => THFImpl, <= => THFIf, <~> => THFNiff, ~| => THFNor, ~& => THFNand, | => THFOr, & => THFAnd, App => THFApp}
-    import leo.modules.HOLSignature.{Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, ===, !===}
+    import leo.modules.HOLSignature.{Impl => impl, <= => i_f, ||| => or, & => and, ~||| => nor, ~& => nand, ===, !===, <=> => equiv, <~> => niff}
 
     conn match {
       case THFEq => ===
       case THFNeq => !===
-      case THFEquiv => === //equiv
+      case THFEquiv => equiv // TODO change back ===
       case THFImpl  => impl
       case THFIf    => i_f
       case THFOr    => or
       case THFAnd   => and
       case THFNor   => nor
       case THFNand  => nand
-      case THFNiff  => !=== //niff
+      case THFNiff  => niff // TODO change back !==
       case THFApp   => @@@
       case THFAssign => throw new NotImplementedError("Assignment operator not supported.")
     }
