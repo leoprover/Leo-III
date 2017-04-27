@@ -145,16 +145,16 @@ object ToTPTP {
     while(keys1.hasNext){
       val k = keys1.next()
       if(sig(k).hasDefn) {
-        val name = tptpEscapeName(sig(k).name)
-        sb.append(s"thf(${name}_type, type, (${name} : ${typeToTHF(sig(k)._ty)(sig)})).\n")
+        val name = tptpEscapeName(sig(k).name+"_type")
+        sb.append(s"thf(${name},type,(${name} : ${typeToTHF(sig(k)._ty)(sig)})).\n")
       }
     }
     while(keys2.hasNext){
       val k = keys2.next()
       if(sig(k).hasDefn){
-        val name = tptpEscapeName(sig(k).name)
+        val name = tptpEscapeName(sig(k).name+"_def")
         val cl = Clause(Literal(Term.mkAtom(k)(sig), sig(k)._defn, true))
-        sb.append(ToTPTP.toTPTP(s"${name}_def", cl, Role_Definition)(sig))
+        sb.append(ToTPTP.toTPTP(s"${name}", cl, Role_Definition)(sig))
         sb.append("\n")
       }
     }
@@ -164,20 +164,20 @@ object ToTPTP {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
-      val name = tptpEscapeName(sig(id).name)
+      val name = tptpEscapeName(sig(id).name+"_type")
       sb.append("thf(")
       sb.append(name)
-      sb.append("_type,type,(")
+      sb.append(",type,(")
       sb.append(name)
       sb.append(":")
       sb.append(toTPTP(sig(id)._kind))
       sb.append(")).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
-      val name = tptpEscapeName(sig(id).name)
+      val name = tptpEscapeName(sig(id).name+"_type")
       sb.append("thf(")
       sb.append(name)
-      sb.append("_type,type,(")
+      sb.append(",type,(")
       sb.append(name)
       sb.append(":")
       sb.append(typeToTHF(sig(id)._ty)(sig))
