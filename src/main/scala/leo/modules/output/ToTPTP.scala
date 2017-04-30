@@ -145,16 +145,18 @@ object ToTPTP {
     while(keys1.hasNext){
       val k = keys1.next()
       if(sig(k).hasDefn) {
-        val name = tptpEscapeName(sig(k).name+"_type")
-        sb.append(s"thf(${name},type,(${name} : ${typeToTHF(sig(k)._ty)(sig)})).\n")
+        val fname = tptpEscapeExpression(sig(k).name+"_type")
+        val name = tptpEscapeName(sig(k).name)
+        sb.append(s"thf(${fname},type,(${name} : ${typeToTHF(sig(k)._ty)(sig)})).\n")
       }
     }
     while(keys2.hasNext){
       val k = keys2.next()
       if(sig(k).hasDefn){
-        val name = tptpEscapeName(sig(k).name+"_def")
+        val fname = tptpEscapeExpression(sig(k).name+"_def")
+//        val name = tptpEscapeName(sig(k).name)
         val cl = Clause(Literal(Term.mkAtom(k)(sig), sig(k)._defn, true))
-        sb.append(ToTPTP.toTPTP(s"${name}", cl, Role_Definition)(sig))
+        sb.append(ToTPTP.toTPTP(s"${fname}", cl, Role_Definition)(sig))
         sb.append("\n")
       }
     }
@@ -164,9 +166,10 @@ object ToTPTP {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
-      val name = tptpEscapeName(sig(id).name+"_type")
+      val fname = tptpEscapeExpression(sig(id).name+"_type")
+      val name = tptpEscapeName(sig(id).name)
       sb.append("thf(")
-      sb.append(name)
+      sb.append(fname)
       sb.append(",type,(")
       sb.append(name)
       sb.append(":")
@@ -174,9 +177,10 @@ object ToTPTP {
       sb.append(")).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
-      val name = tptpEscapeName(sig(id).name+"_type")
+      val fname = tptpEscapeExpression(sig(id).name+"_type")
+      val name = tptpEscapeName(sig(id).name)
       sb.append("thf(")
-      sb.append(name)
+      sb.append(fname)
       sb.append(",type,(")
       sb.append(name)
       sb.append(":")
