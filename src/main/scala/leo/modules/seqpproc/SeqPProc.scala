@@ -308,13 +308,14 @@ object SeqPProc {
           // No cancel, do reasoning step
           val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
-            val extResAnwers = extRes.get
-            if (endgameAnswer(extResAnwers)) {
-              assert(extResAnwers.szsStatus == SZS_Unsatisfiable, "other than UNS was trapped")
-              // CounterSat cnanot happen since we do not send a conjecture
+            val extRes0 = extRes.filter(endgameAnswer)
+            if (extRes0.nonEmpty) {
+              val extResAnswers = extRes0.head
+              assert(extResAnswers.szsStatus == SZS_Unsatisfiable, "other than UNS was trapped")
+              // CounterSat cannot happen since we do not send a conjecture
               // Theorem ditto
               loop = false
-              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnwers.proverName, extResAnwers.problem))
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnswers.proverName, extResAnswers.problem))
               endplay(emptyClause, state)
             }
           } else {
@@ -366,7 +367,7 @@ object SeqPProc {
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
 
-      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT) {
+      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && Configuration.ATPS.nonEmpty) {
         if (!ExtProverControl.openCallsExist) {
           Control.submit(state.processed, state)
           Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
@@ -375,11 +376,13 @@ object SeqPProc {
         while (wait && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
           Out.finest(s"[ExtProver] Check for answer")
           val extRes = Control.checkExternalResults(state)
-          if (extRes.isDefined) {
-            Out.debug(s"[ExtProver] Got answer! ${extRes.get.szsStatus.pretty}")
-            if (extRes.get.szsStatus == SZS_Unsatisfiable) {
+          if (extRes.nonEmpty) {
+            Out.debug(s"[ExtProver] Got answer(s)! ${extRes.map(_.szsStatus.pretty).mkString(",")}")
+            val unSatAnswers = extRes.filter(_.szsStatus == SZS_Unsatisfiable)
+            if (unSatAnswers.nonEmpty) {
+              val extRes0 = unSatAnswers.head
               wait = false
-              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes.get.proverName, extRes.get.problem))
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes0.proverName, extRes0.problem))
               endplay(emptyClause, state)
             } else if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
               Out.info(s"[ExtProver] Still waiting ...")
@@ -605,7 +608,7 @@ object SeqPProc {
     }
   }
 
-  private def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
+  def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
     InferredFrom(new leo.modules.calculus.CalculusRule {
       final val name: String = prover
       final val inferenceStatus = SZS_Theorem

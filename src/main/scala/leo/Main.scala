@@ -53,6 +53,9 @@ object Main {
         sb.append(s"time(${Configuration.TIMEOUT}),")
         sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
         sb.append(s"sos(${Configuration.SOS}),")
+        sb.append(s"primSubst(level=${Configuration.PRIMSUBST_LEVEL}),")
+        sb.append(s"uniDepth(${Configuration.UNIFICATION_DEPTH}),")
+        sb.append(s"unifierCount(${Configuration.UNIFIER_COUNT}),")
         // TBA ...
         sb.init.toString()
       }
@@ -62,6 +65,10 @@ object Main {
         leo.modules.seqpproc.SeqPProc(beginTime)
       } else if (Configuration.isSet("pure-ext")) {
         RunExternalProver.runExternal()
+      } else if (Configuration.isSet("par")) {
+        ParallelMain.runParallel(beginTime)
+      } else if (Configuration.isSet("processOnly")) {
+        leo.modules.Normalization()
       } else {
         throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
       }

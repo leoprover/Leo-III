@@ -58,6 +58,7 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     val newProcessed = r.inserts(ProcessedClause).iterator
     if(newProcessed.nonEmpty){
       val n = newProcessed.next()
+      state.incProofLoopCount() // TODO move to statistic?
       state.addProcessed(n)
       if(Clause.unit(n.cl) && !Clause.rewriteRule(n.cl)){
         state.addNonRewriteUnit(n)

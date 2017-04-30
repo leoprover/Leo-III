@@ -32,6 +32,19 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
     */
   override def execute(): Boolean = {
     implicit val s = sig
+    if (Configuration.ATPS.nonEmpty) {
+      import leo.modules.external.ExternalProver
+      Configuration.ATPS.foreach { case(name, path) =>
+        try {
+          val p = ExternalProver.createProver(name,path)
+          state.state.addExternalProver(p)
+          leo.Out.info(s"$name registered as external prover.")
+          leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")
+        } catch {
+          case e: NoSuchElementException => leo.Out.warn(e.getMessage)
+        }
+      }
+    }
 
     // TODO Read external Provers / Implement external Provers
     val input2 = Input.parseProblem(Configuration.PROBLEMFILE)

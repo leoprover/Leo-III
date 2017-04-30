@@ -1,10 +1,11 @@
 package leo.modules.external
 
 import java.io.{File, PrintWriter}
+import java.util.concurrent.TimeUnit
 
 import leo.Configuration
 import leo.datastructures.{Clause, ClauseProxy, Signature}
-import leo.modules.output.{SZS_Error, SZS_Forced, SZS_GaveUp, StatusSZS}
+import leo.modules.output._
 
 /**
   *
@@ -42,9 +43,12 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     *
     * @return A Future with the result of the prover.
     */
-  def call(problemOrigin: Set[C], concreteProblem: Set[Clause], sig: Signature, callLanguage: Capabilities.Language, timeout : Int): Future[TptpResult[C]] = {
+  def call(problemOrigin: Set[C], concreteProblem: Set[Clause],
+           sig: Signature, callLanguage: Capabilities.Language,
+           timeout : Int,
+          extraArgs: Seq[String] = Seq.empty): Future[TptpResult[C]] = {
     val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
-    startProver(translatedProblem, problemOrigin, timeout)
+    startProver(translatedProblem, problemOrigin, timeout, extraArgs)
   }
 
 
@@ -80,12 +84,14 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val safeProverName = java.net.URLEncoder.encode(name, "UTF-8")
       val file = File.createTempFile(s"remoteInvoke_${safeProverName}_", ".p")
       if (!Configuration.isSet("overlord")) file.deleteOnExit()
+      leo.Out.debug(s"Sending proof obligation ${file.toString}")
       val writer = new PrintWriter(file)
       try {
         writer.print(parsedProblem)
       } finally writer.close()
       // FIX ME : If a better solution for obtaining the processID is found
       val res = constructCall(args, timeout, file.getAbsolutePath)
+      leo.Out.debug(s"Call constructed: ${res.mkString(" ")}")
       KillableProcess(res.mkString(" "))
     }
     new SZSKillFuture(process, problem, timeout)
@@ -220,6 +226,28 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       */
     override def value: Option[TptpResult[C]] = synchronized{if(isCompleted) Some(result) else None}
 
+    override def blockValue : TptpResult[C] = synchronized{
+      if(isTerminated) return result
+      try {
+        val time = timeoutMilli - (System.currentTimeMillis() - startTime)
+        if(time > 0) {
+          process.waitFor(time, TimeUnit.MILLISECONDS)
+          result = translateResult(originalProblem, process)
+        } else {
+          result = new TptpResultImpl(originalProblem, SZS_Timeout, 51, Seq(), Seq(s"$name has exceeded its timelimit of $timeout and was force fully killed."))
+        }
+      } catch {
+        case e : InterruptedException =>
+          leo.Out.info(s"Call to prover $name was terminated by an interrupted exception.")
+          result = new TptpResultImpl(originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has encountered an interrupted exception."))
+        case _ : Exception =>
+          leo.Out.info(s"Call to prover $name was terminated by an exception.")
+          result = new TptpResultImpl(originalProblem, SZS_Forced, 51, Seq(), Seq(s"$name has encountered an exception."))
+      }
+      isTerminated = true
+      result
+    }
+
     /**
       * Forcibly kills the underlying process calculating the future's result.
       */
@@ -295,6 +323,14 @@ trait Future[+T] {
     * @return Some(result) if the process has finished, None otherwise.
     */
   def value : Option[T]
+
+  /**
+    * Blocks until the value is set.
+    * After a call to blockValue isCompleted will return true and `value` will
+    * always return the value of blockValue.
+    * @return
+    */
+  def blockValue : T
 
   /**
     * Forcibly kills the underlying process calculating the future's result.

@@ -90,11 +90,12 @@ object Monomorphization {
 
 
   private final val iterationLimit: Int = 2
+  private final val maxSize: Int = 500
   private final def generateMonoAxioms(polyAxioms: Set[Clause], instanceInfo: InstanceInfo, newSig: Signature)(sig: Signature): Problem = {
     var monoInstances: Set[Clause] = Set.empty
     var freshMonoInstanceInfo: InstanceInfo = instanceInfo
     var curIteration: Int = 0
-    while (freshMonoInstanceInfo.nonEmpty && curIteration < iterationLimit) {
+    while (freshMonoInstanceInfo.nonEmpty && curIteration < iterationLimit && monoInstances.size < maxSize) {
       var newMonoInstances: Set[Clause] = Set.empty
       val polyAxiomsIt = polyAxioms.iterator
       val freshestMonoInstanceInfo: InstanceInfo = mutable.Map.empty
@@ -103,21 +104,21 @@ object Monomorphization {
         val polySymbs = polySymbols(polyAxiom, instanceInfo) // side-effect: update instanceInfo
         var newSubsts: Set[TypeSubst] = Set(Subst.id)
         val polySymbsIt = polySymbs.iterator
-        while (polySymbsIt.hasNext) {
+        while (polySymbsIt.hasNext && monoInstances.size < maxSize) {
           val (polySymbHead, polySymbTypeParams) = polySymbsIt.next()
           if (freshMonoInstanceInfo.contains(polySymbHead) && !blacklisted(polySymbHead, sig)) {
             val instances = freshMonoInstanceInfo(polySymbHead)
             val polySymbTypeParamsIt = polySymbTypeParams.iterator
-            while (polySymbTypeParamsIt.hasNext) {
+            while (polySymbTypeParamsIt.hasNext && monoInstances.size < maxSize) {
               val polySymbTypeParam = polySymbTypeParamsIt.next()
               val instancesIt = instances.iterator
-              while (instancesIt.hasNext) {
+              while (instancesIt.hasNext && monoInstances.size < maxSize) {
                 val i = instancesIt.next()
                 assert(polySymbTypeParam.size == i.size)
                 val zippedUniTask = polySymbTypeParam.zip(i)
                 val uniResult = TypeUnification(zippedUniTask)
                 if (uniResult.isDefined) {
-                  newSubsts = multiply(newSubsts, uniResult.get)
+                  newSubsts = multiply(newSubsts.take(maxSize), uniResult.get)
                 }
               }
             }

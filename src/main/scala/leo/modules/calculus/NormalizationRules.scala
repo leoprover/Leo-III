@@ -164,6 +164,8 @@ object RenameCNF extends CalculusRule {
   @inline
   final def canApply(l : Literal) : Boolean = FullCNF.canApply(l)
 
+  final def canApply(cl: Clause): Boolean = cl.lits.exists(canApply)
+
   final def apply(vargen : leo.modules.calculus.FreshVarGen, cl : Clause, THRESHHOLD : Int = 0)(implicit sig: Signature) : Seq[Clause] = {
     val lits = cl.lits
     val normLits = apply(vargen, lits, THRESHHOLD)
@@ -189,8 +191,12 @@ object RenameCNF extends CalculusRule {
   final private def apply0(fvs: FVs, tyFVs: TyFVS, vargen: leo.modules.calculus.FreshVarGen, l : Literal, THRESHHOLD : Int)(implicit sig: Signature): Seq[Seq[Literal]] = if(!l.equational){
     if(FormulaRenaming.canApply(l, THRESHHOLD)) {
       val (replLit, defl1, defl2) = FormulaRenaming.apply(l)
-      assert(defl1 != null && defl2 != null, "No renaming was performed")
-      apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD) ++ multiply(apply0(fvs, tyFVs, vargen, defl1, THRESHHOLD), apply0(fvs, tyFVs, vargen, defl2, THRESHHOLD))
+      if(defl1 == null && defl2 == null){
+        apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD)
+      } else {
+        assert(defl1 != null && defl2 != null, "Non consistent definition returend in formula renaming.")
+        apply0(fvs, tyFVs, vargen, replLit, THRESHHOLD) ++ multiply(apply0(fvs, tyFVs, vargen, defl1, THRESHHOLD), apply0(fvs, tyFVs, vargen, defl2, THRESHHOLD))
+      }
     } else {
     l.left match {
       case Not(t) => apply0(fvs, tyFVs, vargen, Literal(t, !l.polarity), THRESHHOLD)
@@ -707,7 +713,7 @@ object Simp extends CalculusRule {
 
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     leo.modules.Utility.myAssert(l.forall(a => !a.polarity))
-    val (subst, simpRes) = uniLitSimp0(Vector(), l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
+    val (subst, simpRes) = uniLitSimp0(Vector.empty, l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
     val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
     (subst, simpResAsLits)
   }

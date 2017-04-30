@@ -40,6 +40,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_ATPMAXJOBS = "atp-max-jobs"
   private val RENAMING = "renaming"
   private val PARAM_CONSISTENCYCHECK = "consistency-only"
+  private val EXTRACTION_TYPE_PARAM = "xType"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -52,7 +53,8 @@ object Configuration extends DefaultConfiguration {
       'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
       's' -> ("sos", "", "Use SOS heuristic search strategy"),
       'a' -> ("atp", "name=call", "Addition of external provers"),
-      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds.")
+      'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds."),
+      'x' -> ("atp-args", "name=\"args\"", "Arguments directly passed to the external prover.")
     )
   }
 
@@ -147,6 +149,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val RENAMING_SET : Boolean = isSet(RENAMING)
   lazy val RENAMING_THRESHHOLD : Int = valueOf(RENAMING).fold(0)(_.headOption.fold(0)(_.toInt))
+  lazy val EXTRACTION_TYPE: Int = uniqueIntFor(EXTRACTION_TYPE_PARAM, 1)
 
   lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
   lazy val ATP_MAX_JOBS: Int = uniqueIntFor(PARAM_ATPMAXJOBS, DEFAULT_ATPMAXJOBS)
@@ -159,8 +162,7 @@ object Configuration extends DefaultConfiguration {
         val eses = s.split("=",2)
         (eses(0), eses(1))
       }
-    }
-    else {
+    } else {
       val b = valueOf("atp")
       if(b.nonEmpty) {
         val atps = b.get
@@ -170,6 +172,26 @@ object Configuration extends DefaultConfiguration {
         }
       }
       else Seq()
+    }
+  }
+  lazy val ATP_ARGS : Map[String, String] = {
+    val a = valueOf("x")
+    if(a.nonEmpty) {
+      val atps = a.get
+      atps.filter(_.contains("=")).map{(s : String)  =>
+        val eses = s.split("=",2)
+        (eses(0), eses(1))
+      }.toMap.withDefault(_ => "")
+    } else {
+      val b = valueOf("atp-args")
+      if(b.nonEmpty) {
+        val atps = b.get
+        atps.filter(_.contains("=")).map{(s : String)  =>
+          val eses = s.split("=",2)
+          (eses(0), eses(1))
+        }
+      }.toMap.withDefault(_ => "")
+      else Map.empty.withDefault(_ => "")
     }
   }
 
