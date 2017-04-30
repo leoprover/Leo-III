@@ -308,16 +308,16 @@ object Term extends TermBank {
   object LexicographicalOrdering extends Ordering[Term] {
 
       private def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
-        case (Left(h1) :: t1, Left(h2) :: t2) =>
+        case (Left(h1) +: t1, Left(h2) +: t2) =>
           val c = this.compare(h1, h2)
           if (c != 0) c else compareApp(t1, t2)
-        case (Right(h1) :: t1, Right(h2) :: t2) =>
+        case (Right(h1) +: t1, Right(h2) +: t2) =>
           val c = Type.LexicographicalOrdering.compare(h1, h2)
           if (c != 0) c else compareApp(t1, t2)
-        case (Left(h1) :: t1, Right(h2) :: t2) => 1
-        case (Right(h1) :: t1, Left(h2) :: t2) => -1
-        case (h :: t, Nil) => 1
-        case (Nil, h :: t) => -1
+        case (Left(h1) +: t1, Right(h2) +: t2) => 1
+        case (Right(h1) +: t1, Left(h2) +: t2) => -1
+        case (h +: t, Nil) => 1
+        case (Nil, h +: t) => -1
         case (Nil, Nil) => 0
       }
 
