@@ -71,7 +71,7 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     * @param t
     * @return
     */
-  override def all[T](t: DataType[T]): Set[T] = if(t == OpenUnification) synchronized(openUnifications.toSet.asInstanceOf[Set[T]]) else Set.empty
+  override def get[T](t: DataType[T]): Set[T] = if(t == OpenUnification) synchronized(openUnifications.toSet.asInstanceOf[Set[T]]) else Set.empty
 }
 
 case object OpenUnification extends DataType [AnnotatedClause] {

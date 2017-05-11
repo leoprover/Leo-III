@@ -174,5 +174,5 @@ object NumberStore extends DataStore {
   }
 
   override def clear(): Unit = synchronized {num = 0}
-  override def all[T](t: DataType[T]): Set[T] = synchronized(if(t == NumberType) Set(num.asInstanceOf[T]) else Set())
+  override def get[T](t: DataType[T]): Set[T] = synchronized(if(t == NumberType) Set(num.asInstanceOf[T]) else Set())
 }

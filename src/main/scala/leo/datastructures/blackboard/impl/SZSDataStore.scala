@@ -62,7 +62,7 @@ object SZSDataStore extends DataStore {
 
   override def clear(): Unit = synchronized(szs)
 
-  override protected[blackboard] def all[T](t: DataType[T]): Set[T] = t match {
+  override def get[T](t: DataType[T]): Set[T] = t match {
     case StatusType => Set(szs).asInstanceOf[Set[T]]
     case _ => Set.empty
   }

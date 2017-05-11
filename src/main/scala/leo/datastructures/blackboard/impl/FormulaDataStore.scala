@@ -127,7 +127,7 @@ object FormulaDataStore extends DataStore {
 
   override def clear(): Unit = formulaStore.clear()
 
-  override protected[blackboard] def all[T](t: DataType[T]): Set[T] = t match {
+  override def get[T](t: DataType[T]): Set[T] = t match {
     case ClauseType => getFormulas.toSet.asInstanceOf[Set[T]]
     case _ => Set()
   }

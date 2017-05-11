@@ -95,8 +95,10 @@ extends CompletePhase(blackboard, scheduler, RuleAgentPhase.endOn)
     }
     Out.trace("## Preprocess END\n\n")
 
-    blackboard.getDS(Set(initType)) foreach {d => d.updateResult(delta)}
+    blackboard.getDS(Set(initType)) foreach {d => d.updateResult(delta)}  // Blackboard insert?
 
     super.execute()
+
+    true
   }
 }

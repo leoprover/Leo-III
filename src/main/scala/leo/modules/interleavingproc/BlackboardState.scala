@@ -39,7 +39,7 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
   override def clear(): Unit = {
     leo.Out.info("Could not clear the state. Not yet implemented.")
   }
-  override def all[T](t: DataType[T]): Set[T] = ???     // TODO implement
+  override def get[T](t: DataType[T]): Set[T] = ???     // TODO implement
   override def updateResult(r: Delta): Boolean = synchronized {
     val newUnprocessedSeq = r.inserts(UnprocessedClause)
     state.incGeneratedCl(newUnprocessedSeq.size)

@@ -24,7 +24,7 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Prepend: a", Checked){
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
     val store = new SimpleStore
@@ -62,7 +62,7 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Append: b", Checked){
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
     val store = new SimpleStore
@@ -100,7 +100,7 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Pre/Append: a/b"){
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
     val store = new SimpleStore
@@ -161,7 +161,7 @@ class SimpleStore extends DataStore {
     true
   }
   override def clear(): Unit = synchronized(strings.clear())
-  override def all[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
+  override def get[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
 }
 
 

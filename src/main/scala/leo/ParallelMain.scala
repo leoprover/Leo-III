@@ -134,7 +134,7 @@ object ParallelMain {
     val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
     // Blackboard and Scheduler
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
 
     val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
     TimeOutProcess.start()

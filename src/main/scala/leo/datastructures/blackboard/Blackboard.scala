@@ -228,6 +228,17 @@ trait DataBlackboard extends TaskOrganize {
         submitTasks(a, a.filter(result).toSet)
       }
   }
+
+  /**
+    *
+    * Gets all data of type dataType from all
+    * the blackboard
+    *
+    * @param dataType The type of data to be collected
+    * @tparam T The concrete type of data
+    * @return the set of all data of the given type
+    */
+  def getData[T](dataType : DataType[T]) : Set[T]
 }
 
 /**

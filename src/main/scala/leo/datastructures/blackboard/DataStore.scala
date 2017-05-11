@@ -21,7 +21,7 @@ trait DataStore {
 
   def clear()
 
-  protected[blackboard] def all[T](t : DataType[T]) : Set[T]
+  def get[T](t : DataType[T]) : Set[T]
 
   def insertData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().insert(d)(n)
