@@ -164,13 +164,13 @@ object NumberStore extends DataStore {
   private var num : Int = 0
   def getNumber : Int = synchronized(num)
   override val storedTypes: Seq[DataType[Any]] = Seq(NumberType)
-  override def updateResult(r: Delta): Boolean = {
+  override def updateResult(r: Delta): Delta = {
     val ups = r.updates(NumberType)
     if(ups.nonEmpty){
       val (_, u) = ups.head.asInstanceOf[(Int, Int)]
       num = u
     }
-    true
+    r
   }
 
   override def clear(): Unit = synchronized {num = 0}

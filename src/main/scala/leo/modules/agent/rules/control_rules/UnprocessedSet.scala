@@ -1,7 +1,7 @@
 package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, MultiPriorityQueue}
-import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
+import leo.datastructures.blackboard._
 import leo.modules.SZSException
 import leo.modules.output.SZS_Error
 
@@ -19,6 +19,9 @@ case object Unprocessed extends DataType[AnnotatedClause]{
   * the algorithm execution in [[leo.modules.control.Control]]
   */
 class UnprocessedSet extends DataStore{
+
+  // Keeping track of data inside of mpq, to efficiently query update changes
+  private final val valuesStored : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
 
   private final val mpq: MultiPriorityQueue[AnnotatedClause] = MultiPriorityQueue.empty
   mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[AnnotatedClause]])
@@ -38,8 +41,7 @@ class UnprocessedSet extends DataStore{
     * @return Set of unprocessed clauses
     */
   final def unprocessed: Set[AnnotatedClause] = {
-    if (mpq == null) leo.Out.comment("MPQ null")
-    mpq.toSet
+    valuesStored.toSet  // Cloning into immutable
   }
 
   final def nextUnprocessed: AnnotatedClause = {
@@ -50,6 +52,7 @@ class UnprocessedSet extends DataStore{
     }
     val result = mpq.dequeue(cur_prio)
     cur_weight = cur_weight+1
+    valuesStored.remove(result)
     result
   }
 
@@ -66,19 +69,27 @@ class UnprocessedSet extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta) : Delta = synchronized {
     val ins1 = r.inserts(Unprocessed)
     val del1 = r.removes(Unprocessed)
     val ins2 = r.updates(Unprocessed).map(_._2)
     val del2 = r.updates(Unprocessed).map(_._1)
 
-    val ins = (ins1 ++ ins2).iterator
-    val del = (del1 ++ del2).iterator
+    val ins = ins1 ++ ins2
+    val del = del1 ++ del2
 
-    mpq.remove(del1)
-    mpq.insert(ins)
+    // Performs an update on valuesStored and filters for the ones with changes.
+    val filterDel = del.filter(c => valuesStored.remove(c))
+    val filterIns = ins.filter(c => valuesStored.add(c))
 
-    ins.nonEmpty || del.nonEmpty
+
+    mpq.remove(filterDel)
+    mpq.insert(filterIns)
+
+
+    println(s"Unprocessed after update (size=${valuesStored.size}):\n  ${valuesStored.map(_.pretty).mkString("\n  ")}")
+
+    new ImmutableDelta(Map(Unprocessed -> filterIns), Map(Unprocessed -> filterDel))
   }
 
   /**

@@ -186,7 +186,7 @@ trait DataBlackboard extends TaskOrganize {
     */
   def addData[T](dataType : DataType[T])(d : T) : Boolean = {
     val result = Result().insert(dataType)(d)
-    val isNew = getDS(Set(dataType)) exists (ds => ds.updateResult(result)) // TODO forall or exist?
+    val isNew = getDS(Set(dataType)) exists (ds => ds.insertData(dataType)(d))
     if(isNew)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)
@@ -205,7 +205,7 @@ trait DataBlackboard extends TaskOrganize {
     */
   def updateData[T](dataType: DataType[T])(d1 : T)(d2 : T) : Boolean = {
     val result = Result().update(dataType)(d1)(d2)
-    val isNew = getDS(Set(dataType)) exists {ds => ds.updateResult(result)} // TODO forall or exist?
+    val isNew = getDS(Set(dataType)) exists {ds => ds.updateData(dataType)(d1)(d2)} // TODO forall or exist?
     if(isNew)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)
@@ -222,7 +222,7 @@ trait DataBlackboard extends TaskOrganize {
     */
   def removeData[T](dataType: DataType[T])(d : T) : Unit = {
     val result = Result().remove(dataType)(d)
-    val wasDel = getDS(Set(dataType)) exists {d => d.updateResult(result) }
+    val wasDel = getDS(Set(dataType)) exists {d1 => d1.deleteData(dataType)(d) }
     if(wasDel)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)

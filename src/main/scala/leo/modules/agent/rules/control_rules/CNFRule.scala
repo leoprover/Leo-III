@@ -13,19 +13,20 @@ class CNFRule(inType : DataType[AnnotatedClause],
   override final val name: String = "cnf_rule"
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
-  private final val withUpdate = inType != outType
+  final val moving = inType != outType
 
   override def canApply(r: Delta): Seq[Hint] = {
     val ins = r.inserts(inType).iterator
-    var res : Seq[CNFHint] = Seq()
+    var res : Seq[Hint] = Seq()
     while(ins.hasNext) {
       val org = ins.next()
       val cnf = Control.cnf(org)
-      if(!(cnf.size == 1 && cnf.head == org) || withUpdate) {
+      if(!(cnf.size == 1 && cnf.head == org) || moving) {
         println(s"[CNF] can apply on ${org.pretty(sig)}")
         res = new CNFHint(org, cnf) +: res
       } else {
         println(s"[CNF] cannot apply on ${org.pretty(sig)}")
+        res = new ReleaseLockHint(inType, org) +: res
       }
     }
     res

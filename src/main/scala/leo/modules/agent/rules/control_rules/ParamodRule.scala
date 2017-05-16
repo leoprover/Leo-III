@@ -17,6 +17,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
   override val observedDataStructures: Seq[DataStore] = Seq(processed)
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
+  override final val moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     // All new selected clauses
@@ -40,6 +41,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
       println(s"[Paramod] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
+      r.remove(LockType(inType))(sClause)
       while (it.hasNext) {
         r.insert(outType)(Control.simp(it.next()))
       }

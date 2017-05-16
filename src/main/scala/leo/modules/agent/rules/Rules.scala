@@ -1,6 +1,7 @@
 package leo.modules.agent.rules
 
-import leo.datastructures.blackboard.{DataStore, DataType, Delta}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, ImmutableDelta}
+import LockType
 
 
 trait Rule {
@@ -13,6 +14,18 @@ trait Rule {
     * @return
     */
   def inTypes : Seq[DataType[Any]]
+
+  /**
+    *
+    * This flag indicates, if the rule will
+    * move the result from one set to another.
+    *
+    * Even if this rule is not applicable,
+    * a moving operation is performed
+    *
+    * @return true, if the original clause should be moved
+    */
+  def moving : Boolean
 
   /**
     * Defines the type of results for the application
@@ -73,6 +86,12 @@ trait Hint {
     * Data written by the hint
     */
   def write : Map[DataType[Any], Set[Any]]
+}
+
+class ReleaseLockHint[A](dt : DataType[A], d : A) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(LockType(dt) -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map()
 }
 
 ///**

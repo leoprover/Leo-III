@@ -43,7 +43,7 @@ class UnificationSet extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta): Delta = synchronized {
     val ins1 = r.inserts(Unify)
     val del1 = r.removes(Unify)
     val (del2, ins2) = r.updates(Unify).unzip
@@ -51,26 +51,18 @@ class UnificationSet extends DataStore{
     val ins = (ins1 ++ ins2).iterator
     val del = (del1 ++ del2).iterator
 
-    var change = false
+    val delta = Result()
 
     while(del.hasNext){
-      del.next match {
-        case c : AnnotatedClause =>
-          set.remove(c)
-          change |= true
-        case x => leo.Out.debug(s"Tried to remove $x from Unprocessed Set, but was no clause.")
-      }
+      val c = del.next
+      if(set.remove(c)) delta.remove(Unify)(c)
     }
 
     while(ins.hasNext) {
-      ins.next match {
-        case c: AnnotatedClause =>
-          set.add(c)
-          change |= true
-        case x => leo.Out.debug(s"Tried to add $x to Unprocessed Set, but was no clause.")
-      }
+      val c = ins.next
+      if(set.add(c)) delta.insert(Unify)(c)
     }
-    change
+    delta
   }
 
   /**

@@ -105,24 +105,30 @@ object FormulaDataStore extends DataStore {
 
   override def storedTypes: Seq[DataType[Any]] = List(ClauseType)
 
-  override def updateResult(r: Delta): Boolean = {
+  override def updateResult(r: Delta) : Delta = {
+    val delta = Result()
     val del = r.removes(ClauseType).iterator
     val up = r.updates(ClauseType).iterator
     val ins = r.inserts(ClauseType).iterator
 
-    var doneSmth = false
-
-    while(del.nonEmpty)
-      doneSmth |= removeFormula(del.next())   // TODO correct?
+    while(del.nonEmpty) {
+      val toRemove = del.next()
+      val removed = removeFormula(toRemove)
+      if(removed) delta.remove(ClauseType)(toRemove)
+    }
     while(up.nonEmpty) {
       val (oldV, newV) = up.next()
       removeFormula(oldV)
-      doneSmth |= addNewFormula(newV)
+      val inserted = addNewFormula(newV)
+      if (inserted) delta.update(ClauseType)(oldV)(newV)
     }
-    while(ins.nonEmpty)
-      doneSmth |= addNewFormula(ins.next())
+    while(ins.nonEmpty) {
+      val toInsert = ins.next()
+      val inserted = addNewFormula(ins.next())
+      if (inserted) delta.insert(ClauseType)(toInsert)
+    }
 
-    doneSmth
+    delta
   }
 
   override def clear(): Unit = formulaStore.clear()

@@ -43,21 +43,21 @@ object SZSDataStore extends DataStore {
 
   @inline override val storedTypes: Seq[DataType[Any]] = List(StatusType)
 
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta): Delta  = synchronized {
     val ins = r.inserts(StatusType)
     if(ins.nonEmpty & szs == null){
       val value = ins.head
       szs = value
-      return true
+      return Result().insert(StatusType)(szs)
     }
     val ups = r.updates(StatusType)
     if (ups.nonEmpty) {
       val (oldV, newV) = ups.head
-      if (oldV != szs) return false
+      if (oldV != szs || oldV == newV) return EmptyDelta
       szs = newV
-      return true
+      return Result().insert(StatusType)(szs)
     }
-    false
+    EmptyDelta
   }
 
   override def clear(): Unit = synchronized(szs)

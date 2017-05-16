@@ -17,7 +17,21 @@ trait DataStore {
 
   def storedTypes : Seq[DataType[Any]]
 
-  def updateResult(r : Delta) : Boolean  // TODO Return really updated values for further consideration not only Bool
+  /**
+    * Applies a Delta, the indendet change, to the data structure.
+    * After the application only a slice of the delta is returned,
+    * namely only the part of the delta, that changed the data structure.
+    *
+    * Formally
+    * <p>
+    * updateResult(r) = min { d | d(this) = r(this)},<br />
+    * where min sorts with the subset relation.
+    * <p>
+    *
+    * @param r The delta to be applied to the data structure
+    * @return The slice of the delta really applied.
+    */
+  def updateResult(r : Delta) : Delta
 
   def clear()
 
@@ -25,19 +39,19 @@ trait DataStore {
 
   def insertData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().insert(d)(n)
-    updateResult(r)
-    true
+    val res = updateResult(r)
+    !res.isEmpty
   }
 
   def deleteData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().remove(d)(n)
-    updateResult(r)
-    true
+    val res = updateResult(r)
+    !res.isEmpty
   }
 
   def updateData[T](d : DataType[T])(o : T)(n : T) : Boolean = {
     val r = Result().update(d)(o)(n)
-    updateResult(r)
-    true
+    val res = updateResult(r)
+    !res.isEmpty
   }
 }

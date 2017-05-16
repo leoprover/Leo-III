@@ -40,7 +40,7 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     leo.Out.info("Could not clear the state. Not yet implemented.")
   }
   override def get[T](t: DataType[T]): Set[T] = ???     // TODO implement
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta): Delta = synchronized {
     val newUnprocessedSeq = r.inserts(UnprocessedClause)
     state.incGeneratedCl(newUnprocessedSeq.size)
     val newUnprocessed = newUnprocessedSeq.iterator
@@ -100,19 +100,16 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
       }
     }
 
-    // TODO Statistic
     val statistc = r.inserts(StatisticType).iterator
     if(statistc.nonEmpty){
-      val stat = statistc.next().asInstanceOf[Statistic]
-      // TODO do something with the statistic
+      val stat = statistc.next()
       state.incForwardSubsumedCl(stat.forwardSubsumedClauses)
       state.incBackwardSubsumedCl(stat.backwardSubsumedClauses)
       state.incFactor(stat.factorClauses)
       state.incGeneratedCl(stat.generatedClauses)
       state.incParamod(stat.paramodClauses)
-      // TODO checken, welche Fehlder überhaupt gefüllt sind um so etwas von der linearen suche zu verkleinern.
     }
-    true
+    r  // TODO construct a real delta. In this implementation not yet important
   }
 }
 

@@ -14,6 +14,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
                    (implicit signature : Signature) extends Rule {
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
+  override final val moving: Boolean = false
 
   private lazy val primsubstlevel = Configuration.PRIMSUBST_LEVEL
 
@@ -37,6 +38,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
       println(s"[PrimSubst] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
+      r.remove(LockType(inType))(sClause)
       while (it.hasNext) {
         val c = it.next()
         if (c.cl.lits.exists(l => l.uni))

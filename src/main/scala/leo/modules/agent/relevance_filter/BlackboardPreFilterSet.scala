@@ -10,7 +10,7 @@ import leo.modules.relevance_filter.PreFilterSet
 object BlackboardPreFilterSet extends DataStore{
   override def storedTypes: Seq[DataType[Any]] = Seq(FormulaTakenType, AnnotatedFormulaType)
 
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta): Delta = synchronized {
     val ins = r.inserts(AnnotatedFormulaType).iterator
     val take = r.inserts(FormulaTakenType).iterator
 
@@ -24,7 +24,7 @@ object BlackboardPreFilterSet extends DataStore{
       PreFilterSet.useFormula(taken)
     }
 
-    return ins.nonEmpty || take.nonEmpty
+    return r  // TODO can return to many results
   }
 
   override def clear(): Unit = PreFilterSet.clear()

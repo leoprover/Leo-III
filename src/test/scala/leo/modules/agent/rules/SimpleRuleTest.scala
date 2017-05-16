@@ -150,7 +150,7 @@ class SimpleStore extends DataStore {
   val strings : mutable.Set[String] = mutable.HashSet[String]()
 
   override val storedTypes: Seq[DataType[Any]] = Seq(StringType)
-  override def updateResult(r: Delta): Boolean = synchronized{
+  override def updateResult(r: Delta): Delta = synchronized{
     var (del, ins) : (Seq[String], Seq[String])= r.updates(StringType).map{case (a,b) => (a.asInstanceOf[String], b.asInstanceOf[String])}.unzip
     del = del ++ r.removes(StringType)
     ins = ins ++ r.inserts(StringType)
@@ -158,7 +158,7 @@ class SimpleStore extends DataStore {
     del foreach (strings.remove(_))
     ins foreach (strings.add(_))
 
-    true
+    r
   }
   override def clear(): Unit = synchronized(strings.clear())
   override def get[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
@@ -169,6 +169,7 @@ class PrependRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Prepend(${letter})"
   override def inTypes: Seq[DataType[Any]] = Seq(StringType)
   override def outTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){
@@ -189,6 +190,7 @@ class AppendRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Append(${letter})"
   override def inTypes: Seq[DataType[Any]] = Seq(StringType)
   override def outTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){

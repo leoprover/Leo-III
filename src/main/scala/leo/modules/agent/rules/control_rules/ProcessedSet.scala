@@ -43,7 +43,8 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta) : Delta = synchronized {
+    val delta = Result()
     val ins1 = r.inserts(Processed)
     val del1 = r.removes(Processed)
     val (del2, ins2) = r.updates(Processed).unzip
@@ -51,26 +52,20 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
     val ins = (ins1 ++ ins2).iterator
     val del = (del1 ++ del2).iterator
 
-    var change = false
-
     while(del.hasNext){
-      del.next match {
-        case c : AnnotatedClause =>
-          set.remove(c)
-          change |= true
-        case x => leo.Out.debug(s"Tried to remove $x from Unprocessed Set, but was no clause.")
-      }
+      val c = del.next
+      if(set.remove(c)) delta.remove(Processed)(c)
+      else leo.Out.finest(s"% ${c.pretty} was not in the processed set.")
     }
 
     while(ins.hasNext) {
-      ins.next match {
-        case c: AnnotatedClause =>
-          set.add(c)
-          change |= true
-        case x => leo.Out.debug(s"Tried to add $x to Unprocessed Set, but was no clause.")
-      }
+      val c: AnnotatedClause = ins.next
+      if(set.add(c)) delta.insert(Processed)(c)
+      else leo.Out.finest(s"% ${c.pretty} was already in the processed set.")
     }
-    change
+    println(s"Processed after update:\n  ${set.map(_.pretty).mkString("\n  ")}")
+
+    delta
   }
 
   /**
