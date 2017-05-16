@@ -1,7 +1,6 @@
 package leo.modules.agent.rules
 
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, ImmutableDelta}
-import LockType
 
 
 trait Rule {

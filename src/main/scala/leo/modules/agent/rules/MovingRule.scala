@@ -1,7 +1,6 @@
 package leo.modules.agent.rules
 
 import leo.datastructures.blackboard.{DataType, Delta, ImmutableDelta}
-import leo.modules.agent.rules.control_rules.LockType
 
 
 /**

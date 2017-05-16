@@ -2,7 +2,6 @@ package leo.modules.agent.rules
 
 import leo.LeoTestSuite
 import leo.datastructures.blackboard.ImmutableDelta
-import leo.modules.agent.rules.control_rules.LockType
 
 /**
   * Created by mwisnie on 5/16/17.
