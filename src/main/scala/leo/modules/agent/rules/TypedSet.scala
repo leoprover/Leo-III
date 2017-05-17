@@ -28,11 +28,11 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
     while(dels.hasNext) {synchronized {
       val item = dels.next()
       val removed = store.remove(item)
-      if(removed) delta.insert(dt)(item)
+      if(removed) delta.remove(dt)(item)
     }}
 
     while(ins.hasNext) {synchronized {
-      val item = dels.next()
+      val item = ins.next()
       val inserted = store.add(item)
       if(inserted) delta.insert(dt)(item)
     }}

@@ -1,25 +1,25 @@
 package leo.modules.agent.rules
 
-import leo.LeoTestSuite
+import leo.{Checked, LeoTestSuite}
 import leo.datastructures.blackboard.ImmutableDelta
 
 /**
   * Created by mwisnie on 5/16/17.
   */
 class AgentBarrierTest extends LeoTestSuite {
-  test("Creation Test"){
+  test("Creation Test", Checked){
     val barrier = new AgentBarrier(StringType, 5)
     assert(barrier.get(LockType(StringType)).size == 0)
   }
 
-  test("Init Barrier"){
+  test("Init Barrier", Checked){
     val barrier = new AgentBarrier(StringType, 5)
     val delta = new ImmutableDelta(Map(StringType -> Seq("a")))
     barrier.updateResult(delta)
     assert(barrier.isLocked("a"))
   }
 
-  test("Free Barrier"){
+  test("Free Barrier", Checked){
     val barrier = new AgentBarrier(StringType, 3)
     val delta = new ImmutableDelta(Map(StringType -> Seq("a")))
     val lockDelta = new ImmutableDelta(Map(barrier.lockType -> Seq("a")))
@@ -32,7 +32,7 @@ class AgentBarrierTest extends LeoTestSuite {
     assert(!barrier.isLocked("a"))
   }
 
-  test("Multi Lock interleave") {
+  test("Multi Lock interleave", Checked) {
     val barrier = new AgentBarrier(StringType, 3)
     val delta1 = new ImmutableDelta(Map(StringType -> Seq("a")))
     val delta2 = new ImmutableDelta(Map(StringType -> Seq("b")))

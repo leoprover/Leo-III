@@ -186,7 +186,8 @@ trait DataBlackboard extends TaskOrganize {
     */
   def addData[T](dataType : DataType[T])(d : T) : Boolean = {
     val result = Result().insert(dataType)(d)
-    val isNew = getDS(Set(dataType)) exists (ds => ds.insertData(dataType)(d))
+    var isNew = false
+    getDS(Set(dataType)) foreach (ds => isNew |= ds.insertData(dataType)(d))
     if(isNew)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)

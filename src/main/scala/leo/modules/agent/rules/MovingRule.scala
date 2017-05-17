@@ -17,13 +17,19 @@ class MovingRule[A](inType : DataType[A],
                    barrier : AgentBarrier[A]) extends Rule {
   override val name: String = s"move(${inType.toString} -> ${outType})"
   private val lock = LockType(inType)
-  override val inTypes: Seq[DataType[Any]] = Seq(inType, lock)
+  override val inTypes: Seq[DataType[Any]] = Seq(lock)
   override val moving: Boolean = true
   override val outTypes: Seq[DataType[Any]] = Seq(outType)
 
   override def canApply(r: Delta): Seq[Hint] = {
     val releasedLocks = r.removes(lock)
-    Seq(new MoveHint(releasedLocks))
+    if(releasedLocks.nonEmpty) {
+      println(s"Notified of Releases : ${releasedLocks.mkString(", ")}")
+      Seq(new MoveHint(releasedLocks))
+    }
+    else {
+      Seq()
+    }
   }
 
   class MoveHint(toMove : Seq[A]) extends Hint{

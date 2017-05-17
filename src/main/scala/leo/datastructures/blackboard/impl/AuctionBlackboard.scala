@@ -117,7 +117,7 @@ private[blackboard] class AuctionBlackboard extends Blackboard {
 
   override def getData[T](dataType: DataType[T]): Set[T] = {
     val ds : Set[DataStore] = dsmap.getOrElse(dataType, Set.empty[DataStore])
-    val data : Set[T] = ds.flatMap(ds => ds.get(dataType).map(d => dataType.convert(d)))
+    val data : Set[T] = ds.flatMap(ds => ds.get(dataType))
     data
   }
 
@@ -126,7 +126,9 @@ private[blackboard] class AuctionBlackboard extends Blackboard {
   override def rmDS(ds: DataStore): Unit = if (dsset.remove(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) - ds)}
 
   override def getDS(d: Set[DataType[Any]]): Iterable[DataStore] = {
-    dsmap.filterKeys(k => d.contains(k)).values.flatten.toSet
+    dsmap.filterKeys(k =>
+      d.contains(k))
+      .values.flatten.toSet
   }
 
   override def getDS: Iterable[DataStore] = dsmap.values.flatten.toSet
