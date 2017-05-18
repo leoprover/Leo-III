@@ -397,7 +397,7 @@ object ToTPTP {
           case termArg => "("+toTPTP0(termArg,tyVarCount, bVars)(sig)+")"
         },
         //Translate types as arguments
-        tyArg => typeToTHF0(tyArg, 0)(sig)
+        tyArg => typeToTHF0(tyArg, tyVarCount)(sig)
       )}"})
       // Others should be invalid
       case _ => throw new IllegalArgumentException("Unexpected term format during toTPTP conversion")

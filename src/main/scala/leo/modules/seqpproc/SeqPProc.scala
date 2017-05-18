@@ -10,6 +10,7 @@ import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.external.TptpResult
 import leo.modules.parsers.Input
+import leo.modules.proof_object.CompressProof
 import leo.modules.{SZSException, SZSOutput, Utility}
 
 import scala.annotation.tailrec
@@ -463,7 +464,8 @@ object SeqPProc {
       if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(sig))
-        Out.output(Utility.proofToTPTP(proof))
+        if (Configuration.isSet("compressProof")) Out.output(Utility.proofToTPTP(Utility.compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
+        else Out.output(Utility.proofToTPTP(proof))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } catch {
