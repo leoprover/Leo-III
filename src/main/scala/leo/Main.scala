@@ -33,20 +33,56 @@ object Main {
       try {
         Configuration.init(new CLParameterParser(args))
       } catch {
-        case e: IllegalArgumentException => {
+        case e: IllegalArgumentException =>
           Out.severe(e.getMessage)
           Configuration.help()
           return
-        }
       }
-      if (Configuration.HELP) {
+      if (Configuration.PROBLEMFILE == "--caps") {
+        val caps =
+          """
+            |{
+            |  "name"         : "Leo-III",
+            |  "version"      : "1.1",
+            |  "applications" : ["prover"],
+            |  "languages"    : [
+            |    {
+            |      "language" : "tptp_cnf",
+            |      "roles"    : ["axiom", "conjecture", "negated_conjecture"],
+            |      "features" : []
+            |    },
+            |    {
+            |      "language" : "tptp_fof",
+            |      "roles"    : ["axiom", "definition", "negated_conjecture", "conjecture"],
+            |      "features" : []
+            |    },
+            |    {
+            |      "language" : "tptp_tff",
+            |      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
+            |      "features" : ["polytypes", "conditional"]
+            |    },
+            |    {
+            |      "language" : "tptp_thf",
+            |      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
+            |      "features" : [
+            |        "polytypes", "conditional", "let",
+            |        "definite_description", "indefinite_description", "th1_combinators"
+            |      ]
+            |    }
+            |  ]
+            |}
+          """.stripMargin
+        println(caps)
+        return
+      }
+      if (Configuration.HELP || Configuration.PROBLEMFILE == "-h") { // FIXME: Hacky, redo argument reading
         Configuration.help()
         return
       }
       val leodir = Configuration.LEODIR
       if (!Files.exists(leodir)) Files.createDirectory(leodir)
 
-      val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
+//      val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
       val config = {
         val sb = new StringBuilder()
         sb.append(s"problem(${Configuration.PROBLEMFILE}),")
@@ -74,7 +110,7 @@ object Main {
       }
       
     } catch {
-      case e:SZSException => {
+      case e:SZSException =>
         Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
         Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.toString))
         Out.debug(e.debugMessage)
@@ -83,8 +119,7 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
-      }
-      case e:Throwable => {
+      case e:Throwable =>
         Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
         Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
         Out.trace(stackTraceAsString(e))
@@ -92,7 +127,6 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
-      }
     } finally {
       hook.remove() // When we reach this code we didnt face a SIGTERM etc. so remove the hook.
     }
