@@ -30,6 +30,9 @@ class UnificationSet extends DataStore{
     */
   def get : Set[AnnotatedClause] = synchronized(set.toSet)
 
+
+  override def isEmpty: Boolean = synchronized(set.isEmpty)
+
   /**
     * This method returns all Types stored by this data structure.
     *

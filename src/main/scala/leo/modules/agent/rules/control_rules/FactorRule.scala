@@ -25,12 +25,12 @@ class FactorRule(inType : DataType[AnnotatedClause], outType : DataType[Annotate
     while (ins.hasNext) {
       val c: AnnotatedClause = ins.next()
       val ps = Control.factor(c)
-      if(!(ps.size == 1 && ps.head == c)) {
+      if(!(ps.size == 1 && ps.head == c) && ps.size > 1) {
         res = new FactorHint(c, ps) +: res
       } else {
-        println(s"[Factor] on ${c.cl.pretty(signature)} could not be applied.")
-        res = new ReleaseLockHint(inType, c) +: res
+        println(s"[Factor] Could not apply to ${c.pretty(signature)} ")
       }
+      res = new ReleaseLockHint(inType, c) +: res
     }
     res
   }
@@ -40,7 +40,7 @@ class FactorRule(inType : DataType[AnnotatedClause], outType : DataType[Annotate
       println(s"[Factor] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
-      r.insert(LockType(inType))(sClause)
+//      r.insert(LockType(inType))(sClause)
       while (it.hasNext) {
         val simpClause = Control.simp(it.next())
         r.insert(outType)(simpClause)

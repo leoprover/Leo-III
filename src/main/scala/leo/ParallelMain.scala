@@ -139,35 +139,11 @@ object ParallelMain {
     val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
     TimeOutProcess.start()
 
-    // Datastructures
-    val unprocessedSet = new UnprocessedSet()
-    val processedSet = new ProcessedSet()
-    val unificationSet = new UnificationSet()
+    // RuleGraph creation
+    val graph : AnnotatedClauseGraph = new SimpleControlGraph
 
-    // val Rules
-    val boolextRule = new BoolextRule(Unprocessed, Unprocessed)
-    val cnfRule = new CNFRule(Unprocessed, Unprocessed)
-    val factorRule = new FactorRule(Processed, Unify)
-    val funcExtRule = new FuncExtRule(Unprocessed, Unprocessed)
-    val liftEqRule = new LiftEqRule(Unprocessed, Unprocessed)
-    val paramodRule = new ParamodRule(Processed, Unify)(processedSet)
-    val primsubstRule = new PrimsubstRule(Processed, Unify)
-    val unificationRule = new UnificationRule(Unify, Unprocessed)
+    val phase : RuleAgentPhase = new RuleAgentPhase(graph)
 
-    val phase : RuleAgentPhase = new RuleAgentPhase(
-      Seq(new RuleAgent(boolextRule),
-        new RuleAgent(cnfRule),
-        new RuleAgent(factorRule),
-        new RuleAgent(funcExtRule),
-        new RuleAgent(liftEqRule),
-        new RuleAgent(paramodRule),
-        new RuleAgent(primsubstRule),
-        new RuleAgent(unificationRule))
-      , sig, Unprocessed)(blackboard, scheduler)
-
-    blackboard.addDS(unprocessedSet)
-    blackboard.addDS(processedSet)
-    blackboard.addDS(unificationSet)
 
     printPhase(phase)
     if (!phase.execute()) {
@@ -183,7 +159,7 @@ object ParallelMain {
     scheduler.killAll()
 
 
-    val proof : Option[AnnotatedClause] = processedSet.get.find{c => Clause.empty(c.cl)}
+    val proof : Option[AnnotatedClause] = graph.fetchResult.headOption
     val szsStatus  = if (proof.nonEmpty){
       if(phase.negSet) SZS_Theorem
       else SZS_CounterSatisfiable
@@ -262,7 +238,6 @@ object ParallelMain {
           } finally {
             if(!exit) {
               scheduler.signal()
-              //agentStatus()
               remain -= interval
               Out.finest(s"Leo-III is still working. (Remain=$remain)")
             }

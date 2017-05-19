@@ -2,7 +2,7 @@ package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
-import leo.modules.agent.rules.{Hint, ReleaseLockHint, Rule}
+import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
 import leo.modules.control.Control
 
 /**
@@ -27,8 +27,12 @@ class LiftEqRule(inType : DataType[AnnotatedClause],
       if(lift != c || moving){
         res = new LiftEqHint(c, lift) +: res
       } else {
-        println(s"[LiftEq] on ${c.cl.pretty(sig)} could not be applied.")
-        res = new ReleaseLockHint(outType, c) +: res
+        println(s"[LiftEq] Could not apply to ${c.pretty(sig)} ")
+        if(moving){
+          res = new MoveHint(c, inType, outType) +: res
+        } else {
+          res = new ReleaseLockHint(outType, c) +: res
+        }
       }
     }
     res

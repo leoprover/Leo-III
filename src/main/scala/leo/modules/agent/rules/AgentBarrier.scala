@@ -29,6 +29,10 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
 
   private val trackRemaining : mutable.Map[A, Int] = mutable.Map[A, Int]()
 
+  override def isEmpty: Boolean = synchronized{
+    trackRemaining.isEmpty
+  }
+
   /**
     * Returns true, if the barrier is closed for `d`.
     * False, if barrier is open
@@ -42,10 +46,10 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
 
   override val storedTypes: Seq[DataType[Any]] = Seq(dType, lockType)
   override def clear(): Unit = synchronized(trackRemaining.clear())
-  override def get[T](t: DataType[T]): Set[T] = t match {
+  override def get[T](t: DataType[T]): Set[T] = synchronized(t match {
     case `lockType` => trackRemaining.keySet.map(x => (dType, x)).asInstanceOf[Set[T]]
     case _ => Set()
-  }
+  })
   override def updateResult(r: Delta): Delta = synchronized {
     val ins1 = r.inserts(dType).iterator
     val del1 = r.removes(dType).iterator
@@ -82,11 +86,15 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
         if(newV > 0) {
           trackRemaining.put(d, newV)
         } else {
-          removedLocks = d +: removedLocks
           trackRemaining.remove(d)
+          removedLocks = d +: removedLocks
         }
       }
     }
-    new ImmutableDelta(Map(), Map(lockType -> removedLocks))
+    if(removedLocks.nonEmpty) {
+      new ImmutableDelta(Map(), Map(lockType -> removedLocks))
+    } else {
+      EmptyDelta
+    }
   }
 }

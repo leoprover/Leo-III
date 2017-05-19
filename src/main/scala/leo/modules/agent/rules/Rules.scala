@@ -16,11 +16,8 @@ trait Rule {
 
   /**
     *
-    * This flag indicates, if the rule will
-    * move the result from one set to another.
-    *
-    * Even if this rule is not applicable,
-    * a moving operation is performed
+    * This flag indicates, that the data is moved
+    * from one set to another, irregardless of a change.
     *
     * @return true, if the original clause should be moved
     */
@@ -91,6 +88,12 @@ class ReleaseLockHint[A](dt : DataType[A], d : A) extends Hint {
   override final val apply: Delta = new ImmutableDelta(Map(LockType(dt) -> Seq(d)))
   override final val read: Map[DataType[Any], Set[Any]] = Map()
   override final val write: Map[DataType[Any], Set[Any]] = Map()
+}
+
+class MoveHint[A](d : A, from : DataType[A], to : DataType[A]) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(to -> Seq(d)), Map(from -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map(from -> Set(d))
 }
 
 ///**

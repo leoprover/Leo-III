@@ -29,6 +29,9 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     nextUnprocessed.get
   }
 
+
+  override def isEmpty: Boolean = synchronized(!state.unprocessedLeft && state.processed.isEmpty && !nextUnprocessedSet)
+
   def realeaseUnprocessed : Unit = {nextUnprocessedSet = false}
 
   @inline def hasNextUnprocessed : Boolean = synchronized {

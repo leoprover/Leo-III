@@ -1,5 +1,6 @@
 package leo.modules.agent.rules
 
+import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.{DataType, Delta, ImmutableDelta}
 
 
@@ -24,7 +25,10 @@ class MovingRule[A](inType : DataType[A],
   override def canApply(r: Delta): Seq[Hint] = {
     val releasedLocks = r.removes(lock)
     if(releasedLocks.nonEmpty) {
-      println(s"Notified of Releases : ${releasedLocks.mkString(", ")}")
+      println(s"[Moving] ${inType} -> ${outType}\n   " +
+        s"[${releasedLocks.map{x =>
+          if(x.isInstanceOf[AnnotatedClause]) x.asInstanceOf[AnnotatedClause].id else x.toString}
+          .mkString("\n   ")}]")
       Seq(new MoveHint(releasedLocks))
     }
     else {

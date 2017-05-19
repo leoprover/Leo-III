@@ -1,5 +1,6 @@
 package leo.modules.agent.rules
 
+import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 
 import scala.collection.mutable
@@ -10,6 +11,8 @@ import scala.collection.mutable
 class TypedSet[A](dt : DataType[A]) extends DataStore {
 
   private val store : mutable.Set[A] = mutable.Set()
+
+  override def isEmpty: Boolean = synchronized(store.isEmpty)
 
   override val storedTypes: Seq[DataType[Any]] = Seq(dt)
   override def clear(): Unit = synchronized(store.clear())
@@ -45,6 +48,14 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
         delta.update(dt)(oldI)(newI)
       }
     }}
+
+    if(!delta.isEmpty){
+    println(s"TypedSet(${dt}) after update:\n  ${store.map(
+      x => if(x.isInstanceOf[AnnotatedClause])
+        x.asInstanceOf[AnnotatedClause].pretty
+      else
+        x
+    ).mkString("\n  ")}")}
 
     delta
   }

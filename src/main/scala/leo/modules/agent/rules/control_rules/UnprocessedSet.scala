@@ -7,12 +7,7 @@ import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
 
-case object Unprocessed extends DataType[AnnotatedClause]{
-  override def convert(d: Any): AnnotatedClause = d match {
-    case c : AnnotatedClause => c
-    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
-  }
-}
+case object Unprocessed extends ClauseType
 
 /**
   * Stores the unprocessed Formulas for
@@ -31,6 +26,9 @@ class UnprocessedSet extends DataStore{
   final private val prio_weights = Seq(8,1,2,2)
   private var cur_prio = 0
   private var cur_weight = 0
+
+
+  override def isEmpty: Boolean = synchronized(valuesStored.isEmpty)
 
   final def unprocessedLeft: Boolean = synchronized(!mpq.isEmpty)
 
@@ -87,9 +85,17 @@ class UnprocessedSet extends DataStore{
     mpq.insert(filterIns)
 
 
-    println(s"Unprocessed after update (size=${valuesStored.size}):\n  ${valuesStored.map(_.pretty).mkString("\n  ")}")
+//    println(s"Unprocessed after update (size=${valuesStored.size}):\n  ${valuesStored.map(_.pretty).mkString("\n  ")}")
 
-    new ImmutableDelta(Map(Unprocessed -> filterIns), Map(Unprocessed -> filterDel))
+    val res = if(filterIns.isEmpty && filterDel.isEmpty) {
+      EmptyDelta
+    } else {
+      new ImmutableDelta(
+        if(filterIns.nonEmpty) Map(Unprocessed -> filterIns) else Map(),
+        if(filterDel.nonEmpty) Map(Unprocessed -> filterDel) else Map())
+    }
+    println(s"Unprocessed after update:\n  ${valuesStored.map(_.pretty).mkString("\n  ")}")
+    res
   }
 
   /**

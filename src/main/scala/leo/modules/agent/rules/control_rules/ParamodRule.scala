@@ -24,13 +24,17 @@ class ParamodRule(inType : DataType[AnnotatedClause],
     val ins = r.inserts(inType).iterator
 
     var p = processed.get
-    var res: Seq[ParamodHint] = Seq()
+    var res: Seq[Hint] = Seq()
     //
     while (ins.hasNext) {
       val c = ins.next()
       val ps = Control.paramodSet(c, p)
       p += c // Take the new one into consideration for the next selected clause
-      res = new ParamodHint(c, ps) +: res
+      if(ps.nonEmpty) {res = new ParamodHint(c, ps) +: res}
+      else {
+        println(s"[Paramod] Could not apply to ${c.pretty(signature)}")
+      }
+      res = new ReleaseLockHint(inType, c) +: res
     }
     res
   }

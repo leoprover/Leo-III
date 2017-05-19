@@ -2,20 +2,20 @@ package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
-import leo.modules.agent.rules.{Hint, ReleaseLockHint, Rule}
+import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
 import leo.modules.control.Control
 
 /**
   * Created by mwisnie on 4/21/17.
   */
 class FuncExtRule(inType : DataType[AnnotatedClause],
-                 outType : DataType[AnnotatedClause])
+                 outType : DataType[AnnotatedClause],
+                 val moving : Boolean = false)
                  (implicit sig : Signature) extends Rule
 {
   override final val name: String = "func_ext"
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
-  final val moving = inType != outType
 
   override def canApply(r: Delta): Seq[Hint] = {
     val ins = r.inserts(inType).iterator
@@ -28,8 +28,12 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
         res = new FuncExtHint(cl, fcl) +: res
       }
       else {
-        println(s"[FuncExt] on ${cl.cl.pretty(sig)} could not be applied.")
-        res = new ReleaseLockHint(outType, cl) +: res
+        println(s"[FuncExt] Could not apply to ${cl.pretty(sig)} ")
+        if(moving){
+          res = new MoveHint(cl, inType, outType) +: res
+        } else {
+          res = new ReleaseLockHint(outType, cl) +: res
+        }
       }
     }
     res

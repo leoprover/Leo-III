@@ -8,12 +8,12 @@ import leo.modules.control.Control
   * Created by mwisnie on 1/10/17.
   */
 class BoolextRule(inType : DataType[AnnotatedClause],
-                  outType : DataType[AnnotatedClause])
+                  outType : DataType[AnnotatedClause],
+                 val moving : Boolean = false)
                  (implicit signature : Signature) extends Rule{
 
   override final val inTypes : Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
-  final val moving : Boolean = inType != outType
   private val lockType = LockType(outType)
 
   override def name: String = "bool_ext"
@@ -27,7 +27,11 @@ class BoolextRule(inType : DataType[AnnotatedClause],
       val fcl = Control.boolext(cl)
       if(fcl.size < 1 || (fcl.size == 1 && cl == fcl.head)){
         println(s"[BoolExt] Could not apply to ${cl.pretty(signature)}")
-        res = new ReleaseLockHint(inType, cl) +: res
+        if(moving){
+          res = new MoveHint(cl, inType, outType) +: res
+        } else {
+          res = new ReleaseLockHint(inType, cl) +: res
+        }
       } else {
         res = new BoolextHint(cl, fcl) +: res
       }

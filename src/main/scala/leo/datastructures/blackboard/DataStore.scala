@@ -37,6 +37,8 @@ trait DataStore {
 
   def get[T](t : DataType[T]) : Set[T]
 
+  def isEmpty : Boolean = !synchronized(storedTypes exists (t => get(t).nonEmpty))
+
   def insertData[T](d : DataType[T])(n : T) : Boolean = {
     val r = Result().insert(d)(n)
     val res = updateResult(r)

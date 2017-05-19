@@ -5,15 +5,14 @@ import leo.datastructures.{AnnotatedClause, Clause, Literal, Signature}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.modules.agent.rules.RuleAgent
-import leo.modules.agent.rules.control_rules.{Processed, Unify, Unprocessed}
+import leo.modules.agent.rules.control_rules.{AnnotatedClauseGraph, Processed, Unify, Unprocessed}
 import leo.modules.control.Control
 import leo.modules.parsers.Input
 import leo.modules.seqpproc.{SeqPProc, State}
 
 object RuleAgentPhase {
-  def endOn(d : Delta) : Boolean = {
-    val clauses : Seq[AnnotatedClause] = d.inserts(Processed) ++ d.inserts(Unify) ++ d.inserts(Unprocessed)
-    clauses.exists(c => Clause.empty(c.cl))
+  def endOn[A](dt : DataType[A])(d : Delta) : Boolean = {
+    d.inserts(dt).nonEmpty
   }
 }
 
@@ -21,19 +20,15 @@ object RuleAgentPhase {
   * Created by mwisnie on 4/24/17.
   */
 class RuleAgentPhase
-(ruleAgents : Seq[RuleAgent]
-, sig : Signature
-, initType : DataType[AnnotatedClause])
-(blackboard: Blackboard
-, scheduler: Scheduler)
-extends CompletePhase(blackboard, scheduler, RuleAgentPhase.endOn)
+(ruleGraph : AnnotatedClauseGraph)
+(implicit val sig : Signature, implicit val blackBoard: Blackboard, implicit val sched : Scheduler)
+extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType))
 {
   override def name: String = "rule_agent_phase"
-  override protected final val agents: Seq[Agent] = ruleAgents
+  override protected final val agents: Seq[Agent] = Seq()
   var negSet : Boolean = false
 
   override def execute(): Boolean = {
-    implicit val s = sig
     if (Configuration.ATPS.nonEmpty) {
       import leo.modules.external.ExternalProver
       Configuration.ATPS.foreach { case(name, path) =>
@@ -57,7 +52,7 @@ extends CompletePhase(blackboard, scheduler, RuleAgentPhase.endOn)
     // Typechecking: Throws and exception if not well-typed
     SeqPProc.typeCheck(remainingInput, state)
 
-    val delta = Result()
+    var initSet : Set[AnnotatedClause] = Set()
 
     if (state.negConjecture != null) {
       // Expand conj, Initialize indexes
@@ -72,7 +67,7 @@ extends CompletePhase(blackboard, scheduler, RuleAgentPhase.endOn)
         }.mkString("\n\t")
       }")
       Out.trace("## Preprocess Neg.Conjecture END")
-      result foreach delta.insert(initType)
+      initSet = result
       negSet = true
     }
 
@@ -89,13 +84,13 @@ extends CompletePhase(blackboard, scheduler, RuleAgentPhase.endOn)
         }.mkString("\n\t")
       }")
       val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-      preprocessed foreach delta.insert(initType)
+      initSet = initSet union preprocessed
 
       if (preprocessIt.hasNext) Out.trace("--------------------")
     }
     Out.trace("## Preprocess END\n\n")
 
-    blackboard.getDS(Set(initType)) foreach {d => d.updateResult(delta)}  // Blackboard insert?
+    ruleGraph.initGraph(initSet)
 
     super.execute()
 

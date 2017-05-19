@@ -240,6 +240,24 @@ trait DataBlackboard extends TaskOrganize {
     * @return the set of all data of the given type
     */
   def getData[T](dataType : DataType[T]) : Set[T]
+
+  /**
+    * Submits a complete delta to the blackboard
+    * and informs registered agents.
+    *
+    * @param d Delta to be inserted
+    */
+  def submitDelta(d : Delta) : Unit = {
+    var result : Delta = EmptyDelta
+    val dsIt = getDS.iterator
+    while(dsIt.hasNext){
+      val ds = dsIt.next()
+      result = result.merge(ds.updateResult(d))
+    }
+    if(!result.isEmpty){
+      filterAll{a => submitTasks(a, a.filter(result).toSet)}
+    }
+  }
 }
 
 /**

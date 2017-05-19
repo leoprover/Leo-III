@@ -25,6 +25,9 @@ object FormulaDataStore extends DataStore {
    */
   def getFormulas: Iterable[ClauseProxy] = formulaStore
 
+
+  override def isEmpty: Boolean = formulaStore.isEmpty
+
   /**
    *
    * <p>

@@ -21,14 +21,20 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
   override def name: String = "primsubst"
 
   override def canApply(r: Delta): Seq[Hint] = {
-    val ins = r.inserts(Processed).iterator
+    val ins = r.inserts(inType).iterator
 
-    var res: Seq[PrimsubstHint] = Seq()
+    var res: Seq[Hint] = Seq()
     //
     while (ins.hasNext) {
       val c = ins.next()
-      val ps = Control.primsubst(c, primsubstlevel)   // TODO Check changes and in/out types. Do nothing if possible
-      res = new PrimsubstHint(c, ps) +: res
+      val ps = Control.primsubst(c, primsubstlevel)
+      if(ps.nonEmpty) {
+        res = new PrimsubstHint(c, ps) +: res
+      }
+      else {
+        println(s"[PrimSubst] Could not apply to ${c.pretty(signature)}")
+      }
+      res = new ReleaseLockHint(inType, c) +: res
     }
     res
   }
@@ -38,7 +44,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
       println(s"[PrimSubst] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
-      r.remove(LockType(inType))(sClause)
+//      r.remove(LockType(inType))(sClause)
       while (it.hasNext) {
         val c = it.next()
         if (c.cl.lits.exists(l => l.uni))

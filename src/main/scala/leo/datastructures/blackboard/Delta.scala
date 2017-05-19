@@ -1,7 +1,7 @@
 package leo
 package datastructures.blackboard
 
-import leo.datastructures.Pretty
+import leo.datastructures.{AnnotatedClause, Pretty}
 
 import scala.collection.mutable
 
@@ -108,7 +108,20 @@ class ImmutableDelta(insert : Map[DataType[Any], Seq[Any]] = Map(), remove : Map
     new ImmutableDelta(insM, remM, upM)
   }
 
-  override def toString: String = s"Delta(Insert = {${insert}, Remove = {${remove}}, Update = {${update}})"
+  override lazy val toString: String = s"Delta(\n  Insert =\n   ${printMap(insert)}\n  Remove =\n   ${printMap(remove)}\n  Update =\n   ${printMap(update)}"
+
+  private def printMap(m : Map[DataType[Any], Seq[Any]]) : String = {
+    val sb = new StringBuilder
+    val it = m.iterator
+    while(it.hasNext){
+      val (dt, data) = it.next()
+      sb.append(dt)
+      sb.append(" -> ")
+      sb.append(data.map{x => if(x.isInstanceOf[AnnotatedClause]) s"[${x.asInstanceOf[AnnotatedClause].id}]" else x}.mkString(", "))
+      if(it.hasNext) sb.append("\n   ")
+    }
+    sb.toString()
+  }
 }
 
 /**
@@ -213,11 +226,14 @@ class MutableDelta extends Delta {
     while(dtypes.nonEmpty){
       val dty = dtypes.next()
       val dins = d.inserts(dty)
-      insertM.put(dty, insertM.getOrElse(dty, Vector()) ++ dins)
+      val mergeIns = insertM.getOrElse(dty, Vector()) ++ dins
+      if(mergeIns.nonEmpty) insertM.put(dty, mergeIns)
       val dup = d.updates(dty)
-      updateM.put(dty, updateM.getOrElse(dty, Vector()) ++ dup)
+      val mergeUp = updateM.getOrElse(dty, Vector()) ++ dup
+      if(mergeUp.nonEmpty) updateM.put(dty, mergeUp)
       val drem = d.removes(dty)
-      removeM.put(dty, removeM.getOrElse(dty, Vector()) ++ drem)
+      val mergeDel = removeM.getOrElse(dty, Vector()) ++ drem
+      if(mergeDel.nonEmpty) removeM.put(dty, mergeDel)
     }
     this
   }

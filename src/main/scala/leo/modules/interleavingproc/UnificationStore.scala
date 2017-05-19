@@ -25,6 +25,9 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
 
   def openUni : Boolean = synchronized(openUnifications.nonEmpty)
 
+
+  override def isEmpty: Boolean = synchronized(openUnifications.isEmpty)
+
   /**
     * This method returns all Types stored by this data structure.
     *
