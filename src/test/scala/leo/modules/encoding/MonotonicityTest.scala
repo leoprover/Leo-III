@@ -14,7 +14,7 @@ class MonotonicityTest extends LeoTestSuite {
     implicit val sig: Signature = getFreshSignature
     import leo.modules.HOLSignature.o
     import leo.modules.calculus.{FullCNF => CNF, freshVarGenFromBlank => vargen}
-    import leo.modules.Utility.termToClause
+    import leo.modules.termToClause
 
     // New types
     val monkey = Type.mkType(sig.addBaseType("monkey"))
@@ -52,7 +52,7 @@ class MonotonicityTest extends LeoTestSuite {
     import leo.datastructures.Type.∀
     import leo.modules.HOLSignature.o
     import leo.modules.calculus.{FullCNF => CNF, freshVarGenFromBlank => vargen}
-    import leo.modules.Utility.termToClause
+    import leo.modules.termToClause
 
     // New types
     val list = sig.addTypeConstructor("list", * ->: *)

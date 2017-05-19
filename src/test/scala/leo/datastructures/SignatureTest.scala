@@ -1,7 +1,7 @@
 package leo
 package datastructures
 
-import leo.modules.Utility
+import leo.modules._
 
 /**
  * Just a little test with signature and types.
@@ -15,7 +15,7 @@ class SignatureTest extends LeoTestSuite {
   test("HOL signature creation", Checked) {
     val sig = getFreshSignature
     printHeading("HOL Signature creation")
-    Utility.printSignature(sig)
+    printSignature(sig)
     printHLine()
     Out.output("Signature creation successful.")
     printLongHLine()

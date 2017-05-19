@@ -3,7 +3,7 @@ package leo.modules.control
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.seqpproc.State
-import leo.modules.Utility.myAssert
+import leo.modules.myAssert
 
 /**
   * Facade object for various control methods of the seq. proof procedure.

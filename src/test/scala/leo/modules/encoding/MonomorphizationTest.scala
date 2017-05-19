@@ -2,8 +2,7 @@ package leo.modules.encoding
 
 import leo.LeoTestSuite
 import leo.datastructures.{Role_Axiom, Term}
-import leo.modules.Utility
-import leo.modules.Utility.termToClause
+import leo.modules.{signatureAsString,termToClause}
 import leo.modules.parsers.Input
 import leo.modules.output.ToTPTP
 
@@ -31,7 +30,7 @@ class MonomorphizationTest extends LeoTestSuite {
     Out.finest(problem.map(_.pretty(sig)).mkString("\n"))
     val (monoProb, monoSig) = Monomorphization(problem)
 
-    Out.finest(Utility.signatureAsString(monoSig))
+    Out.finest(signatureAsString(monoSig))
 
     println(ToTPTP(monoSig))
     var i_prob = 0

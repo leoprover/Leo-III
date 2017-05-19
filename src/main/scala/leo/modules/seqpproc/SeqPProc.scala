@@ -11,7 +11,7 @@ import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.external.TptpResult
 import leo.modules.parsers.Input
 import leo.modules.proof_object.CompressProof
-import leo.modules.{SZSException, SZSOutput, Utility}
+import leo.modules.{SZSException, SZSOutput, termToClause}
 
 import scala.annotation.tailrec
 
@@ -46,7 +46,6 @@ object SeqPProc {
     * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
     * conjectures are present or unknown role occurs. */
   final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
-    import leo.modules.Utility.termToClause
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
     var result: Seq[tptp.Commons.AnnotatedFormula] = Vector()
@@ -65,7 +64,6 @@ object SeqPProc {
               /* skip */
             } else {
               // Convert and negate and add conjecture
-              import leo.modules.calculus.CalculusRule
               Control.relevanceFilterAdd(formula)(state.signature)
               val translated = Input.processFormula(formula)(state.signature)
               val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
@@ -98,7 +96,6 @@ object SeqPProc {
     (result,conj)
   }
   final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
-    import leo.modules.Utility.termToClause
     import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Input.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
@@ -404,6 +401,7 @@ object SeqPProc {
       /////////////////////////////////////////
       // All finished, print result
       /////////////////////////////////////////
+      import leo.modules.{proofOf, axiomsInProof, userSignatureToTPTP, symbolsInProof, compressedProofOf, proofToTPTP, userDefinedSignatureAsString}
 
       val time = System.currentTimeMillis() - startTime
       val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
@@ -415,9 +413,9 @@ object SeqPProc {
       Out.comment(s"Time passed: ${time}ms")
       Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
       Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
-      val proof = if (state.derivationClause.isDefined) Utility.proofOf(state.derivationClause.get) else null
+      val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
       if (proof != null)
-        Out.comment(s"No. of axioms used: ${Utility.axiomsInProof(proof).size}")
+        Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
       Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
       Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
       Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
@@ -456,20 +454,20 @@ object SeqPProc {
 
       Out.finest("Signature extension used:")
       Out.finest(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-      Out.finest(Utility.userDefinedSignatureAsString(sig))
+      Out.finest(userDefinedSignatureAsString(sig))
       Out.finest("Clauses at the end of the loop:")
       Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
 
       /* Print proof object if possible and requested. */
       if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        Out.output(Utility.userSignatureToTPTP(Utility.symbolsInProof(proof))(sig))
-        if (Configuration.isSet("compressProof")) Out.output(Utility.proofToTPTP(Utility.compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
-        else Out.output(Utility.proofToTPTP(proof))
+        Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
+        if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
+        else Out.output(proofToTPTP(proof))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } catch {
-      case e:Throwable => Out.severe(s"Signature used:\n${Utility.signatureAsString(sig)}"); throw e
+      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()

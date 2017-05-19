@@ -10,7 +10,6 @@ import leo.modules._
 import leo.modules.external.ExternalCall
 import leo.modules.output._
 import leo.modules.phase._
-import leo.modules.Utility._
 import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
 import leo.modules.parsers.CLParameterParser
@@ -108,6 +107,7 @@ object ParallelMain {
       Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 
 //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+      import leo.modules.{compressedProofOf, proofToTPTP}
       Out.comment(s"No. of loop iterations: ${state.state.noProofLoops}")
       Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
       Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
@@ -122,8 +122,8 @@ object ParallelMain {
       if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
         Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
         //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(Utility.userConstantsForProof(sig))
-        Out.output(Utility.proofToTPTP(Utility.compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
+        Out.output(userConstantsForProof(sig))
+        Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } catch {

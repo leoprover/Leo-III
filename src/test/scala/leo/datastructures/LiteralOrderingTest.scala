@@ -1,7 +1,7 @@
 package leo.datastructures
 
 import leo.LeoTestSuite
-import leo.modules.Utility.termToClause
+import leo.modules.termToClause
 import leo.modules.parsers.Input
 import leo.modules.calculus.{freshVarGenFromBlank, freshVarGen,FullCNF,BoolExt,LiftEq}
 
