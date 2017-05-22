@@ -34,16 +34,17 @@ node {
     env.TPTP = tool name: 'TPTP'
     def benchmark = tool name: 'Benchmark'
 
-    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o soundness_logs -r soundness_results -s ${benchmark}/Lists/csa_default"
+    sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o soundness_logs -e soundness_errors -r soundness_results -s ${benchmark}/Lists/csa_default"
     archiveArtifacts artifacts: 'soundness_*', fingerprint: true
 
     stage 'Small Benchmark'
 
     sh "rm -f benchmark_results"
     sh "rm -f benchmark_logs"
+    sh "rm -f benchmark_errors"
 
     def b = {l ->
-      sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o ${l}_logs -r ${l}_results ${benchmark}/Lists/${l}"
+      sh "python3 ${benchmark}/Scripts/benchmark.py -p ${benchmark} -o ${l}_logs -e ${l}_errors -r ${l}_results ${benchmark}/Lists/${l}"
       sh "echo >> benchmark_results"
       sh "echo Results for ${l}: >> benchmark_results"
       sh "cat ${l}_results >> benchmark_results"

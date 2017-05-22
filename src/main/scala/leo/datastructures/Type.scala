@@ -228,11 +228,11 @@ object Type {
    * */
   object LexicographicalOrdering extends Ordering[Type] {
     private def compareSeq(a : Seq[Type], b: Seq[Type]) : Int = (a,b) match {
-      case (h1::t1, h2::t2) =>
+      case (h1 +: t1, h2 +: t2) =>
         val c = this.compare(h1,h2)
         if(c!=0) c else compareSeq(t1, t2)
-      case (h::t, Nil) => 1
-      case (Nil, h::t) => -1
+      case (h +: t, Nil) => 1
+      case (Nil, h +: t) => -1
       case (Nil, Nil) => 0
     }
 
