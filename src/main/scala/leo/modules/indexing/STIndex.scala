@@ -1,0 +1,139 @@
+package leo.modules.indexing
+
+import leo.datastructures.Literal.Side
+import leo.datastructures.{Clause, Literal, Position, Signature, Term}
+import leo.modules.myAssert
+
+import scala.collection.mutable
+
+/**
+  * {{{
+  *                /\
+  * term          /  \
+  * level        /    \
+  *             /      \
+  *            /        \
+  * (sub)term  ..  t  ...
+  *               / \
+  *              /   \
+  * clause      /     \
+  * level      /       \
+  * t occurs in .. cl ..
+  *               / \
+  *              /   \
+  *             /     \
+  * at position ...p...
+  *
+  *
+  * }}}
+  */
+class STIndex {
+  import STIndex.ClausePos
+
+  type ClauseEntry = mutable.Map[Clause, ClausePos]
+  private final val termToOccurrenceMap: mutable.Map[Term, ClauseEntry] = mutable.Map.empty
+
+  private final val clauseToSubtermMap =
+    new mutable.HashMap[Clause, mutable.Set[Term]] with mutable.MultiMap[Clause, Term]
+
+  final def addClause(cl: Clause,
+                      positiveOnly: Boolean,
+                      maxOnly: Boolean,
+                      withSubterms:  Boolean)
+                     (implicit sig: Signature): Unit = {
+    var lits = cl.lits
+    val maxLits = if (maxOnly) Literal.maxOf(cl.lits)(sig) else Seq.empty
+
+    var litIdx = 0
+    while (lits.nonEmpty) {
+      val lit = lits.head
+
+      if (!positiveOnly || lit.polarity) { // only select positive if requested
+        if (!maxOnly || maxLits.contains(lit)) { // only select maximal if requested
+          // process left
+          val left = lit.left
+          insert(cl, litIdx, Literal.leftSide, left)
+          if (withSubterms) insertSubterms(cl, litIdx, Literal.leftSide, left)
+
+          if (!maxOnly || (lit.equational && !lit.oriented)) { // only select right side if not oriented
+                                                               // ... or maxOnly is false
+            // process right
+            val right = lit.right
+            insert(cl, litIdx, Literal.rightSide, right)
+            if (withSubterms) insertSubterms(cl, litIdx, Literal.rightSide, right)
+          }
+        }
+      }
+
+      lits = lits.tail
+      litIdx = litIdx + 1
+    }
+  }
+  private final def insert0(cl: Clause, idx: Int, side: Literal.Side, t: Term, pos: Position): Unit = {
+    if (termToOccurrenceMap.contains(t)) {
+      val clauseEntry = termToOccurrenceMap(t)
+      if (clauseEntry.contains(cl)) {
+        val occ = clauseEntry(cl)
+        ???
+      } else {
+        clauseEntry += ((cl, ClausePos(cl, idx, side, pos)))
+      }
+    } else {
+      termToOccurrenceMap += ((t, mutable.Map(cl -> ClausePos(cl, idx, side, pos))))
+    }
+    clauseToSubtermMap.addBinding(cl, t)
+  }
+  private final def insert(cl: Clause, idx: Int, side: Literal.Side, t: Term): Unit =
+    insert0(cl, idx, side, t, Position.root)
+  private final def insertSubterms(cl: Clause, idx: Int, side: Literal.Side, t: Term): Unit = ???
+
+  final def removeClause(cl: Clause): Unit = {
+    if (clauseToSubtermMap.contains(cl)) {
+      val subterms = clauseToSubtermMap(cl)
+      val subTermIt = subterms.iterator
+      while (subTermIt.hasNext) {
+        val subterm = subTermIt.next()
+        myAssert(termToOccurrenceMap.isDefinedAt(subterm))
+        val clEntry = termToOccurrenceMap(subterm)
+        myAssert(clEntry.isDefinedAt(cl))
+        clEntry.remove(cl)
+        if (clEntry.isEmpty) {
+          termToOccurrenceMap.remove(subterm)
+        }
+      }
+      clauseToSubtermMap.remove(cl)
+    }
+  }
+
+  final def iterator(): Iterator[Term] = termToOccurrenceMap.keysIterator
+  final def occurrences(t: Term): Iterator[ClausePos] = {
+    if (termToOccurrenceMap.contains(t))
+      termToOccurrenceMap(t).valuesIterator
+    else Iterator.empty
+  }
+
+}
+
+object STIndex {
+  type PositionSet = mutable.Set[Position]
+  final class ClausePos(val cl: Clause, idx: Int, var occurrences0: PositionSet) {
+    def litIdx: Int = {
+      myAssert(idx != 0)
+      if (idx < 0) -idx else idx
+    }
+    def side: Literal.Side = {
+      myAssert(idx != 0)
+      if (idx < 0) Literal.leftSide else Literal.rightSide
+    }
+    def occurrences: PositionSet = occurrences0
+    def addOccurrence(pos: Position): Unit = {occurrences0 = occurrences0 + pos}
+  }
+  object ClausePos {
+    final def apply(cl: Clause, idx: Int, side: Literal.Side, pos: Position): ClausePos = ???
+  }
+}
+
+
+// input: paramod literal l
+// calculuate fingerprint of l: fp(l)
+// return all entries {s1,...,sn} compatible with fp(l)
