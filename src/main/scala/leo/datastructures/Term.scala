@@ -192,11 +192,6 @@ object Term extends TermBank {
   final implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
 
 
-  // Legacy functions type types for statistics, like to be reused sometime
-  type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
-  final def statistics: TermBankStatistics = TermImpl.statistics
-
-
   //////////////////////////////////////////
   // Patterns for term structural matching
   //////////////////////////////////////////
