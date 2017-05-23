@@ -826,6 +826,7 @@ package inferenceControl {
       leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
       leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(REPLACE_O,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(REPLACE_OO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_OOO: ${isPropSet(REPLACE_OOO,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(REPLACE_AO,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
       if (shouldReplace(ty)) {
@@ -847,7 +848,8 @@ package inferenceControl {
         if (funTyArgs.size == 1) isPropSet(REPLACE_O, Configuration.PRE_PRIMSUBST_LEVEL) // Booleans
         else {
           // funTyArgs.size > 1
-          if (funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          if (funTyArgs.size == 2 && funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          else if (funTyArgs.size == 3 && funTyArgs.head == o && funTyArgs.tail.head == o) isPropSet(REPLACE_OOO, Configuration.PRE_PRIMSUBST_LEVEL)
           else {
             if (isPropSet(REPLACE_AO, Configuration.PRE_PRIMSUBST_LEVEL)) true
             else {
