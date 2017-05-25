@@ -3,7 +3,7 @@ package leo.modules.control
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.seqpproc.State
-import leo.modules.Utility.myAssert
+import leo.modules.myAssert
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -826,6 +826,7 @@ package inferenceControl {
       leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
       leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(REPLACE_O,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_OO: ${isPropSet(REPLACE_OO,LEVEL)}")
+      leo.Out.finest(s"[Special Instances]: REPLACE_OOO: ${isPropSet(REPLACE_OOO,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(REPLACE_AO,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
       if (shouldReplace(ty)) {
@@ -847,7 +848,8 @@ package inferenceControl {
         if (funTyArgs.size == 1) isPropSet(REPLACE_O, Configuration.PRE_PRIMSUBST_LEVEL) // Booleans
         else {
           // funTyArgs.size > 1
-          if (funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          if (funTyArgs.size == 2 && funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
+          else if (funTyArgs.size == 3 && funTyArgs.head == o && funTyArgs.tail.head == o) isPropSet(REPLACE_OOO, Configuration.PRE_PRIMSUBST_LEVEL)
           else {
             if (isPropSet(REPLACE_AO, Configuration.PRE_PRIMSUBST_LEVEL)) true
             else {
@@ -1072,6 +1074,7 @@ package inferenceControl {
         val cl = clIt.next
 
         leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
+        leo.Out.finest(s"${cl.pretty(sig)}")
         var uniLits: Seq[Literal] = Vector()
         var nonUniLits: Seq[Literal] = Vector()
         var boolExtLits: Seq[Literal] = Vector()
@@ -1111,7 +1114,7 @@ package inferenceControl {
             val liftedCl = Control.shallowSimp(liftedIt.next())
             result = result + liftedCl
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
-            val liftedUnified = doUnify0(cl, freshVarGen(cl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
+            val liftedUnified = doUnify0(cl, freshVarGen(liftedCl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(sig)
             if (liftedUnified.isEmpty) {
               val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
               if (res != liftedClUniLits) {
@@ -1788,7 +1791,7 @@ package  externalProverControl {
         } else Seq.empty
       }
     }
-    private final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
+    final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
       state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
     }
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
@@ -1812,7 +1815,25 @@ package  externalProverControl {
         }
       }
     }
-    private final def callProver(prover: TptpProver[AnnotatedClause],
+
+    final def submitSingleProver(prover : TptpProver[AnnotatedClause],
+                                 clauses: Set[AnnotatedClause],
+                                 state: State[AnnotatedClause]) : Unit = {
+      leo.Out.debug(s"[ExtProver]: Staring job ${prover.name}")
+      lastCall = state.noProofLoops
+      if (openCalls.isDefinedAt(prover)) {
+        if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+          val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+          if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+          leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+        }
+      } else {
+        val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+        if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
+        leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+      }
+    }
+    final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
       import leo.modules.encoding._

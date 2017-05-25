@@ -125,7 +125,7 @@ class EncodingAnalyzerTest extends LeoTestSuite {
 
     // create formulae
     val (_,f1,_) = Input.readAnnotated("thf(sur_cantor, conjecture, (~ ( ? [F: $i > ($i > $o)] : (\n                                   ! [Y: $i > $o] :\n                                    ? [X: $i] : (\n                                      (F @ X) = Y\n                                    )\n                                 ) ))).")
-    import leo.modules.Utility.termToClause
+    import leo.modules.termToClause
     import leo.datastructures.Clause
     assert(Term.wellTyped(f1))
     println(f1.pretty(sig))

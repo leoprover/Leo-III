@@ -9,7 +9,7 @@ import leo.datastructures.blackboard.impl.FormulaDataStore
 import leo.{Checked, Ignored, LeoTestSuite}
 import leo.datastructures.blackboard.Blackboard
 import leo.datastructures.impl.SignatureImpl
-import leo.modules.Utility
+import leo.modules.printSignature
 
 /**
  * This suite tests the parsing and input processing of all the TPTP dialects except for CNF.
@@ -48,11 +48,11 @@ class InputTestSuite extends LeoTestSuite {
       println()
       println("## Problem signature:")
       printLongHLine()
-      Utility.printSignature(sig)
+      printSignature(sig)
       println()
       println("## Formulae converted to internal representation:")
       printLongHLine()
-      Utility.formulaContext()
+//      Utility.formulaContext()
       println()
     }
   }

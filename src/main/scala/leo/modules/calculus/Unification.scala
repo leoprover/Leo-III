@@ -558,7 +558,7 @@ object PatternUnification extends Unification {
               /* rigid-flex */
               if (l.looseBounds.contains(idx2 - abstractionCount)) None
               else {
-                leo.Out.finest("Apply Flex-rigid")
+                leo.Out.finest("Apply rigid-flex")
                 val result = flexrigid(idx2 - abstractionCount, ty2, args2, hd1, args1, leftBody, vargen, leftAbstractions)
                 if (result == null) None
                 else {
@@ -886,7 +886,7 @@ object TypeUniImpl extends TypeUnification {
     leo.Out.finest(s"Unsolved type equations: ${uTyProblems.map(ueq => ueq._1.pretty + " = " + ueq._2.pretty).mkString(" , ")}")
     if (uTyProblems.nonEmpty) {
       val head = uTyProblems.head
-      leo.Out.finest(s"Taken: ${head._1} = ${head._2}")
+      leo.Out.finest(s"Taken: ${head._1.pretty} = ${head._2.pretty}")
       if (TyDeleteRule.canApply(head)) {
         leo.Out.finest(s"Apply delete")
         tyDetExhaust(uTyProblems.tail, unifier)

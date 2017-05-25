@@ -192,11 +192,6 @@ object Term extends TermBank {
   final implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
 
 
-  // Legacy functions type types for statistics, like to be reused sometime
-  type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
-  final def statistics: TermBankStatistics = TermImpl.statistics
-
-
   //////////////////////////////////////////
   // Patterns for term structural matching
   //////////////////////////////////////////
@@ -308,16 +303,16 @@ object Term extends TermBank {
   object LexicographicalOrdering extends Ordering[Term] {
 
       private def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
-        case (Left(h1) :: t1, Left(h2) :: t2) =>
+        case (Left(h1) +: t1, Left(h2) +: t2) =>
           val c = this.compare(h1, h2)
           if (c != 0) c else compareApp(t1, t2)
-        case (Right(h1) :: t1, Right(h2) :: t2) =>
+        case (Right(h1) +: t1, Right(h2) +: t2) =>
           val c = Type.LexicographicalOrdering.compare(h1, h2)
           if (c != 0) c else compareApp(t1, t2)
-        case (Left(h1) :: t1, Right(h2) :: t2) => 1
-        case (Right(h1) :: t1, Left(h2) :: t2) => -1
-        case (h :: t, Nil) => 1
-        case (Nil, h :: t) => -1
+        case (Left(h1) +: t1, Right(h2) +: t2) => 1
+        case (Right(h1) +: t1, Left(h2) +: t2) => -1
+        case (h +: t, Nil) => 1
+        case (Nil, h +: t) => -1
         case (Nil, Nil) => 0
       }
 

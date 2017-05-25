@@ -4,8 +4,9 @@ package modules.phase
 
 import leo.agents._
 import leo.datastructures.blackboard._
-import leo.datastructures.blackboard.impl.{SZSStore}
+import leo.datastructures.blackboard.impl.SZSStore
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.modules.interleavingproc.SZSStatus
 
 
 object Phase {
@@ -98,6 +99,7 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) exten
 
   override def end() : Unit = {
     super.end()
+    agents foreach {a => a.kill()}
     blackboard.unregisterAgent(waitAgent)
     waitAgent = null
     waitAgent = null
@@ -126,6 +128,7 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) exten
 
     if(!waitTillEnd()) {
       Out.info(s"$name will be terminated and program is quitting.")
+      agents foreach {a => a.kill()}
       return false
     }
     // Ending all agents and clear the scheduler
@@ -144,7 +147,7 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) exten
       case DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
       case r : Delta =>
-        if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty){
+        if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty || r.inserts(SZSStatus).nonEmpty || r.updates(SZSStatus).nonEmpty){
           synchronized{finish = true; notifyAll()}
         }
         List()

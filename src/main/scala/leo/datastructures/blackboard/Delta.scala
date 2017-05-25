@@ -76,7 +76,7 @@ object Result {
   def apply() : MutableDelta = new MutableDelta
 }
 
-class EmptyDelta() extends Delta{
+object EmptyDelta extends Delta {
   override def isEmpty: Boolean = true
   override def types: Seq[DataType[Any]] = Seq()
   override def inserts[T](t: DataType[T]): Seq[T] = Seq()

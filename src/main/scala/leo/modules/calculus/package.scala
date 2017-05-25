@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Type, Term, Kind, Clause, Signature, Subst}
+import leo.datastructures.{Type, Term, Literal, Kind, Clause, Signature, Subst}
 import leo.modules.output.SuccessSZS
 
 /**
@@ -253,4 +253,8 @@ package object calculus {
     val fvs = cl.implicitlyBound
     fvs.size == fvs.toSet.size
   }
+
+  @inline final def isPattern(t: Term): Boolean = PatternUnification.isPattern(t)
+  @inline final def isPattern(l: Literal): Boolean = isPattern(l.left) && isPattern(l.right)
+  @inline final def isPattern(cl: Clause): Boolean = cl.lits.forall(isPattern)
 }

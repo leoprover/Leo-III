@@ -14,7 +14,7 @@ object TypedFOLEncoding {
   type Result = (EncodedProblem, AuxiliaryFormulae, EncodingSignature)
 
   final def apply(problem: Problem, les: LambdaElimStrategy)(implicit sig: Signature): Result = {
-    import leo.modules.Utility.termToClause
+    import leo.modules.termToClause
     // new signature for encoded problem
     val foSig = TypedFOLEncodingSignature()
     // Analyze problem and insert problem-specific symbols into signature (encoded types)
@@ -52,7 +52,7 @@ object TypedFOLEncoding {
     val lambdaEliminator = les(foSig)
     val resultProblem: Problem = problem.map(translate(_, lambdaEliminator)(sig, foSig))
     // Collect auxiliary definitions from lambda elimination (if any)
-    val auxDefsFromLES: Set[Clause] = lambdaEliminator.getAuxiliaryDefinitions.map(leo.modules.Utility.termToClause(_))
+    val auxDefsFromLES: Set[Clause] = lambdaEliminator.getAuxiliaryDefinitions.map(leo.modules.termToClause(_))
     (resultProblem, proxyAxioms union auxDefsFromLES, foSig)
   }
 
@@ -255,7 +255,7 @@ object TypedFOLEncoding {
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
-        leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
+        leo.modules.myAssert(termArgs.forall(_.isLeft))
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
         // pass some arguments directly if possible
         val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
@@ -266,7 +266,7 @@ object TypedFOLEncoding {
         val tyArgsApplied = mkTypeApp(encodedHead, translatedTyArgs)
         val directArgsApplied = mkTermApp(tyArgsApplied, directArgs)
         val allApplied = encodingSignature.hApp(directArgsApplied, indirectArgs)
-        leo.modules.Utility.myAssert(allApplied.ty == o || allApplied.ty == encodingSignature.boolTy)
+        leo.modules.myAssert(allApplied.ty == o || allApplied.ty == encodingSignature.boolTy)
         if (allApplied.ty != o) encodingSignature.hBool(allApplied)
         else allApplied
       // Standard-case end, error cases follow
@@ -314,7 +314,7 @@ object TypedFOLEncoding {
         assert(encodedHead.isAtom)
         val translatedTyArgs = args.takeWhile(_.isRight).map(ty => foTransformType0(ty.right.get, true)(holSignature, encodingSignature))
         val termArgs = args.dropWhile(_.isRight)
-        leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
+        leo.modules.myAssert(termArgs.forall(_.isLeft))
         val translatedTermArgs = termArgs.map(arg => translateTerm(arg.left.get, les)(holSignature, encodingSignature))
         // pass some arguments directly if possible
         val encodedHeadParamTypes = encodedHead.ty.monomorphicBody.funParamTypes
@@ -444,12 +444,12 @@ object EncodingAnalyzer {
 
   private final def arity(args: Seq[Either[Term, Type]]): MinArity = {
     val termArgs = args.dropWhile(_.isRight)
-    leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
+    leo.modules.myAssert(termArgs.forall(_.isLeft))
     termArgs.size
   }
   private final def safeArity(args: Seq[Either[Term, Type]], depth: Int): MinArity = {
     val termArgs = args.dropWhile(_.isRight)
-    leo.modules.Utility.myAssert(termArgs.forall(_.isLeft))
+    leo.modules.myAssert(termArgs.forall(_.isLeft))
     // count those are from left to right which do not include
     // bound vars from lambda binders freely.
     val safeArgs = termArgs.takeWhile(_.left.get.looseBounds.forall(_ > depth))

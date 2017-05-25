@@ -6,6 +6,8 @@ import leo.modules.HOLSignature._
 import leo.modules.SZSException
 import leo.modules.output.{SZS_Error, SZS_Theorem, SuccessSZS}
 
+import scala.collection.mutable
+
 /**
   *
   * Rule extracting all arguments of a term
@@ -15,6 +17,11 @@ import leo.modules.output.{SZS_Error, SZS_Theorem, SuccessSZS}
   *
   */
 object ArgumentExtraction extends CalculusRule {
+
+
+  // TODO Make ArgumentExtraction to a class to avoid clashes in cashing
+  private val cashExtracts : mutable.Map[Term, Term] = new mutable.HashMap[Term, Term]()
+  def resetCash() : Unit = cashExtracts.clear()
 
   /**
     * The type of extracted arguments.
@@ -84,27 +91,27 @@ object ArgumentExtraction extends CalculusRule {
     * @param extType the type of extractable arguments.
     * @return true, iff the argument should be extracted.
     */
-  private def shouldExtract(t : Term, lambdas : Int, extType : ExtractionType)(implicit sig : Signature) : Boolean = {
-    if(containsLocalBounds(t, lambdas)) return false
+  private def shouldExtract(t : Term, lambdas : Int, extractLocal : Boolean, extType : ExtractionType)(implicit sig : Signature) : Boolean = {
+    if(!extractLocal && containsLocalBounds(t, lambdas)) return false
     else {
       extType match {
         case BooleanType =>
           if(t.ty != o) return false
           t.headSymbol match {
-            case Symbol(k) => !sig.allUserConstants.contains(k)
+            case hd@Symbol(k) => !sig.allUserConstants.contains(k) && !hd.ty.isBaseType
             case _ => false
           }
         case PredicateType =>
           if(t.ty.funParamTypesWithResultType.last != o) return false
           t.headSymbol match {
-            case Symbol(k) => !sig.allUserConstants.contains(k)
+            case hd@Symbol(k) => !sig.allUserConstants.contains(k) && !hd.ty.isBaseType
             case _ => false
           }
         case FunctionType =>
           if(!t.ty.isFunType) {
             if(t.ty != o) return false
             t.headSymbol match {
-              case Symbol(k) => !sig.allUserConstants.contains(k)
+              case hd@Symbol(k) => !sig.allUserConstants.contains(k) && !hd.ty.isBaseType
               case _ => false
             }
           } else {
@@ -145,7 +152,9 @@ object ArgumentExtraction extends CalculusRule {
     * @return A tupel of the new term (with replaced arguments), and a sequence of Literal, representing the
     *         newly defined arguments.
     */
-  def apply(t : Term, extType : ExtractionType)(implicit sig : Signature) : (Term, Seq[Literal]) = shallowApply(t, 0, extType)
+  def apply(t : Term, extractLocal : Boolean, extType : ExtractionType)
+           (implicit sig : Signature) : (Term, Seq[Literal])
+  = shallowApply(t, 0, extractLocal, extType)
 
   /**
     * Extracts all boolean arguments, applicable
@@ -175,9 +184,9 @@ object ArgumentExtraction extends CalculusRule {
     * @return A tupel of the new term (with replaced arguments), and a sequence of Literal, representing the
     *         newly defined arguments.
     */
-  def apply(l : Literal, extType : ExtractionType)(implicit sig : Signature) : (Literal, Seq[Literal]) = {
-    val (left, defsl) = shallowApply(l.left, 0, extType)
-    val (right, defsr) = shallowApply(l.right, 0 ,extType)
+  def apply(l : Literal, extractLocal : Boolean, extType : ExtractionType)(implicit sig : Signature) : (Literal, Seq[Literal]) = {
+    val (left, defsl) = shallowApply(l.left, 0, extractLocal, extType)
+    val (right, defsr) = shallowApply(l.right, 0 , extractLocal, extType)
     (Literal(left, right, l.polarity), defsl ++ defsr)
   }
 
@@ -209,51 +218,64 @@ object ArgumentExtraction extends CalculusRule {
     * @return A tupel of the new term (with replaced arguments), and a sequence of Literal, representing the
     *         newly defined arguments.
     */
-  def apply(c : Clause, extType : ExtractionType)(implicit sig : Signature) : (Clause, Seq[Literal]) = {
+  def apply(c : Clause, extractLocal : Boolean, extType : ExtractionType)(implicit sig : Signature) : (Clause, Seq[Literal]) = {
     val lits = c.lits.iterator
     var ergLits : Seq[Literal] = Seq()
     var defs : Seq[Literal] = Seq()
     while(lits.hasNext){
       val l = lits.next()
-      val (newL, newDefs) = apply(l, extType)
+      val (newL, newDefs) = apply(l, extractLocal, extType)
       ergLits = newL +: ergLits
       defs = newDefs ++ defs
     }
     (Clause(ergLits), defs)
   }
 
-  private def shallowApply(t : Term, lambdas : Int, extType : ExtractionType)(implicit sig : Signature) : (Term, Seq[Literal]) = t match {
+  private def shallowApply(t : Term, lambdas : Int,
+                           extractLocal : Boolean,
+                           extType : ExtractionType)
+                          (implicit sig : Signature) : (Term, Seq[Literal]) = t match {
     case s@Symbol(_)            => (s, Seq())
     case s@Bound(_,_)           => (s, Seq())
-    case f ∙ args   =>
+    case f ∙ args  =>
+//      println(s"Called @ ${t.pretty(sig)}")
       var defs : Seq[Literal] = Seq()
       val it = args.iterator
       var args1 : Seq[Either[Term, Type]] = Seq()
       val fapplicable = isHeadApplicable(f)
       while(it.hasNext){
         it.next() match {
-          case Left(lt) if fapplicable & shouldExtract(lt, lambdas, extType) =>
-            val freevars = lt.freeVars.toSeq                                // X
-            val c_ty = Type.mkFunType(freevars.map(_.ty), lt.ty)            // ty(X1) -> ... -> ty(Xn) -> ty(l)
-            // TODO other nameing?
-            // TODO Cashing for terms?
-            val c_def = Term.mkAtom(sig.freshSkolemConst(c_ty), c_ty)       // c
-            val newT : Term = Term.mkTermApp(c_def, freevars)               // c X
-            defs = Literal(newT, lt, true) +: defs                          // c X = lt
-            args1 = Left(newT) +: args1
+          case Left(lt) if fapplicable & shouldExtract(lt, lambdas, extractLocal, extType) =>
+//            println(s" + Arg Was term @ ${lt.pretty(sig)} and applicable")
+            if(cashExtracts.contains(lt)){
+              args1 = Left(cashExtracts(lt)) +: args1
+            } else {
+              val freevars = lt.freeVars.toSeq // X
+              val c_ty = Type.mkFunType(freevars.map(_.ty), lt.ty) // ty(X1) -> ... -> ty(Xn) -> ty(l)
+              // TODO other nameing?
+              // TODO Cashing for terms?
+              val c_def = Term.mkAtom(sig.freshSkolemConst(c_ty), c_ty) // c
+              val newT: Term = Term.mkTermApp(c_def, freevars) // c X
+              defs = Literal(newT, lt, true) +: defs // c X = lt
+              cashExtracts.put(lt, newT)
+              args1 = Left(newT) +: args1
+            }
           case Left(lt) =>
-            val (t1, defs1) = shallowApply(lt, lambdas, extType)
+//            println(s"   Arg was term @ ${lt.pretty(sig)} but not applicable (headApplicable ${fapplicable})")
+            val (t1, defs1) = shallowApply(lt, lambdas, extractLocal, extType)
             args1 = Left(t1) +: args1
             defs = defs1 ++ defs
-          case Right(rt) => args1 = Right(rt) +: args1
+          case Right(rt) =>
+//            println(s"   Arg was type @ ${rt.pretty(sig)} hence dropped")
+            args1 = Right(rt) +: args1
         }
       }
       (Term.mkApp(f, args1.reverse), defs)
     case ty :::> s  =>
-      val (s1, defs) = shallowApply(s, lambdas + 1, extType)
+      val (s1, defs) = shallowApply(s, lambdas + 1,extractLocal, extType)
       (Term.mkTermAbs(ty, s1), defs)
     case TypeLambda(s) =>
-      val (s1, defs) = shallowApply(s, lambdas + 1, extType)
+      val (s1, defs) = shallowApply(s, lambdas + 1, extractLocal, extType)
       (Term.mkTypeAbs(s1), defs)
   }
 }

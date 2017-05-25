@@ -144,9 +144,9 @@ abstract class Task extends Pretty  {
 
   def run : Delta
 
-  def readSet() : Map[DataType[Any], Set[Any]]
+  def readSet : Map[DataType[Any], Set[Any]]
 
-  def writeSet() : Map[DataType[Any], Set[Any]]
+  def writeSet : Map[DataType[Any], Set[Any]]
 
   /**
     *
@@ -154,7 +154,7 @@ abstract class Task extends Pretty  {
     *
     * @return all [[DataType]] contained in this task.
     */
-  lazy val lockedTypes : Set[DataType[Any]] = readSet().keySet.union(writeSet().keySet)
+  lazy val lockedTypes : Set[DataType[Any]] = readSet.keySet.union(writeSet.keySet)
 
   /**
     * Checks for two tasks, if they are in conflict with each other.
@@ -168,10 +168,10 @@ abstract class Task extends Pretty  {
     val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)  // Restrict to the datatypes both tasks use.
     if(sharedTypes.isEmpty) return false  // Empty case
     sharedTypes.exists{d =>        // There exist datatype, where one of the sets intersects
-      val r1 : Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
-      val w1 : Set[Any] = t1.writeSet().getOrElse(d, Set.empty[Any])
-      val r2 : Set[Any] = t2.readSet().getOrElse(d, Set.empty[Any])
-      val w2 : Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
+      val r1 : Set[Any] = t1.readSet.getOrElse(d, Set.empty[Any])
+      val w1 : Set[Any] = t1.writeSet.getOrElse(d, Set.empty[Any])
+      val r2 : Set[Any] = t2.readSet.getOrElse(d, Set.empty[Any])
+      val w2 : Set[Any] = t2.writeSet.getOrElse(d, Set.empty[Any])
 
       (r1 & w2).nonEmpty || (r2 & w1).nonEmpty || (w1 & w2).nonEmpty
     }
@@ -190,8 +190,8 @@ abstract class Task extends Pretty  {
     val sharedTypes = t1.lockedTypes.intersect(t2.lockedTypes)
     if(sharedTypes.isEmpty) return false
     sharedTypes.exists { d =>
-      val r1: Set[Any] = t1.readSet().getOrElse(d, Set.empty[Any])
-      val w2: Set[Any] = t2.writeSet().getOrElse(d, Set.empty[Any])
+      val r1: Set[Any] = t1.readSet.getOrElse(d, Set.empty[Any])
+      val w2: Set[Any] = t2.writeSet.getOrElse(d, Set.empty[Any])
       (r1 & w2).nonEmpty
     }
   }

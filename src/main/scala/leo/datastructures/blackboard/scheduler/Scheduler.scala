@@ -13,6 +13,8 @@ import java.util.concurrent.{Executors, Future, RejectedExecutionException, Thre
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.context.Context
 import leo.modules.SZSException
+import leo.modules.interleavingproc.SZSStatus
+import leo.modules.output.SZS_Error
 
 
 /**
@@ -62,6 +64,13 @@ trait Scheduler {
     * @return
     */
   def getCurrentWork : Int
+
+  /**
+    * Returns the current work and ignores
+    * all long running processes.
+    * @return
+    */
+  def getActiveWork : Int
 }
 
 
@@ -96,7 +105,8 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
 
   def openTasks : Int = synchronized(curExec.size)
 
-  override def getCurrentWork: Int = workCount.get
+  override def getCurrentWork: Int = workCount.get()
+  override def getActiveWork: Int = AgentWork.overallWork
 
   override def isTerminated : Boolean = endFlag
 
@@ -130,11 +140,10 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       MyThreadFactory.killAll()
     }
     synchronized(freeThreads foreach {t => t.interrupt(); t.stop()})
-    AgentWork.executingAgents() foreach(_.kill())
-    blackboard.filterAll(a => a.filter(DoneEvent))
+    blackboard.filterAll{a => a.filter(DoneEvent)}
     curExec.clear()
     AgentWork.clear()
-    ExecTask.put(ExitResult,ExitTask, null)   // For the writer to exit, if he is waiting for a result
+    ExecTask.put(EmptyDelta,ExitTask, null)   // For the writer to exit, if he is waiting for a result
     sT.interrupt()
     s.notifyAll()
     AgentWork.synchronized(AgentWork.notifyAll())
@@ -189,7 +198,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       // Blocks until a task is available
       this.synchronized{while (curExec.size > numberOfThreads) this.wait()}
       val tasks = blackboard.getTask
-      tasks foreach {case (a, _) => AgentWork.inc(a)}
+      tasks foreach {case (a, t) => AgentWork.inc(a, t)}
 //      println(tasks)
       try {
         for ((a, t) <- tasks) {
@@ -233,17 +242,21 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         while ((end - start) < MAX_WAITING_TIME && (AgentWork.overallWork.toDouble / maxThreads > workLoad || curExec.size == 0)) {
           val rest = Math.max(MAX_WAITING_TIME - end + start, 0)
 //          println(s"------\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${rest} ms")
-//          val millis1 = System.currentTimeMillis()
+          val millis1 = System.currentTimeMillis()
 //          println(s"+++++++++++ Waiting for Results... ${(millis1 / 60000) % 60} min ${(millis1 / 1000) % 60} s ${millis1 % 1000} ms")
           AgentWork.wait(rest)
           if (endFlag) return
           end = System.currentTimeMillis()
         }
+//        println(s"--- OUT ---\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${Math.max(MAX_WAITING_TIME - end + start, 0)} ms")
+        if(AgentWork.overallWork > 0){
+          AgentWork.ignoreRest() // Used to not block in the next iteration over the remaining tasks
+          blackboard.forceCheck() // To not block in case of no other finished task
+        }
       }
-//      println(s"--- OUT ---\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${Math.max(MAX_WAITING_TIME - end + start, 0)} ms")
       val (result,task, agent) = ExecTask.get()
-//      val millis1 = System.currentTimeMillis()
-//      println(s"+++++++++++ Result start [${agent.name}] writing: ${(millis1 / 60000) % 60} min ${(millis1 / 1000)%60} s ${millis1 % 1000} ms")
+      val millis1 = System.currentTimeMillis()
+//      println(s"+++++++++++ Result start [${if(agent != null) agent.name else "Noname" }] writing: ${(millis1 / 60000) % 60} min ${(millis1 / 1000)%60} s ${millis1 % 1000} ms")
       if(endFlag) return              // Savely exit
       var doneSmth = false
 //      println(result)
@@ -261,7 +274,6 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           ds.updateResult(result)
         }
 
-        // TODO Merged Result => Multiple release
         ActiveTracker.incAndGet(s"Start Filter after finished ${task.name}")
         // Data Written, Release Locks before filtering
         task match {
@@ -347,7 +359,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           scheduler.killAll()
       }
       AgentWork.synchronized {
-        AgentWork.dec(a)
+        AgentWork.dec(a, t)
         AgentWork.notifyAll() // Signals the writer over one finished Task
       }
     }
@@ -361,15 +373,14 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         blackboard.submitTasks(a, ts.toSet)
       } catch {
         case e : SZSException =>
-//          SZSDataStore.forceStatus(Context())(e.status) TODO comment in after CASC
+          blackboard.addData(SZSStatus)(e.status)
           Out.severe(e.getMessage)
-//          Blackboard().filterAll(_.filter(DoneEvent()))
-//          Scheduler().killAll()
+          scheduler.killAll()
         case e : Exception =>
-//          Blackboard().filterAll(_.filter(DoneEvent())) // TODO comment in after Casc
+          blackboard.addData(SZSStatus)(SZS_Error)
           leo.Out.warn(e.getMessage)
           leo.Out.finest(e.getCause.toString)
-//          Scheduler().killAll()
+          scheduler.killAll()
       }
       ActiveTracker.decAndGet(s"Done Filtering data \n\t\t from ${from.name}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
       workCount.decrementAndGet()
@@ -426,7 +437,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       // 3. Calculate compressed Delta
 
       val it = results.iterator
-      var cd : Delta = new EmptyDelta
+      var cd : Delta = EmptyDelta
       while(it.hasNext){
         val (d, _ , _) = it.next()
         cd = cd.merge(d)
@@ -449,10 +460,10 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     // TODO Return real errors? Leave not implemented?
     override val name: String = s"Compressed Agent (${orignalTaskAgent.map(_._2.name).mkString(",  ")})"
     override def kill(): Unit = orignalTaskAgent.foreach(_._2.kill())
-    override def interest: Option[Seq[DataType[Any]]] = ???
-    override def filter(event: Event): Iterable[Task] = ???
-    override def init(): Iterable[Task] = ???
-    override def maxMoney: Double = ???
+    override def interest: Option[Seq[DataType[Any]]] = None
+    override def filter(event: Event): Iterable[Task] = Nil
+    override def init(): Iterable[Task] = Nil
+    override def maxMoney: Double = Double.MaxValue
     override def taskFinished(t: Task): Unit = t match {
       case ct : CompressTask => ct.tasks.foreach{t1 => t1.getAgent.taskFinished(t1)}
       case _ =>
@@ -463,7 +474,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
 
   private class CompressTask(val tasks : Seq[Task], a : CompressAgent) extends Task {
     override val name: String = s"Compressed Task (${tasks.map(_.name).mkString(",  ")})"
-    override def run: Delta = ???
+    override lazy val run: Delta = EmptyDelta
     override val readSet : Map[DataType[Any], Set[Any]] = {
       if(tasks.isEmpty) {Map()}
       else {
@@ -471,7 +482,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         val it = tasks.iterator
         while(it.hasNext){
           val t = it.next()
-          val mit = t.readSet().iterator
+          val mit = t.readSet.iterator
           while(mit.hasNext){
             val (ty, set) = mit.next()
             r = r + (ty -> set.union(r.getOrElse(ty, Set[Any]())))
@@ -487,7 +498,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         val it = tasks.iterator
         while(it.hasNext){
           val t = it.next()
-          val mit = t.writeSet().iterator
+          val mit = t.writeSet.iterator
           while(mit.hasNext){
             val (ty, set) = mit.next()
             r = r + (ty -> set.union(r.getOrElse(ty, Set[Any]())))
@@ -496,13 +507,14 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         r
       }
     }
-    override def bid: Double = ???
+    override def bid: Double = 1.0
     override def getAgent: Agent = a
     override lazy val pretty: String = s"Compressed Task (${tasks.map(_.pretty).mkString(",  ")})"
   }
 
   private object AgentWork {
     protected val agentWork : mutable.Map[Agent, Int] = new mutable.HashMap[Agent, Int]()
+    protected val tasks : mutable.HashSet[Task] = new mutable.HashSet[Task]()
 
     protected var work : Int = 0
 
@@ -512,20 +524,36 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
      * @param a - Agent that executes a task
      * @return the updated number of task of the agent.
      */
-    def inc(a : Agent) : Int = synchronized{
+    def inc(a : Agent, t : Task) : Int = synchronized{
       work += 1
+      tasks.add(t)
       agentWork.get(a) match {
-      case Some(v)  => agentWork.update(a,v+1); return v+1
-      case None     => agentWork.put(a,1);   return 1
-    }}
+        case Some(v)  => agentWork.update(a,v+1); return v+1
+        case None     => agentWork.put(a,1);   return 1
+      }
+    }
 
-    def dec(a : Agent) : Int = synchronized{
-      work -= 1
-      agentWork.get(a) match {
-      case Some(v)  if v > 1  => agentWork.update(a,v-1); return v-1
-      case Some(v)  if v == 1 => agentWork.remove(a);  return 0
-      case _                  => return 0 // Possibly error, but occurs on regular termination, so no output.
-    }}
+    def dec(a : Agent, t : Task) : Int = synchronized {
+        val act = tasks.contains(t)
+        if(act) {
+          work -= 1
+          tasks.remove(t)
+        }
+        agentWork.get(a) match {
+          case Some(v) if v > 1 => agentWork.update(a, v - 1); if(act) return v - 1 else return v
+          case Some(v) if v == 1 => agentWork.remove(a); if(act) return 0 else return 1
+          case _ => return 0 // Possibly error, but occurs on regular termination, so no output.
+        }
+    }
+
+    /**
+      * This method is used to ignore long lasting work
+      * for the waiting in the global loop
+      */
+    def ignoreRest() : Unit = {
+      work = 0
+      tasks.clear()
+    }
 
     def executingAgents() : Iterable[Agent] = synchronized(agentWork.keys)
 
@@ -539,11 +567,6 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
   }
 
   /**
-   * Marker for the writer to end itself
-   */
-  private object ExitResult extends EmptyDelta {}
-
-  /**
    * Empty marker for the Writer to end itself
    */
   private object ExitTask extends Task {
@@ -553,7 +576,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     override def name: String = "ExitTask"
 
     override def run : Delta = {
-      new EmptyDelta
+      EmptyDelta
     }
 
     override def pretty: String = "Exit Task"

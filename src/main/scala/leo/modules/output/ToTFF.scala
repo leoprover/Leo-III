@@ -57,7 +57,7 @@ object ToTFF {
 
   private final def formulaToTFF(fvMap: Map[Int, String], tyFvCount: Int, t: Term)(sig: Signature): String = {
     import leo.datastructures.Term.{Symbol,∙}
-    import leo.modules.Utility.myAssert
+    import leo.modules.myAssert
 
     myAssert({
       val oType = Type.mkType(sig("$o").key)

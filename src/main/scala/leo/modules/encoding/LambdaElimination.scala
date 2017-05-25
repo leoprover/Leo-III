@@ -2,7 +2,6 @@ package leo.modules.encoding
 
 import leo.datastructures.{Signature, Term, Type}
 import leo.Out
-import leo.modules.Utility
 
 
 /**

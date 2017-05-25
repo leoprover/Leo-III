@@ -33,6 +33,8 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PRE_PRIMSUBST = "instantiate"
   private val PARAM_PRE_PRIMSUBST_MAXDEPTH = "instantiate-maxdepth"
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
+  private val PARAM_PASSMARK = "passmark"
+  private val PARAM_AGING = "aging"
   private val PARAM_NOCHOICE = "nochoice"
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
   private val PARAM_ATPCHECKINTERVAL = "atp-check-interval"
@@ -40,6 +42,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_ATPMAXJOBS = "atp-max-jobs"
   private val RENAMING = "renaming"
   private val PARAM_CONSISTENCYCHECK = "consistency-only"
+  private val EXTRACTION_TYPE_PARAM = "xType"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -120,6 +123,8 @@ object Configuration extends DefaultConfiguration {
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
 
   lazy val RELEVANCE_FILTERING: Boolean = isSet(PARAM_RELEVANCEFILTER)
+  lazy val RELEVANCE_PASSMARK: Double = uniqueDoubleFor(PARAM_PASSMARK, DEFAULT_PASSMARK)
+  lazy val RELEVANCE_AGING: Double = uniqueDoubleFor(PARAM_AGING, DEFAULT_AGING)
 
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
   lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
@@ -148,6 +153,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val RENAMING_SET : Boolean = isSet(RENAMING)
   lazy val RENAMING_THRESHHOLD : Int = valueOf(RENAMING).fold(0)(_.headOption.fold(0)(_.toInt))
+  lazy val EXTRACTION_TYPE: Int = uniqueIntFor(EXTRACTION_TYPE_PARAM, 1)
 
   lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
   lazy val ATP_MAX_JOBS: Int = uniqueIntFor(PARAM_ATPMAXJOBS, DEFAULT_ATPMAXJOBS)
@@ -270,8 +276,23 @@ object Configuration extends DefaultConfiguration {
     case Some(_) => Out.warn(intExpectedOutput(param, "None"))
       default
   }
+  protected def uniqueDoubleFor(param: String, default: Double): Double = if (configMap == null) default
+  else configMap.get(param) match {
+    case None => default
+    case Some(arg :: Nil) => processDoubleFor(param, arg, default)
+    case Some(arg :: _) =>
+      Out.warn(multiDefOutput(param))
+      processDoubleFor(param, arg, default)
+    case Some(_) => Out.warn(intExpectedOutput(param, "None"))
+      default
+  }
   protected def processIntFor(param: String, actual: String, default: Int): Int = {
     safeStrToInt(actual).getOrElse({
+      Out.warn(intExpectedOutput(param, actual))
+      default})
+  }
+  protected def processDoubleFor(param: String, actual: String, default: Double): Double = {
+    safeStrToDouble(actual).getOrElse({
       Out.warn(intExpectedOutput(param, actual))
       default})
   }
@@ -284,6 +305,11 @@ object Configuration extends DefaultConfiguration {
   }
   protected def safeStrToInt(str: String): Option[Int] = try {
     Some(str.toInt)
+  } catch {
+    case _:Throwable => None
+  }
+  protected def safeStrToDouble(str: String): Option[Double] = try {
+    Some(str.toDouble)
   } catch {
     case _:Throwable => None
   }
@@ -316,4 +342,6 @@ trait DefaultConfiguration {
   val DEFAULT_ATPCHECKINTERVAL = 3
   val DEFAULT_ATPCALLINTERVAL = 10
   val DEFAULT_ATPMAXJOBS = 2
+  val DEFAULT_PASSMARK = 0.56
+  val DEFAULT_AGING = 2.35
 }

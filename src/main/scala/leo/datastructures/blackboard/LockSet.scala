@@ -62,9 +62,9 @@ object LockSet {
     tasks exists {t1 =>
       val sharedTypes = t.lockedTypes & t1.lockedTypes
       sharedTypes exists {d =>
-        val w1 = t1.writeSet().getOrElse(d, Set.empty[Any])
-        val wc = t.writeSet().getOrElse(d, Set.empty[Any])
-        val rc = t.readSet().getOrElse(d, Set.empty[Any])
+        val w1 = t1.writeSet.getOrElse(d, Set.empty[Any])
+        val wc = t.writeSet.getOrElse(d, Set.empty[Any])
+        val rc = t.readSet.getOrElse(d, Set.empty[Any])
 
         (w1 & wc).nonEmpty || (w1 & rc).nonEmpty
       }
