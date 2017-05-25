@@ -308,7 +308,7 @@ package inferenceControl {
             if (curPositions.isEmpty) {
               curSubterms = curSubterms.tail
               if (curSubterms.isEmpty) {
-                if (hd.oriented || side == rightSide) {
+                if (/*hd.oriented ||*/ side == rightSide) {
                   lits = lits.tail
                   litIndex += 1
                   side = leftSide
