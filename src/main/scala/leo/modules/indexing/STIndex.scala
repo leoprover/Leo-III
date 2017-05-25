@@ -1,7 +1,6 @@
 package leo.modules.indexing
 
-import leo.datastructures.Literal.Side
-import leo.datastructures.{Clause, Literal, Position, Signature, Term}
+import leo.datastructures._
 import leo.modules.myAssert
 
 import scala.collection.mutable
@@ -28,9 +27,7 @@ import scala.collection.mutable
   * }}}
   */
 class STIndex {
-  import STIndex.ClausePos
-
-  type ClauseEntry = mutable.Map[Clause, ClausePos]
+  type ClauseEntry = mutable.Map[Clause, ClausePositionSet]
   private final val termToOccurrenceMap: mutable.Map[Term, ClauseEntry] = mutable.Map.empty
 
   private final val clauseToSubtermMap =
@@ -74,12 +71,16 @@ class STIndex {
       val clauseEntry = termToOccurrenceMap(t)
       if (clauseEntry.contains(cl)) {
         val occ = clauseEntry(cl)
-        ???
+        occ.insert(ClausePosition(cl, idx, side, pos))
       } else {
-        clauseEntry += ((cl, ClausePos(cl, idx, side, pos)))
+        val newSet = ClausePositionSet.empty
+        newSet.insert(ClausePosition(cl, idx, side, pos))
+        clauseEntry += (cl -> newSet)
       }
     } else {
-      termToOccurrenceMap += ((t, mutable.Map(cl -> ClausePos(cl, idx, side, pos))))
+      val newSet = ClausePositionSet.empty
+      newSet.insert(ClausePosition(cl, idx, side, pos))
+      termToOccurrenceMap += (t -> mutable.Map(cl -> newSet))
     }
     clauseToSubtermMap.addBinding(cl, t)
   }
@@ -106,7 +107,7 @@ class STIndex {
   }
 
   final def iterator(): Iterator[Term] = termToOccurrenceMap.keysIterator
-  final def occurrences(t: Term): Iterator[ClausePos] = {
+  final def occurrences(t: Term): Iterator[ClausePositionSet] = {
     if (termToOccurrenceMap.contains(t))
       termToOccurrenceMap(t).valuesIterator
     else Iterator.empty
@@ -115,22 +116,7 @@ class STIndex {
 }
 
 object STIndex {
-  type PositionSet = mutable.Set[Position]
-  final class ClausePos(val cl: Clause, idx: Int, var occurrences0: PositionSet) {
-    def litIdx: Int = {
-      myAssert(idx != 0)
-      if (idx < 0) -idx else idx
-    }
-    def side: Literal.Side = {
-      myAssert(idx != 0)
-      if (idx < 0) Literal.leftSide else Literal.rightSide
-    }
-    def occurrences: PositionSet = occurrences0
-    def addOccurrence(pos: Position): Unit = {occurrences0 = occurrences0 + pos}
-  }
-  object ClausePos {
-    final def apply(cl: Clause, idx: Int, side: Literal.Side, pos: Position): ClausePos = ???
-  }
+
 }
 
 
