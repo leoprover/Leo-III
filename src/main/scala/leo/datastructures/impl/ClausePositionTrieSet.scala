@@ -124,18 +124,25 @@ protected[impl] class ClausePositionTrieSetNode { self =>
 
   def bfsIterator: Iterator[ClausePosition] = new Iterator[ClausePosition] {
     private final val queue: mutable.Queue[ClausePositionTrieSetNode] = mutable.Queue(self)
+    private var cur: ClausePositionTrieSetNode = _
     private var leftDone: Boolean = false
     private var rightDone: Boolean = false
 
     override def hasNext: Boolean = {
-      if (queue.isEmpty) false
-      else {
-        val hd = queue.front
-        if (hd.leftValue != null && !leftDone) true
-        else if (hd.rightValue != null && !rightDone) true
+      if (cur == null) {
+        if (queue.isEmpty) false
         else {
-          queue.dequeue()
-          queue ++= hd.subtries.values.toSet
+          cur = queue.dequeue()
+          hasNext
+        }
+      } else {
+        if (cur.leftValue != null && !leftDone) true
+        else if (cur.rightValue != null && !rightDone) true
+        else {
+          queue ++= cur.subtries.values.toSet
+          leftDone = false
+          rightDone = false
+          cur = null
           hasNext
         }
       }
@@ -143,14 +150,14 @@ protected[impl] class ClausePositionTrieSetNode { self =>
 
     override def next(): ClausePosition = {
       if (hasNext) {
-        val hd = queue.front
-        assert(hd.leftValue != null || hd.rightValue != null)
-        if (!leftDone) {
+        assert(cur != null)
+        assert(cur.leftValue != null || cur.rightValue != null)
+        if (cur.leftValue != null && !leftDone) {
           leftDone = true
-          hd.leftValue
-        } else if (!rightDone) {
+          cur.leftValue
+        } else if (cur.rightValue != null && !rightDone) {
           rightDone = true
-          hd.rightValue
+          cur.rightValue
         } else {
           // both done, should not happen
           assert(false)

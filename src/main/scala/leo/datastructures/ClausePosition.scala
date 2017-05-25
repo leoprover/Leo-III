@@ -5,7 +5,10 @@ package leo.datastructures
 case class ClausePosition(cl: Clause, litIdx: Int,
                           side: Literal.Side, pos: Position)
   extends Pretty {
-  final def pretty = s"($litIdx;$side;${pos.pretty})"
+  final def pretty = s"(lit($litIdx);side(${sidePretty(side)});pos(${pos.pretty}))"
+
+  @inline final private def sidePretty(side: Literal.Side): String =
+    if (side == Literal.leftSide) "L" else "R"
 }
 
 /**
