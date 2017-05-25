@@ -27,10 +27,7 @@ trait TestUtility {
     Signature.freshWithHOL()
   }
 
-  def resetTermBank: Unit = {Term.reset()}
-
-  @deprecated
-  def resetBlackBoard: Unit = {}  // Obsolete: Blackboard is now a class and has to be created anew each test
+  def resetTermBank(): Unit = {Term.reset()}
 
   val hLine: String = "#" * 30
   def printHLine(): Unit = println(hLine)
