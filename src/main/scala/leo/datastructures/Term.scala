@@ -165,7 +165,6 @@ object Term extends TermBank {
   // Term bank method delegation
   final val local = TermImpl.local
   final def insert(term: Term): Term = TermImpl.insert(term)
-  final def contains(term: Term): Boolean = TermImpl.contains(term)
   final def reset(): Unit = TermImpl.reset()
 
   // Utility

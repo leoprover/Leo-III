@@ -995,9 +995,8 @@ object TermImpl extends TermBank {
   // shared terms
   /////////////////////////////////////////////
   import scala.collection.mutable
-  import mutable.{WeakHashMap => WMap}
+  import mutable.{WeakHashMap => WMap, HashMap => MMap}
 
-  final protected[TermImpl] val terms: mutable.Set[WeakReference[Term]] = mutable.Set.empty
   // atomic symbols (heads)
   final protected[TermImpl] val boundAtoms: WMap[Type, WMap[Int, WeakReference[Head]]] = WMap.empty
   final protected[TermImpl] val symbolAtoms: mutable.Map[Signature#Key, WeakReference[Head]] = mutable.Map.empty
@@ -1007,7 +1006,7 @@ object TermImpl extends TermBank {
   final protected[TermImpl] val roots: WMap[Head, WMap[Spine, WeakReference[TermImpl]]] = WMap.empty
   final protected[TermImpl] val redexes: WMap[Term, WMap[Spine, WeakReference[Redex]]] = WMap.empty
   // Spines
-  final protected[TermImpl] val spines: WMap[Either[Term, Type], WMap[Spine, WeakReference[Spine]]] = WMap.empty
+  final protected[TermImpl] val spines: MMap[Either[Term, Type], MMap[Spine, WeakReference[Spine]]] = MMap.empty
 
   /////////////////////////////////////////////
   // Implementation based constructor methods
@@ -1154,7 +1153,7 @@ object TermImpl extends TermBank {
 
   @inline final private def mkSpineCons0(term: Either[Term, Type], tail: Spine): Spine = {
     val sp = if (term.isLeft) App(term.left.get, tail) else TyApp(term.right.get, tail)
-    spines += (term -> WMap(tail -> WeakReference(sp)))
+    spines += (term -> MMap(tail -> WeakReference(sp)))
     sp
   }
   @inline final private def mkSpineCons1(term: Either[Term, Type], tail: Spine): Spine = {
@@ -1278,16 +1277,11 @@ object TermImpl extends TermBank {
   // Further TermBank methods
   /////////////////////////////////////////////
 
-  final def contains(term: Term): Boolean = terms.contains(WeakReference(term))
-
   final def insert(term: Term): Term = {
-    val t = if (Term.isLocal(term))
+    if (Term.isLocal(term))
       insert0(term)
     else
       term
-
-    terms += WeakReference(t)
-    t
   }
 
   final protected[TermImpl] def insert0(localTerm: Term): TermImpl = {
@@ -1327,7 +1321,6 @@ object TermImpl extends TermBank {
   }
 
   final def reset(): Unit = {
-    terms.clear()
     boundAtoms.clear()
     symbolAtoms.clear()
     termAbstractions.clear()
