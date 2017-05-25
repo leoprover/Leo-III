@@ -70,21 +70,19 @@ protected[datastructures] class ClausePositionTrieSet extends ClausePositionSet 
 }
 
 
-protected[impl] class ClausePositionTrieSetNode {
+protected[impl] class ClausePositionTrieSetNode { self =>
   import scala.collection.mutable
   type Key = Int
 
-  protected[this] final val subtries: mutable.HashMap[Key, ClausePositionTrieSetNode] = mutable.HashMap.empty
+  protected final val subtries: mutable.HashMap[Key, ClausePositionTrieSetNode] = mutable.HashMap.empty
 
-  protected[impl] var value: ClausePosition = _
-  private var left: Boolean = false
-  private var right: Boolean = false
+  private var leftValue: ClausePosition = _
+  private var rightValue: ClausePosition = _
 
   def insert(side: Literal.Side, termPos: Position, clPos: ClausePosition): Unit = {
     if (termPos == Position.root) {
-      value = clPos
-      if (side == Literal.leftSide) left = true
-      else right = true
+      if (side == Literal.leftSide) leftValue = clPos
+      else rightValue = clPos
     } else {
       val hd = termPos.posHead
       val tail = termPos.tail
@@ -99,8 +97,8 @@ protected[impl] class ClausePositionTrieSetNode {
   }
   def remove(side: Literal.Side, termPos: Position): Unit = {
     if (termPos == Position.root) {
-      if (side == Literal.leftSide) left = false
-      else right = false
+      if (side == Literal.leftSide) leftValue = null
+      else rightValue = null
     } else {
       val hd = termPos.posHead
       val tail = termPos.tail
@@ -111,8 +109,8 @@ protected[impl] class ClausePositionTrieSetNode {
   }
   def contains(side: Literal.Side, termPos: Position): Boolean = {
     if (termPos == Position.root) {
-      if (side == Literal.leftSide) left
-      else right
+      if (side == Literal.leftSide) leftValue != null
+      else rightValue != null
     } else {
       val hd = termPos.posHead
       val tail = termPos.tail
@@ -122,11 +120,43 @@ protected[impl] class ClausePositionTrieSetNode {
     }
   }
 
-  def isEmpty: Boolean = subtries.isEmpty && value == null
+  def isEmpty: Boolean = subtries.isEmpty && (leftValue != null || rightValue != null)
 
   def bfsIterator: Iterator[ClausePosition] = new Iterator[ClausePosition] {
-    override def hasNext: Boolean = ???
+    private final val queue: mutable.Queue[ClausePositionTrieSetNode] = mutable.Queue(self)
+    private var leftDone: Boolean = false
+    private var rightDone: Boolean = false
 
-    override def next(): ClausePosition = ???
+    override def hasNext: Boolean = {
+      if (queue.isEmpty) false
+      else {
+        val hd = queue.front
+        if (hd.leftValue != null && !leftDone) true
+        else if (hd.rightValue != null && !rightDone) true
+        else {
+          queue.dequeue()
+          queue ++= hd.subtries.values.toSet
+          hasNext
+        }
+      }
+    }
+
+    override def next(): ClausePosition = {
+      if (hasNext) {
+        val hd = queue.front
+        assert(hd.leftValue != null || hd.rightValue != null)
+        if (!leftDone) {
+          leftDone = true
+          hd.leftValue
+        } else if (!rightDone) {
+          rightDone = true
+          hd.rightValue
+        } else {
+          // both done, should not happen
+          assert(false)
+          throw new IllegalStateException
+        }
+      } else throw new NoSuchElementException
+    }
   }
 }
