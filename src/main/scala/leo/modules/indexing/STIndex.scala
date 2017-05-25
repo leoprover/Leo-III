@@ -49,15 +49,15 @@ class STIndex {
         if (!maxOnly || maxLits.contains(lit)) { // only select maximal if requested
           // process left
           val left = lit.left
-          insert(cl, litIdx, Literal.leftSide, left)
-          if (withSubterms) insertSubterms(cl, litIdx, Literal.leftSide, left)
+          if (withSubterms) insertWithSubterms(cl, litIdx, Literal.leftSide, left)
+          else insert(cl, litIdx, Literal.leftSide, left)
 
           if (!maxOnly || (lit.equational && !lit.oriented)) { // only select right side if not oriented
                                                                // ... or maxOnly is false
             // process right
             val right = lit.right
-            insert(cl, litIdx, Literal.rightSide, right)
-            if (withSubterms) insertSubterms(cl, litIdx, Literal.rightSide, right)
+            if (withSubterms) insertWithSubterms(cl, litIdx, Literal.rightSide, right)
+            else insert(cl, litIdx, Literal.rightSide, right)
           }
         }
       }
@@ -86,7 +86,32 @@ class STIndex {
   }
   private final def insert(cl: Clause, idx: Int, side: Literal.Side, t: Term): Unit =
     insert0(cl, idx, side, t, Position.root)
-  private final def insertSubterms(cl: Clause, idx: Int, side: Literal.Side, t: Term): Unit = ???
+  private final def insertWithSubterms(cl: Clause, idx: Int, side: Literal.Side, t: Term): Unit = {
+    insertSubterms0(cl, idx, side, t, Position.root)
+  }
+  private final def insertSubterms0(cl: Clause, idx: Int, side: Literal.Side, t: Term, pos: Position): Unit = {
+    import leo.datastructures.Term._
+    insert0(cl, idx, side, t, pos)
+    t match {
+      case Symbol(id) =>
+      case Bound(_,_) =>
+      case ty :::> body =>
+        insertSubterms0(cl, idx, side, body, pos.abstrPos)
+      case TypeLambda(body) => ???
+      case f ∙ args =>
+        insertSubterms0(cl, idx, side, f, pos.headPos)
+        val argsIt = args.iterator
+        while (argsIt.hasNext) {
+          val arg = argsIt.next()
+          var argIdx = 1
+          if (arg.isLeft) {
+            val termArg = arg.left.get
+            insertSubterms0(cl, idx, side, termArg, pos.argPos(argIdx))
+            argIdx += 1
+          }
+        }
+    }
+  }
 
   final def removeClause(cl: Clause): Unit = {
     if (clauseToSubtermMap.contains(cl)) {
