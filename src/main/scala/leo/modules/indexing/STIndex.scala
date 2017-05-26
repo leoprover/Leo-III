@@ -93,9 +93,9 @@ class STIndex {
     import leo.datastructures.Term._
     insert0(cl, idx, side, t, pos)
     t match {
-      case Symbol(id) =>
+      case Symbol(_) =>
       case Bound(_,_) =>
-      case ty :::> body =>
+      case _ :::> body =>
         insertSubterms0(cl, idx, side, body, pos.abstrPos)
       case TypeLambda(body) => ???
       case f ∙ args =>

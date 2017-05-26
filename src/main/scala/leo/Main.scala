@@ -10,19 +10,12 @@ import leo.modules.parsers.CLParameterParser
  * Entry Point for Leo-III as an executable to
  * proof a TPTP File
  *
- * @author Max Wisniewski
+ * @author Max Wisniewski, Alexander Steen
  * @since 7/8/14
  */
 object Main {
   private var hook: scala.sys.ShutdownHookThread = _
 
-  /**
-   *
-   * Tries to proof a Given TPTP file in
-   * a given Time.
-   *
-   * @param args - See [[Configuration]] for argument treatment
-   */
   def main(args : Array[String]){
     try {
       val beginTime = System.currentTimeMillis()
@@ -38,40 +31,7 @@ object Main {
           return
       }
       if (Configuration.PROBLEMFILE == "--caps") {
-        val caps =
-          """
-            |{
-            |  "name"         : "Leo-III",
-            |  "version"      : "1.1",
-            |  "applications" : ["prover"],
-            |  "languages"    : [
-            |    {
-            |      "language" : "tptp_cnf",
-            |      "roles"    : ["axiom", "conjecture", "negated_conjecture"],
-            |      "features" : []
-            |    },
-            |    {
-            |      "language" : "tptp_fof",
-            |      "roles"    : ["axiom", "definition", "negated_conjecture", "conjecture"],
-            |      "features" : []
-            |    },
-            |    {
-            |      "language" : "tptp_tff",
-            |      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
-            |      "features" : ["polytypes", "conditional"]
-            |    },
-            |    {
-            |      "language" : "tptp_thf",
-            |      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
-            |      "features" : [
-            |        "polytypes", "conditional", "let",
-            |        "definite_description", "indefinite_description", "th1_combinators"
-            |      ]
-            |    }
-            |  ]
-            |}
-          """.stripMargin
-        println(caps)
+        println(Configuration.CAPS)
         return
       }
       if (Configuration.HELP || Configuration.PROBLEMFILE == "-h") { // FIXME: Hacky, redo argument reading
@@ -81,11 +41,11 @@ object Main {
       val leodir = Configuration.LEODIR
       if (!Files.exists(leodir)) Files.createDirectory(leodir)
 
-//      val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
+      val timeout = if (Configuration.TIMEOUT == 0) Float.PositiveInfinity else Configuration.TIMEOUT
       val config = {
         val sb = new StringBuilder()
         sb.append(s"problem(${Configuration.PROBLEMFILE}),")
-        sb.append(s"time(${Configuration.TIMEOUT}),")
+        sb.append(s"time($timeout),")
         sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
         sb.append(s"sos(${Configuration.SOS}),")
         sb.append(s"primSubst(level=${Configuration.PRIMSUBST_LEVEL}),")
@@ -95,9 +55,9 @@ object Main {
         sb.init.toString()
       }
       Out.config(s"Configuration: $config")
-
+      
       if (Configuration.isSet("seq")) {
-        leo.modules.seqpproc.SeqPProc(beginTime)
+        leo.modules.seqpproc.SeqPProc(beginTime, timeout)
       } else if (Configuration.isSet("pure-ext")) {
         RunExternalProver.runExternal()
       } else if (Configuration.isSet("par")) {
@@ -109,18 +69,13 @@ object Main {
       }
       
     } catch {
-      case e:SZSException =>
-        Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
-        Out.output(SZSOutput(e.status, Configuration.PROBLEMFILE,e.toString))
-        Out.debug(e.debugMessage)
-        Out.trace(stackTraceAsString(e))
-        if (e.getCause != null) {
-          Out.trace("Caused by: " + e.getCause.getMessage)
-          Out.trace("at: " + e.getCause.getStackTrace.toString)
-        }
       case e:Throwable =>
         Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
-        Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+        if (e.isInstanceOf[SZSException]) {
+          val e0 = e.asInstanceOf[SZSException]
+          Out.output(SZSOutput(e0.status, Configuration.PROBLEMFILE,e.toString))
+          Out.debug(e0.debugMessage)
+        } else Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
           Out.trace("Caused by: " + e.getCause.getMessage)

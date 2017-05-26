@@ -197,7 +197,7 @@ object SeqPProc {
   ////////////////////////////////////
 
   /* Main function containing proof loop */
-  final def apply(startTime: Long): Unit = {
+  final def apply(startTime: Long, timeout: Float): Unit = {
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up, etc.
@@ -297,7 +297,7 @@ object SeqPProc {
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
         state.incProofLoopCount()
-        if (System.currentTimeMillis() - startTime > 1000 * Configuration.TIMEOUT) {
+        if (System.currentTimeMillis() - startTime > 1000 * timeout) {
           loop = false
           state.setSZSStatus(SZS_Timeout)
         } else if (!state.unprocessedLeft) {
@@ -365,13 +365,13 @@ object SeqPProc {
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
 
-      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && Configuration.ATPS.nonEmpty) {
+      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
         if (!ExtProverControl.openCallsExist) {
           Control.submit(state.processed, state)
           Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
         } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
         var wait = true
-        while (wait && System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+        while (wait && System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
           Out.finest(s"[ExtProver] Check for answer")
           val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
@@ -382,12 +382,12 @@ object SeqPProc {
               wait = false
               val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes0.proverName, extRes0.problem))
               endplay(emptyClause, state)
-            } else if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+            } else if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
               Out.info(s"[ExtProver] Still waiting ...")
               Thread.sleep(5000)
             }
           } else {
-            if (System.currentTimeMillis() - startTime <= 1000 * Configuration.TIMEOUT && ExtProverControl.openCallsExist) {
+            if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
               Out.info(s"[ExtProver] Still waiting ...")
               Thread.sleep(5000)
             }
