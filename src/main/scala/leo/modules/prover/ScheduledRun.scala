@@ -45,7 +45,7 @@ object ScheduledRun {
       // Now: receive schedule of strategies
       // (containing times per strategy, strategy contains parameters etc),
       // and invoke SeqLoop wrt to each strategy consecutively.
-      val schedule = Control.generateRunStrategies(state)
+      val schedule = Control.generateRunStrategies
       // The schedule is calculated so that the sum of
       // all timeouts is <= Configuration.TIMEOUT
       var done = false
