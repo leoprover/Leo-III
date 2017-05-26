@@ -8,6 +8,8 @@ import leo.modules.output.{SZS_Unknown, StatusSZS}
   * Created by lex on 20.02.16.
   */
 trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
+  def copy: State[T]
+
   def conjecture: T
   def negConjecture: T
   def symbolsInConjecture: Set[Signature#Key]
@@ -17,6 +19,9 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def signature: Signature
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
+
+  def runStrategy: RunStrategy
+  def setRunStrategy(runStrategy: RunStrategy): Unit
 
   def isPolymorphic: Boolean
   def setPolymorphic(): Unit
@@ -91,11 +96,14 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   private var current_nonRewriteUnits: Set[T] = Set()
   private var derivationCl: Option[T] = None
   private var current_externalProvers: Set[TptpProver[T]] = Set()
+  private var runStrategy0: RunStrategy = _
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
+  final def copy: State[T] = ???
+
   final def conjecture: T = conjecture0
   final def setConjecture(conj: T): Unit = {conjecture0 = conj }
   final def negConjecture: T = negConjecture0
@@ -105,6 +113,9 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+
+  final def runStrategy: RunStrategy = runStrategy0
+  final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
   private var poly: Boolean = false
   final def isPolymorphic: Boolean = poly
