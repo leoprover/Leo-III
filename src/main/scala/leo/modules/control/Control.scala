@@ -3,12 +3,12 @@ package leo.modules.control
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.myAssert
-import leo.modules.prover.State
+import leo.modules.prover.{RunStrategy, State}
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
   *
-  * @see [[leo.modules.seqpproc.SeqPProc]]
+  * @see [[leo.modules.prover.SeqLoop]]
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
 object Control {
@@ -61,6 +61,8 @@ object Control {
   @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
+  // Limited resource scheduling
+  @inline final def generateRunStrategies(implicit state: State[AnnotatedClause]): Iterator[RunStrategy] = schedulingControl.StrategyControl.generateRunStrategies(state)
 }
 
 /** Package collection control objects for inference rules.
@@ -1833,6 +1835,10 @@ package  externalProverControl {
       )
     }
   }
+}
 
-
+package schedulingControl {
+  object StrategyControl {
+    final def generateRunStrategies(implicit state: State[AnnotatedClause]): Iterator[RunStrategy] = ???
+  }
 }
