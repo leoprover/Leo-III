@@ -55,15 +55,17 @@ object Main {
         sb.init.toString()
       }
       Out.config(s"Configuration: $config")
-      
+
       if (Configuration.isSet("seq")) {
-        leo.modules.seqpproc.SeqPProc(beginTime, timeout)
+        prover.SeqLoop(beginTime, timeout)
+      } else if (Configuration.isSet("scheduled-seq")) {
+        prover.ScheduledRun(beginTime, timeout)
       } else if (Configuration.isSet("pure-ext")) {
         RunExternalProver.runExternal()
       } else if (Configuration.isSet("par")) {
         ParallelMain.runParallel(beginTime)
       } else if (Configuration.isSet("processOnly")) {
-        leo.modules.Normalization()
+        Normalization()
       } else {
         throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
       }

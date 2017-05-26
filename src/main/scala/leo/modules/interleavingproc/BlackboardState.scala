@@ -4,8 +4,8 @@ import leo.datastructures.blackboard.{DataStore, DataType, Delta}
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.modules.SZSException
 import leo.modules.output.{SZS_Error, StatusSZS}
-import leo.modules.seqpproc.State
 import leo.modules.control.Control
+import leo.modules.prover.State
 
 /**
   *

@@ -7,7 +7,7 @@ import leo.datastructures.blackboard._
 import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.external.{Future, TptpProver, TptpResult}
 import leo.modules.output.SZS_Unsatisfiable
-import leo.modules.seqpproc.SeqPProc.extCallInference
+import leo.modules.prover.extCallInference
 
 /**
   * Created by mwisnie on 4/10/17.

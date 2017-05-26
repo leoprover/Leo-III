@@ -1,124 +1,23 @@
-package leo.modules.seqpproc
+package leo.modules.prover
 
-import leo.Configuration
-import leo.Out
-import leo.datastructures.ClauseAnnotation.InferredFrom
-import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Literal, Signature, Term, addProp, tptp}
-import leo.modules.calculus.NegateConjecture
-import leo.modules.output._
+import leo.{Configuration, Out}
+import leo.datastructures._
+import leo.modules.SZSOutput
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.external.TptpResult
+import leo.modules.output.{SZS_CounterSatisfiable, SZS_Theorem, SZS_Timeout, SZS_Unsatisfiable, SZS_Unknown}
 import leo.modules.parsers.Input
 import leo.modules.proof_object.CompressProof
-import leo.modules.{SZSException, SZSOutput, termToClause}
-
-import scala.annotation.tailrec
 
 /**
-  * Sequential proof procedure. Its state is represented by [[leo.modules.seqpproc.State]].
+  * Sequential proof procedure.
+  * Its state is represented by [[leo.modules.prover.State]].
   *
   * @since 28.10.15
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
-object SeqPProc {
-  type LocalState = State[AnnotatedClause]
-  ////////////////////////////////////
-  //// Loading and converting the problem
-  ////////////////////////////////////
-  /** Converts the input into clauses and filters the axioms if applicable. */
-  final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
-    Out.info(s"Parsing finished. Scanning for conjecture ...")
-    val (effectiveInput,conj) = effectiveInput0(input, state)
-    if (state.negConjecture != null) {
-      Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
-      // Do relevance filtering: Filter hopefully unnecessary axioms
-      val relevantAxioms = Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
-      Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
-        s"(removed ${effectiveInput.size - relevantAxioms.size} axioms).")
-      relevantAxioms.map(ax => processInput(ax, state))
-    } else {
-      Out.info(s"${effectiveInput.size} axioms and no conjecture found.")
-      effectiveInput.map(ax => processInput(ax, state))
-    }
-  }
-  /** Insert types, definitions and the conjecture to the signature resp. state. The rest
-    * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
-    * conjectures are present or unknown role occurs. */
-  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
-    import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
-    import leo.datastructures.ClauseAnnotation._
-    var result: Seq[tptp.Commons.AnnotatedFormula] = Vector()
-    var conj: tptp.Commons.AnnotatedFormula = null
-    val inputIt = input.iterator
-    while (inputIt.hasNext) {
-      val formula = inputIt.next()
-      formula.role match {
-        case Role_Type.pretty => Input.processFormula(formula)(state.signature)
-        case Role_Definition.pretty => Control.relevanceFilterAdd(formula)(state.signature)
-          Input.processFormula(formula)(state.signature)
-        case Role_Conjecture.pretty =>
-          if (state.negConjecture == null) {
-            if (Configuration.CONSISTENCY_CHECK) {
-              Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
-              /* skip */
-            } else {
-              // Convert and negate and add conjecture
-              Control.relevanceFilterAdd(formula)(state.signature)
-              val translated = Input.processFormula(formula)(state.signature)
-              val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
-              state.setConjecture(conjectureClause)
-              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(NegateConjecture, conjectureClause), ClauseAnnotation.PropSOS)
-              state.setNegConjecture(negConjectureClause)
-              conj = formula
-            }
-          } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
-        case Role_NegConjecture.pretty =>
-          if (state.negConjecture == null) {
-            if (Configuration.CONSISTENCY_CHECK) {
-              Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
-              /* skip */
-            } else {
-              Control.relevanceFilterAdd(formula)(state.signature)
-              val translated = Input.processFormula(formula)(state.signature)
-              val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
-              state.setNegConjecture(negConjectureClause)
-              conj = formula
-            }
-          } else throw new SZSException(SZS_InputError, "At most one (negated) conjecture per input problem is permitted.")
-        case Role_Unknown.pretty =>
-          throw new SZSException(SZS_InputError, s"Formula ${formula.name} has role 'unknown' which is regarded an error.")
-        case _ =>
-          Control.relevanceFilterAdd(formula)(state.signature)
-          result = formula +: result
-      }
-    }
-    (result,conj)
-  }
-  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
-    import leo.datastructures.ClauseAnnotation.FromFile
-    val formula = Input.processFormula(input)(state.signature)
-    AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
-  }
-  final def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
-    if (state.negConjecture != null) typeCheck0(state.negConjecture +: input)
-    else typeCheck0(input)
-  }
-  @tailrec
-  final private def typeCheck0(input: Seq[AnnotatedClause]): Unit = {
-    if (input.nonEmpty) {
-      val hd = input.head
-      val term = hd.cl.lits.head.left
-      import leo.modules.HOLSignature.o
-      if (!Term.wellTyped(term) || term.ty != o) {
-        leo.Out.severe(s"Input problem did not pass type check: ${hd.id} is ill-typed.")
-        throw new SZSException(SZS_TypeError, s"Type error in formula ${hd.id}")
-      } else {
-        typeCheck0(input.tail)
-      }
-    }
-  }
-
+object SeqLoop {
   ////////////////////////////////////
   //// Preprocessing
   ////////////////////////////////////
@@ -167,7 +66,7 @@ object SeqPProc {
       var result = cl
       result = Control.liftEq(result)
       result = Control.funcext(result) // Maybe comment out? why?
-      val possiblyAC = Control.detectAC(result)
+    val possiblyAC = Control.detectAC(result)
       if (possiblyAC.isDefined) {
         val symbol = possiblyAC.get._1
         val spec = possiblyAC.get._2
@@ -183,7 +82,7 @@ object SeqPProc {
       }
       result = Control.acSimp(result)
       result = Control.simp(result)
-      if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic
+      if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic()
       result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
@@ -492,10 +391,10 @@ object SeqPProc {
       state.removeProcessed(backSubsumedClauses)
       state.removeUnits(backSubsumedClauses)
       Control.removeFromIndex(backSubsumedClauses)
-//      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
-//      val descendants = Control.descendants(backSubsumedClauses)
-//      state.incDescendantsDeleted(descendants.size)
-//      state.removeUnprocessed(descendants)
+      //      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
+      //      val descendants = Control.descendants(backSubsumedClauses)
+      //      state.incDescendantsDeleted(descendants.size)
+      //      state.removeUnprocessed(descendants)
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
@@ -550,7 +449,7 @@ object SeqPProc {
     /////////////////////////////////////////
     state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
-//    newclauses = Control.shallowSimpSet(newclauses)
+    //    newclauses = Control.shallowSimpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
 
@@ -564,7 +463,7 @@ object SeqPProc {
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
-//    Control.updateDescendants(cur, newclauses)
+    //    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause
@@ -606,12 +505,5 @@ object SeqPProc {
       case _: NumberFormatException => false
       case _: NoSuchElementException => false
     }
-  }
-
-  def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
-    InferredFrom(new leo.modules.calculus.CalculusRule {
-      final val name: String = prover
-      final val inferenceStatus = SZS_Theorem
-    }, source.toSeq)
   }
 }

@@ -6,9 +6,9 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.calculus._
 import leo.modules.output._
-import leo.modules.seqpproc.State
 import leo.modules.control.Control
 import leo.modules.proof_object.CompressProof
+import leo.modules.prover.State
 
 import scala.collection.mutable
 
@@ -18,7 +18,7 @@ object InterleavingLoop {
 
 /**
   *
-  * Implementation of @[[leo.modules.seqpproc.SeqPProc]] with interleavable
+  * Implementation of @[[leo.modules.prover.SeqLoop]] with interleavable
   * loop parts.
   *
   * Assumes all clauses have initially have been preprocessed and inserted into the fvIndex

@@ -1,8 +1,8 @@
-package leo.modules.seqpproc
+package leo.modules.prover
 
 import leo.datastructures._
-import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.external.TptpProver
+import leo.modules.output.{SZS_Unknown, StatusSZS}
 
 /**
   * Created by lex on 20.02.16.
@@ -19,7 +19,7 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def setSZSStatus(szs: StatusSZS): Unit
 
   def isPolymorphic: Boolean
-  def setPolymorphic: Unit
+  def setPolymorphic(): Unit
 
   def defConjSymbols(negConj: T): Unit
   def initUnprocessed(): Unit
@@ -82,7 +82,7 @@ object State {
   def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](SZS_Unknown, sig)
 }
 
-protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
+protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
   private var conjecture0: T = _
   private var negConjecture0: T = _
   private var current_szs = initSZS
@@ -108,7 +108,7 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
 
   private var poly: Boolean = false
   final def isPolymorphic: Boolean = poly
-  final def setPolymorphic: Unit = {poly = true}
+  final def setPolymorphic(): Unit = {poly = true}
 
   final def defConjSymbols(negConj: T): Unit = {
     assert(Clause.unit(negConj.cl))
