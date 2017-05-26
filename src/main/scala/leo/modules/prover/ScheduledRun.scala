@@ -7,7 +7,7 @@ import leo.modules.parsers.Input
 
 
 object ScheduledRun {
-  final def apply(startTime: Long, timeout: Float): Unit = {
+  final def apply(startTime: Long, timeout: Int): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     try {
@@ -34,7 +34,6 @@ object ScheduledRun {
       typeCheck(remainingInput, state)
       Out.info(s"Type checking passed. Searching for refutation ...")
 
-
       // problem is parsed and splitted:
       // state contains the conjecture (if existent)
       // remainingInput contains all the remaining clauses
@@ -53,7 +52,8 @@ object ScheduledRun {
         val currentStrategy = schedule.next()
         val localState = state.copy
         localState.setRunStrategy(currentStrategy)
-//        done = SeqLoop(startTime, localState)
+        done = SeqLoop.run(localState, remainingInput, startTime, startTimeWOParsing)
+        if (done) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {
       case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e

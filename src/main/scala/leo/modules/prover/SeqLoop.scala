@@ -5,8 +5,7 @@ import leo.datastructures._
 import leo.modules.SZSOutput
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
-import leo.modules.external.TptpResult
-import leo.modules.output.{SZS_CounterSatisfiable, SZS_Theorem, SZS_Timeout, SZS_Unsatisfiable, SZS_Unknown}
+import leo.modules.output._
 import leo.modules.parsers.Input
 import leo.modules.proof_object.CompressProof
 
@@ -96,20 +95,22 @@ object SeqLoop {
   ////////////////////////////////////
 
   /* Main function containing proof loop */
-  final def apply(startTime: Long, timeout: Float): Unit = {
+  final def apply(startTime: Long, timeout: Int): Unit = {
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up, etc.
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
+    state.setRunStrategy(Control.defaultStrategy(timeout))
+
     try {
       // Check if external provers were defined
       if (Configuration.ATPS.nonEmpty) {
         import leo.modules.external.ExternalProver
-        Configuration.ATPS.foreach { case(name, path) =>
+        Configuration.ATPS.foreach { case (name, path) =>
           try {
-            val p = ExternalProver.createProver(name,path)
+            val p = ExternalProver.createProver(name, path)
             state.addExternalProver(p)
             leo.Out.info(s"$name registered as external prover.")
             leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")
@@ -125,6 +126,23 @@ object SeqLoop {
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
+      run(state, remainingInput, startTime, startTimeWOParsing)
+      printResult(state, startTime, startTimeWOParsing)
+    } catch {
+      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
+    } finally {
+      if (state.externalProvers.nonEmpty)
+        Control.killExternals()
+    }
+  }
+
+  final def run(state: State[AnnotatedClause], input: Seq[AnnotatedClause],
+               startTime: Long, startTimeWOParsing: Long): Boolean = {
+    try {
+      implicit val sig: Signature = state.signature
+      val timeout0 = state.runStrategy.timeout
+      val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
+
       Out.info(s"Type checking passed. Searching for refutation ...")
 
       // Preprocessing Conjecture
@@ -136,7 +154,7 @@ object SeqLoop {
         val simpNegConj = Control.expandDefinitions(state.negConjecture)
         state.defConjSymbols(simpNegConj)
         state.initUnprocessed()
-        Control.initIndexes(simpNegConj +: remainingInput)
+        Control.initIndexes(simpNegConj +: input)
         val result = preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
         Out.debug(s"# Result:\n\t${
           result.map {
@@ -152,12 +170,12 @@ object SeqLoop {
       } else {
         // Initialize indexes
         state.initUnprocessed()
-        Control.initIndexes(remainingInput)
+        Control.initIndexes(input)
       }
 
       // Preprocessing
       Out.debug("## Preprocess BEGIN")
-      val preprocessIt = remainingInput.iterator
+      val preprocessIt = input.iterator
       while (preprocessIt.hasNext) {
         val cur = preprocessIt.next()
         Out.trace(s"# Process: ${cur.pretty(sig)}")
@@ -205,7 +223,7 @@ object SeqLoop {
           // No cancel, do reasoning step
           val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
-            val extRes0 = extRes.filter(endgameAnswer)
+            val extRes0 = extRes.filter(res => endgameAnswer(res.szsStatus))
             if (extRes0.nonEmpty) {
               val extResAnswers = extRes0.head
               assert(extResAnswers.szsStatus == SZS_Unsatisfiable, "other than UNS was trapped")
@@ -297,76 +315,10 @@ object SeqLoop {
         else Out.info(s"Helpful answer from external systems within timeout. Terminating ...")
       }
 
-      /////////////////////////////////////////
-      // All finished, print result
-      /////////////////////////////////////////
-      import leo.modules.{proofOf, axiomsInProof, userSignatureToTPTP, symbolsInProof, compressedProofOf, proofToTPTP, userDefinedSignatureAsString}
-
-      val time = System.currentTimeMillis() - startTime
-      val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
-
-      Out.output("")
-      Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
-
-      /* Output additional information about the reasoning process. */
-      Out.comment(s"Time passed: ${time}ms")
-      Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
-      Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
-      val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
-      if (proof != null)
-        Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
-      Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
-      Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
-      Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
-      Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
-      Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
-      Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
-      Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
-      Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
-      Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
-      Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
-      Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
-      Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
-      Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size / state.processed.size.toDouble}")
-      Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
-      Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
-      Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
-      Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
-      Out.debug(s"subsumption tests: ${leo.modules.calculus.Subsumption.subsumptiontests}")
-
-      Out.finest("#########################")
-      Out.finest("units")
-      import leo.modules.calculus.PatternUnification.isPattern
-      Out.finest(state.rewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
-      Out.finest("#########################")
-      Out.finest("#########################")
-      Out.finest("#########################")
-      Out.finest("Processed unoriented")
-      Out.finest("#########################")
-      Out.finest(state.processed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
-      Out.finest("#########################")
-      Out.finest("#########################")
-      Out.finest("#########################")
-      Out.finest("Unprocessed unoriented")
-      Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
-      Out.finest("#########################")
-
-      Out.finest("Signature extension used:")
-      Out.finest(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
-      Out.finest(userDefinedSignatureAsString(sig))
-      Out.finest("Clauses at the end of the loop:")
-      Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
-
-      /* Print proof object if possible and requested. */
-      if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
-        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
-        if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
-        else Out.output(proofToTPTP(proof))
-        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
-      }
+      if (endgameAnswer(state.szsStatus)) true
+      else false
     } catch {
-      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
+      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}"); throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()
@@ -484,14 +436,86 @@ object SeqLoop {
     false
   }
 
+  final def printResult(state: LocalState, startTime: Long, startTimeWOParsing: Long): Unit = {
+    implicit val sig: Signature = state.signature
+    /////////////////////////////////////////
+    // All finished, print result
+    /////////////////////////////////////////
+    import leo.modules.{proofOf, axiomsInProof, userSignatureToTPTP, symbolsInProof, compressedProofOf, proofToTPTP, userDefinedSignatureAsString}
+
+    val time = System.currentTimeMillis() - startTime
+    val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
+
+    Out.output("")
+    Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
+
+    /* Output additional information about the reasoning process. */
+    Out.comment(s"Time passed: ${time}ms")
+    Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
+    //      Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
+    val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
+    if (proof != null)
+      Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
+    Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
+    Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
+    Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+    Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
+    Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
+    Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
+    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
+    Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
+    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
+    Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
+    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
+    Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
+    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size / state.processed.size.toDouble}")
+    Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
+    Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
+    Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
+    Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
+    Out.debug(s"subsumption tests: ${leo.modules.calculus.Subsumption.subsumptiontests}")
+
+    Out.finest("#########################")
+    Out.finest("units")
+    import leo.modules.calculus.PatternUnification.isPattern
+    Out.finest(state.rewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("Processed unoriented")
+    Out.finest("#########################")
+    Out.finest(state.processed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("#########################")
+    Out.finest("Unprocessed unoriented")
+    Out.finest(state.unprocessed.flatMap(_.cl.lits).filter(!_.oriented).map(_.pretty(sig)).mkString("\n\t"))
+    Out.finest("#########################")
+
+    Out.finest("Signature extension used:")
+    Out.finest(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+    Out.finest(userDefinedSignatureAsString(sig))
+    Out.finest("Clauses at the end of the loop:")
+    Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
+
+    /* Print proof object if possible and requested. */
+    if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
+      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+      Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
+      if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
+      else Out.output(proofToTPTP(proof))
+      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+    }
+  }
+
   @inline final private def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
     if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
     else state.setSZSStatus(SZS_Theorem)
     state.setDerivationClause(emptyClause)
   }
 
-  final private def endgameAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
-    result.szsStatus match {
+  final private def endgameAnswer(result: StatusSZS): Boolean = {
+    result match {
       case SZS_CounterSatisfiable | SZS_Theorem | SZS_Unsatisfiable => true
       case _ => false
     }

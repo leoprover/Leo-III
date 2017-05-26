@@ -62,6 +62,7 @@ object Control {
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
   // Limited resource scheduling
+  @inline final def defaultStrategy(timeout: Int): RunStrategy = schedulingControl.StrategyControl.defaultStrategy(timeout)
   @inline final def generateRunStrategies: Iterator[RunStrategy] = schedulingControl.StrategyControl.generateRunStrategies
 }
 

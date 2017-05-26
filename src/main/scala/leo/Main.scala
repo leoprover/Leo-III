@@ -40,12 +40,10 @@ object Main {
       }
       val leodir = Configuration.LEODIR
       if (!Files.exists(leodir)) Files.createDirectory(leodir)
-
-      val timeout = if (Configuration.TIMEOUT == 0) Float.PositiveInfinity else Configuration.TIMEOUT
       val config = {
         val sb = new StringBuilder()
         sb.append(s"problem(${Configuration.PROBLEMFILE}),")
-        sb.append(s"time($timeout),")
+        sb.append(s"time(${Configuration.TIMEOUT}),")
         sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
         sb.append(s"sos(${Configuration.SOS}),")
         sb.append(s"primSubst(level=${Configuration.PRIMSUBST_LEVEL}),")
@@ -57,9 +55,9 @@ object Main {
       Out.config(s"Configuration: $config")
 
       if (Configuration.isSet("seq")) {
-        prover.SeqLoop(beginTime, timeout)
+        prover.SeqLoop(beginTime, Configuration.TIMEOUT)
       } else if (Configuration.isSet("scheduled-seq")) {
-        prover.ScheduledRun(beginTime, timeout)
+        prover.ScheduledRun(beginTime, Configuration.TIMEOUT)
       } else if (Configuration.isSet("pure-ext")) {
         RunExternalProver.runExternal()
       } else if (Configuration.isSet("par")) {
