@@ -49,9 +49,11 @@ object ScheduledRun {
       var done = false
       while (schedule.hasNext && !done) {
         val currentStrategy = schedule.next()
+        Out.info(s"Trying strategy ${currentStrategy.pretty} for ${currentStrategy.timeout}s ...")
         val localState = state.copy
         localState.setRunStrategy(currentStrategy)
         done = SeqLoop.run(localState, remainingInput, startTime, startTimeWOParsing)
+        if (!done) Out.info(s"Strategy ${currentStrategy.pretty} failed.")
         if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {

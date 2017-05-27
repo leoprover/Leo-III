@@ -24,7 +24,7 @@ trait Unification {
     * are hereby all flex-flex unification constraints that are postponed. The result stream
     * is empty, if the equation `t = s` is not unifiable.
     */
-  def unify(vargen: FreshVarGen, t : Term, s : Term): Iterable[UnificationResult]
+  def unify(vargen: FreshVarGen, t : Term, s : Term, depth: Int): Iterable[UnificationResult]
 
   /**
     * Generates a stream of `UnificationResult`s (tuples of substitutions and unsolved equations)
@@ -33,7 +33,7 @@ trait Unification {
     * are hereby all flex-flex unification constraints that are postponed. The result stream
     * is empty, if the equation `t = s` is not unifiable.
     */
-  def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq]): Iterable[UnificationResult]
+  def unifyAll(vargen: FreshVarGen, constraints: Seq[UEq], depth: Int): Iterable[UnificationResult]
 }
 
 
@@ -64,25 +64,21 @@ object HuetsPreUnification extends Unification {
   type STEq = UTEq
 
 
-  /** Maximal unification search depth (i.e. number of flex-rigid rules on search path). */
-  final lazy val MAX_DEPTH = leo.Configuration.UNIFICATION_DEPTH
-
-
   /////////////////////////////////////
   // the state of the search space
   /////////////////////////////////////
   protected case class MyConfiguration(unprocessed: Seq[UEq],
                                        flexRigid: Seq[UEq0], flexFlex: Seq[UEq],
                                        solved: TermSubst, solvedTy: TypeSubst,
-                                       result: Option[UnificationResult], searchDepth: Int)
+                                       result: Option[UnificationResult], searchDepth: Int, maxDepth: Int)
     extends SearchConfiguration[UnificationResult] {
-    def this(result: UnificationResult) = this(null, null, null, null, null, Some(result), Int.MaxValue) // for success
+    def this(result: UnificationResult) = this(null, null, null, null, null, Some(result), Int.MaxValue, Int.MaxValue) // for success
     def this(unprocessed: Seq[UEq],
              flexRigid: Seq[UEq0], flexFlex: Seq[UEq],
              solved: TermSubst, solvedTy: TypeSubst,
-             searchDepth: Int) = this(unprocessed, flexRigid, flexFlex, solved, solvedTy, None, searchDepth) // for in node
+             searchDepth: Int, maxDepth: Int) = this(unprocessed, flexRigid, flexFlex, solved, solvedTy, None, searchDepth, maxDepth) // for in node
 
-    override final def isTerminal: Boolean = searchDepth >= MAX_DEPTH
+    override final def isTerminal: Boolean = searchDepth >= maxDepth
     override def toString  = s"{${unprocessed.map(x => s"<${x._1},${x._2}>").mkString}}"
   }
 
@@ -90,7 +86,7 @@ object HuetsPreUnification extends Unification {
   /////////////////////////////////////
   // Unifier search starts with these methods
   /////////////////////////////////////
-  final def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[UnificationResult] = {
+  final def unify(vargen: FreshVarGen, t1 : Term, s1 : Term, uniDepth: Int) : Iterable[UnificationResult] = {
     // 1. check if types are unifiable
     val t_ty = t1.ty
     val s_ty = t1.ty
@@ -102,11 +98,11 @@ object HuetsPreUnification extends Unification {
       val initialTypeSubst0 = initialTypeSubst.get
       val t = t1.substitute(Subst.id, initialTypeSubst0).etaExpand
       val s = s1.substitute(Subst.id, initialTypeSubst0).etaExpand
-      new NDStream[UnificationResult](new MyConfiguration(Vector((t,s)), Vector(), Vector(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
+      new NDStream[UnificationResult](new MyConfiguration(Vector((t,s)), Vector(), Vector(), Subst.id, Subst.id, 0, uniDepth), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
     }
   }
 
-  final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
+  final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)], uniDepth: Int): Iterable[UnificationResult] = {
     // 1. check if types are unifiable
     val initialTypeSubst = TypeUnification(constraints.map(e => (e._1.ty, e._2.ty)))
     // 2. Continue only if types are unifiable
@@ -115,7 +111,7 @@ object HuetsPreUnification extends Unification {
     else {
       val initialTypeSubst0 = initialTypeSubst.get
       val constraints0 = constraints.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
-      new NDStream[UnificationResult](new MyConfiguration(constraints0.toVector, Vector(), Vector(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
+      new NDStream[UnificationResult](new MyConfiguration(constraints0.toVector, Vector(), Vector(), Subst.id, Subst.id, 0, uniDepth), new EnumUnifier(vargen, initialTypeSubst0)) with BFSAlgorithm
     }
 
   }
@@ -156,11 +152,11 @@ object HuetsPreUnification extends Unification {
           val lb = new ListBuffer[MyConfiguration]
           // compute the imitate partial binding and add the new configuration
           if (ImitateRule.canApply(head)) lb.append(new MyConfiguration(Vector(ImitateRule(vargen, head)), flexRigid, flexFlex,
-            partialUnifier, partialTyUnifier, conf.searchDepth+1))
+            partialUnifier, partialTyUnifier, conf.searchDepth+1, conf.maxDepth))
 
           // compute all the project partial bindings and add them to the return list
           ProjectRule(vargen, head).foreach (e => lb.append(new MyConfiguration(Vector(e), flexRigid, flexFlex,
-            partialUnifier, partialTyUnifier, conf.searchDepth+1)))
+            partialUnifier, partialTyUnifier, conf.searchDepth+1, conf.maxDepth)))
 
           lb.toVector
         }
@@ -465,7 +461,7 @@ object PatternUnification extends Unification {
     /////////////////////////////////////
   // Unifier search starts with these methods
   /////////////////////////////////////
-  final def unify (vargen: FreshVarGen, t1 : Term, s1 : Term) : Iterable[UnificationResult] = {
+  final def unify (vargen: FreshVarGen, t1 : Term, s1 : Term, depth: Int) : Iterable[UnificationResult] = {
     // 1. check if types are unifiable
     val t_ty = t1.ty
     val s_ty = t1.ty
@@ -483,7 +479,7 @@ object PatternUnification extends Unification {
     }
   }
 
-  final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)]): Iterable[UnificationResult] = {
+  final def unifyAll(vargen: FreshVarGen, constraints: Seq[(Term, Term)], depth: Int): Iterable[UnificationResult] = {
     // 1. check if types are unifiable
     val initialTypeSubst = TypeUnification(constraints.map(e => (e._1.ty, e._2.ty)))
     // 2. Continue only if types are unifiable

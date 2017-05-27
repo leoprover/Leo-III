@@ -24,7 +24,7 @@ class ParamodRule(processed : ProcessedSet)(implicit signature : Signature) exte
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.paramodSet(c, p)
+      val ps = Control.paramodSet(c, p)(???)
       p += c   // Take the new one into consideration for the next selected clause
       res = new ParamodHint(c, ps) +: res
     }

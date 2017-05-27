@@ -368,6 +368,7 @@ trait DefaultConfiguration {
   val DEFAULT_VERBOSITY = java.util.logging.Level.CONFIG
   val DEFAULT_TIMEOUT = 60
   val DEFAULT_SOS = false
+  val DEFAULT_BOOLEXT = true
   val DEFAULT_UNIFICATIONDEPTH = 8
   val DEFAULT_MATCHINGDEPTH = 4
   val DEFAULT_UNIFIERCOUNT = 1

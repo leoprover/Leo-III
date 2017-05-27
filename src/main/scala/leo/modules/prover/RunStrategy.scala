@@ -16,12 +16,13 @@ import leo.datastructures.Pretty
   * @author Alexander Steen
   */
 final case class RunStrategy(timeout: Int,
-                      primSubst: Int,
-                      sos: Boolean,
-                      unifierCount: Int,
-                      uniDepth: Int) extends Pretty {
+                             primSubst: Int,
+                             sos: Boolean,
+                             unifierCount: Int,
+                             uniDepth: Int,
+                             boolExt: Boolean) extends Pretty {
   def pretty: String = s"strategy<timeout($timeout),primSubst($primSubst),sos($sos)," +
-    s"unifierCount($unifierCount),uniDepth($uniDepth)>"
+    s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt)>"
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: RunStrategy =>

@@ -154,11 +154,11 @@ object PreUni extends AnyUni {
   final def canApply(l: Literal): Boolean = l.uni
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
-                  otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
+                  otherLits: OtherLits, uniDepth: Int)(implicit sig: Signature): Iterator[UniResult] = {
     import leo.modules.myAssert
     Out.trace(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
-    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
+    val result = HuetsPreUnification.unifyAll(vargen, uniLits, uniDepth).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
@@ -179,7 +179,7 @@ object PatternUni extends AnyUni {
     import leo.modules.myAssert
     Out.trace(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
-    val result = PatternUnification.unifyAll(vargen, uniLits)
+    val result = PatternUnification.unifyAll(vargen, uniLits, -1) // depth is dont care
     if (result.isEmpty) {
       Out.debug(s"Pattern unification failed.")
       None

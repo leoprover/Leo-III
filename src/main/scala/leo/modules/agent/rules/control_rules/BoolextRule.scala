@@ -19,7 +19,7 @@ class BoolextRule(implicit signature : Signature) extends Rule{
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.boolext(c)
+      val ps = Control.boolext(c)(???)
       res = new BoolextHint(c, ps) +: res
     }
     res

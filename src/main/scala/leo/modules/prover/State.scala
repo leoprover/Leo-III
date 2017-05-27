@@ -116,8 +116,6 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
     state.choiceFunctions0 = choiceFunctions0
     state.initialProblem0 = initialProblem0
     state.poly = poly
-    state.initUnprocessed()
-    state.addUnprocessed(mpq.toSet)
     state
   }
 
@@ -168,9 +166,12 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   private var cur_weight = 0
   final def nextUnprocessed: T = {
     leo.Out.trace(s"[###] Selecting with priority $cur_prio: element $cur_weight")
-    if (cur_weight >= prio_weights(cur_prio)) {
+    leo.Out.trace(s"[###] mpq.priorities ${mpq.priorities}")
+    if (cur_weight > prio_weights(cur_prio)-1) {
+      leo.Out.trace(s"[###] limit exceeded (limit: ${prio_weights(cur_prio)}) (cur_weight: ${cur_weight})")
       cur_weight = 0
       cur_prio = (cur_prio + 1) % mpq.priorities
+      leo.Out.trace(s"[###] cur_prio set to ${cur_prio}")
     }
     val result = mpq.dequeue(cur_prio)
     cur_weight = cur_weight+1

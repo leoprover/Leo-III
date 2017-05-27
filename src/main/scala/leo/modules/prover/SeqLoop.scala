@@ -85,7 +85,7 @@ object SeqLoop {
       result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
-    result = Control.extPreprocessUnify(result)
+    result = Control.extPreprocessUnify(result)(state)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }
@@ -369,19 +369,19 @@ object SeqLoop {
     // Generating inferences BEGIN
     /////////////////////////////////////////
     /* Boolean Extensionality */
-    val boolext_result = Control.boolext(cur)
+    val boolext_result = Control.boolext(cur)(state)
     newclauses = newclauses union boolext_result
 
     /* paramodulation where at least one involved clause is `cur` */
-    val paramod_result = Control.paramodSet(cur, state.processed)
+    val paramod_result = Control.paramodSet(cur, state.processed)(state)
     newclauses = newclauses union paramod_result
 
     /* Equality factoring of `cur` */
-    val factor_result = Control.factor(cur)
+    val factor_result = Control.factor(cur)(state)
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur, Configuration.PRIMSUBST_LEVEL)
+    val primSubst_result = Control.primsubst(cur)(state)
     newclauses = newclauses union primSubst_result
 
     /* Replace defined equalities */
@@ -406,7 +406,7 @@ object SeqLoop {
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
 
     /* Pre-unify new clauses */
-    newclauses = Control.unifyNewClauses(newclauses)
+    newclauses = Control.unifyNewClauses(newclauses)(state)
 
     /* exhaustively CNF new clauses */
     newclauses = newclauses.flatMap(Control.cnf)
