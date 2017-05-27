@@ -102,7 +102,24 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
-  final def copy: State[T] = ???
+  final def copy: State[T] = {
+    val state = new StateImpl[T](current_szs, initSignature)
+    state.conjecture0 = conjecture0
+    state.negConjecture0 = negConjecture0
+    state.current_processed = current_processed
+    state.current_rewriterules = current_rewriterules
+    state.current_nonRewriteUnits = current_nonRewriteUnits
+    state.derivationCl = derivationCl
+    state.current_externalProvers = current_externalProvers
+    state.runStrategy0 = runStrategy0
+    state.symbolsInConjecture0 = symbolsInConjecture0
+    state.choiceFunctions0 = choiceFunctions0
+    state.initialProblem0 = initialProblem0
+    state.poly = poly
+    state.initUnprocessed()
+    state.addUnprocessed(mpq.toSet)
+    state
+  }
 
   final def conjecture: T = conjecture0
   final def setConjecture(conj: T): Unit = {conjecture0 = conj }
