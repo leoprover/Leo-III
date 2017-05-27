@@ -1843,11 +1843,12 @@ package schedulingControl {
 
     val MINTIME = 30
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
-      RunStrategy(0, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
-      RunStrategy(0, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
-      RunStrategy(0, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
-      RunStrategy(0, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
-      RunStrategy(0, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH)
+      RunStrategy(-1, 0, true, Configuration.DEFAULT_UNIFIERCOUNT, 1),
+      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
+      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
+      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
+      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH),
+      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH)
     )
 
 
@@ -1855,15 +1856,9 @@ package schedulingControl {
       val to = Configuration.TIMEOUT
       if (to == 0) {
         // unlimited resources, dont schedule...i guess?
-        Iterator(
-          RunStrategy(0,
-          Configuration.DEFAULT_PRIMSUBST,
-          Configuration.DEFAULT_SOS,
-          Configuration.DEFAULT_UNIFIERCOUNT,
-          Configuration.DEFAULT_UNIFICATIONDEPTH)
-        )
+        Iterator(defaultStrategy(0))
       } else {
-        // limited resources, devide time for different strategies
+        // limited resources, divide time for different strategies
         // each strategy should take at least MINTIME seconds
         val nominalStrategyCount = Math.floorDiv(to, MINTIME)
         val remainingTime = Math.floorMod(to, MINTIME)
