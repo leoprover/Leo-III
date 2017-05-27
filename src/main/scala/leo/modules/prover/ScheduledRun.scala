@@ -7,7 +7,7 @@ import leo.modules.parsers.Input
 
 
 object ScheduledRun {
-  final def apply(startTime: Long, timeout: Int): Unit = {
+  final def apply(startTime: Long, timeout: Int, schedule: Iterator[RunStrategy]): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     try {
@@ -44,7 +44,6 @@ object ScheduledRun {
       // Now: receive schedule of strategies
       // (containing times per strategy, strategy contains parameters etc),
       // and invoke SeqLoop wrt to each strategy consecutively.
-      val schedule = Control.generateRunStrategies
       // The schedule is calculated so that the sum of
       // all timeouts is <= Configuration.TIMEOUT
       var done = false
@@ -53,7 +52,7 @@ object ScheduledRun {
         val localState = state.copy
         localState.setRunStrategy(currentStrategy)
         done = SeqLoop.run(localState, remainingInput, startTime, startTimeWOParsing)
-        if (done) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
+        if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {
       case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
@@ -62,4 +61,15 @@ object ScheduledRun {
         Control.killExternals()
     }
   }
+
+  final def apply(startTime: Long, timeout: Int): Unit = {
+    val schedule = Control.generateRunStrategies
+    apply(startTime, timeout, schedule)
+  }
+
+  final def apply(startTime: Long, timeout: Int, strategy: RunStrategy): Unit = {
+    apply(startTime, timeout, Iterator(strategy))
+  }
+
+
 }
