@@ -48,6 +48,7 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
   var generateSet : TypedSet[AnnotatedClause] = null
   var unifySet : TypedSet[AnnotatedClause]= null
   var resultSet : TypedSet[AnnotatedClause]= null
+  var doneSet : TypedSet[(Long, AnnotatedClause)]=null
 
   // Rules
   var select : SelectionRule= null
@@ -62,15 +63,17 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
   var paramod : ParamodRule= null
   var unify : UnificationRule= null
   var emptyCl : EmptyClauseRule= null
+  var done : ParamodDoneRule=null
 
   def selectNext() : Boolean = {
     val n = normalizeSet.isEmpty
     val g = generateSet.isEmpty
     val u = unifySet.isEmpty
+    val d = doneSet.isEmpty
 
 //    println(s"[Selection] Normalize.isEmpty=${n}, Generate.isEmpty=${g}, Unify.isEmpty=${u}")
 
-    n && g && u
+    n && g && u && d
   }
 
   var rules: Iterable[Rule] = Seq[Rule]()
@@ -89,10 +92,11 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
     generateSet  = new TypedSet(Generate)
     unifySet = new TypedSet(Unify)
     resultSet = new TypedSet(ResultType)
+    doneSet = new TypedSet(Done)
 
     // Rules
     select = new SelectionRule(Unprocessed, Normalize, selectNext, passiveSet,
-      Seq(Normalize, normalizeBarrier.lockType, generateBarrier.lockType, Processed, Unify))
+      Seq(Normalize, normalizeBarrier.lockType, generateBarrier.lockType, Processed, Unify, Done))
     simp = new RewriteRule(Normalize, Normalize, activeSet.get)
     lift = new LiftEqRule(Normalize, Normalize)
     func = new FuncExtRule(Normalize, Normalize)
@@ -104,6 +108,7 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
     paramod = new ParamodRule(Generate, Unify, Done, Unprocessed)(activeSet)
     unify = new UnificationRule(Unify, Unprocessed)
     emptyCl = new EmptyClauseRule(ResultType, Unprocessed, Generate, Unify)
+    done = new ParamodDoneRule(Done, Unify, Generate, Unprocessed, doneSet, generateSet)(activeSet)
 
     rules = Seq(
       select,
@@ -117,7 +122,8 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
       primSubst,
       paramod,
       unify,
-      emptyCl
+      emptyCl,
+      done
     )
     dataStructures = Seq(
       passiveSet,
@@ -127,7 +133,8 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
       normalizeSet,
       generateSet,
       unifySet,
-      resultSet
+      resultSet,
+      doneSet
     )
     super.initGraph(initSet)(None)
   }

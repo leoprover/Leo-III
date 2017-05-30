@@ -25,7 +25,7 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
 
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
   private final val idMap : mutable.Map[Long, Long] = mutable.Map[Long, Long]()
-  private final val nextID : AtomicLong = new AtomicLong(0)
+  private final val nextID : AtomicLong = new AtomicLong(-1)
 
   /**
     * Gets the set of unprocessed clauses.
@@ -79,14 +79,14 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
       val c = ins.next
       if(set.add(c)) {
         delta.insert(Processed)(c)
-        val newID = nextID.getAndIncrement()
+        val newID = nextID.incrementAndGet()
         idMap.put(c.id, newID)
         maxIDv = newID
         Control.insertIndexed(c)
       }
       else leo.Out.finest(s"% ${c.pretty} was already in the processed set.")
     }
-    leo.Out.debug(s"Processed after update:\n  ${set.map(_.pretty(signature)).mkString("\n  ")}")
+    leo.Out.debug(s"Processed after update:\n  ${set.map(c => s"(${idMap(c.id)})" ++ c.pretty(signature)).mkString("\n  ")}")
 
     delta
   }

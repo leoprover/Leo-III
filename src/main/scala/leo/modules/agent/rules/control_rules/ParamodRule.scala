@@ -50,8 +50,8 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
                      to : DataType[AnnotatedClause],
                      blockingType : DataType[AnnotatedClause],
                      noUnifyType : DataType[AnnotatedClause],
-                     done : TypedSet[DataType[(Long, AnnotatedClause)]],
-                     generate : TypedSet[DataType[AnnotatedClause]])
+                     done : TypedSet[(Long, AnnotatedClause)],
+                     generate : TypedSet[AnnotatedClause])
                      (processed : ProcessedSet)
                      (implicit signature: Signature) extends Rule {
   override val name: String = "paramod_done"
@@ -61,7 +61,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
   override def canApply(r: Delta): Seq[Hint] = synchronized {
     if(generate.isEmpty){
       var res : Seq[Hint] = Seq()
-      val doneElems = done.get(from).map{case (m, c) =>
+      val doneElems = done.get(from).filter{case (m,c) => ParamodHint.isFree(c)}.map{case (m, c) =>
         (processed.getID(c), m,c)
       }
 
@@ -73,7 +73,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
       // => no clause has seen the other during generate
       for(i <- doneElemsArray.indices) {
         // Generate is empty, so delete the element
-        res = new DeleteHint(doneElemsArray(i), from) +: res
+        res = new DeleteHint((doneElemsArray(i)._2, doneElemsArray(i)._3), from) +: res
         for(j <- (i+1) until doneElemsArray.length) {
           val (a1, m1,c1) = doneElemsArray(i)
           val (a2, m2,c2) = doneElemsArray(j)
@@ -94,16 +94,23 @@ object ParamodHint {
   def createHints(c : AnnotatedClause, n : Int) = {
     toDoPerClause.put(c, new AtomicInteger(n))
   }
+  def isFree(c : AnnotatedClause) : Boolean = toDoPerClause.get(c).fold(true)(ai => ai.get <= 0)
+
+  /**
+    * Returns true, iff the hint is freed in this moment
+    */
   def freeHint(c : AnnotatedClause) : Boolean = {
     toDoPerClause.get(c) match {
       case Some(ai) =>
-        if(ai.decrementAndGet() <= 0) {
+        val newC = ai.decrementAndGet()
+        println(s"After Paramod on ${c.id} remaining $newC paramods.")
+        if(newC == 0) {
           toDoPerClause.remove(c)
           true
         } else {
           false
         }
-      case _ => true
+      case _ => false
     }
 
   }

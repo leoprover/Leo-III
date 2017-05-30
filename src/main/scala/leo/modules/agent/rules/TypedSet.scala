@@ -49,6 +49,15 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
       }
     }}
 
+    if(!delta.isEmpty) {
+      leo.Out.debug(s"TypedSet($dt) : \n   ${
+        store.map { d => d match {
+          case (id: Long, c: AnnotatedClause) => s"($id) [${c.id}]"
+          case c : AnnotatedClause => s"[${c.id}]"
+          case _ => d.toString
+        }}.mkString("\n    ")
+      }")
+    }
     delta
   }
 }
