@@ -1,6 +1,6 @@
 package leo.modules.agent.rules
 
-import leo.datastructures.AnnotatedClause
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 
 import scala.collection.mutable
@@ -16,12 +16,12 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
 
   override val storedTypes: Seq[DataType[Any]] = Seq(dt)
   override def clear(): Unit = synchronized(store.clear())
-  override def get[T](t: DataType[T]): Set[T] = t match {
+  override def get[T](t: DataType[T]): Set[T] = synchronized(t match {
     case `dt` => synchronized(store.toSet.asInstanceOf[Set[T]])
     case _ => Set()
-  }
+  })
 
-  override def updateResult(r: Delta): Delta = {
+  override def updateResult(r: Delta): Delta = synchronized {
     val delta = Result()
 
     val ins = r.inserts(dt).iterator
@@ -48,14 +48,6 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
         delta.update(dt)(oldI)(newI)
       }
     }}
-
-    if(!delta.isEmpty){
-    println(s"TypedSet(${dt}) after update:\n  ${store.map(
-      x => if(x.isInstanceOf[AnnotatedClause])
-        x.asInstanceOf[AnnotatedClause].pretty
-      else
-        x
-    ).mkString("\n  ")}")}
 
     delta
   }

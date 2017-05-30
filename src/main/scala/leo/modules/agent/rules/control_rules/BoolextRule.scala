@@ -1,6 +1,6 @@
 package leo.modules.agent.rules
 package control_rules
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 import leo.modules.control.Control
 
@@ -24,9 +24,9 @@ class BoolextRule(inType : DataType[AnnotatedClause],
     //
     while(ins.hasNext){
       val cl = ins.next()
-      val fcl = Control.boolext(cl)
+      val fcl = Control.boolext(cl).filterNot(c => Clause.trivial(c.cl))
       if(fcl.size < 1 || (fcl.size == 1 && cl == fcl.head)){
-        println(s"[BoolExt] Could not apply to ${cl.pretty(signature)}")
+//        println(s"[BoolExt] Could not apply to ${cl.pretty(signature)}")
         if(moving){
           res = new MoveHint(cl, inType, outType) +: res
         } else {
@@ -41,7 +41,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
 
   class BoolextHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
     override def apply(): Delta = {
-      println(s"[BoolExt] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+      leo.Out.debug(s"[BoolExt] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
       r.remove(lockType)(sClause) // Delete one lock from original clause

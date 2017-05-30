@@ -1,6 +1,7 @@
 package leo.modules.agent.rules.control_rules
 
-import leo.datastructures.{AnnotatedClause, MultiPriorityQueue}
+import leo.datastructures.ClauseProxyOrderings._
+import leo.datastructures.{AnnotatedClause, Clause, MultiPriorityQueue, Signature}
 import leo.datastructures.blackboard._
 import leo.modules.SZSException
 import leo.modules.output.SZS_Error
@@ -13,17 +14,32 @@ case object Unprocessed extends ClauseType
   * Stores the unprocessed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class UnprocessedSet extends DataStore{
+class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit sig : Signature) extends DataStore{
 
   // Keeping track of data inside of mpq, to efficiently query update changes
   private final val valuesStored : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
 
+  val symbolsInConjecture0 : Set[Signature#Key] = negConjecture.fold(Set.empty[Signature#Key]){c =>
+    assert(Clause.unit(c.cl))
+    val lit = c.cl.lits.head
+    assert(!lit.equational)
+    val term = lit.left
+    val res =  term.symbols.distinct intersect sig.allUserConstants
+    leo.Out.trace(s"Set Symbols in conjecture: " +
+      s"${res.map(sig(_).name).mkString(",")}")
+    res
+  }
+
   private final val mpq: MultiPriorityQueue[AnnotatedClause] = MultiPriorityQueue.empty
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.lex_weightAge.reverse.asInstanceOf[Ordering[AnnotatedClause]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.fifo.asInstanceOf[Ordering[AnnotatedClause]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.goalsfirst.reverse.asInstanceOf[Ordering[AnnotatedClause]])
-  mpq.addPriority(leo.datastructures.ClauseProxyOrderings.nongoalsfirst.reverse.asInstanceOf[Ordering[AnnotatedClause]])
-  final private val prio_weights = Seq(8,1,2,2)
+  val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
+  mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(nongoals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(oldest_first.asInstanceOf[Ordering[AnnotatedClause]])
+  final private val prio_weights = Seq(10,1,1,2,10,2,1)
   private var cur_prio = 0
   private var cur_weight = 0
 
@@ -42,15 +58,15 @@ class UnprocessedSet extends DataStore{
     valuesStored.toSet  // Cloning into immutable
   }
 
-  final def nextUnprocessed: AnnotatedClause = {
-    leo.Out.debug(s"[###] Selecting with priority $cur_prio: element $cur_weight")
+  final def nextUnprocessed: AnnotatedClause = synchronized {
+//    println(s"[###] Selecting with priority $cur_prio: element $cur_weight")
+//    println(mpq.pretty)
     if (cur_weight >= prio_weights(cur_prio)) {
       cur_weight = 0
       cur_prio = (cur_prio + 1) % mpq.priorities
     }
     val result = mpq.dequeue(cur_prio)
     cur_weight = cur_weight+1
-    valuesStored.remove(result)
     result
   }
 
@@ -84,7 +100,6 @@ class UnprocessedSet extends DataStore{
     mpq.remove(filterDel)
     mpq.insert(filterIns)
 
-
 //    println(s"Unprocessed after update (size=${valuesStored.size}):\n  ${valuesStored.map(_.pretty).mkString("\n  ")}")
 
     val res = if(filterIns.isEmpty && filterDel.isEmpty) {
@@ -94,7 +109,8 @@ class UnprocessedSet extends DataStore{
         if(filterIns.nonEmpty) Map(Unprocessed -> filterIns) else Map(),
         if(filterDel.nonEmpty) Map(Unprocessed -> filterDel) else Map())
     }
-    println(s"Unprocessed after update:\n  ${valuesStored.map(_.pretty).mkString("\n  ")}")
+    if(!res.isEmpty && ins.nonEmpty)
+      leo.Out.debug(s"Unprocessed after update:\n  ${valuesStored.map(_.pretty(sig)).mkString("\n  ")}")
     res
   }
 

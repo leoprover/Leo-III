@@ -140,7 +140,7 @@ object ParallelMain {
     TimeOutProcess.start()
 
     // RuleGraph creation
-    val graph : AnnotatedClauseGraph = new SimpleControlGraph
+    val graph : SimpleControlGraph = new SimpleControlGraph
 
     val phase : RuleAgentPhase = new RuleAgentPhase(graph)
 
@@ -168,6 +168,19 @@ object ParallelMain {
     } else {
       SZS_Unknown
     }
+
+    leo.Out.debug(s"Ended after ${graph.select.actRound} rounds")
+    leo.Out.debug(s"\nProcessed :\n  ${graph.activeSet.get.map(_.pretty(sig)).mkString("\n  ")}")
+    leo.Out.debug(s"\nUnprocessed :\n  ${graph.passiveSet.unprocessed.map(_.pretty(sig)).mkString("\n  ")}")
+
+    leo.Out.debug(s"\nNormalize :\n ${graph.normalizeSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
+    leo.Out.debug(s"\nNormalize Locks :\n ${graph.normalizeBarrier.get(graph.normalizeBarrier.lockType).mkString("\n  ")}")
+
+    leo.Out.debug(s"\nGenerate :\n ${graph.generateSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
+    leo.Out.debug(s"\nGenerate Locks :\n ${graph.generateBarrier.get(graph.generateBarrier.lockType).mkString("\n  ")}")
+
+    leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
+
     Out.output("")
     Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 

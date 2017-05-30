@@ -1,8 +1,10 @@
 package leo.modules.agent.rules
 package control_rules
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.control.Control
+import leo.modules.interleavingproc.{DerivedClause, OpenUnification, SZSStatus, UnprocessedClause}
+import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem}
 
 /**
   * Created by mwisnie on 1/10/17.
@@ -20,34 +22,50 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
     val ins = r.inserts(inType).iterator
 
     var res: Seq[Hint] = Seq()
-    //
+
+    // Split unifiable and non-unifiable clauses
+    var toUnify = Set[AnnotatedClause]()
     while (ins.hasNext) {
-      val c = ins.next()
-      val ps = Control.unifyNewClauses(Set(c))
-      if(ps.nonEmpty) {
-        res = new UnificationHint(c, ps) +: res
-      }  else {
-        println(s"[Unify] Could not apply to ${c.cl.pretty(signature)}")
-        if(moving){
-          res = new MoveHint(c, inType, outType) +: res
-        } else {
-          res = new ReleaseLockHint(inType, c) +: res
-        }
+      var ncl = ins.next()
+      if (!Clause.trivial(ncl.cl)) {
+        res = new UnificationHint(ncl) +: res
       }
     }
     res
   }
 
-  class UnificationHint(sClause: AnnotatedClause, nClauses: Set[AnnotatedClause]) extends Hint {
+  class UnificationHint(sClause: AnnotatedClause) extends Hint {
     override def apply(): Delta = {
-      println(s"[Unification] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+//      println(s"[Unification] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
       val r = Result()
-      val it = nClauses.iterator
       r.remove(inType)(sClause)
-      while (it.hasNext) {
-        val ne = it.next()
-        r.insert(outType)(ne)
+
+      var newclauses = Control.unifyNewClauses(Set(sClause))
+
+      /* exhaustively CNF new clauses */
+      newclauses = newclauses.flatMap(Control.cnf)
+      /* Replace eq symbols on top-level by equational literals. */
+      newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+
+      val newIt = newclauses.iterator
+
+      if(newIt.isEmpty){
+        leo.Out.debug(s"[Unification] No Unifier found ${sClause.pretty(signature)}")
+        r.insert(outType)(sClause)
       }
+
+      while (newIt.hasNext) {
+        val newCl = newIt.next()
+//        newCl = Control.simp(newCl)
+        assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
+        if (!Clause.trivial(newCl.cl)) {
+          leo.Out.debug(s"[Unification] Unified\n  ${sClause.pretty(signature)}\n >\n   ${newCl.pretty(signature)}")
+          r.insert(outType)(newCl)
+        } else {
+          //          sb.append(s"${ac.pretty(sig)} was trivial")
+        }
+      }
+
       r
     }
 
@@ -74,11 +92,11 @@ class RewriteRule(inType : DataType[AnnotatedClause],
     while (ins.hasNext) {
       val c = ins.next()
       val cnew = Control.rewriteSimp(c, rewriteRules)
-      if(cnew != c){
-        println(s"[Rewrite] on ${c.pretty(signature)}\n  is now ${cnew.pretty(signature)}")
+      if(cnew != c & !Clause.trivial(cnew.cl)){
+        leo.Out.debug(s"[Rewrite] on ${c.pretty(signature)}\n  is now ${cnew.pretty(signature)}")
         res = new RewriteHint(c, cnew) +: res
       } else {
-        println(s"[Rewrite] Could not apply to ${c.pretty(signature)}")
+//        println(s"[Rewrite] Could not apply to ${c.pretty(signature)}")
         if(moving){
           res = new MoveHint(c, inType, outType) +: res
         } else {

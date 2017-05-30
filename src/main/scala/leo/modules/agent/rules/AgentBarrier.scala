@@ -1,5 +1,6 @@
 package leo.modules.agent.rules
 
+import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard._
 
 import scala.collection.mutable
@@ -91,6 +92,7 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
         }
       }
     }
+
     if(removedLocks.nonEmpty) {
       new ImmutableDelta(Map(), Map(lockType -> removedLocks))
     } else {

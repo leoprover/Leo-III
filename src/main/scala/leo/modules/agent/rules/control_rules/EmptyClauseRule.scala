@@ -21,6 +21,7 @@ class EmptyClauseRule(out : DataType[AnnotatedClause], in : DataType[AnnotatedCl
       while(newData.hasNext){
         val d = newData.next()
         if(Clause.effectivelyEmpty(d.cl)){
+          leo.Out.debug(s"[EmptyClause] Found ${d.pretty}")
           return Seq(new MoveHint(d, dt, out))
         }
       }

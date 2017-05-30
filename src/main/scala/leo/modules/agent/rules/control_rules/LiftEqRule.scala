@@ -1,6 +1,6 @@
 package leo.modules.agent.rules.control_rules
 
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
 import leo.modules.control.Control
@@ -24,10 +24,10 @@ class LiftEqRule(inType : DataType[AnnotatedClause],
     while(ins.hasNext){
       val c = ins.next()
       val lift = Control.liftEq(c)
-      if(lift != c || moving){
+      if(lift != c && !Clause.trivial(lift.cl)){
         res = new LiftEqHint(c, lift) +: res
       } else {
-        println(s"[LiftEq] Could not apply to ${c.pretty(sig)} ")
+//        println(s"[LiftEq] Could not apply to ${c.pretty(sig)} ")
         if(moving){
           res = new MoveHint(c, inType, outType) +: res
         } else {
@@ -40,7 +40,7 @@ class LiftEqRule(inType : DataType[AnnotatedClause],
 
   class LiftEqHint(oldClause : AnnotatedClause, newClause : AnnotatedClause) extends Hint{
     override def apply(): Delta = {
-      println(s"[FuncExt] on ${oldClause.pretty(sig)}\n  > ${newClause.pretty(sig)}")
+      leo.Out.debug(s"[FuncExt] on ${oldClause.pretty(sig)}\n  > ${newClause.pretty(sig)}")
       val r = Result()
       r.remove(inType)(oldClause)
       val simp = Control.simp(newClause)

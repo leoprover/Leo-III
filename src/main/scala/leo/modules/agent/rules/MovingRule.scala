@@ -25,7 +25,7 @@ class MovingRule[A](inType : DataType[A],
   override def canApply(r: Delta): Seq[Hint] = {
     val releasedLocks = r.removes(lock)
     if(releasedLocks.nonEmpty) {
-      println(s"[Moving] ${inType} -> ${outType}\n   " +
+      leo.Out.trace(s"[Moving] ${inType} -> ${outType}\n   " +
         s"[${releasedLocks.map{x =>
           if(x.isInstanceOf[AnnotatedClause]) x.asInstanceOf[AnnotatedClause].id else x.toString}
           .mkString("\n   ")}]")

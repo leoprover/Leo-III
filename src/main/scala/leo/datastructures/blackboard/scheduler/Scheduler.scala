@@ -359,6 +359,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
           if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
+          e.printStackTrace()
           LockSet.releaseTask(t)
           blackboard.finishTask(t)
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){

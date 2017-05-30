@@ -12,7 +12,8 @@ import leo.modules.seqpproc.{SeqPProc, State}
 
 object RuleAgentPhase {
   def endOn[A](dt : DataType[A])(d : Delta) : Boolean = {
-    d.inserts(dt).nonEmpty
+    val inserts = d.inserts(dt).nonEmpty
+    inserts
   }
 }
 
@@ -22,7 +23,7 @@ object RuleAgentPhase {
 class RuleAgentPhase
 (ruleGraph : AnnotatedClauseGraph)
 (implicit val sig : Signature, implicit val blackBoard: Blackboard, implicit val sched : Scheduler)
-extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType))
+extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType), Seq(ruleGraph.outType))
 {
   override def name: String = "rule_agent_phase"
   override protected final val agents: Seq[Agent] = Seq()
@@ -53,6 +54,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     SeqPProc.typeCheck(remainingInput, state)
 
     var initSet : Set[AnnotatedClause] = Set()
+    var negConj : AnnotatedClause = null
 
     if (state.negConjecture != null) {
       // Expand conj, Initialize indexes
@@ -60,6 +62,8 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       Out.debug("## Preprocess Neg.Conjecture BEGIN")
       Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
       val simpNegConj = Control.expandDefinitions(state.negConjecture)
+      negConj = simpNegConj
+      Control.initIndexes(simpNegConj +: remainingInput)
       val result = SeqPProc.preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {
@@ -69,6 +73,8 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       Out.trace("## Preprocess Neg.Conjecture END")
       initSet = result
       negSet = true
+    } else {
+      Control.initIndexes(remainingInput)
     }
 
     // Preprocessing
@@ -90,7 +96,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     }
     Out.trace("## Preprocess END\n\n")
 
-    ruleGraph.initGraph(initSet)
+    ruleGraph.initGraph(initSet)(Option(negConj))
 
     super.execute()
 

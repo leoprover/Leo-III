@@ -96,6 +96,18 @@ class MoveHint[A](d : A, from : DataType[A], to : DataType[A]) extends Hint {
   override final val write: Map[DataType[Any], Set[Any]] = Map(from -> Set(d))
 }
 
+class CopyHint[A](d : A, to : DataType[A]) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(to -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map()
+}
+
+class DeleteHint[A](d : A, from : DataType[A]) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(), Map(from -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map(from -> Set(d))
+}
+
 ///**
 //  *
 //  * An additional constraint added to a Rule

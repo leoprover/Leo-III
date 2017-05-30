@@ -1,6 +1,6 @@
 package leo.modules.agent.rules.control_rules
 
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
 import leo.modules.control.Control
@@ -24,11 +24,11 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
     while(ins.hasNext){
       val cl = ins.next()
       val fcl = Control.funcext(cl)
-      if(cl != fcl || moving){
+      if(cl != fcl && !Clause.trivial(fcl.cl)){
         res = new FuncExtHint(cl, fcl) +: res
       }
       else {
-        println(s"[FuncExt] Could not apply to ${cl.pretty(sig)} ")
+//        println(s"[FuncExt] Could not apply to ${cl.pretty(sig)} ")
         if(moving){
           res = new MoveHint(cl, inType, outType) +: res
         } else {
@@ -41,7 +41,7 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
 
   class FuncExtHint(oldClause : AnnotatedClause, newClause : AnnotatedClause) extends Hint{
     override def apply(): Delta = {
-      println(s"[FuncExt] on ${oldClause.pretty(sig)}\n  > ${newClause.pretty(sig)}")
+      leo.Out.debug(s"[FuncExt] on ${oldClause.pretty(sig)}\n  > ${newClause.pretty(sig)}")
       val r = Result()
       r.remove(inType)(oldClause)
       val simp = Control.simp(newClause)

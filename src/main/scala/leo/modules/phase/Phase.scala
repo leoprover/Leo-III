@@ -88,7 +88,7 @@ abstract class Phase(val blackboard: Blackboard, val scheduler : Scheduler) {
  * Abstract Phase, that implements
  * the execute to start the agents and wait for all to finish.
  */
-abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler, val endBy : Delta => Boolean) extends Phase(blackboard, scheduler) {
+abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler, val endBy : Delta => Boolean, endTypes : Seq[DataType[Any]] = Nil) extends Phase(blackboard, scheduler) {
   private def getName = name
   protected var waitAgent : CompleteWait = null
 
@@ -142,7 +142,7 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler, val e
   protected class CompleteWait extends AbstractAgent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType[Any]]] = Some(Seq(StatusType))
+    override def interest : Option[Seq[DataType[Any]]] = Some(endTypes)
     @inline override val init: Iterable[Task] = Seq()
     override def filter(event: Event): Iterable[Task] = event match {
       case DoneEvent =>

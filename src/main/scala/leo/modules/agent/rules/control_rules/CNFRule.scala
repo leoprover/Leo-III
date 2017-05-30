@@ -1,6 +1,6 @@
 package leo.modules.agent.rules
 package control_rules
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.control.Control
 
@@ -20,12 +20,12 @@ class CNFRule(inType : DataType[AnnotatedClause],
     var res : Seq[Hint] = Seq()
     while(ins.hasNext) {
       val org = ins.next()
-      val cnf = Control.cnf(org)
+      val cnf = Control.cnf(org).filterNot(c => Clause.trivial(c.cl))
       if(!(cnf.size == 1 && cnf.head == org) || moving) {
-        println(s"[CNF] can apply on ${org.pretty(sig)}")
+        leo.Out.debug(s"[CNF] can apply on ${org.pretty(sig)}")
         res = new CNFHint(org, cnf) +: res
       } else {
-        println(s"[CNF] Could not apply to ${org.pretty(sig)}")
+//        println(s"[CNF] Could not apply to ${org.pretty(sig)}")
         if(moving){
           res = new MoveHint(org, inType, outType) +: res
         } else {
@@ -38,7 +38,7 @@ class CNFRule(inType : DataType[AnnotatedClause],
 
   class CNFHint(oldClause : AnnotatedClause, newClauses : Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
-      println(s"[CNF] on ${oldClause.pretty(sig)}\n  > ${newClauses.map(_.pretty(sig)).mkString("\n  > ")}")
+      leo.Out.debug(s"[CNF] on ${oldClause.pretty(sig)}\n  > ${newClauses.map(_.pretty(sig)).mkString("\n  > ")}")
       val r = Result()
       r.remove(inType)(oldClause)
       val it = newClauses.iterator

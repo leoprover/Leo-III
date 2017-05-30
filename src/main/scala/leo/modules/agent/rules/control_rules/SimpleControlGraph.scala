@@ -2,7 +2,9 @@ package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{Blackboard, DataStore, DataType}
+import leo.modules.SZSException
 import leo.modules.agent.rules._
+import leo.modules.output.SZS_Error
 
 trait AnnotatedClauseGraph extends RuleGraph[AnnotatedClause, AnnotatedClause] {
   override val outType: DataType[AnnotatedClause] = ResultType
@@ -30,41 +32,80 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
   case object Normalize extends ClauseType
   case object Generate extends ClauseType
   case object Unify extends ClauseType
+  case object Done extends DataType[(Long, AnnotatedClause)]{
+    override def convert(d: Any): (Long, AnnotatedClause) = d match {
+      case (id : Long, c : AnnotatedClause) => (id,c)
+      case _ => throw new SZSException(SZS_Error, s"Tried to convert $d to Done.")
+    }
+  }
 
   // DS
-  val passiveSet : UnprocessedSet = new UnprocessedSet()
-  val activeSet : ProcessedSet = new ProcessedSet()
-  val normalizeBarrier : AgentBarrier[AnnotatedClause] = new AgentBarrier(Normalize, 4)
-  val generateBarrier : AgentBarrier[AnnotatedClause] = new AgentBarrier(Generate, 3)
-  val normalizeSet : TypedSet[AnnotatedClause] = new TypedSet(Normalize)
-  val generateSet : TypedSet[AnnotatedClause] = new TypedSet(Generate)
-  val unifySet : TypedSet[AnnotatedClause] = new TypedSet(Unify)
-  val resultSet : TypedSet[AnnotatedClause] = new TypedSet(ResultType)
+  var passiveSet : UnprocessedSet = null
+  var activeSet : ProcessedSet = null
+  var normalizeBarrier : AgentBarrier[AnnotatedClause] = null
+  var generateBarrier : AgentBarrier[AnnotatedClause] = null
+  var normalizeSet : TypedSet[AnnotatedClause] = null
+  var generateSet : TypedSet[AnnotatedClause] = null
+  var unifySet : TypedSet[AnnotatedClause]= null
+  var resultSet : TypedSet[AnnotatedClause]= null
 
   // Rules
-  val select = new SelectionRule(Unprocessed, Normalize, selectNext, passiveSet,
-    Seq(normalizeBarrier.lockType, generateBarrier.lockType, Processed, Unify))
-  val simp = new RewriteRule(Normalize, Normalize, activeSet.get)
-  val lift = new LiftEqRule(Normalize, Normalize)
-  val func = new FuncExtRule(Normalize, Normalize)
-  val cnf = new CNFRule(Normalize, Unprocessed)
-  val moveNorm = new MovingRule(Normalize, Generate, normalizeBarrier)
-  val moveGen = new MovingRule(Generate, Processed, generateBarrier)
-  val factor = new FactorRule(Generate, Unify)
-  val primSubst = new PrimsubstRule(Generate, Unify)
-  val paramod = new ParamodRule(Generate, Unify)(activeSet)
-  val unify = new UnificationRule(Unify, Unprocessed)
-  val emptyCl = new EmptyClauseRule(ResultType, Unprocessed, Generate, Unify)
+  var select : SelectionRule= null
+  var simp : RewriteRule= null
+  var lift : LiftEqRule= null
+  var func : FuncExtRule= null
+  var cnf : CNFRule= null
+  var moveGen : MovingRule[AnnotatedClause]= null
+  var moveNorm : ForwardSubsumptionRule= null
+  var factor : FactorRule= null
+  var primSubst : PrimsubstRule= null
+  var paramod : ParamodRule= null
+  var unify : UnificationRule= null
+  var emptyCl : EmptyClauseRule= null
 
   def selectNext() : Boolean = {
     val n = normalizeSet.isEmpty
     val g = generateSet.isEmpty
     val u = unifySet.isEmpty
+
+//    println(s"[Selection] Normalize.isEmpty=${n}, Generate.isEmpty=${g}, Unify.isEmpty=${u}")
+
     n && g && u
   }
 
-  override val rules: Iterable[Rule] =
-    Seq(
+  var rules: Iterable[Rule] = Seq[Rule]()
+
+  var dataStructures: Iterable[DataStore] = Seq[DataStore]()
+
+  override val initType: DataType[AnnotatedClause] = Unprocessed
+
+  override def initGraph(initSet: Iterable[AnnotatedClause])(optionalHint: Option[AnnotatedClause] = None)(implicit blackoard: Blackboard): Unit = {
+
+    passiveSet = new UnprocessedSet(optionalHint)
+    activeSet = new ProcessedSet()
+    normalizeBarrier = new AgentBarrier(Normalize, 4)
+    generateBarrier = new AgentBarrier(Generate, 3)
+    normalizeSet = new TypedSet(Normalize)
+    generateSet  = new TypedSet(Generate)
+    unifySet = new TypedSet(Unify)
+    resultSet = new TypedSet(ResultType)
+
+    // Rules
+    select = new SelectionRule(Unprocessed, Normalize, selectNext, passiveSet,
+      Seq(Normalize, normalizeBarrier.lockType, generateBarrier.lockType, Processed, Unify))
+    simp = new RewriteRule(Normalize, Normalize, activeSet.get)
+    lift = new LiftEqRule(Normalize, Normalize)
+    func = new FuncExtRule(Normalize, Normalize)
+    cnf = new CNFRule(Normalize, Unprocessed)
+    moveGen = new MovingRule(Generate, Processed, generateBarrier)
+    moveNorm = new ForwardSubsumptionRule(Normalize, activeSet, Some(Generate, normalizeBarrier))
+    factor = new FactorRule(Generate, Unify, Unprocessed)
+    primSubst = new PrimsubstRule(Generate, Unify, Unprocessed)
+    paramod = new ParamodRule(Generate, Unify, Done, Unprocessed)(activeSet)
+    unify = new UnificationRule(Unify, Unprocessed)
+    emptyCl = new EmptyClauseRule(ResultType, Unprocessed, Generate, Unify)
+
+    rules = Seq(
       select,
       simp,
       lift,
@@ -78,9 +119,7 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
       unify,
       emptyCl
     )
-
-  override val dataStructures: Iterable[DataStore] =
-    Seq(
+    dataStructures = Seq(
       passiveSet,
       activeSet,
       normalizeBarrier,
@@ -90,8 +129,8 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
       unifySet,
       resultSet
     )
-
-  override val initType: DataType[AnnotatedClause] = Unprocessed
+    super.initGraph(initSet)(None)
+  }
 
   override def fetchResult(implicit blackboard: Blackboard): Iterable[AnnotatedClause] = resultSet.get(ResultType)
 }
