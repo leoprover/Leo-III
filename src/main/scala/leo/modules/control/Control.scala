@@ -56,6 +56,7 @@ object Control {
   @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
   @inline final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = indexingControl.IndexingControl.updateDescendants(taken, generated)
   @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = indexingControl.IndexingControl.descendants(cls)
+  @inline final def resetIndexes(implicit state: LocalState): Unit = indexingControl.IndexingControl.resetIndexes(state)
   // Relevance filtering
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
@@ -757,7 +758,7 @@ package inferenceControl {
             simpResult
           }
         )
-        leo.Out.debug(s"[Special Instances] Instances used:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        leo.Out.trace(s"[Special Instances] Instances used:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       } else Set(cl)
     }
@@ -1541,6 +1542,11 @@ package indexingControl {
       // TODO: more indexes ...
     }
 
+    final def resetIndexes(state: State[AnnotatedClause]): Unit = {
+      FVIndexControl.reset()
+      leo.datastructures.Term.reset()
+    }
+
 
     private var decendantMap: Map[Long, Set[AnnotatedClause]] = Map.empty
     final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = {
@@ -1592,8 +1598,14 @@ package indexingControl {
     private val maxFeatures: Int = 100
     private var initialized = false
     private var features: Seq[CFF] = Vector.empty
-    final protected[modules] val index = FVIndex()
+    protected[modules] var index = FVIndex()
     def clauseFeatures: Seq[CFF] = features
+
+    final def reset(): Unit = {
+      initialized = false
+      features = Vector.empty
+      index = FVIndex()
+    }
 
     final def init(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
       assert(!initialized)

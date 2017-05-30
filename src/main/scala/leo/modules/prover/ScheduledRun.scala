@@ -54,6 +54,7 @@ object ScheduledRun {
         localState.setRunStrategy(currentStrategy)
         done = SeqLoop.run(localState, remainingInput, startTime, startTimeWOParsing)
         if (!done) Out.info(s"Strategy ${currentStrategy.pretty} failed.")
+        if (!done && schedule.hasNext) Control.resetIndexes(localState)
         if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {
