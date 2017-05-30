@@ -626,19 +626,54 @@ object Simp extends CalculusRule {
 
   def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
+  private final val CANNOTAPPLY = 0
+  private final val VARLEFT = 1
+  private final val VARRIGHT = 2
+
+  final private def solvedUniEq(lit: Literal): Int = {
+    if (lit.uni) {
+      val left = lit.left
+      val right = lit.right
+      if (left.isVariable && !right.isVariable) {
+        if(!right.freeVars.contains(left)) VARLEFT else CANNOTAPPLY
+      } else if (right.isVariable && !left.isVariable) {
+        if(!left.freeVars.contains(right)) VARRIGHT else CANNOTAPPLY
+      } else CANNOTAPPLY
+    } else CANNOTAPPLY
+  }
+
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Vector()
+    var curSubst: Subst = Subst.id
     val litIt = lits.iterator
     while (litIt.hasNext) {
-      val lit = apply(litIt.next())(sig)
-      //      val lit = litIt.next()
+      val lit0 = litIt.next().substituteOrdered(curSubst)
+      val lit = apply(lit0)(sig)
+
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
-          newLits = newLits :+ lit
+          val maybeSolvedUniEq = solvedUniEq(lit)
+          if (maybeSolvedUniEq == CANNOTAPPLY) {
+            newLits = newLits :+ lit
+          } else {
+            val (vari,term) = if (maybeSolvedUniEq == VARLEFT) (lit.left,lit.right)
+                              else (lit.right, lit.left)
+            val idx = Term.Bound.unapply(vari).get._2
+            val subst = Subst.singleton(idx, term)
+            curSubst = curSubst.comp(subst)
+          }
         }
       }
     }
+    if (curSubst != Subst.id) {
+      Out.debug(s"It happend!")
+      Out.debug(s"Old lits: ${Clause(lits).pretty(sig)}")
+      Out.debug(s"Subst: ${curSubst.normalize.pretty}")
+      newLits = newLits.map(l => l.substituteOrdered(curSubst.normalize))
+      Out.debug(s"New lits: ${Clause(newLits).pretty(sig)}")
+    }
+
     val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
     Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
