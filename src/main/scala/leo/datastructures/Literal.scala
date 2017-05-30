@@ -83,13 +83,21 @@ trait Literal extends Pretty with Prettier {
     * Result it beta-normalized.
     * Note that the literal is __not oriented__ afterwards. If you want to orient the result,
     * use [[substituteOrdered]] instead. */
-  @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+  @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = {
+    if (termSubst == Subst.id && typeSubst == Subst.id) this
+    else {
+      termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+    }
+  }
   /** Apply substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
     * Result it beta-normalized and oriented if possible. */
   @inline final def substituteOrdered(termSubst : Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature) : Literal = {
-    val lsubst = left.substitute(termSubst, typeSubst)
-    val rsubst = right.substitute(termSubst, typeSubst)
-    Literal.mkOrdered(lsubst,rsubst,polarity)
+    if (termSubst == Subst.id && typeSubst == Subst.id) this
+    else {
+      val lsubst = left.substitute(termSubst, typeSubst)
+      val rsubst = right.substitute(termSubst, typeSubst)
+      Literal.mkOrdered(lsubst,rsubst,polarity)
+    }
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
