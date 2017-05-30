@@ -126,7 +126,8 @@ object SeqLoop {
       val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
-      run(state, remainingInput, startTime, startTimeWOParsing)
+      Out.info(s"Type checking passed. Searching for refutation ...")
+      run(state, remainingInput, startTime)
       printResult(state, startTime, startTimeWOParsing)
     } catch {
       case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
@@ -137,13 +138,11 @@ object SeqLoop {
   }
 
   final def run(state: State[AnnotatedClause], input: Seq[AnnotatedClause],
-               startTime: Long, startTimeWOParsing: Long): Boolean = {
+               startTime: Long): Boolean = {
     try {
       implicit val sig: Signature = state.signature
       val timeout0 = state.runStrategy.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
-
-      Out.info(s"Type checking passed. Searching for refutation ...")
 
       // Preprocessing Conjecture
       if (state.negConjecture != null) {
@@ -205,12 +204,10 @@ object SeqLoop {
       }
       Out.finest(s"################")
 
-      val preprocessTime = System.currentTimeMillis() - startTimeWOParsing
-      var loop = true
-
       /////////////////////////////////////////
       // Main proof loop
       /////////////////////////////////////////
+      var loop = true
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
         state.incProofLoopCount()
