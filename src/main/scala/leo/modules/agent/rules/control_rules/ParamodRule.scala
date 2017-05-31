@@ -103,7 +103,6 @@ object ParamodHint {
     toDoPerClause.get(c) match {
       case Some(ai) =>
         val newC = ai.decrementAndGet()
-        println(s"After Paramod on ${c.id} remaining $newC paramods.")
         if(newC == 0) {
           toDoPerClause.remove(c)
           true
