@@ -62,7 +62,7 @@ object Main {
         leo.modules.seqpproc.SeqPProc(beginTime)
       } else if (Configuration.isSet("pure-ext")) {
         RunExternalProver.runExternal()
-      } else if (Configuration.isSet("rule-agent")) {
+      } else if (Configuration.isSet("rules")) {
         ParallelMain.agentRuleRun(beginTime)
       } else if (Configuration.isSet("par")) {
         ParallelMain.runParallel(beginTime)

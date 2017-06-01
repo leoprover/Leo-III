@@ -71,7 +71,7 @@ class SimpleControlGraph(implicit val sig : Signature) extends AnnotatedClauseGr
     val u = unifySet.isEmpty
     val d = doneSet.isEmpty
 
-//    println(s"[Selection] Normalize.isEmpty=${n}, Generate.isEmpty=${g}, Unify.isEmpty=${u}")
+//    println(s"[Selection] Normalize.isEmpty=${n}, Generate.isEmpty=${g}, Unify.isEmpty=${u}, Done.isEmpty=${doneSet.isEmpty}")
 
     n && g && u && d
   }

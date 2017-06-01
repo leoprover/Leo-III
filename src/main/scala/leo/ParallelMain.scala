@@ -174,10 +174,10 @@ object ParallelMain {
     leo.Out.debug(s"\nUnprocessed :\n  ${graph.passiveSet.unprocessed.map(_.pretty(sig)).mkString("\n  ")}")
 
     leo.Out.debug(s"\nNormalize :\n ${graph.normalizeSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
-    leo.Out.debug(s"\nNormalize Locks :\n ${graph.normalizeBarrier.get(graph.normalizeBarrier.lockType).mkString("\n  ")}")
+//    leo.Out.debug(s"\nNormalize Locks :\n ${graph.normalizeBarrier.get(graph.normalizeBarrier.lockType).mkString("\n  ")}")
 
     leo.Out.debug(s"\nGenerate :\n ${graph.generateSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
-    leo.Out.debug(s"\nGenerate Locks :\n ${graph.generateBarrier.get(graph.generateBarrier.lockType).mkString("\n  ")}")
+//    leo.Out.debug(s"\nGenerate Locks :\n ${graph.generateBarrier.get(graph.generateBarrier.lockType).mkString("\n  ")}")
 
     leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
 

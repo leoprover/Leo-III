@@ -29,7 +29,7 @@ class SelectionRule(inType : DataType[AnnotatedClause],
   override def canApply(r: Delta): Seq[Hint] = {
     unprocessed.synchronized{
 //      println(work)
-      if(r.removes(inType).nonEmpty) work -= 1
+      work -= r.removes(inType).size  // TODO Save selected and only delete those
       if(work == 0 && canSelectNext() && unprocessed.unprocessedLeft){
         if(actRound >= maxRound && maxRound > 0){
           leo.Out.debug(s"[Selection] (Round = ${actRound}) : Maximum number of iterations reached.")
@@ -38,12 +38,12 @@ class SelectionRule(inType : DataType[AnnotatedClause],
         actRound += 1
         var res : Seq[Hint] = Seq()
         while(work < maxWork) {
-          val c = unprocessed.nextUnprocessed // TODO Select multiple?
+          val c = unprocessed.nextUnprocessed
           if (Clause.effectivelyEmpty(c.cl)) {
             return Seq()
           } else {
             work += 1
-            leo.Out.output(s"[Selection] (Round = ${actRound}) : ${c.pretty(signature)}")
+            leo.Out.debug(s"[Selection] (Round = ${actRound}) : ${c.pretty(signature)}")
             res = new MoveHint(c, inType, outType) +: res
           }
         }
