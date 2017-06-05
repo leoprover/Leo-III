@@ -148,6 +148,7 @@ object HuetsPreUnification extends Unification {
           assert(flexRigid.nonEmpty)
           leo.Out.finest(s"flex-rigid at depth ${conf.searchDepth}")
           val head = flexRigid.head
+          leo.Out.finest(s"on ${head._1.pretty} = ${head._2.pretty} (depth ${head._3})")
           import  scala.collection.mutable.ListBuffer
           val lb = new ListBuffer[MyConfiguration]
           // compute the imitate partial binding and add the new configuration
@@ -346,7 +347,9 @@ object HuetsPreUnification extends Unification {
         s.headSymbol
       leo.Out.finest(s"chose head symbol to be ${s0.pretty}, type: ${s0.ty.pretty}")
       val variable = Bound.unapply(t.headSymbol).get
+      leo.Out.finest(s"variable: ${variable}")
       val liftedVar = Term.local.mkBound(variable._1, variable._2 - depth).etaExpand
+      leo.Out.finest(s"lifted variable: ${liftedVar.pretty}")
       val res = (liftedVar, partialBinding(vargen, t.headSymbol.ty,  s0))
       leo.Out.finest(s"Result of Imitate: ${res._1.pretty} = ${res._2.pretty}")
       res
@@ -379,11 +382,13 @@ object HuetsPreUnification extends Unification {
       val depth = e._3
       // orienting the equation
       val (t,_) = if (isFlexible(e._1,depth)) (e._1,e._2) else (e._2, e._1)
-      // FIXME: what to fix?
-      val bvars = t.headSymbol.ty.funParamTypes.zip(List.range(1,t.headSymbol.ty.arity+1).reverse).map(p => Term.mkBound(p._1,p._2))
+      leo.Out.finest(s"Head symbol type: ${t.headSymbol.ty.pretty}")
+      val hdTypes = t.headSymbol.ty.funParamTypesWithResultType
+      val hdResultType = hdTypes.last
+      val bvars = hdTypes.init.zip(List.range(1,t.headSymbol.ty.arity+1).reverse).map(p => Term.mkBound(p._1,p._2))
       leo.Out.finest(s"BVars in Projectrule: ${bvars.map(_.pretty).mkString(",")}")
-      //Take only those bound vars that are itself a type with result type == type of general binding
-      val funBVars = bvars.filter(bvar => t.headSymbol.ty.funParamTypesWithResultType.endsWith(bvar.ty.funParamTypesWithResultType))
+      //Take only those bound vars that are itself a type with result type == type of general binding goal
+      val funBVars = bvars.filter(bvar => bvar.ty.funParamTypesWithResultType.last == hdResultType)
       leo.Out.finest(s"compatible type BVars in Projectrule: ${funBVars.map(_.pretty).mkString(",")}")
       val variable = Bound.unapply(t.headSymbol).get
       val liftedVar = Term.local.mkBound(variable._1, variable._2 - depth).etaExpand
