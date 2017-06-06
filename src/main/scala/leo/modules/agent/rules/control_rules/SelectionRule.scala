@@ -29,7 +29,6 @@ class SelectionRule(inType : DataType[AnnotatedClause],
   override def moving: Boolean = true
   override def canApply(r: Delta): Seq[Hint] = {
     unprocessed.synchronized{
-//      println(work)
       work -= r.removes(inType).size  // TODO Save selected and only delete those
       if(work == 0 && canSelectNext() && unprocessed.unprocessedLeft){
         if(actRound >= maxRound && maxRound > 0){

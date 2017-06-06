@@ -28,26 +28,26 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
     val upds = r.updates(dt).iterator
     val dels = r.removes(dt).iterator
 
-    while(dels.hasNext) {synchronized {
+    while(dels.hasNext) {
       val item = dels.next()
       val removed = store.remove(item)
       if(removed) delta.remove(dt)(item)
-    }}
+    }
 
-    while(ins.hasNext) {synchronized {
+    while(ins.hasNext) {
       val item = ins.next()
       val inserted = store.add(item)
       if(inserted) delta.insert(dt)(item)
-    }}
+    }
 
-    while(upds.hasNext) {synchronized {
+    while(upds.hasNext) {
       val (oldI, newI) = upds.next()
       store.remove(oldI)
       if(!store.contains(newI)){
         store.add(newI)
         delta.update(dt)(oldI)(newI)
       }
-    }}
+    }
 
     if(!delta.isEmpty) {
       leo.Out.debug(s"TypedSet($dt) : \n   ${

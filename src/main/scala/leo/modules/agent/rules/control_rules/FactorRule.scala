@@ -26,10 +26,15 @@ class FactorRule(inType : DataType[AnnotatedClause],
 
     var res: Seq[Hint] = Seq()
     //
-    while(ins.hasNext){
-      val c = ins.next()
-      val ps = Control.factor(c)(???)
-      res = new FactorHint(c, ps) +: res
+    while (ins.hasNext) {
+      val c: AnnotatedClause = ins.next()
+      val ps = Control.factor(c).filterNot(c => Clause.trivial(c.cl))
+      if(ps.nonEmpty) {
+        res = new FactorHint(c, ps) +: res
+      } else {
+        //        println(s"[Factor] Could not apply to ${c.pretty(signature)} ")
+      }
+      res = new ReleaseLockHint(inType, c) +: res
     }
     res
   }

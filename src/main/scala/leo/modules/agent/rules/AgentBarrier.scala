@@ -74,7 +74,7 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
       if(!trackRemaining.contains(newV)) {
         trackRemaining.put(newV, oldC)
       } else {
-        val alt = trackRemaining.get(newV).get
+        val alt = trackRemaining(newV)
         trackRemaining.put(newV, Math.min(alt, oldC))
       }
     }
