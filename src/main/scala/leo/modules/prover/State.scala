@@ -1,32 +1,31 @@
 package leo.modules.prover
 
 import leo.datastructures._
+import leo.modules.{GeneralState, GeneralStateImp}
 import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 
 /**
   * Created by lex on 20.02.16.
   */
-trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
-  def copy: State[T]
-
-  def conjecture: T
-  def negConjecture: T
-  def symbolsInConjecture: Set[Signature#Key]
-  def setConjecture(conj: T): Unit
-  def setNegConjecture(negConj: T): Unit
-
-  def signature: Signature
+trait State[T <: ClauseProxy] extends GeneralState[T] with StateStatistics {
+//  Moved to general State
+//  def copy: State[T]
+//
+//  def conjecture: T
+//  def negConjecture: T
+//  def symbolsInConjecture: Set[Signature#Key]
+//  def defConjSymbols(negConj: T): Unit
+//  def setConjecture(conj: T): Unit
+//  def setNegConjecture(negConj: T): Unit
+//
+//  def signature: Signature
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
-  def runStrategy: RunStrategy
-  def setRunStrategy(runStrategy: RunStrategy): Unit
+//  def runStrategy: RunStrategy
+//  def setRunStrategy(runStrategy: RunStrategy): Unit
 
-  def isPolymorphic: Boolean
-  def setPolymorphic(): Unit
-
-  def defConjSymbols(negConj: T): Unit
   def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
   def unprocessed: Set[T]
@@ -55,6 +54,8 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def initialProblem: Set[T]
   def externalProvers: Set[TptpProver[T]]
   def addExternalProver(prover: TptpProver[T]): Unit
+
+  def copy : State[T]
 }
 
 trait StateStatistics {
@@ -87,22 +88,17 @@ object State {
   def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](SZS_Unknown, sig)
 }
 
-protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
-  private var conjecture0: T = _
-  private var negConjecture0: T = _
+protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends GeneralStateImp[T](initSignature) with State[T] {
   private var current_szs = initSZS
   private var current_processed: Set[T] = Set()
   private var current_rewriterules: Set[T] = Set()
   private var current_nonRewriteUnits: Set[T] = Set()
   private var derivationCl: Option[T] = None
-  private var current_externalProvers: Set[TptpProver[T]] = Set()
-  private var runStrategy0: RunStrategy = _
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
-  private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
-  final def copy: State[T] = {
+  override final def copy: State[T] = {
     val state = new StateImpl[T](current_szs, initSignature)
     state.conjecture0 = conjecture0
     state.negConjecture0 = negConjecture0
@@ -119,32 +115,9 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
     state
   }
 
-  final def conjecture: T = conjecture0
-  final def setConjecture(conj: T): Unit = {conjecture0 = conj }
-  final def negConjecture: T = negConjecture0
-  final def setNegConjecture(negConj: T): Unit = negConjecture0 = negConj
-  final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
-
-  final def signature: Signature = sig
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
-  final def runStrategy: RunStrategy = runStrategy0
-  final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
-
-  private var poly: Boolean = false
-  final def isPolymorphic: Boolean = poly
-  final def setPolymorphic(): Unit = {poly = true}
-
-  final def defConjSymbols(negConj: T): Unit = {
-    assert(Clause.unit(negConj.cl))
-    val lit = negConj.cl.lits.head
-    assert(!lit.equational)
-    val term = lit.left
-    symbolsInConjecture0 = term.symbols.distinct intersect signature.allUserConstants
-    leo.Out.trace(s"Set Symbols in conjecture: " +
-      s"${symbolsInConjecture0.map(signature(_).name).mkString(",")}")
-  }
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
     val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
@@ -208,14 +181,6 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
   final def derivationClause: Option[T] = derivationCl
 
-  private var initialProblem0: Set[T] = Set()
-  final def addInitial(cls: Set[T]): Unit = {initialProblem0 = initialProblem0 union cls}
-  final def initialProblem: Set[T] = initialProblem0
-
-  final def externalProvers: Set[TptpProver[T]] = current_externalProvers
-  final def addExternalProver(prover: TptpProver[T]): Unit =  {
-    current_externalProvers = current_externalProvers + prover
-  }
   // Statistics
   private var generatedCount: Int = 0
   private var loopCount: Int = 0
@@ -252,5 +217,5 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
 
   // Pretty
-  final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"
+  override final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"
 }

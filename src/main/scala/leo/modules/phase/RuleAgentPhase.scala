@@ -1,14 +1,14 @@
 package leo.modules.phase
 import leo.{Configuration, Out}
 import leo.agents.Agent
-import leo.datastructures.{AnnotatedClause, Clause, Literal, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.modules.agent.rules.RuleAgent
-import leo.modules.agent.rules.control_rules.{AnnotatedClauseGraph, Processed, Unify, Unprocessed}
+import leo.modules.GeneralState
+import leo.modules.agent.rules.control_rules.AnnotatedClauseGraph
 import leo.modules.control.Control
 import leo.modules.parsers.Input
-import leo.modules.seqpproc.{SeqPProc, State}
+import leo.modules.prover._
 
 object RuleAgentPhase {
   def endOn[A](dt : DataType[A])(d : Delta) : Boolean = {
@@ -22,9 +22,11 @@ object RuleAgentPhase {
   */
 class RuleAgentPhase
 (ruleGraph : AnnotatedClauseGraph)
-(implicit val sig : Signature, implicit val blackBoard: Blackboard, implicit val sched : Scheduler)
+(implicit val state : GeneralState[AnnotatedClause],
+ implicit val blackBoard: Blackboard, implicit val sched : Scheduler)
 extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType), Seq(ruleGraph.outType))
 {
+  implicit val sig : Signature = state.signature
   override def name: String = "rule_agent_phase"
   override protected final val agents: Seq[Agent] = Seq()
   var negSet : Boolean = false
@@ -47,11 +49,10 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     }
 
     // TODO Remove state from the processing
-    val state : State[AnnotatedClause] = State.fresh(sig)
     val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
-    val remainingInput = SeqPProc.effectiveInput(input2, state)
+    val remainingInput = effectiveInput(input2, state)
     // Typechecking: Throws and exception if not well-typed
-    SeqPProc.typeCheck(remainingInput, state)
+    typeCheck(remainingInput, state)
 
     var initSet : Set[AnnotatedClause] = Set()
     var negConj : AnnotatedClause = null
@@ -64,7 +65,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       val simpNegConj = Control.expandDefinitions(state.negConjecture)
       negConj = simpNegConj
       Control.initIndexes(simpNegConj +: remainingInput)
-      val result = SeqPProc.preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
+      val result = SeqLoop.preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {
           _.pretty(sig)
@@ -83,7 +84,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     while (preprocessIt.hasNext) {
       val cur = preprocessIt.next()
       Out.trace(s"# Process: ${cur.pretty(sig)}")
-      val processed = SeqPProc.preprocess(state, cur)
+      val processed = SeqLoop.preprocess(state, cur)
       Out.debug(s"# Result:\n\t${
         processed.map {
           _.pretty(sig)

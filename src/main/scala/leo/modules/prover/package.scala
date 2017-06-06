@@ -14,6 +14,7 @@ import scala.annotation.tailrec
   * Created by lex on 26.05.17.
   */
 package object prover {
+  type LocalGeneralState = GeneralState[AnnotatedClause]
   type LocalState = State[AnnotatedClause]
 
   ////////////////////////////////////
@@ -21,7 +22,7 @@ package object prover {
   ////////////////////////////////////
 
   /** Converts the input into clauses and filters the axioms if applicable. */
-  final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): Seq[AnnotatedClause] = {
+  final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conj) = effectiveInput0(input, state)
     if (state.negConjecture != null) {
@@ -40,7 +41,7 @@ package object prover {
   /** Insert types, definitions and the conjecture to the signature resp. state. The rest
     * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
     * conjectures are present or unknown role occurs. */
-  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
+  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
     var result: Seq[tptp.Commons.AnnotatedFormula] = Vector()
@@ -91,7 +92,7 @@ package object prover {
     (result,conj)
   }
 
-  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalState): AnnotatedClause = {
+  final private def processInput(input: tptp.Commons.AnnotatedFormula, state: LocalGeneralState): AnnotatedClause = {
     import leo.datastructures.ClauseAnnotation.FromFile
     val formula = Input.processFormula(input)(state.signature)
     AnnotatedClause(termToClause(formula._2), formula._3, FromFile(Configuration.PROBLEMFILE, formula._1), ClauseAnnotation.PropNoProp)
@@ -100,7 +101,7 @@ package object prover {
   ////////////////////////////////////
   //// Further Utility
   ////////////////////////////////////
-  final def typeCheck(input: Seq[AnnotatedClause], state: LocalState): Unit = {
+  final def typeCheck(input: Seq[AnnotatedClause], state: LocalGeneralState): Unit = {
     if (state.negConjecture != null) typeCheck0(state.negConjecture +: input)
     else typeCheck0(input)
   }

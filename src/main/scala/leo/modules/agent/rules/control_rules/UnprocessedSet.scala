@@ -3,7 +3,7 @@ package leo.modules.agent.rules.control_rules
 import leo.datastructures.ClauseProxyOrderings._
 import leo.datastructures.{AnnotatedClause, Clause, MultiPriorityQueue, Signature}
 import leo.datastructures.blackboard._
-import leo.modules.SZSException
+import leo.modules.{GeneralState, SZSException}
 import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
@@ -14,7 +14,7 @@ case object Unprocessed extends ClauseType
   * Stores the unprocessed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit sig : Signature) extends DataStore{
+class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit state : GeneralState[AnnotatedClause]) extends DataStore{
 
   // Keeping track of data inside of mpq, to efficiently query update changes
   private final val valuesStored : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
@@ -24,9 +24,9 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit si
     val lit = c.cl.lits.head
     assert(!lit.equational)
     val term = lit.left
-    val res =  term.symbols.distinct intersect sig.allUserConstants
+    val res =  term.symbols.distinct intersect state.signature.allUserConstants
     leo.Out.trace(s"Set Symbols in conjecture: " +
-      s"${res.map(sig(_).name).mkString(",")}")
+      s"${res.map(state.signature(_).name).mkString(",")}")
     res
   }
 
@@ -110,7 +110,7 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit si
         if(filterDel.nonEmpty) Map(Unprocessed -> filterDel) else Map())
     }
     if(!res.isEmpty && ins.nonEmpty)
-      leo.Out.debug(s"Unprocessed after update:\n  ${valuesStored.map(_.pretty(sig)).mkString("\n  ")}")
+      leo.Out.debug(s"Unprocessed after update:\n  ${valuesStored.map(_.pretty(state.signature)).mkString("\n  ")}")
     res
   }
 

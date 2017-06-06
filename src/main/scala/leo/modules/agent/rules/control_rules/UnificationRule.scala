@@ -2,6 +2,7 @@ package leo.modules.agent.rules
 package control_rules
 import leo.datastructures.{AnnotatedClause, Clause, ClauseAnnotation, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
+import leo.modules.GeneralState
 import leo.modules.control.Control
 import leo.modules.interleavingproc.{DerivedClause, OpenUnification, SZSStatus, UnprocessedClause}
 import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem}
@@ -12,7 +13,8 @@ import leo.modules.output.{SZS_ContradictoryAxioms, SZS_Theorem}
 class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incomming data
                       outType : DataType[AnnotatedClause], // DataType of outgoing data
                       val moving : Boolean = true)
-                     (implicit signature : Signature) extends Rule {
+                     (implicit state : GeneralState[AnnotatedClause]) extends Rule {
+  implicit val sig : Signature = state.signature
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
 
@@ -50,7 +52,7 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
       val newIt = newclauses.iterator
 
       if(newIt.isEmpty){
-        leo.Out.debug(s"[Unification] No Unifier found ${sClause.pretty(signature)}")
+        leo.Out.debug(s"[Unification] No Unifier found ${sClause.pretty(state.signature)}")
         r.insert(outType)(sClause)
       }
 
@@ -59,7 +61,7 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
 //        newCl = Control.simp(newCl)
         assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
         if (!Clause.trivial(newCl.cl)) {
-          leo.Out.debug(s"[Unification] Unified\n  ${sClause.pretty(signature)}\n >\n   ${newCl.pretty(signature)}")
+          leo.Out.debug(s"[Unification] Unified\n  ${sClause.pretty(state.signature)}\n >\n   ${newCl.pretty(state.signature)}")
           r.insert(outType)(newCl)
         } else {
           //          sb.append(s"${ac.pretty(sig)} was trivial")
@@ -78,7 +80,8 @@ class RewriteRule(inType : DataType[AnnotatedClause],
                   outType : DataType[AnnotatedClause],
                   rewriteRules : Set[AnnotatedClause], // TODO export an interface
                   val moving : Boolean = false)
-                 (implicit signature: Signature) extends Rule {
+                 (implicit state : GeneralState[AnnotatedClause]) extends Rule {
+  implicit val sig : Signature = state.signature
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
 
@@ -93,7 +96,7 @@ class RewriteRule(inType : DataType[AnnotatedClause],
       val c = ins.next()
       val cnew = Control.rewriteSimp(c, rewriteRules)
       if(cnew != c & !Clause.trivial(cnew.cl)){
-        leo.Out.debug(s"[Rewrite] on ${c.pretty(signature)}\n  is now ${cnew.pretty(signature)}")
+        leo.Out.debug(s"[Rewrite] on ${c.pretty(sig)}\n  is now ${cnew.pretty(sig)}")
         res = new RewriteHint(c, cnew) +: res
       } else {
 //        println(s"[Rewrite] Could not apply to ${c.pretty(signature)}")

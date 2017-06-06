@@ -2,6 +2,7 @@ package leo.modules.agent.rules
 package control_rules
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
+import leo.modules.GeneralState
 import leo.modules.control.Control
 
 /**
@@ -10,8 +11,9 @@ import leo.modules.control.Control
 class BoolextRule(inType : DataType[AnnotatedClause],
                   outType : DataType[AnnotatedClause],
                  val moving : Boolean = false)
-                 (implicit signature : Signature) extends Rule{
+                 (implicit state : GeneralState[AnnotatedClause]) extends Rule{
 
+  implicit val sig : Signature = state.signature
   override final val inTypes : Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
   private val lockType = LockType(outType)
@@ -41,7 +43,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
 
   class BoolextHint(sClause : AnnotatedClause, nClauses : Set[AnnotatedClause]) extends Hint{
     override def apply(): Delta = {
-      leo.Out.debug(s"[BoolExt] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+      leo.Out.debug(s"[BoolExt] on ${sClause.pretty(state.signature)}\n  > ${nClauses.map(_.pretty(state.signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
       r.remove(lockType)(sClause) // Delete one lock from original clause

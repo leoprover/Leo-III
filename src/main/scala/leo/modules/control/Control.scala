@@ -2,7 +2,7 @@ package leo.modules.control
 
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
-import leo.modules.myAssert
+import leo.modules.{GeneralState, myAssert}
 import leo.modules.prover.{RunStrategy, State}
 
 /**
@@ -12,7 +12,7 @@ import leo.modules.prover.{RunStrategy, State}
   * @author Alexander Steen <a.steen@fu-berlin.de>
   */
 object Control {
-  type LocalState = State[AnnotatedClause]
+  type LocalState = GeneralState[AnnotatedClause]
 
   // Generating inferences
   @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(state)
@@ -56,7 +56,7 @@ object Control {
   @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
   @inline final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = indexingControl.IndexingControl.updateDescendants(taken, generated)
   @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = indexingControl.IndexingControl.descendants(cls)
-  @inline final def resetIndexes(implicit state: LocalState): Unit = indexingControl.IndexingControl.resetIndexes(state)
+  @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
   // Relevance filtering
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)

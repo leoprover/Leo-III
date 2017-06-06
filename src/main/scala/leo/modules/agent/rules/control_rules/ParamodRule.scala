@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import leo.modules.control.Control
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard._
+import leo.modules.GeneralState
 import leo.modules.control.inferenceControl.ParamodControl
 
 import scala.collection.mutable
@@ -18,9 +19,10 @@ class ParamodRule(inType : DataType[AnnotatedClause],
                   unifyType : DataType[AnnotatedClause],
                   doneType : DataType[(Long, AnnotatedClause)],
                   noUnifyType : DataType[AnnotatedClause])
-                 (processed : ProcessedSet)(implicit signature : Signature) extends Rule {
+                 (processed : ProcessedSet)(implicit state : GeneralState[AnnotatedClause]) extends Rule {
   override val name: String = "paramod"
 
+  implicit val sig : Signature = state.signature
   override val observedDataStructures: Seq[DataStore] = Seq(processed)
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(unifyType, doneType, noUnifyType)
@@ -46,8 +48,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
   }
 
   // Paramodulation of all processed clauses with a new one
-  class ParamodHint(sClause: AnnotatedClause, aClause: AnnotatedClause)
-                   (implicit signature: Signature) extends Hint {
+  class ParamodHint(sClause: AnnotatedClause, aClause: AnnotatedClause) extends Hint {
 
     // Test for previously generation
     private val alreadyDone : mutable.Set[(Long, Long)] = mutable.Set[(Long,Long)]()
@@ -59,10 +60,10 @@ class ParamodRule(inType : DataType[AnnotatedClause],
       val r = Result()
       val it = ParamodControl.allParamods(sClause, aClause).iterator
       //    if(it.hasNext){
-      leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(signature)}\n   ${aClause.pretty(signature)}")
+      leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(sig)}\n   ${aClause.pretty(sig)}")
       //    }
       if(ParamodHint.freeHint(sClause)){
-        leo.Out.debug(s"[Paramod] Last Paramod. Release lock on ${sClause.pretty(signature)}")
+        leo.Out.debug(s"[Paramod] Last Paramod. Release lock on ${sClause.pretty(sig)}")
         r.remove(LockType(inType))(sClause)
       }
 
@@ -70,7 +71,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
       while (it.hasNext) {
         val c = Control.liftEq(it.next)
         if(c.cl.lits.exists(l => l.uni)) {
-          leo.Out.debug(s"[Paramod] From [$id1],[$id2] to unify ${c.pretty(signature)}")
+          leo.Out.debug(s"[Paramod] From [$id1],[$id2] to unify ${c.pretty(sig)}")
           r.insert(unifyType)(c)
         } else {
           var newclauses = Control.cnf(c)
@@ -78,7 +79,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
           var newIt = newclauses.iterator
           while (newIt.hasNext) {
             val nc = newIt.next
-            leo.Out.debug(s"[Paramod] From [$id1],[$id2] no unification ${c.pretty(signature)}")
+            leo.Out.debug(s"[Paramod] From [$id1],[$id2] no unification ${c.pretty(sig)}")
             r.insert(noUnifyType)(nc)
           }
         }
@@ -126,8 +127,9 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
                       done : TypedSet[(Long, AnnotatedClause)],
                       generate : TypedSet[AnnotatedClause])
                      (processed : ProcessedSet)
-                     (implicit signature: Signature) extends Rule {
+                     (implicit state : GeneralState[AnnotatedClause]) extends Rule {
   override val name: String = "paramod_done"
+  implicit val sig : Signature = state.signature
   override val inTypes: Seq[DataType[Any]] = Seq(from, blockingType)
   override val moving: Boolean = true
   override val outTypes: Seq[DataType[Any]] = Seq(unifyType)
@@ -173,7 +175,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
         if(c.cl.lits.exists(l => l.uni)) {
           leo.Out.debug(s"[Paramod] From " +
             s"${c.annotation.parents.map(c => s"[${c.id}]").mkString(",")} " +
-            s"to unify ${c.pretty(signature)}")
+            s"to unify ${c.pretty(state.signature)}")
           r.insert(unifyType)(c)
         } else {
           var newclauses = Control.cnf(c)
@@ -183,7 +185,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
             val nc = newIt.next
             leo.Out.debug(s"[Paramod] From " +
               s"${nc.annotation.parents.map(c => s"[${c.id}]").mkString(",")} " +
-              s" no unification ${c.pretty(signature)}")
+              s" no unification ${c.pretty(state.signature)}")
             r.insert(noUnifyType)(nc)
           }
         }

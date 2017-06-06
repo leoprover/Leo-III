@@ -2,6 +2,7 @@ package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
+import leo.modules.GeneralState
 import leo.modules.agent.rules.{Hint, ReleaseLockHint, Rule}
 import leo.modules.control.Control
 
@@ -11,9 +12,10 @@ import leo.modules.control.Control
 class FactorRule(inType : DataType[AnnotatedClause],
                  outType : DataType[AnnotatedClause],
                 noUnifyType : DataType[AnnotatedClause])
-                (implicit signature : Signature) extends Rule {
+                (implicit state : GeneralState[AnnotatedClause]) extends Rule {
   override val name: String = "factor"
 
+  implicit val sig : Signature = state.signature
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType, noUnifyType)
   override final val moving: Boolean = false
@@ -34,7 +36,7 @@ class FactorRule(inType : DataType[AnnotatedClause],
 
   class FactorHint(sClause: AnnotatedClause, nClauses: Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
-      leo.Out.debug(s"[Factor] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+      leo.Out.debug(s"[Factor] on ${sClause.pretty(state.signature)}\n  > ${nClauses.map(_.pretty(state.signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
 //      r.insert(LockType(inType))(sClause)

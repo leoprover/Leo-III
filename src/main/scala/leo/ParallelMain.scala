@@ -133,6 +133,7 @@ object ParallelMain {
 
     implicit val sig: Signature = Signature.freshWithHOL()
     val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
+    implicit val state : GeneralState[AnnotatedClause] = GeneralState.fresh(sig, Control.defaultStrategy(timeout.toInt))
 
     // Blackboard and Scheduler
     implicit val (blackboard, scheduler) = Blackboard.newBlackboard

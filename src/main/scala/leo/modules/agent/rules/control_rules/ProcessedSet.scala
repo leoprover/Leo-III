@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
-import leo.modules.SZSException
+import leo.modules.{GeneralState, SZSException}
 import leo.modules.control.Control
 import leo.modules.output.SZS_Error
 
@@ -21,8 +21,9 @@ case object Processed extends DataType[AnnotatedClause]{
   * Stores the processed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class ProcessedSet(implicit signature : Signature)  extends DataStore{
+class ProcessedSet(implicit state : GeneralState[AnnotatedClause])  extends DataStore{
 
+  implicit val sig : Signature = state.signature
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
   private final val idMap : mutable.Map[Long, Long] = mutable.Map[Long, Long]()
   private final val nextID : AtomicLong = new AtomicLong(-1)
@@ -86,7 +87,7 @@ class ProcessedSet(implicit signature : Signature)  extends DataStore{
       }
       else leo.Out.finest(s"% ${c.pretty} was already in the processed set.")
     }
-    leo.Out.debug(s"Processed after update:\n  ${set.map(c => s"(${idMap(c.id)})" ++ c.pretty(signature)).mkString("\n  ")}")
+    leo.Out.debug(s"Processed after update:\n  ${set.map(c => s"(${idMap(c.id)})" ++ c.pretty(state.signature)).mkString("\n  ")}")
 
     delta
   }

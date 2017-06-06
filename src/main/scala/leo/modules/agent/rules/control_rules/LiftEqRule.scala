@@ -2,6 +2,7 @@ package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
+import leo.modules.GeneralState
 import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
 import leo.modules.control.Control
 
@@ -10,8 +11,9 @@ import leo.modules.control.Control
   */
 class LiftEqRule(inType : DataType[AnnotatedClause],
                  outType : DataType[AnnotatedClause])
-                (implicit sig : Signature) extends Rule
+                (implicit state : GeneralState[AnnotatedClause]) extends Rule
 {
+  implicit val sig : Signature = state.signature
   override val name: String = "lift_eq"
   override val inTypes: Seq[DataType[Any]] = Seq(inType)
   override val outTypes: Seq[DataType[Any]] = Seq(outType)
@@ -40,7 +42,7 @@ class LiftEqRule(inType : DataType[AnnotatedClause],
 
   class LiftEqHint(oldClause : AnnotatedClause, newClause : AnnotatedClause) extends Hint{
     override def apply(): Delta = {
-      leo.Out.debug(s"[FuncExt] on ${oldClause.pretty(sig)}\n  > ${newClause.pretty(sig)}")
+      leo.Out.debug(s"[FuncExt] on ${oldClause.pretty(state.signature)}\n  > ${newClause.pretty(state.signature)}")
       val r = Result()
       r.remove(inType)(oldClause)
       val simp = Control.simp(newClause)

@@ -4,6 +4,7 @@ package control_rules
 import leo.Configuration
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
+import leo.modules.GeneralState
 import leo.modules.control.Control
 
 /**
@@ -12,12 +13,11 @@ import leo.modules.control.Control
 class PrimsubstRule(inType : DataType[AnnotatedClause],
                    outType : DataType[AnnotatedClause],
                    noUnify : DataType[AnnotatedClause])
-                   (implicit signature : Signature) extends Rule {
+                   (implicit state : GeneralState[AnnotatedClause]) extends Rule {
+  implicit val sig : Signature = state.signature
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
   override final val moving: Boolean = false
-
-  private lazy val primsubstlevel = Configuration.PRIMSUBST_LEVEL
 
   override def name: String = "primsubst"
 
@@ -28,7 +28,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
     //
     while (ins.hasNext) {
       val c = ins.next()
-      val ps = Control.primsubst(c, primsubstlevel).filterNot(c => Clause.trivial(c.cl))
+      val ps = Control.primsubst(c).filterNot(c => Clause.trivial(c.cl))
       if(ps.nonEmpty) {
         res = new PrimsubstHint(c, ps) +: res
       }
@@ -42,7 +42,7 @@ class PrimsubstRule(inType : DataType[AnnotatedClause],
 
   class PrimsubstHint(sClause: AnnotatedClause, nClauses: Set[AnnotatedClause]) extends Hint {
     override def apply(): Delta = {
-      leo.Out.debug(s"[PrimSubst] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+      leo.Out.debug(s"[PrimSubst] on ${sClause.pretty(state.signature)}\n  > ${nClauses.map(_.pretty(state.signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
 //      r.remove(LockType(inType))(sClause)

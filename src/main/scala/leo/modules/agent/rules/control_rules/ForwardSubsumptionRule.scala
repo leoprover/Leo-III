@@ -2,6 +2,7 @@ package leo.modules.agent.rules
 package control_rules
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
+import leo.modules.GeneralState
 import leo.modules.control.Control
 
 /**
@@ -11,9 +12,10 @@ import leo.modules.control.Control
 class ForwardSubsumptionRule(inType : DataType[AnnotatedClause],
                              processed : ProcessedSet,
                              move : Option[(DataType[AnnotatedClause], AgentBarrier[AnnotatedClause])])
-                            (implicit val sig : Signature)
+                            (implicit val state : GeneralState[AnnotatedClause])
   extends Rule{
   override val name: String = "forwardSubsumption"
+  implicit val sig : Signature = state.signature
   override val inTypes: Seq[DataType[Any]] = Seq(inType) ++ move.fold(Seq.empty[DataType[AnnotatedClause]])(x => Seq(x._2.lockType))
   override val moving: Boolean = move.isDefined
   override val outTypes: Seq[DataType[Any]] = move.fold(Seq.empty[DataType[AnnotatedClause]])(x => Seq(x._1))
@@ -41,10 +43,10 @@ class ForwardSubsumptionRule(inType : DataType[AnnotatedClause],
         r.remove(inType)(c)
         if(!red) {
           val (outType, barrier) = move.get
-          leo.Out.debug(s"[Subsumption] Moved clause ($inType -> $outType)\n  ${c.pretty}")
+          leo.Out.debug(s"[Subsumption] Moved clause ($inType -> $outType)\n  ${c.pretty(state.signature)}")
           r.insert(outType)(c)
         } else {
-          leo.Out.debug(s"[Subsumption] Removed clause ($inType) ${c.pretty}")
+          leo.Out.debug(s"[Subsumption] Removed clause ($inType) ${c.pretty(state.signature)}")
         }
       }
       r

@@ -3,6 +3,7 @@ package control_rules
 import leo.Configuration
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta}
+import leo.modules.GeneralState
 
 /**
   * This rule selects a clause from Unprocessed
@@ -14,7 +15,7 @@ class SelectionRule(inType : DataType[AnnotatedClause],
                     unprocessed : UnprocessedSet,
                     blockable : Seq[DataType[Any]] = Seq()
                    )
-                   (implicit signature : Signature)
+                   (implicit state : GeneralState[AnnotatedClause])
   extends Rule{
 
   private val maxRound = try {Configuration.valueOf("ll").get.head.toInt} catch {case e : Exception => -1}
@@ -43,7 +44,7 @@ class SelectionRule(inType : DataType[AnnotatedClause],
             return Seq()
           } else {
             work += 1
-            leo.Out.debug(s"[Selection] (Round = ${actRound}) : ${c.pretty(signature)}")
+            leo.Out.debug(s"[Selection] (Round = ${actRound}) : ${c.pretty(state.signature)}")
             res = new MoveHint(c, inType, outType) +: res
           }
         }
