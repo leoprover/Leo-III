@@ -60,6 +60,8 @@ object Main {
         prover.ScheduledRun(beginTime, Configuration.TIMEOUT)
       } else if (Configuration.isSet("pure-ext")) {
         RunExternalProver.runExternal()
+      } else if (Configuration.isSet("rules")) {
+        ParallelMain.agentRuleRun(beginTime)
       } else if (Configuration.isSet("par")) {
         ParallelMain.runParallel(beginTime)
       } else if (Configuration.isSet("processOnly")) {

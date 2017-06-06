@@ -114,42 +114,23 @@ private[blackboard] class AuctionBlackboard extends Blackboard {
   private val dsset : mutable.Set[DataStore] = new mutable.HashSet[DataStore]
   private val dsmap : mutable.Map[DataType[Any], Set[DataStore]] = new mutable.HashMap[DataType[Any], Set[DataStore]]
 
-  /**
-   * Adds a data structure to the blackboard.
-   * After this method the data structure will be
-   * manipulated by the action of the agents.
-   *
-   * @param ds is the data structure to be added.
-   */
-  override def addDS(ds: DataStore): Unit = if(dsset.add(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) + ds)}
 
-  /**
-   * Adds a data structure to the blackboard.
-   * After this method the data structure will
-   * no longer be manipulated by the action of the agent.
-   *
-   * @param ds is the data structure to be added.
-   */
-  override def rmDS(ds: DataStore): Unit = if (dsset.remove(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) - ds)}
-
-  /**
-   * For the update phase in the executor.
-   * Returns a list of all data structures to
-   * insert a given type.
-   *
-   * @param d is the type that we are interested in.
-   * @return a list of all data structures, which store this type.
-   */
-  override def getDS(d: Set[DataType[Any]]): Iterable[DataStore] = {
-    dsmap.filterKeys(k => d.contains(k)).values.flatten.toSet
+  override def getData[T](dataType: DataType[T]): Set[T] = {
+    val ds : Set[DataStore] = dsmap.getOrElse(dataType, Set.empty[DataStore])
+    val data : Set[T] = ds.flatMap(ds => ds.get(dataType))
+    data
   }
 
-  /**
-    * Returns a list of all data structures
-    * currently registered in the blackboard
-    *
-    * @return list of all data structures registered in the blackboard
-    */
+  override def addDS(ds: DataStore): Unit = if(dsset.add(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) + ds)}
+
+  override def rmDS(ds: DataStore): Unit = if (dsset.remove(ds)) ds.storedTypes.foreach{t => dsmap.put(t, dsmap.getOrElse(t, Set.empty) - ds)}
+
+  override def getDS(d: Set[DataType[Any]]): Iterable[DataStore] = {
+    dsmap.filterKeys(k =>
+      d.contains(k))
+      .values.flatten.toSet
+  }
+
   override def getDS: Iterable[DataStore] = dsmap.values.flatten.toSet
 
   private var scheduler : Scheduler = null

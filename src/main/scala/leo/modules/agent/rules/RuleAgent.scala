@@ -1,7 +1,7 @@
 package leo.modules.agent.rules
 
 import leo.agents.{Agent, Task}
-import leo.datastructures.blackboard.{DataType, Delta, Event, Result}
+import leo.datastructures.blackboard._
 
 /**
   *
@@ -12,11 +12,11 @@ import leo.datastructures.blackboard.{DataType, Delta, Event, Result}
   * @author Max Wisniewski
   * @since 10/25/16
   */
-class RuleAgent(rule : Rule) extends Agent {
+class RuleAgent(rule : Rule)(implicit blackboard : Blackboard) extends Agent {
   override val name: String = s"RuleAgent(${rule.name})"
   private val rthis = this
   override def kill(): Unit = {}
-  override def interest: Option[Seq[DataType[Any]]] = Some(rule.interest)
+  override def interest: Option[Seq[DataType[Any]]] = Some(rule.inTypes)
   override def filter(event: Event): Iterable[Task] = event match {
     case r : Delta =>
       val hints = rule.canApply(r)
@@ -24,7 +24,12 @@ class RuleAgent(rule : Rule) extends Agent {
     case _ => Nil
   }
   override def init(): Iterable[Task] = {
-    val hints = rule.canApply(Result())
+    val res = Result()
+    for (t <- rule.inTypes){
+      val data = blackboard.getData(t)
+      data foreach {d => res.insert(t)(d)}
+    }
+    val hints = rule.canApply(res)
     hints map (x => new RuleTask(x))
   }
 

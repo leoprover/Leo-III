@@ -62,7 +62,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     if(unification.getOpenUni.nonEmpty) {
       return None
     }
-    val millis = System.currentTimeMillis()
+//    val millis = System.currentTimeMillis()
 //    val sb = new StringBuilder("\n")
     if(actRound > maxRound && maxRound > 0) {
 //      sb.append(s"-------------------${Math.max(0, millis-lastIt)} ms----------------------------------\n")
@@ -85,7 +85,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 ////      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
 //    sb.append(s"\nProcessed:\n  ${state.state.processed.map(cl =>
 //      CompressProof.compressAnnotation(cl)(CompressProof.lastImportantStep(importantInferences)).pretty(sig)).mkString("\n  ")}\n")
-
+//
 //    lastIt = millis
     actRound += 1
 
@@ -108,7 +108,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     var cur = Control.rewriteSimp(c, state.state.rewriteRules)
 
     /* Functional Extensionality */
-    cur = Control.funcext(cur)
+    cur = Control.funcext(c)
     /* To equality if possible */
     cur = Control.liftEq(cur)
 
@@ -156,11 +156,12 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     val actRewrite = state.rewriteRules
 
     // Check backward subsumption
-    val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
+//    val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
 
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
 
-    val considerClauses = (state.processed -- backSubsumedClauses) + cur  // SeqPProc 463: state.addProcessed(cur)
+//    val considerClauses = (state.processed -- backSubsumedClauses) + cur  // SeqPProc 463: state.addProcessed(cur)
+    val considerClauses = (state.processed) + cur
     Control.insertIndexed(cur)
 
     cur = Control.funcext(cur)
@@ -170,7 +171,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     val paramod_result = Control.paramodSet(cur, considerClauses)(state)
     newclauses = newclauses union paramod_result
 
-    Some(StateView[InterleavingLoop.A](c, cur , newclauses, backSubsumedClauses, None, notForwardSubsumed, actRewrite, state.choiceFunctions))
+    Some(StateView[InterleavingLoop.A](c, cur , newclauses, Set.empty, None, notForwardSubsumed, actRewrite, state.choiceFunctions))
   }
 
 
@@ -207,7 +208,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     }
 
     // selected clause is processed
-    result.insert(ProcessedClause)(Control.rewriteSimp(opState.select, opState.actRewrite))  // TODO Store this simplified version?
+    result.insert(ProcessedClause)(opState.processedSelect) // TODO Move rewrite simp here?
     // Remove backward subsumed
     val subIt : Iterator[InterleavingLoop.A] = opState.subsumed.iterator
     while(subIt.hasNext) {

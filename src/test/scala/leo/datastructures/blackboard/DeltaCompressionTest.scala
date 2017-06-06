@@ -98,9 +98,9 @@ class DeltaCompressionTest extends LeoTestSuite{
   }
   class StringStore extends DataStore {
     override def storedTypes: Seq[DataType[Any]] = Seq(StringType)
-    override def updateResult(r: Delta): Boolean = true
+    override def updateResult(r: Delta): Delta = r
     override def clear(): Unit = {}
-    override protected[blackboard] def all[T](t: DataType[T]): Set[T] = Set()
+    override def get[T](t: DataType[T]): Set[T] = Set()
   }
 }
 

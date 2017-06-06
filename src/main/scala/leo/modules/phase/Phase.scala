@@ -20,11 +20,12 @@ object Phase {
   /**
    * Creates a complete phase from a List of Agents.
    *
-   * @param dname - Name of the Phase
-   * @param dagents - Agents to be used in this phase.
+   * @param dname Name of the Phase
+   * @param dagents Agents to be used in this phase.
+   * @param endBy  Endcondition besides no further work, standard constant false
    * @return - A phase executing all agents until nothing is left to do.
    */
-  def apply(dname : String, dagents : Seq[Agent])(blackboard: Blackboard, scheduler: Scheduler): Phase = new CompletePhase(blackboard, scheduler) {
+  def apply(dname : String, dagents : Seq[Agent])(blackboard: Blackboard, scheduler: Scheduler, endBy : Delta => Boolean = _ => false): Phase = new CompletePhase(blackboard, scheduler, endBy) {
     override protected def agents: Seq[Agent] = dagents
     override def name: String = dname
   }
@@ -87,7 +88,7 @@ abstract class Phase(val blackboard: Blackboard, val scheduler : Scheduler) {
  * Abstract Phase, that implements
  * the execute to start the agents and wait for all to finish.
  */
-abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) extends Phase(blackboard, scheduler) {
+abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler, val endBy : Delta => Boolean, endTypes : Seq[DataType[Any]] = Nil) extends Phase(blackboard, scheduler) {
   private def getName = name
   protected var waitAgent : CompleteWait = null
 
@@ -141,15 +142,18 @@ abstract class CompletePhase(blackboard: Blackboard, scheduler: Scheduler) exten
   protected class CompleteWait extends AbstractAgent {
     var finish = false
     var scedKill = false
-    override def interest : Option[Seq[DataType[Any]]] = Some(Seq(StatusType))
+    override def interest : Option[Seq[DataType[Any]]] = Some(endTypes)
     @inline override val init: Iterable[Task] = Seq()
     override def filter(event: Event): Iterable[Task] = event match {
       case DoneEvent =>
         synchronized{finish = true; notifyAll()};List()
       case r : Delta =>
-        if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty || r.inserts(SZSStatus).nonEmpty || r.updates(SZSStatus).nonEmpty){
+        if(endBy(r)){
           synchronized{finish = true; notifyAll()}
         }
+//        if(r.inserts(StatusType).nonEmpty || r.updates(StatusType).nonEmpty || r.inserts(SZSStatus).nonEmpty || r.updates(SZSStatus).nonEmpty){
+//          synchronized{finish = true; notifyAll()}
+//        }
         List()
       case _ => List()
     }

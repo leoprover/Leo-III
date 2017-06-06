@@ -239,16 +239,21 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       val start : Long = System.currentTimeMillis()
       var end = start
       AgentWork.synchronized {
+
+        // Wait for enough work to be finished, or for the timeout MAX_WAITING_TIME to continue
         while ((end - start) < MAX_WAITING_TIME && (AgentWork.overallWork.toDouble / maxThreads > workLoad || curExec.size == 0)) {
           val rest = Math.max(MAX_WAITING_TIME - end + start, 0)
-//          println(s"------\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${rest} ms")
           val millis1 = System.currentTimeMillis()
-//          println(s"+++++++++++ Waiting for Results... ${(millis1 / 60000) % 60} min ${(millis1 / 1000) % 60} s ${millis1 % 1000} ms")
           AgentWork.wait(rest)
           if (endFlag) return
           end = System.currentTimeMillis()
         }
-//        println(s"--- OUT ---\n  Load = ${AgentWork.overallWork.toDouble / maxThreads}\n  Rest = ${Math.max(MAX_WAITING_TIME - end + start, 0)} ms")
+
+        // If the timeout MAX_WAITING_TIME was fired, but all process are blocked, wait till the first one finishes.
+        if(AgentWork.overallWork >= maxThreads){
+          AgentWork.wait()
+        }
+
         if(AgentWork.overallWork > 0){
           AgentWork.ignoreRest() // Used to not block in the next iteration over the remaining tasks
           blackboard.forceCheck() // To not block in case of no other finished task
@@ -265,13 +270,17 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           case ct : CompressTask => ct.tasks.exists(t => curExec.contains(t))
           case _ => curExec.contains(task)
         }
-        ) {
+        )
+      {
         work = true
 
+        // Construct Delta of the data really inserted into the data structures
+        var delta : Delta = EmptyDelta
         val dsIT = blackboard.getDS(result.types.toSet).iterator
         while(dsIT.hasNext){
           val ds = dsIT.next()
-          ds.updateResult(result)
+          val realUpdate = ds.updateResult(result)
+          delta = delta.merge(realUpdate) // TODO if there is no ds for a datatype? Blackboard level solution?
         }
 
         ActiveTracker.incAndGet(s"Start Filter after finished ${task.name}")
@@ -297,9 +306,9 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         try {
           blackboard.filterAll { a => // Informing agents of the changes
             a.interest match {
-              case Some(xs) if xs.isEmpty || (xs.toSet & result.types.toSet).nonEmpty=>
+              case Some(xs) if xs.isEmpty || (xs.toSet & delta.types.toSet).nonEmpty=>
                 ActiveTracker.incAndGet(s"Filter new data\n\t\tin Agent ${a.name}\n\t\tfrom Task ${task.name}")
-                exe.submit(new GenFilter(a, result, task))
+                exe.submit(new GenFilter(a, delta, task))
                 workCount.incrementAndGet()
               case _ => ()
             }
@@ -350,6 +359,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         case e : Exception =>
           if(e.getMessage != null) leo.Out.severe(e.getMessage) else {leo.Out.severe(s"$e got no message.")}
           if(e.getCause != null) leo.Out.finest(e.getCause.toString) else {leo.Out.severe(s"$e got no cause.")}
+          e.printStackTrace()
           LockSet.releaseTask(t)
           blackboard.finishTask(t)
           if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){

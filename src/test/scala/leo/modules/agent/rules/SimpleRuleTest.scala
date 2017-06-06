@@ -24,7 +24,7 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Prepend: a", Checked){
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
     val store = new SimpleStore
@@ -62,7 +62,7 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Append: b", Checked){
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
     val store = new SimpleStore
@@ -100,7 +100,7 @@ class SimpleRuleTest extends LeoTestSuite {
   }
 
   test("Pre/Append: a/b"){
-    val (blackboard, scheduler) = Blackboard.newBlackboard
+    implicit val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
     val store = new SimpleStore
@@ -150,23 +150,27 @@ class SimpleStore extends DataStore {
   val strings : mutable.Set[String] = mutable.HashSet[String]()
 
   override val storedTypes: Seq[DataType[Any]] = Seq(StringType)
-  override def updateResult(r: Delta): Boolean = synchronized{
+  override def updateResult(r: Delta): Delta = synchronized{
     var (del, ins) : (Seq[String], Seq[String])= r.updates(StringType).map{case (a,b) => (a.asInstanceOf[String], b.asInstanceOf[String])}.unzip
-    del = del ++ r.removes(StringType).map(_.asInstanceOf[String])
-    ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
+    del = del ++ r.removes(StringType)
+    ins = ins ++ r.inserts(StringType)
 
     del foreach (strings.remove(_))
     ins foreach (strings.add(_))
 
-    true
+    r
   }
   override def clear(): Unit = synchronized(strings.clear())
-  override def all[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
+  override def get[T](t: DataType[T]): Set[T] = if(t == StringType) synchronized(strings.toSet.asInstanceOf[Set[T]]) else Set()
 }
 
 
 class PrependRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Prepend(${letter})"
+  override def inTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def outTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def moving: Boolean = false
+
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){
       synchronized{
@@ -175,7 +179,7 @@ class PrependRule(letter : String, observe : SimpleStore) extends Rule {
       }
     } else {
       var (_, ins): (Seq[String], Seq[String]) = r.updates(StringType).map { case (a, b) => (a.asInstanceOf[String], b.asInstanceOf[String]) }.unzip
-      ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
+      ins = ins ++ r.inserts(StringType)
       val undone = observe.strings.filterNot(s => s.startsWith(letter)).toSeq
       undone map {s => new ChangeStringHint(s, letter + s)}
     }
@@ -184,6 +188,10 @@ class PrependRule(letter : String, observe : SimpleStore) extends Rule {
 
 class AppendRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Append(${letter})"
+  override def inTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def outTypes: Seq[DataType[Any]] = Seq(StringType)
+  override def moving: Boolean = false
+
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){
       synchronized{
@@ -192,7 +200,7 @@ class AppendRule(letter : String, observe : SimpleStore) extends Rule {
       }
     } else {
       var (_, ins): (Seq[String], Seq[String]) = r.updates(StringType).map { case (a, b) => (a.asInstanceOf[String], b.asInstanceOf[String]) }.unzip
-      ins = ins ++ r.inserts(StringType).map(_.asInstanceOf[String])
+      ins = ins ++ r.inserts(StringType)
       val undone = observe.strings.filterNot(s => s.endsWith(letter)).toSeq
       undone map {s => new ChangeStringHint(s, s + letter)}
     }

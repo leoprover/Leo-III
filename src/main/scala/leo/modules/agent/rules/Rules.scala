@@ -1,20 +1,40 @@
 package leo.modules.agent.rules
 
-import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, ImmutableDelta}
 
 
 trait Rule {
   def name : String
 
   /**
-    * The interessting datapoints for this Rule
-    * @return The Sequence of Interests. (Nil - everything, x:xs - exactly the enumerated types
+    * Defines the ordered Datatypes as input for
+    * this rule.
+    *
+    * @return
     */
-  def interest : Seq[DataType[Any]] = Nil  // Default is everything
+  def inTypes : Seq[DataType[Any]]
 
   /**
-    * A List of search structures to search more efficiently in the data.
-    * @return List of all maintained search structures
+    *
+    * This flag indicates, that the data is moved
+    * from one set to another, irregardless of a change.
+    *
+    * @return true, if the original clause should be moved
+    */
+  def moving : Boolean
+
+  /**
+    * Defines the type of results for the application
+    * of the rule
+    *
+    * @return
+    */
+  def outTypes : Seq[DataType[Any]]
+
+  /**
+    * The list of data structures observed as input.
+    * The datastructures should reflect the choice of [[inTypes]].
+    * @return List of all search structures for the input
     */
   def observedDataStructures : Seq[DataStore] = Nil // Default no datastructure
 
@@ -64,96 +84,120 @@ trait Hint {
   def write : Map[DataType[Any], Set[Any]]
 }
 
-/**
-  *
-  * An additional constraint added to a Rule
-  *
-  * @param cond a boolean applied to the data of the rule itself
-  * @param a
-  */
-class IfRule(cond : Delta => Boolean, a : Rule) extends Rule {
-  /**
-    * Additional filter on the the given input.
-    *
-    * @param r
-    * @return
-    */
-  override def canApply(r : Delta): Seq[Hint] = if(cond(r)) a.canApply(r) else Seq()
-
-  override def name: String = s"if (cond) ${a.name}"
+class ReleaseLockHint[A](dt : DataType[A], d : A) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(LockType(dt) -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map()
 }
 
-/**
-  *
-  * Branching depending on the directly passed data
-  *
-  * @param cond Condition on the data
-  * @param a Rule applied if `cond` is true
-  * @param b Rule applied if `cond` is false
-  */
-class IfElseRule(cond : Delta => Boolean, a : Rule, b : Rule) extends Rule {
-  /**
-    * Additional filter on the the given input.
-    *
-    * @param r Data from the blackboard scanned
-    * @return
-    */
-  override def canApply(r: Delta): Seq[Hint] = if(cond(r)) a.canApply(r) else b.canApply(r)
-
-  override def name: String = s"if (cond) ${a.name} else ${b.name}"
+class MoveHint[A](d : A, from : DataType[A], to : DataType[A]) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(to -> Seq(d)), Map(from -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map(from -> Set(d))
 }
 
-/**
-  *
-  * Performs a [[Rule]] `a` as long as `cond` is evaluated
-  * as true
-  *
-  * @param cond The loop condition
-  * @param a The rule to apply in each loop iteration
-  */
-class WhileRule(cond : Delta => Boolean, a : Rule) extends Rule {
-  override def canApply(r: Delta): Seq[Hint] = if(cond(r)) a.canApply(r).map(x => WhileHint(x)) else Seq()
-
-  case class WhileHint(h : Hint) extends Hint {
-    override def apply(): Delta = {
-      var r = h.apply()
-//      while()
-
-      r
-    }
-    override val read: Map[DataType[Any], Set[Any]] = h.read
-    override val write: Map[DataType[Any], Set[Any]] = h.write
-  }
-
-  override def name: String = s"while (cond) ${a.name}"
+class CopyHint[A](d : A, to : DataType[A]) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(to -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map()
 }
 
-/**
-  *
-  * This composed Rule will go through the first rule `a`
-  * normally and applies the second rule to the result.
-  *
-  * Performs `b` on the complete result of `a`
-  *
-  * @param a The first rule to apply
-  * @param b The second rule to apply
-  */
-class ComposedRule(a : Rule, b : Rule) extends Rule {
-  override def canApply(r: Delta): Seq[Hint] = a.canApply(r).map(x => ComposedHint(x))
-
-  case class ComposedHint(h : Hint) extends Hint {
-    override def apply(): Delta = {
-      val r = h.apply()
-      val r2 = b.apply(r)
-      // TODO Merge!!!
-      r2.head
-    }
-    override def read: Map[DataType[Any], Set[Any]] = ???
-    override def write: Map[DataType[Any], Set[Any]] = ???
-  }
-
-  override def name: String = s"${a.name}; ${b.name}"
+class DeleteHint[A](d : A, from : DataType[A]) extends Hint {
+  override final val apply: Delta = new ImmutableDelta(Map(), Map(from -> Seq(d)))
+  override final val read: Map[DataType[Any], Set[Any]] = Map()
+  override final val write: Map[DataType[Any], Set[Any]] = Map(from -> Set(d))
 }
+
+///**
+//  *
+//  * An additional constraint added to a Rule
+//  *
+//  * @param cond a boolean applied to the data of the rule itself
+//  * @param a
+//  */
+//class IfRule(cond : Delta => Boolean, a : Rule) extends Rule {
+//  /**
+//    * Additional filter on the the given input.
+//    *
+//    * @param r
+//    * @return
+//    */
+//  override def canApply(r : Delta): Seq[Hint] = if(cond(r)) a.canApply(r) else Seq()
+//
+//  override def name: String = s"if (cond) ${a.name}"
+//}
+//
+///**
+//  *
+//  * Branching depending on the directly passed data
+//  *
+//  * @param cond Condition on the data
+//  * @param a Rule applied if `cond` is true
+//  * @param b Rule applied if `cond` is false
+//  */
+//class IfElseRule(cond : Delta => Boolean, a : Rule, b : Rule) extends Rule {
+//  /**
+//    * Additional filter on the the given input.
+//    *
+//    * @param r Data from the blackboard scanned
+//    * @return
+//    */
+//  override def canApply(r: Delta): Seq[Hint] = if(cond(r)) a.canApply(r) else b.canApply(r)
+//
+//  override def name: String = s"if (cond) ${a.name} else ${b.name}"
+//}
+//
+///**
+//  *
+//  * Performs a [[Rule]] `a` as long as `cond` is evaluated
+//  * as true
+//  *
+//  * @param cond The loop condition
+//  * @param a The rule to apply in each loop iteration
+//  */
+//class WhileRule(cond : Delta => Boolean, a : Rule) extends Rule {
+//  override def canApply(r: Delta): Seq[Hint] = if(cond(r)) a.canApply(r).map(x => WhileHint(x)) else Seq()
+//
+//  case class WhileHint(h : Hint) extends Hint {
+//    override def apply(): Delta = {
+//      var r = h.apply()
+////      while()
+//
+//      r
+//    }
+//    override val read: Map[DataType[Any], Set[Any]] = h.read
+//    override val write: Map[DataType[Any], Set[Any]] = h.write
+//  }
+//
+//  override def name: String = s"while (cond) ${a.name}"
+//}
+//
+///**
+//  *
+//  * This composed Rule will go through the first rule `a`
+//  * normally and applies the second rule to the result.
+//  *
+//  * Performs `b` on the complete result of `a`
+//  *
+//  * @param a The first rule to apply
+//  * @param b The second rule to apply
+//  */
+//class ComposedRule(a : Rule, b : Rule) extends Rule {
+//  override def canApply(r: Delta): Seq[Hint] = a.canApply(r).map(x => ComposedHint(x))
+//
+//  case class ComposedHint(h : Hint) extends Hint {
+//    override def apply(): Delta = {
+//      val r = h.apply()
+//      val r2 = b.apply(r)
+//      // TODO Merge!!!
+//      r2.head
+//    }
+//    override def read: Map[DataType[Any], Set[Any]] = ???
+//    override def write: Map[DataType[Any], Set[Any]] = ???
+//  }
+//
+//  override def name: String = s"${a.name}; ${b.name}"
+//}
 
 ///**
 //  *

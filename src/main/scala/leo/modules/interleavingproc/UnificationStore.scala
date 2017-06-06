@@ -1,7 +1,7 @@
 package leo.modules.interleavingproc
 
 import leo.datastructures.AnnotatedClause
-import leo.datastructures.blackboard.{DataStore, DataType, Delta}
+import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 import leo.modules.SZSException
 import leo.modules.output.SZS_Error
 
@@ -25,6 +25,9 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
 
   def openUni : Boolean = synchronized(openUnifications.nonEmpty)
 
+
+  override def isEmpty: Boolean = synchronized(openUnifications.isEmpty)
+
   /**
     * This method returns all Types stored by this data structure.
     *
@@ -38,13 +41,15 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     *
     * @param r - A result inserted into the datastructure
     */
-  override def updateResult(r: Delta): Boolean = synchronized {
+  override def updateResult(r: Delta): Delta = synchronized {
+    val delta = Result()
     val itr = r.removes(OpenUnification).iterator
     while(itr.hasNext){
       val r = itr.next().asInstanceOf[T]
       if(openUnificationsID.contains(r.id)){
         openUnificationsID.remove(r.id)
         openUnifications.remove(r)
+        delta.remove(OpenUnification)(r)
       }
     }
     val iti = r.inserts(OpenUnification).iterator
@@ -54,9 +59,10 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
 //      if(!openUnifications.exists(x => x.cl == i.cl)) {
         openUnifications.add(i)
         openUnificationsID.add(i.id)
+        delta.insert(OpenUnification)(i)
       }
     }
-    iti.nonEmpty    // TODO Check in loop for already existence
+    delta
   }
 
   /**
@@ -71,7 +77,7 @@ class UnificationStore[T <: AnnotatedClause] extends DataStore{
     * @param t
     * @return
     */
-  override def all[T](t: DataType[T]): Set[T] = if(t == OpenUnification) synchronized(openUnifications.toSet.asInstanceOf[Set[T]]) else Set.empty
+  override def get[T](t: DataType[T]): Set[T] = if(t == OpenUnification) synchronized(openUnifications.toSet.asInstanceOf[Set[T]]) else Set.empty
 }
 
 case object OpenUnification extends DataType [AnnotatedClause] {

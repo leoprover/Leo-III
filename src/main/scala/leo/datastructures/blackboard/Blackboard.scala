@@ -186,7 +186,8 @@ trait DataBlackboard extends TaskOrganize {
     */
   def addData[T](dataType : DataType[T])(d : T) : Boolean = {
     val result = Result().insert(dataType)(d)
-    val isNew = getDS(Set(dataType)) exists (ds => ds.updateResult(result)) // TODO forall or exist?
+    var isNew = false
+    getDS(Set(dataType)) foreach (ds => isNew |= ds.insertData(dataType)(d))
     if(isNew)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)
@@ -205,7 +206,7 @@ trait DataBlackboard extends TaskOrganize {
     */
   def updateData[T](dataType: DataType[T])(d1 : T)(d2 : T) : Boolean = {
     val result = Result().update(dataType)(d1)(d2)
-    val isNew = getDS(Set(dataType)) exists {ds => ds.updateResult(result)} // TODO forall or exist?
+    val isNew = getDS(Set(dataType)) exists {ds => ds.updateData(dataType)(d1)(d2)} // TODO forall or exist?
     if(isNew)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)
@@ -222,11 +223,40 @@ trait DataBlackboard extends TaskOrganize {
     */
   def removeData[T](dataType: DataType[T])(d : T) : Unit = {
     val result = Result().remove(dataType)(d)
-    val wasDel = getDS(Set(dataType)) exists {d => d.updateResult(result) }
+    val wasDel = getDS(Set(dataType)) exists {d1 => d1.deleteData(dataType)(d) }
     if(wasDel)
       filterAll{a =>
         submitTasks(a, a.filter(result).toSet)
       }
+  }
+
+  /**
+    *
+    * Gets all data of type dataType from all
+    * the blackboard
+    *
+    * @param dataType The type of data to be collected
+    * @tparam T The concrete type of data
+    * @return the set of all data of the given type
+    */
+  def getData[T](dataType : DataType[T]) : Set[T]
+
+  /**
+    * Submits a complete delta to the blackboard
+    * and informs registered agents.
+    *
+    * @param d Delta to be inserted
+    */
+  def submitDelta(d : Delta) : Unit = {
+    var result : Delta = EmptyDelta
+    val dsIt = getDS.iterator
+    while(dsIt.hasNext){
+      val ds = dsIt.next()
+      result = result.merge(ds.updateResult(d))
+    }
+    if(!result.isEmpty){
+      filterAll{a => submitTasks(a, a.filter(result).toSet)}
+    }
   }
 }
 

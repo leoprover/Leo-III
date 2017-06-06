@@ -1,18 +1,32 @@
 package leo.modules.phase
 import leo.{Configuration, Out}
 import leo.agents.{Agent, InterferingLoopAgent}
-import leo.datastructures.blackboard.Blackboard
+import leo.datastructures.blackboard.{Blackboard, Delta}
 import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.modules.interleavingproc.{BlackboardState, StateView}
 import leo.modules.prover._
+import leo.modules.interleavingproc.{BlackboardState, SZSStatus, StateView}
 import leo.modules.control.Control
 import leo.modules.parsers.Input
+
+object InterleavableLoopPhase {
+  def endOn(d : Delta) : Boolean = {
+    d.inserts(SZSStatus).nonEmpty || d.updates(SZSStatus).nonEmpty
+  }
+}
 
 /**
   * Created by mwisnie on 9/28/16.
   */
-class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]], state : BlackboardState, sig : Signature, interleavingAgents : Agent*)(blackboard: Blackboard, scheduler: Scheduler) extends CompletePhase(blackboard, scheduler) {
+class InterleavableLoopPhase
+  (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]]
+   , state : BlackboardState
+   , sig : Signature
+   , interleavingAgents : Agent*)
+  (blackboard: Blackboard
+   , scheduler: Scheduler)
+  extends CompletePhase(blackboard, scheduler, InterleavableLoopPhase.endOn)
+{
   /**
     * Returns the name of the phase.
     *
