@@ -2,8 +2,7 @@ package leo.modules.encoding
 
 import leo.LeoTestSuite
 import leo.datastructures.{Role_Axiom, Signature, Term, Clause}
-import leo.modules.Utility
-import leo.modules.Utility.termToClause
+import leo.modules.{signatureAsString, termToClause}
 import leo.modules.parsers.Input
 
 /**
@@ -26,7 +25,7 @@ class EncodingTest extends LeoTestSuite {
     val (encodedProblem, auxDefs, encodedSig) = Encoding(problem, EP_None,
       LambdaElimStrategy_SKI, PolyNative)(sig)
 
-    Out.finest(Utility.signatureAsString(encodedSig))
+    Out.finest(signatureAsString(encodedSig))
 
     println(leo.modules.output.ToTFF(encodedSig))
     var i_prob = 0
@@ -59,7 +58,7 @@ class EncodingTest extends LeoTestSuite {
     val (encodedProblem, auxDefs, encodedSig) = Encoding(problem, EP_None,
       LambdaElimStrategy_SKI, MonoNative)(sig)
 
-    Out.finest(Utility.signatureAsString(encodedSig))
+    Out.finest(signatureAsString(encodedSig))
     println(leo.modules.output.ToTFF(encodedSig))
     var i_prob = 0
     encodedProblem.foreach { prob =>

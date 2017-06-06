@@ -99,8 +99,8 @@ trait Term extends Pretty with Prettier {
     * I.e. each free variable `i` (NOT meta-vars!) occurring within `this` is replaced by `subst(i)`,
     * The term is then beta normalized */
   def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
-  def termSubst(termSubst: Subst): Term = closure(termSubst, Subst.id).betaNormalize
-  def typeSubst(typeSubst: Subst): Term = closure(Subst.id, typeSubst).betaNormalize
+  def termSubst(termSubst: Subst): Term = if (termSubst == Subst.id) this else closure(termSubst, Subst.id).betaNormalize
+  def typeSubst(typeSubst: Subst): Term = if (typeSubst == Subst.id) this else closure(Subst.id, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */
 //  def tySubstitute(tySubst: Subst): Term = this.tyClosure(tySubst).betaNormalize
   /** Apply a shifting substitution by `by`, i.e. return this.substitute(Subst.shift(by)).betanormalize*/
@@ -165,7 +165,6 @@ object Term extends TermBank {
   // Term bank method delegation
   final val local = TermImpl.local
   final def insert(term: Term): Term = TermImpl.insert(term)
-  final def contains(term: Term): Boolean = TermImpl.contains(term)
   final def reset(): Unit = TermImpl.reset()
 
   // Utility
@@ -190,11 +189,6 @@ object Term extends TermBank {
   final implicit def intToBoundVar(in: (Int, Type)): Term = mkBound(in._2,in._1)
   /** Convert tuple (i,j) to according de-Bruijn index (where j is a type-de-Bruijn index) */
   final implicit def intsToBoundVar(in: (Int, Int)): Term = mkBound(in._2,in._1)
-
-
-  // Legacy functions type types for statistics, like to be reused sometime
-  type TermBankStatistics = (Int, Int, Int, Int, Int, Int, Map[Int, Int])
-  final def statistics: TermBankStatistics = TermImpl.statistics
 
 
   //////////////////////////////////////////
@@ -308,16 +302,16 @@ object Term extends TermBank {
   object LexicographicalOrdering extends Ordering[Term] {
 
       private def compareApp(a: Seq[Either[Term, Type]], b: Seq[Either[Term, Type]]): Int = (a, b) match {
-        case (Left(h1) :: t1, Left(h2) :: t2) =>
+        case (Left(h1) +: t1, Left(h2) +: t2) =>
           val c = this.compare(h1, h2)
           if (c != 0) c else compareApp(t1, t2)
-        case (Right(h1) :: t1, Right(h2) :: t2) =>
+        case (Right(h1) +: t1, Right(h2) +: t2) =>
           val c = Type.LexicographicalOrdering.compare(h1, h2)
           if (c != 0) c else compareApp(t1, t2)
-        case (Left(h1) :: t1, Right(h2) :: t2) => 1
-        case (Right(h1) :: t1, Left(h2) :: t2) => -1
-        case (h :: t, Nil) => 1
-        case (Nil, h :: t) => -1
+        case (Left(h1) +: t1, Right(h2) +: t2) => 1
+        case (Right(h1) +: t1, Left(h2) +: t2) => -1
+        case (h +: t, Nil) => 1
+        case (Nil, h +: t) => -1
         case (Nil, Nil) => 0
       }
 

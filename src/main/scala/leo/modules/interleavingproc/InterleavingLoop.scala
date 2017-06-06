@@ -6,9 +6,9 @@ import leo.datastructures._
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.calculus._
 import leo.modules.output._
-import leo.modules.seqpproc.State
 import leo.modules.control.Control
 import leo.modules.proof_object.CompressProof
+import leo.modules.prover.State
 
 import scala.collection.mutable
 
@@ -18,7 +18,7 @@ object InterleavingLoop {
 
 /**
   *
-  * Implementation of @[[leo.modules.seqpproc.SeqPProc]] with interleavable
+  * Implementation of @[[leo.modules.prover.SeqLoop]] with interleavable
   * loop parts.
   *
   * Assumes all clauses have initially have been preprocessed and inserted into the fvIndex
@@ -167,7 +167,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     cur = Control.liftEq(cur)
 
     // TODO Split into possible partners and results
-    val paramod_result = Control.paramodSet(cur, considerClauses)
+    val paramod_result = Control.paramodSet(cur, considerClauses)(state)
     newclauses = newclauses union paramod_result
 
     Some(StateView[InterleavingLoop.A](c, cur , newclauses, backSubsumedClauses, None, notForwardSubsumed, actRewrite, state.choiceFunctions))
@@ -225,14 +225,14 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
     var newclauses = opState.paramodPartners                    // TODO Perform real paramod after splitting the step
 
-    val boolext_result = Control.boolext(cur)
+    val boolext_result = Control.boolext(cur)(state.state)
     newclauses = newclauses union boolext_result
 
-    val factor_result = Control.factor(cur)
+    val factor_result = Control.factor(cur)(state.state)
     newclauses = newclauses union factor_result
 
     /* Prim subst */
-    val primSubst_result = Control.primsubst(cur, Configuration.PRIMSUBST_LEVEL)
+    val primSubst_result = Control.primsubst(cur)(state.state)
     newclauses = newclauses union primSubst_result
 
 
@@ -299,7 +299,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     }
 
     if(!parUni) {
-      toUnify = Control.unifyNewClauses(toUnify)
+      toUnify = Control.unifyNewClauses(toUnify)(state.state)
       toUnify = toUnify.flatMap(cw => Control.cnf(cw))
       toUnify = toUnify.map(cw => Control.shallowSimp(Control.liftEq(cw)))
       val newIt2 = toUnify.iterator

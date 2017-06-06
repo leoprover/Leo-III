@@ -2,7 +2,6 @@ package leo.modules
 
 import leo.Configuration
 import leo.datastructures._
-import leo.modules.Utility.termToClause
 import leo.modules.output.SZS_UsageError
 import leo.modules.parsers.Input
 

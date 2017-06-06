@@ -11,8 +11,7 @@ import org.scalatest.{BeforeAndAfter, FunSuite, BeforeAndAfterAll}
 abstract class LeoTestSuite extends FunSuite with BeforeAndAfter with BeforeAndAfterAll with TestUtility {
 
   before {
-    resetBlackBoard
-    resetTermBank
+    resetTermBank()
     leo.Out.setLogLevel(java.util.logging.Level.FINER)
   }
 

@@ -5,7 +5,7 @@ import leo.datastructures.blackboard.Blackboard
 import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.modules.interleavingproc.{BlackboardState, StateView}
-import leo.modules.seqpproc.SeqPProc
+import leo.modules.prover._
 import leo.modules.control.Control
 import leo.modules.parsers.Input
 
@@ -48,9 +48,9 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
 
     // TODO Read external Provers / Implement external Provers
     val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
-    val remainingInput = SeqPProc.effectiveInput(input2, state.state)
+    val remainingInput = effectiveInput(input2, state.state)
     // Typechecking: Throws and exception if not well-typed
-    SeqPProc.typeCheck(remainingInput, state.state)
+    typeCheck(remainingInput, state.state)
 
     if (state.state.negConjecture != null) {
       // Expand conj, Initialize indexes
@@ -61,7 +61,7 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
       state.state.defConjSymbols(simpNegConj)
       state.state.initUnprocessed()
       Control.initIndexes(simpNegConj +: remainingInput)
-      val result = SeqPProc.preprocess(state.state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
+      val result = SeqLoop.preprocess(state.state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {
           _.pretty(sig)
@@ -85,7 +85,7 @@ class InterleavableLoopPhase (interleavingLoop : InterferingLoopAgent[StateView[
     while (preprocessIt.hasNext) {
       val cur = preprocessIt.next()
       Out.trace(s"# Process: ${cur.pretty(sig)}")
-      val processed = SeqPProc.preprocess(state.state, cur)
+      val processed = SeqLoop.preprocess(state.state, cur)
       Out.debug(s"# Result:\n\t${
         processed.map {
           _.pretty(sig)

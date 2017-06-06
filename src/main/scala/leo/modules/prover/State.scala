@@ -1,13 +1,15 @@
-package leo.modules.seqpproc
+package leo.modules.prover
 
 import leo.datastructures._
-import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.external.TptpProver
+import leo.modules.output.{SZS_Unknown, StatusSZS}
 
 /**
   * Created by lex on 20.02.16.
   */
 trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
+  def copy: State[T]
+
   def conjecture: T
   def negConjecture: T
   def symbolsInConjecture: Set[Signature#Key]
@@ -18,8 +20,11 @@ trait State[T <: ClauseProxy] extends Pretty with StateStatistics {
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
 
+  def runStrategy: RunStrategy
+  def setRunStrategy(runStrategy: RunStrategy): Unit
+
   def isPolymorphic: Boolean
-  def setPolymorphic: Unit
+  def setPolymorphic(): Unit
 
   def defConjSymbols(negConj: T): Unit
   def initUnprocessed(): Unit
@@ -82,7 +87,7 @@ object State {
   def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](SZS_Unknown, sig)
 }
 
-protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
+protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends State[T] {
   private var conjecture0: T = _
   private var negConjecture0: T = _
   private var current_szs = initSZS
@@ -91,11 +96,29 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var current_nonRewriteUnits: Set[T] = Set()
   private var derivationCl: Option[T] = None
   private var current_externalProvers: Set[TptpProver[T]] = Set()
+  private var runStrategy0: RunStrategy = _
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   private var symbolsInConjecture0: Set[Signature#Key] = Set.empty
+  final def copy: State[T] = {
+    val state = new StateImpl[T](current_szs, initSignature)
+    state.conjecture0 = conjecture0
+    state.negConjecture0 = negConjecture0
+    state.current_processed = current_processed
+    state.current_rewriterules = current_rewriterules
+    state.current_nonRewriteUnits = current_nonRewriteUnits
+    state.derivationCl = derivationCl
+    state.current_externalProvers = current_externalProvers
+    state.runStrategy0 = runStrategy0
+    state.symbolsInConjecture0 = symbolsInConjecture0
+    state.choiceFunctions0 = choiceFunctions0
+    state.initialProblem0 = initialProblem0
+    state.poly = poly
+    state
+  }
+
   final def conjecture: T = conjecture0
   final def setConjecture(conj: T): Unit = {conjecture0 = conj }
   final def negConjecture: T = negConjecture0
@@ -106,9 +129,12 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   final def szsStatus: StatusSZS = current_szs
   final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
 
+  final def runStrategy: RunStrategy = runStrategy0
+  final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
+
   private var poly: Boolean = false
   final def isPolymorphic: Boolean = poly
-  final def setPolymorphic: Unit = {poly = true}
+  final def setPolymorphic(): Unit = {poly = true}
 
   final def defConjSymbols(negConj: T): Unit = {
     assert(Clause.unit(negConj.cl))
@@ -140,9 +166,12 @@ protected[seqpproc] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSi
   private var cur_weight = 0
   final def nextUnprocessed: T = {
     leo.Out.trace(s"[###] Selecting with priority $cur_prio: element $cur_weight")
-    if (cur_weight >= prio_weights(cur_prio)) {
+    leo.Out.trace(s"[###] mpq.priorities ${mpq.priorities}")
+    if (cur_weight > prio_weights(cur_prio)-1) {
+      leo.Out.trace(s"[###] limit exceeded (limit: ${prio_weights(cur_prio)}) (cur_weight: ${cur_weight})")
       cur_weight = 0
       cur_prio = (cur_prio + 1) % mpq.priorities
+      leo.Out.trace(s"[###] cur_prio set to ${cur_prio}")
     }
     val result = mpq.dequeue(cur_prio)
     cur_weight = cur_weight+1

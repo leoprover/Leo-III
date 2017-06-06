@@ -626,19 +626,54 @@ object Simp extends CalculusRule {
 
   def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
+  private final val CANNOTAPPLY = 0
+  private final val VARLEFT = 1
+  private final val VARRIGHT = 2
+
+  final private def solvedUniEq(lit: Literal): Int = {
+    if (lit.uni) {
+      val left = lit.left
+      val right = lit.right
+      if (left.isVariable && !right.isVariable) {
+        if(!right.freeVars.contains(left)) VARLEFT else CANNOTAPPLY
+      } else if (right.isVariable && !left.isVariable) {
+        if(!left.freeVars.contains(right)) VARRIGHT else CANNOTAPPLY
+      } else CANNOTAPPLY
+    } else CANNOTAPPLY
+  }
+
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Vector()
+    var curSubst: Subst = Subst.id
     val litIt = lits.iterator
     while (litIt.hasNext) {
-      val lit = apply(litIt.next())(sig)
-      //      val lit = litIt.next()
+      val lit0 = litIt.next().substituteOrdered(curSubst)
+      val lit = apply(lit0)(sig)
+
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
-          newLits = newLits :+ lit
+          val maybeSolvedUniEq = solvedUniEq(lit)
+          if (maybeSolvedUniEq == CANNOTAPPLY) {
+            newLits = newLits :+ lit
+          } else {
+            val (vari,term) = if (maybeSolvedUniEq == VARLEFT) (lit.left,lit.right)
+                              else (lit.right, lit.left)
+            val idx = Term.Bound.unapply(vari).get._2
+            val subst = Subst.singleton(idx, term)
+            curSubst = curSubst.comp(subst)
+          }
         }
       }
     }
+    if (curSubst != Subst.id) {
+      Out.debug(s"It happend!")
+      Out.debug(s"Old lits: ${Clause(lits).pretty(sig)}")
+      Out.debug(s"Subst: ${curSubst.normalize.pretty}")
+      newLits = newLits.map(l => l.substituteOrdered(curSubst.normalize))
+      Out.debug(s"New lits: ${Clause(newLits).pretty(sig)}")
+    }
+
     val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
     Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
@@ -712,7 +747,7 @@ object Simp extends CalculusRule {
 
 
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
-    leo.modules.Utility.myAssert(l.forall(a => !a.polarity))
+    leo.modules.myAssert(l.forall(a => !a.polarity))
     val (subst, simpRes) = uniLitSimp0(Vector.empty, l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
     val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
     (subst, simpResAsLits)
@@ -735,32 +770,37 @@ object Simp extends CalculusRule {
       val hd = unprocessed.head
       leo.Out.finest(s"[UniLitSimp] Next unsolved: ${hd._1.pretty(sig)} = ${hd._2.pretty(sig)}")
       val left = hd._1; val right = hd._2
-      val (leftBody, leftAbstractions) = collectLambdas(left)
-      val (rightBody, rightAbstractions) = collectLambdas(right)
-      assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
-      val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
-      if (canApplyDecomp._1) {
-        leo.Out.finest(s"[UniLitSimp] Can apply Decomp")
-        if (canApplyDecomp._2.isDefined) {
-          val tySubst = canApplyDecomp._2.get
-          if (tySubst == Subst.id) {
-            // not need to apply tySubst
-            val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
-            val newUnprocessed = newEqs ++ unprocessed.tail
-            uniLitSimp0(processed, newUnprocessed, subst.comp(tySubst))(sig)
+      if (left == right) {
+        leo.Out.finest(s"[UniLitSimp] Triv")
+        uniLitSimp0(processed, unprocessed.tail, subst)(sig)
+      } else {
+        val (leftBody, leftAbstractions) = collectLambdas(left)
+        val (rightBody, rightAbstractions) = collectLambdas(right)
+        assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
+        val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
+        if (canApplyDecomp._1) {
+          leo.Out.finest(s"[UniLitSimp] Can apply Decomp")
+          if (canApplyDecomp._2.isDefined) {
+            val tySubst = canApplyDecomp._2.get
+            if (tySubst == Subst.id) {
+              // not need to apply tySubst
+              val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+              val newUnprocessed = newEqs ++ unprocessed.tail
+              uniLitSimp0(processed, newUnprocessed, subst.comp(tySubst))(sig)
+            } else {
+              val newEqs = HuetsPreUnification.DecompRule((leftBody.typeSubst(tySubst), rightBody.typeSubst(tySubst)), leftAbstractions)
+              leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
+              val newUnprocessed = newEqs ++ unprocessed.tail.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}
+              uniLitSimp0(processed.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}, newUnprocessed, subst.comp(tySubst))(sig)
+            }
           } else {
-            val newEqs = HuetsPreUnification.DecompRule((leftBody.typeSubst(tySubst), rightBody.typeSubst(tySubst)), leftAbstractions)
-            leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
-            val newUnprocessed = newEqs ++ unprocessed.tail.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}
-            uniLitSimp0(processed.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}, newUnprocessed, subst.comp(tySubst))(sig)
+            leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
+            uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
           }
         } else {
-          leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
+          leo.Out.finest(s"[UniLitSimp] Cannot apply Decomp")
           uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
         }
-      } else {
-        leo.Out.finest(s"[UniLitSimp] Cannot apply Decomp")
-        uniLitSimp0(hd +: processed, unprocessed.tail, subst)(sig)
       }
     }
   }

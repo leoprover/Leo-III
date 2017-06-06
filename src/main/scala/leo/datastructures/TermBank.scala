@@ -18,8 +18,6 @@ trait TermBank extends TermFactory {
     * it is shared already. */
   def insert(term: Term): Term
 
-  def contains(term: Term): Boolean
-
   /** Clear the term bank, i.e. delete all cached terms */
   def reset(): Unit
 }

@@ -4,7 +4,7 @@ import leo.LeoTestSuite
 import leo.datastructures._
 import leo.modules.HOLSignature._
 import leo.modules.parsers.Input
-import leo.modules.Utility.{printSignature, termToClause}
+import leo.modules.{printSignature, termToClause}
 
 /**
   * Created by lex on 07.03.17.
@@ -90,7 +90,7 @@ class MonoTFFTest extends LeoTestSuite {
 
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
-    leo.modules.Utility.printSignature(encodingSig)
+    leo.modules.printSignature(encodingSig)
     Out.finest("########")
     Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))
@@ -153,7 +153,7 @@ class MonoTFFTest extends LeoTestSuite {
 
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
-    leo.modules.Utility.printSignature(encodingSig)
+    leo.modules.printSignature(encodingSig)
     Out.finest("########")
     Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))
@@ -216,7 +216,7 @@ class MonoTFFTest extends LeoTestSuite {
 
 
     val (encodedProblem, auxDefs, encodingSig) = TypedFOLEncoding.apply(cnf, LambdaElimStrategy_SKI)
-    leo.modules.Utility.printSignature(encodingSig)
+    leo.modules.printSignature(encodingSig)
     Out.finest("########")
     Out.finest(encodedProblem.map(_.pretty(encodingSig)).mkString("\n"))
     assert(encodedProblem.forall(Clause.wellTyped))

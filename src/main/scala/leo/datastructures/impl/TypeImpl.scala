@@ -95,8 +95,8 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
     case _              => s"${in.pretty} -> ${out.pretty}"
   }
   final def pretty(sig: Signature): String = in match {
-    case _:AbstractionTypeNode => s"(${in.pretty}) -> ${out.pretty}"
-    case _:Type              => s"${in.pretty} -> ${out.pretty}"
+    case _:AbstractionTypeNode => s"(${in.pretty(sig)}) -> ${out.pretty(sig)}"
+    case _:Type              => s"${in.pretty(sig)} -> ${out.pretty(sig)}"
   }
 
   // Predicates on types

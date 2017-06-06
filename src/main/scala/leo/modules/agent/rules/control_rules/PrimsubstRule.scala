@@ -22,7 +22,7 @@ class PrimsubstRule(implicit signature : Signature) extends Rule{
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.primsubst(c, primsubstlevel)
+      val ps = Control.primsubst(c)(???)
       res = new PrimsubstHint(c, ps) +: res
     }
     res

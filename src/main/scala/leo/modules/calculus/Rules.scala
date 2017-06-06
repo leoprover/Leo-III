@@ -154,11 +154,11 @@ object PreUni extends AnyUni {
   final def canApply(l: Literal): Boolean = l.uni
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
-                  otherLits: OtherLits)(implicit sig: Signature): Iterator[UniResult] = {
-    import leo.modules.Utility.myAssert
+                  otherLits: OtherLits, uniDepth: Int)(implicit sig: Signature): Iterator[UniResult] = {
+    import leo.modules.myAssert
     Out.trace(s"Unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
-    val result = HuetsPreUnification.unifyAll(vargen, uniLits).iterator
+    val result = HuetsPreUnification.unifyAll(vargen, uniLits, uniDepth).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
@@ -176,10 +176,10 @@ object PatternUni extends AnyUni {
 
   final def apply(vargen: FreshVarGen, uniLits: UniLits,
                   otherLits: OtherLits)(implicit sig: Signature): Option[UniResult] = {
-    import leo.modules.Utility.myAssert
+    import leo.modules.myAssert
     Out.trace(s"Pattern unification on:\n\t${uniLits.map(eq => eq._1.pretty(sig) + " = " + eq._2.pretty(sig)).mkString("\n\t")}")
     myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
-    val result = PatternUnification.unifyAll(vargen, uniLits)
+    val result = PatternUnification.unifyAll(vargen, uniLits, -1) // depth is dont care
     if (result.isEmpty) {
       Out.debug(s"Pattern unification failed.")
       None
@@ -442,7 +442,7 @@ object OrderedParamod extends CalculusRule {
     assert(intoClause.lits.isDefinedAt(intoIndex))
     assert(withClause.lits(withIndex).polarity)
     assert(!(withSide == Literal.rightSide) || !withClause.lits(withIndex).oriented || simulateResolution)
-    assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented || simulateResolution)
+    // assert(!(intoSide == Literal.rightSide) || !intoClause.lits(intoIndex).oriented || simulateResolution)
 
     val withLiteral = withClause.lits(withIndex)
     val (toFind, replaceBy) = if (withSide == Literal.leftSide) (withLiteral.left,withLiteral.right) else (withLiteral.right,withLiteral.left)

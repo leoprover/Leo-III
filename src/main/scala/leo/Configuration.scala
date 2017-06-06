@@ -33,6 +33,8 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PRE_PRIMSUBST = "instantiate"
   private val PARAM_PRE_PRIMSUBST_MAXDEPTH = "instantiate-maxdepth"
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
+  private val PARAM_PASSMARK = "passmark"
+  private val PARAM_AGING = "aging"
   private val PARAM_NOCHOICE = "nochoice"
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
   private val PARAM_ATPCHECKINTERVAL = "atp-check-interval"
@@ -121,6 +123,8 @@ object Configuration extends DefaultConfiguration {
   lazy val PROOF_OBJECT : Boolean = isSet(PARAM_PROOFOBJECT)
 
   lazy val RELEVANCE_FILTERING: Boolean = isSet(PARAM_RELEVANCEFILTER)
+  lazy val RELEVANCE_PASSMARK: Double = uniqueDoubleFor(PARAM_PASSMARK, DEFAULT_PASSMARK)
+  lazy val RELEVANCE_AGING: Double = uniqueDoubleFor(PARAM_AGING, DEFAULT_AGING)
 
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
   lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
@@ -217,6 +221,40 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
+  final val CAPS: String =
+    """
+      |{
+      |  "name"         : "Leo-III",
+      |  "version"      : "1.1",
+      |  "applications" : ["prover"],
+      |  "languages"    : [
+      |    {
+      |      "language" : "tptp_cnf",
+      |      "roles"    : ["axiom", "conjecture", "negated_conjecture"],
+      |      "features" : []
+      |    },
+      |    {
+      |      "language" : "tptp_fof",
+      |      "roles"    : ["axiom", "definition", "negated_conjecture", "conjecture"],
+      |      "features" : []
+      |    },
+      |    {
+      |      "language" : "tptp_tff",
+      |      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
+      |      "features" : ["polytypes", "conditional"]
+      |    },
+      |    {
+      |      "language" : "tptp_thf",
+      |      "roles"    : ["axiom", "definition", "conjecture", "negated_conjecture", "type"],
+      |      "features" : [
+      |        "polytypes", "conditional", "let",
+      |        "definite_description", "indefinite_description", "th1_combinators"
+      |      ]
+      |    }
+      |  ]
+      |}
+    """.stripMargin
+
   // more to come ...
 
   ///////////////
@@ -272,8 +310,23 @@ object Configuration extends DefaultConfiguration {
     case Some(_) => Out.warn(intExpectedOutput(param, "None"))
       default
   }
+  protected def uniqueDoubleFor(param: String, default: Double): Double = if (configMap == null) default
+  else configMap.get(param) match {
+    case None => default
+    case Some(arg :: Nil) => processDoubleFor(param, arg, default)
+    case Some(arg :: _) =>
+      Out.warn(multiDefOutput(param))
+      processDoubleFor(param, arg, default)
+    case Some(_) => Out.warn(intExpectedOutput(param, "None"))
+      default
+  }
   protected def processIntFor(param: String, actual: String, default: Int): Int = {
     safeStrToInt(actual).getOrElse({
+      Out.warn(intExpectedOutput(param, actual))
+      default})
+  }
+  protected def processDoubleFor(param: String, actual: String, default: Double): Double = {
+    safeStrToDouble(actual).getOrElse({
       Out.warn(intExpectedOutput(param, actual))
       default})
   }
@@ -286,6 +339,11 @@ object Configuration extends DefaultConfiguration {
   }
   protected def safeStrToInt(str: String): Option[Int] = try {
     Some(str.toInt)
+  } catch {
+    case _:Throwable => None
+  }
+  protected def safeStrToDouble(str: String): Option[Double] = try {
+    Some(str.toDouble)
   } catch {
     case _:Throwable => None
   }
@@ -309,6 +367,8 @@ trait DefaultConfiguration {
   val DEFAULT_THREADCOUNT = 4
   val DEFAULT_VERBOSITY = java.util.logging.Level.CONFIG
   val DEFAULT_TIMEOUT = 60
+  val DEFAULT_SOS = false
+  val DEFAULT_BOOLEXT = true
   val DEFAULT_UNIFICATIONDEPTH = 8
   val DEFAULT_MATCHINGDEPTH = 4
   val DEFAULT_UNIFIERCOUNT = 1
@@ -318,4 +378,6 @@ trait DefaultConfiguration {
   val DEFAULT_ATPCHECKINTERVAL = 3
   val DEFAULT_ATPCALLINTERVAL = 10
   val DEFAULT_ATPMAXJOBS = 2
+  val DEFAULT_PASSMARK = 0.56
+  val DEFAULT_AGING = 2.35
 }

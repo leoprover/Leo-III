@@ -83,13 +83,21 @@ trait Literal extends Pretty with Prettier {
     * Result it beta-normalized.
     * Note that the literal is __not oriented__ afterwards. If you want to orient the result,
     * use [[substituteOrdered]] instead. */
-  @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+  @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = {
+    if (termSubst == Subst.id && typeSubst == Subst.id) this
+    else {
+      termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+    }
+  }
   /** Apply substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
     * Result it beta-normalized and oriented if possible. */
   @inline final def substituteOrdered(termSubst : Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature) : Literal = {
-    val lsubst = left.substitute(termSubst, typeSubst)
-    val rsubst = right.substitute(termSubst, typeSubst)
-    Literal.mkOrdered(lsubst,rsubst,polarity)
+    if (termSubst == Subst.id && typeSubst == Subst.id) this
+    else {
+      val lsubst = left.substitute(termSubst, typeSubst)
+      val rsubst = right.substitute(termSubst, typeSubst)
+      Literal.mkOrdered(lsubst,rsubst,polarity)
+    }
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
   @inline final def unsignedEquals(that: Literal): Boolean = (left == that.left && right == that.right) || (left == that.right && right == that.left)
@@ -229,41 +237,110 @@ object Literal {
   private final def cmpSamePol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
     assert(a.polarity == b.polarity)
     assert(a != b) // This should have been catched in `compare`
-    // TODO: Improve if oriented
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 
-    val albl = al.compareTo(bl)(sig)
-    val albr = al.compareTo(br)(sig)
-    val arbl = ar.compareTo(bl)(sig)
-    val arbr = ar.compareTo(br)(sig)
+    if (a.oriented) {
+      if (b.oriented) {
+        // both oriented
+        val albl = al.compareTo(bl)(sig)
+        if (albl == CMP_GT) CMP_GT
+        else if (albl == CMP_LT) CMP_LT
+        else {
+          if (albl == CMP_EQ) {
+            val arbr = ar.compareTo(br)(sig)
+            if (arbr == CMP_GT) CMP_GT
+            else if (arbr == CMP_LT) CMP_LT
+            else CMP_NC
+          } else CMP_NC
+        }
+      } else {
+        // only a oriented
+        val albl = al.compareTo(bl)(sig)
+        if (albl == CMP_LT) CMP_LT
+        else {
+          val albr = al.compareTo(br)(sig)
+          if (albr == CMP_LT) CMP_LT
+          else if (albl == CMP_GT && albr == CMP_GT) CMP_GT
+          else {
+            val arbr = ar.compareTo(br)(sig)
+            if (isGE(albl) && isGE(arbr)) CMP_GT
+            else if (isLE(albl) && isLE(arbr)) CMP_LT
+            else {
+              val arbl = ar.compareTo(bl)(sig)
+              if (isLE(arbl) && isLE(albr)) CMP_LT
+              else CMP_NC
+            }
+          }
+        }
+      }
+    } else {
+      if (b.oriented) {
+        // only b oriented
+        val albl = al.compareTo(bl)(sig)
+        if (albl == CMP_GT) CMP_GT
+        else {
+          val arbl = ar.compareTo(bl)(sig)
+          if (arbl == CMP_GT) CMP_GT
+          else if (albl == CMP_LT && arbl == CMP_LT) CMP_LT
+          else {
+            val albr = al.compareTo(br)(sig)
+            if (isLE(arbl) && isLE(albr)) CMP_LT
+            else if (isGE(arbl) && isGE(albr)) CMP_GT
+            else {
+              val arbr = ar.compareTo(br)(sig)
+              if (isGE(albl) && isGE(arbr)) CMP_GT
+              else CMP_NC
+            }
+          }
+        }
+      } else {
+        // none oriented
 
-    if ((albl == CMP_GT && albr == CMP_GT) ||
-        (isGE(albl) && isGE(arbr)) ||
-        (isGE(arbl) && isGE(albr)) ||
-        (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
-    else if ((albl == CMP_LT && arbl == CMP_LT) ||
-             (isLE(albl) && isLE(arbr)) ||
-             (isLE(arbl) && isLE(albr)) ||
-             (albr == CMP_LT && arbr == CMP_LT)) CMP_LT
-    else CMP_NC
+        val albl = al.compareTo(bl)(sig)
+        val albr = al.compareTo(br)(sig)
+        val arbl = ar.compareTo(bl)(sig)
+        val arbr = ar.compareTo(br)(sig)
+
+        if ((albl == CMP_GT && albr == CMP_GT) ||
+          (isGE(albl) && isGE(arbr)) ||
+          (isGE(arbl) && isGE(albr)) ||
+          (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
+        else if ((albl == CMP_LT && arbl == CMP_LT) ||
+          (isLE(albl) && isLE(arbr)) ||
+          (isLE(arbl) && isLE(albr)) ||
+          (albr == CMP_LT && arbr == CMP_LT)) CMP_LT
+        else CMP_NC
+      }
+    }
   }
 
   /** Compare two literals of different polarity.
     * `a` must have positive polarity, `b` must have negative polarity.*/
   private final def cmpDiffPol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
     assert(a.polarity); assert(!b.polarity)
-    // TODO: Improve if oriented
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 
-    val albl = al.compareTo(bl)(sig)
-    val albr = al.compareTo(br)(sig)
-    val arbl = ar.compareTo(bl)(sig)
-    val arbr = ar.compareTo(br)(sig)
-    if ((albl == CMP_GT && albr == CMP_GT) || (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
-    else if ((isLE(albl) || isLE(albr)) && (isLE(arbl) || isLE(arbr))) CMP_LT
-    else CMP_NC
+    if (a.oriented) {
+      val albl = al.compareTo(bl)(sig)
+      if (isLE(albl)) CMP_LT
+      else {
+        val albr = al.compareTo(br)(sig)
+        if (isLE(albr)) CMP_LT
+        else if (albl == CMP_GT && albr == CMP_GT) CMP_GT
+        else CMP_NC
+      }
+    } else {
+      val albl = al.compareTo(bl)(sig)
+      val albr = al.compareTo(br)(sig)
+      val arbl = ar.compareTo(bl)(sig)
+      val arbr = ar.compareTo(br)(sig)
+
+      if ((albl == CMP_GT && albr == CMP_GT) || (arbl == CMP_GT && arbr == CMP_GT)) CMP_GT
+      else if ((isLE(albl) || isLE(albr)) && (isLE(arbl) || isLE(arbr))) CMP_LT
+      else CMP_NC
+    }
   }
 
   // Utility methods

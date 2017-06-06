@@ -19,10 +19,7 @@ object TermIndex {
 
   def insert(term: Term): Term = {
     val t = term.betaNormalize.etaExpand
-    val t2 = if (!Term.contains(t))
-      Term.insert(t)
-     else
-      t
+    val t2 = Term.insert(t)
 
     // Force computation of lazy values
     t2.headSymbol

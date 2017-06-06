@@ -10,6 +10,8 @@ import leo.modules.HOLSignature.{i,o, Not}
  * TODO create a test suite for the utilities and test them
  */
 class UnificationTestSuite extends LeoTestSuite {
+  val UNIDEPTH = 8
+
    //x(a) = f(a,a)
   test("f(x,x) = f(a,z)", Checked){
     implicit val s = getFreshSignature
@@ -23,7 +25,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(f , List(x,x))
     val t2 : Term = mkTermApp(f , List(a,z))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     val ((termSub, typeSub), _) = result.next
     assert(!result.hasNext)
@@ -42,7 +44,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(vargen(i ->: i),a)
     val t2 : Term = mkTermApp(f , List(a,a))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -66,7 +68,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,a))
     val t2 : Term = mkTermApp(f,mkTermApp(x,a))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -88,7 +90,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,a)))
     val t2 : Term = mkTermApp(f,List(mkTermApp(x,a),mkTermApp(f, List(mkTermApp(f, List(a,a)),a))))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -112,7 +114,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t1 : Term = mkTermApp(x,mkTermApp(f,List(a,mkTermApp(g,List(a,a)))))
     val t2 : Term = mkTermApp(f,List(a,mkTermApp(g,List(mkTermApp(x,List(a)),a))))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     val res1 : Term = \(i)(mkTermApp(f,List(mkBound(i,1), mkBound(i,1))))
 
@@ -138,7 +140,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t2 = Not(mkTermApp(sKf, Seq(mkTermApp(skX, y), ey)))
     println(t2.pretty + " " + Term.wellTyped(t2))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     assert(result.nonEmpty)
     // This unification task should be solvable, right?
@@ -162,7 +164,7 @@ class UnificationTestSuite extends LeoTestSuite {
     val t2 = λ((i ->: i) ->: i)(mkTermApp(mkBound((i ->: i) ->: i,1), Y.lift(1)))
     println(t2.pretty + " " + Term.wellTyped(t2))
 
-    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2).iterator
+    val result : Iterator[Unification#UnificationResult] = HuetsPreUnification.unify(vargen,t1,t2,UNIDEPTH).iterator
 
     assert(result.nonEmpty)
     // This unification task should be solvable, right?
@@ -266,7 +268,7 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     assert(Term.wellTyped(r), "Right not well typed")
     assert(PatternUnification.isPattern(l), "Left is not a pattern")
     assert(PatternUnification.isPattern(r), "Right is not a pattern")
-    val res = PatternUnification.unify(vargen, l,r)
+    val res = PatternUnification.unify(vargen, l,r,-1)
     assert(res.nonEmpty, "No unifier found although it should be unifiable")
     val unifier = res.head
 //    println(s"unifier: ${unifier._1._1.pretty}")

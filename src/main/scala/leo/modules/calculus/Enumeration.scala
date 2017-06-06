@@ -16,41 +16,47 @@ object Enumeration extends CalculusRule {
   final val NO_REPLACE: Int = 0
   final val REPLACE_O: Int = 1
   final val REPLACE_OO: Int = 2
-  final val REPLACE_AO: Int = 4
-  final val REPLACE_AAO: Int = 8
+  final val REPLACE_OOO: Int = 4
+  final val REPLACE_AO: Int = 8
+  final val REPLACE_AAO: Int = 16
   @inline final def instancesFromSignature(ty: Type)(implicit sig:Signature): Set[Term] =
     sig.constantsOfType(ty).filterNot(sig(_).isDefined).map(Term.mkAtom)
 
   import Term.{mkBound, λ}
-  import leo.modules.HOLSignature.{LitFalse, LitTrue, Not, o}
-  private final lazy val instanceTable: Map[Type, Set[Term]] = Map(
-    o -> Set(LitTrue(), LitFalse()),
-    (o ->: o) -> Set(λ(o)(LitTrue()),λ(o)(LitFalse()),λ(o)(mkBound(o, 1)),λ(o)(Not(mkBound(o, 1))))
-    // more to come, e.g. for ooo:
-    //        λ(o,o)(LitTrue),
-    //        λ(o,o)(LitFalse),
-    //        λ(o,o)(2),
-    //        λ(o,o)(1),
-    //
-    //        λ(o,o)(&(2,1)),
-    //        λ(o,o)(&(Not(2),Not(1))),
-    //        λ(o,o)(&(Not(2),1)),
-    //        λ(o,o)(&(2,Not(1))),
-    //
-    //        λ(o,o)(|||(2,1)),
-    //        λ(o,o)(|||(&(2,Not(1)),&(Not(2),1))),
-    //        λ(o,o)(|||(&(Not(2),Not(1)),&(2,1))),
-    //
-    //        λ(o,o)(Not(&(2,1))),
-    //        λ(o,o)(Not(&(Not(2),1))),
-    //        λ(o,o)(Not(&(2,Not(1)))),
-    //        λ(o,o)(Not(1)),
-    //        λ(o,o)(Not(2))
-  )
+  import leo.modules.HOLSignature.{LitFalse, LitTrue, Not, o, |||, &}
+  private final lazy val instanceTable: Map[Type, Set[Term]] = {
+    val x = mkBound(o, 1)
+    val y = mkBound(o, 2)
+    Map(
+      o -> Set(LitTrue(), LitFalse()),
+      (o ->: o) -> Set(λ(o)(LitTrue()),λ(o)(LitFalse()),λ(o)(x),λ(o)(Not(x))),
+      (o ->: o ->: o) -> Set(
+        λ(o,o)(LitTrue),
+        λ(o,o)(LitFalse),
+        λ(o,o)(y),
+        λ(o,o)(x),
+
+        λ(o,o)(&(y,x)),
+        λ(o,o)(&(Not(y),Not(x))),
+        λ(o,o)(&(Not(y),x)),
+        λ(o,o)(&(y,Not(x))),
+
+        λ(o,o)(|||(y,x)),
+        λ(o,o)(|||(&(y,Not(x)),&(Not(y),x))),
+        λ(o,o)(|||(&(Not(y),Not(x)),&(y,x))),
+
+        λ(o,o)(Not(&(y,x))),
+        λ(o,o)(Not(&(Not(y),x))),
+        λ(o,o)(Not(&(y,Not(x)))),
+        λ(o,o)(Not(x)),
+        λ(o,o)(Not(y))
+      )
+    )
+  }
   @inline final def specialInstances(ty: Type, replace: Int = REPLACE_ALL)(implicit sig: Signature): Set[Term] = {
     import leo.modules.HOLSignature.{o, LitTrue, LitFalse, === => EQ, !=== => NEQ}
     if (instanceTable.contains(ty))
-      if (leo.datastructures.isPropSet(REPLACE_O, replace) || leo.datastructures.isPropSet(REPLACE_OO, replace))
+      if (leo.datastructures.isPropSet(REPLACE_O, replace) || leo.datastructures.isPropSet(REPLACE_OO, replace) || leo.datastructures.isPropSet(REPLACE_OOO, replace))
         instanceTable(ty)
       else Set()
     else {
@@ -74,7 +80,7 @@ object Enumeration extends CalculusRule {
     }
   }
 
-  private final lazy val exhaustiveList: Seq[Type] = Seq(o, o ->: o)
+  private final lazy val exhaustiveList: Seq[Type] = Seq(o, o ->: o, o ->: o ->: o)
   @inline final def exhaustive(ty: Type): Boolean = exhaustiveList.contains(ty)
 
 

@@ -43,7 +43,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
 //      println(s"+++++++++++ Unification start [${ac.id}] : ${(millis1 / 60000) % 60} min ${(millis1 / 1000)%60} s ${millis1 % 1000} ms")
       val result = Result()
       result.remove(OpenUnification)(ac)
-      var newclauses = Control.unifyNewClauses(Set(ac))(sig)
+      var newclauses = Control.unifyNewClauses(Set(ac))(state.state)
 //      val sb = new StringBuilder("\nUnify Clauses:")
 
 

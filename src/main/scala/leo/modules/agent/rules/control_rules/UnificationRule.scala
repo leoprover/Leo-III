@@ -18,7 +18,7 @@ class UnificationRule(implicit signature : Signature) extends Rule{
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.unifyNewClauses(Set(c))
+      val ps = Control.unifyNewClauses(Set(c))(???)
       res = new PrimsubstHint(c, ps) +: res
     }
     res
@@ -52,7 +52,7 @@ class RewriteRule(implicit signature : Signature) extends Rule{
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.unifyNewClauses(Set(c))
+      val ps = Control.unifyNewClauses(Set(c))(???)
       res = new PrimsubstHint(c, ps) +: res
     }
     res

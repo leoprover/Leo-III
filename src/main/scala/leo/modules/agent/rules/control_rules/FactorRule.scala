@@ -21,7 +21,7 @@ class FactorRule(implicit signature : Signature) extends Rule{
     //
     while(ins.hasNext){
       val c = ins.next()
-      val ps = Control.factor(c)
+      val ps = Control.factor(c)(???)
       res = new FactorHint(c, ps) +: res
     }
     res
