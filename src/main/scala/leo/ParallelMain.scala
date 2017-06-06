@@ -12,6 +12,7 @@ import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
+import leo.modules.control.Control
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
 
@@ -84,6 +85,7 @@ object ParallelMain {
 
     val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
 
+    state.state.setRunStrategy(Control.defaultStrategy(Configuration.TIMEOUT))
 
       blackboard.addDS(state)
       blackboard.addDS(uniStore)
