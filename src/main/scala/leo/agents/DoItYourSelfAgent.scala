@@ -1,22 +1,54 @@
 package leo.agents
 
-import leo.datastructures.{AnnotatedClause, Clause, ClauseProxy}
+import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard._
-import leo.datastructures.blackboard.impl.{FormulaDataStore, SZSStore}
-import leo.modules.output.StatusSZS
-import leo.datastructures.context.Context
+import leo.modules.output.SZS_Error
+import leo.modules.agent.rules.TypedSet
+import leo.modules.{GeneralState, SZSException}
+
+
+case class DoItYourSelfMessage[T <: GeneralState[AnnotatedClause]](s : T) extends Message
+
+case object OpenState extends DataType[GeneralState[AnnotatedClause]]{
+  override def convert(d: Any): GeneralState[AnnotatedClause] = d match {
+    case s : GeneralState[AnnotatedClause] => s
+    case _ => throw new SZSException(SZS_Error, s"[OpenState] : Tried to cast to GeneralState :\n  $d")
+  }
+}
+
+case object CompletedState extends DataType[GeneralState[AnnotatedClause]]{
+  override def convert(d: Any): GeneralState[AnnotatedClause] = d match {
+    case s : GeneralState[AnnotatedClause] => s
+    case _ => throw new SZSException(SZS_Error, s"[CompleteState] : Tried to cast to GeneralState :\n  $d")
+  }
+}
 
 /**
   * An Agent to run on its own an return only its final result (hopefully [])
   * and the SZS status.
   */
-class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
+class DoItYourSelfAgent[S <: GeneralState[AnnotatedClause]]
+  (val procedure : ProofProcedure[S],
+  stateSpace : Option[TypedSet[DataType[S]]] = None) extends AbstractAgent{
   override def name: String = procedure.name
-  override val interest : Option[Seq[DataType[Any]]] = None
+  override val interest : Option[Seq[DataType[Any]]] = Some(Seq(OpenState))
+  private final val self = this
+
 
   override def init(): Iterable[Task] = {
-    val forms = FormulaDataStore.getFormulas
-    Seq(new DoItYourSelfTask(this, forms))
+    stateSpace match {
+      case None => Iterable()
+      case Some(states) =>
+        val stateIt = states.get(OpenState).iterator
+        var tasks : Seq[Task] = Seq()
+        while(stateIt.hasNext){
+          stateIt.next() match {
+            case s : S => tasks = new DoItYourSelfTask(s) +: tasks
+            case _ => ()
+          }
+        }
+        tasks
+    }
   }
 
   /**
@@ -28,10 +60,18 @@ class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
     * @param event - Newly added or updated formula
     */
   override def filter(event: Event): Iterable[Task] = event match {
-    case DoItYourSelfMessage(c) =>
-      // TODO Blackboard Structure might vary
-      val forms = FormulaDataStore.getFormulas
-      Seq(new DoItYourSelfTask(this, forms))
+    case DoItYourSelfMessage(s : S) =>
+        Seq(new DoItYourSelfTask(s))
+    case r : Delta =>
+      val newstates = r.inserts(OpenState).iterator
+      var tasks : Seq[Task] = Nil
+      while(newstates.hasNext){
+        newstates.next() match {
+          case s : S => tasks = new DoItYourSelfTask(s) +: tasks
+          case _ => ()
+        }
+      }
+      tasks
     case _ => Iterable()
   }
 
@@ -42,31 +82,23 @@ class DoItYourSelfAgent(val procedure : ProofProcedure) extends AbstractAgent{
     * @param t
     */
   override def taskCanceled(t: Task): Unit = {}
-}
 
-case class DoItYourSelfMessage(c : Context) extends Message
-
-class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy]) extends Task{
-  override val name: String = a.procedure.name+"Task"
-  override val getAgent: Agent = a
-  override val writeSet: Map[DataType[Any], Set[Any]] = Map.empty
-  override val readSet: Map[DataType[Any], Set[Any]] = Map.empty
-  override def run: Delta = {
-    val fs1 = fs.map(_.asInstanceOf[AnnotatedClause])
-    val (status, res) = a.procedure.execute(fs1)
-    if(res.isEmpty) return Result()
-    var r = Result().insert(StatusType)(status)
-    if(res.nonEmpty){
-      val it = res.get.iterator
-      while(it.hasNext){
-        r.insert(ClauseType)(it.next())
-      }
+  class DoItYourSelfTask(state : S) extends Task{
+    override val name: String = self.procedure.name+"Task"
+    override val getAgent: Agent = self
+    override val writeSet: Map[DataType[Any], Set[Any]] = Map.empty
+    override val readSet: Map[DataType[Any], Set[Any]] = Map.empty
+    override def run: Delta = {
+      val resState = self.procedure.execute(state)
+      // TODO Filter the result?
+      val r = Result()
+      r.remove(OpenState)(state)
+      r.insert(CompletedState)(resState)
     }
-    r
-  }
-  override def bid: Double = 0.3
+    override def bid: Double = 0.3
 
-  override val pretty: String = a.procedure.name
+    override val pretty: String = self.procedure.name
+  }
 }
 
 
@@ -74,7 +106,7 @@ class DoItYourSelfTask(a : DoItYourSelfAgent, fs : Iterable[ClauseProxy]) extend
   * A proof procedure, that can be executed by it self and not
   * colaborating the blackboard.
   */
-trait ProofProcedure {
+trait ProofProcedure[T <: GeneralState[AnnotatedClause]] {
   def name : String
 
   /**
@@ -85,9 +117,9 @@ trait ProofProcedure {
     *   <li>The remaining proof obligations.<br />The obligation should contain the empty clause, if a proof was found</li>
     * </ol>
     *
-    * @param formulas The set of formulas we want to proof a contradiction.
+    * @param state The set of formulas we want to proof a contradiction.
     * @return The SZS status and optinally the remaing proof obligations. In the case of a sucessfull proof the empty
     *         clause should be returned (containing the proof).
     */
-  def execute(formulas : Iterable[AnnotatedClause]) : (StatusSZS, Option[Seq[AnnotatedClause]])
+  def execute(state : T) : T
 }

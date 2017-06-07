@@ -130,7 +130,10 @@ object SeqLoop {
       run(state, remainingInput, startTime)
       printResult(state, startTime, startTimeWOParsing)
     } catch {
-      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
+      case e:Throwable =>
+        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}");
+        e.printStackTrace()
+        throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()
@@ -141,6 +144,7 @@ object SeqLoop {
                startTime: Long): Boolean = {
     try {
       implicit val sig: Signature = state.signature
+      implicit val stateImplicit = state
       val timeout0 = state.runStrategy.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
 
@@ -315,7 +319,9 @@ object SeqLoop {
       if (endgameAnswer(state.szsStatus)) true
       else false
     } catch {
-      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}"); throw e
+      case e:Throwable =>
+        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}");
+        throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()
@@ -324,6 +330,7 @@ object SeqLoop {
 
   private final def mainLoopInferences(cur: AnnotatedClause, state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
+    implicit val stateImpl = state
     var newclauses: Set[AnnotatedClause] = Set()
 
     /////////////////////////////////////////

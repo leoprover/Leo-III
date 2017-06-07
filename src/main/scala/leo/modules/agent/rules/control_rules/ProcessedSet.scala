@@ -21,7 +21,7 @@ case object Processed extends DataType[AnnotatedClause]{
   * Stores the processed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class ProcessedSet(implicit state : GeneralState[AnnotatedClause])  extends DataStore{
+class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
 
   implicit val sig : Signature = state.signature
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()

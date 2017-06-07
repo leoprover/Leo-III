@@ -2,7 +2,8 @@ package leo.modules
 
 import leo.datastructures.{Clause, ClauseProxy, Pretty, Signature}
 import leo.modules.external.TptpProver
-import leo.modules.prover.{RunStrategy, State}
+import leo.modules.output.{SZS_Unknown, StatusSZS}
+import leo.modules.prover.{FVIndex, RunStrategy}
 
 /**
   *
@@ -13,12 +14,18 @@ import leo.modules.prover.{RunStrategy, State}
   *
   */
 trait GeneralState[T <: ClauseProxy] extends Pretty {
-  def copy: GeneralState[T]
+  def copyGeneral: GeneralState[T]
 
   def conjecture: T
   def negConjecture: T
   def setConjecture(conj: T): Unit
   def setNegConjecture(negConj: T): Unit
+
+  def szsStatus: StatusSZS
+  def setSZSStatus(szs: StatusSZS): Unit
+
+  def setDerivationClause(cl: T): Unit
+  def derivationClause: Option[T]
 
   def signature: Signature
 
@@ -47,6 +54,7 @@ object GeneralState {
 }
 
 protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) extends GeneralState[T] {
+  protected var current_szs : StatusSZS = SZS_Unknown
   protected var conjecture0: T = _
   protected var negConjecture0: T = _
   protected var runStrategy0: RunStrategy = _
@@ -54,9 +62,10 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var current_externalProvers: Set[TptpProver[T]] = Set()
   protected var initialProblem0: Set[T] = Set()
   protected var poly: Boolean = false
+  protected var derivationCl: Option[T] = None
 
 
-  def copy: GeneralState[T] = {
+  def copyGeneral: GeneralState[T] = {
     val state = new GeneralStateImp[T](sig)
     state.conjecture0 = conjecture0
     state.negConjecture0 = negConjecture0
@@ -88,6 +97,12 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def isPolymorphic: Boolean = poly
   final def setPolymorphic(): Unit = {poly = true}
 
+  final def szsStatus: StatusSZS = current_szs
+  final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+
+  final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
+  final def derivationClause: Option[T] = derivationCl
+
   final def addInitial(cls: Set[T]): Unit = {initialProblem0 = initialProblem0 union cls}
   final def initialProblem: Set[T] = initialProblem0
 
@@ -97,4 +112,36 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   }
 
   override def pretty: String = s"State (conj = ${conjecture0.pretty(sig)} , strategy = ${runStrategy0.pretty})"
+}
+
+
+trait FVState[T <: ClauseProxy] extends GeneralState[T] {
+  def fVIndex : FVIndex
+  def copyFVState : FVState[T]
+}
+
+object FVState {
+  def fresh[T <: ClauseProxy](sig : Signature) : FVState[T] = new FVStateImpl[T](sig)
+  def fresh[T <: ClauseProxy](sig : Signature, strategy : RunStrategy) : FVState[T] = {
+    val s = new FVStateImpl[T](sig)
+    s.setRunStrategy(strategy)
+    s
+  }
+}
+
+private class FVStateImpl[T <: ClauseProxy](sig : Signature) extends GeneralStateImp[T](sig) with FVState[T] {
+  private var current_fVIndex = new FVIndex
+
+  override def copyGeneral: GeneralState[T] = copyFVState
+
+  def copyFVState : FVState[T] = {
+    val state = new FVStateImpl[T](sig)
+    state.conjecture0 = conjecture0
+    state.negConjecture0 = negConjecture0
+    state.runStrategy0 = runStrategy0
+    state.symbolsInConjecture0 = symbolsInConjecture0
+    state
+  }
+
+  override def fVIndex: FVIndex = current_fVIndex
 }

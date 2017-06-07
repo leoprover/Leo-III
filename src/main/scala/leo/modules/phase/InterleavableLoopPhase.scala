@@ -74,7 +74,7 @@ class InterleavableLoopPhase
       val simpNegConj = Control.expandDefinitions(state.state.negConjecture)
       state.state.defConjSymbols(simpNegConj)
       state.state.initUnprocessed()
-      Control.initIndexes(simpNegConj +: remainingInput)
+      Control.initIndexes(simpNegConj +: remainingInput)(state.state)
       val result = SeqLoop.preprocess(state.state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {
@@ -90,7 +90,7 @@ class InterleavableLoopPhase
     } else {
       // Initialize indexes
       state.state.initUnprocessed()
-      Control.initIndexes(remainingInput)
+      Control.initIndexes(remainingInput)(state.state)
     }
 
     // Preprocessing

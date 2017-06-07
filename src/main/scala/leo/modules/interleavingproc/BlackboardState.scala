@@ -84,7 +84,7 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
       // Remove from processed set, from indexes etc.
       state.removeProcessed(subsumed)
       state.removeUnits(subsumed)
-      Control.removeFromIndex(subsumed)
+      Control.removeFromIndex(subsumed)(state)
       // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
 //      val descendants = Control.descendants(subsumed)
 //      state.incDescendantsDeleted(descendants.size)

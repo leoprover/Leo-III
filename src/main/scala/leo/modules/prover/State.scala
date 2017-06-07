@@ -1,14 +1,13 @@
 package leo.modules.prover
 
+import leo.Out
 import leo.datastructures._
-import leo.modules.{GeneralState, GeneralStateImp}
-import leo.modules.external.TptpProver
-import leo.modules.output.{SZS_Unknown, StatusSZS}
+import leo.modules.{FVState, FVStateImpl, GeneralState, GeneralStateImp}
 
 /**
   * Created by lex on 20.02.16.
   */
-trait State[T <: ClauseProxy] extends GeneralState[T] with StateStatistics {
+trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
 //  Moved to general State
 //  def copy: State[T]
 //
@@ -20,8 +19,6 @@ trait State[T <: ClauseProxy] extends GeneralState[T] with StateStatistics {
 //  def setNegConjecture(negConj: T): Unit
 //
 //  def signature: Signature
-  def szsStatus: StatusSZS
-  def setSZSStatus(szs: StatusSZS): Unit
 
 //  def runStrategy: RunStrategy
 //  def setRunStrategy(runStrategy: RunStrategy): Unit
@@ -46,14 +43,6 @@ trait State[T <: ClauseProxy] extends GeneralState[T] with StateStatistics {
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions: Map[Type, Set[Term]]
   final def choiceFunctions(ty: Type): Set[Term] = choiceFunctions.getOrElse(ty, Set())
-
-  def setDerivationClause(cl: T): Unit
-  def derivationClause: Option[T]
-
-  def addInitial(cls: Set[T]): Unit
-  def initialProblem: Set[T]
-  def externalProvers: Set[TptpProver[T]]
-  def addExternalProver(prover: TptpProver[T]): Unit
 
   def copy : State[T]
 }
@@ -85,21 +74,21 @@ trait StateStatistics {
 }
 
 object State {
-  def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](SZS_Unknown, sig)
+  def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](sig)
 }
 
-protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSignature: Signature) extends GeneralStateImp[T](initSignature) with State[T] {
-  private var current_szs = initSZS
+protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) extends FVStateImpl[T](initSignature) with State[T]{
   private var current_processed: Set[T] = Set()
   private var current_rewriterules: Set[T] = Set()
   private var current_nonRewriteUnits: Set[T] = Set()
-  private var derivationCl: Option[T] = None
+
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   override final def copy: State[T] = {
-    val state = new StateImpl[T](current_szs, initSignature)
+    val state = new StateImpl[T](initSignature)
+    state.current_szs = current_szs
     state.conjecture0 = conjecture0
     state.negConjecture0 = negConjecture0
     state.current_processed = current_processed
@@ -115,8 +104,8 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
     state
   }
 
-  final def szsStatus: StatusSZS = current_szs
-  final def setSZSStatus(szs: StatusSZS): Unit =  {current_szs = szs}
+  override final def copyGeneral : GeneralState[T] = copy
+  override def copyFVState: FVState[T] = copy
 
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
@@ -168,7 +157,6 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
     current_nonRewriteUnits = current_nonRewriteUnits diff cls
   }
 
-
   private var choiceFunctions0: Map[Type, Set[Term]] = Map()
   final def addChoiceFunction(f: Term): Unit = {
     if (choiceFunctions0.isDefinedAt(f.ty)) {
@@ -177,9 +165,6 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
   }
   final def choiceFunctions: Map[Type,Set[Term]] = choiceFunctions0
   final def choiceFunctionCount: Int = {choiceFunctions0.map {case (k,v) => v.size}.sum}
-
-  final def setDerivationClause(cl: T): Unit = {derivationCl = Some(cl)}
-  final def derivationClause: Option[T] = derivationCl
 
   // Statistics
   private var generatedCount: Int = 0
@@ -218,4 +203,20 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSZS: StatusSZS, initSign
 
   // Pretty
   override final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"
+}
+
+class FVIndex {
+  import leo.modules.indexing.{CFF, FVIndex}
+
+  val maxFeatures: Int = 100
+  var initialized = false
+  var features: Seq[CFF] = Vector.empty
+  var index = FVIndex()
+  def clauseFeatures: Seq[CFF] = features
+
+  protected[modules] final def reset(): Unit = {
+    initialized = false
+    features = Vector.empty
+    index = FVIndex()
+  }
 }

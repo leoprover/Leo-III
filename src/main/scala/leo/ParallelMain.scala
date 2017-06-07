@@ -14,9 +14,11 @@ import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
 import leo.modules.control.Control
 import leo.datastructures.AnnotatedClause
+import leo.modules.agent.multisearch.SchedulingPhase
 import leo.modules.agent.rules.control_rules._
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
+import leo.modules.prover.{RunStrategy, State}
 
 
 /**
@@ -60,11 +62,85 @@ object ParallelMain {
     runParallel(startTime)
   }
 
+
+  /**
+    * Employs agents only to perform a multisearch with
+    * a defined set of RunStrategies
+    *
+    * @param startTime
+    */
+  def runMultiSearch(startTime : Long) {
+    import leo.datastructures.Signature
+
+    implicit val sig: Signature = Signature.freshWithHOL()
+    val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
+
+    // Blackboard and Scheduler
+    val (blackboard, scheduler) = Blackboard.newBlackboard
+
+    val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
+    TimeOutProcess.start()
+
+    val initState : State[AnnotatedClause] = State.fresh(sig)
+
+    val tactics : Iterator[RunStrategy] = Control.generateRunStrategies
+
+    val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
+
+    printPhase(schedPhase)
+    if (!schedPhase.execute()) {
+      scheduler.killAll()
+      TimeOutProcess.kill()
+      unexpectedEnd(System.currentTimeMillis() - startTime)
+      return
+    }
+
+
+    TimeOutProcess.kill()
+    val endTime = System.currentTimeMillis()
+    val time = System.currentTimeMillis() - startTime
+    scheduler.killAll()
+
+    //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+    val szsStatus  = initState.szsStatus
+    Out.output("")
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+
+    //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+
+    Out.comment(s"No. of loop iterations: ${initState.noProofLoops}")
+    Out.comment(s"No. of processed clauses: ${initState.noProcessedCl}")
+    Out.comment(s"No. of generated clauses: ${initState.noGeneratedCl}")
+    Out.comment(s"No. of forward subsumed clauses: ${initState.noForwardSubsumedCl}")
+    Out.comment(s"No. of backward subsumed clauses: ${initState.noBackwardSubsumedCl}")
+    Out.comment(s"No. of subsumed descendants deleted: ${initState.noDescendantsDeleted}")
+    Out.comment(s"No. of rewrite rules in store: ${initState.rewriteRules.size}")
+    Out.comment(s"No. of other units in store: ${initState.nonRewriteUnits.size}")
+    Out.comment(s"No. of choice functions detected: ${initState.choiceFunctionCount}")
+    Out.comment(s"No. of choice instantiations: ${initState.choiceInstantiations}")
+    val proof = initState.derivationClause
+    if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
+      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+      Out.output(userConstantsForProof(sig))
+      Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
+      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+    }
+
+  }
+
+  /**
+    *
+    * Runs a single main loop,
+    * but paralellizes on Subsidiary tasks
+    *
+    * @param startTime
+    */
   def runParallel(startTime : Long){
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
-    SignatureBlackboard.set(sig)
+//    SignatureBlackboard.set(sig)
     val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
     // Blackboard and Scheduler
@@ -128,12 +204,18 @@ object ParallelMain {
 
   }
 
+  /**
+    *
+    * Implementation of Saturation Network
+    *
+    * @param startTime
+    */
   def agentRuleRun(startTime : Long): Unit ={
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
     val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
-    implicit val state : GeneralState[AnnotatedClause] = GeneralState.fresh(sig, Control.defaultStrategy(timeout.toInt))
+    implicit val state : FVState[AnnotatedClause] = FVState.fresh(sig, Control.defaultStrategy(timeout.toInt))
 
     // Blackboard and Scheduler
     implicit val (blackboard, scheduler) = Blackboard.newBlackboard

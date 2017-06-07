@@ -22,7 +22,7 @@ object RuleAgentPhase {
   */
 class RuleAgentPhase
 (ruleGraph : AnnotatedClauseGraph)
-(implicit val state : GeneralState[AnnotatedClause],
+(implicit val state : Control.LocalFVState,
  implicit val blackBoard: Blackboard, implicit val sched : Scheduler)
 extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType), Seq(ruleGraph.outType))
 {
@@ -38,7 +38,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
         try {
           val p = ExternalProver.createProver(name,path)
 
-          // TODO External Agent implement
+          state.addExternalProver(p)
 
           leo.Out.info(s"$name registered as external prover.")
           leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")
@@ -64,7 +64,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
       val simpNegConj = Control.expandDefinitions(state.negConjecture)
       negConj = simpNegConj
-      Control.initIndexes(simpNegConj +: remainingInput)
+      Control.initIndexes(simpNegConj +: remainingInput)(state)
       val result = SeqLoop.preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {

@@ -2,8 +2,9 @@ package leo.modules.agent.rules
 package control_rules
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
-import leo.modules.GeneralState
+import leo.modules.{FVState, GeneralState}
 import leo.modules.control.Control
+import leo.modules.control.Control.LocalFVState
 
 /**
   * Tests forward subsumption for a selected clause and the processed set.
@@ -12,7 +13,7 @@ import leo.modules.control.Control
 class ForwardSubsumptionRule(inType : DataType[AnnotatedClause],
                              processed : ProcessedSet,
                              move : Option[(DataType[AnnotatedClause], AgentBarrier[AnnotatedClause])])
-                            (implicit val state : GeneralState[AnnotatedClause])
+                            (implicit val state : FVState[AnnotatedClause])
   extends Rule{
   override val name: String = "forwardSubsumption"
   implicit val sig : Signature = state.signature
@@ -32,7 +33,7 @@ class ForwardSubsumptionRule(inType : DataType[AnnotatedClause],
     }
   }
 
-  class ForwardSubsumptionHint(c : AnnotatedClause, processed : Set[AnnotatedClause]) extends Hint{
+  class ForwardSubsumptionHint(c : AnnotatedClause, processed : Set[AnnotatedClause])(implicit state: LocalFVState) extends Hint{
     override def apply(): Delta = {
       val red = Control.redundant(c, processed)
       val r = Result()

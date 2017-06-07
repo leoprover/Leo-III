@@ -2,7 +2,7 @@ package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{Blackboard, DataStore, DataType}
-import leo.modules.{GeneralState, SZSException}
+import leo.modules.{FVState, GeneralState, SZSException}
 import leo.modules.agent.rules._
 import leo.modules.output.SZS_Error
 
@@ -27,7 +27,7 @@ trait AnnotatedClauseGraph extends RuleGraph[AnnotatedClause, AnnotatedClause] {
   *                       |-Func-|
   *
   */
-class SimpleControlGraph(implicit val state : GeneralState[AnnotatedClause]) extends AnnotatedClauseGraph {
+class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends AnnotatedClauseGraph {
 
   case object Normalize extends ClauseType
   case object Generate extends ClauseType

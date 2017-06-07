@@ -135,7 +135,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
         } else {
           // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
           // e.g. by forward subsumption
-          if (!Control.redundant(cur, state.state.processed)) {
+          if (!Control.redundant(cur, state.state.processed)(state.state)) {
             //Control.submit(state.state.processed, state.state)    // TODO External Prover call
             return mainLoopInferences(c, cur, state.state)
           } else {
@@ -162,7 +162,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
 //    val considerClauses = (state.processed -- backSubsumedClauses) + cur  // SeqPProc 463: state.addProcessed(cur)
     val considerClauses = (state.processed) + cur
-    Control.insertIndexed(cur)
+    Control.insertIndexed(cur)(state)
 
     cur = Control.funcext(cur)
     cur = Control.liftEq(cur)

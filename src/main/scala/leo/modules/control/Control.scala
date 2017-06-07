@@ -2,7 +2,7 @@ package leo.modules.control
 
 import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature}
-import leo.modules.{GeneralState, myAssert}
+import leo.modules.{FVState, GeneralState, myAssert}
 import leo.modules.prover.{RunStrategy, State}
 
 /**
@@ -13,6 +13,7 @@ import leo.modules.prover.{RunStrategy, State}
   */
 object Control {
   type LocalState = GeneralState[AnnotatedClause]
+  type LocalFVState = FVState[AnnotatedClause]
 
   // Generating inferences
   @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(state)
@@ -46,14 +47,14 @@ object Control {
   @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
   @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
   // Redundancy
-  @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
-  @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
+  @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
+  @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
   // Indexing
-  @inline final def initIndexes(initClauses: Seq[AnnotatedClause])(implicit sig: Signature): Unit = indexingControl.IndexingControl.initIndexes(initClauses.toSet)(sig)
-  @inline final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.insertIndexed(cl)
-  @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(insertIndexed)
-  @inline final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
-  @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit sig: Signature): Unit = cls.foreach(removeFromIndex)
+  @inline final def initIndexes(initClauses: Seq[AnnotatedClause])(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.initIndexes(initClauses.toSet)(state)
+  @inline final def insertIndexed(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.insertIndexed(cl)
+  @inline final def insertIndexed(cls: Set[AnnotatedClause])(implicit state: LocalFVState): Unit = cls.foreach(insertIndexed)
+  @inline final def removeFromIndex(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.removeFromIndex(cl)
+  @inline final def removeFromIndex(cls: Set[AnnotatedClause])(implicit state: LocalFVState): Unit = cls.foreach(removeFromIndex)
   @inline final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = indexingControl.IndexingControl.updateDescendants(taken, generated)
   @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = indexingControl.IndexingControl.descendants(cls)
   @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
@@ -1416,11 +1417,12 @@ package inferenceControl {
 }
 
 package redundancyControl {
+  import leo.modules.control.Control.LocalFVState
   import leo.modules.control.indexingControl.FVIndexControl
 
   object RedundancyControl {
     /** Returns true iff cl is redundant wrt to processed. */
-    final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause]): Boolean = {
+    final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = {
       if (SubsumptionControl.isSubsumed(cl, processed)) true
       // TODO: Do e.g. AC tautology deletion? maybe restructure later.
       else false
@@ -1436,7 +1438,7 @@ package redundancyControl {
       * This function simply check for subsumption (see
       * [[leo.modules.calculus.Subsumption]]) or might call indexing pre-filters and then check those results
       * for the subsumption relation. */
-    final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause]): Boolean = {
+    final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause])(implicit state : Control.LocalFVState): Boolean = {
       // Current implementation checks feature-vector index for a pre-filter.
       // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
       val res = testForwardSubsumptionFVI(cl)
@@ -1447,9 +1449,9 @@ package redundancyControl {
 
     /** Test for subsumption using the feature vector index as a prefilter, then run
       * "trivial" subsumption check using [[leo.modules.calculus.Subsumption]]. */
-    final def testForwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
-      val index = FVIndexControl.index
-      val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
+    final def testForwardSubsumptionFVI(cl: AnnotatedClause)(implicit state : Control.LocalFVState): Set[AnnotatedClause] = {
+      val index = state.fVIndex.index
+      val clFV = FVIndex.featureVector(state.fVIndex.clauseFeatures, cl)
       testForwardSubsumptionFVI0(index, clFV, 0, cl)
     }
     final private def testForwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
@@ -1477,9 +1479,9 @@ package redundancyControl {
 
     /** Test for subsumption using the feature vector index as a prefilter, then run
       * "trivial" subsumption check using [[leo.modules.calculus.Subsumption]]. */
-    final def testBackwardSubsumptionFVI(cl: AnnotatedClause): Set[AnnotatedClause] = {
-      val index = FVIndexControl.index
-      val clFV = FVIndex.featureVector(FVIndexControl.clauseFeatures, cl)
+    final def testBackwardSubsumptionFVI(cl: AnnotatedClause)(implicit state : Control.LocalFVState): Set[AnnotatedClause] = {
+      val index = state.fVIndex.index
+      val clFV = FVIndex.featureVector(state.fVIndex.clauseFeatures, cl)
       testBackwardSubsumptionFVI0(index, clFV, 0, cl)
     }
     final private def testBackwardSubsumptionFVI0(index: FixedLengthTrie[ClauseFeature, AnnotatedClause],
@@ -1516,19 +1518,21 @@ package redundancyControl {
 
 package indexingControl {
 
+  import leo.modules.control.Control.{LocalState, LocalFVState}
+
   object IndexingControl {
     /** Initiate all index structures. This is
       * merely a delegator/distributor to all known indexes such
       * as feature vector index, subsumption index etc.
       * @note method may change in future (maybe more arguments will be needed). */
-    final def initIndexes(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
-      FVIndexControl.init(initClauses)(sig)
+    final def initIndexes(initClauses: Set[AnnotatedClause])(implicit state: Control.LocalFVState): Unit = {
+      FVIndexControl.init(initClauses)(state)
 //      FOIndexControl.foIndexInit()
     }
     /** Insert cl to all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
       * as feature vector index, subsumption index etc.*/
-    final def insertIndexed(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
+    final def insertIndexed(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = {
       FVIndexControl.insert(cl)
 //      FOIndexControl.index.insert(cl) // FIXME There seems to be some error in recognizing real TFF clauses, i.e. some are falsely added
       // TODO: more indexes ...
@@ -1536,14 +1540,14 @@ package indexingControl {
     /** Remove cl from all relevant indexes used. This is
       * merely a delegator/distributor to all known indexes such
       * as feature vector index, subsumption index etc.*/
-    final def removeFromIndex(cl: AnnotatedClause)(implicit sig: Signature): Unit = {
+    final def removeFromIndex(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = {
       FVIndexControl.remove(cl)
 //      FOIndexControl.index.remove(cl)
       // TODO: more indexes ...
     }
 
     final def resetIndexes(state: State[AnnotatedClause]): Unit = {
-      FVIndexControl.reset()
+      state.fVIndex.reset()
       leo.datastructures.Term.reset()
     }
 
@@ -1595,20 +1599,10 @@ package indexingControl {
     import leo.datastructures.Clause
     import leo.modules.indexing.{CFF, FVIndex}
 
-    private val maxFeatures: Int = 100
-    private var initialized = false
-    private var features: Seq[CFF] = Vector.empty
-    protected[modules] var index = FVIndex()
-    def clauseFeatures: Seq[CFF] = features
 
-    final def reset(): Unit = {
-      initialized = false
-      features = Vector.empty
-      index = FVIndex()
-    }
-
-    final def init(initClauses: Set[AnnotatedClause])(implicit sig: Signature): Unit = {
-      assert(!initialized)
+    final def init(initClauses: Set[AnnotatedClause])(implicit state: LocalFVState): Unit = {
+      implicit val sig = state.signature
+      assert(!state.fVIndex.initialized)
 
       val symbs = sig.allUserConstants.toVector
       val featureFunctions: Seq[CFF] = Vector(FVIndex.posLitsFeature(_), FVIndex.negLitsFeature(_)) ++
@@ -1625,20 +1619,20 @@ package indexingControl {
         i = i+1
       }
       Out.trace(s"init Features: ${initFeatures.toString()}")
-      val sortedFeatures = initFeatures.zipWithIndex.sortBy(_._1.size).take(maxFeatures)
+      val sortedFeatures = initFeatures.zipWithIndex.sortBy(_._1.size).take(state.fVIndex.maxFeatures)
       Out.trace(s"sorted Features: ${sortedFeatures.toString()}")
-      this.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
-      initialized = true
+      state.fVIndex.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
+      state.fVIndex.initialized = true
     }
 
-    final def insert(cl: AnnotatedClause): Unit = {
-      assert(initialized)
-      val featureVector = FVIndex.featureVector(features, cl)
-      index.insert(featureVector, cl)
+    final def insert(cl: AnnotatedClause)(implicit state : LocalFVState): Unit = {
+      assert(state.fVIndex.initialized)
+      val featureVector = FVIndex.featureVector(state.fVIndex.features, cl)
+      state.fVIndex.index.insert(featureVector, cl)
     }
 
-    final def insert(cls: Set[AnnotatedClause]): Unit = {
-      assert(initialized)
+    final def insert(cls: Set[AnnotatedClause])(implicit state : LocalFVState): Unit = {
+      assert(state.fVIndex.initialized)
       val clIt = cls.iterator
       while(clIt.hasNext) {
         val cl = clIt.next()
@@ -1646,14 +1640,14 @@ package indexingControl {
       }
     }
 
-    final def remove(cl: AnnotatedClause): Unit = {
-      assert(initialized)
-      val featureVector = FVIndex.featureVector(features, cl)
-      index.remove(featureVector, cl)
+    final def remove(cl: AnnotatedClause)(implicit state : LocalFVState): Unit = {
+      assert(state.fVIndex.initialized)
+      val featureVector = FVIndex.featureVector(state.fVIndex.features, cl)
+      state.fVIndex.index.remove(featureVector, cl)
     }
 
-    final def remove(cls: Set[AnnotatedClause]): Unit = {
-      assert(initialized)
+    final def remove(cls: Set[AnnotatedClause])(implicit state : LocalFVState): Unit = {
+      assert(state.fVIndex.initialized)
       val clIt = cls.iterator
       while(clIt.hasNext) {
         val cl = clIt.next()

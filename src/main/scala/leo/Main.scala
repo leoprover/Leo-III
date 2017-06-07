@@ -64,6 +64,8 @@ object Main {
         ParallelMain.agentRuleRun(beginTime)
       } else if (Configuration.isSet("par")) {
         ParallelMain.runParallel(beginTime)
+      } else if (Configuration.isSet("scheduled-par")) {
+        ParallelMain.runMultiSearch(beginTime)
       } else if (Configuration.isSet("processOnly")) {
         Normalization()
       } else {
