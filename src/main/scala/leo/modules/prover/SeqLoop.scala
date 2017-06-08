@@ -130,7 +130,7 @@ object SeqLoop {
       run(state, remainingInput, startTime)
       printResult(state, startTime, startTimeWOParsing)
     } catch {
-      case e:Throwable =>
+      case e:Exception =>
         Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}");
         e.printStackTrace()
         throw e
@@ -319,7 +319,7 @@ object SeqLoop {
       if (endgameAnswer(state.szsStatus)) true
       else false
     } catch {
-      case e:Throwable =>
+      case e:Exception =>
         Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}");
         throw e
     } finally {
