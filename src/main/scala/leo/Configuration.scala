@@ -162,17 +162,25 @@ object Configuration extends DefaultConfiguration {
     val a = valueOf("a")
     if(a.nonEmpty) {
       val atps = a.get
-      atps.filter(_.contains("=")).map{(s : String)  =>
-        val eses = s.split("=",2)
-        (eses(0), eses(1))
+      atps.map{(s : String)  =>
+        if(s.contains("=")) {
+          val eses = s.split("=", 2)
+          (eses(0), eses(1))
+        } else {
+          (s, "")
+        }
       }
     } else {
       val b = valueOf("atp")
       if(b.nonEmpty) {
         val atps = b.get
-        atps.filter(_.contains("=")).map{(s : String)  =>
-          val eses = s.split("=",2)
-          (eses(0), eses(1))
+        atps.map{(s : String)  =>
+          if(s.contains("=")) {
+            val eses = s.split("=", 2)
+            (eses(0), eses(1))
+          } else {
+            (s, "")
+          }
         }
       }
       else Seq()

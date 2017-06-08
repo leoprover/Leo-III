@@ -15,11 +15,7 @@ object RunExternalProver {
       return
     }
     val (name, path) = Configuration.ATPS.head
-
-    if(name != "leo2" & name != "nitpick"){
-      println("% Currently there is only support for leo2 and nitpick.")
-      return
-    }
+    
     val p = ExternalProver.createProver(name,path)
 
     implicit val s = Signature.freshWithHOL()

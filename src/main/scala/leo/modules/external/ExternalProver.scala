@@ -59,6 +59,24 @@ object ExternalProver {
     }
   }
 
+  private final def serviceToPath(cmd : String) : Path = {
+    import scala.sys.process._
+    val p = Paths.get(cmd)
+    if(Files.exists(p) && Files.isExecutable(p)){
+      p
+    } else {
+      val which = (Seq("which", cmd).lineStream_!.head)
+      println(which)
+      val p2 = Paths.get(which)
+      println(s"${p2} : exists = ${Files.exists(p2)}, executable = ${Files.isExecutable(p2)}")
+      if(Files.exists(p2) && Files.isExecutable(p2)){
+        p2
+      } else {
+        throw new NoSuchMethodException(s"'$cmd' is not exectuable or does not exist.")
+      }
+    }
+  }
+
   /**
     * Creates LEO-II with the executable `path`.
     * Throws an [[NoSuchMethodException]] if this prover cannot be executed.
@@ -68,14 +86,10 @@ object ExternalProver {
     */
   @throws[NoSuchMethodException]
   def createLeo2(path : String) : Leo2Prover = {
-    val p = Paths.get(path)
-    if(Files.exists(p) && Files.isExecutable(p)) {
-      val convert = p.toAbsolutePath.toString
-      leo.Out.debug(s"Created Leo2 prover with path '$convert'")
-      new Leo2Prover(convert)
-    } else {
-      throw new NoSuchMethodException(s"'$path' is not exectuable or does not exist.")
-    }
+    val p = if(path == "") serviceToPath("leo") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created Leo2 prover with path '$convert'")
+    new Leo2Prover(convert)
   }
 
   /**
@@ -89,47 +103,35 @@ object ExternalProver {
     */
   @throws[NoSuchMethodException]
   def createNitpickProver(path : String) : NitpickProver = {
-    val p = Paths.get(path)
-    if(Files.exists(p) && Files.isExecutable(p)) {
-      val convert = p.toAbsolutePath.toString
-      leo.Out.debug(s"Created Nitpick prover with path '$convert' (Isabelle)")
-      new NitpickProver(convert)
-    } else {
-      throw new NoSuchMethodException(s"'$path' is not exectuable or does not exist.\nTip: Reference only to isablle and not nitpick directly.")
-    }
+    val p = if(path == "") serviceToPath("isabelle") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created Nitpick prover with path '$convert' (Isabelle)")
+    new NitpickProver(convert)
   }
 
   final def createCVC4(path : String) : CVC4 = {
-    val p = Paths.get(path)
-    if(Files.exists(p) && Files.isExecutable(p)) {
-      val convert = p.toAbsolutePath.toString
-      leo.Out.debug(s"Created CVC4 prover with path '$convert'")
-      CVC4(SCRIPTDIR.resolve(CVC4.executeScriptName).toString, convert)
-    } else {
-      throw new NoSuchMethodException(s"'$path' is not exectuable or it does not exist.")
-    }
+    val p = if(path == "") serviceToPath("cvc4") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created CVC4 prover with path '$convert'")
+    CVC4(SCRIPTDIR.resolve(CVC4.executeScriptName).toString, convert)
   }
 
   final def createAltErgo(path: String): AltErgo = {
-    val p = Paths.get(path)
-    if(Files.exists(p) && Files.isExecutable(p)) {
-      val convert = p.toAbsolutePath.toString
-      val proc = Command("which why3").exec()
+    val p = if(path == "") serviceToPath("alt-ergo") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    val proc = Command("which why3").exec()
+    proc.waitFor()
+    if (proc.exitValue != 0) throw new NoSuchMethodException("Why3 executable not found in path. why3 is necessary to run AltErgo. Please add why3 to PATH and retry.")
+    else {
+      val proc = Command("why3 --list-provers | grep Alt-Ergo").exec()
       proc.waitFor()
-      if (proc.exitValue != 0) throw new NoSuchMethodException("Why3 executable not found in path. why3 is necessary to run AltErgo. Please add why3 to PATH and retry.")
-      else {
-        val proc = Command("why3 --list-provers | grep Alt-Ergo").exec()
+      if (proc.exitValue != 0) {
+        val proc = Command(s"why3 config --add-prover alt-ergo $convert").exec()
         proc.waitFor()
-        if (proc.exitValue != 0) {
-          val proc = Command(s"why3 config --add-prover alt-ergo $convert").exec()
-          proc.waitFor()
-          if (proc.exitValue != 0) throw new NoSuchMethodException("Registration of AltErgo in why3 not successful. Check debug logs.")
-        }
-        leo.Out.debug(s"Create AltErgo prover with path '$convert'")
-        AltErgo(convert)
+        if (proc.exitValue != 0) throw new NoSuchMethodException("Registration of AltErgo in why3 not successful. Check debug logs.")
       }
-    } else {
-      throw new NoSuchMethodException(s"There is no prover '$path'. It is not exectuable or it does not exist.")
+      leo.Out.debug(s"Create AltErgo prover with path '$convert'")
+      AltErgo(convert)
     }
   }
 
@@ -177,44 +179,6 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     ExternalProver.limitedRun(timeout, Seq(path, "-t", timeout.toString) ++ args ++ Seq(problemFileName))
   }
-
-  /*/**
-    * Performs a translation of the result of the external process.
-    *
-    * Reads the exitValue of Leo2 and translates it to a result.
-    *
-    * @param originalProblem the original set of formulas, passed to the process
-    * @param process         the process itself
-    * @return the result of the external prover, run on the originalProblem
-    */
-  override protected def translateResult(originalProblem: Set[AnnotatedClause], process: KillableProcess): TptpResult[AnnotatedClause] = {
-    try{
-      val exitValue = process.exitValue
-      val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
-      val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
-
-      // Tests the possible exitValues of leo2
-      val szsStatus = exitValue match {
-        case 0 => SZS_Theorem
-        case 2 => SZS_Timeout
-        case 5 => SZS_CounterSatisfiable
-        case 1 => SZS_Unsatisfiable
-        case 3 => SZS_GaveUp // Should be Resource Out
-        case 4 => SZS_GaveUp
-        case 6 => SZS_Satisfiable
-        case 7 => SZS_Theorem // Should be Tautology
-        case 50 => SZS_User
-        case 51 => SZS_Forced
-        case 126 => SZS_Unknown
-        case 127 => SZS_Error
-        case _ => SZS_Unknown
-      }
-      new TptpResultImpl(originalProblem, szsStatus, exitValue, output, error)
-    } catch {
-      case e: Exception =>
-        new TptpResultImpl(originalProblem, SZS_Error, 127, Seq(), Seq(e.getMessage))
-    }
-  }*/
 }
 
 
