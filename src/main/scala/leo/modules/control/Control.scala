@@ -41,8 +41,8 @@ object Control {
   // AC detection
   @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
-  @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl)(state)
-  @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.Choice.detectChoiceClause(cl)(state)
+  @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
+  @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -869,7 +869,7 @@ package inferenceControl {
     }
   }
 
-  protected[modules] object Choice {
+  protected[modules] object ChoiceControl {
     import leo.modules.calculus.{Choice => ChoiceRule}
     import leo.datastructures.ClauseAnnotation.FromSystem
     /* This is for the proof output: Generate a clause with the axiom of choice
@@ -924,7 +924,7 @@ package inferenceControl {
         Out.trace(s"[Choice] Searching for possible choice terms...")
         val candidates = ChoiceRule.canApply(cl, choiceFuns)(sig)
         if (candidates.nonEmpty) {
-          Out.trace(s"[Choice] Found possible choice term.")
+          Out.finest(s"[Choice] Found possible choice term.")
           var results: Set[AnnotatedClause] = Set()
           val candidateIt = candidates.iterator
           while(candidateIt.hasNext) {
@@ -950,7 +950,7 @@ package inferenceControl {
               results = results + result
             }
           }
-          Out.trace(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
+          Out.finest(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
           Out.trace(s"[Choice] Results: ${results.map(_.pretty(sig)).mkString(",")}")
           results
         } else Set()
@@ -959,9 +959,11 @@ package inferenceControl {
 
     final def registerNewChoiceFunction(ty: Type)(state: State[AnnotatedClause]): Term = {
       import leo.modules.HOLSignature.o
-      val sig = state.signature
-      val newChoiceFun = Term.mkAtom(sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice))(sig)
-      state.addChoiceFunction(newChoiceFun)
+      import leo.modules.HOLSignature.Choice
+//      val sig = state.signature
+//      val newChoiceFun = Term.mkAtom(sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice))(sig)
+      val newChoiceFun = Term.mkTypeApp(Choice, ty)
+//      state.addChoiceFunction(newChoiceFun)
       newChoiceFun
     }
   }

@@ -263,7 +263,9 @@ object Choice extends CalculusRule {
 
   private final def findChoice0(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position, depth: Int): Term = {
     import leo.datastructures.Term.{Symbol, Bound,TermApp}
+    import leo.modules.HOLSignature.{Choice => ChoiceSymb}
     occ match {
+      case ChoiceSymb(arg) => arg
       case TermApp(hd, args) if compatibleType(hd.ty) && args.size == 1 =>
         val arg = args.head
         hd match {
