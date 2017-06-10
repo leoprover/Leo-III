@@ -213,11 +213,6 @@ package object datastructures {
   object ClauseProxyOrderings {
     import impl.orderings._
 
-    final val fifo: ClauseProxyOrdering = CPO_FIFO
-    final val lex_weightAge: ClauseProxyOrdering = CPO_WeightAge
-    final val goalsfirst: ClauseProxyOrdering = CPO_GoalsFirst
-    final val nongoalsfirst: ClauseProxyOrdering = CPO_NonGoalsFirst
-
     // Since the orderings are used in a scala priorityqueue which prefers greater elemens, we need to reverse the
     // element orderings in the compounds
     final val oldest_first: ClauseProxyOrdering = CPO_OldestFirst.reverse

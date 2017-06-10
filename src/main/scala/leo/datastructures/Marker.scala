@@ -1,8 +1,6 @@
 package leo.datastructures
 
 import leo.modules.output.Output
-import leo.modules.proof_object.CompressProof
-
 
 /////////////////////////////////////////////
 // Collection of potentially globally used
