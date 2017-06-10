@@ -388,4 +388,5 @@ trait DefaultConfiguration {
   val DEFAULT_ATPMAXJOBS = 2
   val DEFAULT_PASSMARK = 0.56
   val DEFAULT_AGING = 2.35
+  val DEFAULT_CHOICE = true
 }

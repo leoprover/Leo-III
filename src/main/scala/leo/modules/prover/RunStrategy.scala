@@ -20,16 +20,23 @@ final case class RunStrategy(timeout: Int,
                              sos: Boolean,
                              unifierCount: Int,
                              uniDepth: Int,
-                             boolExt: Boolean) extends Pretty {
+                             boolExt: Boolean,
+                             choice: Boolean) extends Pretty {
   def pretty: String = s"strategy<timeout($timeout),primSubst($primSubst),sos($sos)," +
-    s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt)>"
+    s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)>"
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: RunStrategy =>
-      primSubst == other.primSubst && sos == other.sos && unifierCount == other.unifierCount && uniDepth == other.uniDepth
+      primSubst == other.primSubst &&
+        sos == other.sos &&
+        unifierCount == other.unifierCount &&
+        uniDepth == other.uniDepth &&
+        boolExt == other.boolExt &&
+        choice == other.choice
     case _ => false
   }
 
-  override def hashCode(): Int = primSubst.hashCode() ^ sos.hashCode() ^ unifierCount.hashCode() ^ uniDepth.hashCode()
+  override def hashCode(): Int = primSubst.hashCode() ^ sos.hashCode() ^
+    unifierCount.hashCode() ^ uniDepth.hashCode() ^ boolExt.hashCode() ^ choice.hashCode()
 }
 

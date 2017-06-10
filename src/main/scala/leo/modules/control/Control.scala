@@ -41,7 +41,6 @@ object Control {
   // AC detection
   @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
-  import leo.datastructures.{Term, Type}
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.Choice.detectChoiceClause(cl)(state)
   // Redundancy
@@ -904,17 +903,20 @@ package inferenceControl {
     /** Proof output end **/
 
     final def detectChoiceClause(cw: AnnotatedClause)(state: State[AnnotatedClause]): Boolean = {
-      val maybeChoiceFun = ChoiceRule.detectChoice(cw.cl)
-      if (maybeChoiceFun.isDefined) {
-        val choiceFun = maybeChoiceFun.get
-        state.addChoiceFunction(choiceFun)
-        leo.Out.debug(s"[Choice] Detected ${choiceFun.pretty(state.signature)}")
-        true
-      } else false
+      if (!state.runStrategy.choice) false
+      else {
+        val maybeChoiceFun = ChoiceRule.detectChoice(cw.cl)
+        if (maybeChoiceFun.isDefined) {
+          val choiceFun = maybeChoiceFun.get
+          state.addChoiceFunction(choiceFun)
+          leo.Out.debug(s"[Choice] Detected ${choiceFun.pretty(state.signature)}")
+          true
+        } else false
+      }
     }
 
     final def instantiateChoice(cw: AnnotatedClause)(state: State[AnnotatedClause]): Set[AnnotatedClause] = {
-      if (Configuration.NO_CHOICE) Set()
+      if (!state.runStrategy.choice) Set()
       else {
         val cl = cw.cl
         val choiceFuns = state.choiceFunctions
@@ -1873,12 +1875,12 @@ package schedulingControl {
 
     val MINTIME = 30
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
-      RunStrategy(-1, 0, true, Configuration.DEFAULT_UNIFIERCOUNT, 1, true),
-      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true)
+      RunStrategy(-1, 0, true, Configuration.DEFAULT_UNIFIERCOUNT, 1, true, true),
+      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true)
     )
 
 
@@ -1903,7 +1905,7 @@ package schedulingControl {
           defStrategy
             +: STRATEGY_TEMPLATES.filterNot(_ == defStrategy).take(realStrategyCount-1).map(t =>
             RunStrategy(timePerStrategy, t.primSubst, t.sos,
-              t.unifierCount, t.uniDepth, t.boolExt)):_*
+              t.unifierCount, t.uniDepth, t.boolExt, t.choice)):_*
         )
       }
     }
@@ -1914,7 +1916,8 @@ package schedulingControl {
         Configuration.DEFAULT_SOS,
         Configuration.DEFAULT_UNIFIERCOUNT,
         Configuration.DEFAULT_UNIFICATIONDEPTH,
-        Configuration.DEFAULT_BOOLEXT)
+        Configuration.DEFAULT_BOOLEXT,
+        Configuration.DEFAULT_CHOICE)
     }
   }
 }
