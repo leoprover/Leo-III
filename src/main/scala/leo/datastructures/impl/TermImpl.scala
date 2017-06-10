@@ -1013,12 +1013,12 @@ object TermImpl extends TermBank {
   /////////////////////////////////////////////
   // primitive symbols (heads)
   final protected[impl] def mkAtom0(id: Signature#Key, ty: Type): Head =
-    if (symbolAtoms.contains(id)) {
-      val maybeAtom = symbolAtoms(id).get
-      if (maybeAtom.isDefined) maybeAtom.get
-      else mkAtom1(id, ty)
-    } else mkAtom1(id, ty) // TODO: Maybe also for different types?
-
+    symbolAtoms.get(id) match {
+      case None => mkAtom1(id, ty)
+      case Some(atomRef) =>
+        val maybeAtom = atomRef.get
+        if (maybeAtom.isDefined) maybeAtom.get else mkAtom1(id, ty)
+    }
   @inline final private def mkAtom1(id: Signature#Key, ty: Type): Head = {
     val hd = Atom(id, ty)
     symbolAtoms += (id -> WeakReference(hd))
@@ -1026,15 +1026,16 @@ object TermImpl extends TermBank {
   }
 
   final protected[impl] def mkBoundAtom(t: Type, scope: Int): Head =
-    if (boundAtoms.contains(t)) {
-      val inner = boundAtoms(t)
-      if (inner.contains(scope)) {
-        val maybeBound = inner(scope).get
-        if (maybeBound.isDefined) maybeBound.get
-        else mkBoundAtom1(t, scope)
-      } else mkBoundAtom1(t, scope)
-    } else mkBoundAtom0(t, scope)
-
+    boundAtoms.get(t) match {
+      case None => mkBoundAtom0(t, scope)
+      case Some(inner) =>
+        inner.get(scope) match {
+          case None => mkBoundAtom1(t, scope)
+          case Some(boundRef) =>
+            val maybeBound = boundRef.get
+            if (maybeBound.isDefined) maybeBound.get else mkBoundAtom1(t, scope)
+        }
+    }
   @inline final private def mkBoundAtom0(ty: Type, scope: Int): Head = {
     val hd = BoundIndex(ty, scope)
     boundAtoms += (ty -> WMap(scope -> WeakReference(hd)))
@@ -1050,15 +1051,16 @@ object TermImpl extends TermBank {
 
   // composite terms
   final protected[impl] def mkRoot(hd: Head, args: Spine): TermImpl =
-    if (roots.contains(hd)) {
-      val inner = roots(hd)
-      if (inner.contains(args)) {
-        val maybeRoot = inner(args).get
-        if (maybeRoot.isDefined) maybeRoot.get
-        else mkRoot1(hd, args)
-      } else mkRoot1(hd, args)
-    } else mkRoot0(hd, args)
-
+    roots.get(hd) match {
+      case None => mkRoot0(hd, args)
+      case Some(inner) =>
+        inner.get(args) match {
+          case None => mkRoot1(hd, args)
+          case Some(rootRef) =>
+            val maybeRoot = rootRef.get
+            if (maybeRoot.isDefined) maybeRoot.get else mkRoot1(hd, args)
+        }
+    }
   @inline final private def mkRoot0(hd: Head, args: Spine): TermImpl = {
     val root = Root(hd, args)
     roots += (hd -> WMap(args -> WeakReference(root)))
@@ -1074,17 +1076,17 @@ object TermImpl extends TermBank {
     root
   }
 
-
   final protected[impl] def mkRedex(left: Term, args: Spine): Redex =
-    if (redexes.contains(left)) {
-      val inner = redexes(left)
-      if (inner.contains(args)) {
-        val maybeRedex = inner(args).get
-        if (maybeRedex.isDefined) maybeRedex.get
-        else mkRedex1(left, args)
-      } else mkRedex1(left, args)
-    } else mkRedex0(left, args)
-
+    redexes.get(left) match {
+      case None => mkRedex0(left, args)
+      case Some(inner) =>
+        inner.get(args) match {
+          case None => mkRedex1(left, args)
+          case Some(redexRef) =>
+            val maybeRedex = redexRef.get
+            if (maybeRedex.isDefined) maybeRedex.get else mkRedex1(left, args)
+        }
+    }
   @inline final private def mkRedex0(left: Term, args: Spine): Redex = {
     val redex = Redex(left, args)
     redexes += (left -> WMap(args -> WeakReference(redex)))
@@ -1101,15 +1103,16 @@ object TermImpl extends TermBank {
   }
 
   final protected[impl] def mkTermAbstr(t: Type, body: Term): TermImpl =
-    if (termAbstractions.contains(body)) {
-      val inner = termAbstractions(body)
-      if (inner.contains(t)) {
-        val maybeAbstr = inner(t).get
-        if (maybeAbstr.isDefined) maybeAbstr.get
-        else mkTermAbstr1(t, body)
-      } else mkTermAbstr1(t, body)
-    } else mkTermAbstr0(t, body)
-
+    termAbstractions.get(body) match {
+      case None => mkTermAbstr0(t, body)
+      case Some(inner) =>
+        inner.get(t) match {
+          case None => mkTermAbstr1(t, body)
+          case Some(abstrRef) =>
+            val maybeAbstr = abstrRef.get
+            if (maybeAbstr.isDefined) maybeAbstr.get else mkTermAbstr1(t, body)
+        }
+    }
   @inline final private def mkTermAbstr0(ty: Type, body: Term): TermImpl = {
     val abs = TermAbstr(ty, body)
     termAbstractions += (body -> WMap(ty -> WeakReference(abs)))
@@ -1126,12 +1129,12 @@ object TermImpl extends TermBank {
   }
 
   final protected[impl] def mkTypeAbstr(body: Term): TermImpl =
-    if (typeAbstractions.contains(body)) {
-      val maybeAbs = typeAbstractions(body).get
-      if (maybeAbs.isDefined) maybeAbs.get
-      else mkTypeAbstr0(body)
-    } else mkTypeAbstr0(body)
-
+    typeAbstractions.get(body) match {
+      case None => mkTypeAbstr0(body)
+      case Some(abstrRef) =>
+        val maybeAbstr = abstrRef.get
+        if (maybeAbstr.isDefined) maybeAbstr.get else mkTypeAbstr0(body)
+    }
   @inline private final def mkTypeAbstr0(body: Term): TermImpl = {
     val abs = TypeAbstr(body)
     abs._sharing = true
@@ -1142,15 +1145,16 @@ object TermImpl extends TermBank {
   // Spines
   final protected[impl] def mkSpineNil: Spine = SNil
   final protected[impl] def mkSpineCons(term: Either[Term, Type], tail: Spine): Spine =
-    if (spines.contains(term)) {
-      val inner = spines(term)
-      if (inner.contains(tail)) {
-        val maybeSpine = inner(tail).get
-        if (maybeSpine.isDefined) maybeSpine.get
-        else mkSpineCons1(term, tail)
-      } else mkSpineCons1(term, tail)
-    } else mkSpineCons0(term, tail)
-
+    spines.get(term) match {
+      case None => mkSpineCons0(term, tail)
+      case Some(inner) =>
+        inner.get(tail) match {
+          case None => mkSpineCons1(term, tail)
+          case Some(spineRef) =>
+            val maybeSpine = spineRef.get
+            if (maybeSpine.isDefined) maybeSpine.get else mkSpineCons1(term, tail)
+        }
+    }
   @inline final private def mkSpineCons0(term: Either[Term, Type], tail: Spine): Spine = {
     val sp = if (term.isLeft) App(term.left.get, tail) else TyApp(term.right.get, tail)
     spines += (term -> MMap(tail -> WeakReference(sp)))
