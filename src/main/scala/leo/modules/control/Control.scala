@@ -38,14 +38,12 @@ object Control {
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
-//  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
-//  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // AC detection
   @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
   import leo.datastructures.{Term, Type}
-  @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
-  @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
+  @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl)(state)
+  @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.Choice.detectChoiceClause(cl)(state)
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -875,6 +873,8 @@ package inferenceControl {
   protected[modules] object Choice {
     import leo.modules.calculus.{Choice => ChoiceRule}
     import leo.datastructures.ClauseAnnotation.FromSystem
+    /* This is for the proof output: Generate a clause with the axiom of choice
+    * for some type as parent to the instantiateChoice rule. */
     private var acMap: Map[Type, AnnotatedClause] = Map()
     final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
 
@@ -901,16 +901,24 @@ package inferenceControl {
       acMap = acMap + ((ty, res))
       res
     }
+    /** Proof output end **/
 
-
-    final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
-      ChoiceRule.detectChoice(cw.cl)
+    final def detectChoiceClause(cw: AnnotatedClause)(state: State[AnnotatedClause]): Boolean = {
+      val maybeChoiceFun = ChoiceRule.detectChoice(cw.cl)
+      if (maybeChoiceFun.isDefined) {
+        val choiceFun = maybeChoiceFun.get
+        state.addChoiceFunction(choiceFun)
+        leo.Out.debug(s"[Choice] Detected ${choiceFun.pretty(state.signature)}")
+        true
+      } else false
     }
 
-    final def instantiateChoice(cw: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(sig: Signature): Set[AnnotatedClause] = {
+    final def instantiateChoice(cw: AnnotatedClause)(state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       if (Configuration.NO_CHOICE) Set()
       else {
         val cl = cw.cl
+        val choiceFuns = state.choiceFunctions
+        val sig = state.signature
         Out.trace(s"[Choice] Searching for possible choice terms...")
         val candidates = ChoiceRule.canApply(cl, choiceFuns)(sig)
         if (candidates.nonEmpty) {
@@ -923,7 +931,7 @@ package inferenceControl {
             val choiceType: Type = candPredicate.ty._funDomainType
 
             if (choiceFuns.contains(choiceType)) {
-              // Instantiate will all choice functions
+              // Instantiate with all registered choice functions
               val choiceFunsForChoiceType = choiceFuns(choiceType)
               val choiceFunIt = choiceFunsForChoiceType.iterator
               while (choiceFunIt.hasNext) {
@@ -934,7 +942,7 @@ package inferenceControl {
               }
             } else {
               // No choice function registered, introduce one now
-              val choiceFun = registerNewChoiceFunction(choiceType)(sig)
+              val choiceFun = registerNewChoiceFunction(choiceType)(state)
               val result0 = ChoiceRule(candPredicate, choiceFun)
               val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
               results = results + result
@@ -947,10 +955,12 @@ package inferenceControl {
       }
     }
 
-    final def registerNewChoiceFunction(ty: Type)(sig: Signature): Term = {
+    final def registerNewChoiceFunction(ty: Type)(state: State[AnnotatedClause]): Term = {
       import leo.modules.HOLSignature.o
-      val newSymb = sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice)
-      Term.mkAtom(newSymb)(sig)
+      val sig = state.signature
+      val newChoiceFun = Term.mkAtom(sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice))(sig)
+      state.addChoiceFunction(newChoiceFun)
+      newChoiceFun
     }
   }
 
