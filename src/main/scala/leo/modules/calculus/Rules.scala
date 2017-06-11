@@ -161,7 +161,7 @@ object PreUni extends AnyUni {
     val result = HuetsPreUnification.unifyAll(vargen, uniLits, uniDepth).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
-      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig)) // FIXME this one is slow
       val resultClause = Clause(updatedOtherLits ++ newLiteralsFromFlexFlex)
       (resultClause, subst)
     }

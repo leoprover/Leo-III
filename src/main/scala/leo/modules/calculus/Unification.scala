@@ -79,7 +79,8 @@ object HuetsPreUnification extends Unification {
              searchDepth: Int, maxDepth: Int) = this(unprocessed, flexRigid, flexFlex, solved, solvedTy, None, searchDepth, maxDepth) // for in node
 
     override final def isTerminal: Boolean = searchDepth >= maxDepth
-    override def toString  = s"{${unprocessed.map(x => s"<${x._1},${x._2}>").mkString}}"
+    override def toString: String  = if (unprocessed != null) s"{result(${result.isDefined}),depth($searchDepth),${unprocessed.map(x => s"<${x._1.pretty},${x._2.pretty}>").mkString}}"
+    else s"{result(${result.isDefined}),depth($searchDepth)}"
   }
 
 

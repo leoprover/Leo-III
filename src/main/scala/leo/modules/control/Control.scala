@@ -1914,10 +1914,10 @@ package schedulingControl {
 
     def defaultStrategy(timeout: Int): RunStrategy = {
       RunStrategy(timeout,
-        Configuration.DEFAULT_PRIMSUBST,
-        Configuration.DEFAULT_SOS,
-        Configuration.DEFAULT_UNIFIERCOUNT,
-        Configuration.DEFAULT_UNIFICATIONDEPTH,
+        Configuration.PRIMSUBST_LEVEL,
+        Configuration.SOS,
+        Configuration.UNIFIER_COUNT,
+        Configuration.UNIFICATION_DEPTH,
         Configuration.DEFAULT_BOOLEXT,
         Configuration.DEFAULT_CHOICE)
     }
