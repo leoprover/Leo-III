@@ -38,14 +38,11 @@ object Control {
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
-//  @inline final def convertLeibnizEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertLeibnizEqualities(clSet)
-//  @inline final def convertAndrewsEqualities(clSet: Set[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertAndrewsEqualities(clSet)
   // AC detection
   @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
-  import leo.datastructures.{Term, Type}
-  @inline final def instantiateChoice(cl: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.Choice.instantiateChoice(cl, choiceFuns)(sig)
-  @inline final def detectChoiceClause(cl: AnnotatedClause): Option[leo.datastructures.Term] = inferenceControl.Choice.detectChoiceClause(cl)
+  @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
+  @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -872,9 +869,11 @@ package inferenceControl {
     }
   }
 
-  protected[modules] object Choice {
+  protected[modules] object ChoiceControl {
     import leo.modules.calculus.{Choice => ChoiceRule}
     import leo.datastructures.ClauseAnnotation.FromSystem
+    /* This is for the proof output: Generate a clause with the axiom of choice
+    * for some type as parent to the instantiateChoice rule. */
     private var acMap: Map[Type, AnnotatedClause] = Map()
     final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
 
@@ -901,20 +900,31 @@ package inferenceControl {
       acMap = acMap + ((ty, res))
       res
     }
+    /** Proof output end **/
 
-
-    final def detectChoiceClause(cw: AnnotatedClause): Option[Term] = {
-      ChoiceRule.detectChoice(cw.cl)
+    final def detectChoiceClause(cw: AnnotatedClause)(state: State[AnnotatedClause]): Boolean = {
+      if (!state.runStrategy.choice) false
+      else {
+        val maybeChoiceFun = ChoiceRule.detectChoice(cw.cl)
+        if (maybeChoiceFun.isDefined) {
+          val choiceFun = maybeChoiceFun.get
+          state.addChoiceFunction(choiceFun)
+          leo.Out.debug(s"[Choice] Detected ${choiceFun.pretty(state.signature)}")
+          true
+        } else false
+      }
     }
 
-    final def instantiateChoice(cw: AnnotatedClause, choiceFuns: Map[Type, Set[Term]])(sig: Signature): Set[AnnotatedClause] = {
-      if (Configuration.NO_CHOICE) Set()
+    final def instantiateChoice(cw: AnnotatedClause)(state: State[AnnotatedClause]): Set[AnnotatedClause] = {
+      if (!state.runStrategy.choice) Set()
       else {
         val cl = cw.cl
+        val choiceFuns = state.choiceFunctions
+        val sig = state.signature
         Out.trace(s"[Choice] Searching for possible choice terms...")
         val candidates = ChoiceRule.canApply(cl, choiceFuns)(sig)
         if (candidates.nonEmpty) {
-          Out.trace(s"[Choice] Found possible choice term.")
+          Out.finest(s"[Choice] Found possible choice term.")
           var results: Set[AnnotatedClause] = Set()
           val candidateIt = candidates.iterator
           while(candidateIt.hasNext) {
@@ -923,7 +933,7 @@ package inferenceControl {
             val choiceType: Type = candPredicate.ty._funDomainType
 
             if (choiceFuns.contains(choiceType)) {
-              // Instantiate will all choice functions
+              // Instantiate with all registered choice functions
               val choiceFunsForChoiceType = choiceFuns(choiceType)
               val choiceFunIt = choiceFunsForChoiceType.iterator
               while (choiceFunIt.hasNext) {
@@ -934,23 +944,27 @@ package inferenceControl {
               }
             } else {
               // No choice function registered, introduce one now
-              val choiceFun = registerNewChoiceFunction(choiceType)(sig)
+              val choiceFun = registerNewChoiceFunction(choiceType)(state)
               val result0 = ChoiceRule(candPredicate, choiceFun)
               val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
               results = results + result
             }
           }
-          Out.trace(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
+          Out.finest(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
           Out.trace(s"[Choice] Results: ${results.map(_.pretty(sig)).mkString(",")}")
           results
         } else Set()
       }
     }
 
-    final def registerNewChoiceFunction(ty: Type)(sig: Signature): Term = {
+    final def registerNewChoiceFunction(ty: Type)(state: State[AnnotatedClause]): Term = {
       import leo.modules.HOLSignature.o
-      val newSymb = sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice)
-      Term.mkAtom(newSymb)(sig)
+      import leo.modules.HOLSignature.Choice
+//      val sig = state.signature
+//      val newChoiceFun = Term.mkAtom(sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice))(sig)
+      val newChoiceFun = Term.mkTypeApp(Choice, ty)
+//      state.addChoiceFunction(newChoiceFun)
+      newChoiceFun
     }
   }
 
@@ -1863,12 +1877,20 @@ package schedulingControl {
 
     val MINTIME = 30
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
-      RunStrategy(-1, 0, true, Configuration.DEFAULT_UNIFIERCOUNT, 1, true),
-      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true),
-      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true)
+      RunStrategy(
+        timeout = -1,
+        primSubst = 0,
+        sos = true,
+        unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
+        uniDepth = 1,
+        boolExt = true,
+        choice = true),
+      
+      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
+      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true)
     )
 
 
@@ -1893,18 +1915,19 @@ package schedulingControl {
           defStrategy
             +: STRATEGY_TEMPLATES.filterNot(_ == defStrategy).take(realStrategyCount-1).map(t =>
             RunStrategy(timePerStrategy, t.primSubst, t.sos,
-              t.unifierCount, t.uniDepth, t.boolExt)):_*
+              t.unifierCount, t.uniDepth, t.boolExt, t.choice)):_*
         )
       }
     }
 
     def defaultStrategy(timeout: Int): RunStrategy = {
       RunStrategy(timeout,
-        Configuration.DEFAULT_PRIMSUBST,
-        Configuration.DEFAULT_SOS,
-        Configuration.DEFAULT_UNIFIERCOUNT,
-        Configuration.DEFAULT_UNIFICATIONDEPTH,
-        Configuration.DEFAULT_BOOLEXT)
+        Configuration.PRIMSUBST_LEVEL,
+        Configuration.SOS,
+        Configuration.UNIFIER_COUNT,
+        Configuration.UNIFICATION_DEPTH,
+        Configuration.DEFAULT_BOOLEXT,
+        Configuration.DEFAULT_CHOICE)
     }
   }
 }

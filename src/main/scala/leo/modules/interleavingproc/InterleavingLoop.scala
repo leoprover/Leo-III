@@ -125,11 +125,9 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
           return Some(new StateView[InterleavingLoop.A](c, cur, Set(), Set(), Some(SZS_Theorem, Some(cur))))}
       } else {
         // Not an empty clause, detect choice definition or do reasoning step.
-        val choiceCandidate = Control.detectChoiceClause(cur)
-        if (choiceCandidate.isDefined) {
-          val choiceFun = choiceCandidate.get
-          state.state.addChoiceFunction(choiceFun)  // TODO Insert in transaction
-          leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}\n ====> Invoking next round")
+        val isChoiceSpec = Control.detectChoiceClause(cur)(state.state)
+        if (isChoiceSpec) {
+          leo.Out.debug(s"Choice function detected ====> Invoking next round")
           state.realeaseUnprocessed
           canApply
         } else {
@@ -241,7 +239,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
     newclauses = newclauses.map(Control.liftEq)
 
-    val choice_result = Control.instantiateChoice(cur, opState.actChoice)
+    val choice_result = Control.instantiateChoice(cur)(state.state)
     // TODO Move to statistics state.incChoiceInstantiations(choice_result.size)
     newclauses = newclauses union choice_result
 

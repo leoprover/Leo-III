@@ -20,7 +20,7 @@ object SeqLoop {
   ////////////////////////////////////
   //// Preprocessing
   ////////////////////////////////////
-  protected[modules] final def preprocess(state: LocalGeneralState, cur: AnnotatedClause): Set[AnnotatedClause] = {
+  protected[modules] final def preprocess(state: LocalState, cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set()
 
@@ -43,19 +43,16 @@ object SeqLoop {
       Control.cnf(Control.miniscope(cl))
     }
 
-    // TODO: Interplay between choice and defined equalities?
-    /*result = result.map {cl =>
-      val choiceCandidate = Control.detectChoiceClause(cl)
-      if (choiceCandidate.isDefined) {
-        val choiceFun = choiceCandidate.get
-        state.addChoiceFunction(choiceFun)
-        leo.Out.debug(s"Choice: function detected ${choiceFun.pretty(sig)}")
-        leo.Out.debug(s"Choice: clause removed ${cl.id}")
+    result = result.map {cl =>
+      leo.Out.trace(s"[Choice] Search for instance in ${cl.id}")
+      val isChoiceSpec = Control.detectChoiceClause(cl)(state)
+      if (isChoiceSpec) {
+        // replace clause by a trivial one: [[true]^t]
+        leo.Out.debug(s"[Choice] Removed ${cl.id}")
         import leo.modules.HOLSignature.LitTrue
-        // replace formula by a trivial one: [[true]^t]
-        AnnotatedClause(Clause(Literal.mkLit(LitTrue, true)), NoAnnotation)
+        AnnotatedClause(leo.modules.termToClause(LitTrue), ClauseAnnotation.FromSystem("redundant"))
       } else cl
-    }*/
+    }
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
 
@@ -131,7 +128,7 @@ object SeqLoop {
       printResult(state, startTime, startTimeWOParsing)
     } catch {
       case e:Exception =>
-        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}");
+        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
         e.printStackTrace()
         throw e
     } finally {
@@ -237,8 +234,8 @@ object SeqLoop {
           } else {
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
-            Out.debug(s"Taken: ${cur.pretty(sig)}")
-            Out.trace(s"Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
+            Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
+            Out.trace(s"[SeqLoop] Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
 
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             /* Functional Extensionality */
@@ -255,11 +252,9 @@ object SeqLoop {
                 endplay(cur, state)
               } else {
                 // Not an empty clause, detect choice definition or do reasoning step.
-                val choiceCandidate = Control.detectChoiceClause(cur)
-                if (choiceCandidate.isDefined) {
-                  val choiceFun = choiceCandidate.get
-                  state.addChoiceFunction(choiceFun)
-                  leo.Out.debug(s"Choice function detected: ${choiceFun.pretty(sig)}")
+                val isChoiceSpec = Control.detectChoiceClause(cur)
+                if (isChoiceSpec) {
+                  leo.Out.debug(s"[SeqLoop] Removed ${cur.id} (Choice Spec)")
                 } else {
                   // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
                   // e.g. by forward subsumption
@@ -267,7 +262,7 @@ object SeqLoop {
                     Control.submit(state.processed, state)
                     if(mainLoopInferences(cur, state)) loop = false
                   } else {
-                    Out.debug(s"Clause ${cur.id} redundant, skipping.")
+                    Out.debug(s"[SeqLoop] Clause ${cur.id} redundant, skipping.")
                     state.incForwardSubsumedCl()
                   }
                 }
@@ -320,7 +315,7 @@ object SeqLoop {
       else false
     } catch {
       case e:Exception =>
-        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}");
+        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}")
         throw e
     } finally {
       if (state.externalProvers.nonEmpty)
@@ -393,7 +388,7 @@ object SeqLoop {
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
 
-    val choice_result = Control.instantiateChoice(cur, state.choiceFunctions)
+    val choice_result = Control.instantiateChoice(cur)
     state.incChoiceInstantiations(choice_result.size)
     newclauses = newclauses union choice_result
     /////////////////////////////////////////

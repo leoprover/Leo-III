@@ -84,7 +84,7 @@ object ParallelMain {
     val initState : State[AnnotatedClause] = State.fresh(sig)
 
     val tactics : Iterator[RunStrategy] = Control.generateRunStrategies.map(strat =>
-      new RunStrategy(timeout.toInt, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt))
+      new RunStrategy(timeout.toInt, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt, strat.choice))
 
     val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 

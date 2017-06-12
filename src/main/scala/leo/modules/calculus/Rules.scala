@@ -161,7 +161,7 @@ object PreUni extends AnyUni {
     val result = HuetsPreUnification.unifyAll(vargen, uniLits, uniDepth).iterator
     result.map {case (subst, flexflex) =>
       val newLiteralsFromFlexFlex = flexflex.map(eq => Literal.mkNeg(eq._1, eq._2))
-      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
+      val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig)) // FIXME this one is slow
       val resultClause = Clause(updatedOtherLits ++ newLiteralsFromFlexFlex)
       (resultClause, subst)
     }
@@ -217,7 +217,7 @@ object Choice extends CalculusRule {
         witnessTerm match {
           case TermApp(prop, Seq(witness)) if prop.isVariable && witness.isVariable =>
             choiceTerm match {
-              case TermApp(`prop`, Seq(TermApp(f, Seq(`prop`)))) => Some(f)
+              case TermApp(`prop`, Seq(TermApp(f, Seq(arg)))) if arg.etaExpand == prop.etaExpand => Some(f)
               case _ => None
             }
           case _ => None
@@ -240,6 +240,7 @@ object Choice extends CalculusRule {
         val occ = leftOccIt.next()
         leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
         val findResult = findChoice(occ, choiceFuns, leftOcc(occ).head)
+        if (findResult != null) leo.Out.trace(s"[Choice Rule] Taken: ${findResult.pretty(sig)}")
         if (findResult != null)
           result = result + findResult
       }
@@ -259,24 +260,25 @@ object Choice extends CalculusRule {
   private final def findChoice(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position): Term =
     findChoice0(occ, choiceFuns, occPos, 0)
 
-  @tailrec
+
   private final def findChoice0(occ: Term, choiceFuns: Map[Type, Set[Term]], occPos: Position, depth: Int): Term = {
-    import leo.datastructures.Term.{Symbol, Bound,TermApp, :::>}
+    import leo.datastructures.Term.{Symbol, Bound,TermApp}
+    import leo.modules.HOLSignature.{Choice => ChoiceSymb}
     occ match {
-      case TermApp(hd, args) if compatibleType(hd.ty) && args.nonEmpty && etaArgs(args.tail, depth) =>
+      case ChoiceSymb(arg) => arg
+      case TermApp(hd, args) if compatibleType(hd.ty) && args.size == 1 =>
         val arg = args.head
         hd match {
           case Bound(_,idx) if idx > occPos.abstractionCount+depth =>
             arg
-          case Symbol(_) => val choiceType =hd.ty._funDomainType._funDomainType
-            if (choiceFuns.contains(choiceType))
-              if (choiceFuns(choiceType).contains(hd))
-                arg
-              else null
-            else null
+          case Symbol(_) =>
+            // hd.ty = (a -> o) -> a
+            val choiceType =hd.ty._funDomainType._funDomainType
+            // choiceType = a
+            val choiceFuns0 = choiceFuns.getOrElse(choiceType, Set.empty)
+            if (choiceFuns0.contains(hd)) arg else null
           case _ => null/* skip */
         }
-      case _ :::> body => findChoice0(body, choiceFuns, occPos, depth+1)
       case _ => null/* skip */
     }
   }

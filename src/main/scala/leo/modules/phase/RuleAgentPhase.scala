@@ -65,7 +65,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       val simpNegConj = Control.expandDefinitions(state.negConjecture)
       negConj = simpNegConj
       Control.initIndexes(simpNegConj +: remainingInput)(state)
-      val result = SeqLoop.preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
+      val result = SeqLoop.preprocess(???, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {
           _.pretty(sig)
@@ -84,7 +84,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     while (preprocessIt.hasNext) {
       val cur = preprocessIt.next()
       Out.trace(s"# Process: ${cur.pretty(sig)}")
-      val processed = SeqLoop.preprocess(state, cur)
+      val processed = SeqLoop.preprocess(???, cur)
       Out.debug(s"# Result:\n\t${
         processed.map {
           _.pretty(sig)

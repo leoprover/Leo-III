@@ -213,11 +213,6 @@ package object datastructures {
   object ClauseProxyOrderings {
     import impl.orderings._
 
-    final val fifo: ClauseProxyOrdering = CPO_FIFO
-    final val lex_weightAge: ClauseProxyOrdering = CPO_WeightAge
-    final val goalsfirst: ClauseProxyOrdering = CPO_GoalsFirst
-    final val nongoalsfirst: ClauseProxyOrdering = CPO_NonGoalsFirst
-
     // Since the orderings are used in a scala priorityqueue which prefers greater elemens, we need to reverse the
     // element orderings in the compounds
     final val oldest_first: ClauseProxyOrdering = CPO_OldestFirst.reverse
@@ -293,11 +288,10 @@ package object datastructures {
     type T = SearchConfiguration[S]
     private val results: mutable.Queue[S] = new mutable.Queue[S]()
     protected var hd: Option[S] = None
-    protected val hdFunc: () => Option[S] = () => nextVal
     protected var terminal: Boolean = false
     protected def initDS(): Unit = {
       add(initial)
-      hd = hdFunc()
+      hd = nextVal
     }
 
     @tailrec
@@ -331,7 +325,7 @@ package object datastructures {
         def next: S = {
           if (hd.isEmpty && terminal) throw new NoSuchElementException("Stream is empty")
           else {
-            if (hd.isEmpty) {hd = hdFunc(); if (hd.isEmpty) {terminal = true;throw new NoSuchElementException("Stream is empty")} }
+            if (hd.isEmpty) {hd = nextVal; if (hd.isEmpty) {terminal = true;throw new NoSuchElementException("Stream is empty")} }
             val ret = hd.get
             hd = None
             ret
@@ -341,7 +335,7 @@ package object datastructures {
           if (hd.isEmpty) {
             if (terminal) false
             else {
-              hd = hdFunc()
+              hd = nextVal
               if (hd.isEmpty) {
                 terminal = true
                 false

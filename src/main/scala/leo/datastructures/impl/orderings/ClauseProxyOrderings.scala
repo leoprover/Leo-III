@@ -4,23 +4,6 @@ import leo._
 import leo.datastructures.ClauseProxy
 import leo.datastructures.Signature
 
-  @deprecated("Use CPO_OldestFirst instead", "8.2.17")
-  object CPO_FIFO extends ClauseProxyOrdering {
-    def compare(x: ClauseProxy, y: ClauseProxy): Int = x.id compare y.id
-  }
-  @deprecated("Use CPO_SmallerFirst instead", "8.2.17")
-  object CPO_WeightAge extends ClauseProxyOrdering {
-    def compare(a: ClauseProxy, b: ClauseProxy) = implicitly[Ordering[Tuple2[Int,Long]]].compare((a.weight, a.id),(b.weight, b.id))
-  }
-  @deprecated("Use CPO_GoalsFirst2 instead", "8.2.17")
-  object CPO_GoalsFirst extends ClauseProxyOrdering {
-    def compare(a: ClauseProxy, b: ClauseProxy) = implicitly[Ordering[Tuple2[Double, Int]]].compare((1 - ((1+a.cl.negLits.size)/(1+a.cl.lits.size)), a.weight), (1 - ((1+b.cl.negLits.size)/(b.cl.lits.size+1)), b.weight))
-  }
-  @deprecated("Use CPO_NonGoalsFirst2 instead", "8.2.17")
-  object CPO_NonGoalsFirst extends ClauseProxyOrdering {
-    def compare(a: ClauseProxy, b: ClauseProxy) = implicitly[Ordering[Tuple2[Double, Int]]].compare((1 - ((1+a.cl.posLits.size)/(1+a.cl.lits.size)), a.weight), (1 - ((1+b.cl.posLits.size)/(b.cl.lits.size+1)), b.weight))
-  }
-
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its symbol weight smaller.
   * Symbolweight `w(c)` of a clause `c` is calculated by `w(c) = w(fv(c)) + Σ w(l_i)`, where
   *  - `(l_i)_i` are the literals of `c`,
