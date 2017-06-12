@@ -391,6 +391,10 @@ object SeqLoop {
     val choice_result = Control.instantiateChoice(cur)
     state.incChoiceInstantiations(choice_result.size)
     newclauses = newclauses union choice_result
+
+    val funspec_result = leo.modules.control.inferenceControl.Choice.addFuncSpec(cur)(sig)
+    newclauses = newclauses union funspec_result
+
     /////////////////////////////////////////
     // Generating inferences END
     /////////////////////////////////////////

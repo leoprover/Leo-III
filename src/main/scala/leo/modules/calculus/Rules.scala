@@ -4,7 +4,7 @@ import leo.Out
 import leo.datastructures.Literal.Side
 import leo.datastructures._
 import leo.modules.HOLSignature.{LitTrue, o}
-import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem}
+import leo.modules.output.{SZS_CounterTheorem, SZS_EquiSatisfiable, SZS_Theorem, StatusSZS}
 
 import scala.annotation.tailrec
 
@@ -317,6 +317,65 @@ object Choice extends CalculusRule {
     // lit2: [term (choicefun term)]^t
     val lit2 = Literal.mkLit(Term.mkTermApp(term, Term.mkTermApp(choiceFun, term)).betaNormalize.etaExpand, true)
     Clause(Vector(lit1, lit2))
+  }
+}
+
+object SolveFuncSpec extends CalculusRule {
+  import leo.datastructures.Term.{λ, mkBound}
+  import leo.modules.HOLSignature.{Choice => ε, Impl, &, ===}
+
+  final val name: String = "solveFuncSpec"
+  override final val inferenceStatus = SZS_Theorem
+
+  type Argument = Term
+  type Result = Term
+
+  /**
+    * For inputs `((s_ij)_{1<=j<=J},t_i)_{1<=i<=N}` return the term
+    * `λx_1....λ.x_J.ε(λy. ⋀_i<=N. (⋀_j<=J. x_j = s_ij) => y = t_i)`.
+    *
+    * @param funTy
+    * @param spec
+    * @param sig
+    * @return
+    */
+  final def apply(funTy: Type, spec: Seq[(Seq[Argument], Result)])
+                 (implicit sig: Signature): Term = {
+    assert(spec.nonEmpty)
+    assert(spec.forall(e => e._1.size == spec.head._1.size && e._2.ty == spec.head._2.ty))
+
+    val (paramTypes, resultType) = funTy.splitFunParamTypes
+    val paramCount = paramTypes.size
+    val resultVar: Term = mkBound(resultType, 1)
+
+    val specIt = spec.iterator
+    var choiceTerm: Term = null
+
+    def paramVar(i: Int) = mkBound(paramTypes(i), paramCount-i+1)
+    while (specIt.hasNext) {
+      val (args,res) = specIt.next()
+      val argsIt = args.iterator
+      var i = 0
+      var caseTerm: Term = null
+      while (argsIt.hasNext) {
+        val arg = argsIt.next()
+        if (caseTerm == null) {
+          caseTerm = ===(paramVar(i), arg)
+        } else {
+          caseTerm = &(caseTerm, ===(paramVar(i), arg))
+        }
+        i = i+1
+      }
+      val caseTerm0: Term = Impl(caseTerm, ===(resultVar,res))
+      if (choiceTerm == null) {
+        choiceTerm = caseTerm0
+      } else {
+        choiceTerm = &(choiceTerm, caseTerm0)
+      }
+    }
+    val result: Term = λ(paramTypes)(ε(λ(resultType)(choiceTerm)))
+    leo.Out.trace(s"[SolveFuncSpec] Result: ${result.pretty(sig)}")
+    result
   }
 }
 
