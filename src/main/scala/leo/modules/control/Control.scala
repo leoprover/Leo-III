@@ -41,8 +41,8 @@ object Control {
   // AC detection
   @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
-  @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
-  @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
+  @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
+  @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: LocalState): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -902,7 +902,7 @@ package inferenceControl {
     }
     /** Proof output end **/
 
-    final def detectChoiceClause(cw: AnnotatedClause)(state: State[AnnotatedClause]): Boolean = {
+    final def detectChoiceClause(cw: AnnotatedClause)(state: GeneralState[AnnotatedClause]): Boolean = {
       if (!state.runStrategy.choice) false
       else {
         val maybeChoiceFun = ChoiceRule.detectChoice(cw.cl)
@@ -915,7 +915,7 @@ package inferenceControl {
       }
     }
 
-    final def instantiateChoice(cw: AnnotatedClause)(state: State[AnnotatedClause]): Set[AnnotatedClause] = {
+    final def instantiateChoice(cw: AnnotatedClause)(state: GeneralState[AnnotatedClause]): Set[AnnotatedClause] = {
       if (!state.runStrategy.choice) Set()
       else {
         val cl = cw.cl
@@ -957,7 +957,7 @@ package inferenceControl {
       }
     }
 
-    final def registerNewChoiceFunction(ty: Type)(state: State[AnnotatedClause]): Term = {
+    final def registerNewChoiceFunction(ty: Type)(state: GeneralState[AnnotatedClause]): Term = {
       import leo.modules.HOLSignature.o
       import leo.modules.HOLSignature.Choice
 //      val sig = state.signature

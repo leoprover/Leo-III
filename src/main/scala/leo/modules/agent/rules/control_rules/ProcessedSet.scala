@@ -10,18 +10,18 @@ import leo.modules.output.SZS_Error
 
 import scala.collection.mutable
 
-case object Processed extends DataType[AnnotatedClause]{
-  override def convert(d: Any): AnnotatedClause = d match {
-    case c : (AnnotatedClause) => c
-    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
-  }
-}
+//case object Processed extends DataType[AnnotatedClause]{
+//  override def convert(d: Any): AnnotatedClause = d match {
+//    case c : (AnnotatedClause) => c
+//    case _ => throw new SZSException(SZS_Error, s"Expected AnnotatedClause, but got $d")
+//  }
+//}
 
 /**
   * Stores the processed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
+class ProcessedSet(processedType : DataType[AnnotatedClause])(implicit state : Control.LocalFVState)  extends DataStore{
 
   implicit val sig : Signature = state.signature
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
@@ -49,7 +49,7 @@ class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
     *
     * @return all stored types
     */
-  override val storedTypes: Seq[DataType[Any]] = Seq(Processed)
+  override val storedTypes: Seq[DataType[Any]] = Seq(processedType)
 
   /**
     *
@@ -59,9 +59,9 @@ class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
     */
   override def updateResult(r: Delta) : Delta = synchronized {
     val delta = Result()
-    val ins1 = r.inserts(Processed)
-    val del1 = r.removes(Processed)
-    val (del2, ins2) = r.updates(Processed).unzip
+    val ins1 = r.inserts(processedType)
+    val del1 = r.removes(processedType)
+    val (del2, ins2) = r.updates(processedType).unzip
 
     val ins = (ins1 ++ ins2).iterator
     val del = (del1 ++ del2).iterator
@@ -69,7 +69,7 @@ class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
     while(del.hasNext){
       val c = del.next
       if(set.remove(c)) {
-        delta.remove(Processed)(c)
+        delta.remove(processedType)(c)
         idMap.remove(c.id)
         Control.removeFromIndex(c)
       }
@@ -79,7 +79,7 @@ class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
     while(ins.hasNext) {
       val c = ins.next
       if(set.add(c)) {
-        delta.insert(Processed)(c)
+        delta.insert(processedType)(c)
         val newID = nextID.incrementAndGet()
         idMap.put(c.id, newID)
         maxIDv = newID
@@ -105,7 +105,7 @@ class ProcessedSet(implicit state : Control.LocalFVState)  extends DataStore{
     * @return
     */
   override def get[T](t: DataType[T]): Set[T] = t match{
-    case Processed => synchronized(set.toSet.asInstanceOf[Set[T]])
+    case processedType => synchronized(set.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }

@@ -1,8 +1,8 @@
 package leo.modules.agent.rules.control_rules
 
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.{Blackboard, DataStore, DataType}
-import leo.modules.{FVState, GeneralState, SZSException}
+import leo.modules.{FVState, SZSException}
 import leo.modules.agent.rules._
 import leo.modules.output.SZS_Error
 
@@ -29,6 +29,8 @@ trait AnnotatedClauseGraph extends RuleGraph[AnnotatedClause, AnnotatedClause] {
   */
 class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends AnnotatedClauseGraph {
 
+  case object Processed extends ClauseType
+  case object Unprocessed extends ClauseType
   case object Normalize extends ClauseType
   case object Generate extends ClauseType
   case object Unify extends ClauseType
@@ -64,6 +66,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
   var unify : UnificationRule= null
   var emptyCl : EmptyClauseRule= null
   var done : ParamodDoneRule=null
+  var choice : ChoiceRule=null
 
   def selectNext() : Boolean = {
     val n = normalizeSet.isEmpty
@@ -84,10 +87,10 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
 
   override def initGraph(initSet: Iterable[AnnotatedClause])(optionalHint: Option[AnnotatedClause] = None)(implicit blackoard: Blackboard): Unit = {
 
-    passiveSet = new UnprocessedSet(optionalHint)
-    activeSet = new ProcessedSet()
+    passiveSet = new UnprocessedSet(Unprocessed)
+    activeSet = new ProcessedSet(Processed)
     normalizeBarrier = new AgentBarrier(Normalize, 4)
-    generateBarrier = new AgentBarrier(Generate, 3)
+    generateBarrier = if(state.runStrategy.choice) new AgentBarrier(Generate, 4) else new AgentBarrier(Generate, 3)
     normalizeSet = new TypedSet(Normalize)
     generateSet  = new TypedSet(Generate)
     unifySet = new TypedSet(Unify)
@@ -109,22 +112,28 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     unify = new UnificationRule(Unify, Unprocessed)
     emptyCl = new EmptyClauseRule(ResultType, Unprocessed, Generate, Unify)
     done = new ParamodDoneRule(Done, Unify, Generate, Unprocessed, doneSet, generateSet)(activeSet)
+    choice = new ChoiceRule(Generate, Unify, Unprocessed)
 
-    rules = Seq(
-      select,
-      simp,
-      lift,
-      func,
-      cnf,
-      moveNorm,
-      moveGen,
-      factor,
-      primSubst,
-      paramod,
-      unify,
-      emptyCl,
-      done
-    )
+    rules = {
+      val r = Seq(
+        select,
+        simp,
+        lift,
+        func,
+        cnf,
+        moveNorm,
+        moveGen,
+        factor,
+        primSubst,
+        paramod,
+        unify,
+        emptyCl,
+        done
+      )
+      if (state.runStrategy.choice) choice +: r
+      else r
+    }
+
     dataStructures = Seq(
       passiveSet,
       activeSet,
