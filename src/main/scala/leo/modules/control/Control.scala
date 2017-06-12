@@ -1877,7 +1877,15 @@ package schedulingControl {
 
     val MINTIME = 30
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
-      RunStrategy(-1, 0, true, Configuration.DEFAULT_UNIFIERCOUNT, 1, true, true),
+      RunStrategy(
+        timeout = -1,
+        primSubst = 0,
+        sos = true,
+        unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
+        uniDepth = 1,
+        boolExt = true,
+        choice = true),
+      
       RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
       RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
       RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
