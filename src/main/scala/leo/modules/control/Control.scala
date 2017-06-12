@@ -43,6 +43,7 @@ object Control {
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
+  @inline final def guessFuncSpec(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.guessFuncSpec(cls)(state)
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -71,7 +72,7 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
-  import leo.datastructures.ClauseAnnotation.{InferredFrom}
+  import leo.datastructures.ClauseAnnotation.InferredFrom
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -896,7 +897,7 @@ package inferenceControl {
           )
         ))
       )), true)
-      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("tautology"), ClauseAnnotation.PropNoProp)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("axiom_of_choice"), ClauseAnnotation.PropNoProp)
       acMap = acMap + ((ty, res))
       res
     }
@@ -944,7 +945,7 @@ package inferenceControl {
               }
             } else {
               // No choice function registered, introduce one now
-              val choiceFun = registerNewChoiceFunction(choiceType)(state)
+              val choiceFun = registerNewChoiceFunction(choiceType)
               val result0 = ChoiceRule(candPredicate, choiceFun)
               val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
               results = results + result
@@ -957,21 +958,22 @@ package inferenceControl {
       }
     }
 
-    final def registerNewChoiceFunction(ty: Type)(state: State[AnnotatedClause]): Term = {
-      import leo.modules.HOLSignature.o
+    final def registerNewChoiceFunction(ty: Type): Term = {
       import leo.modules.HOLSignature.Choice
-//      val sig = state.signature
-//      val newChoiceFun = Term.mkAtom(sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice))(sig)
-      val newChoiceFun = Term.mkTypeApp(Choice, ty)
-//      state.addChoiceFunction(newChoiceFun)
-      newChoiceFun
+      Term.mkTypeApp(Choice, ty)
     }
 
-    final def addFuncSpec(cw: AnnotatedClause)(sig: Signature): Set[AnnotatedClause] = {
-      import leo.datastructures.Term.TermApp
+    final def guessFuncSpec(cls: Set[AnnotatedClause])(state: LocalState): Set[AnnotatedClause] = {
+      cls.flatMap(guessFuncSpec(_)(state))
+    }
 
+    final def guessFuncSpec(cw: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
+      import leo.datastructures.Term.TermApp
+      implicit val sig = state.signature
+      leo.Out.finest(s"call guesFuncSpec on ${cw.id}")
       val cl = cw.cl
       val uniLits = cl.negLits.filter(_.uni)
+      leo.Out.finest(s"call guesFuncSpec on ${uniLits.map(_.pretty(sig)).mkString("\n")}")
       var collectedSpecs: Map[Term, Seq[(Seq[Term], Term)]] = Map.empty.withDefaultValue(Seq.empty)
       val uniLitsIt = uniLits.iterator
       while (uniLitsIt.hasNext) {

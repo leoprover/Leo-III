@@ -388,13 +388,13 @@ object SeqLoop {
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(Control.liftEq)
 
+    /* guess functions for those not solved by unification */
+//    val funspec_result = Control.guessFuncSpec(Set(cur))(state)
+//    newclauses = newclauses union funspec_result
+
     val choice_result = Control.instantiateChoice(cur)
     state.incChoiceInstantiations(choice_result.size)
     newclauses = newclauses union choice_result
-
-    val funspec_result = leo.modules.control.inferenceControl.Choice.addFuncSpec(cur)(sig)
-    newclauses = newclauses union funspec_result
-
     /////////////////////////////////////////
     // Generating inferences END
     /////////////////////////////////////////
