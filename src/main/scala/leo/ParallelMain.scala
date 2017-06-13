@@ -92,13 +92,13 @@ object ParallelMain {
       printPhase(schedPhase)
       if (!schedPhase.execute()) {
         scheduler.killAll()
-        TimeOutProcess.kill()
+        TimeOutProcess.killOnly()
         unexpectedEnd(System.currentTimeMillis() - startTime)
         return
       }
 
 
-      TimeOutProcess.kill()
+      TimeOutProcess.killOnly()
       val endTime = System.currentTimeMillis()
       val time = System.currentTimeMillis() - startTime
       scheduler.killAll()
@@ -129,7 +129,8 @@ object ParallelMain {
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } finally {
-      TimeOutProcess.kill()
+      if(!TimeOutProcess.isFinished)
+        TimeOutProcess.killOnly()
     }
   }
 
@@ -173,12 +174,12 @@ object ParallelMain {
       printPhase(iPhase)
       if (!iPhase.execute()) {
         scheduler.killAll()
-        TimeOutProcess.kill()
+        TimeOutProcess.killOnly()
         unexpectedEnd(System.currentTimeMillis() - startTime)
         return
       }
 
-      TimeOutProcess.kill()
+      TimeOutProcess.killOnly()
       val endTime = System.currentTimeMillis()
       val time = System.currentTimeMillis() - startTime
       scheduler.killAll()
@@ -209,7 +210,8 @@ object ParallelMain {
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } finally {
-      TimeOutProcess.kill()
+      if(!TimeOutProcess.isFinished)
+        TimeOutProcess.killOnly()
     }
   }
 
@@ -242,12 +244,12 @@ object ParallelMain {
       printPhase(phase)
       if (!phase.execute()) {
         scheduler.killAll()
-        TimeOutProcess.kill()
+        TimeOutProcess.killOnly()
         unexpectedEnd(System.currentTimeMillis() - startTime)
         return
       }
 
-      TimeOutProcess.kill()
+      TimeOutProcess.killOnly()
       val endTime = System.currentTimeMillis()
       val time = System.currentTimeMillis() - startTime
       scheduler.killAll()
@@ -287,7 +289,8 @@ object ParallelMain {
         Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
       }
     } finally {
-      TimeOutProcess.kill()
+      if(!TimeOutProcess.isFinished)
+        TimeOutProcess.killOnly()
     }
   }
 
@@ -325,15 +328,22 @@ object ParallelMain {
 
     def isFinished = synchronized(finished)
 
-    def kill() : Unit = {
-      synchronized{
-        exit = true
-        this.interrupt()
-        Out.finest("Scheduler killed before timeout.")
-        blackboard.filterAll(_.filter(DoneEvent))
-        scheduler.killAll()
-      }
+    def killOnly() : Unit = synchronized {
+      exit = true
+      finished = true
+      this.interrupt()
     }
+
+//    def kill() : Unit = {
+//      synchronized{
+//        exit = true
+//        finished = true
+//        this.interrupt()
+//        Out.finest("Scheduler killed before timeout.")
+//        blackboard.filterAll(_.filter(DoneEvent))
+//        scheduler.killAll()
+//      }
+//    }
 
     override def run(): Unit = {
       //      println("Init delay kill.")
