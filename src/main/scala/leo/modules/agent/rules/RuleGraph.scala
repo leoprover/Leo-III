@@ -59,7 +59,7 @@ trait RuleGraph[In, Out] {
     * @param initSet Set of initial data
     * @param blackoard The blackboard all action is sceduled over
     */
-  def initGraph(initSet : Iterable[In])(optionalHint : Option[In])(implicit blackoard : Blackboard) = {
+  def initGraph(initSet : Iterable[In])(implicit blackoard : Blackboard) = {
     // Add DS
     dataStructures foreach (x => blackoard.addDS(x))
 

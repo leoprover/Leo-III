@@ -246,7 +246,7 @@ object ParallelMain {
 
     val proof : Option[AnnotatedClause] = graph.fetchResult.headOption
     val szsStatus  = if (proof.nonEmpty){
-      if(phase.negSet) SZS_Theorem
+      if(state.negConjecture != null) SZS_Theorem
       else SZS_CounterSatisfiable
     } else if(time > timeout){
       SZS_Timeout

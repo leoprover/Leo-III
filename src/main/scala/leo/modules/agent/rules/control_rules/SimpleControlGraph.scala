@@ -29,6 +29,7 @@ trait AnnotatedClauseGraph extends RuleGraph[AnnotatedClause, AnnotatedClause] {
   */
 class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends AnnotatedClauseGraph {
 
+  case object Init extends ClauseType
   case object Processed extends ClauseType
   case object Unprocessed extends ClauseType
   case object Normalize extends ClauseType
@@ -42,31 +43,34 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
   }
 
   // DS
-  var passiveSet : UnprocessedSet = null
-  var activeSet : ProcessedSet = null
-  var normalizeBarrier : AgentBarrier[AnnotatedClause] = null
-  var generateBarrier : AgentBarrier[AnnotatedClause] = null
-  var normalizeSet : TypedSet[AnnotatedClause] = null
-  var generateSet : TypedSet[AnnotatedClause] = null
-  var unifySet : TypedSet[AnnotatedClause]= null
-  var resultSet : TypedSet[AnnotatedClause]= null
-  var doneSet : TypedSet[(Long, AnnotatedClause)]=null
+  var passiveSet : UnprocessedSet = _
+  var activeSet : ProcessedSet = _
+  var normalizeBarrier : AgentBarrier[AnnotatedClause] = _
+  var generateBarrier : AgentBarrier[AnnotatedClause] = _
+  var normalizeSet : TypedSet[AnnotatedClause] = _
+  var generateSet : TypedSet[AnnotatedClause] = _
+  var unifySet : TypedSet[AnnotatedClause]= _
+  var resultSet : TypedSet[AnnotatedClause]= _
+  var doneSet : TypedSet[(Long, AnnotatedClause)]=_
+  var preprocessSet : TypedSet[AnnotatedClause] = _
 
   // Rules
-  var select : SelectionRule= null
-  var simp : RewriteRule= null
-  var lift : LiftEqRule= null
-  var func : FuncExtRule= null
-  var cnf : CNFRule= null
-  var moveGen : MovingRule[AnnotatedClause]= null
-  var moveNorm : ForwardSubsumptionRule= null
-  var factor : FactorRule= null
-  var primSubst : PrimsubstRule= null
-  var paramod : ParamodRule= null
-  var unify : UnificationRule= null
-  var emptyCl : EmptyClauseRule= null
-  var done : ParamodDoneRule=null
-  var choice : ChoiceRule=null
+  var select : SelectionRule= _
+  var simp : RewriteRule= _
+  var lift : LiftEqRule= _
+  var func : FuncExtRule= _
+  var cnf : CNFRule= _
+  var moveGen : MovingRule[AnnotatedClause]= _
+  var moveNorm : ForwardSubsumptionRule= _
+  var factor : FactorRule= _
+  var primSubst : PrimsubstRule= _
+  var paramod : ParamodRule= _
+  var unify : UnificationRule= _
+  var emptyCl : EmptyClauseRule= _
+  var done : ParamodDoneRule=_
+  var choice : ChoiceRule=_
+  var preprocess : PreprocessRule=_
+  var activateSelect : ActiveRule[AnnotatedClause]=_
 
   def selectNext() : Boolean = {
     val n = normalizeSet.isEmpty
@@ -79,13 +83,18 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     n && g && u && d
   }
 
+  def startSelect() : Boolean = {
+    val p = preprocessSet.isEmpty
+    p
+  }
+
   var rules: Iterable[Rule] = Seq[Rule]()
 
   var dataStructures: Iterable[DataStore] = Seq[DataStore]()
 
-  override val initType: DataType[AnnotatedClause] = Unprocessed
+  override val initType: DataType[AnnotatedClause] = Init
 
-  override def initGraph(initSet: Iterable[AnnotatedClause])(optionalHint: Option[AnnotatedClause] = None)(implicit blackoard: Blackboard): Unit = {
+  override def initGraph(initSet: Iterable[AnnotatedClause])(implicit blackoard: Blackboard): Unit = {
 
     passiveSet = new UnprocessedSet(Unprocessed)
     activeSet = new ProcessedSet(Processed)
@@ -96,10 +105,12 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     unifySet = new TypedSet(Unify)
     resultSet = new TypedSet(ResultType)
     doneSet = new TypedSet(Done)
+    preprocessSet = new TypedSet(Init)
 
     // Rules
     select = new SelectionRule(Unprocessed, Normalize, selectNext, passiveSet,
       Seq(Normalize, normalizeBarrier.lockType, generateBarrier.lockType, Processed, Unify, Done))
+    activateSelect = new ActiveRule[AnnotatedClause](select, Init)(startSelect)
     simp = new RewriteRule(Normalize, Normalize, activeSet.get)
     lift = new LiftEqRule(Normalize, Normalize)
     func = new FuncExtRule(Normalize, Normalize)
@@ -113,10 +124,11 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     emptyCl = new EmptyClauseRule(ResultType, Unprocessed, Generate, Unify)
     done = new ParamodDoneRule(Done, Unify, Generate, Unprocessed, doneSet, generateSet)(activeSet)
     choice = new ChoiceRule(Generate, Unify, Unprocessed)
+    preprocess = new PreprocessRule(Init, Unprocessed)
 
     rules = {
       val r = Seq(
-        select,
+        activateSelect,
         simp,
         lift,
         func,
@@ -128,7 +140,8 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
         paramod,
         unify,
         emptyCl,
-        done
+        done,
+        preprocess
       )
       if (state.runStrategy.choice) choice +: r
       else r
@@ -143,9 +156,10 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
       generateSet,
       unifySet,
       resultSet,
-      doneSet
+      doneSet,
+      preprocessSet
     )
-    super.initGraph(initSet)(None)
+    super.initGraph(initSet)
   }
 
   override def fetchResult(implicit blackboard: Blackboard): Iterable[AnnotatedClause] = resultSet.get(ResultType)
