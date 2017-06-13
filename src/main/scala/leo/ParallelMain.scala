@@ -81,53 +81,56 @@ object ParallelMain {
     val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
     TimeOutProcess.start()
 
-    val initState : State[AnnotatedClause] = State.fresh(sig)
+    try {
+      val initState: State[AnnotatedClause] = State.fresh(sig)
 
-    val tactics : Iterator[RunStrategy] = Control.generateRunStrategies.map(strat =>
-      new RunStrategy(timeout.toInt, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt, strat.choice))
+      val tactics: Iterator[RunStrategy] = Control.generateRunStrategies.map(strat =>
+        new RunStrategy(timeout.toInt, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt, strat.choice))
 
-    val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
+      val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 
-    printPhase(schedPhase)
-    if (!schedPhase.execute()) {
-      scheduler.killAll()
+      printPhase(schedPhase)
+      if (!schedPhase.execute()) {
+        scheduler.killAll()
+        TimeOutProcess.kill()
+        unexpectedEnd(System.currentTimeMillis() - startTime)
+        return
+      }
+
+
       TimeOutProcess.kill()
-      unexpectedEnd(System.currentTimeMillis() - startTime)
-      return
+      val endTime = System.currentTimeMillis()
+      val time = System.currentTimeMillis() - startTime
+      scheduler.killAll()
+
+      //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+      val szsStatus = initState.szsStatus
+      Out.output("")
+      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+
+      //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+
+      Out.comment(s"No. of loop iterations: ${initState.noProofLoops}")
+      Out.comment(s"No. of processed clauses: ${initState.noProcessedCl}")
+      Out.comment(s"No. of generated clauses: ${initState.noGeneratedCl}")
+      Out.comment(s"No. of forward subsumed clauses: ${initState.noForwardSubsumedCl}")
+      Out.comment(s"No. of backward subsumed clauses: ${initState.noBackwardSubsumedCl}")
+      Out.comment(s"No. of subsumed descendants deleted: ${initState.noDescendantsDeleted}")
+      Out.comment(s"No. of rewrite rules in store: ${initState.rewriteRules.size}")
+      Out.comment(s"No. of other units in store: ${initState.nonRewriteUnits.size}")
+      Out.comment(s"No. of choice functions detected: ${initState.choiceFunctionCount}")
+      Out.comment(s"No. of choice instantiations: ${initState.choiceInstantiations}")
+      val proof = initState.derivationClause
+      if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
+        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+        //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+        Out.output(userConstantsForProof(sig))
+        Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
+        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      }
+    } finally {
+      TimeOutProcess.kill()
     }
-
-
-    TimeOutProcess.kill()
-    val endTime = System.currentTimeMillis()
-    val time = System.currentTimeMillis() - startTime
-    scheduler.killAll()
-
-    //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
-    val szsStatus  = initState.szsStatus
-    Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
-
-    //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
-
-    Out.comment(s"No. of loop iterations: ${initState.noProofLoops}")
-    Out.comment(s"No. of processed clauses: ${initState.noProcessedCl}")
-    Out.comment(s"No. of generated clauses: ${initState.noGeneratedCl}")
-    Out.comment(s"No. of forward subsumed clauses: ${initState.noForwardSubsumedCl}")
-    Out.comment(s"No. of backward subsumed clauses: ${initState.noBackwardSubsumedCl}")
-    Out.comment(s"No. of subsumed descendants deleted: ${initState.noDescendantsDeleted}")
-    Out.comment(s"No. of rewrite rules in store: ${initState.rewriteRules.size}")
-    Out.comment(s"No. of other units in store: ${initState.nonRewriteUnits.size}")
-    Out.comment(s"No. of choice functions detected: ${initState.choiceFunctionCount}")
-    Out.comment(s"No. of choice instantiations: ${initState.choiceInstantiations}")
-    val proof = initState.derivationClause
-    if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
-      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Out.output(userConstantsForProof(sig))
-      Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
-      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
-    }
-
   }
 
   /**
@@ -138,10 +141,11 @@ object ParallelMain {
     * @param startTime
     */
   def runParallel(startTime : Long){
+
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
-//    SignatureBlackboard.set(sig)
+    //    SignatureBlackboard.set(sig)
     val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
 
     // Blackboard and Scheduler
@@ -150,59 +154,63 @@ object ParallelMain {
     val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
     TimeOutProcess.start()
 
-    // Datastrucutres
-    val state = BlackboardState.fresh(sig)
-    val uniStore = new UnificationStore[InterleavingLoop.A]()
-    val iLoop : InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
-    val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop, blackboard)
-    val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
-    val extAgent = new ExternalAgent(state, sig)
+    try {
 
-    val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
+      // Datastrucutres
+      val state = BlackboardState.fresh(sig)
+      val uniStore = new UnificationStore[InterleavingLoop.A]()
+      val iLoop: InterleavingLoop = new InterleavingLoop(state, uniStore, sig)
+      val iLoopAgent = new InterferingLoopAgent[StateView[InterleavingLoop.A]](iLoop, blackboard)
+      val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
+      val extAgent = new ExternalAgent(state, sig)
 
-    state.state.setRunStrategy(Control.defaultStrategy(Configuration.TIMEOUT))
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
 
-    blackboard.addDS(state)
-    blackboard.addDS(uniStore)
-    printPhase(iPhase)
-    if (!iPhase.execute()) {
-      scheduler.killAll()
+      state.state.setRunStrategy(Control.defaultStrategy(Configuration.TIMEOUT))
+
+      blackboard.addDS(state)
+      blackboard.addDS(uniStore)
+      printPhase(iPhase)
+      if (!iPhase.execute()) {
+        scheduler.killAll()
+        TimeOutProcess.kill()
+        unexpectedEnd(System.currentTimeMillis() - startTime)
+        return
+      }
+
       TimeOutProcess.kill()
-      unexpectedEnd(System.currentTimeMillis() - startTime)
-      return
+      val endTime = System.currentTimeMillis()
+      val time = System.currentTimeMillis() - startTime
+      scheduler.killAll()
+
+      //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
+      val szsStatus = state.state.szsStatus
+      Out.output("")
+      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+
+      //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+
+      Out.comment(s"No. of loop iterations: ${state.state.noProofLoops}")
+      Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
+      Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
+      Out.comment(s"No. of forward subsumed clauses: ${state.state.noForwardSubsumedCl}")
+      Out.comment(s"No. of backward subsumed clauses: ${state.state.noBackwardSubsumedCl}")
+      Out.comment(s"No. of subsumed descendants deleted: ${state.state.noDescendantsDeleted}")
+      Out.comment(s"No. of rewrite rules in store: ${state.state.rewriteRules.size}")
+      Out.comment(s"No. of other units in store: ${state.state.nonRewriteUnits.size}")
+      Out.comment(s"No. of choice functions detected: ${state.state.choiceFunctionCount}")
+      Out.comment(s"No. of choice instantiations: ${state.state.choiceInstantiations}")
+      val proof = state.state.derivationClause
+      if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
+        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+        //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+        Out.output(userConstantsForProof(sig))
+        Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
+        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      }
+    } finally {
+      TimeOutProcess.kill()
     }
-
-    TimeOutProcess.kill()
-    val endTime = System.currentTimeMillis()
-    val time = System.currentTimeMillis() - startTime
-    scheduler.killAll()
-
-//      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
-    val szsStatus  = state.state.szsStatus
-    Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
-
-//      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
-
-    Out.comment(s"No. of loop iterations: ${state.state.noProofLoops}")
-    Out.comment(s"No. of processed clauses: ${state.state.noProcessedCl}")
-    Out.comment(s"No. of generated clauses: ${state.state.noGeneratedCl}")
-    Out.comment(s"No. of forward subsumed clauses: ${state.state.noForwardSubsumedCl}")
-    Out.comment(s"No. of backward subsumed clauses: ${state.state.noBackwardSubsumedCl}")
-    Out.comment(s"No. of subsumed descendants deleted: ${state.state.noDescendantsDeleted}")
-    Out.comment(s"No. of rewrite rules in store: ${state.state.rewriteRules.size}")
-    Out.comment(s"No. of other units in store: ${state.state.nonRewriteUnits.size}")
-    Out.comment(s"No. of choice functions detected: ${state.state.choiceFunctionCount}")
-    Out.comment(s"No. of choice instantiations: ${state.state.choiceInstantiations}")
-    val proof = state.state.derivationClause
-    if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
-      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Out.output(userConstantsForProof(sig))
-      Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
-      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
-    }
-
   }
 
   /**
@@ -224,58 +232,62 @@ object ParallelMain {
     val TimeOutProcess = new DeferredKill(timeout, timeout, blackboard, scheduler)
     TimeOutProcess.start()
 
-    // RuleGraph creation
-    val graph : SimpleControlGraph = new SimpleControlGraph
+    try {
+      // RuleGraph creation
+      val graph: SimpleControlGraph = new SimpleControlGraph
 
-    val phase : RuleAgentPhase = new RuleAgentPhase(graph)
+      val phase: RuleAgentPhase = new RuleAgentPhase(graph)
 
 
-    printPhase(phase)
-    if (!phase.execute()) {
-      scheduler.killAll()
+      printPhase(phase)
+      if (!phase.execute()) {
+        scheduler.killAll()
+        TimeOutProcess.kill()
+        unexpectedEnd(System.currentTimeMillis() - startTime)
+        return
+      }
+
       TimeOutProcess.kill()
-      unexpectedEnd(System.currentTimeMillis() - startTime)
-      return
-    }
-
-    TimeOutProcess.kill()
-    val endTime = System.currentTimeMillis()
-    val time = System.currentTimeMillis() - startTime
-    scheduler.killAll()
+      val endTime = System.currentTimeMillis()
+      val time = System.currentTimeMillis() - startTime
+      scheduler.killAll()
 
 
-    val proof : Option[AnnotatedClause] = graph.fetchResult.headOption
-    val szsStatus  = if (proof.nonEmpty){
-      if(state.negConjecture != null) SZS_Theorem
-      else SZS_CounterSatisfiable
-    } else if(time > timeout){
-      SZS_Timeout
-    } else {
-      SZS_Unknown
-    }
+      val proof: Option[AnnotatedClause] = graph.fetchResult.headOption
+      val szsStatus = if (proof.nonEmpty) {
+        if (state.negConjecture != null) SZS_Theorem
+        else SZS_CounterSatisfiable
+      } else if (time > timeout) {
+        SZS_Timeout
+      } else {
+        SZS_Unknown
+      }
 
-    leo.Out.debug(s"Ended after ${graph.select.actRound} rounds")
-    leo.Out.debug(s"\nProcessed :\n  ${graph.activeSet.get.map(_.pretty(sig)).mkString("\n  ")}")
-    leo.Out.debug(s"\nUnprocessed :\n  ${graph.passiveSet.unprocessed.map(_.pretty(sig)).mkString("\n  ")}")
+      leo.Out.debug(s"Ended after ${graph.select.actRound} rounds")
+      leo.Out.debug(s"\nProcessed :\n  ${graph.activeSet.get.map(_.pretty(sig)).mkString("\n  ")}")
+      leo.Out.debug(s"\nUnprocessed :\n  ${graph.passiveSet.unprocessed.map(_.pretty(sig)).mkString("\n  ")}")
 
-    leo.Out.debug(s"\nNormalize :\n ${graph.normalizeSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
-//    leo.Out.debug(s"\nNormalize Locks :\n ${graph.normalizeBarrier.get(graph.normalizeBarrier.lockType).mkString("\n  ")}")
+      leo.Out.debug(s"\nNormalize :\n ${graph.normalizeSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
+      //    leo.Out.debug(s"\nNormalize Locks :\n ${graph.normalizeBarrier.get(graph.normalizeBarrier.lockType).mkString("\n  ")}")
 
-    leo.Out.debug(s"\nGenerate :\n ${graph.generateSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
-//    leo.Out.debug(s"\nGenerate Locks :\n ${graph.generateBarrier.get(graph.generateBarrier.lockType).mkString("\n  ")}")
+      leo.Out.debug(s"\nGenerate :\n ${graph.generateSet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
+      //    leo.Out.debug(s"\nGenerate Locks :\n ${graph.generateBarrier.get(graph.generateBarrier.lockType).mkString("\n  ")}")
 
-    leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
+      leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
 
-    Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+      Out.output("")
+      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
 
-    //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
-    if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
-      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-      Out.output(userConstantsForProof(sig))
-      Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
-      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+      if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
+        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+        //      Out.output(makeDerivation(derivationClause).drop(1).toString)
+        Out.output(userConstantsForProof(sig))
+        Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
+        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      }
+    } finally {
+      TimeOutProcess.kill()
     }
   }
 
