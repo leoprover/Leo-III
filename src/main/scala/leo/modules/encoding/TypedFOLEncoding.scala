@@ -344,7 +344,7 @@ object EncodingAnalyzer {
   type MinArity = Int // term parameter count
   type ArgPos = Boolean // does the symbol occur at argument position?
   type SymbolInfo = (MinArity, ArgPos)
-  type ArityTable = Map[Signature#Key, SymbolInfo]
+  type ArityTable = Map[Signature.Key, SymbolInfo]
 
   final def analyze(clauses: Set[Clause]): ArityTable = {
     var result: ArityTable = Map()
@@ -375,7 +375,7 @@ object EncodingAnalyzer {
     } else analyzeFormula(lit.left)
   }
 
-  private final val fixedConnectives: Set[Signature#Key] = { // logical fixed constants
+  private final val fixedConnectives: Set[Signature.Key] = { // logical fixed constants
     // without equality since it starts term level. quantifiers are dealt with separately.
     import leo.modules.HOLSignature._
     Set(Not.key, &.key, |||.key, Impl.key, <=.key, <=>.key)
@@ -503,7 +503,7 @@ object EncodingAnalyzer {
     result
   }
 
-  private final def merge(entry: (Signature#Key, SymbolInfo), t2: ArityTable): ArityTable = {
+  private final def merge(entry: (Signature.Key, SymbolInfo), t2: ArityTable): ArityTable = {
     val key = entry._1
     val info = entry._2
     val arity = info._1
@@ -635,7 +635,7 @@ trait TypedFOLEncodingSignature extends Signature {
   // Definitions of auxiliary symbols for FO encoding
   /// Meta symbols
   ///// fun type constant
-  lazy val funTy_id: Signature#Key = addTypeConstructor(safeName(funTy_name), * ->: * ->: *)
+  lazy val funTy_id: Signature.Key = addTypeConstructor(safeName(funTy_name), * ->: * ->: *)
   final def funTy(in: Type, out: Type): Type = mkType(funTy_id, Seq(in, out))
   /** Returns an FO-encoded function type. Given a non-empty sequence of types
     * `t1`,...,`tn`, this method returns the simulated function type
@@ -655,12 +655,12 @@ trait TypedFOLEncodingSignature extends Signature {
   }
 
   ///// bool type constant
-  lazy val boolTy_id: Signature#Key = addTypeConstructor(safeName(boolTy_name), *)
+  lazy val boolTy_id: Signature.Key = addTypeConstructor(safeName(boolTy_name), *)
   lazy val boolTy: Type = mkType(boolTy_id)
 
   ///// hApp constant
   private final lazy val hApp_type: Type = ∀(∀(funTy(2,1) ->: Type.mkVarType(2) ->: Type.mkVarType(1)))
-  lazy val hApp_id: Signature#Key = addUninterpreted(safeName(hApp_name), hApp_type, Signature.PropNoProp)
+  lazy val hApp_id: Signature.Key = addUninterpreted(safeName(hApp_name), hApp_type, Signature.PropNoProp)
   import leo.datastructures.Term.local._
   lazy val hApp: Term = mkAtom(hApp_id)(this)
   final def hApp(fun: Term, arg: Term): Term = {
@@ -706,12 +706,12 @@ trait TypedFOLEncodingSignature extends Signature {
 
   ///// hBool constant
   private final lazy val hBool_type: Type = boolTy ->: o
-  lazy val hBool_id: Signature#Key = addUninterpreted(safeName(hBool_name), hBool_type, Signature.PropNoProp)
+  lazy val hBool_id: Signature.Key = addUninterpreted(safeName(hBool_name), hBool_type, Signature.PropNoProp)
   lazy val hBool: Term = mkAtom(hBool_id)(this)
   final def hBool(boolTerm: Term): Term = mkTermApp(hBool, boolTerm)
 
   /// Proxy symbols
-  @inline final private def proxyId(proxyName: String): Signature#Key = {
+  @inline final private def proxyId(proxyName: String): Signature.Key = {
     val name = safeName(proxyName)
     if (exists(name)) {
       usedProxies += apply(name).key
@@ -730,48 +730,48 @@ trait TypedFOLEncodingSignature extends Signature {
     hApp(partiallyAppliedFunc, indirectArgs)
   }
   ///// True/False proxy
-  lazy val proxyTrue_id: Signature#Key = proxyId(proxyTrue_name)
+  lazy val proxyTrue_id: Signature.Key = proxyId(proxyTrue_name)
   lazy val proxyTrue: Term = mkAtom(proxyTrue_id)(this)
 
-  lazy val proxyFalse_id: Signature#Key = proxyId(proxyFalse_name)
+  lazy val proxyFalse_id: Signature.Key = proxyId(proxyFalse_name)
   lazy val proxyFalse: Term = mkAtom(proxyFalse_id)(this)
 
   ///// Not proxy
-  lazy val proxyNot_id: Signature#Key = proxyId(proxyNot_name)
+  lazy val proxyNot_id: Signature.Key = proxyId(proxyNot_name)
   lazy val proxyNot: Term = mkAtom(proxyNot_id)(this)
   final def proxyNot(body: Term): Term = applyArgs(proxyNot, Seq(body))
 
   ///// and/or proxy
-  lazy val proxyAnd_id: Signature#Key = proxyId(proxyAnd_name)
+  lazy val proxyAnd_id: Signature.Key = proxyId(proxyAnd_name)
   lazy val proxyAnd: Term = mkAtom(proxyAnd_id)(this)
   final def proxyAnd(l: Term, r: Term): Term = applyArgs(proxyAnd, Seq(l,r))
 
-  lazy val proxyOr_id: Signature#Key = proxyId(proxyOr_name)
+  lazy val proxyOr_id: Signature.Key = proxyId(proxyOr_name)
   lazy val proxyOr: Term = mkAtom(proxyOr_id)(this)
   final def proxyOr(l: Term, r: Term): Term = applyArgs(proxyOr, Seq(l,r))
 
   ///// impl/if/equiv
-  lazy val proxyImpl_id: Signature#Key = proxyId(proxyImpl_name)
+  lazy val proxyImpl_id: Signature.Key = proxyId(proxyImpl_name)
   lazy val proxyImpl: Term = mkAtom(proxyImpl_id)(this)
   final def proxyImpl(l: Term, r: Term): Term = applyArgs(proxyImpl, Seq(l,r))
 
-  lazy val proxyIf_id: Signature#Key = proxyId(proxyIf_name)
+  lazy val proxyIf_id: Signature.Key = proxyId(proxyIf_name)
   lazy val proxyIf: Term = mkAtom(proxyIf_id)(this)
   final def proxyIf(l: Term, r: Term): Term = applyArgs(proxyIf, Seq(l,r))
 
-  lazy val proxyEquiv_id: Signature#Key = proxyId(proxyEquiv_name)
+  lazy val proxyEquiv_id: Signature.Key = proxyId(proxyEquiv_name)
   lazy val proxyEquiv: Term = mkAtom(proxyEquiv_id)(this)
   final def proxyEquiv(l: Term, r: Term): Term = applyArgs(proxyEquiv, Seq(l,r))
 
   ///// forall/exists
-  lazy val proxyForall_id: Signature#Key = proxyId(proxyForall_name)
+  lazy val proxyForall_id: Signature.Key = proxyId(proxyForall_name)
   lazy val proxyForall: Term = mkAtom(proxyForall_id)(this)
   final def proxyForall(body: Term): Term = {
     val domainType = encodedFunSpaces(body.ty)._1
     applyArgs(mkTypeApp(proxyForall, domainType), Seq(body))
   }
 
-  lazy val proxyExists_id: Signature#Key = proxyId(proxyExists_name)
+  lazy val proxyExists_id: Signature.Key = proxyId(proxyExists_name)
   lazy val proxyExists: Term = mkAtom(proxyExists_id)(this)
   final def proxyExists(body: Term): Term = {
     val domainType = encodedFunSpaces(body.ty)._1
@@ -779,19 +779,19 @@ trait TypedFOLEncodingSignature extends Signature {
   }
 
   ///// eq / neq
-  lazy val proxyEq_id: Signature#Key = proxyId(proxyEq_name)
+  lazy val proxyEq_id: Signature.Key = proxyId(proxyEq_name)
   lazy val proxyEq: Term = mkAtom(proxyEq_id)(this)
   final def proxyEq(l: Term, r: Term): Term = applyArgs(mkTypeApp(proxyEq, l.ty), Seq(l, r))
 
-  lazy val proxyNeq_id: Signature#Key = proxyId(proxyNeq_name)
+  lazy val proxyNeq_id: Signature.Key = proxyId(proxyNeq_name)
   lazy val proxyNeq: Term = mkAtom(proxyNeq_id)(this)
   final def proxyNeq(l: Term, r: Term): Term = applyArgs(mkTypeApp(proxyNeq, l.ty), Seq(l, r))
 
-  private var usedProxies: Set[Signature#Key] = Set.empty
-  final def proxiesUsed: Set[Signature#Key] = usedProxies
+  private var usedProxies: Set[Signature.Key] = Set.empty
+  final def proxiesUsed: Set[Signature.Key] = usedProxies
 
   /// Proxy symbol axioms
-  final def proxyAxiomOf(proxyId: Signature#Key): Term = {
+  final def proxyAxiomOf(proxyId: Signature.Key): Term = {
     val X = mkBound(boolTy, 1)
     val Y = mkBound(boolTy, 2)
     val polyX = mkBound(1, 1)

@@ -58,7 +58,7 @@ trait Term extends Pretty with Prettier {
   /** Exhaustively expands all symbols except for those in `symbs` which are
     * defined by its definitions.
     * This may not terminate for recursively defined symbols. */
-  def δ_expand_upTo(symbs: Set[Signature#Key])(implicit sig: Signature): Term
+  def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term
 
   //////////////////////////
   // Queries on terms
@@ -82,13 +82,13 @@ trait Term extends Pretty with Prettier {
   def headSymbolDepth: Int
   def size: Int
 
-  def symbols: Multiset[Signature#Key]
+  def symbols: Multiset[Signature.Key]
   final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
     symbols.filter({i => sig(i)._ty == ty})
   }
   // Functions for FV-Indexing
-  def fvi_symbolFreqOf(symbol: Signature#Key): Int
-  def fvi_symbolDepthOf(symbol: Signature#Key): Int
+  def fvi_symbolFreqOf(symbol: Signature.Key): Int
+  def fvi_symbolDepthOf(symbol: Signature.Key): Int
 
   // Substitutions and replacements
   /** Replace every occurrence of `what` in `this` by `by`. */
@@ -151,8 +151,8 @@ object Term extends TermBank {
   import impl.TermImpl
 
   // Factory method delegation
-  final def mkAtom(id: Signature#Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
-  final def mkAtom(id: Signature#Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
+  final def mkAtom(id: Signature.Key)(implicit sig: Signature): Term = TermImpl.mkAtom(id)(sig)
+  final def mkAtom(id: Signature.Key, ty: Type): Term = TermImpl.mkAtom(id,ty)
   final def mkBound(t: Type, scope: Int): Term = TermImpl.mkBound(t,scope)
   final def mkTermApp(func: Term, arg: Term): Term = TermImpl.mkTermApp(func, arg)
   final def mkTermApp(func: Term, args: Seq[Term]): Term = TermImpl.mkTermApp(func, args)
@@ -215,7 +215,7 @@ object Term extends TermBank {
    * }
    * }}}
    */
-  object Symbol { final def unapply(t: Term): Option[Signature#Key] = TermImpl.symbolMatcher(t) }
+  object Symbol { final def unapply(t: Term): Option[Signature.Key] = TermImpl.symbolMatcher(t) }
 
   /**
    * Pattern for matching a general application (i.e. terms of form `(h ∙ S)`), where

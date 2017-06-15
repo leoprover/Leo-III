@@ -21,5 +21,25 @@ class SignatureTest extends LeoTestSuite {
     printLongHLine()
   }
 
+  test("Signature copy test 1", Checked) {
+    val sig = getFreshSignature
+    val sig2 = sig.copy
+    assert(sig2 != null)
+  }
+
+  test("Signature copy test 2", Checked) {
+    val sig = getFreshSignature
+    sig.addUninterpreted("a", HOLSignature.i)
+    val sig2 = sig.copy
+    assert(sig.exists("a"))
+    assert(sig2.exists("a"))
+    sig.addUninterpreted("b", HOLSignature.i)
+    assert(sig.exists("b"))
+    assert(!sig2.exists("b"))
+    sig2.addUninterpreted("c", HOLSignature.i)
+    assert(!sig.exists("c"))
+    assert(sig2.exists("c"))
+  }
+
 
 }

@@ -38,7 +38,7 @@ abstract class Type extends Pretty with Prettier {
 
   // Queries on types
   def typeVars: Set[Type]
-  def symbols: Set[Signature#Key]
+  def symbols: Set[Signature.Key]
 
   def funDomainType: Option[Type]
   def _funDomainType: Type = funDomainType.get
@@ -111,10 +111,10 @@ object Type {
   import leo.datastructures.impl.TypeImpl
 
   /** Create type `h arg1 arg2 ... argn` with head symbol `head` and type arguments `argi`. */
-  final def mkType(identifier: Signature#Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
-  final def mkType(identifier: Signature#Key, arg: Type): Type = TypeImpl.mkType(identifier, Seq(arg))
+  final def mkType(identifier: Signature.Key, args: Seq[Type]): Type = TypeImpl.mkType(identifier, args)
+  final def mkType(identifier: Signature.Key, arg: Type): Type = TypeImpl.mkType(identifier, Seq(arg))
   /** Create type with name `identifier`. */
-  final def mkType(identifier: Signature#Key): Type = mkType(identifier, Seq.empty)
+  final def mkType(identifier: Signature.Key): Type = mkType(identifier, Seq.empty)
 
   /** Build type `in -> out`. */
   final def mkFunType(in: Type, out: Type): Type = TypeImpl.mkFunType(in, out)
@@ -175,14 +175,14 @@ object Type {
   AbstractionTypeNode, UnionTypeNode, ForallTypeNode}
 
   object BaseType {
-    def unapply(ty: Type): Option[Signature#Key] = ty match {
+    def unapply(ty: Type): Option[Signature.Key] = ty match {
       case GroundTypeNode(id, args) if args.isEmpty => Some(id)
       case _ => None
     }
   }
 
   object ComposedType {
-    def unapply(ty: Type): Option[(Signature#Key, Seq[Type])] = ty match {
+    def unapply(ty: Type): Option[(Signature.Key, Seq[Type])] = ty match {
       case GroundTypeNode(id, args) if args.nonEmpty => Some((id, args))
       case _ => None
     }

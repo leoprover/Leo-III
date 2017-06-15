@@ -18,7 +18,7 @@ object Monomorphization {
   type MonoResult = (Problem, Signature)
   type Instance = Seq[Type]
   type Instances = Set[Instance]
-  type InstanceInfo = mutable.Map[Signature#Key, Instances]
+  type InstanceInfo = mutable.Map[Signature.Key, Instances]
   type PolySymbols = InstanceInfo
 
   /**
@@ -135,7 +135,7 @@ object Monomorphization {
   }
 
   private final val blackListedConsts: Seq[String] = Seq(safeName(TypedFOLEncodingSignature.hApp_name))
-  private final def blacklisted(symb: Signature#Key, sig: Signature): Boolean = {
+  private final def blacklisted(symb: Signature.Key, sig: Signature): Boolean = {
     val meta = sig(symb)
     if (meta.isFixedSymbol) true
     else {
@@ -293,7 +293,7 @@ object Monomorphization {
     }
   }
 
-  private final def monoInstanceName(id: Signature#Key, tyArgs: Seq[Type])(sig: Signature): String = {
+  private final def monoInstanceName(id: Signature.Key, tyArgs: Seq[Type])(sig: Signature): String = {
     val sb: StringBuffer = new StringBuffer
     sb.append(safeName(sig(id).name))
     sb.append("_")
@@ -315,7 +315,7 @@ object Monomorphization {
     }
   }
 
-  private final def updateInstanceInfo(instanceInfo: InstanceInfo, symbol: Signature#Key, instance: Instance): Unit = {
+  private final def updateInstanceInfo(instanceInfo: InstanceInfo, symbol: Signature.Key, instance: Instance): Unit = {
     if (instanceInfo.contains(symbol)) {
       val entry = instanceInfo(symbol)
       instanceInfo.+=(symbol -> (entry+instance))

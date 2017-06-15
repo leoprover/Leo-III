@@ -60,7 +60,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   import leo.datastructures.Type.{∀, mkVarType}
   import sig.{hApp,funTy}
 
-  private var usedSymbols: Set[Signature#Key] = Set.empty
+  private var usedSymbols: Set[Signature.Key] = Set.empty
 
   /* Combinator definitions from here */
   // Shorthands used for type definitions later
@@ -77,7 +77,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** Combinator I's type:  `∀a. fun(a,a)`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_I]] */
   final lazy val combinator_I_type: Type = ∀(funTy(Xty,Xty))
-  private final lazy val combinator_I_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_I_name), combinator_I_type)}
+  private final lazy val combinator_I_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_I_name), combinator_I_type)}
   /** Curry I combinator given by `I x = x`. */
   final lazy val combinator_I: Term = {
     val id = combinator_I_key
@@ -95,7 +95,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** Combinator K's type: `∀a.∀b. fun(a,fun(b,a))`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_K]] */
   final lazy val combinator_K_type: Type = ∀(∀(funTy(Yty,funTy(Xty, Yty))))
-  private final lazy val combinator_K_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_K_name), combinator_K_type)}
+  private final lazy val combinator_K_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_K_name), combinator_K_type)}
   /** Curry K combinator given by `K x y = x`, where
     * `K : ∀a.∀b. fun(a,fun(b,a))` */
   final lazy val combinator_K: Term = {
@@ -122,7 +122,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** Combinator S's type:  `∀a.∀b.∀c. fun(fun(a,fun(b,c)),fun(fun(a,b),fun(a,c)))`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_S]] */
   final lazy val combinator_S_type: Type = ∀(∀(∀(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(funTy(Zty, Yty),funTy(Zty, Xty))))))
-  private final lazy val combinator_S_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_S_name),combinator_S_type)}
+  private final lazy val combinator_S_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_S_name),combinator_S_type)}
   /** Curry S combinator given by `S x y z = x z (y z)`. */
   final lazy val combinator_S: Term = {
     val id = combinator_S_key
@@ -142,7 +142,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** Combinator B's type:  `∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_B]] */
   final lazy val combinator_B_type: Type = ∀(∀(∀(funTy(funTy(Yty,Xty),funTy(funTy(Zty,Yty),funTy(Zty,Xty))))))
-  private final lazy val combinator_B_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_B_name),combinator_B_type)}
+  private final lazy val combinator_B_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_B_name),combinator_B_type)}
   /** Curry B combinator given by `B x y z = x (y z)` where
     * `B: ∀a.∀b.∀c. fun(fun(b,c),fun(fun(a,b), fun(a,c)))`. */
   final lazy val combinator_B: Term = {
@@ -164,7 +164,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   /** Combinator C's type:  `∀a.∀b.∀c. fun(fun(a,fun(b,c)), fun(b, fun(a,c))) `
     * @see [[leo.modules.encoding.LambdaElim_SKI#combinator_C]] */
   final lazy val combinator_C_type: Type = ∀(∀(∀(funTy(funTy(Zty, funTy(Yty, Xty)),funTy(Yty, funTy(Zty, Xty))))))
-  private final lazy val combinator_C_key: Signature#Key = {sig.addUninterpreted(safeName(combinator_C_name),combinator_C_type)}
+  private final lazy val combinator_C_key: Signature.Key = {sig.addUninterpreted(safeName(combinator_C_name),combinator_C_type)}
   /** Curry C combinator given by `C x y z = x z y`. */
   final lazy val combinator_C: Term = {
     val id = combinator_C_key
@@ -360,7 +360,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     result
   }
 
-  private final def axiomOf(comb: Signature#Key): Term = {
+  private final def axiomOf(comb: Signature.Key): Term = {
     import Term.local.mkBound
     val X: Term = mkBound(Xty,1)
     val Y: Term = mkBound(Yty,2)

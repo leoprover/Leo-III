@@ -10,94 +10,9 @@ package leo.datastructures
  * @note Updated 02.06.2014 Signature does not track variables names anymore, they are parsed to nameless terms instead
  */
 trait Signature {
-  type Key = Int
+  import Signature.{Meta, Key}
 
   type TypeOrKind = Either[Type, Kind]
-
-  ///////////////////////////////
-  // Meta information
-  ///////////////////////////////
-
-  /**
-   * Entry base class for meta information saved along with symbols in the signature table.
-   */
-  abstract class Meta {
-    import Signature.SymbProp
-    // Key information about the symbol
-    /** The name of the symbol (i.e. string representation of it) */
-    def name: String
-    /** The key of type [[Key]] that is used as table key for that entry */
-    def key: Key
-    /** Flag holding additional information in bit-encoding */
-    def flag: SymbProp
-    // Additional information about the symbol
-    /** Returns the type associated with the symbol if any, [[None]] otherwise */
-    def ty: Option[Type]
-    /** Unsafe variant of [[ty]].
-      * @throws NoSuchElementException if no type is available
-      */
-    def _ty: Type = ty.get
-
-    /** Returns the kind associated with the symbol if any, [[None]] otherwise */
-    def kind: Option[Kind]
-    /** Unsafe variant of [[kind]].
-      * @throws NoSuchElementException if no type is available
-      */
-    def _kind: Kind = kind.get
-
-    /** Returns the definition associated with the symbol if any, [[None]] otherwise */
-    def defn: Option[Term]
-    /**
-     * Unsafe variant of [[defn]]. Gets the definition term directly
-     * @throws NoSuchElementException if no definition is available
-     */
-    def _defn: Term = defn.get
-
-    // Query functions
-    /** Update the `flag` property of the underlying meta. */
-    def updateProp(newProp: SymbProp): Unit
-    /** Returns the status of the symbol, where 0 = mult, 1 = lex.*/
-    lazy val status: Int = if (isPropSet(Signature.PropStatus, flag)) Signature.lexStatus else Signature.multStatus
-
-    /** Returns true iff the symbol has a type associated with it */
-    @inline final def hasType: Boolean = ty.isDefined
-    /** Returns true iff the symbol has a kind associated with it */
-    @inline final def hasKind: Boolean = kind.isDefined
-    /** Returns true iff the constant has a definition term associated with it */
-    @inline final def hasDefn: Boolean = defn.isDefined
-    /** Returns true iff the symbol has lex status. */
-    @inline final def hasLexStatus: Boolean = isPropSet(Signature.PropStatus, flag)
-    /** Returns true iff the symbol has mult status. */
-    @inline final def hasMultStatus: Boolean = !isPropSet(Signature.PropStatus, flag)
-
-
-    /** Returns true iff the symbol is a primitive (interpreted) symbol provided by the system */
-    @inline final def isPrimitive: Boolean     = isPropSet(Signature.PropFixed, flag) && !hasDefn
-    /** Returns true iff the symbol is a symbol provided by the system */
-    @inline final def isFixedSymbol: Boolean  = isPropSet(Signature.PropFixed, flag)
-    /** Returns true iff the symbol is a user provided symbol */
-    @inline final def isUserSymbol: Boolean    = !isPropSet(Signature.PropFixed, flag)
-    /** Returns true iff the symbol is a defined symbol */
-    @inline final def isDefined: Boolean          = hasDefn
-    /** Returns true iff the symbol is an uninterpreted term symbol */
-    @inline final def isUninterpreted: Boolean    = !isPropSet(Signature.PropFixed, flag) && !hasDefn
-    /** Returns true iff the symbol refers to an external object */
-    @inline final def isExternal: Boolean    = isPropSet(Signature.PropExternal, flag)
-
-    /** Returns true iff the symbol is associative */
-    @inline final def isASymbol: Boolean    = isPropSet(Signature.PropAssociative, flag)
-    /** Returns true iff the symbol is commutative */
-    @inline final def isCSymbol: Boolean    = isPropSet(Signature.PropCommutative, flag)
-    /** Returns true iff the symbol is associative */
-    @inline final def isACSymbol: Boolean    = isPropSet(Signature.PropAssociative | Signature.PropCommutative, flag)
-
-    /** Returns true iff the symbol is a term symbol */
-    @inline final def isTermSymbol: Boolean             = hasType
-    /** Returns true iff the symbol is a type constructor symbol */
-    @inline final def isTypeConstructor: Boolean  = hasKind
-    /** Returns true iff the symbol is a type symbol */
-    @inline final def isType: Boolean             = isTypeConstructor && _kind.isTypeKind
-  }
 
   ///////////////////////////////
   // Maintenance methods for the signature
@@ -125,6 +40,8 @@ trait Signature {
   ///////////////////////////////
   // Utility methods
   ///////////////////////////////
+
+  def copy: Signature
 
   /** Adds a defined constant with type `typ` to the signature.
     * @return The key the symbol is indexed by
@@ -258,6 +175,8 @@ trait Signature {
 }
 
 object Signature {
+  type Key = Int
+
   type SymbProp = Int
   final val PropNoProp: SymbProp = 0
   final val PropStatus: SymbProp = 1 /* Lexstatus if set. Multstatus otherwise */
@@ -299,4 +218,89 @@ object Signature {
     sig
   }
 
+
+
+  ///////////////////////////////
+  // Meta information
+  ///////////////////////////////
+
+  /**
+    * Entry base class for meta information saved along with symbols in the signature table.
+    */
+  abstract class Meta {
+    // Key information about the symbol
+    /** The name of the symbol (i.e. string representation of it) */
+    def name: String
+    /** The key of type [[Key]] that is used as table key for that entry */
+    def key: Key
+    /** Flag holding additional information in bit-encoding */
+    def flag: SymbProp
+    // Additional information about the symbol
+    /** Returns the type associated with the symbol if any, [[None]] otherwise */
+    def ty: Option[Type]
+    /** Unsafe variant of [[ty]].
+      * @throws NoSuchElementException if no type is available
+      */
+    def _ty: Type = ty.get
+
+    /** Returns the kind associated with the symbol if any, [[None]] otherwise */
+    def kind: Option[Kind]
+    /** Unsafe variant of [[kind]].
+      * @throws NoSuchElementException if no type is available
+      */
+    def _kind: Kind = kind.get
+
+    /** Returns the definition associated with the symbol if any, [[None]] otherwise */
+    def defn: Option[Term]
+    /**
+      * Unsafe variant of [[defn]]. Gets the definition term directly
+      * @throws NoSuchElementException if no definition is available
+      */
+    def _defn: Term = defn.get
+
+    // Query functions
+    /** Update the `flag` property of the underlying meta. */
+    def updateProp(newProp: SymbProp): Unit
+    /** Returns the status of the symbol, where 0 = mult, 1 = lex.*/
+    lazy val status: Int = if (isPropSet(Signature.PropStatus, flag)) Signature.lexStatus else Signature.multStatus
+
+    /** Returns true iff the symbol has a type associated with it */
+    @inline final def hasType: Boolean = ty.isDefined
+    /** Returns true iff the symbol has a kind associated with it */
+    @inline final def hasKind: Boolean = kind.isDefined
+    /** Returns true iff the constant has a definition term associated with it */
+    @inline final def hasDefn: Boolean = defn.isDefined
+    /** Returns true iff the symbol has lex status. */
+    @inline final def hasLexStatus: Boolean = isPropSet(Signature.PropStatus, flag)
+    /** Returns true iff the symbol has mult status. */
+    @inline final def hasMultStatus: Boolean = !isPropSet(Signature.PropStatus, flag)
+
+
+    /** Returns true iff the symbol is a primitive (interpreted) symbol provided by the system */
+    @inline final def isPrimitive: Boolean     = isPropSet(Signature.PropFixed, flag) && !hasDefn
+    /** Returns true iff the symbol is a symbol provided by the system */
+    @inline final def isFixedSymbol: Boolean  = isPropSet(Signature.PropFixed, flag)
+    /** Returns true iff the symbol is a user provided symbol */
+    @inline final def isUserSymbol: Boolean    = !isPropSet(Signature.PropFixed, flag)
+    /** Returns true iff the symbol is a defined symbol */
+    @inline final def isDefined: Boolean          = hasDefn
+    /** Returns true iff the symbol is an uninterpreted term symbol */
+    @inline final def isUninterpreted: Boolean    = !isPropSet(Signature.PropFixed, flag) && !hasDefn
+    /** Returns true iff the symbol refers to an external object */
+    @inline final def isExternal: Boolean    = isPropSet(Signature.PropExternal, flag)
+
+    /** Returns true iff the symbol is associative */
+    @inline final def isASymbol: Boolean    = isPropSet(Signature.PropAssociative, flag)
+    /** Returns true iff the symbol is commutative */
+    @inline final def isCSymbol: Boolean    = isPropSet(Signature.PropCommutative, flag)
+    /** Returns true iff the symbol is associative */
+    @inline final def isACSymbol: Boolean    = isPropSet(Signature.PropAssociative | Signature.PropCommutative, flag)
+
+    /** Returns true iff the symbol is a term symbol */
+    @inline final def isTermSymbol: Boolean             = hasType
+    /** Returns true iff the symbol is a type constructor symbol */
+    @inline final def isTypeConstructor: Boolean  = hasKind
+    /** Returns true iff the symbol is a type symbol */
+    @inline final def isType: Boolean             = isTypeConstructor && _kind.isTypeKind
+  }
 }

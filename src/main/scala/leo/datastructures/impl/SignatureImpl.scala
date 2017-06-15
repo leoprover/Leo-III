@@ -14,7 +14,10 @@ import leo.modules.HOLSignature
  * @since 02.05.2014
  * @note  Updated on 05.05.2014 (Moved case classes from `IsSignature` to this class)
  */
-class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
+class SignatureImpl extends Signature with Function1[Int, Signature.Meta] {
+  import Signature.{Meta, Key}
+  import SignatureImpl.{TypeMeta, DefinedMeta, UninterpretedMeta}
+
   protected var curConstKey = 0
 
   protected var keyMap: Map[String, Int] = new HashMap[String, Int]
@@ -29,49 +32,27 @@ class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
   */
   protected var typeSet, fixedSet, definedSet, uiSet, aSet, cSet: Set[Key] = BitSet.empty
 
-  ///////////////////////////////
-  // Meta information
-  ///////////////////////////////
 
-  /** Case class for meta information for type constructors
-    * that are indexed in the signature */
-  protected[impl] case class TypeMeta(name: String,
-                                      key: Key,
-                                      k:  Kind,
-                                      var flag: Signature.SymbProp) extends Meta {
-    val ty: Option[Type] = None
-    val kind: Option[Kind] = Some(k)
-    val defn: Option[Term] = None
-    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
-  }
-
-  /** Case class for meta information for (un)-interpreted term symbols,
-    * i.e. symbols without definition regardless whether system or user provided. */
-  protected[impl] case class UninterpretedMeta(name: String,
-                                               key: Key,
-                                               typ: Type,
-                                               var flag: Signature.SymbProp) extends Meta {
-    val ty: Option[Type] = Some(typ)
-    val kind: Option[Kind] = None
-    val defn: Option[Term] = None
-    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
-  }
-
-  /** Case class for meta information for defined symbols */
-  protected[impl] case class DefinedMeta(name: String,
-                                         key: Key,
-                                         typ: Type,
-                                         definition: Term,
-                                         var flag: Signature.SymbProp) extends Meta {
-    val ty: Option[Type] = Some(typ)
-    val kind: Option[Kind] = None
-    val defn: Option[Term] = Some(definition)
-    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
-  }
 
   ///////////////////////////////
   // Maintenance methods for the signature
   ///////////////////////////////
+
+  final def copy: Signature = {
+    val copySig: SignatureImpl = SignatureImpl.empty
+    copySig.curConstKey = curConstKey
+    copySig.keyMap = keyMap
+    copySig.metaMap = metaMap
+
+    copySig.typeSet = typeSet
+    copySig.fixedSet = fixedSet
+    copySig.definedSet = definedSet
+    copySig.uiSet = uiSet
+    copySig.aSet = aSet
+    copySig.cSet = cSet
+
+    copySig
+  }
 
   protected def addConstant0(identifier: String, typ: TypeOrKind, defn: Option[Term], prop: Signature.SymbProp): Key = {
     import leo.datastructures.isPropSet
@@ -113,7 +94,7 @@ class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
     key
   }
 
-  def addDefinition(key: Key, defn: Term) = {
+  def addDefinition(key: Key, defn: Term): Key = {
     metaMap.get(key) match {
       case Some(meta) if meta.isUninterpreted && meta._ty == defn.ty =>
         val newMeta = DefinedMeta(meta.name, key, meta._ty, defn, meta.flag)
@@ -173,7 +154,7 @@ class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
   ///////////////////////////////
 
   def allConstants: Set[Key] = uiSet | fixedSet | definedSet | typeSet
-  def allUserConstants = allConstants &~ fixedSet
+  def allUserConstants: Set[Key] = allConstants &~ fixedSet
   def primitiveSymbols: Set[Key] = fixedSet &~ definedSet
   def fixedSymbols: Set[Key] = fixedSet
   def definedSymbols: Set[Key] = definedSet
@@ -214,4 +195,45 @@ class SignatureImpl extends Signature with Function1[Int, Signature#Meta] {
 object SignatureImpl {
   /** Create an empty signature */
   def empty: SignatureImpl = new SignatureImpl
+
+  ///////////////////////////////
+  // Meta information
+  ///////////////////////////////
+  import leo.datastructures.Signature.{Meta, Key}
+
+  /** Case class for meta information for type constructors
+    * that are indexed in the signature */
+  protected[impl] case class TypeMeta(name: String,
+                                      key: Key,
+                                      k:  Kind,
+                                      var flag: Signature.SymbProp) extends Meta {
+    val ty: Option[Type] = None
+    val kind: Option[Kind] = Some(k)
+    val defn: Option[Term] = None
+    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
+  }
+
+  /** Case class for meta information for (un)-interpreted term symbols,
+    * i.e. symbols without definition regardless whether system or user provided. */
+  protected[impl] case class UninterpretedMeta(name: String,
+                                               key: Key,
+                                               typ: Type,
+                                               var flag: Signature.SymbProp) extends Meta {
+    val ty: Option[Type] = Some(typ)
+    val kind: Option[Kind] = None
+    val defn: Option[Term] = None
+    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
+  }
+
+  /** Case class for meta information for defined symbols */
+  protected[impl] case class DefinedMeta(name: String,
+                                         key: Key,
+                                         typ: Type,
+                                         definition: Term,
+                                         var flag: Signature.SymbProp) extends Meta {
+    val ty: Option[Type] = Some(typ)
+    val kind: Option[Kind] = None
+    val defn: Option[Term] = Some(definition)
+    final def updateProp(newProp: Signature.SymbProp): Unit = {flag = newProp}
+  }
 }

@@ -19,7 +19,7 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit st
   // Keeping track of data inside of mpq, to efficiently query update changes
   private final val valuesStored : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
 
-  val symbolsInConjecture0 : Set[Signature#Key] = negConjecture.fold(Set.empty[Signature#Key]){c =>
+  val symbolsInConjecture0 : Set[Signature.Key] = negConjecture.fold(Set.empty[Signature.Key]){c =>
     assert(Clause.unit(c.cl))
     val lit = c.cl.lits.head
     assert(!lit.equational)
@@ -31,7 +31,7 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit st
   }
 
   private final val mpq: MultiPriorityQueue[AnnotatedClause] = MultiPriorityQueue.empty
-  val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
+  val conjSymbols: Set[Signature.Key] = symbolsInConjecture0
   mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
   mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
   mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])

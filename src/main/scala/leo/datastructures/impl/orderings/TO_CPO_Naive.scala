@@ -72,12 +72,12 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   // ###############################################################################
 
   // well-founded ordering of symbols in signature
-  final private def precedence(s: Signature#Key, t: Signature#Key)(sig: Signature): CMP_Result = Configuration.PRECEDENCE.compare(s,t)(sig)
+  final private def precedence(s: Signature.Key, t: Signature.Key)(sig: Signature): CMP_Result = Configuration.PRECEDENCE.compare(s,t)(sig)
 
   // Well-founded ordering of base types (sort)
-  final private def gt_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 > bt2
-  final private def ge_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = eq_baseType(bt1,bt2) || gt_baseType(bt1,bt2)
-  final private def eq_baseType(bt1: Signature#Key, bt2: Signature#Key): Boolean = bt1 == bt2
+  final private def gt_baseType(bt1: Signature.Key, bt2: Signature.Key): Boolean = bt1 > bt2
+  final private def ge_baseType(bt1: Signature.Key, bt2: Signature.Key): Boolean = eq_baseType(bt1,bt2) || gt_baseType(bt1,bt2)
+  final private def eq_baseType(bt1: Signature.Key, bt2: Signature.Key): Boolean = bt1 == bt2
 
   ////////////////////////////////////
   // Comparisons of types

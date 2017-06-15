@@ -32,7 +32,7 @@ trait GeneralState[T <: ClauseProxy] extends Pretty {
   def runStrategy: RunStrategy
   def setRunStrategy(runStrategy: RunStrategy): Unit
 
-  def symbolsInConjecture: Set[Signature#Key]
+  def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: T): Unit
 
   def addInitial(cls: Set[T]): Unit
@@ -58,7 +58,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var conjecture0: T = _
   protected var negConjecture0: T = _
   protected var runStrategy0: RunStrategy = _
-  protected var symbolsInConjecture0: Set[Signature#Key] = Set.empty
+  protected var symbolsInConjecture0: Set[Signature.Key] = Set.empty
   protected var current_externalProvers: Set[TptpProver[T]] = Set()
   protected var initialProblem0: Set[T] = Set()
   protected var poly: Boolean = false
@@ -83,7 +83,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def runStrategy: RunStrategy = runStrategy0
   final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
-  final def symbolsInConjecture: Set[Signature#Key] = symbolsInConjecture0
+  final def symbolsInConjecture: Set[Signature.Key] = symbolsInConjecture0
   final def defConjSymbols(negConj: T): Unit = {
     assert(Clause.unit(negConj.cl))
     val lit = negConj.cl.lits.head

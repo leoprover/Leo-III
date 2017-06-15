@@ -78,7 +78,7 @@ object ToTPTP {
   // Methods on symbols/definitions
   ///////////////////////
 
-  final def apply(k: Signature#Key)(implicit sig: Signature): String = {
+  final def apply(k: Signature.Key)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     if (constant.hasType) {
@@ -100,11 +100,11 @@ object ToTPTP {
     }
   }
 
-  final def output(k: Signature#Key)(implicit sig: Signature): Output = new Output {
+  final def output(k: Signature.Key)(implicit sig: Signature): Output = new Output {
     final def apply() = ToTPTP(k)(sig)
   }
 
-  private def typeToTPTP(k: Signature#Key)(implicit sig : Signature) : String = {
+  private def typeToTPTP(k: Signature.Key)(implicit sig : Signature) : String = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     val cname_ty_name = tptpEscapeName(constant.name + "_type")
@@ -117,11 +117,11 @@ object ToTPTP {
     }
   }
 
-  private def typeToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Output = new Output {
+  private def typeToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Output = new Output {
     final def apply() = typeToTPTP(k)(sig)
   }
 
-  private def definitionToTPTP(k: Signature#Key)(implicit sig : Signature) : Option[String] = {
+  private def definitionToTPTP(k: Signature.Key)(implicit sig : Signature) : Option[String] = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     val cname_ty_name = tptpEscapeName(constant.name + "_def")
@@ -132,7 +132,7 @@ object ToTPTP {
     }
   }
 
-  private def definitionToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Option[Output] =
+  private def definitionToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Option[Output] =
     definitionToTPTP(k)(sig) map (x => new Output {
       final def apply() = x
     })

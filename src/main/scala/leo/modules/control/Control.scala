@@ -39,7 +39,7 @@ object Control {
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
   // AC detection
-  @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
+  @inline final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
@@ -1160,7 +1160,7 @@ package inferenceControl {
     final val ACSpec_Associativity: ACSpec = false
     final val ACSpec_Commutativity: ACSpec = true
 
-    final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = {
+    final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = {
       if (Clause.demodulator(cl.cl)) {
         val lit = cl.cl.lits.head
         // Check if lit is an specification for commutativity
@@ -1915,22 +1915,61 @@ package  externalProverControl {
 package schedulingControl {
   object StrategyControl {
 
-    val MINTIME = 30
+    val MINTIME = 20
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
       RunStrategy(
         timeout = -1,
-        primSubst = 0,
-        sos = true,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = Configuration.DEFAULT_SOS,
         unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
-        uniDepth = 1,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
         boolExt = true,
         choice = true),
-      
-      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true)
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = true,
+        unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = false,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = true,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = 2,
+        sos = false,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = 2,
+        sos = true,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true)
     )
 
 

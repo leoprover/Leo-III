@@ -15,7 +15,7 @@ protected[datastructures] abstract class TypeImpl extends Type {
 }
 
 /** Ground type, e.g. `$o` or `list @ $i`. */
-protected[datastructures] case class GroundTypeNode(id: Signature#Key, args: Seq[Type]) extends TypeImpl {
+protected[datastructures] case class GroundTypeNode(id: Signature.Key, args: Seq[Type]) extends TypeImpl {
   // Pretty printing
   final def pretty: String = if (args.isEmpty) s"ty($id)"
                             else s"ty($id)(${args.map(_.pretty).mkString(",")})"
@@ -65,7 +65,7 @@ protected[datastructures] case class BoundTypeNode(scope: Int) extends TypeImpl 
 
   // Queries on types
   final val typeVars: Set[Type] = Set(this)
-  final val symbols: Set[Signature#Key] = Set.empty
+  final val symbols: Set[Signature.Key] = Set.empty
 
   final val funDomainType = None
   final val codomainType: Type = this
@@ -105,7 +105,7 @@ protected[datastructures] case class AbstractionTypeNode(in: Type, out: Type) ex
 
   // Queries on types
   final lazy val typeVars: Set[Type] = in.typeVars ++ out.typeVars
-  final lazy val symbols: Set[Signature#Key] = in.symbols ++ out.symbols
+  final lazy val symbols: Set[Signature.Key] = in.symbols ++ out.symbols
 
   final val funDomainType   = Some(in)
   final val codomainType = out
@@ -231,10 +231,10 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
 }
 
 object TypeImpl {
-  private var types: Map[Signature#Key, Map[Seq[Type], Type]] = Map()
+  private var types: Map[Signature.Key, Map[Seq[Type], Type]] = Map()
   private var varTypes: Map[Int, Type] = Map()
 
-  def mkType(identifier: Signature#Key, args: Seq[Type]): Type = { //GroundTypeNode(identifier, args)
+  def mkType(identifier: Signature.Key, args: Seq[Type]): Type = { //GroundTypeNode(identifier, args)
     if (types.isDefinedAt(identifier)) {
       val map = types(identifier)
       if (map.isDefinedAt(args))
