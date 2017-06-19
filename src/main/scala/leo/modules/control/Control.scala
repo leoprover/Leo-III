@@ -916,6 +916,8 @@ package inferenceControl {
       }
     }
 
+    private var choicePreds: Set[Term] = Set.empty
+
     final def instantiateChoice(cw: AnnotatedClause)(state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       if (!state.runStrategy.choice) Set()
       else {
@@ -930,28 +932,33 @@ package inferenceControl {
           val candidateIt = candidates.iterator
           while(candidateIt.hasNext) {
             val candPredicate = candidateIt.next()
-            // type is (alpha -> o), alpha is choice type
-            val choiceType: Type = candPredicate.ty._funDomainType
+            if (!choicePreds.contains(candPredicate)) {
+              // type is (alpha -> o), alpha is choice type
+              val choiceType: Type = candPredicate.ty._funDomainType
 
-            if (choiceFuns.contains(choiceType)) {
-              // Instantiate with all registered choice functions
-              val choiceFunsForChoiceType = choiceFuns(choiceType)
-              val choiceFunIt = choiceFunsForChoiceType.iterator
-              while (choiceFunIt.hasNext) {
-                val choiceFun = choiceFunIt.next()
+              if (choiceFuns.contains(choiceType)) {
+                // Instantiate with all registered choice functions
+                val choiceFunsForChoiceType = choiceFuns(choiceType)
+                val choiceFunIt = choiceFunsForChoiceType.iterator
+                while (choiceFunIt.hasNext) {
+                  val choiceFun = choiceFunIt.next()
+                  val result0 = ChoiceRule(candPredicate, choiceFun)
+                  val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
+                  results = results + result
+                }
+              } else {
+                // No choice function registered, introduce one now
+                val choiceFun = registerNewChoiceFunction(choiceType)
                 val result0 = ChoiceRule(candPredicate, choiceFun)
                 val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
                 results = results + result
               }
-            } else {
-              // No choice function registered, introduce one now
-              val choiceFun = registerNewChoiceFunction(choiceType)
-              val result0 = ChoiceRule(candPredicate, choiceFun)
-              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
-              results = results + result
+              choicePreds += candPredicate
             }
           }
           Out.finest(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
+
+//          Out.trace(s"[Choice] Collected (${choicePreds.size}):\n\t${choicePreds.map(_.pretty(sig)).mkString("\t\n")}")
           Out.trace(s"[Choice] Results: ${results.map(_.pretty(sig)).mkString(",")}")
           results
         } else Set()
