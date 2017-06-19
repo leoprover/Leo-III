@@ -39,10 +39,12 @@ object Control {
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
   // AC detection
-  @inline final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
+  @inline final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: LocalState): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
+  @inline final def guessFuncSpec(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.guessFuncSpec(cls)(state)
+
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
@@ -71,7 +73,7 @@ object Control {
   *
   * @see [[leo.modules.calculus.CalculusRule]] */
 package inferenceControl {
-  import leo.datastructures.ClauseAnnotation.{InferredFrom}
+  import leo.datastructures.ClauseAnnotation.InferredFrom
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
@@ -896,7 +898,7 @@ package inferenceControl {
           )
         ))
       )), true)
-      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("tautology"), ClauseAnnotation.PropNoProp)
+      val res = AnnotatedClause(Clause(lit), Role_Axiom, FromSystem("axiom_of_choice"), ClauseAnnotation.PropNoProp)
       acMap = acMap + ((ty, res))
       res
     }
@@ -915,6 +917,11 @@ package inferenceControl {
       }
     }
 
+
+
+
+    private var choicePreds: Set[Term] = Set.empty
+
     final def instantiateChoice(cw: AnnotatedClause)(state: GeneralState[AnnotatedClause]): Set[AnnotatedClause] = {
       if (!state.runStrategy.choice) Set()
       else {
@@ -929,42 +936,87 @@ package inferenceControl {
           val candidateIt = candidates.iterator
           while(candidateIt.hasNext) {
             val candPredicate = candidateIt.next()
-            // type is (alpha -> o), alpha is choice type
-            val choiceType: Type = candPredicate.ty._funDomainType
+            if (!choicePreds.contains(candPredicate)) {
+              // type is (alpha -> o), alpha is choice type
+              val choiceType: Type = candPredicate.ty._funDomainType
 
-            if (choiceFuns.contains(choiceType)) {
-              // Instantiate with all registered choice functions
-              val choiceFunsForChoiceType = choiceFuns(choiceType)
-              val choiceFunIt = choiceFunsForChoiceType.iterator
-              while (choiceFunIt.hasNext) {
-                val choiceFun = choiceFunIt.next()
+              if (choiceFuns.contains(choiceType)) {
+                // Instantiate with all registered choice functions
+                val choiceFunsForChoiceType = choiceFuns(choiceType)
+                val choiceFunIt = choiceFunsForChoiceType.iterator
+                while (choiceFunIt.hasNext) {
+                  val choiceFun = choiceFunIt.next()
+                  val result0 = ChoiceRule(candPredicate, choiceFun)
+                  val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
+                  results = results + result
+                }
+              } else {
+                // No choice function registered, introduce one now
+                val choiceFun = registerNewChoiceFunction(choiceType)
                 val result0 = ChoiceRule(candPredicate, choiceFun)
                 val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
                 results = results + result
               }
-            } else {
-              // No choice function registered, introduce one now
-              val choiceFun = registerNewChoiceFunction(choiceType)(state)
-              val result0 = ChoiceRule(candPredicate, choiceFun)
-              val result = AnnotatedClause(result0, InferredFrom(ChoiceRule, axiomOfChoice(choiceType)))
-              results = results + result
+              choicePreds += candPredicate
             }
           }
           Out.finest(s"[Choice] Instantiate choice for terms: ${candidates.map(_.pretty(sig)).mkString(",")}")
+
+//          Out.trace(s"[Choice] Collected (${choicePreds.size}):\n\t${choicePreds.map(_.pretty(sig)).mkString("\t\n")}")
           Out.trace(s"[Choice] Results: ${results.map(_.pretty(sig)).mkString(",")}")
           results
         } else Set()
       }
     }
 
-    final def registerNewChoiceFunction(ty: Type)(state: GeneralState[AnnotatedClause]): Term = {
-      import leo.modules.HOLSignature.o
+
+    final def registerNewChoiceFunction(ty: Type): Term = {
       import leo.modules.HOLSignature.Choice
-//      val sig = state.signature
-//      val newChoiceFun = Term.mkAtom(sig.freshSkolemConst((ty ->: o) ->: ty, Signature.PropChoice))(sig)
-      val newChoiceFun = Term.mkTypeApp(Choice, ty)
-//      state.addChoiceFunction(newChoiceFun)
-      newChoiceFun
+      Term.mkTypeApp(Choice, ty)
+    }
+
+    final def guessFuncSpec(cls: Set[AnnotatedClause])(state: LocalState): Set[AnnotatedClause] = {
+      cls.flatMap(guessFuncSpec(_)(state))
+    }
+
+    final def guessFuncSpec(cw: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
+      import leo.datastructures.Term.TermApp
+      implicit val sig = state.signature
+      leo.Out.finest(s"call guesFuncSpec on ${cw.id}")
+      val cl = cw.cl
+      val uniLits = cl.negLits.filter(_.uni)
+      leo.Out.finest(s"call guesFuncSpec on ${uniLits.map(_.pretty(sig)).mkString("\n")}")
+      var collectedSpecs: Map[Term, Seq[(Seq[Term], Term)]] = Map.empty.withDefaultValue(Seq.empty)
+      val uniLitsIt = uniLits.iterator
+      while (uniLitsIt.hasNext) {
+        val uniLit = uniLitsIt.next()
+        leo.Out.finest(s"check: ${uniLit.pretty(sig)}")
+        val (l,r) = Literal.getSidesOrdered(uniLit, Literal.leftSide)
+        val (flexSide, otherSide) = if (l.flexHead && l.isApp) (l,r) else (r,l)
+        leo.Out.finest(s"flexSide: ${flexSide.pretty(sig)}")
+        leo.Out.finest(s"otherSide: ${otherSide.pretty(sig)}")
+        if (flexSide.flexHead && flexSide.isApp) {
+          val maybeArgs = TermApp.unapply(flexSide)
+          if (maybeArgs.isDefined) {
+            val (hd, args) = maybeArgs.get
+            assert(hd.isVariable)
+            val alreadyCollected = collectedSpecs(hd)
+            val alreadyCollected0 = alreadyCollected :+ (args, otherSide)
+            collectedSpecs = collectedSpecs + (hd -> alreadyCollected0)
+          }
+        }
+      }
+      Out.finest(s"Collected specs:\n" +
+        collectedSpecs.map {case (hd, spec) => hd.pretty + ":\n" + spec.map(s => s._1.map(_.pretty(sig)).mkString(",") + " = " + s._2.pretty(sig)).mkString("\t\n")}.mkString("\n\n"))
+      var result: Set[AnnotatedClause] = Set.empty
+      collectedSpecs.foreach {case (hd, specs) =>
+        val a = SolveFuncSpec.apply(hd.ty, specs)(sig)
+        val hdIdx = Term.Bound.unapply(hd).get._2
+          result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(sig), FromSystem("choice instance"), cw.properties)
+      }
+      Out.finest(s"FunSpec result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+
+      result
     }
   }
 
@@ -1120,7 +1172,7 @@ package inferenceControl {
     final val ACSpec_Associativity: ACSpec = false
     final val ACSpec_Commutativity: ACSpec = true
 
-    final def detectAC(cl: AnnotatedClause): Option[(Signature#Key, Boolean)] = {
+    final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = {
       if (Clause.demodulator(cl.cl)) {
         val lit = cl.cl.lits.head
         // Check if lit is an specification for commutativity
@@ -1721,6 +1773,7 @@ package indexingControl {
 
 package  externalProverControl {
   import leo.modules.output.SuccessSZS
+  import leo.modules.external.Capabilities.Language
 
   object ExtProverControl {
     import leo.modules.external._
@@ -1822,6 +1875,7 @@ package  externalProverControl {
         leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
       }
     }
+
     final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
@@ -1831,14 +1885,16 @@ package  externalProverControl {
       val proverCaps = prover.capabilities
       val extraArgs = Seq(Configuration.ATP_ARGS(prover.name))
       if (proverCaps.contains(THF)) {
-        prover.call(problem, problem.map(_.cl), sig, THF, timeout, extraArgs)
+        val preparedProblem = prepareProblem(problem, THF)(sig)
+        prover.call(problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
+        val preparedProblem = prepareProblem(problem, TFF)(sig)
         val (translatedProblem, auxDefs, translatedSig) =
           if (supportsFeature(proverCaps, TFF)(Polymorphism))
-            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
+            Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
           else
-            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
+            Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
           prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
       } else if (proverCaps.contains(FOF)) {
         Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
@@ -1847,18 +1903,25 @@ package  externalProverControl {
         Out.warn(s"$prefix Prover ${prover.name} input syntax not supported.")
         null
       }
+    }
 
-
-
-
-
-//      if (state.isPolymorphic) { // FIXME: Hack, implement with capabilities
-//        // monomorphize the problem
-//        val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
-//        val asAnnotated = monoResult._1.map(cl =>
-//          AnnotatedClause(cl, Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp))
-//        prover.call(asAnnotated, timeout)(monoResult._3)
-//      } else prover.call(problem, timeout)(state.signature)
+    /** Prepare a problem that is given as a set of clauses (i.e. clauses from the
+      * processed set or so) and rework them into a set of clauses suitable for
+      * giving to an external prover. This may include
+      * (1) deletion of clauses that seem irrelevant
+      * (2) addition of clauses whose information is represented elsewhere inside Leo
+      * (3) (satisfiability-preserving) modification of clauses if reasonable.
+      *
+      * Concretely, this method enriches the problem with axioms
+      * about some signature constants (choice ...).
+      * TODO: Remove TPTP choice symbols and axiomatize them using a fresh symbol
+      * if goal language first-order. */
+    final def prepareProblem(problem: Set[AnnotatedClause], goalLanguage: Language)(implicit sig: Signature): Set[AnnotatedClause] = {
+      import leo.datastructures.Role_Axiom
+      import leo.datastructures.ClauseAnnotation
+      import ClauseAnnotation.{NoAnnotation, PropNoProp}
+      val extraAxioms = leo.modules.external.generateSpecialAxioms(sig)
+      extraAxioms.map(AnnotatedClause(_, Role_Axiom, NoAnnotation, PropNoProp)) union problem
     }
 
     final def killExternals(): Unit = {
@@ -1875,22 +1938,61 @@ package  externalProverControl {
 package schedulingControl {
   object StrategyControl {
 
-    val MINTIME = 30
+    val MINTIME = 20
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
       RunStrategy(
         timeout = -1,
-        primSubst = 0,
-        sos = true,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = Configuration.DEFAULT_SOS,
         unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
-        uniDepth = 1,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
         boolExt = true,
         choice = true),
-      
-      RunStrategy(-1, 1, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 2, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 2, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 5, false, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true),
-      RunStrategy(-1, 5, true, Configuration.DEFAULT_UNIFIERCOUNT, Configuration.DEFAULT_UNIFICATIONDEPTH, true, true)
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = true,
+        unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = false,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        sos = true,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = 2,
+        sos = false,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
+        primSubst = 2,
+        sos = true,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true)
     )
 
 

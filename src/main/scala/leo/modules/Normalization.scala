@@ -9,7 +9,7 @@ import leo.modules.parsers.Input
   * Created by lex on 4/25/17.
   */
 object Normalization {
-  type Definition = (Signature#Key, Term)
+  type Definition = (Signature.Key, Term)
   type Axiom = Term
   type Conjecture = Term
 

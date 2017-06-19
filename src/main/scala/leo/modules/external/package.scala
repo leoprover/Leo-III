@@ -14,6 +14,50 @@ package object external {
     final val WITHDEF: Flag = 1
   }
 
+
+  /** Return a clause representing the axiom of choice for symbol `symbol`, i.e.
+    * return clause `C` with
+    * {{{
+    * C = [P X]^f \/ [P (symbol P)]^f
+    * }}}
+    * where `P` and `X` are free variables to the clause.
+    */
+  private final def acInstance(symbol: Signature.Key)(implicit sig: Signature): Clause = {
+    val symbType = sig(symbol)._ty // (ty > o) > ty
+    assert(symbType.isFunType)
+    val ty0 = symbType._funDomainType // ty > o
+    val resultTy = symbType.codomainType // ty
+    assert(ty0.isFunType)
+    val ty00 = ty0._funDomainType // ty
+    val ty01 = ty0.codomainType // o
+    assert(resultTy == ty00)
+    assert(ty01 == HOLSignature.o)
+
+    val P: Term = Term.mkBound(ty0, 1)
+    val X: Term = Term.mkBound(ty00, 2)
+    val eps: Term = Term.mkAtom(symbol)(sig)
+    val negLit = Literal.mkLit(
+      Term.mkTermApp(P, X)
+      , false)
+    val posLit = Literal.mkLit(
+      Term.mkTermApp(P, Term.mkTermApp(eps, P))
+      , true)
+    Clause(Seq(negLit, posLit))
+  }
+
+  final def generateSpecialAxioms(sig: Signature): Set[Clause] = {
+    var result: Set[Clause] = Set.empty
+    val userSymbols = sig.uninterpretedSymbols.iterator
+    while (userSymbols.hasNext) {
+      val symb = userSymbols.next()
+      if (isPropSet(Signature.PropChoice, sig(symb).flag)) {
+        // include choice axiom for symb
+        result += acInstance(symb)(sig)
+      } // ... more to come
+    }
+    result
+  }
+
   final def createTFFProblem(problem: Set[Clause])(implicit sig: Signature): String = {
     val problemIt = problem.iterator
     val leoVersion = Configuration.VERSION

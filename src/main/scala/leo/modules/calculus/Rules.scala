@@ -320,6 +320,81 @@ object Choice extends CalculusRule {
   }
 }
 
+object SolveFuncSpec extends CalculusRule {
+  import leo.datastructures.Term.{λ, mkBound}
+  import leo.modules.HOLSignature.{Choice => ε, Impl, &, ===}
+  import leo.modules.myAssert
+
+  final val name: String = "solveFuncSpec"
+  override final val inferenceStatus = SZS_Theorem
+
+  type Argument = Term
+  type Result = Term
+
+  /**
+    * Suppose we have a specification of a function F with
+    * {{{F(s11,s12,...,s1J) = t1,
+    * ...
+    * F(sN1,sN2,...,sNJ) = tN}}},
+    * represented as an input `((s_ij)_{1<=j<=J},t_i)_{1<=i<=N}`,
+    * return the term
+    * `λx_1....λ.x_J.ε(λy. ⋀_i<=N. (⋀_j<=J. x_j = s_ij) => y = t_i)`.
+    *
+    * This term represents the specfication as a choice-term.
+    *
+    * @param funTy The type of the function `F`
+    * @param spec The specification of the function `F`.
+    * @return A choice term representing a function with specification `spec`
+    */
+  final def apply(funTy: Type, spec: Seq[(Seq[Argument], Result)])
+                 (implicit sig: Signature): Term = {
+    assert(spec.nonEmpty)
+
+    val (paramTypes, resultType) = funTy.splitFunParamTypes
+    val paramCount = paramTypes.size
+    myAssert(spec.forall(s => s._1.size == paramCount))
+    myAssert(spec.forall(s => s._1.map(_.ty) == paramTypes))
+    myAssert(spec.forall(s => s._2.ty == resultType))
+    /* Result var is the y in `SOME y. p`, i.e.
+     * ε(λy.p). */
+    val resultVar: Term = mkBound(resultType, 1)
+    /* paramVar(i) is the i+1-th input variable for the term as in
+    * `λx_1....λxi...λx_J.ε(λy. ...)`, 0<=0<J */
+    def paramVar(i: Int): Term = mkBound(paramTypes(i), paramCount-i+1) // +1 b/c of y
+
+    val specIt = spec.iterator
+    /* Iteratively build-up `choiceTerm` */
+    var choiceTerm: Term = null
+    while (specIt.hasNext) {
+      val (args,res0) = specIt.next() // (sij_j,ti)
+      val res = res0.lift(paramCount+1)
+      val argsIt = args.iterator
+      var i = 0
+      var caseTerm: Term = null // a single input `⋀_j<=J. x_j = s_ij` for a fixed i
+      while (argsIt.hasNext) {
+        val arg0 = argsIt.next()
+        val arg = arg0.lift(paramCount+1)
+        if (caseTerm == null) {
+          caseTerm = ===(paramVar(i), arg)
+        } else {
+          caseTerm = &(caseTerm, ===(paramVar(i), arg))
+        }
+        i = i+1
+      }
+      val caseTerm0: Term = Impl(caseTerm, ===(resultVar,res))
+      if (choiceTerm == null) {
+        choiceTerm = caseTerm0
+      } else {
+        choiceTerm = &(choiceTerm, caseTerm0)
+      }
+    }
+    val result: Term = λ(paramTypes)(ε(λ(resultType)(choiceTerm)))
+    leo.Out.trace(s"[SolveFuncSpec] Result: ${result.pretty(sig)}")
+    result
+  }
+
+}
+
 ////////////////////////////////////////////////////////////////
 ////////// Inferences
 ////////////////////////////////////////////////////////////////

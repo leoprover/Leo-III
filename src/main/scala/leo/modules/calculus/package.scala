@@ -132,7 +132,7 @@ package object calculus {
     result
   }
   final def skType(tyFvs: Seq[Int])(implicit sig: Signature): Type = {
-    val freshTypeOp: Signature#Key = sig.freshSkolemTypeConst(mkPolyKindAbstraction(tyFvs.size))
+    val freshTypeOp: Signature.Key = sig.freshSkolemTypeConst(mkPolyKindAbstraction(tyFvs.size))
     Type.mkType(freshTypeOp, tyFvs.map(Type.mkVarType))
   }
 

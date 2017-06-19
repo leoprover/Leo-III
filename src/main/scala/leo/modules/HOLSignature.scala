@@ -179,7 +179,7 @@ object HOLSignature {
 
   /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
   trait HOLBinaryConnective extends Function2[Term, Term, Term] {
-    val key: Signature#Key
+    val key: Signature.Key
     val ty: Type
 
     /** Create the term that is constructed by applying two arguments to the binary connective. */
@@ -207,7 +207,7 @@ object HOLSignature {
 
   /** Trait for unary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
   trait HOLUnaryConnective extends Function1[Term, Term] {
-    val key: Signature#Key
+    val key: Signature.Key
     val ty: Type
 
     /** Create the term that is constructed by applying an argument to the unary connective. */
@@ -235,7 +235,7 @@ object HOLSignature {
 
   /** Trait for nullary symbols (constants) within HOL. */
   trait HOLConstant extends Function0[Term] {
-    val key: Signature#Key
+    val key: Signature.Key
     val ty: Type
 
     /** Create the term that is represented by the object */

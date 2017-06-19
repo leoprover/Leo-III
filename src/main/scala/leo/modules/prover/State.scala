@@ -13,7 +13,7 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
 //
 //  def conjecture: T
 //  def negConjecture: T
-//  def symbolsInConjecture: Set[Signature#Key]
+//  def symbolsInConjecture: Set[Signature.Key]
 //  def defConjSymbols(negConj: T): Unit
 //  def setConjecture(conj: T): Unit
 //  def setNegConjecture(negConj: T): Unit
@@ -83,7 +83,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   override final def copy: State[T] = {
-    val state = new StateImpl[T](initSignature)
+    val state = new StateImpl[T](initSignature.copy)
     state.current_szs = current_szs
     state.conjecture0 = conjecture0
     state.negConjecture0 = negConjecture0
@@ -105,7 +105,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
 
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
-    val conjSymbols: Set[Signature#Key] = symbolsInConjecture0
+    val conjSymbols: Set[Signature.Key] = symbolsInConjecture0
     mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
     mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
     mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])

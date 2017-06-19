@@ -4,7 +4,7 @@ import leo.datastructures._
 import Term._
 import leo.datastructures.Type._
 import leo.datastructures._
-import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, TyForall, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
+import leo.modules.HOLSignature.{LitFalse, |||, &, Not, Forall, Exists, TyForall, Choice, !===, ===, Impl, <=, <=>, ~&, ~|||, <~>}
 import leo.modules.SZSException
 
 import scala.annotation.tailrec
@@ -78,7 +78,7 @@ object ToTPTP {
   // Methods on symbols/definitions
   ///////////////////////
 
-  final def apply(k: Signature#Key)(implicit sig: Signature): String = {
+  final def apply(k: Signature.Key)(implicit sig: Signature): String = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     if (constant.hasType) {
@@ -100,11 +100,11 @@ object ToTPTP {
     }
   }
 
-  final def output(k: Signature#Key)(implicit sig: Signature): Output = new Output {
+  final def output(k: Signature.Key)(implicit sig: Signature): Output = new Output {
     final def apply() = ToTPTP(k)(sig)
   }
 
-  private def typeToTPTP(k: Signature#Key)(implicit sig : Signature) : String = {
+  private def typeToTPTP(k: Signature.Key)(implicit sig : Signature) : String = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     val cname_ty_name = tptpEscapeName(constant.name + "_type")
@@ -117,11 +117,11 @@ object ToTPTP {
     }
   }
 
-  private def typeToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Output = new Output {
+  private def typeToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Output = new Output {
     final def apply() = typeToTPTP(k)(sig)
   }
 
-  private def definitionToTPTP(k: Signature#Key)(implicit sig : Signature) : Option[String] = {
+  private def definitionToTPTP(k: Signature.Key)(implicit sig : Signature) : Option[String] = {
     val constant = sig.apply(k)
     val cname = tptpEscapeName(constant.name)
     val cname_ty_name = tptpEscapeName(constant.name + "_def")
@@ -132,7 +132,7 @@ object ToTPTP {
     }
   }
 
-  private def definitionToTPTPOutput(k : Signature#Key)(implicit sig: Signature): Option[Output] =
+  private def definitionToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Option[Output] =
     definitionToTPTP(k)(sig) map (x => new Output {
       final def apply() = x
     })
@@ -164,9 +164,10 @@ object ToTPTP {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
-      val name = tptpEscapeName(sig(id).name+"_type")
+      val name = tptpEscapeName(sig(id).name)
+      val name_type = tptpEscapeName(sig(id).name+"_type")
       sb.append("thf(")
-      sb.append(name)
+      sb.append(name_type)
       sb.append(",type,(")
       sb.append(name)
       sb.append(":")
@@ -174,9 +175,10 @@ object ToTPTP {
       sb.append(")).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
-      val name = tptpEscapeName(sig(id).name+"_type")
+      val name = tptpEscapeName(sig(id).name)
+      val name_type = tptpEscapeName(sig(id).name+"_type")
       sb.append("thf(")
-      sb.append(name)
+      sb.append(name_type)
       sb.append(",type,(")
       sb.append(name)
       sb.append(":")
@@ -334,6 +336,12 @@ object ToTPTP {
         }
       case TyForall(_) => val (tyAbsCount, body) = collectTyForall(t)
         s"! [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount, bVars)(sig)})"
+      case Choice(_) => val (bVarTys, body) = collectChoice(t)
+                        val newBVars = makeBVarList(bVarTys, bVars.size)
+        body match {
+          case Forall(_) | Exists(_) | Not(_) => s"${sig(Choice.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty,tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)}"
+          case _ => s"${sig(Choice.key).name} [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount, fusebVarListwithMap(newBVars,bVars))(sig)})"
+        }
       // Binary connectives
       case t1 ||| t2 => t1 match {
         case _ ||| _| Not(_) | Forall(_) | Exists(_) => t2 match {
@@ -473,7 +481,20 @@ object ToTPTP {
   @inline final private def collectExists0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case Exists(ty :::> b) => collectExists0(vars :+ ty, b)
-      case Exists(_) => throw new IllegalArgumentException("Unexcepted body term in existsl quantification decomposition.")
+      case Exists(_) => throw new IllegalArgumentException("Unexcepted body term in exists quantification decomposition.")
+      case _ => (vars, t)
+    }
+  }
+
+  /** Gather consecutive all-quantifications (nameless). */
+  final private def collectChoice(t: Term): (Seq[Type], Term) = {
+    collectChoice0(Seq.empty, t)
+  }
+  @tailrec
+  @inline final private def collectChoice0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
+    t match {
+      case Choice(ty :::> b) => collectChoice0(vars :+ ty, b)
+      case Choice(_) => throw new IllegalArgumentException("Unexcepted body term in choice decomposition.")
       case _ => (vars, t)
     }
   }

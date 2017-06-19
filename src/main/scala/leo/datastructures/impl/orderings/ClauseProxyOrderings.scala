@@ -16,7 +16,7 @@ import leo.datastructures.Signature
   *
   * @see [[leo.datastructures.Multiset]] for multiset operations `mult`, `distinct`, etc.
   */
-class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature#Key], conjSymbolFactor: Float, varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering {
+class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature.Key], conjSymbolFactor: Float, varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering {
   import leo.datastructures.Clause
   final def compare(a: ClauseProxy, b: ClauseProxy) = {
     val aWeight = computeWeight(a.cl)

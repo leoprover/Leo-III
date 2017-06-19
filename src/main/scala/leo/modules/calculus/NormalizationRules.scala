@@ -21,7 +21,7 @@ object DefExpSimp extends CalculusRule {
   final val inferenceStatus = SZS_Theorem
 
   final def apply(t: Term)(implicit sig: Signature): Term = {
-    val symb: Set[Signature#Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
+    val symb: Set[Signature.Key] = Set(sig("?").key, sig("&").key, sig("=>").key)
     Simp.normalize(t.δ_expand_upTo(symb).betaNormalize.etaExpand)
   }
 
@@ -558,11 +558,11 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(t: Term, acSymbols: Set[Signature#Key]): Term = {
+  def apply(t: Term, acSymbols: Set[Signature.Key]): Term = {
     acSymbols.foldLeft(t){case (term,symbol) => apply(term, symbol)}
   }
 
-  def apply(t: Term, acSymbol: Signature#Key): Term = {
+  def apply(t: Term, acSymbol: Signature.Key): Term = {
     import leo.datastructures.Term.{:::>, TermApp, TypeLambda, ∙, Symbol}
     t match {
       case (ty :::> body) => Term.mkTermAbs(ty, apply(body, acSymbol))
@@ -582,7 +582,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply0(symbolArgs: Seq[Term], acSymbol: Signature#Key, collectedArgs: Set[Term]): Set[Term] = {
+  def apply0(symbolArgs: Seq[Term], acSymbol: Signature.Key, collectedArgs: Set[Term]): Set[Term] = {
     import leo.datastructures.Term.{TermApp, Symbol}
 
     if (symbolArgs.isEmpty) collectedArgs
@@ -595,7 +595,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(lit: Literal, allACSymbols: Set[Signature#Key])(implicit sig: Signature): Literal = {
+  def apply(lit: Literal, allACSymbols: Set[Signature.Key])(implicit sig: Signature): Literal = {
     val leftAC = lit.left.symbols.distinct intersect allACSymbols
     if (lit.equational) {
       val newLeft = if (leftAC.isEmpty) lit.left else apply(lit.left, leftAC)
@@ -615,7 +615,7 @@ object ACSimp extends CalculusRule {
     }
   }
 
-  def apply(cl: Clause, acSymbols: Set[Signature#Key])(implicit sig: Signature): Clause = {
+  def apply(cl: Clause, acSymbols: Set[Signature.Key])(implicit sig: Signature): Clause = {
     Clause(cl.lits.map(apply(_, acSymbols)(sig)))
   }
 }

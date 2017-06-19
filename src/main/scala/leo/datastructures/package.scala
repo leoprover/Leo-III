@@ -181,7 +181,7 @@ package object datastructures {
   /////////////////////
 
   trait Precedence {
-    type Const = Signature#Key
+    type Const = Signature.Key
     def compare(x: Const, y: Const)(implicit sig: Signature): CMP_Result
     def gt(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_GT
     def ge(x: Const, y: Const)(implicit sig: Signature): Boolean = compare(x,y)(sig) == CMP_GT || compare(x,y)(sig) == CMP_EQ
@@ -233,20 +233,20 @@ package object datastructures {
         CPO_SmallerFirst.reverse,
         new CPO_SymbolWeight(varWeight, symbWeight).reverse,
         oldest_first)
-    final def conjRelSymb(conjSymbols: Set[Signature#Key],
+    final def conjRelSymb(conjSymbols: Set[Signature.Key],
                                    conjSymbolFactor: Float,
                                    varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
         oldest_first)
-    final def litCount_conjRelSymb(conjSymbols: Set[Signature#Key],
+    final def litCount_conjRelSymb(conjSymbols: Set[Signature.Key],
                               conjSymbolFactor: Float,
                               varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
         CPO_SmallerFirst.reverse,
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
         oldest_first)
-    final def sos_conjRelSymb(conjSymbols: Set[Signature#Key],
+    final def sos_conjRelSymb(conjSymbols: Set[Signature.Key],
                               conjSymbolFactor: Float,
                               varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
       Orderings.lexCombination(
