@@ -18,7 +18,7 @@ import leo.modules.agent.multisearch.SchedulingPhase
 import leo.modules.agent.rules.control_rules._
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
-import leo.modules.prover.{RunStrategy, State}
+import leo.modules.prover.{RunStrategy, State, StateStatistics}
 
 
 /**
@@ -264,6 +264,8 @@ object ParallelMain {
       } else {
         SZS_Unknown
       }
+      state.setSZSStatus(szsStatus)
+      proof.foreach(state.setDerivationClause)
 
       leo.Out.debug(s"Ended after ${graph.select.actRound} rounds")
       leo.Out.debug(s"\nProcessed :\n  ${graph.activeSet.get.map(_.pretty(sig)).mkString("\n  ")}")
@@ -277,17 +279,7 @@ object ParallelMain {
 
       leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
 
-      Out.output("")
-      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
-
-      //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
-      if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
-        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(userConstantsForProof(sig))
-        Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
-        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
-      }
+      printResult(state, time)
     } finally {
       if(!TimeOutProcess.isFinished)
         TimeOutProcess.killOnly()
@@ -301,9 +293,43 @@ object ParallelMain {
   }
 
   private def printPhase(p : Phase) = {
-    Out.debug(" ########################")
-    Out.debug(s" Starting Phase ${p.name}")
-    Out.debug(p.description)
+//    Out.debug(" ########################")
+//    Out.debug(s" Starting Phase ${p.name}")
+//    Out.debug(p.description)
+  }
+
+  private def printResult(state : GeneralState[AnnotatedClause], time : Double): Unit ={
+    import modules._
+    implicit val sig = state.signature
+    val szsStatus = state.szsStatus
+    Out.output("")
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+
+    val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
+
+    //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
+    if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
+      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+      Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
+      if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
+      else Out.output(proofToTPTP(proof))
+      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+    }
+  }
+
+  private def printResult(state : State[AnnotatedClause], time : Double): Unit = {
+    Out.comment(s"No. of loop iterations: ${state.noProofLoops}")
+    Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
+    Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
+    Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+    Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
+    Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
+    Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
+    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
+    Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
+    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
+
+    printResult(state.asInstanceOf[GeneralState[AnnotatedClause]], time)
   }
 
   private def testExternalProvers(): Unit ={
