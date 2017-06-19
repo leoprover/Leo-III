@@ -1009,7 +1009,7 @@ package inferenceControl {
         val hdIdx = Term.Bound.unapply(hd).get._2
           result = result + AnnotatedClause(cl.substituteOrdered(Subst.singleton(hdIdx, a))(sig), FromSystem("choice instance"), cw.properties)
       }
-      Out.finest(s"FunSpec result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+      Out.trace(s"FunSpec result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
 
       result
     }
@@ -1933,7 +1933,7 @@ package  externalProverControl {
 package schedulingControl {
   object StrategyControl {
 
-    val MINTIME = 20
+    val MINTIME = 30
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
       RunStrategy(
         timeout = -1,
