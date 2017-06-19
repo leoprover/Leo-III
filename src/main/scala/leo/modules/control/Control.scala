@@ -1768,6 +1768,7 @@ package indexingControl {
 
 package  externalProverControl {
   import leo.modules.output.SuccessSZS
+  import leo.modules.external.Capabilities.Language
 
   object ExtProverControl {
     import leo.modules.external._
@@ -1869,6 +1870,7 @@ package  externalProverControl {
         leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
       }
     }
+
     final def callProver(prover: TptpProver[AnnotatedClause],
                                  problem: Set[AnnotatedClause], timeout : Int,
                                  state: State[AnnotatedClause], sig: Signature): Future[TptpResult[AnnotatedClause]] = {
@@ -1878,14 +1880,16 @@ package  externalProverControl {
       val proverCaps = prover.capabilities
       val extraArgs = Seq(Configuration.ATP_ARGS(prover.name))
       if (proverCaps.contains(THF)) {
-        prover.call(problem, problem.map(_.cl), sig, THF, timeout, extraArgs)
+        val preparedProblem = prepareProblem(problem, THF)(sig)
+        prover.call(problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
+        val preparedProblem = prepareProblem(problem, TFF)(sig)
         val (translatedProblem, auxDefs, translatedSig) =
           if (supportsFeature(proverCaps, TFF)(Polymorphism))
-            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
+            Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
           else
-            Encoding(problem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
+            Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
           prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
       } else if (proverCaps.contains(FOF)) {
         Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
@@ -1894,18 +1898,25 @@ package  externalProverControl {
         Out.warn(s"$prefix Prover ${prover.name} input syntax not supported.")
         null
       }
+    }
 
-
-
-
-
-//      if (state.isPolymorphic) { // FIXME: Hack, implement with capabilities
-//        // monomorphize the problem
-//        val monoResult = leo.modules.encoding.Encoding.mono(problem.map(_.cl))(sig)
-//        val asAnnotated = monoResult._1.map(cl =>
-//          AnnotatedClause(cl, Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp))
-//        prover.call(asAnnotated, timeout)(monoResult._3)
-//      } else prover.call(problem, timeout)(state.signature)
+    /** Prepare a problem that is given as a set of clauses (i.e. clauses from the
+      * processed set or so) and rework them into a set of clauses suitable for
+      * giving to an external prover. This may include
+      * (1) deletion of clauses that seem irrelevant
+      * (2) addition of clauses whose information is represented elsewhere inside Leo
+      * (3) (satisfiability-preserving) modification of clauses if reasonable.
+      *
+      * Concretely, this method enriches the problem with axioms
+      * about some signature constants (choice ...).
+      * TODO: Remove TPTP choice symbols and axiomatize them using a fresh symbol
+      * if goal language first-order. */
+    final def prepareProblem(problem: Set[AnnotatedClause], goalLanguage: Language)(implicit sig: Signature): Set[AnnotatedClause] = {
+      import leo.datastructures.Role_Axiom
+      import leo.datastructures.ClauseAnnotation
+      import ClauseAnnotation.{NoAnnotation, PropNoProp}
+      val extraAxioms = leo.modules.external.generateSpecialAxioms(sig)
+      extraAxioms.map(AnnotatedClause(_, Role_Axiom, NoAnnotation, PropNoProp)) union problem
     }
 
     final def killExternals(): Unit = {
