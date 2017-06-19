@@ -2,9 +2,12 @@ package leo.modules.agent.rules
 
 import leo.{Checked, LeoTestSuite}
 import leo.agents.{AbstractAgent, Task}
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard._
-import leo.modules.SZSException
+import leo.modules.{FVState, SZSException}
+import leo.modules.agent.rules.control_rules.SimpleControlGraph
 import leo.modules.output.SZS_Error
+import leo.modules.prover.State
 
 
 class NetworkTest extends LeoTestSuite{
@@ -310,5 +313,19 @@ class NetworkTest extends LeoTestSuite{
       override val read: Map[DataType[Any], Set[Any]] = Map()
       override val write: Map[DataType[Any], Set[Any]] = Map(inType -> Set(oldI))
     }
+  }
+
+  test("Case objects differ") {
+    implicit val sig = Signature.freshWithHOL()
+    implicit val state : FVState[AnnotatedClause] = State.fresh(sig)
+    val scg1 = new SimpleControlGraph
+    val scg2 = new SimpleControlGraph
+
+    assert(scg1.Processed != scg2.Processed)
+    assert(scg1.Unprocessed != scg2.Unprocessed)
+    assert(scg1.Done != scg2.Done)
+    assert(scg1.Normalize != scg2.Normalize)
+    assert(scg1.Generate != scg2.Generate)
+    assert(scg1.Unify != scg2.Unify)
   }
 }

@@ -29,7 +29,6 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
   implicit val sig : Signature = state.signature
   override def name: String = "rule_agent_phase"
   override protected final val agents: Seq[Agent] = Seq()
-  var negSet : Boolean = false
 
   override def execute(): Boolean = {
     if (Configuration.ATPS.nonEmpty) {
@@ -48,56 +47,26 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       }
     }
 
-    // TODO Remove state from the processing
     val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
     val remainingInput = effectiveInput(input2, state)
-    // Typechecking: Throws and exception if not well-typed
+
     typeCheck(remainingInput, state)
 
-    var initSet : Set[AnnotatedClause] = Set()
+    var initSet : Set[AnnotatedClause] = remainingInput.toSet
     var negConj : AnnotatedClause = null
 
     if (state.negConjecture != null) {
       // Expand conj, Initialize indexes
       // We expand here already since we are interested in all symbols (possibly contained within defined symbols)
-      Out.debug("## Preprocess Neg.Conjecture BEGIN")
-      Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
       val simpNegConj = Control.expandDefinitions(state.negConjecture)
       negConj = simpNegConj
       Control.initIndexes(simpNegConj +: remainingInput)(state)
-      val result = SeqLoop.preprocess(???, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
-      Out.debug(s"# Result:\n\t${
-        result.map {
-          _.pretty(sig)
-        }.mkString("\n\t")
-      }")
-      Out.trace("## Preprocess Neg.Conjecture END")
-      initSet = result
-      negSet = true
+      initSet = initSet + simpNegConj
     } else {
       Control.initIndexes(remainingInput)
     }
 
-    // Preprocessing
-    Out.debug("## Preprocess BEGIN")
-    val preprocessIt = remainingInput.iterator
-    while (preprocessIt.hasNext) {
-      val cur = preprocessIt.next()
-      Out.trace(s"# Process: ${cur.pretty(sig)}")
-      val processed = SeqLoop.preprocess(???, cur)
-      Out.debug(s"# Result:\n\t${
-        processed.map {
-          _.pretty(sig)
-        }.mkString("\n\t")
-      }")
-      val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-      initSet = initSet union preprocessed
-
-      if (preprocessIt.hasNext) Out.trace("--------------------")
-    }
-    Out.trace("## Preprocess END\n\n")
-
-    ruleGraph.initGraph(initSet)(Option(negConj))
+    ruleGraph.initGraph(initSet)
 
     super.execute()
 

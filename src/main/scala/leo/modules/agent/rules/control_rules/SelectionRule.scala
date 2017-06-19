@@ -37,7 +37,7 @@ class SelectionRule(inType : DataType[AnnotatedClause],
         }
         actRound += 1
         var res : Seq[Hint] = Seq()
-        while(work < maxWork) {
+        while(work < maxWork && unprocessed.unprocessedLeft){
           val c = unprocessed.nextUnprocessed
           if (Clause.effectivelyEmpty(c.cl)) {
             return Seq()

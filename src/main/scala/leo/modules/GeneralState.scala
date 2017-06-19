@@ -1,6 +1,6 @@
 package leo.modules
 
-import leo.datastructures.{Clause, ClauseProxy, Pretty, Signature}
+import leo.datastructures._
 import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.prover.{FVIndex, RunStrategy}
@@ -35,6 +35,10 @@ trait GeneralState[T <: ClauseProxy] extends Pretty {
   def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: T): Unit
 
+  def addChoiceFunction(f: Term): Unit
+  def choiceFunctions: Map[Type, Set[Term]]
+  final def choiceFunctions(ty: Type): Set[Term] = choiceFunctions.getOrElse(ty, Set())
+
   def addInitial(cls: Set[T]): Unit
   def initialProblem: Set[T]
   def externalProvers: Set[TptpProver[T]]
@@ -63,6 +67,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var initialProblem0: Set[T] = Set()
   protected var poly: Boolean = false
   protected var derivationCl: Option[T] = None
+  protected var choiceFunctions0: Map[Type, Set[Term]] = Map()
 
 
   def copyGeneral: GeneralState[T] = {
@@ -71,6 +76,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
     state.negConjecture0 = negConjecture0
     state.runStrategy0 = runStrategy0
     state.symbolsInConjecture0 = symbolsInConjecture0
+    state.choiceFunctions0 = choiceFunctions0
     state
   }
 
@@ -106,6 +112,17 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   final def addInitial(cls: Set[T]): Unit = {initialProblem0 = initialProblem0 union cls}
   final def initialProblem: Set[T] = initialProblem0
 
+  final def addChoiceFunction(f: Term): Unit = {
+    val choiceType = f.ty._funDomainType._funDomainType
+    if (choiceFunctions0.isDefinedAt(choiceType)) {
+      choiceFunctions0 = choiceFunctions0 + ((choiceType, choiceFunctions0(choiceType) + f))
+    } else choiceFunctions0 = choiceFunctions0 + ((choiceType, Set(f)))
+    val meta = sig(Term.Symbol.unapply(f).get)
+    meta.updateProp(meta.flag | Signature.PropChoice)
+  }
+  final def choiceFunctions: Map[Type,Set[Term]] = choiceFunctions0
+  final def choiceFunctionCount: Int = {choiceFunctions0.map {case (k,v) => v.size}.sum}
+
   final def externalProvers: Set[TptpProver[T]] = current_externalProvers
   final def addExternalProver(prover: TptpProver[T]): Unit =  {
     current_externalProvers = current_externalProvers + prover
@@ -140,6 +157,7 @@ private class FVStateImpl[T <: ClauseProxy](sig : Signature) extends GeneralStat
     state.negConjecture0 = negConjecture0
     state.runStrategy0 = runStrategy0
     state.symbolsInConjecture0 = symbolsInConjecture0
+    state.choiceFunctions0 = choiceFunctions0
     state
   }
 

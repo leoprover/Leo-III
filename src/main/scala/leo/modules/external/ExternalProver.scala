@@ -66,9 +66,7 @@ object ExternalProver {
       p
     } else {
       val which = (Seq("which", cmd).lineStream_!.head)
-      println(which)
       val p2 = Paths.get(which)
-      println(s"${p2} : exists = ${Files.exists(p2)}, executable = ${Files.isExecutable(p2)}")
       if(Files.exists(p2) && Files.isExecutable(p2)){
         p2
       } else {

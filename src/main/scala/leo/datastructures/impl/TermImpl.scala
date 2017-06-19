@@ -998,13 +998,13 @@ object TermImpl extends TermBank {
   import mutable.{WeakHashMap => WMap, HashMap => MMap}
 
   // atomic symbols (heads)
-  final protected[TermImpl] val boundAtoms: WMap[Type, WMap[Int, WeakReference[Head]]] = WMap.empty
+  final protected[TermImpl] val boundAtoms: MMap[Type, MMap[Int, WeakReference[Head]]] = MMap.empty
   final protected[TermImpl] val symbolAtoms: mutable.Map[Signature.Key, WeakReference[Head]] = mutable.Map.empty
   // composite terms
-  final protected[TermImpl] val termAbstractions: WMap[Term, WMap[Type, WeakReference[TermImpl]]] = WMap.empty
-  final protected[TermImpl] val typeAbstractions: WMap[Term, WeakReference[TermImpl]] = WMap.empty
-  final protected[TermImpl] val roots: WMap[Head, WMap[Spine, WeakReference[TermImpl]]] = WMap.empty
-  final protected[TermImpl] val redexes: WMap[Term, WMap[Spine, WeakReference[Redex]]] = WMap.empty
+  final protected[TermImpl] val termAbstractions: MMap[Term, MMap[Type, WeakReference[TermImpl]]] = MMap.empty
+  final protected[TermImpl] val typeAbstractions: MMap[Term, WeakReference[TermImpl]] = MMap.empty
+  final protected[TermImpl] val roots: MMap[Head, MMap[Spine, WeakReference[TermImpl]]] = MMap.empty
+  final protected[TermImpl] val redexes: MMap[Term, MMap[Spine, WeakReference[Redex]]] = MMap.empty
   // Spines
   final protected[TermImpl] val spines: MMap[Either[Term, Type], MMap[Spine, WeakReference[Spine]]] = MMap.empty
 
@@ -1038,7 +1038,7 @@ object TermImpl extends TermBank {
     }
   @inline final private def mkBoundAtom0(ty: Type, scope: Int): Head = {
     val hd = BoundIndex(ty, scope)
-    boundAtoms += (ty -> WMap(scope -> WeakReference(hd)))
+    boundAtoms += (ty -> MMap(scope -> WeakReference(hd)))
     hd
   }
   @inline final private def mkBoundAtom1(ty: Type, scope: Int): Head = {
@@ -1063,7 +1063,7 @@ object TermImpl extends TermBank {
     }
   @inline final private def mkRoot0(hd: Head, args: Spine): TermImpl = {
     val root = Root(hd, args)
-    roots += (hd -> WMap(args -> WeakReference(root)))
+    roots += (hd -> MMap(args -> WeakReference(root)))
     root._sharing = true
     root
   }
@@ -1089,7 +1089,7 @@ object TermImpl extends TermBank {
     }
   @inline final private def mkRedex0(left: Term, args: Spine): Redex = {
     val redex = Redex(left, args)
-    redexes += (left -> WMap(args -> WeakReference(redex)))
+    redexes += (left -> MMap(args -> WeakReference(redex)))
     redex._sharing = true
     redex
   }
@@ -1115,7 +1115,7 @@ object TermImpl extends TermBank {
     }
   @inline final private def mkTermAbstr0(ty: Type, body: Term): TermImpl = {
     val abs = TermAbstr(ty, body)
-    termAbstractions += (body -> WMap(ty -> WeakReference(abs)))
+    termAbstractions += (body -> MMap(ty -> WeakReference(abs)))
     abs._sharing = true
     abs
   }

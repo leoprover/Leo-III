@@ -40,10 +40,6 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def addNonRewriteUnit(cl: T): Unit
   def removeUnits(cls: Set[T]): Unit
 
-  def addChoiceFunction(f: Term): Unit
-  def choiceFunctions: Map[Type, Set[Term]]
-  final def choiceFunctions(ty: Type): Set[Term] = choiceFunctions.getOrElse(ty, Set())
-
   def copy : State[T]
 }
 
@@ -156,18 +152,6 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     current_rewriterules = current_rewriterules diff cls
     current_nonRewriteUnits = current_nonRewriteUnits diff cls
   }
-
-  private var choiceFunctions0: Map[Type, Set[Term]] = Map()
-  final def addChoiceFunction(f: Term): Unit = {
-    val choiceType = f.ty._funDomainType._funDomainType
-    if (choiceFunctions0.isDefinedAt(choiceType)) {
-      choiceFunctions0 = choiceFunctions0 + ((choiceType, choiceFunctions0(choiceType) + f))
-    } else choiceFunctions0 = choiceFunctions0 + ((choiceType, Set(f)))
-    val meta = sig(Term.Symbol.unapply(f).get)
-    meta.updateProp(meta.flag | Signature.PropChoice)
-  }
-  final def choiceFunctions: Map[Type,Set[Term]] = choiceFunctions0
-  final def choiceFunctionCount: Int = {choiceFunctions0.map {case (k,v) => v.size}.sum}
 
   // Statistics
   private var generatedCount: Int = 0

@@ -1,43 +1,30 @@
 package leo.modules.agent.rules.control_rules
 
 import leo.datastructures.ClauseProxyOrderings._
-import leo.datastructures.{AnnotatedClause, Clause, MultiPriorityQueue, Signature}
+import leo.datastructures.{AnnotatedClause, MultiPriorityQueue}
 import leo.datastructures.blackboard._
-import leo.modules.{GeneralState, SZSException}
-import leo.modules.output.SZS_Error
+import leo.modules.GeneralState
 
 import scala.collection.mutable
 
-case object Unprocessed extends ClauseType
+//case object Unprocessed extends ClauseType
 
 /**
   * Stores the unprocessed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit state : GeneralState[AnnotatedClause]) extends DataStore{
+class UnprocessedSet(unprocessedType : DataType[AnnotatedClause])(implicit state : GeneralState[AnnotatedClause]) extends DataStore{
 
   // Keeping track of data inside of mpq, to efficiently query update changes
   private final val valuesStored : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
 
-  val symbolsInConjecture0 : Set[Signature.Key] = negConjecture.fold(Set.empty[Signature.Key]){c =>
-    assert(Clause.unit(c.cl))
-    val lit = c.cl.lits.head
-    assert(!lit.equational)
-    val term = lit.left
-    val res =  term.symbols.distinct intersect state.signature.allUserConstants
-    leo.Out.trace(s"Set Symbols in conjecture: " +
-      s"${res.map(state.signature(_).name).mkString(",")}")
-    res
-  }
-
   private final val mpq: MultiPriorityQueue[AnnotatedClause] = MultiPriorityQueue.empty
-  val conjSymbols: Set[Signature.Key] = symbolsInConjecture0
-  mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(litCount_conjRelSymb(state.symbolsInConjecture, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
   mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
   mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
   mpq.addPriority(nongoals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[AnnotatedClause]])
-  mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
-  mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(conjRelSymb(state.symbolsInConjecture, 0.005f, 100, 50).asInstanceOf[Ordering[AnnotatedClause]])
+  mpq.addPriority(sos_conjRelSymb(state.symbolsInConjecture, 0.05f, 2, 1).asInstanceOf[Ordering[AnnotatedClause]])
   mpq.addPriority(oldest_first.asInstanceOf[Ordering[AnnotatedClause]])
   final private val prio_weights = Seq(10,1,1,2,10,2,1)
   private var cur_prio = 0
@@ -75,7 +62,7 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit st
     *
     * @return all stored types
     */
-  override val storedTypes: Seq[DataType[Any]] = Seq(Unprocessed)
+  override val storedTypes: Seq[DataType[Any]] = Seq(unprocessedType)
 
   /**
     *
@@ -84,10 +71,10 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit st
     * @param r - A result inserted into the datastructure
     */
   override def updateResult(r: Delta) : Delta = synchronized {
-    val ins1 = r.inserts(Unprocessed)
-    val del1 = r.removes(Unprocessed)
-    val ins2 = r.updates(Unprocessed).map(_._2)
-    val del2 = r.updates(Unprocessed).map(_._1)
+    val ins1 = r.inserts(unprocessedType)
+    val del1 = r.removes(unprocessedType)
+    val ins2 = r.updates(unprocessedType).map(_._2)
+    val del2 = r.updates(unprocessedType).map(_._1)
 
     val ins = ins1 ++ ins2
     val del = del1 ++ del2
@@ -106,8 +93,8 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit st
       EmptyDelta
     } else {
       new ImmutableDelta(
-        if(filterIns.nonEmpty) Map(Unprocessed -> filterIns) else Map(),
-        if(filterDel.nonEmpty) Map(Unprocessed -> filterDel) else Map())
+        if(filterIns.nonEmpty) Map(unprocessedType -> filterIns) else Map(),
+        if(filterDel.nonEmpty) Map(unprocessedType -> filterDel) else Map())
     }
     if(!res.isEmpty && ins.nonEmpty)
       leo.Out.debug(s"Unprocessed after update:\n  ${valuesStored.map(_.pretty(state.signature)).mkString("\n  ")}")
@@ -127,7 +114,7 @@ class UnprocessedSet(negConjecture : Option[AnnotatedClause] = None)(implicit st
     * @return
     */
   override def get[T](t: DataType[T]): Set[T] = t match{
-    case Unprocessed => synchronized(mpq.toSet.asInstanceOf[Set[T]])
+    case unprocessedType => synchronized(mpq.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }
