@@ -164,9 +164,10 @@ object ToTPTP {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
-      val name = tptpEscapeName(sig(id).name+"_type")
+      val name = tptpEscapeName(sig(id).name)
+      val name_type = tptpEscapeName(sig(id).name+"_type")
       sb.append("thf(")
-      sb.append(name)
+      sb.append(name_type)
       sb.append(",type,(")
       sb.append(name)
       sb.append(":")
@@ -174,9 +175,10 @@ object ToTPTP {
       sb.append(")).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
-      val name = tptpEscapeName(sig(id).name+"_type")
+      val name = tptpEscapeName(sig(id).name)
+      val name_type = tptpEscapeName(sig(id).name+"_type")
       sb.append("thf(")
-      sb.append(name)
+      sb.append(name_type)
       sb.append(",type,(")
       sb.append(name)
       sb.append(":")
