@@ -1938,7 +1938,7 @@ package  externalProverControl {
 package schedulingControl {
   object StrategyControl {
 
-    val MINTIME = 30
+    val MINTIME = 45
     val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
       RunStrategy(
         timeout = -1,
