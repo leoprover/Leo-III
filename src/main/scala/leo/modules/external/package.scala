@@ -47,7 +47,6 @@ package object external {
 
   final def generateSpecialAxioms(sig: Signature): Set[Clause] = {
     var result: Set[Clause] = Set.empty
-    leo.modules.printUserDefinedSignature(sig)
     val userSymbols = sig.uninterpretedSymbols.iterator
     while (userSymbols.hasNext) {
       val symb = userSymbols.next()
@@ -56,8 +55,6 @@ package object external {
         result += acInstance(symb)(sig)
       } // ... more to come
     }
-
-
     result
   }
 
