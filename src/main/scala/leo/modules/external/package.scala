@@ -14,40 +14,46 @@ package object external {
     final val WITHDEF: Flag = 1
   }
 
+
+  /** Return a clause representing the axiom of choice for symbol `symbol`, i.e.
+    * return clause `C` with
+    * {{{
+    * C = [P X]^f \/ [P (symbol P)]^f
+    * }}}
+    * where `P` and `X` are free variables to the clause.
+    */
+  private final def acInstance(symbol: Signature.Key)(implicit sig: Signature): Clause = {
+    val symbType = sig(symbol)._ty // (ty > o) > ty
+    assert(symbType.isFunType)
+    val ty0 = symbType._funDomainType // ty > o
+    val resultTy = symbType.codomainType // ty
+    assert(ty0.isFunType)
+    val ty00 = ty0._funDomainType // ty
+    val ty01 = ty0.codomainType // o
+    assert(resultTy == ty00)
+    assert(ty01 == HOLSignature.o)
+
+    val P: Term = Term.mkBound(ty0, 1)
+    val X: Term = Term.mkBound(ty00, 2)
+    val eps: Term = Term.mkAtom(symbol)(sig)
+    val negLit = Literal.mkLit(
+      Term.mkTermApp(P, X)
+      , false)
+    val posLit = Literal.mkLit(
+      Term.mkTermApp(P, Term.mkTermApp(eps, P))
+      , true)
+    Clause(Seq(negLit, posLit))
+  }
+
   final def generateSpecialAxioms(sig: Signature): Set[Clause] = {
-    def acInstance(symbol: Signature.Key): Clause = {
-      val symbType = sig(symbol)._ty // (ty > o) > ty
-      assert(symbType.isFunType)
-      val ty0 = symbType._funDomainType // ty > o
-      val resultTy = symbType.codomainType // ty
-      assert(ty0.isFunType)
-      val ty00 = ty0._funDomainType // ty
-      val ty01 = ty0.codomainType // o
-      assert(resultTy == ty00)
-      assert(ty01 == HOLSignature.o)
-
-      val P: Term = Term.mkBound(ty0, 1)
-      val X: Term = Term.mkBound(ty00, 2)
-      val eps: Term = Term.mkAtom(symbol)(sig)
-      val negLit = Literal.mkLit(
-        Term.mkTermApp(P, X)
-        , false)
-      val posLit = Literal.mkLit(
-        Term.mkTermApp(P, Term.mkTermApp(eps, P))
-        , true)
-      Clause(Seq(negLit, posLit))
-    }
-
     var result: Set[Clause] = Set.empty
     leo.modules.printUserDefinedSignature(sig)
     val userSymbols = sig.uninterpretedSymbols.iterator
     while (userSymbols.hasNext) {
       val symb = userSymbols.next()
-      leo.Out.output(s"going thorugh ${symb}")
       if (isPropSet(Signature.PropChoice, sig(symb).flag)) {
         // include choice axiom for symb
-        leo.Out.output(s"choice ${symb}")
-        result += acInstance(symb)
+        result += acInstance(symb)(sig)
       } // ... more to come
     }
 
@@ -67,15 +73,7 @@ package object external {
     sb.append("\n\n")
     sb.append(s"%% User axioms")
     sb.append("\n")
-    // Include special axioms for symbols with known properties, e.g. choice
-    val specialAxioms = generateSpecialAxioms(sig).iterator
     var counter: Int = 1
-    while (specialAxioms.hasNext) {
-      val ax = specialAxioms.next()
-      sb.append(ToTFF(ax, Role_Axiom, s"ax_$counter"))
-      sb.append("\n")
-      counter += 1
-    }
     while (problemIt.hasNext) {
       val cl = problemIt.next()
       sb.append(ToTFF(cl, Role_Axiom, s"ax_$counter"))
