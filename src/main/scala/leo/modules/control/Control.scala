@@ -1960,7 +1960,7 @@ package schedulingControl {
 
       RunStrategy(
         timeout = -1,
-        primSubst = Configuration.DEFAULT_PRIMSUBST,
+        primSubst = 3,
         sos = false,
         unifierCount = 3,
         uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
