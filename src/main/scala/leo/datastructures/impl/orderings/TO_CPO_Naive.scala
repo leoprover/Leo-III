@@ -14,7 +14,7 @@ import scala.annotation.tailrec
  * @author Alexander Steen <a.steen@fu-berlin.de>
  * @since 29.09.2015
  */
-object TO_CPO_Naive { //} extends LeoOrdering[Term] {
+object TO_CPO_Naive extends TermOrdering {
   /////////////////////////////////////////////////////////////////
   /// Exported functions
   /////////////////////////////////////////////////////////////////
@@ -414,7 +414,7 @@ object TO_CPO_Naive { //} extends LeoOrdering[Term] {
   }
 
  final private def filterTermArgs(args: Seq[Either[Term, Type]]): Seq[Term] = {
-    if (args.isEmpty) Seq.empty
+    if (args.isEmpty) Vector.empty
     else {
       val hd = args.head
       if (hd.isLeft) {

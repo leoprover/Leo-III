@@ -65,6 +65,11 @@ package object datastructures {
   /////////////////////////////////
   // Ordering related library functions
   /////////////////////////////////
+
+  trait TermOrdering {
+    def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result
+  }
+
   type CMP_Result = Byte
   /** Comparison result: Equal */
   final val CMP_EQ: CMP_Result = 0.toByte
