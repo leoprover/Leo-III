@@ -14,6 +14,7 @@ object SeqLoopLift extends ProofProcedure[State[AnnotatedClause]] {
     leo.Out.info(s"Started ${state.runStrategy.pretty}")
     state.fVIndex.reset()
     SeqLoop.run(state, state.initialProblem.toSeq, System.currentTimeMillis())
+    leo.Out.info(s"Finshed ${state.runStrategy.pretty}")
     state
   }
 }

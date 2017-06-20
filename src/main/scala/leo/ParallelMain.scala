@@ -12,7 +12,7 @@ import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
-import leo.modules.control.Control
+import leo.modules.control.{Control, schedulingControl}
 import leo.datastructures.AnnotatedClause
 import leo.modules.agent.multisearch.SchedulingPhase
 import leo.modules.agent.rules.control_rules._
@@ -84,8 +84,10 @@ object ParallelMain {
     try {
       val initState: State[AnnotatedClause] = State.fresh(sig)
 
-      val tactics: Iterator[RunStrategy] = Control.generateRunStrategies.map(strat =>
-        new RunStrategy(timeout.toInt, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt, strat.choice))
+      val defaultStrat = schedulingControl.StrategyControl.defaultStrategy(timeout.toInt)
+      val tactics : Iterator[RunStrategy] = (schedulingControl.StrategyControl.STRATEGY_TEMPLATES.filterNot(_ == defaultStrat)).iterator
+
+//      println(tactics.size)
 
       val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 
@@ -103,30 +105,12 @@ object ParallelMain {
       val time = System.currentTimeMillis() - startTime
       scheduler.killAll()
 
-      //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
-      val szsStatus = initState.szsStatus
-      Out.output("")
-      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+      val resultState = schedPhase.resultState
 
       //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
-
-      Out.comment(s"No. of loop iterations: ${initState.noProofLoops}")
-      Out.comment(s"No. of processed clauses: ${initState.noProcessedCl}")
-      Out.comment(s"No. of generated clauses: ${initState.noGeneratedCl}")
-      Out.comment(s"No. of forward subsumed clauses: ${initState.noForwardSubsumedCl}")
-      Out.comment(s"No. of backward subsumed clauses: ${initState.noBackwardSubsumedCl}")
-      Out.comment(s"No. of subsumed descendants deleted: ${initState.noDescendantsDeleted}")
-      Out.comment(s"No. of rewrite rules in store: ${initState.rewriteRules.size}")
-      Out.comment(s"No. of other units in store: ${initState.nonRewriteUnits.size}")
-      Out.comment(s"No. of choice functions detected: ${initState.choiceFunctionCount}")
-      Out.comment(s"No. of choice instantiations: ${initState.choiceInstantiations}")
-      val proof = initState.derivationClause
-      if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof.isDefined) {
-        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        //      Out.output(makeDerivation(derivationClause).drop(1).toString)
-        Out.output(userConstantsForProof(sig))
-        Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(proof.get)))
-        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      resultState match {
+        case s : State[AnnotatedClause] => printResult(s, time)
+        case _ => printResult(resultState, time)
       }
     } finally {
       if(!TimeOutProcess.isFinished)
@@ -299,6 +283,44 @@ object ParallelMain {
   }
 
   private def printResult(state : GeneralState[AnnotatedClause], time : Double): Unit ={
+    Out.comment(s"No. of loop iterations: 0")
+    Out.comment(s"No. of processed clauses: 0")
+    Out.comment(s"No. of generated clauses: 0")
+    Out.comment(s"No. of forward subsumed clauses: 0")
+    Out.comment(s"No. of backward subsumed clauses: 0")
+    Out.comment(s"No. of subsumed descendants deleted: 0")
+    Out.comment(s"No. of rewrite rules in store: 0")
+    Out.comment(s"No. of other units in store: 0")
+    Out.comment(s"No. of choice functions detected: 0")
+    Out.comment(s"No. of choice instantiations: 0")
+
+    printSZSAndProof(state, time)
+  }
+
+
+  private def printResult(state : State[AnnotatedClause], time : Double): Unit = {
+    Out.comment(s"No. of loop iterations: ${state.noProofLoops}")
+    Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
+    Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
+    Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
+    Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
+    Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
+    Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
+    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
+    Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
+    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
+
+    printSZSAndProof(state, time)
+  }
+
+  private def testExternalProvers(): Unit ={
+    Configuration.ATPS foreach { case (name, cmd) =>
+      val r = ExternalCall.exec(cmd+" "+Configuration.PROBLEMFILE)
+        println(s"Output ($name) ${r.out.mkString("\n")}\n\n Error ($name)\n ${r.error.mkString("\n")}")
+    }
+  }
+
+  private def printSZSAndProof(state : GeneralState[AnnotatedClause], time : Double): Unit = {
     import modules._
     implicit val sig = state.signature
     val szsStatus = state.szsStatus
@@ -314,28 +336,6 @@ object ParallelMain {
       if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
       else Out.output(proofToTPTP(proof))
       Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
-    }
-  }
-
-  private def printResult(state : State[AnnotatedClause], time : Double): Unit = {
-    Out.comment(s"No. of loop iterations: ${state.noProofLoops}")
-    Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
-    Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
-    Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
-    Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
-    Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
-    Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
-    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
-    Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
-    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
-
-    printResult(state.asInstanceOf[GeneralState[AnnotatedClause]], time)
-  }
-
-  private def testExternalProvers(): Unit ={
-    Configuration.ATPS foreach { case (name, cmd) =>
-      val r = ExternalCall.exec(cmd+" "+Configuration.PROBLEMFILE)
-        println(s"Output ($name) ${r.out.mkString("\n")}\n\n Error ($name)\n ${r.error.mkString("\n")}")
     }
   }
 
