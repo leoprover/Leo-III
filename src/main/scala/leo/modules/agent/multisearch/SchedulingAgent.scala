@@ -1,9 +1,11 @@
 package leo.modules.agent.multisearch
 
+import leo.Configuration
 import leo.agents._
 import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.{DataType, Delta, Event, ImmutableDelta}
 import leo.modules.GeneralState
+import leo.modules.output.SZS_Theorem
 import leo.modules.prover.RunStrategy
 
 /**
@@ -12,27 +14,50 @@ import leo.modules.prover.RunStrategy
 class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic : Iterator[RunStrategy]) extends AbstractAgent {
   private val self = this
   override def name: String = "scheduling-agent"
+  private val maxPar = Configuration.THREADCOUNT
+  private var curExec = 0 // TODO Sync
+
+  private val startTime = System.currentTimeMillis()
+  private val timeout = Configuration.TIMEOUT
 
   override def filter(event: Event): Iterable[Task] = event match {
     case d : Delta =>
       // TODO on the fly scheduling?
-      if(d.inserts(CompletedState).nonEmpty){
-        leo.Out.info(s"Completed ${d.inserts(CompletedState).map{case s =>
+      val ins = d.inserts(CompletedState)
+      if(ins.nonEmpty){
+        leo.Out.info(s"Completed\n   ${d.inserts(CompletedState).map{case s =>
           s"${s.runStrategy.pretty} with szs = ${s.szsStatus.pretty}"
-        }.mkString(", ")}")
-        // TODO Filter potential good SZSStati
+        }.mkString(",\n   ")}")
+
+        curExec -= ins.size
+        if(!ins.exists(_.szsStatus == SZS_Theorem)) {
+          generateNewRuns()
+        }
+        else {
+          Iterable()
+        }
+      } else {
+        Iterable()
       }
-      Iterable()
     case _ => Iterable()
   }
 
   override def init(): Iterable[Task] = {
+    generateNewRuns()
+  }
+
+  private def generateNewRuns() : Iterable[Task] = {
     var tasks : Seq[Task] = Seq()
     val it = tactic
-    while(it.hasNext){
-      val tactic = it.next()
-      val newState : S = initState.copyGeneral.asInstanceOf[S]  // Casting not avoidable..
-      newState.setRunStrategy(tactic)
+    val remaining : Int = timeout - ((System.currentTimeMillis() - startTime).toInt / 1000)
+    while(it.hasNext && curExec < maxPar){
+      curExec += 1
+      val strat = it.next()
+      val newState : S = initState.copyGeneral.asInstanceOf[S]
+      val timedTactic =  new RunStrategy(remaining, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt, strat.choice)
+      // Time!
+//      println(s"Commit ${timedTactic.pretty}")
+      newState.setRunStrategy(timedTactic)
       tasks = new NewModeTask(newState) +: tasks
     }
     tasks

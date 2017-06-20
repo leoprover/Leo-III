@@ -105,7 +105,7 @@ class ProcessedSet(processedType : DataType[AnnotatedClause])(implicit state : C
     * @return
     */
   override def get[T](t: DataType[T]): Set[T] = t match{
-    case processedType => synchronized(set.toSet.asInstanceOf[Set[T]])
+    case `processedType` => synchronized(set.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }

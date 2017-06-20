@@ -995,7 +995,8 @@ object TermImpl extends TermBank {
   // shared terms
   /////////////////////////////////////////////
   import scala.collection.mutable
-  import mutable.{WeakHashMap => WMap, HashMap => MMap}
+//  import mutable.{WeakHashMap => WMap, HashMap => MMap}
+  import scala.collection.concurrent.{TrieMap => MMap}
 
   // atomic symbols (heads)
   final protected[TermImpl] val boundAtoms: MMap[Type, MMap[Int, WeakReference[Head]]] = MMap.empty

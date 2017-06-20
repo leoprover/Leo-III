@@ -32,6 +32,8 @@ class SchedulingPhase(tactics : Iterator[RunStrategy],
   extends CompletePhase(blackboard, scheduler, SchedulingPhase.endBy, Seq(CompletedState)) {
   override def name: String = "SchedulingPhase"
 
+  var resultState = state
+
   override protected val agents: Seq[Agent] = Seq()
   implicit val sig : Signature = state.signature
   var negSet : Boolean = false
@@ -80,8 +82,9 @@ class SchedulingPhase(tactics : Iterator[RunStrategy],
     while(it.nonEmpty){
       val s = it.next()
       if(s.szsStatus == SZS_Theorem) {
-        state.setSZSStatus(SZS_Theorem)
-        s.derivationClause.foreach(c => state.setDerivationClause(c))
+        resultState = s
+      } else if(resultState.szsStatus != SZS_Theorem) {
+        resultState = s
       }
     }
     true

@@ -114,7 +114,7 @@ class UnprocessedSet(unprocessedType : DataType[AnnotatedClause])(implicit state
     * @return
     */
   override def get[T](t: DataType[T]): Set[T] = t match{
-    case unprocessedType => synchronized(mpq.toSet.asInstanceOf[Set[T]])
+    case `unprocessedType` => synchronized(mpq.toSet.asInstanceOf[Set[T]])
     case _ => Set()
 
   }
