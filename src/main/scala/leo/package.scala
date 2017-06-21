@@ -2,7 +2,7 @@ import leo.datastructures._
 
 package object leo {
 
-  type TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive.type
+  type TermOrdering = leo.datastructures.TermOrdering
   type ClauseProxyOrdering = Ordering[ClauseProxy]
 
   type ClauseWeight = Weight[Clause]

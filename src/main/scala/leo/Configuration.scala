@@ -147,7 +147,18 @@ object Configuration extends DefaultConfiguration {
 
   lazy val LITERAL_WEIGHTING: LiteralWeight = LiteralWeights.termsize
 
-  lazy val TERM_ORDERING: TermOrdering = leo.datastructures.impl.orderings.TO_CPO_Naive
+  lazy val TERM_ORDERING: TermOrdering = {
+    if (isSet("ordering")) {
+      val ord = valueOf("ordering").get.head
+      ord match {
+        case "CPO" => leo.datastructures.impl.orderings.TO_CPO_Naive
+        case "none" => leo.datastructures.impl.orderings.NO_ORDERING
+        case _ => DEFAULT_TERMORDERING
+      }
+    } else{
+      DEFAULT_TERMORDERING
+    }
+  }
 
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
@@ -389,4 +400,5 @@ trait DefaultConfiguration {
   val DEFAULT_PASSMARK = 0.56
   val DEFAULT_AGING = 2.35
   val DEFAULT_CHOICE = true
+  val DEFAULT_TERMORDERING = leo.datastructures.impl.orderings.TO_CPO_Naive
 }

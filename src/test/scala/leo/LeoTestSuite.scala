@@ -1,6 +1,7 @@
 package leo
 
-import org.scalatest.{BeforeAndAfter, FunSuite, BeforeAndAfterAll}
+import leo.modules.parsers.CLParameterParser
+import org.scalatest.{BeforeAndAfter, BeforeAndAfterAll, FunSuite}
 
 /**
  * Abstract template for test suites.
@@ -17,6 +18,7 @@ abstract class LeoTestSuite extends FunSuite with BeforeAndAfter with BeforeAndA
 
   override def beforeAll: Unit = {
     leo.Out.setLogLevel(java.util.logging.Level.FINER)
+    Configuration.init(new CLParameterParser(Array("ARG0")))
   }
 
 }
