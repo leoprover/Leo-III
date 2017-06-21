@@ -273,7 +273,7 @@ object ParallelMain {
   private def unexpectedEnd(time : Long) {
     val szsStatus : StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout : StatusSZS){x => x}
     Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
   }
 
   private def printPhase(p : Phase) = {
@@ -325,7 +325,7 @@ object ParallelMain {
     implicit val sig = state.signature
     val szsStatus = state.szsStatus
     Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
 
     val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
 
