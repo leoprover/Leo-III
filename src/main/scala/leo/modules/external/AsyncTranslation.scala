@@ -24,7 +24,6 @@ class AsyncTranslationImpl(scheduler : Scheduler) extends AsyncTranslation {
   override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
     val runthread = new Runnable {
       override def run(): Unit = {
-        println("Translating")
         ExtProverControl.sequentialSubmit(clauses, state)
       }
     }
