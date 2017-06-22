@@ -14,7 +14,7 @@ import leo.modules.prover.RunStrategy
 class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic : Iterator[RunStrategy]) extends AbstractAgent {
   private val self = this
   override def name: String = "scheduling-agent"
-  private val maxPar = Configuration.THREADCOUNT
+  private val maxPar = Configuration.PAR_SCHED
   private var curExec = 0 // TODO Sync
 
   private val startTime = System.currentTimeMillis()

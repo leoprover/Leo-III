@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
-import leo.modules.external.ExternalCall
+import leo.modules.external.{AsyncTranslationImpl, ExternalCall}
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
@@ -16,6 +16,7 @@ import leo.modules.control.{Control, schedulingControl}
 import leo.datastructures.AnnotatedClause
 import leo.modules.agent.multisearch.SchedulingPhase
 import leo.modules.agent.rules.control_rules._
+import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
 import leo.modules.prover.{RunStrategy, State}
@@ -88,6 +89,8 @@ object ParallelMain {
 
 //      println(tactics.size)
 
+      ExtProverControl.registerAsyncTranslation(new AsyncTranslationImpl(scheduler))
+
       val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 
       printPhase(schedPhase)
@@ -105,7 +108,7 @@ object ParallelMain {
       scheduler.killAll()
 
       val resultState = schedPhase.resultState
-      if(TimeOutProcess.timedOut) resultState.setSZSStatus(SZS_Timeout)
+      if(TimeOutProcess.timedOut && resultState.szsStatus != SZS_Theorem) resultState.setSZSStatus(SZS_Timeout)
 
       //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
       resultState match {
