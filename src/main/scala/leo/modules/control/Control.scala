@@ -1783,6 +1783,12 @@ package  externalProverControl {
     private var lastCheck: Long = Long.MinValue
     private var lastCall: Long = -5
 
+    private var callFacade : AsyncTranslation = new SequentialTranslationImpl
+
+    final def registerAsyncTranslation(translation : AsyncTranslation) : Unit = {
+      callFacade = translation
+    }
+
     final def openCallsExist: Boolean = openCalls.nonEmpty
 
     final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
@@ -1836,7 +1842,13 @@ package  externalProverControl {
     final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
       state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
     }
+
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+      callFacade.call(clauses, state)
+    }
+
+
+    final def sequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
       if (state.externalProvers.nonEmpty) {
         if (shouldRun(clauses, state)) {
           leo.Out.debug(s"[ExtProver]: Staring jobs ...")

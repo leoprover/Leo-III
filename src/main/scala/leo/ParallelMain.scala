@@ -2,12 +2,12 @@ package leo
 
 import java.nio.file.Files
 
-import leo.datastructures.blackboard.{Blackboard, DoneEvent, SignatureBlackboard}
+import leo.datastructures.blackboard.{Blackboard, DoneEvent}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
-import leo.modules.external.ExternalCall
+import leo.modules.external.{AsyncTranslationImpl, ExternalCall}
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
@@ -16,9 +16,10 @@ import leo.modules.control.{Control, schedulingControl}
 import leo.datastructures.AnnotatedClause
 import leo.modules.agent.multisearch.SchedulingPhase
 import leo.modules.agent.rules.control_rules._
+import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
-import leo.modules.prover.{RunStrategy, State, StateStatistics}
+import leo.modules.prover.{RunStrategy, State}
 
 
 /**
@@ -31,10 +32,9 @@ object ParallelMain {
     try {
       Configuration.init(new CLParameterParser(args))
     } catch {
-      case e: IllegalArgumentException => {
+      case e: IllegalArgumentException =>
         Configuration.help()
         return
-      }
     }
     if ((args(0) == "-h") || Configuration.HELP) {
       Configuration.help()
@@ -67,7 +67,7 @@ object ParallelMain {
     * Employs agents only to perform a multisearch with
     * a defined set of RunStrategies
     *
-    * @param startTime
+    * @param startTime Time the program started
     */
   def runMultiSearch(startTime : Long) {
     import leo.datastructures.Signature
@@ -85,9 +85,11 @@ object ParallelMain {
       val initState: State[AnnotatedClause] = State.fresh(sig)
 
       val defaultStrat = schedulingControl.StrategyControl.defaultStrategy(timeout.toInt)
-      val tactics : Iterator[RunStrategy] = (schedulingControl.StrategyControl.STRATEGY_TEMPLATES.filterNot(_ == defaultStrat)).iterator
+      val tactics : Iterator[RunStrategy] = (defaultStrat +: schedulingControl.StrategyControl.STRATEGY_TEMPLATES.filterNot(_ == defaultStrat)).iterator
 
 //      println(tactics.size)
+
+      ExtProverControl.registerAsyncTranslation(new AsyncTranslationImpl(scheduler))
 
       val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 
@@ -106,6 +108,7 @@ object ParallelMain {
       scheduler.killAll()
 
       val resultState = schedPhase.resultState
+      if(TimeOutProcess.timedOut && resultState.szsStatus != SZS_Theorem) resultState.setSZSStatus(SZS_Timeout)
 
       //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
       resultState match {
@@ -123,7 +126,7 @@ object ParallelMain {
     * Runs a single main loop,
     * but paralellizes on Subsidiary tasks
     *
-    * @param startTime
+    * @param startTime Time the program started
     */
   def runParallel(startTime : Long){
 
@@ -169,9 +172,9 @@ object ParallelMain {
       scheduler.killAll()
 
       //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
-      val szsStatus = state.state.szsStatus
+      val szsStatus = if(TimeOutProcess.timedOut) SZS_Timeout else state.state.szsStatus
       Out.output("")
-      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
 
       //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
 
@@ -339,20 +342,18 @@ object ParallelMain {
     }
   }
 
-  /**
-    * Thread to kill leo.Scheduler()
-    *
-    * @param interval
-    * @param timeout
-    */
+
   private class DeferredKill(interval : Double, timeout : Double, blackboard: Blackboard, scheduler: Scheduler) extends Thread {
 
     var remain : Double = timeout
     var exit : Boolean = false
 
     private var finished = false
+    private var timeOut = false
 
-    def isFinished = synchronized(finished)
+    def isFinished : Boolean = synchronized(finished)
+
+    def timedOut : Boolean = synchronized(timeOut)
 
     def killOnly() : Unit = synchronized {
       exit = true
@@ -389,7 +390,7 @@ object ParallelMain {
             }
           }
         }
-        SZSDataStore.setIfEmpty(SZS_Timeout)
+        timeOut = true
         Out.finest(s"Timeout: Killing all Processes.")
         finished = true
         //TODO: Better mechanism

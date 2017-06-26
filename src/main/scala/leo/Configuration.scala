@@ -43,6 +43,7 @@ object Configuration extends DefaultConfiguration {
   private val RENAMING = "renaming"
   private val PARAM_CONSISTENCYCHECK = "consistency-only"
   private val EXTRACTION_TYPE_PARAM = "xType"
+  private val PARAM_PAR_SCHED = "parSched"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -101,6 +102,7 @@ object Configuration extends DefaultConfiguration {
   }
 
   lazy val THREADCOUNT: Int = uniqueIntFor(PARAM_THREADCOUNT, DEFAULT_THREADCOUNT)
+  lazy val PAR_SCHED : Int = uniqueIntFor(PARAM_PAR_SCHED, DEFAULT_PAR_SCHED)
 
   lazy val VERBOSITY: java.util.logging.Level = {
     val v = configMap.get(PARAM_VERBOSITY) match {
@@ -401,4 +403,5 @@ trait DefaultConfiguration {
   val DEFAULT_AGING = 2.35
   val DEFAULT_CHOICE = true
   val DEFAULT_TERMORDERING = leo.datastructures.impl.orderings.TO_CPO_Naive
+  val DEFAULT_PAR_SCHED = 3
 }
