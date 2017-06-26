@@ -1781,7 +1781,7 @@ package  externalProverControl {
     private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
-    private var lastCall: Long = 0
+    private var lastCall: Long = -5
 
     final def openCallsExist: Boolean = openCalls.nonEmpty
 
@@ -1890,12 +1890,19 @@ package  externalProverControl {
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
         val preparedProblem = prepareProblem(problem, TFF)(sig)
-        val (translatedProblem, auxDefs, translatedSig) =
-          if (supportsFeature(proverCaps, TFF)(Polymorphism))
-            Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
-          else
-            Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
+        try {
+          val (translatedProblem, auxDefs, translatedSig) =
+            if (supportsFeature(proverCaps, TFF)(Polymorphism))
+              Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
+            else
+              Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
           prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
+        } catch {
+          case e: Exception =>
+            Out.warn(s"Translation of external proof obligation failed for some reason.")
+            Out.debug(e.toString)
+            null
+        }
       } else if (proverCaps.contains(FOF)) {
         Out.warn(s"$prefix Untyped first-order cooperation currently not supported.")
         null
@@ -1914,7 +1921,6 @@ package  externalProverControl {
       *
       * Concretely, this method enriches the problem with axioms
       * about some signature constants (choice ...).
-      * TODO: Remove TPTP choice symbols and axiomatize them using a fresh symbol
       * if goal language first-order. */
     final def prepareProblem(problem: Set[AnnotatedClause], goalLanguage: Language)(implicit sig: Signature): Set[AnnotatedClause] = {
       import leo.datastructures.Role_Axiom
