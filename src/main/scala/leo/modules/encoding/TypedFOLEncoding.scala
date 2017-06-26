@@ -28,6 +28,7 @@ object TypedFOLEncoding {
         // if a fixed symbol occurs in the arity table it means it was used as a subterm
         // so we need to add the associated proxySymbol with the given minimal arity
         // to the signature
+        // choice cannot occur top-level since its not Boolean-typed.
         val foType = foTransformType(fMeta._ty, info)(sig, foSig)
         val id = foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(fMeta.name), foType)
         proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
@@ -282,7 +283,7 @@ object TypedFOLEncoding {
     import Term.{Bound, :::>, ∙, Symbol, TypeLambda}
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
-    Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
+    Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue, Choice => HOLChoice}
     import encodingSignature._
     leo.Out.finest(s"TranslateTerm: ${t.pretty(holSignature)}")
     t match {
@@ -302,6 +303,7 @@ object TypedFOLEncoding {
             case HOLImpl.key => proxyImpl
             case HOLIf.key => proxyIf
             case HOLEquiv.key => proxyEquiv
+            case HOLChoice.key => proxyChoice
             case _ =>
               val fName = escape(holSignature(id).name)
               mkAtom(encodingSignature(fName).key)(encodingSignature)
@@ -601,6 +603,7 @@ object TypedFOLEncodingSignature {
   final val proxyExists_name: String = "exists"
   final val proxyEq_name: String = "eq"
   final val proxyNeq_name: String = "neq"
+  final val proxyChoice_name: String = "choice"
 
   final val proxyOf: Map[String, String] = Map(
     "$true" -> safeName(proxyTrue_name),
@@ -614,7 +617,8 @@ object TypedFOLEncodingSignature {
     "!" -> safeName(proxyForall_name),
     "?" -> safeName(proxyExists_name),
     "=" -> safeName(proxyEq_name),
-    "!=" -> safeName(proxyNeq_name)
+    "!=" -> safeName(proxyNeq_name),
+    "@+" -> safeName(proxyChoice_name)
   )
 }
 
@@ -787,6 +791,14 @@ trait TypedFOLEncodingSignature extends Signature {
   lazy val proxyNeq: Term = mkAtom(proxyNeq_id)(this)
   final def proxyNeq(l: Term, r: Term): Term = applyArgs(mkTypeApp(proxyNeq, l.ty), Seq(l, r))
 
+  ///// choice
+  lazy val proxyChoice_id: Signature.Key = proxyId(proxyChoice_name)
+  lazy val proxyChoice: Term = mkAtom(proxyChoice_id)(this)
+  final def proxyChoice(pred: Term): Term = {
+    val domainType = encodedFunSpaces(pred.ty)._1
+    applyArgs(mkTypeApp(proxyChoice,domainType), Seq(pred))
+  }
+
   private var usedProxies: Set[Signature.Key] = Set.empty
   final def proxiesUsed: Set[Signature.Key] = usedProxies
 
@@ -809,6 +821,9 @@ trait TypedFOLEncodingSignature extends Signature {
       case `proxyNeq_name` => Equiv(Neq(polyX, polyY), hBool(proxyNeq(polyX,polyY)))
       case `proxyForall_name` => Equiv(Forall(λ(1)(hBool(hApp(mkBound(funTy(1,boolTy), 2), mkBound(1,1))))),hBool(proxyForall(mkBound(funTy(1,boolTy), 1))))
       case `proxyExists_name` => Equiv(Exists(λ(1)(hBool(hApp(mkBound(funTy(1,boolTy), 2), mkBound(1,1))))),hBool(proxyExists(mkBound(funTy(1,boolTy), 1))))
+      case `proxyChoice_name` =>
+        val choiceProp =  mkBound(funTy(1,boolTy), 2)
+        Or(Not(hBool(applyArgs(choiceProp, Seq(polyX)))), hBool(applyArgs(choiceProp, Seq(proxyChoice(choiceProp)))))
       case _ => throw new IllegalArgumentException("Given id is not an proxy.")
     }
   }
