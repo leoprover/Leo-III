@@ -78,7 +78,7 @@ package object datastructures {
   /** Comparison result: Greater-than */
   final val CMP_GT: CMP_Result = 2.toByte
   /** Comparison result: Not-comparable (unknown) */
-  final val CMP_NC: CMP_Result = 3.toByte
+  final val CMP_NC: CMP_Result = 4.toByte
 
   /**
     * Collection of Ordering relations of terms, clauses, etc.
@@ -99,6 +99,13 @@ package object datastructures {
       if (x > y) CMP_GT
       else if (x < y) CMP_LT
       else CMP_EQ
+    }
+
+    final def pretty(x: CMP_Result): String = {
+      if (x == CMP_GT) "GT"
+      else if (x == CMP_LT) "LT"
+      else if (x == CMP_EQ) "EQ"
+      else "NC"
     }
 
     /** Return a (simple) ordering that is induced by a weighting. */
