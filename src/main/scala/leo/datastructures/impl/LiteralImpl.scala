@@ -10,24 +10,20 @@ protected[impl] sealed abstract class LiteralImpl extends Literal {
 }
 
 object LiteralImpl {
-  private var litCounter : Int = 0
-
   /** Creates a new (equational) literal with equation `left = right`
     * and polarity `polarity` which is unordered.
     * Note that the resulting literal is only
     * equational if `left/right != $true/$false`. */
   final def mkLit(left: Term, right: Term, pol: Boolean, oriented: Boolean = false): Literal = {
-    litCounter += 1
-
     if (left == LitFalse()) {
-      NonEqLiteral(litCounter, right, !pol)
+      NonEqLiteral(right, !pol)
     } else if (right == LitFalse()) {
-      NonEqLiteral(litCounter, left, !pol)
+      NonEqLiteral(left, !pol)
     } else if (left == LitTrue()) {
-      NonEqLiteral(litCounter, right, pol)
+      NonEqLiteral(right, pol)
     } else if (right == LitTrue()) {
-      NonEqLiteral(litCounter, left, pol)
-    } else EqLiteral(litCounter,left,right,pol,oriented)
+      NonEqLiteral(left, pol)
+    } else EqLiteral(left,right,pol,oriented)
   }
 
   /** Creates a new (equational) literal of the two terms t1 and t2
@@ -38,39 +34,35 @@ object LiteralImpl {
     * Note that the resulting literal is only
     * equational if both terms t1 and t2 and not equivalent to $true/$false. */
   final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = {
-    litCounter += 1
-
-    if (t1 == LitFalse()) {
-      NonEqLiteral(litCounter, t2, !pol)
+       if (t1 == LitFalse()) {
+      NonEqLiteral(t2, !pol)
     } else if (t2 == LitFalse()) {
-      NonEqLiteral(litCounter, t1, !pol)
+      NonEqLiteral(t1, !pol)
     } else if (t1 == LitTrue()) {
-      NonEqLiteral(litCounter, t2, pol)
+      NonEqLiteral(t2, pol)
     } else if (t2 == LitTrue()) {
-      NonEqLiteral(litCounter, t1, pol)
+      NonEqLiteral(t1, pol)
     } else {
       import leo.Configuration.{TERM_ORDERING => ord}
       import leo.datastructures.{CMP_EQ, CMP_GT, CMP_LT}
       val cmpResult = ord.compare(t1,t2)(sig)
       if (cmpResult == CMP_EQ || cmpResult == CMP_GT)
-        EqLiteral(litCounter,t1,t2,pol,true)
+        EqLiteral(t1,t2,pol,true)
       else if (cmpResult == CMP_LT)
-        EqLiteral(litCounter,t2,t1,pol,true)
+        EqLiteral(t2,t1,pol,true)
       else  /* else not comparable */
-        EqLiteral(litCounter,t1,t2,pol,false)
+        EqLiteral(t1,t2,pol,false)
     }
   }
 
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
   final def mkLit(t: Term, pol: Boolean): Literal = {
-    litCounter += 1
-    NonEqLiteral(litCounter, t, pol)
+    NonEqLiteral(t, pol)
   }
 
 
-  private final case class EqLiteral(id: Int,
-                                     left: Term,
+  private final case class EqLiteral(left: Term,
                                      right: Term,
                                      polarity: Boolean,
                                      oriented: Boolean) extends LiteralImpl {
@@ -91,8 +83,7 @@ object LiteralImpl {
 
   }
 
-  private final case class NonEqLiteral(id: Int,
-                                   left: Term,
+  private final case class NonEqLiteral(left: Term,
                                    polarity: Boolean) extends LiteralImpl {
     /** The left side of the literal's equation.
       * Invariant: `!equational => right = $true or right = $false`.
