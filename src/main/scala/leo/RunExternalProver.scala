@@ -39,7 +39,8 @@ object RunExternalProver {
     // Process our own input
     println(s"Problem to check :\n ${example.map(_.pretty(s)).mkString("\n")}")
 
-    val max = Configuration.ATP_TIMEOUT.getOrElse(name, Configuration.ATP_STD_TIMEOUT) * 1000
+    val max = Configuration.ATP_TIMEOUT(name) * 1000 //.getOrElse(name, Configuration.ATP_STD_TIMEOUT) * 1000
+    // It uses a MapWithDefault, should return STDTimoout if no entry exists
 
     val fres = p.call(example, example.map(_.cl), s, Capabilities.THF, max)
 

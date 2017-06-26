@@ -220,7 +220,7 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
-  final val ATP_STD_TIMEOUT : Int = 40
+
   lazy val ATP_TIMEOUT : Map[String, Int] = {
     val a = valueOf("e")
     if(a.nonEmpty) {
@@ -228,7 +228,7 @@ object Configuration extends DefaultConfiguration {
       atps.filter(_.contains("=")).map{(s : String)  =>
         val eses = s.split("=",2)
         (eses(0), eses(1).toInt)
-      }.toMap.withDefault(_ => ATP_STD_TIMEOUT)
+      }.toMap.withDefault(_ => DEFAULT_ATP_TIMEOUT)
     } else {
       val b = valueOf("atp-timeout")
       if(b.nonEmpty) {
@@ -236,9 +236,9 @@ object Configuration extends DefaultConfiguration {
         atps.filter(_.contains("=")).map{(s : String)  =>
           val eses = s.split("=",2)
           (eses(0), eses(1).toInt)
-        }.toMap.withDefault(_ => ATP_STD_TIMEOUT)
+        }.toMap.withDefault(_ => DEFAULT_ATP_TIMEOUT)
       }
-      else Map().withDefault(_ => ATP_STD_TIMEOUT)
+      else Map().withDefault(_ => DEFAULT_ATP_TIMEOUT)
     }
   }
 
@@ -398,6 +398,7 @@ trait DefaultConfiguration {
   val DEFAULT_PRE_PRIMSUBST_MAXDEPTH = 5
   val DEFAULT_ATPCHECKINTERVAL = 3
   val DEFAULT_ATPCALLINTERVAL = 20
+  val DEFAULT_ATP_TIMEOUT = 20
   val DEFAULT_ATPMAXJOBS = 2
   val DEFAULT_PASSMARK = 0.56
   val DEFAULT_AGING = 2.35

@@ -75,11 +75,14 @@ object Main {
     } catch {
       case e:Throwable =>
         Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
-        if (e.isInstanceOf[SZSException]) {
-          val e0 = e.asInstanceOf[SZSException]
-          Out.output(SZSOutput(e0.status, Configuration.PROBLEMFILE,e.toString))
-          Out.debug(e0.debugMessage)
-        } else Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+        e match {
+          case e0: SZSException =>
+            Out.output(SZSOutput(e0.status, Configuration.PROBLEMFILE,e0.toString))
+            Out.debug(e0.debugMessage)
+          case e0: OutOfMemoryError =>
+            Out.output(SZSOutput(SZS_MemoryOut, Configuration.PROBLEMFILE, e0.toString))
+          case _ => Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+        }
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {
           Out.trace("Caused by: " + e.getCause.getMessage)
