@@ -1937,6 +1937,10 @@ package  externalProverControl {
     }
 
     final def killExternals(): Unit = {
+      callFacade.killAll()
+    }
+
+    final def sequentialKillExternals(): Unit = {
       Out.info(s"Killing external provers ...")
       openCalls.keys.foreach(prover =>
         openCalls(prover).foreach(future =>

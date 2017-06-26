@@ -47,6 +47,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
            sig: Signature, callLanguage: Capabilities.Language,
            timeout : Int,
           extraArgs: Seq[String] = Seq.empty): Future[TptpResult[C]] = {
+    leo.Out.info(s"Calling prover ${name}")
     val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
     startProver(translatedProblem, problemOrigin, timeout, extraArgs)
   }
@@ -84,14 +85,14 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val safeProverName = java.net.URLEncoder.encode(name, "UTF-8")
       val file = File.createTempFile(s"remoteInvoke_${safeProverName}_", ".p")
       if (!Configuration.isSet("overlord")) file.deleteOnExit()
-      leo.Out.debug(s"Sending proof obligation ${file.toString}")
+      leo.Out.info(s"Sending proof obligation ${file.toString}")
       val writer = new PrintWriter(file)
       try {
         writer.print(parsedProblem)
       } finally writer.close()
       // FIX ME : If a better solution for obtaining the processID is found
       val res = constructCall(args, timeout, file.getAbsolutePath)
-      leo.Out.debug(s"Call constructed: ${res.mkString(" ")}")
+      leo.Out.info(s"Call constructed: ${res.mkString(" ")}")
       KillableProcess(res.mkString(" "))
     }
     new SZSKillFuture(process, problem, timeout)
@@ -160,6 +161,8 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val exitValue = process.exitValue
       val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
       val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
+
+      leo.Out.info(s"\n>>>>>>>\nFetched Result\n ExitCode : ${exitValue}\n Output\n  ${output.mkString("  \n")}\n Error\n  ${error.mkString("\n  ")}\n>>>>>>>>>\n")
 
       val it = output.iterator
       var szsStatus: StatusSZS = null

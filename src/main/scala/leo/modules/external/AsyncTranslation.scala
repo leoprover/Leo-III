@@ -12,16 +12,23 @@ import leo.modules.prover.State
   */
 trait AsyncTranslation {
   def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause])
+
+  def killAll()
 }
 
 class SequentialTranslationImpl extends AsyncTranslation {
   override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
     ExtProverControl.sequentialSubmit(clauses, state)
   }
+
+  override def killAll(): Unit = {
+    ExtProverControl.sequentialKillExternals()
+  }
 }
 
 class AsyncTranslationImpl(scheduler : Scheduler) extends AsyncTranslation {
   override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+//    println("Called sync Trans")
     val runthread = new Runnable {
       override def run(): Unit = {
         ExtProverControl.sequentialSubmit(clauses, state)
@@ -33,4 +40,6 @@ class AsyncTranslationImpl(scheduler : Scheduler) extends AsyncTranslation {
       case e : Exception => ()
     }
   }
+
+  override def killAll(): Unit = ()
 }

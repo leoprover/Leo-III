@@ -77,6 +77,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
     state.runStrategy0 = runStrategy0
     state.symbolsInConjecture0 = symbolsInConjecture0
     state.choiceFunctions0 = choiceFunctions0
+    state.current_externalProvers = current_externalProvers
     state
   }
 

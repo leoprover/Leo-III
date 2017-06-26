@@ -97,6 +97,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.choiceFunctions0 = choiceFunctions0
     state.initialProblem0 = initialProblem0
     state.poly = poly
+    state.current_externalProvers = current_externalProvers
     state
   }
 
@@ -115,6 +116,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.choiceFunctions0 = choiceFunctions0
     state.initialProblem0 = initialProblem0
     state.poly = poly
+    state.current_externalProvers = current_externalProvers
     state
   }
   override def copyFVState: FVState[T] = copy
