@@ -25,6 +25,18 @@ import leo.datastructures._
   @inline final lazy val posLits: Seq[Literal] = lits.filter(_.polarity)
   /** Those literals in `lits` that are negative. */
   @inline final lazy val negLits: Seq[Literal] = lits.filter(!_.polarity)
+
+  private var maxLits0: Seq[Literal] = _
+  /** Those literals in `lits` that are maximal wrt to the underlying clause.
+    * IMPORTANT: This method caches the result after the first call. So if you
+    * need maximal literals wrt multiple signatures use [[leo.datastructures.Literal.maxOf()]]
+    * instead. */
+  final def maxLits(implicit sig: Signature): Seq[Literal] = {
+    if (maxLits0 == null) {
+      maxLits0 =  Literal.maxOf(lits)(sig)
+      maxLits0
+    } else maxLits0
+  }
 }
 
 object VectorClause {

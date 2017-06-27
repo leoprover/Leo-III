@@ -283,7 +283,7 @@ package inferenceControl {
     final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
       import Literal.{leftSide, rightSide, selectSide}
 
-      private val maxLits = Literal.maxOf(cl.lits)
+      private val maxLits = cl.maxLits
       private var litIndex = 0
       private var lits = cl.lits
       private var side = leftSide
@@ -350,7 +350,7 @@ package inferenceControl {
       implicit val sig = state.signature
       var res: Set[AnnotatedClause] = Set()
       val clause = cl.cl
-      val maxLitsofClause = Literal.maxOf(clause.lits)
+      val maxLitsofClause = clause.maxLits
       val maxLitIt = new LiteralSideIterator(clause, true, false, true)
 
       while (maxLitIt.hasNext) {
@@ -1294,7 +1294,7 @@ package inferenceControl {
 
       import Literal.{leftSide, rightSide, selectSide}
 
-      val maxLits: Seq[Literal] = Literal.maxOf(cl.lits)
+      val maxLits: Seq[Literal] = cl.maxLits
       var litIndex = 0
       var lits: Seq[Literal] = cl.lits
       var side: Side = rightSide // minimal side
@@ -1442,7 +1442,7 @@ package inferenceControl {
   protected final class LiteralSideIterator(cl: Clause, onlyMax: Boolean, onlyPositive: Boolean, alsoFlexheads: Boolean)(implicit sig: Signature) extends Iterator[inferenceControl.WithConfiguration] {
     import Literal.{leftSide, rightSide}
 
-    private val maxLits = Literal.maxOf(cl.lits)
+    private val maxLits = cl.maxLits
     private var litIndex = 0
     private var lits = cl.lits
     private var side = leftSide
