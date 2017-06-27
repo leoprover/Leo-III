@@ -280,7 +280,7 @@ object SeqLoop {
 
       if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
         if (!ExtProverControl.openCallsExist) {
-          Control.submit(state.processed, state)
+          Control.submit(state.processed, state, true)
           Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
         } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
         var wait = true
