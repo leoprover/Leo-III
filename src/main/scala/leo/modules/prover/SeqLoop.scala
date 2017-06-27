@@ -31,6 +31,9 @@ object SeqLoop {
 
     // Def expansion and simplification
     val expanded = Control.expandDefinitions(cur)
+    if (state.externalProvers.nonEmpty) {
+      state.addInitial(Set(expanded))
+    }
     val polarityswitchedAndExpanded = Control.switchPolarity(expanded)
     // We may instantiate here special symbols for universal variables
     // Its BEFORE miniscope because their are less quantifiers and maybe
@@ -155,6 +158,12 @@ object SeqLoop {
         state.defConjSymbols(simpNegConj)
         state.initUnprocessed()
         Control.initIndexes(simpNegConj +: input)
+
+        // Save initial problem as auxiliary data for ATP calls (if existent)
+        if (state.externalProvers.nonEmpty) {
+          state.addInitial(Set(simpNegConj))
+        }
+
         val result = preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
         Out.debug(s"# Result:\n\t${
           result.map {
@@ -163,10 +172,7 @@ object SeqLoop {
         }")
         Out.trace("## Preprocess Neg.Conjecture END")
         state.addUnprocessed(result)
-        // Save initial pre-processed set as auxiliary set for ATP calls (if existent)
-        if (state.externalProvers.nonEmpty) {
-          state.addInitial(result)
-        }
+
       } else {
         // Initialize indexes
         state.initUnprocessed()
@@ -187,9 +193,7 @@ object SeqLoop {
         }")
         val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
         state.addUnprocessed(preprocessed)
-        if (state.externalProvers.nonEmpty) {
-          state.addInitial(preprocessed)
-        }
+
         if (preprocessIt.hasNext) Out.trace("--------------------")
       }
       Out.trace("## Preprocess END\n\n")
