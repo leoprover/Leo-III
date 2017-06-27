@@ -106,7 +106,7 @@ object ToTFF {
             val arg1 = args.head
             val arg2 = args.tail.head
             assert(arg1.isLeft); assert(arg2.isLeft)
-            s"(${formulaToTFF(fvMap, tyFvCount,arg1.left.get)(sig)}) ${meta.name} (${formulaToTFF(fvMap,tyFvCount,arg2.left.get)(sig)})"
+            s"((${formulaToTFF(fvMap, tyFvCount,arg1.left.get)(sig)}) ${meta.name} (${formulaToTFF(fvMap,tyFvCount,arg2.left.get)(sig)}))"
           }
         } else {
           // Term level/predicate level

@@ -145,7 +145,7 @@ class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedCla
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout, Seq(execScript, path, problemFileName))
+    ExternalProver.limitedRun(timeout+2, Seq(execScript, path, problemFileName))
   }
 }
 object CVC4 {
@@ -160,7 +160,7 @@ class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout, Seq("why3", "prove", "-F", "tptp", "-t", String.valueOf(timeout), "-P", "Alt-Ergo", problemFileName))
+    ExternalProver.limitedRun(timeout+2, Seq("why3", "prove", "-F", "tptp", "-t", String.valueOf(timeout), "-P", "Alt-Ergo", problemFileName))
   }
 }
 object AltErgo {
@@ -175,7 +175,8 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
 
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout, Seq(path, "-t", timeout.toString) ++ args ++ Seq(problemFileName))
+    val timeout0 = if (timeout < 60) 60 else timeout
+    ExternalProver.limitedRun(timeout, Seq(path, "-t", timeout0.toString) ++ args ++ Seq(problemFileName))
   }
 }
 
