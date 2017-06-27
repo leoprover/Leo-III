@@ -25,6 +25,8 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   def posLits: Seq[Literal]
   /** Those literals in `lits` that are negative. */
   def negLits: Seq[Literal]
+  /** Those literals in `lits` that are maximal wrt to the underlying clause. */
+  def maxLits(implicit sig: Signature): Seq[Literal]
 
   // Operations on clauses
   def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Clause = Clause.mkClause(lits.map(_.substitute(termSubst, typeSubst)))

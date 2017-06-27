@@ -200,7 +200,7 @@ object SeqLoop {
         for (c <- state.unprocessed) {
           Out.finest(s"Clause ${c.pretty(sig)}")
           Out.finest(s"Maximal literal(s):")
-          Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
+          Out.finest(s"\t${c.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
         }
       }
       Out.finest(s"################")
@@ -235,7 +235,7 @@ object SeqLoop {
             var cur = state.nextUnprocessed
             // cur is the current AnnotatedClause
             Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
-            Out.trace(s"[SeqLoop] Maximal: ${Literal.maxOf(cur.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
+            Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             /* Functional Extensionality */
@@ -469,9 +469,9 @@ object SeqLoop {
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
     Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
-    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size}")
+    Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => c.cl.maxLits).size}")
     Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
-    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(c => Literal.maxOf(c.cl.lits)).size / state.processed.size.toDouble}")
+    Out.debug(s"avg. max. literals per clause: ${state.processed.flatMap(c => c.cl.maxLits).size / state.processed.size.toDouble}")
     Out.debug(s"oriented processed: ${state.processed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"oriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(_.oriented)}")
     Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")

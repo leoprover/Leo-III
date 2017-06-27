@@ -12,8 +12,6 @@ import leo.Configuration
  * @note Oct. 2015: Substantially updated (literals as equations)
  */
 trait Literal extends Pretty with Prettier {
-  /** The unique, increasing literal number. */
-  def id: Int
   /** The left side of the literal's equation.
     * Invariant: `left > right or !oriented` where > is a term ordering. */
   def left: Term
@@ -210,10 +208,10 @@ object Literal {
       while (j <= maxIdx) {
         val l2 = lits(j)
         val cmp = l1.compare(l2)(sig)
-        if (cmp == CMP_GT) {
+        if (cmp == CMP_GT) { // l1 > l2
           notmax = notmax :+ l2
           notstrictMax = notstrictMax :+ l2
-        } else if (cmp == CMP_LT) {
+        } else if (cmp == CMP_LT) { // l1 < l2
           notmax = notmax :+ l1
           notstrictMax = notstrictMax :+ l1
         } else if (cmp == CMP_EQ) {
@@ -221,7 +219,6 @@ object Literal {
           notstrictMax = notstrictMax :+ l2
         } else {
           // NC
-
         }
 
         j += 1

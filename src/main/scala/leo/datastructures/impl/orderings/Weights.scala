@@ -15,7 +15,7 @@ object LW_Constant extends LiteralWeight {
 
 /** Literal weighting that gives preference (i.e. gives lower weight) to older literals. */
 object LW_FIFO extends LiteralWeight {
-  def weightOf[A <: Literal](lit: A) = lit.id
+  def weightOf[A <: Literal](lit: A) = ??? //lit.id
 }
 
 /** Literal weighting that uses the enclosed term's size as weight. */

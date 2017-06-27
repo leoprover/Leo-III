@@ -39,7 +39,7 @@ class STIndex {
                       withSubterms:  Boolean)
                      (implicit sig: Signature): Unit = {
     var lits = cl.lits
-    val maxLits = if (maxOnly) Literal.maxOf(cl.lits)(sig) else Seq.empty
+    val maxLits = if (maxOnly) cl.maxLits(sig) else Seq.empty
 
     var litIdx = 0
     while (lits.nonEmpty) {

@@ -120,7 +120,7 @@ class InterleavableLoopPhase
       for (c <- state.state.unprocessed) {
         Out.finest(s"Clause ${c.pretty(sig)}")
         Out.finest(s"Maximal literal(s):")
-        Out.finest(s"\t${Literal.maxOf(c.cl.lits).map(_.pretty(sig)).mkString("\n\t")}")
+        Out.finest(s"\t${c.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
       }
     }
     Out.finest(s"################")
