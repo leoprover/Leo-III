@@ -1782,7 +1782,7 @@ package  externalProverControl {
     private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
-    private var lastCall: Long = -5
+    private var lastCall: Long = -10
 
     private var callFacade : AsyncTranslation = new SequentialTranslationImpl
 

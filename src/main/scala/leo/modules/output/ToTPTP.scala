@@ -313,7 +313,7 @@ object ToTPTP {
   }
 
   final private def toTPTP0(t: Term, tyVarCount: Int, bVars: Map[Int,String] = Map())(sig: Signature): String = {
-    t match {
+    t.etaContract match {
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
         tptpEscapeExpression(name)

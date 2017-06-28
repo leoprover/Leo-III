@@ -468,7 +468,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
           val lowered = result.substitute(Subst.shift(-curEtaArg)) // TODO: Check
           abstractedTypes.dropRight(curEtaArg).foldRight(lowered.asInstanceOf[TermImpl]){case (ty, term) => TermAbstr(ty, term)}
         } else abstractedTypes.foldRight(body0.asInstanceOf[TermImpl].etaContract0){case (ty, term) => TermAbstr(ty, term)}
-      case TypeLambda(_) => assert(false); throw new IllegalArgumentException
       case _ => assert(false); throw new IllegalArgumentException
     }
   }
@@ -577,14 +576,14 @@ protected[impl] case class TermClos(term: Term, σ: (Subst, Subst)) extends Term
   def δ_expand_upTo(symbs: Set[Signature.Key])(implicit sig: Signature): Term = ???
 
   // Queries on terms
-  lazy val ty = term.ty
+  final def ty = term.ty
   final def fv: Set[(Int, Type)] = betaNormalize.fv
   final def tyFV: Set[Int] = betaNormalize.tyFV
   final def symbolMap: Map[Signature.Key, (Count, Depth)] = betaNormalize.asInstanceOf[TermImpl].symbolMap
   final def headSymbol = betaNormalize.headSymbol
   final def headSymbolDepth = 1 + term.headSymbolDepth
   final def feasibleOccurrences = betaNormalize.feasibleOccurrences
-  lazy val size = term.size // this might not be reasonable, but will never occur when used properly
+  final def size = term.size // this might not be reasonable, but will never occur when used properly
 
   // Other operations
   final def etaExpand0: TermImpl = betaNormalize.asInstanceOf[TermImpl].etaExpand0
