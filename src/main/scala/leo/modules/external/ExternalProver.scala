@@ -145,7 +145,7 @@ class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedCla
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq(execScript, path, problemFileName))
+    ExternalProver.limitedRun(2*timeout+2, Seq(execScript, path, problemFileName))
   }
 }
 object CVC4 {
