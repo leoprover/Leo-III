@@ -436,13 +436,12 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
   final def etaContract0: TermImpl = {
     import Term.{∙, TypeLambda, Bound}
     val (body0, abstractedTypes) = collectLambdas(this)
-    println(s"body0: ${body0.pretty}")
     body0 match {
       case Root(f, args) =>
         var revArgs = args.asTerms.reverse
         var curEtaArg = 0
         var done = false
-        while(revArgs.nonEmpty && !done) {
+        while(revArgs.nonEmpty && !done && curEtaArg < abstractedTypes.size) {
           val arg = revArgs.head
           if (arg.isRight) done = true
           else {
@@ -460,8 +459,6 @@ protected[impl] case class TermAbstr(typ: Type, body: Term) extends TermImpl {
             } else done = true
           }
         }
-        println(s"curetaarg after finish: $curEtaArg")
-        println(s"abstracted types: ${abstractedTypes.size}")
         if (curEtaArg > 0) {
           val contractedArgs = args.dropRight(curEtaArg).etaContract
           val result = Root(f, contractedArgs)
