@@ -62,7 +62,7 @@ object Control {
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
   @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
-  @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.submit(clauses, state)
+  @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
   // Limited resource scheduling
   @inline final def defaultStrategy(timeout: Int): RunStrategy = schedulingControl.StrategyControl.defaultStrategy(timeout)
@@ -1844,14 +1844,14 @@ package  externalProverControl {
       state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
     }
 
-    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
-      callFacade.call(clauses, state)
+    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
+      callFacade.call(clauses, state, force)
     }
 
 
-    final def sequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+    final def sequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
-        if (shouldRun(clauses, state)) {
+        if (shouldRun(clauses, state) || force) {
           leo.Out.debug(s"[ExtProver]: Staring jobs ...")
           lastCall = state.noProofLoops
           state.externalProvers.foreach(prover =>
@@ -1876,13 +1876,13 @@ package  externalProverControl {
       * Returns true, if a call was submitted
       *
       */
-    final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+    final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
         leo.Out.debug(s"[ExtProver]: Staring jobs ...")
         lastCall = state.noProofLoops // Legecy?
         state.externalProvers.foreach(prover =>
           if (openCalls.isDefinedAt(prover)) {
-            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS || force) {
               val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
               if (futureResult != null) synchronized(openCalls = openCalls + (prover -> (openCalls(prover) + futureResult)))
               leo.Out.debug(s"[ExtProver]: ${prover.name} (${openCalls(prover).size})started.")

@@ -162,6 +162,16 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
       val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
 
+//      println("#############################")
+//      println("#############################")
+//      println("name:" + name)
+//      println("#############################")
+//      println("output:" + output.mkString("\n"))
+//      println("#############################")
+//      println("error:" + error.mkString("\n"))
+//      println("#############################")
+//      println("#############################")
+
       val it = output.iterator
       var szsStatus: StatusSZS = null
       while (it.hasNext && szsStatus == null) {
@@ -202,6 +212,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
           // The external process is finished. Put the result in an Resultobject.
           result = translateResult(originalProblem, process)
           isTerminated = true
+//          leo.Out.output(s"Result of ${result.proverName}: ${result.szsStatus.pretty}")
         } else {
           // The process is still alive. Check for timeout and kill if it is over
           val cTime = System.currentTimeMillis()

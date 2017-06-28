@@ -16,14 +16,14 @@ import scala.collection.mutable
   *
   */
 trait AsyncTranslation {
-  def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause])
-
   def killAll()
+
+  def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false)
 }
 
 class SequentialTranslationImpl extends AsyncTranslation {
-  override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
-    ExtProverControl.sequentialSubmit(clauses, state)
+  override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
+    ExtProverControl.sequentialSubmit(clauses, state, force)
   }
 
   override def killAll(): Unit = {
@@ -38,12 +38,12 @@ class SchedulerTranslationImpl(scheduler : Scheduler) extends AsyncTranslation {
   private val lastCalls : mutable.Map[State[AnnotatedClause], Long] = mutable.Map()
   private val self = this
 
-  override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+  override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean): Unit = {
     val lastCallState : Long= lastCalls.getOrElse(state, 0)
     if(ExtProverControl.shouldRun(clauses, state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
       val runthread = new Runnable {
         override def run(): Unit = {
-          ExtProverControl.sequentialSubmit(clauses, state)
+          ExtProverControl.sequentialSubmit(clauses, state, force)
         }
       }
       try {
@@ -67,13 +67,13 @@ class PrivateThreadPoolTranslationImpl(numberOfThreads : Int) extends AsyncTrans
   private val lastCalls : mutable.Map[State[AnnotatedClause], Long] = mutable.Map()
   private val self = this
 
-  override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+  override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean): Unit = {
     val lastCallState : Long = lastCalls.getOrElse(state, 0)
     if(ExtProverControl.shouldRun(clauses, state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
       lastCalls.put(state, state.noProofLoops)
       val runthread = new Runnable {
         override def run(): Unit = {
-          ExtProverControl.uncheckedSequentialSubmit(clauses, state)
+          ExtProverControl.uncheckedSequentialSubmit(clauses, state, force)
         }
       }
       try{
