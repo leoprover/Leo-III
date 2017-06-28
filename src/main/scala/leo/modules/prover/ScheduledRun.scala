@@ -2,6 +2,8 @@ package leo.modules.prover
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.control.Control
+import leo.modules.control.externalProverControl.ExtProverControl
+import leo.modules.external.PrivateThreadPoolTranslationImpl
 import leo.{Configuration, Out}
 import leo.modules.parsers.Input
 
@@ -25,6 +27,13 @@ object ScheduledRun {
           }
         }
       }
+
+      if(Configuration.CONCURRENT_TRANSLATE) {
+        val maxTrans = Configuration.ATP_MAX_JOBS
+        val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
+        ExtProverControl.registerAsyncTranslation(asyncTrans)
+      }
+
       // Read problem from file
       val input = Input.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()

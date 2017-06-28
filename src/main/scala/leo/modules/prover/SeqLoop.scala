@@ -5,6 +5,7 @@ import leo.datastructures._
 import leo.modules.SZSOutput
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
+import leo.modules.external.PrivateThreadPoolTranslationImpl
 import leo.modules.output._
 import leo.modules.parsers.Input
 import leo.modules.proof_object.CompressProof
@@ -116,6 +117,13 @@ object SeqLoop {
           }
         }
       }
+
+      if(Configuration.CONCURRENT_TRANSLATE) {
+        val maxTrans = Configuration.ATP_MAX_JOBS
+        val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
+        ExtProverControl.registerAsyncTranslation(asyncTrans)
+      }
+
       // Read problem from file
       val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
       val startTimeWOParsing = System.currentTimeMillis()

@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
-import leo.modules.external.{AsyncTranslationImpl, ExternalCall}
+import leo.modules.external.{SchedulerTranslationImpl, ExternalCall}
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
@@ -89,7 +89,7 @@ object ParallelMain {
 
 //      println(tactics.size)
 
-      ExtProverControl.registerAsyncTranslation(new AsyncTranslationImpl(scheduler))
+      ExtProverControl.registerAsyncTranslation(new SchedulerTranslationImpl(scheduler))
 
       val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 

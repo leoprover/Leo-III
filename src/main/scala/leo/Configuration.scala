@@ -44,6 +44,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_CONSISTENCYCHECK = "consistency-only"
   private val EXTRACTION_TYPE_PARAM = "xType"
   private val PARAM_PAR_SCHED = "parSched"
+  private val PARAM_CONCURRENT_TRANSLATE = "encode-threaded"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -241,6 +242,9 @@ object Configuration extends DefaultConfiguration {
       else Map().withDefault(_ => DEFAULT_ATP_TIMEOUT)
     }
   }
+
+  lazy val CONCURRENT_TRANSLATE : Boolean = isSet(PARAM_CONCURRENT_TRANSLATE)
+
 
   final val CAPS: String =
     """

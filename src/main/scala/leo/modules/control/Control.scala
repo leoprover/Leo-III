@@ -1774,6 +1774,7 @@ package indexingControl {
 package  externalProverControl {
   import leo.modules.output.SuccessSZS
   import leo.modules.external.Capabilities.Language
+  import leo.modules.external.{Future, TptpResult}
 
   object ExtProverControl {
     import leo.modules.external._
@@ -1806,11 +1807,11 @@ package  externalProverControl {
           leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
           var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
           lastCheck = curTime
-          val proversIt = openCalls.keys.iterator
+          val proversIt = synchronized(openCalls.keys.iterator)
           while (proversIt.hasNext) {
             val prover = proversIt.next()
             var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
-            val openCallsIt = openCalls(prover).iterator
+            val openCallsIt = synchronized(openCalls(prover).iterator)
             while (openCallsIt.hasNext) {
               val openCall = openCallsIt.next()
               if (openCall.isCompleted) {
@@ -1830,10 +1831,10 @@ package  externalProverControl {
                 }
               }
             }
-            val oldOpenCalls = openCalls(prover)
+            val oldOpenCalls = synchronized(openCalls(prover))
             val newOpenCalls = oldOpenCalls diff finished
-            if (newOpenCalls.isEmpty) openCalls = openCalls - prover
-            else openCalls = openCalls.updated(prover, newOpenCalls)
+            if (newOpenCalls.isEmpty) synchronized(openCalls = openCalls - prover)
+            else synchronized(openCalls = openCalls.updated(prover, newOpenCalls))
           }
           results
         } else Seq.empty
@@ -1867,6 +1868,31 @@ package  externalProverControl {
             }
           )
         }
+      }
+    }
+
+    /**
+      *
+      * Returns true, if a call was submitted
+      *
+      */
+    final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Unit = {
+      if (state.externalProvers.nonEmpty) {
+        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+        lastCall = state.noProofLoops // Legecy?
+        state.externalProvers.foreach(prover =>
+          if (openCalls.isDefinedAt(prover)) {
+            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+              val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+              if (futureResult != null) synchronized(openCalls = openCalls + (prover -> (openCalls(prover) + futureResult)))
+              leo.Out.debug(s"[ExtProver]: ${prover.name} (${openCalls(prover).size})started.")
+            }
+          } else {
+            val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+            if (futureResult != null) synchronized(openCalls = openCalls + (prover -> Set(futureResult)))
+            leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+          }
+        )
       }
     }
 
