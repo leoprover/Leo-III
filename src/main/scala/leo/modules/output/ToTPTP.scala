@@ -313,7 +313,7 @@ object ToTPTP {
   }
 
   final private def toTPTP0(t: Term, tyVarCount: Int, bVars: Map[Int,String] = Map())(sig: Signature): String = {
-    t.etaContract match {
+    t match {
       // Constant symbols
       case Symbol(id) => val name = sig(id).name
         tptpEscapeExpression(name)
@@ -390,11 +390,16 @@ object ToTPTP {
       case t1 ~||| t2 => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(~|||.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
       case t1 <~> t2 => s"(${toTPTP0(t1,tyVarCount, bVars)(sig)}) ${sig(<~>.key).name} (${toTPTP0(t2, tyVarCount,bVars)(sig)})"
       // General structure
-      case _ :::> _ => val (bVarTys, body) = collectLambdas(t)
-                       val newBVars = makeBVarList(bVarTys, bVars.size)
-        body match {
-          case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)}"
-          case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)})"
+      case _ :::> _ =>
+        val t0 = t.etaContract
+        if (t != t0) toTPTP0(t0, tyVarCount, bVars)(sig)
+        else {
+          val (bVarTys, body) = collectLambdas(t)
+          val newBVars = makeBVarList(bVarTys, bVars.size)
+          body match {
+            case Forall(_) | Exists(_) | Not(_) => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: ${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)}"
+            case _ => s"^ [${newBVars.map({case (s,ty) => s"$s:${typeToTHF0(ty, tyVarCount)(sig)}"}).mkString(",")}]: (${toTPTP0(body, tyVarCount,fusebVarListwithMap(newBVars, bVars))(sig)})"
+          }
         }
       case TypeLambda(_) => val (tyAbsCount, body) = collectTyLambdas(0, t)
         s"^ [${(1 to tyAbsCount).map(i => "T" + intToName(i - 1) + ": $tType").mkString(",")}]: (${toTPTP0(body, tyVarCount+tyAbsCount,bVars)(sig)})"
