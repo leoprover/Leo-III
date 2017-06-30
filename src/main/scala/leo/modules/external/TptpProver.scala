@@ -47,7 +47,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
            sig: Signature, callLanguage: Capabilities.Language,
            timeout : Int,
           extraArgs: Seq[String] = Seq.empty): Future[TptpResult[C]] = {
-    leo.Out.debug(s"Calling prover ${name}")
+    leo.Out.debug(s"Calling prover $name")
     val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
     startProver(translatedProblem, problemOrigin, timeout, extraArgs)
   }
@@ -162,18 +162,22 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
       val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
 
-      if (Configuration.isSet("atpdebug")) {
-        println("#############################")
-        println("#############################")
-        println("name:" + name)
-        println("#############################")
-        println("output:" + output.mkString("\n"))
-        println("#############################")
-        println("error:" + error.mkString("\n"))
-        println("#############################")
-        println("#############################")
+      try {
+        if (Configuration.isSet("atpdebug")) {
+          println("#############################")
+          println("#############################")
+          println("name:" + name)
+          println("#############################")
+          println("output:" + output.mkString("\n"))
+          println("#############################")
+          println("#############################")
+        }
+        val errorMsg = error.mkString("\n")
+        if (errorMsg != "") leo.Out.warn(s"Error message from $name:\n$errorMsg")
+      } catch {
+        case e: Exception => // ignore
       }
-
+      
       val it = output.iterator
       var szsStatus: StatusSZS = null
       while (it.hasNext && szsStatus == null) {
@@ -183,9 +187,8 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
           case _ => ()
         }
       }
-      if (szsStatus == null) {
-        szsStatus = SZS_GaveUp
-      }
+      if (szsStatus == null) szsStatus = SZS_GaveUp
+
       new TptpResultImpl(originalProblem, szsStatus, exitValue, output, error)
     } catch {
       case e : Exception => new TptpResultImpl(originalProblem, SZS_Error, 51, Seq(), Seq(e.getMessage))

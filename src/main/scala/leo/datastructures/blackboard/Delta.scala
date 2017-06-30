@@ -271,11 +271,9 @@ class MutableDelta extends Delta {
       sb.append(s"   $dt ->\n")
       updateM.get(dt).foreach{ds =>
         ds.foreach{
-          _ match {
-            case p : Pretty => sb.append(s"     ${p.pretty}\n")
+//            case p : Pretty => sb.append(s"     ${p.pretty}\n")
             case (d1,d2) =>
               sb.append(s"      $d1\n   ->\n     $d2\n")
-          }
         }
       }
     }

@@ -11,6 +11,7 @@ package leo.datastructures
 trait TermFactory {
   /** Create constant symbol term `c` where `c` is associated to identifier `id` in [[Signature]] */
   def mkAtom(id: Signature.Key)(implicit sig: Signature): Term
+  def mkAtom(id: Signature.Key, ty: Type): Term
   /** Create bound index with de-Bruijn index `scope` and type `t` */
   def mkBound(t: Type, scope: Int): Term
 
