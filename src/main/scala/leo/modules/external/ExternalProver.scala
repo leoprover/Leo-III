@@ -58,6 +58,13 @@ object ExternalProver {
       file.toFile.setExecutable(true)
       assert(Files.exists(LIMITEDRUN), "LIMITEDRUN not created")
     }
+
+    val files = SCRIPTDIR.toFile.listFiles()
+    if (files != null) {
+      for (f <- files) {
+        println(f.toString)
+      }
+    }
   }
   private final def serviceToPath(cmd : String) : Path = {
     import scala.sys.process._
