@@ -1,7 +1,5 @@
 package leo
 
-import java.nio.file.Files
-
 import leo.modules._
 import leo.modules.output._
 import leo.modules.parsers.CLParameterParser
@@ -19,9 +17,12 @@ object Main {
   def main(args : Array[String]){
     try {
       val beginTime = System.currentTimeMillis()
+      /** Hook is for returning an szs status if leo3 is killed forcefully. */
       hook = sys.addShutdownHook({
         Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
       })
+
+      /** Parameter stuff BEGIN */
       try {
         Configuration.init(new CLParameterParser(args))
       } catch {
@@ -38,8 +39,8 @@ object Main {
         Configuration.help()
         return
       }
-      val leodir = Configuration.LEODIR
-      if (!Files.exists(leodir)) Files.createDirectory(leodir)
+      /** Parameter stuff END */
+
       val config = {
         val sb = new StringBuilder()
         sb.append(s"problem(${Configuration.PROBLEMFILE}),")
@@ -89,6 +90,7 @@ object Main {
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
     } finally {
+      Configuration.cleanup()
       hook.remove() // When we reach this code we didnt face a SIGTERM etc. so remove the hook.
     }
   }

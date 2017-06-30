@@ -1,7 +1,7 @@
 package leo
 
 import java.util.logging.Level
-import java.nio.file.{Path, Paths}
+import java.nio.file.{Path,Files}
 
 import leo.modules.output.Output
 import leo.modules.parsers.CLParameterParser
@@ -84,15 +84,22 @@ object Configuration extends DefaultConfiguration {
     case _ => ()
   }
 
+  final def cleanup(): Unit = {
+
+  }
+
   //////////////////////////
   // Predefined parameters
   //////////////////////////
   def isInit: Boolean = configMap != null
 
   final val VERSION: String = "1.1"
-  final val USER_HOME: String = System.getProperty("user.home")
-  final val LEODIR_NAME: String = ".leo3"
-  final val LEODIR: Path = Paths.get(USER_HOME, LEODIR_NAME)
+  final val LEODIR_NAME: String = "leo3"
+  final lazy val LEODIR: Path = {
+    val dir = Files.createTempDirectory(LEODIR_NAME)
+    dir.toFile.deleteOnExit()
+    dir
+  }
 
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
