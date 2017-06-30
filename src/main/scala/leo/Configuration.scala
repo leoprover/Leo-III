@@ -85,7 +85,8 @@ object Configuration extends DefaultConfiguration {
   }
 
   final def cleanup(): Unit = {
-
+    import leo.modules.external.ExternalProver
+    ExternalProver.cleanup()
   }
 
   //////////////////////////

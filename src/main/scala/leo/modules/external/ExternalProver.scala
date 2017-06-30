@@ -18,10 +18,16 @@ object ExternalProver {
     * Additional time added to the timeout to wait for termination
     */
   final val WAITFORTERMINATION = 1
-  final val SCRIPTDIR_NAME: String = "scripts"
-  final val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
-  final val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
+  final val SCRIPTDIR_NAME: String = "ext_scripts"
+  final lazy val SCRIPTDIR: Path = Configuration.LEODIR.resolve(SCRIPTDIR_NAME)
+  final lazy val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
 
+  def cleanup(): Unit = {
+    if (Files.exists(LIMITEDRUN)) LIMITEDRUN.toFile.delete()
+    val cvc4RunScript = SCRIPTDIR.resolve(CVC4.executeScriptName)
+    if (Files.exists(cvc4RunScript)) cvc4RunScript.toFile.delete()
+    if (Files.exists(SCRIPTDIR)) SCRIPTDIR.toFile.delete()
+  }
   /**
     * Creates a prover `name` with an executable at the path `path`.
     * Throws an [[NoSuchMethodException]] if this prover cannot be executed.
@@ -32,7 +38,7 @@ object ExternalProver {
     */
   @throws[NoSuchMethodException]
   def createProver(name : String, path : String) : TptpProver[AnnotatedClause] = {
-    createDirectories()
+    createTreeLimitedRunScript()
     name match {
       case "leo2" => createLeo2(path)
       case "nitpick" => createNitpickProver(path)
@@ -41,26 +47,16 @@ object ExternalProver {
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
-  private final def createDirectories(): Unit = {
-    val scriptsPath = SCRIPTDIR
-    if (!Files.exists(scriptsPath)) Files.createDirectory(scriptsPath)
-    // Concrete files to create if not existent:
-    val limitedRunPath = scriptsPath.resolve("TreeLimitedRun")
-    if (!Files.exists(limitedRunPath)) {
+  private final def createTreeLimitedRunScript(): Unit = {
+    if (!Files.exists(SCRIPTDIR)) Files.createDirectory(SCRIPTDIR)
+    if (!Files.exists(LIMITEDRUN)) {
       val filePermissionAttribute = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr--"))
-      val file = Files.createFile(limitedRunPath, filePermissionAttribute)
+      val file = Files.createFile(LIMITEDRUN, filePermissionAttribute)
       val limitedRunScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/TreeLimitedRun"))(Codec.ISO8859)
       Files.write(file, limitedRunScript.mkString.getBytes(StandardCharsets.ISO_8859_1))
       file.toFile.setExecutable(true)
     }
-    val cvc4RunPath = scriptsPath.resolve(CVC4.executeScriptName)
-    if (!Files.exists(cvc4RunPath)) {
-      val file = Files.createFile(cvc4RunPath)
-      Files.write(file, CVC4.executeScript.mkString.getBytes(StandardCharsets.UTF_8))
-      file.toFile.setExecutable(true)
-    }
   }
-
   private final def serviceToPath(cmd : String) : Path = {
     import scala.sys.process._
     val p = Paths.get(cmd)
@@ -116,10 +112,20 @@ object ExternalProver {
   }
 
   final def createCVC4(path : String) : CVC4 = {
+    createCVC4RunScript()
     val p = if(path == "") serviceToPath("cvc4") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created CVC4 prover with path '$convert'")
     CVC4(SCRIPTDIR.resolve(CVC4.executeScriptName).toString, convert)
+  }
+  private final def createCVC4RunScript(): Unit = {
+    val cvc4RunPath = SCRIPTDIR.resolve(CVC4.executeScriptName)
+    if (!Files.exists(cvc4RunPath)) {
+      val filePermissionAttribute = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr--"))
+      val file = Files.createFile(cvc4RunPath, filePermissionAttribute)
+      Files.write(file, CVC4.executeScript.mkString.getBytes(StandardCharsets.UTF_8))
+      file.toFile.setExecutable(true)
+    }
   }
 
   final def createAltErgo(path: String): AltErgo = {
