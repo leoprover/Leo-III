@@ -56,21 +56,29 @@ object Main {
       Out.config(s"Configuration: $config")
 
       if (Configuration.isSet("seq")) {
+        Out.info("Running in sequential loop mode.")
         prover.SeqLoop(beginTime, Configuration.TIMEOUT)
       } else if (Configuration.isSet("scheduled-seq")) {
+        Out.info("Running in scheduled sequential loop mode.")
         prover.ScheduledRun(beginTime, Configuration.TIMEOUT)
       } else if (Configuration.isSet("pure-ext")) {
+        Out.info("Running in purely external mode.")
         RunExternalProver.runExternal()
       } else if (Configuration.isSet("rules")) {
+        Out.info("Running in rules mode.")
         ParallelMain.agentRuleRun(beginTime)
       } else if (Configuration.isSet("par")) {
+        Out.info("Running in parallel mode.")
         ParallelMain.runParallel(beginTime)
       } else if (Configuration.isSet("scheduled-par")) {
+        Out.info("Running in scheduled parallel mode.")
         ParallelMain.runMultiSearch(beginTime)
       } else if (Configuration.isSet("processOnly")) {
+        Out.info("Running in processOnly mode.")
         Normalization()
       } else {
-        throw new SZSException(SZS_UsageError, "standard mode not included right now, use --seq")
+        Out.info("No mode given, using sequential loop mode as default.")
+        prover.SeqLoop(beginTime, Configuration.TIMEOUT)
       }
       
     } catch {
