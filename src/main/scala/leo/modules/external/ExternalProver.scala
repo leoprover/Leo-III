@@ -37,7 +37,7 @@ object ExternalProver {
       case "nitpick" => createNitpickProver(path)
       case "cvc4" => createCVC4(path)
       case "alt-ergo" => createAltErgo(path)
-      case _ => throw new NoSuchMethodException(s"$name not supported by the system.")
+      case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
   private final def createDirectories(): Unit = {
@@ -65,12 +65,18 @@ object ExternalProver {
     if(Files.exists(p) && Files.isExecutable(p)){
       p
     } else {
-      val which = (Seq("which", cmd).lineStream_!.head)
-      val p2 = Paths.get(which)
-      if(Files.exists(p2) && Files.isExecutable(p2)){
-        p2
+      val redirectStdErrLogger = ProcessLogger(line => ())
+      val which0 = Seq("which", cmd) lineStream_! redirectStdErrLogger
+      val which = which0.headOption
+      if (which.isDefined) {
+        val p2 = Paths.get(which.get)
+        if(Files.exists(p2) && Files.isExecutable(p2)){
+          p2
+        } else {
+          throw new NoSuchMethodException(s"'$cmd' is not executable or does not exist.")
+        }
       } else {
-        throw new NoSuchMethodException(s"'$cmd' is not exectuable or does not exist.")
+        throw new NoSuchMethodException(s"'$cmd' is not executable or does not exist.")
       }
     }
   }

@@ -114,9 +114,8 @@ object SeqLoop {
             val p = ExternalProver.createProver(name, path)
             state.addExternalProver(p)
             leo.Out.info(s"$name registered as external prover.")
-            leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")
           } catch {
-            case e: NoSuchElementException => leo.Out.warn(e.getMessage)
+            case e: NoSuchMethodException => leo.Out.warn(e.getMessage)
           }
         }
       }
