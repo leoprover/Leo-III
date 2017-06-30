@@ -49,12 +49,14 @@ object ExternalProver {
   }
   private final def createTreeLimitedRunScript(): Unit = {
     if (!Files.exists(SCRIPTDIR)) Files.createDirectory(SCRIPTDIR)
+    assert(Files.exists(SCRIPTDIR), "SCRIPTDIR not created")
     if (!Files.exists(LIMITEDRUN)) {
       val filePermissionAttribute = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr--"))
       val file = Files.createFile(LIMITEDRUN, filePermissionAttribute)
       val limitedRunScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/TreeLimitedRun"))(Codec.ISO8859)
       Files.write(file, limitedRunScript.mkString.getBytes(StandardCharsets.ISO_8859_1))
       file.toFile.setExecutable(true)
+      assert(Files.exists(LIMITEDRUN), "LIMITEDRUN not created")
     }
   }
   private final def serviceToPath(cmd : String) : Path = {
