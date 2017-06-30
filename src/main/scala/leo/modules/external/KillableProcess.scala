@@ -112,7 +112,8 @@ trait KillableProcess {
 
 case class Command(cmd : String) {
   def exec() : KillableProcess = {
-    val cmd1 : Array[String] = if(KillableProcess.isUNIXSystem) Array("/bin/sh","-c",cmd) else {Array(cmd)}   // If it is a Unix like system, we allow chaining
+    import scala.sys.process._
+    val cmd1 : Array[String] = Array(cmd) // if(KillableProcess.isUNIXSystem) Array("/bin/sh","-c",cmd) else {Array(cmd)}   // If it is a Unix like system, we allow chaining
     val process = Runtime.getRuntime.exec(cmd1)
     new KillableProcessImpl(process)
   }
