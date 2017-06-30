@@ -1,7 +1,8 @@
 package leo.modules.external
 
-import java.nio.file.{Files, Paths, Path}
+import java.nio.file.{Files, Path, Paths}
 import java.nio.charset.StandardCharsets
+import java.nio.file.attribute.PosixFilePermissions
 
 import scala.io.{BufferedSource, Codec}
 import leo.Configuration
@@ -46,7 +47,8 @@ object ExternalProver {
     // Concrete files to create if not existent:
     val limitedRunPath = scriptsPath.resolve("TreeLimitedRun")
     if (!Files.exists(limitedRunPath)) {
-      val file = Files.createFile(limitedRunPath)
+      val filePermissionAttribute = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr--"))
+      val file = Files.createFile(limitedRunPath, filePermissionAttribute)
       val limitedRunScript = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/TreeLimitedRun"))(Codec.ISO8859)
       Files.write(file, limitedRunScript.mkString.getBytes(StandardCharsets.ISO_8859_1))
       file.toFile.setExecutable(true)

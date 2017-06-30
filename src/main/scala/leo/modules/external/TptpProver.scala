@@ -177,7 +177,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       } catch {
         case e: Exception => // ignore
       }
-      
+
       val it = output.iterator
       var szsStatus: StatusSZS = null
       while (it.hasNext && szsStatus == null) {
