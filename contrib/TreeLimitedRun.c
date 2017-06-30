@@ -18,7 +18,6 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
-#include <errno.h>
 #ifdef SUN
 #include <procfs.h>
 #endif
@@ -36,7 +35,6 @@
 typedef char String[STRING_LENGTH];
 
 typedef struct {
-    int Active;
     pid_t PID;
     pid_t PPID;
     double CPUTime;
@@ -55,22 +53,11 @@ void SIGCHLDHandler(int TheSignal) {
 
 }
 //---------------------------------------------------------------------------
-void SIGCHLDReaper(int TheSignal) {
-
-    int DeadPID;
-    int Status;
-
-    while ((DeadPID = waitpid(-1,&Status,WNOHANG)) > 0) {
-//DEBUG printf("!!! Child %d of TreeLimitedRun %d has died\n",DeadPID,getpid());fflush(stdout);
-    }
-
-}
-//---------------------------------------------------------------------------
 //----Controllers in the CASC/SystemOnTPTP/SSCPA/etc hierarchy may send
 //----SIGQUIT to stop things
 void SIGQUITHandler(int TheSignal) {
 
-//DEBUG printf("!!! TreeLimitedRun %d got a signal %d\n",getpid(),TheSignal);fflush(stdout);
+//DEBUG printf("TreeLimitedRun %d got a signal %d\n",getpid(),TheSignal);
     GlobalInterrupted = 1;
     GlobalSignalReceived = TheSignal;
 
@@ -182,7 +169,6 @@ fgets(Line,STRING_LENGTH,ProcFile) != NULL) {
 //----Check if this process is owned by this user
                 if (UID == MyRealUID) {
 //----Record the PIDs as potentially relevant
-                    OwnedPIDs[*NumberOfOwnedPIDs].Active = 1;
                     OwnedPIDs[*NumberOfOwnedPIDs].PID = PID;
                     OwnedPIDs[*NumberOfOwnedPIDs].PPID = PPID;
                     (*NumberOfOwnedPIDs)++;
@@ -360,7 +346,6 @@ TreeTimes) {
 
 //----Find those in the process tree, and get their times
     CurrentTreeIndex = 0;
-    TreeTimes[0].Active = 1;
     TreeTimes[0].PID = FirstBornPID;
     TreeTimes[0].PPID = MyRealUID;
     TreeTimes[0].CPUTime = GetProcessTime(TreeTimes[0].PID,1,1);
@@ -373,7 +358,6 @@ TreeTimes) {
 GetProcessTime(TreeTimes[CurrentTreeIndex].PID,1,1);
         for (OwnedIndex = 0; OwnedIndex < NumberOfOwnedPIDs; OwnedIndex++) {
             if (OwnedPIDs[OwnedIndex].PPID == TreeTimes[CurrentTreeIndex].PID) {
-                TreeTimes[NumberOfTreeTimes].Active = 1;
                 TreeTimes[NumberOfTreeTimes].PID = OwnedPIDs[OwnedIndex].PID;
                 TreeTimes[NumberOfTreeTimes].PPID = OwnedPIDs[OwnedIndex].PPID;
                 NumberOfTreeTimes++;
@@ -391,102 +375,50 @@ GetProcessTime(TreeTimes[CurrentTreeIndex].PID,1,1);
 //----No /proc for OSX
 #endif
 //---------------------------------------------------------------------------
-//----Send signals and reports if process is known to be gone
-int SignalAndReport(int PID,int Signal,int RepeatUntilTerminated,
-char * ProcessType) {
-
-    String ErrorMessage;
-    extern int errno;
-    int Terminated;
-    int NumberOfLoops;
-
-    Terminated = 0;
-    NumberOfLoops = 0;
-    do {
-        NumberOfLoops++;
-//DEBUG printf("!!! TreeLimitedRun %d sends signal %d to %s %d\n",getpid(),Signal,ProcessType,PID);fflush(stdout);
-        if (kill(PID,Signal) != 0) {
-//DEBUG printf("The kill errno is %d\n",errno);
-//----If process no longer exists record that to avoid killing again
-            if (errno == ESRCH) {
-                Terminated = 1;
-            } else {
-                sprintf(ErrorMessage,
-"!!! ERROR: TreeLimitedRun %d cannot signal %s %d with %d",getpid(),ProcessType,
-PID,Signal);
-                perror(ErrorMessage);
-            }
-        }
-//----Must do perror after errno, as perror clears errno
-    } while (RepeatUntilTerminated && !Terminated && NumberOfLoops < 10);
-
-    return(Terminated);
-}
-//---------------------------------------------------------------------------
 void ChildKillTree(int TargetIndex,ProcessDataArray TreeTimes,
 int NumberInTree,int Signal) {
 
     int ChildIndex;
 
-//DEBUG printf("!!! TreeLimitedRun %d killing tree below PID %d with %d\n",getpid(),TreeTimes[TargetIndex].PID,Signal);fflush(stdout);
+//DEBUG printf("Killing tree below PID %d\n",TreeTimes[TargetIndex].PID);
     for (ChildIndex=0; ChildIndex < NumberInTree; ChildIndex++) {
         if (TreeTimes[TargetIndex].PID == TreeTimes[ChildIndex].PPID) {
             ChildKillTree(ChildIndex,TreeTimes,NumberInTree,Signal);
         }
 //TOO SLOW? usleep(100000);
     }
-    if (TreeTimes[TargetIndex].Active) {
-        if (SignalAndReport(TreeTimes[TargetIndex].PID,Signal,
-Signal == SIGKILL,"tree process")) {
-            TreeTimes[TargetIndex].Active = 0;
-        }
-    }
+//DEBUG printf("Send signal %d to %d\n",Signal,TreeTimes[TargetIndex].PID);
+    kill(TreeTimes[TargetIndex].PID,Signal);
 }
 //---------------------------------------------------------------------------
 int KillTree(uid_t MyRealUID,pid_t FirstBornPID,int Signal) {
 
     int NumberOfTreeTimes;
-    extern int errno;
 
 #if (defined(LINUX)||defined(SUN))
     ProcessDataArray TreeTimes;
 
-    if ((NumberOfTreeTimes = GetTreeTimes(MyRealUID,FirstBornPID,TreeTimes)) > 
-0) {
+    NumberOfTreeTimes = GetTreeTimes(MyRealUID,FirstBornPID,TreeTimes);
 
 //----The first born gets it first so that it can curb its descendants nicely
-        if (TreeTimes[0].Active) {
-//DEBUG printf("!!! TreeLimitedRun %d killing top process %d with %d\n",getpid(),TreeTimes[0].PID,Signal);fflush(stdout);
-//----TreeTimes[0].PID is FirstBornPID
-            if (SignalAndReport(TreeTimes[0].PID,Signal,Signal == SIGKILL,
-"top process")) {
-                TreeTimes[0].Active = 0;
-            }
-        }
-
+    kill(TreeTimes[0].PID,Signal);
 //----200000 is not enough - EP's eproof script gets killed before it can
 //----kill eprover
-        usleep(500000);
+    usleep(500000);
+
 //----Now gently from the bottom up
-        ChildKillTree(0,TreeTimes,NumberOfTreeTimes,Signal);
-        usleep(100000);
+    ChildKillTree(0,TreeTimes,NumberOfTreeTimes,Signal);
+    usleep(100000);
+
 //----Now viciously from the bottom up
-        ChildKillTree(0,TreeTimes,NumberOfTreeTimes,SIGKILL);
-    }
+    ChildKillTree(0,TreeTimes,NumberOfTreeTimes,SIGKILL);
 #endif
 #ifdef OSX
-    int Active;
-
-    Active = 1;
 //----The first born gets it first so that it can curb its descendants nicely
-    if (SignalAndReport(FirstBornPID,Signal,Signal == SIGKILL,"top process")) {
-        Active = 0;
-    }
-    if (Active) {
-        usleep(100000);
+    kill(FirstBornPID,Signal);
+    usleep(100000);
 //----Now viciously
-        SignalAndReport(FirstBornPID,SIGKILL,1,"only process");
-    }
+    kill(FirstBornPID,SIGKILL);
     NumberOfTreeTimes = 1;
 #endif
 
@@ -502,7 +434,6 @@ int NumberOfSavePIDs) {
     int NumberOfOwnedPIDs;
     int OwnedIndex;
     int NumberOfOrphansKilled;
-    extern int errno;
 
     do {
 //----Get the list of processes owned by this user
@@ -510,19 +441,13 @@ int NumberOfSavePIDs) {
 
         NumberOfOrphansKilled = 0;
         for (OwnedIndex = 0; OwnedIndex < NumberOfOwnedPIDs; OwnedIndex++) {
-//DEBUG printf("!!! TreeLimitedRun %d considers %d with parent %d\n",getpid(),OwnedPIDs[OwnedIndex].PID, OwnedPIDs[OwnedIndex].PPID);fflush(stdout);
+//DEBUG printf("!!! Consider %d with parent %d\n",OwnedPIDs[OwnedIndex].PID, OwnedPIDs[OwnedIndex].PPID);
             if (OwnedPIDs[OwnedIndex].PPID == 1 &&
 !PIDInArray(OwnedPIDs[OwnedIndex].PID,SavePIDs,NumberOfSavePIDs)) {
-//DEBUG printf("!!! TreeLimitedRun %d kills orphan %d\n",getpid(),OwnedPIDs[OwnedIndex].PID);fflush(stdout);
-                if (SignalAndReport(OwnedPIDs[OwnedIndex].PID,SIGQUIT,0,
-"orphan")) {
-                    OwnedPIDs[OwnedIndex].Active = 0;
-                }
-                if (OwnedPIDs[OwnedIndex].Active) {
-                    sleep(1);
-                    SignalAndReport(OwnedPIDs[OwnedIndex].PID,SIGKILL,1,
-"orphan");
-                }
+//DEBUG printf("!!!Kill %d\n",OwnedPIDs[OwnedIndex].PID);
+                kill(OwnedPIDs[OwnedIndex].PID,SIGQUIT);
+                sleep(1);
+                kill(OwnedPIDs[OwnedIndex].PID,SIGKILL);
                 NumberOfOrphansKilled++;
             }
         }
@@ -601,8 +526,7 @@ int DelayBetweenChecks,struct timeval WCStartTime,int PrintEachCheck) {
         NumberInTree = GetTreeTimes(getuid(),ChildPID,TreeTimes);
         TreeTime = AccumulateTreeTime(0,TreeTimes,NumberInTree);
 //DEBUG fprintf(stderr,"now %5.2f limit %d\n",TreeTime,CPUTimeLimit);
-//----For those with /proc, reap the children. Need to reap late so /proc
-//----entries do not disappear
+//----For those with /proc, reap the children
         while ((DeadPID = waitpid(-1,&Status,WNOHANG)) > 0) {
             NumberInTree--;
 //DEBUG fprintf(stderr,"The child %d has died\n",DeadPID);
@@ -643,22 +567,12 @@ LastTreeTime - TreeTime,LostTime);
             PrintTimes("WATCH",TreeTime,WallClockSoFar(WCStartTime));
         }
 //----If we're going to loop, wait a bit first
-//----DANGER - if the last descedantprocess dies between GetTreeTimes() and 
-//----here, it still waits.
         if ((CPUTimeLimit == 0 || TreeTime <= CPUTimeLimit) &&
 NumberInTree > 0 && !GlobalInterrupted) {
             sleep(DelayBetweenChecks);
         }
     } while ((CPUTimeLimit == 0 || TreeTime <= CPUTimeLimit) && 
 NumberInTree > 0 && !GlobalInterrupted);
-
-//----From now on reap normally
-    if (signal(SIGCHLD,SIGCHLDReaper) == SIG_ERR) {
-        perror("ERROR: Could not set SIGCHLD handler");
-        exit(EXIT_FAILURE);
-    }
-//----Reap anyway in case I missed some
-    SIGCHLDReaper(0);
 
 //----If over time limit, stop them all (XCPU to top guy first)
     if (NumberInTree > 0 && TreeTime > CPUTimeLimit) {
@@ -691,7 +605,6 @@ int main(int argc,char *argv[]) {
     int PrintEachCheck = 0;
     ProcessDataArray SavePIDs;
     int NumberOfSavePIDs;
-    int Status;
 
 //----Check the quietness level
     if (argc >= 2 && strstr(argv[1],"-q") == argv[1]) {
@@ -840,12 +753,7 @@ DelayBetweenChecks,WCStartTime,PrintEachCheck);
             PrintTimes("FINAL WATCH",TreeCPUTime,WCTime);
 
 //----Sweep for orphans
-            KillOrphans(getuid(),SavePIDs,NumberOfSavePIDs);
-//----Reap any remaining
-            while (wait(&Status) != -1) {
-                sleep(1);
-//DEBUG printf("!!! Waiting for children that havn't died\n");
-            }
+        KillOrphans(getuid(),SavePIDs,NumberOfSavePIDs);
         }
     } else {
         printf("Usage: %s [-q<quietness>] [-t<check delay>|-p<print check delay>] <CPU limit> <WC limit> [<Memory limit>] <Job>\n",
