@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is taken from the CVC4 GitHub Repo and wass slightly modified.
+# This script is taken from the CVC4 GitHub Repo and was slightly modified.
 #
 # CVC4 is copyright (C) 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016 by its
 # authors and contributors (see the file AUTHORS) and their institutional
@@ -74,12 +74,12 @@ function finishwith {
   $cvc4 --lang=tptp --no-checking --no-interactive --force-logic="UFNIRA" --dump-instantiations --inst-format=szs --force-no-limit-cpu-while-dump "$@" $bench
 }
 
-trywith 5 --decision=internal --full-saturate-quant
-trywith 5 --finite-model-find --decision=internal
-trywith 5 --purify-quant --full-saturate-quant
-trywith 5 --partial-triggers --full-saturate-quant
-trywith 5 --no-e-matching --full-saturate-quant
-trywith 5 --cbqi-all --purify-triggers --full-saturate-quant 
-trywith 5 --cbqi-all --fs-inst --full-saturate-quant
+trywith 3 --decision=internal --full-saturate-quant
+trywith 3 --finite-model-find --decision=internal
+trywith 3 --purify-quant --full-saturate-quant
+trywith 3 --partial-triggers --full-saturate-quant
+trywith 3 --no-e-matching --full-saturate-quant
+trywith 3 --cbqi-all --purify-triggers --full-saturate-quant
+trywith 3 --cbqi-all --fs-inst --full-saturate-quant
 finishwith --full-saturate-quant
 # echo "% SZS status" "GaveUp for $filename"
