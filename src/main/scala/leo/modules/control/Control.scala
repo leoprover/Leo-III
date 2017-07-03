@@ -1825,23 +1825,30 @@ package  externalProverControl {
                 if (resultSZS == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
                 if (helpfulAnswer(result)) {
                   results = results :+ result
-//                  val oldOpenCalls = openCalls(prover)
-//                  val newOpenCalls = oldOpenCalls diff finished
-//                  if (newOpenCalls.isEmpty) openCalls = openCalls - prover
-//                  else openCalls = openCalls.updated(prover, newOpenCalls)
-//                  return Some(result)
                 }
               }
             }
             val oldOpenCalls = synchronized(openCalls(state)(prover))
             val newOpenCalls = oldOpenCalls diff finished
-            if (newOpenCalls.isEmpty) synchronized(openCalls += (state -> (openCalls(state) - prover)))
+            if (newOpenCalls.isEmpty) synchronized{
+              val newStateCalls = openCalls(state) - prover
+              if(newStateCalls.isEmpty)
+                openCalls -= state
+              else
+                openCalls += (state -> (openCalls(state) - prover))
+            }
             else synchronized{openCalls += state -> (openCalls(state) + (prover -> newOpenCalls))}
           }
           results
         } else Seq.empty
       }
     }
+
+
+    final def checkExternalResults() : Map[State[AnnotatedClause], Seq[TptpResult[AnnotatedClause]]] = openCalls.keys.map(state => (state, checkExternalResults(state))).toMap
+
+
+
     final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
       state.noProofLoops >= lastCall.getOrElse(state, lastCallDefault) + Configuration.ATP_CALL_INTERVAL
     }
