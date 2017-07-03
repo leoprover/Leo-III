@@ -54,10 +54,10 @@ class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic 
       curExec += 1
       val strat = it.next()
       val newState : S = initState.copyGeneral.asInstanceOf[S]
-      val timedTactic =  new RunStrategy(remaining, strat.primSubst, strat.sos, strat.unifierCount, strat.uniDepth, strat.boolExt, strat.choice)
       // Time!
 //      println(s"Commit ${timedTactic.pretty}")
-      newState.setRunStrategy(timedTactic)
+      newState.setRunStrategy(strat)
+      newState.setTimeout(remaining)
       tasks = new NewModeTask(newState) +: tasks
     }
     tasks

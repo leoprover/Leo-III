@@ -103,7 +103,8 @@ object SeqLoop {
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    state.setRunStrategy(Control.defaultStrategy(timeout))
+    state.setRunStrategy(Control.defaultStrategy)
+    state.setTimeout(timeout)
 
     try {
       // Check if external provers were defined
@@ -152,7 +153,7 @@ object SeqLoop {
     try {
       implicit val sig: Signature = state.signature
       implicit val stateImplicit = state
-      val timeout0 = state.runStrategy.timeout
+      val timeout0 = state.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
 
       // Preprocessing Conjecture
@@ -400,8 +401,8 @@ object SeqLoop {
     newclauses = newclauses.map(Control.liftEq)
 
     /* guess functions for those not solved by unification */
-//    val funspec_result = Control.guessFuncSpec(Set(cur))(state)
-//    newclauses = newclauses union funspec_result
+    val funspec_result = Control.guessFuncSpec(Set(cur))(state)
+    newclauses = newclauses union funspec_result
 
     val choice_result = Control.instantiateChoice(cur)
     state.incChoiceInstantiations(choice_result.size)

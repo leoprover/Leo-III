@@ -29,6 +29,9 @@ trait GeneralState[T <: ClauseProxy] extends Pretty {
 
   def signature: Signature
 
+  def timeout: Int
+  def setTimeout(timeout: Int): Unit
+
   def runStrategy: RunStrategy
   def setRunStrategy(runStrategy: RunStrategy): Unit
 
@@ -68,6 +71,10 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var poly: Boolean = false
   protected var derivationCl: Option[T] = None
   protected var choiceFunctions0: Map[Type, Set[Term]] = Map()
+  protected var timeout0: Int = _
+
+  final def timeout: Int = timeout0
+  final def setTimeout(timeout: Int): Unit = { timeout0 = timeout }
 
 
   def copyGeneral: GeneralState[T] = {
@@ -78,6 +85,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
     state.symbolsInConjecture0 = symbolsInConjecture0
     state.choiceFunctions0 = choiceFunctions0
     state.current_externalProvers = current_externalProvers
+    state.timeout0 = timeout0
     state
   }
 

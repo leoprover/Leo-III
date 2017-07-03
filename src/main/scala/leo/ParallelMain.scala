@@ -84,8 +84,8 @@ object ParallelMain {
     try {
       val initState: State[AnnotatedClause] = State.fresh(sig)
 
-      val defaultStrat = schedulingControl.StrategyControl.defaultStrategy(timeout.toInt)
-      val tactics : Iterator[RunStrategy] = (defaultStrat +: schedulingControl.StrategyControl.STRATEGY_TEMPLATES.filterNot(_ == defaultStrat)).iterator
+      val defaultStrat = schedulingControl.StrategyControl.defaultStrategy
+      val tactics : Iterator[RunStrategy] = (defaultStrat +: schedulingControl.StrategyControl.STRATEGIES.filterNot(_ == defaultStrat)).iterator
 
 //      println(tactics.size)
 
@@ -154,7 +154,8 @@ object ParallelMain {
 
       val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
 
-      state.state.setRunStrategy(Control.defaultStrategy(Configuration.TIMEOUT))
+      state.state.setRunStrategy(Control.defaultStrategy)
+      state.state.setTimeout(Configuration.TIMEOUT)
 
       blackboard.addDS(state)
       blackboard.addDS(uniStore)
@@ -213,7 +214,8 @@ object ParallelMain {
 
     implicit val sig: Signature = Signature.freshWithHOL()
     val timeout = if (Configuration.TIMEOUT == 0) Double.PositiveInfinity else Configuration.TIMEOUT
-    implicit val state : FVState[AnnotatedClause] = FVState.fresh(sig, Control.defaultStrategy(timeout.toInt))
+    implicit val state : FVState[AnnotatedClause] = FVState.fresh(sig, Control.defaultStrategy)
+    state.setTimeout(Configuration.TIMEOUT)
 
     // Blackboard and Scheduler
     implicit val (blackboard, scheduler) = Blackboard.newBlackboard

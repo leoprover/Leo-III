@@ -65,8 +65,10 @@ object Control {
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
   // Limited resource scheduling
-  @inline final def defaultStrategy(timeout: Int): RunStrategy = schedulingControl.StrategyControl.defaultStrategy(timeout)
-  @inline final def generateRunStrategies: Iterator[RunStrategy] = schedulingControl.StrategyControl.generateRunStrategies
+  type RunConfiguration = (RunStrategy, Int)
+  type RunSchedule = Iterator[RunConfiguration]
+  @inline final def defaultStrategy: RunStrategy = schedulingControl.StrategyControl.defaultStrategy
+  @inline final def generateRunStrategies(globalTimeout: Int): RunSchedule = schedulingControl.StrategyControl.generateRunStrategies(globalTimeout)
 }
 
 /** Package collection control objects for inference rules.
@@ -976,7 +978,8 @@ package inferenceControl {
     }
 
     final def guessFuncSpec(cls: Set[AnnotatedClause])(state: LocalState): Set[AnnotatedClause] = {
-      cls.flatMap(guessFuncSpec(_)(state))
+      if (!state.runStrategy.funcspec) Set.empty
+      else cls.flatMap(guessFuncSpec(_)(state))
     }
 
     final def guessFuncSpec(cw: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
@@ -1996,102 +1999,46 @@ package  externalProverControl {
 }
 
 package schedulingControl {
+  import leo.modules.control.Control.RunSchedule
+
   object StrategyControl {
-
+    import leo.modules.prover.RunStrategy._
     val MINTIME = 45
-    val STRATEGY_TEMPLATES: Seq[RunStrategy] = Seq(
-      RunStrategy(
-        timeout = -1,
-        primSubst = Configuration.DEFAULT_PRIMSUBST,
-        sos = Configuration.DEFAULT_SOS,
-        unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true),
-
-      RunStrategy(
-        timeout = -1,
-        primSubst = 2,
-        sos = false,
-        unifierCount = 3,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true),
-
-      RunStrategy(
-        timeout = -1,
-        primSubst = Configuration.DEFAULT_PRIMSUBST,
-        sos = true,
-        unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true),
+    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s1b, s2, s2b, s3, s3b )
 
 
-
-      RunStrategy(
-        timeout = -1,
-        primSubst = Configuration.DEFAULT_PRIMSUBST,
-        sos = true,
-        unifierCount = 3,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true),
-
-      RunStrategy(
-        timeout = -1,
-        primSubst = 2,
-        sos = false,
-        unifierCount = 3,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true),
-
-      RunStrategy(
-        timeout = -1,
-        primSubst = 2,
-        sos = true,
-        unifierCount = 3,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true)
-    )
-
-
-    final def generateRunStrategies: Iterator[RunStrategy] = {
+    final def generateRunStrategies(globalTimeout: Int): RunSchedule = {
       val to = Configuration.TIMEOUT
       if (to == 0) {
         // unlimited resources, dont schedule...i guess?
-        Iterator(defaultStrategy(0))
+        Iterator((defaultStrategy,0))
       } else {
         // limited resources, divide time for different strategies
         // each strategy should take at least MINTIME seconds
         val nominalStrategyCount = Math.floorDiv(to, MINTIME)
-        val remainingTime = Math.floorMod(to, MINTIME)
-        val realStrategyCount = Math.min(STRATEGY_TEMPLATES.size, nominalStrategyCount)
-        val exceedTime = (nominalStrategyCount-realStrategyCount)*MINTIME+remainingTime
-        val extraTimePerStrategy = Math.floorDiv(exceedTime, realStrategyCount)
-        val timePerStrategy = MINTIME + extraTimePerStrategy
-        val overheadTime = Math.floorMod(exceedTime, realStrategyCount)
 
-        val defStrategy = defaultStrategy(timePerStrategy + overheadTime)
-        Iterator(
-          defStrategy
-            +: STRATEGY_TEMPLATES.filterNot(_ == defStrategy).take(realStrategyCount-1).map(t =>
-            RunStrategy(timePerStrategy, t.primSubst, t.sos,
-              t.unifierCount, t.uniDepth, t.boolExt, t.choice)):_*
-        )
+        Iterator(STRATEGIES.take(nominalStrategyCount).map((_, MINTIME)):_*)
+//        val remainingTime = Math.floorMod(to, MINTIME)
+//        val realStrategyCount = Math.min(STRATEGY_TEMPLATES.size, nominalStrategyCount)
+//        val exceedTime = (nominalStrategyCount-realStrategyCount)*MINTIME+remainingTime
+//        val extraTimePerStrategy = Math.floorDiv(exceedTime, realStrategyCount)
+//        val timePerStrategy = MINTIME + extraTimePerStrategy
+//        val overheadTime = Math.floorMod(exceedTime, realStrategyCount)
+//
+//        val defStrategy = defaultStrategy(timePerStrategy + overheadTime)
+//        Iterator(
+//          defStrategy
+//            +: STRATEGY_TEMPLATES.filterNot(_ == defStrategy).take(realStrategyCount-1).map(t =>
+//            RunStrategy(timePerStrategy, t.primSubst, t.sos,
+//              t.unifierCount, t.uniDepth, t.boolExt, t.choice)):_*
+//        )
       }
     }
 
-    def defaultStrategy(timeout: Int): RunStrategy = {
-      RunStrategy(timeout,
-        Configuration.PRIMSUBST_LEVEL,
-        Configuration.SOS,
-        Configuration.UNIFIER_COUNT,
-        Configuration.UNIFICATION_DEPTH,
-        Configuration.DEFAULT_BOOLEXT,
-        Configuration.DEFAULT_CHOICE)
+
+    final def defaultStrategy: RunStrategy = {
+      // currently: ignore meta-knowledge from state and just return standard strategy
+      RunStrategy.defaultStrategy
     }
   }
 }

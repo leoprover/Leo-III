@@ -9,7 +9,7 @@ import leo.modules.parsers.Input
 
 
 object ScheduledRun {
-  final def apply(startTime: Long, timeout: Int, schedule: Iterator[RunStrategy]): Unit = {
+  final def apply(startTime: Long, timeout: Int, schedule: Control.RunSchedule): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     try {
@@ -57,10 +57,11 @@ object ScheduledRun {
       // all timeouts is <= Configuration.TIMEOUT
       var done = false
       while (schedule.hasNext && !done) {
-        val currentStrategy = schedule.next()
-        Out.info(s"Trying strategy ${currentStrategy.pretty} for ${currentStrategy.timeout}s ...")
+        val (currentStrategy, currentTimeout) = schedule.next()
+        Out.info(s"Trying strategy ${currentStrategy.pretty} for ${currentTimeout}s ...")
         val localState = state.copy
         localState.setRunStrategy(currentStrategy)
+        localState.setTimeout(currentTimeout)
         val localStartTime = System.currentTimeMillis()
         done = SeqLoop.run(localState, remainingInput, localStartTime)
         if (!done) Out.info(s"Strategy ${currentStrategy.pretty} failed.")
@@ -76,12 +77,12 @@ object ScheduledRun {
   }
 
   final def apply(startTime: Long, timeout: Int): Unit = {
-    val schedule = Control.generateRunStrategies
+    val schedule = Control.generateRunStrategies(timeout)
     apply(startTime, timeout, schedule)
   }
 
   final def apply(startTime: Long, timeout: Int, strategy: RunStrategy): Unit = {
-    apply(startTime, timeout, Iterator(strategy))
+    apply(startTime, timeout, Iterator((strategy, timeout)))
   }
 
 

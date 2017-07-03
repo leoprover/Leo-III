@@ -7,7 +7,7 @@ import leo.datastructures.Pretty
   * An object essentially captures a concrete
   * parameter setting combination.
   *
-  * @param timeout Timeout
+  * @param share Timeout
   * @param primSubst Primsubst level
   * @param sos Set of support flag
   * @param unifierCount Maximum number of unifiers
@@ -15,28 +15,104 @@ import leo.datastructures.Pretty
   *
   * @author Alexander Steen
   */
-final case class RunStrategy(timeout: Int,
+final case class RunStrategy(share: Float,
                              primSubst: Int,
                              sos: Boolean,
                              unifierCount: Int,
                              uniDepth: Int,
                              boolExt: Boolean,
-                             choice: Boolean) extends Pretty {
-  def pretty: String = s"strategy<timeout($timeout),primSubst($primSubst),sos($sos)," +
-    s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)>"
+                             choice: Boolean,
+                             renaming: Boolean,
+                             funcspec: Boolean) extends Pretty {
+  def pretty: String = s"strategy<share($share),primSubst($primSubst),sos($sos)," +
+    s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
+    s"renaming($renaming),funcspec($funcspec)>"
+}
 
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case other: RunStrategy =>
-      primSubst == other.primSubst &&
-        sos == other.sos &&
-        unifierCount == other.unifierCount &&
-        uniDepth == other.uniDepth &&
-        boolExt == other.boolExt &&
-        choice == other.choice
-    case _ => false
-  }
+object RunStrategy {
+  import leo.Configuration
 
-  override def hashCode(): Int = primSubst.hashCode() ^ sos.hashCode() ^
-    unifierCount.hashCode() ^ uniDepth.hashCode() ^ boolExt.hashCode() ^ choice.hashCode()
+  /** Return the [[leo.modules.prover.RunStrategy]] that is given by
+    * the default values of [[leo.Configuration]]. */
+  def defaultStrategy: RunStrategy =
+    RunStrategy(1f,
+      Configuration.PRIMSUBST_LEVEL,
+      Configuration.SOS,
+      Configuration.UNIFIER_COUNT,
+      Configuration.UNIFICATION_DEPTH,
+      Configuration.DEFAULT_BOOLEXT,
+      Configuration.DEFAULT_CHOICE,
+      Configuration.DEFAULT_RENAMING,
+      Configuration.DEFAULT_FUNCSPEC)
+
+  /////////////////////////
+  /// Some (maybe) useful strategies
+  /////////////////////////
+
+  def s1: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 1,
+    sos = false,
+    unifierCount = 1,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  true,
+    funcspec = false)
+
+  def s1b: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 1,
+    sos = false,
+    unifierCount = 1,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  false,
+    funcspec = false)
+
+  def s2: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 3,
+    sos = false,
+    unifierCount = 3,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  true,
+    funcspec = false)
+
+  def s2b: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 3,
+    sos = false,
+    unifierCount = 3,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming = false,
+    funcspec = false)
+
+  def s3: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 1,
+    sos = true,
+    unifierCount = 1,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  true,
+    funcspec = false)
+
+  def s3b: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 3,
+    sos = true,
+    unifierCount = 3,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  true,
+    funcspec = false)
 }
 

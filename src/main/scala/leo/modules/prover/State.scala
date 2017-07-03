@@ -1,28 +1,12 @@
 package leo.modules.prover
 
-import leo.Out
 import leo.datastructures._
-import leo.modules.{FVState, FVStateImpl, GeneralState, GeneralStateImp}
+import leo.modules.{FVState, FVStateImpl, GeneralState}
 
 /**
   * Created by lex on 20.02.16.
   */
 trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
-//  Moved to general State
-//  def copy: State[T]
-//
-//  def conjecture: T
-//  def negConjecture: T
-//  def symbolsInConjecture: Set[Signature.Key]
-//  def defConjSymbols(negConj: T): Unit
-//  def setConjecture(conj: T): Unit
-//  def setNegConjecture(negConj: T): Unit
-//
-//  def signature: Signature
-
-//  def runStrategy: RunStrategy
-//  def setRunStrategy(runStrategy: RunStrategy): Unit
-
   def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
   def unprocessed: Set[T]
@@ -78,7 +62,6 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private var current_rewriterules: Set[T] = Set()
   private var current_nonRewriteUnits: Set[T] = Set()
 
-
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
@@ -98,6 +81,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.initialProblem0 = initialProblem0
     state.poly = poly
     state.current_externalProvers = current_externalProvers
+    state.timeout0 = timeout0
     state
   }
 
@@ -117,6 +101,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.initialProblem0 = initialProblem0
     state.poly = poly
     state.current_externalProvers = current_externalProvers
+    state.timeout0 = timeout0
     state
   }
   override def copyFVState: FVState[T] = copy

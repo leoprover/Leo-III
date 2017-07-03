@@ -32,6 +32,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PRIMSUBST = "primsubst"
   private val PARAM_PRE_PRIMSUBST = "instantiate"
   private val PARAM_PRE_PRIMSUBST_MAXDEPTH = "instantiate-maxdepth"
+  private val PARAM_FUNCSPEC = "funcspec"
   private val PARAM_RELEVANCEFILTER = "relevancefiltering"
   private val PARAM_PASSMARK = "passmark"
   private val PARAM_AGING = "aging"
@@ -137,6 +138,8 @@ object Configuration extends DefaultConfiguration {
   lazy val RELEVANCE_PASSMARK: Double = uniqueDoubleFor(PARAM_PASSMARK, DEFAULT_PASSMARK)
   lazy val RELEVANCE_AGING: Double = uniqueDoubleFor(PARAM_AGING, DEFAULT_AGING)
 
+  lazy val FUNCSPEC: Boolean = isSet(PARAM_FUNCSPEC) || DEFAULT_FUNCSPEC
+
   lazy val UNIFICATION_DEPTH: Int = uniqueIntFor(PARAM_UNIFICATIONDEPTH, DEFAULT_UNIFICATIONDEPTH)
   lazy val UNIFIER_COUNT: Int = uniqueIntFor(PARAM_UNIFIERCOUNT, DEFAULT_UNIFIERCOUNT)
   lazy val MATCHING_DEPTH: Int = uniqueIntFor(PARAM_MATCHINGDEPTH, DEFAULT_MATCHINGDEPTH)
@@ -173,7 +176,7 @@ object Configuration extends DefaultConfiguration {
 
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
-  lazy val RENAMING_SET : Boolean = isSet(RENAMING)
+  lazy val RENAMING_SET : Boolean = isSet(RENAMING) || DEFAULT_RENAMING
   lazy val RENAMING_THRESHHOLD : Int = valueOf(RENAMING).fold(0)(_.headOption.fold(0)(_.toInt))
   lazy val EXTRACTION_TYPE: Int = uniqueIntFor(EXTRACTION_TYPE_PARAM, 1)
 
@@ -417,4 +420,6 @@ trait DefaultConfiguration {
   val DEFAULT_CHOICE = true
   val DEFAULT_TERMORDERING = leo.datastructures.impl.orderings.TO_CPO_Naive
   val DEFAULT_PAR_SCHED = 3
+  val DEFAULT_RENAMING = true
+  val DEFAULT_FUNCSPEC = false
 }
