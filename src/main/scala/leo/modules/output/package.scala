@@ -37,8 +37,10 @@ package object output {
     else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
   }
   private final val simpleExpressionRegex = "^([a-z]|\\${1,2}[a-z])([a-zA-Z\\d_]*)$"
+  private final val definedSimpleConnectives = Vector("=", "!=", "&", "|", "~")
   final def tptpEscapeExpression(str: String): String = {
     if (str.matches(simpleExpressionRegex)) str
+    else if (definedSimpleConnectives.contains(str)) str
     else s"'${str.replace("\\","\\\\").replace("'", "\\'")}'"
   }
 

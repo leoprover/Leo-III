@@ -2012,6 +2012,15 @@ package schedulingControl {
 
       RunStrategy(
         timeout = -1,
+        primSubst = 2,
+        sos = false,
+        unifierCount = 3,
+        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+        boolExt = true,
+        choice = true),
+
+      RunStrategy(
+        timeout = -1,
         primSubst = Configuration.DEFAULT_PRIMSUBST,
         sos = true,
         unifierCount = Configuration.DEFAULT_UNIFIERCOUNT,
@@ -2019,14 +2028,7 @@ package schedulingControl {
         boolExt = true,
         choice = true),
 
-      RunStrategy(
-        timeout = -1,
-        primSubst = 2,
-        sos = false,
-        unifierCount = 3,
-        uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-        boolExt = true,
-        choice = true),
+
 
       RunStrategy(
         timeout = -1,
