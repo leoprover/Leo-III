@@ -1774,7 +1774,7 @@ package indexingControl {
 package  externalProverControl {
   import leo.modules.output.SuccessSZS
   import leo.modules.external.Capabilities.Language
-  import leo.modules.external.{Future, TptpResult}
+  import leo.datastructures.Clause
 
   object ExtProverControl {
     import leo.modules.external._
@@ -1925,7 +1925,7 @@ package  externalProverControl {
       val extraArgs = if (extraArgs0 == "") Seq.empty else Seq(extraArgs0)
       if (proverCaps.contains(THF)) {
         val preparedProblem = prepareProblem(problem, THF)(sig)
-        prover.call(problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)
+        callProver0(prover, problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)
       } else if (proverCaps.contains(TFF)) {
         Out.finest(s"Translating problem ...")
         val preparedProblem = prepareProblem(problem, TFF)(sig)
@@ -1935,7 +1935,7 @@ package  externalProverControl {
               Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
             else
               Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
-          prover.call(problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
+          callProver0(prover, problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
         } catch {
           case e: Exception =>
             Out.warn(s"Translation of external proof obligation failed for some reason.")
@@ -1948,6 +1948,18 @@ package  externalProverControl {
       } else {
         Out.warn(s"$prefix Prover ${prover.name} input syntax not supported.")
         null
+      }
+    }
+
+    private def callProver0(prover: TptpProver[AnnotatedClause],
+                            referenceProblem: Set[AnnotatedClause], problem: Set[Clause],
+                            sig: Signature, language: Capabilities.Language, timeout: Int,
+                            extraArgs: Seq[String]): Future[TptpResult[AnnotatedClause]] = {
+      import leo.modules.external.Capabilities._
+      try {
+        prover.call(referenceProblem, problem, sig, THF, timeout, extraArgs)
+      } catch {
+        case e: Exception => Out.warn(e.toString); null
       }
     }
 

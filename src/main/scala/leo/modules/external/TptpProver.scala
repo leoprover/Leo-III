@@ -106,6 +106,12 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     val callCmd = constructCall(args, timeout, file.getAbsolutePath)
     leo.Out.debug(s"Call constructed: ${callCmd.mkString(" ")}")
     val extProcess = Process(callCmd)
+    val cmdcmd = callCmd.head
+    val cmdfile = new File(cmdcmd)
+    println(s"cmdfile: ${cmdfile.toString}")
+    println(s"exists: ${cmdfile.exists()}")
+    println(s"canExec: ${cmdfile.canExecute}")
+    println(s"canRead: ${cmdfile.canRead}")
     /* wrap it as future result */
     new TPTPResultFuture(extProcess, originalProblem, timeout)
   }
@@ -309,7 +315,9 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     import scala.sys.process.ProcessLogger
 
     /* start the computation */
-    private val process0 = process.run(mkLogger)
+    private val process0 = {
+      process.run(mkLogger)
+    }
 
     /* internal definitions */
     private val stdoutAnswer: StringBuilder = new StringBuilder
