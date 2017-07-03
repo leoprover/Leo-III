@@ -7,7 +7,7 @@ import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
-import leo.modules.external.{SchedulerTranslationImpl, ExternalCall}
+import leo.modules.external.SchedulerTranslationImpl
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
@@ -316,12 +316,6 @@ object ParallelMain {
     printSZSAndProof(state, time)
   }
 
-  private def testExternalProvers(): Unit ={
-    Configuration.ATPS foreach { case (name, cmd) =>
-      val r = ExternalCall.exec(cmd+" "+Configuration.PROBLEMFILE)
-        println(s"Output ($name) ${r.out.mkString("\n")}\n\n Error ($name)\n ${r.error.mkString("\n")}")
-    }
-  }
 
   private def printSZSAndProof(state : GeneralState[AnnotatedClause], time : Double): Unit = {
     import modules._
