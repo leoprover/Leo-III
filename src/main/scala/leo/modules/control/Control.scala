@@ -1780,9 +1780,11 @@ package  externalProverControl {
     import leo.modules.external._
     import leo.modules.output.SZS_Error
     private final val prefix: String = "[ExtProver]"
-    private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
-    private var lastCheck: Long = Long.MinValue
-    private var lastCall: Long = -20
+    private var openCalls: Map[State[AnnotatedClause], Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]]] = Map()
+    private var lastCheck: Map[State[AnnotatedClause], Long] = Map()
+    private var lastCall: Map[State[AnnotatedClause], Long] = Map()
+    private val lastCheckDefault : Long = Long.MinValue
+    private val lastCallDefault : Long = -20
 
     private var callFacade : AsyncTranslation = new SequentialTranslationImpl
 
@@ -1803,15 +1805,15 @@ package  externalProverControl {
       if (state.externalProvers.isEmpty) Seq.empty
       else {
         val curTime = System.currentTimeMillis()
-        if (curTime >= lastCheck + Configuration.ATP_CHECK_INTERVAL * 1000) {
+        if (curTime >= lastCheck.getOrElse(state, lastCheckDefault) + Configuration.ATP_CHECK_INTERVAL * 1000) {
           leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
           var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
-          lastCheck = curTime
-          val proversIt = synchronized(openCalls.keys.iterator)
+          lastCheck += state -> curTime
+          val proversIt = synchronized(openCalls.getOrElse(state, Map()).keys.iterator)
           while (proversIt.hasNext) {
             val prover = proversIt.next()
             var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
-            val openCallsIt = synchronized(openCalls(prover).iterator)
+            val openCallsIt = synchronized(openCalls(state)(prover).iterator)
             while (openCallsIt.hasNext) {
               val openCall = openCallsIt.next()
               if (openCall.isCompleted) {
@@ -1831,17 +1833,17 @@ package  externalProverControl {
                 }
               }
             }
-            val oldOpenCalls = synchronized(openCalls(prover))
+            val oldOpenCalls = synchronized(openCalls(state)(prover))
             val newOpenCalls = oldOpenCalls diff finished
-            if (newOpenCalls.isEmpty) synchronized(openCalls = openCalls - prover)
-            else synchronized(openCalls = openCalls.updated(prover, newOpenCalls))
+            if (newOpenCalls.isEmpty) synchronized(openCalls += (state -> (openCalls(state) - prover)))
+            else synchronized{openCalls += state -> (openCalls(state) + (prover -> newOpenCalls))}
           }
           results
         } else Seq.empty
       }
     }
     final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
-      state.noProofLoops >= lastCall + Configuration.ATP_CALL_INTERVAL
+      state.noProofLoops >= lastCall.getOrElse(state, lastCallDefault) + Configuration.ATP_CALL_INTERVAL
     }
 
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
@@ -1853,17 +1855,18 @@ package  externalProverControl {
       if (state.externalProvers.nonEmpty) {
         if (shouldRun(clauses, state) || force) {
           leo.Out.debug(s"[ExtProver]: Staring jobs ...")
-          lastCall = state.noProofLoops
+          lastCall += state -> state.noProofLoops
+          val openCallState = openCalls.getOrElse(state, Map())
           state.externalProvers.foreach(prover =>
-            if (openCalls.isDefinedAt(prover)) {
-              if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+            if (openCallState.isDefinedAt(prover)) {
+              if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
                 val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-                if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+                if (futureResult != null) openCalls += state -> (openCallState + (prover -> (openCalls(state)(prover) + futureResult)))
                 leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
               }
             } else {
               val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-              if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
+              if (futureResult != null) openCalls += state -> (openCallState + (prover -> Set(futureResult)))
               leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
             }
           )
@@ -1879,17 +1882,17 @@ package  externalProverControl {
     final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
         leo.Out.debug(s"[ExtProver]: Staring jobs ...")
-        lastCall = state.noProofLoops // Legecy?
+        lastCall += state -> state.noProofLoops // Legecy?
         state.externalProvers.foreach(prover =>
-          if (openCalls.isDefinedAt(prover)) {
-            if (openCalls(prover).size < Configuration.ATP_MAX_JOBS || force) {
+          if (openCalls.getOrElse(state, Map()).isDefinedAt(prover)) {
+            if (openCalls(state)(prover).size < Configuration.ATP_MAX_JOBS || force) {
               val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-              if (futureResult != null) synchronized(openCalls = openCalls + (prover -> (openCalls(prover) + futureResult)))
-              leo.Out.debug(s"[ExtProver]: ${prover.name} (${openCalls(prover).size})started.")
+              if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> (openCalls(state)(prover) + futureResult))))
+              leo.Out.debug(s"[ExtProver]: ${prover.name} (${openCalls(state)(prover).size})started.")
             }
           } else {
             val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-            if (futureResult != null) synchronized(openCalls = openCalls + (prover -> Set(futureResult)))
+            if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> Set(futureResult))))
             leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
           }
         )
@@ -1900,16 +1903,16 @@ package  externalProverControl {
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Staring job ${prover.name}")
-      lastCall = state.noProofLoops
-      if (openCalls.isDefinedAt(prover)) {
-        if (openCalls(prover).size < Configuration.ATP_MAX_JOBS) {
+      lastCall += state -> state.noProofLoops
+      if (openCalls.getOrElse(state, Map()).isDefinedAt(prover)) {
+        if (openCalls(state)(prover).size < Configuration.ATP_MAX_JOBS) {
           val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-          if (futureResult != null) openCalls = openCalls + (prover -> (openCalls(prover) + futureResult))
+          if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> (openCalls(state)(prover) + futureResult))))
           leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
         }
       } else {
         val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-        if (futureResult != null) openCalls = openCalls + (prover -> Set(futureResult))
+        if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> Set(futureResult))))
         leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
       }
     }
@@ -1985,9 +1988,19 @@ package  externalProverControl {
     }
 
     final def sequentialKillExternals(): Unit = {
-      Out.info(s"Killing external provers ...")
-      openCalls.keys.foreach(prover =>
-        openCalls(prover).foreach(future =>
+      Out.info(s"Killing All external provers ...")
+      openCalls.keys.foreach {state =>
+        openCalls(state).keys.foreach(prover =>
+          openCalls(state)(prover).foreach(future =>
+            future.kill()
+          )
+        )
+      }
+    }
+
+    final def sequentialKillExternals(state : State[AnnotatedClause]) : Unit = {
+      openCalls(state).keys.foreach(prover =>
+        openCalls(state)(prover).foreach(future =>
           future.kill()
         )
       )
