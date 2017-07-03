@@ -1,0 +1,15 @@
+#!/bin/bash
+
+FILE1=$1
+FILE2=$2
+
+RESULTS1=$(cat $FILE1 | grep "% SZS status" | cut -d " " -f 1-6 | sort -k6)
+RESULTS2=$(cat $FILE2 | grep "% SZS status" | cut -d " " -f 1-6 | sort -k6)
+
+THM1=$(echo "$RESULTS1" | grep "Theorem" | wc -l)
+THM2=$(echo "$RESULTS2" | grep "Theorem" | wc -l)
+
+
+diff --speed-large-files -d  --suppress-common-lines -y <(echo "$RESULTS1") <(echo "$RESULTS2")
+echo "Theorem left: $THM1"
+echo "Theorem right: $THM2"

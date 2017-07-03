@@ -1955,9 +1955,8 @@ package  externalProverControl {
                             referenceProblem: Set[AnnotatedClause], problem: Set[Clause],
                             sig: Signature, language: Capabilities.Language, timeout: Int,
                             extraArgs: Seq[String]): Future[TptpResult[AnnotatedClause]] = {
-      import leo.modules.external.Capabilities._
       try {
-        prover.call(referenceProblem, problem, sig, THF, timeout, extraArgs)
+        prover.call(referenceProblem, problem, sig, language, timeout, extraArgs)
       } catch {
         case e: Exception => Out.warn(e.toString); null
       }
