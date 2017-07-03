@@ -1782,7 +1782,7 @@ package  externalProverControl {
     private final val prefix: String = "[ExtProver]"
     private var openCalls: Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]] = Map()
     private var lastCheck: Long = Long.MinValue
-    private var lastCall: Long = -10
+    private var lastCall: Long = -20
 
     private var callFacade : AsyncTranslation = new SequentialTranslationImpl
 
@@ -1921,7 +1921,8 @@ package  externalProverControl {
       import leo.modules.external.Capabilities._
       // Check what the provers speaks, translate only to first-order if necessary
       val proverCaps = prover.capabilities
-      val extraArgs = Seq(Configuration.ATP_ARGS(prover.name))
+      val extraArgs0 = Configuration.ATP_ARGS(prover.name)
+      val extraArgs = if (extraArgs0 == "") Seq.empty else Seq(extraArgs0)
       if (proverCaps.contains(THF)) {
         val preparedProblem = prepareProblem(problem, THF)(sig)
         prover.call(problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)

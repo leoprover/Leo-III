@@ -58,13 +58,6 @@ object ExternalProver {
       file.toFile.setExecutable(true)
       assert(Files.exists(LIMITEDRUN), "LIMITEDRUN not created")
     }
-
-    val files = SCRIPTDIR.toFile.listFiles()
-    if (files != null) {
-      for (f <- files) {
-        println(f.toString)
-      }
-    }
   }
   private final def serviceToPath(cmd : String) : Path = {
     import scala.sys.process._
@@ -199,7 +192,8 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
 
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     val timeout0 = if (timeout < 60) 60 else timeout
-    ExternalProver.limitedRun(timeout, Seq(path, "-t", timeout0.toString) ++ args ++ Seq(problemFileName))
+    val call0 = Seq(path, "-t", timeout0.toString) ++ args ++ Seq(problemFileName)
+    ExternalProver.limitedRun(timeout, call0)
   }
 }
 
