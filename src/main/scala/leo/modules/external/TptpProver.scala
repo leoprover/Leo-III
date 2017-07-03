@@ -110,6 +110,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     val cmdfile = new File(cmdcmd)
     println(s"cmdfile: ${cmdfile.toString}")
     println(s"exists: ${cmdfile.exists()}")
+    println(s"size: ${cmdfile.length()}")
     println(s"canExec: ${cmdfile.canExecute}")
     println(s"canRead: ${cmdfile.canRead}")
     /* wrap it as future result */
