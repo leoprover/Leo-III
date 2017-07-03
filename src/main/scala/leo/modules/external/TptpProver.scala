@@ -108,11 +108,11 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     val extProcess = Process(callCmd)
     val cmdcmd = callCmd.head
     val cmdfile = new File(cmdcmd)
-    println(s"cmdfile: ${cmdfile.toString}")
-    println(s"exists: ${cmdfile.exists()}")
-    println(s"size: ${cmdfile.length()}")
-    println(s"canExec: ${cmdfile.canExecute}")
-    println(s"canRead: ${cmdfile.canRead}")
+//    println(s"cmdfile: ${cmdfile.toString}")
+//    println(s"exists: ${cmdfile.exists()}")
+//    println(s"size: ${cmdfile.length()}")
+//    println(s"canExec: ${cmdfile.canExecute}")
+//    println(s"canRead: ${cmdfile.canRead}")
     /* wrap it as future result */
     new TPTPResultFuture(extProcess, originalProblem, timeout)
   }
