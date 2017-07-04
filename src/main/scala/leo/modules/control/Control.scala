@@ -1786,7 +1786,6 @@ package  externalProverControl {
     private var openCalls: Map[State[AnnotatedClause], Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]]] = Map()
     private var lastCheck: Map[State[AnnotatedClause], Long] = Map()
     private var lastCall: Map[State[AnnotatedClause], Long] = Map()
-    private val lastCheckDefault : Long = Long.MinValue
     private val lastCallDefault : Long = -20
 
     private var callFacade : AsyncTranslation = new SequentialTranslationImpl
@@ -1807,43 +1806,39 @@ package  externalProverControl {
     final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {
       if (state.externalProvers.isEmpty) Seq.empty
       else {
-        val curTime = System.currentTimeMillis()
-        if (curTime >= lastCheck.getOrElse(state, lastCheckDefault) + Configuration.ATP_CHECK_INTERVAL * 1000) {
-          leo.Out.debug(s"[ExtProver]: Checking for finished jobs.")
-          var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
-          lastCheck += state -> curTime
-          val proversIt = synchronized(openCalls.getOrElse(state, Map()).keys.iterator)
-          while (proversIt.hasNext) {
-            val prover = proversIt.next()
-            var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
-            val openCallsIt = synchronized(openCalls(state)(prover).iterator)
-            while (openCallsIt.hasNext) {
-              val openCall = openCallsIt.next()
-              if (openCall.isCompleted) {
-                leo.Out.debug(s"[ExtProver]: Job finished (${prover.name}).")
-                finished = finished + openCall
-                val result = openCall.value.get
-                val resultSZS = result.szsStatus
-                leo.Out.debug(s"[ExtProver]: Result ${resultSZS.pretty}")
-                if (resultSZS == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
-                if (helpfulAnswer(result)) {
-                  results = results :+ result
-                }
+        leo.Out.debug(s"[ExtProver]: Checking for finished jobs ...")
+        var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
+        val proversIt = synchronized(openCalls.getOrElse(state, Map()).keys.iterator)
+        while (proversIt.hasNext) {
+          val prover = proversIt.next()
+          var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
+          val openCallsIt = synchronized(openCalls(state)(prover).iterator)
+          while (openCallsIt.hasNext) {
+            val openCall = openCallsIt.next()
+            if (openCall.isCompleted) {
+              leo.Out.debug(s"[ExtProver]: Job finished (${prover.name}).")
+              finished = finished + openCall
+              val result = openCall.value.get
+              val resultSZS = result.szsStatus
+              leo.Out.debug(s"[ExtProver]: Result ${resultSZS.pretty}")
+              if (resultSZS == SZS_Error) leo.Out.warn(result.error.mkString("\n"))
+              if (helpfulAnswer(result)) {
+                results = results :+ result
               }
             }
-            val oldOpenCalls = synchronized(openCalls(state)(prover))
-            val newOpenCalls = oldOpenCalls diff finished
-            if (newOpenCalls.isEmpty) synchronized{
-              val newStateCalls = openCalls(state) - prover
-              if(newStateCalls.isEmpty)
-                openCalls -= state
-              else
-                openCalls += (state -> (openCalls(state) - prover))
-            }
-            else synchronized{openCalls += state -> (openCalls(state) + (prover -> newOpenCalls))}
           }
-          results
-        } else Seq.empty
+          val oldOpenCalls = synchronized(openCalls(state)(prover))
+          val newOpenCalls = oldOpenCalls diff finished
+          if (newOpenCalls.isEmpty) synchronized{
+            val newStateCalls = openCalls(state) - prover
+            if(newStateCalls.isEmpty)
+              openCalls -= state
+            else
+              openCalls += (state -> (openCalls(state) - prover))
+          }
+          else synchronized{openCalls += state -> (openCalls(state) + (prover -> newOpenCalls))}
+        }
+        results
       }
     }
 

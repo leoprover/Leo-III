@@ -86,8 +86,10 @@ object Configuration extends DefaultConfiguration {
   }
 
   final def cleanup(): Unit = {
+    leo.Out.debug(s"Cleaning up temporary files ...")
     import leo.modules.external.ExternalProver
     ExternalProver.cleanup()
+    leo.Out.debug(s"Clean-up finished!")
   }
 
   //////////////////////////
@@ -182,7 +184,6 @@ object Configuration extends DefaultConfiguration {
 
   lazy val ATP_CALL_INTERVAL: Int = uniqueIntFor(PARAM_ATPCALLINTERVAL, DEFAULT_ATPCALLINTERVAL)
   lazy val ATP_MAX_JOBS: Int = uniqueIntFor(PARAM_ATPMAXJOBS, DEFAULT_ATPMAXJOBS)
-  lazy val ATP_CHECK_INTERVAL: Int = uniqueIntFor(PARAM_ATPCHECKINTERVAL, DEFAULT_ATPCHECKINTERVAL)
   lazy val ATPS : Seq[(String, String)] = {
     val a = valueOf("a")
     if(a.nonEmpty) {
@@ -411,7 +412,6 @@ trait DefaultConfiguration {
   val DEFAULT_PRIMSUBST = 1
   val DEFAULT_PRE_PRIMSUBST = -1
   val DEFAULT_PRE_PRIMSUBST_MAXDEPTH = 5
-  val DEFAULT_ATPCHECKINTERVAL = 1
   val DEFAULT_ATPCALLINTERVAL = 15
   val DEFAULT_ATP_TIMEOUT = 15
   val DEFAULT_ATPMAXJOBS = 4
