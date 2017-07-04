@@ -20,7 +20,7 @@ class ExternalAgent(state : BlackboardState, sig : Signature) extends AbstractAg
 
   override def filter(event: Event): Iterable[Task] = {
     var tasks : Seq[Task] = Seq()
-    if(ExtProverControl.openCallsExist) {
+    if(ExtProverControl.openCallsExist(state.state)) {
       // ATM checkExternalResult returns only positive results
       val res = ExtProverControl.checkExternalResults(state.state)
       if(res.nonEmpty && res.headOption.nonEmpty){  // TODO Update

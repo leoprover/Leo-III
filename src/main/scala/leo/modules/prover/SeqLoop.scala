@@ -108,24 +108,7 @@ object SeqLoop {
 
     try {
       // Check if external provers were defined
-      if (Configuration.ATPS.nonEmpty) {
-        import leo.modules.external.ExternalProver
-        Configuration.ATPS.foreach { case (name, path) =>
-          try {
-            val p = ExternalProver.createProver(name, path)
-            state.addExternalProver(p)
-            leo.Out.info(s"$name registered as external prover.")
-          } catch {
-            case e: NoSuchMethodException => leo.Out.warn(e.getMessage)
-          }
-        }
-      }
-
-      if(Configuration.CONCURRENT_TRANSLATE) {
-        val maxTrans = Configuration.ATP_MAX_JOBS
-        val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
-        ExtProverControl.registerAsyncTranslation(asyncTrans)
-      }
+      if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
 
       // Read problem from file
       val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
