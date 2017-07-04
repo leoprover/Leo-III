@@ -33,7 +33,7 @@ trait Schedule {
 class EquiScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule {
 
   private var remainingStrats = allStrategies
-  private val MIN_TIME : Int = 30
+  private val MIN_TIME : Int = 10
 
   override def hasNext: Boolean = synchronized(remainingStrats.nonEmpty)
 
@@ -42,8 +42,8 @@ class EquiScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule {
     remainingStrats = remainingStrats.drop(amount)
 
     val remainingWeight : Float = remainingStrats.foldLeft(0 : Float)((w, s) => w+s.share)
-    val maxChoosen : Float = consider.map(_.share).max
-    val time = Math.max(MIN_TIME, ((remainingTime * maxChoosen) / (maxChoosen + remainingWeight)).toInt)
+    val sumChoosen : Float = consider.foldLeft(0 : Float)((w, s) => w+s.share)
+    val time = Math.max(MIN_TIME, ((remainingTime * sumChoosen) / (sumChoosen + remainingWeight)).toInt)
     consider map (s => (s, time))
   }
 }
@@ -57,7 +57,7 @@ class EquiScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule {
 class IndividualScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule {
 
   private var remainingStrats = allStrategies
-  private val MIN_TIME : Int = 30
+  private val MIN_TIME : Int = 10
 
   override def hasNext: Boolean = synchronized(remainingStrats.nonEmpty)
 
@@ -65,7 +65,8 @@ class IndividualScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule 
     val consider = remainingStrats.take(amount)
     remainingStrats = remainingStrats.drop(amount)
 
-    val remainingWeight : Float = remainingStrats.foldLeft(0 : Float)((w, s) => w+s.share)
+    // TODO Grouped by the amount taken (mean of weight)??? Otherwise the first processes always get lower results
+    val remainingWeight : Float = remainingStrats.foldLeft(0 : Float)((w, s) => w+s.share) / amount
     consider map {s =>
       val time = Math.max(MIN_TIME, ((remainingTime * s.share) / (s.share + remainingWeight)).toInt)
       (s, time)}

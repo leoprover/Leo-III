@@ -342,7 +342,9 @@ object ParallelMain {
 
   private class DeferredKill(interval : Double, timeout : Double, blackboard: Blackboard, scheduler: Scheduler) extends Thread {
 
-    var remain : Double = timeout
+    private val THRESHHOLD_FOR_TIMEOUT = 5  // TODO Move?
+
+    var remain : Double = timeout + THRESHHOLD_FOR_TIMEOUT
     var exit : Boolean = false
 
     private var finished = false
