@@ -217,8 +217,8 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       else {
         if (process0.isAlive) false
         else {
-          generateResult()
           terminated = true
+          generateResult()
           true
         }
       }
