@@ -61,6 +61,7 @@ object Control {
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
   // External prover call
+  @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
   @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
@@ -1777,30 +1778,48 @@ package indexingControl {
 package  externalProverControl {
   import leo.modules.output.SuccessSZS
   import leo.modules.external.Capabilities.Language
-  import leo.datastructures.Clause
+  import leo.datastructures.{Clause, ClauseProxy}
 
   object ExtProverControl {
     import leo.modules.external._
     import leo.modules.output.SZS_Error
-    private final val prefix: String = "[ExtProver]"
-    private var openCalls: Map[State[AnnotatedClause], Map[TptpProver[AnnotatedClause], Set[Future[TptpResult[AnnotatedClause]]]]] = Map()
-    private var lastCheck: Map[State[AnnotatedClause], Long] = Map()
-    private var lastCall: Map[State[AnnotatedClause], Long] = Map()
-    private val lastCallDefault : Long = -20
 
+    type S = State[AnnotatedClause]
+    private final val prefix: String = "[ExtProver]"
+
+    private var openCalls: Set[S] = Set.empty // keep track of states with open ext. prover calls
     private var callFacade : AsyncTranslation = new SequentialTranslationImpl
 
     final def registerAsyncTranslation(translation : AsyncTranslation) : Unit = {
       callFacade = translation
     }
 
-    final def openCallsExist: Boolean = openCalls.nonEmpty
-
-    final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
-      result.szsStatus match {
-        case _:SuccessSZS => true
-        case _ => false
+    final def registerExtProver(provers: Seq[(String, String)])(implicit state: S): Unit = {
+      import leo.modules.external.ExternalProver
+      Configuration.ATPS.foreach { case (name, path) =>
+        try {
+          val p = ExternalProver.createProver(name, path)
+          state.addExternalProver(p)
+          leo.Out.info(s"$name registered as external prover.")
+        } catch {
+          case e: NoSuchMethodException => leo.Out.warn(e.getMessage)
+        }
       }
+
+      if(Configuration.CONCURRENT_TRANSLATE) {
+        val maxTrans = Configuration.ATP_MAX_JOBS
+        val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
+        registerAsyncTranslation(asyncTrans)
+      }
+
+      state.setLastCallStat(new MixedInfoLastCallStat)
+    }
+
+    final def openCallsExistGlobally: Boolean = openCalls.nonEmpty
+    final def openCallsExist(implicit state: S): Boolean = state.openExtCalls.nonEmpty
+
+    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
+      callFacade.call(clauses, state, force)
     }
 
     final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {
@@ -1808,11 +1827,12 @@ package  externalProverControl {
       else {
         leo.Out.debug(s"[ExtProver]: Checking for finished jobs ...")
         var results: Seq[TptpResult[AnnotatedClause]] = Vector.empty
-        val proversIt = synchronized(openCalls.getOrElse(state, Map()).keys.iterator)
+
+        val proversIt = synchronized(state.openExtCalls.iterator)
         while (proversIt.hasNext) {
-          val prover = proversIt.next()
+          val (prover, openCalls0) = proversIt.next()
           var finished: Set[Future[TptpResult[AnnotatedClause]]] = Set.empty
-          val openCallsIt = synchronized(openCalls(state)(prover).iterator)
+          val openCallsIt = openCalls0.iterator
           while (openCallsIt.hasNext) {
             val openCall = openCallsIt.next()
             if (openCall.isCompleted) {
@@ -1827,99 +1847,80 @@ package  externalProverControl {
               }
             }
           }
-          val oldOpenCalls = synchronized(openCalls(state)(prover))
-          val newOpenCalls = oldOpenCalls diff finished
-          if (newOpenCalls.isEmpty) synchronized{
-            val newStateCalls = openCalls(state) - prover
-            if(newStateCalls.isEmpty)
-              openCalls -= state
-            else
-              openCalls += (state -> (openCalls(state) - prover))
+          synchronized {
+            state.removeOpenExtCalls(prover, finished)
+            if (state.openExtCalls.isEmpty) openCalls = openCalls - state
           }
-          else synchronized{openCalls += state -> (openCalls(state) + (prover -> newOpenCalls))}
         }
         results
       }
     }
 
 
-    final def checkExternalResults() : Map[State[AnnotatedClause], Seq[TptpResult[AnnotatedClause]]] = openCalls.keys.map(state => (state, checkExternalResults(state))).toMap
-
-
-
-    final def shouldRun(clauses: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = {
-      state.noProofLoops >= lastCall.getOrElse(state, lastCallDefault) + Configuration.ATP_CALL_INTERVAL
-    }
-
-    final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
-      callFacade.call(clauses, state, force)
-    }
+    final def checkExternalResults(): Map[S, Seq[TptpResult[AnnotatedClause]]] =
+      openCalls.map(state => (state, checkExternalResults(state))).toMap
 
 
     final def sequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
-        if (shouldRun(clauses, state) || force) {
+        if (shouldRun(state) || force) {
           leo.Out.debug(s"[ExtProver]: Staring jobs ...")
-          lastCall += state -> state.noProofLoops
-          val openCallState = openCalls.getOrElse(state, Map())
+          state.lastCall.calledNow(state)
+          val openCallState = state.openExtCalls
           state.externalProvers.foreach(prover =>
             if (openCallState.isDefinedAt(prover)) {
               if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
-                val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-                if (futureResult != null) openCalls += state -> (openCallState + (prover -> (openCalls(state)(prover) + futureResult)))
-                leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+                submit0(prover, clauses, state)
               }
             } else {
-              val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-              if (futureResult != null) openCalls += state -> (openCallState + (prover -> Set(futureResult)))
-              leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+              submit0(prover, clauses, state)
             }
           )
         }
       }
     }
 
-    /**
-      *
-      * Returns true, if a call was submitted
-      *
-      */
     final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
         leo.Out.debug(s"[ExtProver]: Staring jobs ...")
-        lastCall += state -> state.noProofLoops // Legecy?
+        state.lastCall.calledNow(state)
+        val openCallState = state.openExtCalls
         state.externalProvers.foreach(prover =>
-          if (openCalls.getOrElse(state, Map()).isDefinedAt(prover)) {
-            if (openCalls(state)(prover).size < Configuration.ATP_MAX_JOBS || force) {
-              val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-              if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> (openCalls(state)(prover) + futureResult))))
-              leo.Out.debug(s"[ExtProver]: ${prover.name} (${openCalls(state)(prover).size})started.")
+          if (openCallState.isDefinedAt(prover)) {
+            if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
+              submit0(prover, clauses, state)
             }
           } else {
-            val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-            if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> Set(futureResult))))
-            leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+            submit0(prover, clauses, state)
           }
         )
       }
     }
 
+
     final def submitSingleProver(prover : TptpProver[AnnotatedClause],
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Staring job ${prover.name}")
-      lastCall += state -> state.noProofLoops
-      if (openCalls.getOrElse(state, Map()).isDefinedAt(prover)) {
-        if (openCalls(state)(prover).size < Configuration.ATP_MAX_JOBS) {
-          val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-          if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> (openCalls(state)(prover) + futureResult))))
-          leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+      state.lastCall.calledNow(state)
+      val openCallState = state.openExtCalls
+      if (openCallState.isDefinedAt(prover)) {
+        if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
+          submit0(prover, clauses, state)
         }
       } else {
-        val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
-        if (futureResult != null) synchronized(openCalls += state -> (openCalls(state) + (prover -> Set(futureResult))))
-        leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+        submit0(prover, clauses, state)
       }
+    }
+
+    private def submit0(prover: TptpProver[AnnotatedClause],
+                        clauses: Set[AnnotatedClause], state: S): Unit = {
+      val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+      if (futureResult != null) {
+        state.addOpenExtCall(prover, futureResult)
+        openCalls = openCalls + state
+      }
+      leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
     }
 
     final def callProver(prover: TptpProver[AnnotatedClause],
@@ -1994,21 +1995,36 @@ package  externalProverControl {
 
     final def sequentialKillExternals(): Unit = {
       Out.info(s"Killing All external provers ...")
-      openCalls.keys.foreach {state =>
-        openCalls(state).keys.foreach(prover =>
-          openCalls(state)(prover).foreach(future =>
-            future.kill()
-          )
-        )
-      }
+      openCalls.foreach {state => sequentialKillExternals(state) }
     }
 
     final def sequentialKillExternals(state : State[AnnotatedClause]) : Unit = {
-      openCalls(state).keys.foreach(prover =>
-        openCalls(state)(prover).foreach(future =>
-          future.kill()
-        )
-      )
+      state.openExtCalls.foreach { case (_, futures) =>
+        futures.foreach(_.kill())
+      }
+    }
+
+    @inline final def shouldRun(state: State[AnnotatedClause]): Boolean = state.lastCall.shouldCall(state)
+
+    class MixedInfoLastCallStat extends State.LastCallStat {
+      override def shouldCall[T <: ClauseProxy](implicit state: State[T]): Boolean = {
+        if (state.openExtCalls.isEmpty && lastLoopCount < state.noProofLoops) {
+          true
+        } else {
+          if (state.noProofLoops - lastLoopCount >= Configuration.ATP_CALL_INTERVAL) true
+          else {
+            if (System.currentTimeMillis() - lastTime > Configuration.DEFAULT_ATP_TIMEOUT) true
+            else false
+          }
+        }
+      }
+    }
+
+    final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
+      result.szsStatus match {
+        case _:SuccessSZS => true
+        case _ => false
+      }
     }
   }
 }

@@ -2,6 +2,8 @@ package leo.modules.prover
 
 import leo.datastructures._
 import leo.modules.{FVState, FVStateImpl, GeneralState}
+import leo.modules.external.{Future, TptpProver, TptpResult}
+import leo.modules.prover.State.LastCallStat
 
 /**
   * Created by lex on 20.02.16.
@@ -23,6 +25,12 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def nonRewriteUnits: Set[T]
   def addNonRewriteUnit(cl: T): Unit
   def removeUnits(cls: Set[T]): Unit
+
+  def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]]
+  def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit
+  def addOpenExtCall(prover: TptpProver[T], call: Future[TptpResult[T]]): Unit
+  def lastCall: LastCallStat
+  def setLastCallStat(lcs: LastCallStat): Unit
 
   def copy : State[T]
 }
@@ -55,6 +63,24 @@ trait StateStatistics {
 
 object State {
   def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](sig)
+
+  abstract class LastCallStat {
+    private var lastLoopCount0: Long = 0
+    private var lastProcessedSize0: Int = 0
+    private var lastTime0: Long = 0
+
+    def lastLoopCount: Long = lastLoopCount0
+    def lastProcessedSize: Int = lastProcessedSize0
+    def lastTime: Long = lastTime0
+
+    def shouldCall[T <: ClauseProxy](implicit state: State[T]): Boolean
+
+    def calledNow[T <: ClauseProxy](implicit state: State[T]): Unit = {
+      lastLoopCount0 = state.noProofLoops
+      lastProcessedSize0 = state.noProcessedCl
+      lastTime0 = System.currentTimeMillis()
+    }
+  }
 }
 
 protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) extends FVStateImpl[T](initSignature) with State[T]{
@@ -64,6 +90,30 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
+
+  private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
+  private var extCallStat: LastCallStat = _
+
+  def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = openExtCalls0
+  def lastCall: LastCallStat = extCallStat
+  def setLastCallStat(lcs: LastCallStat): Unit = {extCallStat = lcs}
+  def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit = {
+    if (openExtCalls0.isDefinedAt(prover)) {
+      val openCalls = openExtCalls0(prover)
+      val newCalls = openCalls diff calls
+      if (newCalls.isEmpty) openExtCalls0 = openExtCalls0 - prover
+      else openExtCalls0 = openExtCalls0 + (prover -> newCalls)
+    }
+  }
+  def addOpenExtCall(prover: TptpProver[T], call: Future[TptpResult[T]]): Unit = {
+    if (openExtCalls0.isDefinedAt(prover)) {
+      val openCalls = openExtCalls0(prover)
+      openExtCalls0 = openExtCalls0 + (prover -> openCalls.+(call))
+    } else {
+      openExtCalls0 = openExtCalls0 + (prover -> Set(call))
+    }
+  }
+
 
   override final def copy: State[T] = {
     val state = new StateImpl[T](initSignature.copy)
