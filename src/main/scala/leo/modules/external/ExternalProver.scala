@@ -23,10 +23,19 @@ object ExternalProver {
   final lazy val LIMITEDRUN: Path = SCRIPTDIR.resolve("TreeLimitedRun")
 
   def cleanup(): Unit = {
-    if (Files.exists(LIMITEDRUN)) LIMITEDRUN.toFile.delete()
-    val cvc4RunScript = SCRIPTDIR.resolve(CVC4.executeScriptName)
-    if (Files.exists(cvc4RunScript)) cvc4RunScript.toFile.delete()
-    if (Files.exists(SCRIPTDIR)) SCRIPTDIR.toFile.delete()
+    if (Configuration.isSet("atpdebug")) return
+
+    try {
+      if (Files.exists(LIMITEDRUN)) LIMITEDRUN.toFile.delete()
+      val cvc4RunScript = SCRIPTDIR.resolve(CVC4.executeScriptName)
+      if (Files.exists(cvc4RunScript)) cvc4RunScript.toFile.delete()
+      if (Files.exists(SCRIPTDIR)) SCRIPTDIR.toFile.delete()
+    } catch {
+      case e:Exception =>
+        leo.Out.warn("Exception while cleaning up temporary files:")
+        leo.Out.warn(e.toString)
+    }
+
   }
   /**
     * Creates a prover `name` with an executable at the path `path`.

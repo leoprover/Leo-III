@@ -19,6 +19,7 @@ object Main {
       val beginTime = System.currentTimeMillis()
       /** Hook is for returning an szs status if leo3 is killed forcefully. */
       hook = sys.addShutdownHook({
+        Configuration.cleanup()
         Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
       })
 
