@@ -12,6 +12,7 @@ object ScheduledRun {
   final def apply(startTime: Long, timeout: Int, schedule: Control.RunSchedule): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
+    var curState: State[AnnotatedClause] = null
     try {
       // Check if external provers were defined
       if (Configuration.ATPS.nonEmpty) {
@@ -60,6 +61,7 @@ object ScheduledRun {
         val (currentStrategy, currentTimeout) = schedule.next()
         Out.info(s"Trying strategy ${currentStrategy.pretty} for ${currentTimeout}s ...")
         val localState = state.copy
+        curState = localState
         localState.setRunStrategy(currentStrategy)
         localState.setTimeout(currentTimeout)
         val localStartTime = System.currentTimeMillis()
@@ -69,7 +71,7 @@ object ScheduledRun {
         if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {
-      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}"); throw e
+      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(curState.signature)}"); throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()
