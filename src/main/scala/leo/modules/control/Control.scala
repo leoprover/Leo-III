@@ -2030,6 +2030,7 @@ package  externalProverControl {
 }
 
 package schedulingControl {
+  import leo.modules.agent.multisearch.EquiScheduleImpl
   import leo.modules.control.Control.RunSchedule
 
   object StrategyControl {
@@ -2069,6 +2070,28 @@ package schedulingControl {
 
     final def defaultStrategy: RunStrategy = {
       // currently: ignore meta-knowledge from state and just return standard strategy
+      RunStrategy.defaultStrategy
+    }
+  }
+
+  object ParStrategyControl {
+    import leo.modules.agent.multisearch.Schedule
+    //TODO  Mintime is set in Schedule!!! Move here
+    val STRATEGIES: Seq[RunStrategy] = StrategyControl.STRATEGIES // TODO Own strategies? Reorder?
+
+
+    final def generateRunStrategies(): Schedule = {
+      val to = Configuration.TIMEOUT
+      if (to == 0) {
+        // unlimited resources, dont schedule...i guess?
+        new EquiScheduleImpl(Seq(defaultStrategy))
+      } else {
+        new EquiScheduleImpl(STRATEGIES)
+      }
+    }
+
+
+    final def defaultStrategy: RunStrategy = {
       RunStrategy.defaultStrategy
     }
   }

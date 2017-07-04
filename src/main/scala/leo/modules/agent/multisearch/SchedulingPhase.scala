@@ -25,7 +25,7 @@ object SchedulingPhase {
 /**
   * Created by mwisnie on 6/7/17.
   */
-class SchedulingPhase(tactics : Iterator[RunStrategy],
+class SchedulingPhase(tactics : Schedule,
                       implicit val state : GeneralState[AnnotatedClause])
                      (scheduler: Scheduler,
                       blackboard: Blackboard)

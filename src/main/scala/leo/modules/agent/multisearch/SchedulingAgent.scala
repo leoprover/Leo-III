@@ -11,10 +11,11 @@ import leo.modules.prover.RunStrategy
 /**
   * Created by mwisnie on 6/7/17.
   */
-class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic : Iterator[RunStrategy]) extends AbstractAgent {
+class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic : Schedule) extends AbstractAgent {
   private val self = this
   override def name: String = "scheduling-agent"
   private val maxPar = Configuration.PAR_SCHED
+  private val THRESHHOLD = 0
   private var curExec = 0 // TODO Sync
 
   private val startTime = System.currentTimeMillis()
@@ -46,18 +47,20 @@ class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic 
     generateNewRuns()
   }
 
-  private def generateNewRuns() : Iterable[Task] = {
+  private def generateNewRuns() : Iterable[Task] = synchronized {
+    if(curExec > THRESHHOLD || !tactic.hasNext) return Iterable()
     var tasks : Seq[Task] = Seq()
-    val it = tactic
     val remaining : Int = timeout - ((System.currentTimeMillis() - startTime).toInt / 1000)
+    val amount = maxPar - curExec
+    val it = tactic.next(remaining, amount).iterator
     while(it.hasNext && curExec < maxPar){
       curExec += 1
-      val strat = it.next()
+      val (strat,timeout) = it.next()
       val newState : S = initState.copyGeneral.asInstanceOf[S]
       // Time!
 //      println(s"Commit ${timedTactic.pretty}")
       newState.setRunStrategy(strat)
-      newState.setTimeout(remaining)
+      newState.setTimeout(timeout)
       tasks = new NewModeTask(newState) +: tasks
     }
     tasks
