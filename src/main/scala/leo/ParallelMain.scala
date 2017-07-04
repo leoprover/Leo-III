@@ -14,9 +14,10 @@ import leo.modules.interleavingproc._
 import leo.agents.InterferingLoopAgent
 import leo.modules.control.{Control, schedulingControl}
 import leo.datastructures.AnnotatedClause
-import leo.modules.agent.multisearch.SchedulingPhase
+import leo.modules.agent.multisearch.{Schedule, SchedulingPhase}
 import leo.modules.agent.rules.control_rules._
 import leo.modules.control.externalProverControl.ExtProverControl
+import leo.modules.control.schedulingControl.ParStrategyControl
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
 import leo.modules.prover.{RunStrategy, State}
@@ -85,7 +86,7 @@ object ParallelMain {
       val initState: State[AnnotatedClause] = State.fresh(sig)
 
       val defaultStrat = schedulingControl.StrategyControl.defaultStrategy
-      val tactics : Iterator[RunStrategy] = (defaultStrat +: schedulingControl.StrategyControl.STRATEGIES.filterNot(_ == defaultStrat)).iterator
+      val tactics : Schedule = ParStrategyControl.generateRunStrategies()
 
 //      println(tactics.size)
 
