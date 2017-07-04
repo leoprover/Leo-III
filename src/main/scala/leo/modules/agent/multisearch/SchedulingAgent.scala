@@ -5,8 +5,9 @@ import leo.agents._
 import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.{DataType, Delta, Event, ImmutableDelta}
 import leo.modules.GeneralState
+import leo.modules.control.externalProverControl.ExtProverControl.MixedInfoLastCallStat
 import leo.modules.output.SZS_Theorem
-import leo.modules.prover.RunStrategy
+import leo.modules.prover.{RunStrategy, State}
 
 /**
   * Created by mwisnie on 6/7/17.
@@ -61,6 +62,9 @@ class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic 
 //      println(s"Commit ${timedTactic.pretty}")
       newState.setRunStrategy(strat)
       newState.setTimeout(timeout)
+      if(newState.isInstanceOf[State[AnnotatedClause]]){
+        newState.asInstanceOf[State[AnnotatedClause]].setLastCallStat(new MixedInfoLastCallStat)
+      }
       tasks = new NewModeTask(newState) +: tasks
     }
     tasks
