@@ -90,7 +90,7 @@ object ParallelMain {
 
 //      println(tactics.size)
 
-      ExtProverControl.registerAsyncTranslation(new SchedulerTranslationImpl(scheduler))
+//  TODO    ExtProverControl.registerAsyncTranslation(new SchedulerTranslationImpl(scheduler))
 
       val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
 
