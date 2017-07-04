@@ -551,7 +551,7 @@ object TypedFOLEncodingSignature {
   final val Forall: Term = mkAtom(13, aoo)
   final def Forall(body: Term): Term = mkApp(Forall, Seq(Right(body.ty._funDomainType), Left(body)))
   final val Exists: Term = mkAtom(14, aoo)
-  final def Exists(body: Term): Term = mkApp(Forall, Seq(Right(body.ty._funDomainType), Left(body)))
+  final def Exists(body: Term): Term = mkApp(Exists, Seq(Right(body.ty._funDomainType), Left(body)))
   final val TyForall: Term = mkAtom(15, faoo)
   final def TyForall(body: Term): Term = mkTermApp(TyForall, body)
 
