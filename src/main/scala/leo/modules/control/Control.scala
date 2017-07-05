@@ -880,8 +880,8 @@ package inferenceControl {
     private final def constraintLiteral(l : Literal) : Option[Term] = {
       val left = l.left
       val right = l.right
-      if(left.isVariable && right.freeVars.isEmpty) Some(right)
-      else if(right.isVariable && left.freeVars.isEmpty) Some(left)
+      if(leo.datastructures.isVariableModuloEta(left) && right.freeVars.isEmpty) Some(right)
+      else if(leo.datastructures.isVariableModuloEta(right) && left.freeVars.isEmpty) Some(left)
       else None
     }
 
