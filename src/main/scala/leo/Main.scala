@@ -42,20 +42,6 @@ object Main {
       }
       /** Parameter stuff END */
 
-      val config = {
-        val sb = new StringBuilder()
-        sb.append(s"problem(${Configuration.PROBLEMFILE}),")
-        sb.append(s"time(${Configuration.TIMEOUT}),")
-        sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
-        sb.append(s"sos(${Configuration.SOS}),")
-        sb.append(s"primSubst(level=${Configuration.PRIMSUBST_LEVEL}),")
-        sb.append(s"uniDepth(${Configuration.UNIFICATION_DEPTH}),")
-        sb.append(s"unifierCount(${Configuration.UNIFIER_COUNT}),")
-        // TBA ...
-        sb.init.toString()
-      }
-      Out.config(s"Configuration: $config")
-
       if (Configuration.isSet("seq")) {
         Out.info("Running in sequential loop mode.")
         prover.SeqLoop(beginTime, Configuration.TIMEOUT)

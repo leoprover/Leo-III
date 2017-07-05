@@ -1619,6 +1619,7 @@ package indexingControl {
     final def resetIndexes(state: State[AnnotatedClause]): Unit = {
       state.fVIndex.reset()
       leo.datastructures.Term.reset()
+      leo.datastructures.Type.clear()
       leo.modules.calculus.FormulaRenaming.resetCash()
     }
 
@@ -2039,7 +2040,7 @@ package schedulingControl {
 
   object StrategyControl {
     import leo.modules.prover.RunStrategy._
-    val MINTIME = 45
+    val MINTIME = 60
     val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3, s1b, s2, s2b, s3b )
 
 

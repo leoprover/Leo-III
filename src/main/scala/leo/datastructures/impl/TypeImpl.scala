@@ -231,38 +231,92 @@ protected[datastructures] case class ForallTypeNode(body: Type) extends TypeImpl
 }
 
 object TypeImpl {
-  private var types: Map[Signature.Key, Map[Seq[Type], Type]] = Map()
-  private var varTypes: Map[Int, Type] = Map()
+  import scala.collection.mutable
+  import mutable.{Map => MMap, TreeMap => MTreeMap}
+  private var types: MMap[Signature.Key, MMap[Seq[Type], Type]] = MTreeMap.empty
+  private var absTypes: MMap[Type, MMap[Type, Type]] = MMap.empty
+  private var varTypes: MMap[Int, Type] = MTreeMap.empty
+  private var polyTypes: MMap[Type, Type] = MMap.empty
 
-  def mkType(identifier: Signature.Key, args: Seq[Type]): Type = { //GroundTypeNode(identifier, args)
-    if (types.isDefinedAt(identifier)) {
-      val map = types(identifier)
-      if (map.isDefinedAt(args))
-        map(args)
-      else {
-        val ty = GroundTypeNode(identifier, args)
-        types = types + (identifier -> (map + (args -> ty)))
-        ty
-      }
-    } else {
-      val ty = GroundTypeNode(identifier, args)
-      val map = Map(args -> ty)
-      types = types + (identifier -> map)
-      ty
+  final def mkType(identifier: Signature.Key, args: Seq[Type]): Type = {
+    types.get(identifier) match {
+      case None => mkType0(identifier, args)
+      case Some(inner) =>
+        inner.get(args) match {
+          case None => mkType1(identifier, args)
+          case Some(ty) => ty
+        }
     }
   }
-  def mkFunType(in: Type, out: Type): Type = AbstractionTypeNode(in, out)
-  def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
-  def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
-  def mkPolyType(bodyType: Type): Type = ForallTypeNode(bodyType)
-  def mkVarType(scope: Int): Type = { //BoundTypeNode(scope)
-    if (varTypes.isDefinedAt(scope))
-      varTypes(scope)
-    else {
-      val ty = BoundTypeNode(scope)
-      varTypes = varTypes + (scope -> ty)
-      ty
+  @inline private final def mkType0(identifier: Signature.Key, args: Seq[Type]): Type = {
+    val ty = GroundTypeNode(identifier, args)
+    types += (identifier -> MMap(args -> ty))
+    ty
+  }
+
+  @inline private final def mkType1(identifier: Signature.Key, args: Seq[Type]): Type = {
+    val ty = GroundTypeNode(identifier, args)
+    assert(types.contains(identifier))
+    val inner = types(identifier)
+    inner += (args -> ty)
+    ty
+  }
+
+  final def mkFunType(in: Type, out: Type): Type = {
+    absTypes.get(in) match {
+      case None => mkFunType0(in, out)
+      case Some(inner) =>
+        inner.get(out) match {
+          case None => mkFunType1(in, out)
+          case Some(ty) => ty
+        }
     }
+  }
+  @inline final def mkFunType0(in: Type, out: Type): Type = {
+    val ty = AbstractionTypeNode(in, out)
+    absTypes += (in -> MMap(out -> ty))
+    ty
+  }
+  @inline final def mkFunType1(in: Type, out: Type): Type = {
+    val ty = AbstractionTypeNode(in, out)
+    assert(absTypes.contains(in))
+    val inner = absTypes(in)
+    inner += (out -> ty)
+    ty
+  }
+
+  final def mkPolyType(body: Type): Type = {
+    polyTypes.get(body) match {
+      case None => mkPolyType0(body)
+      case Some(ty) => ty
+    }
+  }
+  @inline final def mkPolyType0(body: Type): Type = {
+    val ty = ForallTypeNode(body)
+    polyTypes += (body -> ty)
+    ty
+  }
+
+  final def mkVarType(scope: Int): Type = {
+    varTypes.get(scope) match {
+      case None => mkVarType0(scope)
+      case Some(ty) => ty
+    }
+  }
+  @inline final def mkVarType0(scope: Int): Type = {
+    val ty = BoundTypeNode(scope)
+    varTypes += (scope -> ty)
+    ty
+  }
+
+  final def mkProdType(t1: Type, t2: Type): Type = ProductTypeNode(t1,t2)
+  final def mkUnionType(t1: Type, t2: Type): Type = UnionTypeNode(t1,t2)
+
+  final def clear(): Unit = {
+    types.clear()
+    absTypes.clear()
+    varTypes.clear()
+    polyTypes.clear()
   }
 }
 

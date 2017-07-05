@@ -153,6 +153,8 @@ object Type {
     case Seq(ty1, ty2, tys @ _*) => mkUnionType(ty1, ty2, tys)
   }
 
+  final def clear(): Unit = TypeImpl.clear()
+
   @inline final def ground(ty: Type): Boolean = ty.typeVars.isEmpty
 
   /** Build `forall. ty` (i.e. a universally quantified type) */
