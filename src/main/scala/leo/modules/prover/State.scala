@@ -134,7 +134,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.poly = poly
     state.current_externalProvers = current_externalProvers
     state.timeout0 = timeout0
-    state.extCallStat = lastCall.fresh
+    if (lastCall != null) state.extCallStat = lastCall.fresh
     state
   }
 

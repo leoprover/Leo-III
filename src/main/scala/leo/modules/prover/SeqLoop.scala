@@ -310,7 +310,7 @@ object SeqLoop {
       else false
     } catch {
       case e:Exception =>
-        Out.severe(s"Signature aoishdoansds used:\n${leo.modules.signatureAsString(state.signature)}")
+        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}")
         throw e
     } finally {
       if (state.externalProvers.nonEmpty)
