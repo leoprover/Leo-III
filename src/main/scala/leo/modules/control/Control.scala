@@ -1864,7 +1864,7 @@ package  externalProverControl {
     final def sequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
         if (shouldRun(state) || force) {
-          leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+          leo.Out.debug(s"[ExtProver]: Starting jobs ...")
           state.lastCall.calledNow(state)
           val openCallState = state.openExtCalls
           state.externalProvers.foreach(prover =>
@@ -1882,7 +1882,7 @@ package  externalProverControl {
 
     final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
-        leo.Out.debug(s"[ExtProver]: Staring jobs ...")
+        leo.Out.debug(s"[ExtProver]: Starting jobs ...")
         state.lastCall.calledNow(state)
         val openCallState = state.openExtCalls
         state.externalProvers.foreach(prover =>
@@ -1901,7 +1901,7 @@ package  externalProverControl {
     final def submitSingleProver(prover : TptpProver[AnnotatedClause],
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
-      leo.Out.debug(s"[ExtProver]: Staring job ${prover.name}")
+      leo.Out.debug(s"[ExtProver]: Starting job ${prover.name}")
       state.lastCall.calledNow(state)
       val openCallState = state.openExtCalls
       if (openCallState.isDefinedAt(prover)) {

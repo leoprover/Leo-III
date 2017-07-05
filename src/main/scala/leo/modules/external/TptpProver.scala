@@ -246,7 +246,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
 
     def kill(): Unit = process0.destroyForcibly()
 
-    private def generateResult(): Unit = {
+    private def generateResult(): Unit = try {
       assert(terminated)
       val exitCode = process0.exitValue()
       val stdin = scala.io.Source.fromInputStream(process0.getInputStream).getLines().toSeq
@@ -267,6 +267,11 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val szsAnswer = atpAnswerToSZS(stdin.iterator)
       result = new TptpResultImpl(originalProblem, szsAnswer, exitCode,
         stdoutAnswer.lines.toIterable, stderrAnswer.lines.toIterable)
+    } catch {
+      case e : Exception =>
+        val error = if(Configuration.isSet("atpdebug")) Seq(e.toString) else Seq()
+        result =  new TptpResultImpl(originalProblem, SZS_Error, -1,
+        Seq(), error)
     }
 
     private def atpAnswerToSZS(stdin: Iterator[String]): StatusSZS = {
