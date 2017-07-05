@@ -665,16 +665,18 @@ object Simp extends CalculusRule {
   private final val VARLEFT = 1
   private final val VARRIGHT = 2
 
-  final private def solvedUniEq(lit: Literal): Int = {
+  final private def solvedUniEq(lit: Literal): (Int, Int) = {
     if (lit.uni) {
       val left = lit.left
       val right = lit.right
-      if (left.isVariable && !right.isVariable) {
-        if(!right.freeVars.contains(left)) VARLEFT else CANNOTAPPLY
-      } else if (right.isVariable && !left.isVariable) {
-        if(!left.freeVars.contains(right)) VARRIGHT else CANNOTAPPLY
-      } else CANNOTAPPLY
-    } else CANNOTAPPLY
+      val leftIsVariable = getVariableModuloEta(left)
+      val rightIsVariable = getVariableModuloEta(right)
+      if (leftIsVariable > 0 && !(rightIsVariable > 0)) {
+        if(!right.freeVars.contains(left)) (VARLEFT, leftIsVariable) else (CANNOTAPPLY, -1)
+      } else if (rightIsVariable > 0 && !(leftIsVariable > 0)) {
+        if(!left.freeVars.contains(right)) (VARRIGHT, rightIsVariable) else (CANNOTAPPLY, -1)
+      } else (CANNOTAPPLY, -1)
+    } else (CANNOTAPPLY, -1)
   }
 
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
@@ -688,13 +690,12 @@ object Simp extends CalculusRule {
 
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
-          val maybeSolvedUniEq = solvedUniEq(lit)
+          val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
           if (maybeSolvedUniEq == CANNOTAPPLY) {
             newLits = newLits :+ lit
           } else {
-            val (vari,term) = if (maybeSolvedUniEq == VARLEFT) (lit.left,lit.right)
-                              else (lit.right, lit.left)
-            val idx = Term.Bound.unapply(vari).get._2
+            val term = if (maybeSolvedUniEq == VARLEFT) lit.right
+                              else lit.left
             val subst = Subst.singleton(idx, term)
             curSubst = curSubst.comp(subst)
           }

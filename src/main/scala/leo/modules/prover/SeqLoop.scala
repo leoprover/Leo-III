@@ -105,6 +105,7 @@ object SeqLoop {
     val state: State[AnnotatedClause] = State.fresh(sig)
     state.setRunStrategy(Control.defaultStrategy)
     state.setTimeout(timeout)
+    Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}")
 
     try {
       // Check if external provers were defined
