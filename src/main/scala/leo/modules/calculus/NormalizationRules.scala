@@ -3,8 +3,8 @@ package leo.modules.calculus
 import leo._
 import leo.datastructures.Term.{:::>, TypeLambda}
 import leo.datastructures.{Clause, Subst, Type, _}
-import leo.modules.HOLSignature.{&, ===, !===, Exists, Forall, TyForall, Impl, LitFalse, LitTrue, Not, |||}
-import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem}
+import leo.modules.HOLSignature.{!===, &, ===, Exists, Forall, Impl, LitFalse, LitTrue, Not, TyForall, |||}
+import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem, SuccessSZS}
 
 import scala.annotation.tailrec
 
@@ -619,6 +619,41 @@ object ACSimp extends CalculusRule {
     Clause(cl.lits.map(apply(_, acSymbols)(sig)))
   }
 }
+
+
+object DomainConstraintInstances extends CalculusRule {
+  override def name: String = "domainConstraint"
+  override def inferenceStatus: SuccessSZS = SZS_Theorem  // TODO what is the status?
+
+  final def apply(c : Clause, domain : Map[Type, Set[Term]], maxInstances : Int)(implicit sig : Signature) : Set[Clause] = {
+    var currentInstances = 1
+    var clauses = Set(c)
+    // consider only variables with domain constraints
+    val varToInstance = c.implicitlyBound.filter(v => domain.contains(v._2))
+    if(varToInstance.isEmpty) return Set(c)
+    // Sort for amount of minimal terms to instanciate to maximize the amount of vaiables eliminated until maxInstances is reached
+    val vars = varToInstance.sortBy(v => domain(v._2).size).iterator
+    while(vars.hasNext) {
+      val (i, ty) = vars.next()
+      val terms : Set[Term] = domain(ty)
+      if(maxInstances > 0 && currentInstances * terms.size > maxInstances) return clauses
+      else {
+        // Go over all clauses
+        clauses = clauses.flatMap(
+          c => terms.map(
+            t =>
+              // Substitute all literals
+              // TODO Ordered here or later?
+              // TODO not stable, if variables are remerged
+              c.mapLit(l => l.substitute(Subst.singleton(i, t)))
+          ))
+      }
+      currentInstances += terms.size
+    }
+    clauses
+  }
+}
+
 
 object Simp extends CalculusRule {
   final val name = "simp"
