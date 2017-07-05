@@ -768,7 +768,7 @@ package inferenceControl {
 
     final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(sig: Signature): Set[Term] = {
       import leo.datastructures.Term._
-      import leo.modules.HOLSignature.{Forall, Exists, Not, Impl}
+      import leo.modules.HOLSignature.{Forall, Exists, Not, Impl, &, |||}
 
       if (depth >= MAXDEPTH)
         Set(t)
@@ -777,6 +777,36 @@ package inferenceControl {
           case Not(body) =>
             val erg = instantiateTerm(body, !polarity, depth+1)(sig)
             erg.map(e => Not(e))
+          case &(l,r) =>
+            val ergL = instantiateTerm(l, polarity, depth+1)(sig)
+            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            var result: Set[Term] = Set()
+            val ergLIt = ergL.iterator
+            while (ergLIt.hasNext) {
+              val eL = ergLIt.next()
+              val ergRIt = ergR.iterator
+              while (ergRIt.hasNext) {
+                val eR = ergRIt.next()
+                val and = &(eL, eR)
+                result = result + and
+              }
+            }
+            result
+          case |||(l,r) =>
+            val ergL = instantiateTerm(l, polarity, depth+1)(sig)
+            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            var result: Set[Term] = Set()
+            val ergLIt = ergL.iterator
+            while (ergLIt.hasNext) {
+              val eL = ergLIt.next()
+              val ergRIt = ergR.iterator
+              while (ergRIt.hasNext) {
+                val eR = ergRIt.next()
+                val or = |||(eL, eR)
+                result = result + or
+              }
+            }
+            result
           case Impl(l,r) =>
             val ergL = instantiateTerm(l, !polarity, depth+1)(sig)
             val ergR = instantiateTerm(r, polarity, depth+1)(sig)
@@ -806,26 +836,26 @@ package inferenceControl {
               r2
             else
               r2 + t
-          case hd ∙ args =>
-            val argsIt = args.iterator
-            var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
-            while (argsIt.hasNext) {
-              val arg = argsIt.next()
-              if (arg.isRight) {
-                newArgs = newArgs.map(seq => seq :+ arg)
-              } else {
-                val termArg = arg.left.get
-                val erg = instantiateTerm(termArg, polarity, depth+1)(sig)
-                newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
-              }
-            }
-            newArgs.map(erg => Term.mkApp(hd, erg))
-          case ty :::> body =>
-            val erg = instantiateTerm(body, polarity, depth+1)(sig)
-            erg.map(e => Term.mkTermAbs(ty, e))
-          case TypeLambda(body) =>
-            val erg = instantiateTerm(body, polarity, depth+1)(sig)
-            erg.map(e => Term.mkTypeAbs(e))
+//          case hd ∙ args  =>
+//            val argsIt = args.iterator
+//            var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
+//            while (argsIt.hasNext) {
+//              val arg = argsIt.next()
+//              if (arg.isRight) {
+//                newArgs = newArgs.map(seq => seq :+ arg)
+//              } else {
+//                val termArg = arg.left.get
+//                val erg = instantiateTerm(termArg, polarity, depth+1)(sig)
+//                newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
+//              }
+//            }
+//            newArgs.map(erg => Term.mkApp(hd, erg))
+//          case ty :::> body =>
+//            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+//            erg.map(e => Term.mkTermAbs(ty, e))
+//          case TypeLambda(body) =>
+//            val erg = instantiateTerm(body, polarity, depth+1)(sig)
+//            erg.map(e => Term.mkTypeAbs(e))
           case _ => Set(t)
         }
       }
