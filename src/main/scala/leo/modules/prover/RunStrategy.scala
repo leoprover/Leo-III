@@ -23,7 +23,8 @@ final case class RunStrategy(share: Float,
                              boolExt: Boolean,
                              choice: Boolean,
                              renaming: Boolean,
-                             funcspec: Boolean) extends Pretty {
+                             funcspec: Boolean,
+                             domConstr : Int) extends Pretty {
   def pretty: String = s"strategy<share($share),primSubst($primSubst),sos($sos)," +
     s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
     s"renaming($renaming),funcspec($funcspec)>"
@@ -43,7 +44,8 @@ object RunStrategy {
       Configuration.DEFAULT_BOOLEXT,
       Configuration.DEFAULT_CHOICE,
       Configuration.DEFAULT_RENAMING,
-      Configuration.DEFAULT_FUNCSPEC)
+      Configuration.DEFAULT_FUNCSPEC,
+      Configuration.DEFAULT_DOMCONSTR)
 
   /////////////////////////
   /// Some (maybe) useful strategies
@@ -58,7 +60,8 @@ object RunStrategy {
     boolExt = true,
     choice = true,
     renaming =  true,
-    funcspec = false)
+    funcspec = false,
+    domConstr = 0)
 
   def s1b: RunStrategy = RunStrategy(
     share = 1,
@@ -69,7 +72,8 @@ object RunStrategy {
     boolExt = true,
     choice = true,
     renaming =  false,
-    funcspec = false)
+    funcspec = false,
+    domConstr = 0)
 
   def s2: RunStrategy = RunStrategy(
     share = 1,
@@ -80,7 +84,8 @@ object RunStrategy {
     boolExt = true,
     choice = true,
     renaming =  true,
-    funcspec = false)
+    funcspec = false,
+    domConstr = 0)
 
   def s2b: RunStrategy = RunStrategy(
     share = 1,
@@ -91,7 +96,8 @@ object RunStrategy {
     boolExt = true,
     choice = true,
     renaming = false,
-    funcspec = false)
+    funcspec = false,
+    domConstr = 0)
 
   def s3: RunStrategy = RunStrategy(
     share = 1,
@@ -102,7 +108,8 @@ object RunStrategy {
     boolExt = true,
     choice = true,
     renaming =  true,
-    funcspec = false)
+    funcspec = false,
+    domConstr = 0)
 
   def s3b: RunStrategy = RunStrategy(
     share = 1,
@@ -113,6 +120,7 @@ object RunStrategy {
     boolExt = true,
     choice = true,
     renaming =  true,
-    funcspec = false)
+    funcspec = false,
+    domConstr = 0)
 }
 
