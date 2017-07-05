@@ -22,8 +22,8 @@ object Control {
   @inline final def primsubst(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)(state)
   @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(state)
   // simplification inferences / preprocessing
-  @inline final def cnf(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(sig)
-  @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(sig)
+  @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
+  @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
   @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
@@ -90,10 +90,10 @@ package inferenceControl {
   protected[modules] object CNFControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
-    private lazy val internalCNF: (AnnotatedClause, Signature) => Set[AnnotatedClause] = if (Configuration.RENAMING_SET) cnf2 else cnf1
-    private lazy val threshhold : Int = Configuration.RENAMING_THRESHHOLD
-
-    final def cnf(cl : AnnotatedClause)(implicit sig : Signature) : Set[AnnotatedClause] = internalCNF(cl, sig)
+    final def cnf(cl : AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+      if (state.runStrategy.renaming) cnf2(cl, state.signature)
+      else cnf1(cl, state.signature)
+    }
 
     private final def cnf1(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
       Out.trace(s"Standard CNF of ${cl.pretty(sig)}")
@@ -125,7 +125,7 @@ package inferenceControl {
       }
     }
 
-    final def cnfSet(cls: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = {
+    final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = {
       var result: Set[AnnotatedClause] = Set()
       val clsIt = cls.iterator
       while(clsIt.hasNext) {
@@ -1619,6 +1619,7 @@ package indexingControl {
     final def resetIndexes(state: State[AnnotatedClause]): Unit = {
       state.fVIndex.reset()
       leo.datastructures.Term.reset()
+      leo.modules.calculus.FormulaRenaming.resetCash()
     }
 
 
@@ -2036,7 +2037,7 @@ package schedulingControl {
   object StrategyControl {
     import leo.modules.prover.RunStrategy._
     val MINTIME = 45
-    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s1b, s2, s2b, s3, s3b )
+    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3, s1b, s2, s2b, s3b )
 
 
     final def generateRunStrategies(globalTimeout: Int): RunSchedule = {

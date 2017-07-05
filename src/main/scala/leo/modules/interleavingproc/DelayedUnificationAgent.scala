@@ -48,7 +48,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
 
 
 
-      newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+      newclauses = newclauses.flatMap(cw => Control.cnf(cw)(state.state))
       newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
       val newIt = newclauses.iterator
       if(newIt.isEmpty){

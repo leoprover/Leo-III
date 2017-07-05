@@ -112,7 +112,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     /* To equality if possible */
     cur = Control.liftEq(cur)
 
-    val curCNF = Control.cnf(cur)
+    val curCNF = Control.cnf(cur)(state.state)
 
 
     if (curCNF.size == 1 && curCNF.head == cur) {
@@ -270,7 +270,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       }
     }
     /* exhaustively CNF new clauses */
-    newclauses = newclauses.flatMap(cw => Control.cnf(cw))
+    newclauses = newclauses.flatMap(cw => Control.cnf(cw)(state.state))
     newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
     /* Replace eq symbols on top-level by equational literals. */
 //    newclauses = newclauses.map(Control.liftEq)
@@ -299,7 +299,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
 
     if(!parUni) {
       toUnify = Control.unifyNewClauses(toUnify)(state.state)
-      toUnify = toUnify.flatMap(cw => Control.cnf(cw))
+      toUnify = toUnify.flatMap(cw => Control.cnf(cw)(state.state))
       toUnify = toUnify.map(cw => Control.shallowSimp(Control.liftEq(cw)))
       val newIt2 = toUnify.iterator
       while (newIt2.hasNext) {

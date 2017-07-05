@@ -44,7 +44,7 @@ object SeqLoop {
     result = Control.specialInstances(polarityswitchedAndExpanded)
 
     result = result.flatMap { cl =>
-      Control.cnf(Control.miniscope(cl))
+      Control.cnf(Control.miniscope(cl))(state)
     }
 
     result = result.map {cl =>
@@ -310,7 +310,7 @@ object SeqLoop {
       else false
     } catch {
       case e:Exception =>
-        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}")
+        Out.severe(s"Signature aoishdoansds used:\n${leo.modules.signatureAsString(state.signature)}")
         throw e
     } finally {
       if (state.externalProvers.nonEmpty)
@@ -450,6 +450,7 @@ object SeqLoop {
     /* Output additional information about the reasoning process. */
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
+    Out.comment(s"Solved by ${state.runStrategy.pretty}")
     //      Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
     val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
     if (proof != null)
