@@ -450,7 +450,7 @@ object SeqLoop {
     /* Output additional information about the reasoning process. */
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
-    Out.comment(s"Solved by ${state.runStrategy.pretty}")
+    if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
     //      Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
     val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
     if (proof != null)
