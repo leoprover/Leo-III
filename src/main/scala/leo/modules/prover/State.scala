@@ -80,6 +80,8 @@ object State {
       lastProcessedSize0 = state.noProcessedCl
       lastTime0 = System.currentTimeMillis()
     }
+
+    def fresh: LastCallStat
   }
 }
 
@@ -132,6 +134,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.poly = poly
     state.current_externalProvers = current_externalProvers
     state.timeout0 = timeout0
+    state.extCallStat = lastCall.fresh
     state
   }
 

@@ -2,8 +2,6 @@ package leo.modules.prover
 
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.control.Control
-import leo.modules.control.externalProverControl.ExtProverControl
-import leo.modules.external.PrivateThreadPoolTranslationImpl
 import leo.{Configuration, Out}
 import leo.modules.parsers.Input
 
@@ -14,26 +12,7 @@ object ScheduledRun {
     val state: State[AnnotatedClause] = State.fresh(sig)
     var curState: State[AnnotatedClause] = null
     try {
-      // Check if external provers were defined
-      if (Configuration.ATPS.nonEmpty) {
-        import leo.modules.external.ExternalProver
-        Configuration.ATPS.foreach { case(name, path) =>
-          try {
-            val p = ExternalProver.createProver(name,path)
-            state.addExternalProver(p)
-            leo.Out.info(s"$name registered as external prover.")
-            leo.Out.info(s"$name timeout set to:${Configuration.ATP_TIMEOUT(name)}.")
-          } catch {
-            case e: NoSuchElementException => leo.Out.warn(e.getMessage)
-          }
-        }
-      }
-
-      if(Configuration.CONCURRENT_TRANSLATE) {
-        val maxTrans = Configuration.ATP_MAX_JOBS
-        val asyncTrans = new PrivateThreadPoolTranslationImpl(maxTrans)
-        ExtProverControl.registerAsyncTranslation(asyncTrans)
-      }
+      if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
 
       // Read problem from file
       val input = Input.parseProblem(Configuration.PROBLEMFILE)
@@ -71,7 +50,7 @@ object ScheduledRun {
         if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)
       }
     } catch {
-      case e:Throwable => Out.severe(s"Signature used:\n${leo.modules.signatureAsString(curState.signature)}"); throw e
+      case e:Throwable => Out.debug(s"Signature used:\n${leo.modules.signatureAsString(curState.signature)}"); throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()

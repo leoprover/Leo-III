@@ -1780,6 +1780,7 @@ package  externalProverControl {
   import leo.modules.output.SuccessSZS
   import leo.modules.external.Capabilities.Language
   import leo.datastructures.{Clause, ClauseProxy}
+  import leo.modules.prover.State.LastCallStat
 
   object ExtProverControl {
     import leo.modules.external._
@@ -2019,6 +2020,8 @@ package  externalProverControl {
           }
         }
       }
+
+      override def fresh: LastCallStat = new MixedInfoLastCallStat
     }
 
     final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {
