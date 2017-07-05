@@ -422,4 +422,5 @@ trait DefaultConfiguration {
   val DEFAULT_PAR_SCHED = 3
   val DEFAULT_RENAMING = true
   val DEFAULT_FUNCSPEC = false
+  val DEFAULT_DOMCONSTR = 0
 }

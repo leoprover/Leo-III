@@ -874,6 +874,47 @@ package inferenceControl {
     }
   }
 
+  protected[modules] object DomainConstraintInstanceControl {
+    import leo.modules.calculus.{DomainConstraintInstances => Constraint}
+
+    private final def constraintLiteral(l : Literal) : Option[Term] = {
+      val left = l.left
+      val right = l.right
+      if(left.isVariable && right.freeVars.isEmpty) Some(right)
+      else if(right.isVariable && left.freeVars.isEmpty) Some(left)
+      else None
+    }
+
+    final def detectDomainConstraint(c : AnnotatedClause)(implicit s : State[AnnotatedClause]) : Option[(Type, Set[Term])] = {
+      if(c.cl.implicitlyBound.size != 1) return None
+      val lits = c.cl.lits.iterator
+      val ty = c.cl.implicitlyBound.head._2
+      var constrs = Set[Term]()
+      while(lits.hasNext){
+        constraintLiteral(lits.next()) match {
+          case None => return None
+          case Some(t) => constrs += t
+        }
+      }
+      Some((ty,constrs))
+    }
+
+    final def instanciateDomain(c : AnnotatedClause,
+                                domainConstaint : Map[Type, Set[Term]])
+                               (implicit s : State[AnnotatedClause]) : Set[AnnotatedClause] = {
+      if(s.runStrategy.domConstr == 0) {
+        return Set(c)
+      }
+      val instatiatedClauses = Constraint.apply(c.cl, domainConstaint, s.runStrategy.domConstr)(s.signature)
+      val result = instatiatedClauses.map{ic =>
+        val ac = AnnotatedClause(ic, InferredFrom(Constraint, c), c.properties)
+        val simpResult = SimplificationControl.shallowSimp(ac)(s.signature)
+        simpResult
+      }
+      result
+    }
+  }
+
   protected[modules] object ChoiceControl {
     import leo.modules.calculus.{Choice => ChoiceRule}
     import leo.datastructures.ClauseAnnotation.FromSystem

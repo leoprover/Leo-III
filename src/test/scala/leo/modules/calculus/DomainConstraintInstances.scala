@@ -241,4 +241,13 @@ class DomainConstraintInstancesTest extends LeoTestSuite {
 
     assert(ergs.size == 2)
   }
+
+  test("Variable test"){
+    implicit val sig = getFreshSignature
+
+    val var_eta = Term.mkTermAbs(i, Term.mkTermApp(Term.mkBound(i, 2), Term.mkBound(i,1)))
+    assert(Term.wellTyped(var_eta))
+
+    assert(var_eta.isVariable)
+  }
 }
