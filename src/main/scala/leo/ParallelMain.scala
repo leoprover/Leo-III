@@ -326,6 +326,7 @@ object ParallelMain {
     val szsStatus = state.szsStatus
     Out.output("")
     Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
+    if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
 
     val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
 

@@ -33,7 +33,7 @@ trait Schedule {
 class EquiScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule {
 
   private var remainingStrats = allStrategies
-  private val MIN_TIME : Int = 10
+  private val MIN_TIME : Int = 60
 
   override def hasNext: Boolean = synchronized(remainingStrats.nonEmpty)
 
