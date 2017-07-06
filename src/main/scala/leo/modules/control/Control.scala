@@ -1923,6 +1923,12 @@ package  externalProverControl {
           }
           synchronized {
             state.removeOpenExtCalls(prover, finished)
+
+            while (state.openExtCalls(prover).size < Configuration.ATP_MAX_JOBS && state.queuedCallExists(prover)) {
+              val problem = state.nextQueuedCall(prover)
+              submit1(prover, problem, state)
+            }
+
             if (state.openExtCalls.isEmpty) openCalls = openCalls - state
           }
         }
@@ -1944,10 +1950,12 @@ package  externalProverControl {
           state.externalProvers.foreach(prover =>
             if (openCallState.isDefinedAt(prover)) {
               if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
-                submit0(prover, clauses, state)
+                submit1(prover, clauses, state)
+              }  else {
+                state.enqueueCall(prover, clauses)
               }
             } else {
-              submit0(prover, clauses, state)
+              submit1(prover, clauses, state)
             }
           )
         }
@@ -1962,10 +1970,12 @@ package  externalProverControl {
         state.externalProvers.foreach(prover =>
           if (openCallState.isDefinedAt(prover)) {
             if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
-              submit0(prover, clauses, state)
+              submit1(prover, clauses, state)
+            }  else {
+              state.enqueueCall(prover, clauses)
             }
           } else {
-            submit0(prover, clauses, state)
+            submit1(prover, clauses, state)
           }
         )
       }
@@ -1977,17 +1987,39 @@ package  externalProverControl {
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Starting job ${prover.name}")
       state.lastCall.calledNow(realProblem(clauses)(state))(state)
-      val openCallState = state.openExtCalls
-      if (openCallState.isDefinedAt(prover)) {
-        if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
-          submit0(prover, clauses, state)
-        }
-      } else {
-        submit0(prover, clauses, state)
-      }
+      submit0(prover, clauses, state)
     }
 
     private def submit0(prover: TptpProver[AnnotatedClause],
+                        clauses: Set[AnnotatedClause], state: S): Unit = {
+      val openCallState = state.openExtCalls
+      if (openCallState.isDefinedAt(prover)) {
+        if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
+          submit1(prover, clauses, state)
+        }  else {
+          state.enqueueCall(prover, clauses)
+        }
+      } else {
+        submit1(prover, clauses, state)
+      }
+    }
+
+    private def submit0All(clauses: Set[AnnotatedClause], state: S): Unit = {
+      val openCallState = state.openExtCalls
+      state.externalProvers.foreach(prover =>
+        if (openCallState.isDefinedAt(prover)) {
+          if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
+            submit1(prover, clauses, state)
+          } else {
+            state.enqueueCall(prover, clauses)
+          }
+        } else {
+          submit1(prover, clauses, state)
+        }
+      )
+    }
+
+    private def submit1(prover: TptpProver[AnnotatedClause],
                         clauses: Set[AnnotatedClause], state: S): Unit = {
       val problem = realProblem(clauses)(state)
       val futureResult = callProver(prover,problem, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)

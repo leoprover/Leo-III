@@ -29,6 +29,10 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]]
   def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit
   def addOpenExtCall(prover: TptpProver[T], call: Future[TptpResult[T]]): Unit
+  def nextQueuedCall(prover: TptpProver[T]): Set[T]
+  def queuedCallExists(prover: TptpProver[T]): Boolean
+  def enqueueCall(prover: TptpProver[T], problem: Set[T]): Unit
+
   def lastCall: LastCallStat[T]
   def setLastCallStat(lcs: LastCallStat[T]): Unit
 
@@ -98,6 +102,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
 
   private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
   private var extCallStat: LastCallStat[T] = _
+  private var queuedExtCalls0: Map[TptpProver[T], Vector[Set[T]]] = Map.empty
 
   def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = openExtCalls0
   def lastCall: LastCallStat[T] = extCallStat
@@ -116,6 +121,46 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
       openExtCalls0 = openExtCalls0 + (prover -> openCalls.+(call))
     } else {
       openExtCalls0 = openExtCalls0 + (prover -> Set(call))
+    }
+  }
+
+  type Pick = Boolean
+  val HEAD: Pick = false
+  val TAIL: Pick = true
+
+  var lastPick: Pick = HEAD
+
+  def nextQueuedCall(prover: TptpProver[T]): Set[T] = {
+    if (queuedExtCalls0.isDefinedAt(prover)) {
+      val list = queuedExtCalls0(prover)
+      if (list.isEmpty) throw new NoSuchElementException("nextQueueCall on empty queueExtCalls entry")
+      else {
+        val (result, newList) = if (lastPick == HEAD) {
+          lastPick = TAIL
+          (list.last, list.init)
+        } else {
+          lastPick = HEAD
+          (list.head, list.tail)
+        }
+        queuedExtCalls0 = queuedExtCalls0 + (prover -> newList)
+        result
+      }
+    } else {
+      throw new NoSuchElementException("nextQueueCall on empty queueExtCalls")
+    }
+  }
+  def queuedCallExists(prover: TptpProver[T]): Boolean = {
+    if (queuedExtCalls0.isDefinedAt(prover)) {
+      queuedExtCalls0(prover).nonEmpty
+    } else false
+  }
+  def enqueueCall(prover: TptpProver[T], problem: Set[T]): Unit = {
+    if (queuedExtCalls0.isDefinedAt(prover)) {
+      val list = queuedExtCalls0(prover)
+      val list0 = list :+ problem
+      queuedExtCalls0 = queuedExtCalls0 + (prover -> list0)
+    } else {
+      queuedExtCalls0 = queuedExtCalls0 + (prover -> Vector(problem))
     }
   }
 
