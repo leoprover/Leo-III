@@ -134,6 +134,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.poly = poly
     state.current_externalProvers = current_externalProvers
     state.timeout0 = timeout0
+    state.domainConstr0 = domainConstr0
     if (lastCall != null) state.extCallStat = lastCall.fresh
     state
   }
@@ -155,6 +156,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     state.poly = poly
     state.current_externalProvers = current_externalProvers
     state.timeout0 = timeout0
+    state.domainConstr0 = domainConstr0
     state
   }
   override def copyFVState: FVState[T] = copy
