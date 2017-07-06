@@ -672,9 +672,9 @@ object Simp extends CalculusRule {
       val leftIsVariable = getVariableModuloEta(left)
       val rightIsVariable = getVariableModuloEta(right)
       if (leftIsVariable > 0 && !(rightIsVariable > 0)) {
-        if(!right.freeVars.contains(left)) (VARLEFT, leftIsVariable) else (CANNOTAPPLY, -1)
+        if(!right.looseBounds.contains(leftIsVariable)) (VARLEFT, leftIsVariable) else (CANNOTAPPLY, -1)
       } else if (rightIsVariable > 0 && !(leftIsVariable > 0)) {
-        if(!left.freeVars.contains(right)) (VARRIGHT, rightIsVariable) else (CANNOTAPPLY, -1)
+        if(!left.looseBounds.contains(rightIsVariable)) (VARRIGHT, rightIsVariable) else (CANNOTAPPLY, -1)
       } else (CANNOTAPPLY, -1)
     } else (CANNOTAPPLY, -1)
   }
