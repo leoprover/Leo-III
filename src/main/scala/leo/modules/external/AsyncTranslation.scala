@@ -40,7 +40,7 @@ class SchedulerTranslationImpl(scheduler : Scheduler) extends AsyncTranslation {
 
   override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean): Unit = {
     val lastCallState : Long= lastCalls.getOrElse(state, 0)
-    if(ExtProverControl.shouldRun(state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
+    if(ExtProverControl.shouldRun(clauses,state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
       val runthread = new Runnable {
         override def run(): Unit = {
           ExtProverControl.sequentialSubmit(clauses, state, force)
@@ -69,7 +69,7 @@ class PrivateThreadPoolTranslationImpl(numberOfThreads : Int) extends AsyncTrans
 
   override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean): Unit = {
     val lastCallState : Long = lastCalls.getOrElse(state, 0)
-    if(ExtProverControl.shouldRun(state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
+    if(ExtProverControl.shouldRun(clauses, state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
       lastCalls.put(state, state.noProofLoops)
       val runthread = new Runnable {
         override def run(): Unit = {

@@ -207,7 +207,7 @@ object SeqLoop {
       var loop = true
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
-        state.incProofLoopCount()
+
         if (System.currentTimeMillis() - startTime > 1000 * timeout) {
           loop = false
           state.setSZSStatus(SZS_Timeout)
@@ -257,6 +257,7 @@ object SeqLoop {
                   if (!Control.redundant(cur, state.processed)) {
                     Control.submit(state.processed, state)
                     if(mainLoopInferences(cur, state)) loop = false
+                    state.incProofLoopCount()
                   } else {
                     Out.debug(s"[SeqLoop] Clause ${cur.id} redundant, skipping.")
                     state.incForwardSubsumedCl()

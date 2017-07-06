@@ -38,6 +38,9 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
           extraArgs: Seq[String] = Seq.empty): Future[TptpResult[C]] = {
     leo.Out.debug(s"Calling prover $name")
     val translatedProblem = translateProblem(concreteProblem, callLanguage)(sig)
+    if (Configuration.isSet("atpdebug")) {
+      leo.Out.output(s"produced problem: #original facts ${problemOrigin.size}, #facts sent: ${concreteProblem.size}")
+    }
     startProver(translatedProblem, problemOrigin, timeout, extraArgs)
   }
 
@@ -64,6 +67,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       if (language == Capabilities.THF) createTHFProblem(problem)(sig)
       else if (language == Capabilities.TFF) createTFFProblem(problem)(sig)
       else if (language == Capabilities.FOF) throw new NotImplementedError("FOF export not yet implemented")
+      else if (language == Capabilities.CNF) throw new NotImplementedError("CNF export not yet implemented")
       else throw new IllegalArgumentException("unexpected TPTP output format")
     }
   }
@@ -91,6 +95,9 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       case e: Exception => leo.Out.warn(e.toString)
     }
     /* invoke prover as external process */
+    if (Configuration.isSet("atpdebug")) {
+      leo.Out.output(s"produced file: ${file.getName}, file size: ${file.length()}")
+    }
     val callCmd = constructCall(args, timeout, file.getAbsolutePath)
     leo.Out.debug(s"Call constructed: ${callCmd.mkString(" ")}")
     val extProcess = new ProcessBuilder(callCmd:_*)
@@ -146,55 +153,6 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     val error : Iterable[String] = passedError
   }
 
-  /**
-    * Performs a translation of the result of the external process.
-    *
-    * The standard implementation reads the stdOut and searches for
-    * TPTP conform SZS result
-    *
-    * @param originalProblem the original set of formulas, passed to the process
-    * @param process the process itself
-    * @return the result of the external prover, run on the originalProblem
-    */
-  protected def translateResult(originalProblem : Set[C], process : KillableProcess) : TptpResult[C] = {
-    try{
-      val exitValue = process.exitValue
-      val output = scala.io.Source.fromInputStream(process.output).getLines().toSeq
-      val error = scala.io.Source.fromInputStream(process.error).getLines().toSeq
-
-      try {
-        if (Configuration.isSet("atpdebug")) {
-          println("#############################")
-          println("#############################")
-          println("name:" + name)
-          println("#############################")
-          println("output:" + output.mkString("\n"))
-          println("#############################")
-          println("#############################")
-        }
-        val errorMsg = error.mkString("\n")
-        if (errorMsg != "") leo.Out.warn(s"Error message from $name:\n$errorMsg")
-      } catch {
-        case _: Exception => // ignore
-      }
-
-      val it = output.iterator
-      var szsStatus: StatusSZS = null
-      while (it.hasNext && szsStatus == null) {
-        val line = it.next()
-        StatusSZS.answerLine(line) match {
-          case Some(status) => szsStatus = status
-          case _ => ()
-        }
-      }
-      if (szsStatus == null) szsStatus = SZS_GaveUp
-
-      new TptpResultImpl(originalProblem, szsStatus, exitValue, output, error)
-    } catch {
-      case e : Exception => new TptpResultImpl(originalProblem, SZS_Error, 51, Seq(), Seq(e.getMessage))
-    }
-  }
-
   protected final class TPTPResultFuture(process: ProcessBuilder,
                                          originalProblem: Set[C],
                                          timeout: Int) extends Future[TptpResult[C]] {
@@ -246,6 +204,11 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
 
     def kill(): Unit = process0.destroyForcibly()
 
+    /**
+      * Performs a translation of the result of the external process.
+      * by reading the stdOut and searching for
+      * TPTP conform SZS result. If not existent,set SZS_GaveUp
+      */
     private def generateResult(): Unit = try {
       assert(terminated)
       val exitCode = process0.exitValue()
@@ -253,13 +216,11 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       val stderr = scala.io.Source.fromInputStream(process0.getErrorStream).getLines().toSeq
 
       if (Configuration.isSet("atpdebug")) {
-        println("#############################")
-        println("#############################")
-        println("name:" + name)
-        println("#############################")
-        println("output:" + stdin.mkString("\n"))
-        println("#############################")
-        println("#############################")
+        leo.Out.output("#############################")
+        leo.Out.output("name:" + name)
+        leo.Out.output("--------------------")
+        leo.Out.output("output:" + stdin.mkString("\n"))
+        leo.Out.output("--------------------")
       }
       val errorMsg = stderr.mkString("\n")
       if (errorMsg != "") leo.Out.warn(s"Error message from $name:\n$errorMsg")

@@ -1937,9 +1937,9 @@ package  externalProverControl {
 
     final def sequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
-        if (shouldRun(state) || force) {
+        if (shouldRun(realProblem(clauses)(state), state) || force) {
           leo.Out.debug(s"[ExtProver]: Starting jobs ...")
-          state.lastCall.calledNow(state)
+          state.lastCall.calledNow(realProblem(clauses)(state))(state)
           val openCallState = state.openExtCalls
           state.externalProvers.foreach(prover =>
             if (openCallState.isDefinedAt(prover)) {
@@ -1957,7 +1957,7 @@ package  externalProverControl {
     final def uncheckedSequentialSubmit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean = false): Unit = {
       if (state.externalProvers.nonEmpty) {
         leo.Out.debug(s"[ExtProver]: Starting jobs ...")
-        state.lastCall.calledNow(state)
+        state.lastCall.calledNow(realProblem(clauses)(state))(state)
         val openCallState = state.openExtCalls
         state.externalProvers.foreach(prover =>
           if (openCallState.isDefinedAt(prover)) {
@@ -1976,7 +1976,7 @@ package  externalProverControl {
                                  clauses: Set[AnnotatedClause],
                                  state: State[AnnotatedClause]) : Unit = {
       leo.Out.debug(s"[ExtProver]: Starting job ${prover.name}")
-      state.lastCall.calledNow(state)
+      state.lastCall.calledNow(realProblem(clauses)(state))(state)
       val openCallState = state.openExtCalls
       if (openCallState.isDefinedAt(prover)) {
         if (openCallState(prover).size < Configuration.ATP_MAX_JOBS) {
@@ -1989,12 +1989,17 @@ package  externalProverControl {
 
     private def submit0(prover: TptpProver[AnnotatedClause],
                         clauses: Set[AnnotatedClause], state: S): Unit = {
-      val futureResult = callProver(prover,state.initialProblem union clauses, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
+      val problem = realProblem(clauses)(state)
+      val futureResult = callProver(prover,problem, Configuration.ATP_TIMEOUT(prover.name), state, state.signature)
       if (futureResult != null) {
         state.addOpenExtCall(prover, futureResult)
         openCalls = openCalls + state
       }
       leo.Out.debug(s"[ExtProver]: ${prover.name} started.")
+    }
+
+    @inline private def realProblem(problem: Set[AnnotatedClause])(state: S): Set[AnnotatedClause] = {
+      state.initialProblem union problem
     }
 
     final def callProver(prover: TptpProver[AnnotatedClause],
@@ -2078,22 +2083,26 @@ package  externalProverControl {
       }
     }
 
-    @inline final def shouldRun(state: State[AnnotatedClause]): Boolean = state.lastCall.shouldCall(state)
+    @inline final def shouldRun(problem: Set[AnnotatedClause], state: State[AnnotatedClause]): Boolean = state.lastCall.shouldCall(problem)(state)
 
-    class MixedInfoLastCallStat extends State.LastCallStat {
-      override def shouldCall[T <: ClauseProxy](implicit state: State[T]): Boolean = {
-        if (state.openExtCalls.isEmpty && lastLoopCount < state.noProofLoops) {
+    class MixedInfoLastCallStat extends State.LastCallStat[AnnotatedClause] {
+      override def shouldCall(problem: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Boolean = {
+        if (state.openExtCalls.isEmpty && lastLoopCount < state.noProofLoops && problem != lastProblem) {
           true
         } else {
-          if (state.noProofLoops - lastLoopCount >= Configuration.ATP_CALL_INTERVAL) true
+          if (state.noProofLoops - lastLoopCount >= Configuration.ATP_CALL_INTERVAL && problem != lastProblem) {
+            true
+          }
           else {
-            if (System.currentTimeMillis() - lastTime > Configuration.DEFAULT_ATP_TIMEOUT) true
+            if (System.currentTimeMillis() - lastTime > Configuration.DEFAULT_ATP_TIMEOUT*1000 && problem != lastProblem) {
+              true
+            }
             else false
           }
         }
       }
 
-      override def fresh: LastCallStat = new MixedInfoLastCallStat
+      override def fresh: LastCallStat[AnnotatedClause] = new MixedInfoLastCallStat
     }
 
     final private def helpfulAnswer(result: TptpResult[AnnotatedClause]): Boolean = {

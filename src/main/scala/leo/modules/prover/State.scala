@@ -29,8 +29,8 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]]
   def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit
   def addOpenExtCall(prover: TptpProver[T], call: Future[TptpResult[T]]): Unit
-  def lastCall: LastCallStat
-  def setLastCallStat(lcs: LastCallStat): Unit
+  def lastCall: LastCallStat[T]
+  def setLastCallStat(lcs: LastCallStat[T]): Unit
 
   def copy : State[T]
 }
@@ -64,24 +64,27 @@ trait StateStatistics {
 object State {
   def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](sig)
 
-  abstract class LastCallStat {
+  abstract class LastCallStat[T <: ClauseProxy] {
     private var lastLoopCount0: Long = 0
     private var lastProcessedSize0: Int = 0
     private var lastTime0: Long = 0
+    private var lastProblem0: Set[T] = _
 
     def lastLoopCount: Long = lastLoopCount0
     def lastProcessedSize: Int = lastProcessedSize0
     def lastTime: Long = lastTime0
+    def lastProblem: Set[T] = if (lastProblem0 == null) Set.empty else lastProblem0
 
-    def shouldCall[T <: ClauseProxy](implicit state: State[T]): Boolean
+    def shouldCall(problem: Set[T])(implicit state: State[T]): Boolean
 
-    def calledNow[T <: ClauseProxy](implicit state: State[T]): Unit = {
+    def calledNow(problem: Set[T])(implicit state: State[T]): Unit = {
       lastLoopCount0 = state.noProofLoops
       lastProcessedSize0 = state.noProcessedCl
       lastTime0 = System.currentTimeMillis()
+      lastProblem0 = problem
     }
 
-    def fresh: LastCallStat
+    def fresh: LastCallStat[T]
   }
 }
 
@@ -94,11 +97,11 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
-  private var extCallStat: LastCallStat = _
+  private var extCallStat: LastCallStat[T] = _
 
   def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = openExtCalls0
-  def lastCall: LastCallStat = extCallStat
-  def setLastCallStat(lcs: LastCallStat): Unit = {extCallStat = lcs}
+  def lastCall: LastCallStat[T] = extCallStat
+  def setLastCallStat(lcs: LastCallStat[T]): Unit = {extCallStat = lcs}
   def removeOpenExtCalls(prover: TptpProver[T], calls: Set[Future[TptpResult[T]]]): Unit = {
     if (openExtCalls0.isDefinedAt(prover)) {
       val openCalls = openExtCalls0(prover)
