@@ -1,7 +1,7 @@
 package leo.modules.control
 
 import leo.{Configuration, Out}
-import leo.datastructures.{AnnotatedClause, Signature}
+import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
 import leo.modules.{FVState, GeneralState, myAssert}
 import leo.modules.prover.{RunStrategy, State}
 
@@ -44,6 +44,10 @@ object Control {
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: LocalState): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
   @inline final def guessFuncSpec(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.guessFuncSpec(cls)(state)
+  // Domain Constraints
+  @inline final def detectDomainConstraint(cl : AnnotatedClause)(implicit state : LocalState) : Option[(Type, Set[Term])] = inferenceControl.DomainConstraintInstanceControl.detectDomainConstraint(cl)
+  @inline final def instantiateDomainConstraint(cl : AnnotatedClause)(implicit state : LocalState) : Set[AnnotatedClause] = inferenceControl.DomainConstraintInstanceControl.instanciateDomain(cl)
+  @inline final def instantiateDomainConstraint(cl : Set[AnnotatedClause])(implicit state : LocalState) : Set[AnnotatedClause] = inferenceControl.DomainConstraintInstanceControl.instanciateDomain(cl)
 
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
@@ -907,7 +911,7 @@ package inferenceControl {
   protected[modules] object DomainConstraintInstanceControl {
     import leo.modules.calculus.{DomainConstraintInstances => Constraint}
 
-    private final def constraintLiteral(l : Literal) : Option[Term] = {
+    private final def constraintLiteral(l : Literal)(implicit s : GeneralState[AnnotatedClause]) : Option[Term] = {
       val left = l.left
       val right = l.right
       if(leo.datastructures.isVariableModuloEta(left) && right.freeVars.isEmpty) Some(right)
@@ -915,7 +919,7 @@ package inferenceControl {
       else None
     }
 
-    final def detectDomainConstraint(c : AnnotatedClause)(implicit s : State[AnnotatedClause]) : Option[(Type, Set[Term])] = {
+    final def detectDomainConstraint(c : AnnotatedClause)(implicit s : GeneralState[AnnotatedClause]) : Option[(Type, Set[Term])] = {
       if(c.cl.implicitlyBound.size != 1) return None
       val lits = c.cl.lits.iterator
       val ty = c.cl.implicitlyBound.head._2
@@ -929,19 +933,28 @@ package inferenceControl {
       Some((ty,constrs))
     }
 
-    final def instanciateDomain(c : AnnotatedClause,
-                                domainConstaint : Map[Type, Set[Term]])
-                               (implicit s : State[AnnotatedClause]) : Set[AnnotatedClause] = {
+    final def instanciateDomain(c : AnnotatedClause)
+                               (implicit s : GeneralState[AnnotatedClause]) : Set[AnnotatedClause] = {
       if(s.runStrategy.domConstr == 0) {
         return Set(c)
       }
-      val instatiatedClauses = Constraint.apply(c.cl, domainConstaint, s.runStrategy.domConstr)(s.signature)
+      val instatiatedClauses = Constraint.apply(c.cl, s.domainConstr, s.runStrategy.domConstr)(s.signature)
       val result = instatiatedClauses.map{ic =>
-        val ac = AnnotatedClause(ic, InferredFrom(Constraint, c), c.properties)
-        val simpResult = SimplificationControl.shallowSimp(ac)(s.signature)
-        simpResult
+        if(ic != c.cl) {
+          val ac = AnnotatedClause(ic, InferredFrom(Constraint, c), c.properties)
+          val simpResult = SimplificationControl.shallowSimp(ac)(s.signature)
+          simpResult
+        } else {
+          c
+        }
       }
-      result
+      // TODO Flag for removing
+      result + c
+    }
+
+    final def  instanciateDomain(cls : Set[AnnotatedClause])
+                                (implicit s : GeneralState[AnnotatedClause]) : Set[AnnotatedClause] = {
+      cls.flatMap(instanciateDomain(_))
     }
   }
 

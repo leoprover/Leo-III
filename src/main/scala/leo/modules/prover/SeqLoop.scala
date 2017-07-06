@@ -23,6 +23,7 @@ object SeqLoop {
   ////////////////////////////////////
   protected[modules] final def preprocess(state: LocalGeneralState, cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
+    implicit val s = state
     var result: Set[AnnotatedClause] = Set()
 
     // Fresh clause, that means its unit and nonequational
@@ -66,7 +67,7 @@ object SeqLoop {
       var result = cl
       result = Control.liftEq(result)
       result = Control.funcext(result) // Maybe comment out? why?
-    val possiblyAC = Control.detectAC(result)
+      val possiblyAC = Control.detectAC(result)
       if (possiblyAC.isDefined) {
         val symbol = possiblyAC.get._1
         val spec = possiblyAC.get._2
@@ -83,6 +84,21 @@ object SeqLoop {
       result = Control.acSimp(result)
       result = Control.simp(result)
       if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic()
+      Control.detectDomainConstraint(result) match {
+        case None => ()
+        case Some((ty, constr)) =>
+          if(state.domainConstr.contains(ty)){
+            Out.info(s"[DomConstr] Detected Multiple constraints on ${ty.pretty(sig)}")
+            if(state.domainConstr(ty).size > constr.size){
+              Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}")
+              state.addDomainConstr(ty, constr)
+            }
+          } else {
+            Out.info(s"[DomConstr] Detected new constraint on ${ty.pretty(sig)}")
+            Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}}")
+            state.addDomainConstr(ty, constr)
+          }
+      }
       result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
@@ -140,6 +156,8 @@ object SeqLoop {
       val timeout0 = state.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
 
+      var afterPreprocessed : Set[AnnotatedClause] = Set()
+
       // Preprocessing Conjecture
       if (state.negConjecture != null) {
         // Expand conj, Initialize indexes
@@ -163,8 +181,8 @@ object SeqLoop {
           }.mkString("\n\t")
         }")
         Out.trace("## Preprocess Neg.Conjecture END")
-        state.addUnprocessed(result)
-
+//        state.addUnprocessed(result)
+        afterPreprocessed = afterPreprocessed union result
       } else {
         // Initialize indexes
         state.initUnprocessed()
@@ -184,10 +202,16 @@ object SeqLoop {
           }.mkString("\n\t")
         }")
         val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-        state.addUnprocessed(preprocessed)
-
+//        state.addUnprocessed(preprocessed)
+        afterPreprocessed = afterPreprocessed union preprocessed
         if (preprocessIt.hasNext) Out.trace("--------------------")
       }
+
+      val constraints = Control.instantiateDomainConstraint(afterPreprocessed)
+      val simpConst = Control.simpSet(constraints)  // TODO Remove unnecessary?
+
+      state.addUnprocessed(simpConst)
+
       Out.trace("## Preprocess END\n\n")
       assert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)), s"Not well typed:\n\t${state.unprocessed.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.pretty(sig)).mkString("\n\t")}")
       // Debug output

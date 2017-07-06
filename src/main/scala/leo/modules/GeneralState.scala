@@ -49,6 +49,9 @@ trait GeneralState[T <: ClauseProxy] extends Pretty {
 
   def isPolymorphic: Boolean
   def setPolymorphic(): Unit
+
+  def domainConstr : Map[Type, Set[Term]]
+  def addDomainConstr(ty : Type, instances : Set[Term]) : Unit
 }
 
 object GeneralState {
@@ -72,6 +75,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var derivationCl: Option[T] = None
   protected var choiceFunctions0: Map[Type, Set[Term]] = Map()
   protected var timeout0: Int = _
+  protected var domainConstr0 : Map[Type, Set[Term]] = Map()
 
   final def timeout: Int = timeout0
   final def setTimeout(timeout: Int): Unit = { timeout0 = timeout }
@@ -86,6 +90,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
     state.choiceFunctions0 = choiceFunctions0
     state.current_externalProvers = current_externalProvers
     state.timeout0 = timeout0
+    state.domainConstr0 = domainConstr0
     state
   }
 
@@ -137,6 +142,11 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
     current_externalProvers = current_externalProvers + prover
   }
 
+
+
+  override def domainConstr: Map[Type, Set[Term]] = domainConstr0
+  override def addDomainConstr(ty : Type, instances : Set[Term]): Unit = domainConstr0 += ty -> instances
+
   override def pretty: String = s"State (conj = ${conjecture0.pretty(sig)} , strategy = ${runStrategy0.pretty})"
 }
 
@@ -167,6 +177,7 @@ private class FVStateImpl[T <: ClauseProxy](sig : Signature) extends GeneralStat
     state.runStrategy0 = runStrategy0
     state.symbolsInConjecture0 = symbolsInConjecture0
     state.choiceFunctions0 = choiceFunctions0
+    state.domainConstr0 = domainConstr0
     state
   }
 
