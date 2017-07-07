@@ -1937,9 +1937,11 @@ package  externalProverControl {
           synchronized {
             state.removeOpenExtCalls(prover, finished)
 
-            while (state.openExtCalls(prover).size < Configuration.ATP_MAX_JOBS && state.queuedCallExists(prover)) {
+            var curJobs = if (state.openExtCalls.isDefinedAt(prover)) state.openExtCalls(prover).size else 0
+            while (curJobs < Configuration.ATP_MAX_JOBS && state.queuedCallExists(prover)) {
               val problem = state.nextQueuedCall(prover)
               submit1(prover, problem, state)
+              curJobs = curJobs +1
             }
 
             if (state.openExtCalls.isEmpty) openCalls = openCalls - state
