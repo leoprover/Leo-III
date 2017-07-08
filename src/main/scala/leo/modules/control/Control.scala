@@ -2163,13 +2163,12 @@ package  externalProverControl {
 
 package schedulingControl {
   import leo.modules.agent.multisearch.EquiScheduleImpl
-  import leo.modules.control.Control.RunSchedule
+  import leo.modules.control.Control.{RunConfiguration, RunSchedule}
 
   object StrategyControl {
     import leo.modules.prover.RunStrategy._
     val MINTIME = 60
-    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3, s1b, s2, s2b, s3b )
-
+    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3b, s2, s1b, s4 )
 
     final def generateRunStrategies(globalTimeout: Int): RunSchedule = {
       val to = Configuration.TIMEOUT
@@ -2177,28 +2176,30 @@ package schedulingControl {
         // unlimited resources, dont schedule...i guess?
         Iterator((defaultStrategy,0))
       } else {
-        // limited resources, divide time for different strategies
-        // each strategy should take at least MINTIME seconds
-        val nominalStrategyCount = Math.floorDiv(to, MINTIME)
+        val strategyIt = STRATEGIES.iterator
+        var remainingTime = globalTimeout
+        var result: Seq[RunConfiguration] = Vector.empty
+        var shareSum: Float = 0
+        while (strategyIt.hasNext) {
+          val strategy = strategyIt.next()
+          val proportionalTimeOfStrategy = (strategy.share * MINTIME).toInt
 
-        Iterator(STRATEGIES.take(nominalStrategyCount).map((_, MINTIME)):_*)
-//        val remainingTime = Math.floorMod(to, MINTIME)
-//        val realStrategyCount = Math.min(STRATEGY_TEMPLATES.size, nominalStrategyCount)
-//        val exceedTime = (nominalStrategyCount-realStrategyCount)*MINTIME+remainingTime
-//        val extraTimePerStrategy = Math.floorDiv(exceedTime, realStrategyCount)
-//        val timePerStrategy = MINTIME + extraTimePerStrategy
-//        val overheadTime = Math.floorMod(exceedTime, realStrategyCount)
-//
-//        val defStrategy = defaultStrategy(timePerStrategy + overheadTime)
-//        Iterator(
-//          defStrategy
-//            +: STRATEGY_TEMPLATES.filterNot(_ == defStrategy).take(realStrategyCount-1).map(t =>
-//            RunStrategy(timePerStrategy, t.primSubst, t.sos,
-//              t.unifierCount, t.uniDepth, t.boolExt, t.choice)):_*
-//        )
+          if (proportionalTimeOfStrategy <= remainingTime) {
+            result = result :+ (strategy, proportionalTimeOfStrategy)
+            remainingTime = remainingTime - proportionalTimeOfStrategy
+            shareSum = shareSum + strategy.share
+          } else {
+            // distribute remaining time
+            val remainingTime0 = remainingTime
+            result = result.map {case (s,time) =>
+              val extraTime = (remainingTime0 * (s.share / shareSum)).floor.toInt
+              (s, time+extraTime)
+            }
+          }
+        }
+        Iterator(result:_*)
       }
     }
-
 
     final def defaultStrategy: RunStrategy = {
       // currently: ignore meta-knowledge from state and just return standard strategy

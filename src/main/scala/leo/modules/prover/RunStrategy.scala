@@ -52,9 +52,9 @@ object RunStrategy {
     case "s1" => s1
     case "s1b" => s1b
     case "s2" => s2
-    case "s2b" => s2b
     case "s3" => s3
     case "s3b" => s3b
+    case "s4" => s4
     case "default" => defaultStrategy
     case _ => defaultStrategy
   }
@@ -89,7 +89,7 @@ object RunStrategy {
 
   def s2: RunStrategy = RunStrategy(
     share = 1,
-    primSubst = 3,
+    primSubst = 2,
     sos = false,
     unifierCount = 3,
     uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
@@ -99,20 +99,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0)
 
-  def s2b: RunStrategy = RunStrategy(
-    share = 1,
-    primSubst = 3,
-    sos = false,
-    unifierCount = 3,
-    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
-    boolExt = true,
-    choice = true,
-    renaming = false,
-    funcspec = false,
-    domConstr = 0)
-
   def s3: RunStrategy = RunStrategy(
-    share = 1,
+    share = 0.5f,
     primSubst = 1,
     sos = true,
     unifierCount = 1,
@@ -124,7 +112,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s3b: RunStrategy = RunStrategy(
-    share = 1,
+    share = 0.5f,
     primSubst = 3,
     sos = true,
     unifierCount = 3,
@@ -133,6 +121,18 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
+    domConstr = 0)
+
+  def s4: RunStrategy = RunStrategy(
+    share = 0.25f,
+    primSubst = 3,
+    sos = false,
+    unifierCount = 3,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming = false,
+    funcspec = true,
     domConstr = 0)
 }
 
