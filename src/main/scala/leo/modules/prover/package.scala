@@ -28,7 +28,8 @@ package object prover {
     if (state.negConjecture != null) {
       Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
-      val relevantAxioms = Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
+      val relevantAxioms = if (effectiveInput.size <= 15) effectiveInput
+                            else Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${effectiveInput.size - relevantAxioms.size} axioms).")
       relevantAxioms.map(ax => processInput(ax, state))
