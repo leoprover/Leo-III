@@ -47,6 +47,18 @@ object RunStrategy {
       Configuration.DEFAULT_FUNCSPEC,
       Configuration.DEFAULT_DOMCONSTR)
 
+
+  final def byName(str: String): RunStrategy = str match {
+    case "s1" => s1
+    case "s1b" => s1b
+    case "s2" => s2
+    case "s2b" => s2b
+    case "s3" => s3
+    case "s3b" => s3b
+    case "default" => defaultStrategy
+    case _ => defaultStrategy
+  }
+
   /////////////////////////
   /// Some (maybe) useful strategies
   /////////////////////////

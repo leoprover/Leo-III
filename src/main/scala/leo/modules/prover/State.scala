@@ -225,7 +225,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     if (mpq == null) leo.Out.comment("MPQ null")
     mpq.toSet
   }
-  final private val prio_weights = Seq(10,1,2,2,5,2,1)
+  final private val prio_weights = Seq(10,1,1,2,10,2,1)
   private var cur_prio = 0
   private var cur_weight = 0
   final def nextUnprocessed: T = {

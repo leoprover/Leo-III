@@ -119,7 +119,16 @@ object SeqLoop {
     /////////////////////////////////////////
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
-    state.setRunStrategy(Control.defaultStrategy)
+    val strategy: RunStrategy = if (Configuration.isSet("strategy")) {
+      val strategyParam0 = Configuration.valueOf("strategy")
+      if (strategyParam0.isDefined) {
+        val strategyParam = strategyParam0.get.head
+        RunStrategy.byName(strategyParam)
+      } else Control.defaultStrategy
+    } else {
+      Control.defaultStrategy
+    }
+    state.setRunStrategy(strategy)
     state.setTimeout(timeout)
     Out.config(s"Using configuration: timeout($timeout) with ${state.runStrategy.pretty}")
 
