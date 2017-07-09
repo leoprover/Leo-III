@@ -127,6 +127,12 @@ object ExternalProver {
     val p = if(path == "") serviceToPath("cvc4") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created CVC4 prover with path '$convert'")
+    if (Configuration.isSet("atpdebug")) {
+      import scala.sys.process._
+      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      leo.Out.comment(s"Cvc4 debug info:")
+      leo.Out.comment(answer.mkString)
+    }
     CVC4(SCRIPTDIR.resolve(CVC4.executeScriptName).toString, convert)
   }
   private final def createCVC4RunScript(): Unit = {
