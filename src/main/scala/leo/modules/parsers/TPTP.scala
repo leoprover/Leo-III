@@ -5,7 +5,7 @@ import java.io.{BufferedReader, StringReader}
 import leo.datastructures.tptp.Commons.{AnnotatedFormula, TPTPInput}
 import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
 import leo.modules.SZSException
-import leo.modules.output.SZS_InputError
+import leo.modules.output.{SZS_InputError, SZS_SyntaxError}
 
 /**
  * Provides a parsing interface for TPTP files and single tptp formulae.
@@ -37,7 +37,7 @@ object TPTP {
       val x = parser.tptp_file()
       TPTPASTConstructor.tptpFile(x)
     } catch {
-      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+      case e: IllegalArgumentException => throw new SZSException(SZS_SyntaxError, s"Unrecognized input: ${e.toString} ")
     }
   }
 
@@ -64,7 +64,7 @@ object TPTP {
       val x = parser.thf_logic_formula()
       TPTPASTConstructor.thfLogicFormula(x)
     } catch {
-      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+      case e: IllegalArgumentException => throw new SZSException(SZS_SyntaxError, s"Unrecognized input: ${e.toString} ")
     }
   }
   protected[parsers] final def annotatedFormula(input: String): AnnotatedFormula = {
@@ -80,7 +80,7 @@ object TPTP {
       val x = parser.annotated_formula()
       TPTPASTConstructor.annotatedFormula(x)
     } catch {
-      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+      case e: IllegalArgumentException => throw new SZSException(SZS_SyntaxError, s"Unrecognized input: ${e.toString} ")
     }
   }
   protected[parsers] final def fof(input: String): AnnotatedFormula = {
@@ -96,7 +96,7 @@ object TPTP {
       val x = parser.fof_annotated()
       TPTPASTConstructor.fofAnnotated(x)
     } catch {
-      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+      case e: IllegalArgumentException => throw new SZSException(SZS_SyntaxError, s"Unrecognized input: ${e.toString} ")
     }
   }
   protected[parsers] final def thf(input: String): AnnotatedFormula = {
@@ -112,7 +112,7 @@ object TPTP {
       val x = parser.thf_annotated()
       TPTPASTConstructor.thfAnnotated(x)
     } catch {
-      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+      case e: IllegalArgumentException => throw new SZSException(SZS_SyntaxError, s"Unrecognized input: ${e.toString} ")
     }
   }
   protected[parsers] final def tff(input: String): AnnotatedFormula = {
@@ -128,7 +128,7 @@ object TPTP {
       val x = parser.tff_annotated()
       TPTPASTConstructor.tffAnnotated(x)
     } catch {
-      case e: IllegalArgumentException => throw new SZSException(SZS_InputError, s"Unrecognized input: ${e.toString} ")
+      case e: IllegalArgumentException => throw new SZSException(SZS_SyntaxError, s"Unrecognized input: ${e.toString} ")
     }
   }
 
@@ -138,8 +138,8 @@ object TPTP {
       var sourceName = recognizer.getInputStream.getSourceName
       if (sourceName == "<unknown>") sourceName = s"$sourceName:$line:$pos"
       else if (leo.Configuration.isInit) sourceName = s"${leo.Configuration.PROBLEMFILE}:$line:$pos"
-      if (e == null) throw new SZSException(SZS_InputError, s"$s in $sourceName")
-      else throw new SZSException(SZS_InputError, s"$s in $sourceName", e.toString)
+      if (e == null) throw new SZSException(SZS_SyntaxError, s"$s in $sourceName")
+      else throw new SZSException(SZS_SyntaxError, s"$s in $sourceName", e.toString)
     }
   }
 }
