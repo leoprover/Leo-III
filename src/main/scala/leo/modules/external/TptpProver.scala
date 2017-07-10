@@ -97,6 +97,7 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
     /* invoke prover as external process */
     if (Configuration.isSet("atpdebug")) {
       leo.Out.output(s"produced file: ${file.getName}, file size: ${file.length()}")
+      leo.Out.output(s"Extra args: ${args.toString()}")
     }
     val callCmd = constructCall(args, timeout, file.getAbsolutePath)
     leo.Out.debug(s"Call constructed: ${callCmd.mkString(" ")}")
