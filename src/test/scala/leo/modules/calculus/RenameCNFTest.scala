@@ -1,7 +1,8 @@
 package leo.modules.calculus
 
-import leo.datastructures.{Clause, Literal, Signature}
+import leo.datastructures.{AnnotatedClause, Clause, Literal, Signature}
 import leo.modules.parsers.Input
+import leo.modules.prover.State
 import leo.{Checked, LeoTestSuite}
 
 /**
@@ -20,6 +21,7 @@ class RenameCNFTest extends LeoTestSuite{
   for(p <- testProblems)
     test(s"Test : ($p)", Checked) {
       implicit val sig: Signature = getFreshSignature
+      implicit val state : State[AnnotatedClause] = State.fresh(sig)
       val (_,l,_) = Input.readAnnotated(p)
       val s : StringBuilder = new StringBuilder
       s.append("CNF on\n  ")
@@ -29,7 +31,7 @@ class RenameCNFTest extends LeoTestSuite{
       val vargen1 = freshVarGen(pc)
       val vargen2 = freshVarGen(pc)
       val cnf1 = FullCNF(vargen1, pc)
-      val cnf3 = RenameCNF(vargen2, pc)
+      val cnf3 = RenameCNF(vargen2, state.renamingCash, pc)
       s.append(" >Full CNF\n   ")
       s.append(cnf1.map(_.pretty(sig)).mkString("\n   "))
       s.append("\n >Rename CNF\n   ")

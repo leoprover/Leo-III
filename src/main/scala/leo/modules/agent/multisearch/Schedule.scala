@@ -35,16 +35,34 @@ class EquiScheduleImpl(allStrategies : Seq[RunStrategy]) extends Schedule {
   private var remainingStrats = allStrategies
   private val MIN_TIME : Int = 60
 
-  override def hasNext: Boolean = synchronized(remainingStrats.nonEmpty)
+  private var aloneQueue : Seq[RunStrategy] = Seq()
+
+  override def hasNext: Boolean = synchronized(remainingStrats.nonEmpty || aloneQueue.nonEmpty)
 
   override def next(remainingTime: Int, amount: Int): Seq[(RunStrategy, Int)] = synchronized{
-    val consider = remainingStrats.take(amount)
-    remainingStrats = remainingStrats.drop(amount)
+    if(aloneQueue.nonEmpty) {
+      val h = aloneQueue.head
+      aloneQueue = aloneQueue.tail
+      val remainingWeight: Float = remainingStrats.foldLeft(0f)((w, s) => w + s.share)+
+        aloneQueue.foldLeft(0f)((w,s) => w + s.share)
+      val time = Math.max((MIN_TIME * h.share).toInt, ((remainingTime * h.share) / (h.share + remainingWeight)).toInt)
+      Seq((h, time))
+    } else {
+      var take = Seq[RunStrategy]()
+      while(remainingStrats.nonEmpty && take.size < amount){
+        val n = remainingStrats.head
+        remainingStrats = remainingStrats.tail
+        if(n.runStandandalone) aloneQueue = n +: aloneQueue
+        else take = n +: take
+      }
 
-    val remainingWeight : Float = remainingStrats.foldLeft(0 : Float)((w, s) => w+s.share)
-    val sumChoosen : Float = consider.foldLeft(0 : Float)((w, s) => w+s.share)
-    val time = Math.max(MIN_TIME, ((remainingTime * sumChoosen) / (sumChoosen + remainingWeight)).toInt)
-    consider map (s => (s, time))
+      val remainingWeight: Float = remainingStrats.foldLeft(0: Float)((w, s) => w + s.share)+
+        aloneQueue.foldLeft(0f)((w,s) => w + s.share)
+      val sumChoosen: Float = take.foldLeft(0: Float)((w, s) => w + s.share)
+      val maxChoosen : Float = take.maxBy(r => r.share).share
+      val time = Math.max((MIN_TIME * maxChoosen).toInt, ((remainingTime * sumChoosen) / (sumChoosen + remainingWeight)).toInt)
+      take map (s => (s, time))
+    }
   }
 }
 

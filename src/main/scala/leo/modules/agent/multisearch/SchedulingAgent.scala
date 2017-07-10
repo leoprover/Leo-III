@@ -5,6 +5,7 @@ import leo.agents._
 import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.{DataType, Delta, Event, ImmutableDelta}
 import leo.modules.GeneralState
+import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl.MixedInfoLastCallStat
 import leo.modules.output.SZS_Theorem
 import leo.modules.prover.{RunStrategy, State}
@@ -24,7 +25,6 @@ class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic 
 
   override def filter(event: Event): Iterable[Task] = event match {
     case d : Delta =>
-      // TODO on the fly scheduling?
       val ins = d.inserts(CompletedState)
       if(ins.nonEmpty){
         leo.Out.info(s"Completed\n   ${d.inserts(CompletedState).map{case s =>
@@ -50,6 +50,9 @@ class SchedulingAgent[S <: GeneralState[AnnotatedClause]](initState : S, tactic 
 
   private def generateNewRuns() : Iterable[Task] = synchronized {
     if(curExec > THRESHHOLD || !tactic.hasNext) return Iterable()
+    if(curExec == 0) {
+      Control.resetIndexes(initState.asInstanceOf[State[AnnotatedClause]])
+    }
     var tasks : Seq[Task] = Seq()
     val remaining : Int = timeout - ((System.currentTimeMillis() - startTime).toInt / 1000)
     val amount = maxPar - curExec

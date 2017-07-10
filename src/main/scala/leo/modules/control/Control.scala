@@ -95,7 +95,7 @@ package inferenceControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
     final def cnf(cl : AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
-      if (state.runStrategy.renaming) cnf2(cl, state.signature)
+      if (state.runStrategy.renaming) cnf2(cl, state)
       else cnf1(cl, state.signature)
     }
 
@@ -114,17 +114,17 @@ package inferenceControl {
       }
     }
 
-    private final def cnf2(cl: AnnotatedClause, sig: Signature): Set[AnnotatedClause] = {
-      Out.trace(s"Rename CNF of ${cl.pretty(sig)}")
-      val cnfresult = RenameCNF(leo.modules.calculus.freshVarGen(cl.cl), cl.cl)(sig).toSet
+    private final def cnf2(cl: AnnotatedClause, s: GeneralState[AnnotatedClause]): Set[AnnotatedClause] = {
+      Out.trace(s"Rename CNF of ${cl.pretty(s.signature)}")
+      val cnfresult = RenameCNF(leo.modules.calculus.freshVarGen(cl.cl), s.renamingCash, cl.cl)(s.signature).toSet
       if (cnfresult.size == 1 && cnfresult.head == cl.cl) {
         // no CNF step at all
-        Out.trace(s"CNF result:\n\t${cl.pretty(sig)}")
+        Out.trace(s"CNF result:\n\t${cl.pretty(s.signature)}")
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
         val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(RenameCNF, cl), cl.properties)} // TODO Definitions other way into the CNF.
-        Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        Out.trace(s"CNF result:\n\t${result.map(_.pretty(s.signature)).mkString("\n\t")}")
         result
       }
     }
@@ -1702,9 +1702,9 @@ package indexingControl {
 
     final def resetIndexes(state: State[AnnotatedClause]): Unit = {
       state.fVIndex.reset()
+      state.resetCash()
       leo.datastructures.Term.reset()
       leo.datastructures.Type.clear()
-      leo.modules.calculus.FormulaRenaming.resetCash()
     }
 
 

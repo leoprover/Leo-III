@@ -28,6 +28,11 @@ final case class RunStrategy(share: Float,
   def pretty: String = s"strategy<share($share),primSubst($primSubst),sos($sos)," +
     s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
     s"renaming($renaming),funcspec($funcspec)>"
+
+  def runStandandalone : Boolean = {
+//    primSubst >= 2
+    false
+  }
 }
 
 object RunStrategy {

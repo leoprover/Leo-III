@@ -5,6 +5,8 @@ import leo.modules.external.TptpProver
 import leo.modules.output.{SZS_Unknown, StatusSZS}
 import leo.modules.prover.{FVIndex, RunStrategy}
 
+import scala.collection.mutable
+
 /**
   *
   * Abstract state of the prover.
@@ -52,6 +54,9 @@ trait GeneralState[T <: ClauseProxy] extends Pretty {
 
   def domainConstr : Map[Type, Set[Term]]
   def addDomainConstr(ty : Type, instances : Set[Term]) : Unit
+
+  def renamingCash : mutable.Map[Term, (Term, Boolean, Boolean)]
+  def resetCash() : Unit
 }
 
 object GeneralState {
@@ -76,6 +81,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   protected var choiceFunctions0: Map[Type, Set[Term]] = Map()
   protected var timeout0: Int = _
   protected var domainConstr0 : Map[Type, Set[Term]] = Map()
+  val renamingCash : mutable.Map[Term, (Term, Boolean, Boolean)] = mutable.Map()
 
   final def timeout: Int = timeout0
   final def setTimeout(timeout: Int): Unit = { timeout0 = timeout }
@@ -146,6 +152,9 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
 
   override def domainConstr: Map[Type, Set[Term]] = domainConstr0
   override def addDomainConstr(ty : Type, instances : Set[Term]): Unit = domainConstr0 += ty -> instances
+
+
+  override def resetCash(): Unit = renamingCash.clear()
 
   override def pretty: String = s"State (conj = ${conjecture0.pretty(sig)} , strategy = ${runStrategy0.pretty})"
 }

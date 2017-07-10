@@ -13,12 +13,9 @@ import scala.collection.mutable
   */
 object FormulaRenaming {
 
-  // TODO Make FormulaRenaming to a class to avoid clashes in cashing
-  // Maps Occurences to Defining terms, and if the term was already
-  // found positivly / negativly
-  private val cashExtracts : mutable.Map[Term, (Term, Boolean, Boolean)]
-    = new mutable.HashMap[Term, (Term, Boolean, Boolean)]()
-  def resetCash() : Unit = cashExtracts.clear()
+//  private val cashExtracts : mutable.Map[Term, (Term, Boolean, Boolean)]
+//    = new mutable.HashMap[Term, (Term, Boolean, Boolean)]()
+//  def resetCash() : Unit = cashExtracts.clear()
 
 
   def size (t : Term, polarity : Boolean) : Int = t match {
@@ -70,14 +67,14 @@ object FormulaRenaming {
     *         repersenting the defining clause. On (t, null, null)
     *         either no renaming happend or a cashed definition was applied.
     */
-  def apply(l : Literal)(implicit sig : Signature) : (Literal, Literal, Literal) = {
+  def apply(l : Literal, cashExtracts : mutable.Map[Term, (Term, Boolean, Boolean)])(implicit sig : Signature) : (Literal, Literal, Literal) = {
     if(!l.equational) {
-      val (l1, l2, l3) = apply(l.left, l.polarity)
+      val (l1, l2, l3) = apply(l.left, l.polarity, cashExtracts)
       (Literal(l1, l.polarity), l2, l3)
     } else (l, null, null)
   }
 
-  private def apply(t : Term, polarity : Boolean)(implicit sig : Signature) : (Term, Literal, Literal) = t match {
+  private def apply(t : Term, polarity : Boolean, cashExtracts : mutable.Map[Term, (Term, Boolean, Boolean)])(implicit sig : Signature) : (Term, Literal, Literal) = t match {
     case (a & b) if !polarity =>
       if(cashExtracts.contains(a)) {
         val (a1, pos, neg) = cashExtracts(a)

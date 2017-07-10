@@ -4,6 +4,7 @@ import leo.Configuration
 import leo.datastructures._
 import leo.modules.output.SZS_UsageError
 import leo.modules.parsers.Input
+import leo.modules.prover.State
 
 /**
   * Created by lex on 4/25/17.
@@ -20,6 +21,7 @@ object Normalization {
 
   final def apply(): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
+    implicit val s : State[AnnotatedClause] = State.fresh(sig)
     val input0 = Input.parseProblem(Configuration.PROBLEMFILE)
     val (defs, axioms0, conjecture) = effectiveInput(input0)
 
@@ -41,7 +43,7 @@ object Normalization {
     val axiomsIt = axioms.iterator
     while (axiomsIt.hasNext) {
       val ax = axiomsIt.next()
-      resultClauses = resultClauses union process(ax)(sig)
+      resultClauses = resultClauses union process(ax)(s)
     }
     val finalAxResult = exhaustive(resultClauses)
 
@@ -52,8 +54,9 @@ object Normalization {
     println(newProb)
   }
 
-  private final def exhaustive(cls: Set[Clause])(implicit sig: Signature): Set[Clause] = {
+  private final def exhaustive(cls: Set[Clause])(implicit s: State[AnnotatedClause]): Set[Clause] = {
     import leo.modules.calculus.{RenameCNF, FuncExt, BoolExt, freshVarGen, LiftEq}
+    implicit val sig: Signature = s.signature
     var changed = true
     var intermediate: Set[Clause] = cls
 
@@ -94,7 +97,7 @@ object Normalization {
         val cnf = if (doCNF) {boolExtCls.flatMap{c =>
           if (RenameCNF.canApply(c)) {
             changed = true
-            RenameCNF(freshVarGen(c), c, renamingThreshold)
+            RenameCNF(freshVarGen(c), s.renamingCash, c, renamingThreshold)
           } else Set(c)
         }} else boolExtCls
 
@@ -107,9 +110,10 @@ object Normalization {
     intermediate
   }
 
-  private final def process(t: Term)(implicit sig: Signature): Set[Clause] = {
+  private final def process(t: Term)(implicit s: State[AnnotatedClause]): Set[Clause] = {
     import leo.modules.calculus.{Simp, Miniscope, ArgumentExtraction, RenameCNF, freshVarGen}
     // Simplification
+    implicit val sig: Signature = s.signature
     val simplified = Simp.normalize(t)
     // Miniscope
     val mini = Miniscope.apply(simplified, true)
@@ -120,7 +124,7 @@ object Normalization {
     if (doCNF) {
       val cl = termToClause(newC)
       val vargen = freshVarGen(cl)
-      val res0 = RenameCNF.apply(vargen, termToClause(newC), renamingThreshold)
+      val res0 = RenameCNF.apply(vargen, s.renamingCash, termToClause(newC), renamingThreshold)
       res0.toSet union x
     } else {
       val cl = termToClause(newC)
