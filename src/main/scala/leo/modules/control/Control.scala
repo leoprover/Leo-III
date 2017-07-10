@@ -2057,7 +2057,7 @@ package  externalProverControl {
       // Check what the provers speaks, translate only to first-order if necessary
       val proverCaps = prover.capabilities
       val extraArgs0 = Configuration.ATP_ARGS(prover.name)
-      val extraArgs = if (extraArgs0 == "") Seq.empty else Seq(extraArgs0)
+      val extraArgs = if (extraArgs0 == "") Seq.empty else extraArgs0.split(" ").toSeq
       if (proverCaps.contains(THF)) {
         val preparedProblem = prepareProblem(problem, THF)(sig)
         callProver0(prover, problem, preparedProblem.map(_.cl), sig, THF, timeout, extraArgs)

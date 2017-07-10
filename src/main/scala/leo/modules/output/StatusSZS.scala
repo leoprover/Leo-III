@@ -127,6 +127,11 @@ case object SZS_ContradictoryAxioms extends SuccessSZS {
   val pretty = "CAX"
 }
 
+case object SZS_Success extends SuccessSZS {
+  val apply = "Success"
+  val pretty = "SUC"
+}
+
 ///////////////////////////////
 // NoSuccess SZS status cases
 ///////////////////////////////
