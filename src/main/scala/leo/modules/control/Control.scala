@@ -1830,29 +1830,59 @@ package indexingControl {
     final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
-        var result: Seq[AnnotatedFormula] = Vector.empty
-        var round : Int = 0
-
-        leo.Out.finest(s"Conjecture: ${conjecture.toString}")
-        val conjSymbols = PreFilterSet.useFormula(conjecture)
-        leo.Out.finest(s"Symbols in conjecture: ${conjSymbols.mkString(",")}")
-        val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
-        var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(round)(f))
-        round += 1
-
-        while (taken.nonEmpty) {
-          // From SeqFilter:
-          // Take all formulas (save the newly touched symbols
-          val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
-          taken.foreach(f => result = f +: result)
-          // Obtain all formulas, that have a
-          val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
-          // Take the new formulas
-          taken = possibleCandidates.filter(f => RelevanceFilter(round)(f))
-          round += 1
+        if (input.isEmpty) input
+        else {
+          val noAx = input.size
+          if (noAx < 10) {
+            // dont filter here
+            input
+          } else if (noAx < 20) {
+            getRelevantAxioms0(input, conjecture,
+              0.54, 2.35)(sig)
+          } else if (noAx < 100) {
+            getRelevantAxioms0(input, conjecture,
+              0.56, 2.35)(sig)
+          } else if (noAx < 200) {
+            getRelevantAxioms0(input, conjecture,
+              0.58, 2.35)(sig)
+          } else if (noAx < 500) {
+            getRelevantAxioms0(input, conjecture,
+              0.6, 2.35)(sig)
+          } else if (noAx < 1000) {
+            getRelevantAxioms0(input, conjecture,
+              0.64, 2.35)(sig)
+          } else {
+            getRelevantAxioms0(input, conjecture,
+              0.66, 2.35)(sig)
+          }
         }
-        result
       }
+    }
+
+    final def getRelevantAxioms0(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula,
+                                 passmark: Double, aging: Double)(sig: Signature): Seq[AnnotatedFormula] = {
+      var result: Seq[AnnotatedFormula] = Vector.empty
+      var round : Int = 0
+
+      leo.Out.finest(s"Conjecture: ${conjecture.toString}")
+      val conjSymbols = PreFilterSet.useFormula(conjecture)
+      leo.Out.finest(s"Symbols in conjecture: ${conjSymbols.mkString(",")}")
+      val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
+      var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(passmark)(aging)(round)(f))
+      round += 1
+
+      while (taken.nonEmpty) {
+        // From SeqFilter:
+        // Take all formulas (save the newly touched symbols
+        val newsymbs : Iterable[String] = taken.flatMap(f => PreFilterSet.useFormula(f))
+        taken.foreach(f => result = f +: result)
+        // Obtain all formulas, that have a
+        val possibleCandidates : Iterable[AnnotatedFormula] = PreFilterSet.getCommonFormulas(newsymbs)
+        // Take the new formulas
+        taken = possibleCandidates.filter(f => RelevanceFilter(passmark)(aging)(round)(f))
+        round += 1
+      }
+      result
     }
 
     final def relevanceFilterAdd(formula: AnnotatedFormula)(sig: Signature): Unit = {
