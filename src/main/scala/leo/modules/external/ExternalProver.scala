@@ -75,6 +75,10 @@ object ExternalProver {
     if(Files.exists(p) && Files.isExecutable(p)){
       p
     } else {
+      if (Configuration.isSet("atpdebug")) {
+        Process(Seq("which", cmd)).!(ProcessLogger(line => println(line), line => println(line)))
+      }
+
       val redirectStdErrLogger = ProcessLogger(line => ())
       val which0 = Seq("which", cmd) lineStream_! redirectStdErrLogger
       val which = which0.headOption
@@ -103,6 +107,12 @@ object ExternalProver {
     val p = if(path == "") serviceToPath("leo") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
     leo.Out.debug(s"Created Leo2 prover with path '$convert'")
+    if (Configuration.isSet("atpdebug")) {
+      import scala.sys.process._
+      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      leo.Out.comment(s"Leo 2 debug info:")
+      leo.Out.comment(answer.mkString)
+    }
     new Leo2Prover(convert)
   }
 
