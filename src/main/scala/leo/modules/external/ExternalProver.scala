@@ -53,6 +53,7 @@ object ExternalProver {
       case "nitpick" => createNitpickProver(path)
       case "cvc4" => createCVC4(path)
       case "alt-ergo" => createAltErgo(path)
+      case "vampire" => createVampire(path)
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
@@ -155,6 +156,13 @@ object ExternalProver {
     }
   }
 
+  private final def createVampire(path: String) : Vampire = {
+    val p = if(path == "") serviceToPath("vampire") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created Vampire prover with path '$convert'")
+    new Vampire(convert)
+  }
+
   final def createAltErgo(path: String): AltErgo = {
     val p = if(path == "") serviceToPath("alt-ergo") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
@@ -179,6 +187,15 @@ object ExternalProver {
   }
 }
 
+class Vampire(val path : String) extends TptpProver[AnnotatedClause] {
+  final val name: String = "vampire"
+  final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
+
+  protected[external] def constructCall(args: Seq[String], timeout: Int,
+                                        problemFileName: String): Seq[String] = {
+    ExternalProver.limitedRun(timeout+2, Seq(path, "--mode", "casc", "-t", timeout.toString, problemFileName))
+  }
+}
 
 class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedClause] {
   final val name: String = "cvc4"
