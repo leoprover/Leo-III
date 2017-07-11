@@ -74,6 +74,10 @@ object ExternalProver {
     if(Files.exists(p) && Files.isExecutable(p)){
       p
     } else {
+      if (Configuration.isSet("atpdebug")) {
+        Process(Seq("which", cmd)).!(ProcessLogger(line => println(line), line => println(line)))
+      }
+
       val redirectStdErrLogger = ProcessLogger(line => ())
       val which0 = Seq("which", cmd) lineStream_! redirectStdErrLogger
       val which = which0.headOption
