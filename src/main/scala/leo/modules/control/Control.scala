@@ -2246,8 +2246,8 @@ package schedulingControl {
     final def calculateExtraTime(noAxioms: Int): Int = {
       if (noAxioms < 200) 0
       else if (noAxioms < 500) 5
-      else if (noAxioms < 1000) 10
-      else 15
+      else if (noAxioms < 1000) 20
+      else 30
     }
   }
 
