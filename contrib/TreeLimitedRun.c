@@ -1,3 +1,8 @@
+/*
+ This file is taken from http://www.cs.miami.edu/~tptp/CASC/J6/TreeLimitedRun.c
+ and was written by Geoff Sutcliffe <geoff@cs.miami.edu> and maybe others.
+*/
+
 //---------------------------------------------------------------------------
 //----Program to watch CPU usage of a process
 //----TreeLimitedRun <CPU time limit> <WC time limit> <Memory limit> <Job>
