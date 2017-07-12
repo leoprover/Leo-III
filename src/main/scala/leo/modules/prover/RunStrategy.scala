@@ -63,6 +63,7 @@ object RunStrategy {
     case "s5a" => s5a
     case "s5b" => s5b
     case "s5c" => s5c
+    case "s6" => s6
     case "default" => defaultStrategy
     case _ => defaultStrategy
   }
@@ -179,5 +180,17 @@ object RunStrategy {
     renaming =  true,
     funcspec = false,
     domConstr = -1)
+
+  def s6: RunStrategy = RunStrategy(
+    share = 1,
+    primSubst = 1,
+    sos = false,
+    unifierCount = 1,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = false,
+    renaming =  true,
+    funcspec = false,
+    domConstr = 0)
 }
 
