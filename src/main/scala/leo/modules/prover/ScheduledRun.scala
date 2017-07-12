@@ -7,7 +7,7 @@ import leo.modules.parsers.Input
 
 
 object ScheduledRun {
-  final def apply(startTime: Long, timeout: Int, schedule: Control.RunSchedule): Unit = {
+  final def apply(startTime: Long, timeout: Int, schedule0: Control.RunSchedule = null): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     var curState: State[AnnotatedClause] = null
@@ -35,6 +35,13 @@ object ScheduledRun {
       // and invoke SeqLoop wrt to each strategy consecutively.
       // The schedule is calculated so that the sum of
       // all timeouts is <= Configuration.TIMEOUT
+      val schedule = if (schedule0 != null) schedule0 else {
+        import leo.modules.control.schedulingControl.StrategyControl.calculateExtraTime
+        val extraTime = calculateExtraTime(remainingInput.size)
+        leo.Out.debug(s"extraTime: $extraTime")
+        Control.generateRunStrategies(timeout, extraTime)
+      }
+
       var done = false
       while (schedule.hasNext && !done) {
         val (currentStrategy, currentTimeout) = schedule.next()
@@ -55,11 +62,6 @@ object ScheduledRun {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()
     }
-  }
-
-  final def apply(startTime: Long, timeout: Int): Unit = {
-    val schedule = Control.generateRunStrategies(timeout)
-    apply(startTime, timeout, schedule)
   }
 
   final def apply(startTime: Long, timeout: Int, strategy: RunStrategy): Unit = {
