@@ -73,7 +73,7 @@ object Control {
   type RunConfiguration = (RunStrategy, Int)
   type RunSchedule = Iterator[RunConfiguration]
   @inline final def defaultStrategy: RunStrategy = schedulingControl.StrategyControl.defaultStrategy
-  @inline final def generateRunStrategies(globalTimeout: Int): RunSchedule = schedulingControl.StrategyControl.generateRunStrategies(globalTimeout)
+  @inline final def generateRunStrategies(globalTimeout: Int, extraTime: Int = 0): RunSchedule = schedulingControl.StrategyControl.generateRunStrategies(globalTimeout, extraTime)
 }
 
 /** Package collection control objects for inference rules.
@@ -2200,7 +2200,14 @@ package schedulingControl {
     val MINTIME = 60
     val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3b, s2, s1b, s4 )
 
-    final def generateRunStrategies(globalTimeout: Int): RunSchedule = {
+    /**
+      * Given a time `globalTimeout`, return a [[RunSchedule]]
+      * in which for each [[RunStrategy]] `r` it holds that
+      * {{{timeout  of r = MINTIME * share + extraTime}}}
+      *
+      * @see [[leo.modules.control.schedulingControl.StrategyControl.MINTIME]]
+      */
+    final def generateRunStrategies(globalTimeout: Int, extraTime: Int = 0): RunSchedule = {
       val to = Configuration.TIMEOUT
       if (to == 0) {
         // unlimited resources, dont schedule...i guess?
@@ -2212,7 +2219,7 @@ package schedulingControl {
         var shareSum: Float = 0
         while (strategyIt.hasNext) {
           val strategy = strategyIt.next()
-          val proportionalTimeOfStrategy = (strategy.share * MINTIME).toInt
+          val proportionalTimeOfStrategy = (strategy.share * MINTIME).toInt + extraTime
 
           if (proportionalTimeOfStrategy <= remainingTime) {
             result = result :+ (strategy, proportionalTimeOfStrategy)
@@ -2234,6 +2241,13 @@ package schedulingControl {
     final def defaultStrategy: RunStrategy = {
       // currently: ignore meta-knowledge from state and just return standard strategy
       RunStrategy.defaultStrategy
+    }
+
+    final def calculateExtraTime(noAxioms: Int): Int = {
+      if (noAxioms < 200) 0
+      else if (noAxioms < 500) 5
+      else if (noAxioms < 1000) 10
+      else 15
     }
   }
 
