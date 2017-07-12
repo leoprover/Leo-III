@@ -27,7 +27,7 @@ final case class RunStrategy(share: Float,
                              domConstr : Int) extends Pretty {
   def pretty: String = s"strategy<share($share),primSubst($primSubst),sos($sos)," +
     s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
-    s"renaming($renaming),funcspec($funcspec)>"
+    s"renaming($renaming),funcspec($funcspec), domConstr($domConstr)>"
 
   def runStandandalone : Boolean = {
 //    primSubst >= 2

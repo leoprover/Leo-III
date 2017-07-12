@@ -33,6 +33,10 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def queuedCallExists(prover: TptpProver[T]): Boolean
   def enqueueCall(prover: TptpProver[T], problem: Set[T]): Unit
 
+  def incTranslations : Int
+  def decTranslations : Int
+  def getTranslations : Int
+
   def lastCall: LastCallStat[T]
   def setLastCallStat(lcs: LastCallStat[T]): Unit
 
@@ -101,6 +105,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
 
   private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
+  private var queuedTranslations : Int = 0
   private var extCallStat: LastCallStat[T] = _
   private var queuedExtCalls0: Map[TptpProver[T], Vector[Set[T]]] = Map.empty
 
@@ -122,6 +127,22 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     } else {
       openExtCalls0 = openExtCalls0 + (prover -> Set(call))
     }
+  }
+
+
+
+  override def incTranslations: Int = synchronized{
+    queuedTranslations += 1
+    queuedTranslations
+  }
+
+  override def decTranslations: Int = synchronized{
+    queuedTranslations -= 1
+    queuedTranslations
+  }
+
+  override def getTranslations: Int = synchronized{
+    queuedTranslations
   }
 
   type Pick = Boolean

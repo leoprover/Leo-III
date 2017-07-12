@@ -64,16 +64,19 @@ class PrivateThreadPoolTranslationImpl(numberOfThreads : Int) extends AsyncTrans
   private val waitingTime : Long = Configuration.ATP_CALL_INTERVAL
   private val threadpool = Executors.newFixedThreadPool(numberOfThreads)
 
-  private val lastCalls : mutable.Map[State[AnnotatedClause], Long] = mutable.Map()
+//  private val lastCalls : mutable.Map[State[AnnotatedClause], Long] = mutable.Map()
   private val self = this
 
   override def call(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force : Boolean): Unit = {
-    val lastCallState : Long = lastCalls.getOrElse(state, 0)
-    if(ExtProverControl.shouldRun(clauses, state) && ((lastCallState + waitingTime) <= state.noProofLoops)) {
-      lastCalls.put(state, state.noProofLoops)
+//    val lastCallState : Long = lastCalls.getOrElse(state, 0)
+    if(ExtProverControl.shouldRun(clauses, state)) {
+      state.incTranslations
+//      lastCalls.put(state, state.noProofLoops)
+      // Add a block now to allow tests for still running at the end
       val runthread = new Runnable {
         override def run(): Unit = {
           ExtProverControl.uncheckedSequentialSubmit(clauses, state, force)
+          state.decTranslations
         }
       }
       try{
