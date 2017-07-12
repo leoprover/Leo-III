@@ -1902,8 +1902,8 @@ package  externalProverControl {
       state.setLastCallStat(new MixedInfoLastCallStat)
     }
 
-    final def openCallsExistGlobally: Boolean = openCalls.nonEmpty
-    final def openCallsExist(implicit state: S): Boolean = state.openExtCalls.nonEmpty
+    final def openCallsExistGlobally: Boolean = openCalls.nonEmpty  // TODO check open translations?
+    final def openCallsExist(implicit state: S): Boolean = state.openExtCalls.nonEmpty || state.getTranslations > 0
 
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
       callFacade.call(clauses, state, force)
