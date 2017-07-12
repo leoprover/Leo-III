@@ -208,7 +208,7 @@ class CVC4(execScript: String, val path: String) extends TptpProver[AnnotatedCla
 }
 object CVC4 {
   @inline final def apply(execScript: String, path: String): CVC4 = new CVC4(execScript, path)
-  final val executeScriptName: String = "run-script-cascj8-tfa"
+  final val executeScriptName: String = "run-script-casc26-tfa"
   final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/" + executeScriptName))
 }
 

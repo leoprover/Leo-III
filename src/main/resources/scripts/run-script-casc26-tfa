@@ -43,9 +43,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-here=`dirname $0`
-cvc4=$here/cvc4
-bench="$1"
+cvc4="$1"
+bench="$2"
+
+echo "cvc4 is $cvc4"
+echo "bench is $bench"
 
 file=${bench##*/}
 filename=${file%.*}
