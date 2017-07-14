@@ -28,7 +28,6 @@ object TypedFOLEncoding {
         // if a fixed symbol occurs in the arity table it means it was used as a subterm
         // so we need to add the associated proxySymbol with the given minimal arity
         // to the signature
-        // choice cannot occur top-level since its not Boolean-typed.
         val foType = foTransformType(fMeta._ty, info)(sig, foSig)
         val id = foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(fMeta.name), foType)
         proxyAxioms += termToClause(foSig.proxyAxiomOf(id))
@@ -178,7 +177,7 @@ object TypedFOLEncoding {
     import Term.{:::>, TypeLambda, Bound, Symbol, ∙}
     import leo.modules.HOLSignature.{Forall => HOLForall, Exists => HOLExists, TyForall => HOLTyForall,
     & => HOLAnd, ||| => HOLOr, === => HOLEq, !=== => HOLNeq, <=> => HOLEquiv, Impl => HOLImpl, <= => HOLIf,
-    Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue}
+    Not => HOLNot, LitFalse => HOLFalse, LitTrue => HOLTrue, Choice => HOLChoice}
     import TypedFOLEncodingSignature._
     t match {
       // cases from here should not really happen if invoked from func-ext treated CNF problem.
@@ -194,6 +193,10 @@ object TypedFOLEncoding {
       case HOLTyForall(TypeLambda(body)) =>
         val translatedBody = translate(body,les)(holSignature, encodingSignature)
         TyForall(Λ(translatedBody))
+      case HOLChoice(body) =>
+        val translatedBody = translateTerm(body,les)(holSignature, encodingSignature)
+        val result = encodingSignature.proxyChoice(translatedBody)
+        encodingSignature.hBool(result)
       case HOLEq(l,r) =>
         assert(l.ty == r.ty)
         if (l.ty == o) {
