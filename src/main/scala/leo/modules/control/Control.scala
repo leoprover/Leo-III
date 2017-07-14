@@ -71,7 +71,7 @@ object Control {
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
   // Limited resource scheduling
   type RunConfiguration = (RunStrategy, Int)
-  type RunSchedule = Iterator[RunConfiguration]
+  type RunSchedule = Iterable[RunConfiguration]
   @inline final def defaultStrategy: RunStrategy = schedulingControl.StrategyControl.defaultStrategy
   @inline final def generateRunStrategies(globalTimeout: Int, extraTime: Int = 0): RunSchedule = schedulingControl.StrategyControl.generateRunStrategies(globalTimeout, extraTime)
 }
@@ -2200,6 +2200,24 @@ package schedulingControl {
     val MINTIME = 60
     val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3b, s2, s1b, s6 )
 
+    final def strategyList: Seq[RunStrategy] = {
+      if (Configuration.isSet("strategies")) {
+        val inputString0 = Configuration.valueOf("strategies")
+        if (inputString0.isDefined) {
+          val inputString = inputString0.get
+          val input = inputString.head
+          val inputAsList = input.split(",").iterator
+          var result: Seq[RunStrategy] = Seq.empty
+          while (inputAsList.hasNext) {
+            val sName = inputAsList.next()
+            val s0 = RunStrategy.byName(sName)
+            result = result :+ s0
+          }
+          result
+        } else STRATEGIES
+      } else STRATEGIES
+    }
+
     /**
       * Given a time `globalTimeout`, return a [[RunSchedule]]
       * in which for each [[RunStrategy]] `r` it holds that
@@ -2211,9 +2229,9 @@ package schedulingControl {
       val to = Configuration.TIMEOUT
       if (to == 0) {
         // unlimited resources, dont schedule...i guess?
-        Iterator((defaultStrategy,0))
+        Iterable((defaultStrategy,0))
       } else {
-        val strategyIt = STRATEGIES.iterator
+        val strategyIt = strategyList.iterator
         var remainingTime = globalTimeout
         var result: Seq[RunConfiguration] = Vector.empty
         var shareSum: Float = 0
@@ -2234,7 +2252,7 @@ package schedulingControl {
             }
           }
         }
-        Iterator(result:_*)
+        Iterable(result:_*)
       }
     }
 

@@ -35,14 +35,16 @@ object ScheduledRun {
       // and invoke SeqLoop wrt to each strategy consecutively.
       // The schedule is calculated so that the sum of
       // all timeouts is <= Configuration.TIMEOUT
-      val schedule = if (schedule0 != null) schedule0 else {
+      val schedule1 = if (schedule0 != null) schedule0 else {
         import leo.modules.control.schedulingControl.StrategyControl.calculateExtraTime
         val extraTime = calculateExtraTime(remainingInput.size)
         leo.Out.debug(s"extraTime: $extraTime")
         Control.generateRunStrategies(timeout, extraTime)
       }
+      leo.Out.config(s"Using strategy schedule: ${schedule1.map(_._1.name).mkString(",")}")
 
       var done = false
+      val schedule = schedule1.iterator
       while (schedule.hasNext && !done) {
         val (currentStrategy, currentTimeout) = schedule.next()
         Out.info(s"Trying (${currentTimeout}s): ${currentStrategy.pretty} ...")
@@ -65,7 +67,7 @@ object ScheduledRun {
   }
 
   final def apply(startTime: Long, timeout: Int, strategy: RunStrategy): Unit = {
-    apply(startTime, timeout, Iterator((strategy, timeout)))
+    apply(startTime, timeout, Iterable((strategy, timeout)))
   }
 
 

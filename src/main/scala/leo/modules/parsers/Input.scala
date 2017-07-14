@@ -37,9 +37,12 @@ object Input {
     * for parsing objects under TPTP Home. */
   lazy val tptpHome: Path = {
     try {
-      canonicalPath(System.getenv("TPTP"))
+      val result = canonicalPath(System.getenv("TPTP"))
+      result
     } catch {
-      case _: Exception => canonicalPath(".")
+      case _: Exception =>
+        leo.Out.warn("TPTP environment variable not set. Some includes may not be found.")
+        null
     }
   }
 
@@ -67,14 +70,7 @@ object Input {
   def parseProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
     val canonicalFile = canonicalPath(file)
     if (!assumeRead.contains(canonicalFile)) {
-      val p: Commons.TPTPInput = try {parseShallow(file)} catch {case e1 : Exception =>
-        if (tptpHome != null){
-//            try {
-            val alt = tptpHome.resolve(file)
-            parseShallow(alt.toString)
-//            } catch {case e : Exception => throw new SZSException(SZS_InputError, s"${e.toString}")}
-        } else throw e1
-      }
+      val p: Commons.TPTPInput = parseShallow(file)
       val includes = p.getIncludes
 
       // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
@@ -84,10 +80,12 @@ object Input {
           val next = canonicalFile.getParent.resolve(inc)
           parseProblem(next.toString, assumeRead + canonicalFile)
         } catch {
-          case _ : Exception =>
+          case e : Exception =>
             try {
-              val tnext = tptpHome.resolve(inc)
-              parseProblem(tnext.toString, assumeRead + canonicalFile)
+              if (tptpHome != null) {
+                val tnext = tptpHome.resolve(inc)
+                parseProblem(tnext.toString, assumeRead + canonicalFile)
+              } else throw e
             } catch {
               case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
             }

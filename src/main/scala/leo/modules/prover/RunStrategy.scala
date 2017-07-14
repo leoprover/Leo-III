@@ -15,7 +15,8 @@ import leo.datastructures.Pretty
   *
   * @author Alexander Steen
   */
-final case class RunStrategy(share: Float,
+final case class RunStrategy(name: String,
+                             share: Float,
                              primSubst: Int,
                              sos: Boolean,
                              unifierCount: Int,
@@ -25,7 +26,7 @@ final case class RunStrategy(share: Float,
                              renaming: Boolean,
                              funcspec: Boolean,
                              domConstr : Int) extends Pretty {
-  def pretty: String = s"strategy<share($share),primSubst($primSubst),sos($sos)," +
+  def pretty: String = s"strategy<name($name),share($share),primSubst($primSubst),sos($sos)," +
     s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
     s"renaming($renaming),funcspec($funcspec), domConstr($domConstr)>"
 
@@ -41,7 +42,8 @@ object RunStrategy {
   /** Return the [[leo.modules.prover.RunStrategy]] that is given by
     * the default values of [[leo.Configuration]]. */
   def defaultStrategy: RunStrategy =
-    RunStrategy(1f,
+    RunStrategy("default",
+      1f,
       Configuration.PRIMSUBST_LEVEL,
       Configuration.SOS,
       Configuration.UNIFIER_COUNT,
@@ -73,6 +75,7 @@ object RunStrategy {
   /////////////////////////
 
   def s1: RunStrategy = RunStrategy(
+    name = "s1",
     share = 1,
     primSubst = 1,
     sos = false,
@@ -85,6 +88,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s1b: RunStrategy = RunStrategy(
+    name = "s1b",
     share = 1,
     primSubst = 1,
     sos = false,
@@ -97,6 +101,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s2: RunStrategy = RunStrategy(
+    name = "s2",
     share = 1,
     primSubst = 2,
     sos = false,
@@ -109,6 +114,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s3: RunStrategy = RunStrategy(
+    name = "s3",
     share = 0.5f,
     primSubst = 1,
     sos = true,
@@ -121,6 +127,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s3b: RunStrategy = RunStrategy(
+    name = "s3b",
     share = 0.5f,
     primSubst = 3,
     sos = true,
@@ -133,6 +140,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s4: RunStrategy = RunStrategy(
+    name = "s4",
     share = 0.25f,
     primSubst = 3,
     sos = false,
@@ -145,6 +153,7 @@ object RunStrategy {
     domConstr = 0)
 
   def s5a : RunStrategy = RunStrategy (
+    name = "s5a",
     share = 1,
     primSubst = 1,
     sos = false,
@@ -158,6 +167,7 @@ object RunStrategy {
   )
 
   def s5b: RunStrategy = RunStrategy(
+    name = "s5b",
     share = 1,
     primSubst = 1,
     sos = false,
@@ -170,6 +180,7 @@ object RunStrategy {
     domConstr = -1)
 
   def s5c: RunStrategy = RunStrategy(
+    name = "s5c",
     share = 0.5f,
     primSubst = 3,
     sos = true,
@@ -182,6 +193,7 @@ object RunStrategy {
     domConstr = -1)
 
   def s6: RunStrategy = RunStrategy(
+    name = "s6",
     share = 0.5f,
     primSubst = 1,
     sos = false,
