@@ -60,6 +60,7 @@ object RunStrategy {
     case "s1b" => s1b
     case "s2" => s2
     case "s3" => s3
+    case "s3a" => s3a
     case "s3b" => s3b
     case "s4" => s4
     case "s5a" => s5a
@@ -122,6 +123,19 @@ object RunStrategy {
     uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
     boolExt = true,
     choice = true,
+    renaming =  true,
+    funcspec = false,
+    domConstr = 0)
+
+  def s3a: RunStrategy = RunStrategy(
+    name = "s3a",
+    share = 0.5f,
+    primSubst = 1,
+    sos = true,
+    unifierCount = 1,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = false,
     renaming =  true,
     funcspec = false,
     domConstr = 0)
