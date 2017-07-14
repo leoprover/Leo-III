@@ -182,7 +182,7 @@ object RunStrategy {
     domConstr = -1)
 
   def s6: RunStrategy = RunStrategy(
-    share = 1,
+    share = 0.5f,
     primSubst = 1,
     sos = false,
     unifierCount = 1,

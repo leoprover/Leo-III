@@ -2198,7 +2198,7 @@ package schedulingControl {
   object StrategyControl {
     import leo.modules.prover.RunStrategy._
     val MINTIME = 60
-    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3b, s2, s1b, s4 )
+    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3b, s2, s1b, s6 )
 
     /**
       * Given a time `globalTimeout`, return a [[RunSchedule]]
