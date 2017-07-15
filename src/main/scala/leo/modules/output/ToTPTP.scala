@@ -459,7 +459,7 @@ object ToTPTP {
   @inline final private def collectForall0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case Forall(ty :::> b) => collectForall0(vars :+ ty, b)
-      case Forall(_) => throw new IllegalArgumentException("Unexcepted body term in all quantification decomposition.")
+      case Forall(_) => collectForall0(vars, t.etaExpand)
       case _ => (vars, t)
     }
   }
@@ -486,7 +486,7 @@ object ToTPTP {
   @inline final private def collectExists0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case Exists(ty :::> b) => collectExists0(vars :+ ty, b)
-      case Exists(_) => throw new IllegalArgumentException("Unexcepted body term in exists quantification decomposition.")
+      case Exists(_) => collectExists0(vars, t.etaExpand)
       case _ => (vars, t)
     }
   }
@@ -499,7 +499,7 @@ object ToTPTP {
   @inline final private def collectChoice0(vars: Seq[Type], t: Term): (Seq[Type], Term) = {
     t match {
       case Choice(ty :::> b) => collectChoice0(vars :+ ty, b)
-      case Choice(_) => throw new IllegalArgumentException("Unexcepted body term in choice decomposition.")
+      case Choice(body) => collectChoice0(vars, Choice(body.etaExpand))
       case _ => (vars, t)
     }
   }
