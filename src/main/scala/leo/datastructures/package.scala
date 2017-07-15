@@ -617,4 +617,26 @@ package object datastructures {
       else termArgs(args.tail)
     }
   }
+
+  /**
+    * Given a term `app`, if `app` is a application
+    * of the form {{{app = hd ∙ (arg1, ..., argn)}}},
+    * return all partial prefix-applications
+    * `Seq(hd ∙ (arg1), hd ∙ (arg1, arg2), ...., hd ∙ (arg1, ..., argn))`.
+    * If `app` is not an application, the result is the singleton list
+    * containing `app`.
+    */
+  final def prefixApplications(app: Term): Seq[Term] = {
+    if (app.isApp) {
+      import leo.datastructures.Term.∙
+      app match {
+         case hd ∙ args =>
+            val (tyArgs, termArgs) = leo.datastructures.partitionArgs(args)
+            val baseTerm = Term.mkTypeApp(hd, tyArgs)
+            termArgs.inits.map(arg => Term.mkTermApp(baseTerm, arg)).toSeq
+         case _ => Seq(app)
+      }
+    } else Seq(app)
+  }
+
 }
