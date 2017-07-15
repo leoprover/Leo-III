@@ -215,9 +215,14 @@ object Choice extends CalculusRule {
         val choiceTerm = posLit.left
 
         witnessTerm match {
-          case TermApp(prop, Seq(witness)) if prop.isVariable && witness.isVariable =>
+          case TermApp(prop, Seq(witness)) if prop.isVariable && isVariableModuloEta(witness) =>
             choiceTerm match {
-              case TermApp(`prop`, Seq(TermApp(f, Seq(arg)))) if arg.etaExpand == prop.etaExpand => Some(f)
+              case TermApp(`prop`, Seq(arg0)) =>
+                val arg = arg0.etaContract
+                arg match {
+                  case TermApp(f, Seq(prop0)) if prop0.etaContract == prop.etaContract => Some(f)
+                  case _ => None
+                }
               case _ => None
             }
           case _ => None
@@ -237,12 +242,15 @@ object Choice extends CalculusRule {
       val leftOcc = lit.left.feasibleOccurrences
       val leftOccIt = leftOcc.keysIterator
       while (leftOccIt.hasNext) {
-        val occ = leftOccIt.next()
-        leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
-        val findResult = findChoice(occ, choiceFuns, leftOcc(occ).head)
-        if (findResult != null) leo.Out.trace(s"[Choice Rule] Taken: ${findResult.pretty(sig)}")
-        if (findResult != null)
-          result = result + findResult
+        val o = leftOccIt.next()
+        val occ0 = prefixApplications(o)
+        occ0.foreach { occ =>
+          leo.Out.trace(s"[Choice Rule] Current occurence: ${occ.pretty(sig)}")
+          val findResult = findChoice(occ, choiceFuns, leftOcc(o).head)
+          if (findResult != null) leo.Out.trace(s"[Choice Rule] Taken: ${findResult.pretty(sig)}")
+          if (findResult != null)
+            result = result + findResult
+        }
       }
       if (lit.equational) {
         val rightOcc = lit.right.feasibleOccurrences
