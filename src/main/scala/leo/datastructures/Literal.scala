@@ -113,7 +113,6 @@ trait Literal extends Pretty with Prettier {
 
 object Literal {
   import leo.datastructures.impl.{LiteralImpl => LitImpl}
-  import leo.datastructures.Term.Symbol
   import leo.datastructures.Orderings._
 
   // Constructor methods
@@ -344,10 +343,26 @@ object Literal {
   /** Returns true iff the literal is trivial (i.e. l.left is syntactically equal to l.right). */
   final def trivial(l: Literal): Boolean = l.left == l.right
   /** If the method returns true both sides of the underlying equation are different/distinct. */
-  final def distinctSides(l: Literal): Boolean = (l.left, l.right) match {
-    case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= leo.modules.HOLSignature.lastId && idr <= leo.modules.HOLSignature.lastId
+  final def distinctSides(l: Literal): Boolean = {
+    distinctSides0(l.left, l.right, 0)
+  }
+  private final def distinctSides0(left: Term, right: Term, depth: Int): Boolean = {
+    import leo.modules.HOLSignature.Not
+    import leo.modules.myAssert
+    import leo.datastructures.Term.{Symbol, Bound, :::>}
+    (left, right) match {
+      case (Symbol(idl), Symbol(idr)) if idl != idr => idl <= leo.modules.HOLSignature.lastId && idr <= leo.modules.HOLSignature.lastId
+      case (Bound(_, scopeL), Bound(_, scopeR)) if scopeL <= depth && scopeR <= depth => scopeL != scopeR
+      case (Not(a),b) if a == b => true
+      case (a, Not(b)) if a == b => true
+      case (_ :::> _, _ :::> _) =>
+        val (bodyLeft, absLeft) = collectLambdas(left)
+        val (bodyRight, absRight) = collectLambdas(right)
+        myAssert(absLeft == absRight)
+        distinctSides0(bodyLeft, bodyRight, depth + absLeft.size)
       // TODO: Extend to 'distinct symbols' from TPTP
-    case _ => false
+      case _ => false
+    }
   }
   /** Returns a term representation of the literal.
     * @return Term `s = t` if `polarity`; term `!(s = t)` if `!polarity`,
