@@ -2208,8 +2208,8 @@ package schedulingControl {
 
   object StrategyControl {
     import leo.modules.prover.RunStrategy._
-    val MINTIME = 60
-    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3b, s2, s1b, s6 )
+    val MINTIME = 100
+    val STRATEGIES: Seq[RunStrategy] = Seq( s1, s3bb, s2, s1b, s6, s3b )
 
     final def strategyList: Seq[RunStrategy] = {
       if (Configuration.isSet("strategies")) {
