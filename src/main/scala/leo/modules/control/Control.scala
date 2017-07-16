@@ -904,6 +904,18 @@ package inferenceControl {
             }
           }
         }
+      } else if (isPropSet(REPLACE_SPECIAL, Configuration.PRE_PRIMSUBST_LEVEL)) {
+        if (funTyArgs.size == 2) {
+          println(s"check ${ty.pretty}")
+          val in = funTyArgs(0)
+          val out = funTyArgs(1)
+          if (in.isFunType) {
+            if (in.codomainType == o && in._funDomainType == out) true
+            else false
+          } else false
+        } else if (funTyArgs.size == 4) {
+          funTyArgs(0) == o && funTyArgs(1) == funTyArgs(2) && funTyArgs(2) == funTyArgs(3)
+        } else false
       } else false
     }
   }
