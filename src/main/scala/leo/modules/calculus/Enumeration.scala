@@ -77,7 +77,7 @@ object Enumeration extends CalculusRule {
   }
   @inline final def specialInstances(ty: Type, replace: Int = REPLACE_ALL)(implicit sig: Signature): Set[Term] = {
     import leo.modules.HOLSignature.{o, LitTrue, LitFalse, === => EQ, !=== => NEQ}
-    println(s"instances for type: ${ty.pretty(sig)}")
+
     var feasibleTableEntry: Seq[(Type, TypeSubst)] = Seq.empty
     val entryKeysIt = instanceTable.keysIterator
     while (entryKeysIt.hasNext) {
@@ -88,15 +88,12 @@ object Enumeration extends CalculusRule {
         feasibleTableEntry = feasibleTableEntry :+ (key, subst)
       }
     }
-    println(s"feasible: ${feasibleTableEntry.map(in => in._1.pretty(sig))}")
     var result: Set[Term] = Set.empty
 
     feasibleTableEntry foreach { case (key, uni) =>
       if (instanceTable.contains(key)) {
-        println(s"${key.pretty(sig)} in table")
         if (leo.datastructures.isPropSet(REPLACE_O, replace) || leo.datastructures.isPropSet(REPLACE_OO, replace) || leo.datastructures.isPropSet(REPLACE_OOO, replace)) {
           val tempresult = instanceTable(key).map(_.typeSubst(uni))
-          println(s"tempresult: ${tempresult.map(_.pretty(sig)).mkString(",")}")
           result = result union tempresult
         }
 

@@ -906,7 +906,6 @@ package inferenceControl {
         }
       } else if (isPropSet(REPLACE_SPECIAL, Configuration.PRE_PRIMSUBST_LEVEL)) {
         if (funTyArgs.size == 2) {
-          println(s"check ${ty.pretty}")
           val in = funTyArgs(0)
           val out = funTyArgs(1)
           if (in.isFunType) {
