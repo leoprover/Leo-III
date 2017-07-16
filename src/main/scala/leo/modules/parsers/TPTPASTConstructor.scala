@@ -486,7 +486,7 @@ object TPTPASTConstructor {
     } else if (ctx.thf_conditional() != null) {
       val condition  = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(0))
       val thn = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(1))
-      val els = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(1))
+      val els = thfLogicFormula(ctx.thf_conditional().thf_logic_formula(2))
       thf.Cond(condition, thn, els)
     } else if (ctx.thf_let() != null) {
       val binding = transformUnitaryLetBinding(ctx.thf_let().thf_unitary_formula())
