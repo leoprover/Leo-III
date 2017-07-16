@@ -72,7 +72,12 @@ object Enumeration extends CalculusRule {
         λ(o,o)(Not(y))
       ),
       (o ->: alpha ->: alpha ->: alpha) -> Set(ite_def),
-      ((alpha ->: o) ->: alpha) -> Set(Term.mkTypeApp(HOLChoice, alpha))
+      ((alpha ->: o) ->: alpha) -> Set(Term.mkTypeApp(HOLChoice, alpha),
+        λ(alpha ->: o)(Term.mkTermApp(Term.mkTypeApp(HOLChoice, alpha), Seq(λ(alpha)(Not(mkTermApp(mkBound(alpha ->: o, 2),Seq(
+          mkBound(alpha, 1)
+        )))
+        ))))
+      )
     )
   }
   @inline final def specialInstances(ty: Type, replace: Int = REPLACE_ALL)(implicit sig: Signature): Set[Term] = {
