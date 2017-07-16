@@ -25,10 +25,11 @@ final case class RunStrategy(name: String,
                              choice: Boolean,
                              renaming: Boolean,
                              funcspec: Boolean,
-                             domConstr : Int) extends Pretty {
+                             domConstr : Int,
+                             specialInstances: Int) extends Pretty {
   def pretty: String = s"strategy<name($name),share($share),primSubst($primSubst),sos($sos)," +
     s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
-    s"renaming($renaming),funcspec($funcspec), domConstr($domConstr)>"
+    s"renaming($renaming),funcspec($funcspec), domConstr($domConstr),specialInstances($specialInstances)>"
 
   def runStandandalone : Boolean = {
 //    primSubst >= 2
@@ -50,9 +51,10 @@ object RunStrategy {
       Configuration.UNIFICATION_DEPTH,
       Configuration.DEFAULT_BOOLEXT,
       Configuration.DEFAULT_CHOICE,
-      Configuration.DEFAULT_RENAMING,
-      Configuration.DEFAULT_FUNCSPEC,
-      Configuration.DEFAULT_DOMCONSTR)
+      Configuration.RENAMING_SET,
+      Configuration.FUNCSPEC,
+      Configuration.DEFAULT_DOMCONSTR,
+      Configuration.PRE_PRIMSUBST_LEVEL)
 
 
   final def byName(str: String): RunStrategy = str match {
@@ -87,7 +89,8 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s1b: RunStrategy = RunStrategy(
     name = "s1b",
@@ -100,7 +103,8 @@ object RunStrategy {
     choice = true,
     renaming =  false,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s2: RunStrategy = RunStrategy(
     name = "s2",
@@ -113,7 +117,8 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s3: RunStrategy = RunStrategy(
     name = "s3",
@@ -126,7 +131,8 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s3a: RunStrategy = RunStrategy(
     name = "s3a",
@@ -139,7 +145,8 @@ object RunStrategy {
     choice = false,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s3b: RunStrategy = RunStrategy(
     name = "s3b",
@@ -152,7 +159,8 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s3bb: RunStrategy = RunStrategy(
     name = "s3bb",
@@ -165,7 +173,8 @@ object RunStrategy {
     choice = false,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s4: RunStrategy = RunStrategy(
     name = "s4",
@@ -178,7 +187,8 @@ object RunStrategy {
     choice = true,
     renaming = false,
     funcspec = true,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 
   def s5a : RunStrategy = RunStrategy (
     name = "s5a",
@@ -191,7 +201,8 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
-    domConstr = -1
+    domConstr = -1,
+    specialInstances = -1
   )
 
   def s5b: RunStrategy = RunStrategy(
@@ -205,7 +216,8 @@ object RunStrategy {
     choice = true,
     renaming =  false,
     funcspec = false,
-    domConstr = -1)
+    domConstr = -1,
+    specialInstances = -1)
 
   def s5c: RunStrategy = RunStrategy(
     name = "s5c",
@@ -218,7 +230,8 @@ object RunStrategy {
     choice = true,
     renaming =  true,
     funcspec = false,
-    domConstr = -1)
+    domConstr = -1,
+    specialInstances = -1)
 
   def s6: RunStrategy = RunStrategy(
     name = "s6",
@@ -231,6 +244,7 @@ object RunStrategy {
     choice = false,
     renaming =  true,
     funcspec = false,
-    domConstr = 0)
+    domConstr = 0,
+    specialInstances = -1)
 }
 

@@ -37,7 +37,7 @@ object Control {
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
-  @inline final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(sig)
+  @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
   // AC detection
   @inline final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
   // Choice
@@ -745,9 +745,11 @@ package inferenceControl {
 
   protected[modules] object SpecialInstantiationControl {
     import leo.modules.calculus.Enumeration._
-    import leo.Configuration.{PRE_PRIMSUBST_LEVEL => LEVEL, PRE_PRIMSUBST_MAX_DEPTH => MAXDEPTH}
+    import leo.Configuration.{PRE_PRIMSUBST_MAX_DEPTH => MAXDEPTH}
 
-    final def specialInstances(cl: AnnotatedClause)(implicit sig: Signature): Set[AnnotatedClause] = {
+    final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+      implicit val sig = state.signature
+      val LEVEL = state.runStrategy.specialInstances
       if (LEVEL != NO_REPLACE) {
         leo.Out.trace("[Special Instances] Searching ...")
         val clause = cl.cl
@@ -755,7 +757,7 @@ package inferenceControl {
         val lit = clause.lits.head
         assert(!lit.equational)
         val term = lit.left
-        val instancesResult = instantiateTerm(term, lit.polarity, 0)(sig)
+        val instancesResult = instantiateTerm(term, lit.polarity, 0)(state)
         val result = instancesResult.map (r =>
           if (r == term)
             cl
@@ -770,7 +772,7 @@ package inferenceControl {
       } else Set(cl)
     }
 
-    final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(sig: Signature): Set[Term] = {
+    final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(state: LocalState): Set[Term] = {
       import leo.datastructures.Term._
       import leo.modules.HOLSignature.{Forall, Exists, Not, Impl, &, |||}
 
@@ -779,11 +781,11 @@ package inferenceControl {
       else {
         t match {
           case Not(body) =>
-            val erg = instantiateTerm(body, !polarity, depth+1)(sig)
+            val erg = instantiateTerm(body, !polarity, depth+1)(state)
             erg.map(e => Not(e))
           case &(l,r) =>
-            val ergL = instantiateTerm(l, polarity, depth+1)(sig)
-            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            val ergL = instantiateTerm(l, polarity, depth+1)(state)
+            val ergR = instantiateTerm(r, polarity, depth+1)(state)
             var result: Set[Term] = Set()
             val ergLIt = ergL.iterator
             while (ergLIt.hasNext) {
@@ -797,8 +799,8 @@ package inferenceControl {
             }
             result
           case |||(l,r) =>
-            val ergL = instantiateTerm(l, polarity, depth+1)(sig)
-            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            val ergL = instantiateTerm(l, polarity, depth+1)(state)
+            val ergR = instantiateTerm(r, polarity, depth+1)(state)
             var result: Set[Term] = Set()
             val ergLIt = ergL.iterator
             while (ergLIt.hasNext) {
@@ -812,8 +814,8 @@ package inferenceControl {
             }
             result
           case Impl(l,r) =>
-            val ergL = instantiateTerm(l, !polarity, depth+1)(sig)
-            val ergR = instantiateTerm(r, polarity, depth+1)(sig)
+            val ergL = instantiateTerm(l, !polarity, depth+1)(state)
+            val ergR = instantiateTerm(r, polarity, depth+1)(state)
             var result: Set[Term] = Set()
             val ergLIt = ergL.iterator
             while (ergLIt.hasNext) {
@@ -826,46 +828,28 @@ package inferenceControl {
               }
             }
             result
-          case Forall(all@(ty :::> _)) if polarity && shouldReplace(ty) =>
-            val r = instantiateAbstractions(all, ty)(sig)
-            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+          case Forall(all@(ty :::> _)) if polarity && shouldReplace(ty, state.runStrategy.specialInstances) =>
+            val r = instantiateAbstractions(all, ty)(state)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(state))
             if (Enumeration.exhaustive(ty))
               r2
             else
               r2 + t
-          case Exists(all@(ty :::> _)) if !polarity && shouldReplace(ty) =>
-            val r = instantiateAbstractions(all, ty)(sig)
-            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(sig))
+          case Exists(all@(ty :::> _)) if !polarity && shouldReplace(ty, state.runStrategy.specialInstances) =>
+            val r = instantiateAbstractions(all, ty)(state)
+            val r2 = r.flatMap(rr => instantiateTerm(rr, polarity, depth+1)(state))
             if (Enumeration.exhaustive(ty))
               r2
             else
               r2 + t
-//          case hd ∙ args  =>
-//            val argsIt = args.iterator
-//            var newArgs: Set[Seq[Either[Term, Type]]] = Set(Vector())
-//            while (argsIt.hasNext) {
-//              val arg = argsIt.next()
-//              if (arg.isRight) {
-//                newArgs = newArgs.map(seq => seq :+ arg)
-//              } else {
-//                val termArg = arg.left.get
-//                val erg = instantiateTerm(termArg, polarity, depth+1)(sig)
-//                newArgs = newArgs.flatMap(seq => erg.map(e => seq :+ Left(e)))
-//              }
-//            }
-//            newArgs.map(erg => Term.mkApp(hd, erg))
-//          case ty :::> body =>
-//            val erg = instantiateTerm(body, polarity, depth+1)(sig)
-//            erg.map(e => Term.mkTermAbs(ty, e))
-//          case TypeLambda(body) =>
-//            val erg = instantiateTerm(body, polarity, depth+1)(sig)
-//            erg.map(e => Term.mkTypeAbs(e))
           case _ => Set(t)
         }
       }
     }
 
-    private final def instantiateAbstractions(term: Term, ty: Type)(sig: Signature): Set[Term] = {
+    private final def instantiateAbstractions(term: Term, ty: Type)(state: LocalState): Set[Term] = {
+      implicit val sig = state.signature
+      val LEVEL = state.runStrategy.specialInstances
       assert(term.ty.isFunType)
       leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
       leo.Out.finest(s"[Special Instances]: REPLACE_O: ${isPropSet(REPLACE_O,LEVEL)}")
@@ -873,7 +857,7 @@ package inferenceControl {
       leo.Out.finest(s"[Special Instances]: REPLACE_OOO: ${isPropSet(REPLACE_OOO,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_AO: ${isPropSet(REPLACE_AO,LEVEL)}")
       leo.Out.finest(s"[Special Instances]: REPLACE_AAO: ${isPropSet(REPLACE_AAO,LEVEL)}")
-      if (shouldReplace(ty)) {
+      if (shouldReplace(ty, LEVEL)) {
         leo.Out.finest(s"[Special Instances]: Should apply.")
         val instances = Enumeration.specialInstances(ty, LEVEL)(sig)
         if (instances.nonEmpty) {
@@ -883,34 +867,40 @@ package inferenceControl {
       } else Set()
     }
 
-    private final def shouldReplace(ty: Type): Boolean = {
+    private final def shouldReplace(ty: Type, LEVEL: Int): Boolean = {
       import leo.modules.HOLSignature.o
       import leo.modules.calculus.Enumeration._
 
       val funTyArgs = ty.funParamTypesWithResultType
       if (funTyArgs.last == o) {
-        if (funTyArgs.size == 1) isPropSet(REPLACE_O, Configuration.PRE_PRIMSUBST_LEVEL) // Booleans
+        if (funTyArgs.size == 1) isPropSet(REPLACE_O, LEVEL) // Booleans
         else {
           // funTyArgs.size > 1
-          if (funTyArgs.size == 2 && funTyArgs.head == o) isPropSet(REPLACE_OO, Configuration.PRE_PRIMSUBST_LEVEL)
-          else if (funTyArgs.size == 3 && funTyArgs.head == o && funTyArgs.tail.head == o) isPropSet(REPLACE_OOO, Configuration.PRE_PRIMSUBST_LEVEL)
+          if (funTyArgs.size == 2 && funTyArgs.head == o) isPropSet(REPLACE_OO, LEVEL)
+          else if (funTyArgs.size == 3 && funTyArgs.head == o && funTyArgs.tail.head == o) isPropSet(REPLACE_OOO, LEVEL)
           else {
-            if (isPropSet(REPLACE_AO, Configuration.PRE_PRIMSUBST_LEVEL)) true
+            if (isPropSet(REPLACE_AO, LEVEL)) true
             else {
               if (funTyArgs.size == 3) {
                 val ty1 = funTyArgs.head; val ty2 = funTyArgs.tail.head
-                (ty1 == ty2) && isPropSet(REPLACE_AAO,Configuration.PRE_PRIMSUBST_LEVEL)
+                (ty1 == ty2) && isPropSet(REPLACE_AAO,LEVEL)
               } else false
             }
           }
         }
-      } else if (isPropSet(REPLACE_SPECIAL, Configuration.PRE_PRIMSUBST_LEVEL)) {
+      } else if (isPropSet(REPLACE_SPECIAL, LEVEL)) {
         if (funTyArgs.size == 2) {
           val in = funTyArgs(0)
           val out = funTyArgs(1)
           if (in.isFunType) {
-            if (in.codomainType == o && in._funDomainType == out) true
-            else false
+            val inTyArgs = in.funParamTypesWithResultType
+            if (inTyArgs.size ==2) in.codomainType == o && in._funDomainType == out
+            else if (inTyArgs.size == 3) {
+              val in0 = inTyArgs(0)
+              val in1 = inTyArgs(1)
+              val outout = inTyArgs(2)
+              outout == o && ((in0 == out) || (in1 == out))
+            } else false
           } else false
         } else if (funTyArgs.size == 4) {
           funTyArgs(0) == o && funTyArgs(1) == funTyArgs(2) && funTyArgs(2) == funTyArgs(3)

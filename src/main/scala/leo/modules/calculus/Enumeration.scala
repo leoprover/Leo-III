@@ -3,7 +3,7 @@ package leo.modules.calculus
 import leo.datastructures.Term.{mkApp, mkBound, mkTermApp, λ}
 import leo.datastructures.{Signature, Term, Type}
 import leo.modules.output.SZS_Theorem
-import leo.modules.HOLSignature.{o,Choice => HOLChoice, &, Impl, Not, ===}
+import leo.modules.HOLSignature.{o,Choice => HOLChoice, &, Impl, Not, ===, Exists}
 
 /**
   * Enumerates some (special) instances for universal variables.
@@ -47,6 +47,7 @@ object Enumeration extends CalculusRule {
     val x = mkBound(o, 1)
     val y = mkBound(o, 2)
     val alpha = Type.mkVarType(1)
+    val beta = Type.mkVarType(2)
     Map(
       o -> Set(LitTrue(), LitFalse()),
       (o ->: o) -> Set(λ(o)(LitTrue()),λ(o)(LitFalse()),λ(o)(x),λ(o)(Not(x))),
@@ -77,7 +78,43 @@ object Enumeration extends CalculusRule {
           mkBound(alpha, 1)
         )))
         ))))
-      )
+      ) //,
+//      ((alpha ->: beta ->: o) ->: alpha) -> Set(
+//        λ(alpha ->: beta ->: o)(
+//          mkTermApp(Term.mkTypeApp(HOLChoice, alpha),
+//            Seq(
+//              λ(alpha)(
+//                Exists(
+//                  λ(alpha ->: beta)(
+//                    mkTermApp(
+//                      mkBound(alpha ->: beta ->: o, 3),
+//                      Seq(mkBound(alpha, 2), mkTermApp(mkBound(alpha ->: beta, 1), mkBound(alpha, 2)))
+//                    )
+//                  )
+//                )
+//              )
+//            )
+//          )
+//        )
+//      ),
+//      ((alpha ->: beta ->: o) ->: beta) -> Set(
+//        λ(alpha ->: beta ->: o)(
+//          mkTermApp(Term.mkTypeApp(HOLChoice, beta),
+//            Seq(
+//              λ(beta)(
+//                Exists(
+//                  λ(beta ->: alpha)(
+//                    mkTermApp(
+//                      mkBound(alpha ->: beta ->: o, 3),
+//                      Seq(mkTermApp(mkBound(beta ->: alpha, 1), mkBound(beta,2)), mkBound(beta, 2))
+//                    )
+//                  )
+//                )
+//              )
+//            )
+//          )
+//        )
+//      )
     )
   }
   @inline final def specialInstances(ty: Type, replace: Int = REPLACE_ALL)(implicit sig: Signature): Set[Term] = {
@@ -101,30 +138,26 @@ object Enumeration extends CalculusRule {
           val tempresult = instanceTable(key).map(_.typeSubst(uni))
           result = result union tempresult
         }
-
       }
-      else {
-        import leo.datastructures.Term._
-        val tyArgTypes = key.funParamTypesWithResultType
-//        var result: Set[Term] = Set()
-        if (tyArgTypes.last == o) { // predicate
-          if (leo.datastructures.isPropSet(REPLACE_AO, replace))
-            result = result union Set(λ(tyArgTypes.init)(LitTrue()),λ(tyArgTypes.init)(LitFalse()))
-          if (tyArgTypes.size == 3) { // equality only for a > a > o
-          val ty1 = tyArgTypes.head; val ty2 = tyArgTypes.tail.head
-            if (ty1 == ty2) {
-              if (leo.datastructures.isPropSet(REPLACE_AAO, replace))
-                result = result union Set(
-                  λ(ty1, ty2)(EQ(mkBound(ty1, 2),mkBound(ty1, 1))),
-                  λ(ty1, ty2)(NEQ(mkBound(ty1, 2),mkBound(ty1, 1))))
-            }
-          }
+    }
+       
+    import leo.datastructures.Term._
+    val tyArgTypes = ty.funParamTypesWithResultType
+    if (tyArgTypes.last == o) { // predicate
+      if (leo.datastructures.isPropSet(REPLACE_AO, replace))
+        result = result union Set(λ(tyArgTypes.init)(LitTrue()),λ(tyArgTypes.init)(LitFalse()))
+      if (tyArgTypes.size == 3) { // equality only for a > a > o
+      val ty1 = tyArgTypes.head; val ty2 = tyArgTypes.tail.head
+        if (ty1 == ty2) {
+          if (leo.datastructures.isPropSet(REPLACE_AAO, replace))
+            result = result union Set(
+              λ(ty1, ty2)(EQ(mkBound(ty1, 2),mkBound(ty1, 1))),
+              λ(ty1, ty2)(NEQ(mkBound(ty1, 2),mkBound(ty1, 1))))
         }
       }
     }
+
     result
-
-
   }
 
   private final lazy val exhaustiveList: Seq[Type] = Seq(o, o ->: o, o ->: o ->: o)
