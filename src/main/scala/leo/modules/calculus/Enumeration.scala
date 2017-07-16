@@ -140,7 +140,7 @@ object Enumeration extends CalculusRule {
         }
       }
     }
-       
+
     import leo.datastructures.Term._
     val tyArgTypes = ty.funParamTypesWithResultType
     if (tyArgTypes.last == o) { // predicate
