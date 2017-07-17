@@ -2245,12 +2245,16 @@ package schedulingControl {
             remainingTime = remainingTime - proportionalTimeOfStrategy
             shareSum = shareSum + strategy.share
           } else {
-            // distribute remaining time
-            val remainingTime0 = remainingTime
-            result = result.map {case (s,time) =>
-              val extraTime = (remainingTime0 * (s.share / shareSum)).floor.toInt
-              (s, time+extraTime)
-            }
+	    if (result.isEmpty) {
+	       Iterable((strategy, remainingTime))
+	    } else {
+              // distribute remaining time
+              val remainingTime0 = remainingTime
+              result = result.map {case (s,time) =>
+              	  val extraTime = (remainingTime0 * (s.share / shareSum)).floor.toInt
+              	  (s, time+extraTime)
+              }
+	    }
           }
         }
         Iterable(result:_*)
