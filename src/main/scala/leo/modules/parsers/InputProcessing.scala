@@ -310,6 +310,7 @@ object InputProcessing {
           val elseType = convertedElse.ty
           if (thenType == elseType) {
             if (conditionType == o) {
+//              IF_THEN_ELSE(convertedCondition, convertedThen, convertedElse)
               import leo.datastructures.Term.{λ, mkBound}
               import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
               Choice(λ(thenType)(&(Impl(convertedCondition, ===(mkBound(thenType, 1), convertedThen)),

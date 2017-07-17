@@ -81,7 +81,7 @@ class PreprocessRule(inType : DataType[AnnotatedClause],
     // some universal quantification may vanish after extensional instantiation
     // Run simp here again to eliminate connectives with true/false as operand due
     // to ext. instantiation.
-    result = Control.specialInstances(polarityswitchedAndExpanded)
+    result = Control.specialInstances(polarityswitchedAndExpanded)(state)
 
     result = result.flatMap { cl =>
       Control.cnf(Control.miniscope(cl))

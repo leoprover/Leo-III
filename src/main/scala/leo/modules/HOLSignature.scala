@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.datastructures.{Term, Type, Signature, Kind}
-import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ,Symbol,∙}
+import Term.{intToBoundVar, intsToBoundVar, mkApp, mkAtom, mkTermAbs, mkTermApp, Λ,Symbol,∙, λ, mkBound}
 import Kind.{superKind, * => typeKind}
 import Type.typeVarToType
 
@@ -82,6 +82,7 @@ object HOLSignature {
   private final val norKey = nandKey + 1
   private final val niffKey = norKey + 1
   private final val neqKey = niffKey + 1
+//  private final val iteKey = neqKey + 1
 
   /** The last id that was used by predefined HOL symbols. Keep up to date! */
   val lastId: Int = neqKey
@@ -109,6 +110,8 @@ object HOLSignature {
   private final val impl = mkAtom(implKey, Impl.ty)
   private final val lpmi = mkAtom(ifKey, <=.ty)
   private final val eq = mkAtom(eqKey, ===.ty)
+  private final val choice = mkAtom(choiceKey, Choice.ty)
+  private final def and = mkAtom(andKey, &.ty)
 
   // Definitions for default symbols
   protected def existsDef: Term = Λ(
@@ -176,6 +179,33 @@ object HOLSignature {
             mkTermApp(Term.mkTypeApp(eq, 1),
               (2, 1)),
             (1, 1))))))
+
+  protected def iteDef: Term = Λ(
+    λ(o,1,1)(
+      mkApp(choice, Seq(Right(1), Left(
+        λ(1)(
+          mkTermApp(and, Seq(
+            mkTermApp(impl, Seq(
+              mkBound(o,4),
+              mkApp(eq, Seq(
+                Right(1),
+                Left(mkBound(1,1)),
+                Left(mkBound(1,3))
+              ))
+            )),
+            mkTermApp(impl, Seq(
+              mkTermApp(not, mkBound(o,4)),
+              mkApp(eq, Seq(
+                Right(1),
+                Left(mkBound(1,1)),
+                Left(mkBound(1,2))
+              ))
+            ))
+          ))
+        )
+      )))
+    )
+  )
 
   /** Trait for binary connectives of HOL. They can be used as object representation of defined/fixed symbols. */
   trait HOLBinaryConnective extends Function2[Term, Term, Term] {
@@ -369,7 +399,9 @@ object HOLSignature {
     val key = iteKey
     val ty = forall(o ->: 1 ->: 1 ->: 1)
 
-    override def apply(cond: Term, thn: Term, els: Term): Term = mkApp(mkAtom(key,ty), Vector(Right(thn.ty), Left(cond), Left(thn), Left(els)))
+    override def apply(cond: Term, thn: Term, els: Term): Term = {
+      mkApp(mkAtom(key,ty), Vector(Right(thn.ty), Left(cond), Left(thn), Left(els)))
+    }
 
     def unapply(t: Term): Option[(Term,Term, Term)] = t match {
       case (Symbol(`key`) ∙ Seq(Right(_), Left(t1), Left(t2), Left(t3))) => Some((t1,t2,t3))
@@ -417,8 +449,8 @@ object HOLSignature {
     ("!", Forall.ty, multProp),
     ("|", |||.ty, multProp | ac),
     ("=", ===.ty, multProp | c),
-    ("$$let", forall(forall(2 ->: 1 ->: 1)), multProp),
-    ("$$ite", IF_THEN_ELSE.ty, multProp),
+    ("$let", forall(forall(2 ->: 1 ->: 1)), multProp),
+    ("$ite", IF_THEN_ELSE.ty, multProp),
     /*("$less", HOLLess.ty, lexProp),
     ("$lesseq", HOLLessEq.ty, lexProp),
     ("$greater", HOLGreater.ty, lexProp),
@@ -459,7 +491,9 @@ object HOLSignature {
     ("~&", nandDef, ~&.ty, multProp),
     ("~|", norDef, ~|||.ty, multProp),
     ("<~>", niffDef, <~>.ty, multProp),
-    ("!=", neqDef, !===.ty, multProp))
+    ("!=", neqDef, !===.ty, multProp) //,
+//    ("$$ite", iteDef, IF_THEN_ELSE.ty, multProp)
+  )
 
 
   //////////////////////
