@@ -40,11 +40,12 @@ object HOLSignature {
   private final val orKey = forallKey + 1
   private final val eqKey = orKey + 1
   private final val letKey = eqKey + 1
+  private final val iteKey = letKey + 1
  /* private final val lessKey = iteKey + 1
   private final val lessEqKey = lessKey + 1
   private final val greaterKey = lessEqKey + 1
   private final val greaterEqKey = greaterKey + 1*/
-  private final val choiceKey = letKey + 1
+  private final val choiceKey = iteKey + 1
   private final val descKey = choiceKey + 1
 
   // TODO: Arithmetic symbols not used for now
@@ -81,10 +82,10 @@ object HOLSignature {
   private final val norKey = nandKey + 1
   private final val niffKey = norKey + 1
   private final val neqKey = niffKey + 1
-  private final val iteKey = neqKey + 1
+//  private final val iteKey = neqKey + 1
 
   /** The last id that was used by predefined HOL symbols. Keep up to date! */
-  val lastId: Int = iteKey
+  val lastId: Int = neqKey
 
   final val o: Type = Type.mkType(oKey)
   final val i: Type = Type.mkType(iKey)
@@ -448,7 +449,8 @@ object HOLSignature {
     ("!", Forall.ty, multProp),
     ("|", |||.ty, multProp | ac),
     ("=", ===.ty, multProp | c),
-    ("$$let", forall(forall(2 ->: 1 ->: 1)), multProp),
+    ("$let", forall(forall(2 ->: 1 ->: 1)), multProp),
+    ("$ite", IF_THEN_ELSE.ty, multProp),
     /*("$less", HOLLess.ty, lexProp),
     ("$lesseq", HOLLessEq.ty, lexProp),
     ("$greater", HOLGreater.ty, lexProp),
@@ -489,8 +491,9 @@ object HOLSignature {
     ("~&", nandDef, ~&.ty, multProp),
     ("~|", norDef, ~|||.ty, multProp),
     ("<~>", niffDef, <~>.ty, multProp),
-    ("!=", neqDef, !===.ty, multProp),
-    ("$$ite", iteDef, IF_THEN_ELSE.ty, multProp))
+    ("!=", neqDef, !===.ty, multProp) //,
+//    ("$$ite", iteDef, IF_THEN_ELSE.ty, multProp)
+  )
 
 
   //////////////////////

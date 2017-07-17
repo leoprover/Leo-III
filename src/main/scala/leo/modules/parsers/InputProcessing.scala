@@ -310,11 +310,11 @@ object InputProcessing {
           val elseType = convertedElse.ty
           if (thenType == elseType) {
             if (conditionType == o) {
-              IF_THEN_ELSE(convertedCondition, convertedThen, convertedElse)
-//              import leo.datastructures.Term.{λ, mkBound}
-//              import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
-//              Choice(λ(thenType)(&(Impl(convertedCondition, ===(mkBound(thenType, 1), convertedThen)),
-//                Impl(Not(convertedCondition), ===(mkBound(thenType, 1), convertedElse)))))
+//              IF_THEN_ELSE(convertedCondition, convertedThen, convertedElse)
+              import leo.datastructures.Term.{λ, mkBound}
+              import leo.modules.HOLSignature.{Choice, Impl, &, Not, ===}
+              Choice(λ(thenType)(&(Impl(convertedCondition, ===(mkBound(thenType, 1), convertedThen)),
+                Impl(Not(convertedCondition), ===(mkBound(thenType, 1), convertedElse)))))
             } else throw new SZSException(SZS_TypeError, "Condition in IF-THEN-ElSE is not Boolean typed.")
           } else throw new SZSException(SZS_TypeError, "THEN and ELSE case types do not match in IF-THEN-ELSE")
         } catch {

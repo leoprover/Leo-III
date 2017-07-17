@@ -101,11 +101,11 @@ object RunStrategy {
     unifierCount = 1,
     uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
     boolExt = true,
-    choice = true,
+    choice = false,
     renaming =  true,
     funcspec = false,
     domConstr = 0,
-    specialInstances = 3)
+    specialInstances = 31)
 
   def s1b: RunStrategy = RunStrategy(
     name = "s1b",
@@ -179,7 +179,7 @@ object RunStrategy {
 
   def s3bb: RunStrategy = RunStrategy(
     name = "s3bb",
-    share = 0.4f,
+    share = 0.5f,
     primSubst = 3,
     sos = true,
     unifierCount = 3,
