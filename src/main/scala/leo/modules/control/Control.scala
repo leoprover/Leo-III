@@ -2246,7 +2246,7 @@ package schedulingControl {
             shareSum = shareSum + strategy.share
           } else {
 	    if (result.isEmpty) {
-	       Iterable((strategy, remainingTime))
+	       return Iterable((strategy, remainingTime))
 	    } else {
               // distribute remaining time
               val remainingTime0 = remainingTime
