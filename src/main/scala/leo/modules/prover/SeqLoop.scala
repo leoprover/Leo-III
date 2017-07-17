@@ -5,7 +5,6 @@ import leo.datastructures._
 import leo.modules.SZSOutput
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
-import leo.modules.external.PrivateThreadPoolTranslationImpl
 import leo.modules.output._
 import leo.modules.parsers.Input
 import leo.modules.proof_object.CompressProof
@@ -477,7 +476,7 @@ object SeqLoop {
     /////////////////////////////////////////
     // All finished, print result
     /////////////////////////////////////////
-    import leo.modules.{proofOf, axiomsInProof, userSignatureToTPTP, symbolsInProof, compressedProofOf, proofToTPTP, userDefinedSignatureAsString}
+    import leo.modules.{axiomsInProof, userSignatureToTPTP, symbolsInProof, compressedProofOf, proofToTPTP, userDefinedSignatureAsString}
 
     val time = System.currentTimeMillis() - startTime
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
@@ -489,8 +488,7 @@ object SeqLoop {
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
-    //      Out.comment(s"Thereof preprocessing: ${preprocessTime}ms")
-    val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
+    val proof = state.proof
     if (proof != null)
       Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
     Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
@@ -536,7 +534,7 @@ object SeqLoop {
     Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
 
     /* Print proof object if possible and requested. */
-    if ((state.szsStatus == SZS_Theorem || state.szsStatus == SZS_Unsatisfiable) && Configuration.PROOF_OBJECT && proof != null) {
+    if (Configuration.PROOF_OBJECT && proof != null) {
       Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
       Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
       if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
@@ -546,9 +544,16 @@ object SeqLoop {
   }
 
   @inline final private def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
-    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
-    else state.setSZSStatus(SZS_Theorem)
+    import leo.modules.{proofOf, conjInProof}
     state.setDerivationClause(emptyClause)
+    val proof = proofOf(emptyClause)
+    state.setProof(proof)
+
+    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    else {
+      if (conjInProof(proof)) state.setSZSStatus(SZS_Theorem)
+      else state.setSZSStatus(SZS_ContradictoryAxioms)
+    }
   }
 
   final private def endgameAnswer(result: StatusSZS): Boolean = {
