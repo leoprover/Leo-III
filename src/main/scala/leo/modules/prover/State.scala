@@ -1,7 +1,7 @@
 package leo.modules.prover
 
 import leo.datastructures._
-import leo.modules.{FVState, FVStateImpl, GeneralState}
+import leo.modules.{FVState, FVStateImpl, GeneralState, Proof}
 import leo.modules.external.{Future, TptpProver, TptpResult}
 import leo.modules.prover.State.LastCallStat
 
@@ -19,6 +19,9 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def processed: Set[T]
   def addProcessed(cl: T): Unit
   def removeProcessed(cls: Set[T]): Unit
+
+  def proof: Proof
+  def setProof(proof: Proof): Unit
 
   def rewriteRules: Set[T]
   def addRewriteRule(cl: T): Unit
@@ -108,6 +111,11 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private var queuedTranslations : Int = 0
   private var extCallStat: LastCallStat[T] = _
   private var queuedExtCalls0: Map[TptpProver[T], Vector[Set[T]]] = Map.empty
+
+  private var proof0: Proof = _
+
+  def proof: Proof = proof0
+  def setProof(proof: Proof): Unit = {proof0 = proof}
 
   def openExtCalls: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = openExtCalls0
   def lastCall: LastCallStat[T] = extCallStat

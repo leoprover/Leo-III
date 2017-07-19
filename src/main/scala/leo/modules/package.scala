@@ -190,6 +190,10 @@ package object modules {
     p.filter(_.role == Role_Axiom).toSet
   }
 
+  final def conjInProof(p: Proof): Boolean = {
+    p.exists(_.role == Role_Conjecture)
+  }
+
 
   /////////////////////////////////////////////////////////////
   /// Other stuff.

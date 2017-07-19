@@ -1,0 +1,3 @@
+#!/bin/bash
+
+java -Xss32m -Xmx1g -jar leo3.jar $@
