@@ -2,8 +2,8 @@ Leo-III 1.1
 ========
 *An automated theorem prover for classical higher-order logic (with choice)*
 
-Leo-III is an automated theorem prover for (polymorphic) higher-order logic which supports all common TPTP dialects, including THF, TFF and FOF as well as their rank-1 polymorphic derivatives  [BP13,KRS16]. 
-It is based on a paramodulation calculus with ordering constraints and, in tradition of its predecessor LEO-II, heavily relies on cooperation with external (mostly first-order) theorem provers for increased performance. Nevertheless, Leo-III can also be used as a stand-alone prover without employing any external cooperation.
+Leo-III [SWB16] is an automated theorem prover for (polymorphic) higher-order logic which supports all common TPTP dialects, including THF, TFF and FOF as well as their rank-1 polymorphic derivatives. 
+It is based on a paramodulation calculus with ordering constraints and, in tradition of its predecessor LEO-II [BP15], heavily relies on cooperation with external (mostly first-order) theorem provers for increased performance. Nevertheless, Leo-III can also be used as a stand-alone prover without employing any external cooperation.
 
 Leo-III is developed at Freie Universität Berlin as part of the German National Research Foundation (DFG) project BE 2501/11-1. The main contributors are (sorted alphabetically): Christoph Benzmüller, Tomer Libal, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
 
@@ -85,7 +85,7 @@ A call to a problem `someproblem.p`, assumed to be located at the current direct
 > ./leo someproblem.p
 % SZS status Theorem for someproblem.p : 3651 ms resp. 1253 ms w/o parsing
 ```
-Of course, depending on the problem, Leo-III could also output `Timeout`, `Unknown`, `SyntaxError` and others, according to the SZS status ontology [...]
+Of course, depending on the problem, Leo-III could also output `Timeout`, `Unknown`, `SyntaxError` and others, according to the [SZS status ontology](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology) [Sut08]
 
 ##### Important parameters
 
@@ -95,9 +95,12 @@ The most important parameters are
 
 | Parameter flag  | Effect |
 | ------------- | ------------- |
-| -p  | Output a refutation proof, if one was found  |
-| -t `s`  | Set the timeout to `s` seconds, meaning that Leo-III will try to proof the problem and return `SZS_Timeout` if not successful after approximately `s`  seconds|
-| --atp `system` | Use `system` for external cooperation. See further below. |
+| -p  | Output a refutation proof, if one was found <br><br> Default: false (not set) |
+| -t `s`  | Set the timeout to `s` seconds, meaning that Leo-III will try to proof the problem and return `SZS_Timeout` if not successful after approximately `s`  seconds <br><br> Default value: 60<br>Valid values: non-negative numbers|
+| --atp `system` | Use `system` for external cooperation. See further below. <br><br> Default: none set <br> Valid values: See "External cooperation" below.|
+| --primsubst `level` | Use the "itensity" `level` for instantiating flexible heads according to the primitive substitution rule <br><br> Default: 1<br>Valid values: 1-6 |
+| --unifiers `n` | During unification, use at most `n` distinct unifiers<br> <br> Default: 1<br> Valud values: non-negative numbers |
+| --unidepth `n` | During unification, use `n` as maximal unification search depth <br><br>Default: 8<br>Valid values: Non-negative numbers
 
 There are many more parameters, we will add them here some time in the future.
 
@@ -152,16 +155,22 @@ The lines between `% SZS output begin CNFRefutation` and `% SZS output end CNFRe
 You can always try to verify the proof using [IDV](http://www.cs.miami.edu/~tptp/Seminars/IDV/Summary.html) which should succeed at least for simple problems.
 
 #### Enabling external cooperation
-asd
 
-#### Examples 2
+Leo-III heavily relies on cooperation with (first-order) provers. Currently, Leo-III can cooperate with TPTP-compatible provers that support either THF or TFF syntax. At the moment, we implemented cooperation with LEO-II, Nitpick, CVC4, Alt-Ergo and Vampire.
 
-asd
+To enable the cooperation (here CVC4), simply add e.g.
+```
+./leo3 PROBLEM --atp cvc4=/path/to/cvc4
+```
+to the call. Similar for the remaining provers. If the executables of the respective provers can be found in the `$PATH`, one may omit the path specification:
+```
+./leo3 PROBLEM --atp cvc4
+```
 
 ## Further information
 Leo-III is licenced under the BSD 3-clause "New" or "Revised" License, see `LICENCE` in the source distribution.
 
-Further information including related projects, current publications etc, can be found on the [Leo-III web site](www.inf.fu-berlin.de/~lex/leo3).
+Further information including related projects, current publications etc, can be found on the [Leo-III web site](www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17].
 
 ## Contributing to the project
 
@@ -172,4 +181,17 @@ We are always greateful to hear feedback from our users:
 - If you are interested to contribute to the project, simply fork the GitHub repository and open pull requests!
 
 ## References
-tba
+
+[BP15] 	Christoph Benzmüller, Lawrence C. Paulson, Nik Sultana, Frank Theiß, The Higher-Order Prover LEO-II, In Journal of Automated Reasoning, volume 55, number 4, pp. 389-404, 2015.
+
+[BSW17] Christoph Benzmüller, Alexander Steen, Max Wisniewski Leo-III Version 1.1 (System description), In Thomas Eiter, David Sands, Geoff Sutcliffe and Andrei Voronkov (Eds.), IWIL Workshop and LPAR Short Presentations, EasyChair, Kalpa Publications in Computing, Volume 1, pp. 11-26, 2017.
+
+[SWB16] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Agent-Based HOL 		Reasoning. In 5th International Congress on Mathematical Software, ICMS 2016, Berlin, Germany, July 2016, Proceedings, Springer, LNCS, volume 9725. 2016.
+
+[Sut08] Sutcliffe G. (2008), The SZS Ontologies for Automated Reasoning Software, 
+    Rudnicki P., Sutcliffe G., Proceedings of the LPAR Workshops: Knowledge 
+    Exchange: Automated Provers and Proof Assistants, and The 7th International 
+    Workshop on the Implementation of Logics (Doha, Qattar), CEUR Workshop 
+    Proceedings 418, 38-49.
+    
+
