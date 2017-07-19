@@ -38,7 +38,7 @@ Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SB
 
 1) Download the source distribution and unpack the archive
     ```Shell
-    > wget https://github.com/cbenzmueller/Leo-III/archive/v1.1.tar.gz
+    > wget https://github.com/cbenzmueller/Leo-III/archive/v1.1b.tar.gz
     > tar -xzf Leo-III-1.1.tar.gz
     ```
 2) Step into the newly created directory and run `make`
