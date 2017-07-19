@@ -1,0 +1,23 @@
+The authors and contributors to Leo-III are listed below.
+
+The main developers are
+ * Christoph Benzmüller
+ * Alexander Steen
+ * Max Wisniewski
+ 
+with contributions from
+ * Tomer Libal
+ * Hans-jörg Schurr
+ 
+and many others.
+
+ 
+Leo-III contains PicoSat (http://fmv.jku.at/picosat/) by Armin Biere, Johannes Kepler University
+and others.
+
+Leo-III uses a C program by Geoff Sutcliffe <geoff@cs.miami.edu> called TreeLimitedRun 
+to limit the execution time of external provers.
+
+Leo-III uses the ANTLR parser generator tool and runtime by Terence Parr (and others),
+which is supplied under ./lib.
+
