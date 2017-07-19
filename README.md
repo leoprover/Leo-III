@@ -170,7 +170,7 @@ to the call. Similar for the remaining provers. If the executables of the respec
 ## Further information
 Leo-III is licenced under the BSD 3-clause "New" or "Revised" License, see `LICENCE` in the source distribution.
 
-Further information including related projects, current publications etc, can be found on the [Leo-III web site](www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17].
+Further information including related projects, current publications etc, can be found on the [Leo-III web site](http://www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17].
 
 ## Contributing to the project
 
