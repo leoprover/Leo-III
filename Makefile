@@ -9,10 +9,12 @@ TreeLimitedRun: $(CONTRIB)/TreeLimitedRun.c
 all: TreeLimitedRun
 		@echo Compiling auxiliary scripts ...
 		mv TreeLimitedRun ./src/main/resources/scripts/.
-		@echo Downloading picosat ...
-		curl http://fmv.jku.at/picosat/picosat-965.tar.gz | tar -C ./src/native -xz
+		@echo Unpacking picosat ...
+		tar -C ./src/native -xzf contrib/picosat-965.tar.gz
 		@echo Building Leo-III ...
 		sbt buildParser
 		sbt nativeCompile
 		sbt assembly
-  
+		mkdir bin -p
+		cp "target/Leo III-assembly-1.1.jar" bin/leo3.jar
+		cp ./src/main/resources/scripts/leo3 bin/leo3
