@@ -38,7 +38,7 @@ Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SB
 
 1) Download the source distribution and unpack the archive
     ```Shell
-    > wget https://github.com/cbenzmueller/Leo-III/archive/v1.1.tar.gz
+    > wget https://github.com/cbenzmueller/Leo-III/archive/v1.1b.tar.gz
     > tar -xzf Leo-III-1.1.tar.gz
     ```
 2) Step into the newly created directory and run `make`
@@ -170,7 +170,7 @@ to the call. Similar for the remaining provers. If the executables of the respec
 ## Further information
 Leo-III is licenced under the BSD 3-clause "New" or "Revised" License, see `LICENCE` in the source distribution.
 
-Further information including related projects, current publications etc, can be found on the [Leo-III web site](www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17].
+Further information including related projects, current publications etc, can be found on the [Leo-III web site](http://www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17].
 
 ## Contributing to the project
 
