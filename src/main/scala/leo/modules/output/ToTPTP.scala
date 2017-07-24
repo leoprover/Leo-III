@@ -222,11 +222,11 @@ object ToTPTP {
               case e: Exception => leo.Out.warn(s"Could not translate substitution entry to TPTP format, Exception raised:\n${e.toString}")
                 sb.append(s"bind($i, $$thf(${erg.pretty}))")
             }
-           if (i < max) sb.append(",")
+           sb.append(",")
           }
           i = i + 1
         }
-        sb.toString()
+        sb.init.toString()
       }
     }
   }
