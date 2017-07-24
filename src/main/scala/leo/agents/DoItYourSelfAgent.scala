@@ -11,14 +11,14 @@ case class DoItYourSelfMessage[T <: GeneralState[AnnotatedClause]](s : T) extend
 
 case object OpenState extends DataType[GeneralState[AnnotatedClause]]{
   override def convert(d: Any): GeneralState[AnnotatedClause] = d match {
-    case s : GeneralState[AnnotatedClause] => s
+    case s : GeneralState[AnnotatedClause] @unchecked => s
     case _ => throw new SZSException(SZS_Error, s"[OpenState] : Tried to cast to GeneralState :\n  $d")
   }
 }
 
 case object CompletedState extends DataType[GeneralState[AnnotatedClause]]{
   override def convert(d: Any): GeneralState[AnnotatedClause] = d match {
-    case s : GeneralState[AnnotatedClause] => s
+    case s : GeneralState[AnnotatedClause] @unchecked => s
     case _ => throw new SZSException(SZS_Error, s"[CompleteState] : Tried to cast to GeneralState :\n  $d")
   }
 }
@@ -43,7 +43,7 @@ class DoItYourSelfAgent[S <: GeneralState[AnnotatedClause]]
         var tasks : Seq[Task] = Seq()
         while(stateIt.hasNext){
           stateIt.next() match {
-            case s : S => tasks = new DoItYourSelfTask(s) +: tasks
+            case s : S @unchecked => tasks = new DoItYourSelfTask(s) +: tasks
             case _ => ()
           }
         }
@@ -60,14 +60,14 @@ class DoItYourSelfAgent[S <: GeneralState[AnnotatedClause]]
     * @param event - Newly added or updated formula
     */
   override def filter(event: Event): Iterable[Task] = event match {
-    case DoItYourSelfMessage(s : S) =>
+    case DoItYourSelfMessage(s : S @unchecked)  =>
         Seq(new DoItYourSelfTask(s))
     case r : Delta =>
       val newstates = r.inserts(OpenState).iterator
       var tasks : Seq[Task] = Nil
       while(newstates.hasNext){
         newstates.next() match {
-          case s : S => tasks = new DoItYourSelfTask(s) +: tasks
+          case s : S @unchecked => tasks = new DoItYourSelfTask(s) +: tasks
           case _ => ()
         }
       }
