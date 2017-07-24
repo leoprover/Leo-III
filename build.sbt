@@ -71,3 +71,8 @@ commands += assemblyCommand("debug", 0)
 //commands += compileCommand("prod", 1000)
 
 
+compile in Compile := {
+  val _ = buildParser.value
+  (compile in Compile).value
+}
+
