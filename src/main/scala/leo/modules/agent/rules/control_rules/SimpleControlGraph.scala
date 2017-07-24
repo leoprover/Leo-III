@@ -108,9 +108,9 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     preprocessSet = new TypedSet(Init)
 
     // Rules
-    select = new SelectionRule(Unprocessed, Normalize, selectNext, passiveSet,
+    select = new SelectionRule(Unprocessed, Normalize, () => selectNext(), passiveSet,  // TODO selectNext still working?
       Seq(Normalize, normalizeBarrier.lockType, generateBarrier.lockType, Processed, Unify, Done))
-    activateSelect = new ActiveRule[AnnotatedClause](select, Init)(startSelect)
+    activateSelect = new ActiveRule[AnnotatedClause](select, Init)(() => startSelect()) // TODO selectNext still working?
     simp = new RewriteRule(Normalize, Normalize, activeSet.get)
     lift = new LiftEqRule(Normalize, Normalize)
     func = new FuncExtRule(Normalize, Normalize)

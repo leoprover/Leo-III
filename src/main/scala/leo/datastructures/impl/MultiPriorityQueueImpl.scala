@@ -16,7 +16,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     def get: A = elem
     def clear(): Unit = {elem = null.asInstanceOf[A]}
     override def equals(o: Any) = o match {
-      case x:ObjectProxy => x.elem == elem
+      case x:ObjectProxy @unchecked => x.elem == elem
       case _ => false
     }
     override def hashCode: Int = if (elem == null) 0 else elem.hashCode()

@@ -99,8 +99,11 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
   private var sW : Thread = null
   private val workCount : AtomicInteger = new AtomicInteger(0)
 
-  protected val curExec : mutable.Set[Task] = new mutable.HashSet[Task] with mutable.SynchronizedSet[Task]
-
+  protected val curExec : mutable.Set[Task] = {
+    import scala.collection.JavaConverters._
+    java.util.Collections.newSetFromMap(
+      new java.util.concurrent.ConcurrentHashMap[Task, java.lang.Boolean]).asScala
+  }
   protected val freeThreads : mutable.Set[Thread] = new mutable.HashSet[Thread]()
 
   def openTasks : Int = synchronized(curExec.size)
