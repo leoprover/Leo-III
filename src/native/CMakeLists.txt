@@ -17,6 +17,8 @@ set(PROJECT_VERSION_PATCH 0)
 
 set(CMAKE_MACOSX_RPATH 1)
 
+set(ignoreMe "${SBT}")
+
 # Setup JNI
 find_package(JNI REQUIRED)
 if (JNI_FOUND)
