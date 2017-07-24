@@ -20,9 +20,9 @@ Leo-III requires the Java 1.8 Runtime (JRE) for execution. Leo-III works on any 
 
 A current release of Leo-III 1.1 can be downloaded from GitHub:
 
-> https://github.com/cbenzmueller/Leo-III/releases/download/v1.1/Leo.III-assembly-1.1.jar
+> https://github.com/cbenzmueller/Leo-III/releases/download/v1.1b/leo3.jar
 
-Note that this binary was built on a Debian-based system and might not work for any Linux derivatives.
+Note that this binary was built on a Debian-based system and might not work for all Linux derivatives.
 
 #### Requirements for building from source
 
@@ -42,13 +42,13 @@ Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SB
     > tar -xzf Leo-III-1.1.tar.gz
     ```
 2) Step into the newly created directory and run `make`
-   ```
+   ```Shell
    > cd Leo-III-1.1/
    > make
    ```
    The building process might take some time, depending on your computer.
 3) If no error occurred, you should find a `bin` directory at top-level:
-   ```
+   ```Shell
    > cd bin/
    > ls
    leo leo3.jar
@@ -69,7 +69,7 @@ We support using [Nix](https://nixos.org) for creating a reliable and reproducib
 #### Basics
 
 Leo-III is invoked via command-line (*assuming the leo3 bash script is in your current directory or you defined a leo3 alias as described above*):
-```
+```Shell
 > ./leo3
 Leo III -- A Higher-Order Theorem Prover.
 Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.
@@ -81,7 +81,7 @@ Options:
 
 A call to a problem `someproblem.p`, assumed to be located at the current directory, is invoked as follows:
 
-```
+```Shell
 > ./leo someproblem.p
 % SZS status Theorem for someproblem.p : 3651 ms resp. 1253 ms w/o parsing
 ```
@@ -121,7 +121,7 @@ Let's solve the TPTP problem `SET014^4.p` (see [here](http://www.cs.miami.edu/~t
 ```
 The output looks like this:
 ```
-% SZS status Theorem for /opt/TPTP/Problems/SET/SET014^4.p : 3651 ms resp. 1253 ms w/o parsing
+% SZS status Theorem for SET014^4.p : 3651 ms resp. 1253 ms w/o parsing
 % SZS output start CNFRefutation for /opt/TPTP/Problems/SET/SET014^4.p
 thf(union_type, type, union: (($i > $o) > (($i > $o) > ($i > $o)))).
 thf(union_def, definition, (union = (^ [A:($i > $o),B:($i > $o),C:$i]: ((A @ C) | (B @ C))))).
@@ -147,7 +147,7 @@ thf(9,plain,(! [A:$i] : ((~ (sk1 @ A)) | ((sk3 @ sk4) != (sk3 @ A)))),inference(
 thf(10,plain,((~ (sk1 @ sk4))),inference(pattern_uni,[status(thm)],[9:[bind(A, $thf(sk4))]])).
 thf(15,plain,(((sk1 @ sk4) != (sk1 @ sk4))),inference(paramod_ordered,[status(thm)],[14,10])).
 thf(16,plain,($false),inference(pattern_uni,[status(thm)],[15:[]])).
-% SZS output end CNFRefutation for /opt/TPTP/Problems/SET/SET014^4.p
+% SZS output end CNFRefutation for SET014^4.p
 ```
 The first line (`% SZS status Theorem ...`) indicates that Leo-III was able to solve the problem.
 The lines between `% SZS output begin CNFRefutation` and `% SZS output end CNFRefutation` is the generated proof.
