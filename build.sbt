@@ -6,7 +6,8 @@ lazy val commonSettings = Seq(
     scalaVersion := "2.12.2",
     organization := "org.leo",
     test in assembly := {},
-    logLevel := Level.Warn
+    logLevel := Level.Warn,
+    logLevel in assembly := Level.Error
 )
 
 lazy val leo = (project in file(".")).
