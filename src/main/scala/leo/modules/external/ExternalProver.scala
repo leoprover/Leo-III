@@ -54,6 +54,7 @@ object ExternalProver {
       case "cvc4" => createCVC4(path)
       case "alt-ergo" => createAltErgo(path)
       case "vampire" => createVampire(path)
+      case "e" => createEProver(path)
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
@@ -114,6 +115,20 @@ object ExternalProver {
       leo.Out.comment(answer.mkString)
     }
     new Leo2Prover(convert)
+  }
+
+  @throws[NoSuchMethodException]
+  def createEProver(path : String) : EProver = {
+    val p = if(path == "") serviceToPath("eprover") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created EProver prover with path '$convert'")
+    if (Configuration.isSet("atpdebug")) {
+      import scala.sys.process._
+      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      leo.Out.comment(s"EProver debug info:")
+      leo.Out.comment(answer.mkString)
+    }
+    new EProver(convert)
   }
 
   /**
@@ -210,6 +225,16 @@ object CVC4 {
   @inline final def apply(execScript: String, path: String): CVC4 = new CVC4(execScript, path)
   final val executeScriptName: String = "run-script-cascj8-tfa"
   final def executeScript: BufferedSource = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/scripts/" + executeScriptName))
+}
+
+class EProver(val path : String) extends TptpProver[AnnotatedClause] {
+  final val name: String = "e"
+  final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq())
+
+  protected[external] def constructCall(args: Seq[String], timeout: Int,
+                                        problemFileName: String): Seq[String] = {
+    ExternalProver.limitedRun(timeout+2, Seq(path, "--auto-schedule", s"--cpu-limit=${timeout.toString}", problemFileName))
+  }
 }
 
 class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
