@@ -100,7 +100,9 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       leo.Out.output(s"Extra args: ${args.toString()}")
     }
     val callCmd = constructCall(args, timeout, file.getAbsolutePath)
-    leo.Out.debug(s"Call constructed: ${callCmd.mkString(" ")}")
+    if (Configuration.isSet("atpdebug")) {
+      leo.Out.output(s"Call constructed: ${callCmd.mkString(" ")}")
+    }
     val extProcess = new ProcessBuilder(callCmd:_*)
     /* wrap it as future result */
     new TPTPResultFuture(extProcess, originalProblem, timeout)

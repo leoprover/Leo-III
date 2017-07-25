@@ -249,7 +249,7 @@ case object SZS_Unknown extends NoSuccessSZS {
 object StatusSZS  {
 
   def answerLine(name : String) : Option[StatusSZS] = {
-    if(name.startsWith("% SZS status")){
+    if(name.startsWith("% SZS status") || name.startsWith("# SZS status")){
       apply(name.substring(13).takeWhile( _ != ' ').toString)
     } else None
   }
