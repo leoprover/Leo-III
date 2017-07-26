@@ -535,11 +535,16 @@ object SeqLoop {
 
     /* Print proof object if possible and requested. */
     if (Configuration.PROOF_OBJECT && proof != null) {
-      Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-      Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
-      if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
-      else Out.output(proofToTPTP(proof))
-      Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      try {
+        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
+        Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
+        if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
+        else Out.output(proofToTPTP(proof))
+        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+      } catch {
+        case e: Exception => Out.comment("Translation of proof object failed. See error logs for details.")
+          Out.warn(e.toString)
+      }
     }
   }
 
