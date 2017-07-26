@@ -4,7 +4,7 @@ CONTRIB=./contrib
 default: all
 
 TreeLimitedRun: $(CONTRIB)/TreeLimitedRun.c
-		$(CC) $(CONTRIB)/TreeLimitedRun.c -o TreeLimitedRun
+		$(CC) $(CONTRIB)/TreeLimitedRun.c -o TreeLimitedRun -static
 
 all: TreeLimitedRun
 		@echo Compiling auxiliary scripts ...
