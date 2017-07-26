@@ -199,21 +199,21 @@ object InputProcessing {
         val processedVars = vars.map{
           case (name, None) =>
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1))), termOffset(newReplaces)), newReplaces._2)
-              case _ => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1))), termOffset(newReplaces) + 1), newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1 + termOffset(newReplaces)))), termOffset(newReplaces)), newReplaces._2)
+              case _ => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1 + termOffset(newReplaces)))), termOffset(newReplaces) + 1), newReplaces._2)
             }
             (name, Left(i))
           case (name, Some(ty)) => convertTHFType(sig)(ty, newReplaces) match {
             case Left(t) =>
               termMapping(newReplaces).get(name) match {
-                case None => newReplaces = ((termMapping(newReplaces).+((name, (t, termMapping(newReplaces).size + 1))), termOffset(newReplaces)), newReplaces._2)
-                case _ => newReplaces = ((termMapping(newReplaces).+((name, (t, termMapping(newReplaces).size + 1))), termOffset(newReplaces) + 1), newReplaces._2)
+                case None => newReplaces = ((termMapping(newReplaces).+((name, (t, termMapping(newReplaces).size + 1 + termOffset(newReplaces)))), termOffset(newReplaces)), newReplaces._2)
+                case _ => newReplaces = ((termMapping(newReplaces).+((name, (t, termMapping(newReplaces).size + 1 + termOffset(newReplaces)))), termOffset(newReplaces) + 1), newReplaces._2)
               }
               (name, Left(t))
             case Right(k) =>
               typeMapping(newReplaces).get(name) match {
-                case None => newReplaces = (newReplaces._1, (typeMapping(newReplaces).+((name, (k, typeMapping(newReplaces).size + 1))), typeOffset(newReplaces)))
-                case _ => newReplaces = (newReplaces._1, (typeMapping(newReplaces).+((name, (k, typeMapping(newReplaces).size + 1))), typeOffset(newReplaces) + 1))
+                case None => newReplaces = (newReplaces._1, (typeMapping(newReplaces).+((name, (k, typeMapping(newReplaces).size + 1 + typeOffset(newReplaces)))), typeOffset(newReplaces)))
+                case _ => newReplaces = (newReplaces._1, (typeMapping(newReplaces).+((name, (k, typeMapping(newReplaces).size + 1 + typeOffset(newReplaces)))), typeOffset(newReplaces) + 1))
               }
               (name, Right(k))
           }
@@ -446,13 +446,13 @@ object InputProcessing {
             val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
               case (name, Left(ty)) =>
                 termMapping(repl).get(name) match {
-                  case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
-                  case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)+1),repl._2)
+                  case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1+termOffset(repl)))),termOffset(repl)),repl._2)
+                  case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1+termOffset(repl)))),termOffset(repl)+1),repl._2)
                 }
               case (name, Right(k)) =>
                 typeMapping(repl).get(name) match {
-                  case None => (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)))
-                  case _ =>  (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)+1))
+                  case None => (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1+typeOffset(repl)))),typeOffset(repl)))
+                  case _ =>  (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1+typeOffset(repl)))),typeOffset(repl)+1))
                 }
             }})
             processedVars.foldRight(convertTHFType(sig)(matrix,newReplaces).left.get)({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
@@ -586,21 +586,21 @@ object InputProcessing {
         val processedVars = vars.map{
           case (name, None) =>
             termMapping(newReplaces).get(name) match {
-              case None => newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+              case None => newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1+termOffset(newReplaces)))),termOffset(newReplaces)),newReplaces._2)
+              case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(i, termMapping(newReplaces).size+1+termOffset(newReplaces)))),termOffset(newReplaces)+1),newReplaces._2)
             }
             (name, Left(i))
           case (name, Some(ty)) => convertTFFType(sig)(ty, newReplaces) match {
             case Left(t) =>
               termMapping(newReplaces).get(name) match {
-                case None => newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)),newReplaces._2)
-                case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1))),termOffset(newReplaces)+1),newReplaces._2)
+                case None => newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1+termOffset(newReplaces)))),termOffset(newReplaces)),newReplaces._2)
+                case _ =>  newReplaces = ((termMapping(newReplaces).+((name,(t, termMapping(newReplaces).size+1+termOffset(newReplaces)))),termOffset(newReplaces)+1),newReplaces._2)
               }
               (name, Left(t))
             case Right(k) =>
               typeMapping(newReplaces).get(name) match {
-                case None => newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces)))
-                case _ =>  newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1))),typeOffset(newReplaces) +1))
+                case None => newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1+typeOffset(newReplaces)))),typeOffset(newReplaces)))
+                case _ =>  newReplaces = (newReplaces._1,(typeMapping(newReplaces).+((name,(k, typeMapping(newReplaces).size+1+typeOffset(newReplaces)))),typeOffset(newReplaces) +1))
               }
               (name, Right(k))
           }
@@ -720,12 +720,12 @@ object InputProcessing {
         require(processedVars.forall(_._2.isRight), "Only '$tType' as type assertion is allowed for type variables in quantified types")
         val newReplaces = processedVars.foldLeft(replace)({case (repl,vari) => vari match {
           case (name, Left(ty)) => termMapping(repl).get(name) match {
-            case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
-            case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)+1),repl._2)
+            case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1+termOffset(repl)))),termOffset(repl)),repl._2)
+            case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1+termOffset(repl)))),termOffset(repl)+1),repl._2)
           }
           case (name, Right(k)) => typeMapping(repl).get(name) match {
-            case None => (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)))
-            case _ =>  (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1))),typeOffset(repl)+1))
+            case None => (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1+typeOffset(repl)))),typeOffset(repl)))
+            case _ =>  (repl._1,(typeMapping(repl).+((name,(k, typeMapping(repl).size+1+typeOffset(repl)))),typeOffset(repl)+1))
           }
         }})
         processedVars.foldRight(convertTFFType(sig)(body,newReplaces).left.get)({case (_,b) => ∀(b)}) // NOTE: this is only allowed on top-level
@@ -771,16 +771,21 @@ object InputProcessing {
     input match {
       case Binary(left, conn, right) => processFOFBinaryConn(conn).apply(processFOF0(sig)(left, replaces),processFOF0(sig)(right, replaces))
       case Unary(conn, f) => processFOFUnary(conn).apply(processFOF0(sig)(f, replaces))
-      case Quantified(q, varList, matrix) =>
+      case Quantified(q, vars, matrix) =>
         val quantifier = processFOFUnary(q)
-        val processedVars = varList.map((_, i))
-        val newReplaces = processedVars.foldLeft(replaces)({case (repl,vari) => vari match {
-          case (name, ty) => termMapping(repl).get(name) match {
-            case None => ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)),repl._2)
-            case _ =>  ((termMapping(repl).+((name,(ty, termMapping(repl).size+1))),termOffset(repl)+1),repl._2)
-          }
-        }})
-        mkPolyQuantifiedFOF(quantifier, processedVars, processFOF0(sig)(matrix, newReplaces))
+        var newReplaces = replaces
+        // Fold through the variables to propagate bindings trough variable list
+        // and save bindings to `newReplaces` for body conversion
+        val processedVars = vars.map{
+          name =>
+            termMapping(newReplaces).get(name) match {
+              case None => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1 + termOffset(newReplaces)))), termOffset(newReplaces)), newReplaces._2)
+              case _ => newReplaces = ((termMapping(newReplaces).+((name, (i, termMapping(newReplaces).size + 1 + termOffset(newReplaces)))), termOffset(newReplaces) + 1), newReplaces._2)
+            }
+            (name, i)
+        }
+        val intermediateRes = processFOF0(sig)(matrix, newReplaces)
+        mkPolyQuantifiedFOF(quantifier, processedVars, intermediateRes)
       case Atomic(atomic) => processAtomicFormula(sig)(atomic, replaces)
       case Inequality(left,right) =>
         val convertedLeft = processTermArgs(sig)(left, replaces)
