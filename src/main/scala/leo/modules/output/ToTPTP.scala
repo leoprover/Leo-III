@@ -226,7 +226,7 @@ object ToTPTP {
           }
           i = i + 1
         }
-        sb.init.toString()
+        if (sb.isEmpty) "" else sb.init.toString()
       }
     }
   }
