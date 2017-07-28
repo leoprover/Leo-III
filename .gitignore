@@ -24,6 +24,7 @@ src/main/resources/META-INF/
 out/*
 project/project/*
 project/target/*
+project/build.properties
 bin/*
 
 # Save Formats
