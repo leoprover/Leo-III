@@ -24,7 +24,7 @@ src/main/resources/META-INF/
 out/*
 project/project/*
 project/target/*
-
+bin/*
 
 # Save Formats
 *.swp
