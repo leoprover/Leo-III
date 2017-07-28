@@ -139,7 +139,7 @@ object Input {
     * @see [[http://www.cs.miami.edu/~tptp/TPTP/SyntaxBNF.html#thf_logic_formula]] for TPTP THF BNF.
     */
   def parseFormula(formula: String): THFFormula = {
-    TPTP.apply(formula)
+    TPTP(formula)
   }
 
   ///////////////////////////////////////////////////////////////////////////

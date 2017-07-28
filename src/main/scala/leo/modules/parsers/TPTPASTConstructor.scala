@@ -39,25 +39,25 @@ object TPTPASTConstructor {
       cnfAnnotated(ctx.cnf_annotated())
     } else throw new IllegalArgumentException
   }
-  final def fofAnnotated(annotated: tptpParser.Fof_annotatedContext): AnnotatedFormula = {
+  final def fofAnnotated(annotated: tptpParser.Fof_annotatedContext): FOFAnnotated = {
     val name = getName(annotated.name())
     val annotation = annotations(annotated.annotations())
     val formula = fofFormula(annotated.fof_formula())
     FOFAnnotated(name, role(annotated.formula_role()), formula, annotation)
   }
-  final def tffAnnotated(annotated: tptpParser.Tff_annotatedContext): AnnotatedFormula = {
+  final def tffAnnotated(annotated: tptpParser.Tff_annotatedContext): TFFAnnotated = {
     val name = getName(annotated.name())
     val annotation = annotations(annotated.annotations())
     val formula = tffFormula(annotated.tff_formula())
     TFFAnnotated(name, role(annotated.formula_role()), formula, annotation)
   }
-  final def thfAnnotated(annotated: tptpParser.Thf_annotatedContext): AnnotatedFormula = {
+  final def thfAnnotated(annotated: tptpParser.Thf_annotatedContext): THFAnnotated = {
     val name = getName(annotated.name())
     val annotation = annotations(annotated.annotations())
     val formula = thfFormula(annotated.thf_formula())
     THFAnnotated(name, role(annotated.formula_role()), formula, annotation)
   }
-  final def cnfAnnotated(annotated: tptpParser.Cnf_annotatedContext): AnnotatedFormula = {
+  final def cnfAnnotated(annotated: tptpParser.Cnf_annotatedContext): CNFAnnotated = {
     val name = getName(annotated.name())
     val annotation = annotations(annotated.annotations())
     val formula = cnfFormula(annotated.cnf_formula())
