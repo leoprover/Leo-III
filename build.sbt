@@ -30,13 +30,14 @@ lazy val leo = (project in file(".")).
     // options for native bindings
     target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
     // antlr related stuff
+    excludeFilter in unmanagedJars := HiddenFileFilter || "antlr4-tool.jar",
     antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
     buildParser := {
       val cachedBuild = FileFunction.cached(streams.value.cacheDirectory / "antlr4", FilesInfo.lastModified, FilesInfo.exists) {
         in =>
           print("Generating parser from tptp grammar ...")
           val target = (javaSource in Compile).value / "leo" / "modules" / "parsers" / "antlr"
-          val args: Seq[String] = Seq("-cp", Path.makeString((unmanagedJars in Compile).value.files),
+          val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr4-tool.jar")),
             "org.antlr.v4.Tool",
             "-o", target.toString) ++ in.map(_.toString)
           val exitCode = Process("java", args) ! streams.value.log
