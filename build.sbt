@@ -29,7 +29,8 @@ lazy val leo = (project in file(".")).
     exportJars := true,
     // options for native bindings
     target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
-    antlrFile := (resourceDirectory in Compile).value / "tptp.g4",
+    // antlr related stuff
+    antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
     buildParser := {
       val cachedBuild = FileFunction.cached(streams.value.cacheDirectory / "antlr4", FilesInfo.lastModified, FilesInfo.exists) {
         in =>
