@@ -68,5 +68,7 @@ class AntiUnificationTest extends LeoTestSuite {
     println(s"RightSub: ${rightSub._1.pretty}")
     assert(generalization.substitute(leftSub._1, leftSub._2) == t)
     assert(generalization.substitute(rightSub._1, rightSub._2) == s)
+    println(s"dom(leftsub): ${leftSub._1.domain.toString()}")
+    println(s"dom(rightSub): ${rightSub._1.domain.toString()}")
   }
 }

@@ -48,6 +48,10 @@ sealed abstract class Subst extends Pretty {
   /** Return all fronts as linear list */
   def fronts: Seq[Front]
 
+  /** The domain of the substitution, i.e. the set `{x | xσ != σ}` of variables
+    * not mapped to themselves.*/
+  def domain: Set[Int]
+
   override def equals(o: Any): Boolean = o match {
     case ot: Subst => shiftedBy == ot.shiftedBy && fronts == ot.fronts
     case _ => false
@@ -170,6 +174,22 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
   final def substBndIdx(i: Int) = if (fts.length >= i) fts(i-1)
   else BoundFront(i+shift-fts.length)
   final def fronts = fts
+
+  def domain: Set[Int] = {
+    var result: Set[Int] = Set.empty
+    var idx = 0
+    while (idx < fts.size) {
+      val entry = fts(idx)
+      entry match {
+        case TermFront(body) => result += idx+1 // FIXME: Check if term equals idx as variable?
+        case TypeFront(body) => result += idx+1
+        case BoundFront(scope) =>
+          if (scope != idx+1) result += idx+1
+      }
+      idx = idx + 1
+    }
+    result
+  }
 }
 
 /** Factory methods for `RASubst`. */
