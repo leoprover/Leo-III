@@ -3,7 +3,7 @@ val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's p
 
 lazy val commonSettings = Seq(
     version := "1.1",
-    scalaVersion := "2.12.2",
+    scalaVersion := "2.12.3",
     organization := "org.leo",
     test in assembly := {},
     logLevel := Level.Warn,
@@ -29,13 +29,15 @@ lazy val leo = (project in file(".")).
     exportJars := true,
     // options for native bindings
     target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
-    antlrFile := (resourceDirectory in Compile).value / "tptp.g4",
+    // antlr related stuff
+    excludeFilter in unmanagedJars := HiddenFileFilter || "antlr4-tool.jar",
+    antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
     buildParser := {
       val cachedBuild = FileFunction.cached(streams.value.cacheDirectory / "antlr4", FilesInfo.lastModified, FilesInfo.exists) {
         in =>
           print("Generating parser from tptp grammar ...")
           val target = (javaSource in Compile).value / "leo" / "modules" / "parsers" / "antlr"
-          val args: Seq[String] = Seq("-cp", Path.makeString((unmanagedJars in Compile).value.files),
+          val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr4-tool.jar")),
             "org.antlr.v4.Tool",
             "-o", target.toString) ++ in.map(_.toString)
           val exitCode = Process("java", args) ! streams.value.log
@@ -70,10 +72,4 @@ def assemblyCommand(name: String, level: Int) =
   }
 commands += assemblyCommand("debug", 0)
 //commands += compileCommand("prod", 1000)
-
-
-compile in Compile := {
-  val _ = buildParser.value
-  (compile in Compile).value
-}
 

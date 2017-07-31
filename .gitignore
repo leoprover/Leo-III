@@ -24,9 +24,8 @@ src/main/resources/META-INF/
 out/*
 project/project/*
 project/target/*
-
-# Generated parser files
-src/main/java/leo/modules/parsers/antlr/*
+project/build.properties
+bin/*
 
 # Save Formats
 *.swp

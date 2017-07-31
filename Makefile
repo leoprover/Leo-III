@@ -1,3 +1,5 @@
+DESTDIR ?=
+JAVADIR ?=
 CC=gcc
 CONTRIB=./contrib
 
@@ -16,3 +18,8 @@ all: TreeLimitedRun
 		mkdir bin -p
 		cp "target/Leo III-assembly-1.1.jar" bin/leo3.jar
 		cp ./src/main/resources/scripts/leo3 bin/leo3
+		
+install:
+		install -m 0755 -d $(DESTDIR)$(JAVADIR)
+		install -m 0755 bin/leo3.jar $(DESTDIR)$(JAVADIR)
+

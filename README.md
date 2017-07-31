@@ -30,6 +30,7 @@ The following requirements (dependencies) are not managed by the SBT build tool 
 
  - Java JDK 1.8 
  - gcc (any reasonably current version)
+ - cmake (any reasonable current version)
  - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 0.13.6
 
 #### Building the project from source
@@ -62,7 +63,7 @@ Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SB
 
 #### Using nix
 
-We support using [Nix](https://nixos.org) for creating a reliable and reproducible execution environment for Leo-III. The source distribution contains a `.nix` file that can be used to run Leo-III within a `nix` shell.
+We support using [Nix](https://nixos.org) for creating a reliable and reproducible execution environment for Leo-III. The source distribution contains a `.nix` file that can be used to run Leo-III within a `nix` shell (see `contrib/default.nix`).
 
 ## Usage
 
@@ -122,7 +123,7 @@ Let's solve the TPTP problem `SET014^4.p` (see [here](http://www.cs.miami.edu/~t
 The output looks like this:
 ```
 % SZS status Theorem for SET014^4.p : 3651 ms resp. 1253 ms w/o parsing
-% SZS output start CNFRefutation for /opt/TPTP/Problems/SET/SET014^4.p
+% SZS output start CNFRefutation for SET014^4.p
 thf(union_type, type, union: (($i > $o) > (($i > $o) > ($i > $o)))).
 thf(union_def, definition, (union = (^ [A:($i > $o),B:($i > $o),C:$i]: ((A @ C) | (B @ C))))).
 thf(subset_type, type, subset: (($i > $o) > (($i > $o) > $o))).
@@ -156,7 +157,7 @@ You can always try to verify the proof using [IDV](http://www.cs.miami.edu/~tptp
 
 #### Enabling external cooperation
 
-Leo-III heavily relies on cooperation with (first-order) provers. Currently, Leo-III can cooperate with TPTP-compatible provers that support either THF or TFF syntax. At the moment, we implemented cooperation with LEO-II, Nitpick, CVC4, Alt-Ergo and Vampire.
+Leo-III heavily relies on cooperation with (first-order) provers. Currently, Leo-III can cooperate with TPTP-compatible provers that support either THF or TFF syntax. At the moment, we implemented cooperation with LEO-II, Nitpick, CVC4, E (>= 2.0), Alt-Ergo and Vampire.
 
 To enable the cooperation (here CVC4), simply add e.g.
 ```

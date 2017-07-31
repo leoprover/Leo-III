@@ -1,4 +1,0 @@
-#!/bin/bash
-#prover dummy for benchmark_translation
-sleep 1
-echo "SZS status Theorem"
