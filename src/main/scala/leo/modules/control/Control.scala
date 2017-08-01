@@ -223,7 +223,9 @@ package inferenceControl {
         null
       } else {
         val withClause = withWrapper.cl; val intoClause = intoWrapper.cl
-        val withTerm = Literal.selectSide(withLit, withSide)
+        val (withTerm,otherTerm) = Literal.getSidesOrdered(withLit, withSide)
+        assert(withTerm.ty == otherTerm.ty)
+
         val shouldParamod0 = shouldParamod(withTerm, intoTerm)
         leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
         if (!intoTerm.isVariable && shouldParamod0) {
@@ -251,6 +253,11 @@ package inferenceControl {
           val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
           Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
           Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
+          // switch to this if there is no problem:
+          val shiftedIntoLit = shiftedIntoClause(intoIndex)
+          val (shiftedIntoTerm0, shiftedOtherSide) = Literal.getSidesOrdered(shiftedIntoLit, intoSide)
+          assert(shiftedIntoTerm0.ty == shiftedOtherSide.ty)
+          assert(shiftedIntoTerm0 == shiftedIntoTerm)
 
           singleParamod0(withWrapper, withClause, withIndex, withLit, withSide, withTerm,
             intoWrapper, shiftedIntoClause, intoIndex, intoLit, intoSide, intoPos, shiftedIntoTerm)
@@ -272,42 +279,63 @@ package inferenceControl {
                                      intoPos: Position,
                                      shiftedIntoTerm: Term)(implicit sig: Signature): AnnotatedClause = {
 
-      val result = if (withTerm.ty == shiftedIntoTerm.ty) {
-        // No type unification needed at this point
-        OrderedParamod(withClause, withIndex, withSide,
-          shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
+      val result0 = OrderedParamod(withClause, withIndex, withSide,
+        shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
+
+      val uniLit = result0.lits.last
+      val (uniEqLeft,uniEqRight) = UnificationControl.getUniTaskFromLit(uniLit)
+      val newProperties = if (isPropSet(ClauseAnnotation.PropSOS, withWrapper.properties) || isPropSet(ClauseAnnotation.PropSOS, intoWrapper.properties)) {
+        ClauseAnnotation.PropNeedsUnification |  ClauseAnnotation.PropSOS
+      } else ClauseAnnotation.PropNeedsUnification
+
+      val tyUnifiedResult = if (uniEqLeft.ty == uniEqRight.ty) {
+        // all good, no type unification needed
+        Out.finest(s"[Paramod] No type unification needed.")
+        AnnotatedClause(result0, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
       } else {
-        import leo.modules.calculus.{TypeUnification => Unification}
-        leo.Out.finest(s"Nonequal type, calculating type unification ...")
-        leo.Out.finest(s"withTerm.ty: ${withTerm.ty.pretty(sig)}")
-        leo.Out.finest(s"intoTerm.ty: ${shiftedIntoTerm.ty.pretty(sig)}")
-        val tyUniResult = Unification(withTerm.ty, shiftedIntoTerm.ty)
-        if (tyUniResult.isDefined) {
-          leo.Out.finest(s"Type unification succeeded.")
-          val tySubst = tyUniResult.get
-          leo.Out.finest(s"Type subst: ${tySubst.pretty}.")
-          // FIXME the clauses below are not ordered anymore. This needs to be fixed.
-          val substWithClause = withClause.substitute(Subst.id, tySubst)
-          val substIntoClause = shiftedIntoClause.substitute(Subst.id, tySubst)
-          val substIntoTerm = shiftedIntoTerm.substitute(Subst.id, tySubst)
-          OrderedParamod(substWithClause, withIndex, withSide,
-            substIntoClause, intoIndex, intoSide, intoPos, substIntoTerm)(sig)
+        // type unify, then proceed to pattern unify check
+        Out.finest(s"[Paramod] Type unification needed.")
+        val maybeSubst = TypeUnification(uniEqLeft.ty, uniEqRight.ty)
+        if (maybeSubst.isDefined) {
+          val tySubst = maybeSubst.get
+          Out.finest(s"[Paramod] Type unification succeeded: ${tySubst.pretty}")
+          val result1 = result0.substituteOrdered(Subst.id, tySubst)(sig)
+          // TODO: Include type unification
+          AnnotatedClause(result1, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
         } else {
-          leo.Out.finest(s"Type unification failed.")
+          Out.finest(s"[Paramod] Type unification failed. Dropping clause.")
           null
         }
       }
-      if (result != null) { // May be null if type unification was not successful
-        import leo.datastructures.ClauseAnnotation.InferredFrom
-      val newProperties =
-        if (isPropSet(ClauseAnnotation.PropSOS, withWrapper.properties) || isPropSet(ClauseAnnotation.PropSOS, intoWrapper.properties))
-          ClauseAnnotation.PropNeedsUnification |  ClauseAnnotation.PropSOS
-        else ClauseAnnotation.PropNeedsUnification
-        val newClWrapper = AnnotatedClause(result, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
-        Out.finest(s"Result: ${newClWrapper.pretty(sig)}")
-        myAssert(Clause.wellTyped(result), "paramod not well-typed")
-        myAssert(uniqueFVTypes(result), "not unique free var types")
-        newClWrapper
+
+      if (tyUnifiedResult != null) {
+        val uniLit = tyUnifiedResult.cl.lits.last
+        val otherLits = tyUnifiedResult.cl.lits.init
+        val (uniEqLeft,uniEqRight) = UnificationControl.getUniTaskFromLit(uniLit)
+        assert(uniEqLeft.ty == uniEqRight.ty)
+
+        val unifiedResult = if (isPattern(uniEqLeft) && isPattern(uniEqRight)) {
+          Out.finest(s"[Paramod] Unification constraint is pattern. Solving directly...")
+          // solve directly
+          var vargen = freshVarGen(tyUnifiedResult.cl)
+          val result = UnificationControl.doUnifyAllPattern(tyUnifiedResult, vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
+          if (result == null) Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
+           else Out.finest(s"[Paramod] Unifiable! ")
+          result
+        } else {
+          // postpone
+          Out.finest(s"[Paramod] Unification constraint is non-pattern. Postponing.")
+          tyUnifiedResult
+        }
+        if (unifiedResult != null) {
+          Out.finest(s"Result: ${unifiedResult.pretty(sig)}")
+          myAssert(Clause.wellTyped(unifiedResult.cl), "paramod not well-typed")
+          myAssert(uniqueFVTypes(unifiedResult.cl), "not unique free var types")
+          unifiedResult
+        } else {
+          null
+        }
+
       } else null
     }
 
@@ -485,6 +513,15 @@ package inferenceControl {
     type OtherLits = Seq[Literal]
     type UniResult = (Clause, (Unification#TermSubst, Unification#TypeSubst))
 
+    final def getUniTaskFromLit(lit: Literal): (Term, Term) = {
+      import leo.modules.HOLSignature.LitFalse
+      if (!lit.polarity) (lit.left, lit.right) /*standard case*/
+      else {
+        assert(!lit.equational)
+        (lit.left, LitFalse()) /* in case a False was substituted in paramod */
+      }
+    }
+
     // TODO: Flags, check for types in pattern unification
     final def unifyNewClauses(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = {
       val sig = state.signature
@@ -529,12 +566,8 @@ package inferenceControl {
       assert(cl.lits.nonEmpty)
       val uniLit = cl.lits.last
 
-      val uniEq = if (!uniLit.polarity) Vector((uniLit.left, uniLit.right)) /*standard case*/
-      else {
-        assert(!uniLit.equational)
-        Seq((uniLit.left, LitFalse.apply())) /* in case a False was substituted in paramod */
-      }
-      val uniResult0 = doUnify0(cl0, freshVarGen, uniEq, cl.lits.init)(state)
+      val uniEq = getUniTaskFromLit(uniLit)
+      val uniResult0 = doUnify0(cl0, freshVarGen, Vector(uniEq), cl.lits.init)(state)
       // 1 if not unifiable, check if uni constraints can be simplified
       // if it can be simplified, return simplified constraints
       // if it cannot be simplied, drop clause
@@ -668,14 +701,21 @@ package inferenceControl {
                                uniLits: UniLits, otherLits: OtherLits)(state: LocalState):  Set[AnnotatedClause] = {
       val sig = state.signature
       if (isAllPattern(uniLits)) {
-        val result = PatternUni.apply(freshVarGen, uniLits, otherLits)(sig)
-        if (result.isEmpty) Set()
-        else Set(annotate(cl, result.get, PatternUni)(sig))
+        val result = doUnifyAllPattern(cl, freshVarGen, uniLits, otherLits)(sig)
+        if (result == null) Set.empty
+        else Set(result)
       } else {
         val uniResultIterator = PreUni(freshVarGen, uniLits, otherLits, state.runStrategy.uniDepth)(sig)
         val uniResult = uniResultIterator.take(state.runStrategy.unifierCount).toSet
         uniResult.map(annotate(cl, _, PreUni)(sig))
       }
+    }
+
+    protected[control] final def doUnifyAllPattern(cl: AnnotatedClause, freshVarGen: FreshVarGen,
+                                          uniLits: UniLits, otherLits: OtherLits)(sig: Signature):  AnnotatedClause = {
+      val result = PatternUni.apply(freshVarGen, uniLits, otherLits)(sig)
+      if (result.isEmpty) null
+      else annotate(cl, result.get, PatternUni)(sig)
     }
 
     private final def isAllPattern(uniLits: UniLits): Boolean = {

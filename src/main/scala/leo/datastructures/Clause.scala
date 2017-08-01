@@ -10,6 +10,9 @@ package leo.datastructures
 trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   /** The underlying sequence of literals. */
   def lits: Seq[Literal]
+  /** Return the literal at index `idx`.
+    * @throws IndexOutOfBoundsException if accessed via invalid `idx`. */
+  def apply(idx: Int): Literal = lits(idx)
   /** The types of the implicitly universally quantified variables. */
   def implicitlyBound: Seq[(Int, Type)]
   def maxImplicitlyBound: Int
