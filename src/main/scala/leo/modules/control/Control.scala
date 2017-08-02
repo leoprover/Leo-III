@@ -337,10 +337,30 @@ package inferenceControl {
             leo.Out.finest(s"withTerm': ${withTermSubst.pretty(sig)}")
             leo.Out.finest(s"otherTerm': ${otherTermSubst.pretty(sig)}")
             leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
+
+
             if (cmpResult != CMP_GT) {
-              AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
+              val intoClauseSubst = shiftedIntoClause.substitute(termSubst, typeSubst)
+              val intoLitSubst = intoClauseSubst(intoIndex)
+              assert(Clause.wellTyped(intoClauseSubst))
+              assert(Literal.wellTyped(intoLitSubst))
+              if (intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
+                val withClauseSubst = withWrapper.cl.substitute(termSubst, typeSubst)
+                val withLitSubst = withClauseSubst(withIndex)
+                assert(Clause.wellTyped(withClauseSubst))
+                assert(Literal.wellTyped(withLitSubst))
+                if (withClauseSubst.maxLits(sig).contains(withLitSubst)) {
+                  AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
+                } else {
+                  leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#3).")
+                  null
+                }
+              } else {
+                leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#2).")
+                null
+              }
             } else {
-              leo.Out.output(s"[Paramod] Dropped due to ordering restrictions.")
+              leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#1).")
               null
             }
           }
