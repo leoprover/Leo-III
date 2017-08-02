@@ -177,6 +177,13 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
   else
     fuseMaps(Map(this.asInstanceOf[Term] -> Set(Position.root), headToTerm(hd) -> Set(Position.root.headPos)), args.feasibleOccurences)
   lazy val size = 2 + args.size
+//  def subterm(pos: Position): Term = {
+//    import leo.datastructures.Position._
+//    pos match {
+//      case Position.root => this
+//      case ArgsPos(i) => args.
+//    }
+//  }
 
   // Other operations
   lazy val etaExpand0: TermImpl = {

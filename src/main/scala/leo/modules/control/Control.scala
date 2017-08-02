@@ -254,13 +254,13 @@ package inferenceControl {
           Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
           Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
           // switch to this if there is no problem:
-          val shiftedIntoLit = shiftedIntoClause(intoIndex)
-          val (shiftedIntoTerm0, shiftedOtherSide) = Literal.getSidesOrdered(shiftedIntoLit, intoSide)
-          assert(shiftedIntoTerm0.ty == shiftedOtherSide.ty)
-          assert(shiftedIntoTerm0 == shiftedIntoTerm)
+//          val shiftedIntoLit = shiftedIntoClause(intoIndex)
+//          val (shiftedIntoTerm0, shiftedOtherSide) = Literal.getSidesOrdered(shiftedIntoLit, intoSide)
+//          assert(shiftedIntoTerm0.ty == shiftedOtherSide.ty)
+//          assert(shiftedIntoTerm0 == shiftedIntoTerm)
 
-          singleParamod0(withWrapper, withClause, withIndex, withLit, withSide, withTerm,
-            intoWrapper, shiftedIntoClause, intoIndex, intoLit, intoSide, intoPos, shiftedIntoTerm)
+          singleParamod0(withWrapper, withClause, withIndex, withSide, withTerm, otherTerm,
+            intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)
         } else null
       }
     }
@@ -268,16 +268,18 @@ package inferenceControl {
     private final def singleParamod0(withWrapper: AnnotatedClause,
                                      withClause: Clause,
                                      withIndex: Int,
-                                     withLit: Literal,
+//                                     withLit: Literal,
                                      withSide: Side,
                                      withTerm: Term,
+                                     otherTerm: Term,
                                      intoWrapper: AnnotatedClause,
                                      shiftedIntoClause: Clause,
                                      intoIndex: Int,
-                                     intoLit: Literal,
+//                                     intoLit: Literal,
                                      intoSide: Side,
                                      intoPos: Position,
                                      shiftedIntoTerm: Term)(implicit sig: Signature): AnnotatedClause = {
+      import leo.modules.output.ToTPTP
 
       val result0 = OrderedParamod(withClause, withIndex, withSide,
         shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
@@ -317,11 +319,31 @@ package inferenceControl {
         val unifiedResult = if (isPattern(uniEqLeft) && isPattern(uniEqRight)) {
           Out.finest(s"[Paramod] Unification constraint is pattern. Solving directly...")
           // solve directly
-          var vargen = freshVarGen(tyUnifiedResult.cl)
-          val result = UnificationControl.doUnifyAllPattern(tyUnifiedResult, vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
-          if (result == null) Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
-           else Out.finest(s"[Paramod] Unifiable! ")
-          result
+          val vargen = freshVarGen(tyUnifiedResult.cl)
+          val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
+          if (result.isEmpty) {
+            Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
+            null
+          } else {
+            import leo.Configuration.{TERM_ORDERING => ord}
+            Out.finest(s"[Paramod] Unifiable! ")
+            val (resultClause, (termSubst, typeSubst)) = result.get
+            val withTermSubst = withTerm.substitute(termSubst, typeSubst)
+            val otherTermSubst = otherTerm.substitute(termSubst, typeSubst)
+            val cmpResult = ord.compare(otherTermSubst, withTermSubst)(sig)
+            leo.Out.finest(s"Checking Ordering restrictions ...")
+            leo.Out.finest(s"withTerm: ${withTerm.pretty(sig)}")
+            leo.Out.finest(s"otherTerm: ${otherTerm.pretty(sig)}")
+            leo.Out.finest(s"withTerm': ${withTermSubst.pretty(sig)}")
+            leo.Out.finest(s"otherTerm': ${otherTermSubst.pretty(sig)}")
+            leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
+            if (cmpResult != CMP_GT) {
+              AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
+            } else {
+              leo.Out.output(s"[Paramod] Dropped due to ordering restrictions.")
+              null
+            }
+          }
         } else {
           // postpone
           Out.finest(s"[Paramod] Unification constraint is non-pattern. Postponing.")

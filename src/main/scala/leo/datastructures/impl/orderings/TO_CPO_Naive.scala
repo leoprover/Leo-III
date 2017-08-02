@@ -264,7 +264,7 @@ object TO_CPO_Naive extends TermOrdering {
 
     /* case 6+10+15: ... > y */
     if (t.isVariable) {
-      return Bound.unapply(t).isDefined || x.contains(t)
+      return Bound.unapply(t).isDefined && x.contains(t)
     }
 
     if (s.isApp || s.isConstant) {

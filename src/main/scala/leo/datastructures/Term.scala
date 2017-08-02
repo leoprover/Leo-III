@@ -82,6 +82,10 @@ trait Term extends Pretty with Prettier {
   def headSymbolDepth: Int
   def size: Int
 
+//  /** Given a position `pos`, return the subterm of `this`
+//    * at `pos`, if existent. `null` otherwise. */
+//  def subterm(pos: Position): Term
+
   def symbols: Multiset[Signature.Key]
   final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
     symbols.filter({i => sig(i)._ty == ty})
