@@ -58,7 +58,7 @@ protected[encoding] abstract class LambdaElimination(sig: TypedFOLEncodingSignat
 protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
   import leo.datastructures.Term.local._
   import leo.datastructures.Type.{∀, mkVarType}
-  import sig.{hApp,funTy}
+  import sig.{mkhApp,funTy}
 
   private var usedSymbols: Set[Signature.Key] = Set.empty
 
@@ -110,7 +110,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     Out.finest(s"arg: ${arg.pretty}")
     Out.finest(s"K instance type: ${mkTypeApp(combinator_K, Seq(ty1, ty2)).ty.pretty}")
 
-    hApp(mkTypeApp(combinator_K, Seq(ty1, ty2)),arg)
+    mkhApp(mkTypeApp(combinator_K, Seq(ty1, ty2)),arg)
   }
 
   ////////////
@@ -130,7 +130,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     mkAtom(id)(sig)
   }
   final def S(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
-    hApp(mkTypeApp(combinator_S, Seq(ty1, ty2, ty3)), Seq(arg1, arg2))
+    mkhApp(mkTypeApp(combinator_S, Seq(ty1, ty2, ty3)), Seq(arg1, arg2))
   }
 
   ////////////
@@ -152,7 +152,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
   }
   final def B(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
     val tyAppliedB: Term = mkTypeApp(combinator_B, Seq(ty1, ty2, ty3))
-    hApp(tyAppliedB, Seq(arg1,arg2))
+    mkhApp(tyAppliedB, Seq(arg1,arg2))
   }
 
   ////////////
@@ -172,7 +172,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     mkAtom(id)(sig)
   }
   final def C(ty1: Type, ty2: Type, ty3: Type, arg1: Term, arg2: Term): Term = {
-    hApp(mkTypeApp(combinator_C, Seq(ty1, ty2, ty3)),Seq(arg1,arg2))
+    mkhApp(mkTypeApp(combinator_C, Seq(ty1, ty2, ty3)),Seq(arg1,arg2))
   }
 
   /* Lambda elimination procedure from here */
@@ -368,19 +368,19 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
     import TypedFOLEncodingSignature._
     val combName = sig(comb).name
     deSafeName(combName) match {
-      case `combinator_I_name` => Eq(hApp(I(Xty), X), X)
-      case `combinator_K_name` => Eq(hApp(K(Yty, Xty, Y), X), Y)
-      case `combinator_S_name` => Eq( // `S x y z = x z (y z)`
-        hApp(S(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)),3), mkBound(funTy(Zty, Yty),2)), mkBound(Zty,1)),
-        hApp(mkBound(funTy(Zty, funTy(Yty, Xty)),3),Seq(mkBound(Zty,1), hApp(mkBound(funTy(Zty, Yty),2), mkBound(Zty, 1))))
+      case `combinator_I_name` => mkEq(mkhApp(I(Xty), X), X)
+      case `combinator_K_name` => mkEq(mkhApp(K(Yty, Xty, Y), X), Y)
+      case `combinator_S_name` => mkEq( // `S x y z = x z (y z)`
+        mkhApp(S(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)),3), mkBound(funTy(Zty, Yty),2)), mkBound(Zty,1)),
+        mkhApp(mkBound(funTy(Zty, funTy(Yty, Xty)),3),Seq(mkBound(Zty,1), mkhApp(mkBound(funTy(Zty, Yty),2), mkBound(Zty, 1))))
       )
-      case `combinator_B_name` => Eq(
-        hApp(B(Zty, Yty, Xty, mkBound(funTy(Yty, Xty), 3), mkBound(funTy(Zty, Yty), 2)), mkBound(Zty,1)),
-        hApp(mkBound(funTy(Yty, Xty), 3),hApp(mkBound(funTy(Zty, Yty), 2),mkBound(Zty,1)))
+      case `combinator_B_name` => mkEq(
+        mkhApp(B(Zty, Yty, Xty, mkBound(funTy(Yty, Xty), 3), mkBound(funTy(Zty, Yty), 2)), mkBound(Zty,1)),
+        mkhApp(mkBound(funTy(Yty, Xty), 3),mkhApp(mkBound(funTy(Zty, Yty), 2),mkBound(Zty,1)))
       )
-      case `combinator_C_name` => Eq(
-        hApp(C(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)), 3), mkBound(Yty,2)), mkBound(Zty,1)),
-        hApp(mkBound(funTy(Zty, funTy(Yty, Xty)), 3), Seq(mkBound(Zty,1), mkBound(Yty,2)))
+      case `combinator_C_name` => mkEq(
+        mkhApp(C(Zty, Yty, Xty, mkBound(funTy(Zty, funTy(Yty, Xty)), 3), mkBound(Yty,2)), mkBound(Zty,1)),
+        mkhApp(mkBound(funTy(Zty, funTy(Yty, Xty)), 3), Seq(mkBound(Zty,1), mkBound(Yty,2)))
       )
       case _ => throw new IllegalArgumentException
     }

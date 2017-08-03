@@ -41,6 +41,11 @@ trait Term extends Pretty with Prettier {
   def isBetaNormal: Boolean
   def isEtaNormal: Boolean
 
+  /** Create the term application `this @ arg`. */
+  def apply(arg: Term): Term = Term.local.mkTermApp(this, arg)
+  /** Create the term application `this @ arg1 @ args1 @ args2 .... @ argsn`. */
+  def apply(arg1: Term, args: Term*): Term = Term.local.mkTermApp(this, arg1 +: args)
+
   type Sharing = Boolean
   def sharing: Sharing
 

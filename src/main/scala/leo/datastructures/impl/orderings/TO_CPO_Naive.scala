@@ -262,11 +262,6 @@ object TO_CPO_Naive extends TermOrdering {
     if (s == t) return false
     if (s.isVariable) return false
 
-    /* case 6+10+15: ... > y */
-    if (t.isVariable) {
-      return Bound.unapply(t).isDefined && x.contains(t)
-    }
-
     if (s.isApp || s.isConstant) {
 
       val (f,args) = ∙.unapply(s).get
@@ -322,6 +317,10 @@ object TO_CPO_Naive extends TermOrdering {
             val (_,tO) = :::>.unapply(t).get
             return gt0(s,tO,x)(sig)
           }
+          /* case 6: f(t) >= y */
+          if (t.isVariable) {
+            return x.contains(t)
+          }
 
           // otherwise, fail
           return false
@@ -355,6 +354,10 @@ object TO_CPO_Naive extends TermOrdering {
             val (_, tO) = :::>.unapply(t).get
             return gt0(s, tO, x)(sig)
           }
+          /* case 10: @(s,t) >= y */
+          if (t.isVariable) {
+            return x.contains(t)
+          }
 
           return false
         }
@@ -376,6 +379,11 @@ object TO_CPO_Naive extends TermOrdering {
 
         if (sInTy == tInTy) return gt0(sO, tO, x)(sig)
         else return gt0(s, tO, x)(sig)
+      }
+
+      /* case 15: \x.s >= y */
+      if (t.isVariable) {
+        return x.contains(t)
       }
 
       return false

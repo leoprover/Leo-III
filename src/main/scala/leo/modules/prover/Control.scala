@@ -339,17 +339,17 @@ package inferenceControl {
             leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
 
 
-            if (cmpResult != CMP_GT) {
+            if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
               val intoClauseSubst = shiftedIntoClause.substitute(termSubst, typeSubst)
               val intoLitSubst = intoClauseSubst(intoIndex)
               assert(Clause.wellTyped(intoClauseSubst))
               assert(Literal.wellTyped(intoLitSubst))
-              if (intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
+              if (Configuration.isSet("noOrdCheck2") || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
                 val withClauseSubst = withWrapper.cl.substitute(termSubst, typeSubst)
                 val withLitSubst = withClauseSubst(withIndex)
                 assert(Clause.wellTyped(withClauseSubst))
                 assert(Literal.wellTyped(withLitSubst))
-                if (withClauseSubst.maxLits(sig).contains(withLitSubst)) {
+                if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
                   AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
                 } else {
                   leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#3).")

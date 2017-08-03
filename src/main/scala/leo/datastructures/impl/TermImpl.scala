@@ -291,7 +291,10 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
 
   /** Pretty */
   final def pretty = s"${hd.pretty} ⋅ (${args.pretty})"
-  final def pretty(sig: Signature): String =  s"${hd.pretty(sig)} ⋅ (${args.pretty(sig)})"
+  final def pretty(sig: Signature): String = if (args == SNil)
+    s"${hd.pretty(sig)}"
+  else
+    s"${hd.pretty(sig)} ⋅ (${args.pretty(sig)})"
 }
 
 // For all terms that have not been normalized, assume they are a redex, represented

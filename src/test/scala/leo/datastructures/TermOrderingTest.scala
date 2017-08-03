@@ -2,21 +2,143 @@ package leo.datastructures
 
 import leo.LeoTestSuite
 import leo.datastructures.impl.orderings.{TO_CPO_Naive => ord}
+import leo.modules.calculus.freshVarGenFromBlank
+import org.scalatest.Matchers._
+import leo.datastructures.Term.local._
 
 
 class TermOrderingTest extends LeoTestSuite {
-  test("asd") {
+  test("Constants vs. variable") {
     implicit val sig = getFreshSignature
     import leo.modules.HOLSignature.i
 
-    val c0 = Term.mkAtom(sig.addUninterpreted("c0", i))
-    val x = Term.mkBound(i, 1)
-    val y = Term.mkBound(i, 2)
+    val vargen = freshVarGenFromBlank
+    val c0 = mkAtom(sig.addUninterpreted("c0", i))
+    val x = vargen(i)
+    val y = vargen(i)
+    val expect = CMP_NC
 
-    val c0x = ord.compare(c0,x)
-    println(s"c0x: ${Orderings.pretty(c0x)}")
-    val c0y = ord.compare(c0,y)
-    println(s"c0y: ${Orderings.pretty(c0y)}")
-
+    validate(c0,x,expect)(sig)
+    validate(c0,y,expect)(sig)
   }
+
+  test("f(X) > X") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val vargen = freshVarGenFromBlank
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i))
+    val X = vargen(i)
+
+    val s = f(X)
+    val t = X
+    val expect = CMP_GT
+
+    validate(s,t,expect)(sig)
+  }
+
+  test("f(X,Y) > X / f(X,Y) >  Y") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val vargen = freshVarGenFromBlank
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i ->: i))
+    val X = vargen(i)
+    val Y = vargen(i)
+
+    val s = f(X,Y)
+    val t = X
+    val t2 = Y
+    val expect = CMP_GT
+
+    validate(s,t,expect)(sig)
+    validate(s,t2,expect)(sig)
+  }
+
+  test("f(X) < g(X)") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val vargen = freshVarGenFromBlank
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i))
+    val g = mkAtom(sig.addUninterpreted("g", i ->: i))
+    val X = vargen(i)
+
+    val s = f(X)
+    val t = g(X)
+    val expect = CMP_LT
+
+    validate(s,t,expect)(sig)
+  }
+
+  test("f(f(X)) > f(X)") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val vargen = freshVarGenFromBlank
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i))
+    val X = vargen(i)
+
+    val s = f(f(X))
+    val t = f(X)
+    val expect = CMP_GT
+
+    validate(s,t,expect)(sig)
+  }
+
+  test("p(X) > F / p(X) > T") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.{i, o, LitTrue, LitFalse}
+
+    val vargen = freshVarGenFromBlank
+    val p = mkAtom(sig.addUninterpreted("p", i ->: o))
+    val X = vargen(i)
+
+    val s = p(X)
+    val t = LitFalse
+    val t2 = LitTrue
+    val expect = CMP_GT
+
+    validate(s,t,expect)(sig)
+    validate(s,t2,expect)(sig)
+  }
+
+  test("f <> λXλY.f Y X") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i ->: i))
+
+    val s = f
+    val t = λ(i,i)(f(mkBound(i,1), mkBound(i,2)))
+    val expect = CMP_NC
+
+    validate(s,t,expect)(sig)
+  }
+
+  test("e(c(x)) > x(e)") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val vargen = freshVarGenFromBlank
+    val e = mkAtom(sig.addUninterpreted("e", i ->: i))
+    val c = mkAtom(sig.addUninterpreted("c", ((i ->: i) ->: i) ->: i))
+    val X = vargen((i ->: i) ->: i)
+
+    val s = e(c(X))
+    val t = X(e)
+    val expect = CMP_GT
+
+    validate(s,t,expect)(sig)
+  }
+
+  private final def validate(s: Term, t:Term, expect: CMP_Result)(implicit sig: Signature): Unit = {
+    assert(Term.wellTyped(s))
+    assert(Term.wellTyped(t))
+    val result = ord.compare(s,t)
+    println(s"compare(${s.pretty(sig)},${t.pretty(sig)}): ${Orderings.pretty(result)}")
+    result shouldBe expect
+  }
+
+
 }

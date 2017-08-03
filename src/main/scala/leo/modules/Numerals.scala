@@ -34,7 +34,7 @@ object Numerals {
                           )
 
   /** applies (and normalizes) the successor function `succ` to the given church numeral */
-  def succ(n: Church): Church = ap(succ, n).betaNormalize
+  def succOf(n: Church): Church = ap(succ, n).betaNormalize
 
   /** The add function for church numerals */
   val add: Term = λ(∀((1 ->: 1) ->: 1 ->: 1),∀((1 ->: 1) ->: 1 ->: 1))(
@@ -95,7 +95,7 @@ object Numerals {
     require(n >= 0, "Church numerals cannot be negative.")
     n match {
       case 0 => zero
-      case m => succ(fromInt(n-1))
+      case m => succOf(fromInt(n-1))
     }
   }
 
