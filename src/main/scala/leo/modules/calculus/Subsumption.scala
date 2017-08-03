@@ -8,10 +8,10 @@ trait Subsumption {
 }
 
 object Subsumption extends Subsumption {
-  val impl = TrivialSubsumption
+  val impl = FOMatchingSubsumption
   var subsumptiontests = 0
-  def name = impl.name
-  def subsumes(cl1: Clause, cl2: Clause) = {subsumptiontests += 1; impl.subsumes(cl1, cl2)}
+  def name: String = impl.name
+  def subsumes(cl1: Clause, cl2: Clause): Boolean = {subsumptiontests += 1; impl.subsumes(cl1, cl2)}
 }
 
 object TrivialSubsumption extends Subsumption {
@@ -37,7 +37,7 @@ object FOMatchingSubsumption extends Subsumption {
 
     if (lits1.length <= lits2.length) {
       val liftedLits1 = lits1.map(_.substitute(Subst.shift(cl2.maxImplicitlyBound)))
-      subsumes0(liftedLits1, lits2, Seq())
+      subsumes0(liftedLits1, lits2, Vector.empty)
     } else
       false
   }
@@ -55,7 +55,7 @@ object FOMatchingSubsumption extends Subsumption {
           if (matchingResult.isDefined) {
             val subst = matchingResult.get
             val newTail1 = tail1.map(_.substitute(subst))
-            if (subsumes0(newTail1, lits2 ++ visited, Seq()))
+            if (subsumes0(newTail1, lits2 ++ visited, Vector.empty))
               true
             else
               subsumes0(lits1, tail2, hd2 +: visited)
