@@ -132,10 +132,51 @@ class TermOrderingTest extends LeoTestSuite {
     validate(s,t,expect)(sig)
   }
 
+  test("totality 1") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i))
+    val g = mkAtom(sig.addUninterpreted("g", i ->: i ->: i))
+    val c = mkAtom(sig.addUninterpreted("c", (i)))
+    val d = mkAtom(sig.addUninterpreted("d", (i)))
+
+    val s = f(g(c,f(d)))
+    val t = g(f(c), f(f(d)))
+    val u = f(g(f(d),c))
+    val expect = CMP_LT
+
+    validate(s,t,expect)(sig)
+    validate(s,u,expect)(sig)
+  }
+
+  test("l^f > l^t") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.{i,o}
+
+    val vargen = freshVarGenFromBlank
+    val p = mkAtom(sig.addUninterpreted("p", i ->: o))
+    val X = vargen(i)
+
+    val s = Literal.mkLit(p(X), false)
+    val t = Literal.mkLit(p(X), true)
+    val expect = CMP_GT
+
+    validate(s,t,expect)(sig)
+  }
+
   private final def validate(s: Term, t:Term, expect: CMP_Result)(implicit sig: Signature): Unit = {
     assert(Term.wellTyped(s))
     assert(Term.wellTyped(t))
     val result = ord.compare(s,t)
+    println(s"compare(${s.pretty(sig)},${t.pretty(sig)}): ${Orderings.pretty(result)}")
+    result shouldBe expect
+  }
+
+  private final def validate(s: Literal, t:Literal, expect: CMP_Result)(implicit sig: Signature): Unit = {
+    assert(Literal.wellTyped(s))
+    assert(Literal.wellTyped(t))
+    val result = Literal.compare(s,t)
     println(s"compare(${s.pretty(sig)},${t.pretty(sig)}): ${Orderings.pretty(result)}")
     result shouldBe expect
   }

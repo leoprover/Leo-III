@@ -342,25 +342,35 @@ package inferenceControl {
             if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
               val intoClauseSubst = shiftedIntoClause.substitute(termSubst, typeSubst)
               val intoLitSubst = intoClauseSubst(intoIndex)
+              leo.Out.finest(s"intoClause: ${shiftedIntoClause.pretty(sig)}")
+              leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
+              leo.Out.finest(s"intoClauseSubst: ${intoClauseSubst.pretty(sig)}")
+              leo.Out.finest(s"intoLitSubst: ${intoLitSubst.pretty(sig)}")
+              leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
               assert(Clause.wellTyped(intoClauseSubst))
               assert(Literal.wellTyped(intoLitSubst))
               if (Configuration.isSet("noOrdCheck2") || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
                 val withClauseSubst = withWrapper.cl.substitute(termSubst, typeSubst)
+                leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
                 val withLitSubst = withClauseSubst(withIndex)
+                leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
                 assert(Clause.wellTyped(withClauseSubst))
                 assert(Literal.wellTyped(withLitSubst))
                 if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
                   AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
                 } else {
-                  leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#3).")
+                  leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
                   null
                 }
               } else {
-                leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#2).")
+                leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#2).")
+//                if (j == 2) System.exit(0)
+//                j += 1
                 null
               }
             } else {
-              leo.Out.output(s"[Paramod] Dropped due to ordering restrictions (#1).")
+              leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#1).")
+//              System.exit(0)
               null
             }
           }
@@ -380,7 +390,7 @@ package inferenceControl {
 
       } else null
     }
-
+    var j = 0
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
     private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {

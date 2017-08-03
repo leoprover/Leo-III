@@ -318,11 +318,19 @@ object Literal {
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 
+//    println(s"al: ${al.pretty(sig)}")
+//    println(s"ar: ${ar.pretty(sig)}")
+//    println(s"bl: ${bl.pretty(sig)}")
+//    println(s"br: ${br.pretty(sig)}")
+
     if (a.oriented) {
+//      println("a oriented")
       val albl = al.compareTo(bl)(sig)
+//      println(s"albl: ${Orderings.pretty(albl)}")
       if (isLE(albl)) CMP_LT
       else {
         val albr = al.compareTo(br)(sig)
+//        println(s"albr: ${Orderings.pretty(albr)}")
         if (isLE(albr)) CMP_LT
         else if (albl == CMP_GT && albr == CMP_GT) CMP_GT
         else CMP_NC

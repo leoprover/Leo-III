@@ -50,7 +50,7 @@ object RunStrategy {
       Configuration.UNIFIER_COUNT,
       Configuration.UNIFICATION_DEPTH,
       Configuration.DEFAULT_BOOLEXT,
-      Configuration.DEFAULT_CHOICE,
+      !Configuration.NO_CHOICE,
       Configuration.RENAMING_SET,
       Configuration.FUNCSPEC,
       Configuration.DEFAULT_DOMCONSTR,

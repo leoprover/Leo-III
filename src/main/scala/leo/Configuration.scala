@@ -150,7 +150,7 @@ object Configuration extends DefaultConfiguration {
   lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
   lazy val PRE_PRIMSUBST_MAX_DEPTH: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST_MAXDEPTH, DEFAULT_PRE_PRIMSUBST_MAXDEPTH)
 
-  lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE)
+  lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE) || !DEFAULT_CHOICE
   lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
 
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)

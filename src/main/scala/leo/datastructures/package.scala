@@ -87,9 +87,9 @@ package object datastructures {
     * @since 20.08.14
     */
   object Orderings {
-    @inline final def isComparable(x: CMP_Result): Boolean = (x & ~CMP_EQ) != 0
-    @inline final def isGE(x: CMP_Result): Boolean = (x & (CMP_EQ | CMP_GT)) != 0
-    @inline final def isLE(x: CMP_Result): Boolean = (x & (CMP_EQ | CMP_LT)) != 0
+    @inline final def isComparable(x: CMP_Result): Boolean = x != CMP_NC
+    @inline final def isGE(x: CMP_Result): Boolean = x == CMP_EQ || x == CMP_GT
+    @inline final def isLE(x: CMP_Result): Boolean = x == CMP_EQ || x == CMP_LT
     @inline final def invCMPRes(x: CMP_Result): CMP_Result = {
       if (x == CMP_GT) CMP_LT
       else if (x == CMP_LT) CMP_GT
