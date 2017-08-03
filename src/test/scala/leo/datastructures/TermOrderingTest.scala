@@ -1,8 +1,6 @@
-package leo.datastructures.context
+package leo.datastructures
 
 import leo.LeoTestSuite
-import leo.datastructures.Term
-import leo.datastructures.Orderings
 import leo.datastructures.impl.orderings.{TO_CPO_Naive => ord}
 
 
