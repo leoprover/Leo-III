@@ -1709,7 +1709,8 @@ package redundancyControl {
   object RedundancyControl {
     /** Returns true iff cl is redundant wrt to processed. */
     final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = {
-      if (SubsumptionControl.isSubsumed(cl, processed)) true
+      if (processed.exists(_.cl == cl.cl)) true
+      else if (SubsumptionControl.isSubsumed(cl, processed)) true
       // TODO: Do e.g. AC tautology deletion? maybe restructure later.
       else false
     }

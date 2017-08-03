@@ -35,7 +35,7 @@ object FOMatchingSubsumption extends Subsumption {
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {
     val (lits1, lits2) = (cl1.lits, cl2.lits)
 
-    if (lits1.length <= lits2.length) {
+    if (lits1.length < lits2.length) {
       val liftedLits1 = lits1.map(_.substitute(Subst.shift(cl2.maxImplicitlyBound)))
       subsumes0(liftedLits1, lits2, Vector.empty)
     } else
