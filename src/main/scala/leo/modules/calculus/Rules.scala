@@ -560,7 +560,9 @@ object OrderedParamod extends CalculusRule {
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")
 
     val newlits_simp = Simp.shallowSimp(withLits_without_withLiteral ++ rewrittenIntoLits)(sig)  :+ unificationLit
-    Clause(newlits_simp)
+    val result = Clause(newlits_simp)
+    Out.finest(s"result: ${result.pretty(sig)}")
+    result
   }
 }
 

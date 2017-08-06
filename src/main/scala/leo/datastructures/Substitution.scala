@@ -52,6 +52,8 @@ sealed abstract class Subst extends Pretty {
     * not mapped to themselves.*/
   def domain: Set[Int]
 
+  def restrict(domainPred: Int => Boolean): Subst
+
   override def equals(o: Any): Boolean = o match {
     case ot: Subst => shiftedBy == ot.shiftedBy && fronts == ot.fronts
     case _ => false
@@ -189,6 +191,20 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
       idx = idx + 1
     }
     result
+  }
+
+  def restrict(domainPred: Int => Boolean): Subst = {
+    var newFts: Vector[Front] = Vector.empty
+    var i = 0
+    while (i < fts.size) {
+      if (domainPred(i)) {
+        newFts = newFts :+ fts(i)
+      } else {
+        newFts = newFts :+ BoundFront(i+1)
+      }
+      i = i+1
+    }
+    new RASubst(shift, newFts)
   }
 }
 

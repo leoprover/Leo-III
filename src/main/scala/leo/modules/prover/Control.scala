@@ -340,7 +340,8 @@ package inferenceControl {
 
 
             if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
-              val intoClauseSubst = shiftedIntoClause.substitute(termSubst, typeSubst)
+              val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
+              val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, typeSubst)
               val intoLitSubst = intoClauseSubst(intoIndex)
               leo.Out.finest(s"intoClause: ${shiftedIntoClause.pretty(sig)}")
               leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
@@ -350,7 +351,8 @@ package inferenceControl {
               assert(Clause.wellTyped(intoClauseSubst))
               assert(Literal.wellTyped(intoLitSubst))
               if (Configuration.isSet("noOrdCheck2") || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
-                val withClauseSubst = withWrapper.cl.substitute(termSubst, typeSubst)
+                val restrictedTermSubst = termSubst.restrict(i => withWrapper.cl.implicitlyBound.exists(_._1 == i))
+                val withClauseSubst = withWrapper.cl.substitute(restrictedTermSubst, typeSubst)
                 leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
                 val withLitSubst = withClauseSubst(withIndex)
                 leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
