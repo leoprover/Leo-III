@@ -41,12 +41,12 @@ object TO_CPO_Naive extends TermOrdering {
   /* Comparisons of terms */
 
   // Core function for comparisons
-  @inline final def gt(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && gt0(s,t, Set())(sig)
-  @inline final def gt(s: Term, t: Term, bound: Set[Term])(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && gt0(s,t, bound)(sig)
+  @inline final def gt(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && gt0(s,t, 0)(sig)
+  @inline final def gt(s: Term, t: Term, depth: Int)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && gt0(s,t, depth)(sig)
   @inline final def gtMult(s: Seq[Term], t: Seq[Term])(implicit sig: Signature): Boolean = gt0Mult(s,t)(sig)
 
-  @inline final def gteq(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, Set())(sig)
-  @inline final def gteq(s: Term, t: Term, bound: Set[Term])(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, bound)(sig)
+  @inline final def gteq(s: Term, t: Term)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, 0)(sig)
+  @inline final def gteq(s: Term, t: Term, depth: Int)(implicit sig: Signature): Boolean = gteq(s.ty, t.ty) && ge0(s,t, depth)(sig)
 
   // Defined by gt/ge
   @inline final def lt(s: Term, t: Term)(implicit sig: Signature): Boolean = gt(t,s)(sig)
@@ -192,12 +192,12 @@ object TO_CPO_Naive extends TermOrdering {
   // Comparisons of terms
   ////////////////////////////////////
 
-  @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term], status: Int)(sig: Signature): Boolean = {
+  @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], depth: Int, status: Int)(sig: Signature): Boolean = {
     import leo.datastructures.Signature.{lexStatus,multStatus}
     if (status == lexStatus) {
       if (s.length > t.length){
         alleq(s,t,t.length)
-      } else gt0Lex(a,s,t,x)(sig)
+      } else gt0Lex(a,s,t,depth)(sig)
     } else if (status == multStatus) {
       gt0Mult(s,t)(sig)
     } else {
@@ -208,12 +208,12 @@ object TO_CPO_Naive extends TermOrdering {
   }
 
   @tailrec
-  private final def gt0Lex(a: Term, s: Seq[Term], t: Seq[Term], x: Set[Term])(sig: Signature): Boolean = {
+  private final def gt0Lex(a: Term, s: Seq[Term], t: Seq[Term], depth: Int)(sig: Signature): Boolean = {
     if (s.nonEmpty && t.nonEmpty) {
       if (s.head == t.head) {
-        gt0Lex(a,s.tail,t.tail,x)(sig)
+        gt0Lex(a,s.tail,t.tail,depth)(sig)
       } else {
-        gt(s.head,t.head)(sig) && t.tail.forall(gt0(a,_,x)(sig))
+        gt(s.head,t.head)(sig) && t.tail.forall(gt0(a,_,depth)(sig))
       }
     } else false
   }
@@ -244,7 +244,7 @@ object TO_CPO_Naive extends TermOrdering {
     else if (s.nonEmpty && t.nonEmpty) {
       val sn = s.head
       val tIt = t.iterator
-      var keepT: Seq[Term] = Seq()
+      var keepT: Seq[Term] = Vector.empty
       while (tIt.hasNext) {
         val tn = tIt.next()
         if (!gt(sn, tn)(sig)) {
@@ -255,164 +255,165 @@ object TO_CPO_Naive extends TermOrdering {
     } else false
   }
 
-  final private def gt0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
+  final private def gt0(s: Term, t: Term, depth: Int)(sig: Signature): Boolean = {
     import leo.datastructures.Term.{:::>, Bound, Symbol, TypeLambda, ∙}
     import leo.datastructures.Term.local.mkApp
 
     if (s == t) return false
     if (s.isVariable) return false
+    // #######################################################
+    /* adaption for type abstractions*/
+    if (s.isTypeAbs) {
+      val sO = TypeLambda.unapply(s).get
+      if (gteq(sO,t,depth)(sig)) return true
+      if (t.isTypeAbs) {
+        val tO = TypeLambda.unapply(t).get
+        return gt0(sO,tO,depth)(sig)
+      }
+      return false
+    }
+    else
+    /* adaption end */
+    // #######################################################
+    // #############
+    // All \-rules (\>, \=, \!=, \X) without \eta
+    // #############
+    if (s.isTermAbs) {
+      val (sInTy, sO) = :::>.unapply(s).get
 
-    if (s.isApp || s.isConstant) {
+      if (gteq(sO,t,depth)(sig)) return true
+      if (t.isTermAbs) {
+        val (tInTy, tO) = :::>.unapply(t).get
+
+        if (sInTy == tInTy) return gt0(sO, tO, depth)(sig)
+        else return gt0(s, tO, depth)(sig)
+      }
+      /* case 15: \x.s >= y */
+      if (t.isVariable) {
+        return Bound.unapply(t).get._2 <= depth
+      }
+      return false
+    }
+    // #######################################################
+    else
+    if (s.isApp) {
+      /* case 6: f(t) >= y and */
+      /* case 10: @(s,t) >= y */
+      if (t.isVariable) {
+        if(Bound.unapply(t).get._2 <= depth) return true
+      }
 
       val (f,args) = ∙.unapply(s).get
       val fargList: Seq[Term] = effectiveArgs(f.ty,args)
 
-      f match {
-        // #############
-        // All f(t)-rules
-        // #############
-        case Symbol(idf) =>
-        /* f(t) > ... cases */
-
-          /* case 1: f(t) >= v */
+      if (fargList.nonEmpty) {
+        /* case 7: @(s,t) > v */
+        if (ge0(mkApp(f,args.init),t,depth)(sig)) return true
+        if (gteq(fargList.last,t,depth)(sig)) return true
+        /* case 1: f(t) >= v */
+        if (f.isConstant) {
           if (fargList.exists(gteq(_, t)(sig))) return true
+        }
 
-          /* case 2+3: f(t) > g(u) and case 4: f(t) > uv*/
-          if (t.isApp || t.isConstant) {
+        if (t.isTermAbs) {
+          val (_, tO) = :::>.unapply(t).get
+          if (f.isConstant) {
+            /* case 5: f(t) > lambda yv*/
+            if (gt0(s,tO,depth+1)(sig)) return true
+          }
+          /* case 9: @(s,t) > lambda yv*/
+          gt0(s, tO, depth)(sig) // TODO need that? probably b/c vars at head position
+        } else if (t.isApp) {
+          val (g,args2) = ∙.unapply(t).get
+          val gargList: Seq[Term] = effectiveArgs(g.ty,args2)
 
-            val (g,args2) = ∙.unapply(t).get
+          /* case 2+3: f(t) > g(u) */
+          if (f.isConstant && g.isConstant) {
+            val idf = Symbol.unapply(f).get
+            val idg = Symbol.unapply(g).get
             try {
-              val gargList: Seq[Term] = effectiveArgs(g.ty, args2)
-              g match {
-                case Symbol(idg) =>
-                  /* case 2+3 */
-                  if (precedence(idf, idg)(sig) == CMP_EQ) {
-                    return gt0Stat(s,fargList, gargList, x, sig(idf).status)(sig)
-                  } else if (precedence(idf, idg)(sig) == CMP_GT) {
-                    return gargList.forall(gt0(s, _, x)(sig))
-                  } else {
-                    return false
-                  }
-
-                case _ if gargList.nonEmpty =>
-                  /* case 4*/
-                  return gt0(s, mkApp(g, args2.init), x)(sig) && gt0(s, gargList.last, x)(sig)
+              if (precedence(idf, idg)(sig) == CMP_EQ) {
+                return gt0Stat(s,fargList, gargList, depth, sig(idf).status)(sig)
+              } else if (precedence(idf, idg)(sig) == CMP_GT) {
+                return gargList.forall(gt0(s, _, depth)(sig))
+              } else {
+                return false
               }
             } catch {
-              case e:AssertionError => {
+              case e:AssertionError =>
                 Out.severe(e.getMessage)
                 Out.output("TERM s: \t\t " + s.pretty)
                 Out.output("TERM t: \t\t " + t.pretty)
                 throw e
-              }
-              case e: Exception => {
+              case e: Exception =>
                 println(idf)
                 println(f.pretty)
                 throw e
-              }
-            }
-          }
-          /* case 5: f(t) > lambda yv*/
-          if (t.isTermAbs) {
-            val (_,tO) = :::>.unapply(t).get
-            return gt0(s,tO,x)(sig)
-          }
-          /* case 6: f(t) >= y */
-          if (t.isVariable) {
-            return x.contains(t)
-          }
-
-          // otherwise, fail
-          return false
-
-        // #############
-        // All @-rules
-        // #############
-        case _ if fargList.nonEmpty => {
-
-          if (ge0(mkApp(f,args.init),t,x)(sig)) return true
-          if (gteq(fargList.last,t,x)(sig)) return true
-
-          if (t.isApp) {
-            val (g,args2) = ∙.unapply(t).get
-
-            val gargList: Seq[Term] = effectiveArgs(g.ty,args2)
-
-            if (gargList.nonEmpty) {
-              val s2 = mkApp(f,args.init)
-              val t2 = mkApp(g, args2.init)
-              if (s2 == t2) {
-                if (gt0(fargList.last, gargList.last,x)(sig)) return true
-              }
-
-              return ((gt(s2,t2,x)(sig) || gteq(fargList.last,t2,x)(sig) || gt(s,t2)(sig))
-                   && (gt(s2,gargList.last,x)(sig) || gteq(fargList.last,gargList.last,x)(sig) || gt(s,gargList.last)(sig)))
             }
           }
 
-          if (t.isTermAbs) {
-            val (_, tO) = :::>.unapply(t).get
-            return gt0(s, tO, x)(sig)
-          }
-          /* case 10: @(s,t) >= y */
-          if (t.isVariable) {
-            return x.contains(t)
-          }
+          if (gargList.nonEmpty) {
+            /* case 4: f(t) > @(u,v)*/
+            if (f.isConstant)
+              if(gt0(s, mkApp(g, args2.init), depth)(sig) && gt0(s, gargList.last, depth)(sig)) return true
 
-          return false
-        }
-        case _ => println(s.pretty);println(f.pretty); assert(false, "CPO: should not happen, sth not in beta nf");
-
-      }
+            /* case 8: @(s,t) > @(u,v) */
+            val s2 = mkApp(f,args.init)
+            val t2 = mkApp(g, args2.init)
+            if (s2 == t2) {
+              if (gt0(fargList.last, gargList.last,depth)(sig)) return true
+            }
+            if ((gt(s2,t2,depth)(sig) || gteq(fargList.last,t2,depth)(sig) || gt(s,t2)(sig))
+              && (gt(s2,gargList.last,depth)(sig) || gteq(fargList.last,gargList.last,depth)(sig) || gt(s,gargList.last)(sig))) return true
+          }
+          false
+        } else if (t.isConstant) {
+          if (f.isConstant) {
+            val idf = Symbol.unapply(f).get
+            val idg = Symbol.unapply(t).get
+            Orderings.isGE(precedence(idf, idg)(sig))
+          } else false
+        } else false
+      } else false
     }
-    // #############
-    // All \-rules (\>, \=, \!=, \X) without \eta
-    // #############
-    // TODO: eta rules left out for now -- we are in eta-long form invariantly
-    if (s.isTermAbs) {
-      val (sInTy, sO) = :::>.unapply(s).get
-
-      if (gteq(sO,t,x)(sig)) return true
-
-      if (t.isTermAbs) {
-        val (tInTy, tO) = :::>.unapply(t).get
-
-        if (sInTy == tInTy) return gt0(sO, tO, x)(sig)
-        else return gt0(s, tO, x)(sig)
-      }
-
-      /* case 15: \x.s >= y */
+    else
+    if (s.isConstant) {
       if (t.isVariable) {
-        return x.contains(t)
-      }
-
-      return false
+        Bound.unapply(t).get._2 <= depth
+      } else if (t.isTermAbs) {
+        /* case 5: f(t) > lambda yv*/
+        val (_, tO) = :::>.unapply(t).get
+        gt0(s,tO,depth+1)(sig)
+      } else if (t.isApp || t.isAtom) {
+        val idf = Symbol.unapply(s).get
+        val (g,args2) = ∙.unapply(t).get
+        val gargList: Seq[Term] = effectiveArgs(g.ty, args2)
+        if (g.isConstant) {
+          val idg = Symbol.unapply(g).get
+          if (precedence(idf, idg)(sig) == CMP_EQ) {
+            if(gt0Stat(s,Vector.empty, gargList, depth, sig(idf).status)(sig)) return true
+          } else if (precedence(idf, idg)(sig) == CMP_GT) {
+            if(gargList.forall(gt0(s, _, depth)(sig))) return true
+          } else {
+            return false
+          }
+        }
+        if (gargList.nonEmpty) {
+          gt0(s, mkApp(g, args2.init), depth)(sig) && gt0(s, gargList.last, depth)(sig)
+        } else false
+      } else false
     }
-    // #############
-    /* adaption for type abstractions*/
-    // #############
-    if (s.isTypeAbs) {
-      val sO = TypeLambda.unapply(s).get
-
-      if (gteq(sO,t,x)(sig)) return true
-
-      if (t.isTypeAbs) {
-        val tO = TypeLambda.unapply(t).get
-
-        return gt0(sO,tO,x)(sig)
-      }
-      return false
+    // #######################################################
+    else {
+      assert(false)
+      false
     }
-    /* adaption end */
-    Out.severe("Comparing unrecognized term. This is considered a bug! Please report.")
-    Out.severe(s.pretty)
-    false
   }
 
 
-  @inline final private def ge0(s: Term, t: Term, x: Set[Term])(sig: Signature): Boolean = {
+  @inline final private def ge0(s: Term, t: Term, depth: Int)(sig: Signature): Boolean = {
     if (s == t) true
-    else gt0(s,t,x)(sig)
+    else gt0(s,t,depth)(sig)
   }
 
 

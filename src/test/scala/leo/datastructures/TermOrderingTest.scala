@@ -138,16 +138,15 @@ class TermOrderingTest extends LeoTestSuite {
 
     val f = mkAtom(sig.addUninterpreted("f", i ->: i))
     val g = mkAtom(sig.addUninterpreted("g", i ->: i ->: i))
-    val c = mkAtom(sig.addUninterpreted("c", (i)))
-    val d = mkAtom(sig.addUninterpreted("d", (i)))
+    val c = mkAtom(sig.addUninterpreted("c", i))
+    val d = mkAtom(sig.addUninterpreted("d", i))
 
     val s = f(g(c,f(d)))
     val t = g(f(c), f(f(d)))
     val u = f(g(f(d),c))
-    val expect = CMP_LT
 
-    validate(s,t,expect)(sig)
-    validate(s,u,expect)(sig)
+    validate(s,t,CMP_LT)(sig)
+    validate(s,u,CMP_GT)(sig)
   }
 
   test("l^f > l^t") {
