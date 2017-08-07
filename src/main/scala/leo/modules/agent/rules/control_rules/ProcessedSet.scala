@@ -21,7 +21,7 @@ import scala.collection.mutable
   * Stores the processed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class ProcessedSet(processedType : DataType[AnnotatedClause])(implicit state : Control.LocalFVState)  extends DataStore{
+class ProcessedSet(val processedType : DataType[AnnotatedClause])(implicit state : Control.LocalFVState)  extends DataStore{
 
   implicit val sig : Signature = state.signature
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()

@@ -51,7 +51,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
   var generateSet : TypedSet[AnnotatedClause] = _
   var unifySet : TypedSet[AnnotatedClause]= _
   var resultSet : TypedSet[AnnotatedClause]= _
-  var doneSet : TypedSet[(Long, AnnotatedClause)]=_
+//  var doneSet : TypedSet[(Long, AnnotatedClause)]=_
   var preprocessSet : TypedSet[AnnotatedClause] = _
 
   // Rules
@@ -62,13 +62,13 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
   var bool : BoolextRule=_
   var cnf : CNFRule= _
   var moveGen : MovingRule[AnnotatedClause]= _
-  var moveNorm : ForwardSubsumptionRule= _
+  var moveNorm : SubsumptionRule= _
   var factor : FactorRule= _
   var primSubst : PrimsubstRule= _
   var paramod : ParamodRule= _
   var unify : UnificationRule= _
   var emptyCl : EmptyClauseRule= _
-  var done : ParamodDoneRule=_
+//  var done : ParamodDoneRule=_
   var choice : ChoiceRule=_
   var preprocess : PreprocessRule=_
   var activateSelect : ActiveRule[AnnotatedClause]=_
@@ -77,11 +77,11 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     val n = normalizeSet.isEmpty
     val g = generateSet.isEmpty
     val u = unifySet.isEmpty
-    val d = doneSet.isEmpty
+//    val d = doneSet.isEmpty
 
 //    println(s"[Selection] Normalize.isEmpty=${n}, Generate.isEmpty=${g}, Unify.isEmpty=${u}, Done.isEmpty=${doneSet.isEmpty}")
 
-    n && g && u && d
+    n && g && u // && d
   }
 
   def startSelect() : Boolean = {
@@ -99,13 +99,13 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
 
     passiveSet = new UnprocessedSet(Unprocessed)
     activeSet = new ProcessedSet(Processed)
-    normalizeBarrier = new AgentBarrier(Normalize, 5)
-    generateBarrier = if(state.runStrategy.choice) new AgentBarrier(Generate, 4) else new AgentBarrier(Generate, 3)
+    normalizeBarrier = new AgentBarrier(Normalize, 4)
+    generateBarrier = if(state.runStrategy.choice) new AgentBarrier(Generate, 5) else new AgentBarrier(Generate, 4)
     normalizeSet = new TypedSet(Normalize)
     generateSet  = new TypedSet(Generate)
     unifySet = new TypedSet(Unify)
     resultSet = new TypedSet(ResultType)
-    doneSet = new TypedSet(Done)
+//    doneSet = new TypedSet(Done)
     preprocessSet = new TypedSet(Init)
 
     // Rules
@@ -115,16 +115,16 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     simp = new RewriteRule(Normalize, Normalize, activeSet.get)
     lift = new LiftEqRule(Normalize, Normalize)
     func = new FuncExtRule(Normalize, Normalize)
-    bool = new BoolextRule(Normalize, Unprocessed)  // TODO move to Normalize???
+    bool = new BoolextRule(Generate, Unprocessed)  // TODO generating or normalize?
     cnf = new CNFRule(Normalize, Unprocessed)
     moveGen = new MovingRule(Generate, Processed, generateBarrier)
-    moveNorm = new ForwardSubsumptionRule(Normalize, activeSet, Some(Generate, normalizeBarrier))
+    moveNorm = new SubsumptionRule(Normalize, activeSet, Some(Generate, normalizeBarrier))
     factor = new FactorRule(Generate, Unify, Unprocessed)
     primSubst = new PrimsubstRule(Generate, Unify, Unprocessed)
     paramod = new ParamodRule(Generate, Unify, Done, Unprocessed)(activeSet)
     unify = new UnificationRule(Unify, Unprocessed)
     emptyCl = new EmptyClauseRule(ResultType, Unprocessed, Generate, Unify)
-    done = new ParamodDoneRule(Done, Unify, Generate, Unprocessed, doneSet, generateSet)(activeSet)
+//    done = new ParamodDoneRule(Done, Unify, Generate, Unprocessed, doneSet, generateSet)(activeSet)
     choice = new ChoiceRule(Generate, Unify, Unprocessed)
     preprocess = new PreprocessRule(Init, Unprocessed)
 
@@ -143,7 +143,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
         paramod,
         unify,
         emptyCl,
-        done,
+//        done,
         preprocess
       )
       if (state.runStrategy.choice) choice +: r
@@ -159,7 +159,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
       generateSet,
       unifySet,
       resultSet,
-      doneSet,
+//      doneSet,
       preprocessSet
     )
     super.initGraph(initSet)
