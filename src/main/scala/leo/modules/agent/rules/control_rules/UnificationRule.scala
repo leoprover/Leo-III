@@ -65,7 +65,6 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
         if (!Clause.trivial(newCl.cl)) {
           leo.Out.debug(s"[Unification] Unified\n  ${sClause.pretty(state.signature)}\n >\n   ${newCl.pretty(state.signature)}")
           r.insert(outType)(newCl)
-          leo.Out.output(r.toString)
         } else {
           //          sb.append(s"${ac.pretty(sig)} was trivial")
         }
