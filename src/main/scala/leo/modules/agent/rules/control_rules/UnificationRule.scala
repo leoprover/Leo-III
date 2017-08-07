@@ -31,6 +31,8 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
       var ncl = ins.next()
       if (!Clause.trivial(ncl.cl)) {
         res = new UnificationHint(ncl) +: res
+      } else {
+        res = new DeleteHint(ncl, inType) +: res
       }
     }
     res
@@ -38,7 +40,7 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
 
   class UnificationHint(sClause: AnnotatedClause) extends Hint {
     override def apply(): Delta = {
-//      println(s"[Unification] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+//      println(s"[Unification] on ${sClause.pretty(sig)}")
       val r = Result()
       r.remove(inType)(sClause)
 
@@ -63,6 +65,7 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
         if (!Clause.trivial(newCl.cl)) {
           leo.Out.debug(s"[Unification] Unified\n  ${sClause.pretty(state.signature)}\n >\n   ${newCl.pretty(state.signature)}")
           r.insert(outType)(newCl)
+          leo.Out.output(r.toString)
         } else {
           //          sb.append(s"${ac.pretty(sig)} was trivial")
         }

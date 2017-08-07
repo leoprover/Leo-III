@@ -30,7 +30,8 @@ class SelectionRule(inType : DataType[AnnotatedClause],
   override def canApply(r: Delta): Seq[Hint] = {
     unprocessed.synchronized{
       work -= r.removes(inType).size  // TODO Save selected and only delete those
-      if(work == 0 && canSelectNext() && unprocessed.unprocessedLeft){
+      val canSelect = canSelectNext()
+      if(work == 0 && canSelect && unprocessed.unprocessedLeft){
         if(actRound >= maxRound && maxRound > 0){
           leo.Out.debug(s"[Selection] (Round = ${actRound}) : Maximum number of iterations reached.")
           return Seq()
@@ -49,6 +50,7 @@ class SelectionRule(inType : DataType[AnnotatedClause],
         }
         res
       } else {
+//        println(s"UnprocessedLeft : ${unprocessed.unprocessedLeft}\n work : ${work}\n canSelect : ${canSelect}")
         Seq()
       }
     }
