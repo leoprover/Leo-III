@@ -15,7 +15,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
   implicit val sig : Signature = state.signature
   override final val inTypes : Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType)
-  private val lockType = LockType(outType)
+  private val lockType = LockType(inType)
 
   override def name: String = "bool_ext"
   override def canApply(r: Delta): Seq[Hint] = {
@@ -41,7 +41,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
       leo.Out.debug(s"[BoolExt] on ${sClause.pretty(state.signature)}\n  > ${nClauses.map(_.pretty(state.signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
-      r.remove(inType)(sClause)
+      r.insert(lockType)(sClause)
       while(it.hasNext){
         val simpClause = Control.simp(it.next())
         r.insert(outType)(simpClause)
@@ -49,8 +49,8 @@ class BoolextRule(inType : DataType[AnnotatedClause],
       r
     }
 
-    override lazy val read: Map[DataType[Any], Set[Any]] = Map()
-    override lazy val write: Map[DataType[Any], Set[Any]] = Map(inType -> Set(sClause))
+    override lazy val read: Map[DataType[Any], Set[Any]] = Map(inType -> Set(sClause))
+    override lazy val write: Map[DataType[Any], Set[Any]] = Map()
   }
 
 }

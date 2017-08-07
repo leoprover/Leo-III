@@ -3,7 +3,7 @@ package leo.modules.agent.rules.control_rules
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.GeneralState
-import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
+import leo.modules.agent.rules._
 import leo.modules.control.Control
 
 /**
@@ -46,6 +46,6 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
       r
     }
     override lazy val read: Map[DataType[Any], Set[Any]] = Map()
-    override lazy val write: Map[DataType[Any], Set[Any]] = Map(outType -> Set(oldClause))
+    override lazy val write: Map[DataType[Any], Set[Any]] = Map(inType -> Set(oldClause))
   }
 }
