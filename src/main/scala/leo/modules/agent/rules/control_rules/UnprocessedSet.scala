@@ -79,6 +79,8 @@ class UnprocessedSet(unprocessedType : DataType[AnnotatedClause])(implicit state
     val ins = ins1 ++ ins2
     val del = del1 ++ del2
 
+    state.incGeneratedCl(ins.size)
+
     // Performs an update on valuesStored and filters for the ones with changes.
     val filterDel = del.filter(c => valuesStored.remove(c))
     val filterIns = ins.filter(c => valuesStored.add(c))

@@ -198,12 +198,12 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         if (endFlag) return // If is ended quit
       }
 
+      try {
       // Blocks until a task is available
       this.synchronized{while (curExec.size > numberOfThreads) this.wait()}
       val tasks = blackboard.getTask
       tasks foreach {case (a, t) => AgentWork.inc(a, t)}
 //      println(tasks)
-      try {
         for ((a, t) <- tasks) {
           this.synchronized {
             curExec.add(t)

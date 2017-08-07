@@ -35,6 +35,8 @@ class SubsumptionRule(inType : DataType[AnnotatedClause],
 
   private def backward(c : AnnotatedClause, processed : Set[AnnotatedClause], r : MutableDelta) : MutableDelta = {
     val red = Control.backwardSubsumptionTest(c, processed).iterator
+    state.incBackwardSubsumedCl(red.size)
+    state.diffProcessedCl(-red.size)
     while(red.hasNext){
       val rc = red.next()
       leo.Out.debug(s"[Subsumption] Backward subsumed clause ${rc.pretty(sig)}\n by ${c.pretty(sig)}")
@@ -50,6 +52,7 @@ class SubsumptionRule(inType : DataType[AnnotatedClause],
       if(red) {
         leo.Out.debug(s"[Subsumption] Removed clause ($inType) ${c.pretty(sig)}")
         r.remove(inType)(c)
+        state.incForwardSubsumedCl()
         r
       } else {
         backward(c, processed, r)
@@ -68,9 +71,11 @@ class SubsumptionRule(inType : DataType[AnnotatedClause],
         val (outType, barrier) = move.get
         leo.Out.debug(s"[Subsumption] Moved clause ($inType -> $outType)\n  ${c.pretty(state.signature)}")
         r.insert(outType)(c)
+        state.diffProcessedCl(1)
         backward(c, processed, r)
       } else {
         leo.Out.debug(s"[Subsumption] Removed clause ($inType) ${c.pretty(state.signature)}")
+        state.incForwardSubsumedCl()
         r
       }
 

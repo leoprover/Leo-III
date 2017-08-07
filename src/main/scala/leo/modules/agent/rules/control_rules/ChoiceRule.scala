@@ -52,6 +52,7 @@ class ChoiceRule (inType : DataType[AnnotatedClause],
         } else {
           var newclauses = Control.cnf(simpClause)
           newclauses = newclauses.map(cw => Control.simp(Control.liftEq(cw)))
+          state.incChoiceInstantiations(newclauses.size)
           var newIt = newclauses.iterator
           while(newIt.hasNext) {
             r.insert(noUnifyType)(newIt.next)

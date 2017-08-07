@@ -58,6 +58,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
 
       val r = Result()
       val it = ParamodControl.allParamods(sClause, aClause).iterator
+      state.incParamod(it.size)
       //    if(it.hasNext){
       leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(sig)}\n   ${aClause.pretty(sig)}")
       //    }
@@ -152,6 +153,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
           val (a2, m2,c2) = doneElemsArray(j)
           if(a1 > m2 && a2 > m1) {
             res = ParamodControl.allParamods(c1, c2) union res
+            state.incParamod(res.size)
           }
         }
       }

@@ -8,7 +8,7 @@ import leo.modules.prover.State.LastCallStat
 /**
   * Created by lex on 20.02.16.
   */
-trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
+trait State[T <: ClauseProxy] extends FVState[T] {
   def initUnprocessed(): Unit
   def unprocessedLeft: Boolean
   def unprocessed: Set[T]
@@ -44,32 +44,6 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def setLastCallStat(lcs: LastCallStat[T]): Unit
 
   def copy : State[T]
-}
-
-trait StateStatistics {
-  // Statistics
-  def noProofLoops: Long
-  def incProofLoopCount(): Unit
-  def noProcessedCl: Int
-  def incTrivialCl(): Unit
-  def noTrivialCl: Int
-  def incForwardSubsumedCl(): Unit
-  def incForwardSubsumedCl(n: Int): Unit
-  def noForwardSubsumedCl: Int
-  def incBackwardSubsumedCl(): Unit
-  def incBackwardSubsumedCl(n: Int): Unit
-  def noBackwardSubsumedCl: Int
-  def incDescendantsDeleted(n: Int): Unit
-  def noDescendantsDeleted: Int
-  def incGeneratedCl(by: Int): Unit
-  def noGeneratedCl: Int
-  def incParamod(by: Int): Unit
-  def noParamod: Int
-  def incFactor(by: Int): Unit
-  def noFactor: Int
-  def choiceFunctionCount: Int
-  def choiceInstantiations: Int
-  def incChoiceInstantiations(n: Int): Unit
 }
 
 object State {
@@ -288,40 +262,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     current_nonRewriteUnits = current_nonRewriteUnits diff cls
   }
 
-  // Statistics
-  private var generatedCount: Int = 0
-  private var loopCount: Int = 0
-  private var rewriteCount: Long = 0L
-  private var trivialCount: Int = 0
-  private var forwardSubsumedCount: Int = 0
-  private var backwardSubsumedCount: Int = 0
-  private var descendantsDeleted: Int = 0
-  private var factorCount: Int = 0
-  private var paramodCount: Int = 0
-  private var choiceInstantiations0: Int = 0
-
-  final def noProofLoops: Long = loopCount
-  final def noProcessedCl: Int = processed.size
-  final def noGeneratedCl: Int = generatedCount
-  final def noTrivialCl: Int = trivialCount
-  final def noParamod: Int = paramodCount
-  final def noFactor: Int = factorCount
-  final def noForwardSubsumedCl: Int = forwardSubsumedCount
-  final def noBackwardSubsumedCl: Int = backwardSubsumedCount
-  final def noDescendantsDeleted: Int = descendantsDeleted
-  final def choiceInstantiations: Int = choiceInstantiations0
-
-  final def incProofLoopCount(): Unit = {loopCount += 1}
-  final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
-  final def incTrivialCl(): Unit = {trivialCount += 1}
-  final def incParamod(by: Int): Unit = {paramodCount += by}
-  final def incFactor(by: Int): Unit = {factorCount += by}
-  final def incForwardSubsumedCl(): Unit = {forwardSubsumedCount += 1}
-  final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
-  final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
-  final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
-  final def incDescendantsDeleted(n: Int): Unit = {descendantsDeleted += n}
-  final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
+  final override def noProcessedCl: Int = processed.size
 
   // Pretty
   override final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"

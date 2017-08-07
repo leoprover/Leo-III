@@ -46,6 +46,7 @@ class FactorRule(inType : DataType[AnnotatedClause],
 //      r.insert(LockType(inType))(sClause)
       while (it.hasNext) {
         val simpClause = Control.liftEq(it.next())
+        state.incFactor(1)
         if(simpClause.cl.lits.exists(l => l.uni)) {
           r.insert(outType)(simpClause)
         } else {

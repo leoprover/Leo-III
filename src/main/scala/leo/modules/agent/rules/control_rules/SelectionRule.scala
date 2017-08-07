@@ -35,6 +35,7 @@ class SelectionRule(inType : DataType[AnnotatedClause],
           leo.Out.debug(s"[Selection] (Round = ${actRound}) : Maximum number of iterations reached.")
           return Seq()
         }
+        state.incProofLoopCount()
         actRound += 1
         var res : Seq[Hint] = Seq()
         while(work < maxWork && unprocessed.unprocessedLeft){
