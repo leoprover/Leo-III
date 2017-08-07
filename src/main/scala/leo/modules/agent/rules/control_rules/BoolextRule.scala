@@ -9,8 +9,7 @@ import leo.modules.control.Control
   * Created by mwisnie on 1/10/17.
   */
 class BoolextRule(inType : DataType[AnnotatedClause],
-                  outType : DataType[AnnotatedClause],
-                 val moving : Boolean = false)
+                  outType : DataType[AnnotatedClause])
                  (implicit state : GeneralState[AnnotatedClause]) extends Rule{
 
   implicit val sig : Signature = state.signature
@@ -29,11 +28,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
       val fcl = Control.boolext(cl).filterNot(c => Clause.trivial(c.cl))
       if(fcl.size < 1 || (fcl.size == 1 && cl == fcl.head)){
 //        println(s"[BoolExt] Could not apply to ${cl.pretty(signature)}")
-        if(moving){
-          res = new MoveHint(cl, inType, outType) +: res
-        } else {
-          res = new ReleaseLockHint(inType, cl) +: res
-        }
+        res = new ReleaseLockHint(inType, cl) +: res
       } else {
         res = new BoolextHint(cl, fcl) +: res
       }
@@ -46,7 +41,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
       leo.Out.debug(s"[BoolExt] on ${sClause.pretty(state.signature)}\n  > ${nClauses.map(_.pretty(state.signature)).mkString("\n  > ")}")
       val r = Result()
       val it = nClauses.iterator
-      r.remove(lockType)(sClause) // Delete one lock from original clause
+      r.remove(inType)(sClause)
       while(it.hasNext){
         val simpClause = Control.simp(it.next())
         r.insert(outType)(simpClause)

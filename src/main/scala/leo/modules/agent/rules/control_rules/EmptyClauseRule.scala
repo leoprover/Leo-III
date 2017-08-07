@@ -11,7 +11,6 @@ class EmptyClauseRule(out : DataType[AnnotatedClause], in : DataType[AnnotatedCl
   extends Rule{
   override def name: String = "emptyClause"
   override def inTypes: Seq[DataType[Any]] = in
-  override def moving: Boolean = true
   override def outTypes: Seq[DataType[Any]] = Seq(out)
   override def canApply(r: Delta): Seq[Hint] = {
     val it = in.iterator

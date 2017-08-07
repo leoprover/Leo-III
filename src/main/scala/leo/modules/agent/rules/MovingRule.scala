@@ -19,7 +19,6 @@ class MovingRule[A](inType : DataType[A],
   override val name: String = s"move(${inType.toString} -> ${outType})"
   private val lock = LockType(inType)
   override val inTypes: Seq[DataType[Any]] = Seq(lock)
-  override val moving: Boolean = true
   override val outTypes: Seq[DataType[Any]] = Seq(outType)
 
   override def canApply(r: Delta): Seq[Hint] = {

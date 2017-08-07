@@ -93,6 +93,7 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
       }
     }
 
+
     if(removedLocks.nonEmpty) {
       new ImmutableDelta(Map(), Map(lockType -> removedLocks))
     } else {

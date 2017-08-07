@@ -59,6 +59,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
   var simp : RewriteRule= _
   var lift : LiftEqRule= _
   var func : FuncExtRule= _
+  var bool : BoolextRule=_
   var cnf : CNFRule= _
   var moveGen : MovingRule[AnnotatedClause]= _
   var moveNorm : ForwardSubsumptionRule= _
@@ -98,7 +99,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
 
     passiveSet = new UnprocessedSet(Unprocessed)
     activeSet = new ProcessedSet(Processed)
-    normalizeBarrier = new AgentBarrier(Normalize, 4)
+    normalizeBarrier = new AgentBarrier(Normalize, 5)
     generateBarrier = if(state.runStrategy.choice) new AgentBarrier(Generate, 4) else new AgentBarrier(Generate, 3)
     normalizeSet = new TypedSet(Normalize)
     generateSet  = new TypedSet(Generate)
@@ -114,6 +115,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
     simp = new RewriteRule(Normalize, Normalize, activeSet.get)
     lift = new LiftEqRule(Normalize, Normalize)
     func = new FuncExtRule(Normalize, Normalize)
+    bool = new BoolextRule(Normalize, Unprocessed)  // TODO move to Normalize???
     cnf = new CNFRule(Normalize, Unprocessed)
     moveGen = new MovingRule(Generate, Processed, generateBarrier)
     moveNorm = new ForwardSubsumptionRule(Normalize, activeSet, Some(Generate, normalizeBarrier))
@@ -132,6 +134,7 @@ class SimpleControlGraph(implicit val state : FVState[AnnotatedClause]) extends 
         simp,
         lift,
         func,
+        bool,
         cnf,
         moveNorm,
         moveGen,

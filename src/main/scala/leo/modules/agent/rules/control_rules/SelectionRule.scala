@@ -26,7 +26,6 @@ class SelectionRule(inType : DataType[AnnotatedClause],
   override val name: String = "selection_rule"
   override val inTypes: Seq[DataType[Any]] = inType +: blockable
   override val outTypes: Seq[DataType[Any]] = Seq(outType)
-  override def moving: Boolean = true
   override def canApply(r: Delta): Seq[Hint] = {
     unprocessed.synchronized{
       work -= r.removes(inType).size  // TODO Save selected and only delete those

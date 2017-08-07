@@ -284,7 +284,6 @@ class NetworkTest extends LeoTestSuite{
                            compute : Int => Int,
                            val name : String = "none") extends Rule {
     override val inTypes: Seq[DataType[Any]] = Seq(inType)
-    override val moving: Boolean = inType != outType
     override val outTypes: Seq[DataType[Any]] = Seq(outType)
     override def canApply(r: Delta): Seq[Hint] = {
       val inserts = r.inserts(inType)

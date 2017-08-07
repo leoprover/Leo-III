@@ -18,7 +18,7 @@ class ForwardSubsumptionRule(inType : DataType[AnnotatedClause],
   override val name: String = "forwardSubsumption"
   implicit val sig : Signature = state.signature
   override val inTypes: Seq[DataType[Any]] = Seq(inType) ++ move.fold(Seq.empty[DataType[AnnotatedClause]])(x => Seq(x._2.lockType))
-  override val moving: Boolean = move.isDefined
+  val moving: Boolean = move.isDefined
   override val outTypes: Seq[DataType[Any]] = move.fold(Seq.empty[DataType[AnnotatedClause]])(x => Seq(x._1))
   override def canApply(r: Delta): Seq[Hint] = {
     if(moving){

@@ -10,8 +10,7 @@ import leo.modules.control.Control
   * Created by mwisnie on 4/21/17.
   */
 class FuncExtRule(inType : DataType[AnnotatedClause],
-                 outType : DataType[AnnotatedClause],
-                 val moving : Boolean = false)
+                 outType : DataType[AnnotatedClause])
                  (implicit state : GeneralState[AnnotatedClause]) extends Rule
 {
   implicit val sig : Signature = state.signature
@@ -31,11 +30,7 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
       }
       else {
 //        println(s"[FuncExt] Could not apply to ${cl.pretty(sig)} ")
-        if(moving){
-          res = new MoveHint(cl, inType, outType) +: res
-        } else {
-          res = new ReleaseLockHint(outType, cl) +: res
-        }
+        res = new ReleaseLockHint(outType, cl) +: res
       }
     }
     res

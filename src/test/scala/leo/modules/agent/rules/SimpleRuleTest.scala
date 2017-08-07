@@ -169,7 +169,6 @@ class PrependRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Prepend(${letter})"
   override def inTypes: Seq[DataType[Any]] = Seq(StringType)
   override def outTypes: Seq[DataType[Any]] = Seq(StringType)
-  override def moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){
@@ -190,7 +189,6 @@ class AppendRule(letter : String, observe : SimpleStore) extends Rule {
   override val name: String = s"Append(${letter})"
   override def inTypes: Seq[DataType[Any]] = Seq(StringType)
   override def outTypes: Seq[DataType[Any]] = Seq(StringType)
-  override def moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     if(r.isEmpty){

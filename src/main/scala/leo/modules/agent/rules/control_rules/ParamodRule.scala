@@ -26,7 +26,6 @@ class ParamodRule(inType : DataType[AnnotatedClause],
   override val observedDataStructures: Seq[DataStore] = Seq(processed)
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(unifyType, doneType, noUnifyType)
-  override final val moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     // All new selected clauses
@@ -131,7 +130,6 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
   override val name: String = "paramod_done"
   implicit val sig : Signature = state.signature
   override val inTypes: Seq[DataType[Any]] = Seq(from, blockingType)
-  override val moving: Boolean = true
   override val outTypes: Seq[DataType[Any]] = Seq(unifyType)
   override def canApply(r: Delta): Seq[Hint] = synchronized {
     if(generate.isEmpty){
