@@ -1,9 +1,9 @@
 package leo.modules.control
 
-import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
-import leo.modules.{FVState, GeneralState, myAssert}
 import leo.modules.prover.{RunStrategy, State}
+import leo.modules.{FVState, GeneralState, myAssert}
+import leo.{Configuration, Out}
 
 /**
   * Facade object for various control methods of the seq. proof procedure.
@@ -84,7 +84,7 @@ package inferenceControl {
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.calculus._
-  import Control.LocalState
+  import leo.modules.control.Control.LocalState
   package object inferenceControl {
     type LiteralIndex = Int
     type WithConfiguration = (LiteralIndex, Literal, Side)
@@ -680,8 +680,8 @@ package inferenceControl {
 
   protected[modules] object PrimSubstControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
+    import leo.modules.HOLSignature.{!===, ===, LitFalse, LitTrue, Not, |||}
     import leo.modules.output.ToTPTP
-    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue, |||, ===, !===}
 
     val standardbindings: Set[Term] = Set(Not, LitFalse(), LitTrue(), |||)
     final def eqBindings(tys: Seq[Type]): Set[Term] = {
@@ -744,8 +744,8 @@ package inferenceControl {
   }
 
   protected[modules] object SpecialInstantiationControl {
-    import leo.modules.calculus.Enumeration._
     import leo.Configuration.{PRE_PRIMSUBST_MAX_DEPTH => MAXDEPTH}
+    import leo.modules.calculus.Enumeration._
 
     final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
       implicit val sig = state.signature
@@ -774,7 +774,7 @@ package inferenceControl {
 
     final def instantiateTerm(t: Term, polarity: Boolean, depth: Int)(state: LocalState): Set[Term] = {
       import leo.datastructures.Term._
-      import leo.modules.HOLSignature.{Forall, Exists, Not, Impl, &, |||}
+      import leo.modules.HOLSignature.{&, Exists, Forall, Impl, Not, |||}
 
       if (depth >= MAXDEPTH)
         Set(t)
@@ -960,16 +960,16 @@ package inferenceControl {
   }
 
   protected[modules] object ChoiceControl {
-    import leo.modules.calculus.{Choice => ChoiceRule}
     import leo.datastructures.ClauseAnnotation.FromSystem
+    import leo.modules.calculus.{Choice => ChoiceRule}
     /* This is for the proof output: Generate a clause with the axiom of choice
     * for some type as parent to the instantiateChoice rule. */
     private var acMap: Map[Type, AnnotatedClause] = Map()
     final def axiomOfChoice(ty: Type): AnnotatedClause = acMap.getOrElse(ty, newACInstance(ty))
 
     final def newACInstance(ty: Type): AnnotatedClause = {
+      import leo.datastructures.Term.{mkBound, mkTermApp, λ}
       import leo.modules.HOLSignature._
-      import leo.datastructures.Term.{mkBound,λ, mkTermApp}
       val lit = Literal.mkLit(Exists(λ((ty ->: o) ->: ty)(
         Forall(λ(ty ->: o)(
           Impl(
@@ -1266,7 +1266,7 @@ package inferenceControl {
         val lit = cl.cl.lits.head
         // Check if lit is an specification for commutativity
         if (lit.equational) {
-          import leo.datastructures.Term.{TermApp, Symbol, Bound}
+          import leo.datastructures.Term.{Bound, Symbol, TermApp}
           val left = lit.left
           val right = lit.right
           left match {
@@ -1573,7 +1573,6 @@ package inferenceControl {
 
 package redundancyControl {
   import leo.modules.control.Control.LocalFVState
-  import leo.modules.control.indexingControl.FVIndexControl
 
   object RedundancyControl {
     /** Returns true iff cl is redundant wrt to processed. */
@@ -1585,9 +1584,9 @@ package redundancyControl {
   }
 
   object SubsumptionControl {
+    import leo.datastructures.FixedLengthTrie
     import leo.modules.calculus.Subsumption
     import leo.modules.indexing.{ClauseFeature, FVIndex, FeatureVector}
-    import leo.datastructures.FixedLengthTrie
 
     /** Main function called for deciding if cl is subsumed by (any clause within) `by`.
       * This function simply check for subsumption (see
@@ -1673,7 +1672,7 @@ package redundancyControl {
 
 package indexingControl {
 
-  import leo.modules.control.Control.{LocalState, LocalFVState}
+  import leo.modules.control.Control.LocalFVState
 
   object IndexingControl {
     /** Initiate all index structures. This is
@@ -1893,9 +1892,9 @@ package indexingControl {
 }
 
 package  externalProverControl {
-  import leo.modules.output.SuccessSZS
+  import leo.datastructures.Clause
   import leo.modules.external.Capabilities.Language
-  import leo.datastructures.{Clause, ClauseProxy}
+  import leo.modules.output.SuccessSZS
   import leo.modules.prover.State.LastCallStat
 
   object ExtProverControl {
@@ -2139,9 +2138,9 @@ package  externalProverControl {
       * about some signature constants (choice ...).
       * if goal language first-order. */
     final def prepareProblem(problem: Set[AnnotatedClause], goalLanguage: Language)(implicit sig: Signature): Set[AnnotatedClause] = {
-      import leo.datastructures.Role_Axiom
       import leo.datastructures.ClauseAnnotation
       import ClauseAnnotation.{NoAnnotation, PropNoProp}
+      import leo.datastructures.Role_Axiom
       val extraAxioms = leo.modules.external.generateSpecialAxioms(sig)
       extraAxioms.map(AnnotatedClause(_, Role_Axiom, NoAnnotation, PropNoProp)) union problem
     }
