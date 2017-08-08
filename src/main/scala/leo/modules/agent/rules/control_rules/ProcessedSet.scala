@@ -7,6 +7,7 @@ import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 import leo.modules.{GeneralState, SZSException}
 import leo.modules.control.Control
 import leo.modules.output.SZS_Error
+import leo.modules.proof_object.CompressProof
 
 import scala.collection.mutable
 
@@ -87,7 +88,11 @@ class ProcessedSet(val processedType : DataType[AnnotatedClause])(implicit state
       }
       else leo.Out.finest(s"% ${c.pretty} was already in the processed set.")
     }
-    leo.Out.debug(s"Processed after update:\n  ${set.map(c => s"(${idMap(c.id)})" ++ c.pretty(state.signature)).mkString("\n  ")}")
+    leo.Out.debug(s"Processed after update:\n  ${set.map(
+      c =>
+        s"(${idMap(c.id)})" ++
+          CompressProof.compressAnnotation(c)(CompressProof.lastImportantStep(CompressProof.stdImportantInferences)).pretty(state.signature)
+    ).mkString("\n  ")}")
 
     delta
   }

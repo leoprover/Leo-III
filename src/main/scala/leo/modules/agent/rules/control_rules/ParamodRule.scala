@@ -57,13 +57,15 @@ class ParamodRule(inType : DataType[AnnotatedClause],
       val id2 = aClause.id
 
       val r = Result()
-      val it = ParamodControl.allParamods(sClause, aClause).iterator
-      state.incParamod(it.size)
+      val paras = ParamodControl.allParamods(sClause, aClause)
+      val it = paras.iterator
+      state.incParamod(paras.size)
+
       //    if(it.hasNext){
-      leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(sig)}\n   ${aClause.pretty(sig)}")
+//      leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(sig)}\n   ${aClause.pretty(sig)}")
       //    }
       if(ParamodHint.freeHint(sClause)){
-        leo.Out.debug(s"[Paramod] Last Paramod. Release lock on ${sClause.pretty(sig)}")
+//        leo.Out.debug(s"[Paramod] Last Paramod. Release lock on ${sClause.pretty(sig)}")
         r.remove(LockType(inType))(sClause)
       }
 
