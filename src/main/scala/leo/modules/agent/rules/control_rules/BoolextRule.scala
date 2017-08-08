@@ -43,7 +43,7 @@ class BoolextRule(inType : DataType[AnnotatedClause],
       val it = nClauses.iterator
       r.insert(lockType)(sClause)
       while(it.hasNext){
-        val simpClause = Control.simp(it.next())
+        val simpClause = Control.shallowSimp(it.next())
         r.insert(outType)(simpClause)
       }
       r

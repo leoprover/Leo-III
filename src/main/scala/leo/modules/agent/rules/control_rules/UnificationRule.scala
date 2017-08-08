@@ -116,7 +116,7 @@ class RewriteRule(inType : DataType[AnnotatedClause],
     override def apply(): Delta = {
       val r = Result()
       r.remove(inType)(oldClause)
-      val simp = Control.simp(newClause)
+      val simp = Control.shallowSimp(newClause)
       r.insert(outType)(simp)
 
       r

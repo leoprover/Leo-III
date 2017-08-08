@@ -51,7 +51,7 @@ class FactorRule(inType : DataType[AnnotatedClause],
           r.insert(outType)(simpClause)
         } else {
           var newclauses = Control.cnf(simpClause)
-          newclauses = newclauses.map(cw => Control.simp(Control.liftEq(cw)))
+          newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
           var newIt = newclauses.iterator
           while(newIt.hasNext) {
             r.insert(noUnifyType)(newIt.next)
