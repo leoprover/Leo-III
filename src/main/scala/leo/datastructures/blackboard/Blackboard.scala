@@ -117,7 +117,7 @@ trait TaskOrganize {
    *
    * @return all registered agents and their budget
    */
-  def getAgents : Iterable[(Agent, Double)]
+  def getAgents : Iterable[Agent]
 
   /**
     * Submits a new Task to the list of executable tasks.
