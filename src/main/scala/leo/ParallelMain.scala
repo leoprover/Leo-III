@@ -288,7 +288,7 @@ object ParallelMain {
 
 
 
-  private def printSZSAndProof(state : GeneralState[AnnotatedClause], time : Long): Unit = {
+  private def printSZSAndProof(state : GeneralState[AnnotatedClause], time : Long, timeWOParsing : Long = 0): Unit = {
     import modules._
     implicit val sig = state.signature
     val szsStatus = state.szsStatus
@@ -298,6 +298,7 @@ object ParallelMain {
 
     val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
     Out.comment(s"Time passed: ${time}ms")
+    Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
     if (proof != null)
       Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
@@ -307,6 +308,8 @@ object ParallelMain {
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
     Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
+    Out.comment(s"No. of rewrite rules in store: 0")
+    Out.comment(s"No. of other units in store: 0")
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
     Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
 
