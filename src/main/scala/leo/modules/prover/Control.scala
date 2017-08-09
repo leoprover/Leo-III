@@ -339,7 +339,7 @@ package inferenceControl {
             leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
 
 
-            if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
+            if (Configuration.isSet("noOrdCheck1") || cmpResult == CMP_LT) {
               val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
               val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, typeSubst)
               val intoLitSubst = intoClauseSubst(intoIndex)
@@ -359,6 +359,7 @@ package inferenceControl {
                 assert(Clause.wellTyped(withClauseSubst))
                 assert(Literal.wellTyped(withLitSubst))
                 if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
+//                  if (tyUnifiedResult.id == 153) System.exit(0)
                   AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
                 } else {
                   leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
@@ -398,7 +399,7 @@ package inferenceControl {
     private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {
       val withHd = withTerm.headSymbol
       val intoHd = intoTerm.headSymbol
-      if (withHd == intoHd && withHd.isConstant && mayUnify(withTerm.ty, intoTerm.ty)) true
+      if (((withHd == intoHd && withHd.isConstant) || (isPattern(withTerm) && isPattern(intoTerm))) && mayUnify(withTerm.ty, intoTerm.ty)) true
       else leo.modules.calculus.mayUnify(withTerm, intoTerm)
     }
 
@@ -505,6 +506,7 @@ package inferenceControl {
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
                 val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                Out.finest(s"result: ${result.pretty(sig)}")
                 res = res + result
               }
               // If equation is oriented, we still need to look at the side-switched version
@@ -552,9 +554,10 @@ package inferenceControl {
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
     private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
+      import leo.modules.calculus.isPattern
       val withHd = term.headSymbol
       val intoHd = otherTerm.headSymbol
-      if (withHd == intoHd && withHd.isConstant && mayUnify(term.ty, otherTerm.ty)) true
+      if ((withHd == intoHd && withHd.isConstant || (isPattern(term) && isPattern(otherTerm))) && mayUnify(term.ty, otherTerm.ty)) true
       else leo.modules.calculus.mayUnify(term, otherTerm)
     }
   }
@@ -607,6 +610,11 @@ package inferenceControl {
           results.foreach(cl =>
             Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           )
+//          if (cl.id == 409) {
+//            val p = leo.modules.proofOf(cl)
+//            println(p.map(_.pretty(sig)).mkString("\n"))
+//            System.exit(0)
+//          }
           resultSet = resultSet union results
         } else resultSet = resultSet + cl
       }

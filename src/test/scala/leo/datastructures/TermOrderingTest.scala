@@ -146,7 +146,7 @@ class TermOrderingTest extends LeoTestSuite {
     val u = f(g(f(d),c))
 
     validate(s,t,CMP_LT)(sig)
-    validate(s,u,CMP_GT)(sig)
+    validate(s,u,CMP_LT)(sig)
   }
 
   test("l^f > l^t") {
@@ -167,12 +167,16 @@ class TermOrderingTest extends LeoTestSuite {
   private final def validate(s: Term, t:Term, expect: CMP_Result)(implicit sig: Signature): Unit = {
     assert(Term.wellTyped(s))
     assert(Term.wellTyped(t))
+    println(s"s: ${s.pretty(sig)}")
+    println(s"t: ${t.pretty(sig)}")
     val result = ord.compare(s,t)
     println(s"compare(${s.pretty(sig)},${t.pretty(sig)}): ${Orderings.pretty(result)}")
     result shouldBe expect
   }
 
   private final def validate(s: Literal, t:Literal, expect: CMP_Result)(implicit sig: Signature): Unit = {
+    println(s"s: ${s.pretty(sig)}")
+    println(s"t: ${t.pretty(sig)}")
     assert(Literal.wellTyped(s))
     assert(Literal.wellTyped(t))
     val result = Literal.compare(s,t)

@@ -8,7 +8,7 @@ trait Subsumption {
 }
 
 object Subsumption extends Subsumption {
-  val impl = FOMatchingSubsumption
+  val impl = TrivialSubsumption
   var subsumptiontests = 0
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {subsumptiontests += 1; impl.subsumes(cl1, cl2)}
 }

@@ -195,10 +195,12 @@ object TO_CPO_Naive extends TermOrdering {
   @inline private final def gt0Stat(a: Term, s: Seq[Term], t: Seq[Term], depth: Int, status: Int)(sig: Signature): Boolean = {
     import leo.datastructures.Signature.{lexStatus,multStatus}
     if (status == lexStatus) {
+//      println("lex")
       if (s.length > t.length){
         alleq(s,t,t.length)
       } else gt0Lex(a,s,t,depth)(sig)
     } else if (status == multStatus) {
+//      println("mult")
       gt0Mult(s,t)(sig)
     } else {
       // This should not happen
@@ -297,9 +299,11 @@ object TO_CPO_Naive extends TermOrdering {
     // #######################################################
     else
     if (s.isApp) {
+//      println(s"s.isApp: ${s.pretty(sig)}")
       /* case 6: f(t) >= y and */
       /* case 10: @(s,t) >= y */
       if (t.isVariable) {
+//        println(s"t.isVariable (check ${Bound.unapply(t).get._2 <= depth})")
         if(Bound.unapply(t).get._2 <= depth) return true
       }
 
@@ -307,14 +311,6 @@ object TO_CPO_Naive extends TermOrdering {
       val fargList: Seq[Term] = effectiveArgs(f.ty,args)
 
       if (fargList.nonEmpty) {
-        /* case 7: @(s,t) > v */
-        if (ge0(mkApp(f,args.init),t,depth)(sig)) return true
-        if (gteq(fargList.last,t,depth)(sig)) return true
-        /* case 1: f(t) >= v */
-        if (f.isConstant) {
-          if (fargList.exists(gteq(_, t)(sig))) return true
-        }
-
         if (t.isTermAbs) {
           val (_, tO) = :::>.unapply(t).get
           if (f.isConstant) {
@@ -322,21 +318,26 @@ object TO_CPO_Naive extends TermOrdering {
             if (gt0(s,tO,depth+1)(sig)) return true
           }
           /* case 9: @(s,t) > lambda yv*/
-          gt0(s, tO, depth)(sig) // TODO need that? probably b/c vars at head position
+          if (gt0(s, tO, depth)(sig)) return true // TODO need that? probably b/c vars at head position
         } else if (t.isApp) {
+//          println(s"t.isApp: ${t.pretty(sig)}")
           val (g,args2) = ∙.unapply(t).get
           val gargList: Seq[Term] = effectiveArgs(g.ty,args2)
 
           /* case 2+3: f(t) > g(u) */
           if (f.isConstant && g.isConstant) {
+//            println(s"f.isConstant (${f.pretty(sig)}) && g.isConstant (${g.pretty(sig)})")
             val idf = Symbol.unapply(f).get
             val idg = Symbol.unapply(g).get
             try {
               if (precedence(idf, idg)(sig) == CMP_EQ) {
+//                println("precedence EQ")
                 return gt0Stat(s,fargList, gargList, depth, sig(idf).status)(sig)
               } else if (precedence(idf, idg)(sig) == CMP_GT) {
+//                println("precedence GT")
                 return gargList.forall(gt0(s, _, depth)(sig))
               } else {
+//                println("precedence else")
                 return false
               }
             } catch {
@@ -353,6 +354,7 @@ object TO_CPO_Naive extends TermOrdering {
           }
 
           if (gargList.nonEmpty) {
+//            println("gargList.nonEmpty")
             /* case 4: f(t) > @(u,v)*/
             if (f.isConstant)
               if(gt0(s, mkApp(g, args2.init), depth)(sig) && gt0(s, gargList.last, depth)(sig)) return true
@@ -366,18 +368,30 @@ object TO_CPO_Naive extends TermOrdering {
             if ((gt(s2,t2,depth)(sig) || gteq(fargList.last,t2,depth)(sig) || gt(s,t2)(sig))
               && (gt(s2,gargList.last,depth)(sig) || gteq(fargList.last,gargList.last,depth)(sig) || gt(s,gargList.last)(sig))) return true
           }
-          false
         } else if (t.isConstant) {
+//          println(s"t.isConstant: ${t.pretty(sig)}")
           if (f.isConstant) {
+//            println(s"f.isConstant: ${f.pretty(sig)}")
             val idf = Symbol.unapply(f).get
             val idg = Symbol.unapply(t).get
             Orderings.isGE(precedence(idf, idg)(sig))
           } else false
-        } else false
+        }
+        /* case 1: f(t) >= v */
+        if (f.isConstant) {
+//          println("f.isConstant (case 1)")
+          if (fargList.exists(gteq(_, t)(sig))) return true
+        }
+        /* case 7: @(s,t) > v */
+        if (ge0(mkApp(f,args.init),t,depth)(sig)) return true
+        if (gteq(fargList.last,t,depth)(sig)) return true
+        false
       } else false
     }
     else
     if (s.isConstant) {
+//      println(s"constant: ${s.pretty(sig)}")
+//      println(s"t: ${t.pretty(sig)}")
       if (t.isVariable) {
         Bound.unapply(t).get._2 <= depth
       } else if (t.isTermAbs) {

@@ -52,7 +52,7 @@ trait Signature {
     * multiset status is default, but can be overridden by `status` parameter.
     * @return The key the symbol is indexed by
     */
-  final def addUninterpreted(identifier: String, typ: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key =
+  final def addUninterpreted(identifier: String, typ: Type, prop: Signature.SymbProp = Signature.PropStatus): Key =
     addConstant0(identifier, Left(typ), None, prop)
   /** Adds an uninterpreted constant with kind `k` to the signature.
     * @return The key the symbol is indexed by

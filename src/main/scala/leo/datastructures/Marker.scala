@@ -126,7 +126,7 @@ trait ClauseProxy extends Pretty with Prettier {
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
                            var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
   override def equals(o: Any): Boolean = o match {
-    case cw: ClauseProxy => cw.id == id // Equality is defined in term of id. This implies that the clauses of two
+    case cw: ClauseProxy => cw.cl == cl // Equality is defined in term of id. This implies that the clauses of two
                                         // annotatedclauses may be equal while the annotatedclauses are not equal.
                                         // This is done due to performance considerations: Clause equality is quite
                                         // expensive to calculate. On the other hand, the unprocessed set will
@@ -145,7 +145,6 @@ object AnnotatedClause {
   def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
     synchronized{counter += 1}  // TODO To heavy?
     val ac = AnnotatedClause(counter, cl, r, annotation, propFlag)
-//    println(s">>>>>> ${ac.pretty}")
     ac
   }
 
