@@ -39,7 +39,8 @@ trait MultiPriorityQueue[A] extends Pretty {
     }
   }
   def addPriority(p: Ordering[A]): OrderingKey
-  def priorities: Int
+  def priorityCount: Int
+  def priority(key: OrderingKey): Ordering[A]
   def isEmpty: Boolean
   def size: Int
   def head(k: OrderingKey): A

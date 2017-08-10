@@ -5,6 +5,8 @@ import leo.modules.{FVState, FVStateImpl, GeneralState, Proof}
 import leo.modules.external.{Future, TptpProver, TptpResult}
 import leo.modules.prover.State.LastCallStat
 
+import scala.ref.WeakReference
+
 /**
   * Created by lex on 20.02.16.
   */
@@ -46,6 +48,7 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def copy : State[T]
 
   protected[prover] def queues(): MultiPriorityQueue[T]
+  protected[prover] def clauseCache: Map[Long, WeakReference[T]]
 }
 
 trait StateStatistics {
@@ -109,7 +112,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
   def queues: MultiPriorityQueue[T] = mpq
-
+  var clauseCache: Map[Long, WeakReference[T]] = Map.empty
   private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
   private var queuedTranslations : Int = 0
   private var extCallStat: LastCallStat[T] = _
@@ -262,11 +265,11 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private var cur_weight = 0
   final def nextUnprocessed: T = {
     leo.Out.trace(s"[###] Selecting with priority $cur_prio: element $cur_weight")
-    leo.Out.trace(s"[###] mpq.priorities ${mpq.priorities}")
+    leo.Out.trace(s"[###] mpq.priorities ${mpq.priorityCount}")
     if (cur_weight > prio_weights(cur_prio)-1) {
       leo.Out.trace(s"[###] limit exceeded (limit: ${prio_weights(cur_prio)}) (cur_weight: ${cur_weight})")
       cur_weight = 0
-      cur_prio = (cur_prio + 1) % mpq.priorities
+      cur_prio = (cur_prio + 1) % mpq.priorityCount
       leo.Out.trace(s"[###] cur_prio set to ${cur_prio}")
     }
     val result = mpq.dequeue(cur_prio)
@@ -274,8 +277,8 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     result
   }
 
-  final def addUnprocessed(cl: T): Unit = {mpq.insert(cl)}
-  final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls)}
+  final def addUnprocessed(cl: T): Unit = {mpq.insert(cl); clauseCache += (cl.id -> WeakReference(cl))}
+  final def addUnprocessed(cls: Set[T]): Unit = {mpq.insert(cls); cls.foreach {cl => clauseCache += (cl.id -> WeakReference(cl))}}
   final def removeUnprocessed(cls: Set[T]): Unit = {mpq.remove(cls)}
 
   final def processed: Set[T] = current_processed

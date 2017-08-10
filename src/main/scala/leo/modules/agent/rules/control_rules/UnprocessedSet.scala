@@ -50,7 +50,7 @@ class UnprocessedSet(unprocessedType : DataType[AnnotatedClause])(implicit state
 //    println(mpq.pretty)
     if (cur_weight >= prio_weights(cur_prio)) {
       cur_weight = 0
-      cur_prio = (cur_prio + 1) % mpq.priorities
+      cur_prio = (cur_prio + 1) % mpq.priorityCount
     }
     val result = mpq.dequeue(cur_prio)
     cur_weight = cur_weight+1
