@@ -145,11 +145,6 @@ object AnnotatedClause {
   def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
     synchronized{counter += 1}  // TODO To heavy?
     val ac = AnnotatedClause(counter, cl, r, annotation, propFlag)
-//    if (counter == 88) {
-//      val p = leo.modules.proofOf(ac)
-//      println(p.map(_.pretty).mkString("\n"))
-//      System.exit(0)
-//    }
     ac
   }
 

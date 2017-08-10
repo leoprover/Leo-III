@@ -2,6 +2,7 @@ package leo.modules.prover
 
 import leo.Configuration
 import leo.datastructures.AnnotatedClause
+import leo.modules.output.ToTPTP
 
 import scala.collection.mutable
 
@@ -60,28 +61,48 @@ object Interaction {
   Evaluator.register({in => in == "exit"}, { (in,state) =>
     true
   })
-  Evaluator.register({in => in.startsWith("sleep")}, { (in,state) =>
+  Evaluator.register({in => in == "kill"}, { (in,state) =>
+    System.exit(0)
+    true
+  })
+  Evaluator.register({in => in == ""}, { (in,state) =>
+    true
+  })
+  Evaluator.register({in => in.startsWith("skip")}, { (in,state) =>
     sleep = true
     try {
-      val n = in.drop(6).toInt
-      val m = state.noProofLoops
-      addTrigger({s => s.noProofLoops ==  m + n})
-      true
+      val in0 = in.drop(5)
+      if (in0 == "") true
+      else {
+        val n = in0.toInt
+        val m = state.noProofLoops
+        addTrigger({s => s.noProofLoops >=  m + n})
+        true
+      }
     } catch {
       case _: Exception => println("Invalid input, try again")
         false
     }
   })
   Evaluator.register({in => in.startsWith("pretty")}, { (in,state) =>
-    sleep = true
     try {
-      val n = in.drop(7).toInt
-
-      false
+      val n = in.drop(7).toLong
+      val cl = state.clauseCache(n).get.get
+      println(cl.pretty(state.signature))
     } catch {
       case _: Exception => println("Invalid input, try again")
-        false
     }
+    false
+  })
+  Evaluator.register({in => in.startsWith("tptp")}, { (in,state) =>
+    try {
+      val n = in.drop(5).toLong
+      val cl = state.clauseCache(n).get.get
+      println(ToTPTP.toString(cl)(state.signature))
+    } catch {
+      case _: Exception => println("Invalid input, try again")
+    }
+    false
   })
 
   object Evaluator {

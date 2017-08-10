@@ -268,7 +268,7 @@ object SeqLoop {
             // cur is the current AnnotatedClause
             Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
-            Interaction(state)
+
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             /* Functional Extensionality */
             cur = Control.funcext(cur)

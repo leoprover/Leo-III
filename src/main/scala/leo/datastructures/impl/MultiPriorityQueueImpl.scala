@@ -29,9 +29,10 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     }
   }
 
-  private var priorityQueues: Seq[mutable.PriorityQueue[ObjectProxy]] = Vector()
+  private var priorityQueues: Seq[mutable.PriorityQueue[ObjectProxy]] = Vector.empty
+  private var priorities0: Seq[Ordering[A]] = Vector.empty
   private var initialized = false
-  private var deletedObjects: Set[A] = Set()
+  private var deletedObjects: Set[A] = Set.empty
 
   def insert(x: A): Unit = {
     if (!initialized) return
@@ -59,9 +60,11 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     if (!initialized) initialized = true
     else newPrioQueue ++= priorityQueues.head
     priorityQueues = priorityQueues :+ newPrioQueue
+    priorities0 = priorities0 :+ p
     key
   }
-  def priorities = priorityQueues.size
+  def priorityCount: Int = priorityQueues.size
+  def priority(key: OrderingKey): Ordering[A] = priorities0(key)
 
   def dequeue(k: OrderingKey): A = {
     if (priorityQueues.size-1 < k) throw new NoSuchElementException
@@ -135,7 +138,7 @@ class MultiPriorityQueueImpl[A] extends MultiPriorityQueue[A] {
     val it = priorityQueues.iterator
     while(it.hasNext){
       val q = it.next
-      sb.append("\n > Queue "+qC+" : ")
+      sb.append(s"\n > Queue $qC: ")
       qC += 1
       val itE = q.clone().dequeueAll.iterator
       while(itE.hasNext){
