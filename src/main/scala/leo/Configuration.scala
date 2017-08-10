@@ -46,6 +46,7 @@ object Configuration extends DefaultConfiguration {
   private val EXTRACTION_TYPE_PARAM = "xType"
   private val PARAM_PAR_SCHED = "parSched"
   private val PARAM_CONCURRENT_TRANSLATE = "encode-threaded"
+  private val PARAM_GUIDED = "guided"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -139,6 +140,8 @@ object Configuration extends DefaultConfiguration {
   lazy val RELEVANCE_FILTERING: Boolean = isSet(PARAM_RELEVANCEFILTER)
   lazy val RELEVANCE_PASSMARK: Double = uniqueDoubleFor(PARAM_PASSMARK, DEFAULT_PASSMARK)
   lazy val RELEVANCE_AGING: Double = uniqueDoubleFor(PARAM_AGING, DEFAULT_AGING)
+
+  lazy val GUIDED: Boolean = isSet(PARAM_GUIDED)
 
   lazy val FUNCSPEC: Boolean = isSet(PARAM_FUNCSPEC) || DEFAULT_FUNCSPEC
 
