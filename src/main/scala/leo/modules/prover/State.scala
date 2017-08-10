@@ -44,6 +44,8 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def setLastCallStat(lcs: LastCallStat[T]): Unit
 
   def copy : State[T]
+
+  protected[prover] def queues(): MultiPriorityQueue[T]
 }
 
 trait StateStatistics {
@@ -106,6 +108,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
 
   private final val sig: Signature = initSignature
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
+  def queues: MultiPriorityQueue[T] = mpq
 
   private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
   private var queuedTranslations : Int = 0

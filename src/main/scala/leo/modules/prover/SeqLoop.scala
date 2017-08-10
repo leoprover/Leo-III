@@ -242,8 +242,9 @@ object SeqLoop {
       var loop = true
       Out.debug("## Reasoning loop BEGIN")
       while (loop && !prematureCancel(state.noProcessedCl)) {
+        Interaction(state)
 
-        if (System.currentTimeMillis() - startTime > 1000 * timeout) {
+        if (!Configuration.GUIDED && System.currentTimeMillis() - startTime > 1000 * timeout) {
           loop = false
           state.setSZSStatus(SZS_Timeout)
         } else if (!state.unprocessedLeft) {
@@ -267,7 +268,7 @@ object SeqLoop {
             // cur is the current AnnotatedClause
             Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
-
+            Interaction(state)
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             /* Functional Extensionality */
             cur = Control.funcext(cur)

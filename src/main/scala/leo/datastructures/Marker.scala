@@ -145,7 +145,6 @@ object AnnotatedClause {
   def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
     synchronized{counter += 1}  // TODO To heavy?
     val ac = AnnotatedClause(counter, cl, r, annotation, propFlag)
-//    println(s">>>>>> ${ac.pretty}")
     ac
   }
 
