@@ -1,5 +1,7 @@
 package leo.datastructures.blackboard
 
+import java.util.concurrent.atomic.AtomicLong
+
 import leo.Configuration
 import leo.agents.{Agent, Task}
 import leo.datastructures.blackboard.impl.SimpleTaskSet
@@ -94,6 +96,11 @@ trait TaskSelection {
       this.notifyAll()
     }
   }
+
+  /**
+    * Prints information on the workload in the TaskSelection
+    */
+  def info() : Unit
 }
 
 class FifoTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends TaskSelection {
@@ -118,9 +125,17 @@ class FifoTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends Ta
     regAgents.clear()
   }
 
-  override def submit(ts: Set[Task]): Unit = taskSet.submit(ts)
+  private val schedulingTime : AtomicLong = new AtomicLong(0)
+  private val schedulingAmount : AtomicLong = new AtomicLong(0)
 
-  override def finish(t: Task): Unit = taskSet.finish(t)
+
+  override def submit(ts: Set[Task]): Unit = {
+    taskSet.submit(ts)
+  }
+
+  override def finish(t: Task): Unit = {
+    taskSet.finish(t)
+  }
 
 
   private val waitForAll: Boolean = true
@@ -129,49 +144,56 @@ class FifoTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends Ta
     while (!scheduler.isTerminated) {
       try {
         this.synchronized {
-
+          schedulingAmount.incrementAndGet()
           // Block until tasks can be choosen
-          var r: Iterable[Task] = Nil
+          var r: Iterator[Task] = Iterator()
           while (waitForAll && scheduler.getActiveWork > 0) {
             wait()
           }
-          while (r.isEmpty) {
+          while (!r.hasNext) {
+            val start = System.currentTimeMillis()
             r = taskSet.executableTasks
-            if (r.isEmpty) {
+            if (!r.hasNext) {
               if (ActiveTracker.get <= 0 && scheduler.getCurrentWork <= 0) {
                 sendDoneEvents()
               }
+              val time = System.currentTimeMillis() - start
+              schedulingTime.addAndGet(time)
               wait()
+            } else {
+              val time = System.currentTimeMillis() - start
+              schedulingTime.addAndGet(time)
             }
           }
 
+          val start = System.currentTimeMillis()
           // Select the first open tasks to be executed
-          val queue: Iterator[Task] = r.iterator
-          //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
-          var taken: Map[Agent, Int] = HashMap[Agent, Int]()
+          val queue: Iterator[Task] = r
 
           var openSlots = scheduler.numberOfThreads * taskTakenFactor - scheduler.openTasks
           // 3. Take from beginning to front only the non colliding tasks
           // Check the currenlty executing tasks too.
           var newTask: Seq[(Agent, Task)] = Nil
+//          println("Check tasks")
           while (queue.hasNext && openSlots > 0) {
             val t = queue.next()
+//            println(s"\n  ${t.name}")
             val a = t.getAgent
             // Check if the agent can execute another task
-            val open: Boolean = a.maxParTasks.fold(true)(n => n - taskSet.executingTasks(a) + taken.getOrElse(a, 0) > 0)
-            if (open & LockSet.isExecutable(t)) {
+            if (LockSet.isExecutable(t)) {
               // The task is not colliding with previous tasks and agent has enough money
               openSlots -= 1
               newTask = (a, t) +: newTask
               LockSet.lockTask(t)
               a.taskChoosen(t)
-              taken = taken + (a -> (taken.getOrElse(a, 0) + 1))
             }
           }
+          val time = System.currentTimeMillis() - start
+          schedulingTime.addAndGet(time)
 
           taskSet.commit(newTask.map(_._2).toSet)
-
           //                  println("Sending "+newTask.size+" tasks to scheduler.")
+//          println(s"Select : \n${newTask.map(_._2.name).mkString("\n  ")} ")
           return newTask
         }
         //Lastly interrupt recovery
@@ -181,6 +203,21 @@ class FifoTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends Ta
       }
     }
     Iterable()
+  }
+
+  override def info(): Unit = {
+    val sb = new mutable.StringBuilder()
+
+    val sct = schedulingTime.get()
+    val sca = schedulingAmount.get()
+    val scm = if(sca == 0) 0.0 else (sct * 1.0) / sca
+
+
+    sb.append("\n\n  Scheduler\n")
+    sb.append(s"    Schedule : ${sca} times, ${sct}ms time, ${scm}ms mean\n")
+    taskSet.info()
+
+    leo.Out.comment(sb.toString())
   }
 }
 
@@ -245,8 +282,7 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
             wait()
           }
           while (r.isEmpty) {
-            val ts = taskSet.executableTasks // TODO Filter if no one can execute (simple done)
-            //            println(s"ts = ${ts.map(_.pretty).mkString(", ")}")
+            val ts = taskSet.executableTasks
             ts.foreach { t =>
               val a = t.getAgent
               val budget = regAgents.getOrElse(a, 0.0)
@@ -254,7 +290,6 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
             }
             if (r.isEmpty) {
               if (ActiveTracker.get <= 0 && scheduler.getCurrentWork <= 0) {
-                //  if(!Scheduler.working() && LockSet.isEmpty && regAgents.forall{case (a,_) => if(!a.hasTasks) {leo.Out.comment(s"[Auction]: ${a.name} has no work");true} else {leo.Out.comment(s"[Auction]: ${a.name} has work");false}}) {
                 sendDoneEvents()
               }
               wait()
@@ -272,7 +307,6 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
           //
           val queue: Iterator[(Double, Agent, Task)] = r.sortBy { case (b, a, t) => b * b / (1 + t.writeSet.size) }.reverse.toIterator // TODO Order in reverse directly
           //println(s" Sorted Queue : \n   ${queue.map{case (b, _, t) => s"${t.pretty} -> ${b}"}.mkString("\n   ")}")
-          var taken: Map[Agent, Int] = HashMap[Agent, Int]()
 
           var openSlots = scheduler.numberOfThreads * taskTakenFactor - scheduler.openTasks
           // 3. Take from beginning to front only the non colliding tasks
@@ -281,8 +315,7 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
           while (queue.hasNext && openSlots > 0) {
             val (price, a, t) = queue.next()
             // Check if the agent can execute another task
-            val open: Boolean = a.maxParTasks.fold(true)(n => n - taskSet.executingTasks(a) + taken.getOrElse(a, 0) > 0)
-            if (open & LockSet.isExecutable(t)) {
+            if (LockSet.isExecutable(t)) {
               val budget = regAgents.getOrElse(a, 0.0) //TODO Lock regAgents, got error during phase switch
               if (budget >= price) {
                 // The task is not colliding with previous tasks and agent has enough money
@@ -291,7 +324,6 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
                 LockSet.lockTask(t)
                 a.taskChoosen(t)
                 regAgents.put(a, budget - price)
-                taken = taken + (a -> (taken.getOrElse(a, 0) + 1))
               }
             }
           }
@@ -319,5 +351,7 @@ class AuctionTaskSelection(blackboard: Blackboard, scheduler: Scheduler) extends
     }
     Nil
   }
+
+  override def info(): Unit = ???
 }
 

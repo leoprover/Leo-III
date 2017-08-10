@@ -120,4 +120,6 @@ class UnprocessedSet(unprocessedType : DataType[AnnotatedClause])(implicit state
     case _ => Set()
 
   }
+
+  override def toString: String = "UnprocessedSet"
 }

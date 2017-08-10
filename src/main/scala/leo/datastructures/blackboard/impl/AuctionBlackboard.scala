@@ -140,5 +140,7 @@ private[blackboard] class AuctionBlackboard extends Blackboard {
     this.scheduler = scheduler
     this.taskSelectionSet = TaskSelection.getFreshTaskSelection(this, scheduler)
   }
+
+  override def info(): Unit = taskSelectionSet.info()
 }
 

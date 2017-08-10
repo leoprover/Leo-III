@@ -60,4 +60,8 @@ class TypedSet[A](dt : DataType[A]) extends DataStore {
     }
     delta
   }
+
+  override def toString: String = {
+    s"TypedSet(${dt.toString})"
+  }
 }

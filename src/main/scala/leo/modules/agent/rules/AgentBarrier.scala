@@ -101,4 +101,7 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
       EmptyDelta
     }
   }
+
+
+  override def toString: String = s"Barrier(${dType.toString})"
 }

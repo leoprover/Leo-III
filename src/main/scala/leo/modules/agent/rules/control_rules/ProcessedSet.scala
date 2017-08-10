@@ -114,4 +114,7 @@ class ProcessedSet(val processedType : DataType[AnnotatedClause])(implicit state
     case _ => Set()
 
   }
+
+
+  override def toString: String = "ProcessedSet"
 }

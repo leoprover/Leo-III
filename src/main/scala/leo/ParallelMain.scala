@@ -2,7 +2,7 @@ package leo
 
 import java.nio.file.Files
 
-import leo.datastructures.blackboard.{Blackboard, DoneEvent}
+import leo.datastructures.blackboard.{Blackboard, DoneEvent, LockSet}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
@@ -267,7 +267,9 @@ object ParallelMain {
 
       leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
 
-      printSZSAndProof(state, time)
+      printSZSAndProof(state, time, time - phase.parsingTime)
+//      scheduler.info()
+//      blackboard.info()
     } finally {
       if(!TimeOutProcess.isFinished)
         TimeOutProcess.killOnly()

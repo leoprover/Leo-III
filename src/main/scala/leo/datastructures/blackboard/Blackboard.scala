@@ -39,7 +39,12 @@ trait Blackboard extends TaskOrganize with DataBlackboard with MessageBlackboard
   /**
    * Resets the blackboard to an initial state.
    */
-  def clear()
+  def clear() : Unit
+
+  /**
+    * Prints some information on the workload performed in the blackboard.
+    */
+  def info() : Unit
 }
 
 

@@ -20,18 +20,16 @@ trait TaskSet {
     * @param a The agent to be removed
     */
   def removeAgent(a : Agent) : Unit
-
-  /**
-    * Number of tasks executed by the agent a
- *
-    * @param a The agent the number of tasks we want to know
-    * @return The number of tasks
-    */
-  def executingTasks(a: Agent) : Int
+//
+//  /**
+//    * Number of tasks executed by the agent a
+// *
+//    * @param a The agent the number of tasks we want to know
+//    * @return The number of tasks
+//    */
+//  def executingTasks(a: Agent) : Int
 
   def containsAgent(a: Agent) : Boolean
-
-  def dependOn(before: Agent, after: Agent)
 
   def clear() : Unit
 
@@ -116,7 +114,7 @@ trait TaskSet {
     *
     * @return a set of non dependent [[leo.agents.Task]], ready for selection.
     */
-  def executableTasks : Iterable[Task]
+  def executableTasks : Iterator[Task]
 
   /**
     *
