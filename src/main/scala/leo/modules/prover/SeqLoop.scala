@@ -302,6 +302,11 @@ object SeqLoop {
             } else {
               state.addUnprocessed(curCNF)
             }
+//            if (cur.id == 88) {
+//                          val p = leo.modules.proofOf(cur)
+//                          println(p.map(_.pretty(sig)).mkString("\n"))
+//                          System.exit(0)
+//                        }
           }
         }
       }

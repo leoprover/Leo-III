@@ -136,7 +136,7 @@ case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseA
     case _ => false
   }
 
-  override def hashCode(): Int = id.hashCode()
+  override def hashCode(): Int = cl.hashCode()
 }
 
 object AnnotatedClause {
