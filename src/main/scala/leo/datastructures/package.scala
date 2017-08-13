@@ -26,6 +26,9 @@ package object datastructures {
   /////////////////////////////////
   // Weighting of literals/clauses
   /////////////////////////////////
+  trait AbstractWeight[-What,+Result] {
+    def weightOf(w: What): Result
+  }
   /**
     * Interface for weighting objects such as clauses or literals.
     * A smaller weight means that the object should have "more priority" depending
@@ -36,31 +39,29 @@ package object datastructures {
     * @author Alexander Steen
     * @since 25.11.2014
     */
-  trait Weight[What] {
-    def weightOf[A <: What](w: A): Int
+  trait Weight[What] extends AbstractWeight[What,Double] {
+    def weightOf(w: What): Double
   }
 
-  object ClauseProxyWeights {
-    import impl.orderings._
-    /** Weighting that gives a higher ('worse') weight for newer clauses. */
-    final val fifo: ClauseProxyWeight = CPW_FIFO
-    /** Clause weighting that assigns the number of literals in the clause as weight. */
-    final val litCount: ClauseProxyWeight = CPW_LitCount
-    /** Clause weighting that assigns the maximum of all literals weights as weight. */
-    final val maxLitWeight: ClauseProxyWeight = CPW_MaxLitWeight
-    /** Clause weighting that assigns the sum of all literals weights as weight. */
-    final val litWeightSum: ClauseProxyWeight = CPW_LitWeightSum
-  }
-
-  object LiteralWeights {
-    import impl.orderings._
-    /** Simple weighting function that gives every literal the same weight. */
-    final val const: LiteralWeight = LW_Constant
-    /** Literal weighting that gives preference (i.e. gives lower weight) to older literals. */
-    final val fifo: LiteralWeight = LW_FIFO
-    /** Literal weighting that uses the enclosed term's size as weight. */
-    final val termsize: LiteralWeight = LW_TermSize
-  }
+//  object ClauseProxyWeights {
+//    import impl.orderings._
+//    /** Weighting that gives a higher ('worse') weight for newer clauses. */
+//    final val fifo: ClauseProxyWeight = CPW_FIFO
+//    /** Clause weighting that assigns the number of literals in the clause as weight. */
+//    final val litCount: ClauseProxyWeight = CPW_LitCount
+//    /** Clause weighting that assigns the maximum of all literals weights as weight. */
+//    final val maxLitWeight: ClauseProxyWeight = CPW_MaxLitWeight
+//    /** Clause weighting that assigns the sum of all literals weights as weight. */
+//    final val litWeightSum: ClauseProxyWeight = CPW_LitWeightSum
+//  }
+//
+//  object LiteralWeights {
+//    import impl.orderings._
+//    /** Simple weighting function that gives every literal the same weight. */
+//    final val const: LiteralWeight = LW_Constant
+//    /** Literal weighting that uses the enclosed term's size as weight. */
+//    final val termsize: LiteralWeight = LW_TermSize
+//  }
 
   /////////////////////////////////
   // Ordering related library functions
@@ -110,29 +111,16 @@ package object datastructures {
 
     /** Return a (simple) ordering that is induced by a weighting. */
     def simple[A](weighting: Weight[A]) = new Ordering[A] {
-      def compare(a: A, b: A) = weighting.weightOf(a) - weighting.weightOf(b)
+      def compare(a: A, b: A): Int = weighting.weightOf(a).compare(weighting.weightOf(b))
     }
 
     val intOrd = new Ordering[Int] {
-      def compare(a: Int, b: Int) = a-b
+      def compare(a: Int, b: Int): Int = a-b
     }
 
     def lift[A](f: A => A => Int): Ordering[A] = new Ordering[A] {
-      def compare(x: A, y: A) = f(x)(y)
+      def compare(x: A, y: A): Int = f(x)(y)
     }
-
-    //  def lexOrd[A](ord: QuasiOrdering[A]): QuasiOrdering[Seq[A]] = new QuasiOrdering[Seq[A]] {
-    //    def compare(x: Seq[A], y: Seq[A]) = (x.length - y.length) match {
-    //      case 0 => (x,y) match {
-    //        case (Seq(), Seq()) => Some(0)
-    //        case (Seq(xHead, xTail@_*), Seq(yHead, yTail@_*)) => ord.compare(xHead, yHead) match {
-    //          case Some(0) => compare(xTail, yTail)
-    //          case res => res
-    //        }
-    //      }
-    //      case res => Some(res)
-    //    }
-    //  }
 
     final def mult[A](gt: (A,A) => Boolean): Seq[A] => Seq[A] => Boolean = {
       s => t => {
@@ -222,49 +210,92 @@ package object datastructures {
   /////////////////////
   // Clause proxy orderings for clause selection
   /////////////////////
+  trait ClauseProxyOrdering[+A] extends Ordering[ClauseProxy] with AbstractWeight[ClauseProxy, A] {
+    outer =>
+    override def reverse: ClauseProxyOrdering[A] = new ClauseProxyOrdering[A] {
+      override def weightOf(w: ClauseProxy): A = outer.weightOf(w)
+
+      override def compare(x: ClauseProxy, y: ClauseProxy): Int = outer.compare(y,x)
+    }
+  }
+
   object ClauseProxyOrderings {
     import impl.orderings._
 
     // Since the orderings are used in a scala priorityqueue which prefers greater elemens, we need to reverse the
     // element orderings in the compounds
-    final val oldest_first: ClauseProxyOrdering = CPO_OldestFirst.reverse
-    final def goals_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
-      Orderings.lexCombination(
+    final val oldest_first: ClauseProxyOrdering[Double] = CPO_OldestFirst.reverse
+    final def goals_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
         CPO_GoalsFirst2.reverse,
         new CPO_SymbolWeight(varWeight, symbWeight).reverse,
         oldest_first)
-    final def goals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
-      Orderings.lexCombination(
+    final def goals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
         CPO_GoalsFirst2.reverse,
         CPO_SmallerFirst.reverse,
         new CPO_SymbolWeight(varWeight, symbWeight).reverse,
         oldest_first)
-    final def nongoals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
-      Orderings.lexCombination(
+    final def goals_conjRelSymb(conjSymbols: Set[Signature.Key],
+                                conjSymbolFactor: Float, varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
+        CPO_GoalsFirst2.reverse,
+        new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
+        oldest_first)
+    final def nongoals_litCount_SymbWeight(varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
         CPO_NonGoalsFirst2.reverse,
         CPO_SmallerFirst.reverse,
         new CPO_SymbolWeight(varWeight, symbWeight).reverse,
         oldest_first)
     final def conjRelSymb(conjSymbols: Set[Signature.Key],
                                    conjSymbolFactor: Float,
-                                   varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
-      Orderings.lexCombination(
+                                   varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
         oldest_first)
     final def litCount_conjRelSymb(conjSymbols: Set[Signature.Key],
                               conjSymbolFactor: Float,
-                              varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
-      Orderings.lexCombination(
+                              varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
         CPO_SmallerFirst.reverse,
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
         oldest_first)
     final def sos_conjRelSymb(conjSymbols: Set[Signature.Key],
                               conjSymbolFactor: Float,
-                              varWeight: Int, symbWeight: Int): ClauseProxyOrdering =
-      Orderings.lexCombination(
+                              varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
         CPO_SOSFirst.reverse,
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
         oldest_first)
+
+    final def lexCombination[A](ord1: ClauseProxyOrdering[A], ord2: ClauseProxyOrdering[A], ords: ClauseProxyOrdering[A]*): ClauseProxyOrdering[Seq[A]] = {
+      new ClauseProxyOrdering[Seq[A]] {
+        override def compare(x: ClauseProxy, y: ClauseProxy): Int = {
+          val cmp1Result = ord1.compare(x,y)
+          if (cmp1Result != 0) cmp1Result
+          else {
+            val cmp2Result = ord2.compare(x,y)
+            if (cmp2Result != 0) cmp2Result
+            else {
+              val ordsIt = ords.iterator
+              while(ordsIt.hasNext) {
+                val ord = ordsIt.next()
+                val ordResult = ord.compare(x,y)
+                if (ordResult != 0) return ordResult
+              }
+              0 // Equal in all orderings
+            }
+          }
+        }
+
+        override def weightOf(cl: ClauseProxy): Seq[A] = {
+          val weight1 = ord1.weightOf(cl)
+          val weight2 = ord2.weightOf(cl)
+          Vector(weight1, weight2) ++ ords.map(_.weightOf(cl))
+        }
+      }
+    }
   }
 
   ///////////////////////

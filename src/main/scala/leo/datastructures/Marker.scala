@@ -117,7 +117,7 @@ trait ClauseProxy extends Pretty with Prettier {
   def cl: Clause
   def role: Role
   def annotation: ClauseAnnotation
-  @inline lazy val weight: Int = leo.Configuration.CLAUSEPROXY_WEIGHTING.weightOf(this)
+//  @inline lazy val weight: Int = leo.Configuration.CLAUSEPROXY_WEIGHTING.weightOf(this)
   def properties: ClauseAnnotation.ClauseProp
   override final def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
   override final def pretty(sig: Signature): String = s"[$id]:\t${cl.pretty(sig)}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"

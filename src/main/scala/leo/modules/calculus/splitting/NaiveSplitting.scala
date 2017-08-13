@@ -77,7 +77,7 @@ object NaiveSplitting extends Split {
    * @return Some(cs) with
    */
   override def split(c : Clause) : Option[(Seq[Seq[Clause]],SplitKind)] = {
-    val maxLit = c.lits.max(Orderings.simple(LiteralWeights.fifo))
+    val maxLit = c.lits.max(Orderings.simple(???))
     val rLits = c.lits.filterNot(_ != maxLit)   // Remove maximal Literal
 
     Literal.asTerm(maxLit) match { // TODO: These matches never apply?!
@@ -150,6 +150,6 @@ object ClauseHornSplit extends HornSplit((l : Literal) => 1) {
   override val name = "UnitWeightHornSplit"
 }
 
-object LiteralHornSplit extends HornSplit((l : Literal) => l.weight) {
+object LiteralHornSplit extends HornSplit((l : Literal) => ???) {
   override val name : String = "ClauseWeightHornSplit"
 }

@@ -49,6 +49,7 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
 
   protected[prover] def queues(): MultiPriorityQueue[T]
   protected[prover] def clauseCache: Map[Long, WeakReference[T]]
+  protected[prover] def currentPrio: Int
 }
 
 trait StateStatistics {
@@ -113,6 +114,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   private final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
   def queues: MultiPriorityQueue[T] = mpq
   var clauseCache: Map[Long, WeakReference[T]] = Map.empty
+  def currentPrio: Int = cur_prio
   private var openExtCalls0: Map[TptpProver[T], Set[Future[TptpResult[T]]]] = Map.empty
   private var queuedTranslations : Int = 0
   private var extCallStat: LastCallStat[T] = _
@@ -247,11 +249,11 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
     val conjSymbols: Set[Signature.Key] = symbolsInConjecture0
-    mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+    mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 25).asInstanceOf[Ordering[T]])
 //    mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
-    mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+    mpq.addPriority(goals_conjRelSymb(conjSymbols, 0.0005f, 100, 25).asInstanceOf[Ordering[T]])
     mpq.addPriority(nongoals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
-    mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+//    mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
     mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[T]])
     mpq.addPriority(oldest_first.asInstanceOf[Ordering[T]])
   }
@@ -260,7 +262,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](initSignature: Signature) ex
     if (mpq == null) leo.Out.comment("MPQ null")
     mpq.toSet
   }
-  final private val prio_weights = Seq(6,3,1,5,2,1)
+  final private val prio_weights = Seq(5,4,2,4,1)
   private var cur_prio = 0
   private var cur_weight = 0
   final def nextUnprocessed: T = {

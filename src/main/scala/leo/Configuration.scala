@@ -159,12 +159,7 @@ object Configuration extends DefaultConfiguration {
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
-  import leo.datastructures.{Precedence,ClauseProxyWeights,LiteralWeights}
   lazy val CONSISTENCY_CHECK: Boolean = isSet(PARAM_CONSISTENCYCHECK)
-
-  lazy val CLAUSEPROXY_WEIGHTING: ClauseProxyWeight = ClauseProxyWeights.litCount
-
-  lazy val LITERAL_WEIGHTING: LiteralWeight = LiteralWeights.termsize
 
   lazy val TERM_ORDERING: TermOrdering = {
     if (isSet("ordering")) {
@@ -179,6 +174,7 @@ object Configuration extends DefaultConfiguration {
     }
   }
 
+  import leo.datastructures.Precedence
   lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
 
   lazy val RENAMING_SET : Boolean = isSet(RENAMING) || DEFAULT_RENAMING

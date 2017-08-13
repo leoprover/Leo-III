@@ -1,7 +1,5 @@
 package leo.datastructures
 
-import leo.Configuration
-
 /**
  * Interface for literals, companion object `Literal` provides constructor methods.
  *
@@ -50,8 +48,8 @@ trait Literal extends Pretty with Prettier {
   /** Returns true iff the equation `s = t` is ground. */
   @inline final lazy val ground: Boolean = left.ground && right.ground
 
-  /** The weight of the literal as determined by the underlying literal weighting. */
-  @inline final lazy val weight: Int = Configuration.LITERAL_WEIGHTING.weightOf(this)
+//  /** The weight of the literal as determined by the underlying literal weighting. */
+//  @inline final lazy val weight: Int = Configuration.LITERAL_WEIGHTING.weightOf(this)
   /** Comparison of two literals using a literal ordering given by (literals `l`,`l'`):
     * `l > l'` iff `mc(l) >>> mc(l')`
     * where `>>>` is the twofold multiset-extension `(((>)mul)mul)` of `>`,

@@ -54,18 +54,15 @@ object Interaction {
     triggers.+=(t -> action)
   }
 
-  Evaluator.register({in => in == "queues"}, { (in,state) =>
+  Evaluator.register({in => in == "queue"}, { (_,state) =>
     println(state.queues().pretty)
     false
   })
-  Evaluator.register({in => in == "exit"}, { (in,state) =>
+  Evaluator.register({in => in == "exit" || in == ""}, { (_,_) =>
     true
   })
-  Evaluator.register({in => in == "kill"}, { (in,state) =>
+  Evaluator.register({in => in == "kill"}, { (_,_) =>
     System.exit(0)
-    true
-  })
-  Evaluator.register({in => in == ""}, { (in,state) =>
     true
   })
   Evaluator.register({in => in.startsWith("skip")}, { (in,state) =>
@@ -98,12 +95,50 @@ object Interaction {
     try {
       val n = in.drop(5).toLong
       val cl = state.clauseCache(n).get.get
-      println(ToTPTP.toString(cl)(state.signature))
+      println(ToTPTP.withAnnotation(cl)(state.signature))
     } catch {
       case _: Exception => println("Invalid input, try again")
     }
     false
   })
+  Evaluator.register({in => in.startsWith("parents")}, { (in,state) =>
+    try {
+      val n = in.drop(8).toLong
+      val cl = state.clauseCache(n).get.get
+      val parents = leo.modules.proofOf(cl)
+      val parentsAsTPTP = parents.map(ToTPTP.withAnnotation(_)(state.signature))
+      println(parentsAsTPTP.mkString("\n"))
+    } catch {
+      case _: Exception => println("Invalid input, try again")
+    }
+    false
+  })
+  Evaluator.register({in => in == "peek"}, { (in,state) =>
+    try {
+      val cl = state.queues().head(state.currentPrio)
+      println(cl.id.toString)
+    } catch {
+      case _: Exception => println("Invalid input, try again")
+    }
+    false
+  })
+  Evaluator.register({in => in.startsWith("eval")}, { (in,state) =>
+    try {
+      import leo.datastructures.ClauseProxyOrdering
+      val in0 = in.drop(5)
+      val nm = in0.split(" ")
+      val n = nm(0).toLong
+      val m = nm(1).toInt
+      val cl = state.clauseCache(n).get.get
+      val weight = state.queues().priority(m).asInstanceOf[ClauseProxyOrdering[Seq[Double]]]
+      val w = weight.weightOf(cl)
+      println(w.toString)
+    } catch {
+      case _: Exception => println("Invalid input, try again")
+    }
+    false
+  })
+
 
   object Evaluator {
     type Predicate = String => Boolean

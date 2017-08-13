@@ -1,8 +1,8 @@
 package leo.datastructures.impl.orderings
 
-import leo._
 import leo.datastructures.ClauseProxy
 import leo.datastructures.Signature
+import leo.datastructures.ClauseProxyOrdering
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its symbol weight smaller.
   * Symbolweight `w(c)` of a clause `c` is calculated by `w(c) = w(fv(c)) + Σ w(l_i)`, where
@@ -16,18 +16,18 @@ import leo.datastructures.Signature
   *
   * @see [[leo.datastructures.Multiset]] for multiset operations `mult`, `distinct`, etc.
   */
-class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature.Key], conjSymbolFactor: Float, varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering {
+class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature.Key], conjSymbolFactor: Float, varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering[Double] {
   import leo.datastructures.Clause
-  final def compare(a: ClauseProxy, b: ClauseProxy) = {
-    val aWeight = computeWeight(a.cl)
-    val bWeight = computeWeight(b.cl)
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
+    val aWeight = weightOf(a)
+    val bWeight = weightOf(b)
     aWeight.compare(bWeight)
   }
 
-  private[this] final def computeWeight(cl: Clause): Float = {
-    val symbols = Clause.symbols(cl)
+  final def weightOf(cl: ClauseProxy): Double = {
+    val symbols = Clause.symbols(cl.cl)
     var weight: Float = 0f
-    weight += cl.implicitlyBound.size * varWeight
+    weight += cl.cl.implicitlyBound.size * varWeight
     val it = symbols.distinctIterator
     while(it.hasNext) {
       val symb = it.next()
@@ -49,74 +49,83 @@ class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature.Key], conjSymbolFa
   *
   * @see [[leo.datastructures.Multiset]] for multiset operations `size` etc.
   */
-class CPO_SymbolWeight(varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering {
+class CPO_SymbolWeight(varWeight: Int, symbWeight: Int) extends ClauseProxyOrdering[Double] {
   import leo.datastructures.Clause
-  final def compare(a: ClauseProxy, b: ClauseProxy) = {
-    val aWeight = computeWeight(a.cl)
-    val bWeight = computeWeight(b.cl)
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
+    val aWeight = weightOf(a)
+    val bWeight = weightOf(b)
     aWeight.compare(bWeight)
   }
-  private[this] final def computeWeight(cl: Clause): Int = {
-    val symbols = Clause.symbols(cl)
+  final def weightOf(cl: ClauseProxy): Double = {
+    val symbols = Clause.symbols(cl.cl)
     var weight: Int = 0
-    weight += cl.implicitlyBound.size * varWeight
+    weight += cl.cl.implicitlyBound.size * varWeight
     weight += symbols.size * symbWeight
     weight
   }
 }
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its literal count is smaller. */
-object CPO_SmallerFirst extends ClauseProxyOrdering {
-  final def compare(a: ClauseProxy, b: ClauseProxy) = {
-    val aLitsCounts = a.cl.lits.size; val bLitsCounts = b.cl.lits.size
-    aLitsCounts.compareTo(bLitsCounts)
+object CPO_SmallerFirst extends ClauseProxyOrdering[Double] {
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
+    val aWeight = weightOf(a); val bWeight = weightOf(b)
+    aWeight.compareTo(bWeight)
   }
+
+  final def weightOf(cl: ClauseProxy): Double = cl.cl.lits.size
 }
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its `id` is smaller. */
-object CPO_OldestFirst extends ClauseProxyOrdering {
-  final def compare(a: ClauseProxy, b: ClauseProxy) = {
+object CPO_OldestFirst extends ClauseProxyOrdering[Double] {
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
     val aAge = a.id; val bAge = b.id
     aAge.compareTo(bAge)
   }
+
+  final def weightOf(cl: ClauseProxy): Double = cl.id
 }
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its ratio of negative literals is greater.
   * Empty clauses are smaller then every other clause.
   * E.g. a clause with five literals, thereof four negative, is smaller than a clause with two literals, there one negative. */
-object CPO_GoalsFirst2 extends ClauseProxyOrdering {
-  def compare(a: ClauseProxy, b: ClauseProxy) = {
+object CPO_GoalsFirst2 extends ClauseProxyOrdering[Double] {
+  def compare(a: ClauseProxy, b: ClauseProxy): Int = {
     val aGoalRatio: Float = if (a.cl.lits.isEmpty) -1 else a.cl.posLits.size.toFloat/a.cl.lits.size.toFloat
     val bGoalRatio: Float = if (b.cl.lits.isEmpty) -1 else b.cl.posLits.size.toFloat/b.cl.lits.size.toFloat
     aGoalRatio.compareTo(bGoalRatio)
   }
+
+  final def weightOf(cl: ClauseProxy): Double = if (cl.cl.lits.isEmpty) -1 else cl.cl.posLits.size.toFloat/cl.cl.lits.size.toFloat
 }
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its ratio of postive literals is greater.
   * Empty clauses are smaller then every other clause.
   * E.g. a clause with five literals, thereof four positive, is smaller than a clause with two literals, there one positive. */
-object CPO_NonGoalsFirst2 extends ClauseProxyOrdering {
-  def compare(a: ClauseProxy, b: ClauseProxy) = {
+object CPO_NonGoalsFirst2 extends ClauseProxyOrdering[Double] {
+  def compare(a: ClauseProxy, b: ClauseProxy): Int = {
     val aGoalRatio: Float = if (a.cl.lits.isEmpty) -1 else a.cl.negLits.size.toFloat/a.cl.lits.size.toFloat
     val bGoalRatio: Float = if (b.cl.lits.isEmpty) -1 else b.cl.negLits.size.toFloat/b.cl.lits.size.toFloat
     aGoalRatio.compareTo(bGoalRatio)
   }
+
+  final def weightOf(cl: ClauseProxy): Double = if (cl.cl.lits.isEmpty) -1 else cl.cl.negLits.size.toFloat/cl.cl.lits.size.toFloat
 }
 
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if it is marked as member of
   * the set of support. If both are marked that way, they are equal in this ordering.
   * @see [[leo.datastructures.ClauseAnnotation.PropSOS]] */
-object CPO_SOSFirst extends ClauseProxyOrdering {
-  final def compare(a: ClauseProxy, b: ClauseProxy) = {
+object CPO_SOSFirst extends ClauseProxyOrdering[Double] {
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
+    val aWeight = weightOf(a)
+    val bWeight = weightOf(b)
+    aWeight.compare(bWeight)
+  }
+
+  final def weightOf(cl: ClauseProxy): Double = {
     import leo.datastructures.isPropSet
     import leo.datastructures.ClauseAnnotation.PropSOS
-    val aProp = a.properties; val bProp = b.properties
-    if (isPropSet(PropSOS, aProp)) {
-      if (isPropSet(PropSOS, bProp)) 0
-      else -1
-    } else {
-      if (isPropSet(PropSOS, bProp)) 1
-      else 0
-    }
+    val prop = cl.properties
+    if (isPropSet(PropSOS, prop)) 0
+    else 1000
   }
 }

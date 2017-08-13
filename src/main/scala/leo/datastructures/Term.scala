@@ -92,9 +92,7 @@ trait Term extends Pretty with Prettier {
 //  def subterm(pos: Position): Term
 
   def symbols: Multiset[Signature.Key]
-  final def symbolsOfType(ty: Type)(implicit sig: Signature) = {
-    symbols.filter({i => sig(i)._ty == ty})
-  }
+
   // Functions for FV-Indexing
   def fvi_symbolFreqOf(symbol: Signature.Key): Int
   def fvi_symbolDepthOf(symbol: Signature.Key): Int
