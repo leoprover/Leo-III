@@ -26,8 +26,9 @@ class CPO_ConjRelativeSymbolWeight(conjSymbols: Set[Signature.Key], conjSymbolFa
 
   final def weightOf(cl: ClauseProxy): Double = {
     val symbols = Clause.symbols(cl.cl)
+    val vars = Clause.vars(cl.cl)
     var weight: Float = 0f
-    weight += cl.cl.implicitlyBound.size * varWeight
+    weight += vars.size * varWeight
     val it = symbols.distinctIterator
     while(it.hasNext) {
       val symb = it.next()
@@ -58,8 +59,9 @@ class CPO_SymbolWeight(varWeight: Int, symbWeight: Int) extends ClauseProxyOrder
   }
   final def weightOf(cl: ClauseProxy): Double = {
     val symbols = Clause.symbols(cl.cl)
+    val vars = Clause.vars(cl.cl)
     var weight: Int = 0
-    weight += cl.cl.implicitlyBound.size * varWeight
+    weight += vars.size * varWeight
     weight += symbols.size * symbWeight
     weight
   }

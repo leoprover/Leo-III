@@ -1,7 +1,7 @@
 package leo.modules.control
 
 import leo.datastructures.{AnnotatedClause, Signature, Term, Type}
-import leo.modules.prover.{RunStrategy, State}
+import leo.modules.prover.{Interaction, RunStrategy, State}
 import leo.modules.{FVState, GeneralState, myAssert}
 import leo.{Configuration, Out}
 
@@ -74,6 +74,24 @@ object Control {
   type RunSchedule = Iterable[RunConfiguration]
   @inline final def defaultStrategy: RunStrategy = schedulingControl.StrategyControl.defaultStrategy
   @inline final def generateRunStrategies(globalTimeout: Int, extraTime: Int = 0): RunSchedule = schedulingControl.StrategyControl.generateRunStrategies(globalTimeout, extraTime)
+  // Delegator etc.
+  final def addUnprocessed(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = {
+    Interaction.trackClause(cl)
+    state.addUnprocessed(cl)
+  }
+  final def addUnprocessed(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Unit = {
+    Interaction.trackClause(cls)
+    state.addUnprocessed(cls)
+  }
+  final def removeProcessed(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Unit = {
+    state.removeProcessed(cls)
+    state.removeUnits(cls)
+    removeFromIndex(cls)
+    //      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
+    //      val descendants = Control.descendants(backSubsumedClauses)
+    //      state.incDescendantsDeleted(descendants.size)
+    //      state.removeUnprocessed(descendants)
+  }
 }
 
 /** Package collection control objects for inference rules.

@@ -91,7 +91,10 @@ trait Term extends Pretty with Prettier {
 //    * at `pos`, if existent. `null` otherwise. */
 //  def subterm(pos: Position): Term
 
+  /** Multiset of all symbols contained within the term. */
   def symbols: Multiset[Signature.Key]
+  /** Multiset of all free variables contained within the term. */
+  def vars: Multiset[Int]
 
   // Functions for FV-Indexing
   def fvi_symbolFreqOf(symbol: Signature.Key): Int
@@ -170,7 +173,7 @@ object Term extends TermBank {
   final def mkApp(func: Term, args: Seq[Either[Term, Type]]): Term = TermImpl.mkApp(func, args)
 
   // Term bank method delegation
-  final val local = TermImpl.local
+  final val local: TermFactory = TermImpl.local
   final def insert(term: Term): Term = TermImpl.insert(term)
   final def reset(): Unit = TermImpl.reset()
 

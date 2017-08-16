@@ -391,6 +391,8 @@ object Literal {
   final def flipPolarity(l: Literal): Literal = if (l.equational) apply(l.left, l.right, !l.polarity, l.oriented) else apply(l.left, !l.polarity)
   /** Returns the multiset of symbols occuring in the literal `l`, */
   final def symbols(l: Literal): Multiset[Signature.Key] = if (l.equational) l.left.symbols.sum(l.right.symbols) else l.left.symbols
+  /** Returns the multiset of variables occuring freely in the literal `l`, */
+  final def vars(l: Literal): Multiset[Int] = if (l.equational) l.left.vars.sum(l.right.vars) else l.left.vars
   /** Returns whether the literal is well-typed, i.e. if the underlying terms are well-typed and have the same type. */
   final def wellTyped(l: Literal): Boolean = {
     import leo.datastructures.Term.{wellTyped => wt}

@@ -164,7 +164,7 @@ object SeqLoop {
       val timeout0 = state.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
 
-      var afterPreprocessed : Set[AnnotatedClause] = Set()
+//      var afterPreprocessed : Set[AnnotatedClause] = Set()
 
       // Preprocessing Conjecture
       if (state.negConjecture != null) {
@@ -189,8 +189,8 @@ object SeqLoop {
           }.mkString("\n\t")
         }")
         Out.trace("## Preprocess Neg.Conjecture END")
-//        state.addUnprocessed(result)
-        afterPreprocessed = afterPreprocessed union result
+        Control.addUnprocessed(result)
+//        afterPreprocessed = afterPreprocessed union result
       } else {
         // Initialize indexes
         state.initUnprocessed()
@@ -210,19 +210,19 @@ object SeqLoop {
           }.mkString("\n\t")
         }")
         val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-//        state.addUnprocessed(preprocessed)
-        afterPreprocessed = afterPreprocessed union preprocessed
+        Control.addUnprocessed(preprocessed)
+//        afterPreprocessed = afterPreprocessed union preprocessed
         if (preprocessIt.hasNext) Out.trace("--------------------")
       }
 
-      if(state.domainConstr.isEmpty){
-        state.addUnprocessed(afterPreprocessed)
-      } else {
-        val constraints = Control.instantiateDomainConstraint(afterPreprocessed)
-        val simpConst = Control.simpSet(constraints) // TODO Remove unnecessary?
-
-        state.addUnprocessed(simpConst)
-      }
+//      if(state.domainConstr.isEmpty){
+//        state.addUnprocessed(afterPreprocessed)
+//      } else {
+//        val constraints = Control.instantiateDomainConstraint(afterPreprocessed)
+//        val simpConst = Control.simpSet(constraints) // TODO Remove unnecessary?
+//
+//        state.addUnprocessed(simpConst)
+//      }
       Out.trace("## Preprocess END\n\n")
       assert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)), s"Not well typed:\n\t${state.unprocessed.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.pretty(sig)).mkString("\n\t")}")
       // Debug output
@@ -301,15 +301,8 @@ object SeqLoop {
                 }
               }
             } else {
-              state.addUnprocessed(curCNF)
+              Control.addUnprocessed(curCNF)
             }
-//            if (cur.id == 88 || state.unprocessed.exists(_.id == 88)) {
-//                          val p = leo.modules.proofOf(cur)
-//                          println(p.map(_.pretty(sig)).mkString("\n"))
-//                  println("###")
-//              println(s"processed: ${state.processed.map(_.id).mkString(",")}")
-//                          System.exit(0)
-//                        }
           }
         }
       }
@@ -378,14 +371,7 @@ object SeqLoop {
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
       Out.finest(s"[Redundancy] Processed subsumed:" +
         s"\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
-      // Remove from processed set, from indexes etc.
-      state.removeProcessed(backSubsumedClauses)
-      state.removeUnits(backSubsumedClauses)
-      Control.removeFromIndex(backSubsumedClauses)
-      //      // Remove all direct descendants of clauses in `bachSubsumedClauses` from unprocessed
-      //      val descendants = Control.descendants(backSubsumedClauses)
-      //      state.incDescendantsDeleted(descendants.size)
-      //      state.removeUnprocessed(descendants)
+      Control.removeProcessed(backSubsumedClauses)
     }
     assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
     /** Add to processed and to indexes. */
@@ -472,7 +458,7 @@ object SeqLoop {
         endplay(newCl, state)
         return true
       } else {
-        if (!Clause.trivial(newCl.cl)) state.addUnprocessed(newCl)
+        if (!Clause.trivial(newCl.cl)) Control.addUnprocessed(newCl)
         else Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
@@ -507,7 +493,7 @@ object SeqLoop {
     Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
     Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
-    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
+    Out.comment(s"No. of chostateice instantiations: ${state.choiceInstantiations}")
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
     Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => c.cl.maxLits).size}")
     Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
