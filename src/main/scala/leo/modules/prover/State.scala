@@ -151,7 +151,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   private final val currentProcessed: mutable.Set[T] = mutable.Set.empty
   protected[prover] final val mpq: MultiPriorityQueue[T] = MultiPriorityQueue.empty
-  final private val prio_weights = Seq(10,1,1,2,10,2,1)
+  final private val prio_weights = Seq(10,2,1,3,1)
   protected[prover] var cur_prio = 0
   private var cur_weight = 0
   private val hotlist0: mutable.Queue[T] = mutable.Queue.empty
@@ -181,9 +181,9 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
     val conjSymbols: Set[Signature.Key] = symbolsInConjecture0
     mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
     mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
-    mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
+//    mpq.addPriority(goals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
     mpq.addPriority(nongoals_litCount_SymbWeight(100,20).asInstanceOf[Ordering[T]])
-    mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
+//    mpq.addPriority(conjRelSymb(conjSymbols, 0.005f, 100, 50).asInstanceOf[Ordering[T]])
     mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[T]])
     mpq.addPriority(oldest_first.asInstanceOf[Ordering[T]])
   }
