@@ -21,13 +21,13 @@ object FuncExt extends CalculusRule {
 
   final def canApply(l: Literal): Boolean = l.equational && l.left.ty.isFunType
 
-  final def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
+  final def canApply(lits: Seq[Literal]): (Boolean, Seq[ExtLits], Seq[OtherLits]) = {
     var can = false
     var extLits:Seq[Literal] = Vector()
     var otherLits: Seq[Literal] = Vector()
-    val lits = cl.lits.iterator
-    while (lits.hasNext) {
-      val l = lits.next()
+    val literals = lits.iterator
+    while (literals.hasNext) {
+      val l = literals.next()
       if (canApply(l)) {
         extLits = extLits :+ l
         can = true
@@ -36,6 +36,52 @@ object FuncExt extends CalculusRule {
       }
     }
     (can, extLits, otherLits)
+  }
+
+  final def canApply(cl: Clause): (Boolean, Seq[ExtLits], Seq[OtherLits]) = canApply(cl.lits)
+
+  final def applyExhaust(lit: Literal, vargen: FreshVarGen)(implicit sig: Signature): Literal = {
+    assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
+    assert(lit.equational, "Trying to apply func ext on non-eq literal")
+
+    val funArgTys = lit.left.ty.funParamTypes
+    if (lit.polarity) {
+      val newVars = funArgTys.map {ty => vargen(ty)}
+      val appliedLeft = Term.mkTermApp(lit.left, newVars).betaNormalize
+      val appliedRight = Term.mkTermApp(lit.right, newVars).betaNormalize
+      assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Positive polarity left result not well typed: ${appliedLeft.pretty(sig)}")
+      assert(Term.wellTyped(appliedRight), s"[FuncExt]: Positive polarity right result not well typed: ${appliedRight.pretty(sig)}")
+      Literal.mkOrdered(appliedLeft, appliedRight, true)(sig)
+    } else {
+      val skTerms = funArgTys.map(skTerm(_, vargen.existingVars, vargen.existingTyVars)(sig))
+      val appliedLeft = Term.mkTermApp(lit.left, skTerms).betaNormalize
+      val appliedRight = Term.mkTermApp(lit.right, skTerms).betaNormalize
+      assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Negative polarity left result not well typed: ${appliedLeft.pretty(sig)}")
+      assert(Term.wellTyped(appliedRight), s"[FuncExt]: Negative polarity right result not well typed: ${appliedRight.pretty(sig)}")
+      Literal.mkOrdered(appliedLeft, appliedRight, false)(sig)
+    }
+  }
+
+  final def applyNew(lit: Literal, vargen: FreshVarGen)(implicit sig: Signature): Literal = {
+    assert(lit.left.ty.isFunType, "Trying to apply func ext on non fun-ty literal")
+    assert(lit.equational, "Trying to apply func ext on non-eq literal")
+
+    val argType = lit.left.ty._funDomainType
+    if (lit.polarity) {
+      val newVar = vargen(argType)
+      val appliedLeft = Term.mkTermApp(lit.left, newVar).betaNormalize
+      val appliedRight = Term.mkTermApp(lit.right, newVar).betaNormalize
+      assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Positive polarity left result not well typed: ${appliedLeft.pretty(sig)}")
+      assert(Term.wellTyped(appliedRight), s"[FuncExt]: Positive polarity right result not well typed: ${appliedRight.pretty(sig)}")
+      Literal.mkOrdered(appliedLeft, appliedRight, true)(sig)
+    } else {
+      val newSkArg = skTerm(argType, vargen.existingVars, vargen.existingTyVars)(sig)
+      val appliedLeft = Term.mkTermApp(lit.left, newSkArg).betaNormalize
+      val appliedRight = Term.mkTermApp(lit.right, newSkArg).betaNormalize
+      assert(Term.wellTyped(appliedLeft), s"[FuncExt]: Negative polarity left result not well typed: ${appliedLeft.pretty(sig)}")
+      assert(Term.wellTyped(appliedRight), s"[FuncExt]: Negative polarity right result not well typed: ${appliedRight.pretty(sig)}")
+      Literal.mkOrdered(appliedLeft, appliedRight, false)(sig)
+    }
   }
 
   final def apply(lit: Literal, vargen: leo.modules.calculus.FreshVarGen, initFV: Seq[(Int, Type)])(implicit sig: Signature): Literal = {
@@ -181,11 +227,11 @@ object PatternUni extends AnyUni {
     myAssert(uniLits.forall{case (l,r) => Term.wellTyped(l) && Term.wellTyped(r) && l.ty == r.ty})
     val result = PatternUnification.unifyAll(vargen, uniLits, -1) // depth is dont care
     if (result.isEmpty) {
-      Out.debug(s"Pattern unification failed.")
+      Out.trace(s"Pattern unification failed.")
       None
     } else {
       val subst = result.head._1
-      Out.debug(s"Pattern unification successful: ${subst._1.pretty}")
+      Out.trace(s"Pattern unification successful: ${subst._1.pretty}")
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
       val resultClause = Clause(updatedOtherLits)
       Some((resultClause, subst))
@@ -288,19 +334,6 @@ object Choice extends CalculusRule {
           case _ => null/* skip */
         }
       case _ => null/* skip */
-    }
-  }
-
-  @tailrec
-  private final def etaArgs(args: Seq[Term], depth: Int): Boolean = {
-    import leo.datastructures.Term.Bound
-    if (args.isEmpty) depth == 0
-    else {
-      val hd = args.head
-      hd match {
-        case Bound(_, idx) if idx == depth => etaArgs(args.tail, depth-1)
-        case _ => false
-      }
     }
   }
 

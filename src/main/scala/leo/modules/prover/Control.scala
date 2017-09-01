@@ -18,9 +18,11 @@ object Control {
   // Generating inferences
   @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(state)
   @inline final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)(state)
-  @inline final def boolext(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.BoolExtControl.boolext(cl)(state)
+  @inline final def boolext(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.BoolExtControl(cl)(state)
   @inline final def primsubst(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)(state)
   @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(state)
+  @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.FuncExtControl(cl)(sig)
+  @inline final def funcExtNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FuncExtControl.applyNew(cl)(state)
   // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
@@ -28,7 +30,6 @@ object Control {
   @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
-  @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.funcext(cl)(sig)
   @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(state)
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
   @inline final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(sig)
@@ -157,7 +158,6 @@ package inferenceControl {
       result
     }
   }
-
 
   /**
     * Object that offers methods that filter/control how paramodulation steps between a claues
@@ -454,7 +454,7 @@ package inferenceControl {
             if (curPositions.isEmpty) {
               curSubterms = curSubterms.tail
               if (curSubterms.isEmpty) {
-                if (/*hd.oriented ||*/ side == rightSide) {
+                if (hd.oriented || side == rightSide) {
                   lits = lits.tail
                   litIndex += 1
                   side = leftSide
@@ -818,11 +818,10 @@ package inferenceControl {
 
   }
 
-
   protected[modules] object BoolExtControl {
     import leo.datastructures.ClauseAnnotation._
 
-    final def boolext(cw: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+    final def apply(cw: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
       val sig = state.signature
       if (state.runStrategy.boolExt) {
         if (!leo.datastructures.isPropSet(PropBoolExt, cw.properties)) {
@@ -835,6 +834,59 @@ package inferenceControl {
           } else Set()
         } else Set()
       } else Set()
+    }
+  }
+
+  protected[modules] object FuncExtControl {
+    final def apply(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
+      val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
+      if (cA_funcExt) {
+        Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
+        Out.finest(s"TyFV(${cl.id}): ${cl.cl.typeVars.toString()}")
+        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
+        Out.finest(s"Func Ext result: ${result.pretty(sig)}")
+        result
+      } else
+        cl
+    }
+
+    /**
+      * Returns a set of clauses where each clause is step-wise treated with (FuncExt):
+      *   - Each positive literal is applied with fresh variables (step-wise)
+      *   - Each negative literal is exhaustively applied with fresh Skolem terms
+      * @param cl The clause `cl` to be processed
+      */
+    final def applyNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+      implicit val sig = state.signature
+      val (cA_funcExt, funcExtLits, otherLits) = FuncExt.canApply(cl.cl)
+      if (cA_funcExt) {
+        var result: Set[AnnotatedClause] = Set.empty
+        Out.trace(s"[FuncExtControl] On ${cl.pretty(sig)}")
+        Out.finest(s"[FuncExtControl] FV(${cl.id}): ${cl.cl.implicitlyBound.toString}\ttyFV(${cl.id}): ${cl.cl.typeVars.toString}")
+        val vargen = freshVarGen(cl.cl)
+        val (posFuncExtLits, negFuncExtLits) = funcExtLits.partition(_.polarity)
+        val appliedNegFuncExtLits = negFuncExtLits.map(lit => FuncExt.applyExhaust(lit, vargen)(sig))
+        val steps = exhaustiveSteps(posFuncExtLits,vargen)(sig).iterator
+        val newProp = addProp(ClauseAnnotation.PropFuncExt, deleteProp(ClauseAnnotation.PropBoolExt, cl.properties))
+        while (steps.hasNext) {
+          val posFuncExtStep = steps.next()
+          val newClause = Clause(posFuncExtStep ++ appliedNegFuncExtLits ++ otherLits)
+          result = result + AnnotatedClause(newClause, InferredFrom(FuncExt, cl), newProp)
+        }
+
+        Out.trace(s"[FuncExtControl] Result(s):\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+        myAssert(result.forall(r => Clause.wellTyped(r.cl)), "FuncExt results not well-typed")
+        result
+      } else
+        Set.empty
+    }
+    private final def exhaustiveSteps(posLits: Seq[Literal], vargen: FreshVarGen, done: Seq[Literal] = Seq.empty)(sig: Signature): Seq[Seq[Literal]] = {
+      if (posLits.isEmpty) Seq(done)
+      else {
+        val appliedOneStepPosFuncExtLits = posLits.map(lit => FuncExt.applyNew(lit, vargen)(sig))
+        ???
+      }
     }
   }
 
@@ -1337,19 +1389,6 @@ package inferenceControl {
         cl
     }
 
-    final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
-      val (cA_funcExt, fE, fE_other) = FuncExt.canApply(cl.cl)
-      if (cA_funcExt) {
-        Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
-        Out.finest(s"TyFV(${cl.id}): ${cl.cl.typeVars.toString()}")
-        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
-        myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
-        Out.finest(s"Func Ext result: ${result.pretty(sig)}")
-        result
-      } else
-        cl
-    }
-
     final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = {
       import UnificationControl.doUnify0
       implicit val sig = state.signature
@@ -1730,6 +1769,7 @@ package inferenceControl {
   }
 
 }
+
 
 package redundancyControl {
   import leo.modules.control.Control.LocalFVState

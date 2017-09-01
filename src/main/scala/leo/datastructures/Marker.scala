@@ -231,6 +231,7 @@ object ClauseAnnotation {
   final val PropBoolExt: ClauseProp = 2
   final val PropSOS: ClauseProp = 4
   final val PropNeedsUnification: ClauseProp = 8
+  final val PropFuncExt: ClauseProp = 16
 
   final def prettyProp(prop: ClauseProp): String = {
     val sb = new StringBuilder
