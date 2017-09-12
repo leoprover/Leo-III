@@ -54,6 +54,7 @@ object ExternalProver {
       case "cvc4" => createCVC4(path)
       case "alt-ergo" => createAltErgo(path)
       case "vampire" => createVampire(path)
+      case "iprover" => createIProver(path)
       case "e" => createEProver(path)
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
@@ -129,6 +130,20 @@ object ExternalProver {
       leo.Out.comment(answer.mkString)
     }
     new EProver(convert)
+  }
+
+  @throws[NoSuchMethodException]
+  def createIProver(path : String) : IProver = {
+    val p = if(path == "") serviceToPath("iprover") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created IProver prover with path '$convert'")
+    if (Configuration.isSet("atpdebug")) {
+      import scala.sys.process._
+      val answer = Process.apply(Seq(convert, "--help")).lineStream_!
+      leo.Out.comment(s"IProver debug info:")
+      leo.Out.comment(answer.mkString)
+    }
+    new IProver(convert)
   }
 
   /**
@@ -234,6 +249,18 @@ class EProver(val path : String) extends TptpProver[AnnotatedClause] {
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
     ExternalProver.limitedRun(timeout+2, Seq(path, "--auto-schedule", s"--cpu-limit=${timeout.toString}", "-s", "--proof-object=0", problemFileName))
+  }
+}
+
+class IProver(val path : String) extends TptpProver[AnnotatedClause] {
+  final val name: String = "iprover"
+  final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(), Capabilities.CNF -> Seq())
+
+  protected[external] def constructCall(args: Seq[String], timeout: Int,
+                                        problemFileName: String): Seq[String] = {
+
+
+    ExternalProver.limitedRun(timeout, Seq(path, "--time_out_real", timeout.toString, problemFileName) ++ args)
   }
 }
 
