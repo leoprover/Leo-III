@@ -157,7 +157,7 @@ You can always try to verify the proof using [IDV](http://www.cs.miami.edu/~tptp
 
 #### Enabling external cooperation
 
-Leo-III heavily relies on cooperation with (first-order) provers. Currently, Leo-III can cooperate with TPTP-compatible provers that support either THF or TFF syntax. At the moment, we implemented cooperation with LEO-II, Nitpick, CVC4, E (>= 2.0), Alt-Ergo and Vampire.
+Leo-III heavily relies on cooperation with (first-order) provers. Currently, Leo-III can cooperate with TPTP-compatible provers that support either THF or TFF syntax. At the moment, we implemented cooperation with LEO-II, Nitpick, CVC4, iProver (>= 2.6), E (>= 2.0), Alt-Ergo and Vampire.
 
 To enable the cooperation (here CVC4), simply add e.g.
 ```
