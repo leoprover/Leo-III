@@ -45,7 +45,7 @@ class LiftEqRule(inType : DataType[AnnotatedClause],
       leo.Out.debug(s"[FuncExt] on ${oldClause.pretty(state.signature)}\n  > ${newClause.pretty(state.signature)}")
       val r = Result()
       r.remove(inType)(oldClause)
-      val simp = Control.simp(newClause)
+      val simp = Control.shallowSimp(newClause)
       r.insert(outType)(simp)
       r
     }

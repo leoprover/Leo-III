@@ -3,15 +3,14 @@ package leo.modules.agent.rules.control_rules
 import leo.datastructures.{AnnotatedClause, Clause, Signature}
 import leo.datastructures.blackboard.{DataType, Delta, Result}
 import leo.modules.GeneralState
-import leo.modules.agent.rules.{Hint, MoveHint, ReleaseLockHint, Rule}
+import leo.modules.agent.rules._
 import leo.modules.control.Control
 
 /**
   * Created by mwisnie on 4/21/17.
   */
 class FuncExtRule(inType : DataType[AnnotatedClause],
-                 outType : DataType[AnnotatedClause],
-                 val moving : Boolean = false)
+                 outType : DataType[AnnotatedClause])
                  (implicit state : GeneralState[AnnotatedClause]) extends Rule
 {
   implicit val sig : Signature = state.signature
@@ -31,11 +30,7 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
       }
       else {
 //        println(s"[FuncExt] Could not apply to ${cl.pretty(sig)} ")
-        if(moving){
-          res = new MoveHint(cl, inType, outType) +: res
-        } else {
-          res = new ReleaseLockHint(outType, cl) +: res
-        }
+        res = new ReleaseLockHint(outType, cl) +: res
       }
     }
     res
@@ -46,11 +41,11 @@ class FuncExtRule(inType : DataType[AnnotatedClause],
       leo.Out.debug(s"[FuncExt] on ${oldClause.pretty(state.signature)}\n  > ${newClause.pretty(state.signature)}")
       val r = Result()
       r.remove(inType)(oldClause)
-      val simp = Control.simp(newClause)
+      val simp = Control.shallowSimp(newClause)
       r.insert(outType)(simp)
       r
     }
     override lazy val read: Map[DataType[Any], Set[Any]] = Map()
-    override lazy val write: Map[DataType[Any], Set[Any]] = Map(outType -> Set(oldClause))
+    override lazy val write: Map[DataType[Any], Set[Any]] = Map(inType -> Set(oldClause))
   }
 }

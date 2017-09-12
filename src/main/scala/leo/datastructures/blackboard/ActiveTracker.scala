@@ -19,12 +19,6 @@ object ActiveTracker {
     counter.incrementAndGet()
   }
 
-  def incAndGet(debug : String) : Int = {
-    val i = incAndGet()
-    leo.Out.finest(s"ActiveTracker(${i-1}->$i): $debug")
-    //msg.append(s"ActiveTracker(${i-1}->$i): $debug\n")
-    i
-  }
 
   def addAndGet(delta : Int) : Int = {
     counter.addAndGet(delta)
@@ -32,13 +26,6 @@ object ActiveTracker {
 
   def decAndGet() : Int = {
     counter.decrementAndGet()
-  }
-
-  def decAndGet(debug : String) : Int = {
-    val i = decAndGet()
-    leo.Out.finest(s"ActiveTracker(${i+1}->$i): $debug")
-    //msg.append(s"ActiveTracker(${i+1}->$i): $debug\n")
-    i
   }
 
   def subAndGet(delta : Int) : Int = {

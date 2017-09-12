@@ -85,4 +85,7 @@ class UnificationSet extends DataStore{
     case _ => Set()
 
   }
+
+
+  override def toString: String = "UnificationSet"
 }

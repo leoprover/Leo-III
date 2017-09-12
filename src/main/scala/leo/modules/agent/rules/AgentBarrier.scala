@@ -93,10 +93,15 @@ class AgentBarrier[A](dType : DataType[A], counter : Int) extends DataStore {
       }
     }
 
+//      println(s"Barrier${dType} : remaining ${trackRemaining.values.toString}")
+
     if(removedLocks.nonEmpty) {
       new ImmutableDelta(Map(), Map(lockType -> removedLocks))
     } else {
       EmptyDelta
     }
   }
+
+
+  override def toString: String = s"Barrier(${dType.toString})"
 }

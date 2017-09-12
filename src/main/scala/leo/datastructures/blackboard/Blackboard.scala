@@ -39,7 +39,12 @@ trait Blackboard extends TaskOrganize with DataBlackboard with MessageBlackboard
   /**
    * Resets the blackboard to an initial state.
    */
-  def clear()
+  def clear() : Unit
+
+  /**
+    * Prints some information on the workload performed in the blackboard.
+    */
+  def info() : Unit
 }
 
 
@@ -117,7 +122,7 @@ trait TaskOrganize {
    *
    * @return all registered agents and their budget
    */
-  def getAgents : Iterable[(Agent, Double)]
+  def getAgents : Iterable[Agent]
 
   /**
     * Submits a new Task to the list of executable tasks.

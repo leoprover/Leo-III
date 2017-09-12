@@ -10,7 +10,7 @@ import leo.datastructures.blackboard._
   */
 class InterferingLoopAgentTest extends LeoTestSuite {
 
-  test("Count to 10", Checked){
+  test("Count to 10"){
     val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
@@ -35,7 +35,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     assert(NumberStore.getNumber == 10, "Incrementing to 10 should hold 10.")
   }
 
-  test("Ripple count to 10", Checked){
+  test("Ripple count to 10"){
     val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false
@@ -63,7 +63,7 @@ class InterferingLoopAgentTest extends LeoTestSuite {
     assert(n == 10 || n == 11 || n == 14, "Incrementing to 10 should hold 10.")
   }
 
-  test("Count to 100", Checked){
+  test("Count to 100"){
     val (blackboard, scheduler) = Blackboard.newBlackboard
     val self = this
     var done = false

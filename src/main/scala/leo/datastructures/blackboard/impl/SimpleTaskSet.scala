@@ -1,5 +1,7 @@
 package leo.datastructures.blackboard.impl
 
+import java.util.concurrent.atomic.AtomicLong
+
 import leo.agents.{Agent, Task}
 import leo.datastructures.blackboard.{ActiveTracker, Blackboard, LockSet, TaskSet}
 
@@ -21,10 +23,18 @@ import scala.collection.mutable
   */
 class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
 
-  // TODO Save blocked tasks in extra queue (no unnecessary looping in scheduler)
 
-  private val agentTasks : mutable.Map[Agent, mutable.Set[Task]] = mutable.HashMap[Agent, mutable.Set[Task]]()
-  private val agentExec : mutable.Map[Agent, Int] = mutable.HashMap[Agent, Int]()
+  private val agents : mutable.Set[Agent] = mutable.Set[Agent]()
+  private val tasks : mutable.Set[Task] = mutable.Set[Task]()
+  private val deactivate : mutable.Set[Task] = mutable.Set[Task]()
+
+  private val submitTime : AtomicLong = new AtomicLong(0)
+  private val submitAmount : AtomicLong = new AtomicLong(0)
+  private val finishTime : AtomicLong = new AtomicLong(0)
+  private val finishAmount : AtomicLong = new AtomicLong(0)
+  private val commitTime : AtomicLong = new AtomicLong(0)
+  private val commitAmount : AtomicLong = new AtomicLong(0)
+
 
   /**
     * Adds a new [[leo.agents.Agent]] to the TaskGraph.
@@ -32,8 +42,7 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     * @param a The agent to be added
     */
   override def addAgent(a: Agent): Unit = synchronized {
-    agentTasks.put(a, mutable.HashSet[Task]())
-    agentExec.put(a, 0)
+    agents += a
   }
 
 
@@ -43,34 +52,16 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     * @param a The agent to be removed
     */
   override def removeAgent(a: Agent): Unit = synchronized {
-    agentTasks.remove(a)
-    agentExec.remove(a)
+    agents -= a
   }
 
-  /**
-    * Dependecy Preselection for the scheduling algorithm.
-    *
-    * <p>
-    * The returned list fullfills two properties:
-    * <ol>
-    * <li>For every [[leo.agents.Task]] `i` contained in this list, there exist no [[leo.agents.Task]] `j` in this TaskSet, with `j.before contains i` or
-    * `i.after contains j`</li>
-    * <li> For every [[leo.agents.Agent]] `a1` containing a task in this list, there exist no [[leo.agents.Agent]] `a2` that has a task  and (`a.before contains a2`
-    * or `a2.after contains a`) holds.</li>
-    * </ol>
-    * </p>
-    *
-    * @return a set of non dependent [[leo.agents.Task]], ready for selection.
-    */
-  override def executableTasks: Iterable[Task] = synchronized {
-    val rTasks = agentTasks.values
-    val rTasks2 = rTasks.flatten
-    rTasks2.filter{t => val a = t.getAgent; a.maxParTasks.fold(true)(n => n > agentExec.getOrElse(a, 0))}
+  override def executableTasks: Iterator[Task] = synchronized {
+    tasks.iterator
   }
-  // TODO not call registered tasks. compute it on its own.
-  override def containsAgent(a: Agent): Boolean = synchronized(agentTasks.contains(a))
 
-  override def executingTasks(a: Agent) : Int = synchronized(agentExec.getOrElse(a, 0))
+  override def containsAgent(a: Agent): Boolean = synchronized(agents.contains(a))
+
+//  override def executingTasks(a: Agent) : Int = synchronized(agentExec.getOrElse(a, 0))
 
   /**
     *
@@ -81,14 +72,24 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     * @param t the newly finished task
     */
   override def finish(t: Task): Unit = synchronized {
-    agentExec.put(t.getAgent, agentExec.getOrElse(t.getAgent, 1)-1)
+    val start = System.currentTimeMillis()
     LockSet.releaseTask(t)
-    if(ActiveTracker.decAndGet(s"Finished:\n  ${t.pretty}") <= 0)
+    if(ActiveTracker.decAndGet() <= 0)
       blackboard.forceCheck()
+    val newEnabled = deactivate.filter(t => LockSet.isExecutable(t))
+    tasks ++= newEnabled
+    deactivate --= newEnabled
+    val time = System.currentTimeMillis() - start
+    finishTime.addAndGet(time)
+    finishAmount.incrementAndGet()
   }
 
 
-  override def clear(): Unit = synchronized(agentTasks.clear())
+  override def clear(): Unit = synchronized{
+    agents.clear()
+    tasks.clear()
+    deactivate.clear()
+  }
 
   /**
     *
@@ -96,7 +97,7 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     *
     * @return
     */
-  override def registeredTasks: Iterable[Task] = synchronized(agentTasks.values.flatten)
+  override def registeredTasks: Iterable[Task] = synchronized(tasks ++ deactivate)
 
   /**
     * Marks an agent as active and reanables its tasks for exectuion.
@@ -104,8 +105,6 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     * @param a The agent to be turned active
     */
   override def active(a: Agent): Unit = {}
-
-  override def dependOn(before: Agent, after: Agent): Unit = {}
 
   /**
     * Marks an agent as passive and considers its tasks no longer for execution.
@@ -121,7 +120,7 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     *
     * @return true, iff there exist executable task
     */
-  override def existExecutable: Boolean = synchronized(agentTasks.exists { case (a, set) => set.nonEmpty && a.maxParTasks.fold(true)(n => n > agentExec.getOrElse(a, 0))})
+  override def existExecutable: Boolean = synchronized(tasks.nonEmpty)
 
   /**
     * Submits a new task created by an agent to the scheduler.
@@ -129,13 +128,18 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     * @param t The task the agent `a` wants to execute.
     */
   override def submit(t: Task): Unit = synchronized {
-//    println(s"Try submitting Task:\n  ${t.pretty}")
-    val s : Option[mutable.Set[Task]] = agentTasks.get(t.getAgent)
-    val set = s.get
-    if(set.contains(t)) return  // If already existent, then nothing happens
+    val start = System.currentTimeMillis()
+    if(tasks.contains(t)) return  // If already existent, then nothing happens
     if(LockSet.isOutdated(t)) return
-    set.add(t)
-    ActiveTracker.incAndGet(s"Submitted Task:\n  ${t.pretty}")
+    if(LockSet.isExecutable(t)) {
+      tasks += t
+    } else {
+      deactivate += t
+    }
+    ActiveTracker.incAndGet()
+    val time = System.currentTimeMillis() - start
+    submitAmount.incrementAndGet()
+    submitTime.addAndGet(time)
   }
 
   /**
@@ -146,32 +150,47 @@ class SimpleTaskSet(blackboard: Blackboard) extends TaskSet{
     * @param ts The set of tasks committed to the scheduler.
     */
   override def commit(ts: Set[Task]): Unit = synchronized{
-    val it = ts.toIterator
-    while (it.hasNext){
-      val task = it.next
-      agentTasks.get(task.getAgent).foreach{set => set.remove(task)}  // Remove itself
-      agentTasks.foreach{case (_, set) =>
-        // Remove all colliding
-        val rmSet = set.filter(isObsolete(task,_))
-        rmSet.foreach{t =>
-          ActiveTracker.decAndGet(s"Obsolete Task:\n  Remove ${t.pretty}\n  by ${task.pretty}")
-          t.getAgent.taskCanceled(t)
-          set.remove(t)
-        }
-      }
-      task.getAgent.taskChoosen(task)
-      agentExec.put(task.getAgent, agentExec.getOrElse(task.getAgent, 0)+1) // TODO group by agent and update
-    }
+    val start = System.currentTimeMillis()
+    ts foreach (t => LockSet.lockTask(t))
+    tasks --= ts
+    val delT = tasks filter (t => LockSet.isOutdated(t))
+    val delD = deactivate filter( t=> LockSet.isOutdated(t))
+
+    tasks --= delT
+    deactivate --= delD
+
+    val newD = tasks filter (t => !LockSet.isExecutable(t))
+    tasks --= newD
+    deactivate ++= newD
+    val time = System.currentTimeMillis() - start
+    submitTime.addAndGet(time)
+    submitAmount.addAndGet(ts.size)
   }
 
-  private def isObsolete(takeTask : Task, obsoleteTask : Task) : Boolean = {
-    val sharedTypes = takeTask.lockedTypes.intersect(obsoleteTask.lockedTypes)
-    if(sharedTypes.isEmpty) return false
-    sharedTypes.exists { d =>
-      val w1: Set[Any] = takeTask.writeSet.getOrElse(d, Set.empty[Any])
-      val r2 : Set[Any] = obsoleteTask.readSet.getOrElse(d, Set.empty[Any])
-      val w2: Set[Any] = obsoleteTask.writeSet.getOrElse(d, Set.empty[Any])
-      (w1 & w2).nonEmpty || (w1 & r2).nonEmpty
-    }
+  def info(): Unit = {
+    val sb = new mutable.StringBuilder()
+
+    val ct = commitTime.get()
+    val ca = commitAmount.get()
+    val cm = if(ca == 0) 0.0 else (ct * 1.0) / ca
+    val ft = finishTime.get()
+    val fa = finishAmount.get()
+    val fm = if(fa == 0) 0.0 else (ft * 1.0) / fa
+    val st = submitTime.get()
+    val sa = submitAmount.get()
+    val sm = if(sa == 0) 0.0 else (st * 1.0) / sa
+    val tt = ct + ft + st
+    val ta = ca + fa + sa
+    val tm = if(ta == 0) 0.0 else (tt * 1.0) / ta
+
+
+    sb.append("\n\n  Scheduler\n")
+    sb.append(s"    Submit : ${sa} times, ${st}ms time, ${sm}ms mean\n")
+    sb.append(s"    Commit : ${ca} times, ${ct}ms time, ${cm}ms mean\n")
+    sb.append(s"    Finish : ${fa} times, ${ft}ms time, ${fm}ms mean\n")
+    sb.append("--------------------------------------------------------------\n")
+    sb.append(s"    Total : ${ta} times, ${tt}ms time, ${tm}ms mean\n")
+
+    leo.Out.comment(sb.toString())
   }
 }

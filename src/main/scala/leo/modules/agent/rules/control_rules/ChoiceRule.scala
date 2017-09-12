@@ -19,7 +19,6 @@ class ChoiceRule (inType : DataType[AnnotatedClause],
   implicit val sig : Signature = state.signature
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(outType, noUnifyType)
-  override final val moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     // All new selected clauses
@@ -52,7 +51,8 @@ class ChoiceRule (inType : DataType[AnnotatedClause],
           r.insert(outType)(simpClause)
         } else {
           var newclauses = Control.cnf(simpClause)
-          newclauses = newclauses.map(cw => Control.simp(Control.liftEq(cw)))
+          newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+          state.incChoiceInstantiations(newclauses.size)
           var newIt = newclauses.iterator
           while(newIt.hasNext) {
             r.insert(noUnifyType)(newIt.next)

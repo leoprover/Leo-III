@@ -52,7 +52,7 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A], bl :
       active = false
     } else if (r.nonEmpty) {
       active = true
-      ActiveTracker.incAndGet(s"$name: Loop condition initially positive.")
+      ActiveTracker.incAndGet()
     }
     taskExisting = r.nonEmpty
     if(loop.terminated) bl.unregisterAgent(this)
@@ -73,10 +73,10 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A], bl :
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
       if(r.isEmpty && active){
         active = false
-        ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
+        ActiveTracker.decAndGet()
       } else if (r.nonEmpty && !active) {
         active = true
-        ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
+        ActiveTracker.incAndGet()
       }
       taskExisting = r.nonEmpty
       if(loop.terminated) bl.unregisterAgent(this)
@@ -85,10 +85,10 @@ class InterferingLoopAgent[A <: OperationState] (loop : InterferingLoop[A], bl :
       val r = loop.canApply.toList.map(op => new InterferringLoopTask(op))
       if(r.isEmpty && active){
         active = false
-        ActiveTracker.decAndGet(s"$name: Loop condition turned negative.")
+        ActiveTracker.decAndGet()
       } else if (r.nonEmpty && !active) {
         active = true
-        ActiveTracker.incAndGet(s"$name: Loop condition turned positive.")
+        ActiveTracker.incAndGet()
       }
       firstAttempt = false    // Race condition
       taskExisting = r.nonEmpty

@@ -1,5 +1,7 @@
 package leo.datastructures.blackboard
 
+import java.util.concurrent.atomic.AtomicLong
+
 import leo.agents.Task
 
 import scala.collection.immutable.HashSet
@@ -16,7 +18,6 @@ import scala.collection.immutable.HashSet
 object LockSet {
 
   private var tasks : Set[Task] = new HashSet[Task]
-
   /**
    * Inserts all locks of a task to the current lock set.
    *
@@ -45,10 +46,11 @@ object LockSet {
    * @return True iff the locks can be given
    */
   def isExecutable(t : Task) : Boolean = {
-    tasks forall {t1 =>
+    val res = tasks forall {t1 =>
       val c =  t1.collide(t)
       !c
     }
+    res
   }
 
   /**
@@ -59,7 +61,7 @@ object LockSet {
    * @return
    */
   def isOutdated(t : Task) : Boolean = {
-    tasks exists {t1 =>
+    val res = tasks exists {t1 =>
       val sharedTypes = t.lockedTypes & t1.lockedTypes
       sharedTypes exists {d =>
         val w1 = t1.writeSet.getOrElse(d, Set.empty[Any])
@@ -69,6 +71,7 @@ object LockSet {
         (w1 & wc).nonEmpty || (w1 & rc).nonEmpty
       }
     }
+    res
   }
 
   def isEmpty : Boolean = tasks.isEmpty

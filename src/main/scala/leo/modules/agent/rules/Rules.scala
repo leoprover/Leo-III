@@ -15,15 +15,6 @@ trait Rule {
   def inTypes : Seq[DataType[Any]]
 
   /**
-    *
-    * This flag indicates, that the data is moved
-    * from one set to another, irregardless of a change.
-    *
-    * @return true, if the original clause should be moved
-    */
-  def moving : Boolean
-
-  /**
     * Defines the type of results for the application
     * of the rule
     *
@@ -85,6 +76,11 @@ trait Hint {
 }
 
 class ReleaseLockHint[A](dt : DataType[A], d : A) extends Hint {
+//  try{
+//   throw new IllegalArgumentException()
+//  } catch {
+//    case e: Exception => println(s"Release($dt) : ${e.getStackTrace.tail.head.toString}")
+//  }
   override final val apply: Delta = new ImmutableDelta(Map(LockType(dt) -> Seq(d)))
   override final val read: Map[DataType[Any], Set[Any]] = Map()
   override final val write: Map[DataType[Any], Set[Any]] = Map()
