@@ -410,6 +410,7 @@ object SeqLoop {
     /////////////////////////////////////////
     //    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
+    Out.debug(s"[SeqLoop] Generated: ${newclauses.map(_.id).mkString(",")}")
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause
     // and return true if found.
@@ -422,8 +423,8 @@ object SeqLoop {
         endplay(newCl, state)
         return true
       } else {
-        if (!Clause.trivial(newCl.cl)) Control.addUnprocessed(newCl)
-        else Out.trace(s"[SeqLoop] Trivial, hence dropped: ${newCl.pretty(sig)}")
+        if (!Clause.trivial(newCl.cl) && !state.processed.exists(_.cl == newCl.cl)) Control.addUnprocessed(newCl)
+        else Out.debug(s"[SeqLoop] Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
     false

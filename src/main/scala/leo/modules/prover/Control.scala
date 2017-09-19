@@ -856,7 +856,7 @@ package inferenceControl {
 
     /**
       * Returns a set of clauses where each clause is step-wise treated with (FuncExt):
-      *   - Each positive literal is applied with fresh variables (step-wise, including the original input)
+      *   - Each positive literal is applied with fresh variables (step-wise, excluding the original input)
       *   - Each negative literal is exhaustively applied with fresh Skolem terms
       * @param cl The clause `cl` to be processed
       */
@@ -888,7 +888,7 @@ package inferenceControl {
     }
     private final def exhaustiveSteps(posLits: Seq[Literal], vargen: FreshVarGen)(sig: Signature): Seq[Seq[Literal]] = {
       if (posLits.isEmpty) Seq(Seq.empty)
-      else posLits +: exhaustiveSteps0(posLits, vargen, Seq.empty, Seq.empty)(sig)
+      else exhaustiveSteps0(posLits, vargen, Seq.empty, Seq.empty)(sig)
     }
     @tailrec private final def exhaustiveSteps0(posLits: Seq[Literal], vargen: FreshVarGen, done: Seq[Literal], acc: Seq[Seq[Literal]])(sig: Signature): Seq[Seq[Literal]] = {
       if (posLits.isEmpty) acc
@@ -1565,7 +1565,10 @@ package inferenceControl {
       val plainSimp = simp(cw)
       Out.trace(s"[Rewriting] Processing ${cw.id}")
       Out.finest(s"[Rewriting] Rules existent? ${rules0.nonEmpty}")
-      if (rules0.isEmpty) plainSimp
+      if (rules0.isEmpty) {
+        Out.trace(s"[RewriteSimp] Result: ${plainSimp.pretty(sig)}")
+        plainSimp
+      }
       else {
         // get all rewrite rules as literals
         val rules: Set[Literal] = rules0.map(_.cl.lits.head)
@@ -1585,8 +1588,10 @@ package inferenceControl {
           }
         }
         val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
-        if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
+        val result = if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
         else plainSimp
+        Out.debug(s"[RewriteSimp] Result: ${result.pretty(sig)}")
+        result
       }
     }
 
@@ -1807,7 +1812,10 @@ package redundancyControl {
   object RedundancyControl {
     /** Returns true iff cl is redundant wrt to processed. */
     final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = {
-      if (processed.exists(_.cl == cl.cl)) true
+      if (processed.exists(_.cl == cl.cl)) {
+        Out.debug(s"[Redundancy] Already contained in processed set: ${cl.id}")
+        true
+      }
       else if (SubsumptionControl.isSubsumed(cl, processed)) true
       // TODO: Do e.g. AC tautology deletion? maybe restructure later.
       else false
@@ -1828,7 +1836,7 @@ package redundancyControl {
       // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
       val res = testForwardSubsumptionFVI(cl)
       if (res.nonEmpty)
-        Out.trace(s"[Subsumption]: [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
+        Out.debug(s"[Subsumption]: [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
       res.nonEmpty
     }
 
