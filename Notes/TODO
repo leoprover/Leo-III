@@ -12,8 +12,10 @@ is translated repeatedly).
   
 + Improve if-then-else reasoniong, Chad mentioned work by Backes/Brown
 
-+ Implement SiNe
++ Implement SiNe  
 
 + Rework Let-expressions by parsing them to lambda abstractions
  
++ Abstraction-refinement (Konstantin Korovon, see IWIL 2017)
 
++ Guidance by similarity by antiunification?
