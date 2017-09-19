@@ -131,68 +131,34 @@ object SeqLoop {
       implicit val sig: Signature = state.signature
       val timeout0 = state.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
-
-//      var afterPreprocessed : Set[AnnotatedClause] = Set()
-
-      // Preprocessing Conjecture
-      if (state.negConjecture != null) {
-        // Expand conj, Initialize indexes
-        // We expand here already since we are interested in all symbols (possibly contained within defined symbols)
-        Out.debug("## Preprocess Neg.Conjecture BEGIN")
-        Out.trace(s"Neg. conjecture: ${state.negConjecture.pretty(sig)}")
+      // Initialize indexes
+      state.initUnprocessed()
+      val toPreprocess = if (state.negConjecture != null) {
         val simpNegConj = Control.expandDefinitions(state.negConjecture)
         state.defConjSymbols(simpNegConj)
-        state.initUnprocessed()
-        Control.initIndexes(simpNegConj +: input)
-
-        // Save initial problem as auxiliary data for ATP calls (if existent)
-        if (state.externalProvers.nonEmpty) {
-          state.addInitial(Set(simpNegConj))
-        }
-
-        val result = preprocess(simpNegConj)(state).filterNot(cw => Clause.trivial(cw.cl))
-        Out.debug(s"# Result:\n\t${
-          result.map {
-            _.pretty(sig)
-          }.mkString("\n\t")
-        }")
-        Out.trace("## Preprocess Neg.Conjecture END")
-        Control.addUnprocessed(result)
-//        afterPreprocessed = afterPreprocessed union result
+        val input0 = simpNegConj +: input
+        Control.initIndexes(input0)
+        input0
       } else {
-        // Initialize indexes
-        state.initUnprocessed()
         Control.initIndexes(input)
+        input
       }
-
-      // Preprocessing
-      Out.debug("## Preprocess BEGIN")
-      val preprocessIt = input.iterator
-      while (preprocessIt.hasNext) {
-        val cur = preprocessIt.next()
-        Out.trace(s"# Process: ${cur.pretty(sig)}")
-        val processed = preprocess(cur)(state)
-        Out.debug(s"# Result:\n\t${
-          processed.map {
-            _.pretty(sig)
-          }.mkString("\n\t")
+      // Pre-processing
+      val toPreprocessIt = toPreprocess.iterator
+      Out.trace("## Preprocess BEGIN")
+      while (toPreprocessIt.hasNext) {
+        val todo = toPreprocessIt.next()
+        Out.trace(s"# Process: ${todo.pretty(sig)}")
+        val result0 = preprocess(todo)(state)
+        Out.trace(s"# Result:\n\t${
+          result0.map {_.pretty(sig)}.mkString("\n\t")
         }")
-        val preprocessed = processed.filterNot(cw => Clause.trivial(cw.cl))
-        Control.addUnprocessed(preprocessed)
-//        afterPreprocessed = afterPreprocessed union preprocessed
-        if (preprocessIt.hasNext) Out.trace("--------------------")
+        val result = result0.filterNot(cw => Clause.trivial(cw.cl))
+        myAssert(result.forall(cl => Clause.wellTyped(cl.cl)), s"[SeqLoop] Not well-typed: ${result.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.id).mkString(",")}")
+        Control.addUnprocessed(result)
+        if (toPreprocessIt.hasNext) Out.trace("--------------------")
       }
-
-//      if(state.domainConstr.isEmpty){
-//        state.addUnprocessed(afterPreprocessed)
-//      } else {
-//        val constraints = Control.instantiateDomainConstraint(afterPreprocessed)
-//        val simpConst = Control.simpSet(constraints) // TODO Remove unnecessary?
-//
-//        state.addUnprocessed(simpConst)
-//      }
-      Out.trace("## Preprocess END\n\n")
-      myAssert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)), s"Not well typed:\n\t${state.unprocessed.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.pretty(sig)).mkString("\n\t")}")
+      Out.trace("## Preprocess END")
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest(s"Clauses and maximal literals of them:")
@@ -201,9 +167,9 @@ object SeqLoop {
           Out.finest(s"Maximal literal(s):")
           Out.finest(s"\t${c.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
         }
+        Out.finest(s"################")
       }
-      Out.finest(s"################")
-
+      
       /////////////////////////////////////////
       // Main proof loop
       /////////////////////////////////////////
