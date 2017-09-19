@@ -23,7 +23,7 @@ object SeqLoop {
   protected[modules] final def preprocess(state: LocalGeneralState, cur: AnnotatedClause): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     implicit val s = state
-    var result: Set[AnnotatedClause] = Set()
+    var result: Set[AnnotatedClause] = Set.empty
 
     // Fresh clause, that means its unit and nonequational
     assert(Clause.unit(cur.cl), "clause not unit")
@@ -32,9 +32,7 @@ object SeqLoop {
 
     // Def expansion and simplification
     val expanded = Control.expandDefinitions(cur)
-    if (state.externalProvers.nonEmpty) {
-      state.addInitial(Set(expanded))
-    }
+    if (state.externalProvers.nonEmpty) state.addInitial(Set(expanded))
     val polarityswitchedAndExpanded = Control.switchPolarity(expanded)
     // We may instantiate here special symbols for universal variables
     // Its BEFORE miniscope because their are less quantifiers and maybe
@@ -43,9 +41,7 @@ object SeqLoop {
     // to ext. instantiation.
     result = Control.specialInstances(polarityswitchedAndExpanded)(state)
 
-    result = result.flatMap { cl =>
-      Control.cnf(Control.miniscope(cl))(state)
-    }
+    result = result.flatMap { cl => Control.cnf(Control.miniscope(cl))(state) }
 
     result = result.map {cl =>
       leo.Out.trace(s"[Choice] Search for instance in ${cl.id}")
@@ -60,12 +56,16 @@ object SeqLoop {
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
 
+    result = result.map { cl => Control.shallowSimp(Control.liftEq(cl))}
+
+    result = result union result.flatMap {cl => Control.funcExtNew(cl)}
+
     // To equation if possible and then apply func ext
     // AC Simp if enabled, then Simp.
     result = result.map { cl =>
       var result = cl
-      result = Control.liftEq(result)
-      result = Control.funcext(result) // Maybe comment out? why?
+//      result = Control.liftEq(result)
+//      result = Control.funcext(result) // Maybe comment out? why?
       val possiblyAC = Control.detectAC(result)
       if (possiblyAC.isDefined) {
         val symbol = possiblyAC.get._1
@@ -80,28 +80,29 @@ object SeqLoop {
           sig(symbol).updateProp(addProp(Signature.PropAssociative, oldProp))
         }
       }
-      result = Control.acSimp(result)
-      result = Control.simp(result)
+//      result = Control.acSimp(result)
+//      result = Control.simp(result)
       if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic()
-      Control.detectDomainConstraint(result) match {
-        case None => ()
-        case Some((ty, constr)) =>
-          if(state.domainConstr.contains(ty)){
-            Out.info(s"[DomConstr] Detected Multiple constraints on ${ty.pretty(sig)}")
-            if(state.domainConstr(ty).size > constr.size){
-              Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}")
-              state.addDomainConstr(ty, constr)
-            }
-          } else {
-            Out.info(s"[DomConstr] Detected new constraint on ${ty.pretty(sig)}")
-            Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}}")
-            state.addDomainConstr(ty, constr)
-          }
-      }
+//      Control.detectDomainConstraint(result) match {
+//        case None => ()
+//        case Some((ty, constr)) =>
+//          if(state.domainConstr.contains(ty)){
+//            Out.info(s"[DomConstr] Detected Multiple constraints on ${ty.pretty(sig)}")
+//            if(state.domainConstr(ty).size > constr.size){
+//              Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}")
+//              state.addDomainConstr(ty, constr)
+//            }
+//          } else {
+//            Out.info(s"[DomConstr] Detected new constraint on ${ty.pretty(sig)}")
+//            Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}}")
+//            state.addDomainConstr(ty, constr)
+//          }
+//      }
       result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
     result = Control.extPreprocessUnify(result)(state)
+    result = result.map {cl => Control.simp(cl)}
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }
@@ -271,7 +272,10 @@ object SeqLoop {
 
             cur = Control.rewriteSimp(cur, state.rewriteRules)
             /* Functional Extensionality */
-            cur = Control.funcext(cur)
+//            cur = Control.funcext(cur)
+            val cur2 = Control.funcExtNew(cur)
+            state.addUnprocessed(cur2)
+            state.addToHotList(cur2)
             /* To equality if possible */
             cur = Control.liftEq(cur)
 

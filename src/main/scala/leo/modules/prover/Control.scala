@@ -104,6 +104,8 @@ package inferenceControl {
   import leo.datastructures._
   import leo.modules.calculus._
   import leo.modules.control.Control.LocalState
+
+  import scala.annotation.tailrec
   package object inferenceControl {
     type LiteralIndex = Int
     type WithConfiguration = (LiteralIndex, Literal, Side)
@@ -341,7 +343,8 @@ package inferenceControl {
           val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
           if (result.isEmpty) {
             Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
-            null
+            val (simpsubst, asd) = Simp.uniLitSimp(uniEqLeft, uniEqRight)
+            AnnotatedClause(Clause(otherLits.map(_.substituteOrdered(Subst.id, simpsubst)) ++ asd), InferredFrom(Simp, tyUnifiedResult))
           } else {
             import leo.Configuration.{TERM_ORDERING => ord}
             Out.finest(s"[Paramod] Unifiable! ")
@@ -853,39 +856,46 @@ package inferenceControl {
 
     /**
       * Returns a set of clauses where each clause is step-wise treated with (FuncExt):
-      *   - Each positive literal is applied with fresh variables (step-wise)
+      *   - Each positive literal is applied with fresh variables (step-wise, including the original input)
       *   - Each negative literal is exhaustively applied with fresh Skolem terms
       * @param cl The clause `cl` to be processed
       */
     final def applyNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
-      implicit val sig = state.signature
-      val (cA_funcExt, funcExtLits, otherLits) = FuncExt.canApply(cl.cl)
-      if (cA_funcExt) {
-        var result: Set[AnnotatedClause] = Set.empty
-        Out.trace(s"[FuncExtControl] On ${cl.pretty(sig)}")
-        Out.finest(s"[FuncExtControl] FV(${cl.id}): ${cl.cl.implicitlyBound.toString}\ttyFV(${cl.id}): ${cl.cl.typeVars.toString}")
-        val vargen = freshVarGen(cl.cl)
-        val (posFuncExtLits, negFuncExtLits) = funcExtLits.partition(_.polarity)
-        val appliedNegFuncExtLits = negFuncExtLits.map(lit => FuncExt.applyExhaust(lit, vargen)(sig))
-        val steps = exhaustiveSteps(posFuncExtLits,vargen)(sig).iterator
-        val newProp = addProp(ClauseAnnotation.PropFuncExt, deleteProp(ClauseAnnotation.PropBoolExt, cl.properties))
-        while (steps.hasNext) {
-          val posFuncExtStep = steps.next()
-          val newClause = Clause(posFuncExtStep ++ appliedNegFuncExtLits ++ otherLits)
-          result = result + AnnotatedClause(newClause, InferredFrom(FuncExt, cl), newProp)
-        }
-
-        Out.trace(s"[FuncExtControl] Result(s):\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
-        myAssert(result.forall(r => Clause.wellTyped(r.cl)), "FuncExt results not well-typed")
-        result
-      } else
-        Set.empty
+      if (isPropSet(ClauseAnnotation.PropFuncExt, cl.properties)) Set.empty
+      else {
+        implicit val sig: Signature = state.signature
+        val (cA_funcExt, funcExtLits, otherLits) = FuncExt.canApply(cl.cl)
+        if (cA_funcExt) {
+          var result: Set[AnnotatedClause] = Set.empty
+          Out.trace(s"[FuncExtControl] On ${cl.pretty(sig)}")
+          Out.finest(s"[FuncExtControl] FV(${cl.id}): ${cl.cl.implicitlyBound.toString}\ttyFV(${cl.id}): ${cl.cl.typeVars.toString}")
+          val vargen = freshVarGen(cl.cl)
+          val (posFuncExtLits, negFuncExtLits) = funcExtLits.partition(_.polarity)
+          val appliedNegFuncExtLits = negFuncExtLits.map(lit => FuncExt.applyExhaust(lit, vargen)(sig))
+          val steps = exhaustiveSteps(posFuncExtLits,vargen)(sig).iterator
+          val newProp = addProp(ClauseAnnotation.PropFuncExt, deleteProp(ClauseAnnotation.PropBoolExt, cl.properties))
+          while (steps.hasNext) {
+            val posFuncExtStep = steps.next()
+            val newClause = Clause(posFuncExtStep ++ appliedNegFuncExtLits ++ otherLits)
+            result = result + AnnotatedClause(newClause, InferredFrom(FuncExt, cl), newProp)
+          }
+          Out.trace(s"[FuncExtControl] Result(s):\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
+          myAssert(result.forall(r => Clause.wellTyped(r.cl)), "FuncExt results not well-typed")
+          result
+        } else
+          Set.empty
+      }
     }
-    private final def exhaustiveSteps(posLits: Seq[Literal], vargen: FreshVarGen, done: Seq[Literal] = Seq.empty)(sig: Signature): Seq[Seq[Literal]] = {
-      if (posLits.isEmpty) Seq(done)
+    private final def exhaustiveSteps(posLits: Seq[Literal], vargen: FreshVarGen)(sig: Signature): Seq[Seq[Literal]] = {
+      if (posLits.isEmpty) Seq(Seq.empty)
+      else posLits +: exhaustiveSteps0(posLits, vargen, Seq.empty, Seq.empty)(sig)
+    }
+    @tailrec private final def exhaustiveSteps0(posLits: Seq[Literal], vargen: FreshVarGen, done: Seq[Literal], acc: Seq[Seq[Literal]])(sig: Signature): Seq[Seq[Literal]] = {
+      if (posLits.isEmpty) acc
       else {
         val appliedOneStepPosFuncExtLits = posLits.map(lit => FuncExt.applyNew(lit, vargen)(sig))
-        ???
+        val (_,todoLits,doneLits) = FuncExt.canApply(appliedOneStepPosFuncExtLits)
+        exhaustiveSteps0(todoLits, vargen, done ++ doneLits, acc :+ (appliedOneStepPosFuncExtLits ++ done))(sig)
       }
     }
   }

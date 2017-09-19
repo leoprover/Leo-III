@@ -239,6 +239,7 @@ object ClauseAnnotation {
     if (isPropSet(PropBoolExt, prop)) sb.append(" BE ")
     if (isPropSet(PropSOS, prop)) sb.append(" SOS ")
     if (isPropSet(PropNeedsUnification, prop)) sb.append(" NU ")
+    if (isPropSet(PropFuncExt, prop)) sb.append(" FE ")
     sb.toString()
   }
 }

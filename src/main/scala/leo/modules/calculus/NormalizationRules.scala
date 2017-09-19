@@ -799,6 +799,11 @@ object Simp extends CalculusRule {
     val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
     (subst, simpResAsLits)
   }
+  final def uniLitSimp(left: Term, right: Term)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
+    val (subst, simpRes) = uniLitSimp0(Vector(), Vector((left, right)), Subst.id)(sig)
+    val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
+    (subst, simpResAsLits)
+  }
 
   @tailrec
   private final def uniLitSimp0(processed: Seq[(Term, Term)], unprocessed: Seq[(Term, Term)], subst: TypeSubst)(sig: Signature): (TypeSubst, Seq[(Term, Term)]) = {

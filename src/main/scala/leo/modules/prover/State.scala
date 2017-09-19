@@ -41,6 +41,7 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
     * [[leo.modules.prover.State#nextUnprocessed]].
     * Precondition: `cl` is an unprocessed clause within the underlying collection. */
   def addToHotList(cl: T): Unit
+  def addToHotList(cls: Set[T]): Unit
   /** Returns the current hot list. */
   def hotList: Seq[T]
 
@@ -231,6 +232,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   // Special clauses
   /////////////////////
   def addToHotList(cl: T): Unit = {hotlist0.+=(cl)}
+  def addToHotList(cls: Set[T]): Unit = {hotlist0 ++= cls}
   def hotList: Seq[T] = hotlist0.toSeq
   /////////////////////
   // Further utility
