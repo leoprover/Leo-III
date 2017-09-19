@@ -40,7 +40,7 @@ object Control {
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
   // AC detection
-  @inline final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = inferenceControl.SimplificationControl.detectAC(cl)
+  @inline final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = inferenceControl.SimplificationControl.detectAC(cl)(sig)
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: LocalState): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
@@ -1217,6 +1217,7 @@ package inferenceControl {
     final def detectChoiceClause(cw: AnnotatedClause)(state: GeneralState[AnnotatedClause]): Boolean = {
       if (!state.runStrategy.choice) false
       else {
+        leo.Out.trace(s"[Choice] Search for instance in ${cw.id}")
         val maybeChoiceFun = ChoiceRule.detectChoice(cw.cl)
         if (maybeChoiceFun.isDefined) {
           val choiceFun = maybeChoiceFun.get
@@ -1470,7 +1471,26 @@ package inferenceControl {
     final val ACSpec_Associativity: ACSpec = false
     final val ACSpec_Commutativity: ACSpec = true
 
-    final def detectAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = {
+    final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = {
+      val findResult0 = findAC(cl)
+      if (findResult0.nonEmpty) {
+        val findResult = findResult0.get
+        val key = findResult._1
+        val acSpec = findResult._2
+        val oldProp = sig(key).flag
+        if (acSpec == ACSpec_Associativity) {
+          Out.trace(s"[AC] Specification detected: ${cl.id} is an instance of A for ${sig(key).name}")
+          sig(key).updateProp(addProp(Signature.PropAssociative, oldProp))
+        } else {
+          myAssert(acSpec == ACSpec_Commutativity)
+          Out.trace(s"[AC] Specification detected: ${cl.id} is an instance of C for ${sig(key).name}")
+          sig(key).updateProp(addProp(Signature.PropCommutative, oldProp))
+        }
+        true
+      } else false
+    }
+
+    final def findAC(cl: AnnotatedClause): Option[(Signature.Key, Boolean)] = {
       if (Clause.demodulator(cl.cl)) {
         val lit = cl.cl.lits.head
         // Check if lit is an specification for commutativity
@@ -1492,7 +1512,7 @@ package inferenceControl {
                 case _ => None
               }
             case TermApp(f@Symbol(key), Seq(v1@Bound(_, _), TermApp(Symbol(key2), Seq(v2@Bound(_, _),v3@Bound(_, _)))))
-              if key == key2  && v1 != v2 && v1 != v3 && v2 != v3 => // A case 1
+              if key == key2  && v1 != v2 && v1 != v3 && v2 != v3 => // A case 2
               right match {
                 case TermApp(`f`, Seq(TermApp(`f`, Seq(`v1`,`v2`)), `v3`)) =>
                   Some((key, ACSpec_Associativity))

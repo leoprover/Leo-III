@@ -2,7 +2,7 @@ package leo.modules.prover
 
 import leo.{Configuration, Out}
 import leo.datastructures._
-import leo.modules.SZSOutput
+import leo.modules.{myAssert,SZSOutput}
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.output._
@@ -20,85 +20,54 @@ object SeqLoop {
   ////////////////////////////////////
   //// Preprocessing
   ////////////////////////////////////
-  protected[modules] final def preprocess(state: LocalGeneralState, cur: AnnotatedClause): Set[AnnotatedClause] = {
+  protected[modules] final def preprocess(cur: AnnotatedClause)(implicit state: LocalGeneralState): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
-    implicit val s = state
     var result: Set[AnnotatedClause] = Set.empty
 
-    // Fresh clause, that means its unit and nonequational
-    assert(Clause.unit(cur.cl), "clause not unit")
+    // Fresh clause, that means its unit and non-equational
+    myAssert(Clause.unit(cur.cl), s"[Preprocess] clause not unit: ${cur.cl.pretty(sig)}")
     val lit = cur.cl.lits.head
-    assert(!lit.equational, "initial literal equational")
+    myAssert(!lit.equational, s"[Preprocess] initial literal equational: ${cur.cl.pretty(sig)}")
 
     // Def expansion and simplification
     val expanded = Control.expandDefinitions(cur)
     if (state.externalProvers.nonEmpty) state.addInitial(Set(expanded))
-    val polarityswitchedAndExpanded = Control.switchPolarity(expanded)
+    val polaritySwitchedAndExpanded = Control.switchPolarity(expanded)
     // We may instantiate here special symbols for universal variables
     // Its BEFORE miniscope because their are less quantifiers and maybe
     // some universal quantification may vanish after extensional instantiation
     // Run simp here again to eliminate connectives with true/false as operand due
     // to ext. instantiation.
-    result = Control.specialInstances(polarityswitchedAndExpanded)(state)
-
+    result = Control.specialInstances(polaritySwitchedAndExpanded)(state)
+    // Exhaustively calculate CNF of input (do miniscoping before)
     result = result.flatMap { cl => Control.cnf(Control.miniscope(cl))(state) }
-
-    result = result.map {cl =>
-      leo.Out.trace(s"[Choice] Search for instance in ${cl.id}")
-      val isChoiceSpec = Control.detectChoiceClause(cl)(state)
-      if (isChoiceSpec) {
-        // replace clause by a trivial one: [[true]^t]
-        leo.Out.debug(s"[Choice] Removed ${cl.id}")
-        import leo.modules.HOLSignature.LitTrue
-        AnnotatedClause(leo.modules.termToClause(LitTrue), ClauseAnnotation.FromSystem("redundant"))
-      } else cl
-    }
+    // Remove instances of axiom of choice (AoC)
+    result = result.filterNot { cl => Control.detectChoiceClause(cl)(state) }
     // Add detected equalities as primitive ones
     result = result union Control.convertDefinedEqualities(result)
-
-    result = result.map { cl => Control.shallowSimp(Control.liftEq(cl))}
-
-    result = result union result.flatMap {cl => Control.funcExtNew(cl)}
-
-    // To equation if possible and then apply func ext
-    // AC Simp if enabled, then Simp.
+    // Do cheap simplification, transform equality symbols on top-level to proper equality literals
+    // Also, search for specifications of AC (Associativity/Commutativity)
     result = result.map { cl =>
-      var result = cl
-//      result = Control.liftEq(result)
-//      result = Control.funcext(result) // Maybe comment out? why?
-      val possiblyAC = Control.detectAC(result)
-      if (possiblyAC.isDefined) {
-        val symbol = possiblyAC.get._1
-        val spec = possiblyAC.get._2
-        val sig = state.signature
-        val oldProp = sig(symbol).flag
-        if (spec) {
-          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of commutativity")
-          sig(symbol).updateProp(addProp(Signature.PropCommutative, oldProp))
-        } else {
-          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of associativity")
-          sig(symbol).updateProp(addProp(Signature.PropAssociative, oldProp))
-        }
-      }
-//      result = Control.acSimp(result)
-//      result = Control.simp(result)
-      if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic()
-//      Control.detectDomainConstraint(result) match {
-//        case None => ()
-//        case Some((ty, constr)) =>
-//          if(state.domainConstr.contains(ty)){
-//            Out.info(s"[DomConstr] Detected Multiple constraints on ${ty.pretty(sig)}")
-//            if(state.domainConstr(ty).size > constr.size){
-//              Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}")
-//              state.addDomainConstr(ty, constr)
-//            }
-//          } else {
-//            Out.info(s"[DomConstr] Detected new constraint on ${ty.pretty(sig)}")
-//            Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}}")
-//            state.addDomainConstr(ty, constr)
-//          }
-//      }
-      result
+      val simp = Control.shallowSimp(Control.liftEq(cl))
+      Control.detectAC(simp)
+      // TODO:
+        // Control.detectDomainConstraint(result) match {
+        //        case None => ()
+        //        case Some((ty, constr)) =>
+        //          if(state.domainConstr.contains(ty)){
+        //            Out.info(s"[DomConstr] Detected Multiple constraints on ${ty.pretty(sig)}")
+        //            if(state.domainConstr(ty).size > constr.size){
+        //              Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}")
+        //              state.addDomainConstr(ty, constr)
+        //            }
+        //          } else {
+        //            Out.info(s"[DomConstr] Detected new constraint on ${ty.pretty(sig)}")
+        //            Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}}")
+        //            state.addDomainConstr(ty, constr)
+        //          }
+        //      }
+      if (!state.isPolymorphic && simp.cl.typeVars.nonEmpty) state.setPolymorphic()
+      simp
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
     result = Control.extPreprocessUnify(result)(state)
@@ -144,7 +113,7 @@ object SeqLoop {
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
       Out.info(s"Type checking passed. Searching for refutation ...")
-      run(state, remainingInput, startTime)
+      run(remainingInput, startTime)(state)
       printResult(state, startTime, startTimeWOParsing)
     } catch {
       case e:Exception =>
@@ -157,11 +126,9 @@ object SeqLoop {
     }
   }
 
-  final def run(state: State[AnnotatedClause], input: Seq[AnnotatedClause],
-               startTime: Long): Boolean = {
+  final def run(input: Seq[AnnotatedClause], startTime: Long)(implicit state: State[AnnotatedClause]): Boolean = {
     try {
       implicit val sig: Signature = state.signature
-      implicit val stateImplicit = state
       val timeout0 = state.timeout
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
 
@@ -183,7 +150,7 @@ object SeqLoop {
           state.addInitial(Set(simpNegConj))
         }
 
-        val result = preprocess(state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
+        val result = preprocess(simpNegConj)(state).filterNot(cw => Clause.trivial(cw.cl))
         Out.debug(s"# Result:\n\t${
           result.map {
             _.pretty(sig)
@@ -204,7 +171,7 @@ object SeqLoop {
       while (preprocessIt.hasNext) {
         val cur = preprocessIt.next()
         Out.trace(s"# Process: ${cur.pretty(sig)}")
-        val processed = preprocess(state, cur)
+        val processed = preprocess(cur)(state)
         Out.debug(s"# Result:\n\t${
           processed.map {
             _.pretty(sig)
@@ -225,7 +192,7 @@ object SeqLoop {
 //        state.addUnprocessed(simpConst)
 //      }
       Out.trace("## Preprocess END\n\n")
-      assert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)), s"Not well typed:\n\t${state.unprocessed.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.pretty(sig)).mkString("\n\t")}")
+      myAssert(state.unprocessed.forall(cl => Clause.wellTyped(cl.cl)), s"Not well typed:\n\t${state.unprocessed.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.pretty(sig)).mkString("\n\t")}")
       // Debug output
       if (Out.logLevelAtLeast(java.util.logging.Level.FINEST)) {
         Out.finest(s"Clauses and maximal literals of them:")
@@ -271,41 +238,30 @@ object SeqLoop {
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
             cur = Control.rewriteSimp(cur, state.rewriteRules)
-            /* Functional Extensionality */
-//            cur = Control.funcext(cur)
-            val cur2 = Control.funcExtNew(cur)
-            state.addUnprocessed(cur2)
-            state.addToHotList(cur2)
             /* To equality if possible */
             cur = Control.liftEq(cur)
 
-            val curCNF = Control.cnf(cur)
-            if (curCNF.size == 1 && curCNF.head == cur) {
-              // No CNF step, do main loop inferences
-              // Check if `cur` is an empty clause
-              if (Clause.effectivelyEmpty(cur.cl)) {
-                loop = false
-                endplay(cur, state)
+            // Check if `cur` is an empty clause
+            if (Clause.effectivelyEmpty(cur.cl)) {
+              loop = false
+              endplay(cur, state)
+            } else {
+              // Not an empty clause, detect choice definition or do reasoning step.
+              val isChoiceSpec = Control.detectChoiceClause(cur)
+              if (isChoiceSpec) {
+                leo.Out.debug(s"[SeqLoop] Removed Choice: ${cur.id}")
               } else {
-                // Not an empty clause, detect choice definition or do reasoning step.
-                val isChoiceSpec = Control.detectChoiceClause(cur)
-                if (isChoiceSpec) {
-                  leo.Out.debug(s"[SeqLoop] Removed ${cur.id} (Choice Spec)")
+                // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+                // e.g. by forward subsumption
+                if (!Control.redundant(cur, state.processed)) {
+                  Control.submit(state.processed, state)
+                  if(mainLoopInferences(cur)(state)) loop = false
+                  state.incProofLoopCount()
                 } else {
-                  // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
-                  // e.g. by forward subsumption
-                  if (!Control.redundant(cur, state.processed)) {
-                    Control.submit(state.processed, state)
-                    if(mainLoopInferences(cur, state)) loop = false
-                    state.incProofLoopCount()
-                  } else {
-                    Out.debug(s"[SeqLoop] Clause ${cur.id} redundant, skipping.")
-                    state.incForwardSubsumedCl()
-                  }
+                  Out.debug(s"[SeqLoop] Redundant: ${cur.id}")
+                  state.incForwardSubsumedCl()
                 }
               }
-            } else {
-              Control.addUnprocessed(curCNF)
             }
           }
         }
@@ -317,7 +273,7 @@ object SeqLoop {
 
       if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
         if (!ExtProverControl.openCallsExist) {
-          Control.submit(state.processed, state, true)
+          Control.submit(state.processed, state, force = true)
           Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
         } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
         var wait = true
@@ -360,10 +316,9 @@ object SeqLoop {
     }
   }
 
-  private final def mainLoopInferences(cur: AnnotatedClause, state: LocalState): Boolean = {
+  private final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
-    implicit val stateImpl = state
-    var newclauses: Set[AnnotatedClause] = Set()
+    var newclauses: Set[AnnotatedClause] = Set.empty
 
     /////////////////////////////////////////
     // Backward simplification BEGIN
@@ -371,23 +326,23 @@ object SeqLoop {
     /* Subsumption */
     val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
     if (backSubsumedClauses.nonEmpty) {
-      Out.trace(s"[Redundancy] ${cur.id} subsumes processed clauses")
+      Out.trace(s"[SeqLoop] ${cur.id} subsumes processed clauses")
       state.incBackwardSubsumedCl(backSubsumedClauses.size)
-      Out.finest(s"[Redundancy] Processed subsumed:" +
+      Out.finest(s"[SeqLoop] Processed subsumed:" +
         s"\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       Control.removeProcessed(backSubsumedClauses)
     }
-    assert(!cur.cl.lits.exists(leo.modules.calculus.FullCNF.canApply), s"\n\tcl ${cur.pretty(sig)} not in cnf")
+    myAssert(!leo.modules.calculus.FullCNF.canApply(cur.cl), s"[SeqLoop] Not in CNF: ${cur.pretty(sig)}")
     /** Add to processed and to indexes. */
     state.addProcessed(cur)
     Control.insertIndexed(cur)
     /* Add rewrite rules to set */
     if (Clause.unit(cur.cl)) {
       if (Clause.rewriteRule(cur.cl)) {
-        Out.trace(s"Clause ${cur.id} added as rewrite rule.")
+        Out.trace(s"[SeqLoop] Clause ${cur.id} added as rewrite rule.")
         state.addRewriteRule(cur)
       } else {
-        Out.trace(s"Clause ${cur.id} added as (non-rewrite) unit.")
+        Out.trace(s"[SeqLoop] Clause ${cur.id} added as (non-rewrite) unit.")
         state.addNonRewriteUnit(cur)
       }
     }
@@ -397,6 +352,11 @@ object SeqLoop {
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
+    /* Functional Extensionality */
+    val funcext_result = Control.funcExtNew(cur)(state)
+    newclauses = newclauses union funcext_result
+    state.addToHotList(funcext_result)
+
     /* Boolean Extensionality */
     val boolext_result = Control.boolext(cur)(state)
     newclauses = newclauses union boolext_result
@@ -437,7 +397,6 @@ object SeqLoop {
     //    newclauses = Control.shallowSimpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
-
     /* Pre-unify new clauses */
     newclauses = Control.unifyNewClauses(newclauses)(state)
 
@@ -445,6 +404,7 @@ object SeqLoop {
     newclauses = newclauses.flatMap(Control.cnf)
     /* Replace eq symbols on top-level by equational literals. */
     newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+    newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /////////////////////////////////////////
     // Simplification of newly generated clauses END
     /////////////////////////////////////////
@@ -457,13 +417,13 @@ object SeqLoop {
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       val newCl = newIt.next()
-      assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
+      assert(Clause.wellTyped(newCl.cl), s"[SeqLoop] Clause [${newCl.id}] is not well-typed")
       if (Clause.effectivelyEmpty(newCl.cl)) {
         endplay(newCl, state)
         return true
       } else {
         if (!Clause.trivial(newCl.cl)) Control.addUnprocessed(newCl)
-        else Out.trace(s"Trivial, hence dropped: ${newCl.pretty(sig)}")
+        else Out.trace(s"[SeqLoop] Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
     false

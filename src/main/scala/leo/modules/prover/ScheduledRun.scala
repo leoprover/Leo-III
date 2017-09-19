@@ -53,7 +53,7 @@ object ScheduledRun {
         localState.setRunStrategy(currentStrategy)
         localState.setTimeout(currentTimeout)
         val localStartTime = System.currentTimeMillis()
-        done = SeqLoop.run(localState, remainingInput, localStartTime)
+        done = SeqLoop.run(remainingInput, localStartTime)(localState)
         if (!done) Out.info(s"Failed: ${currentStrategy.pretty}")
         if (!done && schedule.hasNext) Control.resetIndexes(localState)
         if (done || !schedule.hasNext) SeqLoop.printResult(localState, startTime, startTimeWOParsing)

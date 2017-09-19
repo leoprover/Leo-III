@@ -106,20 +106,7 @@ class PreprocessRule(inType : DataType[AnnotatedClause],
       var result = cl
       result = Control.liftEq(result)
       result = Control.funcext(result) // Maybe comment out? why?
-    val possiblyAC = Control.detectAC(result)
-      if (possiblyAC.isDefined) {
-        val symbol = possiblyAC.get._1
-        val spec = possiblyAC.get._2
-        val sig = state.signature
-        val oldProp = sig(symbol).flag
-        if (spec) {
-          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of commutativity")
-          sig(symbol).updateProp(addProp(Signature.PropCommutative, oldProp))
-        } else {
-          Out.trace(s"[AC] A/C specification detected: ${result.id} is an instance of associativity")
-          sig(symbol).updateProp(addProp(Signature.PropAssociative, oldProp))
-        }
-      }
+      Control.detectAC(result)(sig)
       result = Control.acSimp(result)
       result = Control.simp(result)
       if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic()

@@ -75,7 +75,7 @@ class InterleavableLoopPhase
       state.state.defConjSymbols(simpNegConj)
       state.state.initUnprocessed()
       Control.initIndexes(simpNegConj +: remainingInput)(state.state)
-      val result = SeqLoop.preprocess(state.state, simpNegConj).filterNot(cw => Clause.trivial(cw.cl))
+      val result = SeqLoop.preprocess(simpNegConj)(state.state).filterNot(cw => Clause.trivial(cw.cl))
       Out.debug(s"# Result:\n\t${
         result.map {
           _.pretty(sig)
@@ -99,7 +99,7 @@ class InterleavableLoopPhase
     while (preprocessIt.hasNext) {
       val cur = preprocessIt.next()
       Out.trace(s"# Process: ${cur.pretty(sig)}")
-      val processed = SeqLoop.preprocess(state.state, cur)
+      val processed = SeqLoop.preprocess(cur)(state.state)
       Out.debug(s"# Result:\n\t${
         processed.map {
           _.pretty(sig)

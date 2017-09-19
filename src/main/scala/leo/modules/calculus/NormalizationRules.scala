@@ -244,6 +244,16 @@ object FullCNF extends CalculusRule {
     }
   } else false
 
+  final def canApply(cl: Clause): Boolean = if (Clause.empty(cl)) false
+  else {
+    val litIt = cl.lits.iterator
+    while (litIt.hasNext) {
+      val lit = litIt.next()
+      if (canApply(lit)) return true
+    }
+    false
+  }
+
   final def apply(vargen: leo.modules.calculus.FreshVarGen, cl: Clause)(implicit sig: Signature): Seq[Clause] = {
     val lits = cl.lits
     val normLits = apply(vargen, lits)

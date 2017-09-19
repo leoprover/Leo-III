@@ -14,7 +14,7 @@ object SeqLoopLift extends ProofProcedure[State[AnnotatedClause]] {
     leo.Out.info(s"Started ${state.runStrategy.pretty} for ${state.timeout}s")
     state.fVIndex.reset()
     val start = System.currentTimeMillis()
-    SeqLoop.run(state, state.initialProblem.toSeq, System.currentTimeMillis())
+    SeqLoop.run(state.initialProblem.toSeq, System.currentTimeMillis())(state)
     leo.Out.info(s"Finshed ${state.runStrategy.pretty} after ${(System.currentTimeMillis() - start) / 1000}s")
     state
   }
