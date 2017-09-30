@@ -162,6 +162,12 @@ class TermOrderingTest extends LeoTestSuite {
     val s = f(g(c,f(d)))
     val t = g(c,c)
 
+    validate(d,c,CMP_LT)(sig)
+    validate(g,c,CMP_LT)(sig)
+    validate(f,c,CMP_LT)(sig)
+    validate(c,c,CMP_EQ)(sig)
+    validate(f(d),c,CMP_LT)(sig)
+
     validate(s,t,CMP_LT)(sig)
   }
 
