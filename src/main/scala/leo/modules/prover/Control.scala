@@ -534,7 +534,7 @@ package inferenceControl {
               Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
               if (test1 && test2) {
                 val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, otherLitSide)
-                val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties) | ClauseAnnotation.PropNeedsUnification)
                 Out.finest(s"result: ${result.pretty(sig)}")
                 res = res + result
               }
@@ -548,7 +548,7 @@ package inferenceControl {
                 Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
                 if (test1 && test2) {
                   val factor = OrderedEqFac(clause, maxLitIndex, maxLitSide, otherLitIndex, !otherLitSide)
-                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties) | ClauseAnnotation.PropNeedsUnification)
                   res = res + result
                 }
               }
@@ -567,7 +567,7 @@ package inferenceControl {
                 if (test) {
                   val adjustedClause = Clause(clause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
                   val factor = OrderedEqFac(adjustedClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
-                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), cl.properties | ClauseAnnotation.PropNeedsUnification)
+                  val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties) | ClauseAnnotation.PropNeedsUnification)
                   res = res + result
                 }
               }
@@ -640,11 +640,6 @@ package inferenceControl {
           results.foreach(cl =>
             Out.trace(s"FV(${cl.id}) = ${cl.cl.implicitlyBound.toString()}")
           )
-//          if (cl.id == 409) {
-//            val p = leo.modules.proofOf(cl)
-//            println(p.map(_.pretty(sig)).mkString("\n"))
-//            System.exit(0)
-//          }
           resultSet = resultSet union results
         } else resultSet = resultSet + cl
       }
@@ -767,7 +762,7 @@ package inferenceControl {
           if (uniLits == uniLitsSimp) Set(cl)
           else {
             val substPosLits = cl.cl.posLits.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
-            Set(AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, cl), cl.properties))
+            Set(AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties)))
           }
         } else {
           val resultClausesIt = uniResult.iterator
@@ -823,7 +818,7 @@ package inferenceControl {
                                uniResult: UniResult,
                                rule: CalculusRule)(sig: Signature): AnnotatedClause = {
       val (clause, subst) = uniResult
-      AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,origin.properties | ClauseAnnotation.PropUnified))
+      AnnotatedClause(clause, InferredFrom(rule, Seq((origin, ToTPTP(subst._1, origin.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,origin.properties | ClauseAnnotation.PropUnified))
     }
 
 
@@ -839,7 +834,7 @@ package inferenceControl {
           val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
           if (cA_boolExt) {
             Out.debug(s"Bool Ext on: ${cw.pretty(sig)}")
-            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw),cw.properties | ClauseAnnotation.PropBoolExt))
+            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw), addProp(ClauseAnnotation.PropBoolExt, deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cw.properties))))
             Out.trace(s"Bool Ext result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
             result
           } else Set()
@@ -854,7 +849,7 @@ package inferenceControl {
       if (cA_funcExt) {
         Out.finest(s"Func Ext on: ${cl.pretty(sig)}")
         Out.finest(s"TyFV(${cl.id}): ${cl.cl.typeVars.toString()}")
-        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        val result = AnnotatedClause(Clause(FuncExt(leo.modules.calculus.freshVarGen(cl.cl),fE) ++ fE_other), InferredFrom(FuncExt, cl), deleteProp(ClauseAnnotation.PropBoolExt | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
         myAssert(Clause.wellTyped(result.cl), "func ext not well-typed")
         Out.finest(s"Func Ext result: ${result.pretty(sig)}")
         result
@@ -881,7 +876,7 @@ package inferenceControl {
           val (posFuncExtLits, negFuncExtLits) = funcExtLits.partition(_.polarity)
           val appliedNegFuncExtLits = negFuncExtLits.map(lit => FuncExt.applyExhaust(lit, vargen)(sig))
           val steps = exhaustiveSteps(posFuncExtLits,vargen)(sig).iterator
-          val newProp = addProp(ClauseAnnotation.PropFuncExt, deleteProp(ClauseAnnotation.PropBoolExt, cl.properties))
+          val newProp = addProp(ClauseAnnotation.PropFuncExt, deleteProp(ClauseAnnotation.PropBoolExt | ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties))
           while (steps.hasNext) {
             val posFuncExtStep = steps.next()
             val newClause = Clause(posFuncExtStep ++ appliedNegFuncExtLits ++ otherLits)
@@ -964,7 +959,7 @@ package inferenceControl {
               }
             }
           }
-          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), cw.properties)}
+          val newCl = primsubstResult.map{case (cl,subst) => AnnotatedClause(cl, InferredFrom(PrimSubst, Seq((cw,ToTPTP(subst, cw.cl.implicitlyBound)))), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))}
           Out.trace(s"Prim subst result:\n\t${newCl.map(_.pretty(sig)).mkString("\n\t")}")
           return newCl
         }
@@ -992,7 +987,7 @@ package inferenceControl {
           if (r == term)
             cl
           else {
-            val result = AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), cl.properties)
+            val result = AnnotatedClause(Clause(Literal(r, lit.polarity)), InferredFrom(Enumeration, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
             val simpResult = SimplificationControl.shallowSimp(result)(sig)
             simpResult
           }
@@ -1165,7 +1160,7 @@ package inferenceControl {
           } else {
             state.addDomainConstr(domainType, domainObjects)
           }
-          Out.info(s"[Domain constraints] dom(${domainType.pretty(sig)}) = {${state.domainConstr(domainType).map(_.pretty(sig)).mkString(",")}}")
+          Out.info(s"[Domain constraints] dom(${domainType.pretty(sig)}) ⊆ {${state.domainConstr(domainType).map(_.pretty(sig)).mkString(",")}}")
           true
         }
     }
@@ -1567,25 +1562,34 @@ package inferenceControl {
 
     final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"[Simp] Processing ${cl.id}")
-      val simpresult = Simp(cl.cl)
-      val result = if (simpresult != cl.cl)
-        AnnotatedClause(simpresult, InferredFrom(Simp, cl), cl.properties)
-      else
+      if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) {
+        Out.finest(s"[Simp] [${cl.id}] already simplified, skipping.")
         cl
-      Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
-      result
+      } else {
+        val simpresult = Simp(cl.cl)
+        val result = if (simpresult != cl.cl)
+          AnnotatedClause(simpresult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
+        else cl
+        Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
+        result
+      }
+
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(simp)
 
     final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"[Simp] Shallow processing ${cl.id}")
-      val simpresult = Simp.shallowSimp(cl.cl)
-      val result = if (simpresult != cl.cl)
-        AnnotatedClause(simpresult, InferredFrom(Simp, cl), cl.properties)
-      else
+      if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties) || isPropSet(ClauseAnnotation.PropShallowSimplified, cl.properties)) {
+        Out.finest(s"[Simp] [${cl.id}] already simplified, skipping.")
         cl
-      Out.trace(s"[Simp] Shallow result: ${result.pretty(sig)}")
-      result
+      } else {
+        val simpresult = Simp.shallowSimp(cl.cl)
+        val result = if (simpresult != cl.cl)
+          AnnotatedClause(simpresult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+        else cl
+        Out.trace(s"[Simp] Shallow result: ${result.pretty(sig)}")
+        result
+      }
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
 

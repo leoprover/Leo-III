@@ -117,7 +117,6 @@ trait ClauseProxy extends Pretty with Prettier {
   def cl: Clause
   def role: Role
   def annotation: ClauseAnnotation
-//  @inline lazy val weight: Int = leo.Configuration.CLAUSEPROXY_WEIGHTING.weightOf(this)
   def properties: ClauseAnnotation.ClauseProp
   override final def pretty: String = s"[$id]:\t${cl.pretty}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
   override final def pretty(sig: Signature): String = s"[$id]:\t${cl.pretty(sig)}\t(${annotation.pretty}) (Flags: ${ClauseAnnotation.prettyProp(properties)})"
@@ -126,7 +125,7 @@ trait ClauseProxy extends Pretty with Prettier {
 case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseAnnotation,
                            var properties: ClauseAnnotation.ClauseProp) extends ClauseProxy {
   override def equals(o: Any): Boolean = o match {
-    case cw: ClauseProxy => cw.cl == cl // Equality is defined in term of id. This implies that the clauses of two
+    case cw: ClauseProxy => cw.id == id // Equality is defined in term of id. This implies that the clauses of two
                                         // annotatedclauses may be equal while the annotatedclauses are not equal.
                                         // This is done due to performance considerations: Clause equality is quite
                                         // expensive to calculate. On the other hand, the unprocessed set will
@@ -136,16 +135,15 @@ case class AnnotatedClause(id: Long, cl: Clause, role: Role, annotation: ClauseA
     case _ => false
   }
 
-  override def hashCode(): Int = cl.hashCode()
+  override def hashCode(): Int = id.hashCode()
 }
 
 object AnnotatedClause {
-  private var counter: Long = 0
+  @volatile private var counter: Long = 0
 
   def apply(cl: Clause, r: Role, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp): AnnotatedClause = {
-    synchronized{counter += 1}  // TODO To heavy?
-    val ac = AnnotatedClause(counter, cl, r, annotation, propFlag)
-    ac
+    counter += 1 // lets try it without sync ... see what happens
+    AnnotatedClause(counter, cl, r, annotation, propFlag)
   }
 
   def apply(cl: Clause, annotation: ClauseAnnotation, propFlag: ClauseAnnotation.ClauseProp = ClauseAnnotation.PropNoProp): AnnotatedClause =
@@ -232,6 +230,8 @@ object ClauseAnnotation {
   final val PropSOS: ClauseProp = 4
   final val PropNeedsUnification: ClauseProp = 8
   final val PropFuncExt: ClauseProp = 16
+  final val PropShallowSimplified: ClauseProp = 32
+  final val PropFullySimplified: ClauseProp = 64
 
   final def prettyProp(prop: ClauseProp): String = {
     val sb = new StringBuilder
@@ -240,6 +240,10 @@ object ClauseAnnotation {
     if (isPropSet(PropSOS, prop)) sb.append(" SOS ")
     if (isPropSet(PropNeedsUnification, prop)) sb.append(" NU ")
     if (isPropSet(PropFuncExt, prop)) sb.append(" FE ")
+
+    if (isPropSet(PropShallowSimplified, prop)) sb.append(" S- ")
+    else if (isPropSet(PropFullySimplified, prop)) sb.append(" S+ ")
+
     sb.toString()
   }
 }
