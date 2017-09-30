@@ -2,7 +2,7 @@ package leo.modules.prover
 
 import leo.{Configuration, Out}
 import leo.datastructures._
-import leo.modules.{myAssert,SZSOutput}
+import leo.modules.{SZSOutput, myAssert}
 import leo.modules.control.Control
 import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.output._
@@ -342,7 +342,6 @@ object SeqLoop {
     /////////////////////////////////////////
     // Simplification of newly generated clauses BEGIN
     /////////////////////////////////////////
-    state.incGeneratedCl(newclauses.size)
     /* Simplify new clauses */
     //    newclauses = Control.shallowSimpSet(newclauses)
     /* Remove those which are tautologies */
@@ -360,6 +359,7 @@ object SeqLoop {
     /////////////////////////////////////////
     //    Control.updateDescendants(cur, newclauses)
     /////////////////////////////////////////
+    state.incGeneratedCl(newclauses.size)
     Out.debug(s"[SeqLoop] Generated: ${newclauses.map(_.id).mkString(",")}")
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause
@@ -390,25 +390,28 @@ object SeqLoop {
     val time = System.currentTimeMillis() - startTime
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
 
-    Out.output("")
-    Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
-
     /* Output additional information about the reasoning process. */
     Out.comment(s"Time passed: ${time}ms")
     Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
     if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
     val proof = state.proof
-    if (proof != null)
-      Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
-    Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
+    if (proof != null) {
+      try {
+        import leo.datastructures.ClauseAnnotation.FromFile
+        val proofAx = axiomsInProof(proof)
+        Out.comment(s"Axioms used in derivation (${proofAx.size}): ${proofAx.map(_.annotation.asInstanceOf[FromFile].formulaName).mkString(", ")}")
+      } catch {
+        case e:Exception => ()
+      }
+    }
+    Out.comment(s"No. of processed clauses: ${state.processed.size}")
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
     Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
-    Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
     Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
     Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
-    Out.comment(s"No. of chostateice instantiations: ${state.choiceInstantiations}")
+    Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
     Out.debug(s"-thereof maximal ones: ${state.processed.flatMap(c => c.cl.maxLits).size}")
     Out.debug(s"avg. literals per clause: ${state.processed.flatMap(_.cl.lits).size / state.processed.size.toDouble}")
@@ -418,6 +421,7 @@ object SeqLoop {
     Out.debug(s"unoriented processed: ${state.processed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"unoriented unprocessed: ${state.unprocessed.flatMap(_.cl.lits).count(!_.oriented)}")
     Out.debug(s"subsumption tests: ${leo.modules.calculus.Subsumption.subsumptiontests}")
+    Out.debug(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
 
     Out.finest("#########################")
     Out.finest("units")
@@ -442,6 +446,7 @@ object SeqLoop {
     Out.finest("Clauses at the end of the loop:")
     Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
 
+    Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
     /* Print proof object if possible and requested. */
     if (Configuration.PROOF_OBJECT && proof != null) {
       try {

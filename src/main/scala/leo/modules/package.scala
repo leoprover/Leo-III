@@ -20,7 +20,7 @@ package object modules {
   class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
   case class SZSOutput(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
-    override def apply: String = if (furtherInfo == "") {
+    override def apply: String = if (furtherInfo == null || furtherInfo == "") {
       s"% SZS status ${status.apply} for $problem"
     } else {
       s"% SZS status ${status.apply} for $problem : $furtherInfo"

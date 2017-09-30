@@ -26,7 +26,7 @@ object LambdaElimStrategy_LambdaLifting extends LambdaElimStrategy {
 }
 
 /**
-  * A LambdaElimination escapsulates a concrete implementation of a
+  * A LambdaElimination encapsulates a concrete implementation of a
   * procedure for elimination lambda abstraction inside higher-order terms.
   * Popular examples are (i) replacing lambda abstraction by SKI combinators
   * (as done by [[leo.modules.encoding.LambdaElim_SKI]]) or by introducing super-combinators

@@ -107,13 +107,21 @@ package object prover {
     else typeCheck0(input, state)
   }
   @tailrec final private def typeCheck0(input: Seq[AnnotatedClause], state: LocalGeneralState): Unit = {
+    import leo.datastructures.ClauseAnnotation.FromFile
+    import leo.datastructures.{Role_NegConjecture, Role_Axiom}
+    import leo.modules.HOLSignature.o
     if (input.nonEmpty) {
       val hd = input.head
       val term = hd.cl.lits.head.left
-      import leo.modules.HOLSignature.o
-      if (!Term.wellTyped(term) || term.ty != o) {
-        leo.Out.severe(s"Input problem did not pass type check: ${hd.id} is ill-typed.")
-        throw new SZSException(SZS_TypeError, s"Type error in formula ${hd.id}: ${hd.pretty(state.signature)}")
+      val annotation = if (hd.annotation.isInstanceOf[FromFile]) hd.annotation.asInstanceOf[FromFile]
+      else hd.annotation.parents.head.annotation.asInstanceOf[FromFile]
+
+      if (!Term.wellTyped(term)) {
+        leo.Out.severe(s"Input problem did not pass type check: ${hd.id} (${annotation.formulaName}) is ill-typed.")
+        throw new SZSException(SZS_TypeError, s"Type error in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
+      } else if (term.ty != o) {
+        leo.Out.severe(s"Input problem did not pass type check: ${hd.id} (${annotation.formulaName}) is not Boolean typed.")
+        throw new SZSException(SZS_TypeError, s"Term of non-Boolean type at top-level in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
       } else {
         typeCheck0(input.tail, state)
       }
