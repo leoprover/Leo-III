@@ -23,6 +23,7 @@ object Control {
   @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(state)
   @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.FuncExtControl(cl)(sig)
   @inline final def funcExtNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FuncExtControl.applyNew(cl)(state)
+
   // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
@@ -39,20 +40,22 @@ object Control {
   @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
-  // AC detection
   @inline final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = inferenceControl.SimplificationControl.detectAC(cl)(sig)
+
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
   @inline final def detectChoiceClause(cl: AnnotatedClause)(implicit state: LocalState): Boolean = inferenceControl.ChoiceControl.detectChoiceClause(cl)(state)
   @inline final def guessFuncSpec(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.guessFuncSpec(cls)(state)
+
   // Domain Constraints
-  @inline final def detectDomainConstraint(cl : AnnotatedClause)(implicit state : LocalState) : Option[(Type, Set[Term])] = inferenceControl.DomainConstraintInstanceControl.detectDomainConstraint(cl)
+  @inline final def detectDomainConstraint(cl: AnnotatedClause)(implicit state: LocalState): Boolean = inferenceControl.DomainConstraintInstanceControl.detectDomainConstraint(cl)
   @inline final def instantiateDomainConstraint(cl : AnnotatedClause)(implicit state : LocalState) : Set[AnnotatedClause] = inferenceControl.DomainConstraintInstanceControl.instanciateDomain(cl)
   @inline final def instantiateDomainConstraint(cl : Set[AnnotatedClause])(implicit state : LocalState) : Set[AnnotatedClause] = inferenceControl.DomainConstraintInstanceControl.instanciateDomain(cl)
 
   // Redundancy
   @inline final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = redundancyControl.RedundancyControl.redundant(cl, processed)
   @inline final def backwardSubsumptionTest(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Set[AnnotatedClause] = redundancyControl.SubsumptionControl.testBackwardSubsumptionFVI(cl)
+
   // Indexing
   @inline final def initIndexes(initClauses: Seq[AnnotatedClause])(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.initIndexes(initClauses.toSet)(state)
   @inline final def insertIndexed(cl: AnnotatedClause)(implicit state: LocalFVState): Unit = indexingControl.IndexingControl.insertIndexed(cl)
@@ -62,19 +65,23 @@ object Control {
   @inline final def updateDescendants(taken: AnnotatedClause, generated: Set[AnnotatedClause]): Unit = indexingControl.IndexingControl.updateDescendants(taken, generated)
   @inline final def descendants(cls: Set[AnnotatedClause]): Set[AnnotatedClause] = indexingControl.IndexingControl.descendants(cls)
   @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
+
   // Relevance filtering
   @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
+
   // External prover call
   @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
   @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
+
   // Limited resource scheduling
   type RunConfiguration = (RunStrategy, Int)
   type RunSchedule = Iterable[RunConfiguration]
   @inline final def defaultStrategy: RunStrategy = schedulingControl.StrategyControl.defaultStrategy
   @inline final def generateRunStrategies(globalTimeout: Int, extraTime: Int = 0): RunSchedule = schedulingControl.StrategyControl.generateRunStrategies(globalTimeout, extraTime)
+
   // Delegator etc.
   final def addUnprocessed(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = {
     Interaction.trackClause(cl)
@@ -110,7 +117,6 @@ package inferenceControl {
     type LiteralIndex = Int
     type WithConfiguration = (LiteralIndex, Literal, Side)
   }
-
 
   protected[modules] object CNFControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
@@ -418,10 +424,12 @@ package inferenceControl {
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
     private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {
-      val withHd = withTerm.headSymbol
-      val intoHd = intoTerm.headSymbol
-      if (((withHd == intoHd && withHd.isConstant) || (isPattern(withTerm) && isPattern(intoTerm))) && mayUnify(withTerm.ty, intoTerm.ty)) true
-      else leo.modules.calculus.mayUnify(withTerm, intoTerm)
+      if (mayUnify(withTerm.ty, intoTerm.ty)) {
+        val withHd = withTerm.headSymbol
+        val intoHd = intoTerm.headSymbol
+        if (withHd == intoHd && withHd.isConstant) true
+        else mayUnify(withTerm, intoTerm)
+      } else false
     }
 
     ////////////////////////////////////////////////////////
@@ -498,8 +506,8 @@ package inferenceControl {
 
     final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
       Out.debug(s"Factor in ${cl.id}")
-      implicit val sig = state.signature
-      var res: Set[AnnotatedClause] = Set()
+      implicit val sig: Signature = state.signature
+      var res: Set[AnnotatedClause] = Set.empty
       val clause = cl.cl
       val maxLitsofClause = clause.maxLits
       val maxLitIt = new LiteralSideIterator(clause, true, false, true)
@@ -575,11 +583,12 @@ package inferenceControl {
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
     private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
-      import leo.modules.calculus.isPattern
-      val withHd = term.headSymbol
-      val intoHd = otherTerm.headSymbol
-      if ((withHd == intoHd && withHd.isConstant || (isPattern(term) && isPattern(otherTerm))) && mayUnify(term.ty, otherTerm.ty)) true
-      else leo.modules.calculus.mayUnify(term, otherTerm)
+      if (mayUnify(term.ty, otherTerm.ty)) {
+        val withHd = term.headSymbol
+        val intoHd = otherTerm.headSymbol
+        if (withHd == intoHd && withHd.isConstant) true
+        else mayUnify(term, otherTerm)
+      } else false
     }
   }
 
@@ -643,7 +652,6 @@ package inferenceControl {
     }
 
     private final def paramodUnify(freshVarGen: FreshVarGen, cl0: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
-      import leo.modules.HOLSignature.LitFalse
       val sig = state.signature
       val cl = cl0.cl
       assert(cl.lits.nonEmpty)
@@ -1142,11 +1150,31 @@ package inferenceControl {
       else None
     }
 
-    final def detectDomainConstraint(c : AnnotatedClause)(implicit s : GeneralState[AnnotatedClause]) : Option[(Type, Set[Term])] = {
-      if(c.cl.implicitlyBound.size != 1) return None
-      val lits = c.cl.lits.iterator
-      val ty = c.cl.implicitlyBound.head._2
-      var constrs = Set[Term]()
+    final def detectDomainConstraint(cl: AnnotatedClause)(implicit state: GeneralState[AnnotatedClause]): Boolean = {
+      implicit val sig: Signature = state.signature
+      val findResult = findDomainConstraint(cl)
+        if (findResult.isEmpty) false
+        else {
+          val (domainType, domainObjects) = findResult.get
+          Out.info(s"[Domain constraints] Detected constraint on ${domainType.pretty(sig)}")
+          if (state.domainConstr.contains(domainType)) {
+            Out.debug(s"[Domain constraints] Duplicated constraint on ${domainType.pretty(sig)}")
+            if (state.domainConstr(domainType).size > domainObjects.size) {
+              state.addDomainConstr(domainType, domainObjects)
+            }
+          } else {
+            state.addDomainConstr(domainType, domainObjects)
+          }
+          Out.info(s"[Domain constraints] dom(${domainType.pretty(sig)}) = {${state.domainConstr(domainType).map(_.pretty(sig)).mkString(",")}}")
+          true
+        }
+    }
+
+    final def findDomainConstraint(cl: AnnotatedClause)(implicit s: GeneralState[AnnotatedClause]): Option[(Type, Set[Term])] = {
+      if(cl.cl.implicitlyBound.size != 1) return None
+      val lits = cl.cl.lits.iterator
+      val ty = cl.cl.implicitlyBound.head._2
+      var constrs: Set[Term] = Set.empty
       while(lits.hasNext){
         constraintLiteral(lits.next()) match {
           case None => return None

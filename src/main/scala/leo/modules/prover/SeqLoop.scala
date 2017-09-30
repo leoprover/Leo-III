@@ -50,23 +50,8 @@ object SeqLoop {
     result = result.map { cl =>
       val simp = Control.shallowSimp(Control.liftEq(cl))
       Control.detectAC(simp)
-      // TODO:
-        // Control.detectDomainConstraint(result) match {
-        //        case None => ()
-        //        case Some((ty, constr)) =>
-        //          if(state.domainConstr.contains(ty)){
-        //            Out.info(s"[DomConstr] Detected Multiple constraints on ${ty.pretty(sig)}")
-        //            if(state.domainConstr(ty).size > constr.size){
-        //              Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}")
-        //              state.addDomainConstr(ty, constr)
-        //            }
-        //          } else {
-        //            Out.info(s"[DomConstr] Detected new constraint on ${ty.pretty(sig)}")
-        //            Out.info(s"[DomConstr] dom(${ty.pretty(sig)}) = {${constr.map(_.pretty(sig)).mkString(", ")}}")
-        //            state.addDomainConstr(ty, constr)
-        //          }
-        //      }
-      if (!state.isPolymorphic && simp.cl.typeVars.nonEmpty) state.setPolymorphic()
+      Control.detectDomainConstraint(simp)
+      if (!state.isPolymorphic && simp.cl.typeVars.nonEmpty) state.setPolymorphic() // TODO: FIXME
       simp
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
@@ -150,11 +135,10 @@ object SeqLoop {
         val todo = toPreprocessIt.next()
         Out.trace(s"# Process: ${todo.pretty(sig)}")
         val result0 = preprocess(todo)(state)
-        Out.trace(s"# Result:\n\t${
-          result0.map {_.pretty(sig)}.mkString("\n\t")
-        }")
+        Out.trace(s"# Result:\n\t${result0.map {_.pretty(sig)}.mkString("\n\t")}")
         val result = result0.filterNot(cw => Clause.trivial(cw.cl))
-        myAssert(result.forall(cl => Clause.wellTyped(cl.cl)), s"[SeqLoop] Not well-typed: ${result.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.id).mkString(",")}")
+        myAssert(result.forall(cl => Clause.wellTyped(cl.cl)),
+          s"[SeqLoop] Not well-typed: ${result.filterNot(cl => Clause.wellTyped(cl.cl)).map(_.id).mkString(",")}")
         Control.addUnprocessed(result)
         if (toPreprocessIt.hasNext) Out.trace("--------------------")
       }
