@@ -149,6 +149,22 @@ class TermOrderingTest extends LeoTestSuite {
     validate(s,u,CMP_LT)(sig)
   }
 
+  test("totality 2") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i))
+    val g = mkAtom(sig.addUninterpreted("g", i ->: i ->: i))
+
+    val d = mkAtom(sig.addUninterpreted("d", i))
+    val c = mkAtom(sig.addUninterpreted("c", i))
+
+    val s = f(g(c,f(d)))
+    val t = g(c,c)
+
+    validate(s,t,CMP_LT)(sig)
+  }
+
   test("l^f > l^t") {
     implicit val sig = getFreshSignature
     import leo.modules.HOLSignature.{i,o}
