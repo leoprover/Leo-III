@@ -102,7 +102,7 @@ object SeqLoop {
       printResult(state, startTime, startTimeWOParsing)
     } catch {
       case e:Exception =>
-        Out.severe(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
+        Out.trace(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
         e.printStackTrace()
         throw e
     } finally {
