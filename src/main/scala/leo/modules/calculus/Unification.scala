@@ -470,7 +470,7 @@ object PatternUnification extends Unification {
   final def unify (vargen: FreshVarGen, t1 : Term, s1 : Term, depth: Int) : Iterable[UnificationResult] = {
     // 1. check if types are unifiable
     val t_ty = t1.ty
-    val s_ty = t1.ty
+    val s_ty = s1.ty
     val initialTypeSubst = TypeUnification(t_ty, s_ty)
     // 2. Continue only if types are unifiable
     if (initialTypeSubst.isEmpty)

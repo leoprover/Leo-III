@@ -8,7 +8,7 @@ trait Subsumption {
 }
 
 object Subsumption extends Subsumption {
-  val impl = TrivialSubsumption
+  val impl = HOPatternSubsumption
   var subsumptiontests = 0
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {subsumptiontests += 1; impl.subsumes(cl1, cl2)}
 }
@@ -68,8 +68,12 @@ abstract class AbstractMatchingSubsumption extends Subsumption {
   def doMatch(vargen: FreshVarGen, term: Term, term1: Term): Option[TermSubst]
 }
 
-object FOMatchingSubsumption extends AbstractMatchingSubsumption {
-  override final def doMatch(vargen: FreshVarGen, s: Term, t: Term): Option[TermSubst] = FOMatching.matches(s,t)
+object HOPatternSubsumption extends AbstractMatchingSubsumption {
+  override final def doMatch(vargen: FreshVarGen, s: Term, t: Term): Option[TermSubst] = {
+    val result0 = HOPatternMatching.matchTerms(vargen, s,t).iterator
+    if (result0.isEmpty) None
+    else Some(result0.next()._1)
+  }
 }
 
 object HOMatchingSubsumption extends AbstractMatchingSubsumption {

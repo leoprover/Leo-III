@@ -271,7 +271,7 @@ class PatternUnificationTestSuite extends LeoTestSuite {
     val res = PatternUnification.unify(vargen, l,r,-1)
     assert(res.nonEmpty, "No unifier found although it should be unifiable")
     val unifier = res.head
-//    println(s"unifier: ${unifier._1._1.pretty}")
+    println(s"unifier: ${unifier._1._1.pretty}")
     val lsubst = l.substitute(unifier._1._1, unifier._1._2)
     val rsubst = r.substitute(unifier._1._1, unifier._1._2)
 //    println(s"lsubst: ${lsubst.pretty(s)}")

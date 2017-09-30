@@ -13,6 +13,10 @@ trait Matching {
     * which is more general than σ_i. */
   def matchTerms(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result]
 }
+object Matching {
+  val impl: Matching = HOPatternMatching
+  def apply(vargen: FreshVarGen, s: Term, t: Term): Iterable[Matching#Result] = impl.matchTerms(vargen, s, t)
+}
 
 object HOMatching extends Matching {
   /** The Depth is the number of lambda abstractions under which a term is nested.*/
@@ -485,228 +489,194 @@ object HOMatching extends Matching {
   }
 }
 
-/**
-  * Created by lex on 6/4/16.
-  */
-object FOMatching {
-  // FIXME Old implementation, most likely broken
-  import leo.datastructures.{Term, Type, Subst}
-  import Term.{Bound, ∙}
 
-  type UEq = (Term, Term)
+object HOPatternMatching extends Matching {
+  /** Returns an iterable of substitutions (σ_i) such that tσ_i = s and there exists no such ϱ
+    * which is more general than σ_i. */
+  override def matchTerms(vargen: FreshVarGen, t: Term, s: Term): Iterable[Result] = {
+    // 1. check if types can be matched
+    val t_ty = t.ty
+    val s_ty = s.ty
+    val initialTypeSubst = TypeMatching(t_ty, s_ty)
+    // 2. Continue only if types can be matched
+    if (initialTypeSubst.isEmpty)
+      Iterable.empty
+    else {
+      val initialTypeSubst0 = initialTypeSubst.get
+      val t0 = t.substitute(Subst.id, initialTypeSubst0).etaExpand
+      val s0 = s.substitute(Subst.id, initialTypeSubst0).etaExpand
+      val matchResult = match0(Vector((t0,s0)), initialTypeSubst0, vargen)
+      if (matchResult.isDefined) Seq(matchResult.get)
+      else Iterable.empty
+    }
+  }
 
-  // #################
-  // Exported functions
-  // #################
+  /** Wrap up the matching result with the initial type substitution and return as Option. */
+  private final def match0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[Result] = {
+    val matcher = match1(ueqs, vargen, Subst.id, Subst.id)
+    if (matcher.isDefined)
+      Some((matcher.get._1.normalize, initialTypeSubst.comp(matcher.get._2).normalize))
+    else
+      None
+  }
 
-  /**
-    * `s` matches `t` iff there exists a substitution sigma such that `s[sigma] = t`.
-    * Returns true if such a substitution exists.
-    *
-    * @param s A term.
-    * @param t The term to be matched against (i.e. the term that may be an instance of `s`)
-    */
-  final def decideMatch(s: Term, t: Term): Boolean = decideMatch0(Vector((s,t)))
+  type PartialResult = Result
 
-  /**
-    * `s` matches `t` iff there exists a substitution sigma such that `s[sigma] = t`.
-    * Returns such a substitution if existent, None otherwise.
-    *
-    * @param s A term.
-    * @param t The term to be matched against (i.e. the term that may be an instance of `s`)
-    */
-  final def matches(s: Term, t: Term): Option[Subst] = matches0(Seq((s,t)), Seq())
-
-
-  // #################
-  // Internal functions
-  // #################
-
-  // apply exaustively delete, comp and bind on the set. If at the end uproblems is empty,
-  // we succeeded, else we fail.
-  // Invariant: UEq (l,r) always never swapper to (r',l') where r',l' originate from r,l, respectively.
+  /** Main matching method: Solve head equations subsequently by applying the according rules. */
   @tailrec
-  final private def matches0(uproblems: Seq[UEq], sproblems: Seq[UEq]): Option[Subst]  = {
-    leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    // apply delete
-    val ind1 = uproblems.indexWhere(DeleteRule.canApply)
-    if (ind1 > -1) {
-      leo.Out.finest("Apply Delete")
-      matches0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1), sproblems)
-      // apply decomp
-    } else {
-      val ind2 = uproblems.indexWhere(DecompRule.canApply)
-      if (ind2 > -1) {
-        leo.Out.finest("Apply Decomp")
-        matches0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1), sproblems)
-        // apply bind
-      } else {
-        val ind3 = uproblems.indexWhere(BindRule.canApply)
-        if (ind3 > -1) {
-          leo.Out.finest("Apply Bind")
-          leo.Out.finest(s"Bind on " +
-            s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
-          val be = BindRule(uproblems(ind3))
-          leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
-          val sb = computeSubst(be)
-          matches0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)), applySubstToList(sb, sproblems) :+ be)
-        } else { // TODO: Rework matching as done in unification without dealing with extensionality.
-          //            val ind4 = uproblems.indexWhere(FuncRule.canApply)
-          //            if (ind4 > -1) {
-          //              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-          //              matches0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))(sig)) ++ uproblems.drop(ind4 + 1), sproblems)(sig)
-          //            } else {
-          if (uproblems.isEmpty) {
-            Some(computeSubst(sproblems))
-          } else
-            None
-          //            }
-        }
-      }
-    }
-  }
+  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst): Option[PartialResult] = {
+    import leo.datastructures.Term.{Bound, ∙}
+    import leo.datastructures.{partitionArgs, collectLambdas}
+    import HuetsPreUnification.{applySubstToList, zipWithAbstractions}
 
-  // apply exaustively delete, comp and bind on the set. If at the end uproblems is empty,
-  // we succeeded, else we fail.
-  // Invariant: UEq (l,r) always never swapper to (r',l') where r',l' originate from r,l, respectively.
-  @tailrec
-  final private def decideMatch0(uproblems: Seq[UEq]): Boolean  = {
-    leo.Out.trace(s"Unsolved: ${uproblems.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-    // apply delete
-    val ind1 = uproblems.indexWhere(DeleteRule.canApply)
-    if (ind1 > -1) {
-      leo.Out.finest("Apply Delete")
-      decideMatch0(uproblems.take(ind1) ++ uproblems.drop(ind1 + 1))
-      // apply decomp
-    } else {
-      val ind2 = uproblems.indexWhere(DecompRule.canApply)
-      if (ind2 > -1) {
-        leo.Out.finest("Apply Decomp")
-        decideMatch0(DecompRule(uproblems(ind2)) ++ uproblems.take(ind2) ++ uproblems.drop(ind2 + 1))
-        // apply bind
-      } else {
-        val ind3 = uproblems.indexWhere(BindRule.canApply)
-        if (ind3 > -1) {
-          leo.Out.finest("Apply Bind")
-          leo.Out.finest(s"Bind on " +
-            s"\n\tLeft: ${uproblems(ind3)._1.pretty}\n\tRight: ${uproblems(ind3)._2.pretty}")
-          val be = BindRule(uproblems(ind3))
-          leo.Out.finest(s"Resulting equation: ${be._1.pretty} = ${be._2.pretty}")
-          val sb = computeSubst(be)
-          decideMatch0(applySubstToList(sb, uproblems.take(ind3) ++ uproblems.drop(ind3 + 1)))
-        } else {
-          //            val ind4 = uproblems.indexWhere(FuncRule.canApply)
-          //            if (ind4 > -1) {
-          //              leo.Out.finest(s"Can apply func on: ${uproblems(ind4)._1.pretty} == ${uproblems(ind4)._2.pretty}")
-          //              decideMatch0((uproblems.take(ind4) :+ FuncRule(uproblems(ind4))(sig)) ++ uproblems.drop(ind4 + 1))(sig)
-          //            } else
-          uproblems.isEmpty
-        }
-      }
-    }
-  }
-
-  private final def computeSubst(eqn: UEq): Subst = {
-    val (t,s) = (eqn._1, eqn._2)
-    assert(isVariable(t))
-    val (_, idx) = Bound.unapply(t).get
-    Subst.singleton(idx, s)
-  }
-
-  private final def computeSubst(eqns: Seq[UEq]): Subst = {
-    assert(eqns.forall(eqn => isVariable(eqn._1)))
-    val eqns2 = eqns.map {case (l,r) => (Bound.unapply(l).get._2, r)}
-    Subst.fromSeq(eqns2)
-  }
-
-  private final def applySubstToList(s: Subst, l: Seq[UEq]): Seq[UEq] =
-    l.map(e => (e._1.substitute(s),e._2.substitute(s)))
-
-  private final def isVariable(t: Term): Boolean = Bound.unapply(t).isDefined
-  private final def isFlexible(t: Term): Boolean = Bound.unapply(t.headSymbol).isDefined
-
-  /**
-    * 3
-    * BindRule tells if Bind is applicable
-    * equation is not oriented
-    * return an equation (x,s) substitution is computed from this equation later
-    */
-  private object BindRule {
-    def apply(e: UEq) = {
-      val (t,s) = (e._1,e._2)
-      (t.headSymbol,s)
-    }
-    def canApply(e: UEq) = {
-      val (t,s) = (e._1, e._2)
-      if (!isFlexible(t)) false
+    if (ueqs.isEmpty)
+      Some((partialMatcher, partialTyMatcher))
+    else {
+      val (l0,r0) = ueqs.head
+      if (l0 == r0) match1(ueqs.tail, vargen, partialMatcher, partialTyMatcher)
       else {
-        val (_,x) = Bound.unapply(t.headSymbol).get
-        if (!t.headSymbol.etaExpand.equals(t) && !t.equals(t.headSymbol)) false // t might be of function type,
-        // hence it might be eta expanded to a function, we check that here.
+        val l = l0.substitute(partialMatcher, partialTyMatcher).etaExpand
+        val r = r0.substitute(partialMatcher, partialTyMatcher).etaExpand
+        leo.Out.trace(s"solve: ${l.pretty} = ${r.pretty}")
+        // take off the lambdas
+        val (leftBody, leftAbstractions) = collectLambdas(l)
+        val (rightBody, rightAbstractions) = collectLambdas(r)
+        assert(leftAbstractions == rightAbstractions)
+        val abstractionCount = leftAbstractions.size
 
-        // check it doesnt occur in s
-        else !s.looseBounds.contains(x)
-      }
-    }
-  }
+        (leftBody, rightBody) match {
+          case (hd1 ∙ args1, hd2 ∙ args2) => (hd1, hd2) match {
+//            case (Bound(ty1, idx1), Bound(ty2, idx2))
+//              if idx1 > abstractionCount && idx2 > abstractionCount =>
+//              /* flex-flex */
+//              leo.Out.finest("Apply Flex-flex")
+//              assert(leftBody.ty == rightBody.ty)
+//              val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen, leftBody.ty)
+//              match1(ueqs.tail, vargen, partialMatcher.comp(partialUniResult._1), partialTyMatcher.comp(partialUniResult._2))
+            case (Bound(ty1, idx1), _) if idx1 > abstractionCount =>
+              /* flex-rigid or flex-flex */
+              if (r.looseBounds.contains(idx1 - abstractionCount)) None
+              else {
+                leo.Out.finest("Apply Flex-rigid")
+                val result = flexrigid(idx1 - abstractionCount, ty1, args1, hd2, args2, rightBody, vargen, leftAbstractions)
+                if (result == null) None
+                else {
+                  val partialMatchingResult = result._1
+                  val newUeqs = result._2
+                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1), partialTyMatcher.comp(partialMatchingResult._2))
+                }
+              }
+            case (_, Bound(ty2, idx2)) if idx2 > abstractionCount=>
+              /* rigid-flex */
+              None // right side is considered rigid in this matching setting
+            case _ => /* rigid-rigid */
+              if (hd1 == hd2) {
+                leo.Out.finest("Apply rigid-rigid")
+                if (hd1.ty.isPolyType) {
+                  leo.Out.finest(s"Poly rigid-rigid")
+                  val (tyArgs1, termArgs1) = partitionArgs(args1)
+                  val (tyArgs2, termArgs2) = partitionArgs(args2)
+                  assert(tyArgs1.size == tyArgs2.size)
+                  val tyMatchingConstraints = tyArgs1.zip(tyArgs2)
+                  leo.Out.finest(s"ty constraints: ${tyMatchingConstraints.map(c => c._1.pretty + " = " + c._2.pretty).mkString(",")}")
+                  val tyMatchingResult = TypeMatching(tyMatchingConstraints)
+                  if (tyMatchingResult.isDefined) {
+                    val tySubst = tyMatchingResult.get
+                    leo.Out.finest(s"Poly rigid-rigid match succeeded: ${tySubst.pretty}")
+                    val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
+                    leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+                    match1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen, partialMatcher.applyTypeSubst(tySubst), partialTyMatcher.comp(tySubst))
+                  } else {
+                    leo.Out.finest(s"Poly rigid-rigid uni failed")
+                    None
+                  }
+                } else {
+                  val termArgs1 = args1.map(_.left.get)
+                  val termArgs2 = args2.map(_.left.get)
+                  val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
+                  leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher, partialTyMatcher)
+                }
+              } else None
 
-  /**
-    * 1
-    * returns true if the equation can be deleted
-    */
-  private object DeleteRule  {
-    def canApply(e: UEq) = {
-      val (t,s) = e
-      t.equals(s)
-    }
-  }
-
-  /**
-    * 2
-    * returns the list of equations if the head symbols are the same function symbol.
-    */
-  private object DecompRule {
-    def apply(e: UEq) = e match {
-      case (_ ∙ sq1, _ ∙ sq2) => simplifyArguments(sq1).zip(simplifyArguments(sq2))
-      case _ => throw new IllegalArgumentException("impossible")
-    }
-    def canApply(e: UEq) = e match {
-      case (hd1 ∙ args1, hd2 ∙ args2) if hd1 == hd2 => {
-        if (isFlexible(hd1)) false
-        else {
-          if (hd1.ty.isPolyType) {
-            assert(hd2.ty.isPolyType)
-            val tyArgs1 = args1.takeWhile(_.isRight).map(_.right.get)
-            val tyArgs2 = args2.takeWhile(_.isRight).map(_.right.get)
-            tyArgs1 == tyArgs2
-          } else
-            true
+          }
+          case _ => assert(false); None
         }
       }
-      case _ => false
     }
   }
 
-  private object FuncRule {
-    import leo.datastructures.Signature
-    def apply(e: UEq)(sig: Signature): UEq = {
-      leo.Out.trace(s"Apply Func on ${e._1.pretty} = ${e._2.pretty}")
-      val funArgTys = e._1.ty.funParamTypes
-      val skTerms = funArgTys.map(leo.modules.calculus.skTerm(_, Seq(), Seq())(sig)) // TODO: Check if this is ok (no free vars)
-      (Term.mkTermApp(e._1, skTerms).betaNormalize, Term.mkTermApp(e._2, skTerms).betaNormalize)
-    }
 
-    def canApply(e: UEq) = {
-      // we can apply it if the sides of the equation have functional type
-      assert(e._1.ty == e._2.ty, s"Func Rule: Both UEq sides have not-matching type:\n\t${e._1.pretty}\n\t${e._1.ty.pretty}\n\t${e._2.pretty}\n\t${e._2.ty.pretty}")
-      e._1.ty.isFunType
+  /** Flex-rigid rule: May fail, returns null if not sucessful. */
+  private final def flexrigid(idx1: Int, ty1: Type, args1: Seq[Either[Term, Type]], rigidHd: Term, rigidArgs: Seq[Either[Term, Type]], rigidAsTerm: Term, vargen: FreshVarGen, depth: Seq[Type]): (PartialResult, Seq[UEq]) = {
+    import leo.datastructures.partitionArgs
+    import leo.datastructures.Term.Bound
+    try {
+      val args10 = args1.map(_.left.get)
+      // This is a bit hacky: We need the new fresh variables
+      // introduced by partialBinding(...), so we just take the
+      // difference of vars in vargen (those have been introduced).
+      // Maybe this should be done better...
+      val varsBefore = vargen.existingVars
+
+      if (rigidHd.isVariable && Bound.unapply(rigidHd).get._2 <= depth.size) {
+        leo.Out.finest(s"rigidHd isVariable")
+        leo.Out.finest(s"idx1: $idx1")
+        leo.Out.finest(s"args1: ${args1.toString()}")
+        leo.Out.finest(s"rigidHd: ${rigidHd.pretty}")
+        leo.Out.finest(s"rigidHd: ${rigidArgs.toString()}")
+        if (!args10.contains(rigidHd.etaExpand)) return null /*fail*/
+        leo.Out.finest(s"not null here")
+        // variables cannot be polymorphic, calculating projection binding.
+        // newrigidHd: position of bound rigid hd in flex-args-list
+        val newrigidHd = Term.local.mkBound(rigidHd.ty, args10.size - args10.indexOf(rigidHd.etaExpand))
+        val binding = partialBinding(vargen, ty1, newrigidHd)
+        leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
+        val varsAfter = vargen.existingVars
+        val subst = Subst.singleton(idx1, binding)
+        // new equations:
+        val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
+        assert(newVars.size == rigidArgs.size)
+        val newueqs = newUEqs(newVars, args10, rigidArgs.map(_.left.get), depth)
+        ((subst, Subst.id), newueqs)
+      } else {
+        assert(rigidHd.isConstant || (rigidHd.isVariable && Bound.unapply(rigidHd).get._2 > depth.size))
+        // Constants may be polymorphic: Apply types before calculating imitation binding.
+        val rigidArgs0 = partitionArgs(rigidArgs)
+        assert(rigidArgs0._1.isEmpty || rigidHd.ty.isPolyType)
+        val rigidHd0 = if (rigidHd.ty.isPolyType) {
+          leo.Out.finest(s"head symbol is polymorphic")
+          Term.local.mkTypeApp(rigidHd, rigidArgs0._1)}
+        else
+          rigidHd
+        val binding = partialBinding(vargen, ty1, rigidHd0)
+        leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
+        val varsAfter = vargen.existingVars
+        val subst = Subst.singleton(idx1, binding)
+        // new equations:
+        val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
+        assert(newVars.size == rigidArgs0._2.size)
+        val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
+        ((subst, Subst.id), newueqs)
+      }
+    } catch {
+      case _:NoSuchElementException => null
     }
   }
 
-  private final def simplifyArguments(l: Seq[Either[Term,Type]]): Seq[Term] = l.filter(_.isLeft).map(_.left.get)
 
+  private final def newVarsFromGenerator(oldVars: Seq[(Int, Type)], newVars: Seq[(Int, Type)]): Seq[(Int, Type)] = {
+    newVars.takeWhile(elem => !oldVars.contains(elem))
+  }
+  private final def newUEqs(freeVars: Seq[(Int, Type)], boundVarArgs: Seq[Term], otherTermList: Seq[Term], depth: Seq[Type]): Seq[UEq] = {
+    import leo.datastructures.Term.local.{mkTermApp, mkBound, λ}
+    if (freeVars.isEmpty) Nil
+    else {
+      val hd = freeVars.head
+      (λ(depth)(mkTermApp(mkBound(hd._2, hd._1+depth.size), boundVarArgs)).etaExpand, λ(depth)(otherTermList.head).etaExpand) +: newUEqs(freeVars.tail, boundVarArgs, otherTermList.tail, depth)
+    }
+  }
 }
-
 
 trait TypeMatching {
   type UEq = (Type, Type) // Left one is the only one that can be bound, right is considered rigid.
@@ -714,18 +684,23 @@ trait TypeMatching {
 
   /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
   def matching(s: Type, t: Type): Option[TypeSubst]
+  /** Returns a substitution `Some(σ)` such that s_iσ = t_i. Returns `None` if no such `σ` exists.  */
+  def matching(uEqs: Seq[UEq]): Option[TypeSubst]
 }
 object TypeMatching {
   private val impl: TypeMatching = TypeMatchingImpl
 
   /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
   def apply(s: Type, t: Type): Option[TypeMatching#TypeSubst] = impl.matching(s,t)
+  /** Returns a substitution `Some(σ)` such that s_iσ = t_i. Returns `None` if no such `σ` exists.  */
+  def apply(uEqs: Seq[TypeMatching#UEq]): Option[TypeSubst] = impl.matching(uEqs)
 }
 
 object TypeMatchingImpl extends TypeMatching {
   /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
   override def matching(s: Type, t: Type): Option[TypeSubst] = tyDetExhaust(Vector((s,t)), Subst.id)
-
+  /** Returns a substitution `Some(σ)` such that s_iσ = t_i. Returns `None` if no such `σ` exists.  */
+  def matching(uEqs: Seq[UEq]): Option[TypeSubst] = tyDetExhaust(uEqs.toVector, Subst.id)
 
   @tailrec
   final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UEq], unifier: TypeSubst): Option[TypeSubst] = {

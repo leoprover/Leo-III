@@ -108,7 +108,6 @@ package object prover {
   }
   @tailrec final private def typeCheck0(input: Seq[AnnotatedClause], state: LocalGeneralState): Unit = {
     import leo.datastructures.ClauseAnnotation.FromFile
-    import leo.datastructures.{Role_NegConjecture, Role_Axiom}
     import leo.modules.HOLSignature.o
     if (input.nonEmpty) {
       val hd = input.head

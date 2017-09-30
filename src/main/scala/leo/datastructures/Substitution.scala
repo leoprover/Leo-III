@@ -136,10 +136,28 @@ object Subst {
 /** Substitutions as constant-time accessible vectors */
 sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) extends Subst {
 
-  final def normalize: Subst = new RASubst(shift, fts.map({
-    case TermFront(t) => TermFront(t.betaNormalize)
-    case a => a
-  }))
+  final def normalize: Subst = {
+    var i = fts.size-1
+    var newFts: Vector[Front] = Vector.empty
+    var ftsDropped = 0; var finishedDrop = false
+    while(i >= 0 && !finishedDrop) {
+      val ft = fts(i)
+      ft match {
+        case BoundFront(idx) if idx == i+1 => ftsDropped = ftsDropped+1
+          i = i-1
+        case _ => finishedDrop = true
+      }
+    }
+    while(i >= 0) {
+      val ft = fts(i)
+      ft match {
+        case TermFront(t) => newFts = TermFront(t.betaNormalize) +: newFts
+        case x => newFts = x +: newFts
+      }
+      i = i-1
+    }
+    new RASubst(shift-ftsDropped, newFts)
+  }
 
   def comp(other: Subst): Subst = other.isShift match {
     case true if other.shiftedBy == 0 => this
@@ -197,7 +215,7 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
     var newFts: Vector[Front] = Vector.empty
     var i = 0
     while (i < fts.size) {
-      if (domainPred(i)) {
+      if (domainPred(i+1)) {
         newFts = newFts :+ fts(i)
       } else {
         newFts = newFts :+ BoundFront(i+1)

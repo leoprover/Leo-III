@@ -22,10 +22,10 @@ class TermTest  extends  LeoTestSuite {
 
     val occ = t.feasibleOccurrences
     // occurrences should be:
-    // 1. whole term, 2. f and g symbols
-    // 3. the free var Y
-    // 4. nothing else.
+    // 1. whole term,
+    // 2. the free var Y
+    // 3. nothing else (f,g are not proper subterms in the FO sense)
     println("\t"+occ.map(oc => oc._1.pretty(sig) + " (at " + oc._2.map(_.pretty).mkString("+") +  ")").mkString("\n\t"))
-    assert(occ.keys.size == 4)
+    assert(occ.keys.size == 2)
   }
 }
