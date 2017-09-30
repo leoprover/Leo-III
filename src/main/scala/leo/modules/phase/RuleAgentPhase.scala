@@ -30,6 +30,8 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
   override def name: String = "rule_agent_phase"
   override protected final val agents: Seq[Agent] = Seq()
 
+  var parsingTime : Long = 0l
+
   override def execute(): Boolean = {
     if (Configuration.ATPS.nonEmpty) {
       import leo.modules.external.ExternalProver
@@ -47,7 +49,9 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       }
     }
 
+    val start = System.currentTimeMillis()
     val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
+    parsingTime = System.currentTimeMillis() - start
     val remainingInput = effectiveInput(input2, state)
 
     typeCheck(remainingInput, state)

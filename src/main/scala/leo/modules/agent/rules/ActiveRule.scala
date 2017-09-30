@@ -8,8 +8,6 @@ class ActiveRule[A](rule: Rule, val inTypes : DataType[A]*)(cond : () => Boolean
                    (implicit val blackboard : Blackboard) extends Rule {
   override val name: String = s"active(${rule.name})"
 
-  override val moving: Boolean = false
-
   override val outTypes: Seq[DataType[Any]] = Seq()
   private var executed = false // TODO Remove after unregister of activation rule
 

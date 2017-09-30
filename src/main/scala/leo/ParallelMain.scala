@@ -2,12 +2,11 @@ package leo
 
 import java.nio.file.Files
 
-import leo.datastructures.blackboard.{Blackboard, DoneEvent}
+import leo.datastructures.blackboard.{Blackboard, DoneEvent, LockSet}
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.context.Context
 import leo.modules._
-import leo.modules.external.SchedulerTranslationImpl
 import leo.modules.output._
 import leo.modules.phase._
 import leo.modules.interleavingproc._
@@ -16,11 +15,10 @@ import leo.modules.control.{Control, schedulingControl}
 import leo.datastructures.AnnotatedClause
 import leo.modules.agent.multisearch.{Schedule, SchedulingPhase}
 import leo.modules.agent.rules.control_rules._
-import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.control.schedulingControl.ParStrategyControl
 import leo.modules.parsers.CLParameterParser
 import leo.modules.proof_object.CompressProof
-import leo.modules.prover.{RunStrategy, State}
+import leo.modules.prover.State
 
 
 /**
@@ -113,8 +111,8 @@ object ParallelMain {
 
       //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
       resultState match {
-        case s : State[AnnotatedClause] => printResult(s, time)
-        case _ => printResult(resultState, time)
+        case s : State[AnnotatedClause] => printSZSAndProof(s, time)
+        case _ => printSZSAndProof(resultState, time)
       }
     } finally {
       if(!TimeOutProcess.isFinished)
@@ -269,7 +267,9 @@ object ParallelMain {
 
       leo.Out.debug(s"\nUnify :\n ${graph.unifySet.get(graph.Normalize).map(_.pretty(sig)).mkString("\n  ")}")
 
-      printResult(state, time)
+      printSZSAndProof(state, time, time - phase.parsingTime)
+//      scheduler.info()
+//      blackboard.info()
     } finally {
       if(!TimeOutProcess.isFinished)
         TimeOutProcess.killOnly()
@@ -288,47 +288,32 @@ object ParallelMain {
 //    Out.debug(p.description)
   }
 
-  private def printResult(state : GeneralState[AnnotatedClause], time : Double): Unit ={
-    Out.comment(s"No. of loop iterations: 0")
-    Out.comment(s"No. of processed clauses: 0")
-    Out.comment(s"No. of generated clauses: 0")
-    Out.comment(s"No. of forward subsumed clauses: 0")
-    Out.comment(s"No. of backward subsumed clauses: 0")
-    Out.comment(s"No. of subsumed descendants deleted: 0")
-    Out.comment(s"No. of rewrite rules in store: 0")
-    Out.comment(s"No. of other units in store: 0")
-    Out.comment(s"No. of choice functions detected: 0")
-    Out.comment(s"No. of choice instantiations: 0")
-
-    printSZSAndProof(state, time)
-  }
 
 
-  private def printResult(state : State[AnnotatedClause], time : Double): Unit = {
+  private def printSZSAndProof(state : GeneralState[AnnotatedClause], time : Long, timeWOParsing : Long = 0): Unit = {
+    import modules._
+    implicit val sig = state.signature
+    val szsStatus = state.szsStatus
+    Out.output("")
+    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+    if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
+
+    val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
+    Out.comment(s"Time passed: ${time}ms")
+    Out.comment(s"Effective reasoning time: ${timeWOParsing}ms")
+    if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
+    if (proof != null)
+      Out.comment(s"No. of axioms used: ${axiomsInProof(proof).size}")
     Out.comment(s"No. of loop iterations: ${state.noProofLoops}")
     Out.comment(s"No. of processed clauses: ${state.noProcessedCl}")
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
     Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
-    Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
-    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
+    Out.comment(s"No. of rewrite rules in store: 0")
+    Out.comment(s"No. of other units in store: 0")
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
     Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
-
-    printSZSAndProof(state, time)
-  }
-
-
-  private def printSZSAndProof(state : GeneralState[AnnotatedClause], time : Double): Unit = {
-    import modules._
-    implicit val sig = state.signature
-    val szsStatus = state.szsStatus
-    Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
-    if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
-
-    val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
 
     //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
     if (szsStatus == SZS_Theorem && Configuration.PROOF_OBJECT && proof != null) {
@@ -399,4 +384,5 @@ object ParallelMain {
       }
     }
   }
+
 }

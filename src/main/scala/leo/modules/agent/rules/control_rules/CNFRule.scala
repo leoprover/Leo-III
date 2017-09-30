@@ -46,7 +46,7 @@ class CNFRule(inType : DataType[AnnotatedClause],
       r.remove(inType)(oldClause)
       val it = newClauses.iterator
       while(it.hasNext){
-        val simpClause = Control.simp(it.next())
+        val simpClause = Control.shallowSimp(it.next())
         r.insert(outType)(simpClause)
       }
       r

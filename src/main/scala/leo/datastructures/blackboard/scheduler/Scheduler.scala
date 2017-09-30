@@ -6,12 +6,11 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import leo.datastructures.blackboard._
 
-import scala.collection.immutable.TreeMap
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import java.util.concurrent.{Executors, Future, RejectedExecutionException, ThreadFactory, TimeUnit}
 
 import leo.datastructures.blackboard.impl.SZSDataStore
-import leo.datastructures.context.Context
 import leo.modules.SZSException
 import leo.modules.interleavingproc.SZSStatus
 import leo.modules.output.SZS_Error
@@ -71,6 +70,12 @@ trait Scheduler {
     * @return
     */
   def getActiveWork : Int
+
+  /**
+    * Prints time consumption and amount of work
+    * by each agent.
+    */
+  def info() : Unit
 }
 
 
@@ -198,12 +203,12 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         if (endFlag) return // If is ended quit
       }
 
+      try {
       // Blocks until a task is available
       this.synchronized{while (curExec.size > numberOfThreads) this.wait()}
       val tasks = blackboard.getTask
       tasks foreach {case (a, t) => AgentWork.inc(a, t)}
 //      println(tasks)
-      try {
         for ((a, t) <- tasks) {
           this.synchronized {
             curExec.add(t)
@@ -282,11 +287,14 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         val dsIT = blackboard.getDS(result.types.toSet).iterator
         while(dsIT.hasNext){
           val ds = dsIT.next()
+          val start = System.currentTimeMillis()
+          updateAmount += ((ds, updateAmount.getOrElse(ds, 0l)+1l))
           val realUpdate = ds.updateResult(result)
           delta = delta.merge(realUpdate) // TODO if there is no ds for a datatype? Blackboard level solution?
+          updateTime += ((ds, updateTime.getOrElse(ds, 0l) + (System.currentTimeMillis() - start)))
         }
 
-        ActiveTracker.incAndGet(s"Start Filter after finished ${task.name}")
+        ActiveTracker.incAndGet()
         // Data Written, Release Locks before filtering
         task match {
           case ct : CompressTask => ct.tasks.foreach{t =>
@@ -310,7 +318,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           blackboard.filterAll { a => // Informing agents of the changes
             a.interest match {
               case Some(xs) if xs.isEmpty || (xs.toSet & delta.types.toSet).nonEmpty=>
-                ActiveTracker.incAndGet(s"Filter new data\n\t\tin Agent ${a.name}\n\t\tfrom Task ${task.name}")
+                ActiveTracker.incAndGet()
                 exe.submit(new GenFilter(a, delta, task))
                 workCount.incrementAndGet()
               case _ => ()
@@ -322,7 +330,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
         }
       }
 
-      ActiveTracker.decAndGet(s"End Filter after finished ${task.name}")
+      ActiveTracker.decAndGet()
       task match {
         case ct : CompressTask => ct.tasks.foreach(_ => workCount.decrementAndGet())
         case _ =>  workCount.decrementAndGet()
@@ -332,6 +340,79 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
       blackboard.forceCheck()
     }
   }
+
+  private val timeWork : TrieMap[Agent, Long] = TrieMap[Agent, Long]()
+  private val amountWork : TrieMap[Agent, Long] = TrieMap[Agent, Long]()
+  private val timeFilter : TrieMap[Agent, Long] = TrieMap[Agent, Long]()
+  private val amountFilter : TrieMap[Agent, Long] = TrieMap[Agent, Long]()
+  private val updateAmount : TrieMap[DataStore, Long] = TrieMap[DataStore, Long]()
+  private val updateTime : TrieMap[DataStore, Long] = TrieMap[DataStore, Long]()
+
+
+  override def info(): Unit = {
+    val it = timeWork.keys.iterator
+    val sb = new mutable.StringBuilder()
+    sb.append("Agent load:\n")
+    var workTO = 0l
+    var workAO = 0l
+    var filterTO = 0l
+    var filterAO = 0l
+    while(it.hasNext){
+      val agent = it.next()
+      val workT = timeWork.getOrElse(agent, 0l)
+      val workA = amountWork.getOrElse(agent, 0l)
+      val filterT = timeFilter.getOrElse(agent, 0l)
+      val filterA = amountFilter.getOrElse(agent, 0l)
+      val workMean = if(workA == 0) 0.0 else (workT*1.0) / workA
+      val filterMean = if(filterA == 0) 0.0 else (filterT*1.0) / filterA
+      val totalA = filterA + workA
+      val totalT = filterT + workT
+      val totalMean = if(totalA == 0) 0.0 else (totalT*1.0) / totalA
+
+      workTO += workT
+      workAO += workA
+      filterTO += filterT
+      filterAO += filterA
+
+      sb.append(s"  Agent ${agent.name}\n")
+      sb.append(s"    Work : ${workA} tasks, ${workT}ms time, ${workMean}ms mean\n")
+      sb.append(s"    Filter : ${filterA} tasks, ${filterT}ms time, ${filterMean}ms mean\n")
+      sb.append(s"    Total : ${totalA} tasks, ${totalT}ms time, ${totalMean}ms mean\n")
+    }
+
+    val totalAO = filterAO + workAO
+    val totalTO = filterTO + workTO
+    val totalMeanO = if(totalAO == 0) 0.0 else (totalTO*1.0) / totalAO
+    val workMeanO = if(workAO == 0) 0.0 else (workTO*1.0) / workAO
+    val filterMeanO = if(filterAO == 0) 0.0 else (filterTO*1.0) / filterAO
+
+    sb.append(s"------------------------------------------------\n  Overall Agent\n")
+    sb.append(s"    Work : ${workAO} tasks, ${workTO}ms time, ${workMeanO}ms mean\n")
+    sb.append(s"    Filter : ${filterAO} tasks, ${filterTO}ms time, ${filterMeanO}ms mean\n")
+    sb.append(s"    Total : ${totalAO} tasks, ${totalTO}ms time, ${totalMeanO}ms mean\n")
+
+    sb.append("\n\nDataStore load:\n")
+    val it2 = updateTime.keys.iterator
+    var updateTO = 0l
+    var updateAO = 0l
+    while(it2.hasNext){
+      val ds = it2.next()
+      val updateT = updateTime.getOrElse(ds, 0l)
+      val updateA = updateAmount.getOrElse(ds, 0l)
+      updateTO += updateT
+      updateAO += updateA
+      val updateMean = if(updateA == 0) 0.0 else (updateT*1.0) / updateA
+      sb.append(s"  DataStore ${ds.toString}\n")
+      sb.append(s"    Update : ${updateA} tasks, ${updateT}ms time, ${updateMean}ms mean\n")
+    }
+
+    val updateMeanO = if(updateAO == 0) 0.0 else (updateTO*1.0) / updateAO
+    sb.append(s"-----------------------------------------------\n  Overall DataStore\n")
+    sb.append(s"    Update : ${workAO} tasks, ${workTO}ms time, ${workMeanO}ms mean\n")
+
+    leo.Out.comment(sb.toString())
+  }
+
 
   /**
    * The Generic Agent runs an agent on a task and writes the Result Back, such that it can be updated to the blackboard.
@@ -343,7 +424,11 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     override def run()  { // TODO catch error and move outside or at least recover
       try {
 //        println(s"--- ${a.name} ---\n  Start : ${t.pretty}\n-------")
+        amountWork += ((a, amountWork.getOrElse(a, 0l) + 1l))
+        val startTime = System.currentTimeMillis()
         val res = t.run
+        val time = System.currentTimeMillis() - startTime
+        timeWork += ((a, timeWork.getOrElse(a, 0l) + time))
         ExecTask.put(res.immutable, t, a)
 
 //        println(s"--- ${a.name} ---\n  Done : ${t.pretty}\n-------")
@@ -356,7 +441,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           Out.severe(e.getMessage)
           LockSet.releaseTask(t)
           blackboard.finishTask(t)
-          ActiveTracker.decAndGet(s"${a.name} killed with exception.")
+          ActiveTracker.decAndGet()
           blackboard.filterAll(_.filter(DoneEvent))
           scheduler.killAll()
         case e : Exception =>
@@ -365,7 +450,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           e.printStackTrace()
           LockSet.releaseTask(t)
           blackboard.finishTask(t)
-          if(ActiveTracker.decAndGet(s"Agent ${a.name} failed to execute. Commencing to shutdown") <= 0){
+          if(ActiveTracker.decAndGet() <= 0){
             blackboard.forceCheck()
           }
           blackboard.filterAll(_.filter(DoneEvent))
@@ -382,7 +467,11 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
     override def run(): Unit = {  // TODO catch error and move outside or at least recover
       // Sync and trigger on last check
       try {
+        amountFilter += ((a, amountFilter.getOrElse(a, 0l) + 1l))
+        val startTime = System.currentTimeMillis()
         val ts = a.filter(r)
+        val time = System.currentTimeMillis() - startTime
+        timeFilter += ((a, timeFilter.getOrElse(a, 0l) + time))
         blackboard.submitTasks(a, ts.toSet)
       } catch {
         case e : SZSException =>
@@ -395,7 +484,7 @@ private[blackboard] class SchedulerImpl (val numberOfThreads : Int, val blackboa
           leo.Out.finest(e.getCause.toString)
           scheduler.killAll()
       }
-      ActiveTracker.decAndGet(s"Done Filtering data \n\t\t from ${from.name}\n\t\tin Agent ${a.name}") // TODO Remeber the filterSize for the given task to force a check only at the end
+      ActiveTracker.decAndGet() // TODO Remeber the filterSize for the given task to force a check only at the end
       workCount.decrementAndGet()
       blackboard.forceCheck()
 

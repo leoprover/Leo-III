@@ -26,7 +26,6 @@ class ParamodRule(inType : DataType[AnnotatedClause],
   override val observedDataStructures: Seq[DataStore] = Seq(processed)
   override final val inTypes: Seq[DataType[Any]] = Seq(inType)
   override final val outTypes: Seq[DataType[Any]] = Seq(unifyType, doneType, noUnifyType)
-  override final val moving: Boolean = false
 
   override def canApply(r: Delta): Seq[Hint] = {
     // All new selected clauses
@@ -58,12 +57,15 @@ class ParamodRule(inType : DataType[AnnotatedClause],
       val id2 = aClause.id
 
       val r = Result()
-      val it = ParamodControl.allParamods(sClause, aClause).iterator
+      val paras = ParamodControl.allParamods(sClause, aClause)
+      val it = paras.iterator
+      state.incParamod(paras.size)
+
       //    if(it.hasNext){
-      leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(sig)}\n   ${aClause.pretty(sig)}")
+//      leo.Out.debug(s"[Paramod] Apply to\n   ${sClause.pretty(sig)}\n   ${aClause.pretty(sig)}")
       //    }
       if(ParamodHint.freeHint(sClause)){
-        leo.Out.debug(s"[Paramod] Last Paramod. Release lock on ${sClause.pretty(sig)}")
+//        leo.Out.debug(s"[Paramod] Last Paramod. Release lock on ${sClause.pretty(sig)}")
         r.remove(LockType(inType))(sClause)
       }
 
@@ -75,7 +77,7 @@ class ParamodRule(inType : DataType[AnnotatedClause],
           r.insert(unifyType)(c)
         } else {
           var newclauses = Control.cnf(c)
-          newclauses = newclauses.map(cw => Control.simp(Control.liftEq(cw)))
+          newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
           var newIt = newclauses.iterator
           while (newIt.hasNext) {
             val nc = newIt.next
@@ -131,7 +133,6 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
   override val name: String = "paramod_done"
   implicit val sig : Signature = state.signature
   override val inTypes: Seq[DataType[Any]] = Seq(from, blockingType)
-  override val moving: Boolean = true
   override val outTypes: Seq[DataType[Any]] = Seq(unifyType)
   override def canApply(r: Delta): Seq[Hint] = synchronized {
     if(generate.isEmpty){
@@ -154,6 +155,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
           val (a2, m2,c2) = doneElemsArray(j)
           if(a1 > m2 && a2 > m1) {
             res = ParamodControl.allParamods(c1, c2) union res
+            state.incParamod(res.size)
           }
         }
       }
@@ -179,7 +181,7 @@ class ParamodDoneRule(from : DataType[(Long, AnnotatedClause)],
           r.insert(unifyType)(c)
         } else {
           var newclauses = Control.cnf(c)
-          newclauses = newclauses.map(cw => Control.simp(Control.liftEq(cw)))
+          newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
           var newIt = newclauses.iterator
           while (newIt.hasNext) {
             val nc = newIt.next

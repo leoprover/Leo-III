@@ -1,0 +1,21 @@
+Things to do/things to implement/issues
+
++ Only translate once for every prover call (at the moment the clause set
+is translated repeatedly).
+
++ Introduce intermediate layer between reasoning loop and starting point
+  for conjecture splitting (e.g. <=> --> => & <=; /\ --> ...)
+  
++ Talk by A. Reynolds (Dagstuhl): Function synthesis using counterexample generators
+  (see also this mono-call-things), can be used for fragments of conjectures à la
+  ?[F]: ![X...]: P @ (F X) 
+  
++ Improve if-then-else reasoniong, Chad mentioned work by Backes/Brown
+
++ Implement SiNe  
+
++ Rework Let-expressions by parsing them to lambda abstractions
+ 
++ Abstraction-refinement (Konstantin Korovon, see IWIL 2017)
+
++ Guidance by similarity by antiunification?

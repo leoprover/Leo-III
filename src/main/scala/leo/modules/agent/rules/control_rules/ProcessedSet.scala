@@ -7,6 +7,7 @@ import leo.datastructures.blackboard.{DataStore, DataType, Delta, Result}
 import leo.modules.{GeneralState, SZSException}
 import leo.modules.control.Control
 import leo.modules.output.SZS_Error
+import leo.modules.proof_object.CompressProof
 
 import scala.collection.mutable
 
@@ -21,7 +22,7 @@ import scala.collection.mutable
   * Stores the processed Formulas for
   * the algorithm execution in [[leo.modules.control.Control]]
   */
-class ProcessedSet(processedType : DataType[AnnotatedClause])(implicit state : Control.LocalFVState)  extends DataStore{
+class ProcessedSet(val processedType : DataType[AnnotatedClause])(implicit state : Control.LocalFVState)  extends DataStore{
 
   implicit val sig : Signature = state.signature
   private final val set : mutable.Set[AnnotatedClause] = mutable.HashSet[AnnotatedClause]()
@@ -87,7 +88,11 @@ class ProcessedSet(processedType : DataType[AnnotatedClause])(implicit state : C
       }
       else leo.Out.finest(s"% ${c.pretty} was already in the processed set.")
     }
-    leo.Out.debug(s"Processed after update:\n  ${set.map(c => s"(${idMap(c.id)})" ++ c.pretty(state.signature)).mkString("\n  ")}")
+    leo.Out.debug(s"Processed after update:\n  ${set.map(
+      c =>
+        s"(${idMap(c.id)})" ++
+          CompressProof.compressAnnotation(c)(CompressProof.lastImportantStep(CompressProof.stdImportantInferences)).pretty(state.signature)
+    ).mkString("\n  ")}")
 
     delta
   }
@@ -109,4 +114,7 @@ class ProcessedSet(processedType : DataType[AnnotatedClause])(implicit state : C
     case _ => Set()
 
   }
+
+
+  override def toString: String = "ProcessedSet"
 }

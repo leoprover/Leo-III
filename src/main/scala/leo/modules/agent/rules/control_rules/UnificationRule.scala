@@ -31,6 +31,8 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
       var ncl = ins.next()
       if (!Clause.trivial(ncl.cl)) {
         res = new UnificationHint(ncl) +: res
+      } else {
+        res = new DeleteHint(ncl, inType) +: res
       }
     }
     res
@@ -38,7 +40,7 @@ class UnificationRule(inType : DataType[AnnotatedClause],   // DataType of incom
 
   class UnificationHint(sClause: AnnotatedClause) extends Hint {
     override def apply(): Delta = {
-//      println(s"[Unification] on ${sClause.pretty(signature)}\n  > ${nClauses.map(_.pretty(signature)).mkString("\n  > ")}")
+//      println(s"[Unification] on ${sClause.pretty(sig)}")
       val r = Result()
       r.remove(inType)(sClause)
 
@@ -114,7 +116,7 @@ class RewriteRule(inType : DataType[AnnotatedClause],
     override def apply(): Delta = {
       val r = Result()
       r.remove(inType)(oldClause)
-      val simp = Control.simp(newClause)
+      val simp = Control.shallowSimp(newClause)
       r.insert(outType)(simp)
 
       r

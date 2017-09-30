@@ -1,14 +1,14 @@
 package leo.modules.prover
 
 import leo.datastructures._
-import leo.modules.{FVState, FVStateImpl, GeneralState, Proof}
+import leo.modules._
 import leo.modules.external.{Future, TptpProver, TptpResult}
 import leo.modules.prover.State.LastCallStat
 
 /**
   * Created by lex on 20.02.16.
   */
-trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
+trait State[T <: ClauseProxy] extends FVState[T] {
   /////////////////////
   // Unprocessed/processed management
   /////////////////////
@@ -91,32 +91,6 @@ trait State[T <: ClauseProxy] extends FVState[T] with StateStatistics {
   def getTranslations : Int
 }
 
-trait StateStatistics {
-  // Statistics
-  def noProofLoops: Long
-  def incProofLoopCount(): Unit
-  def noProcessedCl: Int
-  def incTrivialCl(): Unit
-  def noTrivialCl: Int
-  def incForwardSubsumedCl(): Unit
-  def incForwardSubsumedCl(n: Int): Unit
-  def noForwardSubsumedCl: Int
-  def incBackwardSubsumedCl(): Unit
-  def incBackwardSubsumedCl(n: Int): Unit
-  def noBackwardSubsumedCl: Int
-  def incDescendantsDeleted(n: Int): Unit
-  def noDescendantsDeleted: Int
-  def incGeneratedCl(by: Int): Unit
-  def noGeneratedCl: Int
-  def incParamod(by: Int): Unit
-  def noParamod: Int
-  def incFactor(by: Int): Unit
-  def noFactor: Int
-  def choiceFunctionCount: Int
-  def choiceInstantiations: Int
-  def incChoiceInstantiations(n: Int): Unit
-}
-
 object State {
   def fresh[T <: ClauseProxy](sig: Signature): State[T] = new StateImpl[T](sig)
 
@@ -194,10 +168,10 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
       leo.Out.trace(s"[###] Selecting with priority $cur_prio: element $cur_weight")
       leo.Out.trace(s"[###] mpq.priorities ${mpq.priorityCount}")
       if (cur_weight > prio_weights(cur_prio)-1) {
-        leo.Out.trace(s"[###] limit exceeded (limit: ${prio_weights(cur_prio)}) (cur_weight: ${cur_weight})")
+        leo.Out.trace(s"[###] limit exceeded (limit: ${prio_weights(cur_prio)}) (cur_weight: $cur_weight)")
         cur_weight = 0
         cur_prio = (cur_prio + 1) % mpq.priorityCount
-        leo.Out.trace(s"[###] cur_prio set to ${cur_prio}")
+        leo.Out.trace(s"[###] cur_prio set to $cur_prio")
       }
       val result = mpq.dequeue(cur_prio)
       cur_weight = cur_weight+1
@@ -355,42 +329,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
       queuedExtCalls0 = queuedExtCalls0 + (prover -> Vector(problem))
     }
   }
-
-  // Statistics
-  private var generatedCount: Int = 0
-  private var loopCount: Int = 0
-  private var rewriteCount: Long = 0L
-  private var trivialCount: Int = 0
-  private var forwardSubsumedCount: Int = 0
-  private var backwardSubsumedCount: Int = 0
-  private var descendantsDeleted: Int = 0
-  private var factorCount: Int = 0
-  private var paramodCount: Int = 0
-  private var choiceInstantiations0: Int = 0
-
-  final def noProofLoops: Long = loopCount
-  final def noProcessedCl: Int = processed.size
-  final def noGeneratedCl: Int = generatedCount
-  final def noTrivialCl: Int = trivialCount
-  final def noParamod: Int = paramodCount
-  final def noFactor: Int = factorCount
-  final def noForwardSubsumedCl: Int = forwardSubsumedCount
-  final def noBackwardSubsumedCl: Int = backwardSubsumedCount
-  final def noDescendantsDeleted: Int = descendantsDeleted
-  final def choiceInstantiations: Int = choiceInstantiations0
-
-  final def incProofLoopCount(): Unit = {loopCount += 1}
-  final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
-  final def incTrivialCl(): Unit = {trivialCount += 1}
-  final def incParamod(by: Int): Unit = {paramodCount += by}
-  final def incFactor(by: Int): Unit = {factorCount += by}
-  final def incForwardSubsumedCl(): Unit = {forwardSubsumedCount += 1}
-  final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
-  final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
-  final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
-  final def incDescendantsDeleted(n: Int): Unit = {descendantsDeleted += n}
-  final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
-
+  
   // Pretty
   override final def pretty: String = s"State SZS: ${szsStatus.pretty}, #processed: $noProcessedCl"
 }

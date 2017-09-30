@@ -7,6 +7,33 @@ import leo.modules.prover.{FVIndex, RunStrategy}
 
 import scala.collection.mutable
 
+trait StateStatistics {
+  // Statistics
+  def noProofLoops: Long
+  def incProofLoopCount(): Unit
+  def noProcessedCl: Int
+  def diffProcessedCl(n : Int) : Unit
+  def incTrivialCl(): Unit
+  def noTrivialCl: Int
+  def incForwardSubsumedCl(): Unit
+  def incForwardSubsumedCl(n: Int): Unit
+  def noForwardSubsumedCl: Int
+  def incBackwardSubsumedCl(): Unit
+  def incBackwardSubsumedCl(n: Int): Unit
+  def noBackwardSubsumedCl: Int
+  def incDescendantsDeleted(n: Int): Unit
+  def noDescendantsDeleted: Int
+  def incGeneratedCl(by: Int): Unit
+  def noGeneratedCl: Int
+  def incParamod(by: Int): Unit
+  def noParamod: Int
+  def incFactor(by: Int): Unit
+  def noFactor: Int
+  def choiceFunctionCount: Int
+  def choiceInstantiations: Int
+  def incChoiceInstantiations(n: Int): Unit
+}
+
 /**
   *
   * Abstract state of the prover.
@@ -15,7 +42,7 @@ import scala.collection.mutable
   * and important details from the original problem file
   *
   */
-trait GeneralState[T <: ClauseProxy] extends Pretty {
+trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def copyGeneral: GeneralState[T]
 
   def conjecture: T
@@ -157,6 +184,43 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   override def resetCash(): Unit = renamingCash.clear()
 
   override def pretty: String = s"State (conj = ${conjecture0.pretty(sig)} , strategy = ${runStrategy0.pretty})"
+
+  // Statistics
+  private var generatedCount: Int = 0
+  private var loopCount: Int = 0
+  private var rewriteCount: Long = 0L
+  private var trivialCount: Int = 0
+  private var forwardSubsumedCount: Int = 0
+  private var backwardSubsumedCount: Int = 0
+  private var descendantsDeleted: Int = 0
+  private var factorCount: Int = 0
+  private var paramodCount: Int = 0
+  private var choiceInstantiations0: Int = 0
+  private var processedSize : Int = 0
+
+  final def noProofLoops: Long = loopCount
+  def noProcessedCl: Int = processedSize
+  final def noGeneratedCl: Int = generatedCount
+  final def noTrivialCl: Int = trivialCount
+  final def noParamod: Int = paramodCount
+  final def noFactor: Int = factorCount
+  final def noForwardSubsumedCl: Int = forwardSubsumedCount
+  final def noBackwardSubsumedCl: Int = backwardSubsumedCount
+  final def noDescendantsDeleted: Int = descendantsDeleted
+  final def choiceInstantiations: Int = choiceInstantiations0
+
+  final def diffProcessedCl(n : Int) : Unit = {processedSize += n}
+  final def incProofLoopCount(): Unit = {loopCount += 1}
+  final def incGeneratedCl(by: Int): Unit = {generatedCount += by}
+  final def incTrivialCl(): Unit = {trivialCount += 1}
+  final def incParamod(by: Int): Unit = {paramodCount += by}
+  final def incFactor(by: Int): Unit = {factorCount += by}
+  final def incForwardSubsumedCl(): Unit = {forwardSubsumedCount += 1}
+  final def incBackwardSubsumedCl(): Unit = {backwardSubsumedCount += 1}
+  final def incForwardSubsumedCl(n: Int): Unit = {forwardSubsumedCount += n}
+  final def incBackwardSubsumedCl(n: Int): Unit = {backwardSubsumedCount += n}
+  final def incDescendantsDeleted(n: Int): Unit = {descendantsDeleted += n}
+  final def incChoiceInstantiations(n: Int): Unit = {choiceInstantiations0 += n}
 }
 
 
