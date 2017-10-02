@@ -170,6 +170,7 @@ object SeqLoop {
           state.setSZSStatus(SZS_Timeout)
         } else if (!state.unprocessedLeft) {
           loop = false
+          state.setSZSStatus(SZS_GaveUp)
         } else {
           // No cancel, do reasoning step
           val extRes = Control.checkExternalResults(state)

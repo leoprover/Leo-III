@@ -55,7 +55,7 @@ object ExternalProver {
       case "alt-ergo" => createAltErgo(path)
       case "vampire" => createVampire(path)
       case "iprover" => createIProver(path)
-      case "e" => createEProver(path)
+      case "e" | "eprover" => createEProver(path)
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
