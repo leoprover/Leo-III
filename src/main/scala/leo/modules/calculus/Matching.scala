@@ -3,6 +3,7 @@ package leo.modules.calculus
 import scala.annotation.tailrec
 
 import leo.datastructures.{Term, Type, Subst, NDStream, BFSAlgorithm, SearchConfiguration}
+import leo.modules.myAssert
 
 trait Matching {
   type UEq = (Term, Term); type UTEq = (Type, Type)
@@ -506,13 +507,20 @@ object HOPatternMatching extends Matching {
       val t0 = t.substitute(Subst.id, initialTypeSubst0).etaExpand
       val s0 = s.substitute(Subst.id, initialTypeSubst0).etaExpand
       val matchResult = match0(Vector((t0,s0)), initialTypeSubst0, vargen)
-      if (matchResult.isDefined) Seq(matchResult.get)
-      else Iterable.empty
+      if (matchResult.isDefined) {
+        leo.Out.finest(s"Matching succeeded!")
+        Seq(matchResult.get)
+      } else {
+        leo.Out.finest(s"Matching failed!")
+        Iterable.empty
+      }
+
     }
   }
 
   /** Wrap up the matching result with the initial type substitution and return as Option. */
   private final def match0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[Result] = {
+    leo.Out.finest(s"match0: ${ueqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
     val matcher = match1(ueqs, vargen, Subst.id, Subst.id)
     if (matcher.isDefined)
       Some((matcher.get._1.normalize, initialTypeSubst.comp(matcher.get._2).normalize))
@@ -538,6 +546,8 @@ object HOPatternMatching extends Matching {
         val l = l0.substitute(partialMatcher, partialTyMatcher).etaExpand
         val r = r0.substitute(partialMatcher, partialTyMatcher).etaExpand
         leo.Out.trace(s"solve: ${l.pretty} = ${r.pretty}")
+        myAssert(Term.wellTyped(l))
+        myAssert(Term.wellTyped(r))
         // take off the lambdas
         val (leftBody, leftAbstractions) = collectLambdas(l)
         val (rightBody, rightAbstractions) = collectLambdas(r)
@@ -563,6 +573,8 @@ object HOPatternMatching extends Matching {
                 else {
                   val partialMatchingResult = result._1
                   val newUeqs = result._2
+                  leo.Out.finest(s"flex-rigid result matcher: ${partialMatchingResult._1.pretty}")
+                  leo.Out.finest(s"flex-rigid result new unsolved: ${newUeqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
                   match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1), partialTyMatcher.comp(partialMatchingResult._2))
                 }
               }
@@ -620,13 +632,7 @@ object HOPatternMatching extends Matching {
       val varsBefore = vargen.existingVars
 
       if (rigidHd.isVariable && Bound.unapply(rigidHd).get._2 <= depth.size) {
-        leo.Out.finest(s"rigidHd isVariable")
-        leo.Out.finest(s"idx1: $idx1")
-        leo.Out.finest(s"args1: ${args1.toString()}")
-        leo.Out.finest(s"rigidHd: ${rigidHd.pretty}")
-        leo.Out.finest(s"rigidHd: ${rigidArgs.toString()}")
         if (!args10.contains(rigidHd.etaExpand)) return null /*fail*/
-        leo.Out.finest(s"not null here")
         // variables cannot be polymorphic, calculating projection binding.
         // newrigidHd: position of bound rigid hd in flex-args-list
         val newrigidHd = Term.local.mkBound(rigidHd.ty, args10.size - args10.indexOf(rigidHd.etaExpand))
@@ -649,13 +655,13 @@ object HOPatternMatching extends Matching {
           Term.local.mkTypeApp(rigidHd, rigidArgs0._1)}
         else
           rigidHd
-        val binding = partialBinding(vargen, ty1, rigidHd0)
+        val binding = partialBinding(vargen, ty1, rigidHd0.lift(ty1.funParamTypes.size))
         leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
         val varsAfter = vargen.existingVars
         val subst = Subst.singleton(idx1, binding)
         // new equations:
         val newVars = newVarsFromGenerator(varsBefore, varsAfter).reverse // reverse since highest should be the last
-        assert(newVars.size == rigidArgs0._2.size)
+        assert(newVars.size == rigidArgs0._2.size) // FIXME
         val newueqs = newUEqs(newVars, args10, rigidArgs0._2, depth)
         ((subst, Subst.id), newueqs)
       }

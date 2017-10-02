@@ -16,7 +16,7 @@ object Subsumption extends Subsumption {
 object TrivialSubsumption extends Subsumption {
   def subsumes(cl1: Clause, cl2: Clause): Boolean = {
     val (lits1, lits2) = (cl1.lits, cl2.lits)
-    if (lits1.length <= lits2.length) {
+    if (lits1.length < lits2.length) {
       lits1.forall(l1 => lits2.exists(l2 => l1.polarity == l2.polarity && l1.unsignedEquals(l2)))
     } else {
       false
@@ -33,12 +33,23 @@ abstract class AbstractMatchingSubsumption extends Subsumption {
     if (lits1.length < lits2.length) {
       val liftedLits1 = lits1.map(_.substitute(Subst.shift(cl2.maxImplicitlyBound)))
       val vargen = freshVarGen(Clause(liftedLits1 ++ lits2))
-      subsumes0(vargen, liftedLits1, lits2, Vector.empty)
+      val result = subsumes0(vargen, liftedLits1.toVector, lits2.toVector, Vector.empty)
+      if (result) {
+        leo.Out.finest(s"subsumes: true")
+        true
+      } else {
+        leo.Out.finest(s"subsumes: false")
+        false
+      }
     } else
       false
   }
 
   private final def subsumes0(vargen: FreshVarGen, lits1: Seq[Literal], lits2: Seq[Literal], visited: Seq[Literal]): Boolean = {
+    leo.Out.finest(s"vargen: ${vargen.existingVars.toString()}")
+    leo.Out.finest(s"lits1: ${lits1.map(_.pretty).mkString(",")}")
+    leo.Out.finest(s"lits2: ${lits2.map(_.pretty).mkString(",")}")
+    leo.Out.finest(s"visited: ${visited.map(_.pretty).mkString(",")}")
     if (lits1.isEmpty) true
     else {
       if (lits2.isEmpty) false

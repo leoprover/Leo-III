@@ -3,6 +3,7 @@ package leo.datastructures.impl
 import leo.datastructures.Position.HeadPos
 import leo.datastructures.Type._
 import leo.datastructures._
+import leo.modules.myAssert
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
@@ -218,7 +219,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
     else if (hd.ty.isPolyType) {
       // drop all prefix-type arguments, get rest
       val (tyArgs, restArgs) = getFirstNTyArgs(args, hd.ty.polyPrefixArgsCount)
-      assert(tyArgs.size == hd.ty.polyPrefixArgsCount)
+      myAssert(tyArgs.size == hd.ty.polyPrefixArgsCount)
       // Now do the same as above for function types, but with typeBody as functional type
       // and with restArgs as Args to count/expand
       val typeBody = hd.ty.instantiate(tyArgs)
@@ -1064,7 +1065,7 @@ object TermImpl extends TermBank {
     hd
   }
   @inline final private def mkBoundAtom1(ty: Type, scope: Int): Head = {
-    assert(boundAtoms.contains(ty))
+    myAssert(boundAtoms.contains(ty))
     val inner = boundAtoms(ty)
     val hd = BoundIndex(ty, scope)
     inner += (scope -> WeakReference(hd))
@@ -1091,7 +1092,7 @@ object TermImpl extends TermBank {
   }
   @inline final private def mkRoot1(hd: Head, args: Spine): TermImpl = {
     val root = Root(hd, args)
-    assert(roots.contains(hd))
+    myAssert(roots.contains(hd))
     val inner = roots(hd)
     inner += (args -> WeakReference(root))
     root._sharing = true
@@ -1117,7 +1118,7 @@ object TermImpl extends TermBank {
   }
   @inline final private def mkRedex1(left: Term, args: Spine): Redex = {
     val redex = Redex(left, args)
-    assert(redexes.contains(left))
+    myAssert(redexes.contains(left))
     val inner = redexes(left)
     inner += (args -> WeakReference(redex))
     redex._sharing = true
@@ -1143,7 +1144,7 @@ object TermImpl extends TermBank {
   }
   @inline final private def mkTermAbstr1(ty: Type, body: Term): TermImpl = {
     val abs = TermAbstr(ty, body)
-    assert(termAbstractions.contains(body))
+    myAssert(termAbstractions.contains(body))
     val inner = termAbstractions(body)
     inner += (ty -> WeakReference(abs))
     abs._sharing = true
@@ -1184,7 +1185,7 @@ object TermImpl extends TermBank {
   }
   @inline final private def mkSpineCons1(term: Either[Term, Type], tail: Spine): Spine = {
     val sp = if (term.isLeft) App(term.left.get, tail) else TyApp(term.right.get, tail)
-    assert(spines.contains(term))
+    myAssert(spines.contains(term))
     val inner = spines(term)
     inner += (tail -> WeakReference(sp))
     sp

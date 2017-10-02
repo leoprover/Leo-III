@@ -229,8 +229,9 @@ object Literal {
 
   /** Compare two literals of same polarity*/
   private final def cmpSamePol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
-    assert(a.polarity == b.polarity)
-    assert(a != b) // This should have been catched in `compare`
+    import leo.modules.myAssert
+    myAssert(a.polarity == b.polarity)
+    myAssert(a != b) // This should have been catched in `compare`
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 
@@ -312,7 +313,8 @@ object Literal {
   /** Compare two literals of different polarity.
     * `a` must have positive polarity, `b` must have negative polarity.*/
   private final def cmpDiffPol(a: Literal, b: Literal)(sig: Signature): CMP_Result = {
-    assert(a.polarity); assert(!b.polarity)
+    import leo.modules.myAssert
+    myAssert(a.polarity); assert(!b.polarity)
     val (al,ar) = (a.left,a.right)
     val (bl,br) = (b.left,b.right)
 

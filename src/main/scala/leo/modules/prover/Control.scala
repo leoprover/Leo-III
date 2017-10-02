@@ -376,16 +376,16 @@ package inferenceControl {
               leo.Out.finest(s"intoClauseSubst: ${intoClauseSubst.pretty(sig)}")
               leo.Out.finest(s"intoLitSubst: ${intoLitSubst.pretty(sig)}")
               leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
-              assert(Clause.wellTyped(intoClauseSubst))
-              assert(Literal.wellTyped(intoLitSubst))
+              myAssert(Clause.wellTyped(intoClauseSubst))
+              myAssert(Literal.wellTyped(intoLitSubst))
               if (Configuration.isSet("noOrdCheck2") || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
                 val restrictedTermSubst = termSubst.restrict(i => withWrapper.cl.implicitlyBound.exists(_._1 == i))
                 val withClauseSubst = withWrapper.cl.substitute(restrictedTermSubst, typeSubst)
                 leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
                 val withLitSubst = withClauseSubst(withIndex)
                 leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
-                assert(Clause.wellTyped(withClauseSubst))
-                assert(Literal.wellTyped(withLitSubst))
+                myAssert(Clause.wellTyped(withClauseSubst))
+                myAssert(Literal.wellTyped(withLitSubst))
                 if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
 //                  if (tyUnifiedResult.id == 153) System.exit(0)
                   AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
@@ -1865,11 +1865,12 @@ package redundancyControl {
       * [[leo.modules.calculus.Subsumption]]) or might call indexing pre-filters and then check those results
       * for the subsumption relation. */
     final def isSubsumed(cl: AnnotatedClause, by: Set[AnnotatedClause])(implicit state : Control.LocalFVState): Boolean = {
+      Out.trace(s"[Subsumption] Test [${cl.id}] for subsumption")
       // Current implementation checks feature-vector index for a pre-filter.
       // testFowardSubsumptionFVI also applies the "indeed subsumes"-relation check internally.
       val res = testForwardSubsumptionFVI(cl)
       if (res.nonEmpty)
-        Out.debug(s"[Subsumption]: [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
+        Out.debug(s"[Subsumption] [${cl.id}] subsumed by ${res.map(_.id).mkString(",")}")
       res.nonEmpty
     }
 
@@ -1934,8 +1935,12 @@ package redundancyControl {
     }
 
     /** Check for subsumption of cl by any clause in `withSet` by subsumption rule in [[leo.modules.calculus.Subsumption]]. */
-    private final def testSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
-    withSet.filter(cw => Subsumption.subsumes(cw.cl, cl.cl))
+    private final def testSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
+      withSet.filter {cw =>
+        leo.Out.finest(s"[Subsumption] Test subsumes(${cw.id},${cl.id})")
+        Subsumption.subsumes(cw.cl, cl.cl)}
+    }
+
     /** Check for subsumption of any clause in `withSet` by `cl` by subsumption rule in [[leo.modules.calculus.Subsumption]]. */
     private final def testBackwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
     withSet.filter(cw => Subsumption.subsumes(cl.cl, cw.cl))

@@ -105,6 +105,9 @@ object SeqLoop {
         Out.trace(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
         e.printStackTrace()
         throw e
+      case e:Error =>
+        Out.trace(s"Signature used:\n${leo.modules.signatureAsString(sig)}")
+        throw e
     } finally {
       if (state.externalProvers.nonEmpty)
         Control.killExternals()

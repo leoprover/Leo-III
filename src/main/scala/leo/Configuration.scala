@@ -38,7 +38,6 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_AGING = "aging"
   private val PARAM_NOCHOICE = "nochoice"
   private val PARAM_NOAXIOMSELECTION = "noaxiomselection"
-  private val PARAM_ATPCHECKINTERVAL = "atp-check-interval"
   private val PARAM_ATPCALLINTERVAL = "atp-call-interval"
   private val PARAM_ATPMAXJOBS = "atp-max-jobs"
   private val RENAMING = "renaming"
