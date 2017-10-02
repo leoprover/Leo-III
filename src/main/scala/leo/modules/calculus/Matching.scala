@@ -655,7 +655,7 @@ object HOPatternMatching extends Matching {
           Term.local.mkTypeApp(rigidHd, rigidArgs0._1)}
         else
           rigidHd
-        val binding = partialBinding(vargen, ty1, rigidHd0.lift(ty1.funParamTypes.size))
+        val binding = partialBinding(vargen, ty1, rigidHd0.lift(ty1.funParamTypes.size - depth.size))
         leo.Out.finest(s"binding: $idx1 -> ${binding.pretty}")
         val varsAfter = vargen.existingVars
         val subst = Subst.singleton(idx1, binding)
