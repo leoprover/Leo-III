@@ -1,0 +1,61 @@
+#!/bin/bash
+
+usage="$(basename "$0") [-h] [-i file] [-d dir] [-o filename] -- package leo3 to a starexec archive
+
+where:
+    -h  show this help text
+    -i  set the path to the Leo-III jar archive (default: ../bin/leo3.jar)
+    -d  set the output directory where the archive will be created (default: .)
+    -o  set the output file name (default: 'leo3_starexec.tar.gz')"
+
+outdir=$(realpath ".")
+outfile="leo3_starexec.tar.gz"
+infile=$(realpath "../bin/leo3.jar")
+
+starexec_run_default="#!/bin/bash
+
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p"
+
+while getopts ':hi:o:d:' option; do
+  case "$option" in
+    h) echo "$usage"
+       exit
+       ;;
+    d) echo "$OPTARG"
+       outdir=$(realpath "$OPTARG")
+       ;;
+    o) echo "$OPTARG"
+       outfile="$OPTARG"
+       ;;
+    i) echo "$OPTARG"
+       infile=$(realpath "$OPTARG")
+       ;;
+    :) printf "missing argument for -%s\n" "$OPTARG" >&2
+       echo "$usage" >&2
+       exit 1
+       ;;
+   \?) printf "illegal option: -%s\n" "$OPTARG" >&2
+       echo "$usage" >&2
+       exit 1
+       ;;
+  esac
+done
+
+if [ ! -f "$infile" ]; then
+    printf "ERROR: Leo-III jar not found at '$infile'. Be sure to build Leo-III first using 'make' or adjust the given file path.\n" >&2
+    exit 1
+fi
+if [ ! -w "$outdir" ]; then
+    printf "ERROR: Output directory '$outdir' is not writable. Check that it actually exists and is writable.\n" >&2
+    exit 1
+fi 
+
+tmpdir=$(mktemp -d)
+mkdir "$tmpdir/bin"
+echo "$starexec_run_default" > "$tmpdir/bin/starexec_run_default"
+chmod +x "$tmpdir/bin/starexec_run_default"
+infilepath=$(dirname "$infile")
+infilefilename=$(basename "$infile")
+rm -f "$outdir/$outfile"
+tar -cf "$outdir/$outfile" -C "$infilepath" "$infilefilename"
+tar -rf "$outdir/$outfile" -C "$tmpdir/" "bin/starexec_run_default"
