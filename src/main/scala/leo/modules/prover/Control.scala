@@ -379,7 +379,7 @@ package inferenceControl {
               leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
               myAssert(Clause.wellTyped(intoClauseSubst))
               myAssert(Literal.wellTyped(intoLitSubst))
-              if (Configuration.isSet("noOrdCheck2") || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) {
+              if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
                 val restrictedTermSubst = termSubst.restrict(i => withWrapper.cl.implicitlyBound.exists(_._1 == i))
                 val withClauseSubst = withWrapper.cl.substitute(restrictedTermSubst, typeSubst)
                 leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
@@ -444,7 +444,7 @@ package inferenceControl {
     final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
       import Literal.{leftSide, rightSide, selectSide}
 
-      private val maxLits = cl.maxLits
+      private val maxLits = cl.maxLits union cl.negLits //if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
       private var litIndex = 0
       private var lits = cl.lits
       private var side = leftSide
