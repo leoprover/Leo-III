@@ -6,16 +6,17 @@ where:
     -h  show this help text
     -i  set the path to the Leo-III jar archive (default: ../bin/leo3.jar)
     -d  set the output directory where the archive will be created (default: .)
-    -o  set the output file name (default: 'leo3_starexec.tar.gz')
-    -e  include executables of given external provers (default: none)"
+    -o  set the output file name, without extension (default: 'leo3_starexec')
+    -e  include specified executables of external provers (default: none)"
 
 outdir=$(realpath ".")
-outfile="leo3_starexec.tar.gz"
+outfile="leo3_starexec"
 infile=$(realpath "../bin/leo3.jar")
 externals=()
 starexec_run_default="#!/bin/bash
 
 java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p"
+description=$(git rev-parse HEAD) 
 
 while getopts ':hi:o:d:e:' option; do
   case "$option" in
@@ -43,6 +44,7 @@ done
 
 if [ ! -f "$infile" ]; then
     printf "ERROR: Leo-III jar not found at '$infile'. Be sure to build Leo-III first using 'make' or adjust the given file path.\n" >&2
+    echo "$usage" >&2
     exit 1
 fi
 if [ ! -w "$outdir" ]; then
@@ -53,23 +55,24 @@ fi
 tmpdir=$(mktemp -d)
 mkdir "$tmpdir/bin"
 echo "$starexec_run_default" > "$tmpdir/bin/starexec_run_default"
+echo "$description" > "$tmpdir/starexec_description.txt"
 chmod +x "$tmpdir/bin/starexec_run_default"
 infilepath=$(dirname "$infile")
 infilefilename=$(basename "$infile")
-rm -f "$outdir/$outfile"
-tar -cf "$outdir/$outfile" -C "$infilepath" "$infilefilename"
-tar -rf "$outdir/$outfile" -C "$tmpdir/" "bin/starexec_run_default"
-
+rm -f "$outdir/$outfile.tar.gz"
+tar -cf "$tmpdir/$outfile.tar" -C "$infilepath" "$infilefilename"
+tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_default"
+tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "starexec_description.txt"
 for prover in "${externals[@]}"
 do
 	proverpath=$(dirname "$prover")
   proverfilename=$(basename "$prover")
-  tar -rf "$outdir/$outfile" --transform 's,^,externals/,' -C "$proverpath" "$proverfilename"
+  tar -rf "$tmpdir/$outfile.tar" --transform 's,^,externals/,' -C "$proverpath" "$proverfilename"
   echo "#!/bin/bash
 
-java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p --atp $proverfilename=externals/$proverfilename" > "$tmpdir/bin/starexec_run_$proverfilename"
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p --atp $proverfilename=../externals/$proverfilename" > "$tmpdir/bin/starexec_run_$proverfilename"
   chmod +x "$tmpdir/bin/starexec_run_$proverfilename"
-  tar -rf "$outdir/$outfile" -C "$tmpdir/" "bin/starexec_run_$proverfilename"
+  tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_$proverfilename"
 done
-
+cat "$tmpdir/$outfile.tar" | gzip > "$outdir/$outfile.tar.gz"
 rm -r "$tmpdir"
