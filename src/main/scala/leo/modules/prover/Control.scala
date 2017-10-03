@@ -444,7 +444,7 @@ package inferenceControl {
     final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
       import Literal.{leftSide, rightSide, selectSide}
 
-      private val maxLits = if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
+      private val maxLits = cl.maxLits union cl.negLits //if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
       private var litIndex = 0
       private var lits = cl.lits
       private var side = leftSide
