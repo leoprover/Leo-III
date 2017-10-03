@@ -368,7 +368,7 @@ package inferenceControl {
             leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
 
 
-            if (Configuration.isSet("noOrdCheck1") || cmpResult == CMP_LT) {
+            if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
               val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
               val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, typeSubst)
               val intoLitSubst = intoClauseSubst(intoIndex)
