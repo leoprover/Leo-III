@@ -38,7 +38,8 @@ object Control {
   @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(sig)
   @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
-  @inline final def rewriteSimp(cl: AnnotatedClause, rewriteRules: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl, rewriteRules)(sig)
+  @inline final def detectUnit(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = inferenceControl.SimplificationControl.detectUnit(cl)
+  @inline final def rewriteSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl)(state)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
   @inline final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = inferenceControl.SimplificationControl.detectAC(cl)(sig)
@@ -1594,7 +1595,26 @@ package inferenceControl {
     }
     final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(shallowSimp)
 
-    final def rewriteSimp(cw: AnnotatedClause, rules0: Set[AnnotatedClause])(implicit sig: Signature): AnnotatedClause = {
+    final def detectUnit(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = {
+      if (Clause.unit(cl.cl)) {
+        if (Clause.rewriteRule(cl.cl)) {
+          if (cl.cl.implicitlyBound.isEmpty) {
+            state.addGroundRewriteRule(cl)
+            Out.trace(s"[SeqLoop] Clause ${cl.id} added as ground rewrite rule.")
+          } else {
+            state.addNonGroundRewriteRule(cl)
+            Out.trace(s"[SeqLoop] Clause ${cl.id} added as non-ground rewrite rule.")
+          }
+        } else {
+          Out.trace(s"[SeqLoop] Clause ${cl.id} added as (non-rewrite) unit.")
+          state.addNonRewriteUnit(cl)
+        }
+      }
+    }
+
+    final def rewriteSimp(cw: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+      implicit val sig: Signature = state.signature
+      val rules0 = state.groundRewriteRules ++ state.nonGroundRewriteRules
       val plainSimp = simp(cw)
       Out.trace(s"[Rewriting] Processing ${cw.id}")
       Out.finest(s"[Rewriting] Rules existent? ${rules0.nonEmpty}")
@@ -1603,28 +1623,66 @@ package inferenceControl {
         plainSimp
       }
       else {
-        // get all rewrite rules as literals
-        val rules: Set[Literal] = rules0.map(_.cl.lits.head)
-        myAssert(rules.forall(_.oriented))
+        val rewriteTable: Map[Term, Term] = rules0.map(cl => (cl.cl.lits.head.left, cl.cl.lits.head.right)).toMap
+        val searchset = rewriteTable.keySet
 
-        // search in all literals of cw for instances of a rule's left side
-        val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
-        while (intoConfigurationIt.hasNext) {
-          val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-          val rewriteRulesIt = rules.iterator
-          while (rewriteRulesIt.hasNext) {
-            val rewriteRule = rewriteRulesIt.next()
-            val withTerm = rewriteRule.left
-            val replaceBy = rewriteRule.right
-            leo.Out.finest(s"[Rewriting] check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayMatch(withTerm, intoTerm)}")
-            // TODO What to do with multiple rewrites on same (sub)position?
-          }
+        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(lit, rewriteTable, searchset)(sig))
+        val newCl = Clause(newLits)
+        val (result,x) = if (plainSimp.cl == newCl) (cw,true) else {
+          leo.Out.finest(s"Rewriting happend!")
+          (AnnotatedClause(newCl, InferredFrom(RewriteSimp, cw), cw.properties),false)
         }
-        val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
-        val result = if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
-        else plainSimp
-        Out.debug(s"[RewriteSimp] Result: ${result.pretty(sig)}")
-        result
+        val result2 = shallowSimp(result)
+
+
+//        // get all rewrite rules as literals
+//        val rules: Set[Literal] = rules0.map(_.cl.lits.head)
+//        myAssert(rules.forall(_.oriented))
+//
+//        // search in all literals of cw for instances of a rule's left side
+//        val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
+//        while (intoConfigurationIt.hasNext) {
+//          val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
+//          val rewriteRulesIt = rules.iterator
+//          while (rewriteRulesIt.hasNext) {
+//            val rewriteRule = rewriteRulesIt.next()
+//            val withTerm = rewriteRule.left
+//            val replaceBy = rewriteRule.right
+//            leo.Out.finest(s"[Rewriting] check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayMatch(withTerm, intoTerm)}")
+//            // TODO What to do with multiple rewrites on same (sub)position?
+//          }
+//        }
+//        val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
+//        val result = if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
+//        else plainSimp
+        Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
+        result2
+      }
+    }
+    private def rewriteLit(lit: Literal, rewriteTable: Map[Term, Term], searchset: Set[Term])(sig: Signature): Literal = {
+      if (lit.equational) Literal.mkOrdered(rewriteTerm(lit.left, rewriteTable, searchset)(sig), rewriteTerm(lit.right, rewriteTable, searchset)(sig), lit.polarity)(sig)
+      else Literal.apply(rewriteTerm(lit.left, rewriteTable, searchset)(sig), lit.polarity)
+    }
+    private def rewriteTerm(term: Term, rewriteTable: Map[Term, Term], searchset: Set[Term])(sig: Signature): Term = {
+      import leo.datastructures.Term._
+      import leo.datastructures.partitionArgs
+
+      if (searchset.contains(term)) {
+        val res = rewriteTable(term)
+        leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${res.pretty(sig)}")
+        res
+      } else {
+        term match {
+          case Bound(_,_) | Symbol(_) => term
+          case hd ∙ args =>
+            val rewrittenHd = rewriteTerm(hd, rewriteTable, searchset)(sig)
+            val (tyArgs, termArgs) = partitionArgs(args)
+
+            val res0 = Term.mkTypeApp(hd, tyArgs)
+            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(t, rewriteTable, searchset)(sig)))
+          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(body, rewriteTable, searchset)(sig))
+          case _ => term
+        }
       }
     }
 

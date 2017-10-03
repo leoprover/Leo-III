@@ -105,7 +105,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
   private def commonFilter(c : InterleavingLoop.A) : Option[StateView[InterleavingLoop.A]] = {
 
     // Simplify and rewrite
-    var cur = Control.rewriteSimp(c, state.state.rewriteRules)
+    var cur = Control.rewriteSimp(c)(state.state)
 
     /* Functional Extensionality */
     cur = Control.funcext(c)
@@ -151,7 +151,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
   @inline private final def mainLoopInferences(c : InterleavingLoop.A, cl: InterleavingLoop.A, state: State[InterleavingLoop.A]): Option[StateView[InterleavingLoop.A]] = {
     var cur: InterleavingLoop.A = cl
     var newclauses: Set[InterleavingLoop.A] = Set()
-    val actRewrite = state.rewriteRules
+    val actRewrite = state.groundRewriteRules ++ state.nonGroundRewriteRules
 
     // Check backward subsumption
 //    val backSubsumedClauses = Control.backwardSubsumptionTest(cur, state.processed)
@@ -282,7 +282,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
     val newIt = newclauses.iterator
     while (newIt.hasNext) {
       var newCl = newIt.next()
-      newCl = Control.rewriteSimp(newCl, rewrite)
+      newCl = Control.rewriteSimp(newCl)(state.state)
       assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
       if (Clause.effectivelyEmpty(newCl.cl)){
         result.insert(DerivedClause)(newCl)
@@ -304,7 +304,7 @@ class InterleavingLoop(state : BlackboardState, unification : UnificationStore[I
       val newIt2 = toUnify.iterator
       while (newIt2.hasNext) {
         var newCl = newIt2.next()
-        newCl = Control.rewriteSimp(newCl, rewrite)
+        newCl = Control.rewriteSimp(newCl)(state.state)
         assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
         if (Clause.effectivelyEmpty(newCl.cl)) {
           result.insert(DerivedClause)(newCl)

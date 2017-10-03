@@ -191,7 +191,7 @@ object SeqLoop {
             Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
-            cur = Control.rewriteSimp(cur, state.rewriteRules)
+            cur = Control.rewriteSimp(cur)
             /* To equality if possible */
             cur = Control.liftEq(cur)
 
@@ -290,16 +290,8 @@ object SeqLoop {
     /** Add to processed and to indexes. */
     state.addProcessed(cur)
     Control.insertIndexed(cur)
-    /* Add rewrite rules to set */
-    if (Clause.unit(cur.cl)) {
-      if (Clause.rewriteRule(cur.cl)) {
-        Out.trace(s"[SeqLoop] Clause ${cur.id} added as rewrite rule.")
-        state.addRewriteRule(cur)
-      } else {
-        Out.trace(s"[SeqLoop] Clause ${cur.id} added as (non-rewrite) unit.")
-        state.addNonRewriteUnit(cur)
-      }
-    }
+    /* Recognize rewrite rules or other units */
+    Control.detectUnit(cur)
     /////////////////////////////////////////
     // Backward simplification END
     /////////////////////////////////////////
@@ -412,7 +404,8 @@ object SeqLoop {
     Out.comment(s"No. of generated clauses: ${state.noGeneratedCl}")
     Out.comment(s"No. of forward subsumed clauses: ${state.noForwardSubsumedCl}")
     Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
-    Out.comment(s"No. of rewrite rules in store: ${state.rewriteRules.size}")
+    Out.comment(s"No. of ground rewrite rules in store: ${state.groundRewriteRules.size}")
+    Out.comment(s"No. of non-ground rewrite rules in store: ${state.nonGroundRewriteRules.size}")
     Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
     Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
@@ -428,9 +421,17 @@ object SeqLoop {
     Out.debug(s"No. of subsumed descendants deleted: ${state.noDescendantsDeleted}")
 
     Out.finest("#########################")
-    Out.finest("units")
+    Out.finest("ground rewrite rules")
     import leo.modules.calculus.PatternUnification.isPattern
-    Out.finest(state.rewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest(state.groundRewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("non-ground rewrite rules")
+    import leo.modules.calculus.PatternUnification.isPattern
+    Out.finest(state.nonGroundRewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest("#########################")
+    Out.finest("other units")
+    import leo.modules.calculus.PatternUnification.isPattern
+    Out.finest(state.nonRewriteUnits.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
     Out.finest("#########################")
     Out.finest("#########################")
     Out.finest("#########################")

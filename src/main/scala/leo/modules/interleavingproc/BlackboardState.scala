@@ -72,7 +72,7 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
     val newRewrite = r.inserts(RewriteRule).iterator
     while(newRewrite.nonEmpty){
       val nR = newRewrite.next()
-      state.addRewriteRule(nR)
+      state.addNonGroundRewriteRule(nR) // FIXME
     }
     // Backward Subsumption TODO implement in state
     val subsumed = r.removes(ProcessedClause).toSet

@@ -23,7 +23,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
   override def filter(event: Event): Iterable[Task] = event match {
     case result : Delta =>
       val ins = result.inserts(OpenUnification).filter{case a : InterleavingLoop.A => unificationStore.containsUni(a)}
-      val rew = state.state.rewriteRules
+      val rew = state.state.groundRewriteRules ++ state.state.nonGroundRewriteRules
       val tasks =  ins.map{case a : InterleavingLoop.A => new DelayedUnificationTask(a, this, rew)}
       return tasks
     case _ => Seq()
@@ -31,7 +31,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
 
   override def init(): Iterable[Task] = {
     val ins = unificationStore.getOpenUni
-    val rew = state.state.rewriteRules
+    val rew = state.state.groundRewriteRules ++ state.state.nonGroundRewriteRules
     ins.map{a => new DelayedUnificationTask(a, this, rew)}
   }
 
@@ -57,7 +57,7 @@ class DelayedUnificationAgent(unificationStore : UnificationStore[InterleavingLo
       }
       while (newIt.hasNext) {
         var newCl = newIt.next()
-        newCl = Control.rewriteSimp(newCl, rewrite)
+        newCl = Control.rewriteSimp(newCl)(state.state)
         assert(Clause.wellTyped(newCl.cl), s"Clause [${newCl.id}] is not well-typed")
         if (Clause.effectivelyEmpty(newCl.cl)){
           result.insert(DerivedClause)(newCl)

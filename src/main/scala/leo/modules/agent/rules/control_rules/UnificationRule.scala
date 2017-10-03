@@ -96,7 +96,7 @@ class RewriteRule(inType : DataType[AnnotatedClause],
 
     while (ins.hasNext) {
       val c = ins.next()
-      val cnew = Control.rewriteSimp(c, rewriteRules)
+      val cnew = c //FIXME: Control.rewriteSimp(c, rewriteRules)
       if(cnew != c & !Clause.trivial(cnew.cl)){
         leo.Out.debug(s"[Rewrite] on ${c.pretty(sig)}\n  is now ${cnew.pretty(sig)}")
         res = new RewriteHint(c, cnew) +: res

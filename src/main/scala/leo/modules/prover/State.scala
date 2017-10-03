@@ -56,8 +56,11 @@ trait State[T <: ClauseProxy] extends FVState[T] {
   /////////////////////
   // Special clauses
   /////////////////////
-  def rewriteRules: Set[T]
-  def addRewriteRule(cl: T): Unit
+  def groundRewriteRules: Set[T]
+  def nonGroundRewriteRules: Set[T]
+  def addGroundRewriteRule(cl: T): Unit
+  def addNonGroundRewriteRule(cl: T): Unit
+
   def nonRewriteUnits: Set[T]
   def addNonRewriteUnit(cl: T): Unit
   def removeUnits(cls: Set[T]): Unit
@@ -133,7 +136,8 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   // Special clauses
   /////////////////////
-  private final val currentRewriteRules: mutable.Set[T] = mutable.Set.empty
+  private final val currentGroundRewriteRules: mutable.Set[T] = mutable.Set.empty
+  private final val currentNonGroundRewriteRules: mutable.Set[T] = mutable.Set.empty
   private final val currentNonRewriteUnits: mutable.Set[T] = mutable.Set.empty
   /////////////////////
   // Further utility
@@ -192,12 +196,15 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   final def addProcessed(cl: T): Unit = { currentProcessed += cl }
   final def removeProcessed(cls: Set[T]): Unit = {currentProcessed --= cls}
 
-  final def rewriteRules: Set[T] = currentRewriteRules.toSet
-  final def addRewriteRule(cl: T): Unit = {currentRewriteRules += cl}
+  final def groundRewriteRules: Set[T] = currentGroundRewriteRules.toSet
+  final def nonGroundRewriteRules: Set[T] = currentNonGroundRewriteRules.toSet
+  final def addGroundRewriteRule(cl: T): Unit = {currentGroundRewriteRules += cl}
+  final def addNonGroundRewriteRule(cl: T): Unit = {currentNonGroundRewriteRules += cl}
   final def nonRewriteUnits: Set[T] = currentNonRewriteUnits.toSet
   final def addNonRewriteUnit(cl: T): Unit = {currentNonRewriteUnits += cl}
   final def removeUnits(cls: Set[T]): Unit = {
-    currentRewriteRules --= cls
+    currentGroundRewriteRules --= cls
+    currentNonGroundRewriteRules --= cls
     currentNonRewriteUnits --= cls
   }
   /////////////////////
