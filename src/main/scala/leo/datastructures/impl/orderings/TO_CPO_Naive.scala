@@ -298,6 +298,36 @@ object TO_CPO_Naive extends TermOrdering {
     }
     // #######################################################
     else
+    if (s.isConstant) {
+      //      println(s"constant: ${s.pretty(sig)}")
+      //      println(s"t: ${t.pretty(sig)}")
+      if (t.isVariable) {
+        Bound.unapply(t).get._2 <= depth
+      } else if (t.isTermAbs) {
+        /* case 5: f(t) > lambda yv*/
+        val (_, tO) = :::>.unapply(t).get
+        gt0(s,tO,depth+1)(sig)
+      } else if (t.isApp || t.isAtom) {
+        val idf = Symbol.unapply(s).get
+        val (g,args2) = ∙.unapply(t).get
+        val gargList: Seq[Term] = effectiveArgs(g.ty, args2)
+        if (g.isConstant) {
+          val idg = Symbol.unapply(g).get
+          if (precedence(idf, idg)(sig) == CMP_EQ) {
+            if(gt0Stat(s,Vector.empty, gargList, depth, sig(idf).status)(sig)) return true
+          } else if (precedence(idf, idg)(sig) == CMP_GT) {
+            if(gargList.forall(gt0(s, _, depth)(sig))) return true
+          } else {
+            return false
+          }
+        }
+        if (gargList.nonEmpty) {
+          gt0(s, mkApp(g, args2.init), depth)(sig) && gt0(s, gargList.last, depth)(sig)
+        } else false
+      } else false
+    }
+    // #######################################################
+    else
     if (s.isApp) {
 //      println(s"s.isApp: ${s.pretty(sig)}")
       /* case 6: f(t) >= y and */
@@ -319,7 +349,17 @@ object TO_CPO_Naive extends TermOrdering {
           }
           /* case 9: @(s,t) > lambda yv*/
           if (gt0(s, tO, depth)(sig)) return true // TODO need that? probably b/c vars at head position
-        } else if (t.isApp) {
+        }
+        if (t.isConstant) {
+//                    println(s"t.isConstant: ${t.pretty(sig)}")
+          if (f.isConstant) {
+//                        println(s"f.isConstant: ${f.pretty(sig)}")
+            val idf = Symbol.unapply(f).get
+            val idg = Symbol.unapply(t).get
+            return Orderings.isGE(precedence(idf, idg)(sig))
+          }
+        }
+        if (t.isApp) {
 //          println(s"t.isApp: ${t.pretty(sig)}")
           val (g,args2) = ∙.unapply(t).get
           val gargList: Seq[Term] = effectiveArgs(g.ty,args2)
@@ -332,13 +372,13 @@ object TO_CPO_Naive extends TermOrdering {
             try {
               if (precedence(idf, idg)(sig) == CMP_EQ) {
 //                println("precedence EQ")
-                return gt0Stat(s,fargList, gargList, depth, sig(idf).status)(sig)
+                if (gt0Stat(s,fargList, gargList, depth, sig(idf).status)(sig)) return true
               } else if (precedence(idf, idg)(sig) == CMP_GT) {
 //                println("precedence GT")
-                return gargList.forall(gt0(s, _, depth)(sig))
+                if (gargList.forall(gt0(s, _, depth)(sig))) return true
               } else {
 //                println("precedence else")
-                return false
+//                return false
               }
             } catch {
               case e:AssertionError =>
@@ -368,14 +408,6 @@ object TO_CPO_Naive extends TermOrdering {
             if ((gt(s2,t2,depth)(sig) || gteq(fargList.last,t2,depth)(sig) || gt(s,t2)(sig))
               && (gt(s2,gargList.last,depth)(sig) || gteq(fargList.last,gargList.last,depth)(sig) || gt(s,gargList.last)(sig))) return true
           }
-        } else if (t.isConstant) {
-//          println(s"t.isConstant: ${t.pretty(sig)}")
-          if (f.isConstant) {
-//            println(s"f.isConstant: ${f.pretty(sig)}")
-            val idf = Symbol.unapply(f).get
-            val idg = Symbol.unapply(t).get
-            Orderings.isGE(precedence(idf, idg)(sig))
-          } else false
         }
         /* case 1: f(t) >= v */
         if (f.isConstant) {
@@ -386,35 +418,6 @@ object TO_CPO_Naive extends TermOrdering {
         if (ge0(mkApp(f,args.init),t,depth)(sig)) return true
         if (gteq(fargList.last,t,depth)(sig)) return true
         false
-      } else false
-    }
-    else
-    if (s.isConstant) {
-//      println(s"constant: ${s.pretty(sig)}")
-//      println(s"t: ${t.pretty(sig)}")
-      if (t.isVariable) {
-        Bound.unapply(t).get._2 <= depth
-      } else if (t.isTermAbs) {
-        /* case 5: f(t) > lambda yv*/
-        val (_, tO) = :::>.unapply(t).get
-        gt0(s,tO,depth+1)(sig)
-      } else if (t.isApp || t.isAtom) {
-        val idf = Symbol.unapply(s).get
-        val (g,args2) = ∙.unapply(t).get
-        val gargList: Seq[Term] = effectiveArgs(g.ty, args2)
-        if (g.isConstant) {
-          val idg = Symbol.unapply(g).get
-          if (precedence(idf, idg)(sig) == CMP_EQ) {
-            if(gt0Stat(s,Vector.empty, gargList, depth, sig(idf).status)(sig)) return true
-          } else if (precedence(idf, idg)(sig) == CMP_GT) {
-            if(gargList.forall(gt0(s, _, depth)(sig))) return true
-          } else {
-            return false
-          }
-        }
-        if (gargList.nonEmpty) {
-          gt0(s, mkApp(g, args2.init), depth)(sig) && gt0(s, gargList.last, depth)(sig)
-        } else false
       } else false
     }
     // #######################################################

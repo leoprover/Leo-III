@@ -86,6 +86,41 @@ class TermOrderingTest extends LeoTestSuite {
     validate(s,t,expect)(sig)
   }
 
+  test("f(X) < g(f(X))") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.i
+
+    val vargen = freshVarGenFromBlank
+    val g = mkAtom(sig.addUninterpreted("g", i ->: i))
+    val f = mkAtom(sig.addUninterpreted("f", i ->: i))
+    val X = vargen(i)
+
+    val s = f(X)
+    val t = g(f(X))
+    val expect = CMP_LT
+
+    validate(s,t,expect)(sig)
+  }
+
+
+//  % [FINEST] 	 withTerm': f ⋅ (sk4 ⋅ (f ⋅ (sk4 ⋅ (f ⋅ (sk4 ⋅ (8:$i;⊥);⊥);⊥);⊥);⊥);⊥)
+//  % [FINEST] 	 otherTerm': f ⋅ (sk4 ⋅ (f ⋅ (sk4 ⋅ (f ⋅ (sk4 ⋅ (f ⋅ (sk4 ⋅ (8:$i;⊥);⊥);⊥);⊥);⊥);⊥);⊥);⊥)
+  test("f(sk4(f(sk4(f(sk4(X)))))) < f(sk4(f(sk4(f(sk4(f(sk4(X))))))))") {
+    implicit val sig = getFreshSignature
+    import leo.modules.HOLSignature.{i, o}
+
+    val vargen = freshVarGenFromBlank
+    val f = mkAtom(sig.addUninterpreted("f", o ->: i))
+    val sk4 = mkAtom(sig.addUninterpreted("sk4", i ->: o))
+    val X = vargen(i)
+
+    val s = f(sk4(f(sk4(f(sk4(X))))))
+    val t = f(sk4(f(sk4(f(sk4(f(sk4(X))))))))
+    val expect = CMP_LT
+
+    validate(s,t,expect)(sig)
+  }
+
   test("p(X) > F / p(X) > T") {
     implicit val sig = getFreshSignature
     import leo.modules.HOLSignature.{i, o, LitTrue, LitFalse}
@@ -145,8 +180,8 @@ class TermOrderingTest extends LeoTestSuite {
     val t = g(f(c), f(f(d)))
     val u = f(g(f(d),c))
 
-    validate(s,t,CMP_LT)(sig)
-    validate(s,u,CMP_LT)(sig)
+    validate(s,t,CMP_GT)(sig)
+    validate(s,u,CMP_GT)(sig)
   }
 
   test("totality 2") {
@@ -163,12 +198,12 @@ class TermOrderingTest extends LeoTestSuite {
     val t = g(c,c)
 
     validate(d,c,CMP_LT)(sig)
-    validate(g,c,CMP_LT)(sig)
-    validate(f,c,CMP_LT)(sig)
+    validate(g,c,CMP_GT)(sig)
+    validate(f,c,CMP_GT)(sig)
     validate(c,c,CMP_EQ)(sig)
-    validate(f(d),c,CMP_LT)(sig)
+    validate(f(d),c,CMP_GT)(sig)
 
-    validate(s,t,CMP_LT)(sig)
+    validate(s,t,CMP_GT)(sig)
   }
 
   test("l^f > l^t") {
@@ -202,7 +237,7 @@ class TermOrderingTest extends LeoTestSuite {
     assert(Literal.wellTyped(s))
     assert(Literal.wellTyped(t))
     val result = Literal.compare(s,t)
-    println(s"compare(${s.pretty(sig)},${t.pretty(sig)}): ${Orderings.pretty(result)}")
+    println(s"Compare(${s.pretty(sig)},${t.pretty(sig)}): ${Orderings.pretty(result)}")
     result shouldBe expect
   }
 
