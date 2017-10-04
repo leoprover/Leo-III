@@ -545,7 +545,7 @@ object HOPatternMatching extends Matching {
       else {
         val l = l0.substitute(partialMatcher, partialTyMatcher).etaExpand
         val r = r0.substitute(partialMatcher, partialTyMatcher).etaExpand
-        leo.Out.trace(s"solve: ${l.pretty} = ${r.pretty}")
+        leo.Out.finest(s"solve: ${l.pretty} = ${r.pretty}")
         myAssert(Term.wellTyped(l))
         myAssert(Term.wellTyped(r))
         // take off the lambdas

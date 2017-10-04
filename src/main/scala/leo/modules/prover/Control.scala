@@ -1628,7 +1628,7 @@ package inferenceControl {
 
         val newLits = plainSimp.cl.lits.map(lit => rewriteLit(lit, rewriteTable, searchset)(sig))
         val newCl = Clause(newLits)
-        val (result,x) = if (plainSimp.cl == newCl) (cw,true) else {
+        val (result,x) = if (plainSimp.cl == newCl) (plainSimp,true) else {
           leo.Out.finest(s"Rewriting happend!")
           (AnnotatedClause(newCl, InferredFrom(RewriteSimp, cw), cw.properties),false)
         }
@@ -1996,7 +1996,7 @@ package redundancyControl {
     private final def testSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] = {
       withSet.filter {cw =>
         leo.Out.finest(s"[Subsumption] Test subsumes(${cw.id},${cl.id})")
-        Subsumption.subsumes(cw.cl, cl.cl)}
+        Configuration.SUBSUMPTION_METHOD.subsumes(cw.cl, cl.cl)}
     }
 
     /** Check for subsumption of any clause in `withSet` by `cl` by subsumption rule in [[leo.modules.calculus.Subsumption]]. */

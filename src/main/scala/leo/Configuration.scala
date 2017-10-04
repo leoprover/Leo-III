@@ -152,6 +152,18 @@ object Configuration extends DefaultConfiguration {
   lazy val PRE_PRIMSUBST_LEVEL: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST, DEFAULT_PRE_PRIMSUBST)
   lazy val PRE_PRIMSUBST_MAX_DEPTH: Int = uniqueIntFor(PARAM_PRE_PRIMSUBST_MAXDEPTH, DEFAULT_PRE_PRIMSUBST_MAXDEPTH)
 
+  import leo.modules.calculus.Subsumption
+  lazy val SUBSUMPTION_METHOD: Subsumption = {
+    if (isSet("subsumption")) {
+      val method = valueOf("subsumption").get.head
+      method match {
+        case "ho-pattern" => leo.modules.calculus.HOPatternSubsumption
+        case "trivial" => leo.modules.calculus.TrivialSubsumption
+        case _ => DEFAULT_SUBSUMPTIONMETHOD
+      }
+    } else DEFAULT_SUBSUMPTIONMETHOD
+  }
+
   lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE) || !DEFAULT_CHOICE
   lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
 
@@ -415,6 +427,7 @@ trait DefaultConfiguration {
   val DEFAULT_ATPMAXJOBS = 1
   val DEFAULT_PASSMARK = 0.56
   val DEFAULT_AGING = 2.35
+  val DEFAULT_SUBSUMPTIONMETHOD = leo.modules.calculus.HOPatternSubsumption
   val DEFAULT_CHOICE = true
   val DEFAULT_TERMORDERING = leo.datastructures.impl.orderings.TO_CPO_Naive
   val DEFAULT_PAR_SCHED = 3
