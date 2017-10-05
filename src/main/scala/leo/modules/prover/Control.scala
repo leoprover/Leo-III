@@ -1614,7 +1614,7 @@ package inferenceControl {
 
     final def rewriteSimp(cw: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
-      val rules0 = state.groundRewriteRules ++ state.nonGroundRewriteRules
+      val rules0 = state.groundRewriteRules// ++ state.nonGroundRewriteRules
       val plainSimp = simp(cw)
       Out.trace(s"[Rewriting] Processing ${cw.id}")
       Out.finest(s"[Rewriting] Rules existent? ${rules0.nonEmpty}")

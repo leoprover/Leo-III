@@ -263,6 +263,7 @@ object TO_CPO_Naive extends TermOrdering {
 
     if (s == t) return false
     if (s.isVariable) return false
+    if (s.feasibleOccurrences.keySet.contains(t)) return true
     // #######################################################
     /* adaption for type abstractions*/
     if (s.isTypeAbs) {
@@ -372,13 +373,13 @@ object TO_CPO_Naive extends TermOrdering {
             try {
               if (precedence(idf, idg)(sig) == CMP_EQ) {
 //                println("precedence EQ")
-                if (gt0Stat(s,fargList, gargList, depth, sig(idf).status)(sig)) return true
+                return gt0Stat(s,fargList, gargList, depth, sig(idf).status)(sig)
               } else if (precedence(idf, idg)(sig) == CMP_GT) {
 //                println("precedence GT")
-                if (gargList.forall(gt0(s, _, depth)(sig))) return true
+                return gargList.forall(gt0(s, _, depth)(sig))
               } else {
 //                println("precedence else")
-//                return false
+                return false
               }
             } catch {
               case e:AssertionError =>

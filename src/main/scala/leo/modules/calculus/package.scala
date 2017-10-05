@@ -152,9 +152,8 @@ package object calculus {
     } else {
       if (!mayUnify(s.ty, t.ty)) return false
     }
-    if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable TODO: Is this right?
+    if (s.freeVars.isEmpty && t.freeVars.isEmpty) return false // contains to vars, cannot be unifiable
     if (depth <= 0) return true
-//    if (s.headSymbol.ty != t.headSymbol.ty) return false
 
     // Match case on head symbols (over approximation):
     // flex-flex always works*, flex-rigid also works*, rigid-rigid only in same symbols
@@ -181,6 +180,7 @@ package object calculus {
     * Hence, if {{{!mayUnify(s,t)}}} the types are not unifiable, otherwise they may be. */
   @inline final def mayUnify(s: Type, t: Type): Boolean = {
     if (s == t) return true
+    if (s.typeVars.isEmpty && t.typeVars.isEmpty) return false
     import leo.datastructures.Type._
     (s,t) match {
       case (BaseType(id1), BaseType(id2)) => id1 == id2

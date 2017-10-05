@@ -225,7 +225,7 @@ object SeqLoop {
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
 
-      if (state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
+      if (state.szsStatus == SZS_GaveUp || state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
         if (!ExtProverControl.openCallsExist) {
           Control.submit(state.processed, state, force = true)
           Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
