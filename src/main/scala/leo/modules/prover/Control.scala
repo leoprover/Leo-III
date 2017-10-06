@@ -226,7 +226,7 @@ package inferenceControl {
           assert(!intoLit.flexflex)
 
           val result = singleParamod(withWrapper, withIndex, withLit, withSide,
-            intoWrapper, intoIndex, intoLit, intoSide, intoPos, intoTerm)(sig)
+            intoWrapper, intoIndex, intoLit, intoSide, intoPos, intoTerm)(state)
           if (result != null) results = results + result
         }
       }
@@ -242,8 +242,8 @@ package inferenceControl {
                             intoLit: Literal,
                             intoSide: Side,
                             intoPos: Position,
-                            intoTerm: Term)(implicit sig: Signature): AnnotatedClause = {
-
+                            intoTerm: Term)(state: LocalState): AnnotatedClause = {
+      val sig: Signature = state.signature
       if (intoPos == Position.root &&
         ((intoWrapper.id == withWrapper.id && intoIndex == withIndex) ||
           (!withLit.equational && !intoLit.equational && intoLit.polarity))) {
@@ -254,7 +254,7 @@ package inferenceControl {
         val (withTerm,otherTerm) = Literal.getSidesOrdered(withLit, withSide)
         assert(withTerm.ty == otherTerm.ty)
 
-        val shouldParamod0 = shouldParamod(withTerm, intoTerm)
+        val shouldParamod0 = shouldParamod(withTerm, intoTerm)(state)
         leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
         if (!intoTerm.isVariable && shouldParamod0) {
           leo.Out.finest(s"ordered: ${withLit.oriented} // ${intoLit.oriented}")
@@ -288,7 +288,7 @@ package inferenceControl {
 //          assert(shiftedIntoTerm0 == shiftedIntoTerm)
 
           singleParamod0(withWrapper, withClause, withIndex, withSide, withTerm, otherTerm,
-            intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)
+            intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
         } else null
       }
     }
@@ -425,12 +425,14 @@ package inferenceControl {
     var j = 0
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
-    private final def shouldParamod(withTerm: Term, intoTerm: Term): Boolean = {
+    private final def shouldParamod(withTerm: Term, intoTerm: Term)(state: LocalState): Boolean = {
       if (mayUnify(withTerm.ty, intoTerm.ty)) {
-        val withHd = withTerm.headSymbol
-        val intoHd = intoTerm.headSymbol
-        if (withHd == intoHd && withHd.isConstant) true
-        else mayUnify(withTerm, intoTerm)
+        if (state.runStrategy.restrictUniAttempts) {
+          val withHd = withTerm.headSymbol
+          val intoHd = intoTerm.headSymbol
+          if (withHd == intoHd && withHd.isConstant) true
+          else mayUnify(withTerm, intoTerm)
+        } else true
       } else false
     }
 
@@ -530,8 +532,8 @@ package inferenceControl {
               // same polarity, standard
               val (maxLitMaxSide, maxLitOtherSide) = Literal.getSidesOrdered(maxLit, maxLitSide)
               val (otherLitMaxSide, otherLitOtherSide) = Literal.getSidesOrdered(otherLit, otherLitSide)
-              val test1 = shouldFactor(maxLitMaxSide, otherLitMaxSide)
-              val test2 = shouldFactor(maxLitOtherSide, otherLitOtherSide)
+              val test1 = shouldFactor(maxLitMaxSide, otherLitMaxSide)(state)
+              val test2 = shouldFactor(maxLitOtherSide, otherLitOtherSide)(state)
               Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
               Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
               if (test1 && test2) {
@@ -544,8 +546,8 @@ package inferenceControl {
               // of otherLit, since our iterator does not give us this test. It will give us this test
               // if otherLit is not oriented.
               if (otherLit.oriented) {
-                val test1 = shouldFactor(maxLitMaxSide, otherLitOtherSide)
-                val test2 = shouldFactor(maxLitOtherSide, otherLitMaxSide)
+                val test1 = shouldFactor(maxLitMaxSide, otherLitOtherSide)(state)
+                val test2 = shouldFactor(maxLitOtherSide, otherLitMaxSide)(state)
                 Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
                 Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
                 if (test1 && test2) {
@@ -564,7 +566,7 @@ package inferenceControl {
                 import leo.modules.HOLSignature.Not
                 val flexTerm = maxLit.left
                 val otherTerm = otherLit.left
-                val test = shouldFactor(flexTerm, Not(otherTerm))
+                val test = shouldFactor(flexTerm, Not(otherTerm))(state)
                 Out.finest(s"Should factor ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
                 if (test) {
                   val adjustedClause = Clause(clause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
@@ -584,12 +586,14 @@ package inferenceControl {
     }
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
-    private final def shouldFactor(term: Term, otherTerm: Term): Boolean = {
+    private final def shouldFactor(term: Term, otherTerm: Term)(state: LocalState): Boolean = {
       if (mayUnify(term.ty, otherTerm.ty)) {
-        val withHd = term.headSymbol
-        val intoHd = otherTerm.headSymbol
-        if (withHd == intoHd && withHd.isConstant) true
-        else mayUnify(term, otherTerm)
+        if (state.runStrategy.restrictUniAttempts) {
+          val withHd = term.headSymbol
+          val intoHd = otherTerm.headSymbol
+          if (withHd == intoHd && withHd.isConstant) true
+          else mayUnify(term, otherTerm)
+        } else true
       } else false
     }
   }

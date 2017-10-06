@@ -180,8 +180,8 @@ class TermOrderingTest extends LeoTestSuite {
     val t = g(f(c), f(f(d)))
     val u = f(g(f(d),c))
 
-    validate(s,t,CMP_GT)(sig)
-    validate(s,u,CMP_GT)(sig)
+    validate(s,t,CMP_LT)(sig)
+    validate(s,u,CMP_LT)(sig)
   }
 
   test("totality 2") {

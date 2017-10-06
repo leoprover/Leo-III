@@ -30,6 +30,7 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_UNIFIERCOUNT = "unifiers"
   private val PARAM_MATCHINGDEPTH = "matchingdepth"
   private val PARAM_PRIMSUBST = "primsubst"
+  private val PARAM_RESTRICTUNIATTEMPTS = "restrict-uni-attempts"
   private val PARAM_PRE_PRIMSUBST = "instantiate"
   private val PARAM_PRE_PRIMSUBST_MAXDEPTH = "instantiate-maxdepth"
   private val PARAM_FUNCSPEC = "funcspec"
@@ -168,6 +169,17 @@ object Configuration extends DefaultConfiguration {
   lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
 
   lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
+
+  lazy val RESTRICT_UNI_ATTEMPTS: Boolean = {
+    if (isSet(PARAM_RESTRICTUNIATTEMPTS)) {
+      val input = valueOf(PARAM_RESTRICTUNIATTEMPTS).get.head
+      input match {
+        case "true" => true
+        case "false" => false
+        case _ => DEFAULT_RESTRICTUNIATTEMPTS
+      }
+    } else Configuration.DEFAULT_RESTRICTUNIATTEMPTS
+  }
 
   lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   lazy val CONSISTENCY_CHECK: Boolean = isSet(PARAM_CONSISTENCYCHECK)
@@ -420,6 +432,7 @@ trait DefaultConfiguration {
   val DEFAULT_MATCHINGDEPTH = 4
   val DEFAULT_UNIFIERCOUNT = 1
   val DEFAULT_PRIMSUBST = 1
+  val DEFAULT_RESTRICTUNIATTEMPTS = true
   val DEFAULT_PRE_PRIMSUBST = -1
   val DEFAULT_PRE_PRIMSUBST_MAXDEPTH = 5
   val DEFAULT_ATPCALLINTERVAL = 15
