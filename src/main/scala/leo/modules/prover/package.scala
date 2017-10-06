@@ -5,7 +5,8 @@ import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, tptp}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
-import leo.modules.output.{SZS_InputError, SZS_Theorem, SZS_TypeError}
+import leo.modules.output.StatusSZS
+import leo.modules.output.{SZS_InputError, SZS_Theorem, SZS_TypeError, SZS_Unsatisfiable, SZS_CounterSatisfiable, SZS_ContradictoryAxioms}
 import leo.modules.parsers.Input
 
 import scala.annotation.tailrec
@@ -124,6 +125,25 @@ package object prover {
       } else {
         typeCheck0(input.tail, state)
       }
+    }
+  }
+
+  final def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
+    state.setDerivationClause(emptyClause)
+    val proof = proofOf(emptyClause)
+    state.setProof(proof)
+
+    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    else {
+      if (conjInProof(proof)) state.setSZSStatus(SZS_Theorem)
+      else state.setSZSStatus(SZS_ContradictoryAxioms)
+    }
+  }
+
+  final protected[prover] def endgameAnswer(result: StatusSZS): Boolean = {
+    result match {
+      case SZS_CounterSatisfiable | SZS_Theorem | SZS_Unsatisfiable => true
+      case _ => false
     }
   }
 

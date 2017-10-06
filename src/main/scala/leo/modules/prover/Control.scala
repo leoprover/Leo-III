@@ -76,6 +76,7 @@ object Control {
   @inline final def registerExtProver(provers: Seq[(String, String)])(implicit state: State[AnnotatedClause]): Unit =  externalProverControl.ExtProverControl.registerExtProver(provers)(state)
   @inline final def checkExternalResults(state: State[AnnotatedClause]): Seq[leo.modules.external.TptpResult[AnnotatedClause]] =  externalProverControl.ExtProverControl.checkExternalResults(state)
   @inline final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = externalProverControl.ExtProverControl.submit(clauses, state, force)
+  @inline final def despairSubmit(startTime: Long, timeout: Float)(implicit state: State[AnnotatedClause]): Unit = externalProverControl.ExtProverControl.despairSubmit(startTime, timeout)(state)
   @inline final def killExternals(): Unit = externalProverControl.ExtProverControl.killExternals()
 
   // Limited resource scheduling
@@ -2238,7 +2239,7 @@ package  externalProverControl {
 
   object ExtProverControl {
     import leo.modules.external._
-    import leo.modules.output.SZS_Error
+    import leo.modules.output.{SZS_Error, SZS_GaveUp, SZS_Unknown, SZS_Unsatisfiable}
 
     type S = State[AnnotatedClause]
     private final val prefix: String = "[ExtProver]"
@@ -2276,6 +2277,42 @@ package  externalProverControl {
 
     final def submit(clauses: Set[AnnotatedClause], state: State[AnnotatedClause], force: Boolean = false): Unit = {
       callFacade.call(clauses, state, force)
+    }
+
+    final def despairSubmit(startTime: Long, timeout: Float)(implicit state: S): Unit = {
+      import leo.modules.prover.{endplay, extCallInference}
+      if (state.szsStatus == SZS_GaveUp || state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
+        if (!ExtProverControl.openCallsExist) {
+          Control.submit(state.processed, state, force = true)
+          Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
+        } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
+        var wait = true
+        while (wait && System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
+          Out.finest(s"[ExtProver] Check for answer")
+          val extRes = Control.checkExternalResults(state)
+          if (extRes.nonEmpty) {
+            Out.debug(s"[ExtProver] Got answer(s)! ${extRes.map(_.szsStatus.pretty).mkString(",")}")
+            val unSatAnswers = extRes.filter(_.szsStatus == SZS_Unsatisfiable)
+            if (unSatAnswers.nonEmpty) {
+              val extRes0 = unSatAnswers.head
+              wait = false
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes0.proverName, extRes0.problem))
+              endplay(emptyClause, state)
+            } else if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
+              Out.info(s"[ExtProver] Still waiting ...")
+              Thread.sleep(5000)
+            }
+          } else {
+            if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
+              Out.info(s"[ExtProver] Still waiting ...")
+              Thread.sleep(5000)
+            }
+          }
+
+        }
+        if (wait) Out.info(s"No helpful answer from external systems within timeout. Terminating ...")
+        else Out.info(s"Helpful answer from external systems within timeout. Terminating ...")
+      }
     }
 
     final def checkExternalResults(state: State[AnnotatedClause]): Seq[TptpResult[AnnotatedClause]] = {

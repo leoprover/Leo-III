@@ -4,10 +4,7 @@ import leo.{Configuration, Out}
 import leo.datastructures._
 import leo.modules.{SZSOutput, myAssert}
 import leo.modules.control.Control
-import leo.modules.control.externalProverControl.ExtProverControl
 import leo.modules.output._
-import leo.modules.parsers.Input
-import leo.modules.proof_object.CompressProof
 
 /**
   * Sequential proof procedure.
@@ -67,6 +64,7 @@ object SeqLoop {
 
   /* Main function containing proof loop */
   final def apply(startTime: Long, timeout: Int): Unit = {
+    import leo.modules.parsers.Input
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up, etc.
@@ -220,43 +218,10 @@ object SeqLoop {
           }
         }
       }
-
       /////////////////////////////////////////
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
-
-      if (state.szsStatus == SZS_GaveUp || state.szsStatus == SZS_Unknown && System.currentTimeMillis() - startTime <= 1000 * timeout && Configuration.ATPS.nonEmpty) {
-        if (!ExtProverControl.openCallsExist) {
-          Control.submit(state.processed, state, force = true)
-          Out.info(s"[ExtProver] We still have time left, try a final call to external provers...")
-        } else Out.info(s"[ExtProver] External provers still running, waiting for termination within timeout...")
-        var wait = true
-        while (wait && System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
-          Out.finest(s"[ExtProver] Check for answer")
-          val extRes = Control.checkExternalResults(state)
-          if (extRes.nonEmpty) {
-            Out.debug(s"[ExtProver] Got answer(s)! ${extRes.map(_.szsStatus.pretty).mkString(",")}")
-            val unSatAnswers = extRes.filter(_.szsStatus == SZS_Unsatisfiable)
-            if (unSatAnswers.nonEmpty) {
-              val extRes0 = unSatAnswers.head
-              wait = false
-              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes0.proverName, extRes0.problem))
-              endplay(emptyClause, state)
-            } else if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
-              Out.info(s"[ExtProver] Still waiting ...")
-              Thread.sleep(5000)
-            }
-          } else {
-            if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
-              Out.info(s"[ExtProver] Still waiting ...")
-              Thread.sleep(5000)
-            }
-          }
-
-        }
-        if (wait) Out.info(s"No helpful answer from external systems within timeout. Terminating ...")
-        else Out.info(s"Helpful answer from external systems within timeout. Terminating ...")
-      }
+      Control.despairSubmit(startTime, timeout)(state)
 
       if (endgameAnswer(state.szsStatus)) true
       else false
@@ -382,6 +347,7 @@ object SeqLoop {
     // All finished, print result
     /////////////////////////////////////////
     import leo.modules.{axiomsInProof, userSignatureToTPTP, symbolsInProof, compressedProofOf, proofToTPTP, userDefinedSignatureAsString}
+    import leo.modules.proof_object.CompressProof
 
     val time = System.currentTimeMillis() - startTime
     val timeWOParsing = System.currentTimeMillis() - startTimeWOParsing
@@ -464,26 +430,6 @@ object SeqLoop {
         case e: Exception => Out.comment("Translation of proof object failed. See error logs for details.")
           Out.warn(e.toString)
       }
-    }
-  }
-
-  @inline final private def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
-    import leo.modules.{proofOf, conjInProof}
-    state.setDerivationClause(emptyClause)
-    val proof = proofOf(emptyClause)
-    state.setProof(proof)
-
-    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
-    else {
-      if (conjInProof(proof)) state.setSZSStatus(SZS_Theorem)
-      else state.setSZSStatus(SZS_ContradictoryAxioms)
-    }
-  }
-
-  final private def endgameAnswer(result: StatusSZS): Boolean = {
-    result match {
-      case SZS_CounterSatisfiable | SZS_Theorem | SZS_Unsatisfiable => true
-      case _ => false
     }
   }
 
