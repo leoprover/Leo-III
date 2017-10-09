@@ -14,7 +14,7 @@ all: TreeLimitedRun
 		@echo Unpacking picosat ...
 		tar -C ./src/native -xzf contrib/picosat-965.tar.gz
 		@echo Building Leo-III ...
-		echo "assembly" | sbt shell
+		sbt assembly
 		mkdir bin -p
 		cp "target/Leo III-assembly-1.1.jar" bin/leo3.jar
 		cp ./src/main/resources/scripts/leo3 bin/leo3

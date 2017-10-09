@@ -1,3 +1,5 @@
+import scala.sys.process._
+
 val buildParser = taskKey[Unit]("Run ANTLR parser generation.")
 val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's parser.")
 
@@ -33,6 +35,7 @@ lazy val leo = (project in file(".")).
     excludeFilter in unmanagedJars := HiddenFileFilter || "antlr4-tool.jar",
     antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
     buildParser := {
+      val log = streams.value.log
       val cachedBuild = FileFunction.cached(streams.value.cacheDirectory / "antlr4", FilesInfo.lastModified, FilesInfo.exists) {
         in =>
           print("Generating parser from tptp grammar ...")
@@ -40,10 +43,10 @@ lazy val leo = (project in file(".")).
           val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr4-tool.jar")),
             "org.antlr.v4.Tool",
             "-o", target.toString) ++ in.map(_.toString)
-          val exitCode = Process("java", args) ! streams.value.log
+          val exitCode = Process("java", args) ! log
           if (exitCode != 0) sys.error(s"ANTLR build failed") else println("successful!")
           print("Cleaning temporary files ...")
-          val exitCode2 = Process("rm", Seq((target / "tptp.tokens").toString, (target / "tptpLexer.tokens").toString)) ! streams.value.log
+          val exitCode2 = Process("rm", Seq((target / "tptp.tokens").toString, (target / "tptpLexer.tokens").toString)) ! log 
           if (exitCode2 != 0) println("cleanup failed.") else println("done!")
           (target ** "*.java").get.toSet
       }
