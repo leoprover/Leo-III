@@ -266,7 +266,7 @@ object SeqLoop {
     /* Functional Extensionality */
     val funcext_result = Control.funcExtNew(cur)(state)
     newclauses = newclauses union funcext_result
-    state.addToHotList(funcext_result)
+//    state.addToHotList(funcext_result)
 
     /* Boolean Extensionality */
     val boolext_result = Control.boolext(cur)(state)
