@@ -46,7 +46,7 @@ object Main {
       if (Configuration.isSet("seq")) {
         Out.info("Running in sequential loop mode.")
         prover.SeqLoop(beginTime, Configuration.TIMEOUT)
-      } else if (Configuration.isSet("scheduled-seq")) {
+      } else if (Configuration.isSet("scheduled")) {
         Out.info("Running in scheduled sequential loop mode.")
         prover.ScheduledRun(beginTime, Configuration.TIMEOUT)
       } else if (Configuration.isSet("pure-ext")) {

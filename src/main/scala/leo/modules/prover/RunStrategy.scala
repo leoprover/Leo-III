@@ -62,6 +62,8 @@ object RunStrategy {
 
   final def byName(str: String): RunStrategy = str match {
     case "s1" => s1
+    case "s1restricted" => s1restricted
+    case "s1general" => s1general
     case "s1a" => s1a
     case "s1b" => s1b
     case "s2" => s2
@@ -96,6 +98,36 @@ object RunStrategy {
     domConstr = 0,
     specialInstances = -1,
     restrictUniAttempts = true)
+
+  def s1restricted: RunStrategy = RunStrategy(
+    name = "s1restricted",
+    share = 1,
+    primSubst = 1,
+    sos = true,
+    unifierCount = 1,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = false,
+    renaming =  true,
+    funcspec = false,
+    domConstr = 0,
+    specialInstances = -1,
+    restrictUniAttempts = true)
+
+  def s1general: RunStrategy = RunStrategy(
+    name = "s1general",
+    share = 1,
+    primSubst = 3,
+    sos = false,
+    unifierCount = 2,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  true,
+    funcspec = false,
+    domConstr = 0,
+    specialInstances = -1,
+    restrictUniAttempts = false)
 
   def s1a: RunStrategy = RunStrategy(
     name = "s1a",
