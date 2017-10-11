@@ -521,7 +521,9 @@ object HOPatternMatching extends Matching {
   /** Wrap up the matching result with the initial type substitution and return as Option. */
   private final def match0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[Result] = {
     leo.Out.finest(s"match0: ${ueqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
-    val matcher = match1(ueqs, vargen, Subst.id, Subst.id, vargen.existingVars.map(_._1))
+    val forbiddenVars = ueqs.flatMap(_._2.looseBounds).toSet
+    leo.Out.finest(s"Forbidden vars: ${forbiddenVars.toString()}")
+    val matcher = match1(ueqs, vargen, Subst.id, Subst.id, forbiddenVars)
     if (matcher.isDefined)
       Some((matcher.get._1.normalize, initialTypeSubst.comp(matcher.get._2).normalize))
     else
@@ -537,11 +539,11 @@ object HOPatternMatching extends Matching {
   // but only {1,2,3,4} are forbidden vars
   /** Main matching method: Solve head equations subsequently by applying the according rules. */
   @tailrec
-  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst, forbiddenVars: Seq[Int]): Option[PartialResult] = {
+  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst, forbiddenVars: Set[Int]): Option[PartialResult] = {
     import leo.datastructures.Term.{Bound, ∙}
     import leo.datastructures.{partitionArgs, collectLambdas}
     import HuetsPreUnification.{applySubstToList, zipWithAbstractions}
-    leo.Out.finest(s"forbidden vars: ${forbiddenVars.toString()}")
+
     if (ueqs.isEmpty)
       Some((partialMatcher, partialTyMatcher))
     else {
@@ -583,7 +585,7 @@ object HOPatternMatching extends Matching {
                   match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1), partialTyMatcher.comp(partialMatchingResult._2), forbiddenVars)
                 }
               }
-            case (_, Bound(ty2, idx2)) if idx2 > abstractionCount=>
+            case (_, Bound(_, idx2)) if idx2 > abstractionCount=>
               /* rigid-flex */
               None // right side is considered rigid in this matching setting
             case _ => /* rigid-rigid */

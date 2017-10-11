@@ -45,6 +45,10 @@ package object calculus {
     /** Returns a fresh type variable represented as its loose de-bruijn index
       * wrt. the context of this generator. */
     def next(): Int
+    /** Adds `vars` to the recorded variables. Subsequent calls to
+      * methods of this variable generator will consider `vars` as already
+      * existent variables. */
+    def addVars(vars: Seq[(Int, Type)]): Unit
     /** Return all already used variables within the context of this generator.
       * The "newest" variable is the head of the list.
       * @example If `f` is a FreshVarGen for clause `cl`, then
@@ -80,6 +84,14 @@ package object calculus {
       curTy = curTy + 1
       tyVars = curTy +: tyVars
       curTy
+    }
+
+    override final def addVars(variables: Seq[(Int, Type)]): Unit = {
+      val newVars = (variables ++ vars).distinct
+      vars = newVars.sortWith { case (l,r) =>
+        l._1 > r._1
+      }
+      cur = newVars.maxBy(_._1)._1
     }
 
     override final def existingVars: Seq[(Int, Type)] = vars

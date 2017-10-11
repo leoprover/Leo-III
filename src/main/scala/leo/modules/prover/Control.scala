@@ -1627,7 +1627,7 @@ package inferenceControl {
       Out.finest(s"[Rewriting] plain simp: ${plainSimp.pretty(sig)}")
 
       val rulesExist = state.groundRewriteRules.nonEmpty || state.nonGroundRewriteRules.nonEmpty
-      Out.finest(s"[Rewriting] Rules existent? ${rulesExist}")
+      Out.finest(s"[Rewriting] Rules existent? $rulesExist")
       if (!rulesExist) {
         Out.trace(s"[RewriteSimp] Result: ${plainSimp.pretty(sig)}")
         plainSimp
@@ -1637,7 +1637,7 @@ package inferenceControl {
         val nonGroundRewriteTable: Map[Term, Term] = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), cl.cl.lits.head.right.lift(maxImplicitVar))).toMap
         val vargen = freshVarGen(plainSimp.cl)
         leo.Out.finest(s"vargen in rewriteSimp: ${vargen.existingVars.toString()}")
-        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(vargen, maxImplicitVar, lit, groundRewriteTable, nonGroundRewriteTable)(sig))
+        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(vargen, lit, groundRewriteTable, nonGroundRewriteTable)(sig))
         val newCl = Clause(newLits)
         val (result,x) = if (plainSimp.cl == newCl) (plainSimp,true) else {
           leo.Out.finest(s"Rewriting happend!")
@@ -1646,15 +1646,14 @@ package inferenceControl {
         val result2 = shallowSimp(result)
 //        val result2 = result
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
-//        if (!x) System.exit(1)
         result2
       }
     }
-    private def rewriteLit(vargen: FreshVarGen, maxImplicitVar: Int, lit: Literal, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term,Term])(sig: Signature): Literal = {
-      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, maxImplicitVar, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), rewriteTerm(vargen, maxImplicitVar, lit.right, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)(sig)
-      else Literal.apply(rewriteTerm(vargen, maxImplicitVar, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)
+    private def rewriteLit(vargen: FreshVarGen, lit: Literal, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term,Term])(sig: Signature): Literal = {
+      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)(sig)
+      else Literal.apply(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)
     }
-    private def rewriteTerm(vargen: FreshVarGen, maxImplicitVar: Int, term: Term, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term, Term])(sig: Signature): Term = {
+    private def rewriteTerm(vargen: FreshVarGen, term: Term, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term, Term])(sig: Signature): Term = {
       import leo.datastructures.Term._
       import leo.datastructures.partitionArgs
 
@@ -1663,31 +1662,32 @@ package inferenceControl {
         leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${res.pretty(sig)}")
         res
       } else {
-//        val toFind = nonGroundRewriteTable.keysIterator
-//        while (toFind.hasNext) {
-//          val template = toFind.next()
-//          val matchingResult = Matching(vargen, template, term)
-//          if (matchingResult.nonEmpty) {
-//            val (termSubst, typeSubst) = matchingResult.head
-//            val result =  nonGroundRewriteTable(template).substitute(termSubst, typeSubst)
-//            leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
-//            leo.Out.finest(s"via lhs ${template.pretty(sig)}")
-//            leo.Out.finest(s"via rhs ${nonGroundRewriteTable(template).pretty(sig)}")
-//            leo.Out.finest(s"via subst ${termSubst.pretty}")
-////            System.exit(1)
-//            result
-//          }
-//        }
+        val toFind = nonGroundRewriteTable.keysIterator
+        while (toFind.hasNext) {
+          val template = toFind.next()
+          val vargen0 = vargen.copy
+          vargen0.addVars(template.fv.toSeq)
+          val matchingResult = Matching(vargen0, template, term)
+          if (matchingResult.nonEmpty) {
+            val (termSubst, typeSubst) = matchingResult.head
+            val result =  nonGroundRewriteTable(template).substitute(termSubst, typeSubst)
+            leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
+            leo.Out.finest(s"via lhs ${template.pretty(sig)}")
+            leo.Out.finest(s"via rhs ${nonGroundRewriteTable(template).pretty(sig)}")
+            leo.Out.finest(s"via subst ${termSubst.pretty}")
+            result
+          }
+        }
         // only reachable if not rewritten so far
         term match {
           case Bound(_,_) | Symbol(_) => term
           case hd ∙ args =>
-            val rewrittenHd = rewriteTerm(vargen, maxImplicitVar, hd, groundRewriteTable, nonGroundRewriteTable)(sig)
+            val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable)(sig)
             val (tyArgs, termArgs) = partitionArgs(args)
 
-            val res0 = Term.mkTypeApp(hd, tyArgs)
-            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, maxImplicitVar, t, groundRewriteTable, nonGroundRewriteTable)(sig)))
-          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, maxImplicitVar, body, groundRewriteTable, nonGroundRewriteTable)(sig))
+            val res0 = Term.mkTypeApp(rewrittenHd, tyArgs)
+            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable)(sig)))
+          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable)(sig))
           case _ => term
         }
       }
@@ -2120,7 +2120,7 @@ package indexingControl {
       Out.trace(s"init Features: ${initFeatures.toString()}")
       val sortedFeatures = initFeatures.zipWithIndex.sortBy(_._1.size).take(state.fVIndex.maxFeatures)
       Out.trace(s"sorted Features: ${sortedFeatures.toString()}")
-      state.fVIndex.features = sortedFeatures.map {case (feat, idx) => featureFunctions(idx)}
+      state.fVIndex.features = sortedFeatures.map {case (_, idx) => featureFunctions(idx)}
       state.fVIndex.initialized = true
     }
 
