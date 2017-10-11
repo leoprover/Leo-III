@@ -17,7 +17,7 @@ object SeqLoop {
   ////////////////////////////////////
   //// Preprocessing
   ////////////////////////////////////
-  protected[modules] final def preprocess(cur: AnnotatedClause)(implicit state: LocalGeneralState): Set[AnnotatedClause] = {
+  protected[modules] final def preprocess(cur: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
     implicit val sig: Signature = state.signature
     var result: Set[AnnotatedClause] = Set.empty
 
@@ -251,6 +251,7 @@ object SeqLoop {
         s"\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       Control.removeProcessed(backSubsumedClauses)
     }
+    // TODO: Simp processed wrt. cur
     myAssert(!leo.modules.calculus.FullCNF.canApply(cur.cl), s"[SeqLoop] Not in CNF: ${cur.pretty(sig)}")
     /** Add to processed and to indexes. */
     state.addProcessed(cur)
@@ -363,7 +364,7 @@ object SeqLoop {
         val proofAx = axiomsInProof(proof)
         Out.comment(s"Axioms used in derivation (${proofAx.size}): ${proofAx.map(_.annotation.asInstanceOf[FromFile].formulaName).mkString(", ")}")
       } catch {
-        case e:Exception => ()
+        case _:Exception => ()
       }
     }
     Out.comment(s"No. of processed clauses: ${state.processed.size}")
@@ -372,7 +373,8 @@ object SeqLoop {
     Out.comment(s"No. of backward subsumed clauses: ${state.noBackwardSubsumedCl}")
     Out.comment(s"No. of ground rewrite rules in store: ${state.groundRewriteRules.size}")
     Out.comment(s"No. of non-ground rewrite rules in store: ${state.nonGroundRewriteRules.size}")
-    Out.comment(s"No. of other units in store: ${state.nonRewriteUnits.size}")
+    Out.comment(s"No. of positive (non-rewrite) units in store: ${state.posNonRewriteUnits.size}")
+    Out.comment(s"No. of negative (non-rewrite) units in store: ${state.negNonRewriteUnits.size}")
     Out.comment(s"No. of choice functions detected: ${state.choiceFunctionCount}")
     Out.comment(s"No. of choice instantiations: ${state.choiceInstantiations}")
     Out.debug(s"literals processed: ${state.processed.flatMap(_.cl.lits).size}")
@@ -395,9 +397,12 @@ object SeqLoop {
     import leo.modules.calculus.PatternUnification.isPattern
     Out.finest(state.nonGroundRewriteRules.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
     Out.finest("#########################")
-    Out.finest("other units")
+    Out.finest("positive other units")
     import leo.modules.calculus.PatternUnification.isPattern
-    Out.finest(state.nonRewriteUnits.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest(state.posNonRewriteUnits.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest("negative other units")
+    import leo.modules.calculus.PatternUnification.isPattern
+    Out.finest(state.negNonRewriteUnits.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
     Out.finest("#########################")
     Out.finest("#########################")
     Out.finest("#########################")

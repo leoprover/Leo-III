@@ -106,12 +106,12 @@ class PreprocessRule(inType : DataType[AnnotatedClause],
       result = Control.funcext(result) // Maybe comment out? why?
       Control.detectAC(result)(sig)
       result = Control.acSimp(result)
-      result = Control.simp(result)
+      result = Control.simp(result)(???)
       if (!state.isPolymorphic && result.cl.typeVars.nonEmpty) state.setPolymorphic()
       result
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
-    result = Control.extPreprocessUnify(result)(state)
+    result = Control.extPreprocessUnify(result)(???)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }

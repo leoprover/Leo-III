@@ -32,10 +32,11 @@ object Control {
   @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
   @inline final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.liftEq(cl)(sig)
-  @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(state)
+  @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(state)
+  @deprecated("Usage is deprecated. It is unknown what this exactly does.", "Leo-III 1.2")
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
-  @inline final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(sig)
-  @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(sig)
+  @inline final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(state)
+  @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(state)
   @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
   @inline final def detectUnit(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = inferenceControl.SimplificationControl.detectUnit(cl)
@@ -1432,7 +1433,7 @@ package inferenceControl {
         cl
     }
 
-    final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = {
+    final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       import UnificationControl.doUnify0
       implicit val sig = state.signature
       var result: Set[AnnotatedClause] = Set()
@@ -1469,7 +1470,7 @@ package inferenceControl {
           if (res == uniLits) result = result + cl
           else {
             val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
-            val simpNewCl = Control.simp(newCl)(sig)
+            val simpNewCl = Control.simp(newCl)(state)
             result = result + cl + simpNewCl
           }
         } else {
@@ -1487,7 +1488,7 @@ package inferenceControl {
               val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
               if (res != liftedClUniLits) {
                 val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
-                val simpNewCl = Control.simp(newCl)(sig)
+                val simpNewCl = Control.simp(newCl)(state)
                 result = result + simpNewCl
               }
             } else {
@@ -1569,13 +1570,14 @@ package inferenceControl {
         cl
     }
 
-    final def simp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
+    final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+      implicit val sig = state.signature
       Out.trace(s"[Simp] Processing ${cl.id}")
       if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) {
         Out.finest(s"[Simp] [${cl.id}] already simplified, skipping.")
         cl
       } else {
-        val simpresult = Simp(cl.cl)
+        val simpresult = Simp(cl.cl, state.posNonRewriteUnits.map(_.cl.lits.head).toSeq, state.negNonRewriteUnits.map(_.cl.lits.head).toSeq)
         val result = if (simpresult != cl.cl)
           AnnotatedClause(simpresult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
         else cl
@@ -1584,7 +1586,7 @@ package inferenceControl {
       }
 
     }
-    final def simpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = clSet.map(simp)
+    final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
 
     final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"[Simp] Shallow processing ${cl.id}")
@@ -1613,8 +1615,13 @@ package inferenceControl {
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as non-ground rewrite rule.")
           }
         } else {
-          Out.trace(s"[SeqLoop] Clause ${cl.id} added as (non-rewrite) unit.")
-          state.addNonRewriteUnit(cl)
+          if (cl.cl.lits.head.polarity) {
+            state.addPosNonRewriteUnits(cl)
+            Out.trace(s"[SeqLoop] Clause ${cl.id} added as positive (non-rewrite) unit.")
+          } else {
+            state.addNegNonRewriteUnits(cl)
+            Out.trace(s"[SeqLoop] Clause ${cl.id} added as negative (non-rewrite) unit.")
+          }
         }
       }
     }
@@ -1911,11 +1918,14 @@ package redundancyControl {
   object RedundancyControl {
     /** Returns true iff cl is redundant wrt to processed. */
     final def redundant(cl: AnnotatedClause, processed: Set[AnnotatedClause])(implicit state: LocalFVState): Boolean = {
-      if (processed.exists(_.cl == cl.cl)) {
+      import leo.datastructures.Clause.trivial
+      if (trivial(cl.cl)) {
+        Out.debug(s"[Redundancy] ${cl.id} is trivial.")
+        true
+      } else if (processed.exists(_.cl == cl.cl)) {
         Out.debug(s"[Redundancy] Already contained in processed set: ${cl.id}")
         true
-      }
-      else if (SubsumptionControl.isSubsumed(cl, processed)) true
+      } else if (SubsumptionControl.isSubsumed(cl, processed)) true
       // TODO: Do e.g. AC tautology deletion? maybe restructure later.
       else false
     }

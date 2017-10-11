@@ -64,7 +64,9 @@ class BlackboardState(val state : State[AnnotatedClause]) extends DataStore {
       state.incProofLoopCount() // TODO move to statistic?
       state.addProcessed(n)
       if(Clause.unit(n.cl) && !Clause.rewriteRule(n.cl)){
-        state.addNonRewriteUnit(n)
+//        state.addNonRewriteUnit(n)
+        ???
+        // See Control.detectUnit maybe?
       }
     }
 

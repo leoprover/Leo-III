@@ -690,16 +690,27 @@ object Simp extends CalculusRule {
     } else (CANNOTAPPLY, -1)
   }
 
-  final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+  final private def litIsFalse(lit: Literal, posEqualities: Seq[Literal], negEqualities: Seq[Literal]): Boolean = {
+    if (Literal.isFalse(lit)) true
+    else {
+      if (lit.polarity) {
+        negEqualities.exists(_.unsignedEquals(lit))
+      } else {
+        posEqualities.exists(_.unsignedEquals(lit))
+      }
+    }
+  }
+
+  final def apply(lits: Seq[Literal], posEqualities: Seq[Literal], negEqualities: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
-    var newLits: Seq[Literal] = Vector()
+    var newLits: Seq[Literal] = Vector.empty
     var curSubst: Subst = Subst.id
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit0 = litIt.next().substituteOrdered(curSubst)
       val lit = apply(lit0)(sig)
 
-      if (!Literal.isFalse(lit)) {
+      if (!litIsFalse(lit, posEqualities, negEqualities)) {
         if (!newLits.contains(lit)) {
           val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
           if (maybeSolvedUniEq == CANNOTAPPLY) {
@@ -759,7 +770,10 @@ object Simp extends CalculusRule {
     } else newLits
   }
 
-  final def apply(cl: Clause)(implicit sig: Signature): Clause  = Clause(apply(cl.lits)(sig))
+  final def apply(cl: Clause, posEqualities: Seq[Literal], negEqualities: Seq[Literal])(implicit sig: Signature): Clause =
+    Clause(apply(cl.lits, posEqualities, negEqualities)(sig))
+
+  final def apply(cl: Clause)(implicit sig: Signature): Clause  = apply(cl, Seq.empty, Seq.empty)
 
   final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
     Clause(shallowSimp(cl.lits)(sig))
