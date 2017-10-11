@@ -1621,76 +1621,77 @@ package inferenceControl {
 
     final def rewriteSimp(cw: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
-      val rules0 = state.groundRewriteRules// ++ state.nonGroundRewriteRules
-      val plainSimp = simp(cw)
       Out.trace(s"[Rewriting] Processing ${cw.id}")
-      Out.finest(s"[Rewriting] Rules existent? ${rules0.nonEmpty}")
-      if (rules0.isEmpty) {
+      Out.finest(s"[Rewriting] ${cw.pretty(sig)}")
+      val plainSimp = simp(cw)
+      Out.finest(s"[Rewriting] plain simp: ${plainSimp.pretty(sig)}")
+
+      val rulesExist = state.groundRewriteRules.nonEmpty || state.nonGroundRewriteRules.nonEmpty
+      Out.finest(s"[Rewriting] Rules existent? ${rulesExist}")
+      if (!rulesExist) {
         Out.trace(s"[RewriteSimp] Result: ${plainSimp.pretty(sig)}")
         plainSimp
-      }
-      else {
-        val rewriteTable: Map[Term, Term] = rules0.map(cl => (cl.cl.lits.head.left, cl.cl.lits.head.right)).toMap
-        val searchset = rewriteTable.keySet
-
-        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(lit, rewriteTable, searchset)(sig))
+      } else {
+        val groundRewriteTable: Map[Term, Term] = state.groundRewriteRules.map(cl => (cl.cl.lits.head.left, cl.cl.lits.head.right)).toMap
+        val maxImplicitVar = plainSimp.cl.maxImplicitlyBound
+        val nonGroundRewriteTable: Map[Term, Term] = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), cl.cl.lits.head.right.lift(maxImplicitVar))).toMap
+        val vargen = freshVarGen(plainSimp.cl)
+        leo.Out.finest(s"vargen in rewriteSimp: ${vargen.existingVars.toString()}")
+        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(vargen, maxImplicitVar, lit, groundRewriteTable, nonGroundRewriteTable)(sig))
         val newCl = Clause(newLits)
         val (result,x) = if (plainSimp.cl == newCl) (plainSimp,true) else {
           leo.Out.finest(s"Rewriting happend!")
-          (AnnotatedClause(newCl, InferredFrom(RewriteSimp, cw), cw.properties),false)
+          (AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cw) ++ state.groundRewriteRules ++ state.nonGroundRewriteRules), cw.properties),false)
         }
         val result2 = shallowSimp(result)
-
-
-//        // get all rewrite rules as literals
-//        val rules: Set[Literal] = rules0.map(_.cl.lits.head)
-//        myAssert(rules.forall(_.oriented))
-//
-//        // search in all literals of cw for instances of a rule's left side
-//        val intoConfigurationIt = intoConfigurationIterator(plainSimp.cl)(sig)
-//        while (intoConfigurationIt.hasNext) {
-//          val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
-//          val rewriteRulesIt = rules.iterator
-//          while (rewriteRulesIt.hasNext) {
-//            val rewriteRule = rewriteRulesIt.next()
-//            val withTerm = rewriteRule.left
-//            val replaceBy = rewriteRule.right
-//            leo.Out.finest(s"[Rewriting] check with ${withTerm.pretty(sig)}, into: ${intoTerm.pretty(sig)}: ${leo.modules.calculus.mayMatch(withTerm, intoTerm)}")
-//            // TODO What to do with multiple rewrites on same (sub)position?
-//          }
-//        }
-//        val rewriteSimp = plainSimp.cl// RewriteSimp(plainSimp, ???)
-//        val result = if (rewriteSimp != plainSimp.cl) AnnotatedClause(rewriteSimp, InferredFrom(RewriteSimp, cw), cw.properties)
-//        else plainSimp
+//        val result2 = result
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
+//        if (!x) System.exit(1)
         result2
       }
     }
-    private def rewriteLit(lit: Literal, rewriteTable: Map[Term, Term], searchset: Set[Term])(sig: Signature): Literal = {
-      if (lit.equational) Literal.mkOrdered(rewriteTerm(lit.left, rewriteTable, searchset)(sig), rewriteTerm(lit.right, rewriteTable, searchset)(sig), lit.polarity)(sig)
-      else Literal.apply(rewriteTerm(lit.left, rewriteTable, searchset)(sig), lit.polarity)
+    private def rewriteLit(vargen: FreshVarGen, maxImplicitVar: Int, lit: Literal, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term,Term])(sig: Signature): Literal = {
+      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, maxImplicitVar, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), rewriteTerm(vargen, maxImplicitVar, lit.right, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)(sig)
+      else Literal.apply(rewriteTerm(vargen, maxImplicitVar, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)
     }
-    private def rewriteTerm(term: Term, rewriteTable: Map[Term, Term], searchset: Set[Term])(sig: Signature): Term = {
+    private def rewriteTerm(vargen: FreshVarGen, maxImplicitVar: Int, term: Term, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term, Term])(sig: Signature): Term = {
       import leo.datastructures.Term._
       import leo.datastructures.partitionArgs
 
-      if (searchset.contains(term)) {
-        val res = rewriteTable(term)
+      if (groundRewriteTable.contains(term)) {
+        val res = groundRewriteTable(term)
         leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${res.pretty(sig)}")
         res
       } else {
+//        val toFind = nonGroundRewriteTable.keysIterator
+//        while (toFind.hasNext) {
+//          val template = toFind.next()
+//          val matchingResult = Matching(vargen, template, term)
+//          if (matchingResult.nonEmpty) {
+//            val (termSubst, typeSubst) = matchingResult.head
+//            val result =  nonGroundRewriteTable(template).substitute(termSubst, typeSubst)
+//            leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
+//            leo.Out.finest(s"via lhs ${template.pretty(sig)}")
+//            leo.Out.finest(s"via rhs ${nonGroundRewriteTable(template).pretty(sig)}")
+//            leo.Out.finest(s"via subst ${termSubst.pretty}")
+////            System.exit(1)
+//            result
+//          }
+//        }
+        // only reachable if not rewritten so far
         term match {
           case Bound(_,_) | Symbol(_) => term
           case hd ∙ args =>
-            val rewrittenHd = rewriteTerm(hd, rewriteTable, searchset)(sig)
+            val rewrittenHd = rewriteTerm(vargen, maxImplicitVar, hd, groundRewriteTable, nonGroundRewriteTable)(sig)
             val (tyArgs, termArgs) = partitionArgs(args)
 
             val res0 = Term.mkTypeApp(hd, tyArgs)
-            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(t, rewriteTable, searchset)(sig)))
-          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(body, rewriteTable, searchset)(sig))
+            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, maxImplicitVar, t, groundRewriteTable, nonGroundRewriteTable)(sig)))
+          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, maxImplicitVar, body, groundRewriteTable, nonGroundRewriteTable)(sig))
           case _ => term
         }
       }
+
     }
 
     type Subterm = Term

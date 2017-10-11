@@ -521,7 +521,7 @@ object HOPatternMatching extends Matching {
   /** Wrap up the matching result with the initial type substitution and return as Option. */
   private final def match0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[Result] = {
     leo.Out.finest(s"match0: ${ueqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
-    val matcher = match1(ueqs, vargen, Subst.id, Subst.id)
+    val matcher = match1(ueqs, vargen, Subst.id, Subst.id, vargen.existingVars.map(_._1))
     if (matcher.isDefined)
       Some((matcher.get._1.normalize, initialTypeSubst.comp(matcher.get._2).normalize))
     else
@@ -529,22 +529,27 @@ object HOPatternMatching extends Matching {
   }
 
   type PartialResult = Result
-
+  // FIXME: Forbiddenvars are not vargen.existingvars:
+  // consider e.g. matching task  t = s with vars(t)={1,2,3} and vars(s)={5}
+  // and t comes from a clause c with fv(c)={1,2,3,4}
+  // then vargen.existingvars for the matching call should be {1,2,3,4,5}
+  // (since if we need a new var, we must not use 5 as fresh var)
+  // but only {1,2,3,4} are forbidden vars
   /** Main matching method: Solve head equations subsequently by applying the according rules. */
   @tailrec
-  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst): Option[PartialResult] = {
+  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst, forbiddenVars: Seq[Int]): Option[PartialResult] = {
     import leo.datastructures.Term.{Bound, ∙}
     import leo.datastructures.{partitionArgs, collectLambdas}
     import HuetsPreUnification.{applySubstToList, zipWithAbstractions}
-
+    leo.Out.finest(s"forbidden vars: ${forbiddenVars.toString()}")
     if (ueqs.isEmpty)
       Some((partialMatcher, partialTyMatcher))
     else {
       val (l0,r0) = ueqs.head
-      if (l0 == r0) match1(ueqs.tail, vargen, partialMatcher, partialTyMatcher)
+      if (l0 == r0) match1(ueqs.tail, vargen, partialMatcher, partialTyMatcher, forbiddenVars)
       else {
         val l = l0.substitute(partialMatcher, partialTyMatcher).etaExpand
-        val r = r0.substitute(partialMatcher, partialTyMatcher).etaExpand
+        val r = r0
         leo.Out.finest(s"solve: ${l.pretty} = ${r.pretty}")
         myAssert(Term.wellTyped(l))
         myAssert(Term.wellTyped(r))
@@ -563,7 +568,7 @@ object HOPatternMatching extends Matching {
 //              assert(leftBody.ty == rightBody.ty)
 //              val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen, leftBody.ty)
 //              match1(ueqs.tail, vargen, partialMatcher.comp(partialUniResult._1), partialTyMatcher.comp(partialUniResult._2))
-            case (Bound(ty1, idx1), _) if idx1 > abstractionCount =>
+            case (Bound(ty1, idx1), _) if idx1 > abstractionCount && !forbiddenVars.contains(idx1) =>
               /* flex-rigid or flex-flex */
               if (r.looseBounds.contains(idx1 - abstractionCount)) None
               else {
@@ -575,7 +580,7 @@ object HOPatternMatching extends Matching {
                   val newUeqs = result._2
                   leo.Out.finest(s"flex-rigid result matcher: ${partialMatchingResult._1.pretty}")
                   leo.Out.finest(s"flex-rigid result new unsolved: ${newUeqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
-                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1), partialTyMatcher.comp(partialMatchingResult._2))
+                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1), partialTyMatcher.comp(partialMatchingResult._2), forbiddenVars)
                 }
               }
             case (_, Bound(ty2, idx2)) if idx2 > abstractionCount=>
@@ -597,7 +602,7 @@ object HOPatternMatching extends Matching {
                     leo.Out.finest(s"Poly rigid-rigid match succeeded: ${tySubst.pretty}")
                     val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
                     leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-                    match1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen, partialMatcher.applyTypeSubst(tySubst), partialTyMatcher.comp(tySubst))
+                    match1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen, partialMatcher.applyTypeSubst(tySubst), partialTyMatcher.comp(tySubst), forbiddenVars)
                   } else {
                     leo.Out.finest(s"Poly rigid-rigid uni failed")
                     None
@@ -607,7 +612,7 @@ object HOPatternMatching extends Matching {
                   val termArgs2 = args2.map(_.left.get)
                   val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
                   leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher, partialTyMatcher)
+                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher, partialTyMatcher, forbiddenVars)
                 }
               } else None
 
