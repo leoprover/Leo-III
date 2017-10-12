@@ -61,8 +61,8 @@ trait State[T <: ClauseProxy] extends FVState[T] {
   def addGroundRewriteRule(cl: T): Unit
   def addNonGroundRewriteRule(cl: T): Unit
 
-  def posNonRewriteUnits: Set[T]
-  def negNonRewriteUnits: Set[T]
+  def posNonRewriteUnits: Map[Literal, T]
+  def negNonRewriteUnits: Map[Literal, T]
   def addPosNonRewriteUnits(cl: T): Unit
   def addNegNonRewriteUnits(cl: T): Unit
   def removeUnits(cls: Set[T]): Unit
@@ -140,8 +140,8 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   private final val currentGroundRewriteRules: mutable.Set[T] = mutable.Set.empty
   private final val currentNonGroundRewriteRules: mutable.Set[T] = mutable.Set.empty
-  private final val currentPosNonRewriteUnits: mutable.Set[T] = mutable.Set.empty
-  private final val currentNegNonRewriteUnits: mutable.Set[T] = mutable.Set.empty
+  private final val currentPosNonRewriteUnits: mutable.Map[Literal, T] = mutable.Map.empty
+  private final val currentNegNonRewriteUnits: mutable.Map[Literal, T] = mutable.Map.empty
   /////////////////////
   // Further utility
   /////////////////////
@@ -203,15 +203,25 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   final def nonGroundRewriteRules: Set[T] = currentNonGroundRewriteRules.toSet
   final def addGroundRewriteRule(cl: T): Unit = {currentGroundRewriteRules += cl}
   final def addNonGroundRewriteRule(cl: T): Unit = {currentNonGroundRewriteRules += cl}
-  final def posNonRewriteUnits: Set[T] = currentPosNonRewriteUnits.toSet
-  final def negNonRewriteUnits: Set[T] = currentNegNonRewriteUnits.toSet
-  final def addPosNonRewriteUnits(cl: T): Unit = {currentPosNonRewriteUnits += cl}
-  final def addNegNonRewriteUnits(cl: T): Unit = {currentNegNonRewriteUnits += cl}
+  final def posNonRewriteUnits: Map[Literal, T] = currentPosNonRewriteUnits.toMap
+  final def negNonRewriteUnits: Map[Literal, T] = currentNegNonRewriteUnits.toMap
+  final def addPosNonRewriteUnits(cl: T): Unit = {
+    assert(cl.cl.lits.size == 1)
+    val lit = cl.cl.lits.head
+    assert(lit.polarity)
+    currentPosNonRewriteUnits += (lit -> cl)
+  }
+  final def addNegNonRewriteUnits(cl: T): Unit = {
+    assert(cl.cl.lits.size == 1)
+    val lit = cl.cl.lits.head
+    assert(!lit.polarity)
+    currentNegNonRewriteUnits += (lit -> cl)
+  }
   final def removeUnits(cls: Set[T]): Unit = {
     currentGroundRewriteRules --= cls
     currentNonGroundRewriteRules --= cls
-    currentPosNonRewriteUnits --= cls
-    currentNegNonRewriteUnits --= cls
+    currentPosNonRewriteUnits --= cls.map(_.cl.lits.head)
+    currentNegNonRewriteUnits --= cls.map(_.cl.lits.head)
   }
   /////////////////////
   // Special clauses

@@ -666,6 +666,23 @@ object DomainConstraintInstances extends CalculusRule {
 }
 
 
+object SimplifyReflect extends CalculusRule {
+  val name: String = "simplifyReflect"
+  val inferenceStatus: SuccessSZS = SZS_Theorem
+
+  def canApplyPos(cl: Clause, lit: Literal, posUnit: Literal): Boolean = {
+    assert(!lit.polarity)
+    assert(posUnit.polarity)
+    lit.unsignedEquals(posUnit) // TODO: This could be matching and on subterms
+  }
+
+  def canApplyNeg(cl: Clause, lit: Literal, negUnit: Literal): Boolean = {
+    assert(lit.polarity)
+    assert(!negUnit.polarity)
+    lit.unsignedEquals(negUnit) // TODO: This could be matching
+  }
+}
+
 object Simp extends CalculusRule {
   final val name = "simp"
   final val inferenceStatus = SZS_Theorem
@@ -690,18 +707,7 @@ object Simp extends CalculusRule {
     } else (CANNOTAPPLY, -1)
   }
 
-  final private def litIsFalse(lit: Literal, posEqualities: Seq[Literal], negEqualities: Seq[Literal]): Boolean = {
-    if (Literal.isFalse(lit)) true
-    else {
-      if (lit.polarity) {
-        negEqualities.exists(_.unsignedEquals(lit))
-      } else {
-        posEqualities.exists(_.unsignedEquals(lit))
-      }
-    }
-  }
-
-  final def apply(lits: Seq[Literal], posEqualities: Seq[Literal], negEqualities: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
+  final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     var newLits: Seq[Literal] = Vector.empty
     var curSubst: Subst = Subst.id
@@ -710,7 +716,7 @@ object Simp extends CalculusRule {
       val lit0 = litIt.next().substituteOrdered(curSubst)
       val lit = apply(lit0)(sig)
 
-      if (!litIsFalse(lit, posEqualities, negEqualities)) {
+      if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
           val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
           if (maybeSolvedUniEq == CANNOTAPPLY) {
@@ -770,10 +776,7 @@ object Simp extends CalculusRule {
     } else newLits
   }
 
-  final def apply(cl: Clause, posEqualities: Seq[Literal], negEqualities: Seq[Literal])(implicit sig: Signature): Clause =
-    Clause(apply(cl.lits, posEqualities, negEqualities)(sig))
-
-  final def apply(cl: Clause)(implicit sig: Signature): Clause  = apply(cl, Seq.empty, Seq.empty)
+  final def apply(cl: Clause)(implicit sig: Signature): Clause = Clause(apply(cl.lits)(sig))
 
   final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
     Clause(shallowSimp(cl.lits)(sig))

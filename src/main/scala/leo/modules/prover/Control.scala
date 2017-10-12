@@ -116,6 +116,7 @@ package inferenceControl {
   import leo.modules.HOLSignature
   import leo.modules.calculus._
   import leo.modules.control.Control.LocalState
+  import leo.modules.output.{SZS_Theorem, SuccessSZS}
 
   import scala.annotation.tailrec
   package object inferenceControl {
@@ -1367,6 +1368,7 @@ package inferenceControl {
 
   protected[modules] object SimplificationControl {
     import leo.datastructures.ClauseAnnotation.InferredFrom
+    import scala.collection.mutable
 
     final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = {
       val litsIt = cl.cl.lits.iterator
@@ -1571,22 +1573,69 @@ package inferenceControl {
     }
 
     final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
-      implicit val sig = state.signature
+      implicit val sig: Signature = state.signature
       Out.trace(s"[Simp] Processing ${cl.id}")
       if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) {
         Out.finest(s"[Simp] [${cl.id}] already simplified, skipping.")
         cl
       } else {
-        val simpresult = Simp(cl.cl, state.posNonRewriteUnits.map(_.cl.lits.head).toSeq, state.negNonRewriteUnits.map(_.cl.lits.head).toSeq)
-        val result = if (simpresult != cl.cl)
+        val simpresult = Simp(cl.cl)
+        val result0 = if (simpresult != cl.cl)
           AnnotatedClause(simpresult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
         else cl
-        Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
-        result
+        Out.finest(s"[Simp] Result: ${result0.pretty(sig)}")
+        simplifyReflect(result0)(state)
       }
-
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
+
+
+    final private def simplifyReflect(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+      val sig: Signature = state.signature
+      val posEqs = state.posNonRewriteUnits
+      val negEqs = state.negNonRewriteUnits
+      Out.trace(s"[SimplifyReflect] Processing ${cl.id}")
+      val usedUnits: mutable.Set[AnnotatedClause] = mutable.Set.empty
+      var newLits: Seq[Literal] = Vector.empty
+      val lits = cl.cl.lits.iterator
+      while (lits.hasNext) {
+        val lit = lits.next()
+        if (lit.polarity) {
+          if (!negSimplifyReflect0(cl.cl, lit, negEqs, usedUnits)) newLits = newLits :+ lit
+        } else {
+          if (!posSimplifyReflect0(cl.cl, lit, posEqs, usedUnits)) newLits = newLits :+ lit
+        }
+      }
+      val result = if (usedUnits.isEmpty) cl else AnnotatedClause(Clause(newLits), InferredFrom(SimplifyReflect, Seq(cl) ++ usedUnits.toSeq), cl.properties)
+      Out.finest(s"[SimplifyReflect] Result: ${result.pretty(sig)}")
+      result
+    }
+    final private def posSimplifyReflect0(cl: Clause, lit: Literal, posUnits: Map[Literal, AnnotatedClause], usedUnits: mutable.Set[AnnotatedClause]): Boolean =  {
+      assert(!lit.polarity)
+      val posUnitsIt = posUnits.keysIterator
+      while (posUnitsIt.hasNext) {
+        val posUnit = posUnitsIt.next()
+        assert(posUnit.polarity)
+        if (SimplifyReflect.canApplyPos(cl, lit, posUnit)) {
+          usedUnits += posUnits(posUnit)
+          return true
+        }
+      }
+      false
+    }
+    final private def negSimplifyReflect0(cl: Clause, lit: Literal, negUnits: Map[Literal, AnnotatedClause], usedUnits: mutable.Set[AnnotatedClause]): Boolean =  {
+      assert(lit.polarity)
+      val negUnitsIt = negUnits.keysIterator
+      while (negUnitsIt.hasNext) {
+        val negUnit = negUnitsIt.next()
+        assert(!negUnit.polarity)
+        if (SimplifyReflect.canApplyNeg(cl, lit, negUnit)) {
+          usedUnits += negUnits(negUnit)
+          return true
+        }
+      }
+      false
+    }
 
     final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       Out.trace(s"[Simp] Shallow processing ${cl.id}")
@@ -1625,7 +1674,7 @@ package inferenceControl {
         }
       }
     }
-
+    type RewriteTable = Map[Term, (Term, AnnotatedClause)]
     final def rewriteSimp(cw: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
       Out.trace(s"[Rewriting] Processing ${cw.id}")
@@ -1639,34 +1688,35 @@ package inferenceControl {
         Out.trace(s"[RewriteSimp] Result: ${plainSimp.pretty(sig)}")
         plainSimp
       } else {
-        val groundRewriteTable: Map[Term, Term] = state.groundRewriteRules.map(cl => (cl.cl.lits.head.left, cl.cl.lits.head.right)).toMap
+        val groundRewriteTable: RewriteTable = state.groundRewriteRules.map(cl => (cl.cl.lits.head.left, (cl.cl.lits.head.right, cl))).toMap
         val maxImplicitVar = plainSimp.cl.maxImplicitlyBound
-        val nonGroundRewriteTable: Map[Term, Term] = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), cl.cl.lits.head.right.lift(maxImplicitVar))).toMap
+        val nonGroundRewriteTable: RewriteTable = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), (cl.cl.lits.head.right.lift(maxImplicitVar), cl))).toMap
         val vargen = freshVarGen(plainSimp.cl)
+        val rewriteRulesUsed: mutable.Set[AnnotatedClause] = mutable.Set.empty
         leo.Out.finest(s"vargen in rewriteSimp: ${vargen.existingVars.toString()}")
-        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(vargen, lit, groundRewriteTable, nonGroundRewriteTable)(sig))
+        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(vargen, lit, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
         val newCl = Clause(newLits)
-        val (result,x) = if (plainSimp.cl == newCl) (plainSimp,true) else {
+        val result = if (rewriteRulesUsed.isEmpty) plainSimp else {
           leo.Out.finest(s"Rewriting happend!")
-          (AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cw) ++ state.groundRewriteRules ++ state.nonGroundRewriteRules), cw.properties),false)
+          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cw) ++ rewriteRulesUsed.toSeq), cw.properties)
         }
         val result2 = shallowSimp(result)
-//        val result2 = result
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
         result2
       }
     }
-    private def rewriteLit(vargen: FreshVarGen, lit: Literal, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term,Term])(sig: Signature): Literal = {
-      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)(sig)
-      else Literal.apply(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable)(sig), lit.polarity)
+    private def rewriteLit(vargen: FreshVarGen, lit: Literal, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause])(sig: Signature): Literal = {
+      if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)(sig)
+      else Literal.apply(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)
     }
-    private def rewriteTerm(vargen: FreshVarGen, term: Term, groundRewriteTable: Map[Term, Term], nonGroundRewriteTable: Map[Term, Term])(sig: Signature): Term = {
+    private def rewriteTerm(vargen: FreshVarGen, term: Term, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause])(sig: Signature): Term = {
       import leo.datastructures.Term._
       import leo.datastructures.partitionArgs
 
       if (groundRewriteTable.contains(term)) {
-        val res = groundRewriteTable(term)
+        val (res, origin) = groundRewriteTable(term)
         leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${res.pretty(sig)}")
+        rewriteRulesUsed += origin
         res
       } else {
         val toFind = nonGroundRewriteTable.keysIterator
@@ -1677,11 +1727,13 @@ package inferenceControl {
           val matchingResult = Matching(vargen0, template, term)
           if (matchingResult.nonEmpty) {
             val (termSubst, typeSubst) = matchingResult.head
-            val result =  nonGroundRewriteTable(template).substitute(termSubst, typeSubst)
+            val (replaceBy, origin) = nonGroundRewriteTable(template)
+            val result =  replaceBy.substitute(termSubst, typeSubst)
             leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
             leo.Out.finest(s"via lhs ${template.pretty(sig)}")
-            leo.Out.finest(s"via rhs ${nonGroundRewriteTable(template).pretty(sig)}")
+            leo.Out.finest(s"via rhs ${replaceBy.pretty(sig)}")
             leo.Out.finest(s"via subst ${termSubst.pretty}")
+            rewriteRulesUsed += origin
             result
           }
         }
@@ -1689,12 +1741,12 @@ package inferenceControl {
         term match {
           case Bound(_,_) | Symbol(_) => term
           case hd ∙ args =>
-            val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable)(sig)
+            val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)
             val (tyArgs, termArgs) = partitionArgs(args)
 
             val res0 = Term.mkTypeApp(rewrittenHd, tyArgs)
-            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable)(sig)))
-          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable)(sig))
+            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)))
+          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
           case _ => term
         }
       }

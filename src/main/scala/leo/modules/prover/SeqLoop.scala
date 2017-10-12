@@ -399,10 +399,10 @@ object SeqLoop {
     Out.finest("#########################")
     Out.finest("positive other units")
     import leo.modules.calculus.PatternUnification.isPattern
-    Out.finest(state.posNonRewriteUnits.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest(state.posNonRewriteUnits.map(entry => s"(${isPattern(entry._1.left)}/${isPattern(entry._1.right)}): ${entry._2.pretty(sig)}").mkString("\n\t"))
     Out.finest("negative other units")
     import leo.modules.calculus.PatternUnification.isPattern
-    Out.finest(state.negNonRewriteUnits.map(cl => s"(${isPattern(cl.cl.lits.head.left)}/${isPattern(cl.cl.lits.head.right)}): ${cl.pretty(sig)}").mkString("\n\t"))
+    Out.finest(state.negNonRewriteUnits.map(entry => s"(${isPattern(entry._1.left)}/${isPattern(entry._1.right)}): ${entry._2.pretty(sig)}").mkString("\n\t"))
     Out.finest("#########################")
     Out.finest("#########################")
     Out.finest("#########################")
