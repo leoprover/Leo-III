@@ -667,22 +667,41 @@ object DomainConstraintInstances extends CalculusRule {
 
 
 object SimplifyReflect extends CalculusRule {
+  import leo.modules.calculus.Matching
+
   val name: String = "simplifyReflect"
   val inferenceStatus: SuccessSZS = SZS_Theorem
 
   def canApplyPos(cl: Clause, lit: Literal, posUnit: Literal): Boolean = {
     assert(!lit.polarity)
     assert(posUnit.polarity)
-    lit.unsignedEquals(posUnit) // TODO: This could be matching and on subterms
+    isEqualOrMatchable(cl, lit, posUnit)
+    // TODO: This could also work on subterms
   }
 
   def canApplyNeg(cl: Clause, lit: Literal, negUnit: Literal): Boolean = {
     assert(lit.polarity)
     assert(!negUnit.polarity)
-    if (lit.unsignedEquals(negUnit)) true
+    isEqualOrMatchable(cl, lit, negUnit)
+  }
+
+  private final def isEqualOrMatchable(cl: Clause, lit: Literal, unit: Literal): Boolean = {
+    if (lit.unsignedEquals(unit)) true
     else {
-      false
-      // TODO: This could be matching
+      if (unit.fv.nonEmpty) {
+        val (unitLeft, unitRight) = (unit.left.lift(cl.maxImplicitlyBound), unit.right.lift(cl.maxImplicitlyBound))
+        val (litLeft, litRight) = (lit.left, lit.right)
+        val vargen = freshVarGen(cl)
+        vargen.addVars(unitLeft.fv); vargen.addVars(unitRight.fv)
+        val match1 = Matching.apply(vargen.copy, Seq((unitLeft, litLeft), (unitRight, litRight)))
+        if (match1.nonEmpty) {
+          true
+        } else {
+          val match2 = Matching.apply(vargen.copy, Seq((unitLeft, litRight), (unitRight, litLeft)))
+          if (match2.nonEmpty) true
+          else false
+        }
+      } else false
     }
   }
 }

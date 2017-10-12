@@ -13,10 +13,12 @@ trait Matching {
   /** Returns an iterable of substitutions (σ_i) such that sσ_i = t and there exists no such ϱ
     * which is more general than σ_i. */
   def matchTerms(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result]
+  def matchTerms(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Result]
 }
 object Matching {
   val impl: Matching = HOPatternMatching
   def apply(vargen: FreshVarGen, s: Term, t: Term): Iterable[Matching#Result] = impl.matchTerms(vargen, s, t)
+  def apply(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Matching#Result] = impl.matchTerms(vargen, ueqs)
 }
 
 object HOMatching extends Matching {
@@ -54,10 +56,12 @@ object HOMatching extends Matching {
   }
 
 
-  def matchTerms(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result] = {
-    if (s.ty != t.ty) throw new NotImplementedError()
+  def matchTerms(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result] = matchTerms(vargen, Seq((s,t)))
+  def matchTerms(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Result] = {
+    if (ueqs.exists{case (s,t) => s.ty != t.ty}) throw new NotImplementedError()
     else {
-      new NDStream[Result](new MyConfiguration(Seq((s.etaExpand,t.etaExpand)), Seq(), Subst.id, Subst.id, 0), new EnumUnifier(vargen, Subst.id)) with BFSAlgorithm
+      val ueqs0 = ueqs.map {case (s,t) => (s.etaExpand, t.etaExpand)}.toVector
+      new NDStream[Result](new MyConfiguration(ueqs0, Vector.empty, Subst.id, Subst.id, 0), new EnumUnifier(vargen, Subst.id)) with BFSAlgorithm
     }
   }
 
@@ -495,18 +499,17 @@ object HOPatternMatching extends Matching {
   /** Returns an iterable of substitutions (σ_i) such that tσ_i = s and there exists no such ϱ
     * which is more general than σ_i. */
   override def matchTerms(vargen: FreshVarGen, t: Term, s: Term): Iterable[Result] = {
-    // 1. check if types can be matched
-    val t_ty = t.ty
-    val s_ty = s.ty
-    val initialTypeSubst = TypeMatching(t_ty, s_ty)
-    // 2. Continue only if types can be matched
+    matchTerms(vargen, Vector((t,s)))
+  }
+
+  def matchTerms(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Result] = {
+    val initialTypeSubst = TypeMatching(ueqs.map(e => (e._1.ty, e._2.ty)))
     if (initialTypeSubst.isEmpty)
       Iterable.empty
     else {
       val initialTypeSubst0 = initialTypeSubst.get
-      val t0 = t.substitute(Subst.id, initialTypeSubst0).etaExpand
-      val s0 = s.substitute(Subst.id, initialTypeSubst0).etaExpand
-      val matchResult = match0(Vector((t0,s0)), initialTypeSubst0, vargen)
+      val ueqs0 = ueqs.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
+      val matchResult = match0(ueqs0, initialTypeSubst0, vargen)
       if (matchResult.isDefined) {
         leo.Out.finest(s"Matching succeeded!")
         Seq(matchResult.get)
@@ -514,7 +517,6 @@ object HOPatternMatching extends Matching {
         leo.Out.finest(s"Matching failed!")
         Iterable.empty
       }
-
     }
   }
 
