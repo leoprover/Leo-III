@@ -799,11 +799,16 @@ package inferenceControl {
       if (isAllPattern(uniLits)) {
         val result = doUnifyAllPattern(cl, freshVarGen, uniLits, otherLits)(sig)
         if (result == null) Set.empty
-        else Set(result)
+        else {
+          leo.Out.finest(s"doUnify0 result: ${result.pretty(sig)}")
+          Set(result)
+        }
       } else {
         val uniResultIterator = PreUni(freshVarGen, uniLits, otherLits, state.runStrategy.uniDepth)(sig)
         val uniResult = uniResultIterator.take(state.runStrategy.unifierCount).toSet
-        uniResult.map(annotate(cl, _, PreUni)(sig))
+        val result = uniResult.map(annotate(cl, _, PreUni)(sig))
+        leo.Out.finest(s"doUnify0 result:\n${result.map(_.pretty(sig)).mkString("\n")}")
+        result
       }
     }
 
@@ -1472,7 +1477,7 @@ package inferenceControl {
           if (res == uniLits) result = result + cl
           else {
             val newCl = AnnotatedClause(Clause(res ++ nonUniLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
-            val simpNewCl = Control.simp(newCl)(state)
+            val simpNewCl = Control.simp(newCl)
             result = result + cl + simpNewCl
           }
         } else {
@@ -1482,7 +1487,7 @@ package inferenceControl {
           val lifted = cnf.map(Control.liftEq)
           val liftedIt = lifted.iterator
           while (liftedIt.hasNext) {
-            val liftedCl = Control.shallowSimp(liftedIt.next())
+            val liftedCl = Control.simp(liftedIt.next())
             result = result + liftedCl
             val (liftedClUniLits, liftedClOtherLits) = liftedCl.cl.lits.partition(_.uni)
             val liftedUnified = doUnify0(cl, freshVarGen(liftedCl.cl), liftedClUniLits.map(l => (l.left, l.right)), liftedClOtherLits)(state)
@@ -1490,7 +1495,7 @@ package inferenceControl {
               val (tySubst, res) = Simp.uniLitSimp(liftedClUniLits)(sig)
               if (res != liftedClUniLits) {
                 val newCl = AnnotatedClause(Clause(res ++ liftedClOtherLits.map(_.substituteOrdered(Subst.id, tySubst))), InferredFrom(Simp, cl), cl.properties)
-                val simpNewCl = Control.simp(newCl)(state)
+                val simpNewCl = Control.simp(newCl)
                 result = result + simpNewCl
               }
             } else {
@@ -1499,6 +1504,9 @@ package inferenceControl {
           }
         }
       }
+      result = Control.cnfSet(result)
+      result = result.map(cl => Control.liftEq(Control.simp(cl)))
+      leo.Out.finest(s"[ExtPreprocessUnify] Results:\n${result.map(_.pretty(sig)).mkString("\n")}")
       result
     }
 
@@ -1574,7 +1582,7 @@ package inferenceControl {
 
     final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
-      Out.trace(s"[Simp] Processing ${cl.id}")
+      Out.trace(s"[Simp] Processing ${cl.pretty(sig)}")
       if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) {
         Out.finest(s"[Simp] [${cl.id}] already simplified, skipping.")
         cl
