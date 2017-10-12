@@ -1698,7 +1698,7 @@ package inferenceControl {
         val newCl = Clause(newLits)
         val result = if (rewriteRulesUsed.isEmpty) plainSimp else {
           leo.Out.finest(s"Rewriting happend!")
-          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cw) ++ rewriteRulesUsed.toSeq), cw.properties)
+          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(plainSimp) ++ rewriteRulesUsed.toSeq), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))
         }
         val result2 = shallowSimp(result)
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")

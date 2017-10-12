@@ -252,7 +252,7 @@ object SeqLoop {
       Control.removeProcessed(backSubsumedClauses)
     }
     // TODO: Simp processed wrt. cur
-    myAssert(!leo.modules.calculus.FullCNF.canApply(cur.cl), s"[SeqLoop] Not in CNF: ${cur.pretty(sig)}")
+    assert(!leo.modules.calculus.FullCNF.canApply(cur.cl), s"[SeqLoop] Not in CNF: ${cur.pretty(sig)}")
     /** Add to processed and to indexes. */
     state.addProcessed(cur)
     Control.insertIndexed(cur)

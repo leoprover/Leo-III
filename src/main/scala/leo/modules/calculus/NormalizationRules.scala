@@ -679,7 +679,11 @@ object SimplifyReflect extends CalculusRule {
   def canApplyNeg(cl: Clause, lit: Literal, negUnit: Literal): Boolean = {
     assert(lit.polarity)
     assert(!negUnit.polarity)
-    lit.unsignedEquals(negUnit) // TODO: This could be matching
+    if (lit.unsignedEquals(negUnit)) true
+    else {
+      false
+      // TODO: This could be matching
+    }
   }
 }
 
@@ -787,7 +791,7 @@ object Simp extends CalculusRule {
     val litIt = lits.iterator
     while (litIt.hasNext) {
       val lit = litIt.next()
-      val normLit = eqSimp(lit)(sig)
+      val normLit = apply(lit)(sig)
       if (!Literal.isFalse(normLit)) {
         if (!newLits.contains(normLit)) {
           newLits = newLits :+ normLit
