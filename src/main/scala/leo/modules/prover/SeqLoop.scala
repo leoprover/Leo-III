@@ -189,31 +189,34 @@ object SeqLoop {
             Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
+            /* Full simp with rewriting and stuff */
             cur = Control.rewriteSimp(cur)
-            /* To equality if possible */
-            cur = Control.liftEq(cur)
-
-            // Check if `cur` is an empty clause
-            if (Clause.effectivelyEmpty(cur.cl)) {
-              loop = false
-              endplay(cur, state)
-            } else {
-              // Not an empty clause, detect choice definition or do reasoning step.
-              val isChoiceSpec = Control.detectChoiceClause(cur)
-              if (isChoiceSpec) {
-                leo.Out.debug(s"[SeqLoop] Removed Choice: ${cur.id}")
+            val curCNF = Control.cnf(cur)
+            if (curCNF.size == 1 && curCNF.head == cur) {
+              // Check if `cur` is an empty clause
+              if (Clause.effectivelyEmpty(cur.cl)) {
+                loop = false
+                endplay(cur, state)
               } else {
-                // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
-                // e.g. by forward subsumption
-                if (!Control.redundant(cur, state.processed)) {
-                  Control.submit(state.processed, state)
-                  if(mainLoopInferences(cur)(state)) loop = false
-                  state.incProofLoopCount()
+                // Not an empty clause, detect choice definition or do reasoning step.
+                val isChoiceSpec = Control.detectChoiceClause(cur)
+                if (isChoiceSpec) {
+                  leo.Out.debug(s"[SeqLoop] Removed Choice: ${cur.id}")
                 } else {
-                  Out.debug(s"[SeqLoop] Redundant: ${cur.id}")
-                  state.incForwardSubsumedCl()
+                  // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+                  // e.g. by forward subsumption
+                  if (!Control.redundant(cur, state.processed)) {
+                    Control.submit(state.processed, state)
+                    if(mainLoopInferences(cur)(state)) loop = false
+                    state.incProofLoopCount()
+                  } else {
+                    Out.debug(s"[SeqLoop] Redundant: ${cur.id}")
+                    state.incForwardSubsumedCl()
+                  }
                 }
               }
+            } else {
+              Control.addUnprocessed(curCNF)
             }
           }
         }
@@ -312,9 +315,13 @@ object SeqLoop {
     newclauses = Control.unifyNewClauses(newclauses)(state)
 
     /* exhaustively CNF new clauses */
-    newclauses = newclauses.flatMap(Control.cnf)
     /* Replace eq symbols on top-level by equational literals. */
-    newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+//    newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
+    newclauses = exhaustive[AnnotatedClause]{ cls =>
+      val res0 = Control.cnfSet(cls)
+      res0.map(cl => Control.shallowSimp(Control.liftEq(cl)))
+    }(newclauses)
+
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /////////////////////////////////////////
     // Simplification of newly generated clauses END

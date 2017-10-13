@@ -108,7 +108,9 @@ trait Term extends Pretty with Prettier {
   /** Apply substitution `subst` to underlying term.
     * I.e. each free variable `i` (NOT meta-vars!) occurring within `this` is replaced by `subst(i)`,
     * The term is then beta normalized */
-  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term = closure(termSubst, typeSubst).betaNormalize
+  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Term =
+    if (termSubst == Subst.id && typeSubst == Subst.id) this
+    else closure(termSubst, typeSubst).betaNormalize
   def termSubst(termSubst: Subst): Term = if (termSubst == Subst.id) this else closure(termSubst, Subst.id).betaNormalize
   def typeSubst(typeSubst: Subst): Term = if (typeSubst == Subst.id) this else closure(Subst.id, typeSubst).betaNormalize
 //  /** Apply type substitution `tySubst` to underlying term. */

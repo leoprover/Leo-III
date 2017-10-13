@@ -1761,94 +1761,94 @@ package inferenceControl {
 
     }
 
-    type Subterm = Term
-    type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
+//    type Subterm = Term
+//    type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
 
-    /** into-Iterator for rewriting literals. Returns all literal-side-subterm configurations
-      * `(i, l_i, s, p, t)` where
-      *
-      *  - `i` is the literal's index in `cl.lits`
-      *  - `l_i` equals `cl.lits(i)`
-      *  - `s` is a side, either `true` (left) or `false` (right)
-      *  - `p` is a position in `cl.lits(i).s` (s = left/right)
-      *  - `t` is the subterm at position `p`
-      *
-      * The iterator gives all such configurations for which `l_i` is either
-      *
-      *  (i) non-maximal, or
-      *  (ii) maximal, but `s` is not a maximal side, or
-      *  (iii) maximal, `s`is a maximal side, but `p = Position.root`.
-      */
-    final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
-
-      import Literal.{leftSide, rightSide, selectSide}
-
-      val maxLits: Seq[Literal] = cl.maxLits
-      var litIndex = 0
-      var lits: Seq[Literal] = cl.lits
-      var side: Side = rightSide // minimal side
-      var curSubterms: Set[Term] = _
-      var curPositions: Set[Position] = _
-
-      def hasNext: Boolean = if (lits.isEmpty) false
-      else {
-        val hd = lits.head
-        if (curSubterms == null) {
-          if (side == rightSide && !hd.equational) {
-            side = leftSide
-          }
-          if (side == leftSide && maxLits.contains(hd)) {
-            curSubterms = Set(selectSide(hd, side))
-            curPositions = Set(Position.root)
-          } else {
-            curSubterms = selectSide(hd, side).feasibleOccurrences.keySet
-            curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
-          }
-          true
-        } else {
-          if (curPositions.isEmpty) {
-            curSubterms = curSubterms.tail
-            if (curSubterms.isEmpty) {
-              if (maxLits.contains(hd) && side == rightSide) {
-                // hd is maximal and right side is done,
-                // select left side at root position
-                side = leftSide
-                curSubterms = Set(selectSide(hd, side))
-                curPositions = Set(Position.root)
-                true
-              } else {
-                if (side == leftSide) {
-                  lits = lits.tail
-                  litIndex += 1
-                  side = rightSide
-                } else {
-                  side = leftSide
-                }
-                curSubterms = null
-                curPositions = null
-                hasNext
-              }
-            } else {
-              curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
-              assert(hasNext)
-              true
-            }
-          } else {
-            true
-          }
-        }
-      }
-
-      def next(): IntoConfiguration = {
-        if (hasNext) {
-          val res = (litIndex, lits.head, side, curPositions.head, curSubterms.head)
-          curPositions = curPositions.tail
-          res
-        } else {
-          throw new NoSuchElementException
-        }
-      }
-    }
+//    /** into-Iterator for rewriting literals. Returns all literal-side-subterm configurations
+//      * `(i, l_i, s, p, t)` where
+//      *
+//      *  - `i` is the literal's index in `cl.lits`
+//      *  - `l_i` equals `cl.lits(i)`
+//      *  - `s` is a side, either `true` (left) or `false` (right)
+//      *  - `p` is a position in `cl.lits(i).s` (s = left/right)
+//      *  - `t` is the subterm at position `p`
+//      *
+//      * The iterator gives all such configurations for which `l_i` is either
+//      *
+//      *  (i) non-maximal, or
+//      *  (ii) maximal, but `s` is not a maximal side, or
+//      *  (iii) maximal, `s`is a maximal side, but `p = Position.root`.
+//      */
+//    final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
+//
+//      import Literal.{leftSide, rightSide, selectSide}
+//
+//      val maxLits: Seq[Literal] = cl.maxLits
+//      var litIndex = 0
+//      var lits: Seq[Literal] = cl.lits
+//      var side: Side = rightSide // minimal side
+//      var curSubterms: Set[Term] = _
+//      var curPositions: Set[Position] = _
+//
+//      def hasNext: Boolean = if (lits.isEmpty) false
+//      else {
+//        val hd = lits.head
+//        if (curSubterms == null) {
+//          if (side == rightSide && !hd.equational) {
+//            side = leftSide
+//          }
+//          if (side == leftSide && maxLits.contains(hd)) {
+//            curSubterms = Set(selectSide(hd, side))
+//            curPositions = Set(Position.root)
+//          } else {
+//            curSubterms = selectSide(hd, side).feasibleOccurrences.keySet
+//            curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
+//          }
+//          true
+//        } else {
+//          if (curPositions.isEmpty) {
+//            curSubterms = curSubterms.tail
+//            if (curSubterms.isEmpty) {
+//              if (maxLits.contains(hd) && side == rightSide) {
+//                // hd is maximal and right side is done,
+//                // select left side at root position
+//                side = leftSide
+//                curSubterms = Set(selectSide(hd, side))
+//                curPositions = Set(Position.root)
+//                true
+//              } else {
+//                if (side == leftSide) {
+//                  lits = lits.tail
+//                  litIndex += 1
+//                  side = rightSide
+//                } else {
+//                  side = leftSide
+//                }
+//                curSubterms = null
+//                curPositions = null
+//                hasNext
+//              }
+//            } else {
+//              curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
+//              assert(hasNext)
+//              true
+//            }
+//          } else {
+//            true
+//          }
+//        }
+//      }
+//
+//      def next(): IntoConfiguration = {
+//        if (hasNext) {
+//          val res = (litIndex, lits.head, side, curPositions.head, curSubterms.head)
+//          curPositions = curPositions.tail
+//          res
+//        } else {
+//          throw new NoSuchElementException
+//        }
+//      }
+//    }
   }
 
   protected[modules] object DefinedEqualityProcessing {

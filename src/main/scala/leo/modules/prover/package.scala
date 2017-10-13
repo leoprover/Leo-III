@@ -153,4 +153,11 @@ package object prover {
       final val inferenceStatus = SZS_Theorem
     }, source.toSeq)
   }
+
+
+  @tailrec final def exhaustive[T](f: Set[T] => Set[T])(set: Set[T]): Set[T] = {
+    val result = f(set)
+    if (result == set) set
+    else exhaustive(f)(result)
+  }
 }

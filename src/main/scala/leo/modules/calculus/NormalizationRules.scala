@@ -564,7 +564,7 @@ object ACSimp extends CalculusRule {
       case (Symbol(_), _) => true
       case (_, Bound(_,_)) => false
       case (_, Symbol(_)) => false
-      case (a,b) => a.size < b.size
+      case (_,_) => a.size < b.size
 
     }
   }
@@ -667,8 +667,6 @@ object DomainConstraintInstances extends CalculusRule {
 
 
 object SimplifyReflect extends CalculusRule {
-  import leo.modules.calculus.Matching
-
   val name: String = "simplifyReflect"
   val inferenceStatus: SuccessSZS = SZS_Theorem
 
@@ -710,12 +708,26 @@ object Simp extends CalculusRule {
   final val name = "simp"
   final val inferenceStatus = SZS_Theorem
 
-  def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
+  final private def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
+    if (!l.equational) {
+      val simpLeft = internalNormalize(l.left)
+      val canLift = LiftEq.canApply(simpLeft)
+      if (canLift != LiftEq.NO_LIFT) {
+        LiftEq.apply(canLift, simpLeft, l.polarity)
+      } else Literal(simpLeft, l.polarity)
+    } else {
+      val normLeft = internalNormalize(l.left)
+      val normRight = internalNormalize(l.right)
+      (normLeft, normRight) match {
+        case (a,b) if a == b => Literal(LitTrue(), l.polarity)
+        case _ => Literal.mkOrdered(normLeft, normRight, l.polarity)
+      }
+    }
+  }
 
   private final val CANNOTAPPLY = 0
   private final val VARLEFT = 1
   private final val VARRIGHT = 2
-
   final private def solvedUniEq(lit: Literal): (Int, Int) = {
     if (lit.uni) {
       val left = lit.left
@@ -730,42 +742,16 @@ object Simp extends CalculusRule {
     } else (CANNOTAPPLY, -1)
   }
 
+  final def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
+
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    //Out.finest(s"FVs:\n\t${cl.implicitlyBound.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
-    var newLits: Seq[Literal] = Vector.empty
-    var curSubst: Subst = Subst.id
-    val litIt = lits.iterator
-    while (litIt.hasNext) {
-      val lit0 = litIt.next().substituteOrdered(curSubst)
-      val lit = apply(lit0)(sig)
+    val newLits: Seq[Literal] = shallowSimp(lits)
 
-      if (!Literal.isFalse(lit)) {
-        if (!newLits.contains(lit)) {
-          val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
-          if (maybeSolvedUniEq == CANNOTAPPLY) {
-            newLits = newLits :+ lit
-          } else {
-            val term = if (maybeSolvedUniEq == VARLEFT) lit.right
-                              else lit.left
-            val subst = Subst.singleton(idx, term)
-            curSubst = curSubst.comp(subst)
-          }
-        }
-      }
-    }
-    if (curSubst != Subst.id) {
-      Out.debug(s"It happend!")
-      Out.debug(s"Old lits: ${Clause(lits).pretty(sig)}")
-      Out.debug(s"Subst: ${curSubst.normalize.pretty}")
-      newLits = newLits.map(l => l.substituteOrdered(curSubst.normalize))
-      Out.debug(s"New lits: ${Clause(newLits).pretty(sig)}")
-    }
-
-    val prefvs = newLits.map{_.fv}.fold(Set())((s1,s2) => s1 ++ s2)
-    Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
-    val fvs = prefvs.map(_._1).toSeq.sortWith {case (a,b) => a > b}
-
+    val prefvs = newLits.flatMap(_.fv)
+    val fvs = prefvs.map(_._1).sortWith {case (a,b) => a > b}
     val tyFVs = lits.flatMap(_.tyFV).distinct.sortWith {case (a,b) => a > b}
+
+    Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
     Out.finest(s"TYFVS:\n\t${tyFVs.mkString("\n\t")}")
 
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")
@@ -784,9 +770,9 @@ object Simp extends CalculusRule {
         val newFvs = Seq.range(fvs.size, 0, -1)
         val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
         Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-        newLits.map(_.substituteOrdered(subst.applyTypeSubst(tySubst), tySubst)(sig))
+        newLits.map(_.applyRenamingSubstitution(subst.applyTypeSubst(tySubst), tySubst))
       } else {
-        newLits.map(_.substituteOrdered(Subst.id, tySubst)(sig))
+        newLits.map(_.applyRenamingSubstitution(Subst.id, tySubst))
       }
     } else  if (fvs.nonEmpty && fvs.size != fvs.head) {
       Out.finest(s"FV Optimization needed")
@@ -795,43 +781,46 @@ object Simp extends CalculusRule {
       val newFvs = Seq.range(fvs.size, 0, -1)
       val subst = Subst.fromShiftingSeq(fvs.zip(newFvs))
       Out.finest(s"New: \t${newFvs.mkString("-")} ... subst: ${subst.pretty}")
-      newLits.map(_.substituteOrdered(subst)(sig))
+      newLits.map(_.applyRenamingSubstitution(subst))
     } else newLits
   }
 
   final def apply(cl: Clause)(implicit sig: Signature): Clause = Clause(apply(cl.lits)(sig))
 
-  final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
-    Clause(shallowSimp(cl.lits)(sig))
-  }
-
   final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    var newLits: Seq[Literal] = Vector()
+    var newLits: Seq[Literal] = Vector.empty
+    var curSubst: Subst = Subst.id
     val litIt = lits.iterator
     while (litIt.hasNext) {
-      val lit = litIt.next()
-      val normLit = apply(lit)(sig)
-      if (!Literal.isFalse(normLit)) {
-        if (!newLits.contains(normLit)) {
-          newLits = newLits :+ normLit
+      val lit0 = litIt.next().substituteOrdered(curSubst)
+      val lit = apply(lit0)(sig)
+
+      if (!Literal.isFalse(lit)) {
+        if (!newLits.contains(lit)) {
+          val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
+          if (maybeSolvedUniEq == CANNOTAPPLY) {
+            newLits = newLits :+ lit
+          } else {
+            val term = if (maybeSolvedUniEq == VARLEFT) lit.right else lit.left
+            val subst = Subst.singleton(idx, term)
+            curSubst = curSubst.comp(subst)
+          }
         }
       }
+    }
+    if (curSubst != Subst.id) {
+      Out.debug(s"It happend!")
+      Out.debug(s"Old lits: ${Clause(lits).pretty(sig)}")
+      Out.debug(s"Subst: ${curSubst.normalize.pretty}")
+      newLits = newLits.map(l => l.substituteOrdered(curSubst.normalize))
+      Out.debug(s"New lits post: ${Clause(newLits).pretty(sig)}")
     }
     newLits
   }
 
-  final def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
-    if (!l.equational) Literal(internalNormalize(l.left), l.polarity)
-    else {
-      val normLeft = internalNormalize(l.left)
-      val normRight = internalNormalize(l.right)
-      (normLeft, normRight) match {
-        case (a,b) if a == b => Literal(LitTrue(), l.polarity)
-        case (a,b) => Literal.mkOrdered(normLeft, normRight, l.polarity)
-      }
-    }
+  final def shallowSimp(cl: Clause)(implicit sig: Signature): Clause = {
+    Clause(shallowSimp(cl.lits)(sig))
   }
-
 
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     leo.modules.myAssert(l.forall(a => !a.polarity))
@@ -925,8 +914,8 @@ object Simp extends CalculusRule {
         case (Not(s1), t1) if s1 == t1  => LitFalse
         case (s1, LitTrue())            => s1
         case (LitTrue(), t1)            => t1
-        case (s1, LitFalse())           => LitFalse
-        case (LitFalse(), t1)           => LitFalse
+        case (_, LitFalse())           => LitFalse
+        case (LitFalse(), _)           => LitFalse
         case (s1, t1)                 => &(s1,t1)
       }
     case (s ||| t) =>
@@ -934,8 +923,8 @@ object Simp extends CalculusRule {
         case (s1,t1) if s1 == t1      => s1
         case (s1, Not(t1)) if s1 == t1   => LitTrue
         case (Not(s1),t1) if s1 == t1   => LitTrue
-        case (s1, LitTrue())            => LitTrue
-        case (LitTrue(), t1)            => LitTrue
+        case (_, LitTrue())            => LitTrue
+        case (LitTrue(), _)            => LitTrue
         case (s1, LitFalse())           => s1
         case (LitFalse(), t1)           => t1
         case (s1, t1)                 => |||(s1,t1)
@@ -954,10 +943,10 @@ object Simp extends CalculusRule {
     case s Impl t =>
       (norm(s), norm(t)) match {
         case (s1, t1) if s1 == t1 => LitTrue
-        case (s1, LitTrue())        => LitTrue
+        case (_, LitTrue())        => LitTrue
         case (s1, LitFalse())       => norm(Not(s1))
         case (LitTrue(), t1)        => t1
-        case (LitFalse(), t1)       => LitTrue
+        case (LitFalse(), _)       => LitTrue
         case (s1,t1)                => Impl(s1,t1)
       }
     case Not(s) => norm(s) match {

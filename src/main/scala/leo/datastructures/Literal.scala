@@ -92,7 +92,22 @@ trait Literal extends Pretty with Prettier {
     else {
       val lsubst = left.substitute(termSubst, typeSubst)
       val rsubst = right.substitute(termSubst, typeSubst)
-      Literal.mkOrdered(lsubst,rsubst,polarity)
+      Literal.mkOrdered(lsubst ,rsubst, polarity)
+    }
+  }
+  /** Apply a renaming substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
+    * Result it beta-normalized and oriented if it was oriented before.
+    * If either of the input substitutions are not a renaming substitution, the results'
+    * ordering properties may be incorrect. In that case use `substitute` or `substituteOrdered`.
+    *
+    * @note This is only a more optimized version of `substituteOrdered` for renaming
+    * substitutions since we do not need to recompute the orientation. */
+  @inline final def applyRenamingSubstitution(termSubst : Subst, typeSubst: Subst = Subst.id): Literal = {
+    if (termSubst == Subst.id && typeSubst == Subst.id) this
+    else {
+      val lsubst = left.substitute(termSubst, typeSubst)
+      val rsubst = right.substitute(termSubst, typeSubst)
+      Literal.mkLit(lsubst, rsubst, polarity, oriented)
     }
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
