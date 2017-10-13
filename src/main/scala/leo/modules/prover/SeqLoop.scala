@@ -190,7 +190,7 @@ object SeqLoop {
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
             /* Full simp with rewriting and stuff */
-            cur = Control.rewriteSimp(cur)
+            cur = Control.liftEq(Control.rewriteSimp(cur))
             val curCNF = Control.cnf(cur)
             if (curCNF.size == 1 && curCNF.head == cur) {
               // Check if `cur` is an empty clause

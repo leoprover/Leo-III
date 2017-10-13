@@ -710,11 +710,7 @@ object Simp extends CalculusRule {
 
   final private def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
     if (!l.equational) {
-      val simpLeft = internalNormalize(l.left)
-      val canLift = LiftEq.canApply(simpLeft)
-      if (canLift != LiftEq.NO_LIFT) {
-        LiftEq.apply(canLift, simpLeft, l.polarity)
-      } else Literal(simpLeft, l.polarity)
+      Literal(internalNormalize(l.left), l.polarity)
     } else {
       val normLeft = internalNormalize(l.left)
       val normRight = internalNormalize(l.right)
