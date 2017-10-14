@@ -146,7 +146,7 @@ package inferenceControl {
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
-        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, cl), cl.properties)}
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(FullCNF, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))}
         Out.trace(s"CNF result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
         result
       }
@@ -161,7 +161,7 @@ package inferenceControl {
         Set(cl)
       } else {
         val cnfsimp = cnfresult //.map(Simp.shallowSimp)
-        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(RenameCNF, cl), cl.properties)} // TODO Definitions other way into the CNF.
+        val result = cnfsimp.map {c => AnnotatedClause(c, InferredFrom(RenameCNF, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))} // TODO Definitions other way into the CNF.
         Out.trace(s"CNF result:\n\t${result.map(_.pretty(s.signature)).mkString("\n\t")}")
         result
       }
@@ -1589,23 +1589,31 @@ package inferenceControl {
     final def cheapSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
       Out.trace(s"[Simp] Processing ${cl.pretty(sig)}")
-      val simpResult = Simp(cl.cl)
-      val result0 = if (simpResult == cl.cl) cl
-      else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
-      val result = rewriteClause(result0)(state)
-      Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
-      result
+//      if (isPropSet(ClauseAnnotation.PropShallowSimplified, cl.properties) || isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties))
+//        cl
+//      else {
+        val simpResult = Simp(cl.cl)
+        val result0 = if (simpResult == cl.cl) cl
+        else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+        val result = rewriteClause(result0)(state)
+        Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
+        result
+//      }
     }
     final def cheapSimpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(cheapSimp)
 
     final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
-      val result0 = cheapSimp(cl)(state)
-      simplifyReflect(result0)(state)
+//      if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) cl
+//      else if (isPropSet(ClauseAnnotation.PropShallowSimplified, cl.properties)) simplifyReflect(cl)(state)
+//      else {
+        val result0 = cheapSimp(cl)(state)
+        simplifyReflect(result0)(state)
+//      }
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
 
-
+    // This method sets the flag PropFullySimplified, since it is only called within simp.
     final private def simplifyReflect(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       val sig: Signature = state.signature
       val posEqs = state.posNonRewriteUnits
@@ -1622,7 +1630,7 @@ package inferenceControl {
           if (!posSimplifyReflect0(cl.cl, lit, posEqs, usedUnits)) newLits = newLits :+ lit
         }
       }
-      val result = if (usedUnits.isEmpty) cl else AnnotatedClause(Clause(newLits), InferredFrom(SimplifyReflect, Seq(cl) ++ usedUnits.toSeq), cl.properties)
+      val result = if (usedUnits.isEmpty) cl else AnnotatedClause(Clause(newLits), InferredFrom(SimplifyReflect, Seq(cl) ++ usedUnits.toSeq), addProp(ClauseAnnotation.PropFullySimplified, cl.properties))
       Out.finest(s"[SimplifyReflect] Result: ${result.pretty(sig)}")
       result
     }
@@ -1718,7 +1726,6 @@ package inferenceControl {
         }
         val result2 = shallowSimp(result)
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
-//        if (result2.id == 488) System.exit(1)
         result2
       }
     }
@@ -1776,7 +1783,7 @@ package inferenceControl {
             leo.Out.finest(s"via rhs ${replaceBy.pretty(sig)}")
             leo.Out.finest(s"via subst ${termSubst.pretty}")
             rewriteRulesUsed += origin
-            result
+            return result
           }
         }
         // only reachable if not rewritten so far
