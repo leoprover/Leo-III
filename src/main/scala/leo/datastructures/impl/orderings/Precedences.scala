@@ -43,11 +43,11 @@ object Prec_ArityInvOrder extends Precedence {
       Out.debug("Comparing unrelated symbols from signature for precedence.")
       CMP_NC
     }
-    if (metaX._ty.order == metaX._ty.order) {
+    if (metaX._ty.order == metaY._ty.order) {
       if (metaX._ty.arity == metaY._ty.arity)
         intToCMPRes(x, y)
       else intToCMPRes(metaX._ty.arity, metaY._ty.arity)
-    } else intToCMPRes(metaY._ty.order,metaX._ty.order)
+    } else intToCMPRes(metaY._ty.order, metaX._ty.order)
   }
 }
 

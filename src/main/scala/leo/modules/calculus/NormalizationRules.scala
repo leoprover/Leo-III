@@ -684,6 +684,7 @@ object SimplifyReflect extends CalculusRule {
   }
 
   private final def isEqualOrMatchable(cl: Clause, lit: Literal, unit: Literal): Boolean = {
+    if (lit.left.ty != unit.left.ty) return false
     if (lit.unsignedEquals(unit)) true
     else {
       if (unit.fv.nonEmpty) {
@@ -775,11 +776,12 @@ object Simp extends CalculusRule {
       Out.debug(s"New lits post: ${Clause(newLits).pretty(sig)}")
     }
 
-    val prefvs = newLits.flatMap(_.fv)
-    val fvs = prefvs.map(_._1).sortWith {case (a,b) => a > b}
+    val prefvs = newLits.flatMap(_.fv).distinct
+    val fvs = prefvs.map(_._1).distinct.sortWith {case (a,b) => a > b}
     val tyFVs = lits.flatMap(_.tyFV).distinct.sortWith {case (a,b) => a > b}
 
     Out.finest(s"PREFVS:\n\t${prefvs.map(f => f._1 + ":" + f._2.pretty).mkString("\n\t")}")
+    Out.finest(s"FVS:\n\t${fvs.map(_.toString).mkString("\n\t")}")
     Out.finest(s"TYFVS:\n\t${tyFVs.mkString("\n\t")}")
 
     assert(prefvs.size == fvs.size, "Duplicated free vars with different types")

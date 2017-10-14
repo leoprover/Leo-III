@@ -119,6 +119,7 @@ package inferenceControl {
   import leo.datastructures.Literal.Side
   import leo.datastructures._
   import leo.modules.HOLSignature
+  import leo.modules.HOLSignature.LitFalse
   import leo.modules.calculus._
   import leo.modules.control.Control.LocalState
   import leo.modules.output.{SZS_Theorem, SuccessSZS}
@@ -1688,12 +1689,25 @@ package inferenceControl {
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as non-ground rewrite rule.")
           }
         } else {
-          if (cl.cl.lits.head.polarity) {
+          val lit = cl.cl.lits.head
+          if (lit.polarity) {
+            assert(!lit.oriented)
             state.addPosNonRewriteUnits(cl)
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as positive (non-rewrite) unit.")
           } else {
-            state.addNegNonRewriteUnits(cl)
-            Out.trace(s"[SeqLoop] Clause ${cl.id} added as negative (non-rewrite) unit.")
+            if (!lit.equational) {
+              // this means we can interpret [l=$true]^f as rewrite rule l -> $false
+              if (cl.cl.implicitlyBound.isEmpty) {
+                state.addGroundRewriteRule(cl)
+                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean ground rewrite rule.")
+              } else {
+                state.addNonGroundRewriteRule(cl)
+                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean non-ground rewrite rule.")
+              }
+            } else {
+              state.addNegNonRewriteUnits(cl)
+              Out.trace(s"[SeqLoop] Clause ${cl.id} added as negative (non-rewrite) unit.")
+            }
           }
         }
       }
@@ -1705,29 +1719,7 @@ package inferenceControl {
       Out.finest(s"[Rewriting] ${cw.pretty(sig)}")
       val plainSimp = simp(cw)
       Out.finest(s"[Rewriting] plain simp: ${plainSimp.pretty(sig)}")
-
-      val rulesExist = state.groundRewriteRules.nonEmpty || state.nonGroundRewriteRules.nonEmpty
-      Out.finest(s"[Rewriting] Rules existent? $rulesExist")
-      if (!rulesExist) {
-        Out.trace(s"[RewriteSimp] Result: ${plainSimp.pretty(sig)}")
-        plainSimp
-      } else {
-        val groundRewriteTable: RewriteTable = state.groundRewriteRules.map(cl => (cl.cl.lits.head.left, (cl.cl.lits.head.right, cl))).toMap
-        val maxImplicitVar = plainSimp.cl.maxImplicitlyBound
-        val nonGroundRewriteTable: RewriteTable = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), (cl.cl.lits.head.right.lift(maxImplicitVar), cl))).toMap
-        val vargen = freshVarGen(plainSimp.cl)
-        val rewriteRulesUsed: mutable.Set[AnnotatedClause] = mutable.Set.empty
-        leo.Out.finest(s"vargen in rewriteSimp: ${vargen.existingVars.toString()}")
-        val newLits = plainSimp.cl.lits.map(lit => rewriteLit(vargen, lit, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
-        val newCl = Clause(newLits)
-        val result = if (rewriteRulesUsed.isEmpty) plainSimp else {
-          leo.Out.finest(s"Rewriting happend!")
-          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(plainSimp) ++ rewriteRulesUsed.toSeq), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cw.properties))
-        }
-        val result2 = shallowSimp(result)
-        Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
-        result2
-      }
+      rewriteClause(plainSimp)(state)
     }
     private final def rewriteClause(cl: AnnotatedClause)(state: State[AnnotatedClause]): AnnotatedClause = {
       val sig: Signature = state.signature
@@ -1735,9 +1727,25 @@ package inferenceControl {
       Out.finest(s"[Rewriting] Rules existent? $rulesExist")
       if (!rulesExist) cl
       else {
-        val groundRewriteTable: RewriteTable = state.groundRewriteRules.map(cl => (cl.cl.lits.head.left, (cl.cl.lits.head.right, cl))).toMap
+        val groundRewriteTable: RewriteTable = state.groundRewriteRules.map{cl =>
+          val lit = cl.cl.lits.head
+          if (lit.polarity) {
+            (lit.left, (lit.right, cl))
+          } else {
+            assert(!lit.equational)
+            (lit.left, (LitFalse(), cl))
+          }
+        }.toMap
         val maxImplicitVar = cl.cl.maxImplicitlyBound
-        val nonGroundRewriteTable: RewriteTable = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), (cl.cl.lits.head.right.lift(maxImplicitVar), cl))).toMap
+        val nonGroundRewriteTable: RewriteTable = state.nonGroundRewriteRules.map{ cl =>
+          val lit = cl.cl.lits.head
+          if (lit.polarity) {
+            (lit.left.lift(maxImplicitVar), (lit.right.lift(maxImplicitVar), cl))
+          } else {
+            assert(!lit.equational)
+            (lit.left.lift(maxImplicitVar), (LitFalse(), cl))
+          }
+        }.toMap
         val vargen = freshVarGen(cl.cl)
         val rewriteRulesUsed: mutable.Set[AnnotatedClause] = mutable.Set.empty
         leo.Out.finest(s"vargen in rewriteSimp: ${vargen.existingVars.toString()}")
@@ -1771,19 +1779,24 @@ package inferenceControl {
         val toFind = nonGroundRewriteTable.keysIterator
         while (toFind.hasNext) {
           val template = toFind.next()
-          val vargen0 = vargen.copy
-          vargen0.addVars(template.fv.toSeq)
-          val matchingResult = Matching(vargen0, template, term)
-          if (matchingResult.nonEmpty) {
-            val (termSubst, typeSubst) = matchingResult.head
-            val (replaceBy, origin) = nonGroundRewriteTable(template)
-            val result =  replaceBy.substitute(termSubst, typeSubst)
-            leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
-            leo.Out.finest(s"via lhs ${template.pretty(sig)}")
-            leo.Out.finest(s"via rhs ${replaceBy.pretty(sig)}")
-            leo.Out.finest(s"via subst ${termSubst.pretty}")
-            rewriteRulesUsed += origin
-            return result
+          if (template.ty == term.ty) {
+            val vargen0 = vargen.copy
+            vargen0.addVars(template.fv.toSeq)
+            leo.Out.finest(s"Try to match ...")
+            leo.Out.finest(template.pretty(sig))
+            leo.Out.finest(term.pretty(sig))
+            val matchingResult = Matching(vargen0, template, term)
+            if (matchingResult.nonEmpty) {
+              val (termSubst, typeSubst) = matchingResult.head
+              val (replaceBy, origin) = nonGroundRewriteTable(template)
+              val result =  replaceBy.substitute(termSubst, typeSubst)
+              leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
+              leo.Out.finest(s"via lhs ${template.pretty(sig)}")
+              leo.Out.finest(s"via rhs ${replaceBy.pretty(sig)}")
+              leo.Out.finest(s"via subst ${termSubst.pretty}")
+              rewriteRulesUsed += origin
+              return result
+            }
           }
         }
         // only reachable if not rewritten so far
@@ -1795,7 +1808,8 @@ package inferenceControl {
 
             val res0 = Term.mkTypeApp(rewrittenHd, tyArgs)
             Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)))
-          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
+          case ty :::> body => term //Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
+          // FIXME rewriting under lambdas only on feasible subterms
           case _ => term
         }
       }
