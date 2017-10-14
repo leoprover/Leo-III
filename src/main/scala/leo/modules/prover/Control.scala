@@ -1695,19 +1695,19 @@ package inferenceControl {
             state.addPosNonRewriteUnits(cl)
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as positive (non-rewrite) unit.")
           } else {
-            if (!lit.equational) {
-              // this means we can interpret [l=$true]^f as rewrite rule l -> $false
-              if (cl.cl.implicitlyBound.isEmpty) {
-                state.addGroundRewriteRule(cl)
-                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean ground rewrite rule.")
-              } else {
-                state.addNonGroundRewriteRule(cl)
-                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean non-ground rewrite rule.")
-              }
-            } else {
+//            if (!lit.equational) {
+//              // this means we can interpret [l=$true]^f as rewrite rule l -> $false
+//              if (cl.cl.implicitlyBound.isEmpty) {
+//                state.addGroundRewriteRule(cl)
+//                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean ground rewrite rule.")
+//              } else {
+//                state.addNonGroundRewriteRule(cl)
+//                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean non-ground rewrite rule.")
+//              }
+//            } else {
               state.addNegNonRewriteUnits(cl)
               Out.trace(s"[SeqLoop] Clause ${cl.id} added as negative (non-rewrite) unit.")
-            }
+//            }
           }
         }
       }
