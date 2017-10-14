@@ -1710,6 +1710,7 @@ package inferenceControl {
         }
         val result2 = shallowSimp(result)
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
+//        if (result2.id == 488) System.exit(1)
         result2
       }
     }

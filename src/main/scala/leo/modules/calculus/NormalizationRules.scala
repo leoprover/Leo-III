@@ -729,19 +729,51 @@ object Simp extends CalculusRule {
       val left = lit.left
       val right = lit.right
       val leftIsVariable = getVariableModuloEta(left)
-      val rightIsVariable = getVariableModuloEta(right)
-      if (leftIsVariable > 0 && !(rightIsVariable > 0)) {
+      if (leftIsVariable > 0) {
         if(!right.looseBounds.contains(leftIsVariable)) (VARLEFT, leftIsVariable) else (CANNOTAPPLY, -1)
-      } else if (rightIsVariable > 0 && !(leftIsVariable > 0)) {
-        if(!left.looseBounds.contains(rightIsVariable)) (VARRIGHT, rightIsVariable) else (CANNOTAPPLY, -1)
-      } else (CANNOTAPPLY, -1)
+      } else {
+        val rightIsVariable = getVariableModuloEta(right)
+        if (rightIsVariable > 0) {
+          if(!left.looseBounds.contains(rightIsVariable)) (VARRIGHT, rightIsVariable) else (CANNOTAPPLY, -1)
+        } else (CANNOTAPPLY, -1)
+      }
     } else (CANNOTAPPLY, -1)
   }
 
   final def apply(lit: Literal)(implicit sig: Signature): Literal = PolaritySwitch(eqSimp(lit))
 
+  /** Only directly use this method if you really know what you are doing.
+    * It applies destructive equality resolution and thus needs to be applied to the clause as a whole.
+    * Applying this method only to a subset of literals of a clause is in general unsound.
+    * Use apply(clause) instead to make sure you simplify clauses as a whole. */
   final def apply(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
-    val newLits: Seq[Literal] = shallowSimp(lits)
+    var newLits: Seq[Literal] = Vector.empty
+    var curSubst: Subst = Subst.id
+    val litIt = lits.iterator
+    while (litIt.hasNext) {
+      val lit0 = litIt.next().substituteOrdered(curSubst)
+      val lit = apply(lit0)(sig)
+
+      if (!Literal.isFalse(lit)) {
+        if (!newLits.contains(lit)) {
+          val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
+          if (maybeSolvedUniEq == CANNOTAPPLY) {
+            newLits = newLits :+ lit
+          } else {
+            val term = if (maybeSolvedUniEq == VARLEFT) lit.right else lit.left
+            val subst = Subst.singleton(idx, term)
+            curSubst = curSubst.comp(subst)
+          }
+        }
+      }
+    }
+    if (curSubst != Subst.id) {
+      Out.debug(s"It happend!")
+      Out.debug(s"Old lits: ${Clause(lits).pretty(sig)}")
+      Out.debug(s"Subst: ${curSubst.normalize.pretty}")
+      newLits = newLits.map(l => l.substituteOrdered(curSubst.normalize))
+      Out.debug(s"New lits post: ${Clause(newLits).pretty(sig)}")
+    }
 
     val prefvs = newLits.flatMap(_.fv)
     val fvs = prefvs.map(_._1).sortWith {case (a,b) => a > b}
@@ -785,31 +817,15 @@ object Simp extends CalculusRule {
 
   final def shallowSimp(lits: Seq[Literal])(implicit sig: Signature): Seq[Literal] = {
     var newLits: Seq[Literal] = Vector.empty
-    var curSubst: Subst = Subst.id
     val litIt = lits.iterator
     while (litIt.hasNext) {
-      val lit0 = litIt.next().substituteOrdered(curSubst)
+      val lit0 = litIt.next()
       val lit = apply(lit0)(sig)
-
       if (!Literal.isFalse(lit)) {
         if (!newLits.contains(lit)) {
-          val (maybeSolvedUniEq, idx) = solvedUniEq(lit)
-          if (maybeSolvedUniEq == CANNOTAPPLY) {
-            newLits = newLits :+ lit
-          } else {
-            val term = if (maybeSolvedUniEq == VARLEFT) lit.right else lit.left
-            val subst = Subst.singleton(idx, term)
-            curSubst = curSubst.comp(subst)
-          }
+          newLits = newLits :+ lit
         }
       }
-    }
-    if (curSubst != Subst.id) {
-      Out.debug(s"It happend!")
-      Out.debug(s"Old lits: ${Clause(lits).pretty(sig)}")
-      Out.debug(s"Subst: ${curSubst.normalize.pretty}")
-      newLits = newLits.map(l => l.substituteOrdered(curSubst.normalize))
-      Out.debug(s"New lits post: ${Clause(newLits).pretty(sig)}")
     }
     newLits
   }
