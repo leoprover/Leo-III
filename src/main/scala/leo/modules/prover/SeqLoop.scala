@@ -45,7 +45,7 @@ object SeqLoop {
     // Do cheap simplification, transform equality symbols on top-level to proper equality literals
     // Also, search for specifications of AC (Associativity/Commutativity)
     result = result.map { cl =>
-      val simp = Control.shallowSimp(Control.liftEq(cl))
+      val simp = Control.cheapSimp(Control.liftEq(cl))
       Control.detectAC(simp)
       Control.detectDomainConstraint(simp)
       if (!state.isPolymorphic && simp.cl.typeVars.nonEmpty) state.setPolymorphic() // TODO: FIXME
@@ -53,7 +53,7 @@ object SeqLoop {
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
     result = Control.extPreprocessUnify(result)(state)
-    result = Control.simpSet(result)
+    result = Control.cheapSimpSet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
   }
@@ -190,7 +190,7 @@ object SeqLoop {
             Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
             /* Full simp with rewriting and stuff */
-            cur = Control.liftEq(Control.rewriteSimp(cur))
+            cur = Control.liftEq(Control.simp(cur))
             val curCNF = Control.cnf(cur)
             if (curCNF.size == 1 && curCNF.head == cur) {
               // Check if `cur` is an empty clause
@@ -319,7 +319,7 @@ object SeqLoop {
 //    newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
     newclauses = exhaustive[AnnotatedClause]{ cls =>
       val res0 = Control.cnfSet(cls)
-      res0.map(cl => Control.shallowSimp(Control.liftEq(cl)))
+      res0.map(cl => Control.cheapSimp(Control.liftEq(cl)))
     }(newclauses)
 
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))

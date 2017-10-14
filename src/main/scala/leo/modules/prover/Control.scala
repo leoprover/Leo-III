@@ -35,11 +35,16 @@ object Control {
   @inline final def extPreprocessUnify(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.extPreprocessUnify(clSet)(state)
   @deprecated("Usage is deprecated. It is unknown what this exactly does.", "Leo-III 1.2")
   @inline final def acSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.acSimp(cl)(sig)
+  @inline final def cheapSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.cheapSimp(cl)(state)
+  @inline final def cheapSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.cheapSimpSet(cls)(state)
   @inline final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(state)
   @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(state)
+  @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use cheapSimp instead as it includes rewriting and destructive equality resolution.", "Leo-III 1.2")
   @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
+  @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use cheapSimp instead as it includes rewriting and destructive equality resolution.", "Leo-III 1.2")
   @inline final def shallowSimpSet(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.SimplificationControl.shallowSimpSet(clSet)(sig)
   @inline final def detectUnit(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = inferenceControl.SimplificationControl.detectUnit(cl)
+  @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use simp instead as it includes simplify-reflect.", "Leo-III 1.2")
   @inline final def rewriteSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.rewriteSimp(cl)(state)
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
@@ -1580,20 +1585,23 @@ package inferenceControl {
         cl
     }
 
-    final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+
+    final def cheapSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
       Out.trace(s"[Simp] Processing ${cl.pretty(sig)}")
-      if (isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties)) {
-        Out.finest(s"[Simp] [${cl.id}] already simplified, skipping.")
-        cl
-      } else {
-        val simpresult = Simp(cl.cl)
-        val result0 = if (simpresult != cl.cl)
-          AnnotatedClause(simpresult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
-        else cl
-        Out.finest(s"[Simp] Result: ${result0.pretty(sig)}")
-        simplifyReflect(result0)(state)
-      }
+      val simpResult = Simp(cl.cl)
+      val result0 = if (simpResult == cl.cl) cl
+      else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+      val result = rewriteClause(result0)(state)
+      Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
+      result
+    }
+    final def cheapSimpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(cheapSimp)
+
+    final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+      implicit val sig: Signature = state.signature
+      val result0 = cheapSimp(cl)(state)
+      simplifyReflect(result0)(state)
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
 
@@ -1712,6 +1720,31 @@ package inferenceControl {
         Out.debug(s"[RewriteSimp] Result: ${result2.pretty(sig)}")
 //        if (result2.id == 488) System.exit(1)
         result2
+      }
+    }
+    private final def rewriteClause(cl: AnnotatedClause)(state: State[AnnotatedClause]): AnnotatedClause = {
+      val sig: Signature = state.signature
+      val rulesExist = state.groundRewriteRules.nonEmpty || state.nonGroundRewriteRules.nonEmpty
+      Out.finest(s"[Rewriting] Rules existent? $rulesExist")
+      if (!rulesExist) cl
+      else {
+        val groundRewriteTable: RewriteTable = state.groundRewriteRules.map(cl => (cl.cl.lits.head.left, (cl.cl.lits.head.right, cl))).toMap
+        val maxImplicitVar = cl.cl.maxImplicitlyBound
+        val nonGroundRewriteTable: RewriteTable = state.nonGroundRewriteRules.map(cl => (cl.cl.lits.head.left.lift(maxImplicitVar), (cl.cl.lits.head.right.lift(maxImplicitVar), cl))).toMap
+        val vargen = freshVarGen(cl.cl)
+        val rewriteRulesUsed: mutable.Set[AnnotatedClause] = mutable.Set.empty
+        leo.Out.finest(s"vargen in rewriteSimp: ${vargen.existingVars.toString()}")
+        val newLits = cl.cl.lits.map(lit => rewriteLit(vargen, lit, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
+        val newCl = Clause(newLits)
+        val result0 = if (rewriteRulesUsed.isEmpty) cl else {
+          leo.Out.finest(s"Rewriting happend!")
+          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cl) ++ rewriteRulesUsed.toSeq), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
+        }
+        val simpResult = Simp.shallowSimp(result0.cl)(sig)
+        val result = if (simpResult == result0.cl) result0
+        else AnnotatedClause(simpResult, InferredFrom(Simp, Seq(result0)), result0.properties)
+        Out.debug(s"[Rewriting] Result: ${result.pretty(sig)}")
+        result
       }
     }
     private def rewriteLit(vargen: FreshVarGen, lit: Literal, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause])(sig: Signature): Literal = {
