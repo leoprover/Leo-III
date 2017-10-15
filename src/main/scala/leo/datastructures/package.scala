@@ -196,15 +196,8 @@ package object datastructures {
   }
 
   object Precedence {
-    import leo.datastructures.impl.orderings._
-
-    final val sigInduced: Precedence = Prec_SigInduced
-    final val arity: Precedence = Prec_Arity
-    final val arity_UnaryFirst: Precedence = Prec_Arity_UnaryFirst
-    final val arityOrder: Precedence = Prec_ArityOrder
-    final val arityInvOrder: Precedence = Prec_ArityInvOrder
-    final val arityOrder_UnaryFirst: Precedence = Prec_ArityOrder_UnaryFirst
-    final val arityInvOrder_UnaryFirst: Precedence = Prec_ArityInvOrder_UnaryFirst
+    import leo.datastructures.impl.orderings.Precedences
+    final def apply() = Precedences
   }
 
   /////////////////////
