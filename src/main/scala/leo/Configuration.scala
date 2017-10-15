@@ -198,7 +198,7 @@ object Configuration extends DefaultConfiguration {
   }
 
   import leo.datastructures.Precedence
-  lazy val PRECEDENCE: Precedence = Precedence.arityInvOrder
+  lazy val PRECEDENCE: Precedence = Precedence.sigInduced
 
   lazy val RENAMING_SET : Boolean = isSet(RENAMING) || DEFAULT_RENAMING
   lazy val RENAMING_THRESHHOLD : Int = valueOf(RENAMING).fold(0)(_.headOption.fold(0)(_.toInt))
