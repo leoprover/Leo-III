@@ -254,7 +254,9 @@ object SeqLoop {
         s"\n\t${backSubsumedClauses.map(_.pretty(sig)).mkString("\n\t")}")
       Control.removeProcessed(backSubsumedClauses)
     }
-    // TODO: Simp processed wrt. cur
+    val simplifiedProcessed = Control.rewritable(state.processed, cur)
+    newclauses = newclauses union simplifiedProcessed // TODO: Make that better
+    state.removeProcessed(simplifiedProcessed)
     assert(!leo.modules.calculus.FullCNF.canApply(cur.cl), s"[SeqLoop] Not in CNF: ${cur.pretty(sig)}")
     /** Add to processed and to indexes. */
     state.addProcessed(cur)

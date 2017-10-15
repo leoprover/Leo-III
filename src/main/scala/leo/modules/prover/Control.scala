@@ -39,6 +39,7 @@ object Control {
   @inline final def cheapSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.cheapSimpSet(cls)(state)
   @inline final def simp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = inferenceControl.SimplificationControl.simp(cl)(state)
   @inline final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.simpSet(clSet)(state)
+  @inline final def rewritable(clauses: Set[AnnotatedClause], newClause: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.SimplificationControl.rewritable(clauses, newClause)(state)
   @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use cheapSimp instead as it includes rewriting and destructive equality resolution.", "Leo-III 1.2")
   @inline final def shallowSimp(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.shallowSimp(cl)(sig)
   @deprecated("Usage is deprecated. There is no real benefit of using this kind of simp method. Use cheapSimp instead as it includes rewriting and destructive equality resolution.", "Leo-III 1.2")
@@ -1614,11 +1615,11 @@ package inferenceControl {
     }
     final def simpSet(clSet: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = clSet.map(simp)
 
-    // This method sets the flag PropFullySimplified, since it is only called within simp.
-    final private def simplifyReflect(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
-      val sig: Signature = state.signature
-      val posEqs = state.posNonRewriteUnits
-      val negEqs = state.negNonRewriteUnits
+    // This method sets the flag PropFullySimplified, since it is only called within simp or derived stuff.
+    final private def simplifyReflect(cl: AnnotatedClause,
+                                      posEqs: Map[Literal, AnnotatedClause],
+                                      negEqs: Map[Literal, AnnotatedClause])
+                                     (sig: Signature): AnnotatedClause = {
       Out.trace(s"[SimplifyReflect] Processing ${cl.id}")
       val usedUnits: mutable.Set[AnnotatedClause] = mutable.Set.empty
       var newLits: Seq[Literal] = Vector.empty
@@ -1634,6 +1635,9 @@ package inferenceControl {
       val result = if (usedUnits.isEmpty) cl else AnnotatedClause(Clause(newLits), InferredFrom(SimplifyReflect, Seq(cl) ++ usedUnits.toSeq), addProp(ClauseAnnotation.PropFullySimplified, cl.properties))
       Out.finest(s"[SimplifyReflect] Result: ${result.pretty(sig)}")
       result
+    }
+    final private def simplifyReflect(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+      simplifyReflect(cl, state.posNonRewriteUnits, state.negNonRewriteUnits)(state.signature)
     }
     final private def posSimplifyReflect0(cl: Clause, lit: Literal, posUnits: Map[Literal, AnnotatedClause], usedUnits: mutable.Set[AnnotatedClause]): Boolean =  {
       assert(!lit.polarity)
@@ -1721,13 +1725,13 @@ package inferenceControl {
       Out.finest(s"[Rewriting] plain simp: ${plainSimp.pretty(sig)}")
       rewriteClause(plainSimp)(state)
     }
-    private final def rewriteClause(cl: AnnotatedClause)(state: State[AnnotatedClause]): AnnotatedClause = {
-      val sig: Signature = state.signature
-      val rulesExist = state.groundRewriteRules.nonEmpty || state.nonGroundRewriteRules.nonEmpty
+    private final def rewriteClause(cl: AnnotatedClause,groundRewriteRules: Set[AnnotatedClause],
+                                    nonGroundRewriteRules: Set[AnnotatedClause])(sig: Signature): AnnotatedClause = {
+      val rulesExist = groundRewriteRules.nonEmpty || nonGroundRewriteRules.nonEmpty
       Out.finest(s"[Rewriting] Rules existent? $rulesExist")
       if (!rulesExist) cl
       else {
-        val groundRewriteTable: RewriteTable = state.groundRewriteRules.map{cl =>
+        val groundRewriteTable: RewriteTable = groundRewriteRules.map{cl =>
           val lit = cl.cl.lits.head
           if (lit.polarity) {
             (lit.left, (lit.right, cl))
@@ -1737,7 +1741,7 @@ package inferenceControl {
           }
         }.toMap
         val maxImplicitVar = cl.cl.maxImplicitlyBound
-        val nonGroundRewriteTable: RewriteTable = state.nonGroundRewriteRules.map{ cl =>
+        val nonGroundRewriteTable: RewriteTable = nonGroundRewriteRules.map{ cl =>
           val lit = cl.cl.lits.head
           if (lit.polarity) {
             (lit.left.lift(maxImplicitVar), (lit.right.lift(maxImplicitVar), cl))
@@ -1761,6 +1765,9 @@ package inferenceControl {
         Out.debug(s"[Rewriting] Result: ${result.pretty(sig)}")
         result
       }
+    }
+    private final def rewriteClause(cl: AnnotatedClause)(state: State[AnnotatedClause]): AnnotatedClause = {
+      rewriteClause(cl, state.groundRewriteRules, state.nonGroundRewriteRules)(state.signature)
     }
     private def rewriteLit(vargen: FreshVarGen, lit: Literal, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause])(sig: Signature): Literal = {
       if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)(sig)
@@ -1814,6 +1821,34 @@ package inferenceControl {
         }
       }
 
+    }
+
+    final def rewritable(clauses: Set[AnnotatedClause], newClause: AnnotatedClause)(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
+      val cl = newClause.cl
+      if (Clause.rewriteRule(cl) || Clause.unit(cl)) {
+        if (Clause.rewriteRule(cl)) {
+          val (groundRules, nonGroundRules) = if (cl.implicitlyBound.isEmpty) (Set(newClause), Set[AnnotatedClause]()) else (Set[AnnotatedClause](), Set(newClause))
+          val clausesIt = clauses.iterator
+          var result: Set[AnnotatedClause] = Set.empty
+          while (clausesIt.hasNext) {
+            val cl = clausesIt.next()
+            val rewriteResult = rewriteClause(cl, groundRules, nonGroundRules)(state.signature)
+            if (rewriteResult != cl) result = result + rewriteResult
+          }
+          result
+        } else {
+          val lit = cl.lits.head
+          val (posEqs, negEqs) = if (lit.polarity) (Map(lit -> newClause), Map[Literal, AnnotatedClause]()) else (Map[Literal, AnnotatedClause](), Map(lit -> newClause))
+          val clausesIt = clauses.iterator
+          var result: Set[AnnotatedClause] = Set.empty
+          while (clausesIt.hasNext) {
+            val cl = clausesIt.next()
+            val simpresult = simplifyReflect(cl, posEqs, negEqs)(state.signature)
+            if (simpresult != cl) result = result + simpresult
+          }
+          result
+        }
+      } else Set.empty
     }
 
 //    type Subterm = Term
