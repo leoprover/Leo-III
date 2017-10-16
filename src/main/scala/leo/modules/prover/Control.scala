@@ -457,7 +457,20 @@ package inferenceControl {
     final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
       import Literal.{leftSide, rightSide, selectSide}
 
-      private val maxLits = cl.maxLits union cl.negLits //if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
+      private val maxLits = {
+        val res0 = if (cl.negLits.nonEmpty) {
+          val maxLits0 = Literal.maxOf(cl.negLits)
+          if (maxLits0.isEmpty) {
+            cl.maxLits union cl.negLits
+          } else {
+            val ground = maxLits0.filter(_.fv.isEmpty)
+            if (ground.isEmpty) maxLits0
+            else ground
+          }
+        } else cl.maxLits
+        res0.filterNot(_.realUni)
+      }
+        //cl.maxLits union cl.negLits //if (cl.negLits.nonEmpty) cl.negLits else cl.maxLits
       private var litIndex = 0
       private var lits = cl.lits
       private var side = leftSide
@@ -1836,7 +1849,18 @@ package inferenceControl {
             if (rewriteResult != cl) result = result + rewriteResult
           }
           result
-        } else {
+        } else if (!cl.lits.head.polarity && !cl.lits.head.equational) {
+          val (groundRules, nonGroundRules) = if (cl.implicitlyBound.isEmpty) (Set(newClause), Set[AnnotatedClause]()) else (Set[AnnotatedClause](), Set(newClause))
+          val clausesIt = clauses.iterator
+          var result: Set[AnnotatedClause] = Set.empty
+          while (clausesIt.hasNext) {
+            val cl = clausesIt.next()
+            val rewriteResult = rewriteClause(cl, groundRules, nonGroundRules)(state.signature)
+            if (rewriteResult != cl) result = result + rewriteResult
+          }
+          result
+        }
+        else {
           val lit = cl.lits.head
           val (posEqs, negEqs) = if (lit.polarity) (Map(lit -> newClause), Map[Literal, AnnotatedClause]()) else (Map[Literal, AnnotatedClause](), Map(lit -> newClause))
           val clausesIt = clauses.iterator
