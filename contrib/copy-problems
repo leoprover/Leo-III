@@ -1,0 +1,54 @@
+#!/bin/bash
+
+usage="$(basename "$0") <infile> [-o <outdir>] [-g] -- copy TPTP problems listed in <infile> to <outdir>.
+
+where:
+    <infile>  newline separated ASCII file with TPTP problem names (without .p suffix)
+    -o        directory into which problems are copied (default: .)
+    -g        grouped mode, i.e. every problem in <infile> will be placed in <outdir>/<domain>
+              where <domain> is the 3-character prefix of the respective problem.
+              
+The TPTP environment variable \$TPTP needs to be set-up correctly."
+
+if [ -z "$1" ]; then
+  echo "$usage" >&2
+  exit 1
+fi
+
+GROUPED=false
+READFILE=$(realpath "$1")
+OUTDIR=$(realpath ".")
+OPTIND=2
+while getopts ':go:' option; do
+  case "$option" in
+    o) OUTDIR=$(realpath "$OPTARG")
+       ;;
+    g) GROUPED=true
+       ;;
+    :) printf "missing argument for -%s\n" "$OPTARG" >&2
+       echo "$usage" >&2
+       exit 1
+       ;;
+   \?) printf "illegal option: -%s\n" "$OPTARG" >&2
+       echo "$usage" >&2
+       exit 1
+       ;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+if [ -z "$TPTP" ]; then
+  echo "TPTP environment variable not set. Abording."
+  exit 1
+fi
+
+while IFS='' read -r line || [[ -n "$line" ]]; do
+    prefix="${line:0:3}"
+    file="$line"
+    if [ "$GROUPED" = true ] ; then
+      mkdir -p "$OUTDIR/$prefix"
+      cp "$TPTP/Problems/$prefix/$file.p" "$OUTDIR/$prefix/$file.p"
+    else
+      cp "$TPTP/Problems/$prefix/$file.p" "$OUTDIR/$file.p"
+    fi 
+done < "$READFILE"
