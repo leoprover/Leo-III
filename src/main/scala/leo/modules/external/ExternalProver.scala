@@ -56,6 +56,7 @@ object ExternalProver {
       case "vampire" => createVampire(path)
       case "iprover" => createIProver(path)
       case "e" | "eprover" => createEProver(path)
+      case "satallax" => createSatallax(path)
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
@@ -116,6 +117,20 @@ object ExternalProver {
       leo.Out.comment(answer.mkString)
     }
     new Leo2Prover(convert)
+  }
+
+  @throws[NoSuchMethodException]
+  def createSatallax(path : String) : SatallaxProver = {
+    val p = if(path == "") serviceToPath("satallax") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created Satallax prover with path '$convert'")
+    if (Configuration.isSet("atpdebug")) {
+      import scala.sys.process._
+      val answer = Process.apply(Seq(convert, "-V")).lineStream_!
+      leo.Out.comment(s"Satllax debug info:")
+      leo.Out.comment(answer.mkString)
+    }
+    new SatallaxProver(convert)
   }
 
   @throws[NoSuchMethodException]
@@ -287,6 +302,18 @@ class Leo2Prover(val path : String) extends TptpProver[AnnotatedClause] {
   override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
     val timeout0 = if (timeout < 60) 60 else timeout
     val call0 = Seq(path, "-t", timeout0.toString) ++ args ++ Seq(problemFileName)
+    ExternalProver.limitedRun(timeout, call0)
+  }
+}
+
+class SatallaxProver(val path : String) extends TptpProver[AnnotatedClause] {
+  override val name: String = "satallax"
+
+  final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
+
+  override protected[external] def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
+    val timeout0 = if (timeout < 60) 60 else timeout
+    val call0 = Seq(path, "-p", "tstp" ,"-t" , timeout0.toString) ++ args ++ Seq(problemFileName)
     ExternalProver.limitedRun(timeout, call0)
   }
 }
