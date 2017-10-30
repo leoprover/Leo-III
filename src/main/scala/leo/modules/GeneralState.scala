@@ -67,6 +67,9 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def symbolsInConjecture: Set[Signature.Key]
   def defConjSymbols(negConj: T): Unit
 
+  def setFilteredAxioms(axioms: Seq[tptp.Commons.AnnotatedFormula]): Unit
+  def filteredAxioms: Seq[tptp.Commons.AnnotatedFormula]
+
   def addChoiceFunction(f: Term): Unit
   def choiceFunctions: Map[Type, Set[Term]]
   final def choiceFunctions(ty: Type): Set[Term] = choiceFunctions.getOrElse(ty, Set())
@@ -146,6 +149,10 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
     leo.Out.trace(s"Set Symbols in conjecture: " +
       s"${symbolsInConjecture0.map(signature(_).name).mkString(",")}")
   }
+
+  private var filteredAxioms0: Seq[tptp.Commons.AnnotatedFormula] = Seq.empty
+  final def setFilteredAxioms(axioms: Seq[tptp.Commons.AnnotatedFormula]): Unit = {filteredAxioms0 = axioms}
+  final def filteredAxioms: Seq[tptp.Commons.AnnotatedFormula] = filteredAxioms0
 
   final def isPolymorphic: Boolean = poly
   final def setPolymorphic(): Unit = {poly = true}

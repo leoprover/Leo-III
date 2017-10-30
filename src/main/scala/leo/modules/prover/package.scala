@@ -5,8 +5,7 @@ import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, tptp}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
-import leo.modules.output.StatusSZS
-import leo.modules.output.{SZS_InputError, SZS_Theorem, SZS_TypeError, SZS_Unsatisfiable, SZS_CounterSatisfiable, SZS_ContradictoryAxioms}
+import leo.modules.output._
 import leo.modules.parsers.Input
 
 import scala.annotation.tailrec
@@ -31,8 +30,9 @@ package object prover {
       // Do relevance filtering: Filter hopefully unnecessary axioms
       val relevantAxioms = if (effectiveInput.size <= 15) effectiveInput
                             else Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
+      state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
-        s"(removed ${effectiveInput.size - relevantAxioms.size} axioms).")
+        s"(removed ${state.filteredAxioms.size} axioms).")
       relevantAxioms.map(ax => processInput(ax, state))
     } else {
       Out.info(s"${effectiveInput.size} axioms and no conjecture found.")
@@ -128,12 +128,35 @@ package object prover {
     }
   }
 
+  final def successSZS(szs: StatusSZS): Boolean = {
+    import leo.modules.output.SuccessSZS
+    szs.isInstanceOf[SuccessSZS]
+  }
+
+  final def isSatisfiable(processed: Set[AnnotatedClause])(state: LocalState): Boolean = {
+//    if (state.filteredAxioms.isEmpty) {
+//      if (state.runStrategy.choice && state.runStrategy.boolExt && !state.runStrategy.sos && state.runStrategy.primSubst > 0) {
+//        val processedIt = state.processed.iterator
+//        while (processedIt.hasNext) {
+//          val processed = processedIt.next()
+//          if (processed.cl.implicitlyBound.map(_._2).exists(_.isFunType)) return false
+//        }
+//        true
+//      } else false
+//    } else false
+    false
+  }
+  final def appropriateSatStatus(state: LocalState): StatusSZS = {
+    if (state.negConjecture == null) SZS_Satisfiable
+    else SZS_CounterSatisfiable
+  }
+
   final def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
     state.setDerivationClause(emptyClause)
     val proof = proofOf(emptyClause)
     state.setProof(proof)
 
-    if (state.conjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    if (state.negConjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
     else {
       if (conjInProof(proof)) state.setSZSStatus(SZS_Theorem)
       else state.setSZSStatus(SZS_ContradictoryAxioms)

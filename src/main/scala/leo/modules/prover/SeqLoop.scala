@@ -168,7 +168,8 @@ object SeqLoop {
           state.setSZSStatus(SZS_Timeout)
         } else if (!state.unprocessedLeft) {
           loop = false
-          state.setSZSStatus(SZS_GaveUp)
+          if (isSatisfiable(state.processed)(state)) state.setSZSStatus(appropriateSatStatus(state))
+          else state.setSZSStatus(SZS_GaveUp)
         } else {
           // No cancel, do reasoning step
           val extRes = Control.checkExternalResults(state)
@@ -221,13 +222,20 @@ object SeqLoop {
           }
         }
       }
+
       /////////////////////////////////////////
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
-      Control.despairSubmit(startTime, timeout)(state)
-
-      if (endgameAnswer(state.szsStatus)) true
-      else false
+      if (successSZS(state.szsStatus)) true
+      else {
+        if (state.szsStatus == SZS_Timeout) false
+        else {
+          // Try something else
+          Control.despairSubmit(startTime, timeout)(state)
+          // ....
+          successSZS(state.szsStatus)
+        }
+      }
     } catch {
       case e:Exception =>
         Out.severe(s"Signature used:\n${leo.modules.signatureAsString(state.signature)}")
