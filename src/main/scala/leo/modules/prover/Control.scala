@@ -1703,8 +1703,11 @@ package inferenceControl {
             state.addGroundRewriteRule(cl)
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as ground rewrite rule.")
           } else {
-            state.addNonGroundRewriteRule(cl)
-            Out.trace(s"[SeqLoop] Clause ${cl.id} added as non-ground rewrite rule.")
+            if (PatternUnification.isPattern(cl.cl.lits.head.left) && PatternUnification.isPattern(cl.cl.lits.head.right)) {
+              state.addNonGroundRewriteRule(cl)
+              Out.trace(s"[SeqLoop] Clause ${cl.id} added as non-ground rewrite rule.")
+            }
+
           }
         } else {
           val lit = cl.cl.lits.head
@@ -1815,8 +1818,12 @@ package inferenceControl {
               leo.Out.finest(s"via lhs ${template.pretty(sig)}")
               leo.Out.finest(s"via rhs ${replaceBy.pretty(sig)}")
               leo.Out.finest(s"via subst ${termSubst.pretty}")
-              rewriteRulesUsed += origin
-              return result
+              if (term != result) {
+                rewriteRulesUsed += origin
+                return result
+              } else {
+                leo.Out.finest(s"...ignored")
+              }
             }
           }
         }
