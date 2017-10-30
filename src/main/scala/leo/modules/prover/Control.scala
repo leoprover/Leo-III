@@ -2209,7 +2209,7 @@ package redundancyControl {
 
     /** Check for subsumption of any clause in `withSet` by `cl` by subsumption rule in [[leo.modules.calculus.Subsumption]]. */
     private final def testBackwardSubsumption(cl: AnnotatedClause, withSet: Set[AnnotatedClause]): Set[AnnotatedClause] =
-    withSet.filter(cw => Subsumption.subsumes(cl.cl, cw.cl))
+    withSet.filter(cw => Configuration.SUBSUMPTION_METHOD.subsumes(cl.cl, cw.cl))
   }
 }
 

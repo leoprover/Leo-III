@@ -77,6 +77,16 @@ object CPO_SmallerFirst extends ClauseProxyOrdering[Double] {
   final def weightOf(cl: ClauseProxy): Double = cl.cl.lits.size
 }
 
+object CPO_GroundTyFirst extends ClauseProxyOrdering[Double] {
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
+    val aWeight = weightOf(a); val bWeight = weightOf(b)
+    aWeight.compareTo(bWeight)
+  }
+
+  final def weightOf(cl: ClauseProxy): Double = cl.cl.lits.map(_.left.ty.funParamTypes.size).sum
+}
+
+
 /** Ordering in which a [[leo.datastructures.ClauseProxy]] is smaller, if its `id` is smaller. */
 object CPO_OldestFirst extends ClauseProxyOrdering[Double] {
   final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
