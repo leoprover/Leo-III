@@ -267,7 +267,7 @@ package inferenceControl {
 
         val shouldParamod0 = shouldParamod(withTerm, intoTerm)(state)
         leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
-        if (!intoTerm.isVariable && shouldParamod0) {
+        if (!isVariableModuloEta(intoTerm) && shouldParamod0) {
           leo.Out.finest(s"ordered: ${withLit.oriented} // ${intoLit.oriented}")
           Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
           Out.finest(s"with: ${withClause.pretty(sig)}")

@@ -262,7 +262,7 @@ object TO_CPO_Naive extends TermOrdering {
     import leo.datastructures.Term.local.mkApp
 
     if (s == t) return false
-    if (s.isVariable) return false
+    if (isVariableModuloEta(s)) return false
     if (s.feasibleOccurrences.keySet.contains(t)) return true
     // #######################################################
     /* adaption for type abstractions*/
