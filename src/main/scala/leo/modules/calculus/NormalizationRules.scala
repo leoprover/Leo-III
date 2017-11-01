@@ -836,6 +836,43 @@ object Simp extends CalculusRule {
     Clause(shallowSimp(cl.lits)(sig))
   }
 
+  final def detUniInferences(cl: Clause)(implicit sig: Signature): Seq[Clause] = {
+    val (posLits, negLits) = (cl.posLits, cl.negLits)
+    val processedNegLits = detUniInferences0(negLits, Vector(Vector.empty))(sig)
+    processedNegLits.map(nLits => Clause(posLits ++ nLits))
+  }
+  private final def detUniInferences0(literals: Seq[Literal], acc: Seq[Seq[Literal]])(sig: Signature): Seq[Seq[Literal]] = {
+    if (literals.isEmpty) acc
+    else {
+      val hd = literals.head
+      val left = hd.left; val right = hd.right
+      val (leftBody, leftAbstractions) = collectLambdas(left)
+      val (rightBody, rightAbstractions) = collectLambdas(right)
+      assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
+      val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
+      if (canApplyDecomp._1) {
+        leo.Out.finest(s"[UniLitSimp] Can apply Decomp on ${hd.pretty(sig)}")
+        if (canApplyDecomp._2.isDefined) {
+          val tySubst = canApplyDecomp._2.get
+          if (tySubst == Subst.id) {
+            // not need to apply tySubst
+            val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+            val newLits = newEqs.map {case (l,r) => Literal.mkNegOrdered(l,r)(sig)}
+            detUniInferences0(literals.tail, acc.map(lits => lits :+ hd) ++ acc.map(lits => lits ++ newLits))(sig)
+          } else {
+            detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+            // TODO
+          }
+        } else {
+          leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
+          detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+        }
+      } else {
+        detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+      }
+    }
+  }
+
   final def uniLitSimp(l: Seq[Literal])(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     leo.modules.myAssert(l.forall(a => !a.polarity))
     val (subst, simpRes) = uniLitSimp0(Vector.empty, l.map(lit => (lit.left, lit.right)).toVector, Subst.id)(sig)
@@ -848,12 +885,12 @@ object Simp extends CalculusRule {
     */
   final def uniLitSimp(l: Literal)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
     assert(!l.polarity)
-    val (subst, simpRes) = uniLitSimp0(Vector(), Vector((l.left, l.right)), Subst.id)(sig)
+    val (subst, simpRes) = uniLitSimp0(Vector.empty, Vector((l.left, l.right)), Subst.id)(sig)
     val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
     (subst, simpResAsLits)
   }
   final def uniLitSimp(left: Term, right: Term)(implicit sig: Signature): (TypeSubst, Seq[Literal]) = {
-    val (subst, simpRes) = uniLitSimp0(Vector(), Vector((left, right)), Subst.id)(sig)
+    val (subst, simpRes) = uniLitSimp0(Vector.empty, Vector((left, right)), Subst.id)(sig)
     val simpResAsLits = simpRes.map(eq => Literal.mkNegOrdered(eq._1, eq._2)(sig))
     (subst, simpResAsLits)
   }

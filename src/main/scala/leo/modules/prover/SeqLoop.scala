@@ -277,6 +277,8 @@ object SeqLoop {
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
+    val detUni_result = Control.detUniInferences(cur)(state)
+    newclauses = newclauses union detUni_result
     /* Functional Extensionality */
     val funcext_result = Control.funcExtNew(cur)(state)
     newclauses = newclauses union funcext_result
