@@ -633,8 +633,11 @@ package inferenceControl {
     type UniResult = (Clause, (Unification#TermSubst, Unification#TypeSubst))
 
     final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+      Out.trace(s"[detUni] On ${cl.pretty(state.signature)}")
       val results = Simp.detUniInferences(cl.cl)(state.signature)
-      results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
+      val results0 = results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
+      Out.trace(s"[detUni] Results: ${results0.map(_.pretty(state.signature)).mkString("\n")}")
+      results0
     }
 
     final def getUniTaskFromLit(lit: Literal): (Term, Term) = {
@@ -696,8 +699,12 @@ package inferenceControl {
       // if it cannot be simplied, drop clause
       // 2 if unifiable, reunify again with all literals (simplified)
       if (uniResult0.isEmpty) {
-//        Out.finest(s"Unification failed, but looking for uni simp.")
+        Out.finest(s"Unification failed, but looking for uni simp.")
+        val detUniSimps = detUniInferences(cl0)(state)
+        Out.finest(s"No unification, but Uni Simp result: ${detUniSimps.map(_.pretty(sig)).mkString("\n")}")
+        detUniSimps
 //        if (!uniLit.polarity) {
+//
 //          val (simpSubst, simpResult) = Simp.uniLitSimp(uniLit)(sig)
 //          Out.finest(s"Unification simp: ${simpResult.map(_.pretty)}")
 //          if (simpResult.size == 1 && simpResult.head == uniLit) Set()
@@ -711,7 +718,7 @@ package inferenceControl {
 //            Set(res)
 //          }
 //        } else Set()
-        Set()
+//        Set()
       } else {
         var uniResult: Set[AnnotatedClause] = Set.empty
         val uniResultIt = uniResult0.iterator
@@ -765,7 +772,10 @@ package inferenceControl {
 //          Out.finest(s"Uni Simp result: ${res.pretty(sig)}")
 //          Set(res)
 //        } else Set()
-        Set()
+        Out.finest(s"Unification failed, but looking for uni simp.")
+        val detUniSimps = detUniInferences(cl0)(state)
+        Out.finest(s"No unification, but Uni Simp result: ${detUniSimps.map(_.pretty(sig)).mkString("\n")}")
+        detUniSimps
       } else {
         var uniResult: Set[AnnotatedClause] = Set.empty
         val uniResultIt = uniResult0.iterator
@@ -803,6 +813,10 @@ package inferenceControl {
 //            val substPosLits = cl.cl.posLits.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
 //            Set(AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties)))
 //          }
+//          Out.finest(s"Unification failed, but looking for uni simp.")
+//          val detUniSimps = detUniInferences(cl)(state)
+//          Out.finest(s"No unification, but Uni Simp result: ${detUniSimps.map(_.pretty(sig)).mkString("\n")}")
+//          detUniSimps + cl
           Set(cl)
         } else {
 //          val resultClausesIt = uniResult.iterator
@@ -818,7 +832,8 @@ package inferenceControl {
 //            }
 //          }
 //          resultClausesSimp
-          uniResult
+//          val detUniSimps = uniResult.flatMap(detUniInferences(_)(state))
+          uniResult// ++ detUniSimps
         }
       } else Set(cl)
     }
