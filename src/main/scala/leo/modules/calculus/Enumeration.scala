@@ -1,9 +1,10 @@
 package leo.modules.calculus
 
-import leo.datastructures.Term.{mkApp, mkBound, mkTermApp, λ}
+import leo.datastructures.Term.{mkBound, mkTermApp, λ}
 import leo.datastructures.{Signature, Term, Type}
+import leo.modules.HOLSignature
 import leo.modules.output.SZS_Theorem
-import leo.modules.HOLSignature.{o,Choice => HOLChoice, &, Impl, Not, ===, Exists}
+import leo.modules.HOLSignature.{&, ===, Impl, Not, o, Choice => HOLChoice}
 
 /**
   * Enumerates some (special) instances for universal variables.
@@ -25,6 +26,28 @@ object Enumeration extends CalculusRule {
 
   @inline final def instancesFromSignature(ty: Type)(implicit sig:Signature): Set[Term] =
     sig.constantsOfType(ty).filterNot(sig(_).isDefined).map(Term.mkAtom)
+
+  final def finiteType(ty: Type)(finiteBaseTypes: Set[Type]): Boolean = {
+    if (ty.isBaseType) ty == HOLSignature.o || finiteBaseTypes.contains(ty)
+    else {
+      val funTys = ty.funParamTypesWithResultType
+      funTys.forall(finiteType(_)(finiteBaseTypes))
+    }
+  }
+
+  final def termsOfFiniteType(ty: Type)(domainConstraints: Map[Type, Set[Term]]): Iterable[Term] = {
+    leo.modules.myAssert(finiteType(ty)(domainConstraints.keySet))
+
+    if (ty.isBaseType) domainConstraints(ty)
+    else {
+      assert(ty.isFunType)
+      val domTerms = termsOfFiniteType(ty._funDomainType)(domainConstraints)
+      val codomTerms = termsOfFiniteType(ty.codomainType)(domainConstraints)
+      ???
+    }
+  }
+
+
 
   private final def ite_def: Term = λ(o,1,1)(
     HOLChoice(λ(1)(
