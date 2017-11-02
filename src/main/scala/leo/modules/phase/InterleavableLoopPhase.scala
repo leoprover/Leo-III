@@ -61,7 +61,7 @@ class InterleavableLoopPhase
     }
 
     // TODO Read external Provers / Implement external Provers
-    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
+    val input2 = Input.parseProblemFile(Configuration.PROBLEMFILE)
     val remainingInput = effectiveInput(input2, state.state)
     // Typechecking: Throws and exception if not well-typed
     typeCheck(remainingInput, state.state)

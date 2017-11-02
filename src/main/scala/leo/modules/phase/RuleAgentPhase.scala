@@ -50,7 +50,7 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     }
 
     val start = System.currentTimeMillis()
-    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
+    val input2 = Input.parseProblemFile(Configuration.PROBLEMFILE)
     parsingTime = System.currentTimeMillis() - start
     val remainingInput = effectiveInput(input2, state)
 

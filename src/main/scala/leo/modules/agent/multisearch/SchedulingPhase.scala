@@ -54,7 +54,7 @@ class SchedulingPhase(tactics : Schedule,
     }
 
     // TODO Part of tactic, give potentially the parsed input to the procedure
-    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
+    val input2 = Input.parseProblemFile(Configuration.PROBLEMFILE)
     val remainingInput = effectiveInput(input2, state)
     // Typechecking: Throws and exception if not well-typed
     typeCheck(remainingInput, state)

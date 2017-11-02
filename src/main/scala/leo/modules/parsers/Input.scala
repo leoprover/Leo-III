@@ -67,10 +67,10 @@ object Input {
     *                   includes.
     * @return The sequence of annotated TPTP formulae.
     */
-  def parseProblem(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
+  def parseProblemFile(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
     val canonicalFile = canonicalPath(file)
     if (!assumeRead.contains(canonicalFile)) {
-      val p: Commons.TPTPInput = parseShallow(file)
+      val p: Commons.TPTPInput = parseProblemFileShallow(file)
       val includes = p.getIncludes
 
       // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
@@ -78,13 +78,13 @@ object Input {
       val pIncludes = includes.map{case (inc, _) =>
         try {
           val next = canonicalFile.getParent.resolve(inc)
-          parseProblem(next.toString, assumeRead + canonicalFile)
+          parseProblemFile(next.toString, assumeRead + canonicalFile)
         } catch {
           case e : Exception =>
             try {
               if (tptpHome != null) {
                 val tnext = tptpHome.resolve(inc)
-                parseProblem(tnext.toString, assumeRead + canonicalFile)
+                parseProblemFile(tnext.toString, assumeRead + canonicalFile)
               } else throw e
             } catch {
               case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
@@ -95,6 +95,46 @@ object Input {
     } else {
       Seq()
     }
+  }
+
+  /**
+    * Parses the problem represented by `problem` recursively using the `TPTP` parser,
+    * hence the string needs to be in valid TPTP format (e.g. FOF, THF, ...).
+    * Note that the return value is a sequence of [[leo.datastructures.tptp.Commons.AnnotatedFormula]] since
+    * all includes are automatically parsed exhaustively.
+    * If the problem contains relative includes they are assumed
+    * to be equivalent to includes of `user.dir/...`.
+    *
+    * @note This method has no side effects.
+    *
+    * @param problem  The problem as string.
+    * @param assumeRead Implicitly assume that the problem files in this parameter
+    *                   have already been read. Hence, recursive parsing will skip this
+    *                   includes.
+    * @return The sequence of annotated TPTP formulae.
+    */
+  def parseProblem(problem: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
+    val p: Commons.TPTPInput = TPTP.parseFile(problem)
+    val includes = p.getIncludes
+
+    // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
+    val pIncludes = includes.map{case (inc, _) =>
+      try {
+        val next = java.nio.file.Paths.get(System.getProperty("user.dir")).resolve(inc)
+        parseProblemFile(next.toString, assumeRead)
+      } catch {
+        case e : Exception =>
+          try {
+            if (tptpHome != null) {
+              val tnext = tptpHome.resolve(inc)
+              parseProblemFile(tnext.toString, assumeRead)
+            } else throw e
+          } catch {
+            case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
+          }
+      }
+    }
+    pIncludes.flatten ++ p.getFormulae
   }
 
   /**
@@ -110,7 +150,7 @@ object Input {
     * @param file The absolute or relative path to the problem file.
     * @return The TPTP problem file in [[leo.datastructures.tptp.Commons.TPTPInput]] representation.
     */
-  def parseShallow(file: String): Commons.TPTPInput = {
+  def parseProblemFileShallow(file: String): Commons.TPTPInput = {
     TPTP.parseFile(read0(canonicalPath(file)))
   }
 
@@ -210,7 +250,7 @@ object Input {
     *         `(id, LitTrue, role)` with their respective identifier and role.
     */
   def readProblem(file: String, assumeProcessed: Set[Path] = Set())(implicit sig: Signature): Seq[(FormulaId, Term, Role)] = {
-    processProblem(parseProblem(file,assumeProcessed))(sig)
+    processProblem(parseProblemFile(file,assumeProcessed))(sig)
   }
 
   /**

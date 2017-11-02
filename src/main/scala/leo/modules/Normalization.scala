@@ -2,6 +2,7 @@ package leo.modules
 
 import leo.Configuration
 import leo.datastructures._
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.output.SZS_UsageError
 import leo.modules.parsers.Input
 import leo.modules.prover.State
@@ -19,11 +20,10 @@ object Normalization {
   val extractionType: Int = Configuration.EXTRACTION_TYPE
   val localXtract: Boolean = Configuration.isSet(s"xLocal")
 
-  final def apply(): Unit = {
+  final def apply(parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     implicit val s : State[AnnotatedClause] = State.fresh(sig)
-    val input0 = Input.parseProblem(Configuration.PROBLEMFILE)
-    val (defs, axioms0, conjecture) = effectiveInput(input0)
+    val (defs, axioms0, conjecture) = effectiveInput(parsedProblem)
 
     var axioms = axioms0
     val defsIt = defs.iterator
