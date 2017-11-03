@@ -55,6 +55,7 @@ object Main {
           import transformation.{Wrappers => ModalProcessing}
           val spec = maybeLogicSpecification.get
           assert(spec.function_symbols.contains("$modal"), "Non-classical logics other than modal logic not supported yet.")
+          Out.info("Input problem is modal. Running modal-to-HOL transformation ...")
           val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE))
           Input.parseProblem(result)
         } else {
