@@ -68,17 +68,17 @@ object Modes {
 
   final def agentRuleRun(startTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
     Out.info("Running in rules mode.")
-    modes.Parallel.agentRuleRun(startTime)
+    modes.Parallel.agentRuleRun(startTime, parsedProblem)
   }
 
   final def runParallel(startTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
     Out.info("Running in parallel mode.")
-    modes.Parallel.runParallel(startTime)
+    modes.Parallel.runParallel(startTime, parsedProblem)
   }
 
   final def runMultiSearch(startTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
     Out.info("Running in scheduled parallel mode.")
-    modes.Parallel.runMultiSearch(startTime)
+    modes.Parallel.runMultiSearch(startTime, parsedProblem)
   }
 
 }

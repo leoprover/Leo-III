@@ -6,6 +6,7 @@ import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
 import leo.datastructures.blackboard.{Blackboard, DoneEvent}
 import leo.datastructures.context.Context
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules._
 import leo.modules.agent.multisearch.{Schedule, SchedulingPhase}
 import leo.modules.agent.rules.control_rules._
@@ -31,7 +32,7 @@ object Parallel {
     *
     * @param startTime Time the program started
     */
-  def runMultiSearch(startTime : Long) {
+  def runMultiSearch(startTime : Long, parsedProblem: Seq[AnnotatedFormula]) {
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
@@ -53,7 +54,7 @@ object Parallel {
 
 //  TODO    ExtProverControl.registerAsyncTranslation(new SchedulerTranslationImpl(scheduler))
 
-      val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
+      val schedPhase = new SchedulingPhase(tactics, parsedProblem, initState)(scheduler, blackboard)
 
       printPhase(schedPhase)
       if (!schedPhase.execute()) {
@@ -90,7 +91,7 @@ object Parallel {
     *
     * @param startTime Time the program started
     */
-  def runParallel(startTime : Long){
+  def runParallel(startTime : Long, parsedProblem: Seq[AnnotatedFormula]){
 
     import leo.datastructures.Signature
 
@@ -114,7 +115,7 @@ object Parallel {
       val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
       val extAgent = new ExternalAgent(state, sig)
 
-      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, parsedProblem, uniAgent, extAgent)(blackboard, scheduler)
 
       state.state.setRunStrategy(Control.defaultStrategy)
       state.state.setTimeout(Configuration.TIMEOUT)
@@ -172,7 +173,7 @@ object Parallel {
     *
     * @param startTime
     */
-  def agentRuleRun(startTime : Long): Unit ={
+  def agentRuleRun(startTime : Long, parsedProblem: Seq[AnnotatedFormula]): Unit ={
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
@@ -190,7 +191,7 @@ object Parallel {
       // RuleGraph creation
       val graph: SimpleControlGraph = new SimpleControlGraph
 
-      val phase: RuleAgentPhase = new RuleAgentPhase(graph)
+      val phase: RuleAgentPhase = new RuleAgentPhase(graph, parsedProblem)
 
 
       printPhase(phase)
