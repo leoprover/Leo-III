@@ -3,7 +3,7 @@ package leo.modules.prover
 import leo.{Configuration, Out}
 import leo.datastructures._
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.{SZSOutput, myAssert}
+import leo.modules.{SZSResult, SZSOutput, myAssert}
 import leo.modules.control.Control
 import leo.modules.output._
 
@@ -442,15 +442,14 @@ object SeqLoop {
     Out.finest("Clauses at the end of the loop:")
     Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
 
-    Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
+    Out.output(SZSResult(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
     /* Print proof object if possible and requested. */
     if (Configuration.PROOF_OBJECT && proof != null) {
       try {
-        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
-        if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
-        else Out.output(proofToTPTP(proof))
-        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+        val proofOutput = userSignatureToTPTP(symbolsInProof(proof))(sig)
+        val proofString = if (Configuration.isSet("compressProof")) proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get))
+        else proofToTPTP(proof)
+        Out.output(SZSOutput(SZS_CNFRefutation, Configuration.PROBLEMFILE, proofOutput + proofString))
       } catch {
         case e: Exception => Out.comment("Translation of proof object failed. See error logs for details.")
           Out.warn(e.toString)

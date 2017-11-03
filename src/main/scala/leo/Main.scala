@@ -1,11 +1,8 @@
 package leo
 
-import leo.datastructures.{Role_Definition, Role_Type}
 import leo.modules._
-import leo.modules.output._
+import leo.modules.output.{SZS_Forced, SZS_Error, SZS_MemoryOut}
 import leo.modules.parsers.{CLParameterParser, Input}
-import leo.modules.prover.RunExternalProver
-
 
 /**
  * Entry Point for Leo-III as an executable to
@@ -23,7 +20,7 @@ object Main {
       /** Hook is for returning an szs status if leo3 is killed forcefully. */
       hook = sys.addShutdownHook({
         Configuration.cleanup()
-        Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
+        Out.output(SZSResult(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
       })
 
       /** Parameter stuff BEGIN */
@@ -65,62 +62,27 @@ object Main {
         }
         // Functionality calls
         if (Configuration.isSet("seq")) {
-          Out.info("Running in sequential loop mode.")
-          prover.SeqLoop(beginTime, Configuration.TIMEOUT, problem)
+          Modes.seqLoop(beginTime, Configuration.TIMEOUT, problem)
         } else if (Configuration.isSet("scheduled")) {
-          Out.info("Running in scheduled sequential loop mode.")
-          prover.ScheduledRun(beginTime, Configuration.TIMEOUT, problem)
+          Modes.scheduledSeq(beginTime, Configuration.TIMEOUT, problem)
         } else if (Configuration.isSet("pure-ext")) {
-          Out.info("Running in purely external mode.")
-          RunExternalProver.apply(problem)
+          Modes.runExternalProver(problem)
         } else if (Configuration.isSet("rules")) {
-          Out.info("Running in rules mode.")
-          ParallelMain.agentRuleRun(beginTime) // TODO
+          Modes.agentRuleRun(beginTime, problem)
         } else if (Configuration.isSet("par")) {
-          Out.info("Running in parallel mode.")
-          ParallelMain.runParallel(beginTime) // TODO
+          Modes.runParallel(beginTime, problem)
         } else if (Configuration.isSet("scheduled-par")) {
-          Out.info("Running in scheduled parallel mode.")
-          ParallelMain.runMultiSearch(beginTime) // TODO
+          Modes.runMultiSearch(beginTime, problem)
         } else if (Configuration.isSet("processOnly")) {
-          Out.info("Running in processOnly mode.")
-          Normalization(problem)
+          Modes.normalizationOnly(problem)
         } else if (Configuration.isSet("syntaxcheck")) {
-          // if it fails the catch below will print it
-          Out.output(SZSOutput(SZS_Success, Configuration.PROBLEMFILE,
-            s"Syntax check succeeded"))
-        } else if (Configuration.isSet("typecheck")) { // TODO: Refactor
-          import leo.datastructures.{Term, Signature, Role}
-          implicit val sig = Signature.freshWithHOL()
-          val erg = Input.processProblem(problem)
-          var notWellTyped: Seq[(Input.FormulaId, Term, Role)] = Seq.empty
-          erg.foreach {case (id, t, role) =>
-            val wellTyped = Term.wellTyped(t)
-            if (!wellTyped) notWellTyped = notWellTyped :+ (id, t, role)
-          }
-          if (notWellTyped.isEmpty)
-            Out.output(SZSOutput(SZS_Success, Configuration.PROBLEMFILE, s"Type check succeeded"))
-          else
-            Out.output(SZSOutput(SZS_TypeError, Configuration.PROBLEMFILE, s"${notWellTyped.map(_._1).mkString(",")} are not well-typed."))
-        } else if (Configuration.isSet("toTHF")) { // TODO: Refactor
-          import leo.datastructures.Signature
-          import leo.modules.output.ToTPTP
-          implicit val sig = Signature.freshWithHOL()
-          val sb: StringBuilder = new StringBuilder
-          val erg = Input.processProblem(problem)
-          sb.append(ToTPTP(sig))
-          sb.append(ToTPTP.printDefinitions(sig))
-          erg.foreach {case (id, t, role) =>
-            if (role != Role_Definition && role != Role_Type) {
-              sb.append(ToTPTP.toTPTP(id, termToClause(t), role)(sig))
-              sb.append("\n")
-            }
-          }
-          Out.output(SZSOutput(SZS_Success, Configuration.PROBLEMFILE, s"Translation finished."))
-          Out.output(sb.toString())
+          Modes.syntaxCheck(problem)
+        } else if (Configuration.isSet("typecheck")) {
+          Modes.typeCheck(problem)
+        } else if (Configuration.isSet("toTHF")) {
+          Modes.toTHF(problem)
         } else {
-          Out.info("No mode given, using sequential loop mode as default.")
-          prover.SeqLoop(beginTime, Configuration.TIMEOUT, problem)
+          Modes.seqLoop(beginTime, Configuration.TIMEOUT, problem)
         }
       }
       /** Call concrete functionality END */
@@ -130,11 +92,11 @@ object Main {
         Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
         e match {
           case e0: SZSException =>
-            Out.output(SZSOutput(e0.status, Configuration.PROBLEMFILE,e0.getMessage))
+            Out.output(SZSResult(e0.status, Configuration.PROBLEMFILE,e0.getMessage))
             Out.debug(e0.debugMessage)
           case e0: OutOfMemoryError =>
-            Out.output(SZSOutput(SZS_MemoryOut, Configuration.PROBLEMFILE, e0.toString))
-          case _ => Out.output(SZSOutput(SZS_Error, Configuration.PROBLEMFILE,e.toString))
+            Out.output(SZSResult(SZS_MemoryOut, Configuration.PROBLEMFILE, e0.toString))
+          case _ => Out.output(SZSResult(SZS_Error, Configuration.PROBLEMFILE,e.toString))
         }
         Out.trace(stackTraceAsString(e))
         if (e.getCause != null) {

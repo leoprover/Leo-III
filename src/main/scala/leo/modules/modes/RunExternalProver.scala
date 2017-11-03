@@ -1,4 +1,4 @@
-package leo.modules.prover
+package leo.modules.modes
 
 import leo.Configuration
 import leo.datastructures._
