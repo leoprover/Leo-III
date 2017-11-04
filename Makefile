@@ -1,5 +1,5 @@
-DESTDIR ?=
-JAVADIR ?=
+DESTDIR ?= $(HOME)/bin/
+JAVADIR ?= java/
 CC=gcc
 CONTRIB=./contrib
 
@@ -20,6 +20,8 @@ all: TreeLimitedRun
 		cp ./src/main/resources/scripts/leo3 bin/leo3
 		
 install:
-		install -m 0755 -d $(DESTDIR)$(JAVADIR)
-		install -m 0755 bin/leo3.jar $(DESTDIR)$(JAVADIR)
+		install -m 0755 -d $(DESTDIR)
+		install -m 0755 bin/leo3.jar $(DESTDIR)
+		echo -e "#!/bin/bash\njava -Xss32m -Xmx1g -jar $(DESTDIR)leo3.jar \$$@" > $(DESTDIR)leo3
+		chmod +x $(DESTDIR)leo3
 
