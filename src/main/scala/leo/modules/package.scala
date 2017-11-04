@@ -4,7 +4,7 @@ import java.io.{PrintWriter, StringWriter}
 
 import leo.datastructures._
 import leo.modules.calculus.CalculusRule
-import leo.modules.output.{Output, StatusSZS, ToTPTP}
+import leo.modules.output.{DataformSZS, Output, StatusSZS, ToTPTP}
 import leo.modules.proof_object.CompressProof
 
 import scala.annotation.elidable
@@ -19,7 +19,7 @@ import scala.collection.immutable.HashSet
 package object modules {
   class SZSException(val status : StatusSZS, message : String = "", val debugMessage: String = "", cause : Throwable = null) extends RuntimeException(message, cause)
 
-  case class SZSOutput(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
+  case class SZSResult(status : StatusSZS, problem: String, furtherInfo: String = "") extends Output {
     override def apply: String = if (furtherInfo == null || furtherInfo == "") {
       s"% SZS status ${status.apply} for $problem"
     } else {
@@ -27,7 +27,17 @@ package object modules {
     }
   }
 
-
+  case class SZSOutput(dataform : DataformSZS, problem: String, content: String, furtherInfo: String = "") extends Output {
+    override def apply: String = if (furtherInfo == null || furtherInfo == "") {
+      s"% SZS output start ${dataform.apply} for $problem\n" +
+        content + "\n" +
+        s"% SZS output end ${dataform.apply} for $problem"
+    } else {
+      s"% SZS output start ${dataform.apply} for $problem : $furtherInfo\n" +
+        content + "\n" +
+        s"% SZS output end ${dataform.apply} for $problem"
+    }
+  }
 
   /////////////////////////////////////////////////////////////
   /// Signature queries

@@ -2,7 +2,8 @@ package leo.modules.prover
 
 import leo.{Configuration, Out}
 import leo.datastructures._
-import leo.modules.{SZSOutput, myAssert}
+import leo.datastructures.tptp.Commons.AnnotatedFormula
+import leo.modules.{SZSResult, SZSOutput, myAssert}
 import leo.modules.control.Control
 import leo.modules.output._
 
@@ -65,6 +66,12 @@ object SeqLoop {
   /* Main function containing proof loop */
   final def apply(startTime: Long, timeout: Int): Unit = {
     import leo.modules.parsers.Input
+    apply(startTime, timeout, Input.parseProblemFile(Configuration.PROBLEMFILE))
+  }
+
+  /* Main function containing proof loop */
+  final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
+    val startTimeWOParsing = System.currentTimeMillis()
     /////////////////////////////////////////
     // Main loop preparations:
     // Read Problem, preprocessing, state set-up, etc.
@@ -87,12 +94,8 @@ object SeqLoop {
     try {
       // Check if external provers were defined
       if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
-
-      // Read problem from file
-      val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
-      val startTimeWOParsing = System.currentTimeMillis()
       // Split input in conjecture/definitions/axioms etc.
-      val remainingInput: Seq[AnnotatedClause] = effectiveInput(input2, state)
+      val remainingInput: Seq[AnnotatedClause] = effectiveInput(parsedProblem, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
       Out.info(s"Type checking passed. Searching for refutation ...")
@@ -439,15 +442,14 @@ object SeqLoop {
     Out.finest("Clauses at the end of the loop:")
     Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
 
-    Out.output(SZSOutput(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
+    Out.output(SZSResult(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
     /* Print proof object if possible and requested. */
     if (Configuration.PROOF_OBJECT && proof != null) {
       try {
-        Out.comment(s"SZS output start CNFRefutation for ${Configuration.PROBLEMFILE}")
-        Out.output(userSignatureToTPTP(symbolsInProof(proof))(sig))
-        if (Configuration.isSet("compressProof")) Out.output(proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get)))
-        else Out.output(proofToTPTP(proof))
-        Out.comment(s"SZS output end CNFRefutation for ${Configuration.PROBLEMFILE}")
+        val proofOutput = userSignatureToTPTP(symbolsInProof(proof))(sig)
+        val proofString = if (Configuration.isSet("compressProof")) proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get))
+        else proofToTPTP(proof)
+        Out.output(SZSOutput(SZS_CNFRefutation, Configuration.PROBLEMFILE, proofOutput + proofString))
       } catch {
         case e: Exception => Out.comment("Translation of proof object failed. See error logs for details.")
           Out.warn(e.toString)

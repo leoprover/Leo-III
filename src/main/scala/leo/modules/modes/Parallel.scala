@@ -1,66 +1,30 @@
-package leo
+package leo.modules.modes
 
-import java.nio.file.Files
-
-import leo.datastructures.blackboard.{Blackboard, DoneEvent, LockSet}
+import leo.agents.InterferingLoopAgent
+import leo.datastructures.AnnotatedClause
 import leo.datastructures.blackboard.impl.SZSDataStore
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.blackboard.{Blackboard, DoneEvent}
 import leo.datastructures.context.Context
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules._
-import leo.modules.output._
-import leo.modules.phase._
-import leo.modules.interleavingproc._
-import leo.agents.InterferingLoopAgent
-import leo.modules.control.{Control, schedulingControl}
-import leo.datastructures.AnnotatedClause
 import leo.modules.agent.multisearch.{Schedule, SchedulingPhase}
 import leo.modules.agent.rules.control_rules._
 import leo.modules.control.schedulingControl.ParStrategyControl
-import leo.modules.parsers.CLParameterParser
+import leo.modules.control.{Control, schedulingControl}
+import leo.modules.interleavingproc._
+import leo.modules.output._
+import leo.modules.phase._
 import leo.modules.proof_object.CompressProof
 import leo.modules.prover.State
+import leo.{Configuration, Out, modules}
 
 
 /**
   * Created by mwisnie on 3/7/16.
   */
-object ParallelMain {
+object Parallel {
   private var hook: scala.sys.ShutdownHookThread = _
-
-  def main(args : Array[String]): Unit = {
-    try {
-      Configuration.init(new CLParameterParser(args))
-    } catch {
-      case e: IllegalArgumentException =>
-        Configuration.help()
-        return
-    }
-    if ((args(0) == "-h") || Configuration.HELP) {
-      Configuration.help()
-      return
-    }
-    val leodir = Configuration.LEODIR
-    if (!Files.exists(leodir)) Files.createDirectory(leodir)
-
-    val config = {
-      val sb = new StringBuilder()
-      sb.append(s"problem(${Configuration.PROBLEMFILE}),")
-      sb.append(s"time(${Configuration.TIMEOUT}),")
-      sb.append(s"proofObject(${Configuration.PROOF_OBJECT}),")
-      sb.append(s"sos(${Configuration.SOS}),")
-      // TBA ...
-      sb.init.toString()
-    }
-    Out.config(s"Configuration: $config")
-
-    hook = sys.addShutdownHook({
-      Out.output(SZSOutput(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
-    })
-
-    val startTime: Long = System.currentTimeMillis()
-    runParallel(startTime)
-  }
-
 
   /**
     * Employs agents only to perform a multisearch with
@@ -68,7 +32,7 @@ object ParallelMain {
     *
     * @param startTime Time the program started
     */
-  def runMultiSearch(startTime : Long) {
+  def runMultiSearch(startTime : Long, parsedProblem: Seq[AnnotatedFormula]) {
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
@@ -90,7 +54,7 @@ object ParallelMain {
 
 //  TODO    ExtProverControl.registerAsyncTranslation(new SchedulerTranslationImpl(scheduler))
 
-      val schedPhase = new SchedulingPhase(tactics, initState)(scheduler, blackboard)
+      val schedPhase = new SchedulingPhase(tactics, parsedProblem, initState)(scheduler, blackboard)
 
       printPhase(schedPhase)
       if (!schedPhase.execute()) {
@@ -127,7 +91,7 @@ object ParallelMain {
     *
     * @param startTime Time the program started
     */
-  def runParallel(startTime : Long){
+  def runParallel(startTime : Long, parsedProblem: Seq[AnnotatedFormula]){
 
     import leo.datastructures.Signature
 
@@ -151,7 +115,7 @@ object ParallelMain {
       val uniAgent = new DelayedUnificationAgent(uniStore, state, sig)
       val extAgent = new ExternalAgent(state, sig)
 
-      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, uniAgent, extAgent)(blackboard, scheduler)
+      val iPhase = new InterleavableLoopPhase(iLoopAgent, state, sig, parsedProblem, uniAgent, extAgent)(blackboard, scheduler)
 
       state.state.setRunStrategy(Control.defaultStrategy)
       state.state.setTimeout(Configuration.TIMEOUT)
@@ -174,7 +138,7 @@ object ParallelMain {
       //      val szsStatus: StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Unknown: StatusSZS) { x => x }
       val szsStatus = if(TimeOutProcess.timedOut) SZS_Timeout else state.state.szsStatus
       Out.output("")
-      Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
+      Out.output(SZSResult(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
 
       //      val proof = FormulaDataStore.getAll(_.cl.lits.isEmpty).headOption // Empty clause suchen
 
@@ -209,7 +173,7 @@ object ParallelMain {
     *
     * @param startTime
     */
-  def agentRuleRun(startTime : Long): Unit ={
+  def agentRuleRun(startTime : Long, parsedProblem: Seq[AnnotatedFormula]): Unit ={
     import leo.datastructures.Signature
 
     implicit val sig: Signature = Signature.freshWithHOL()
@@ -227,7 +191,7 @@ object ParallelMain {
       // RuleGraph creation
       val graph: SimpleControlGraph = new SimpleControlGraph
 
-      val phase: RuleAgentPhase = new RuleAgentPhase(graph)
+      val phase: RuleAgentPhase = new RuleAgentPhase(graph, parsedProblem)
 
 
       printPhase(phase)
@@ -280,7 +244,7 @@ object ParallelMain {
   private def unexpectedEnd(time : Long) {
     val szsStatus : StatusSZS = SZSDataStore.getStatus(Context()).fold(SZS_Timeout : StatusSZS){x => x}
     Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
+    Out.output(SZSResult(szsStatus, Configuration.PROBLEMFILE, s"${time.toInt} ms"))
   }
 
   private def printPhase(p : Phase) = {
@@ -296,7 +260,7 @@ object ParallelMain {
     implicit val sig = state.signature
     val szsStatus = state.szsStatus
     Out.output("")
-    Out.output(SZSOutput(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
+    Out.output(SZSResult(szsStatus, Configuration.PROBLEMFILE, s"${time} ms"))
     if (state.szsStatus == SZS_Theorem) Out.comment(s"Solved by ${state.runStrategy.pretty}")
 
     val proof = if (state.derivationClause.isDefined) proofOf(state.derivationClause.get) else null
