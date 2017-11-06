@@ -1,3 +1,4 @@
+/*
 package leo.modules.sat_solver
 
 import scala.util.Try
@@ -403,4 +404,4 @@ object PicoSAT {
 
 	@native def picosat_version() : String
 	@native def picosat_api_version() : Int
-}
+}*/
