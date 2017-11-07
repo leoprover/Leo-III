@@ -82,7 +82,7 @@ object InputProcessing {
   //////////////////////////
 
   protected[parsers] final def processTHFAnnotated(sig: Signature)(input: THFAnnotated): Option[Result] = {
-    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Term, Function}
+    import leo.datastructures.tptp.thf.{Sequent, Logical, Typed, Function}
 
     input.formula match {
       case Logical(lf) if input.role == "definition" =>
@@ -116,13 +116,6 @@ object InputProcessing {
           case Right(k) => sig.addTypeConstructor(atom, k)
         }
         None
-      case Logical(Typed(Term(Func(atom, _)),ty)) if input.role == "type" => // TODO Legacy
-        assert(false)
-                                                        convertTHFType(sig)(ty, noRep) match {
-                                                          case Left(ty0) => sig.addUninterpreted(atom, ty0)
-                                                          case Right(k) => sig.addTypeConstructor(atom, k)
-                                                        }
-                                                        None
       case Logical(lf)                               => val role = processRole(input.role)
                                                         val res = processTHF(sig)(lf)
                                                         if (res.isLeft)
@@ -135,13 +128,9 @@ object InputProcessing {
 
   import leo.datastructures.tptp.thf.{LogicFormula => THFLogicFormula}
   protected[InputProcessing] final def processTHFDef(sig: Signature)(input: THFLogicFormula): Option[(String, Term)] = {
-    import leo.datastructures.tptp.thf.{Binary, Term, Eq, Function}
+    import leo.datastructures.tptp.thf.{Binary, Eq, Function}
     input match {
       case Binary(Function(name, Seq()), Eq, right) =>
-        val res = processTHF(sig)(right, noRep)
-        if (res.isLeft) Some(name, res.left.get)
-        else throw new SZSException(SZS_InputError, "Type detected on right side of definition statement.")
-      case Binary(Term(Func(name, Seq())), Eq, right) =>
         val res = processTHF(sig)(right, noRep)
         if (res.isLeft) Some(name, res.left.get)
         else throw new SZSException(SZS_InputError, "Type detected on right side of definition statement.")
@@ -150,10 +139,10 @@ object InputProcessing {
   }
 
   protected[modules] final def processTHF(sig: Signature)(input: THFLogicFormula, replaces: Replaces = noRep): TermOrType = {
-    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Tuple, Number => THFNumber, Distinct, Function, Var => THFVar, Quantified, Connective, Term, BinType, Subtype, Cond, Let, NewLet, App => THFApp}
+    import leo.datastructures.tptp.thf.{Typed, Binary, Unary, Tuple, Number => THFNumber, Distinct, Function, Var => THFVar, Quantified, Connective, BinType, Subtype, Cond, NewLet, App => THFApp}
 
     input match {
-      case Typed(f, ty) => processTHF(sig)(f,replaces) // Type information was already extracted before
+      case Typed(f, _) => processTHF(sig)(f,replaces) // Type information was already extracted before
       case Binary(left, conn, right) if conn == THFApp =>
         val processedLeft = processTHF(sig)(left, replaces)
         if (processedLeft.isLeft) {
@@ -224,22 +213,9 @@ object InputProcessing {
         else
           throw new SZSException(SZS_InputError)
       case Connective(c) => c.fold(cc => Left(processTHFBinaryConn(cc)),cc => Left(processTHFUnaryConn(cc)))
-      case Term(Var(name)) => assert(false) // TODO: Legacy
-        termMapping(replaces).get(name) match {
-        case None => typeMapping(replaces).get(name) match {
-          case Some((k, scope))  => Type.mkVarType(scope)
-          case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
-        }
-        case Some((ty, scope)) =>
-          assert(typeMapping(replaces).get(name).isEmpty)
-          mkBound(ty, termMapping(replaces).size + termOffset(replaces) - scope +1)
-      }
-      case Term(t) => // TODO: Legacy. remove
-        assert(false)
-        processTerm(sig)(t, replaces, false)
       case THFVar(name) => termMapping(replaces).get(name) match {
         case None => typeMapping(replaces).get(name) match {
-          case Some((k, scope))  => Type.mkVarType(scope)
+          case Some((k, scope))  => assert(k.isTypeKind); Type.mkVarType(scope)
           case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
         }
         case Some((ty, scope)) =>
@@ -297,8 +273,8 @@ object InputProcessing {
           else mkAtom(sig.addUninterpreted(constName, rat))(sig)
       }
       case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Tuples are not supported")
-      case BinType(binTy) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
-      case Subtype(left,right) => throw new SZSException(SZS_Inappropriate, "Subtyping is not supported")
+      case BinType(_) => throw new IllegalArgumentException("Binary Type formulae should not appear on top-level")
+      case Subtype(_, _) => throw new SZSException(SZS_Inappropriate, "Subtyping is not supported")
       case Cond(c, thn, els) =>
         try {
           val convertedCondition = processTHF(sig)(c, replaces).left.get
@@ -321,7 +297,6 @@ object InputProcessing {
 
           case e:java.util.NoSuchElementException => throw new SZSException(SZS_InputError,e.toString)
         }
-      case Let(binding, in) => Out.severe("Unsupported let-definition in term, treated as $true."); LitTrue()
       case NewLet(binding, leo.datastructures.tptp.thf.Logical(body)) =>
         import leo.datastructures.tptp.thf.{Eq => THFEq}
         var localBindingMap: Map[Function, THFLogicFormula] = Map()
@@ -364,8 +339,8 @@ object InputProcessing {
 
   ////// Little workaround to have the usual application (s @ t) a corresponding HOLBinbaryConnective
   object @@@ extends HOLBinaryConnective {
-    val key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
-    val ty = null
+    val key: Signature.Key = Integer.MIN_VALUE // Dont care, we dont want to use unapply
+    val ty: Type = null
     override def apply(left: Term, right: Term): Term = Term.mkTermApp(left, right)
   }
   //////
@@ -425,12 +400,12 @@ object InputProcessing {
   private final val HOLLambda = new HOLUnaryConnective { // little hack here, to simulate a lambda, the apply function is the identity
   // this is because the mkPolyQuantified will apply a new abstraction
     val key: Signature.Key = Integer.MIN_VALUE // just for fun!
-    lazy val ty = null
-    override def apply(arg: Term) = arg
+    lazy val ty: Type = null
+    override def apply(arg: Term): Term = arg
   }
 
   protected[InputProcessing] final def convertTHFType(sig: Signature)(typ: THFLogicFormula, replaces: Replaces): TypeOrKind = {
-    import leo.datastructures.tptp.thf.{Quantified, Term, Var => THFVar, Function, BinType, Binary, App}
+    import leo.datastructures.tptp.thf.{Quantified, Var => THFVar, Function, BinType, Binary, App}
 
     typ match {
       case Quantified(q, vars, matrix) =>
@@ -476,27 +451,6 @@ object InputProcessing {
             if (sig.exists(func)) mkType(sig(func).key)
             else throw new SZSException(SZS_InputError, s"Unknown type/type operator $func, please specify its kind before.")
           }
-        }
-      case Term(t) =>  // TODO: Legacy, check if used and remove if not
-        assert(false)
-        t match {
-//          case Func(k, args) => {
-//            if (sig(k).hasKind)
-//              if (sig(k)._kind.arity == args.length) {
-//                val converted = args.map(x => convertTHFType(sig)(Term(x), replaces))
-//                if (converted.forall(_.isLeft))
-//                  mkType(sig(k).key, converted.map(_.left.get))
-//                else throw new SZSException(SZS_TypeError)
-//              } else throw new SZSException(SZS_TypeError, s"Arity of sort symbol does not match argument count: ${t.toString}")
-//            else
-//              throw new SZSException(SZS_TypeError, s"Using term constant inside type: ${t.toString}")
-//          }
-          case Func(ty, List()) => mkType(sig(ty).key)
-          case DefinedFunc(ty, List()) if ty == "$tType" =>  typeKind // kind *
-          case DefinedFunc(ty, List()) =>  mkType(sig(ty).key) // defined type
-          case SystemFunc(ty, List()) =>  mkType(sig(ty).key) // system type
-          case Var(name) =>  mkVarType(typeMapping(replaces).size + typeOffset(replaces) - typeMapping(replaces)(name)._2 + 1)
-          case _ => throw new IllegalArgumentException("malformed/unsupported term type expression: "+typ.toString)
         }
       case BinType(binTy) =>
         import leo.datastructures.tptp.thf.{->, *, +}
@@ -567,7 +521,7 @@ object InputProcessing {
   protected[InputProcessing] final def processTFFDef(sig: Signature)(input: TFFLogicFormula): Option[(String, Term)] = {
     import leo.datastructures.tptp.tff.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => Some(name, processTerm(sig)(right, noRep, false))  // TODO Is this the right term to construct equalities in tff?
+      case Atomic(Equality(Func(name, Seq()),right)) => Some(name, processTerm(sig)(right, noRep, false))
       case _ => None
     }
   }
@@ -761,7 +715,7 @@ object InputProcessing {
   protected[InputProcessing] final def processFOFDef(sig: Signature)(input: FOFLogicalFormula): (String, Term) = {
     import leo.datastructures.tptp.fof.Atomic
     input match {
-      case Atomic(Equality(Func(name, Nil),right)) => (name, processTerm(sig)(right, noRep))  // TODO See above TODO
+      case Atomic(Equality(Func(name, Seq()),right)) => (name, processTerm(sig)(right, noRep))  // TODO See above TODO
       case _ => throw new IllegalArgumentException("Malformed definition")
     }
   }
@@ -981,18 +935,7 @@ object InputProcessing {
       val converted = vars.map(processTerm(sig)(_, replace, adHocDefs))
       mkTermApp(mkAtom(sig(name).key)(sig), converted)
     case Tuple(_) => throw new SZSException(SZS_Inappropriate, "Tuples not supported.")
-    case Var(name) => assert(false, name)
-      // TODO Legacy. This code is not used anymore. remove it?
-      termMapping(replace).get(name) match {
-      case None => typeMapping(replace).get(name) match {
-        case Some((k, scope))  => assert(k == Kind.*); ???
-        case _ => throw new IllegalArgumentException("Unbound variable found in formula: "+input.toString)
-      }
-      case Some((ty, scope)) =>
-        assert(typeMapping(replace).get(name).isEmpty)
-        mkBound(ty, termMapping(replace).size + termOffset(replace) - scope +1)
-    }
-
+    case Var(_) => throw new SZSException(SZS_InputError, "Variable on top-level detected.")
     case NumberTerm(value) => value match {
       case IntegerNumber(value0) =>
         val constName = "$$int(" + value0.toString + ")"
