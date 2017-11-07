@@ -266,7 +266,7 @@ object SeqLoop {
       Control.removeProcessed(backSubsumedClauses)
     }
     val (simplifiedProcessed,affected) = Control.rewritable(state.processed, cur)
-    newclauses = newclauses union simplifiedProcessed // TODO: Make that better
+    newclauses = newclauses union simplifiedProcessed
     Control.removeProcessed(affected)
     assert(!leo.modules.calculus.FullCNF.canApply(cur.cl), s"[SeqLoop] Not in CNF: ${cur.pretty(sig)}")
     /** Add to processed and to indexes. */
@@ -318,10 +318,8 @@ object SeqLoop {
     /////////////////////////////////////////
 
     /////////////////////////////////////////
-    // Simplification of newly generated clauses BEGIN
+    // Simplification/unification of newly generated clauses BEGIN
     /////////////////////////////////////////
-    /* Simplify new clauses */
-    //    newclauses = Control.shallowSimpSet(newclauses)
     /* Remove those which are tautologies */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /* Pre-unify new clauses */
@@ -329,7 +327,6 @@ object SeqLoop {
 
     /* exhaustively CNF new clauses */
     /* Replace eq symbols on top-level by equational literals. */
-//    newclauses = newclauses.map(cw => Control.shallowSimp(Control.liftEq(cw)))
     newclauses = exhaustive[AnnotatedClause]{ cls =>
       val res0 = Control.cnfSet(cls)
       res0.map(cl => Control.cheapSimp(Control.liftEq(cl)))

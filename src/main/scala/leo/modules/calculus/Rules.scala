@@ -232,6 +232,7 @@ object PatternUni extends AnyUni {
     } else {
       val subst = result.head._1
       Out.trace(s"Pattern unification successful: ${subst._1.pretty}")
+      Out.trace(s"ty subst: ${subst._2.pretty}")
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
       val resultClause = Clause(updatedOtherLits)
       Some((resultClause, subst))

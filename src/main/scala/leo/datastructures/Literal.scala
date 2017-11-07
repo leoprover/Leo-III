@@ -82,7 +82,13 @@ trait Literal extends Pretty with Prettier {
   @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = {
     if (termSubst == Subst.id && typeSubst == Subst.id) this
     else {
-      termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+      val lsubst = left.substitute(termSubst, typeSubst)
+      if (equational) {
+        val rsubst = right.substitute(termSubst, typeSubst)
+        Literal.mkLit(lsubst, rsubst, polarity)
+      } else {
+        Literal.mkLit(lsubst, polarity)
+      }
     }
   }
   /** Apply substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
@@ -91,8 +97,12 @@ trait Literal extends Pretty with Prettier {
     if (termSubst == Subst.id && typeSubst == Subst.id) this
     else {
       val lsubst = left.substitute(termSubst, typeSubst)
-      val rsubst = right.substitute(termSubst, typeSubst)
-      Literal.mkOrdered(lsubst ,rsubst, polarity)
+      if (equational) {
+        val rsubst = right.substitute(termSubst, typeSubst)
+        Literal.mkOrdered(lsubst, rsubst, polarity)
+      } else {
+        Literal.mkLit(lsubst, polarity)
+      }
     }
   }
   /** Apply a renaming substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
@@ -106,8 +116,12 @@ trait Literal extends Pretty with Prettier {
     if (termSubst == Subst.id && typeSubst == Subst.id) this
     else {
       val lsubst = left.substitute(termSubst, typeSubst)
-      val rsubst = right.substitute(termSubst, typeSubst)
-      Literal.mkLit(lsubst, rsubst, polarity, oriented)
+      if (equational) {
+        val rsubst = right.substitute(termSubst, typeSubst)
+        Literal.mkLit(lsubst, rsubst, polarity, oriented)
+      } else {
+        Literal.mkLit(lsubst, polarity)
+      }
     }
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}

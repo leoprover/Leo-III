@@ -278,17 +278,7 @@ package inferenceControl {
           // We cannot use _.substitute on literal since this will forget the ordering
           val termShift = Subst.shift(withClause.maxImplicitlyBound)
           val typeShift = Subst.shift(withClause.maxTypeVar)
-          val shiftedIntoClause: Clause = Clause(
-            intoClause.lits.map {l =>
-              if (l.equational) {
-                // since we only lift variables, the orientation property isnt affected
-                // we may safely assume that the new lits are also orientable if the original ones were orientable.
-                Literal.mkLit(l.left.substitute(termShift, typeShift), l.right.substitute(termShift, typeShift), l.polarity, l.oriented)
-              } else {
-                Literal.mkLit(l.left.substitute(termShift, typeShift), l.polarity)
-              }
-            }
-          )
+          val shiftedIntoClause: Clause = Clause(intoClause.lits.map { _.applyRenamingSubstitution(termShift, typeShift) })
           val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
           Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
           Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
@@ -307,18 +297,17 @@ package inferenceControl {
     private final def singleParamod0(withWrapper: AnnotatedClause,
                                      withClause: Clause,
                                      withIndex: Int,
-//                                     withLit: Literal,
+                                     // withLit: Literal,
                                      withSide: Side,
                                      withTerm: Term,
                                      otherTerm: Term,
                                      intoWrapper: AnnotatedClause,
                                      shiftedIntoClause: Clause,
                                      intoIndex: Int,
-//                                     intoLit: Literal,
+                                     // intoLit: Literal,
                                      intoSide: Side,
                                      intoPos: Position,
                                      shiftedIntoTerm: Term)(implicit sig: Signature): AnnotatedClause = {
-      import leo.modules.output.ToTPTP
 
       val result0 = OrderedParamod(withClause, withIndex, withSide,
         shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
@@ -329,111 +318,132 @@ package inferenceControl {
         ClauseAnnotation.PropNeedsUnification |  ClauseAnnotation.PropSOS
       } else ClauseAnnotation.PropNeedsUnification
 
-      val tyUnifiedResult = if (uniEqLeft.ty == uniEqRight.ty) {
+      if (uniEqLeft.ty == uniEqRight.ty) {
         // all good, no type unification needed
         Out.finest(s"[Paramod] No type unification needed.")
-        AnnotatedClause(result0, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
+        val intermediateClause = AnnotatedClause(result0, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
+        singleParamod1(withWrapper, withClause, withIndex, withSide, withTerm,
+          otherTerm, intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos,
+          shiftedIntoTerm, intermediateClause, Subst.id)
       } else {
-        // type unify, then proceed to pattern unify check
-        Out.finest(s"[Paramod] Type unification needed.")
+        // Calculate initial type substitution
         val maybeSubst = TypeUnification(uniEqLeft.ty, uniEqRight.ty)
         if (maybeSubst.isDefined) {
-          val tySubst = maybeSubst.get
-          Out.finest(s"[Paramod] Type unification succeeded: ${tySubst.pretty}")
-          val result1 = result0.substituteOrdered(Subst.id, tySubst)(sig)
-          // TODO: Include type unification
-          AnnotatedClause(result1, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
+          val initialTypeSubst = maybeSubst.get
+          Out.finest(s"[Paramod] Type unification succeeded: ${initialTypeSubst.pretty}")
+          val result1 = result0.substituteOrdered(Subst.id, initialTypeSubst)(sig)
+          val result2 = Clause(result1.lits.map(l => Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)))
+          val intermediateClause = AnnotatedClause(result2, InferredFrom(OrderedParamod, Seq(withWrapper, intoWrapper)), newProperties)
+          // TODO: Include type unification in annotated clause
+          singleParamod1(withWrapper, withClause, withIndex, withSide, withTerm,
+            otherTerm, intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos,
+            shiftedIntoTerm, intermediateClause, initialTypeSubst)
         } else {
           Out.finest(s"[Paramod] Type unification failed. Dropping clause.")
           null
         }
       }
+    }
 
-      if (tyUnifiedResult != null) {
-        val uniLit = tyUnifiedResult.cl.lits.last
-        val otherLits = tyUnifiedResult.cl.lits.init
-        val (uniEqLeft,uniEqRight) = UnificationControl.getUniTaskFromLit(uniLit)
-        assert(uniEqLeft.ty == uniEqRight.ty)
+    private final def singleParamod1(withWrapper: AnnotatedClause,
+                                     withClause: Clause,
+                                     withIndex: Int,
+                                     // withLit: Literal,
+                                     withSide: Side,
+                                     withTerm: Term,
+                                     otherTerm: Term,
+                                     intoWrapper: AnnotatedClause,
+                                     shiftedIntoClause: Clause,
+                                     intoIndex: Int,
+                                     // intoLit: Literal,
+                                     intoSide: Side,
+                                     intoPos: Position,
+                                     shiftedIntoTerm: Term,
+                                     intermediateClause: AnnotatedClause,
+                                     initialTypeSubst: TypeSubst)(implicit sig: Signature): AnnotatedClause = {
+      import leo.modules.output.ToTPTP
 
-        val unifiedResult = if (isPattern(uniEqLeft) && isPattern(uniEqRight)) {
-          Out.finest(s"[Paramod] Unification constraint is pattern. Solving directly...")
-          // solve directly
-          val vargen = freshVarGen(tyUnifiedResult.cl)
-          val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
-          if (result.isEmpty) {
-            Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
-            val (simpsubst, asd) = Simp.uniLitSimp(uniEqLeft, uniEqRight)
-            AnnotatedClause(Clause(otherLits.map(_.substituteOrdered(Subst.id, simpsubst)) ++ asd), InferredFrom(Simp, tyUnifiedResult))
-          } else {
-            import leo.Configuration.{TERM_ORDERING => ord}
-            Out.finest(s"[Paramod] Unifiable! ")
-            val (resultClause, (termSubst, typeSubst)) = result.get
-            val withTermSubst = withTerm.substitute(termSubst, typeSubst)
-            val otherTermSubst = otherTerm.substitute(termSubst, typeSubst)
-            val cmpResult = ord.compare(otherTermSubst, withTermSubst)(sig)
-            leo.Out.finest(s"Checking Ordering restrictions ...")
-            leo.Out.finest(s"withTerm: ${withTerm.pretty(sig)}")
-            leo.Out.finest(s"otherTerm: ${otherTerm.pretty(sig)}")
-            leo.Out.finest(s"withTerm': ${withTermSubst.pretty(sig)}")
-            leo.Out.finest(s"otherTerm': ${otherTermSubst.pretty(sig)}")
-            leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
+      Out.finest(s"Intermediate result: ${intermediateClause.pretty(sig)}")
+      val uniLit = intermediateClause.cl.lits.last
+      val otherLits = intermediateClause.cl.lits.init
+      val (uniEqLeft,uniEqRight) = UnificationControl.getUniTaskFromLit(uniLit)
+      assert(uniEqLeft.ty == uniEqRight.ty)
+
+      val unifiedResult = if (isPattern(uniEqLeft) && isPattern(uniEqRight)) {
+        Out.finest(s"[Paramod] Unification constraint is pattern. Solving directly...")
+        // solve directly
+        val vargen = freshVarGen(intermediateClause.cl)
+        val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
+        if (result.isEmpty) {
+          Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
+          val (simpsubst, asd) = Simp.uniLitSimp(uniEqLeft, uniEqRight)
+          AnnotatedClause(Clause(otherLits.map(_.substituteOrdered(Subst.id, simpsubst)) ++ asd), InferredFrom(Simp, intermediateClause))
+        } else {
+          import leo.Configuration.{TERM_ORDERING => ord}
+          Out.finest(s"[Paramod] Unifiable! ")
+          val (resultClause, (termSubst, typeSubst0)) = result.get
+          Out.finest(s"Unified intermediate result: ${resultClause.pretty(sig)}")
+          val typeSubst = initialTypeSubst.comp(typeSubst0).normalize
+          val withTermSubst = withTerm.substitute(termSubst, typeSubst)
+          val otherTermSubst = otherTerm.substitute(termSubst, typeSubst)
+          val cmpResult = ord.compare(otherTermSubst, withTermSubst)(sig)
+          leo.Out.finest(s"Checking Ordering restrictions ...")
+          leo.Out.finest(s"withTerm: ${withTerm.pretty(sig)}")
+          leo.Out.finest(s"otherTerm: ${otherTerm.pretty(sig)}")
+          leo.Out.finest(s"withTerm': ${withTermSubst.pretty(sig)}")
+          leo.Out.finest(s"otherTerm': ${otherTermSubst.pretty(sig)}")
+          leo.Out.finest(s"compare(otherTerm',withTerm') = ${Orderings.pretty(cmpResult)}")
 
 
-            if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
-              val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
-              val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, typeSubst)
-              val intoLitSubst = intoClauseSubst(intoIndex)
-              leo.Out.finest(s"intoClause: ${shiftedIntoClause.pretty(sig)}")
-              leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
-              leo.Out.finest(s"intoClauseSubst: ${intoClauseSubst.pretty(sig)}")
-              leo.Out.finest(s"intoLitSubst: ${intoLitSubst.pretty(sig)}")
-              leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
-              myAssert(Clause.wellTyped(intoClauseSubst))
-              myAssert(Literal.wellTyped(intoLitSubst))
-              if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
-                val restrictedTermSubst = termSubst.restrict(i => withWrapper.cl.implicitlyBound.exists(_._1 == i))
-                val withClauseSubst = withWrapper.cl.substitute(restrictedTermSubst, typeSubst)
-                leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
-                val withLitSubst = withClauseSubst(withIndex)
-                leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
-                myAssert(Clause.wellTyped(withClauseSubst))
-                myAssert(Literal.wellTyped(withLitSubst))
-                if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
-//                  if (tyUnifiedResult.id == 153) System.exit(0)
-                  AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((tyUnifiedResult, ToTPTP(termSubst, tyUnifiedResult.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,tyUnifiedResult.properties | ClauseAnnotation.PropUnified))
-                } else {
-                  leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
-                  null
-                }
+          if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
+            val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
+            val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, typeSubst)
+            val intoLitSubst = intoClauseSubst(intoIndex)
+            leo.Out.finest(s"intoClause: ${shiftedIntoClause.pretty(sig)}")
+            leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
+            leo.Out.finest(s"intoClauseSubst: ${intoClauseSubst.pretty(sig)}")
+            leo.Out.finest(s"intoLitSubst: ${intoLitSubst.pretty(sig)}")
+            leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
+            myAssert(Clause.wellTyped(intoClauseSubst))
+            myAssert(Literal.wellTyped(intoLitSubst))
+            if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
+              val restrictedTermSubst = termSubst.restrict(i => withWrapper.cl.implicitlyBound.exists(_._1 == i))
+              val withClauseSubst = withWrapper.cl.substitute(restrictedTermSubst, typeSubst)
+              leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
+              val withLitSubst = withClauseSubst(withIndex)
+              leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
+              myAssert(Clause.wellTyped(withClauseSubst))
+              myAssert(Literal.wellTyped(withLitSubst))
+              if (Configuration.isSet("noOrdCheck3") || withClauseSubst.maxLits(sig).contains(withLitSubst)) {
+                AnnotatedClause(resultClause, InferredFrom(PatternUni, Seq((intermediateClause, ToTPTP(termSubst, intermediateClause.cl.implicitlyBound)(sig)))), leo.datastructures.deleteProp(ClauseAnnotation.PropNeedsUnification,intermediateClause.properties | ClauseAnnotation.PropUnified))
               } else {
-                leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#2).")
-//                if (j == 2) System.exit(0)
-//                j += 1
+                leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#3).")
                 null
               }
             } else {
-              leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#1).")
-//              System.exit(0)
+              leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#2).")
               null
             }
+          } else {
+            leo.Out.finest(s"[Paramod] Dropped due to ordering restrictions (#1).")
+            null
           }
-        } else {
-          // postpone
-          Out.finest(s"[Paramod] Unification constraint is non-pattern. Postponing.")
-          tyUnifiedResult
         }
-        if (unifiedResult != null) {
-          Out.finest(s"Result: ${unifiedResult.pretty(sig)}")
-          myAssert(Clause.wellTyped(unifiedResult.cl), "paramod not well-typed")
-          myAssert(uniqueFVTypes(unifiedResult.cl), "not unique free var types")
-          unifiedResult
-        } else {
-          null
-        }
+      } else {
+        // postpone
+        Out.finest(s"[Paramod] Unification constraint is non-pattern. Postponing.")
+        intermediateClause
+      }
 
-      } else null
+      if (unifiedResult != null) {
+        Out.finest(s"Result: ${unifiedResult.pretty(sig)}")
+        myAssert(Clause.wellTyped(unifiedResult.cl), "paramod not well-typed")
+        myAssert(uniqueFVTypes(unifiedResult.cl), "not unique free var types")
+        unifiedResult
+      } else {
+        null
+      }
     }
-    var j = 0
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
     private final def shouldParamod(withTerm: Term, intoTerm: Term)(state: LocalState): Boolean = {
