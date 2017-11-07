@@ -1,6 +1,8 @@
 package leo.datastructures.tptp.thf
 
-import leo.datastructures.tptp._
+import leo.datastructures.tptp.Commons.{
+  Variable => CommonVariable,
+  Number => CommonNumber}
 import leo.modules.SZSException
 import leo.modules.output.SZS_InputError
 
@@ -44,7 +46,7 @@ case class Unary(connective: UnaryConnective, formula: LogicFormula) extends Log
 
   override val function_symbols: Set[String] = formula.function_symbols
 }
-case class Quantified(quantifier: Quantifier, varList: Seq[(Commons.Variable,Option[LogicFormula])], matrix: LogicFormula) extends LogicFormula {
+case class Quantified(quantifier: Quantifier, varList: Seq[(CommonVariable,Option[LogicFormula])], matrix: LogicFormula) extends LogicFormula {
   override def toString = quantifier.toString + " [" + varList.mkString(",") + "] : (" + matrix.toString + ")"
 
   // TODO are we considering types as well? (Remove `union decl` if we do not want to check types)
@@ -77,7 +79,7 @@ case class Distinct(data: String) extends LogicFormula {
   override def toString = data
   override val function_symbols: Set[String] = Set.empty
 }
-case class Number(number: Commons.Number) extends LogicFormula {
+case class Number(number: CommonNumber) extends LogicFormula {
   override def toString = number.toString
   override val function_symbols: Set[String] = Set.empty
 }
