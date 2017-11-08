@@ -271,9 +271,9 @@ package inferenceControl {
         if (!isVariableModuloEta(intoTerm) && shouldParamod0) {
           leo.Out.finest(s"ordered: ${withLit.oriented} // ${intoLit.oriented}")
           Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
-          Out.finest(s"with: ${withClause.pretty(sig)}")
+          Out.finest(s"with: ${withLit.pretty(sig)}")
           Out.finest(s"withside: ${withSide.toString}")
-          Out.finest(s"into: ${intoClause.pretty(sig)}")
+          Out.finest(s"into: ${intoLit.pretty(sig)}")
           Out.finest(s"intoside: ${intoSide.toString}")
           // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
           // We cannot use _.substitute on literal since this will forget the ordering
@@ -322,18 +322,12 @@ package inferenceControl {
         val maybeTypeSubst = TypeUnification(withLitPrincipleTy, intoTy)
         if (maybeTypeSubst.isDefined) {
           val typeSubst = maybeTypeSubst.get
-          val withClauseSubst = Clause(withClause.lits.map {lit =>
-            val lit0 = lit.substitute(Subst.id, typeSubst)
-            Literal.mkLit(lit0.left.etaExpand, lit0.right.etaExpand, lit0.polarity)
-          })
+          val withClauseSubst = withClause.substitute(Subst.id, typeSubst)
           val withLitSubst = withClauseSubst(withIndex)
           val (withTermSubst, otherTermSubst) = Literal.getSidesOrdered(withLitSubst, withSide)
 
-          val shiftedIntoClauseSubst = Clause(shiftedIntoClause.lits.map {lit =>
-            val lit0 = lit.substitute(Subst.id, typeSubst)
-            Literal.mkLit(lit0.left.etaExpand, lit0.right.etaExpand, lit0.polarity)
-          })
-          val shiftedIntoTermSubst = shiftedIntoTerm.substitute(Subst.id, typeSubst).etaExpand
+          val shiftedIntoClauseSubst = shiftedIntoClause.substitute(Subst.id, typeSubst)
+          val shiftedIntoTermSubst = shiftedIntoTerm.substitute(Subst.id, typeSubst)
 
           singleParamod0(withWrapper, withClauseSubst, withIndex, withSide, withTermSubst, otherTermSubst,
             intoWrapper, shiftedIntoClauseSubst, intoIndex, intoSide, intoPos, shiftedIntoTermSubst)
@@ -1927,6 +1921,7 @@ package inferenceControl {
     }
     private final def rewriteClause(cl: AnnotatedClause,groundRewriteRules: Set[AnnotatedClause],
                                     nonGroundRewriteRules: Set[AnnotatedClause])(sig: Signature): AnnotatedClause = {
+      Out.finest(s"[Rewriting] On ${cl.id}")
       val rulesExist = groundRewriteRules.nonEmpty || nonGroundRewriteRules.nonEmpty
       Out.finest(s"[Rewriting] Rules existent? $rulesExist")
       if (!rulesExist) cl
@@ -1941,13 +1936,14 @@ package inferenceControl {
           }
         }.toMap
         val maxImplicitVar = cl.cl.maxImplicitlyBound
+        val maxTyVar = cl.cl.maxTypeVar
         val nonGroundRewriteTable: RewriteTable = nonGroundRewriteRules.map{ cl =>
           val lit = cl.cl.lits.head
           if (lit.polarity) {
-            (lit.left.lift(maxImplicitVar), (lit.right.lift(maxImplicitVar), cl))
+            (lit.left.lift(maxImplicitVar, maxTyVar), (lit.right.lift(maxImplicitVar, maxTyVar), cl))
           } else {
             assert(!lit.equational)
-            (lit.left.lift(maxImplicitVar), (LitFalse(), cl))
+            (lit.left.lift(maxImplicitVar, maxTyVar), (LitFalse(), cl))
           }
         }.toMap
         val vargen = freshVarGen(cl.cl)
@@ -2028,8 +2024,10 @@ package inferenceControl {
     }
 
     final def rewritable(clauses: Set[AnnotatedClause], newClause: AnnotatedClause)(implicit state: State[AnnotatedClause]): (Set[AnnotatedClause],Set[AnnotatedClause]) = {
+      leo.Out.finest(s"[Backward simplification]")
       val cl = newClause.cl
       if (Clause.rewriteRule(cl) || Clause.unit(cl)) {
+        leo.Out.finest(s"[Backward simplification] New clause is unit ...")
         if (Clause.rewriteRule(cl)) {
           val (groundRules, nonGroundRules) = if (cl.implicitlyBound.isEmpty) (Set(newClause), Set[AnnotatedClause]()) else (Set[AnnotatedClause](), Set(newClause))
           val clausesIt = clauses.iterator

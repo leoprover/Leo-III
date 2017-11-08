@@ -252,7 +252,7 @@ object SeqLoop {
   private final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
     var newclauses: Set[AnnotatedClause] = Set.empty
-
+    Out.trace(s"[SeqLoop] Main loop inferences ...")
     /////////////////////////////////////////
     // Backward simplification BEGIN
     /////////////////////////////////////////
