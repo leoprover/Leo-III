@@ -793,7 +793,7 @@ object TypeMatchingImpl extends TypeMatching {
         val tys1 = e._1.funParamTypesWithResultType
         val tys2 = e._2.funParamTypesWithResultType
         if (tys1.size > tys2.size) CANNOT_APPLY /* impossible to match right side */
-        if (tys1.size == tys2.size) EQUAL_LENGTH
+        else if (tys1.size == tys2.size) EQUAL_LENGTH
         else { // tys1.size < tys2.size
           if (tys1.last.isBoundTypeVar) // Only possible if last one is variable
             SECOND_LONGER
