@@ -17,7 +17,7 @@ object Control {
 
   // Generating inferences
   @inline final def paramodSet(cl: AnnotatedClause, withSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ParamodControl.paramodSet(cl,withSet)(state)
-  @inline final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factor(cl)(state)
+  @inline final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FactorizationControl.factorNew(cl)(state)
   @inline final def boolext(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.BoolExtControl(cl)(state)
   @inline final def primsubst(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.PrimSubstControl.primSubst(cl)(state)
   @inline final def unifyNewClauses(clSet: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.unifyNewClauses(clSet)(state)
@@ -206,6 +206,7 @@ package inferenceControl {
     }
 
     final def allParamods(cl: AnnotatedClause, other: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+      myAssert(Clause.wellTyped(cl.cl), "input clause not well-typed")
       // Do paramod with cl into other
       val res = allParamods0(cl, other)(state)
       if (cl.id != other.id) {
@@ -541,6 +542,130 @@ package inferenceControl {
 
     import leo.datastructures.ClauseAnnotation.InferredFrom
 
+
+    final def factorNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
+      Out.debug(s"[Factor] On ${cl.id}")
+      implicit val sig: Signature = state.signature
+      var res: Set[AnnotatedClause] = Set.empty
+
+      val maxLits = cl.cl.maxLits.toSet
+      val lits = cl.cl.lits
+      val litCount = lits.size
+      var curMaxLitIdx = 0
+      while (curMaxLitIdx < litCount) {
+        val lit = lits(curMaxLitIdx)
+        if (maxLits.contains(lit)) {
+          Out.trace(s"maxLit chosen: ${lit.pretty(sig)}")
+          // do the factoring
+          res = res ++ factorWithLit(cl, lits, maxLits, curMaxLitIdx, lit)(state)
+        } else {
+          /* skip literal */
+        }
+        curMaxLitIdx += 1
+      }
+      Out.debug(s"[Factor] Generated: ${res.map(_.id).mkString(",")}")
+      Out.finest(s"[Factor] Results: ${res.map(_.pretty(sig)).mkString("\n")}")
+      res
+    }
+
+    final def factorWithLit(cl: AnnotatedClause, literals: Seq[Literal], maxLits: Set[Literal],
+                            maxLitIndex: Int, maxLit: Literal)(state: LocalState): Set[AnnotatedClause] = {
+      implicit val sig: Signature = state.signature
+      var results: Set[AnnotatedClause] = Set.empty
+
+      val litCount = literals.size
+      var curOtherLitIdx = 0
+      while (curOtherLitIdx < litCount) {
+        val otherLit = literals(curOtherLitIdx)
+        if (maxLitIndex <= curOtherLitIdx && maxLits.contains(otherLit)) {
+          /* skip */
+        } else {
+          Out.trace(s"otherLit chosen: ${otherLit.pretty(sig)}")
+          assert(maxLit.left.ty == maxLit.right.ty)
+          assert(otherLit.left.ty == otherLit.right.ty)
+//            val (maxLitLeftSide, maxLitRightSide) = (maxLit.left, maxLit.right)
+//            val (otherLitLeftSide, otherLitRightSide) = (otherLit.left, otherLit.right)
+          val maxLitTy = maxLit.left.ty
+          val otherLitTy = otherLit.left.ty
+
+          if (maxLitTy == otherLitTy) {
+            // all good, no type unification needed
+            results = results ++ factorLitLit(cl, cl.cl, maxLitIndex, maxLit, curOtherLitIdx, otherLit)(state)
+          } else {
+            val maybeTypeSubst = TypeUnification(maxLitTy, otherLitTy)
+            if (maybeTypeSubst.isDefined) {
+              val typeSubst = maybeTypeSubst.get
+              val literalSubst = literals.map {l =>
+                val l2 = l.substituteOrdered(Subst.id, typeSubst)
+                Literal.mkOrdered(l2.left.etaExpand, l2.right.etaExpand, l2.polarity)
+              }
+//                val maxLitsSubst = maxLits.map(_.substituteOrdered(Subst.id, typeSubst))
+              results = results ++ factorLitLit(cl, Clause(literalSubst), maxLitIndex, literalSubst(maxLitIndex), curOtherLitIdx, literalSubst(curOtherLitIdx))(state)
+            } else {
+              /* not type unifiable, skip */
+            }
+          }
+        }
+        curOtherLitIdx += 1
+      }
+      results
+    }
+
+    final def factorLitLit(cl: AnnotatedClause, intermediateClause: Clause, maxLitIndex: Int, maxLit: Literal,
+                           otherLitIndex: Int, otherLit: Literal)(state: LocalState): Set[AnnotatedClause] = {
+      implicit val sig: Signature = state.signature
+      assert(maxLit.left.ty == otherLit.left.ty)
+
+      var results: Set[AnnotatedClause] = Set.empty
+      val (maxLitMaxSide, maxLitOtherSide) = (maxLit.left, maxLit.right)
+      val (otherLitMaxSide, otherLitOtherSide) = (otherLit.left, otherLit.right)
+
+      if (maxLit.polarity == otherLit.polarity) {
+        val test1 = shouldFactor(maxLitMaxSide, otherLitMaxSide)(state)
+        val test2 = shouldFactor(maxLitOtherSide, otherLitOtherSide)(state)
+        Out.finest(s"Should factor ($test1): ${maxLitMaxSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+        Out.finest(s"Should factor ($test2): ${maxLitOtherSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+        if (test1 && test2) {
+          val factor = OrderedEqFac(intermediateClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
+          val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties) | ClauseAnnotation.PropNeedsUnification)
+          Out.finest(s"result: ${result.pretty(sig)}")
+          results = results + result
+        }
+
+        val test3 = shouldFactor(maxLitMaxSide, otherLitOtherSide)(state)
+        val test4 = shouldFactor(maxLitOtherSide, otherLitMaxSide)(state)
+        Out.finest(s"Should factor ($test3): ${maxLitMaxSide.pretty(sig)} = ${otherLitOtherSide.pretty(sig)}")
+        Out.finest(s"Should factor ($test4): ${maxLitOtherSide.pretty(sig)} = ${otherLitMaxSide.pretty(sig)}")
+        if (test3 && test4) {
+          val factor = OrderedEqFac(intermediateClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.rightSide)
+          val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties) | ClauseAnnotation.PropNeedsUnification)
+          Out.finest(s"result: ${result.pretty(sig)}")
+          results = results + result
+        }
+      } else {
+        // Different polarity, this can only work out if at least one of the literals
+        // is a flexhead, i.e. a literal `l` with `l = [s = $true]^alpha` where head(s) is a variable.
+        // The other literal l` must then be non-equational.
+        // This is not traversed again since bot literals are oriented.
+        if (maxLit.flexHead && !otherLit.equational) {
+          assert(maxLit.polarity != otherLit.polarity)
+          import leo.modules.HOLSignature.Not
+          val flexTerm = maxLit.left
+          val otherTerm = otherLit.left
+          val test = shouldFactor(flexTerm, Not(otherTerm))(state)
+          Out.finest(s"Should factor ($test): ${flexTerm.pretty(sig)} = ${Not(otherTerm).pretty(sig)}")
+          if (test) {
+            val adjustedClause = Clause(intermediateClause.lits.updated(otherLitIndex, Literal(Not(otherTerm), !otherLit.polarity)))
+            val factor = OrderedEqFac(adjustedClause, maxLitIndex, Literal.leftSide, otherLitIndex, Literal.leftSide)
+            val result = AnnotatedClause(factor, InferredFrom(OrderedEqFac, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties) | ClauseAnnotation.PropNeedsUnification)
+            results = results + result
+          }
+        }
+      }
+
+      results
+    }
+
     final def factor(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
       Out.debug(s"Factor in ${cl.id}")
       implicit val sig: Signature = state.signature
@@ -620,15 +745,13 @@ package inferenceControl {
 
     /** We should paramod if either the terms are unifiable or if at least one unification rule step can be executed. */
     private final def shouldFactor(term: Term, otherTerm: Term)(state: LocalState): Boolean = {
-      if (mayUnify(term.ty, otherTerm.ty)) {
-        if (state.runStrategy.restrictUniAttempts) {
-          val withHd = term.headSymbol
-          val intoHd = otherTerm.headSymbol
-          if (withHd == intoHd && withHd.isConstant) true
-          else mayUnify(term, otherTerm)
-        } else
-          true
-      } else false
+      if (state.runStrategy.restrictUniAttempts) {
+        val withHd = term.headSymbol
+        val intoHd = otherTerm.headSymbol
+        if (withHd == intoHd && withHd.isConstant) true
+        else mayUnify(term, otherTerm)
+      } else
+        true
     }
   }
 
@@ -1900,95 +2023,6 @@ package inferenceControl {
         }
       } else (Set.empty, Set.empty)
     }
-
-//    type Subterm = Term
-//    type IntoConfiguration = (inferenceControl.LiteralIndex, Literal, Side, Position, Subterm)
-
-//    /** into-Iterator for rewriting literals. Returns all literal-side-subterm configurations
-//      * `(i, l_i, s, p, t)` where
-//      *
-//      *  - `i` is the literal's index in `cl.lits`
-//      *  - `l_i` equals `cl.lits(i)`
-//      *  - `s` is a side, either `true` (left) or `false` (right)
-//      *  - `p` is a position in `cl.lits(i).s` (s = left/right)
-//      *  - `t` is the subterm at position `p`
-//      *
-//      * The iterator gives all such configurations for which `l_i` is either
-//      *
-//      *  (i) non-maximal, or
-//      *  (ii) maximal, but `s` is not a maximal side, or
-//      *  (iii) maximal, `s`is a maximal side, but `p = Position.root`.
-//      */
-//    final private def intoConfigurationIterator(cl: Clause)(implicit sig: Signature): Iterator[IntoConfiguration] = new Iterator[IntoConfiguration] {
-//
-//      import Literal.{leftSide, rightSide, selectSide}
-//
-//      val maxLits: Seq[Literal] = cl.maxLits
-//      var litIndex = 0
-//      var lits: Seq[Literal] = cl.lits
-//      var side: Side = rightSide // minimal side
-//      var curSubterms: Set[Term] = _
-//      var curPositions: Set[Position] = _
-//
-//      def hasNext: Boolean = if (lits.isEmpty) false
-//      else {
-//        val hd = lits.head
-//        if (curSubterms == null) {
-//          if (side == rightSide && !hd.equational) {
-//            side = leftSide
-//          }
-//          if (side == leftSide && maxLits.contains(hd)) {
-//            curSubterms = Set(selectSide(hd, side))
-//            curPositions = Set(Position.root)
-//          } else {
-//            curSubterms = selectSide(hd, side).feasibleOccurrences.keySet
-//            curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
-//          }
-//          true
-//        } else {
-//          if (curPositions.isEmpty) {
-//            curSubterms = curSubterms.tail
-//            if (curSubterms.isEmpty) {
-//              if (maxLits.contains(hd) && side == rightSide) {
-//                // hd is maximal and right side is done,
-//                // select left side at root position
-//                side = leftSide
-//                curSubterms = Set(selectSide(hd, side))
-//                curPositions = Set(Position.root)
-//                true
-//              } else {
-//                if (side == leftSide) {
-//                  lits = lits.tail
-//                  litIndex += 1
-//                  side = rightSide
-//                } else {
-//                  side = leftSide
-//                }
-//                curSubterms = null
-//                curPositions = null
-//                hasNext
-//              }
-//            } else {
-//              curPositions = selectSide(hd, side).feasibleOccurrences(curSubterms.head)
-//              assert(hasNext)
-//              true
-//            }
-//          } else {
-//            true
-//          }
-//        }
-//      }
-//
-//      def next(): IntoConfiguration = {
-//        if (hasNext) {
-//          val res = (litIndex, lits.head, side, curPositions.head, curSubterms.head)
-//          curPositions = curPositions.tail
-//          res
-//        } else {
-//          throw new NoSuchElementException
-//        }
-//      }
-//    }
   }
 
   protected[modules] object DefinedEqualityProcessing {
