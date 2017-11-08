@@ -289,9 +289,58 @@ package inferenceControl {
 //          assert(shiftedIntoTerm0.ty == shiftedOtherSide.ty)
 //          assert(shiftedIntoTerm0 == shiftedIntoTerm)
 
-          singleParamod0(withWrapper, withClause, withIndex, withSide, withTerm, otherTerm,
+          singleParamod02(withWrapper, withClause, withIndex, withSide, withTerm, otherTerm,
             intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)(sig)
         } else null
+      }
+    }
+
+    private final def singleParamod02(withWrapper: AnnotatedClause,
+                                      withClause: Clause,
+                                      withIndex: Int,
+                                      withSide: Side,
+                                      withTerm: Term,
+                                      otherTerm: Term,
+                                      intoWrapper: AnnotatedClause,
+                                      shiftedIntoClause: Clause,
+                                      intoIndex: Int,
+                                      intoSide: Side,
+                                      intoPos: Position,
+                                      shiftedIntoTerm: Term)(implicit sig: Signature): AnnotatedClause = {
+
+      val withLitPrincipleTy = withClause(withIndex).left.ty
+      val intoTy = shiftedIntoTerm.ty
+
+      Out.finest(s"withLitPType: ${withLitPrincipleTy.pretty(sig)}")
+      Out.finest(s"intoType: ${intoTy.pretty(sig)}")
+
+      if (withLitPrincipleTy == intoTy) {
+        // all good, no type unification needed. proceed to standard paramod
+        singleParamod0(withWrapper, withClause, withIndex, withSide, withTerm, otherTerm,
+          intoWrapper, shiftedIntoClause, intoIndex, intoSide, intoPos, shiftedIntoTerm)
+      } else {
+        val maybeTypeSubst = TypeUnification(withLitPrincipleTy, intoTy)
+        if (maybeTypeSubst.isDefined) {
+          val typeSubst = maybeTypeSubst.get
+          val withClauseSubst = Clause(withClause.lits.map {lit =>
+            val lit0 = lit.substitute(Subst.id, typeSubst)
+            Literal.mkLit(lit0.left.etaExpand, lit0.right.etaExpand, lit0.polarity)
+          })
+          val withLitSubst = withClauseSubst(withIndex)
+          val (withTermSubst, otherTermSubst) = Literal.getSidesOrdered(withLitSubst, withSide)
+
+          val shiftedIntoClauseSubst = Clause(shiftedIntoClause.lits.map {lit =>
+            val lit0 = lit.substitute(Subst.id, typeSubst)
+            Literal.mkLit(lit0.left.etaExpand, lit0.right.etaExpand, lit0.polarity)
+          })
+          val shiftedIntoTermSubst = shiftedIntoTerm.substitute(Subst.id, typeSubst).etaExpand
+
+          singleParamod0(withWrapper, withClauseSubst, withIndex, withSide, withTermSubst, otherTermSubst,
+            intoWrapper, shiftedIntoClauseSubst, intoIndex, intoSide, intoPos, shiftedIntoTermSubst)
+        } else {
+          // not unifiable, do not try to paramod
+          null
+        }
       }
     }
 
@@ -328,6 +377,7 @@ package inferenceControl {
           shiftedIntoTerm, intermediateClause, Subst.id)
       } else {
         // Calculate initial type substitution
+        assert(false)
         val maybeSubst = TypeUnification(uniEqLeft.ty, uniEqRight.ty)
         if (maybeSubst.isDefined) {
           val initialTypeSubst = maybeSubst.get
@@ -408,8 +458,8 @@ package inferenceControl {
             myAssert(Clause.wellTyped(intoClauseSubst))
             myAssert(Literal.wellTyped(intoLitSubst))
             if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
-              val restrictedTermSubst = termSubst.restrict(i => withWrapper.cl.implicitlyBound.exists(_._1 == i))
-              val withClauseSubst = withWrapper.cl.substitute(restrictedTermSubst, typeSubst)
+              val restrictedTermSubst = termSubst.restrict(i => withClause.implicitlyBound.exists(_._1 == i))
+              val withClauseSubst = withClause.substitute(restrictedTermSubst, typeSubst)
               leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
               val withLitSubst = withClauseSubst(withIndex)
               leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")

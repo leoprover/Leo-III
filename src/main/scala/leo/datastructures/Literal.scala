@@ -146,7 +146,12 @@ object Literal {
   /** Create new (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def mkLit(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = LitImpl.mkLit(t1,t2,pol,oriented)
+  @inline final def mkLit(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = {
+    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty}")
+    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty}")
+    assert(t1.ty == t2.ty)
+    LitImpl.mkLit(t1,t2,pol,oriented)
+  }
   /** Creates a new (equational) literal of the two terms t1 and t2
     * and polarity `polarity`. During construction, the method
     * tries to order the two terms into and ordered equation left=right,
@@ -155,10 +160,9 @@ object Literal {
     * Note that the resulting literal is only
     * equational if both terms t1 and t2 and not equivalent to $true/$false. */
   @inline final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = {
-//    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty(sig)}")
-//    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty(sig)}")
-//    assert(t1.ty == t2.ty) //FIXME Commented out for now since this invariant is currently not given
-    // but thats not that bad... believe me :)
+    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty(sig)}")
+    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty(sig)}")
+    assert(t1.ty == t2.ty)
     LitImpl.mkOrdered(t1,t2,pol)(sig)
   }
   /** Create new (non-equational) literal with equation
