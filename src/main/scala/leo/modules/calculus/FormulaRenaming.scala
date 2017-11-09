@@ -74,6 +74,20 @@ object FormulaRenaming {
     } else (l, null, null)
   }
 
+  private final def normalizeType(ty: Type): Type = {
+    import leo.datastructures.Type.BoundType
+    import leo.datastructures.Subst
+    val tyVars = ty.typeVars.map(BoundType.unapply(_).get).toSeq.sorted
+    val maxTyVar = if (tyVars.isEmpty) 0 else tyVars.max
+    val tyVarCount = tyVars.size
+    if (tyVarCount == maxTyVar) ty
+    else {
+      val help = tyVars.zipWithIndex.map {case (vari,idx) => (vari,idx+1)}
+      val subst = Subst.fromShiftingSeq(help)
+      ty.substitute(subst)
+    }
+  }
+
   private def apply(t : Term, polarity : Boolean, cashExtracts : mutable.Map[Term, (Term, Boolean, Boolean)])(implicit sig : Signature) : (Term, Literal, Literal) = t match {
     case (a & b) if !polarity =>
       if(cashExtracts.contains(a)) {
@@ -95,8 +109,10 @@ object FormulaRenaming {
       } else {
         val args : Seq[Term] = b.freeVars.toSeq
         val arg_ty : Seq[Type] = args.map(_.ty)
-        val c_ty = Type.mkFunType(arg_ty, o)
-        val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
+        val c_ty = normalizeType(Type.mkFunType(arg_ty, o))
+        val c_ty2 = mkPolyTyAbstractionType(b.tyFV.size, c_ty)
+        val c_def0 = mkTypeApp(mkAtom(sig.freshSkolemConst(c_ty2)), b.tyFV.toSeq.sortWith{case (i,j) => i > j}.map(Type.mkVarType))
+        val c_def = mkTermApp(c_def0, args)
         cashExtracts.put(b, (c_def, false, true))   // Tested previously, should not contain b
         val t = &(a, c_def)
         (t, Literal(c_def, true), Literal(b, false))
@@ -121,8 +137,10 @@ object FormulaRenaming {
       } else {
         val args: Seq[Term] = b.freeVars.toSeq
         val arg_ty: Seq[Type] = args.map(_.ty)
-        val c_ty = Type.mkFunType(arg_ty, o)
-        val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args) // Tested previously, should not contain b
+        val c_ty = normalizeType(Type.mkFunType(arg_ty, o))
+        val c_ty2 = mkPolyTyAbstractionType(b.tyFV.size, c_ty)
+        val c_def0 = mkTypeApp(mkAtom(sig.freshSkolemConst(c_ty2)), b.tyFV.toSeq.sortWith{case (i,j) => i > j}.map(Type.mkVarType))
+        val c_def = mkTermApp(c_def0, args) // Tested previously, should not contain b
         cashExtracts.put(b, (c_def, true, false))
         val t = |||(a, c_def)
         (t, Literal(c_def, false), Literal(b, true))
@@ -147,8 +165,10 @@ object FormulaRenaming {
       } else {
         val args: Seq[Term] = b.freeVars.toSeq
         val arg_ty: Seq[Type] = args.map(_.ty)
-        val c_ty = Type.mkFunType(arg_ty, o)
-        val c_def = mkTermApp(mkAtom(sig.freshSkolemConst(c_ty)), args)
+        val c_ty = normalizeType(Type.mkFunType(arg_ty, o))
+        val c_ty2 = mkPolyTyAbstractionType(b.tyFV.size, c_ty)
+        val c_def0 = mkTypeApp(mkAtom(sig.freshSkolemConst(c_ty2)), b.tyFV.toSeq.sortWith{case (i,j) => i > j}.map(Type.mkVarType))
+        val c_def = mkTermApp(c_def0, args)
         cashExtracts.put(b, (c_def, true, false)) // Tested previously, should not contain b
         val t = Impl(a, c_def)
         (t, Literal(c_def, false), Literal(b, true))

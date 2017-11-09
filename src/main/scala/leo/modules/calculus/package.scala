@@ -148,7 +148,7 @@ package object calculus {
     Type.mkType(freshTypeOp, tyFvs.map(Type.mkVarType))
   }
 
-  final private def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
+  final def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
   else Type.mkPolyType(mkPolyTyAbstractionType(count-1, body))
   final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.*
   else Kind.mkFunKind(Kind.*, mkPolyKindAbstraction(count-1))
