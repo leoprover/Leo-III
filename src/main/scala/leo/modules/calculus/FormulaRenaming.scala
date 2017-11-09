@@ -95,7 +95,7 @@ object FormulaRenaming {
       } else {
         val args : Seq[Term] = b.freeVars.toSeq
         val arg_ty : Seq[Type] = args.map(_.ty)
-        val c_ty = normalizeType(Type.mkFunType(arg_ty, o))
+        val c_ty = normalizeType(Type.mkFunType(arg_ty, o), b.tyFV.size)
         val c_ty2 = mkPolyTyAbstractionType(b.tyFV.size, c_ty)
         val c_def0 = mkTypeApp(mkAtom(sig.freshSkolemConst(c_ty2)), b.tyFV.toSeq.sortWith{case (i,j) => i > j}.map(Type.mkVarType))
         val c_def = mkTermApp(c_def0, args)
@@ -123,7 +123,7 @@ object FormulaRenaming {
       } else {
         val args: Seq[Term] = b.freeVars.toSeq
         val arg_ty: Seq[Type] = args.map(_.ty)
-        val c_ty = normalizeType(Type.mkFunType(arg_ty, o))
+        val c_ty = normalizeType(Type.mkFunType(arg_ty, o), b.tyFV.size)
         val c_ty2 = mkPolyTyAbstractionType(b.tyFV.size, c_ty)
         val c_def0 = mkTypeApp(mkAtom(sig.freshSkolemConst(c_ty2)), b.tyFV.toSeq.sortWith{case (i,j) => i > j}.map(Type.mkVarType))
         val c_def = mkTermApp(c_def0, args) // Tested previously, should not contain b
@@ -151,7 +151,7 @@ object FormulaRenaming {
       } else {
         val args: Seq[Term] = b.freeVars.toSeq
         val arg_ty: Seq[Type] = args.map(_.ty)
-        val c_ty = normalizeType(Type.mkFunType(arg_ty, o))
+        val c_ty = normalizeType(Type.mkFunType(arg_ty, o), b.tyFV.size)
         val c_ty2 = mkPolyTyAbstractionType(b.tyFV.size, c_ty)
         val c_def0 = mkTypeApp(mkAtom(sig.freshSkolemConst(c_ty2)), b.tyFV.toSeq.sortWith{case (i,j) => i > j}.map(Type.mkVarType))
         val c_def = mkTermApp(c_def0, args)

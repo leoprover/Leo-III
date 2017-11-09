@@ -439,7 +439,7 @@ object ToTPTP {
   final private def typeToTHF0(ty: Type, depth: Int)(sig: Signature): String = ty match {
     case BaseType(id) => tptpEscapeExpression(sig(id).name)
     case ComposedType(id, args) => s"(${tptpEscapeExpression(sig(id).name)} @ ${args.map(typeToTHF0(_, depth)(sig)).mkString(" @ ")})"
-    case BoundType(scope) => "T" + intToName(scope-depth)
+    case BoundType(scope) => "T" + intToName(depth-scope) // FIXME Holes in tyfvs
     case t1 -> t2 => s"(${typeToTHF0(t1, depth)(sig)} > ${typeToTHF0(t2, depth)(sig)})"
     case t1 * t2 => s"(${typeToTHF0(t1, depth)(sig)} * ${typeToTHF0(t2, depth)(sig)})"
     case t1 + t2 => s"(${typeToTHF0(t1, depth)(sig)} + ${typeToTHF0(t2, depth)(sig)})"
