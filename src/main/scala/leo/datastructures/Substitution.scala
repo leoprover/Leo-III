@@ -171,7 +171,7 @@ sealed protected class RASubst(shift: Int, fts: Vector[Front] = Vector.empty) ex
   }
 
   final def applyTypeSubst(typeSubst: Subst): Subst = new RASubst(shift, fts.map {
-    case TermFront(term) => TermFront(term.typeClosure(typeSubst))
+    case TermFront(term) => TermFront(term.betaNormalize.typeSubst(typeSubst))
     case TypeFront(_) => throw new UnsupportedOperationException("applyTypeSubst on typeSubst")
     case other => other
   })

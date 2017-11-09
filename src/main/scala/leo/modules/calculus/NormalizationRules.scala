@@ -864,7 +864,7 @@ object Simp extends CalculusRule {
     else {
       val hd = unprocessed.head
       leo.Out.finest(s"[UniLitSimp] Next unsolved: ${hd._1.pretty(sig)} = ${hd._2.pretty(sig)}")
-      val left = hd._1; val right = hd._2
+      val left = hd._1.etaExpand; val right = hd._2.etaExpand
       if (left == right) {
         leo.Out.finest(s"[UniLitSimp] Triv")
         uniLitSimp0(processed, unprocessed.tail, subst)(sig)

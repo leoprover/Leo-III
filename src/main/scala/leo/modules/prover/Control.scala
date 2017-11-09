@@ -418,6 +418,8 @@ package inferenceControl {
         Out.finest(s"[Paramod] Unification constraint is pattern. Solving directly...")
         // solve directly
         val vargen = freshVarGen(intermediateClause.cl)
+        vargen.addVars(shiftedIntoClause.implicitlyBound)
+        vargen.addVars(withClause.implicitlyBound)
         val result = PatternUni.apply(vargen, Vector((uniEqLeft, uniEqRight)), otherLits)(sig)
         if (result.isEmpty) {
           Out.finest(s"[Paramod] Not unifiable, dropping clause. ")
@@ -441,11 +443,14 @@ package inferenceControl {
 
 
           if (Configuration.isSet("noOrdCheck1") || cmpResult != CMP_GT) {
-            val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
-            val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, typeSubst)
-            val intoLitSubst = intoClauseSubst(intoIndex)
             leo.Out.finest(s"intoClause: ${shiftedIntoClause.pretty(sig)}")
             leo.Out.finest(s"maxLits = \n\t${shiftedIntoClause.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
+            val restrictedTermSubst = termSubst.restrict(i => shiftedIntoClause.implicitlyBound.exists(_._1 == i))
+            val restrictedTySubst = typeSubst.restrict(i => shiftedIntoClause.typeVars.contains(i))
+            leo.Out.finest(s"restrictedTermSubst: ${restrictedTermSubst.pretty}")
+            leo.Out.finest(s"restrictedTypeSubst: ${restrictedTySubst.pretty}")
+            val intoClauseSubst = shiftedIntoClause.substitute(restrictedTermSubst, restrictedTySubst)
+            val intoLitSubst = intoClauseSubst(intoIndex)
             leo.Out.finest(s"intoClauseSubst: ${intoClauseSubst.pretty(sig)}")
             leo.Out.finest(s"intoLitSubst: ${intoLitSubst.pretty(sig)}")
             leo.Out.finest(s"maxLits = \n\t${intoClauseSubst.maxLits(sig).map(_.pretty(sig)).mkString("\n\t")}")
@@ -453,7 +458,8 @@ package inferenceControl {
             myAssert(Literal.wellTyped(intoLitSubst))
             if (Configuration.isSet("noOrdCheck2") || !intoLitSubst.polarity || intoClauseSubst.maxLits(sig).contains(intoLitSubst)) { // FIXME: Approx. of selection strategy
               val restrictedTermSubst = termSubst.restrict(i => withClause.implicitlyBound.exists(_._1 == i))
-              val withClauseSubst = withClause.substitute(restrictedTermSubst, typeSubst)
+              val restrictedTySubst = typeSubst.restrict(i => withClause.typeVars.contains(i))
+              val withClauseSubst = withClause.substitute(restrictedTermSubst, restrictedTySubst)
               leo.Out.finest(s"withClauseSubst: ${withClauseSubst.pretty(sig)}")
               val withLitSubst = withClauseSubst(withIndex)
               leo.Out.finest(s"withLitSubst: ${withLitSubst.pretty(sig)}")
