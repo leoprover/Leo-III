@@ -132,8 +132,23 @@ package object calculus {
     aterm.etaExpand
   }
 
+  final def normalizeType(ty: Type): Type = {
+    import leo.datastructures.Type.BoundType
+    import leo.datastructures.Subst
+    val tyVars = ty.typeVars.map(BoundType.unapply(_).get).toSeq.sorted
+    val maxTyVar = if (tyVars.isEmpty) 0 else tyVars.max
+    val tyVarCount = tyVars.size
+    if (tyVarCount == maxTyVar) ty
+    else {
+      val help = tyVars.zipWithIndex.map {case (vari,idx) => (vari,idx+1)}
+      val subst = Subst.fromShiftingSeq(help)
+      ty.substitute(subst)
+    }
+  }
+
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
-    val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy))))
+    val funTy = normalizeType(Type.mkFunType(fvs.map(_._2), goalTy))
+    val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,funTy)))
     assert(skFunc.ty.typeVars.isEmpty,
       s"Fresh SK symbol has free type vars: ${skFunc.pretty(sig)}, type: ${skFunc.ty.pretty(sig)}, free ty vars: ${skFunc.ty.typeVars.toString}\n" +
         s"% goalTy: ${goalTy.pretty(sig)}, fvs: ${fvs.toString()}, tyFvs: ${tyFvs.toString()}")

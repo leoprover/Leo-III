@@ -186,7 +186,8 @@ object HuetsPreUnification extends Unification {
       } else {
         val left = head0._1.etaExpand
         val right = head0._2.etaExpand
-
+        leo.Out.finest(s"Left etaExpanded: ${left.pretty}")
+        leo.Out.finest(s"right etaExpanded: ${right.pretty}")
         val (leftBody, leftAbstractions) = collectLambdas(left)
         val (rightBody, rightAbstractions) = collectLambdas(right)
         assert(leftAbstractions == rightAbstractions)
@@ -205,7 +206,7 @@ object HuetsPreUnification extends Unification {
                 flexFlex,
                 solved, solvedTy)
             } else {
-              val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions)
+              val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions.map(_.substitute(typeSubst)))
               detExhaust(newUnsolvedTermEqs ++ applySubstToList(Subst.id, typeSubst, unprocessed.tail),
                 applyTySubstToList(typeSubst, flexRigid),
                 applySubstToList(Subst.id, typeSubst, flexFlex),

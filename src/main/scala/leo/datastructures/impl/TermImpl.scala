@@ -45,7 +45,8 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   }
 
   final def etaExpand: Term = {
-    if (etanormal) this
+    if (isVariable && ty.isFunType) etaExpand0
+    else if (etanormal) this
     else {
       val betanf = this.betaNormalize.asInstanceOf[TermImpl]
       val res = betanf.etaExpand0

@@ -74,20 +74,6 @@ object FormulaRenaming {
     } else (l, null, null)
   }
 
-  private final def normalizeType(ty: Type): Type = {
-    import leo.datastructures.Type.BoundType
-    import leo.datastructures.Subst
-    val tyVars = ty.typeVars.map(BoundType.unapply(_).get).toSeq.sorted
-    val maxTyVar = if (tyVars.isEmpty) 0 else tyVars.max
-    val tyVarCount = tyVars.size
-    if (tyVarCount == maxTyVar) ty
-    else {
-      val help = tyVars.zipWithIndex.map {case (vari,idx) => (vari,idx+1)}
-      val subst = Subst.fromShiftingSeq(help)
-      ty.substitute(subst)
-    }
-  }
-
   private def apply(t : Term, polarity : Boolean, cashExtracts : mutable.Map[Term, (Term, Boolean, Boolean)])(implicit sig : Signature) : (Term, Literal, Literal) = t match {
     case (a & b) if !polarity =>
       if(cashExtracts.contains(a)) {
