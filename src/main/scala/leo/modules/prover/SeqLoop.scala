@@ -446,7 +446,7 @@ object SeqLoop {
         val proofOutput = userSignatureToTPTP(symbolsInProof(proof))(sig)
         val proofString = if (Configuration.isSet("compressProof")) proofToTPTP(compressedProofOf(CompressProof.stdImportantInferences)(state.derivationClause.get))
         else proofToTPTP(proof)
-        Out.output(SZSOutput(SZS_CNFRefutation, Configuration.PROBLEMFILE, proofOutput + proofString))
+        Out.output(SZSOutput(SZS_CNFRefutation, Configuration.PROBLEMFILE, proofOutput + "\n" + proofString))
       } catch {
         case e: Exception => Out.comment("Translation of proof object failed. See error logs for details.")
           Out.warn(e.toString)
