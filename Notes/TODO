@@ -30,3 +30,4 @@ is translated repeatedly).
 + Work on CounterSat/Sat functionality. What restrictions are necessary to avoid false
   negatives?
   
++ Recognize injective functions and postulate the existence of an inverse function
