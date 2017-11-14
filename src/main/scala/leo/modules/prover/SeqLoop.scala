@@ -49,6 +49,7 @@ object SeqLoop {
       val simp = Control.cheapSimp(Control.liftEq(cl))
       Control.detectAC(simp)
       Control.detectDomainConstraint(simp)
+      Control.detectInjectivity(simp)
       if (!state.isPolymorphic && simp.cl.typeVars.nonEmpty) state.setPolymorphic() // TODO: FIXME
       simp
     }
