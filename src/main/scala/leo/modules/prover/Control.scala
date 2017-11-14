@@ -25,6 +25,7 @@ object Control {
   @inline final def funcext(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.FuncExtControl(cl)(sig)
   @inline final def funcExtNew(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.FuncExtControl.applyNew(cl)(state)
   @inline final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.detUniInferences(cl)(state)
+  @inline final def generalUnify(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.UnificationControl.generalUnify(cl)(state)
   // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
@@ -787,7 +788,8 @@ package inferenceControl {
       }
     }
 
-    private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
+
+    private final def defaultUnify0(freshVarGen: FreshVarGen, cl: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
       val sig = state.signature
       val litIt = cl.cl.lits.iterator
       var uniLits: UniLits = Vector()
@@ -801,41 +803,19 @@ package inferenceControl {
         }
       }
       if (uniLits.nonEmpty) {
-        val uniResult = doUnify0(cl, freshVarGen, uniLits, otherLits)(state)
-        // all negative literals are taken as unification constraints
-        // if no unifier is found, the original clause is unisimp'd and returned
-        // else the unified clause is unisimp*d and returned
-        if (uniResult.isEmpty) {
-//          val uniLits = cl.cl.negLits
-//          val (simpSubst, uniLitsSimp) = Simp.uniLitSimp(uniLits)(sig)
-//          if (uniLits == uniLitsSimp) Set(cl)
-//          else {
-//            val substPosLits = cl.cl.posLits.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
-//            Set(AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, cl), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cl.properties)))
-//          }
-//          Out.finest(s"Unification failed, but looking for uni simp.")
-//          val detUniSimps = detUniInferences(cl)(state)
-//          Out.finest(s"No unification, but Uni Simp result: ${detUniSimps.map(_.pretty(sig)).mkString("\n")}")
-//          detUniSimps + cl
-          Set(cl)
-        } else {
-//          val resultClausesIt = uniResult.iterator
-//          var resultClausesSimp: Set[AnnotatedClause] = Set()
-//          while (resultClausesIt.hasNext) {
-//            val resultClause = resultClausesIt.next()
-//            val uniLits = resultClause.cl.negLits
-//            val (simpSubst, uniLitsSimp) = Simp.uniLitSimp(uniLits)(sig)
-//            if (uniLits == uniLitsSimp)  resultClausesSimp = resultClausesSimp +  resultClause
-//            else {
-//              val substPosLits = resultClause.cl.posLits.map(_.substituteOrdered(Subst.id, simpSubst)(sig))
-//              resultClausesSimp = resultClausesSimp + AnnotatedClause(Clause(substPosLits ++ uniLitsSimp), InferredFrom(Simp, resultClause), resultClause.properties)
-//            }
-//          }
-//          resultClausesSimp
-//          val detUniSimps = uniResult.flatMap(detUniInferences(_)(state))
-          uniResult// ++ detUniSimps
-        }
-      } else Set(cl)
+        doUnify0(cl, freshVarGen, uniLits, otherLits)(state)
+      } else Set.empty
+    }
+    private final def defaultUnify(freshVarGen: FreshVarGen, cl: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
+      val unifyResult = defaultUnify0(freshVarGen, cl)(state)
+      if (unifyResult.isEmpty) Set(cl)
+      else unifyResult
+    }
+    final def generalUnify(cl: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
+      val vargen = freshVarGen(cl.cl)
+      val uniResult = defaultUnify0(vargen, cl)(state)
+      if (uniResult.isEmpty) Set.empty
+      else uniResult
     }
 
 

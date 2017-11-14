@@ -52,7 +52,7 @@ object SeqLoop {
       simp
     }
     // Pre-unify new clauses or treat them extensionally and remove trivial ones
-    result = Control.extPreprocessUnify(result)(state)
+//    result = Control.extPreprocessUnify(result)(state)
     result = Control.cheapSimpSet(result)
     result = result.filterNot(cw => Clause.trivial(cw.cl))
     result
@@ -277,8 +277,10 @@ object SeqLoop {
     /////////////////////////////////////////
     // Generating inferences BEGIN
     /////////////////////////////////////////
-//    val detUni_result = Control.detUniInferences(cur)(state)
-//    newclauses = newclauses union detUni_result
+    val detUni_result = Control.detUniInferences(cur)(state)
+    newclauses = newclauses union detUni_result
+    val exhaustUni_result = Control.generalUnify(cur)(state)
+    newclauses = newclauses union exhaustUni_result
     /* Functional Extensionality */
     val funcext_result = Control.funcExtNew(cur)(state)
     newclauses = newclauses union funcext_result
