@@ -18,12 +18,12 @@ all: TreeLimitedRun
 		mkdir bin -p
 		cp target/scala-2.12/leo3.jar bin/leo3.jar
 		cp ./src/main/resources/scripts/leo3 bin/leo3
-		
+
 install:
 		install -m 0755 -d $(DESTDIR)
 		install -m 0755 bin/leo3.jar $(DESTDIR)
-		echo -e "#!/bin/bash\njava -Xss32m -Xmx1g -jar $(DESTDIR)leo3.jar \$$@" > $(DESTDIR)leo3
-		chmod +x $(DESTDIR)leo3
+		echo -e "#!/bin/bash\njava -Xss32m -Xmx1g -jar $(DESTDIR)/leo3.jar \$$@" > $(DESTDIR)/leo3
+		chmod +x $(DESTDIR)/leo3
 
 clean:
 		rm -rf target/
