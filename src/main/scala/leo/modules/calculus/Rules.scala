@@ -232,6 +232,7 @@ object PatternUni extends AnyUni {
     } else {
       val subst = result.head._1
       Out.trace(s"Pattern unification successful: ${subst._1.pretty}")
+      Out.trace(s"ty subst: ${subst._2.pretty}")
       val updatedOtherLits = otherLits.map(_.substituteOrdered(subst._1, subst._2)(sig))
       val resultClause = Clause(updatedOtherLits)
       Some((resultClause, subst))
@@ -570,7 +571,9 @@ object OrderedParamod extends CalculusRule {
 
     /* We cannot delete an element from the list, thats way we replace it by a trivially false literal,
     * i.e. it is lated eliminated using Simp. */
-    val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false))
+    val withLits_without_withLiteral = withClause.lits.updated(withIndex, Literal.mkLit(LitTrue(),false)).map(l =>
+      Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)
+    )
     Out.finest(s"withLits_without_withLiteral: \n\t${withLits_without_withLiteral.map(_.pretty(sig)).mkString("\n\t")}")
 
     /* We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause. */
@@ -585,7 +588,9 @@ object OrderedParamod extends CalculusRule {
     /* Replace subterm (and shift accordingly) */
     val rewrittenIntoLit = Literal.mkOrdered(findWithin.replaceAt(intoPosition,replaceBy.substitute(Subst.shift(intoPosition.abstractionCount))).betaNormalize,otherSide,intoLiteral.polarity)(sig)
     /* Replace old literal in intoClause (at index intoIndex) by the new literal `rewrittenIntoLit` */
-    val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit)
+    val rewrittenIntoLits = shiftedIntoLits.updated(intoIndex, rewrittenIntoLit).map(l =>
+      Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)
+    )
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
     Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")

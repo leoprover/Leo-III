@@ -60,8 +60,8 @@ abstract class AbstractMatchingSubsumption extends Subsumption {
           val (term1, term2) = (Literal.asTerm(hd1), Literal.asTerm(hd2))
           val matchingResult = doMatch(vargen, term1, term2)
           if (matchingResult.isDefined) {
-            val subst = matchingResult.get
-            val newTail1 = tail1.map(_.substitute(subst))
+            val (termSubst, typeSubst) = matchingResult.get
+            val newTail1 = tail1.map(_.substitute(termSubst, typeSubst))
             if (subsumes0(vargen, newTail1, lits2 ++ visited, Vector.empty))
               true
             else
@@ -76,21 +76,21 @@ abstract class AbstractMatchingSubsumption extends Subsumption {
     }
   }
 
-  def doMatch(vargen: FreshVarGen, term: Term, term1: Term): Option[TermSubst]
+  def doMatch(vargen: FreshVarGen, term: Term, term1: Term): Option[(TermSubst, TypeSubst)]
 }
 
 object HOPatternSubsumption extends AbstractMatchingSubsumption {
-  override final def doMatch(vargen: FreshVarGen, s: Term, t: Term): Option[TermSubst] = {
+  override final def doMatch(vargen: FreshVarGen, s: Term, t: Term): Option[(TermSubst, TypeSubst)] = {
     val result0 = HOPatternMatching.matchTerms(vargen, s,t).iterator
     if (result0.isEmpty) None
-    else Some(result0.next()._1)
+    else Some(result0.next())
   }
 }
 
 object HOMatchingSubsumption extends AbstractMatchingSubsumption {
-  override final def doMatch(vargen: FreshVarGen, s: Term, t: Term): Option[TermSubst] = {
+  override final def doMatch(vargen: FreshVarGen, s: Term, t: Term): Option[(TermSubst, TypeSubst)] = {
     val result0 = HOMatching.matchTerms(vargen, s,t).iterator
     if (result0.isEmpty) None
-    else Some(result0.next()._1)
+    else Some(result0.next())
   }
 }

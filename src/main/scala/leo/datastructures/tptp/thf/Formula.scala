@@ -1,6 +1,8 @@
 package leo.datastructures.tptp.thf
 
-import leo.datastructures.tptp._
+import leo.datastructures.tptp.Commons.{
+  Variable => CommonVariable,
+  Number => CommonNumber}
 import leo.modules.SZSException
 import leo.modules.output.SZS_InputError
 
@@ -44,7 +46,7 @@ case class Unary(connective: UnaryConnective, formula: LogicFormula) extends Log
 
   override val function_symbols: Set[String] = formula.function_symbols
 }
-case class Quantified(quantifier: Quantifier, varList: Seq[(Commons.Variable,Option[LogicFormula])], matrix: LogicFormula) extends LogicFormula {
+case class Quantified(quantifier: Quantifier, varList: Seq[(CommonVariable,Option[LogicFormula])], matrix: LogicFormula) extends LogicFormula {
   override def toString = quantifier.toString + " [" + varList.mkString(",") + "] : (" + matrix.toString + ")"
 
   // TODO are we considering types as well? (Remove `union decl` if we do not want to check types)
@@ -77,7 +79,7 @@ case class Distinct(data: String) extends LogicFormula {
   override def toString = data
   override val function_symbols: Set[String] = Set.empty
 }
-case class Number(number: Commons.Number) extends LogicFormula {
+case class Number(number: CommonNumber) extends LogicFormula {
   override def toString = number.toString
   override val function_symbols: Set[String] = Set.empty
 }
@@ -172,39 +174,4 @@ case class *(t: Seq[LogicFormula]) extends BinaryType {
 case class +(t: Seq[LogicFormula]) extends BinaryType {
   override def toString = "(" + t.mkString(" + ") + ")"
   override val function_symbols: Set[String] = t.flatMap(_.function_symbols).toSet
-}
-
-
-// TODO Legacy, remove if parsers have been switched.
-case class Term(t: Commons.Term) extends LogicFormula {
-  override def toString = t.toString
-
-  override val function_symbols: Set[String] = t.function_symbols
-}
-
-sealed abstract class LetBinding {
-  /**
-    * Returns a set of new defined symbols and a set of symbols, used in the definition of those
-    * @return
-    */
-  def function_symbols : (Set[String], Set[String])
-}
-case class FormulaBinding(binding: Quantified) extends LetBinding {
-  override def toString = binding.toString
-  override val function_symbols: (Set[String], Set[String]) = (binding.blocked_symbols, binding.function_symbols)
-}
-case class TermBinding(binding: Quantified) extends LetBinding {
-  override def toString = binding.toString
-  override val function_symbols: (Set[String], Set[String]) = (binding.blocked_symbols, binding.function_symbols)
-}
-case class Let(binding: LetBinding, in: Formula) extends LogicFormula {
-  override def toString = binding match {
-    case _:TermBinding => "$let_tf(" + List(binding,in).mkString(",") + ")"
-    case _:FormulaBinding => "$let_ff(" + List(binding,in).mkString(",") + ")"
-  }
-
-  override val function_symbols: Set[String] = {
-    val (vars, symbs) = binding.function_symbols
-    (in.function_symbols -- vars) union symbs
-  }
 }

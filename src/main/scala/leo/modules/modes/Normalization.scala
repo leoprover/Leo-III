@@ -1,10 +1,12 @@
-package leo.modules
+package leo.modules.modes
 
 import leo.Configuration
 import leo.datastructures._
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.output.SZS_UsageError
 import leo.modules.parsers.Input
 import leo.modules.prover.State
+import leo.modules.{SZSException, termToClause}
 
 /**
   * Created by lex on 4/25/17.
@@ -19,11 +21,10 @@ object Normalization {
   val extractionType: Int = Configuration.EXTRACTION_TYPE
   val localXtract: Boolean = Configuration.isSet(s"xLocal")
 
-  final def apply(): Unit = {
+  final def apply(parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
     implicit val s : State[AnnotatedClause] = State.fresh(sig)
-    val input0 = Input.parseProblem(Configuration.PROBLEMFILE)
-    val (defs, axioms0, conjecture) = effectiveInput(input0)
+    val (defs, axioms0, conjecture) = effectiveInput(parsedProblem)
 
     var axioms = axioms0
     val defsIt = defs.iterator
@@ -47,7 +48,7 @@ object Normalization {
     }
     val finalAxResult = exhaustive(resultClauses)
 
-    import leo.modules.external.{createTHFProblem, TPTPProblem}
+    import leo.modules.external.{TPTPProblem, createTHFProblem}
     val newProb = if (newConjecture == null) createTHFProblem(finalAxResult, TPTPProblem.WITHDEF)
     else createTHFProblem(finalAxResult, TPTPProblem.WITHDEF, termToClause(newConjecture))
 
@@ -55,7 +56,7 @@ object Normalization {
   }
 
   private final def exhaustive(cls: Set[Clause])(implicit s: State[AnnotatedClause]): Set[Clause] = {
-    import leo.modules.calculus.{RenameCNF, FuncExt, BoolExt, freshVarGen, LiftEq}
+    import leo.modules.calculus._
     implicit val sig: Signature = s.signature
     var changed = true
     var intermediate: Set[Clause] = cls
@@ -111,7 +112,7 @@ object Normalization {
   }
 
   private final def process(t: Term)(implicit s: State[AnnotatedClause]): Set[Clause] = {
-    import leo.modules.calculus.{Simp, Miniscope, ArgumentExtraction, RenameCNF, freshVarGen}
+    import leo.modules.calculus._
     // Simplification
     implicit val sig: Signature = s.signature
     val simplified = Simp.normalize(t)
@@ -134,7 +135,7 @@ object Normalization {
   }
 
   private final def processConjecture(c: Conjecture)(implicit sig: Signature): (Term, Set[Term]) = {
-    import leo.modules.calculus.{Simp, Miniscope, ArgumentExtraction}
+    import leo.modules.calculus.{ArgumentExtraction, Miniscope, Simp}
     // Simplification
     val simplified = Simp.normalize(c)
     // Miniscope
@@ -156,8 +157,8 @@ object Normalization {
       formula.role match {
         case Role_Type.pretty => Input.processFormula(formula)(sig)
         case Role_Definition.pretty =>
-          import leo.modules.HOLSignature.===
           import leo.datastructures.Term.Symbol
+          import leo.modules.HOLSignature.===
           val alteredFormula = formula.updateRole("axiom")
           val (_, f, _) =  Input.processFormula(alteredFormula)(sig)
           f match {

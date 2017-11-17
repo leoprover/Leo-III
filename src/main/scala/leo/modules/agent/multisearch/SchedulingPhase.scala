@@ -1,14 +1,14 @@
 package leo.modules.agent.multisearch
 
-import leo.{Configuration}
+import leo.Configuration
 import leo.agents.{Agent, CompletedState, DoItYourSelfAgent, OpenState}
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard.{Blackboard, Delta}
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.GeneralState
 import leo.modules.agent.rules.TypedSet
 import leo.modules.output.SZS_Theorem
-import leo.modules.parsers.Input
 import leo.modules.phase.CompletePhase
 import leo.modules.prover.{RunStrategy, effectiveInput, typeCheck}
 
@@ -26,6 +26,7 @@ object SchedulingPhase {
   * Created by mwisnie on 6/7/17.
   */
 class SchedulingPhase(tactics : Schedule,
+                      parsedProblem: Seq[AnnotatedFormula],
                       implicit val state : GeneralState[AnnotatedClause])
                      (scheduler: Scheduler,
                       blackboard: Blackboard)
@@ -54,8 +55,8 @@ class SchedulingPhase(tactics : Schedule,
     }
 
     // TODO Part of tactic, give potentially the parsed input to the procedure
-    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
-    val remainingInput = effectiveInput(input2, state)
+//    val input2 = Input.parseProblemFile(Configuration.PROBLEMFILE)
+    val remainingInput = effectiveInput(parsedProblem, state)
     // Typechecking: Throws and exception if not well-typed
     typeCheck(remainingInput, state)
 

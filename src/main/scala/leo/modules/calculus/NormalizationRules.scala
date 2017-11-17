@@ -901,7 +901,7 @@ object Simp extends CalculusRule {
     else {
       val hd = unprocessed.head
       leo.Out.finest(s"[UniLitSimp] Next unsolved: ${hd._1.pretty(sig)} = ${hd._2.pretty(sig)}")
-      val left = hd._1; val right = hd._2
+      val left = hd._1.etaExpand; val right = hd._2.etaExpand
       if (left == right) {
         leo.Out.finest(s"[UniLitSimp] Triv")
         uniLitSimp0(processed, unprocessed.tail, subst)(sig)
@@ -920,7 +920,7 @@ object Simp extends CalculusRule {
               val newUnprocessed = newEqs ++ unprocessed.tail
               uniLitSimp0(processed, newUnprocessed, subst.comp(tySubst))(sig)
             } else {
-              val newEqs = HuetsPreUnification.DecompRule((leftBody.typeSubst(tySubst), rightBody.typeSubst(tySubst)), leftAbstractions)
+              val newEqs = HuetsPreUnification.DecompRule((leftBody.typeSubst(tySubst), rightBody.typeSubst(tySubst)), leftAbstractions.map(_.substitute(tySubst)))
               leo.Out.finest(s"type unification can be solved: ${tySubst.pretty}")
               val newUnprocessed = newEqs ++ unprocessed.tail.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}
               uniLitSimp0(processed.map{case (l,r) => (l.typeSubst(tySubst), r.typeSubst(tySubst))}, newUnprocessed, subst.comp(tySubst))(sig)

@@ -4,6 +4,7 @@ import leo.agents.{Agent, InterferingLoopAgent}
 import leo.datastructures.blackboard.{Blackboard, Delta}
 import leo.datastructures._
 import leo.datastructures.blackboard.scheduler.Scheduler
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.prover._
 import leo.modules.interleavingproc.{BlackboardState, SZSStatus, StateView}
 import leo.modules.control.Control
@@ -22,6 +23,7 @@ class InterleavableLoopPhase
   (interleavingLoop : InterferingLoopAgent[StateView[AnnotatedClause]]
    , state : BlackboardState
    , sig : Signature
+   , parsedProblem: Seq[AnnotatedFormula]
    , interleavingAgents : Agent*)
   (blackboard: Blackboard
    , scheduler: Scheduler)
@@ -61,8 +63,8 @@ class InterleavableLoopPhase
     }
 
     // TODO Read external Provers / Implement external Provers
-    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
-    val remainingInput = effectiveInput(input2, state.state)
+//    val input2 = Input.parseProblemFile(Configuration.PROBLEMFILE)
+    val remainingInput = effectiveInput(parsedProblem, state.state)
     // Typechecking: Throws and exception if not well-typed
     typeCheck(remainingInput, state.state)
 

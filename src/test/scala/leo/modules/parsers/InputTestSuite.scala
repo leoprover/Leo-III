@@ -22,27 +22,24 @@ import leo.modules.printSignature
 class InputTestSuite extends LeoTestSuite {
   val source = getClass.getResource("/problems").getPath
 
-  val problem_suffix = ".p"
-
   val problems = Seq( //"SYN000-1" -> "TPTP CNF basic syntax features",
 //                      "SYN000+1" -> "TPTP FOF basic syntax features",
 //                      "SYN000_1" -> "TPTP TF0 basic syntax features",
-                      "SYN000^1" -> "TPTP THF basic syntax features",
-                      "SYN000^2" -> "TPTP THF advanced syntax features"
+//                      "SYN000^1" -> "TPTP THF basic syntax features",
+//                      "SYN000^2" -> "TPTP THF advanced syntax features"
 //                      "SYN000+2" -> "TPTP FOF advanced syntax features",
 //                      "SYN000_2" -> "TPTP TF0 advanced syntax features",
 //                      "SYN000=2" -> "TPTP TFA with arithmetic advanced syntax features"
+                      "modal_test.p" -> "Modal"
   )
 
   for (p <- problems) {
     test(p._2, Ignored) {
-      println(new java.net.URI(getClass.getResource("/problems").getPath).toString)
-      println(Paths.get(source).toAbsolutePath.normalize().toString)
       implicit val sig = getFreshSignature
       printHeading(s"Processing test for ${p._2}")
       print(s"## Parsing ${p._1} ...")
 
-      var fs = Input.readProblem("/home/lex/dev/Leo-III/target/leo-iii-0.1-tests.jar!/problems" + "/" + p._1 + ".p").map{case (name, term, role) => AnnotatedClause(Clause(Literal(term, true)), role, NoAnnotation, ClauseAnnotation.PropNoProp)}
+      val res = Input.readProblem(source + "/" +  p._1)
       println("Success!")
       println(s"Parsed ${sig.allUserConstants.size} symbols into signature, ${FormulaDataStore.getFormulas.size} formulae added to blackboard.")
       println()

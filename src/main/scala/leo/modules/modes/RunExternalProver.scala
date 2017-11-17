@@ -1,6 +1,8 @@
-package leo
+package leo.modules.modes
 
+import leo.Configuration
 import leo.datastructures._
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.external.{Capabilities, ExternalProver}
 import leo.modules.output.SZS_Error
 import leo.modules.parsers.Input
@@ -9,18 +11,17 @@ import leo.modules.parsers.Input
   * Created by mwisnie on 9/26/16.
   */
 object RunExternalProver {
-  def runExternal(): Unit ={
+  def apply(parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     if(Configuration.ATPS.isEmpty){
       println("% This program tests external ATP calls. Please specify one")
       return
     }
     val (name, path) = Configuration.ATPS.head
-    
+
     val p = ExternalProver.createProver(name,path)
 
     implicit val s = Signature.freshWithHOL()
-    val input = Input.parseProblem(Configuration.PROBLEMFILE)
-    val input2 = Input.processProblem(input)
+    val input2 = Input.processProblem(parsedProblem)
     var exSeq : Seq[AnnotatedClause] = Seq()
     val it = input2.iterator
     while(it.hasNext){
@@ -65,5 +66,9 @@ object RunExternalProver {
         println(s"Leo's output:\n  ${res.output.mkString("\n  ")}")
       case None => println("Got no result")
     }
+  }
+
+  def apply(): Unit = {
+    apply(Input.parseProblemFile(Configuration.PROBLEMFILE))
   }
 }

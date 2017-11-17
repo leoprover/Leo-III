@@ -11,6 +11,7 @@ is translated repeatedly).
   ?[F]: ![X...]: P @ (F X) 
   
 + Improve if-then-else reasoniong, Chad mentioned work by Backes/Brown
+  --> Splitting?
 
 + Implement SiNe  
 
@@ -19,3 +20,14 @@ is translated repeatedly).
 + Abstraction-refinement (Konstantin Korovon, see IWIL 2017)
 
 + Guidance by similarity by antiunification?
+
++ Check for axioms used in external proofs and only use those in external inference
+  proof.
+  
++ Recoqnition of finite types is done to some point. Add enumeration of all inhabitants
+  of a finite type.
+  
++ Work on CounterSat/Sat functionality. What restrictions are necessary to avoid false
+  negatives?
+  
++ Recognize injective functions and postulate the existence of an inverse function

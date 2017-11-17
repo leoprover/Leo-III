@@ -132,11 +132,32 @@ package object calculus {
     aterm.etaExpand
   }
 
+  final def normalizeType(ty: Type, tyFVCount: Int): Type = {
+    import leo.datastructures.Type.BoundType
+    import leo.datastructures.Subst
+    val tyVars = ty.typeVars.map(BoundType.unapply(_).get).toSeq.sorted
+    val maxTyVar = if (tyVars.isEmpty) 0 else tyVars.max
+    val tyVarCount = tyVars.size
+    if (tyVarCount == maxTyVar || maxTyVar <= tyFVCount) ty
+    else {
+      val help = tyVars.zipWithIndex.map {case (vari,idx) => (vari,idx+1)}
+      val subst = Subst.fromShiftingSeq(help)
+      ty.substitute(subst)
+    }
+  }
+
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
-    val skFunc = Term.mkAtom(sig.freshSkolemConst(mkPolyTyAbstractionType(tyFvs.size,Type.mkFunType(fvs.map(_._2), goalTy))))
-    assert(skFunc.ty.typeVars.isEmpty,
-      s"Fresh SK symbol has free type vars: ${skFunc.pretty(sig)}, type: ${skFunc.ty.pretty(sig)}, free ty vars: ${skFunc.ty.typeVars.toString}\n" +
-        s"% goalTy: ${goalTy.pretty(sig)}, fvs: ${fvs.toString()}, tyFvs: ${tyFvs.toString()}")
+    val funTy = normalizeType(Type.mkFunType(fvs.map(_._2), goalTy), tyFvs.size)
+    val ty = mkPolyTyAbstractionType(tyFvs.size,funTy)
+    assert(ty.typeVars.isEmpty,
+      s"SK symbol type has free type vars:\n" +
+        s"ty: ${ty.pretty(sig)},\n" +
+        s"free ty vars: ${ty.typeVars.map(_.pretty(sig)).mkString(",")}\n" +
+        s"goalTy: ${goalTy.pretty(sig)},\n" +
+        s"fvs: ${fvs.map(fv => s"(${fv._1},${fv._2.pretty(sig)})").mkString(",")},\n" +
+        s"tyFvs: ${tyFvs.toString()},\n" +
+        s"normalized funTy: ${funTy.pretty(sig)}")
+    val skFunc = Term.mkAtom(sig.freshSkolemConst(ty))
     val intermediate = Term.mkTypeApp(skFunc, tyFvs.map(Type.mkVarType))
     val result = Term.mkTermApp(intermediate, fvs.map {case (i,t) => Term.mkBound(t,i)})
     assert(Term.wellTyped(result), s"skTerm Result not well-typed: ${result.pretty(sig)}\n" +
@@ -148,7 +169,7 @@ package object calculus {
     Type.mkType(freshTypeOp, tyFvs.map(Type.mkVarType))
   }
 
-  final private def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
+  final def mkPolyTyAbstractionType(count: Int, body: Type): Type = if (count <= 0) body
   else Type.mkPolyType(mkPolyTyAbstractionType(count-1, body))
   final private def mkPolyKindAbstraction(count: Int): Kind = if (count <= 0) Kind.*
   else Kind.mkFunKind(Kind.*, mkPolyKindAbstraction(count-1))

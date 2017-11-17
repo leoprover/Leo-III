@@ -5,7 +5,7 @@ val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's p
 
 lazy val commonSettings = Seq(
     version := "1.1",
-    scalaVersion := "2.12.3",
+    scalaVersion := "2.12.4",
     organization := "org.leo",
     test in assembly := {},
     logLevel := Level.Warn,
@@ -13,7 +13,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val leo = (project in file(".")).
-  enablePlugins(JniNative).
+//  enablePlugins(JniNative).
   settings(commonSettings:_*).
   settings(
     name := "Leo III",
@@ -27,10 +27,10 @@ lazy val leo = (project in file(".")).
     // set stack size to 4m 
     javaOptions += "-Xss4m",
     parallelExecution in Test := false,
-
+    assemblyJarName in assembly := "leo3.jar",
     exportJars := true,
     // options for native bindings
-    target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
+//    target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
     // antlr related stuff
     excludeFilter in unmanagedJars := HiddenFileFilter || "antlr4-tool.jar",
     antlrFile := baseDirectory.value / "contrib" / "tptp.g4",

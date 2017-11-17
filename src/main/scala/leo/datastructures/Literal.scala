@@ -82,7 +82,13 @@ trait Literal extends Pretty with Prettier {
   @inline final def substitute(termSubst : Subst, typeSubst: Subst = Subst.id) : Literal = {
     if (termSubst == Subst.id && typeSubst == Subst.id) this
     else {
-      termMap {case (l,r) => (l.substitute(termSubst, typeSubst),r.substitute(termSubst,typeSubst))}
+      val lsubst = left.substitute(termSubst, typeSubst)
+      if (equational) {
+        val rsubst = right.substitute(termSubst, typeSubst)
+        Literal.mkLit(lsubst, rsubst, polarity)
+      } else {
+        Literal.mkLit(lsubst, polarity)
+      }
     }
   }
   /** Apply substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
@@ -91,8 +97,12 @@ trait Literal extends Pretty with Prettier {
     if (termSubst == Subst.id && typeSubst == Subst.id) this
     else {
       val lsubst = left.substitute(termSubst, typeSubst)
-      val rsubst = right.substitute(termSubst, typeSubst)
-      Literal.mkOrdered(lsubst ,rsubst, polarity)
+      if (equational) {
+        val rsubst = right.substitute(termSubst, typeSubst)
+        Literal.mkOrdered(lsubst, rsubst, polarity)
+      } else {
+        Literal.mkLit(lsubst, polarity)
+      }
     }
   }
   /** Apply a renaming substitution `(termSubst, typeSubst)` to literal (i.e. to both sides of the equation).
@@ -106,8 +116,12 @@ trait Literal extends Pretty with Prettier {
     if (termSubst == Subst.id && typeSubst == Subst.id) this
     else {
       val lsubst = left.substitute(termSubst, typeSubst)
-      val rsubst = right.substitute(termSubst, typeSubst)
-      Literal.mkLit(lsubst, rsubst, polarity, oriented)
+      if (equational) {
+        val rsubst = right.substitute(termSubst, typeSubst)
+        Literal.mkLit(lsubst, rsubst, polarity, oriented)
+      } else {
+        Literal.mkLit(lsubst, polarity)
+      }
     }
   }
   @inline final def replaceAll(what : Term, by : Term) : Literal = termMap {case (l,r) => (l.replace(what,by), r.replace(what,by))}
@@ -132,7 +146,12 @@ object Literal {
   /** Create new (equational) literal with equation `left = right`
     * and polarity `pol`. Note that the resulting literal is only
     * equational if neither `left` nor `right` are `$true/$false`. */
-  @inline final def mkLit(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = LitImpl.mkLit(t1,t2,pol,oriented)
+  @inline final def mkLit(t1: Term, t2: Term, pol: Boolean, oriented: Boolean = false): Literal = {
+    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty}")
+    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty}")
+    assert(t1.ty == t2.ty)
+    LitImpl.mkLit(t1,t2,pol,oriented)
+  }
   /** Creates a new (equational) literal of the two terms t1 and t2
     * and polarity `polarity`. During construction, the method
     * tries to order the two terms into and ordered equation left=right,
@@ -141,10 +160,9 @@ object Literal {
     * Note that the resulting literal is only
     * equational if both terms t1 and t2 and not equivalent to $true/$false. */
   @inline final def mkOrdered(t1: Term, t2: Term, pol: Boolean)(implicit sig: Signature): Literal = {
-//    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty(sig)}")
-//    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty(sig)}")
-//    assert(t1.ty == t2.ty) //FIXME Commented out for now since this invariant is currently not given
-    // but thats not that bad... believe me :)
+    assert(Term.wellTyped(t1), s"Left side of literal not well-typed: ${t1.pretty(sig)}")
+    assert(Term.wellTyped(t2), s"Right side of literal not well-typed: ${t2.pretty(sig)}")
+    assert(t1.ty == t2.ty)
     LitImpl.mkOrdered(t1,t2,pol)(sig)
   }
   /** Create new (non-equational) literal with equation

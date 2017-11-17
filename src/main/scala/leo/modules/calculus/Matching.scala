@@ -1,8 +1,9 @@
 package leo.modules.calculus
 
-import scala.annotation.tailrec
+import leo.datastructures.Type.BoundType
 
-import leo.datastructures.{Term, Type, Subst, NDStream, BFSAlgorithm, SearchConfiguration}
+import scala.annotation.tailrec
+import leo.datastructures.{BFSAlgorithm, NDStream, SearchConfiguration, Subst, Term, Type}
 import leo.modules.myAssert
 
 trait Matching {
@@ -541,7 +542,8 @@ object HOPatternMatching extends Matching {
   // but only {1,2,3,4} are forbidden vars
   /** Main matching method: Solve head equations subsequently by applying the according rules. */
   @tailrec
-  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst, forbiddenVars: Set[Int]): Option[PartialResult] = {
+  private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst,
+                           forbiddenVars: Set[Int]): Option[PartialResult] = {
     import leo.datastructures.Term.{Bound, ∙}
     import leo.datastructures.{partitionArgs, collectLambdas}
     import HuetsPreUnification.{applySubstToList, zipWithAbstractions}
@@ -584,7 +586,8 @@ object HOPatternMatching extends Matching {
                   val newUeqs = result._2
                   leo.Out.finest(s"flex-rigid result matcher: ${partialMatchingResult._1.pretty}")
                   leo.Out.finest(s"flex-rigid result new unsolved: ${newUeqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
-                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1), partialTyMatcher.comp(partialMatchingResult._2), forbiddenVars)
+                  match1(newUeqs ++ ueqs.tail, vargen, partialMatcher.comp(partialMatchingResult._1),
+                    partialTyMatcher.comp(partialMatchingResult._2), forbiddenVars)
                 }
               }
             case (_, Bound(_, idx2)) if idx2 > abstractionCount=>
@@ -604,9 +607,10 @@ object HOPatternMatching extends Matching {
                   if (tyMatchingResult.isDefined) {
                     val tySubst = tyMatchingResult.get
                     leo.Out.finest(s"Poly rigid-rigid match succeeded: ${tySubst.pretty}")
-                    val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
+                    val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions.map(_.substitute(tySubst)))
                     leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
-                    match1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen, partialMatcher.applyTypeSubst(tySubst), partialTyMatcher.comp(tySubst), forbiddenVars)
+                    match1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen,
+                      partialMatcher.applyTypeSubst(tySubst), partialTyMatcher.comp(tySubst), forbiddenVars)
                   } else {
                     leo.Out.finest(s"Poly rigid-rigid uni failed")
                     None
@@ -713,25 +717,30 @@ object TypeMatching {
 
 object TypeMatchingImpl extends TypeMatching {
   /** Returns a substitution `Some(σ)` such that sσ = t. Returns `None` if no such `σ` exists.  */
-  override def matching(s: Type, t: Type): Option[TypeSubst] = tyDetExhaust(Vector((s,t)), Subst.id)
+  override def matching(s: Type, t: Type): Option[TypeSubst] = matching(Vector((s,t)))
   /** Returns a substitution `Some(σ)` such that s_iσ = t_i. Returns `None` if no such `σ` exists.  */
-  def matching(uEqs: Seq[UEq]): Option[TypeSubst] = tyDetExhaust(uEqs.toVector, Subst.id)
+  def matching(uEqs: Seq[UEq]): Option[TypeSubst] = {
+    val forbiddenTyVars = uEqs.flatMap(_._2.typeVars.map(BoundType.unapply(_).get)).toSet
+    tyDetExhaust(uEqs.toVector, Subst.id, forbiddenTyVars)
+  }
 
   @tailrec
-  final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UEq], unifier: TypeSubst): Option[TypeSubst] = {
+  final protected[calculus] def tyDetExhaust(uTyProblems: Seq[UEq], unifier: TypeSubst, forbiddenVars: Set[Int]): Option[TypeSubst] = {
+    leo.Out.finest(s"tyDetExaust unsolved: ${uTyProblems.map(ueq => ueq._1.pretty ++ " = " ++ ueq._2.pretty).mkString("\n")}")
     if (uTyProblems.nonEmpty) {
-      val head = uTyProblems.head
+      val head0 = uTyProblems.head
+      val head = (head0._1.substitute(unifier), head0._2.substitute(unifier))
 
       if (TyDeleteRule.canApply(head))
-        tyDetExhaust(uTyProblems.tail, unifier)
+        tyDetExhaust(uTyProblems.tail, unifier, forbiddenVars)
       else if (TyDecompRule.canApply(head))
-        tyDetExhaust(TyDecompRule.apply(head) ++ uTyProblems.tail, unifier)
+        tyDetExhaust(TyDecompRule.apply(head) ++ uTyProblems.tail, unifier, forbiddenVars)
       else {
         val tyFunDecompRuleCanApplyHint = TyFunDecompRule.canApply(head)
         if (tyFunDecompRuleCanApplyHint != TyFunDecompRule.CANNOT_APPLY) {
-          tyDetExhaust(TyFunDecompRule.apply(head, tyFunDecompRuleCanApplyHint) ++ uTyProblems.tail,unifier)
-        } else if (TyBindRule.canApply(head))
-          tyDetExhaust(uTyProblems.tail, unifier.comp(TyBindRule.apply(head)))
+          tyDetExhaust(TyFunDecompRule.apply(head, tyFunDecompRuleCanApplyHint) ++ uTyProblems.tail,unifier, forbiddenVars)
+        } else if (TyBindRule.canApply(head, forbiddenVars))
+          tyDetExhaust(uTyProblems.tail, unifier.comp(TyBindRule.apply(head)), forbiddenVars)
         else
           None
       }
@@ -784,7 +793,7 @@ object TypeMatchingImpl extends TypeMatching {
         val tys1 = e._1.funParamTypesWithResultType
         val tys2 = e._2.funParamTypesWithResultType
         if (tys1.size > tys2.size) CANNOT_APPLY /* impossible to match right side */
-        if (tys1.size == tys2.size) EQUAL_LENGTH
+        else if (tys1.size == tys2.size) EQUAL_LENGTH
         else { // tys1.size < tys2.size
           if (tys1.last.isBoundTypeVar) // Only possible if last one is variable
             SECOND_LONGER
@@ -809,14 +818,14 @@ object TypeMatchingImpl extends TypeMatching {
       Subst.singleton(tyVar, otherTy)
     }
 
-    final def canApply(e: UEq): Boolean = {
+    final def canApply(e: UEq, forbiddenVars: Set[Int]): Boolean = {
       val leftIsTypeVar = e._1.isBoundTypeVar
 
       if (!leftIsTypeVar) false
       else {
         val tyVar = BoundType.unapply(e._1).get
         val otherTy = e._2
-        !otherTy.typeVars.contains(tyVar)
+        !forbiddenVars.contains(tyVar) && !otherTy.typeVars.contains(tyVar)
       }
     }
   }

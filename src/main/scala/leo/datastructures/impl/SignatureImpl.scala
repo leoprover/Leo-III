@@ -172,6 +172,7 @@ class SignatureImpl extends Signature with Function1[Int, Signature.Meta] {
   /** Returns a fresh uninterpreted symbol of type `ty`. That symbol will be
     * named `SKi` where i is some positive number. */
   def freshSkolemConst(ty: Type, prop: Signature.SymbProp = Signature.PropNoProp): Key = synchronized {
+    assert(ty.typeVars.isEmpty)
     while(exists(skolemVarPrefix + (skolemVarCounter +1).toString)) {
       skolemVarCounter += 1
     }

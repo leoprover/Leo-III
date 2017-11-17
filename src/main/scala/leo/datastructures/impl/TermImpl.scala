@@ -45,7 +45,8 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
   }
 
   final def etaExpand: Term = {
-    if (etanormal) this
+    if (isVariable && ty.isFunType) etaExpand0
+    else if (etanormal) this
     else {
       val betanf = this.betaNormalize.asInstanceOf[TermImpl]
       val res = betanf.etaExpand0
@@ -152,10 +153,7 @@ protected[impl] case class Root(hd: Head, args: Spine) extends TermImpl {
     case BoundIndex(ty,i) => args.fv + ((i, ty))
     case _ => args.fv
   }
-  lazy val tyFV: Set[Int] = hd.ty match {
-    case BoundType(idx) => args.tyFV + idx
-    case _ => args.tyFV
-  }
+  lazy val tyFV: Set[Int] = args.tyFV union hd.ty.typeVars.map(BoundType.unapply(_).get)
   def vars0(depth: Int): Multiset[Int] = hd match {
     case BoundIndex(_, idx) if idx > depth => args.vars0(depth) + (idx-depth)
     case _ => args.vars0(depth)

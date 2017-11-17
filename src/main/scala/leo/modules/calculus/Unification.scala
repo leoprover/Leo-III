@@ -186,7 +186,8 @@ object HuetsPreUnification extends Unification {
       } else {
         val left = head0._1.etaExpand
         val right = head0._2.etaExpand
-
+        leo.Out.finest(s"Left etaExpanded: ${left.pretty}")
+        leo.Out.finest(s"right etaExpanded: ${right.pretty}")
         val (leftBody, leftAbstractions) = collectLambdas(left)
         val (rightBody, rightAbstractions) = collectLambdas(right)
         assert(leftAbstractions == rightAbstractions)
@@ -205,7 +206,7 @@ object HuetsPreUnification extends Unification {
                 flexFlex,
                 solved, solvedTy)
             } else {
-              val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions)
+              val newUnsolvedTermEqs = DecompRule.apply((leftBody.typeSubst(typeSubst), rightBody.typeSubst(typeSubst)), leftAbstractions.map(_.substitute(typeSubst)))
               detExhaust(newUnsolvedTermEqs ++ applySubstToList(Subst.id, typeSubst, unprocessed.tail),
                 applyTySubstToList(typeSubst, flexRigid),
                 applySubstToList(Subst.id, typeSubst, flexFlex),
@@ -585,6 +586,10 @@ object PatternUnification extends Unification {
                     leo.Out.finest(s"Poly rigid-rigid uni succeeded: ${tySubst.pretty}")
                     val newUeqs = zipWithAbstractions(termArgs1, termArgs2, leftAbstractions)
                     leo.Out.finest(s"New unsolved:\n\t${newUeqs.map(eq => eq._1.pretty + " = " + eq._2.pretty).mkString("\n\t")}")
+                    leo.Out.finest(s"partialUnifier before: ${partialUnifier.pretty}")
+                    leo.Out.finest(s"partialUnifier after: ${partialUnifier.applyTypeSubst(tySubst).pretty}")
+                    leo.Out.finest(s"partialTyUnifier before: ${partialTyUnifier.pretty}")
+                    leo.Out.finest(s"partialTyUnifier after: ${partialTyUnifier.comp(tySubst).pretty}")
                     unify1(applySubstToList(Subst.id, tySubst, newUeqs ++ ueqs.tail), vargen, partialUnifier.applyTypeSubst(tySubst), partialTyUnifier.comp(tySubst))
                   } else {
                     leo.Out.finest(s"Poly rigid-rigid uni failed")

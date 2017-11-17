@@ -1,13 +1,12 @@
 package leo.modules.phase
 import leo.{Configuration, Out}
 import leo.agents.Agent
-import leo.datastructures.{AnnotatedClause, Clause, Signature}
+import leo.datastructures.{AnnotatedClause, Signature}
 import leo.datastructures.blackboard._
 import leo.datastructures.blackboard.scheduler.Scheduler
-import leo.modules.GeneralState
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.modules.agent.rules.control_rules.AnnotatedClauseGraph
 import leo.modules.control.Control
-import leo.modules.parsers.Input
 import leo.modules.prover._
 
 object RuleAgentPhase {
@@ -21,7 +20,7 @@ object RuleAgentPhase {
   * Created by mwisnie on 4/24/17.
   */
 class RuleAgentPhase
-(ruleGraph : AnnotatedClauseGraph)
+(ruleGraph : AnnotatedClauseGraph, parsedProblem: Seq[AnnotatedFormula])
 (implicit val state : Control.LocalFVState,
  implicit val blackBoard: Blackboard, implicit val sched : Scheduler)
 extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType), Seq(ruleGraph.outType))
@@ -49,10 +48,10 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
       }
     }
 
-    val start = System.currentTimeMillis()
-    val input2 = Input.parseProblem(Configuration.PROBLEMFILE)
-    parsingTime = System.currentTimeMillis() - start
-    val remainingInput = effectiveInput(input2, state)
+//    val start = System.currentTimeMillis()
+//    val input2 = Input.parseProblemFile(Configuration.PROBLEMFILE)
+    parsingTime = 0 // TODO: Since parsing is now done at Main
+    val remainingInput = effectiveInput(parsedProblem, state)
 
     typeCheck(remainingInput, state)
 

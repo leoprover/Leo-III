@@ -1,3 +1,4 @@
+/*
 package leo.modules.sat_solver
 
 import leo.{Checked, LeoTestSuite}
@@ -176,3 +177,4 @@ class PicoSATTestSuite extends LeoTestSuite{
   }
 
 }
+*/

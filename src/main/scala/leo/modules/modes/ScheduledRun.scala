@@ -1,24 +1,32 @@
-package leo.modules.prover
+package leo.modules.modes
 
+import leo.datastructures.tptp.Commons.AnnotatedFormula
 import leo.datastructures.{AnnotatedClause, Signature}
 import leo.modules.control.Control
-import leo.{Configuration, Out}
 import leo.modules.parsers.Input
+import leo.modules.prover.{SeqLoop, State, effectiveInput, typeCheck}
+import leo.{Configuration, Out}
 
 
 object ScheduledRun {
-  final def apply(startTime: Long, timeout: Int, schedule0: Control.RunSchedule = null): Unit = {
+
+  final def apply(startTime: Long, timeout: Int): Unit = {
+    apply(startTime, timeout, Input.parseProblemFile(Configuration.PROBLEMFILE), Control.generateRunStrategies(timeout))
+  }
+
+  final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
+    apply(startTime, timeout, parsedProblem, Control.generateRunStrategies(timeout))
+  }
+
+  final def apply(startTime: Long, timeout: Int, parsedProblem: scala.Seq[AnnotatedFormula], schedule0: Control.RunSchedule): Unit = {
+    val startTimeWOParsing = System.currentTimeMillis()
     implicit val sig: Signature = Signature.freshWithHOL()
     val state: State[AnnotatedClause] = State.fresh(sig)
     var curState: State[AnnotatedClause] = null
     try {
       if (Configuration.ATPS.nonEmpty) Control.registerExtProver(Configuration.ATPS)(state)
-
-      // Read problem from file
-      val input = Input.parseProblem(Configuration.PROBLEMFILE)
-      val startTimeWOParsing = System.currentTimeMillis()
       // Split input in conjecture/definitions/axioms etc.
-      val remainingInput: Seq[AnnotatedClause] = effectiveInput(input, state)
+      val remainingInput: Seq[AnnotatedClause] = effectiveInput(parsedProblem, state)
       // Typechecking: Throws and exception if not well-typed
       typeCheck(remainingInput, state)
       Out.info(s"Type checking passed. Searching for refutation ...")
@@ -35,16 +43,10 @@ object ScheduledRun {
       // and invoke SeqLoop wrt to each strategy consecutively.
       // The schedule is calculated so that the sum of
       // all timeouts is <= Configuration.TIMEOUT
-      val schedule1 = if (schedule0 != null) schedule0 else {
-        import leo.modules.control.schedulingControl.StrategyControl.calculateExtraTime
-        val extraTime = calculateExtraTime(remainingInput.size)
-        leo.Out.debug(s"extraTime: $extraTime")
-        Control.generateRunStrategies(timeout, extraTime)
-      }
-      leo.Out.config(s"Using strategy schedule: ${schedule1.map(_._1.name).mkString(",")}")
+      leo.Out.config(s"Using strategy schedule: ${schedule0.map(_._1.name).mkString(",")}")
 
       var done = false
-      val schedule = schedule1.iterator
+      val schedule = schedule0.iterator
       while (schedule.hasNext && !done) {
         val (currentStrategy, currentTimeout) = schedule.next()
         Out.info(s"Trying (${currentTimeout}s): ${currentStrategy.pretty} ...")
@@ -65,10 +67,5 @@ object ScheduledRun {
         Control.killExternals()
     }
   }
-
-  final def apply(startTime: Long, timeout: Int, strategy: RunStrategy): Unit = {
-    apply(startTime, timeout, Iterable((strategy, timeout)))
-  }
-
 
 }
