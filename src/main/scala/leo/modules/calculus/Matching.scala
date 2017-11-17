@@ -13,15 +13,20 @@ trait Matching {
 
   /** Returns an iterable of substitutions (σ_i) such that sσ_i = t and there exists no such ϱ
     * which is more general than σ_i. */
-  def matchTerms(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result]
-  def matchTerms(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Result]
+  def matchTerms(vargen: FreshVarGen, s: Term, t: Term, forbiddenVars: Set[Int] = null): Iterable[Result]
+  def matchTermList(vargen: FreshVarGen, ueqs: Seq[(Term, Term)], forbiddenVars: Set[Int] = null): Iterable[Result]
 }
 object Matching {
   val impl: Matching = HOPatternMatching
-  def apply(vargen: FreshVarGen, s: Term, t: Term): Iterable[Matching#Result] = impl.matchTerms(vargen, s, t)
-  def apply(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Matching#Result] = impl.matchTerms(vargen, ueqs)
+  def apply(vargen: FreshVarGen, s: Term, t: Term, forbiddenVars: Set[Int] = null): Iterable[Matching#Result] =
+    impl.matchTerms(vargen, s, t, forbiddenVars)
+  def applyList(vargen: FreshVarGen, ueqs: Seq[(Term, Term)], forbiddenVars: Set[Int] = null): Iterable[Matching#Result] =
+    impl.matchTermList(vargen, ueqs, forbiddenVars)
 }
 
+
+@deprecated("HOMatching (i.e. matching based on full HO (pre-) unification) " +
+  "is broken at the moment (gives false positives).", "Leo-III 1.2")
 object HOMatching extends Matching {
   /** The Depth is the number of lambda abstractions under which a term is nested.*/
   type Depth = Int
@@ -57,8 +62,9 @@ object HOMatching extends Matching {
   }
 
 
-  def matchTerms(vargen: FreshVarGen, s: Term, t: Term): Iterable[Result] = matchTerms(vargen, Seq((s,t)))
-  def matchTerms(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Result] = {
+  def matchTerms(vargen: FreshVarGen, s: Term, t: Term, forbiddenVars: Set[Int] = null): Iterable[Result] =
+    matchTermList(vargen, Seq((s,t)), forbiddenVars)
+  def matchTermList(vargen: FreshVarGen, ueqs: Seq[(Term, Term)], forbiddenVars: Set[Int] = null): Iterable[Result] = {
     if (ueqs.exists{case (s,t) => s.ty != t.ty}) throw new NotImplementedError()
     else {
       val ueqs0 = ueqs.map {case (s,t) => (s.etaExpand, t.etaExpand)}.toVector
@@ -244,7 +250,7 @@ object HOMatching extends Matching {
     }
 
     final def canApply(e: UTEq): Boolean = e match {
-      case (ComposedType(head1, arg1), ComposedType(head2, args2)) => head1 == head2 // Heads cannot be flexible,
+      case (ComposedType(head1, _), ComposedType(head2, _)) => head1 == head2 // Heads cannot be flexible,
       // since in TH1 only small types/proper types can be quantified, not type operators
       case _ => false
     }
@@ -314,7 +320,7 @@ object HOMatching extends Matching {
     * returns true if the equation can be deleted
     */
   object DeleteRule {
-    final def canApply(e: UEq) = e._1 == e._2
+    final def canApply(e: UEq): Boolean = e._1 == e._2
   }
 
   /**
@@ -327,7 +333,7 @@ object HOMatching extends Matching {
       case (_ ∙ sq1, _ ∙ sq2) => zipArgumentsWithAbstractions(sq1, sq2, abstractions)
       case _ => throw new IllegalArgumentException("impossible")
     }
-    final def canApply(e: UEq, depth: Depth) = e match {
+    final def canApply(e: UEq, depth: Depth): Boolean = e match {
       case (hd1 ∙ _, hd2 ∙ _) if hd1 == hd2 => !isFlexible(hd1, depth)
       case _ => false
     }
@@ -499,18 +505,20 @@ object HOMatching extends Matching {
 object HOPatternMatching extends Matching {
   /** Returns an iterable of substitutions (σ_i) such that tσ_i = s and there exists no such ϱ
     * which is more general than σ_i. */
-  override def matchTerms(vargen: FreshVarGen, t: Term, s: Term): Iterable[Result] = {
-    matchTerms(vargen, Vector((t,s)))
+  override def matchTerms(vargen: FreshVarGen, t: Term, s: Term, forbiddenVars: Set[Int] = null): Iterable[Result] = {
+    matchTermList(vargen, Vector((t,s)), forbiddenVars)
   }
 
-  def matchTerms(vargen: FreshVarGen, ueqs: Seq[(Term, Term)]): Iterable[Result] = {
+  def matchTermList(vargen: FreshVarGen, ueqs: Seq[(Term, Term)], forbiddenVars: Set[Int] = null): Iterable[Result] = {
     val initialTypeSubst = TypeMatching(ueqs.map(e => (e._1.ty, e._2.ty)))
     if (initialTypeSubst.isEmpty)
       Iterable.empty
     else {
       val initialTypeSubst0 = initialTypeSubst.get
       val ueqs0 = ueqs.map(eq => (eq._1.substitute(Subst.id, initialTypeSubst0).etaExpand, eq._2.substitute(Subst.id, initialTypeSubst0).etaExpand))
-      val matchResult = match0(ueqs0, initialTypeSubst0, vargen)
+      val forbiddenVars0 = if (forbiddenVars == null) ueqs.flatMap(_._2.looseBounds).toSet else forbiddenVars
+      leo.Out.finest(s"Forbidden vars: ${forbiddenVars0.toString()}")
+      val matchResult = match0(ueqs0, initialTypeSubst0, vargen, forbiddenVars0)
       if (matchResult.isDefined) {
         leo.Out.finest(s"Matching succeeded!")
         Seq(matchResult.get)
@@ -522,10 +530,8 @@ object HOPatternMatching extends Matching {
   }
 
   /** Wrap up the matching result with the initial type substitution and return as Option. */
-  private final def match0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen): Option[Result] = {
+  private final def match0(ueqs: Seq[UEq], initialTypeSubst: TypeSubst, vargen: FreshVarGen, forbiddenVars: Set[Int]): Option[Result] = {
     leo.Out.finest(s"match0: ${ueqs.map{case (l,r) => l.pretty ++ " = " ++ r.pretty}.mkString("\n")}")
-    val forbiddenVars = ueqs.flatMap(_._2.looseBounds).toSet
-    leo.Out.finest(s"Forbidden vars: ${forbiddenVars.toString()}")
     val matcher = match1(ueqs, vargen, Subst.id, Subst.id, forbiddenVars)
     if (matcher.isDefined)
       Some((matcher.get._1.normalize, initialTypeSubst.comp(matcher.get._2).normalize))
@@ -534,12 +540,6 @@ object HOPatternMatching extends Matching {
   }
 
   type PartialResult = Result
-  // FIXME: Forbiddenvars are not vargen.existingvars:
-  // consider e.g. matching task  t = s with vars(t)={1,2,3} and vars(s)={5}
-  // and t comes from a clause c with fv(c)={1,2,3,4}
-  // then vargen.existingvars for the matching call should be {1,2,3,4,5}
-  // (since if we need a new var, we must not use 5 as fresh var)
-  // but only {1,2,3,4} are forbidden vars
   /** Main matching method: Solve head equations subsequently by applying the according rules. */
   @tailrec
   private final def match1(ueqs: Seq[UEq], vargen: FreshVarGen, partialMatcher: TermSubst, partialTyMatcher: TypeSubst,

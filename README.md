@@ -30,8 +30,7 @@ The following requirements (dependencies) are not managed by the SBT build tool 
 
  - Java JDK 1.8 
  - gcc (any reasonably current version)
- - cmake (any reasonable current version)
- - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 0.13.6
+ - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 1.x
 
 #### Building the project from source
 
@@ -132,7 +131,7 @@ thf(sk1_type, type, sk1: ($i > $o)).
 thf(sk2_type, type, sk2: ($i > $o)).
 thf(sk3_type, type, sk3: ($i > $o)).
 thf(sk4_type, type, sk4: $i).
-thf(1,conjecture,((! [A:($i > $o),B:($i > $o),C:($i > $o)]: (((subset @ A @ C) & (subset @ B @ C)) => (subset @ (union @ A @ B) @ C)))),file('/opt/TPTP/Problems/SET/SET014^4.p',thm)).
+thf(1,conjecture,((! [A:($i > $o),B:($i > $o),C:($i > $o)]: (((subset @ A @ C) & (subset @ B @ C)) => (subset @ (union @ A @ B) @ C)))),file('SET014^4.p',thm)).
 thf(2,negated_conjecture,((~ (! [A:($i > $o),B:($i > $o),C:($i > $o)]: (((subset @ A @ C) & (subset @ B @ C)) => (subset @ (union @ A @ B) @ C))))),inference(neg_conjecture,[status(cth)],[1])).
 thf(3,plain,((~ (! [A:($i > $o),B:($i > $o),C:($i > $o)]: ((! [D:$i]: ((A @ D) => (C @ D)) & ! [D:$i]: ((B @ D) => (C @ D))) => (! [D:$i]: (((A @ D) | (B @ D)) => (C @ D))))))),inference(defexp_and_simp_and_etaexpand,[status(thm)],[2])).
 thf(5,plain,((sk1 @ sk4) | (sk2 @ sk4)),inference(cnf,[status(esa)],[3])).

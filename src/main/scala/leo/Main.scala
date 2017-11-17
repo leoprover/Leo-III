@@ -5,11 +5,11 @@ import leo.modules.output.{SZS_Forced, SZS_Error, SZS_MemoryOut}
 import leo.modules.parsers.{CLParameterParser, Input}
 
 /**
- * Entry Point for Leo-III as an executable to
- * proof a TPTP File
- *
- * @author Max Wisniewski, Alexander Steen
- * @since 7/8/14
+  * Entry Point for Leo-III as an executable.
+  *
+  * @see [[leo.modules.Modes]] for different modes Leo-III can be run with.
+  * @author Max Wisniewski, Alexander Steen
+  * @since 7/8/14
  */
 object Main {
   private var hook: scala.sys.ShutdownHookThread = _

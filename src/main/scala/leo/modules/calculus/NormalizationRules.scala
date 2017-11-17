@@ -692,11 +692,11 @@ object SimplifyReflect extends CalculusRule {
         val (litLeft, litRight) = (lit.left, lit.right)
         val vargen = freshVarGen(cl)
         vargen.addVars(unitLeft.fv); vargen.addVars(unitRight.fv)
-        val match1 = Matching.apply(vargen.copy, Seq((unitLeft, litLeft), (unitRight, litRight)))
+        val match1 = Matching.applyList(vargen.copy, Seq((unitLeft, litLeft), (unitRight, litRight)))
         if (match1.nonEmpty) {
           true
         } else {
-          val match2 = Matching.apply(vargen.copy, Seq((unitLeft, litRight), (unitRight, litLeft)))
+          val match2 = Matching.applyList(vargen.copy, Seq((unitLeft, litRight), (unitRight, litLeft)))
           if (match2.nonEmpty) true
           else false
         }
