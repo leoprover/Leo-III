@@ -1905,19 +1905,19 @@ package inferenceControl {
             state.addPosNonRewriteUnits(cl)
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as positive (non-rewrite) unit.")
           } else {
-//            if (!lit.equational) {
-//              // this means we can interpret [l=$true]^f as rewrite rule l -> $false
-//              if (cl.cl.implicitlyBound.isEmpty) {
-//                state.addGroundRewriteRule(cl)
-//                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean ground rewrite rule.")
-//              } else {
-//                state.addNonGroundRewriteRule(cl)
-//                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean non-ground rewrite rule.")
-//              }
-//            } else {
+            if (!lit.equational) {
+              // this means we can interpret [l=$true]^f as rewrite rule l -> $false
+              if (cl.cl.implicitlyBound.isEmpty) {
+                state.addGroundRewriteRule(cl)
+                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean ground rewrite rule.")
+              } else {
+                state.addNonGroundRewriteRule(cl)
+                Out.trace(s"[SeqLoop] Clause ${cl.id} added as special Boolean non-ground rewrite rule.")
+              }
+            } else {
               state.addNegNonRewriteUnits(cl)
               Out.trace(s"[SeqLoop] Clause ${cl.id} added as negative (non-rewrite) unit.")
-//            }
+            }
           }
         }
       }
@@ -1965,7 +1965,10 @@ package inferenceControl {
         val newCl = Clause(newLits)
         val result0 = if (rewriteRulesUsed.isEmpty) cl else {
           leo.Out.finest(s"Rewriting happend!")
-          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cl) ++ rewriteRulesUsed.toSeq), deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties))
+          val newAnnotation = if (rewriteRulesUsed.exists(_.cl.lits.head.left.ty == HOLSignature.o))
+            deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified | ClauseAnnotation.PropFuncExt,cl.properties)
+          else deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified,cl.properties)
+          AnnotatedClause(newCl, InferredFrom(RewriteSimp, Seq(cl) ++ rewriteRulesUsed.toSeq), newAnnotation)
         }
         val simpResult = Simp.shallowSimp(result0.cl)(sig)
         val result = if (simpResult == result0.cl) result0
@@ -2054,16 +2057,20 @@ package inferenceControl {
             }
           }
           (result,affected)
-//        } else if (!cl.lits.head.polarity && !cl.lits.head.equational) {
-//          val (groundRules, nonGroundRules) = if (cl.implicitlyBound.isEmpty) (Set(newClause), Set[AnnotatedClause]()) else (Set[AnnotatedClause](), Set(newClause))
-//          val clausesIt = clauses.iterator
-//          var result: Set[AnnotatedClause] = Set.empty
-//          while (clausesIt.hasNext) {
-//            val cl = clausesIt.next()
-//            val rewriteResult = rewriteClause(cl, groundRules, nonGroundRules)(state.signature)
-//            if (rewriteResult != cl) result = result + rewriteResult
-//          }
-//          result
+        } else if (!cl.lits.head.polarity && !cl.lits.head.equational) {
+          val (groundRules, nonGroundRules) = if (cl.implicitlyBound.isEmpty) (Set(newClause), Set[AnnotatedClause]()) else (Set[AnnotatedClause](), Set(newClause))
+          val clausesIt = clauses.iterator
+          var result: Set[AnnotatedClause] = Set.empty
+          var affected: Set[AnnotatedClause] = Set.empty
+          while (clausesIt.hasNext) {
+            val cl = clausesIt.next()
+            val rewriteResult = rewriteClause(cl, groundRules, nonGroundRules)(state.signature)
+            if (rewriteResult != cl) {
+              result = result + rewriteResult
+              affected = affected + cl
+            }
+          }
+          (result, affected)
         }
         else {
           val lit = cl.lits.head

@@ -23,12 +23,15 @@ package object prover {
 
   /** Converts the input into clauses and filters the axioms if applicable. */
   final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
+    import leo.datastructures.Clause
+    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue}
     Out.info(s"Parsing finished. Scanning for conjecture ...")
     val (effectiveInput,conj) = effectiveInput0(input, state)
     if (state.negConjecture != null) {
+      val trivialNegConjectures: Set[Term] = Set(LitTrue, Not(LitFalse))
       Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
-      val relevantAxioms = if (effectiveInput.size <= 15) effectiveInput
+      val relevantAxioms = if (effectiveInput.size <= 15 || trivialNegConjectures.contains(Clause.asTerm(state.negConjecture.cl))) effectiveInput
                             else Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
       state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
