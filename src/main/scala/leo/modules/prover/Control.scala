@@ -51,6 +51,7 @@ object Control {
   @inline final def convertDefinedEqualities(clSet: Set[AnnotatedClause])(implicit sig: Signature): Set[AnnotatedClause] = inferenceControl.DefinedEqualityProcessing.convertDefinedEqualities(clSet)(sig)
   @inline final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.SpecialInstantiationControl.specialInstances(cl)(state)
   @inline final def detectAC(cl: AnnotatedClause)(implicit sig: Signature): Boolean = inferenceControl.SimplificationControl.detectAC(cl)(sig)
+  @inline final def detectInjectivity(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = inferenceControl.SimplificationControl.detectInjectivity(cl)(state)
 
   // Choice
   @inline final def instantiateChoice(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.ChoiceControl.instantiateChoice(cl)(state)
@@ -1773,6 +1774,84 @@ package inferenceControl {
               }
             case _ => None
           }
+        } else None
+      } else None
+    }
+
+    type ParameterIndex = Int
+    final def detectInjectivity(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = {
+      implicit val sig: Signature = state.signature
+      val maybeSpec = findInjectivitySpec(cl)
+      if (maybeSpec.isDefined) {
+        val (fun,paraPos) = maybeSpec.get
+        leo.Out.finest(s"Function ${sig(fun).name} is injective in its argument $paraPos")
+        val funTy = sig(fun)._ty
+        val funTys = funTy.funParamTypesWithResultType
+        val pre = funTys.take(paraPos-1)
+        val post = funTys.drop(paraPos)
+        val ret = funTys(paraPos-1)
+        val inverseFunction = sig.freshSkolemConst(Type.mkFunType(pre ++ post, ret))
+        val newAxiom = AnnotatedClause(generateInvAxiom(fun, paraPos, inverseFunction), ClauseAnnotation.FromSystem(s"inverse(${sig(fun).name})"))
+        leo.Out.finest(s"Generated axiom: ${newAxiom.pretty(sig)}")
+        state.addUnprocessed(newAxiom)
+      }
+    }
+
+    private final def generateInvAxiom(function: Signature.Key, parameterIndex: ParameterIndex,
+                                       invFunction: Signature.Key)(implicit sig: Signature): Clause = {
+      import Term.{mkTermApp, mkBound, mkAtom}
+      val f = mkAtom(function)
+      val inv = mkAtom(invFunction)
+      val invTypes = inv.ty.funParamTypesWithResultType
+      val invArgTypes = invTypes.init.init.zipWithIndex
+      val args0 = invArgTypes.map{case (ty, idx) => mkBound(ty, idx+1)}
+      val (argnargPre,argnargPost) = args0.splitAt(parameterIndex-1)
+      val argn = mkTermApp(f, (argnargPre :+ mkBound(invTypes.last, args0.size+1)) ++ argnargPost)
+
+      val right = mkBound(invTypes.last, args0.size +1)
+      val left = mkTermApp(inv, args0 :+ argn)
+      val lit = Literal.mkLit(left,right,true)
+      Clause(lit)
+    }
+
+    final def findInjectivitySpec(cl: AnnotatedClause)(implicit sig: Signature): Option[(Signature.Key, ParameterIndex)] = {
+      import leo.datastructures.Term.{TermApp, Symbol}
+      val lits = cl.cl.lits
+      if (lits.size == 2) {
+        val l1 = lits.head
+        val l2 = lits.tail.head
+
+        val (negLit, posLit) = if (l1.polarity) (l2, l1) else (l1, l2)
+        if (!negLit.polarity && posLit.polarity) {
+          if (negLit.equational && posLit.equational) {
+            (negLit.left, negLit.right) match {
+              case (TermApp(Symbol(idLeft), argsLeft), TermApp(Symbol(idRight), argsRight)) if idLeft == idRight && argsLeft.nonEmpty && argsRight.nonEmpty =>
+                assert(argsLeft.size == argsRight.size)
+                val leftVars = argsLeft.map(getVariableModuloEta(_))
+                if (leftVars.forall(_ > 0)) {
+                  val rightVars = argsRight.map(getVariableModuloEta(_))
+                  if (rightVars.forall(_ > 0)) {
+                    val posLitLeftVar = getVariableModuloEta(posLit.left)
+                    if (posLitLeftVar > 0) {
+                      val posLitRightVar = getVariableModuloEta(posLit.right)
+                      if (posLitRightVar > 0) {
+                        val argTuples = leftVars.zip(rightVars)
+                        val possiblyIdx = argTuples.indexOf((posLitLeftVar, posLitRightVar))
+                        if (possiblyIdx >= 0) {
+                          Some((idLeft, possiblyIdx+1))
+                        } else {
+                          val possiblyIdx = argTuples.indexOf((posLitRightVar, posLitLeftVar))
+                          if (possiblyIdx >= 0) {
+                            Some((idLeft, possiblyIdx+1))
+                          } else None
+                        }
+                      } else None
+                    } else None
+                  } else None
+                } else None
+              case _ => None
+            }
+          } else None
         } else None
       } else None
     }
