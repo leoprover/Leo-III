@@ -1784,33 +1784,63 @@ package inferenceControl {
       val maybeSpec = findInjectivitySpec(cl)
       if (maybeSpec.isDefined) {
         val (fun,paraPos) = maybeSpec.get
-        leo.Out.finest(s"Function ${sig(fun).name} is injective in its argument $paraPos")
+        leo.Out.finest(s"[Injectivity] Function ${sig(fun).name} is injective in its argument $paraPos")
         val funTy = sig(fun)._ty
-        val funTys = funTy.funParamTypesWithResultType
-        val pre = funTys.take(paraPos-1)
-        val post = funTys.drop(paraPos)
-        val ret = funTys(paraPos-1)
-        val inverseFunction = sig.freshSkolemConst(Type.mkFunType(pre ++ post, ret))
-        val newAxiom = AnnotatedClause(generateInvAxiom(fun, paraPos, inverseFunction), ClauseAnnotation.FromSystem(s"inverse(${sig(fun).name})"))
-        leo.Out.finest(s"Generated axiom: ${newAxiom.pretty(sig)}")
+        Out.finest(s"funTy: ${funTy.pretty(sig)}")
+        val invFunType = generateInvType(funTy, paraPos)
+        Out.finest(s"invFunType: ${invFunType.pretty(sig)}")
+        val inverseFunction = sig.freshSkolemConst(invFunType)
+        val invFunAxiom = generateInvAxiom(fun, paraPos, inverseFunction)
+        val newAxiom = AnnotatedClause(invFunAxiom, ClauseAnnotation.FromSystem(s"inverse(${sig(fun).name})"))
+        leo.Out.finest(s"[Injectivity] Generated axiom: ${newAxiom.pretty(sig)}")
         state.addUnprocessed(newAxiom)
       }
     }
 
+    /**
+      * If the function `f` has type `ty` and is injective in parameter index `paraPos`, i.e.
+      * `f :: ty1 -> ty2 -> ... -> ty(paraPos)-> ... -> tyn`,
+      * then the inverse function to `f`, call it `g`, has type
+      * `g :: ty1 -> ty2 -> ... -> tyn -> ty(paraPos)`
+      */
+    private final def generateInvType(ty: Type, paraPos: Int)(implicit sig: Signature): Type = {
+      val funTys = ty.funParamTypesWithResultType
+      Out.finest(s"funTys: ${funTys.map(_.pretty(sig)).mkString(" , ")}")
+      val pre = funTys.take(paraPos-1)
+      val post = funTys.drop(paraPos)
+      val ret = funTys(paraPos-1)
+      Out.finest(s"pre: ${pre.map(_.pretty(sig)).mkString(" , ")}")
+      Out.finest(s"post: ${post.map(_.pretty(sig)).mkString(" , ")}")
+      Out.finest(s"ret: ${ret.pretty(sig)}")
+      Type.mkFunType(pre ++ post, ret)
+    }
+
+    /**
+      * `g arg1 arg2 ... arg(parapos-1) arg(parapos+1) ... argn f(arg1 arg2 ... arg(parapos) ... argn) = arg(paraPos)`
+      */
     private final def generateInvAxiom(function: Signature.Key, parameterIndex: ParameterIndex,
                                        invFunction: Signature.Key)(implicit sig: Signature): Clause = {
       import Term.{mkTermApp, mkBound, mkAtom}
-      val f = mkAtom(function)
-      val inv = mkAtom(invFunction)
-      val invTypes = inv.ty.funParamTypesWithResultType
-      val invArgTypes = invTypes.init.init.zipWithIndex
+      val f = mkAtom(function) // The injective function
+      val inv = mkAtom(invFunction) // the inverse function to f
+      val fArgCount = f.ty.arity
+      val (invArgTypes0,invResultType0) = inv.ty.splitFunParamTypesAt(fArgCount)
+      Out.finest(s"invArgTypes0: ${invArgTypes0.map(_.pretty(sig)).mkString(" , ")}")
+      Out.finest(s"invResultType0: ${invResultType0.pretty(sig)}")
+      val invArgTypes = invArgTypes0.init.zipWithIndex
       val args0 = invArgTypes.map{case (ty, idx) => mkBound(ty, idx+1)}
-      val (argnargPre,argnargPost) = args0.splitAt(parameterIndex-1)
-      val argn = mkTermApp(f, (argnargPre :+ mkBound(invTypes.last, args0.size+1)) ++ argnargPost)
+      Out.finest(s"args0: ${args0.map(_.pretty(sig)).mkString(" , ")}")
 
-      val right = mkBound(invTypes.last, args0.size +1)
+      val (argnargPre,argnargPost) = args0.splitAt(parameterIndex-1)
+      Out.finest(s"argnargPre: ${argnargPre.map(_.pretty(sig)).mkString(",")}")
+      Out.finest(s"argnargPost: ${argnargPost.map(_.pretty(sig)).mkString(",")}")
+
+      val argn = mkTermApp(f, (argnargPre :+ mkBound(invResultType0, args0.size+1)) ++ argnargPost)
+      Out.finest(s"argn: ${argn.pretty(sig)}")
+      val right = mkBound(invResultType0, args0.size +1)
       val left = mkTermApp(inv, args0 :+ argn)
-      val lit = Literal.mkLit(left,right,true)
+      val lit = Literal.mkLit(left,right, true, true)
+      Out.finest(s"lit: ${lit.pretty(sig)}")
       Clause(lit)
     }
 
