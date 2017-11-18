@@ -1791,7 +1791,7 @@ package inferenceControl {
         Out.finest(s"invFunType: ${invFunType.pretty(sig)}")
         val inverseFunction = sig.freshSkolemConst(invFunType)
         val invFunAxiom = generateInvAxiom(fun, paraPos, inverseFunction)
-        val newAxiom = AnnotatedClause(invFunAxiom, ClauseAnnotation.FromSystem(s"inverse(${sig(fun).name})"))
+        val newAxiom = AnnotatedClause(invFunAxiom, ClauseAnnotation.FromSystem(s"tautology,[new_symbols(inverse(${sig(fun).name}),[${sig(inverseFunction).name}])]"))
         leo.Out.finest(s"[Injectivity] Generated axiom: ${newAxiom.pretty(sig)}")
         state.addUnprocessed(newAxiom)
       }
