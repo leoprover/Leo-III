@@ -974,7 +974,7 @@ package inferenceControl {
 
 
     private final def defaultUnify0(freshVarGen: FreshVarGen, cl: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
-      val sig = state.signature
+//      val sig: Signature = state.signature
       val litIt = cl.cl.lits.iterator
       var uniLits: UniLits = Vector()
       var otherLits:OtherLits = Vector()
@@ -1158,7 +1158,7 @@ package inferenceControl {
     }
 
     final def primSubst(cw: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
-      implicit val sig = state.signature
+      implicit val sig: Signature = state.signature
       val level = state.runStrategy.primSubst
       if (level > 0) {
         val (cA_ps, ps_vars) = PrimSubst.canApply(cw.cl)
@@ -1200,7 +1200,7 @@ package inferenceControl {
     import leo.modules.calculus.Enumeration._
 
     final def specialInstances(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
-      implicit val sig = state.signature
+      implicit val sig: Signature = state.signature
       val LEVEL = state.runStrategy.specialInstances
       if (LEVEL != NO_REPLACE) {
         leo.Out.trace("[Special Instances] Searching ...")
@@ -1300,7 +1300,7 @@ package inferenceControl {
     }
 
     private final def instantiateAbstractions(term: Term, ty: Type)(state: LocalState): Set[Term] = {
-      implicit val sig = state.signature
+      implicit val sig: Signature = state.signature
       val LEVEL = state.runStrategy.specialInstances
       assert(term.ty.isFunType)
       leo.Out.finest(s"[Special Instances]: Apply for ${ty.pretty(sig)}?")
@@ -1427,7 +1427,7 @@ package inferenceControl {
 
     final def  instanciateDomain(cls : Set[AnnotatedClause])
                                 (implicit s : GeneralState[AnnotatedClause]) : Set[AnnotatedClause] = {
-      cls.flatMap(instanciateDomain(_))
+      cls.flatMap(instanciateDomain)
     }
   }
 
@@ -1543,7 +1543,7 @@ package inferenceControl {
 
     final def guessFuncSpec(cw: AnnotatedClause)(state: LocalState): Set[AnnotatedClause] = {
       import leo.datastructures.Term.TermApp
-      implicit val sig = state.signature
+      implicit val sig: Signature = state.signature
       leo.Out.finest(s"call guesFuncSpec on ${cw.id}")
       val cl = cw.cl
       val uniLits = cl.negLits.filter(_.uni)
@@ -1653,7 +1653,7 @@ package inferenceControl {
 
     final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       import UnificationControl.doUnify0
-      implicit val sig = state.signature
+      implicit val sig: Signature = state.signature
       var result: Set[AnnotatedClause] = Set()
       val clIt = cls.iterator
 
@@ -2139,8 +2139,7 @@ package inferenceControl {
 
             val res0 = Term.mkTypeApp(rewrittenHd, tyArgs)
             Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)))
-          case ty :::> body => term //Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
-          // FIXME rewriting under lambdas only on feasible subterms
+          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
           case _ => term
         }
       }
