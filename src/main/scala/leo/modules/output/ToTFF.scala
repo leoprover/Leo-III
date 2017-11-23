@@ -112,8 +112,9 @@ object ToTFF {
           // Term level/predicate level
           val meta = sig(id)
           assert(meta.isUninterpreted)
-          if (args.isEmpty) meta.name
-          else s"${meta.name}(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
+          val name = tptpEscapeExpression(meta.name)
+          if (args.isEmpty) name
+          else s"$name(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
         }
       case _ => throw new IllegalArgumentException
     }
@@ -132,8 +133,9 @@ object ToTFF {
       case Symbol(id) ∙ args =>
           if (interpretedSymbols.contains(id)) throw new IllegalArgumentException
           else {
-            if (args.isEmpty) sig(id).name
-            else s"${sig(id).name}(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
+            val name = tptpEscapeExpression(sig(id).name)
+            if (args.isEmpty) name
+            else s"$name(${args.map(termOrTypeToTFF(fvMap, tyFvCount, _)(sig)).mkString(",")})"
           }
       case _ => throw new IllegalArgumentException
     }
@@ -198,19 +200,23 @@ object ToTFF {
   final def apply(sig: Signature): String = {
     val sb: StringBuilder = new StringBuilder
     for (id <- sig.typeConstructors intersect sig.allUserConstants) {
+      val name = tptpEscapeName(sig(id).name)
+      val name_type = tptpEscapeName(sig(id).name+"_type")
       sb.append("tff(")
-      sb.append(sig(id).name)
-      sb.append("_type,type,(")
-      sb.append(sig(id).name)
+      sb.append(name_type)
+      sb.append(",type,(")
+      sb.append(name)
       sb.append(":")
       sb.append(kindToTFF(sig(id)._kind))
       sb.append(")).\n")
     }
     for (id <- sig.uninterpretedSymbols) {
+      val name = tptpEscapeName(sig(id).name)
+      val name_type = tptpEscapeName(sig(id).name+"_type")
       sb.append("tff(")
-      sb.append(sig(id).name)
-      sb.append("_type,type,(")
-      sb.append(sig(id).name)
+      sb.append(name_type)
+      sb.append(",type,(")
+      sb.append(name)
       sb.append(":")
       sb.append(typeToTFF(sig(id)._ty)(sig))
       sb.append(")).\n")
