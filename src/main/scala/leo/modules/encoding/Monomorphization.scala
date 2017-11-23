@@ -3,8 +3,6 @@ package leo.modules.encoding
 import leo.datastructures.{Clause, Literal, Signature, Subst, Term, Type, partitionArgs}
 import leo.modules.calculus.{TypeUnification, TypeSubst}
 
-import scala.annotation.tailrec
-
 /**
   * Translates polymorphic problems into
   * monomorphic problems by heuristic type variable instantiation.
@@ -69,24 +67,73 @@ object Monomorphization {
     *         and `s` a signature under which it is stated.
     */
   final def apply(problem: Problem)(implicit sig: Signature): (Problem, Signature) = {
-    val clsIt = problem.iterator
+
     val newSig: Signature = Signature.freshWithHOL() // Even if problem is not formulated in HOL
     // we dont care: Since only non-fixed constants will be printed out and
     // ids are re-calculated anyway in apply0(term)
-    var monoProblem: Problem = Set.empty
-    var polyAxioms: Set[Clause] = Set.empty
     val instanceInfo: InstanceInfo = mutable.Map()
-    while (clsIt.hasNext) {
-      val cl = clsIt.next()
-      if (cl.typeVars.isEmpty) monoProblem += apply0(cl, newSig, instanceInfo)(sig)
-      else polyAxioms += cl
-    }
-    val monoAxioms = generateMonoAxioms(polyAxioms, instanceInfo, newSig)(sig)
-    leo.Out.finest(s"monoAxioms: ${monoAxioms.map(_.pretty(newSig)).mkString("\n\t")}")
-    monoProblem = monoProblem union monoAxioms
+    val (monomorphicTranslatedFormulas, strippedPolymorphicFormulas) = formulaSplit(problem, newSig, instanceInfo)(sig)
+    leo.Out.finest(s"[Monomorphization]: Mono formulas:\n\t${monomorphicTranslatedFormulas.map(_.pretty(newSig)).mkString("\n\t")}")
+    leo.Out.finest(s"[Monomorphization]: Poly formulas:\n\t${strippedPolymorphicFormulas.map(_.pretty(sig)).mkString("\n\t")}")
+    val monomorphizedFormulas = generateMonoAxioms(strippedPolymorphicFormulas, instanceInfo, newSig)(sig)
+    leo.Out.finest(s"monomorphization result: ${monomorphizedFormulas.map(_.pretty(newSig)).mkString("\n\t")}")
+    val monoProblem = monomorphicTranslatedFormulas union monomorphizedFormulas
     (monoProblem, newSig)
   }
 
+  private final def formulaSplit(problem: Problem, monoSig: Signature, instanceInfo: InstanceInfo)
+                                (polySig: Signature): (Problem, Problem) = {
+    val clsIt = problem.iterator
+    val tyForall = polySig("!>").key
+    var monomorphicTranslatedFormulas: Problem = Set.empty
+    var polymorphicFormulas: Problem = Set.empty
+    while (clsIt.hasNext) {
+      val cl = clsIt.next()
+      val (isPoly, strippedOrNull) = polymorphic(cl, tyForall)
+      if (isPoly) {
+        assert(strippedOrNull != null)
+        polymorphicFormulas += strippedOrNull
+      }
+      else monomorphicTranslatedFormulas += apply0(cl, monoSig, instanceInfo)(polySig)
+    }
+    (monomorphicTranslatedFormulas, polymorphicFormulas)
+  }
+
+  private final def polymorphic(cl: Clause, tyForallAtom: Signature.Key): (Boolean, Clause) = {
+    import leo.datastructures.Term.{Symbol, ∙}
+    if (cl.typeVars.nonEmpty) {
+      (true, cl)
+    }
+    else {
+      val litsIt = cl.lits.iterator
+      var collectedLits: Seq[Literal] = Seq.empty
+      while (litsIt.hasNext) {
+        val lit = litsIt.next()
+        if (!lit.equational) { //necessary condition for tyForall at head
+          val left = lit.left
+          left match {
+            case Symbol(`tyForallAtom`) ∙ _ =>
+              leo.Out.finest(s"formula starts with !> .... ")
+              val strippedLit: Literal = Literal.mkLit(stripTyQuantifiers(tyForallAtom)(lit.left), lit.polarity)
+              leo.Out.finest(s"litBefore: ${lit.pretty}")
+              leo.Out.finest(s"strippedLit: ${strippedLit.pretty}")
+              return (true, Clause((collectedLits :+ strippedLit) ++ litsIt.toSeq)) // we dont need to translate the rest, i guess
+            case _ => collectedLits = collectedLits :+ lit
+          }
+        } else {
+          collectedLits = collectedLits :+ lit
+        }
+      }
+      (false, null)
+    }
+  }
+  private final def stripTyQuantifiers(tyForallAtom: Signature.Key)(term: Term): Term = {
+    import leo.datastructures.Term.{TypeLambda, Symbol, TermApp}
+    term match {
+      case TermApp(Symbol(`tyForallAtom`), Seq(TypeLambda(body))) => stripTyQuantifiers(tyForallAtom)(body)
+      case _ => term
+    }
+  }
 
 
   private final val iterationLimit: Int = 2
@@ -176,7 +223,7 @@ object Monomorphization {
   }
 
   private final def polySymbols(term: Term, instanceInfo: InstanceInfo, polySymbolTable: PolySymbols): Unit = {
-    import leo.datastructures.Term.{∙,:::>, Symbol}
+    import leo.datastructures.Term.{∙,:::>, Symbol, TypeLambda}
     term match {
       case f ∙ args => f match {
         case Symbol(id) if f.ty.isPolyType =>
@@ -202,6 +249,7 @@ object Monomorphization {
           }
       }
       case _ :::> body => polySymbols(body, instanceInfo, polySymbolTable)
+      case TypeLambda(body) => assert(false)
     }
   }
 
@@ -216,10 +264,12 @@ object Monomorphization {
   }
 
   private final def apply0(cl: Clause, newSig: Signature, instanceInfo: InstanceInfo)(sig: Signature): Clause = {
+    leo.Out.finest(s"[Monomorphization] Translate clause (tyvars: ${cl.typeVars.toString()}) ${cl.pretty(sig)}")
     Clause(cl.lits.map(apply0(_, newSig, instanceInfo)(sig)))
   }
 
   private final def apply0(lit: Literal, newSig: Signature, instanceInfo: InstanceInfo)(sig: Signature): Literal = {
+    leo.Out.finest(s"[Monomorphization] Translate literal ${lit.pretty(sig)}")
     if (lit.equational) {
       val newLeft = apply0(lit.left, newSig, instanceInfo)(sig)
       val newRight = apply0(lit.right, newSig, instanceInfo)(sig)
@@ -232,6 +282,7 @@ object Monomorphization {
   private final def apply0(t: Term, newSig: Signature, instanceInfo: InstanceInfo)(implicit sig: Signature): Term = {
     import Term.local._
     import Term.{Symbol, ∙, Bound, :::>}
+    leo.Out.finest(s"[Monomorphization] Translate term ${t.pretty(sig)}")
     t match {
       case f ∙ args => f match {
         case Symbol(id) => if (f.ty.isPolyType) {
