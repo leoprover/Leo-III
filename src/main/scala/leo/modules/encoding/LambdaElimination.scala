@@ -395,8 +395,68 @@ protected[encoding] class LambdaElim_Turner(sig: TypedFOLEncodingSignature) exte
 }
 
 protected[encoding] class LambdaElim_LambdaLifting(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
+  private var auxiliaryFormulae: Set[Term] = Set.empty
 
-  override def eliminateLambda(t: Term)(holSignature: Signature): Term = ???
 
-  override def getAuxiliaryDefinitions: Set[Term] = ???
+  override def eliminateLambda(t: Term)(holSignature: Signature): Term = {
+    import leo.datastructures.{mkPolyUnivType,collectLambdas}
+    import leo.datastructures.Term.:::>
+    import TypedFOLEncoding.{translateTerm}
+    // collect batches of lambdas t = \x1...\xn. t' and replace them with fresh functions
+    // like this:
+    // collect(t) = ((x1, ..., xn), t')
+    // get free variables of t'
+    // fv(t') = (fv1, ...., fvm)
+    // replace t by f(fv1, ..., fvm)*
+    // add definition \/fv1,...,fnm.\/x1,...xn. app(...(app(f(fv1, ..., fvm),x1)...)...xn) = t''
+    // where t'' is the recursively translated t'
+    // note: first free-var quantification so that we can reuse the bound variables as-is (without renaming)
+    // note2 (): the free-var occurrences in t'' may need to be renamed (normalized to 1...m).
+    // TODO: Eta-contract on the fly
+    // TODO: Type-variables
+    t match {
+      case _ :::> _ => //Assume that there are not wholes in the free vars TODO: Is that right? See also * above
+        val (body, absTypes) = collectLambdas(t) // (t', (x1, ..., xn))
+        val fv = t.freeVars.toSeq
+        val ftyVars = t.tyFV.toSeq.map(Type.mkVarType)
+        val translatedFv = fv.map(translateTerm(_, this)(holSignature, sig))
+        Out.finest(s"fv: ${fv.toString()}")
+        Out.finest(s"freeTyVars: ${ftyVars.toString()}")
+        val goalTy = TypedFOLEncoding.foTransformType0(body.ty, true)(holSignature, sig)
+        Out.finest(s"goalTy: ${goalTy.pretty(sig)}")
+        val transformedAbsTypes = absTypes.map(TypedFOLEncoding.foTransformType0(_, true)(holSignature, sig))
+        val indirectArgsToGoalTy = sig.funTy(transformedAbsTypes :+ goalTy)
+        val directAppliedTys =  translatedFv.map(_.ty)
+        val newFunTy0 = Type.mkFunType(directAppliedTys, indirectArgsToGoalTy)
+        val newFunTy = mkPolyUnivType(ftyVars.size,newFunTy0)
+        Out.finest(s"newFunTy: ${newFunTy.pretty(sig)}")
+        val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(sig)
+        addNewFunDef(newFun, body, translatedFv, ftyVars, transformedAbsTypes)(holSignature)
+        val result0 = Term.local.mkTypeApp(newFun, ftyVars)
+        val result = Term.local.mkTermApp(result0, translatedFv)
+        Out.finest(s"replace ${t.pretty(holSignature)}")
+        Out.finest(s"by: ${result.pretty(sig)}")
+        result
+      case _ => ???
+    }
+
+  }
+
+  private final def addNewFunDef(newFun: Term, body: Term, fvs: Seq[Term], tyVars: Seq[Type], bounds: Seq[Type])(holSignature: Signature): Unit = {
+    import TypedFOLEncoding.{translateTerm}
+    val translatedBody = translateTerm(body, this)(holSignature, sig)
+    val boundCont = bounds.size
+    val directArgs = fvs.map(_.lift(boundCont))
+    val indirectArgs = bounds.zipWithIndex.map {case (ty, idx) => Term.local.mkBound(ty, boundCont - idx)}
+    val newFun0 = Term.local.mkTypeApp(newFun, tyVars)
+    val newAuxLeft = sig.applyArgs(newFun0, directArgs ++ indirectArgs)
+    val newAuxRight = translatedBody
+    val newAux = TypedFOLEncodingSignature.mkEq(newAuxLeft, newAuxRight)
+    leo.Out.finest(s"newAux: ${newAux.pretty(sig)}")
+    leo.Out.finest(s"newAuxLeft: ${newAuxLeft.pretty(sig)}")
+    leo.Out.finest(s"newAuxRight: ${newAuxRight.pretty(sig)}")
+    auxiliaryFormulae = auxiliaryFormulae + newAux
+  }
+
+  override def getAuxiliaryDefinitions: Set[Term] = auxiliaryFormulae
 }

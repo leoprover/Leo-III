@@ -1097,7 +1097,7 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 18", Checked) {
+  test("Problem encoder Test 18 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1133,7 +1133,45 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     }
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
-  test("Problem encoder Test 19", Checked) {
+  test("Problem encoder Test 18 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i,Y:$i]: (Y))")
+
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      assert(Term.wellTyped(a))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 19 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1173,7 +1211,48 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 20", Checked) {
+  test("Problem encoder Test 19 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", i ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (p2))")
+
+
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+    printTable(result)
+    println(TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      assert(Term.wellTyped(a))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 20 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1218,7 +1297,54 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 21", Checked) {
+
+  test("Problem encoder Test 20 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", i ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (^[Y:$i]: (p2 @ Y)))")
+    val f0 = f1
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+    println(f0.pretty(sig))
+    assert(Term.wellTyped(f0))
+
+    val result = EncodingAnalyzer.analyzeFormula(f0)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    println(TypedFOLEncoding.foTransformType(sig(p2)._ty, result(p2))(sig, foSig))
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f0, le)(sig, foSig)
+    printSignature(foSig)
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      assert(Term.wellTyped(a))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 21 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1258,7 +1384,48 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 22", Checked) {
+  test("Problem encoder Test 21 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", (i ->: i) ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (p2 @ (^[Y:$i]: (X))))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      assert(Term.wellTyped(a))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 22 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1298,7 +1465,48 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 23", Checked) {
+  test("Problem encoder Test 22 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", ((i ->: i) ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", (i ->: i ->: i) ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i>$i]: (p2 @ (^[Y:$i, Z:$i]: (X @ Z))))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      assert(Term.wellTyped(a))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 23 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1338,7 +1546,48 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 24", Checked) {
+  test("Problem encoder Test 23 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", ((i ->: i) ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", (i ->: i ->: i) ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i>$i]: (p2 @ (^[Y:$i, Z:$i]: (X @ Y))))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      assert(Term.wellTyped(a))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 24 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1379,7 +1628,49 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 
-  test("Problem encoder Test 25", Checked) {
+  test("Problem encoder Test 24 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", i ->: i ->: i)
+    val a = sig.addUninterpreted("a", i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (p2 @ X @ a))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      assert(Term.wellTyped(a))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 25 SKI", Checked) {
     implicit val sig: Signature = getFreshSignature
 
     // Introduced symbols to signature
@@ -1415,6 +1706,48 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     proxyAxiomCheck(foSig)
     for (a <- le.getAuxiliaryDefinitions) {
       println(a.pretty(foSig))
+      assert(Term.wellTyped(a))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 25 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val p = sig.addUninterpreted("p", (i ->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", i ->: i ->: i)
+    val a = sig.addUninterpreted("a", i ->: i)
+
+    // create formulae
+    val f1 = Input.readFormula("p @ (^[X: $i]: (p2 @ X @ (a @ X)))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
       assert(Term.wellTyped(a))
     }
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
@@ -1482,6 +1815,100 @@ class TypedFOLEncodingTest extends LeoTestSuite {
     println(translateResult.pretty(foSig))
     printSignature(foSig)
     assert(Term.wellTyped(translateResult))
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 28 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val a = Type.mkType(sig.addBaseType("a"))
+    val b = Type.mkType(sig.addBaseType("b"))
+    val c = Type.mkType(sig.addBaseType("c"))
+    val d = Type.mkType(sig.addBaseType("d"))
+    val e = Type.mkType(sig.addBaseType("e"))
+    val p = sig.addUninterpreted("p", (d->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", d ->: a ->: e ->: i)
+    val fa = sig.addUninterpreted("fa", c ->: e)
+
+    // create formulae
+    val f1 = Input.readFormula("![A:a,B:b,C:c]: (p @ (^[D: d]: (p2 @ D @ A @ (fa @ C))))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      assert(Term.wellTyped(a))
+    }
+    println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
+  }
+
+  test("Problem encoder Test 29 Lifting", Checked) {
+    implicit val sig: Signature = getFreshSignature
+
+    // Introduced symbols to signature
+    val a = Type.mkType(sig.addBaseType("a"))
+    val b = Type.mkType(sig.addBaseType("b"))
+    val c = Type.mkType(sig.addBaseType("c"))
+    val d = Type.mkType(sig.addBaseType("d"))
+    val e = Type.mkType(sig.addBaseType("e"))
+    val p = sig.addUninterpreted("p", (d->: i) ->: o)
+    val p2 = sig.addUninterpreted("p2", Type.mkPolyType(d ->: a ->: e ->: i))
+    val fa = sig.addUninterpreted("fa", c ->: e)
+
+    // create formulae
+    val f1 = Input.readFormula("![TA:$tType, A:a,B:b,C:c]: (p @ (^[D: d]: (p2 @ TA @ D @ A @ (fa @ C))))")
+
+    println(f1.pretty(sig))
+    assert(Term.wellTyped(f1))
+
+    val result = EncodingAnalyzer.analyzeFormula(f1)
+    printTable(result)
+    // new signature for encoded problem
+    val foSig = TypedFOLEncodingSignature()
+
+    for ((key, info) <- result) {
+      if (sig(key).isFixedSymbol)
+        foSig.addUninterpreted(TypedFOLEncodingSignature.proxyOf(sig(key).name), TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+      else
+        foSig.addUninterpreted(sig(key).name, TypedFOLEncoding.foTransformType(sig(key)._ty, info)(sig, foSig))
+    }
+
+    val le = LambdaElimStrategy_LambdaLifting.apply(foSig)
+    val translateResult = TypedFOLEncoding.translate(f1, le)(sig, foSig)
+
+    println(translateResult.pretty(foSig))
+    printSignature(foSig)
+    assert(Term.wellTyped(translateResult))
+
+    proxyAxiomCheck(foSig)
+    for (a <- le.getAuxiliaryDefinitions) {
+      println(a.pretty(foSig))
+      println(ToTFF(leo.modules.termToClause(a), Role_Plain, "test")(foSig))
+      assert(Term.wellTyped(a))
+    }
     println(ToTFF(leo.modules.termToClause(translateResult), Role_Plain, "test")(foSig))
   }
 

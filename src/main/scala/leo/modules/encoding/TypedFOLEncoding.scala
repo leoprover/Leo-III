@@ -727,7 +727,7 @@ trait TypedFOLEncodingSignature extends Signature {
     else throw new IllegalArgumentException
   }
 
-  final private def applyArgs(func: Term, args: Seq[Term]): Term = {
+  final protected[encoding] def applyArgs(func: Term, args: Seq[Term]): Term = {
     val funcTyArgTypes = func.ty.funParamTypes
     val directArgCount = funcTyArgTypes.size
     assert(args.size >= directArgCount)

@@ -1997,7 +1997,7 @@ package inferenceControl {
     final def detectUnit(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): Unit = {
       if (Clause.unit(cl.cl)) {
         if (Clause.rewriteRule(cl.cl)) {
-          if (cl.cl.implicitlyBound.isEmpty) {
+          if (cl.cl.implicitlyBound.isEmpty && cl.cl.typeVars.isEmpty) {
             state.addGroundRewriteRule(cl)
             Out.trace(s"[SeqLoop] Clause ${cl.id} added as ground rewrite rule.")
           } else {
@@ -2893,11 +2893,12 @@ package  externalProverControl {
         Out.finest(s"Translating problem ...")
         val preparedProblem = prepareProblem(problem, TFF)(sig)
         try {
+          val lambdaElim = Configuration.LAMBDA_ELIM_STRATEGY
           val (translatedProblem, auxDefs, translatedSig) =
             if (supportsFeature(proverCaps, TFF)(Polymorphism))
-              Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  PolyNative)(sig)
+              Encoding(preparedProblem.map(_.cl), EP_None, lambdaElim,  PolyNative)(sig)
             else
-              Encoding(preparedProblem.map(_.cl), EP_None, LambdaElimStrategy_SKI,  MonoNative)(sig)
+              Encoding(preparedProblem.map(_.cl), EP_None, lambdaElim,  MonoNative)(sig)
           callProver0(prover, problem, translatedProblem union auxDefs, translatedSig, TFF, timeout, extraArgs)
         } catch {
           case e: Exception =>

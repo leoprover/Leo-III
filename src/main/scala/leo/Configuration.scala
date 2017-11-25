@@ -164,7 +164,18 @@ object Configuration extends DefaultConfiguration {
       }
     } else DEFAULT_SUBSUMPTIONMETHOD
   }
-
+  import leo.modules.encoding.LambdaElimStrategy
+  lazy val LAMBDA_ELIM_STRATEGY: LambdaElimStrategy = {
+    import leo.modules.encoding.{LambdaElimStrategy_SKI, LambdaElimStrategy_LambdaLifting}
+    if (isSet("lambda-elim")) {
+      val method = valueOf("lambda-elim").get.head
+      method match {
+        case "lambda-lifting" => LambdaElimStrategy_LambdaLifting
+        case "ski" => LambdaElimStrategy_SKI
+        case _ => LambdaElimStrategy_SKI
+      }
+    } else LambdaElimStrategy_SKI
+  }
   lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE) || !DEFAULT_CHOICE
   lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
 
