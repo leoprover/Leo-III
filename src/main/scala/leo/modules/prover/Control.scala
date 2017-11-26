@@ -2139,7 +2139,8 @@ package inferenceControl {
 
             val res0 = Term.mkTypeApp(rewrittenHd, tyArgs)
             Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)))
-          case ty :::> body => Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
+          case ty :::> body => term //Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
+            // FIXME: Rewriting under lambda? What can go wrong? See SYO532^1.p
           case _ => term
         }
       }
