@@ -176,7 +176,7 @@ tptp_input          : annotated_formula | include;
 // <include>              ::= include(<file_name><formula_selection>).
 // <formula_selection>    ::= ,[<name_list>] | <null>
 // <name_list>            ::= <name> | <name>,<name_list>
-include : 'include(' file_name formula_selection? ').';
+include : 'include' '(' file_name formula_selection? ')' '.';
 formula_selection: ',' '['  name (',' name)* ']';
 
 // %----General purpose
@@ -223,10 +223,10 @@ file_name : Single_quoted;
 // <formula_role>         ::= <lower_word>
 annotated_formula : thf_annotated | tff_annotated | fof_annotated | cnf_annotated;
                 // tcf_annotated | tpi_annotated;
-thf_annotated  : 'thf(' name ',' formula_role ',' thf_formula annotations? ').';
-tff_annotated  : 'tff(' name ',' formula_role ',' tff_formula annotations? ').';
-fof_annotated  : 'fof(' name ',' formula_role ',' fof_formula annotations? ').';
-cnf_annotated  : 'cnf(' name ',' formula_role ',' cnf_formula annotations? ').';
+thf_annotated  : 'thf' '(' name ',' formula_role ',' thf_formula annotations? ')' '.';
+tff_annotated  : 'tff' '(' name ',' formula_role ',' tff_formula annotations? ')' '.';
+fof_annotated  : 'fof' '(' name ',' formula_role ',' fof_formula annotations? ')' '.';
+cnf_annotated  : 'cnf' '(' name ',' formula_role ',' cnf_formula annotations? ')' '.';
 
 annotations : ',' source optional_info?;
 formula_role : Lower_word;
