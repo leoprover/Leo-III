@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import subprocess
+import tempfile
+
+
+def is_valid_and_executable_file(parser, arg):
+    if not os.path.isfile(arg):
+        parser.error("'%s' does not exist or is not a file." % arg)
+    else:
+        return os.path.abspath(arg)
+
+parser = argparse.ArgumentParser(description='Hello.')
+parser.add_argument('File', metavar='File',
+                    type=lambda x: is_valid_and_executable_file(parser, x),
+                    help='The CSV file from starexec.')
+
+args = parser.parse_args()
+
+
+# problem -> Maybe (solver,[config])
+# solver -> (problem -> [config])
+
+solved = ["Theorem", "ContradictoryAxioms"]
+def isSolved(result):
+  return result in solved
+
+inputFile = args.File
+resultsToSolver = {}
+solverToResults = {}
+
+with open(inputFile,'r') as f:
+  for line in f:
+      line = line.rstrip()
+      if not line: continue
+      values = line.split(',')
+      problem = values[1]
+      prover = values[3]
+      config = values[5]
+      status = values[11]
+      if (isSolved(status)):
+        if(problem in resultsToSolver): ##remove if not unique
+          if (resultsToSolver[problem] != None):
+            (proverEntry,configEntry) = resultsToSolver[problem]
+            if proverEntry == prover:
+              solverToResults[proverEntry][problem].append(config)
+            else:
+              resultsToSolver[problem] = None
+              del solverToResults[proverEntry][problem]
+        else: ##add to potentially unique
+          resultsToSolver[problem] = (prover, [config])
+          if (prover in solverToResults):
+            oldEntry = solverToResults[prover]
+            if (problem in oldEntry):
+              raise ValueError("1")
+            else:
+              oldEntry[problem] = [config]
+          else:
+            solverToResults[prover] = {problem: [config]}
+            
+for solver, problems in solverToResults.items():
+  print solver + ":"
+  print problems.keys()
+
