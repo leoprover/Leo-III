@@ -47,6 +47,10 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_PAR_SCHED = "parSched"
   private val PARAM_CONCURRENT_TRANSLATE = "encode-threaded"
   private val PARAM_GUIDED = "guided"
+  final val PARAM_MODAL_SYSTEM = "assume-modal-system"
+  final val PARAM_MODAL_DOMAIN = "assume-modal-domains"
+  final val PARAM_MODAL_RIGIDITY = "assume-modal-rigidity"
+  final val PARAM_MODAL_CONSEQUENCE = "asumme-modal-consequence"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
@@ -290,6 +294,10 @@ object Configuration extends DefaultConfiguration {
 
   lazy val CONCURRENT_TRANSLATE : Boolean = isSet(PARAM_CONCURRENT_TRANSLATE)
 
+  lazy val MODAL_SYSTEM = if (isSet(PARAM_MODAL_SYSTEM)) valueOf(PARAM_MODAL_SYSTEM).get.head else DEFAULT_MODALSYSTEM
+  lazy val MODAL_DOMAIN = if (isSet(PARAM_MODAL_DOMAIN)) valueOf(PARAM_MODAL_DOMAIN).get.head else DEFAULT_MODALDOMAIN
+  lazy val MODAL_RIGIDITY = if (isSet(PARAM_MODAL_RIGIDITY)) valueOf(PARAM_MODAL_RIGIDITY).get.head else DEFAULT_MODALRIGIDITY
+  lazy val MODAL_CONSEQUENCE = if (isSet(PARAM_MODAL_CONSEQUENCE)) valueOf(PARAM_MODAL_CONSEQUENCE).get.head else DEFAULT_MODALCONSEQUENCE
 
   final val CAPS: String =
     """
@@ -458,4 +466,9 @@ trait DefaultConfiguration {
   val DEFAULT_RENAMING = true
   val DEFAULT_FUNCSPEC = false
   val DEFAULT_DOMCONSTR = 0
+
+  val DEFAULT_MODALSYSTEM = "S5"
+  val DEFAULT_MODALDOMAIN = "constant"
+  val DEFAULT_MODALRIGIDITY = "rigid"
+  val DEFAULT_MODALCONSEQUENCE = "global"
 }

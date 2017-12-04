@@ -1,7 +1,7 @@
 package leo
 
 import leo.modules._
-import leo.modules.output.{SZS_Forced, SZS_Error, SZS_MemoryOut}
+import leo.modules.output.{SZS_Error, SZS_Forced, SZS_MemoryOut}
 import leo.modules.parsers.{CLParameterParser, Input}
 
 /**
@@ -53,13 +53,34 @@ object Main {
         val maybeLogicSpecification = problem0.find(_.role == "logic")
         val problem = if (maybeLogicSpecification.isDefined) {
           import transformation.{Wrappers => ModalProcessing}
+          import java.util.logging
           val spec = maybeLogicSpecification.get
           assert(spec.function_symbols.contains("$modal"), "Non-classical logics other than modal logic not supported yet.")
-          Out.info("Input problem is modal. Running modal-to-HOL transformation ...")
+          Out.info("Input problem is modal. Running modal-to-HOL transformation from semantics specification contained in the problem file ...")
+          logging.Logger.getLogger("default").setLevel(logging.Level.WARNING)
           val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE))
           Input.parseProblem(result)
         } else {
-          problem0
+          val symbolsInProblem = problem0.flatMap(_.function_symbols).toSet
+          val boxSymbol = "$box"; val diamondSymbol = "$dia"
+          if (symbolsInProblem.contains(boxSymbol) || symbolsInProblem.contains(diamondSymbol)) {
+            import transformation.{Wrappers => ModalProcessing, SemanticsGenerator => ModalSemantics}
+            import java.util.logging
+            Out.info("Input problem is modal. Running modal-to-HOL transformation from externally provided semantics specification ...")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_SYSTEM)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALSYSTEM}.")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_DOMAIN)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALDOMAIN}.")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_RIGIDITY)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALRIGIDITY}.")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_CONSEQUENCE)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALCONSEQUENCE}.")
+            logging.Logger.getLogger("default").setLevel(logging.Level.WARNING)
+            val modalSystem = ModalSemantics.systemCommonNameToInt(Configuration.MODAL_SYSTEM)
+            val modalDomain = ModalSemantics.domainCommonNameToInt(Configuration.MODAL_DOMAIN)
+            val modalRigidity = ModalSemantics.rigidityCommonNameToInt(Configuration.MODAL_RIGIDITY)
+            val modalConsequence = ModalSemantics.consequenceCommonNameToInt(Configuration.MODAL_CONSEQUENCE)
+            val semanticsSpecification = ModalSemantics.semanticsToTPTPSpecification(modalSystem, modalDomain, modalRigidity, modalConsequence)
+            val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE),
+              null, null, null, semanticsSpecification)
+            Input.parseProblem(result)
+          } else problem0
         }
         // Functionality calls
         if (Configuration.isSet("seq")) {
