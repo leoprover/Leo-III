@@ -68,9 +68,9 @@ object Main {
             import java.util.logging
             Out.info("Input problem is modal. Running modal-to-HOL transformation from externally provided semantics specification ...")
             if (!Configuration.isSet(Configuration.PARAM_MODAL_SYSTEM)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALSYSTEM}.")
-            if (!Configuration.isSet(Configuration.PARAM_MODAL_DOMAIN)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALDOMAIN}.")
-            if (!Configuration.isSet(Configuration.PARAM_MODAL_RIGIDITY)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALRIGIDITY}.")
-            if (!Configuration.isSet(Configuration.PARAM_MODAL_CONSEQUENCE)) Out.info(s"No modal system specified. Using default: ${Configuration.DEFAULT_MODALCONSEQUENCE}.")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_DOMAIN)) Out.info(s"No modal quantification semantics specified. Using default: ${Configuration.DEFAULT_MODALDOMAIN}.")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_RIGIDITY)) Out.info(s"No modal rigidity specified. Using default: ${Configuration.DEFAULT_MODALRIGIDITY}.")
+            if (!Configuration.isSet(Configuration.PARAM_MODAL_CONSEQUENCE)) Out.info(s"No modal consequence specified. Using default: ${Configuration.DEFAULT_MODALCONSEQUENCE}.")
             logging.Logger.getLogger("default").setLevel(logging.Level.WARNING)
             val modalSystem = ModalSemantics.systemCommonNameToInt(Configuration.MODAL_SYSTEM)
             val modalDomain = ModalSemantics.domainCommonNameToInt(Configuration.MODAL_DOMAIN)

@@ -50,7 +50,7 @@ object Configuration extends DefaultConfiguration {
   final val PARAM_MODAL_SYSTEM = "assume-modal-system"
   final val PARAM_MODAL_DOMAIN = "assume-modal-domains"
   final val PARAM_MODAL_RIGIDITY = "assume-modal-rigidity"
-  final val PARAM_MODAL_CONSEQUENCE = "asumme-modal-consequence"
+  final val PARAM_MODAL_CONSEQUENCE = "assume-modal-consequence"
 
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
