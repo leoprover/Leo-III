@@ -132,22 +132,24 @@ package object calculus {
     aterm.etaExpand
   }
 
-  final def normalizeType(ty: Type, tyFVCount: Int): Type = {
-    import leo.datastructures.Type.BoundType
-    import leo.datastructures.Subst
-    val tyVars = ty.typeVars.map(BoundType.unapply(_).get).toSeq.sorted
-    val maxTyVar = if (tyVars.isEmpty) 0 else tyVars.max
-    val tyVarCount = tyVars.size
-    if (tyVarCount == maxTyVar || maxTyVar <= tyFVCount) ty
+  /**
+    *
+    */
+  final def normalizeType(ty: Type, tyFVs: Seq[Int]): Type = {
+    if (tyFVs.isEmpty) ty
     else {
-      val help = tyVars.zipWithIndex.map {case (vari,idx) => (vari,idx+1)}
-      val subst = Subst.fromShiftingSeq(help)
-      ty.substitute(subst)
+      val tyFVs0 = tyFVs.distinct.sortWith {case (a,b) => a > b}
+      if (tyFVs0.head == tyFVs0.size) ty
+      else {
+        val newTyFvs = Seq.range(tyFVs0.size, 0, -1)
+        val tySubst = Subst.fromShiftingSeq(tyFVs.zip(newTyFvs))
+        ty.substitute(tySubst)
+      }
     }
   }
 
   final def skTerm(goalTy: Type, fvs: Seq[(Int, Type)], tyFvs: Seq[Int])(implicit sig: Signature): Term = {
-    val funTy = normalizeType(Type.mkFunType(fvs.map(_._2), goalTy), tyFvs.size)
+    val funTy = normalizeType(Type.mkFunType(fvs.map(_._2), goalTy), tyFvs)
     val ty = mkPolyTyAbstractionType(tyFvs.size,funTy)
     assert(ty.typeVars.isEmpty,
       s"SK symbol type has free type vars:\n" +
