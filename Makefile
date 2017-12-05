@@ -1,4 +1,4 @@
-DESTDIR ?= $(HOME)/bin/
+DESTDIR ?= $(HOME)/bin
 JAVADIR ?= java/
 CC=gcc
 CONTRIB=./contrib
@@ -11,8 +11,6 @@ TreeLimitedRun: $(CONTRIB)/TreeLimitedRun.c
 all: TreeLimitedRun
 		@echo Compiling auxiliary scripts ...
 		mv TreeLimitedRun ./src/main/resources/scripts/.
-		@echo Unpacking picosat ...
-		tar -C ./src/native -xzf contrib/picosat-965.tar.gz
 		@echo Building Leo-III ...
 		sbt assembly
 		mkdir bin -p
