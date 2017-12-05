@@ -1,8 +1,8 @@
-Leo-III 1.1
+Leo-III 1.2
 ========
 *An automated theorem prover for classical higher-order logic (with choice)*
 
-Leo-III [SWB16] is an automated theorem prover for (polymorphic) higher-order logic which supports all common TPTP dialects, including THF, TFF and FOF as well as their rank-1 polymorphic derivatives. 
+Leo-III [SWB16] is an automated theorem prover for (polymorphic) higher-order logic which supports all common TPTP dialects, including THF, TFF and FOF as well as their rank-1 polymorphic derivatives [SWB17]. 
 It is based on a paramodulation calculus with ordering constraints and, in tradition of its predecessor LEO-II [BP15], heavily relies on cooperation with external (mostly first-order) theorem provers for increased performance. Nevertheless, Leo-III can also be used as a stand-alone prover without employing any external cooperation.
 
 Leo-III is developed at Freie Universität Berlin as part of the German National Research Foundation (DFG) project BE 2501/11-1. The main contributors are (sorted alphabetically): Christoph Benzmüller, Tomer Libal, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
@@ -18,11 +18,13 @@ Leo-III requires the Java 1.8 Runtime (JRE) for execution. Leo-III works on any 
 
 #### Using pre-built binaries (Linux)
 
-A current release of Leo-III 1.1 can be downloaded from GitHub:
+A current release of Leo-III 1.2 can be downloaded from GitHub:
 
-> https://github.com/cbenzmueller/Leo-III/releases/download/v1.1b/leo3.jar
+> https://github.com/leoprover/Leo-III/releases/download/v1.2/leo3.jar
 
 Note that this binary was built on a Debian-based system and might not work for all Linux derivatives.
+If the pre-build does not work for you, consider building Leo-III from source. Its simple and 
+only takes a minute or two (see below).
 
 #### Requirements for building from source
 
@@ -35,15 +37,16 @@ The following requirements (dependencies) are not managed by the SBT build tool 
 #### Building the project from source
 
 Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SBT will download an appropriate version of Scala (and further dependencies) automatically. The actual build process in wrapped inside a `Makefile`. 
+Proceed as follows to build Leo-III from source:
 
 1) Download the source distribution and unpack the archive
     ```Shell
-    > wget https://github.com/cbenzmueller/Leo-III/archive/v1.1b.tar.gz
-    > tar -xzf Leo-III-1.1.tar.gz
+    > wget https://github.com/leoprover/Leo-III/archive/v1.2.tar.gz
+    > tar -xzf Leo-III-1.2.tar.gz
     ```
 2) Step into the newly created directory and run `make`
    ```Shell
-   > cd Leo-III-1.1/
+   > cd Leo-III-1.2/
    > make
    ```
    The building process might take some time, depending on your computer.
@@ -51,10 +54,17 @@ Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SB
    ```Shell
    > cd bin/
    > ls
-   leo leo3.jar
+   leo3 leo3.jar
    ```
    where `leo3.jar` is the executable jar of Leo-III. The `leo3` file is just a bash
-   script short-cut calling `java -jar leo3.jar`. Note that `leo3` assumes that the      jar files resides in the same directory as the script itself.
+   script short-cut calling `java -jar leo3.jar` with further technical parameters.
+   Note that `leo3` assumes that the jar file resides in the same directory as the script itself.
+4) (*Optional*) Install (i.e. copy) the Leo-III binaries to a dedicated location using
+   ```Shell
+   > make install
+   ```
+   The default install destination is `$HOME/bin`. This will install the jar as well as the
+   leo3 executable there. The install destination can be modified using the `DESTDIR` modifier.
    
    Another possibility is to move the jar file somewhere (say `path/to/leo3.jar`)      and to define an alias
    ```alias leo3='java -jar /path/to/leo3.jar'```.
@@ -68,7 +78,7 @@ We support using [Nix](https://nixos.org) for creating a reliable and reproducib
 
 #### Basics
 
-Leo-III is invoked via command-line (*assuming the leo3 bash script is in your current directory or you defined a leo3 alias as described above*):
+Leo-III is invoked via command-line (*assuming the leo3 executable is in your path, your current directory or you defined a leo3 alias as described above*):
 ```Shell
 > ./leo3
 Leo III -- A Higher-Order Theorem Prover.
@@ -85,11 +95,11 @@ A call to a problem `someproblem.p`, assumed to be located at the current direct
 > ./leo someproblem.p
 % SZS status Theorem for someproblem.p : 3651 ms resp. 1253 ms w/o parsing
 ```
-Of course, depending on the problem, Leo-III could also output `Timeout`, `Unknown`, `SyntaxError` and others, according to the [SZS status ontology](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology) [Sut08]
+Of course, depending on the problem, Leo-III could also output `Timeout`, `Unknown`, `SyntaxError` and others, according to the [SZS status ontology](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology) [Sut08].
 
 ##### Important parameters
 
-Parameters are passed *after* the problem file and without an equality sign "=", if used with parameter value: `./leo3 problem -param1 -param2 10`
+Parameters are passed *after* the problem file path without an equality sign "=", if used with parameter value: `./leo3 problem -param1 -param2 10`
 
 The most important parameters are
 
@@ -112,7 +122,7 @@ export TPTP=/path/to/TPTP
 ```
 If this environment variable is set, Leo-III will automatically resolve TPTP axioms.
 
-#### Examples 1
+#### Example
 
 Let's solve the TPTP problem `SET014^4.p` (see [here](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Problems&Domain=SET&File=SET014^4.p)) with a timeout of 60 seconds and proof output:
 
@@ -167,6 +177,67 @@ to the call. Similar for the remaining provers. If the executables of the respec
 ./leo3 PROBLEM --atp cvc4
 ```
 
+## Modal logic reasoning
+
+As of version 1.2, Leo-III supports reasoning in higher-order quantified (multi) modal logic.
+Leo-III makes use of a semantical embedding approach [GSB17] and automatically embeds modal input problems
+into corresponding HOL problems. No further tool or pre-processor is required.
+
+### Modal Problem Syntax
+
+Leo-III supports TPTP THF problem syntax augmented with modalities as sketched in the corresponding
+[TPTP proposal](http://www.cs.miami.edu/~tptp/TPTP/Proposals/LogicSpecification.html). Hence,
+problems containing `$box` or `$dia` are interpreted as modal logic problems.
+
+An appropriate modal logic semantics is specified using the proposed logic specification syntax.
+An input problem may contain a `logic` statement, for example
+```
+thf(modal_s5_standard,logic,(
+    $modal :=
+        [ $constants := $rigid,
+          $quantification := $constant,
+          $consequence := $global,
+          $modalities := $modal_system_S5 ] )).
+... (axioms or conjecture) ...
+```
+
+### Modal semantics parameters
+If a problem uses modal logic connectives (i.e. `$box` or `$dia`) but does not specify
+the modal logic using the above statement, you can pass modal logic semantic settings to Leo-III
+directly using the following command-line-parameters:
+
+| Parameter flag  | Effect |
+| ------------- | ------------- |
+| --assume-modal-system `system` | Use the modal logic `system` <br><br> Default: S5<br>Valid values: K, T, D, S4, S5 |
+| --assume-modal-domains `domains` | Use the `domains` quantification semantics <br><br> Default value: constant<br>Valid values: constant, cumulative, decreasing, varying|
+| --assume-modal-rigidity `rigidity` | Use `rigidity` constant symbols. <br><br> Default: rigid <br> Valid values: rigid, flexible|
+| --assume-modal-consequence `consequence` | Use `consequence` as underlying consequence relation. <br><br> Default: global<br>Valid values: global, local |
+
+Note that these parameters cannot (currently) be used to override the logic specification contained
+in the problem (if existent).
+
+### Example
+The following simple problem can easily solved by Leo-III:
+
+```
+thf(simple_b, logic, ( $modal := [
+    $constants := $rigid ,
+    $quantification := $constant ,
+    $consequence := $global ,
+    $modalities := $modal_system_S5 ] ) ).
+
+
+thf(axiom_B, conjecture, ( ![A:$o]: ( A => ( $box @ ( $dia @ A ) ) ) )).
+```
+
+The output generated by Leo-III is:
+
+```
+% [INFO] Input problem is modal. Running modal-to-HOL transformation from semantics specification contained in the problem file ... 
+[...]
+% SZS status Theorem for modal_problem.p : 2109 ms resp. 674 ms w/o parsing
+```
+
 ## Further information
 Leo-III is licenced under the BSD 3-clause "New" or "Revised" License, see `LICENCE` in the source distribution.
 
@@ -186,7 +257,11 @@ We are always greateful to hear feedback from our users:
 
 [BSW17] Christoph Benzmüller, Alexander Steen, Max Wisniewski Leo-III Version 1.1 (System description), In Thomas Eiter, David Sands, Geoff Sutcliffe and Andrei Voronkov (Eds.), IWIL Workshop and LPAR Short Presentations, EasyChair, Kalpa Publications in Computing, Volume 1, pp. 11-26, 2017.
 
-[SWB16] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Agent-Based HOL 		Reasoning. In 5th International Congress on Mathematical Software, ICMS 2016, Berlin, Germany, July 2016, Proceedings, Springer, LNCS, volume 9725. 2016.
+[GSB17] Tobias Gleißner, Alexander Steen, Christoph Benzmüller, Theorem Provers for Every Normal Modal Logic. In LPAR-21. 21st International Conference on Logic for Programming, Artificial Intelligence and Reasoning (Thomas Eiter, David Sands, eds.), EasyChair, EPiC Series in Computing, volume 46, pp. 14-30, 2017.
+
+[SWB16] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Agent-Based HOL Reasoning. In 5th International Congress on Mathematical Software, ICMS 2016, Berlin, Germany, July 2016, Proceedings, Springer, LNCS, volume 9725. 2016.
+
+[SWB17] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Going Polymorphic - TH1 Reasoning for Leo-III. In IWIL@LPAR 2017 Workshop and LPAR-21 Short Presentations, Maun, Botswana, May 7-12, 2017 (Thomas Eiter, David Sands, Geoff Sutcliffe, Andrei Voronkov, eds.), EasyChair, Kalpa Publications in Computing, volume 1, 2017.
 
 [Sut08] Sutcliffe G. (2008), The SZS Ontologies for Automated Reasoning Software, 
     Rudnicki P., Sutcliffe G., Proceedings of the LPAR Workshops: Knowledge 
