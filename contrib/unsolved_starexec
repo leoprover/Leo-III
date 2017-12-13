@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import subprocess
+import tempfile
+
+
+def is_valid_file(parser, arg):
+    if not os.path.isfile(arg):
+        parser.error("'%s' does not exist or is not a file." % arg)
+    else:
+        return os.path.abspath(arg)
+
+parser = argparse.ArgumentParser(description='Print (number of) unsolved problems in benchmark data.')
+parser.add_argument('File', metavar='<Benchmark file>',
+                    type=lambda x: is_valid_file(parser, x),
+                    help='The CSV benchmark result file from starexec.')
+parser.add_argument('Unsolved', metavar='<Unsolved file>',
+                    type=lambda x: is_valid_file(parser, x),
+                    help='The new-line separated file of unsolved problems (without .p).')
+parser.add_argument('-v', action="store_true",
+                    help='Also print the names of the problems.')
+                    
+args = parser.parse_args()
+
+
+solved = ["Theorem", "ContradictoryAxioms"]
+def isSolved(result):
+  return result in solved
+
+def problemName(input):
+  withoutSuffix = input[:-2]
+  components = withoutSuffix.split('/')
+  return components[len(components)-1]
+
+inputFile = args.File
+uniqueFile = args.Unsolved
+verbose = args.v
+
+unsolvedProblems = []
+solutions = {} ## prover -> config -> [solved]
+
+with open(uniqueFile,'r') as f:
+  for line in f:
+      line = line.rstrip()
+      if not line: continue
+      unsolvedProblems.append(line)
+
+print "#Unsolved problems: " + str(len(unsolvedProblems))
+
+with open(inputFile,'r') as f:
+  for line in f:
+      line = line.rstrip()
+      if not line: continue
+      values = line.split(',')
+      problem = values[1]
+      prover = values[3]
+      config = values[5]
+      status = values[11]
+      if (isSolved(status) and problemName(problem) in unsolvedProblems):
+        if (prover in solutions):
+          entry = solutions[prover]
+          if (config in entry):
+            entry2 = entry[config]
+            if (not (problemName(problem) in entry2)):
+              entry2.append(problemName(problem))
+          else:
+            entry[config] = [problemName(problem)]
+        else:
+            solutions[prover] = {config: [problemName(problem)]}
+
+print "############################################################################"
+for solver, entry in solutions.items():
+  for config, solutions in entry.items():
+    print "Solver: " + solver + "\tConfig: " + config
+    print "#Unsolved: " + str(len(solutions))
+    if (verbose):
+      print "Problems: " + str(solutions)
+    print "############################################################################"
+
