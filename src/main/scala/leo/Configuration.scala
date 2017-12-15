@@ -23,8 +23,6 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_TIMEOUT = "t"
   private val PARAM_PROOFOBJECT = "p"
   private val PARAM_HELP = "h"
-  private val PARAM_COUNTERSAT = "c"
-  private val PARAM_SOS_SHORT = "s"
   private val PARAM_SOS_LONG = "sos"
   private val PARAM_UNIFICATIONDEPTH = "unidepth"
   private val PARAM_UNIFIERCOUNT = "unifiers"
@@ -82,7 +80,6 @@ object Configuration extends DefaultConfiguration {
       TIMEOUT
       PROOF_OBJECT
       VERBOSITY
-      COUNTER_SAT
       SOS
       ATPS
       HELP
@@ -183,7 +180,7 @@ object Configuration extends DefaultConfiguration {
   lazy val NO_CHOICE: Boolean = isSet(PARAM_NOCHOICE) || !DEFAULT_CHOICE
   lazy val NO_AXIOM_SELECTION: Boolean = isSet(PARAM_NOAXIOMSELECTION)
 
-  lazy val SOS: Boolean = isSet(PARAM_SOS_LONG) || isSet(PARAM_SOS_SHORT)
+  lazy val SOS: Boolean = isSet(PARAM_SOS_LONG)
 
   lazy val RESTRICT_UNI_ATTEMPTS: Boolean = {
     if (isSet(PARAM_RESTRICTUNIATTEMPTS)) {
@@ -196,7 +193,6 @@ object Configuration extends DefaultConfiguration {
     } else Configuration.DEFAULT_RESTRICTUNIATTEMPTS
   }
 
-  lazy val COUNTER_SAT : Boolean = isSet(PARAM_COUNTERSAT)
   lazy val CONSISTENCY_CHECK: Boolean = isSet(PARAM_CONSISTENCYCHECK)
 
   lazy val TERM_ORDERING: TermOrdering = {
@@ -215,7 +211,16 @@ object Configuration extends DefaultConfiguration {
   import leo.datastructures.Precedence
   lazy val PRECEDENCE: Precedence = Precedence().arity
 
-  lazy val RENAMING_SET : Boolean = isSet(RENAMING) || DEFAULT_RENAMING
+  lazy val RENAMING_SET : Boolean = {
+    if (isSet(RENAMING)) {
+      val input = valueOf(RENAMING).get.head
+      input match {
+        case "true" => true
+        case "false" => false
+        case _ => DEFAULT_RENAMING
+      }
+    } else DEFAULT_RENAMING
+  }
   lazy val RENAMING_THRESHHOLD : Int = valueOf(RENAMING).fold(0)(_.headOption.fold(0)(_.toInt))
   lazy val EXTRACTION_TYPE: Int = uniqueIntFor(EXTRACTION_TYPE_PARAM, 1)
 
@@ -294,10 +299,10 @@ object Configuration extends DefaultConfiguration {
 
   lazy val CONCURRENT_TRANSLATE : Boolean = isSet(PARAM_CONCURRENT_TRANSLATE)
 
-  lazy val MODAL_SYSTEM = if (isSet(PARAM_MODAL_SYSTEM)) valueOf(PARAM_MODAL_SYSTEM).get.head else DEFAULT_MODALSYSTEM
-  lazy val MODAL_DOMAIN = if (isSet(PARAM_MODAL_DOMAIN)) valueOf(PARAM_MODAL_DOMAIN).get.head else DEFAULT_MODALDOMAIN
-  lazy val MODAL_RIGIDITY = if (isSet(PARAM_MODAL_RIGIDITY)) valueOf(PARAM_MODAL_RIGIDITY).get.head else DEFAULT_MODALRIGIDITY
-  lazy val MODAL_CONSEQUENCE = if (isSet(PARAM_MODAL_CONSEQUENCE)) valueOf(PARAM_MODAL_CONSEQUENCE).get.head else DEFAULT_MODALCONSEQUENCE
+  lazy val MODAL_SYSTEM: String = if (isSet(PARAM_MODAL_SYSTEM)) valueOf(PARAM_MODAL_SYSTEM).get.head else DEFAULT_MODALSYSTEM
+  lazy val MODAL_DOMAIN: String = if (isSet(PARAM_MODAL_DOMAIN)) valueOf(PARAM_MODAL_DOMAIN).get.head else DEFAULT_MODALDOMAIN
+  lazy val MODAL_RIGIDITY: String = if (isSet(PARAM_MODAL_RIGIDITY)) valueOf(PARAM_MODAL_RIGIDITY).get.head else DEFAULT_MODALRIGIDITY
+  lazy val MODAL_CONSEQUENCE: String = if (isSet(PARAM_MODAL_CONSEQUENCE)) valueOf(PARAM_MODAL_CONSEQUENCE).get.head else DEFAULT_MODALCONSEQUENCE
 
   final val CAPS: String =
     """
