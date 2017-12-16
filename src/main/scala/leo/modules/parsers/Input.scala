@@ -68,7 +68,7 @@ object Input {
     * @return The sequence of annotated TPTP formulae.
     */
   def parseProblemFile(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
-    val canonicalFile = canonicalPath(file)
+    val canonicalFile = if (file == "-") canonicalPath(".") else canonicalPath(file) // to allow inputs from CWD if file is stdin
     if (!assumeRead.contains(canonicalFile)) {
       val p: Commons.TPTPInput = parseProblemFileShallow(file)
       val includes = p.getIncludes
@@ -300,6 +300,8 @@ object Input {
       } else {
         Paths.get(path)
       }
+    } else if (path == "-") {
+      Paths.get(path)
     } else {
       Paths.get(path).toAbsolutePath.normalize()
     }
@@ -313,7 +315,9 @@ object Input {
       val url = new URL(absolutePath.toString.replaceFirst(":/","://"))
       new BufferedReader(new InputStreamReader(url.openStream()))
     } else {
-      if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
+      if (absolutePath.toString == "-") {
+        new BufferedReader(new InputStreamReader(System.in))
+      } else if (!Files.exists(absolutePath)) { // It either does not exist or we cant access it
         throw new SZSException(SZS_InputError, s"The file ${absolutePath.toString} does not exist or cannot be read.")
       } else {
         Files.newBufferedReader(absolutePath)
