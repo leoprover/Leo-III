@@ -385,6 +385,7 @@ object SeqLoop {
         import leo.datastructures.ClauseAnnotation.FromFile
         val proofAx = axiomsInProof(proof)
         Out.comment(s"Axioms used in derivation (${proofAx.size}): ${proofAx.map(_.annotation.asInstanceOf[FromFile].formulaName).mkString(", ")}")
+        Out.comment(s"No. of inferences in proof: ${proof.size}")
       } catch {
         case _:Exception => ()
       }
