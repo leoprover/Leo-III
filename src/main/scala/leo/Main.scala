@@ -32,8 +32,12 @@ object Main {
           Configuration.help()
           return
       }
-      if (Configuration.PROBLEMFILE == "--caps") {
+      if (Configuration.PROBLEMFILE == "--caps") { // FIXME: Hacky, redo argument reading
         println(Configuration.CAPS)
+        return
+      }
+      if (Configuration.PROBLEMFILE == "--version") { // FIXME: Hacky, redo argument reading
+        println(s"Leo-III ${Configuration.VERSION}")
         return
       }
       if (Configuration.HELP || Configuration.PROBLEMFILE == "-h") { // FIXME: Hacky, redo argument reading
