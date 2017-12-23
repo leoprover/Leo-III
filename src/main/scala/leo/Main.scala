@@ -36,11 +36,13 @@ object Main {
         println(Configuration.CAPS)
         return
       }
-      if (Configuration.PROBLEMFILE == "--version") { // FIXME: Hacky, redo argument reading
+      if (Configuration.PROBLEMFILE == s"--${Configuration.PARAM_VERSION}") { // FIXME: Hacky, redo argument reading
         println(s"Leo-III ${Configuration.VERSION}")
         return
       }
-      if (Configuration.HELP || Configuration.PROBLEMFILE == "-h") { // FIXME: Hacky, redo argument reading
+      if (Configuration.HELP ||
+        Configuration.PROBLEMFILE == s"-${Configuration.PARAM_HELP}" ||
+        Configuration.PROBLEMFILE == s"--${Configuration.PARAM_USAGE}") { // FIXME: Hacky, redo argument reading
         Configuration.help()
         return
       }
