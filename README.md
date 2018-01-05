@@ -12,7 +12,7 @@ Leo-III is developed at Freie Universität Berlin as part of the German National
 See [INSTALL.md](INSTALL.md)
 
 ## Usage
-See ![USAGE.md](USAGE.md)
+See [USAGE.md](USAGE.md)
 
 
 ## Further information
