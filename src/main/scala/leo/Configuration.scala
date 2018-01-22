@@ -22,7 +22,9 @@ object Configuration extends DefaultConfiguration {
   private val PARAM_VERBOSITY = "v"
   private val PARAM_TIMEOUT = "t"
   private val PARAM_PROOFOBJECT = "p"
-  private val PARAM_HELP = "h"
+  final val PARAM_HELP = "h"
+  final val PARAM_USAGE = "usage"
+  final val PARAM_VERSION = "version"
   private val PARAM_SOS_LONG = "sos"
   private val PARAM_UNIFICATIONDEPTH = "unidepth"
   private val PARAM_UNIFIERCOUNT = "unifiers"
@@ -53,16 +55,15 @@ object Configuration extends DefaultConfiguration {
   // Collect standard options for nice output: short-option -> (long option, argname, description)
   private val optionsMap : Map[Char, (String, String, String)] = {
     Map(
-      'h' -> ("", "", "Display this help message"),
-      'n' -> ("", "N", "Maximum number of threads"),
-      'p' -> ("", "", "Display proof output"),
-      't' -> ("", "N", "Timeout in seconds"),
-      'v' -> ("", "Lvl", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output)"),
-      'c' -> ("", "Csat", "Sets the proof mode to counter satisfiable (Through remote proof"),
-      's' -> ("sos", "", "Use SOS heuristic search strategy"),
-      'a' -> ("atp", "name=call", "Addition of external provers"),
+    //'n' -> ("", "N", "Maximum number of threads"),
+      't' -> ("", "<timeout>", "Timeout in seconds (default: 60)"),
+      'p' -> ("", "", "Display proof output (default: false)"),
+      's' -> ("sos", "", "Enable set-of-support search strategy (default: false)"),
+      'a' -> ("atp", "name=call", "Addition of external provers (default: none)"),
       'e' -> ("atp-timout", "name=N", "Timeout for an external prover in seconds."),
-      'x' -> ("atp-args", "name=\"args\"", "Arguments directly passed to the external prover.")
+      'x' -> ("atp-args", "name=\"args\"", "Arguments directly passed to the external prover."),
+      'v' -> ("", "<level>", "Set verbosity: From 0 (No Logging output) to 6 (very fine-grained debug output), default: 2"),
+      'h' -> ("usage", "", "Display this help message")
     )
   }
 
@@ -76,8 +77,6 @@ object Configuration extends DefaultConfiguration {
       }
       // Force computation of lazy values for early error output
       PROBLEMFILE
-      THREADCOUNT
-      TIMEOUT
       PROOF_OBJECT
       VERBOSITY
       SOS
@@ -99,7 +98,7 @@ object Configuration extends DefaultConfiguration {
   //////////////////////////
   def isInit: Boolean = configMap != null
 
-  final val VERSION: String = "1.1"
+  final val VERSION: String = "1.2"
   final val LEODIR_NAME: String = "leo3"
   final lazy val LEODIR: Path = {
     val dir = Files.createTempDirectory(LEODIR_NAME)
@@ -347,7 +346,7 @@ object Configuration extends DefaultConfiguration {
     val sb = StringBuilder.newBuilder
     sb.append("Leo III -- A Higher-Order Theorem Prover.\n")
     sb.append("Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.\n\n")
-    sb.append("Usage: ... PROBLEM_FILE [OPTIONS]\n")
+    sb.append("Usage: leo3 problem [option ...]\n\n")
     sb.append("Options:\n")
     val it = optionsMap.iterator
     while (it.hasNext) {
@@ -359,7 +358,7 @@ object Configuration extends DefaultConfiguration {
       if (!entry._2._1.isEmpty) {
         sb.append(s", --${entry._2._1} ${entry._2._2}")
       }
-      sb.append(s"\t\t${entry._2._3}\n")
+      sb.append(s"\n\t${entry._2._3}\n")
     }
     sb.append("\n")
     sb.toString

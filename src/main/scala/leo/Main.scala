@@ -32,11 +32,17 @@ object Main {
           Configuration.help()
           return
       }
-      if (Configuration.PROBLEMFILE == "--caps") {
+      if (Configuration.PROBLEMFILE == "--caps") { // FIXME: Hacky, redo argument reading
         println(Configuration.CAPS)
         return
       }
-      if (Configuration.HELP || Configuration.PROBLEMFILE == "-h") { // FIXME: Hacky, redo argument reading
+      if (Configuration.PROBLEMFILE == s"--${Configuration.PARAM_VERSION}") { // FIXME: Hacky, redo argument reading
+        println(s"Leo-III ${Configuration.VERSION}")
+        return
+      }
+      if (Configuration.HELP ||
+        Configuration.PROBLEMFILE == s"-${Configuration.PARAM_HELP}" ||
+        Configuration.PROBLEMFILE == s"--${Configuration.PARAM_USAGE}") { // FIXME: Hacky, redo argument reading
         Configuration.help()
         return
       }
