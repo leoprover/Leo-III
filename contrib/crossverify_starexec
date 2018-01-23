@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import sys
+import subprocess
+import tempfile
+import pprint
+
+
+def is_valid_file(parser, arg):
+    if not os.path.isfile(arg):
+        parser.error("'%s' does not exist or is not a file." % arg)
+    else:
+        return os.path.abspath(arg)
+
+parser = argparse.ArgumentParser(description='Hello.')
+parser.add_argument('File', metavar='File',
+                    type=lambda x: is_valid_file(parser, x),
+                    help='The CSV file from starexec.')
+parser.add_argument('-g', action='store_true',
+                    help='Only check if all provers give compatible results for the same configuration.')
+
+args = parser.parse_args()
+
+
+theoremLike = {"Theorem", "ContradictoryAxioms"}
+csaLike = {"CounterSatisfiable"}
+dontknow = {"Unknown", "GaveUp", "Incomplete", "Timeout", "--", "ResourceOut"}
+
+def compatible0(result1, result2):
+  if (result1 in theoremLike):
+    return (result2 in theoremLike) or (result2 in dontknow)
+  elif (result1 in csaLike):
+    return (result2 in csaLike) or (result2 in dontknow)
+  elif (result1 in dontknow):
+    return True
+  else:
+    raise ValueError("dont know: " + result1)
+    
+def compatible(results):
+  if len(results) < 2: 
+    return True
+  else:
+    pivot = results.pop(0)
+    if all(compatible0(pivot,x) for x in results):
+      return compatible(results)
+    else:
+      return False
+
+def problemName(input):
+  withoutSuffix = input[:-2]
+  components = withoutSuffix.split('/')
+  return components[len(components)-1]
+  
+
+inputFile = args.File
+grouped = args.g
+# problem -> config -> prover -> result
+results = {}
+
+with open(inputFile,'r') as f:
+  for line in f:
+      line = line.rstrip()
+      if not line: continue
+      values = line.split(',')
+      problem = problemName(values[1])
+      prover = values[3]
+      config = values[5]
+      status = values[11]
+      
+      if (problem in results):
+        configEntry = results[problem]
+        if (config in configEntry):
+          proverEntry = configEntry[config]
+          if (prover in proverEntry):
+            raise ValueError("problem" + str(problem) + " in config " + str(config) + " for prover " + str(prover) + " already exists!")
+          else:
+            proverEntry[prover] = status
+        else:
+          configEntry[config] = {prover: status}
+      else:
+        results[problem] = {config: {prover: status}}
+        
+#print str(results)
+    
+# problem -> config -> prover -> results
+incompatible = {}  
+for problem, configEntries in results.items():
+  if grouped:
+    for config, proverEntries in configEntries.items():
+      acc = []
+      #print config
+      for x in proverEntries.values():
+        acc.append(x)
+      #print(acc)
+      
+      if not compatible(acc):
+        if (problem in incompatible):
+          configEntry = incompatible[problem]
+          if (config in configEntry):
+            raise ValueError
+          else:
+            configEntry[config] = proverEntries
+        else:
+          incompatible[problem] = {config: proverEntries}
+  else:
+    acc = []
+    for x in configEntries.values():
+      acc.append(x.values()[0])
+    #print(acc)
+    if not compatible(acc):
+      if (problem in incompatible):
+        raise ValueError
+      else:
+        incompatible[problem] = configEntries
+  
+if not incompatible:
+  sys.exit(0)
+else:
+  print str(len(incompatible)) + " incompatibilities found!"
+  for problem,results0 in incompatible.items():
+    print problem + ":"
+    pprint.pprint(results0)
+    print "--------------"
