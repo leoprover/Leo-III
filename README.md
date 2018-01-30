@@ -7,16 +7,13 @@ It is based on a paramodulation calculus with ordering constraints and, in tradi
 
 Leo-III is developed at Freie Universität Berlin as part of the German National Research Foundation (DFG) project BE 2501/11-1. The main contributors are (sorted alphabetically): Christoph Benzmüller, Tomer Libal, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
 
-## License
-See [LICENSE](LICENSE)
+## [LICENSE](LICENSE)
 
 Leo-III is licensed under the BSD 3-clause "New" or "Revised" License.
 
-## Install
-See [INSTALL.md](INSTALL.md)
+## [INSTALL.md](INSTALL.md)
 
-## Usage
-See [USAGE.md](USAGE.md)
+## [USAGE.md](USAGE.md)
 
 ## Contributing
 We are always greateful to hear feedback from our users:
