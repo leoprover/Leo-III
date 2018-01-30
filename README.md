@@ -9,6 +9,7 @@ Leo-III is developed at Freie Universität Berlin as part of the German National
 
 ## License
 See [LICENSE](LICENSE)
+
 Leo-III is licensed under the BSD 3-clause "New" or "Revised" License.
 
 ## Install
