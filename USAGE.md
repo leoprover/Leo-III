@@ -5,8 +5,8 @@ Leo-III is callable from command-line:
 
 ```> java -jar leo3.jar```
 
-When built from source via ‘make’, a directory ‘bin’ should exist. It
-contains the executable and an alias ‘leo3’, which invokes the
+When built from source via `make`, a directory `bin` should exist. It
+contains the executable and an alias `leo3`, which invokes the
 shell-command above. Put the directory into the path.
 
 ```
