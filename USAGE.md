@@ -3,7 +3,9 @@
 
 Leo-III is callable from command-line:
 
-```> java -jar leo3.jar```
+```
+> java -jar leo3.jar
+```
 
 When built from source via `make`, a directory `bin` should exist. It
 contains the executable and an alias `leo3`, which invokes the
@@ -21,7 +23,7 @@ Options:
 
 A call to a problem `someproblem.p`, assumed to be located at the current directory, is invoked as follows:
 
-```Shell
+```
 > ./leo someproblem.p
 % SZS status Theorem for someproblem.p : 3651 ms resp. 1253 ms w/o parsing
 ```
