@@ -12,10 +12,6 @@ A current release of Leo-III 1.2 can be downloaded from GitHub:
 
 > wget https://github.com/leoprover/Leo-III/releases/download/v1.2/leo3.jar
 
-Then call
-
-> java -jar leo3.jar
-
 Note that this binary was built on a Debian-based system and might not work for all Linux derivatives.
 If the pre-build does not work for you, consider building Leo-III from source. Its simple and 
 only takes a minute or two (see below).

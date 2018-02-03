@@ -1,8 +1,17 @@
 ## Usage
 #### Basics
 
-Leo-III is invoked via command-line (*assuming the leo3 executable is in your path, your current directory or you defined a leo3 alias as described above*):
-```Shell
+Leo-III is callable from command-line:
+
+```
+> java -jar leo3.jar
+```
+
+When built from source via `make`, a directory `bin` should exist. It
+contains the executable and an alias `leo3`, which invokes the
+shell-command above. Put the directory into the path.
+
+```
 > ./leo3
 Leo III -- A Higher-Order Theorem Prover.
 Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.
@@ -14,7 +23,7 @@ Options:
 
 A call to a problem `someproblem.p`, assumed to be located at the current directory, is invoked as follows:
 
-```Shell
+```
 > ./leo someproblem.p
 % SZS status Theorem for someproblem.p : 3651 ms resp. 1253 ms w/o parsing
 ```
