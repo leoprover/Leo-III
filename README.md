@@ -40,7 +40,7 @@ Further information including related projects, current publications etc, can be
 
 [SWB17] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Going Polymorphic - TH1 Reasoning for Leo-III. In IWIL@LPAR 2017 Workshop and LPAR-21 Short Presentations, Maun, Botswana, May 7-12, 2017 (Thomas Eiter, David Sands, Geoff Sutcliffe, Andrei Voronkov, eds.), EasyChair, Kalpa Publications in Computing, volume 1, 2017.
 
-[Sut08] Sutcliffe G. (2008), The SZS Ontologies for Automated Reasoning Software, 
+[Sut08] Sutcliffe G. (2008), [The SZS Ontologies for Automated Reasoning Software](http://www.cs.miami.edu/home/geoff/Papers/Conference/2008_Sut08_KEAPPA-38-49.pdf),
     Rudnicki P., Sutcliffe G., Proceedings of the LPAR Workshops: Knowledge 
     Exchange: Automated Provers and Proof Assistants, and The 7th International 
     Workshop on the Implementation of Logics (Doha, Qattar), CEUR Workshop 
