@@ -30,15 +30,15 @@ Further information including related projects, current publications etc, can be
 
 ## References
 
-[BP15] 	Christoph Benzmüller, Lawrence C. Paulson, Nik Sultana, Frank Theiß, The Higher-Order Prover LEO-II, In Journal of Automated Reasoning, volume 55, number 4, pp. 389-404, 2015.
+[BP15] 	Christoph Benzmüller, Lawrence C. Paulson, Nik Sultana, Frank Theiß, [The Higher-Order Prover LEO-II](http://dx.doi.org/10.1007/s10817-015-9348-y), In Journal of Automated Reasoning, volume 55, number 4, pp. 389-404, 2015.
 
-[BSW17] Christoph Benzmüller, Alexander Steen, Max Wisniewski Leo-III Version 1.1 (System description), In Thomas Eiter, David Sands, Geoff Sutcliffe and Andrei Voronkov (Eds.), IWIL Workshop and LPAR Short Presentations, EasyChair, Kalpa Publications in Computing, Volume 1, pp. 11-26, 2017.
+[BSW17] Christoph Benzmüller, Alexander Steen, Max Wisniewski, [Leo-III Version 1.1 (System description)](https://doi.org/10.29007/grmx), In Thomas Eiter, David Sands, Geoff Sutcliffe and Andrei Voronkov (Eds.), IWIL Workshop and LPAR Short Presentations, EasyChair, Kalpa Publications in Computing, Volume 1, pp. 11-26, 2017.
 
-[GSB17] Tobias Gleißner, Alexander Steen, Christoph Benzmüller, Theorem Provers for Every Normal Modal Logic. In LPAR-21. 21st International Conference on Logic for Programming, Artificial Intelligence and Reasoning (Thomas Eiter, David Sands, eds.), EasyChair, EPiC Series in Computing, volume 46, pp. 14-30, 2017.
+[GSB17] Tobias Gleißner, Alexander Steen, Christoph Benzmüller, [Theorem Provers for Every Normal Modal Logic](https://doi.org/10.29007/jsb9). In LPAR-21. 21st International Conference on Logic for Programming, Artificial Intelligence and Reasoning (Thomas Eiter, David Sands, eds.), EasyChair, EPiC Series in Computing, volume 46, pp. 14-30, 2017.
 
-[SWB16] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Agent-Based HOL Reasoning. In 5th International Congress on Mathematical Software, ICMS 2016, Berlin, Germany, July 2016, Proceedings, Springer, LNCS, volume 9725. 2016.
+[SWB16] Alexander Steen, Max Wisniewski, Christoph Benzmüller, [Agent-Based HOL Reasoning](http://dx.doi.org/10.1007/978-3-319-42432-3_10). In 5th International Congress on Mathematical Software, ICMS 2016, Berlin, Germany, July 2016, Proceedings, Springer, LNCS, volume 9725. 2016.
 
-[SWB17] Alexander Steen, Max Wisniewski, Christoph Benzmüller, Going Polymorphic - TH1 Reasoning for Leo-III. In IWIL@LPAR 2017 Workshop and LPAR-21 Short Presentations, Maun, Botswana, May 7-12, 2017 (Thomas Eiter, David Sands, Geoff Sutcliffe, Andrei Voronkov, eds.), EasyChair, Kalpa Publications in Computing, volume 1, 2017.
+[SWB17] Alexander Steen, Max Wisniewski, Christoph Benzmüller, [Going Polymorphic - TH1 Reasoning for Leo-III](https://doi.org/10.29007/jgkw). In IWIL@LPAR 2017 Workshop and LPAR-21 Short Presentations, Maun, Botswana, May 7-12, 2017 (Thomas Eiter, David Sands, Geoff Sutcliffe, Andrei Voronkov, eds.), EasyChair, Kalpa Publications in Computing, volume 1, 2017.
 
 [Sut08] Sutcliffe G. (2008), [The SZS Ontologies for Automated Reasoning Software](http://www.cs.miami.edu/home/geoff/Papers/Conference/2008_Sut08_KEAPPA-38-49.pdf),
     Rudnicki P., Sutcliffe G., Proceedings of the LPAR Workshops: Knowledge 
