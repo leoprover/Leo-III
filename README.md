@@ -44,7 +44,7 @@ We are always greateful to hear feedback from our users:
     Proceedings 418, 38-49.
     
 ## Further information
-Information including related projects, current publications etc. can be found on [The TPTP Problem Library for Automated Theorem Proving](http://www.cs.miami.edu/~tptp/)
+Further Information including related projects, current publications etc. can be found on [The TPTP Problem Library for Automated Theorem Proving](http://www.cs.miami.edu/~tptp/)
 
 Beginners might start with [Geoff Sutcliffe's Overview of Automated Theorem Proving](http://www.cs.miami.edu/~tptp/OverviewOfATP.html)
 
