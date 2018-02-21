@@ -25,9 +25,6 @@ We are always greateful to hear feedback from our users:
 - If you encounter problems using Leo-III, feel tree to open a bug report (or simply a question) on the GitHub page.
 - If you are interested to contribute to the project, simply fork the GitHub repository and open pull requests!
 
-## Further information
-Further information including related projects, current publications etc, can be found on the [Leo-III web site](http://www.inf.fu-berlin.de/~lex/leo3), and for details on the Leo-III system (implementation), we refer to the system description [BSW17].
-
 ## References
 
 [BP15] 	Christoph Benzmüller, Lawrence C. Paulson, Nik Sultana, Frank Theiß, [The Higher-Order Prover LEO-II](http://dx.doi.org/10.1007/s10817-015-9348-y), In Journal of Automated Reasoning, volume 55, number 4, pp. 389-404, 2015.
@@ -46,4 +43,9 @@ Further information including related projects, current publications etc, can be
     Workshop on the Implementation of Logics (Doha, Qattar), CEUR Workshop 
     Proceedings 418, 38-49.
     
+## Further information
+Further Information including related projects, current publications etc. can be found on [The TPTP Problem Library for Automated Theorem Proving](http://www.cs.miami.edu/~tptp/)
+
+Beginners might start with [Geoff Sutcliffe's Overview of Automated Theorem Proving](http://www.cs.miami.edu/~tptp/OverviewOfATP.html)
+
 
