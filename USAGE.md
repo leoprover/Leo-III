@@ -59,7 +59,7 @@ If this environment variable is set, Leo-III will automatically resolve TPTP axi
 Let's solve the TPTP problem `SET014^4.p` (see [here](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Problems&Domain=SET&File=SET014^4.p)) with a timeout of 60 seconds and proof output:
 
 ```
-> ./leo3 SET014^4.p -t 60 -p
+> ./leo3 path/to/SET014^4.p -t 60 -p
 ```
 The output looks like this:
 ```
