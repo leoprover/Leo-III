@@ -18,6 +18,8 @@ parser.add_argument('File', metavar='File',
                     help='The CSV file from starexec.')
 parser.add_argument('-v', action='store_true',
                     help='Display not only the number of uniques but also the concrete problem names.')
+parser.add_argument('-g', action='store_true',
+                    help='Grouped mode: Consider different configurations of the same prover as distinct prover.')
 
 args = parser.parse_args()
 
@@ -31,6 +33,7 @@ def isSolved(result):
 
 inputFile = args.File
 verbose = args.v
+grouped = args.g
 resultsToSolver = {}
 solverToResults = {}
 
@@ -40,7 +43,10 @@ with open(inputFile,'r') as f:
       if not line: continue
       values = line.split(',')
       problem = values[1]
-      prover = values[3]
+      if not grouped:
+        prover = values[3]
+      else:
+        prover = values[3] + "_" + values[5]
       config = values[5]
       status = values[11]
       if (isSolved(status)):
