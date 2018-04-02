@@ -3,7 +3,7 @@ package leo.modules.prover
 import leo.{Configuration, Out}
 import leo.datastructures._
 import leo.datastructures.tptp.Commons.AnnotatedFormula
-import leo.modules.{SZSResult, SZSOutput, myAssert}
+import leo.modules.{SZSOutput, SZSResult, myAssert}
 import leo.modules.control.Control
 import leo.modules.output._
 
@@ -178,15 +178,18 @@ object SeqLoop {
           // No cancel, do reasoning step
           val extRes = Control.checkExternalResults(state)
           if (extRes.nonEmpty) {
-            val extRes0 = extRes.filter(res => endgameAnswer(res.szsStatus))
+            val extRes0 = extRes.filter(endgameResult)
             if (extRes0.nonEmpty) {
-              val extResAnswers = extRes0.head
-              assert(extResAnswers.szsStatus == SZS_Unsatisfiable, "other than UNS was trapped")
-              // CounterSat cannot happen since we do not send a conjecture
-              // Theorem ditto
               loop = false
-              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extResAnswers.proverName, extResAnswers.problem))
-              endplay(emptyClause, state)
+              val extResAnswer = extRes0.head
+              if (extResAnswer.szsStatus == SZS_Unsatisfiable) {
+                val emptyClause = AnnotatedClause(Clause.empty,
+                  extCallInference(extResAnswer.prover.name,
+                    extResAnswer.problem))
+                endplay(emptyClause, state)
+              } else {
+                endplay(null, state)
+              }
             }
           } else {
             var cur = state.nextUnprocessed

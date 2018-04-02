@@ -5,6 +5,7 @@ import leo.{Configuration, Out}
 import leo.datastructures.{AnnotatedClause, ClauseAnnotation, Term, tptp}
 import leo.modules.calculus.NegateConjecture
 import leo.modules.control.Control
+import leo.modules.external.TptpResult
 import leo.modules.output._
 import leo.modules.parsers.Input
 
@@ -153,27 +154,34 @@ package object prover {
     if (state.negConjecture == null) SZS_Satisfiable
     else SZS_CounterSatisfiable
   }
+  final def appropriateThmStatus(state: LocalState, proof: Proof): StatusSZS = {
+    if (state.negConjecture == null) SZS_Unsatisfiable
+    else {
+      if (conjInProof(proof)) SZS_Theorem
+      else SZS_ContradictoryAxioms
+    }
+  }
 
   final def endplay(emptyClause: AnnotatedClause, state: LocalState): Unit = {
-    state.setDerivationClause(emptyClause)
-    val proof = proofOf(emptyClause)
-    state.setProof(proof)
-
-    if (state.negConjecture == null) state.setSZSStatus(SZS_Unsatisfiable)
+    if (emptyClause == null) state.setSZSStatus(appropriateSatStatus(state))
     else {
-      if (conjInProof(proof)) state.setSZSStatus(SZS_Theorem)
-      else state.setSZSStatus(SZS_ContradictoryAxioms)
+      state.setDerivationClause(emptyClause)
+      val proof = proofOf(emptyClause)
+      state.setProof(proof)
+      state.setSZSStatus(appropriateThmStatus(state, proof))
     }
   }
 
-  final protected[prover] def endgameAnswer(result: StatusSZS): Boolean = {
-    result match {
-      case SZS_CounterSatisfiable | SZS_Theorem | SZS_Unsatisfiable => true
-      case _ => false
-    }
+  final def endgameResult(result: TptpResult[_]): Boolean = {
+    import leo.modules.external.Capabilities
+    if (result.szsStatus == SZS_Unsatisfiable)
+      true
+    else if (result.szsStatus == SZS_Satisfiable && result.prover.capabilities.contains(Capabilities.THF))
+      true
+    else false
   }
 
-  def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
+  final def extCallInference(prover: String, source: Set[AnnotatedClause]): ClauseAnnotation = {
     InferredFrom(new leo.modules.calculus.CalculusRule {
       final val name: String = prover
       final val inferenceStatus = SZS_Theorem

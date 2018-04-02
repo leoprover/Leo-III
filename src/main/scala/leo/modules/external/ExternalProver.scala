@@ -324,7 +324,8 @@ class NitpickProver(val path : String) extends TptpProver[AnnotatedClause] {
 
   final val capabilities: Capabilities.Info = Capabilities(Capabilities.THF -> Seq())
 
+  // nitpick needs a lot of time for start-up. give it 15seconds more
   override protected def constructCall(args: Seq[String], timeout: Int, problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
+    ExternalProver.limitedRun(timeout+15, Seq(path, "tptp_nitpick", timeout.toString) ++ Seq(problemFileName))
   }
 }
