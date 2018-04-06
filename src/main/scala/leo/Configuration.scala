@@ -479,5 +479,5 @@ trait DefaultConfiguration {
   val DEFAULT_MODALDOMAIN = "constant"
   val DEFAULT_MODALRIGIDITY = "rigid"
   val DEFAULT_MODALCONSEQUENCE = "global"
-  val DEFAULT_MODALEMBEDDINGTYPE = "semantic"
+  val DEFAULT_MODALEMBEDDINGTYPE = "semantical"
 }

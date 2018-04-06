@@ -2,6 +2,8 @@ package leo.modules.parsers
 
 import leo.{Configuration, Out}
 import leo.datastructures.tptp.Commons.AnnotatedFormula
+import transformation.{Wrappers => ModalProcessing}
+import transformation.ModalTransformator.TransformationParameter
 
 object ModalPreprocessor {
 
@@ -18,7 +20,6 @@ object ModalPreprocessor {
   final def apply(problem0: Seq[AnnotatedFormula]): Seq[AnnotatedFormula] = {
     val maybeLogicSpecification = problem0.find(_.role == "logic")
     if (maybeLogicSpecification.isDefined) {
-      import transformation.{Wrappers => ModalProcessing}
       import java.util.logging
       val spec = maybeLogicSpecification.get
       assert(spec.function_symbols.contains("$modal"), "Non-classical logics other than modal logic not supported yet.")
@@ -50,10 +51,13 @@ object ModalPreprocessor {
       val tptpModalSemanticSpecification = modalSemanticsToTPTPSpecification(tptpModalSystem,
         tptpModalDomain, tptpModalRigidity, tptpModalConsequence)
 
-      logging.Logger.getLogger("default").setLevel(logging.Level.WARNING)
-      // TODO: Pass embedding type when API supports that
+      val embeddingParam = if (Configuration.isSet(Configuration.PARAM_MODAL_EMBEDDINGTYPE)) {
+        TransformationParameter.valueOf(Configuration.MODAL_EMBEDDINGTYPE.toUpperCase)
+      } else TransformationParameter.SEMANTICAL
+
+      logging.Logger.getLogger("default").setLevel(logging.Level.WARNING) // suppress logger of embedding tool
       val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE),
-        null, null, null, tptpModalSemanticSpecification)
+        null, null, null, tptpModalSemanticSpecification, embeddingParam)
       Input.parseProblem(result)
     }
   }
