@@ -58,6 +58,10 @@ object ModalPreprocessor {
       logging.Logger.getLogger("default").setLevel(logging.Level.WARNING) // suppress logger of embedding tool
       val result = ModalProcessing.convertModalToString(java.nio.file.Paths.get(Configuration.PROBLEMFILE),
         null, null, null, tptpModalSemanticSpecification, embeddingParam)
+      if (Configuration.isSet("modal-debug")) {
+        println(result)
+        System.exit(0)
+      }
       Input.parseProblem(result)
     }
   }
