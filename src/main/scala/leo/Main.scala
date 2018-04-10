@@ -54,10 +54,11 @@ object Main {
         // none yet
       } else {
         // Functionality that need to parse the input file, do it now
-        import leo.modules.parsers.{ModalPreprocessor => Modal}
-        val problem0 = Input.parseProblemFile(Configuration.PROBLEMFILE)
+        import leo.modules.parsers.{ModalPreprocessor => Modal, DDLPreprocessor => DDL}
+        val problem0 = if (Configuration.isSet("ddl")) DDL.apply(Configuration.PROBLEMFILE)
+        else Input.parseProblemFile(Configuration.PROBLEMFILE)
         // If it is a logic embedding, call the embedding tool, else just use the problem itself
-        val problem = if (Modal.canAppy(problem0)) Modal.apply(problem0)
+        val problem = if (Modal.canApply(problem0)) Modal.apply(problem0)
                       else problem0
         // Functionality calls
         if (Configuration.isSet("seq")) {

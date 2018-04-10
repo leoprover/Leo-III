@@ -7,9 +7,9 @@ import transformation.ModalTransformator.TransformationParameter
 
 object ModalPreprocessor {
 
-  final def canAppy(problem0: Seq[AnnotatedFormula]): Boolean = {
+  final def canApply(problem0: Seq[AnnotatedFormula]): Boolean = {
     val maybeLogicSpecification = problem0.find(_.role == "logic")
-    if (maybeLogicSpecification.isDefined) true
+    if (maybeLogicSpecification.isDefined) maybeLogicSpecification.get.function_symbols.contains("$modal")
     else {
       val symbolsInProblem = problem0.flatMap(_.function_symbols).toSet
       val boxSymbol = "$box"; val diamondSymbol = "$dia"
