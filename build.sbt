@@ -4,7 +4,7 @@ val buildParser = taskKey[Unit]("Run ANTLR parser generation.")
 val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's parser.")
 
 lazy val commonSettings = Seq(
-    version := "1.1",
+    version := "1.3",
     scalaVersion := "2.12.6",
     organization := "org.leo",
     test in assembly := {},
