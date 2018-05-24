@@ -160,7 +160,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
   /////////////////////
   final def initUnprocessed(): Unit = {
     import leo.datastructures.ClauseProxyOrderings._
-    val conjSymbols: Set[Signature.Key] = symbolsInConjecture0
+    val conjSymbols: Set[Signature.Key] = symbolsInConjecture0.toSet
     mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 10, 3).asInstanceOf[Ordering[T]])
     mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
     mpq.addPriority(nongoals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
@@ -239,7 +239,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
     val state = new StateImpl[T](sig.copy)
     state.current_szs = current_szs
     state.conjecture0 = conjecture0
-    state.negConjecture0 = negConjecture0
+    state.negConjecture0.++=(negConjecture0)
     //    state.currentProcessed = ??? //current_processed
 //    state.current_rewriterules = current_rewriterules
 //    state.current_nonRewriteUnits = current_nonRewriteUnits
@@ -260,7 +260,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
     val state = new StateImpl[T](sig)
     state.current_szs = current_szs
     state.conjecture0 = conjecture0
-    state.negConjecture0 = negConjecture0
+    state.negConjecture0.++=(negConjecture0)
     //    state.current_processed = ??? // current_processed
 //    state.current_rewriterules = current_rewriterules
 //    state.current_nonRewriteUnits = current_nonRewriteUnits
