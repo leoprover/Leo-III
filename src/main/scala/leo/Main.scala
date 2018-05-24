@@ -12,7 +12,7 @@ import leo.modules.parsers.{CLParameterParser, Input}
   * @since 7/8/14
  */
 object Main {
-  private var hook: scala.sys.ShutdownHookThread = _
+  private[this] var hook: scala.sys.ShutdownHookThread = _
 
   def main(args : Array[String]){
     try {
@@ -88,6 +88,7 @@ object Main {
       /** Call concrete functionality END */
       
     } catch {
+      /** Handle all top-level errors BEGIN */
       case e:Throwable =>
         Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
         e match {
@@ -103,9 +104,10 @@ object Main {
           Out.trace("Caused by: " + e.getCause.getMessage)
           Out.trace("at: " + e.getCause.getStackTrace.toString)
         }
+      /** Handle all top-level errors END */
     } finally {
       Configuration.cleanup()
-      hook.remove() // When we reach this code we didnt face a SIGTERM etc. so remove the hook.
+      hook.remove() // When we reach this code we didn't face a SIGTERM etc. so remove the hook.
     }
   }
 }
