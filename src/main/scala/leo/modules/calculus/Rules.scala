@@ -149,7 +149,7 @@ object BoolExt extends CalculusRule {
       val nu = apply(extLit)
       transformed = transformed.map(_ ++ nu._1) union transformed.map(_ ++ nu._2)
     }
-    transformed.map(Clause.mkClause)
+    transformed.map(Clause.apply)
   }
 
   final def apply(l: Literal): (ExtLits, ExtLits) = {
@@ -592,7 +592,7 @@ object OrderedParamod extends CalculusRule {
       Literal.mkLit(l.left.etaExpand, l.right.etaExpand, l.polarity, l.oriented)
     )
     /* unification literal between subterm of intoLiteral (in findWithin side) and right side of withLiteral. */
-    Out.finest(s"withClause.maxImpBound: ${withClause.maxImplicitlyBound}")
+    Out.finest(s"withClause.maxImpBound: ${Clause.maxImplicitlyBound(withClause)}")
     Out.finest(s"intoSubterm: ${intoSubterm.pretty(sig)}")
     val unificationLit = Literal.mkNegOrdered(toFind.etaExpand, intoSubterm.etaExpand)(sig)
     Out.finest(s"unificationLit: ${unificationLit.pretty(sig)}")

@@ -279,10 +279,10 @@ package inferenceControl {
           Out.finest(s"intoside: ${intoSide.toString}")
           // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
           // We cannot use _.substitute on literal since this will forget the ordering
-          val termShift = Subst.shift(withClause.maxImplicitlyBound)
-          val typeShift = Subst.shift(withClause.maxTypeVar)
+          val termShift = Subst.shift(Clause.maxImplicitlyBound(withClause))
+          val typeShift = Subst.shift(Clause.maxTypeVar(withClause))
           val shiftedIntoClause: Clause = Clause(intoClause.lits.map { _.applyRenamingSubstitution(termShift, typeShift) })
-          val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
+          val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(Clause.maxImplicitlyBound(withClause)-intoPos.abstractionCount), typeShift)
           Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
           Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
           // switch to this if there is no problem:
@@ -2056,8 +2056,8 @@ package inferenceControl {
             (lit.left, (LitFalse(), cl))
           }
         }.toMap
-        val maxImplicitVar = cl.cl.maxImplicitlyBound
-        val maxTyVar = cl.cl.maxTypeVar
+        val maxImplicitVar = Clause.maxImplicitlyBound(cl.cl)
+        val maxTyVar = Clause.maxTypeVar(cl.cl)
         val nonGroundRewriteTable: RewriteTable = nonGroundRewriteRules.map{ cl =>
           val lit = cl.cl.lits.head
           if (lit.polarity) {

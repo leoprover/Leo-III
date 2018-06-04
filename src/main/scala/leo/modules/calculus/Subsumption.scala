@@ -31,7 +31,7 @@ abstract class AbstractMatchingSubsumption extends Subsumption {
     val (lits1, lits2) = (cl1.lits, cl2.lits)
 
     if (lits1.length < lits2.length) {
-      val liftedLits1 = lits1.map(_.substitute(Subst.shift(cl2.maxImplicitlyBound)))
+      val liftedLits1 = lits1.map(_.substitute(Subst.shift(Clause.maxImplicitlyBound(cl2))))
       val vargen = freshVarGen(Clause(liftedLits1 ++ lits2))
       val forbiddenVars = cl2.implicitlyBound.map(_._1).toSet
       val result = subsumes0(vargen, liftedLits1.toVector, lits2.toVector, Vector.empty, forbiddenVars)

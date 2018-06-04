@@ -688,7 +688,7 @@ object SimplifyReflect extends CalculusRule {
     if (lit.unsignedEquals(unit)) true
     else {
       if (unit.fv.nonEmpty) {
-        val (unitLeft, unitRight) = (unit.left.lift(cl.maxImplicitlyBound), unit.right.lift(cl.maxImplicitlyBound))
+        val (unitLeft, unitRight) = (unit.left.lift(Clause.maxImplicitlyBound(cl)), unit.right.lift(Clause.maxImplicitlyBound(cl)))
         val (litLeft, litRight) = (lit.left, lit.right)
         val vargen = freshVarGen(cl)
         vargen.addVars(unitLeft.fv); vargen.addVars(unitRight.fv)
