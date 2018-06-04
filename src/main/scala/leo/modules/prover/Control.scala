@@ -2971,7 +2971,7 @@ package  externalProverControl {
             true
           }
           else {
-            if (System.currentTimeMillis() - lastTime > Configuration.DEFAULT_ATP_TIMEOUT*1000 && problem != lastProblem) {
+            if (System.currentTimeMillis() - lastTime > (Configuration.DEFAULT_ATP_TIMEOUT*1000)/2 && problem != lastProblem) {
               true
             }
             else false
