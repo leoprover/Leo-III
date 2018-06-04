@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import sys
+import subprocess
+import tempfile
+import pprint
+import re
+
+def is_valid_file(parser, arg):
+    if not (os.path.isfile(arg) or os.path.isdir(arg)):
+        parser.error("'%s' does not exist." % arg)
+    else:
+        return os.path.abspath(arg)
+        
+parser = argparse.ArgumentParser(description='Hello.')
+parser.add_argument('File', metavar='File',
+                    type=lambda x: is_valid_file(parser, x),
+                    help='The file or directory to analyze.')
+parser.add_argument('--sort-by', choices=['name', 'axioms', 'includes'],
+                    help='Order output by field.')
+parser.add_argument('-r', action='store_true',
+                    help='Recursive')
+
+args = parser.parse_args()
+infile = args.File
+sortby = args.sort_by
+recursive = args.r
+
+
+files = []
+axioms = {}
+includes = {}
+tptpNotFound = False
+includesNotFound = False
+        
+def analyze(file,isDir):
+  problemName = os.path.basename(file)
+  f = open(file, 'r')
+  text_string = f.read()
+  f.close()
+  # Concatenate imports
+  includeFind = re.findall(r"include\(('[\w\/.\^_\-\+]+')\).", text_string)
+  includes[problemName] = len(includeFind)
+  #print str(len(includeFind))
+  for include in includeFind:
+    #print str(include)
+    importFile = include.strip('\'')
+    #print importFile
+    if isDir:
+      relativeFile = infile
+    else:
+      relativeFile = os.path.dirname(infile)
+    importFileTry1 = os.path.join(relativeFile,importFile)
+    #print importFileTry1
+    if (os.path.isfile(importFileTry1)):
+      # all good, load and add
+      #print "file exists"
+      import1 = open(importFileTry1, 'r')
+      import_text = import1.read()
+      import1.close()
+      text_string = import_text + text_string
+    else:
+      # try TPTP if set
+      #print "file does not exist, search TPTP"
+      TPTP = os.getenv('TPTP', '#')
+      if (TPTP == '#'):
+        tptpNotFound = True
+      else:
+        importFileTry2 = os.path.join(TPTP,importFile)
+        #print importFileTry2
+        if (os.path.isfile(importFileTry2)):
+          ## all good
+          import2 = open(importFileTry2, 'r')
+          import_text = import2.read()
+          import2.close()
+          text_string = import_text + text_string
+        else:
+          includesNotFound = True
+  # Concatenate imports END
+  # Number of axioms
+  axFind = re.findall(r',axiom,', text_string)
+  axioms[problemName] = len(axFind)
+
+def analyzePath(p):
+  for problem in os.listdir(p):
+    if problem.endswith(".p"):
+      problemName = os.path.basename(problem)
+      files.append(problemName)
+      analyze(os.path.join(p,problem),True)
+    elif (os.path.isdir(problem) and recursive):
+      analyzePath(problem)
+    else:
+      continue
+
+if os.path.isdir(infile):
+  analyzePath(infile)
+else:
+  problemName = os.path.basename(infile)
+  files.append(str(problemName))
+  analyze(problemName,False)
+  
+if (sortby == "name"):
+  traverseOrder = sorted(files)
+elif (sortby == "axioms"):
+  traverseOrder = sorted(axioms, key=axioms.get, reverse=True)
+elif (sortby == "includes"):
+  traverseOrder = sorted(includes, key=includes.get, reverse=True)
+else:
+  traverseOrder = files
+
+
+print "Prob.\tIncl.\tAx"  
+for problem in traverseOrder:
+  print problem + "\t" + str(includes[problem]) + "\t" + str(axioms[problem])
+  
+if tptpNotFound:
+  print "Warning: $TPTP is not set. Some imports may not be resolved properly."
+  
+if includesNotFound:
+  print "Warning: Some problems contained includes which could not be solved. Statistics may be incorrect."
+  
