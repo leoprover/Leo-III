@@ -279,10 +279,10 @@ package inferenceControl {
           Out.finest(s"intoside: ${intoSide.toString}")
           // We shift all lits from intoClause to make the universally quantified variables distinct from those of withClause.
           // We cannot use _.substitute on literal since this will forget the ordering
-          val termShift = Subst.shift(withClause.maxImplicitlyBound)
-          val typeShift = Subst.shift(withClause.maxTypeVar)
+          val termShift = Subst.shift(Clause.maxImplicitlyBound(withClause))
+          val typeShift = Subst.shift(Clause.maxTypeVar(withClause))
           val shiftedIntoClause: Clause = Clause(intoClause.lits.map { _.applyRenamingSubstitution(termShift, typeShift) })
-          val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(withClause.maxImplicitlyBound-intoPos.abstractionCount), typeShift)
+          val shiftedIntoTerm: Term = intoTerm.substitute(Subst.shift(Clause.maxImplicitlyBound(withClause)-intoPos.abstractionCount), typeShift)
           Out.finest(s"shifted into: ${shiftedIntoClause.pretty(sig)}")
           Out.finest(s"shiftedIntoSubterm: ${shiftedIntoTerm.pretty(sig)}")
           // switch to this if there is no problem:
@@ -1059,7 +1059,7 @@ package inferenceControl {
           val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
           if (cA_boolExt) {
             Out.debug(s"Bool Ext on: ${cw.pretty(sig)}")
-            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw), addProp(ClauseAnnotation.PropBoolExt, deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cw.properties))))
+            val result = BoolExt.apply(cw.cl, bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw), addProp(ClauseAnnotation.PropBoolExt, deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cw.properties))))
             Out.trace(s"Bool Ext result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
             result
           } else Set()
@@ -1600,7 +1600,7 @@ package inferenceControl {
         }
       }
       if (wasApplied) {
-        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, cl), cl.properties)
+        val result = AnnotatedClause(Clause(newLits, cl.cl.implicitlyBound, cl.cl.typeVars), InferredFrom(PolaritySwitch, cl), cl.properties)
         Out.trace(s"Switch polarity: ${result.pretty}")
         result
       } else
@@ -1644,7 +1644,7 @@ package inferenceControl {
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig), cl.cl.implicitlyBound, cl.cl.typeVars), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
@@ -1654,7 +1654,7 @@ package inferenceControl {
     final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       import UnificationControl.doUnify0
       implicit val sig: Signature = state.signature
-      var result: Set[AnnotatedClause] = Set()
+      var result: Set[AnnotatedClause] = Set.empty
       val clIt = cls.iterator
 
       while(clIt.hasNext) {
@@ -1662,10 +1662,10 @@ package inferenceControl {
 
         leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
         leo.Out.finest(s"${cl.pretty(sig)}")
-        var uniLits: Seq[Literal] = Vector()
-        var nonUniLits: Seq[Literal] = Vector()
-        var boolExtLits: Seq[Literal] = Vector()
-        var nonBoolExtLits: Seq[Literal] = Vector()
+        var uniLits: Seq[Literal] = Vector.empty
+        var nonUniLits: Seq[Literal] = Vector.empty
+        var boolExtLits: Seq[Literal] = Vector.empty
+        var nonBoolExtLits: Seq[Literal] = Vector.empty
 
         val litIt = cl.cl.lits.iterator
 
@@ -1693,7 +1693,7 @@ package inferenceControl {
           }
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
-          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
+          val boolExtResult = BoolExt.apply(cl.cl, boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
           val lifted = cnf.map(Control.liftEq)
           val liftedIt = lifted.iterator
@@ -2056,8 +2056,8 @@ package inferenceControl {
             (lit.left, (LitFalse(), cl))
           }
         }.toMap
-        val maxImplicitVar = cl.cl.maxImplicitlyBound
-        val maxTyVar = cl.cl.maxTypeVar
+        val maxImplicitVar = Clause.maxImplicitlyBound(cl.cl)
+        val maxTyVar = Clause.maxTypeVar(cl.cl)
         val nonGroundRewriteTable: RewriteTable = nonGroundRewriteRules.map{ cl =>
           val lit = cl.cl.lits.head
           if (lit.polarity) {
@@ -2972,7 +2972,7 @@ package  externalProverControl {
             true
           }
           else {
-            if (System.currentTimeMillis() - lastTime > Configuration.DEFAULT_ATP_TIMEOUT*1000 && problem != lastProblem) {
+            if (System.currentTimeMillis() - lastTime > (Configuration.DEFAULT_ATP_TIMEOUT*1000)/2 && problem != lastProblem) {
               true
             }
             else false

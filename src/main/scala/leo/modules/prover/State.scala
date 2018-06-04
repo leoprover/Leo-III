@@ -162,6 +162,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
     import leo.datastructures.ClauseProxyOrderings._
     val conjSymbols: Set[Signature.Key] = symbolsInConjecture0.toSet
     mpq.addPriority(litCount_conjRelSymb(conjSymbols, 0.005f, 10, 3).asInstanceOf[Ordering[T]])
+//    mpq.addPriority(litCountHOFlexFlex.asInstanceOf[Ordering[T]])
     mpq.addPriority(goals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
     mpq.addPriority(nongoals_SymbWeight(100,20).asInstanceOf[Ordering[T]])
     mpq.addPriority(sos_conjRelSymb(conjSymbols, 0.05f, 2, 1).asInstanceOf[Ordering[T]])

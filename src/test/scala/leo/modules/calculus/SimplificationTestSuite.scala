@@ -47,5 +47,5 @@ class SimplificationTestSuite extends LeoTestSuite {
     }
   }
 
-  def termToClause(t : Term) : Clause = Clause.mkClause(List(Literal(t, true)),Derived)
+  def termToClause(t : Term) : Clause = Clause(List(Literal(t, true)),Derived)
 }

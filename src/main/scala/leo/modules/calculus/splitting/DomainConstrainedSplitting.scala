@@ -77,6 +77,6 @@ object DomainConstrainedSplitting {
 
   //TODO namensgebung fixen
   def cardinalityAxioms(n : Int)(t : Type) : Seq[AnnotatedClause] = {
-    cardinalityTerms(n)(t).map{t => AnnotatedClause(Clause.mkClause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)}
+    cardinalityTerms(n)(t).map{t => AnnotatedClause(Clause(List(Literal.mkLit(t,true)), FromAxiom), Role_Axiom, NoAnnotation, ClauseAnnotation.PropNoProp)}
   }
 }

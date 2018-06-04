@@ -93,7 +93,7 @@ object NaiveSplitting extends Split {
     }
   }
 
-  protected[splitting] def createClause(l : Literal, cl : Seq[Literal]) : Clause = Clause.mkClause(l +: cl)
+  protected[splitting] def createClause(l : Literal, cl : Seq[Literal]) : Clause = Clause(l +: cl)
 }
 
 /**
@@ -122,8 +122,8 @@ class HornSplit(f : Literal => Int) extends Split {
 
     if (l.isEmpty || r.isEmpty) return None   // No split available
     // TODO : Check for independency
-    val leftClause = Clause.mkClause(neg ++ l, Derived)
-    val rightClause = Clause.mkClause(neg ++ r, Derived)
+    val leftClause = Clause(neg ++ l, Derived)
+    val rightClause = Clause(neg ++ r, Derived)
     return Some((List(List(leftClause),List(rightClause))), AlphaSplit)
   }
 
