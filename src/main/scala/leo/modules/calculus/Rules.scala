@@ -141,7 +141,7 @@ object BoolExt extends CalculusRule {
     (can, extLits, otherLits)
   }
 
-  final def apply(extLits: ExtLits, otherLits: OtherLits): Set[Clause] = {
+  final def apply(cl: Clause, extLits: ExtLits, otherLits: OtherLits): Set[Clause] = {
     var transformed = Set(otherLits)
     val extIt = extLits.iterator
     while (extIt.hasNext) {
@@ -149,7 +149,7 @@ object BoolExt extends CalculusRule {
       val nu = apply(extLit)
       transformed = transformed.map(_ ++ nu._1) union transformed.map(_ ++ nu._2)
     }
-    transformed.map(Clause.apply)
+    transformed.map(c => Clause.apply(c, cl.implicitlyBound, cl.typeVars)) //TODO CHECK THIS
   }
 
   final def apply(l: Literal): (ExtLits, ExtLits) = {

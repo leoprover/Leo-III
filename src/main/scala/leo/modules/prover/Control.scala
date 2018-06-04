@@ -1059,7 +1059,7 @@ package inferenceControl {
           val (cA_boolExt, bE, bE_other) = BoolExt.canApply(cw.cl)
           if (cA_boolExt) {
             Out.debug(s"Bool Ext on: ${cw.pretty(sig)}")
-            val result = BoolExt.apply(bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw), addProp(ClauseAnnotation.PropBoolExt, deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cw.properties))))
+            val result = BoolExt.apply(cw.cl, bE, bE_other).map(AnnotatedClause(_, InferredFrom(BoolExt, cw), addProp(ClauseAnnotation.PropBoolExt, deleteProp(ClauseAnnotation.PropFullySimplified | ClauseAnnotation.PropShallowSimplified, cw.properties))))
             Out.trace(s"Bool Ext result:\n\t${result.map(_.pretty(sig)).mkString("\n\t")}")
             result
           } else Set()
@@ -1600,7 +1600,7 @@ package inferenceControl {
         }
       }
       if (wasApplied) {
-        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, cl), cl.properties)
+        val result = AnnotatedClause(Clause(newLits, cl.cl.implicitlyBound, cl.cl.typeVars), InferredFrom(PolaritySwitch, cl), cl.properties)
         Out.trace(s"Switch polarity: ${result.pretty}")
         result
       } else
@@ -1644,7 +1644,7 @@ package inferenceControl {
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig), cl.cl.implicitlyBound, cl.cl.typeVars), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else
@@ -1654,7 +1654,7 @@ package inferenceControl {
     final def extPreprocessUnify(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       import UnificationControl.doUnify0
       implicit val sig: Signature = state.signature
-      var result: Set[AnnotatedClause] = Set()
+      var result: Set[AnnotatedClause] = Set.empty
       val clIt = cls.iterator
 
       while(clIt.hasNext) {
@@ -1662,10 +1662,10 @@ package inferenceControl {
 
         leo.Out.finest(s"[ExtPreprocessUnify] On ${cl.id}")
         leo.Out.finest(s"${cl.pretty(sig)}")
-        var uniLits: Seq[Literal] = Vector()
-        var nonUniLits: Seq[Literal] = Vector()
-        var boolExtLits: Seq[Literal] = Vector()
-        var nonBoolExtLits: Seq[Literal] = Vector()
+        var uniLits: Seq[Literal] = Vector.empty
+        var nonUniLits: Seq[Literal] = Vector.empty
+        var boolExtLits: Seq[Literal] = Vector.empty
+        var nonBoolExtLits: Seq[Literal] = Vector.empty
 
         val litIt = cl.cl.lits.iterator
 
@@ -1693,7 +1693,7 @@ package inferenceControl {
           }
         } else {
           leo.Out.finest(s"Detecting Boolean extensionality literals, inserted expanded clauses...")
-          val boolExtResult = BoolExt.apply(boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
+          val boolExtResult = BoolExt.apply(cl.cl, boolExtLits, nonBoolExtLits).map(AnnotatedClause(_, InferredFrom(BoolExt, cl),cl.properties | ClauseAnnotation.PropBoolExt))
           val cnf = CNFControl.cnfSet(boolExtResult)
           val lifted = cnf.map(Control.liftEq)
           val liftedIt = lifted.iterator

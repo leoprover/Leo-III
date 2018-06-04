@@ -77,6 +77,15 @@ object CPO_SmallerFirst extends ClauseProxyOrdering[Double] {
   final def weightOf(cl: ClauseProxy): Double = cl.cl.lits.size
 }
 
+object CPO_SmallerFirstHOFlexFlex extends ClauseProxyOrdering[Double] {
+  final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
+    val aWeight = weightOf(a); val bWeight = weightOf(b)
+    aWeight.compareTo(bWeight)
+  }
+
+  final def weightOf(cl: ClauseProxy): Double = cl.cl.lits.size - cl.cl.lits.count(_.flexflex)
+}
+
 object CPO_GroundTyFirst extends ClauseProxyOrdering[Double] {
   final def compare(a: ClauseProxy, b: ClauseProxy): Int = {
     val aWeight = weightOf(a); val bWeight = weightOf(b)

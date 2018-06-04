@@ -82,7 +82,7 @@ object Clause {
                           tyFvs: Seq[Int]): Clause = ClauseImpl.mkClause(lits, origin, fvs, tyFvs)
 
   /** The empty clause. */
-  @inline final val empty: Clause = apply(Seq.empty)
+  @inline final val empty: Clause = apply(Seq.empty, Seq.empty, Seq.empty)
 
   // Utility
   /** Returns true iff clause `c` is empty. */

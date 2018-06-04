@@ -26,7 +26,7 @@ import leo.datastructures._
   def this(lits: Seq[Literal], origin: ClauseOrigin) = this(lits, origin, null, null)
 
   /** The types of the implicitly universally quantified variables. */
-  val implicitlyBound: Seq[(Int, Type)] = {
+  lazy val implicitlyBound: Seq[(Int, Type)] = {
     if (fvs == null) {
       lits.flatMap(_.fv).distinct.toVector.sortWith {case ((i1, _), (i2, _)) => i1 > i2}
     } else {
@@ -34,7 +34,7 @@ import leo.datastructures._
     }
   }
 
-  val typeVars: Seq[Int] = {
+  lazy val typeVars: Seq[Int] = {
     if (tyFvs == null)
       lits.flatMap(_.tyFV).distinct.toVector.sortWith{case (x,y) => x > y}
     else
