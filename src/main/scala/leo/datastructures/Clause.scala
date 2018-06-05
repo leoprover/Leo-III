@@ -8,18 +8,17 @@ package leo.datastructures
  * @since 07.11.2014
  */
 trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
-  /** The underlying sequence of literals. */
-  def lits: Seq[Literal]
   /** Return the literal at index `idx`.
     * @throws IndexOutOfBoundsException if accessed via invalid `idx`. */
   def apply(idx: Int): Literal = lits(idx)
+  /** The underlying sequence of literals. */
+  def lits: Seq[Literal]
+
   /** The types of the implicitly universally quantified variables. */
   def implicitlyBound: Seq[(Int, Type)]
-  def maxImplicitlyBound: Int
   /** The implicitly (universally) quantified type variables.
     * It is assumed that we are in rank-1 polymorphism. */
   def typeVars: Seq[Int]
-  def maxTypeVar: Int
   /** The source from where the clause was created, See `ClauseOrigin`. */
   def origin: ClauseOrigin
 
@@ -32,12 +31,12 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   def maxLits(implicit sig: Signature): Seq[Literal]
 
   // Operations on clauses
-  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Clause = Clause.mkClause(lits.map(_.substitute(termSubst, typeSubst)))
-  def substituteOrdered(termSubst: Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature): Clause = Clause.mkClause(lits.map(_.substituteOrdered(termSubst, typeSubst)(sig)))
+  def substitute(termSubst: Subst, typeSubst: Subst = Subst.id): Clause = Clause(lits.map(_.substitute(termSubst, typeSubst)))
+  def substituteOrdered(termSubst: Subst, typeSubst: Subst = Subst.id)(implicit sig: Signature): Clause = Clause(lits.map(_.substituteOrdered(termSubst, typeSubst)(sig)))
 
   @inline final def map[A](f: Literal => A): Seq[A] = lits.map(f)
-  @inline final def mapLit(f: Literal => Literal): Clause = Clause.mkClause(lits.map(f), Derived)
-  @inline final def replace(what: Term, by: Term): Clause = Clause.mkClause(lits.map(_.replaceAll(what, by)))
+  @inline final def mapLit(f: Literal => Literal): Clause = Clause(lits.map(f), Derived)
+  @inline final def replace(what: Term, by: Term): Clause = Clause(lits.map(_.replaceAll(what, by)))
 
   final def pretty = s"[${lits.map(_.pretty).mkString(" , ")}]"
   final def pretty(sig: Signature) = s"[${lits.map(_.pretty(sig)).mkString(" , ")}]"
@@ -62,19 +61,28 @@ object Clause {
   import impl.{VectorClause => ClauseImpl}
 
   /** Create a unit clause containing only literal `lit` with origin `Derived`. */
-  def apply(lit: Literal): Clause = mkUnit(lit)
-  /** Create a clause containing the set of literals `lits` with origin `Derived`. */
-  def apply(lits: Iterable[Literal]): Clause = mkClause(lits)
-
+  @inline final def apply(lit: Literal): Clause = apply(Vector(lit), Derived)
+  /** Create a clause containing the set of literals `lits` with origin `Derived`.
+    * Consider using [[Clause.apply(Iterable[Literal], Seq[(Int, Type)], Seq[Int])]]
+    * to prevent re-calculation of free variables. */
+  @inline final def apply(lits: Iterable[Literal]): Clause = apply(lits, Derived)
+  /** Create a clause containing the set of literals `lits` with origin `Derived` and
+    * given free variables. This method is preferred since free variables
+    * are not computed from scratch. */
+  @inline final def apply(lits: Iterable[Literal],
+                          fvs: Seq[(Int, Type)],
+                          tyFvs: Seq[Int]): Clause = apply(lits, Derived, fvs, tyFvs)
   /** Create a clause containing the set of literals `lits` with origin `origin`. */
-  @inline final def mkClause(lits: Iterable[Literal], origin: ClauseOrigin): Clause =  ClauseImpl.mkClause(lits, origin)
-  /** Create a clause containing the set of literals `lits` with origin `Derived`. */
-  @inline final def mkClause(lits: Iterable[Literal]): Clause = mkClause(lits, Derived)
-  /** Create a unit clause containing only literal `lit` with origin `Derived`. */
-  @inline final def mkUnit(lit: Literal): Clause = mkClause(Vector(lit), Derived)
+  @inline final def apply(lits: Iterable[Literal], origin: ClauseOrigin): Clause =  ClauseImpl.mkClause(lits, origin)
+  /** Create a clause containing the set of literals `lits` with origin `origin` and
+    * given free variables. This method is preferred since free variables
+    * are not computed from scratch. */
+  @inline final def apply(lits: Iterable[Literal], origin: ClauseOrigin,
+                          fvs: Seq[(Int, Type)],
+                          tyFvs: Seq[Int]): Clause = ClauseImpl.mkClause(lits, origin, fvs, tyFvs)
 
   /** The empty clause. */
-  @inline final val empty: Clause = mkClause(Seq.empty)
+  @inline final val empty: Clause = apply(Seq.empty, Seq.empty, Seq.empty)
 
   // Utility
   /** Returns true iff clause `c` is empty. */
@@ -87,7 +95,14 @@ object Clause {
   final def trivial(c: Clause): Boolean = c.lits.exists(Literal.isTrue) || c.posLits.exists(l => c.negLits.exists(l2 => l.unsignedEquals(l2)))
 
   /** True iff this clause is ground. */
-  @inline final def ground(c: Clause): Boolean = c.lits.forall(_.ground)
+  @inline final def ground(c: Clause): Boolean = c.implicitlyBound.isEmpty
+  /** Returns the maximal index of any free (i.e. implicitly bound) variable in `c`
+    * or 0 if `c` is ground. */
+  @inline final def maxImplicitlyBound(c: Clause): Int =  if (c.implicitlyBound.isEmpty) 0 else c.implicitlyBound.head._1
+  /** Returns the maximal index of any free (i.e. implicitly bound) type variable in `c`
+    * or 0 if `c` is ground (with respect to types). */
+  @inline final def maxTypeVar(c: Clause): Int =  if (c.typeVars.isEmpty) 0 else c.typeVars.head
+
   /** True iff this clause is purely positive. i.e.
     * if all literals are positive. */
   @inline final def positive(c: Clause): Boolean = c.negLits.isEmpty

@@ -46,7 +46,7 @@ trait Literal extends Pretty with Prettier {
   /** Returns the set of free variables from `s = t` regarded as term. */
   @inline final lazy val tyFV: Set[Int] = left.tyFV union right.tyFV
   /** Returns true iff the equation `s = t` is ground. */
-  @inline final lazy val ground: Boolean = left.ground && right.ground
+  @inline final def ground: Boolean = left.ground && right.ground
 
 //  /** The weight of the literal as determined by the underlying literal weighting. */
 //  @inline final lazy val weight: Int = Configuration.LITERAL_WEIGHTING.weightOf(this)

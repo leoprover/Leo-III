@@ -36,7 +36,7 @@ class LiteralOrderingTest extends LeoTestSuite {
     val lifted = Clause(LiftEq.apply(posLiftLits, negLiftLits, nonLiftLits))
     val (ca, boolextLits,otherLits) = BoolExt.canApply(lifted)
     assert(ca)
-    val resultBoolExt = BoolExt(boolextLits, otherLits)
+    val resultBoolExt = BoolExt(lifted, boolextLits, otherLits)
     val ready = resultBoolExt.flatMap(cl => FullCNF(freshVarGen(cl),cl))
     Out.output(ready.map(_.pretty(sig)).mkString("\n"))
     assert(ready.size == 2)

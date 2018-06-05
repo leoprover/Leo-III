@@ -263,7 +263,27 @@ class EProver(val path : String) extends TptpProver[AnnotatedClause] {
 
   protected[external] def constructCall(args: Seq[String], timeout: Int,
                                         problemFileName: String): Seq[String] = {
-    ExternalProver.limitedRun(timeout+2, Seq(path, "--auto-schedule", s"--cpu-limit=${timeout.toString}", "-s", "--proof-object=0", problemFileName))
+    ExternalProver.limitedRun(timeout+2, Seq(path,
+      "--delete-bad-limit=2000000000",
+      "--definitional-cnf=24",
+      "-s",
+      "--proof-object=0",
+      "--auto-schedule",
+      "--split-clauses=4",
+      "--split-reuse-defs",
+      "--simul-paramod",
+      "--forward-context-sr",
+      "--destructive-er-aggressive",
+      "--destructive-er",
+      "--presat-simplify",
+      "--prefer-initial-clauses",
+      "--term-ordering=KBO6",
+      "-WSelectMaxLComplexAvoidPosPred",
+      "-winvfreqrank",
+      "-c1",
+      "-Ginvfreqconjmax",
+      "-F1",
+      s"--cpu-limit=${timeout.toString}", problemFileName))
   }
 }
 

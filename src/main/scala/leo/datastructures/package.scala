@@ -264,11 +264,24 @@ package object datastructures {
         CPO_SmallerFirst.reverse,
         oldest_first)
 
+    final def litCountHOFlexFlex: ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
+        CPO_SmallerFirstHOFlexFlex.reverse,
+        oldest_first)
+
     final def litCount_conjRelSymb(conjSymbols: Set[Signature.Key],
                               conjSymbolFactor: Float,
                               varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
       lexCombination(
         CPO_SmallerFirst.reverse,
+        new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
+        oldest_first)
+
+    final def litCountHOFlexFlex_conjRelSymb(conjSymbols: Set[Signature.Key],
+                                   conjSymbolFactor: Float,
+                                   varWeight: Int, symbWeight: Int): ClauseProxyOrdering[Seq[Double]] =
+      lexCombination(
+        CPO_SmallerFirstHOFlexFlex.reverse,
         new CPO_ConjRelativeSymbolWeight(conjSymbols, conjSymbolFactor, varWeight, symbWeight).reverse,
         oldest_first)
 

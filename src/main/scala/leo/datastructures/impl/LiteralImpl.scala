@@ -57,53 +57,53 @@ object LiteralImpl {
 
   /** Create new (non-equational) literal with equation
     * `left = $true` and polarity `pol`. */
-  final def mkLit(t: Term, pol: Boolean): Literal = {
+  @inline final def mkLit(t: Term, pol: Boolean): Literal = {
     NonEqLiteral(t, pol)
   }
 
 
-  private final case class EqLiteral(left: Term,
+  private[this] final case class EqLiteral(left: Term,
                                      right: Term,
                                      polarity: Boolean,
                                      oriented: Boolean) extends LiteralImpl {
     /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` and not
       * `s = $true` or `s = $false`. */
-    val equational: Boolean = true
+    @inline val equational: Boolean = true
     /** Returns true iff the literal is propositional. */
-    val propositional: Boolean = false
+    @inline val propositional: Boolean = false
 
     /** Returns true iff the literal is a positive equation. */
-    val equation: Boolean = polarity
+    @inline def equation: Boolean = polarity
     /** Returns true iff the literal is an unification constraint. */
-    val uni: Boolean = !polarity
+    @inline def uni: Boolean = !polarity
     /** Returns true iff the literal is a flex-flex unification constraint, */
-    val flexflex: Boolean = uni && left.flexHead && right.flexHead
+    @inline def flexflex: Boolean = uni && left.flexHead && right.flexHead
     /** Returns true iff the literal has a flexible head. */
-    val flexHead: Boolean = false
+    @inline val flexHead: Boolean = false
 
   }
 
-  private final case class NonEqLiteral(left: Term,
+  private[this] final case class NonEqLiteral(left: Term,
                                    polarity: Boolean) extends LiteralImpl {
     /** The left side of the literal's equation.
       * Invariant: `!equational => right = $true or right = $false`.
       * Invariant: `left > right or !oriented` where `>` is a term ordering. */
-    val right: Term = LitTrue()
+    @inline val right: Term = LitTrue()
     /** Whether the equation could have been oriented wrt. a term ordering `>`. */
-    val oriented: Boolean = true
+    @inline val oriented: Boolean = true
     /** Returns true iff the literal is equational, i.e. iff `l` is an equation `s = t` and not
       * `s = $true` or `s = $false`. */
-    val equational: Boolean = false
+    @inline val equational: Boolean = false
     /** Returns true iff the literal is propositional. */
-    val propositional: Boolean = left.isAtom
+    @inline def propositional: Boolean = left.isAtom
 
     /** Returns true iff the literal is a positive equation. */
-    val equation: Boolean = false
+    @inline val equation: Boolean = false
     /** Returns true iff the literal is an unification constraint. */
-    val uni: Boolean = false
+    @inline val uni: Boolean = false
     /** Returns true iff the literal is a flex-flex unification constraint, */
-    val flexflex: Boolean = false
+    @inline val flexflex: Boolean = false
     /** Returns true iff the literal has a flexible head. */
-    val flexHead: Boolean = (left.isApp || left.isAtom) && left.flexHead
+    @inline def flexHead: Boolean = (left.isApp || left.isAtom) && left.flexHead
   }
 }

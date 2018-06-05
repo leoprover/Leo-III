@@ -210,7 +210,7 @@ package object modules {
   /////////////////////////////////////////////////////////////
 
   @inline final def termToClause(t: Term, polarity: Boolean = true): Clause = {
-    Clause.mkClause(Vector(Literal.mkLit(t, polarity)))
+    Clause(Vector(Literal.mkLit(t, polarity)))
   }
 
 
