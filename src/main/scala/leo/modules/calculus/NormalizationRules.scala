@@ -839,9 +839,16 @@ object Simp extends CalculusRule {
   final def detUniInferences(cl: Clause)(implicit sig: Signature): Seq[Clause] = {
     val (posLits, negLits) = (cl.posLits, cl.negLits)
     val processedNegLits = detUniInferences0(negLits, Vector(Vector.empty))(sig)
-    processedNegLits.map(nLits => Clause(posLits ++ nLits))
+    val res = processedNegLits.map(nLits => Clause(posLits ++ nLits))
+    leo.modules.myAssert(res.forall(Clause.wellTyped),
+      s"Not well typed: ${res.filterNot(Clause.wellTyped).map(_.pretty(sig)).mkString("\n")}"
+    )
+    res
   }
   private final def detUniInferences0(literals: Seq[Literal], acc: Seq[Seq[Literal]])(sig: Signature): Seq[Seq[Literal]] = {
+    leo.modules.myAssert(acc.forall(_.forall(Literal.wellTyped)),
+      s"Not well typed: ${acc.filterNot(_.forall(Literal.wellTyped)).map(_.map(_.pretty(sig)).mkString(",")).mkString("\n")}"
+    )
     if (literals.isEmpty) acc
     else {
       val hd = literals.head
@@ -856,7 +863,9 @@ object Simp extends CalculusRule {
       } else {
         val canApplyBind = HuetsPreUnification.BindRule.canApply(leftBody, rightBody, leftAbstractions.size)
         if (canApplyBind != HuetsPreUnification.BindRule.CANNOT_APPLY) {
-          val subst = HuetsPreUnification.BindRule.apply((leftBody, rightBody), leftAbstractions.size, canApplyBind)
+          leo.Out.finest(s"[UniLitSimp] Can apply Bind on ${hd.pretty(sig)}")
+          val subst = HuetsPreUnification.BindRule.apply((left, right), leftAbstractions.size, canApplyBind)
+          leo.Out.finest(s"[UniLitSimp] Bind subst: ${subst.pretty}")
           detUniInferences0(literals.tail.map(_.substituteOrdered(subst)(sig)), acc.map(lits => lits.map(_.substituteOrdered(subst)(sig))))(sig)
         } else {
           val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)

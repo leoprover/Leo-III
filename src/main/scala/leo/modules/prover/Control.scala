@@ -821,6 +821,9 @@ package inferenceControl {
 
     final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
       Out.trace(s"[detUni] On ${cl.pretty(state.signature)}")
+      leo.modules.myAssert(Clause.wellTyped(cl.cl),
+        s"Not well typed: ${cl.pretty(state.signature)}"
+      )
       val results = Simp.detUniInferences(cl.cl)(state.signature)
       val results0 = results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
       Out.trace(s"[detUni] Results: ${results0.map(_.pretty(state.signature)).mkString("\n")}")
