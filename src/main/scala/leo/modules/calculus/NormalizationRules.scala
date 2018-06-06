@@ -849,26 +849,38 @@ object Simp extends CalculusRule {
       val (leftBody, leftAbstractions) = collectLambdas(left)
       val (rightBody, rightAbstractions) = collectLambdas(right)
       assert(leftAbstractions == rightAbstractions, s"Abstraction count does not match:\n\t${left.pretty(sig)}\n\t${right.pretty(sig)}")
-      val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
-      if (canApplyDecomp._1) {
-        leo.Out.finest(s"[UniLitSimp] Can apply Decomp on ${hd.pretty(sig)}")
-        if (canApplyDecomp._2.isDefined) {
-          val tySubst = canApplyDecomp._2.get
-          if (tySubst == Subst.id) {
-            // not need to apply tySubst
-            val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
-            val newLits = newEqs.map {case (l,r) => Literal.mkNegOrdered(l,r)(sig)}
-            detUniInferences0(literals.tail, acc.map(lits => lits :+ hd) ++ acc.map(lits => lits ++ newLits))(sig)
+      val canApplyDelete = HuetsPreUnification.DeleteRule.canApply((leftBody, rightBody))
+      if (canApplyDelete) {
+        leo.Out.finest(s"[UniLitSimp] Can apply Delete on ${hd.pretty(sig)}")
+        detUniInferences0(literals.tail, acc)(sig)
+      } else {
+        val canApplyBind = HuetsPreUnification.BindRule.canApply(leftBody, rightBody, leftAbstractions.size)
+        if (canApplyBind != HuetsPreUnification.BindRule.CANNOT_APPLY) {
+          val subst = HuetsPreUnification.BindRule.apply((leftBody, rightBody), leftAbstractions.size, canApplyBind)
+          detUniInferences0(literals.tail.map(_.substituteOrdered(subst)(sig)), acc.map(lits => lits.map(_.substituteOrdered(subst)(sig))))(sig)
+        } else {
+          val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
+          if (canApplyDecomp._1) {
+            leo.Out.finest(s"[UniLitSimp] Can apply Decomp on ${hd.pretty(sig)}")
+            if (canApplyDecomp._2.isDefined) {
+              val tySubst = canApplyDecomp._2.get
+              if (tySubst == Subst.id) {
+                // not need to apply tySubst
+                val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
+                val newLits = newEqs.map {case (l,r) => Literal.mkNegOrdered(l,r)(sig)}
+                detUniInferences0(literals.tail, acc.map(lits => lits :+ hd) ++ acc.map(lits => lits ++ newLits))(sig)
+              } else {
+                detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+                // TODO
+              }
+            } else {
+              leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
+              detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+            }
           } else {
             detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
-            // TODO
           }
-        } else {
-          leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
-          detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
         }
-      } else {
-        detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
       }
     }
   }

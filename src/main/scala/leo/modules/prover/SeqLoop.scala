@@ -447,6 +447,15 @@ object SeqLoop {
     Out.finest(userDefinedSignatureAsString(sig))
     Out.finest("Clauses at the end of the loop:")
     Out.finest("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
+    if (Configuration.isSet("print-signature")) {
+      println("Signature at termination:")
+      println(s"Name\t|\tId\t|\tType/Kind\t|\tDef.\t|\tProperties")
+      println(userDefinedSignatureAsString(sig))
+    }
+    if (Configuration.isSet("print-clauses")) {
+      println("Processed clauses at termination:")
+      println("\t" + state.processed.toSeq.sortBy(_.cl.lits.size).map(_.pretty(sig)).mkString("\n\t"))
+    }
 
     Out.output(SZSResult(state.szsStatus, Configuration.PROBLEMFILE, s"$time ms resp. $timeWOParsing ms w/o parsing"))
     /* Print proof object if possible and requested. */

@@ -58,9 +58,9 @@ package object calculus {
     /** Return all already used type variable of the generator, e.g.
       * all implicitly universally quantified of the clause's context. */
     def existingTyVars: Seq[Int]
-    /**
-      * Returns a copy of the underlying FreshVarGen
-      */
+    def lift(n: Int): Unit
+
+    /** Returns a copy of the underlying FreshVarGen */
     def copy: FreshVarGen
   }
 
@@ -92,6 +92,11 @@ package object calculus {
         l._1 > r._1
       }
       if (newVars.nonEmpty) cur = newVars.maxBy(_._1)._1
+    }
+
+    override final def lift(n: Int): Unit = {
+      cur = cur + n
+      vars = vars.map {case (i,t) => (i+n,t)}
     }
 
     override final def existingVars: Seq[(Int, Type)] = vars
