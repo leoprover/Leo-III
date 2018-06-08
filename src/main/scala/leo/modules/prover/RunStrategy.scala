@@ -1,5 +1,6 @@
 package leo.modules.prover
 
+import leo.TermOrdering
 import leo.datastructures.Pretty
 
 /**
@@ -27,11 +28,12 @@ final case class RunStrategy(name: String,
                              funcspec: Boolean,
                              domConstr : Int,
                              specialInstances: Int,
-                             restrictUniAttempts: Boolean) extends Pretty {
+                             restrictUniAttempts: Boolean,
+                             ordering: TermOrdering) extends Pretty {
   def pretty: String = s"strategy<name($name),share($share),primSubst($primSubst),sos($sos)," +
     s"unifierCount($unifierCount),uniDepth($uniDepth),boolExt($boolExt),choice($choice)," +
     s"renaming($renaming),funcspec($funcspec), domConstr($domConstr),specialInstances($specialInstances)," +
-    s"restrictUniAttempts($restrictUniAttempts)>"
+    s"restrictUniAttempts($restrictUniAttempts),termOrdering(${ordering.name})>"
 
   def runStandandalone : Boolean = {
 //    primSubst >= 2
@@ -57,7 +59,8 @@ object RunStrategy {
       Configuration.FUNCSPEC,
       Configuration.DEFAULT_DOMCONSTR,
       Configuration.PRE_PRIMSUBST_LEVEL,
-      Configuration.RESTRICT_UNI_ATTEMPTS)
+      Configuration.RESTRICT_UNI_ATTEMPTS,
+      Configuration.TERM_ORDERING)
 
 
   final def byName(str: String): RunStrategy = str match {
@@ -97,7 +100,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s1restricted: RunStrategy = RunStrategy(
     name = "s1restricted",
@@ -112,7 +116,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s1general: RunStrategy = RunStrategy(
     name = "s1general",
@@ -127,7 +132,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = false)
+    restrictUniAttempts = false,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s1a: RunStrategy = RunStrategy(
     name = "s1a",
@@ -142,7 +148,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = 31,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s1b: RunStrategy = RunStrategy(
     name = "s1b",
@@ -157,7 +164,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s2: RunStrategy = RunStrategy(
     name = "s2",
@@ -172,7 +180,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s3: RunStrategy = RunStrategy(
     name = "s3",
@@ -187,7 +196,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s3a: RunStrategy = RunStrategy(
     name = "s3a",
@@ -202,7 +212,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s3b: RunStrategy = RunStrategy(
     name = "s3b",
@@ -217,7 +228,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s3bb: RunStrategy = RunStrategy(
     name = "s3bb",
@@ -232,7 +244,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s4: RunStrategy = RunStrategy(
     name = "s4",
@@ -247,7 +260,8 @@ object RunStrategy {
     funcspec = true,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s5a : RunStrategy = RunStrategy (
     name = "s5a",
@@ -262,7 +276,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = -1,
     specialInstances = -1,
-    restrictUniAttempts = true
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING
   )
 
   def s5b: RunStrategy = RunStrategy(
@@ -278,7 +293,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = -1,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s5c: RunStrategy = RunStrategy(
     name = "s5c",
@@ -293,7 +309,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = -1,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def s6: RunStrategy = RunStrategy(
     name = "s6",
@@ -308,7 +325,8 @@ object RunStrategy {
     funcspec = false,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = true)
+    restrictUniAttempts = true,
+    Configuration.DEFAULT_TERMORDERING)
 
   def funcspec: RunStrategy = RunStrategy(
     name = "funcspec",
@@ -323,6 +341,7 @@ object RunStrategy {
     funcspec = true,
     domConstr = 0,
     specialInstances = -1,
-    restrictUniAttempts = false)
+    restrictUniAttempts = false,
+    leo.datastructures.impl.orderings.NO_ORDERING)
 }
 

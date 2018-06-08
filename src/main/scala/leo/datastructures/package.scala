@@ -68,6 +68,7 @@ package object datastructures {
   /////////////////////////////////
 
   trait TermOrdering {
+    def name: String
     def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result
   }
 

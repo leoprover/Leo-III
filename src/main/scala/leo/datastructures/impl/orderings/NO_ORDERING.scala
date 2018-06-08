@@ -7,6 +7,8 @@ import leo.datastructures.{Term, Signature, TermOrdering, CMP_Result, CMP_NC, CM
   */
 object NO_ORDERING extends TermOrdering
 {
+  final val name: String = "none"
+
   final def compare(s: Term, t: Term)(implicit sig: Signature): CMP_Result = {
     if (s == t) CMP_EQ
     else CMP_NC
