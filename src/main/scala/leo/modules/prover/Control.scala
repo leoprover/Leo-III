@@ -238,6 +238,7 @@ package inferenceControl {
         while (intoConfigurationIt.hasNext) {
           val (intoIndex, intoLit, intoSide, intoPos, intoTerm) = intoConfigurationIt.next()
           assert(!intoLit.flexflex)
+          leo.Out.finest(s"Check into(${intoLit.pretty(sig)}, ${intoSide}, ${intoPos.pretty}, ${intoTerm.pretty(sig)})")
 
           val result = singleParamod(withWrapper, withIndex, withLit, withSide,
             intoWrapper, intoIndex, intoLit, intoSide, intoPos, intoTerm)(state)
@@ -270,6 +271,7 @@ package inferenceControl {
 
         val shouldParamod0 = shouldParamod(withTerm, intoTerm)(state)
         leo.Out.finest(s"shouldParamod: $shouldParamod0\n\twith ${withTerm.pretty(sig)}\n\tinto: ${intoTerm.pretty(sig)}")
+        leo.Out.finest(s"isVariableModuloEta(intoTerm) = ${isVariableModuloEta(intoTerm)}")
         if (!isVariableModuloEta(intoTerm) && shouldParamod0) {
           leo.Out.finest(s"ordered: ${withLit.oriented} // ${intoLit.oriented}")
           Out.trace(s"May unify: ${withTerm.pretty(sig)} with ${intoTerm.pretty(sig)} (subterm at ${intoPos.pretty})")
@@ -819,6 +821,9 @@ package inferenceControl {
 
     final def detUniInferences(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = {
       Out.trace(s"[detUni] On ${cl.pretty(state.signature)}")
+      leo.modules.myAssert(Clause.wellTyped(cl.cl),
+        s"Not well typed: ${cl.pretty(state.signature)}"
+      )
       val results = Simp.detUniInferences(cl.cl)(state.signature)
       val results0 = results.filter(c => c != cl.cl).map(c => AnnotatedClause(c, InferredFrom(Simp, cl), cl.properties)).toSet
       Out.trace(s"[detUni] Results: ${results0.map(_.pretty(state.signature)).mkString("\n")}")
@@ -2093,7 +2098,7 @@ package inferenceControl {
       if (lit.equational) Literal.mkOrdered(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), rewriteTerm(vargen, lit.right, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)(sig)
       else Literal.apply(rewriteTerm(vargen, lit.left, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig), lit.polarity)
     }
-    private def rewriteTerm(vargen: FreshVarGen, term: Term, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause])(sig: Signature): Term = {
+    private def rewriteTerm(vargen: FreshVarGen, term: Term, groundRewriteTable: RewriteTable, nonGroundRewriteTable: RewriteTable, rewriteRulesUsed: mutable.Set[AnnotatedClause], depth: Int = 0)(sig: Signature): Term = {
       import leo.datastructures.Term._
       import leo.datastructures.partitionArgs
 
@@ -2109,17 +2114,20 @@ package inferenceControl {
           if (template.ty == term.ty) {
             val vargen0 = vargen.copy
             vargen0.addVars(template.fv.toSeq)
+            vargen0.lift(depth)
             leo.Out.finest(s"Try to match ...")
-            leo.Out.finest(template.pretty(sig))
+            val template0 = template.lift(depth)
+            leo.Out.finest(template0.pretty(sig))
             leo.Out.finest(term.pretty(sig))
-            val matchingResult = Matching(vargen0, template, term)
+            val matchingResult = Matching(vargen0, template0, term)
             if (matchingResult.nonEmpty) {
               val (termSubst, typeSubst) = matchingResult.head
               val (replaceBy, origin) = nonGroundRewriteTable(template)
-              val result =  replaceBy.substitute(termSubst, typeSubst)
+              val replaceBy0 = replaceBy.lift(depth)
+              val result =  replaceBy0.substitute(termSubst, typeSubst)
               leo.Out.finest(s"Yeah! replace ${term.pretty(sig)} by ${result.pretty(sig)}")
               leo.Out.finest(s"via lhs ${template.pretty(sig)}")
-              leo.Out.finest(s"via rhs ${replaceBy.pretty(sig)}")
+              leo.Out.finest(s"via rhs ${replaceBy0.pretty(sig)}")
               leo.Out.finest(s"via subst ${termSubst.pretty}")
               if (term != result) {
                 rewriteRulesUsed += origin
@@ -2134,13 +2142,17 @@ package inferenceControl {
         term match {
           case Bound(_,_) | Symbol(_) => term
           case hd ∙ args =>
-            val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)
+            val rewrittenHd = rewriteTerm(vargen, hd, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed, depth)(sig)
             val (tyArgs, termArgs) = partitionArgs(args)
 
             val res0 = Term.mkTypeApp(rewrittenHd, tyArgs)
-            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig)))
-          case ty :::> body => term //Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed)(sig))
+            Term.mkTermApp(res0, termArgs.map(t => rewriteTerm(vargen, t, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed, depth)(sig)))
+          case ty :::> body => /* term */ Term.mkTermAbs(ty, rewriteTerm(vargen, body, groundRewriteTable, nonGroundRewriteTable, rewriteRulesUsed, depth+1)(sig))
             // FIXME: Rewriting under lambda? What can go wrong? See SYO532^1.p
+            // Found the error: inside lambdas, there are more (higher) variables that are already used
+            // so the template needs to be lifted again. but then the vargen needs to be updated as well
+            // Could we also leave the rules fixed and lift the term instead? But no....bound variables
+            // are always from 1. we would need to lift, match und then lower again. ugly?
           case _ => term
         }
       }
