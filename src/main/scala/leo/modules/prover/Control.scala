@@ -2613,12 +2613,12 @@ package indexingControl {
             passmark, aging)(sig)
         } else {
           val noAx = input.size
-          if (noAx < 10) {
+          if (noAx < 15) {
             // dont filter here
             input
           } else if (noAx < 20) {  // 10 - 19
             getRelevantAxioms0(input, conjecture,
-              0.54, 2.35)(sig)
+              0.50, 2.35)(sig)
           } else if (noAx < 50) { // 20 - 49
             getRelevantAxioms0(input, conjecture,
               0.56, 2.35)(sig)
