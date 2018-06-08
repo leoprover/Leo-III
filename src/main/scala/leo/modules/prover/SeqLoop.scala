@@ -172,9 +172,11 @@ object SeqLoop {
           // If terminated with GaveUp and there is time left, try less restrictive strategy
           leo.Out.info(s"GaveUp with current strategy, trying again with another strategy ...")
           state.setRunStrategy(RunStrategy.funcspec)
+          Configuration.overrideOrdering = state.runStrategy.ordering
           val clauses = state.processed
           state.removeProcessed(clauses)
-          state.addUnprocessed(clauses)
+          val clauses0 = clauses.map(c => AnnotatedClause(Clause(c.cl.lits.map(l => Literal.mkLit(l.left, l.right, l.polarity))), c.role, c.annotation, c.properties))
+          state.addUnprocessed(clauses0)
           mainLoop(timeout, startTime)(state)
           successSZS(state.szsStatus)
         } else {

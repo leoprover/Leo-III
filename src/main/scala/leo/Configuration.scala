@@ -196,7 +196,9 @@ object Configuration extends DefaultConfiguration {
 
   lazy val CONSISTENCY_CHECK: Boolean = isSet(PARAM_CONSISTENCYCHECK)
 
-  lazy val TERM_ORDERING: TermOrdering = {
+  var overrideOrdering: TermOrdering = null // TODO: very hacky ...
+  def TERM_ORDERING: TermOrdering = {
+    if (overrideOrdering != null) return overrideOrdering
     if (isSet("ordering")) {
       val ord = valueOf("ordering").get.head
       ord match {
