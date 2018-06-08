@@ -211,7 +211,7 @@ protected[encoding] class LambdaElim_SKI(sig: TypedFOLEncodingSignature) extends
         Out.finest("[S] K")
         val translatedTy = foTransformType0(absType, true)(holSignature, sig)
         Out.finest(s"translatedTy: ${translatedTy.pretty(sig)}")
-        K(absBody.ty, translatedTy, absBody)
+        K(absBody.ty, translatedTy, absBody.lift(-1))
       case f ∙ args =>
         val lastArg = args.last
         if (lastArg.isLeft) {
