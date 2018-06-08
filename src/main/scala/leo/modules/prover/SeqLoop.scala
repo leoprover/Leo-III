@@ -158,88 +158,28 @@ object SeqLoop {
         }
         Out.finest(s"################")
       }
-
       /////////////////////////////////////////
-      // Main proof loop
+      // Main loop start
       /////////////////////////////////////////
-      var loop = true
-      Out.debug("## Reasoning loop BEGIN")
-      while (loop && !prematureCancel(state.noProcessedCl)) {
-        Interaction(state)
-
-        if (!Configuration.GUIDED && System.currentTimeMillis() - startTime > 1000 * timeout) {
-          loop = false
-          state.setSZSStatus(SZS_Timeout)
-        } else if (!state.unprocessedLeft) {
-          loop = false
-          if (isSatisfiable(state.processed)(state)) state.setSZSStatus(appropriateSatStatus(state))
-          else state.setSZSStatus(SZS_GaveUp)
-        } else {
-          // No cancel, do reasoning step
-          val extRes = Control.checkExternalResults(state)
-          if (extRes.nonEmpty) {
-            val extRes0 = extRes.filter(endgameResult)
-            if (extRes0.nonEmpty) {
-              loop = false
-              val extResAnswer = extRes0.head
-              if (extResAnswer.szsStatus == SZS_Unsatisfiable) {
-                val emptyClause = AnnotatedClause(Clause.empty,
-                  extCallInference(extResAnswer.prover.name,
-                    extResAnswer.problem))
-                endplay(emptyClause, state)
-              } else {
-                endplay(null, state)
-              }
-            }
-          } else {
-            var cur = state.nextUnprocessed
-            // cur is the current AnnotatedClause
-            Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
-            Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
-
-            /* Full simp with rewriting and stuff */
-            cur = Control.liftEq(Control.simp(cur))
-            val curCNF = Control.cnf(cur)
-            if (curCNF.size == 1 && curCNF.head == cur) {
-              // Check if `cur` is an empty clause
-              if (Clause.effectivelyEmpty(cur.cl)) {
-                loop = false
-                endplay(cur, state)
-              } else {
-                // Not an empty clause, detect choice definition or do reasoning step.
-                val isChoiceSpec = Control.detectChoiceClause(cur)
-                if (isChoiceSpec) {
-                  leo.Out.debug(s"[SeqLoop] Removed Choice: ${cur.id}")
-                } else {
-                  // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
-                  // e.g. by forward subsumption
-                  if (!Control.redundant(cur, state.processed)) {
-                    Control.submit(state.processed, state)
-                    if(mainLoopInferences(cur)(state)) loop = false
-                    state.incProofLoopCount()
-                  } else {
-                    Out.debug(s"[SeqLoop] Redundant: ${cur.id}")
-                    state.incForwardSubsumedCl()
-                  }
-                }
-              }
-            } else {
-              Control.addUnprocessed(curCNF)
-            }
-          }
-        }
-      }
-
+      mainLoop(timeout, startTime)(state)
       /////////////////////////////////////////
       // Main loop terminated, check if any prover result is pending
       /////////////////////////////////////////
       if (successSZS(state.szsStatus)) true
       else {
         if (state.szsStatus == SZS_Timeout) false
-        else {
-          // Try something else
+        else if (state.szsStatus == SZS_GaveUp) {
+          // If terminated with GaveUp and there is time left, try less restrictive strategy
+          leo.Out.info(s"GaveUp with current strategy, trying again with another strategy ...")
+          state.setRunStrategy(RunStrategy.funcspec)
+          val clauses = state.processed
+          state.removeProcessed(clauses)
+          state.addUnprocessed(clauses)
+          mainLoop(timeout, startTime)(state)
+          successSZS(state.szsStatus)
+        } else {
+          // Try something else, todo...
           Control.despairSubmit(startTime, timeout)(state)
-          // ....
           successSZS(state.szsStatus)
         }
       }
@@ -253,7 +193,78 @@ object SeqLoop {
     }
   }
 
-  private final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
+  private[this] final def mainLoop(timeout: Float, startTime: Long)(implicit state: LocalState): Unit = {
+    implicit val sig: Signature = state.signature
+    var loop = true
+    Out.debug("## Reasoning loop BEGIN")
+    while (loop && !prematureCancel(state.noProcessedCl)) {
+      Interaction(state)
+
+      if (!Configuration.GUIDED && System.currentTimeMillis() - startTime > 1000 * timeout) {
+        loop = false
+        state.setSZSStatus(SZS_Timeout)
+      } else if (!state.unprocessedLeft) {
+        loop = false
+        if (isSatisfiable(state.processed)(state)) state.setSZSStatus(appropriateSatStatus(state))
+        else state.setSZSStatus(SZS_GaveUp)
+      } else {
+        // No cancel, do reasoning step
+        val extRes = Control.checkExternalResults(state)
+        if (extRes.nonEmpty) {
+          val extRes0 = extRes.filter(endgameResult)
+          if (extRes0.nonEmpty) {
+            loop = false
+            val extResAnswer = extRes0.head
+            if (extResAnswer.szsStatus == SZS_Unsatisfiable) {
+              val emptyClause = AnnotatedClause(Clause.empty,
+                extCallInference(extResAnswer.prover.name,
+                  extResAnswer.problem))
+              endplay(emptyClause, state)
+            } else {
+              endplay(null, state)
+            }
+          }
+        } else {
+          var cur = state.nextUnprocessed
+          // cur is the current AnnotatedClause
+          Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
+          Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
+
+          /* Full simp with rewriting and stuff */
+          cur = Control.liftEq(Control.simp(cur))
+          val curCNF = Control.cnf(cur)
+          if (curCNF.size == 1 && curCNF.head == cur) {
+            // Check if `cur` is an empty clause
+            if (Clause.effectivelyEmpty(cur.cl)) {
+              loop = false
+              endplay(cur, state)
+            } else {
+              // Not an empty clause, detect choice definition or do reasoning step.
+              val isChoiceSpec = Control.detectChoiceClause(cur)
+              if (isChoiceSpec) {
+                leo.Out.debug(s"[SeqLoop] Removed Choice: ${cur.id}")
+              } else {
+                // Redundancy check: Check if cur is redundant wrt to the set of processed clauses
+                // e.g. by forward subsumption
+                if (!Control.redundant(cur, state.processed)) {
+                  Control.submit(state.processed, state)
+                  if(mainLoopInferences(cur)(state)) loop = false
+                  state.incProofLoopCount()
+                } else {
+                  Out.debug(s"[SeqLoop] Redundant: ${cur.id}")
+                  state.incForwardSubsumedCl()
+                }
+              }
+            }
+          } else {
+            Control.addUnprocessed(curCNF)
+          }
+        }
+      }
+    }
+  }
+
+  private[this] final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
     var newclauses: Set[AnnotatedClause] = Set.empty
     Out.trace(s"[SeqLoop] Main loop inferences ...")
