@@ -309,5 +309,20 @@ object RunStrategy {
     domConstr = 0,
     specialInstances = -1,
     restrictUniAttempts = true)
+
+  def funcspec: RunStrategy = RunStrategy(
+    name = "funcspec",
+    share = 0.5f,
+    primSubst = 3,
+    sos = false,
+    unifierCount = 4,
+    uniDepth = Configuration.DEFAULT_UNIFICATIONDEPTH,
+    boolExt = true,
+    choice = true,
+    renaming =  true,
+    funcspec = true,
+    domConstr = 0,
+    specialInstances = -1,
+    restrictUniAttempts = false)
 }
 
