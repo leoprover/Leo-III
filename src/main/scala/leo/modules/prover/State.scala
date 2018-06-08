@@ -198,7 +198,7 @@ protected[prover] class StateImpl[T <: ClauseProxy](final val sig: Signature) ex
 
   final def processed: Set[T] = currentProcessed.toSet
   final def addProcessed(cl: T): Unit = { currentProcessed += cl }
-  final def removeProcessed(cls: Set[T]): Unit = {currentProcessed --= cls}
+  final def removeProcessed(cls: Set[T]): Unit = {currentProcessed --= cls; removeUnits(cls)}
 
   final def groundRewriteRules: Set[T] = currentGroundRewriteRules.toSet
   final def nonGroundRewriteRules: Set[T] = currentNonGroundRewriteRules.toSet
