@@ -32,7 +32,7 @@ package object prover {
       val trivialNegConjectures: Set[Term] = Set(LitTrue, Not(LitFalse))
       Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
-      val relevantAxioms = if (effectiveInput.size <= 15 || trivialNegConjectures.contains(Clause.asTerm(state.negConjecture.cl))) effectiveInput
+      val relevantAxioms = if (trivialNegConjectures.contains(Clause.asTerm(state.negConjecture.cl))) effectiveInput
                             else Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
       state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +

@@ -2606,29 +2606,40 @@ package indexingControl {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
         if (input.isEmpty) input
-        else {
+        else if (Configuration.isSet("relevance-passmark") || Configuration.isSet("relevance-aging")) {
+          val passmark = Configuration.valueOf("relevance-passmark").getOrElse(Seq(Configuration.DEFAULT_PASSMARK.toString)).head.toDouble
+          val aging = Configuration.valueOf("relevance-aging").getOrElse(Seq(Configuration.DEFAULT_AGING.toString)).head.toDouble
+          getRelevantAxioms0(input, conjecture,
+            passmark, aging)(sig)
+        } else {
           val noAx = input.size
           if (noAx < 10) {
             // dont filter here
             input
-          } else if (noAx < 20) {
+          } else if (noAx < 20) {  // 10 - 19
             getRelevantAxioms0(input, conjecture,
               0.54, 2.35)(sig)
-          } else if (noAx < 100) {
+          } else if (noAx < 50) { // 20 - 49
             getRelevantAxioms0(input, conjecture,
               0.56, 2.35)(sig)
-          } else if (noAx < 200) {
+          } else if (noAx < 100) { // 50 - 99
             getRelevantAxioms0(input, conjecture,
               0.58, 2.35)(sig)
-          } else if (noAx < 500) {
+          } else if (noAx < 200) { // 100 - 199
             getRelevantAxioms0(input, conjecture,
-              0.6, 2.35)(sig)
-          } else if (noAx < 1000) {
+              0.60, 2.35)(sig)
+          } else if (noAx < 500) { // 200 - 499
+            getRelevantAxioms0(input, conjecture,
+              0.62, 2.35)(sig)
+          } else if (noAx < 1000) { // 500 - 999
             getRelevantAxioms0(input, conjecture,
               0.64, 2.35)(sig)
-          } else {
+          } else if (noAx < 2000) { // 1000 - 1999
             getRelevantAxioms0(input, conjecture,
-              0.66, 2.35)(sig)
+              0.68, 2.35)(sig)
+          } else { // 2000 -
+            getRelevantAxioms0(input, conjecture,
+              0.73, 2.35)(sig)
           }
         }
       }
