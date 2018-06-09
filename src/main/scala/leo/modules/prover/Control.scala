@@ -1605,7 +1605,7 @@ package inferenceControl {
         }
       }
       if (wasApplied) {
-        val result = AnnotatedClause(Clause(newLits, cl.cl.implicitlyBound, cl.cl.typeVars), InferredFrom(PolaritySwitch, cl), cl.properties)
+        val result = AnnotatedClause(Clause(newLits), InferredFrom(PolaritySwitch, cl), cl.properties)
         Out.trace(s"Switch polarity: ${result.pretty}")
         result
       } else
@@ -1649,7 +1649,7 @@ package inferenceControl {
     final def liftEq(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = {
       val (cA_lift, posLift, negLift, lift_other) = LiftEq.canApply(cl.cl)
       if (cA_lift) {
-        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig), cl.cl.implicitlyBound, cl.cl.typeVars), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
+        val result = AnnotatedClause(Clause(LiftEq(posLift, negLift, lift_other)(sig)), InferredFrom(LiftEq, cl), deleteProp(ClauseAnnotation.PropBoolExt,cl.properties))
         Out.trace(s"to_eq: ${result.pretty(sig)}")
         result
       } else

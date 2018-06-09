@@ -838,18 +838,20 @@ object Simp extends CalculusRule {
 
   final def detUniInferences(cl: Clause)(implicit sig: Signature): Seq[Clause] = {
     val (posLits, negLits) = (cl.posLits, cl.negLits)
-    val processedNegLits = detUniInferences0(negLits, Vector(Vector.empty))(sig)
-    val res = processedNegLits.map(nLits => Clause(posLits ++ nLits))
+    val (processedNegLits,subst) =  detUniInferences0(negLits, Vector(Vector.empty), Subst.id)(sig)
+    val normSubst = subst.normalize
+    val substPosLits = posLits.map(_.substituteOrdered(normSubst))
+    val res = processedNegLits.map(nLits => Clause(substPosLits ++ nLits))
     leo.modules.myAssert(res.forall(Clause.wellTyped),
       s"Not well typed: ${res.filterNot(Clause.wellTyped).map(_.pretty(sig)).mkString("\n")}"
     )
     res
   }
-  private final def detUniInferences0(literals: Seq[Literal], acc: Seq[Seq[Literal]])(sig: Signature): Seq[Seq[Literal]] = {
+  private final def detUniInferences0(literals: Seq[Literal], acc: Seq[Seq[Literal]], partialSubst: TermSubst)(sig: Signature): (Seq[Seq[Literal]], TermSubst) = {
     leo.modules.myAssert(acc.forall(_.forall(Literal.wellTyped)),
       s"Not well typed: ${acc.filterNot(_.forall(Literal.wellTyped)).map(_.map(_.pretty(sig)).mkString(",")).mkString("\n")}"
     )
-    if (literals.isEmpty) acc
+    if (literals.isEmpty) (acc,partialSubst)
     else {
       val hd = literals.head
       val left = hd.left; val right = hd.right
@@ -859,14 +861,15 @@ object Simp extends CalculusRule {
       val canApplyDelete = HuetsPreUnification.DeleteRule.canApply((leftBody, rightBody))
       if (canApplyDelete) {
         leo.Out.finest(s"[UniLitSimp] Can apply Delete on ${hd.pretty(sig)}")
-        detUniInferences0(literals.tail, acc)(sig)
+        detUniInferences0(literals.tail, acc, partialSubst)(sig)
       } else {
         val canApplyBind = HuetsPreUnification.BindRule.canApply(leftBody, rightBody, leftAbstractions.size)
         if (canApplyBind != HuetsPreUnification.BindRule.CANNOT_APPLY) {
           leo.Out.finest(s"[UniLitSimp] Can apply Bind on ${hd.pretty(sig)}")
           val subst = HuetsPreUnification.BindRule.apply((left, right), leftAbstractions.size, canApplyBind)
           leo.Out.finest(s"[UniLitSimp] Bind subst: ${subst.pretty}")
-          detUniInferences0(literals.tail.map(_.substituteOrdered(subst)(sig)), acc.map(lits => lits.map(_.substituteOrdered(subst)(sig))))(sig)
+          val newPartialSubst = partialSubst.comp(subst)
+          detUniInferences0(literals.tail.map(_.substituteOrdered(subst)(sig)), acc.map(lits => lits.map(_.substituteOrdered(subst)(sig))), newPartialSubst)(sig)
         } else {
           val canApplyDecomp = HuetsPreUnification.DecompRule.canApply((leftBody, rightBody), leftAbstractions.size)
           if (canApplyDecomp._1) {
@@ -877,17 +880,17 @@ object Simp extends CalculusRule {
                 // not need to apply tySubst
                 val newEqs = HuetsPreUnification.DecompRule((leftBody, rightBody), leftAbstractions)
                 val newLits = newEqs.map {case (l,r) => Literal.mkNegOrdered(l,r)(sig)}
-                detUniInferences0(literals.tail, acc.map(lits => lits :+ hd) ++ acc.map(lits => lits ++ newLits))(sig)
+                detUniInferences0(literals.tail, acc.map(lits => lits :+ hd) ++ acc.map(lits => lits ++ newLits), partialSubst)(sig)
               } else {
-                detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+                detUniInferences0(literals.tail, acc.map(lits => lits :+ hd), partialSubst)(sig)
                 // TODO
               }
             } else {
               leo.Out.finest(s"[UniLitSimp] Could apply Decomp but typed are non-unifiable")
-              detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+              detUniInferences0(literals.tail, acc.map(lits => lits :+ hd), partialSubst)(sig)
             }
           } else {
-            detUniInferences0(literals.tail, acc.map(lits => lits :+ hd))(sig)
+            detUniInferences0(literals.tail, acc.map(lits => lits :+ hd), partialSubst)(sig)
           }
         }
       }
