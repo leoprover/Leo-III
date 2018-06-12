@@ -56,15 +56,14 @@ extends CompletePhase(blackBoard, sched, RuleAgentPhase.endOn(ruleGraph.outType)
     typeCheck(remainingInput, state)
 
     var initSet : Set[AnnotatedClause] = remainingInput.toSet
-    var negConj : AnnotatedClause = null
 
-    if (state.negConjecture != null) {
+
+    if (state.negConjecture.nonEmpty) {
       // Expand conj, Initialize indexes
       // We expand here already since we are interested in all symbols (possibly contained within defined symbols)
-      val simpNegConj = Control.expandDefinitions(state.negConjecture)
-      negConj = simpNegConj
-      Control.initIndexes(simpNegConj +: remainingInput)(state)
-      initSet = initSet + simpNegConj
+      val expandedNegatedConjectures = state.negConjecture.map(c => Control.expandDefinitions(c))
+      Control.initIndexes(remainingInput ++ expandedNegatedConjectures)(state)
+      initSet = initSet ++ expandedNegatedConjectures
     } else {
       Control.initIndexes(remainingInput)
     }

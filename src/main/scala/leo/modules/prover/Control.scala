@@ -78,7 +78,7 @@ object Control {
   @inline final def resetIndexes(implicit state: State[AnnotatedClause]): Unit = indexingControl.IndexingControl.resetIndexes(state)
 
   // Relevance filtering
-  @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjecture: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjecture)(sig)
+  @inline final def getRelevantAxioms(input: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula], conjectures: Seq[leo.datastructures.tptp.Commons.AnnotatedFormula])(implicit sig: Signature): Seq[leo.datastructures.tptp.Commons.AnnotatedFormula] = indexingControl.RelevanceFilterControl.getRelevantAxioms(input, conjectures)(sig)
   @inline final def relevanceFilterAdd(formula: leo.datastructures.tptp.Commons.AnnotatedFormula)(implicit sig: Signature): Unit = indexingControl.RelevanceFilterControl.relevanceFilterAdd(formula)(sig)
 
   // External prover call
@@ -2602,56 +2602,57 @@ package indexingControl {
     import leo.datastructures.tptp.Commons.AnnotatedFormula
     import leo.modules.relevance_filter._
 
-    final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula)(sig: Signature): Seq[AnnotatedFormula] = {
+    final def getRelevantAxioms(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula])(sig: Signature): Seq[AnnotatedFormula] = {
       if (Configuration.NO_AXIOM_SELECTION) input
       else {
         if (input.isEmpty) input
         else if (Configuration.isSet("relevance-passmark") || Configuration.isSet("relevance-aging")) {
           val passmark = Configuration.valueOf("relevance-passmark").getOrElse(Seq(Configuration.DEFAULT_PASSMARK.toString)).head.toDouble
           val aging = Configuration.valueOf("relevance-aging").getOrElse(Seq(Configuration.DEFAULT_AGING.toString)).head.toDouble
-          getRelevantAxioms0(input, conjecture,
+          getRelevantAxioms0(input, conjectures,
             passmark, aging)(sig)
         } else {
           val noAx = input.size
           if (noAx < 15) {
             // dont filter here
             input
-          } else if (noAx < 20) {  // 10 - 19
-            getRelevantAxioms0(input, conjecture,
+          } else if (noAx < 20) {  // 15 - 19
+            getRelevantAxioms0(input, conjectures,
               0.50, 2.35)(sig)
           } else if (noAx < 50) { // 20 - 49
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.56, 2.35)(sig)
           } else if (noAx < 100) { // 50 - 99
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.58, 2.35)(sig)
           } else if (noAx < 200) { // 100 - 199
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.60, 2.35)(sig)
           } else if (noAx < 500) { // 200 - 499
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.62, 2.35)(sig)
           } else if (noAx < 1000) { // 500 - 999
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.64, 2.35)(sig)
           } else if (noAx < 2000) { // 1000 - 1999
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.68, 2.35)(sig)
           } else { // 2000 -
-            getRelevantAxioms0(input, conjecture,
+            getRelevantAxioms0(input, conjectures,
               0.73, 2.35)(sig)
           }
         }
       }
     }
 
-    final def getRelevantAxioms0(input: Seq[AnnotatedFormula], conjecture: AnnotatedFormula,
+    final def getRelevantAxioms0(input: Seq[AnnotatedFormula], conjectures: Seq[AnnotatedFormula],
                                  passmark: Double, aging: Double)(sig: Signature): Seq[AnnotatedFormula] = {
       var result: Seq[AnnotatedFormula] = Vector.empty
       var round : Int = 0
 
-      leo.Out.finest(s"Conjecture: ${conjecture.toString}")
-      val conjSymbols = PreFilterSet.useFormula(conjecture)
+      leo.Out.finest(s"Conjecture(s): ${conjectures.map(_.toString).mkString(",")}")
+      // val conjSymbols = PreFilterSet.useFormula(conjecture)
+      val conjSymbols = conjectures.flatMap(c => PreFilterSet.useFormula(c)).toSet
       leo.Out.finest(s"Symbols in conjecture: ${conjSymbols.mkString(",")}")
       val firstPossibleCandidates = PreFilterSet.getCommonFormulas(conjSymbols)
       var taken: Iterable[AnnotatedFormula] = firstPossibleCandidates.filter(f => RelevanceFilter(passmark)(aging)(round)(f))

@@ -46,9 +46,11 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def copyGeneral: GeneralState[T]
 
   def conjecture: T
-  def negConjecture: T
+  /** Is never null. */
+  def negConjecture: Set[T]
   def setConjecture(conj: T): Unit
-  def setNegConjecture(negConj: T): Unit
+  /** Adds negConj to the set of negated_conjecture formulas (there may be multiple of that). */
+  def addNegConjecture(negConj: T): Unit
 
   def szsStatus: StatusSZS
   def setSZSStatus(szs: StatusSZS): Unit
@@ -65,7 +67,7 @@ trait GeneralState[T <: ClauseProxy] extends Pretty with StateStatistics {
   def setRunStrategy(runStrategy: RunStrategy): Unit
 
   def symbolsInConjecture: Set[Signature.Key]
-  def defConjSymbols(negConj: T): Unit
+  def defConjSymbols(negConj: Set[T]): Unit
 
   def setFilteredAxioms(axioms: Seq[tptp.Commons.AnnotatedFormula]): Unit
   def filteredAxioms: Seq[tptp.Commons.AnnotatedFormula]
@@ -101,9 +103,9 @@ object GeneralState {
 protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) extends GeneralState[T] {
   protected var current_szs : StatusSZS = SZS_Unknown
   protected var conjecture0: T = _
-  protected var negConjecture0: T = _
+  protected val negConjecture0: mutable.Set[T] = mutable.Set.empty
   protected var runStrategy0: RunStrategy = _
-  protected var symbolsInConjecture0: Set[Signature.Key] = Set.empty
+  protected var symbolsInConjecture0: mutable.Set[Signature.Key] = mutable.Set.empty
   protected var current_externalProvers: Set[TptpProver[T]] = Set()
   protected var initialProblem0: Set[T] = Set()
   protected var poly: Boolean = false
@@ -120,7 +122,7 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
   def copyGeneral: GeneralState[T] = {
     val state = new GeneralStateImp[T](sig)
     state.conjecture0 = conjecture0
-    state.negConjecture0 = negConjecture0
+    negConjecture0.foreach(negConj => state.negConjecture0.add(negConj))
     state.runStrategy0 = runStrategy0
     state.symbolsInConjecture0 = symbolsInConjecture0
     state.choiceFunctions0 = choiceFunctions0
@@ -132,20 +134,24 @@ protected[modules] class GeneralStateImp[T <: ClauseProxy](sig : Signature) exte
 
   final def conjecture: T = conjecture0
   final def setConjecture(conj: T): Unit = {conjecture0 = conj }
-  final def negConjecture: T = negConjecture0
-  final def setNegConjecture(negConj: T): Unit = negConjecture0 = negConj
+  final def negConjecture: Set[T] = negConjecture0.toSet
+  final def addNegConjecture(negConj: T): Unit = { negConjecture0.add(negConj) }
 
   final def signature: Signature = sig
   final def runStrategy: RunStrategy = runStrategy0
   final def setRunStrategy(runStrategy: RunStrategy): Unit = {runStrategy0 = runStrategy}
 
-  final def symbolsInConjecture: Set[Signature.Key] = symbolsInConjecture0
-  final def defConjSymbols(negConj: T): Unit = {
-    assert(Clause.unit(negConj.cl))
-    val lit = negConj.cl.lits.head
-    assert(!lit.equational)
-    val term = lit.left
-    symbolsInConjecture0 = term.symbols.distinct intersect signature.allUserConstants
+  final def symbolsInConjecture: Set[Signature.Key] = symbolsInConjecture0.toSet
+  final def defConjSymbols(negConj: Set[T]): Unit = {
+    val negConjIt = negConj.iterator
+    while (negConjIt.hasNext) {
+      val negConj0 = negConjIt.next()
+      assert(Clause.unit(negConj0.cl))
+      val lit = negConj0.cl.lits.head
+      assert(!lit.equational)
+      val term = lit.left
+      symbolsInConjecture0.++=(term.symbols.distinct intersect signature.allUserConstants)
+    }
     leo.Out.trace(s"Set Symbols in conjecture: " +
       s"${symbolsInConjecture0.map(signature(_).name).mkString(",")}")
   }
@@ -253,7 +259,7 @@ private class FVStateImpl[T <: ClauseProxy](sig : Signature) extends GeneralStat
   def copyFVState : FVState[T] = {
     val state = new FVStateImpl[T](sig)
     state.conjecture0 = conjecture0
-    state.negConjecture0 = negConjecture0
+    negConjecture0.foreach(negConj => state.negConjecture0.add(negConj))
     state.runStrategy0 = runStrategy0
     state.symbolsInConjecture0 = symbolsInConjecture0
     state.choiceFunctions0 = choiceFunctions0

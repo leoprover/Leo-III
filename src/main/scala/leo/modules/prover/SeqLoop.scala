@@ -123,10 +123,10 @@ object SeqLoop {
       val timeout = if (timeout0 == 0) Float.PositiveInfinity else timeout0
       // Initialize indexes
       state.initUnprocessed()
-      val toPreprocess = if (state.negConjecture != null) {
-        val simpNegConj = Control.expandDefinitions(state.negConjecture)
-        state.defConjSymbols(simpNegConj)
-        val input0 = simpNegConj +: input
+      val toPreprocess = if (state.negConjecture.nonEmpty) {
+        val expandedNegatedConjectures = state.negConjecture.map(c => Control.expandDefinitions(c))
+        state.defConjSymbols(expandedNegatedConjectures)
+        val input0 = expandedNegatedConjectures.toSeq ++ input
         Control.initIndexes(input0)
         input0
       } else {

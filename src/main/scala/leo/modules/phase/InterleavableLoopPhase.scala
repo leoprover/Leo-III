@@ -68,13 +68,13 @@ class InterleavableLoopPhase
     // Typechecking: Throws and exception if not well-typed
     typeCheck(remainingInput, state.state)
 
-    if (state.state.negConjecture != null) {
+    if (state.state.negConjecture.nonEmpty) {
       // Expand conj, Initialize indexes
       // We expand here already since we are interested in all symbols (possibly contained within defined symbols)
       Out.debug("## Preprocess Neg.Conjecture BEGIN")
-      Out.trace(s"Neg. conjecture: ${state.state.negConjecture.pretty(sig)}")
-      val simpNegConj = Control.expandDefinitions(state.state.negConjecture)
-      state.state.defConjSymbols(simpNegConj)
+      Out.trace(s"Neg. conjecture: ${state.state.negConjecture.map(_.pretty(sig)).mkString(",")}")
+      val simpNegConj = Control.expandDefinitions(state.state.negConjecture.head) // FIXME: there can be multiple conjectures
+      state.state.defConjSymbols(Set(simpNegConj)) // FIXME
       state.state.initUnprocessed()
       Control.initIndexes(simpNegConj +: remainingInput)(state.state)
       val result = SeqLoop.preprocess(simpNegConj)(state.state).filterNot(cw => Clause.trivial(cw.cl))

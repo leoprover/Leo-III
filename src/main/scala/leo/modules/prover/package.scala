@@ -25,15 +25,16 @@ package object prover {
   /** Converts the input into clauses and filters the axioms if applicable. */
   final def effectiveInput(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): Seq[AnnotatedClause] = {
     import leo.datastructures.Clause
-    import leo.modules.HOLSignature.{Not, LitFalse, LitTrue}
     Out.info(s"Parsing finished. Scanning for conjecture ...")
-    val (effectiveInput,conj) = effectiveInput0(input, state)
-    if (state.negConjecture != null) {
-      val trivialNegConjectures: Set[Term] = Set(LitTrue, Not(LitFalse))
+    val (effectiveInput,conjs) = effectiveInput0(input, state) // Split input
+
+    if (state.negConjecture.nonEmpty) {
       Out.info(s"Found a conjecture and ${effectiveInput.size} axioms. Running axiom selection ...")
       // Do relevance filtering: Filter hopefully unnecessary axioms
-      val relevantAxioms = if (trivialNegConjectures.contains(Clause.asTerm(state.negConjecture.cl))) effectiveInput
-                            else Control.getRelevantAxioms(effectiveInput, conj)(state.signature)
+      val relevantAxioms = if (state.negConjecture.exists(cl => Clause.asTerm(cl.cl).symbols.distinct.intersect(state.signature.allUserConstants).isEmpty)) {
+        leo.Out.finest(s"trivial conjecture, lets take all axioms.")
+        effectiveInput
+      } else Control.getRelevantAxioms(effectiveInput, conjs)(state.signature)
       state.setFilteredAxioms(effectiveInput.diff(relevantAxioms))
       Out.info(s"Axiom selection finished. Selected ${relevantAxioms.size} axioms " +
         s"(removed ${state.filteredAxioms.size} axioms).")
@@ -44,14 +45,25 @@ package object prover {
     }
   }
 
-  /** Insert types, definitions and the conjecture to the signature resp. state. The rest
-    * (axioms etc.) is left unchanged for relevance filtering. Throws an error if multiple
-    * conjectures are present or unknown role occurs. */
-  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): (Seq[tptp.Commons.AnnotatedFormula], tptp.Commons.AnnotatedFormula) = {
+  /** Split the problem input (list of TPTP AnnotatedFormulas) into
+    * (1) axioms, and
+    * (2) (negated) conjecture(s).
+    * Multiple conjecture are not allowed, multiple negated conjecture are allowed.
+    * The axioms of the problem statement are left unchanged, a possibly existing
+    * conjecture is negated.
+    *
+    * Side effects:
+    * - Types and definitions are inserted into the signature.
+    * - The conjecture/negated conjecture(s) are updated in the state.
+    * - Each axiom is registered at the axiom filter
+    *
+    * @throws leo.modules.SZSException of type [[leo.modules.output.SZS_InputError]]
+    * if multiple conjecture are contained in the problem input. */
+  final private def effectiveInput0(input: Seq[tptp.Commons.AnnotatedFormula], state: LocalGeneralState): (Seq[tptp.Commons.AnnotatedFormula], Seq[tptp.Commons.AnnotatedFormula]) = {
     import leo.datastructures.{Role_Definition, Role_Type, Role_Conjecture, Role_NegConjecture, Role_Unknown}
     import leo.datastructures.ClauseAnnotation._
-    var result: Seq[tptp.Commons.AnnotatedFormula] = Vector()
-    var conj: tptp.Commons.AnnotatedFormula = null
+    var result: Seq[tptp.Commons.AnnotatedFormula] = Vector.empty
+    var conj: Seq[tptp.Commons.AnnotatedFormula] = Vector.empty
     val inputIt = input.iterator
     while (inputIt.hasNext) {
       val formula = inputIt.next()
@@ -60,7 +72,7 @@ package object prover {
         case Role_Definition.pretty => Control.relevanceFilterAdd(formula)(state.signature)
           Input.processFormula(formula)(state.signature)
         case Role_Conjecture.pretty =>
-          if (state.negConjecture == null) {
+          if (state.conjecture == null && state.negConjecture.isEmpty) {
             if (Configuration.CONSISTENCY_CHECK) {
               Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
               /* skip */
@@ -70,13 +82,13 @@ package object prover {
               val translated = Input.processFormula(formula)(state.signature)
               val conjectureClause = AnnotatedClause(termToClause(translated._2), Role_Conjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropNoProp)
               state.setConjecture(conjectureClause)
-              val negConjectureClause = AnnotatedClause(termToClause(translated._2, false), Role_NegConjecture, InferredFrom(NegateConjecture, conjectureClause), ClauseAnnotation.PropSOS)
-              state.setNegConjecture(negConjectureClause)
-              conj = formula
+              val negConjectureClause = AnnotatedClause(termToClause(translated._2, polarity = false), Role_NegConjecture, InferredFrom(NegateConjecture, conjectureClause), ClauseAnnotation.PropSOS)
+              state.addNegConjecture(negConjectureClause)
+              conj = Vector(formula)
             }
-          } else throw new SZSException(SZS_InputError, "At most one conjecture per input problem is permitted.")
+          } else throw new SZSException(SZS_InputError, "Problem contains either multiple conjectures or both conjecture and negated_conjecture formulas. This is not allowed.")
         case Role_NegConjecture.pretty =>
-          if (state.negConjecture == null) {
+          if (state.conjecture == null) {
             if (Configuration.CONSISTENCY_CHECK) {
               Out.info(s"Input conjecture ignored since 'consistency-only' is set.")
               /* skip */
@@ -84,10 +96,10 @@ package object prover {
               Control.relevanceFilterAdd(formula)(state.signature)
               val translated = Input.processFormula(formula)(state.signature)
               val negConjectureClause = AnnotatedClause(termToClause(translated._2), Role_NegConjecture, FromFile(Configuration.PROBLEMFILE, translated._1), ClauseAnnotation.PropSOS)
-              state.setNegConjecture(negConjectureClause)
-              conj = formula
+              state.addNegConjecture(negConjectureClause)
+              conj = conj :+ formula
             }
-          } else throw new SZSException(SZS_InputError, "At most one (negated) conjecture per input problem is permitted.")
+          } else throw new SZSException(SZS_InputError, "Problem contains both conjecture and negated_conjecture formulas. This is not allowed.")
         case Role_Unknown.pretty =>
           throw new SZSException(SZS_InputError, s"Formula ${formula.name} has role 'unknown' which is regarded an error.")
         case _ =>
@@ -108,10 +120,9 @@ package object prover {
   //// Further Utility
   ////////////////////////////////////
   final def typeCheck(input: Seq[AnnotatedClause], state: LocalGeneralState): Unit = {
-    if (state.negConjecture != null) typeCheck0(state.negConjecture +: input, state)
-    else typeCheck0(input, state)
+    typeCheck0(state.negConjecture.toSeq ++ input)
   }
-  @tailrec final private def typeCheck0(input: Seq[AnnotatedClause], state: LocalGeneralState): Unit = {
+  @tailrec final private def typeCheck0(input: Seq[AnnotatedClause]): Unit = {
     import leo.datastructures.ClauseAnnotation.FromFile
     import leo.modules.HOLSignature.o
     if (input.nonEmpty) {
@@ -127,7 +138,7 @@ package object prover {
         leo.Out.severe(s"Input problem did not pass type check: '${annotation.formulaName}' is not Boolean typed.")
         throw new SZSException(SZS_TypeError, s"Term of non-Boolean type at top-level in formula '${annotation.formulaName}' from file '${annotation.fileName}'.")
       } else {
-        typeCheck0(input.tail, state)
+        typeCheck0(input.tail)
       }
     }
   }
@@ -151,11 +162,11 @@ package object prover {
     false
   }
   final def appropriateSatStatus(state: LocalState): StatusSZS = {
-    if (state.negConjecture == null) SZS_Satisfiable
+    if (state.negConjecture.isEmpty) SZS_Satisfiable
     else SZS_CounterSatisfiable
   }
   final def appropriateThmStatus(state: LocalState, proof: Proof): StatusSZS = {
-    if (state.negConjecture == null) SZS_Unsatisfiable
+    if (state.negConjecture.isEmpty) SZS_Unsatisfiable
     else {
       if (conjInProof(proof)) SZS_Theorem
       else SZS_ContradictoryAxioms
