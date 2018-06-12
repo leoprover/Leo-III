@@ -201,7 +201,7 @@ package object modules {
   }
 
   final def conjInProof(p: Proof): Boolean = {
-    p.exists(_.role == Role_Conjecture)
+    p.exists(c => c.role == Role_Conjecture || c.role == Role_NegConjecture)
   }
 
 
