@@ -396,6 +396,7 @@ protected[encoding] class LambdaElim_Turner(sig: TypedFOLEncodingSignature) exte
 
 protected[encoding] class LambdaElim_LambdaLifting(sig: TypedFOLEncodingSignature) extends LambdaElimination(sig) {
   private var auxiliaryFormulae: Set[Term] = Set.empty
+  private var replacementCache: Map[Term, Term] = Map.empty // TODO MSG calculation for templates?
 
 
   override def eliminateLambda(t: Term)(holSignature: Signature): Term = {
@@ -404,39 +405,45 @@ protected[encoding] class LambdaElim_LambdaLifting(sig: TypedFOLEncodingSignatur
     import TypedFOLEncoding.{translateTerm}
     // collect batches of lambdas t = \x1...\xn. t' and replace them with fresh functions
     // like this:
-    // collect(t) = ((x1, ..., xn), t')
-    // get free variables of t'
-    // fv(t') = (fv1, ...., fvm)
+    // collect(t) = ((x1, ..., xn), t') where t' is lambda-prefix free
+    // get free variables of t (this does NOT include x1....xn):
+    // fv(t) = (fv1, ...., fvm)
     // replace t by f(fv1, ..., fvm)*
     // add definition \/fv1,...,fnm.\/x1,...xn. app(...(app(f(fv1, ..., fvm),x1)...)...xn) = t''
-    // where t'' is the recursively translated t'
+    // where
+    // f is a fresh constant symbol of appropriate type
+    // t'' is the recursively translated t'
     // note: first free-var quantification so that we can reuse the bound variables as-is (without renaming)
     // note2 (): the free-var occurrences in t'' may need to be renamed (normalized to 1...m).
     // TODO: Eta-contract on the fly
     // TODO: Type-variables
     t match {
-      case _ :::> _ => //Assume that there are not wholes in the free vars TODO: Is that right? See also * above
-        val (body, absTypes) = collectLambdas(t) // (t', (x1, ..., xn))
-        val fv = t.freeVars.toSeq
-        val ftyVars = t.tyFV.toSeq.map(Type.mkVarType)
-        val translatedFv = fv.map(translateTerm(_, this)(holSignature, sig))
-        Out.finest(s"fv: ${fv.toString()}")
-        Out.finest(s"freeTyVars: ${ftyVars.toString()}")
-        val goalTy = TypedFOLEncoding.foTransformType0(body.ty, true)(holSignature, sig)
-        Out.finest(s"goalTy: ${goalTy.pretty(sig)}")
-        val transformedAbsTypes = absTypes.map(TypedFOLEncoding.foTransformType0(_, true)(holSignature, sig))
-        val indirectArgsToGoalTy = sig.funTy(transformedAbsTypes :+ goalTy)
-        val directAppliedTys =  translatedFv.map(_.ty)
-        val newFunTy0 = Type.mkFunType(directAppliedTys, indirectArgsToGoalTy)
-        val newFunTy = mkPolyUnivType(ftyVars.size,newFunTy0)
-        Out.finest(s"newFunTy: ${newFunTy.pretty(sig)}")
-        val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(sig)
-        addNewFunDef(newFun, body, translatedFv, ftyVars, transformedAbsTypes)(holSignature)
-        val result0 = Term.local.mkTypeApp(newFun, ftyVars)
-        val result = Term.local.mkTermApp(result0, translatedFv)
-        Out.finest(s"replace ${t.pretty(holSignature)}")
-        Out.finest(s"by: ${result.pretty(sig)}")
-        result
+      case _ :::> _ => //Assume that there are not holes in the free vars TODO: Is that right? See also * above
+        if (replacementCache.contains(t)) replacementCache(t)
+        else {
+          val (body, absTypes) = collectLambdas(t) // (t', (x1, ..., xn))
+          val fv = t.freeVars.toSeq // fv = [fv1, ..., fvm] as terms
+          val ftyVars = t.tyFV.toSeq.map(Type.mkVarType) // same with type vars
+          val translatedFv = fv.map(translateTerm(_, this)(holSignature, sig)) // translate fvs (actually only translated the type, but useful here)
+          Out.finest(s"fv: ${fv.toString()}")
+          Out.finest(s"freeTyVars: ${ftyVars.toString()}")
+          val goalTy = TypedFOLEncoding.foTransformType0(body.ty, true)(holSignature, sig) // ty = foty(ty'') = first-orderized type of t''
+          Out.finest(s"goalTy: ${goalTy.pretty(sig)}")
+          val transformedAbsTypes = absTypes.map(TypedFOLEncoding.foTransformType0(_, true)(holSignature, sig)) // ty1, ..., tyn = foty(ty(x1)), ... foty(ty(xn))
+          val indirectArgsToGoalTy = sig.funTy(transformedAbsTypes :+ goalTy) // fun(ty1, fun(ty2, ...., fun(tyn,ty) ...))
+          val directAppliedTys =  translatedFv.map(_.ty)
+          val newFunTy0 = Type.mkFunType(directAppliedTys, indirectArgsToGoalTy)
+          val newFunTy = mkPolyUnivType(ftyVars.size,newFunTy0)
+          Out.finest(s"newFunTy: ${newFunTy.pretty(sig)}")
+          val newFun = Term.local.mkAtom(sig.freshSkolemConst(newFunTy))(sig)
+          addNewFunDef(newFun, body, translatedFv, ftyVars, transformedAbsTypes)(holSignature)
+          val result0 = Term.local.mkTypeApp(newFun, ftyVars)
+          val result = Term.local.mkTermApp(result0, translatedFv)
+          Out.finest(s"replace ${t.pretty(holSignature)}")
+          Out.finest(s"by: ${result.pretty(sig)}")
+          replacementCache = replacementCache + (t -> result)
+          result
+        }
       case _ => ???
     }
 

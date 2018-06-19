@@ -49,7 +49,7 @@ object ToTPTP {
   /** See withAnnotation(ClauseProxy).
     * The textual representation is returned as an `Output` object. */
   final def outputWithAnnotation(cl: ClauseProxy)(implicit sig: Signature): Output = new Output {
-    def apply = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
+    def apply: String = toTPTP(cl.id.toString, cl.cl, cl.role, cl.annotation)(sig)
   }
 
   ///////////////////////
@@ -101,7 +101,7 @@ object ToTPTP {
   }
 
   final def output(k: Signature.Key)(implicit sig: Signature): Output = new Output {
-    final def apply() = ToTPTP(k)(sig)
+    final def apply(): String = ToTPTP(k)(sig)
   }
 
   private def typeToTPTP(k: Signature.Key)(implicit sig : Signature) : String = {
@@ -118,7 +118,7 @@ object ToTPTP {
   }
 
   private def typeToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Output = new Output {
-    final def apply() = typeToTPTP(k)(sig)
+    final def apply(): String = typeToTPTP(k)(sig)
   }
 
   private def definitionToTPTP(k: Signature.Key)(implicit sig : Signature) : Option[String] = {
@@ -134,19 +134,19 @@ object ToTPTP {
 
   private def definitionToTPTPOutput(k : Signature.Key)(implicit sig: Signature): Option[Output] =
     definitionToTPTP(k)(sig) map (x => new Output {
-      final def apply() = x
+      final def apply(): String = x
     })
 
   final def printDefinitions(sig : Signature) : String = {
     val sb : StringBuilder = new StringBuilder
-    val consts = sig.allUserConstants
     val keys1 = sig.allUserConstants.iterator
     val keys2 = sig.allUserConstants.iterator
     while(keys1.hasNext){
       val k = keys1.next()
       if(sig(k).hasDefn) {
-        val name = tptpEscapeName(sig(k).name+"_type")
-        sb.append(s"thf(${name},type,(${name} : ${typeToTHF(sig(k)._ty)(sig)})).\n")
+        val name = tptpEscapeName(sig(k).name)
+        val name_type = tptpEscapeName(sig(k).name+"_type")
+        sb.append(s"thf($name_type,type,($name : ${typeToTHF(sig(k)._ty)(sig)})).\n")
       }
     }
     while(keys2.hasNext){
@@ -154,7 +154,7 @@ object ToTPTP {
       if(sig(k).hasDefn){
         val name = tptpEscapeName(sig(k).name+"_def")
         val cl = Clause(Literal(Term.mkAtom(k)(sig), sig(k)._defn, true))
-        sb.append(ToTPTP.toTPTP(s"${name}", cl, Role_Definition)(sig))
+        sb.append(ToTPTP.toTPTP(name, cl, Role_Definition)(sig))
         sb.append("\n")
       }
     }
@@ -318,7 +318,7 @@ object ToTPTP {
       case Symbol(id) => val name = sig(id).name
         tptpEscapeExpression(name)
       // Give Bound variables names
-      case Bound(ty, scope) => bVars(scope)
+      case Bound(_, scope) => bVars(scope)
       // Unary connectives
       case Not(t2) => s"${sig(Not.key).name} (${toTPTP0(t2,tyVarCount, bVars)(sig)})"
       case Forall(_) => val (bVarTys, body) = collectForall(t)
@@ -443,7 +443,7 @@ object ToTPTP {
     case t1 -> t2 => s"(${typeToTHF0(t1, depth)(sig)} > ${typeToTHF0(t2, depth)(sig)})"
     case t1 * t2 => s"(${typeToTHF0(t1, depth)(sig)} * ${typeToTHF0(t2, depth)(sig)})"
     case t1 + t2 => s"(${typeToTHF0(t1, depth)(sig)} + ${typeToTHF0(t2, depth)(sig)})"
-    case ∀(t) => throw new IllegalArgumentException("Polytype should have been caught before")
+    case ∀(_) => throw new IllegalArgumentException("Polytype should have been caught before")
     /**s"${Signature.get(Forall.key).name} []: ${toTPTP(t)}"*/
   }
 

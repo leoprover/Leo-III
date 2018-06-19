@@ -14,7 +14,7 @@ import leo.modules.output._
   * @author Max Wisniewski
   *
   */
-trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
+trait TptpProver[C <: ClauseProxy] extends HasCapabilities { self =>
   /** The name of the prover. */
   def name : String
 
@@ -114,6 +114,8 @@ trait TptpProver[C <: ClauseProxy] extends HasCapabilities {
       * @return prover name
       */
     val proverName : String = name
+
+    val prover: TptpProver[C] = self
 
     /**
       * The path of the original prover.
@@ -258,7 +260,13 @@ trait TptpResult[C <: ClauseProxy] {
     * The name of the original prover called..
     * @return prover name
     */
+  @deprecated("Use prover.name instead.", "2.13")
   def proverName : String
+
+  /**
+    * The TPTP prover that produces that result.
+    */
+  def prover: TptpProver[C]
 
   /**
     * The path of the original prover.

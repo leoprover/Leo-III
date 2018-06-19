@@ -308,7 +308,7 @@ object Input {
   }
 
   final private val urlStartRegex0:String  = "(\\w+?:\\/)(.*)" // removed one slash because it gets removed by Paths.get(.)
-  private def read0(absolutePath: Path): BufferedReader = {
+  protected[parsers] def read0(absolutePath: Path): BufferedReader = {
     if (absolutePath.toString.matches(urlStartRegex0)) {
       // URL
       import java.net.URL

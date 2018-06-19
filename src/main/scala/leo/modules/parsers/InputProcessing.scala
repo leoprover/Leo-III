@@ -57,17 +57,26 @@ object InputProcessing {
   @inline private final def processRole(role: String): Role = Role(role)
 
   protected[parsers] final def process(sig: Signature)(input: AnnotatedFormula): Result = {
-    val p = input match {
-      case _:TPIAnnotated => processTPI(sig)(input.asInstanceOf[TPIAnnotated])
-      case _:THFAnnotated => processTHFAnnotated(sig)(input.asInstanceOf[THFAnnotated])
-      case _:TFFAnnotated => processTFF(sig)(input.asInstanceOf[TFFAnnotated])
-      case _:FOFAnnotated => processFOF(sig)(input.asInstanceOf[FOFAnnotated])
-      case _:CNFAnnotated => processCNF(sig)(input.asInstanceOf[CNFAnnotated])
+    try {
+      val p = input match {
+        case _:TPIAnnotated => processTPI(sig)(input.asInstanceOf[TPIAnnotated])
+        case _:THFAnnotated => processTHFAnnotated(sig)(input.asInstanceOf[THFAnnotated])
+        case _:TFFAnnotated => processTFF(sig)(input.asInstanceOf[TFFAnnotated])
+        case _:FOFAnnotated => processFOF(sig)(input.asInstanceOf[FOFAnnotated])
+        case _:CNFAnnotated => processCNF(sig)(input.asInstanceOf[CNFAnnotated])
+      }
+      p match {
+        case None => val role = processRole(input.role); (input.name, LitTrue, role)
+        case Some(res) => res
+      }
+    } catch {
+      case e: Exception =>
+        val formulaName = input.name
+        val theFormula = input.rep
+        Out.severe(s"Parse error in formula $formulaName:\n$theFormula")
+        throw e
     }
-    p match {
-      case None => val role = processRole(input.role); (input.name, LitTrue, role)
-      case Some(res) => res
-    }
+
   }
 
 
@@ -148,12 +157,32 @@ object InputProcessing {
         if (processedLeft.isLeft) {
           val processedLeft2 = processedLeft.left.get
           import leo.datastructures.Term.{mkTermApp, mkTypeApp}
+          import leo.modules.HOLSignature.{=== => EQ, !=== => NEQ}
           if (processedLeft2.ty.isPolyType) {
-            val processedRight = convertTHFType(sig)(right, replaces)
-            if (processedRight.isLeft)
-              mkTypeApp(processedLeft2, processedRight.left.get)
-            else
-              throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+            if (processedLeft2 == Term.mkAtom(EQ.key)(sig) || processedLeft2 == Term.mkAtom(NEQ.key)(sig)) {
+              // try without type app
+              try {
+                val res = processTHF(sig)(right, replaces)
+                if (res.isLeft) {
+                  val appliedLeft = mkTypeApp(processedLeft2, res.left.get.ty)
+                  mkTermApp(appliedLeft, res.left.get)
+                } else
+                  mkTypeApp(processedLeft2, res.right.get)
+              } catch {
+                case _: Exception =>
+                  val processedRight = convertTHFType(sig)(right, replaces)
+                  if (processedRight.isLeft)
+                    mkTypeApp(processedLeft2, processedRight.left.get)
+                  else
+                    throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+              }
+            } else {
+              val processedRight = convertTHFType(sig)(right, replaces)
+              if (processedRight.isLeft)
+                mkTypeApp(processedLeft2, processedRight.left.get)
+              else
+                throw new SZSException(SZS_TypeError, "Type argument expected but kind was found")
+            }
           }
           else {
             val res = processTHF(sig)(right, replaces)

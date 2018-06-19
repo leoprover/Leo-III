@@ -5,12 +5,13 @@ val antlrFile = settingKey[File]("The path to the ANTLR grammar file for Leo's p
 
 lazy val commonSettings = Seq(
     version := "1.1",
-    scalaVersion := "2.12.4",
+    scalaVersion := "2.12.5",
     organization := "org.leo",
     test in assembly := {},
     logLevel := Level.Warn,
     logLevel in assembly := Level.Error
 )
+
 
 lazy val leo = (project in file(".")).
 //  enablePlugins(JniNative).
