@@ -4,7 +4,7 @@
 Leo-III is callable from command-line:
 
 ```
-> java -jar leo3.jar
+> java -jar [Path-to]leo3.jar
 ```
 
 When built from source via `make`, a directory `bin` should exist. It
