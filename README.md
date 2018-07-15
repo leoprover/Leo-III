@@ -1,6 +1,6 @@
-Leo-III 1.2
+Leo-III
 ========
-*An automated theorem prover for classical higher-order logic (with choice)*
+*An automated theorem prover for classical higher-order logic with choice*
 
 Leo-III [SWB16] is an automated theorem prover for (polymorphic) higher-order logic which supports all common TPTP dialects, including THF, TFF and FOF as well as their rank-1 polymorphic derivatives [SWB17]. 
 It is based on a paramodulation calculus with ordering constraints and, in tradition of its predecessor LEO-II [BP15], heavily relies on cooperation with external (mostly first-order) theorem provers for increased performance. Nevertheless, Leo-III can also be used as a stand-alone prover without employing any external cooperation.
