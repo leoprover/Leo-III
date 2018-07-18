@@ -7,16 +7,14 @@ It is based on a paramodulation calculus with ordering constraints and, in tradi
 
 Leo-III is developed at Freie Universität Berlin as part of the German National Research Foundation (DFG) project BE 2501/11-1. The main contributors are (sorted alphabetically): Christoph Benzmüller, Tomer Libal, Alexander Steen and Max Wisniewski. For a full list of contributors to the project and used and third-party libraries, please refer to the `AUTHORS` file in the source distribution.
 
-## License
-See [LICENSE](LICENSE)
-
-Leo-III is licensed under the BSD 3-clause "New" or "Revised" License.
-
 ## Install
-See [INSTALL.md](INSTALL.md)
+Leo-III is written in the Scala programming language. It can be installed quite simply using the sbt build tool. Please refer to [INSTALL.md](INSTALL.md) to details.
 
 ## Usage
-See [USAGE.md](USAGE.md)
+Leo-III accepts pretty much every TPTP input dialect (e.g. FOF, TFF, THF) but it's mainly focused on reasoning in classical higher-order logic represented as THF. See [USAGE.md](USAGE.md) for details for its usage.
+
+## License
+Leo-III is licensed under the BSD 3-clause "New" or "Revised" License. See [LICENSE](LICENSE).
 
 ## Contributing
 We are always greateful to hear feedback from our users:
