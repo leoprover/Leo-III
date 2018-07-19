@@ -1,8 +1,8 @@
 ## Requirements
 
-Leo-III requires the Java 1.8 Runtime (JRE) for execution. Leo-III works on any common OS (including Windows*, Mac OS, linux derivatives).
+Leo-III requires the Java 1.8 Runtime (JRE) for execution. Leo-III works on any common operating system, including Windows, Mac OS and linux derivatives. Leo-III has not been tested with other operating systems, but it might of course still work.
 
-*) *External cooperation so-far only works on Linux and Mac systems. If you use Windows, you might want to try running Leo-III using Cygwin or similar.*
+:warning: *External cooperation (that is, usage of external (first-order) reasoning systems for increasing the reasoning effectivity of Leo-III) so-far only works on Linux and Mac systems. If you use Windows, you might want to try running Leo-III using Cygwin or similar. Also see the note on bulding Leo-III from source on Windows systems below.*
 
 ## Installation
 
@@ -24,7 +24,7 @@ The following requirements (dependencies) are not managed by the SBT build tool 
  - gcc (any reasonably current version)
  - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 1.x
 
-#### Building the project from source
+#### Building from source
 
 Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SBT will download an appropriate version of Scala (and further dependencies) automatically. The actual build process in wrapped inside a `Makefile`. 
 Proceed as follows to build Leo-III from source:
