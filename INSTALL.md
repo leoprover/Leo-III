@@ -62,9 +62,13 @@ Proceed as follows to build Leo-III from source:
    ```
    The building process might take some time, depending on your computer.
    
-   > :information_source: __Note:__ *You can also build a static version of Leo-III (if you want to move the executable around) using `make static`. *
+   > :information_source: __Note:__ *You can also build a static version of Leo-III* 
+   > *(if you want to move the executable around to other machines)*
+   > *using* `make static`.
   
-   > :information_source: __Note:__ *If you do not have gcc installed (and do not require external cooperation) you can run `make leo3`. However, you will not be able to make use of external reasoning systems to increase Leo-III's reasoning effectivity. *
+   > :information_source: __Note:__ *If you do not have gcc installed (and do not require external cooperation) you can run*
+   > `make leo3`. 
+   > *However, you will not be able to make use of external reasoning systems to increase Leo-III's reasoning effectivity.*
    
 3) __Checking if everything is fine__
 
