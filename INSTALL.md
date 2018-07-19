@@ -53,7 +53,7 @@ Proceed as follows to build Leo-III from source:
     Alternatively, you can use the most current development version of Leo-III (if you dare)
     using https://github.com/leoprover/Leo-III/archive/master.tar.gz.
     
-2) __Build Leo-III sources___
+2) __Build Leo-III sources__
 
    Step into the newly created directory and run `make` (that's all!)
    ```Shell
