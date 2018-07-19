@@ -1,33 +1,37 @@
 ## Usage
 #### Basics
 
-Leo-III is callable from command-line:
-
-```
-> java -jar leo3.jar
-```
-
-When built from source via `make`, a directory `bin` should exist. It
-contains the executable and an alias `leo3`, which invokes the
-shell-command above. Put the directory into the path.
-
-```
-> ./leo3
+Leo-III is called from command line:
+```Shell
+> leo3
 Leo III -- A Higher-Order Theorem Prover.
 Christoph Benzmüller, Alexander Steen, Max Wisniewski and others.
 
-Usage: ... PROBLEM_FILE [OPTIONS]
-Options:
+Usage: leo3 problem [option ...]
 [...]
 ```
+The above example assumes that `leo3` can be found in your `$PATH`. This will be assumed in
+the remainder of this document. If this is not the case, consider adding `leo3` to your `$PATH`
+or just replace every occurence of `leo3` in the following examples with the respective quantified path.
 
-A call to a problem `someproblem.p`, assumed to be located at the current directory, is invoked as follows:
+For using Leo-III to solve a problem `/path/to/someproblem.p`, just give the problem file as the first argument:
+```Shell
+> ./leo3 /path/to/someproblem.p
+% SZS status Theorem for /path/to/someproblem.p : 3651 ms resp. 1253 ms w/o parsing
+```
+The line starting with `% SZS status XXX` indicates the result of Leo-III's reasoning process according
+to the [SZS status ontology](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology) [Sut08].
+Prominent result values for `XXX` are:
 
-```
-> ./leo someproblem.p
-% SZS status Theorem for someproblem.p : 3651 ms resp. 1253 ms w/o parsing
-```
-Of course, depending on the problem, Leo-III could also output `Timeout`, `Unknown`, `SyntaxError` and others, according to the [SZS status ontology](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology) [Sut08].
+| Result value | Meaning |
+| ------------- | ------------- |
+| `Theorem` | The conjecture contained in the problem was successfully proven. See below on how to generate a proof certificate |
+| `Timeout` | Leo-III could not establish any result value within the given time restrictions (Increasing the time limit might help for finding a proof) |
+| `GaveUp` | Leo-III could not establish any result value (Increasing the time limit will not help) |
+| `InputError` | The given problem file could not be found or it was not readable (I/O error) |
+| `SyntaxError` | The problem file contains syntactical errors and hence cannot be assessed |
+| `TypeError` | The problem file contains typing errors and hence cannot be assessed |
+
 
 ##### Important parameters
 
