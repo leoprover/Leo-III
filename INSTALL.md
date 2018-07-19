@@ -6,7 +6,7 @@ Leo-III requires the Java 1.8 Runtime (JRE) for execution. Leo-III works on any 
 
 ## Installation
 
-#### Using pre-built binaries (Linux)
+### Using pre-built binaries (Linux)
 
 A current release of Leo-III 1.2 can be downloaded from GitHub:
 
@@ -16,15 +16,22 @@ Note that this binary was built on a Debian-based system and might not work for 
 If the pre-build does not work for you, consider building Leo-III from source. Its simple and 
 only takes a minute or two (see below).
 
+### Building from source
 #### Requirements for building from source
 
 The following requirements (dependencies) are not managed by the SBT build tool and hence need to be present at the system:
 
- - Java JDK 1.8 
- - gcc (any reasonably current version)
+ - Java JDK 1.8
  - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 1.x
+ - gcc (any reasonably current version)
+ 
+   :information_source: gcc is only required if you want to build Leo-III with support for external cooperation
+   (the way Leo-III is intended to be used and works best).
+   If you want to build Leo-III without capabilities for external cooperation (e.g. if gcc is not present
+   or if you are working on a Windows machine), gcc is not needed. Leo-III will still be a fully functional
+   higher-order ATP system, you just cannot increase its reasoning effectivity using external reasoners.
 
-#### Building from source
+#### How to build Leo-III from source
 
 Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SBT will download an appropriate version of Scala (and further dependencies) automatically. The actual build process in wrapped inside a `Makefile`. 
 Proceed as follows to build Leo-III from source:
@@ -60,6 +67,6 @@ Proceed as follows to build Leo-III from source:
    ```alias leo3='java -jar /path/to/leo3.jar'```.
 
 
-#### Using nix
+### Using nix
 
 We support using [Nix](https://nixos.org) for creating a reliable and reproducible execution environment for Leo-III. The source distribution contains a `.nix` file that can be used to run Leo-III within a `nix` shell (see `contrib/default.nix`).
