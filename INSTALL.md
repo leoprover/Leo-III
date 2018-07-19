@@ -22,18 +22,23 @@ only takes a minute or two (see below).
 The following requirements (dependencies) are not managed by the SBT build tool and hence need to be present at the system:
 
  - Java JDK 1.8
+ - make
  - [SBT](http://www.scala-sbt.org/) (Scala Build Tool) >= 1.x
  - gcc (any reasonably current version)
  
    :information_source: gcc is only required if you want to build Leo-III with support for external cooperation
    (the way Leo-III is intended to be used and works best).
    If you want to build Leo-III without capabilities for external cooperation (e.g. if gcc is not present
-   or if you are working on a Windows machine), gcc is not needed. Leo-III will still be a fully functional
+   or if you are working on a Windows machine), gcc is not needed (cf. further below).
+   Leo-III will still be a fully functional
    higher-order ATP system, you just cannot increase its reasoning effectivity using external reasoners.
 
 #### How to build Leo-III from source
 
-Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SBT will download an appropriate version of Scala (and further dependencies) automatically. The actual build process in wrapped inside a `Makefile`. 
+Leo-III uses [SBT](http://www.scala-sbt.org/) for building the Scala sources. SBT will download an appropriate
+version of Scala (and further dependencies) automatically. From the user's perspective, the actual build process
+in managed using `make`.
+
 Proceed as follows to build Leo-III from source:
 
 1) Download the source distribution and unpack the archive
