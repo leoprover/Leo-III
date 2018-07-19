@@ -11,7 +11,7 @@ Leo-III is developed at Freie Universität Berlin as part of the German National
 Leo-III is written in the Scala programming language. It can be installed quite simply using the sbt build tool. Please refer to [INSTALL.md](INSTALL.md) to details.
 
 ## Usage
-Leo-III runs on the JVM and accepts pretty much every [http://www.cs.miami.edu/~tptp/TPTP/TR/TPTPTR.shtml](TPTP input dialect) (e.g. FOF, TFF, THF) but it's mainly focused on reasoning in classical higher-order logic represented as THF. See [USAGE.md](USAGE.md) for details for its usage.
+Leo-III runs on the JVM and accepts pretty much every [TPTP input dialect](http://www.cs.miami.edu/~tptp/TPTP/TR/TPTPTR.shtml) (e.g. FOF, TFF, THF) but it's mainly focused on reasoning in classical higher-order logic represented as THF. See [USAGE.md](USAGE.md) for details for its usage.
 
 ## License
 Leo-III is licensed under the BSD 3-clause "New" or "Revised" License. See [LICENSE](LICENSE).
