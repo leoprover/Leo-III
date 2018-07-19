@@ -3,21 +3,20 @@ CC=gcc
 CONTRIB=./contrib
 
 default: all
-
 all: TreeLimitedRun leo3
-
 static: TreeLimitedRunStatic leo3
 
 TreeLimitedRun: $(CONTRIB)/TreeLimitedRun.c
 		@echo Compiling auxiliary scripts ...
 		$(CC) $(CONTRIB)/TreeLimitedRun.c -o TreeLimitedRun
+		mv TreeLimitedRun ./src/main/resources/scripts/.
 		
 TreeLimitedRunStatic: $(CONTRIB)/TreeLimitedRun.c
 		@echo Compiling auxiliary scripts ...
 		$(CC) $(CONTRIB)/TreeLimitedRun.c -o TreeLimitedRun -static
+		mv TreeLimitedRun ./src/main/resources/scripts/.
 		
 leo3: 
-		mv TreeLimitedRun ./src/main/resources/scripts/.
 		@echo Building Leo-III ...
 		sbt assembly
 		mkdir bin -p
