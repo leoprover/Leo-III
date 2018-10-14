@@ -57,6 +57,7 @@ object ExternalProver {
       case "iprover" => createIProver(path)
       case "e" | "eprover" => createEProver(path)
       case "satallax" => createSatallax(path)
+      case "zipperposition" => createZipperposition(path)
       case _ => throw new NoSuchMethodException(s"$name not supported by Leo-III. Valid values are: leo2,nitpick,cvc4,alt-ergo")
     }
   }
@@ -208,6 +209,20 @@ object ExternalProver {
     new Vampire(convert)
   }
 
+  @throws[NoSuchMethodException]
+  def createZipperposition(path : String) : Zipperposition = {
+    val p = if(path == "") serviceToPath("zipperposition") else serviceToPath(path)
+    val convert = p.toAbsolutePath.toString
+    leo.Out.debug(s"Created Zipperposition prover with path '$convert'")
+    if (Configuration.isSet("atpdebug")) {
+      import scala.sys.process._
+      val answer = Process.apply(Seq(convert, "--version")).lineStream_!
+      leo.Out.comment(s"Zipperposition debug info:")
+      leo.Out.comment(answer.mkString)
+    }
+    new Zipperposition(convert)
+  }
+
   final def createAltErgo(path: String): AltErgo = {
     val p = if(path == "") serviceToPath("alt-ergo") else serviceToPath(path)
     val convert = p.toAbsolutePath.toString
@@ -310,6 +325,19 @@ class AltErgo(val path: String) extends TptpProver[AnnotatedClause] {
 }
 object AltErgo {
   @inline final def apply(path: String): AltErgo = new AltErgo(path)
+}
+
+class Zipperposition(val path: String) extends TptpProver[AnnotatedClause] {
+  final val name: String = "Zipperposition"
+  final val capabilities: Capabilities.Info = Capabilities(Capabilities.TFF -> Seq(Capabilities.Polymorphism))
+
+  protected[external] def constructCall(args: Seq[String], timeout: Int,
+                                        problemFileName: String): Seq[String] = {
+    ExternalProver.limitedRun(timeout+2, Seq(path, problemFileName, "--timeout", String.valueOf(timeout)))
+  }
+}
+object Zipperposition {
+  @inline final def apply(path: String): Zipperposition = new Zipperposition(path)
 }
 
 
