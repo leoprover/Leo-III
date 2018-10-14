@@ -1,9 +1,10 @@
 package leo
 
 import java.util.logging.Level
-import java.nio.file.{Path,Files}
+import java.nio.file.{Files, Path}
 
-import leo.modules.output.Output
+import leo.modules.SZSException
+import leo.modules.output.{Output, SZS_UsageError}
 import leo.modules.parsers.CLParameterParser
 
 /**
@@ -111,7 +112,7 @@ object Configuration extends DefaultConfiguration {
   lazy val HELP: Boolean = isSet(PARAM_HELP)
 
   lazy val PROBLEMFILE: String = configMap.get(CLParameterParser.ARG0Name) match {
-    case None => throw new IllegalArgumentException("No problem file given. Aborting.")
+    case None => throw new SZSException(SZS_UsageError, "No problem file given. Aborting.")
     case Some(str :: Nil) => str
     case Some(_) => throw new IllegalArgumentException("This should not happen. Please call support hotline.")
   }
@@ -366,7 +367,7 @@ object Configuration extends DefaultConfiguration {
       }
       sb.append(s"\n\t${entry._2._3}\n")
     }
-    sb.append("\n")
+//    sb.append("\n")
     sb.toString
   }
   def help(): Unit = Out.output(helptext)

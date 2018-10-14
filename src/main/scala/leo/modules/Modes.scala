@@ -7,6 +7,32 @@ import leo.modules.output._
 import leo.modules.parsers.Input
 
 object Modes {
+  final def apply(beginTime: Long, parsedProblem: Seq[AnnotatedFormula]): Unit = {
+    val timeout = Configuration.TIMEOUT
+    if (Configuration.isSet("seq")) {
+      seqLoop(beginTime, timeout, parsedProblem)
+    } else if (Configuration.isSet("scheduled")) {
+      scheduledSeq(beginTime, timeout, parsedProblem)
+    } else if (Configuration.isSet("pure-ext")) {
+      runExternalProver(parsedProblem)
+    } else if (Configuration.isSet("rules")) {
+      agentRuleRun(beginTime, parsedProblem)
+    } else if (Configuration.isSet("par")) {
+      runParallel(beginTime, parsedProblem)
+    } else if (Configuration.isSet("scheduled-par")) {
+      runMultiSearch(beginTime, parsedProblem)
+    } else if (Configuration.isSet("processOnly")) {
+      normalizationOnly(parsedProblem)
+    } else if (Configuration.isSet("syntaxcheck")) {
+      syntaxCheck(parsedProblem)
+    } else if (Configuration.isSet("typecheck")) {
+      typeCheck(parsedProblem)
+    } else if (Configuration.isSet("toTHF")) {
+      toTHF(parsedProblem)
+    } else {
+      seqLoop(beginTime, timeout, parsedProblem)
+    }
+  }
 
   final def toTHF(parsedProblem: scala.Seq[AnnotatedFormula]): Unit = {
     implicit val sig: Signature = Signature.freshWithHOL()
