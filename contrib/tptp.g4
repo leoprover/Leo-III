@@ -312,7 +312,9 @@ thf_variable : variable (':' thf_top_level_type)?;
 // <thf_function>         ::= <atom> | <functor>(<thf_arguments>) |
 //                              <defined_functor>(<thf_arguments>) |
 //                              <system_functor>(<thf_arguments>)
-thf_unary_formula : thf_unary_connective '(' thf_logic_formula ')';
+//
+// Hacky adaption with preunit to allow negation without parentheses
+thf_unary_formula : thf_unary_connective thf_unitary_formula;
 thf_atom : thf_function | variable | defined_term | thf_conn_term;
 
 thf_function: thf_plain_term | thf_defined_term | thf_system_term;

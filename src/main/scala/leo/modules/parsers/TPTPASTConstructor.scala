@@ -504,7 +504,8 @@ object TPTPASTConstructor {
       thfTuple(ctx.thf_tuple())
     } else if (ctx.thf_unary_formula() != null) {
       val connective = thfUnaryConnective(ctx.thf_unary_formula().thf_unary_connective())
-      val body = thfLogicFormula(ctx.thf_unary_formula().thf_logic_formula())
+      val body = thfUnitary(ctx.thf_unary_formula().thf_unitary_formula())
+//      val body = thfLogicFormula(ctx.thf_unary_formula().thf_logic_formula())
       thf.Unary(connective, body)
     } else throw new IllegalArgumentException
   }
