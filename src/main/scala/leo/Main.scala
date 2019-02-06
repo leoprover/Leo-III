@@ -1,7 +1,8 @@
 package leo
 
-import leo.modules._
-import leo.modules.output.{SZS_Error, SZS_Forced, SZS_MemoryOut}
+import leo.modules.Modes
+import leo.modules.{SZSException, SZSResult, stackTraceAsString}
+import leo.modules.output.{SZS_Error, SZS_Forced, SZS_MemoryOut, SZS_UsageError}
 import leo.modules.parsers.{CLParameterParser, Input}
 
 /**
@@ -13,36 +14,32 @@ import leo.modules.parsers.{CLParameterParser, Input}
  */
 object Main {
   private[this] var hook: scala.sys.ShutdownHookThread = _
+  final private[this] val MSG_LEO3_STOPPED: String = "Leo-III stopped externally."
+  final private[this] val MSG_LEO3_GENERAL_ERROR: String = "OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START"
 
-  def main(args : Array[String]){
+  final def main(args: Array[String]): Unit = {
     try {
       val beginTime = System.currentTimeMillis()
       /** Hook is for returning an szs status if leo3 is killed forcefully. */
       hook = sys.addShutdownHook({
         Configuration.cleanup()
-        Out.output(SZSResult(SZS_Forced, Configuration.PROBLEMFILE, "Leo-III stopped externally."))
+        Out.output(SZSResult(SZS_Forced, Configuration.PROBLEMFILE, MSG_LEO3_STOPPED))
       })
 
       /** Parameter stuff BEGIN */
-      try {
-        Configuration.init(new CLParameterParser(args))
-      } catch {
-        case e: IllegalArgumentException =>
-          Out.severe(e.getMessage)
-          Configuration.help()
-          return
-      }
-      if (Configuration.PROBLEMFILE == "--caps") { // FIXME: Hacky, redo argument reading
+      // TODO: Hacky parameter stuff, redo argument processing
+      Configuration.init(new CLParameterParser(args))
+      if (Configuration.PROBLEMFILE == "--caps") {
         println(Configuration.CAPS)
         return
       }
-      if (Configuration.PROBLEMFILE == s"--${Configuration.PARAM_VERSION}") { // FIXME: Hacky, redo argument reading
+      if (Configuration.PROBLEMFILE == s"--${Configuration.PARAM_VERSION}") {
         println(s"Leo-III ${Configuration.VERSION}")
         return
       }
       if (Configuration.HELP ||
         Configuration.PROBLEMFILE == s"-${Configuration.PARAM_HELP}" ||
-        Configuration.PROBLEMFILE == s"--${Configuration.PARAM_USAGE}") { // FIXME: Hacky, redo argument reading
+        Configuration.PROBLEMFILE == s"--${Configuration.PARAM_USAGE}") {
         Configuration.help()
         return
       }
@@ -55,46 +52,34 @@ object Main {
       } else {
         // Functionality that need to parse the input file, do it now
         import leo.modules.parsers.{ModalPreprocessor => Modal, DDLPreprocessor => DDL}
+        // If "ddl" mode is set (dyadic deontic logic), parse with DDL pre-processor.
         val problem0 = if (Configuration.isSet("ddl")) DDL.apply(Configuration.PROBLEMFILE)
         else Input.parseProblemFile(Configuration.PROBLEMFILE)
         // If it is a logic embedding, call the embedding tool, else just use the problem itself
         val problem = if (Modal.canApply(problem0)) Modal.apply(problem0)
                       else problem0
-        // Functionality calls
-        if (Configuration.isSet("seq")) {
-          Modes.seqLoop(beginTime, Configuration.TIMEOUT, problem)
-        } else if (Configuration.isSet("scheduled")) {
-          Modes.scheduledSeq(beginTime, Configuration.TIMEOUT, problem)
-        } else if (Configuration.isSet("pure-ext")) {
-          Modes.runExternalProver(problem)
-        } else if (Configuration.isSet("rules")) {
-          Modes.agentRuleRun(beginTime, problem)
-        } else if (Configuration.isSet("par")) {
-          Modes.runParallel(beginTime, problem)
-        } else if (Configuration.isSet("scheduled-par")) {
-          Modes.runMultiSearch(beginTime, problem)
-        } else if (Configuration.isSet("processOnly")) {
-          Modes.normalizationOnly(problem)
-        } else if (Configuration.isSet("syntaxcheck")) {
-          Modes.syntaxCheck(problem)
-        } else if (Configuration.isSet("typecheck")) {
-          Modes.typeCheck(problem)
-        } else if (Configuration.isSet("toTHF")) {
-          Modes.toTHF(problem)
-        } else {
-          Modes.seqLoop(beginTime, Configuration.TIMEOUT, problem)
-        }
+        // Invoke concrete mode
+        Modes.apply(beginTime, problem)
       }
       /** Call concrete functionality END */
       
     } catch {
       /** Handle all top-level errors BEGIN */
       case e:Throwable =>
-        Out.comment("OUT OF CHEESE ERROR +++ MELON MELON MELON +++ REDO FROM START")
+        Out.comment(MSG_LEO3_GENERAL_ERROR)
         e match {
           case e0: SZSException =>
-            Out.output(SZSResult(e0.status, Configuration.PROBLEMFILE,e0.getMessage))
-            Out.debug(e0.debugMessage)
+            e0.status match {
+              case SZS_UsageError =>
+                // Happens only if no problem file was given. Syntax/semantics/input errors are
+                // handled separately
+                Out.output(SZSResult(e0.status, "<unknown>" ,e0.getMessage))
+                println()
+                Configuration.help()
+              case s =>
+                Out.output(SZSResult(s, Configuration.PROBLEMFILE,e0.getMessage))
+                Out.debug(e0.debugMessage)
+            }
           case e0: OutOfMemoryError =>
             Out.output(SZSResult(SZS_MemoryOut, Configuration.PROBLEMFILE, e0.toString))
           case _ => Out.output(SZSResult(SZS_Error, Configuration.PROBLEMFILE,e.toString))
