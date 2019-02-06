@@ -203,7 +203,10 @@ package inferenceControl {
           results = results ++ allParamods(cl, other)(state)
         }
       }
-      if (results.nonEmpty) Out.trace(s"Paramod result: ${results.map(_.id).mkString(",")}")
+      if (results.nonEmpty) {
+        Out.trace(s"Paramod result: ${results.map(_.id).mkString(",")}")
+        Out.finest(results.map(_.pretty(state.signature)).mkString("\n\t"))
+      }
       results
     }
 
