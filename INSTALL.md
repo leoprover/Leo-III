@@ -102,6 +102,20 @@ Proceed as follows to build Leo-III from source:
    The default install destination is `$HOME/bin`. This will copy the `leo3` executable there.
    The install destination can be modified using the `DESTDIR` modifier.
 
+### Native Image
+
+In order to create a native image, please install [GraalVM](https://www.graalvm.org/docs/getting-started/) and
+follow the instructions found there.
+
+Also make sure to install `zlib` and `libc` in the static linked equivalents for your operating system of choice.
+
+After that feel free to execute
+
+      make native
+
+In the root directory which will produce a native binary called leo3-bin in the bin folder.
+
+
 ### Using nix
 
 We support using [Nix](https://nixos.org) for creating a reliable and reproducible execution environment for Leo-III. The source distribution contains a `.nix` file that can be used to run Leo-III within a `nix` shell (see `contrib/default.nix`).
