@@ -1,4 +1,4 @@
-// Generated from /home/lex/dev/Leo-III/contrib/tptp.g4 by ANTLR 4.7
+// Generated from /home/lex/dev/Leo-III/contrib/tptp.g4 by ANTLR 4.7.2
 
 package leo.modules.parsers.antlr;
 
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
 public class tptpParser extends Parser {
-	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -84,70 +84,79 @@ public class tptpParser extends Parser {
 		RULE_defined_infix_pred = 140, RULE_constant = 141, RULE_functor = 142, 
 		RULE_system_constant = 143, RULE_system_functor = 144, RULE_defined_constant = 145, 
 		RULE_defined_functor = 146, RULE_defined_term = 147, RULE_variable = 148;
-	public static final String[] ruleNames = {
-		"tptp_file", "tptp_input", "include", "formula_selection", "name", "atomic_word", 
-		"atomic_defined_word", "atomic_system_word", "number", "file_name", "annotated_formula", 
-		"thf_annotated", "tff_annotated", "fof_annotated", "cnf_annotated", "annotations", 
-		"formula_role", "source", "optional_info", "general_term", "general_data", 
-		"general_function", "formula_data", "general_list", "thf_formula", "thf_logic_formula", 
-		"thf_binary_formula", "thf_binary_pair", "thf_binary_tuple", "thf_or_formula", 
-		"thf_and_formula", "thf_apply_formula", "thf_unitary_formula", "thf_quantified_formula", 
-		"thf_quantification", "thf_variable", "thf_unary_formula", "thf_atom", 
-		"thf_function", "thf_plain_term", "thf_defined_term", "thf_system_term", 
-		"thf_conn_term", "thf_conditional", "thf_let", "thf_arguments", "thf_type_formula", 
-		"thf_typeable_formula", "thf_subtype", "thf_top_level_type", "thf_unitary_type", 
-		"thf_apply_type", "thf_binary_type", "thf_mapping_type", "thf_xprod_type", 
-		"thf_union_type", "thf_sequent", "thf_tuple", "thf_formula_list", "tff_formula", 
-		"tff_logic_formula", "tff_binary_formula", "tff_binary_nonassoc", "tff_binary_assoc", 
-		"tff_or_formula", "tff_and_formula", "tff_unitary_formula", "tff_quantified_formula", 
-		"tff_variable_list", "tff_variable", "tff_unary_formula", "tff_atomic_formula", 
-		"tff_conditional", "tff_let", "tff_let_term_defns", "tff_let_term_list", 
-		"tff_let_term_defn", "tff_let_term_binding", "tff_let_formula_defns", 
-		"tff_let_formula_list", "tff_let_formula_defn", "tff_let_formula_binding", 
-		"tff_sequent", "tff_formula_tuple", "tff_formula_tuple_list", "tff_typed_atom", 
-		"tff_untyped_atom", "tff_top_level_type", "tf1_quantified_type", "tff_monotype", 
-		"tff_unitary_type", "tff_atomic_type", "tff_type_arguments", "tff_mapping_type", 
-		"tff_xprod_type", "fof_formula", "fof_logic_formula", "fof_binary_formula", 
-		"fof_binary_nonassoc", "fof_binary_assoc", "fof_or_formula", "fof_and_formula", 
-		"fof_unitary_formula", "fof_quantified_formula", "fof_variable_list", 
-		"fof_unary_formula", "fof_infix_unary", "fof_atomic_formula", "fof_plain_atomic_formula", 
-		"fof_defined_atomic_formula", "fof_defined_plain_formula", "fof_defined_infix_formula", 
-		"fof_system_atomic_formula", "fof_plain_term", "fof_defined_term", "fof_system_term", 
-		"fof_arguments", "fof_term", "fof_function_term", "tff_conditional_term", 
-		"tff_let_term", "tff_tuple_term", "fof_sequent", "fof_formula_tuple", 
-		"fof_formula_tuple_list", "cnf_formula", "cnf_disjunction", "cnf_literal", 
-		"thf_quantifier", "th0_quantifier", "th1_quantifier", "thf_pair_connective", 
-		"thf_unary_connective", "th1_unary_connective", "type_functor", "defined_type", 
-		"fof_quantifier", "binary_connective", "assoc_connective", "unary_connective", 
-		"defined_infix_pred", "constant", "functor", "system_constant", "system_functor", 
-		"defined_constant", "defined_functor", "defined_term", "variable"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"tptp_file", "tptp_input", "include", "formula_selection", "name", "atomic_word", 
+			"atomic_defined_word", "atomic_system_word", "number", "file_name", "annotated_formula", 
+			"thf_annotated", "tff_annotated", "fof_annotated", "cnf_annotated", "annotations", 
+			"formula_role", "source", "optional_info", "general_term", "general_data", 
+			"general_function", "formula_data", "general_list", "thf_formula", "thf_logic_formula", 
+			"thf_binary_formula", "thf_binary_pair", "thf_binary_tuple", "thf_or_formula", 
+			"thf_and_formula", "thf_apply_formula", "thf_unitary_formula", "thf_quantified_formula", 
+			"thf_quantification", "thf_variable", "thf_unary_formula", "thf_atom", 
+			"thf_function", "thf_plain_term", "thf_defined_term", "thf_system_term", 
+			"thf_conn_term", "thf_conditional", "thf_let", "thf_arguments", "thf_type_formula", 
+			"thf_typeable_formula", "thf_subtype", "thf_top_level_type", "thf_unitary_type", 
+			"thf_apply_type", "thf_binary_type", "thf_mapping_type", "thf_xprod_type", 
+			"thf_union_type", "thf_sequent", "thf_tuple", "thf_formula_list", "tff_formula", 
+			"tff_logic_formula", "tff_binary_formula", "tff_binary_nonassoc", "tff_binary_assoc", 
+			"tff_or_formula", "tff_and_formula", "tff_unitary_formula", "tff_quantified_formula", 
+			"tff_variable_list", "tff_variable", "tff_unary_formula", "tff_atomic_formula", 
+			"tff_conditional", "tff_let", "tff_let_term_defns", "tff_let_term_list", 
+			"tff_let_term_defn", "tff_let_term_binding", "tff_let_formula_defns", 
+			"tff_let_formula_list", "tff_let_formula_defn", "tff_let_formula_binding", 
+			"tff_sequent", "tff_formula_tuple", "tff_formula_tuple_list", "tff_typed_atom", 
+			"tff_untyped_atom", "tff_top_level_type", "tf1_quantified_type", "tff_monotype", 
+			"tff_unitary_type", "tff_atomic_type", "tff_type_arguments", "tff_mapping_type", 
+			"tff_xprod_type", "fof_formula", "fof_logic_formula", "fof_binary_formula", 
+			"fof_binary_nonassoc", "fof_binary_assoc", "fof_or_formula", "fof_and_formula", 
+			"fof_unitary_formula", "fof_quantified_formula", "fof_variable_list", 
+			"fof_unary_formula", "fof_infix_unary", "fof_atomic_formula", "fof_plain_atomic_formula", 
+			"fof_defined_atomic_formula", "fof_defined_plain_formula", "fof_defined_infix_formula", 
+			"fof_system_atomic_formula", "fof_plain_term", "fof_defined_term", "fof_system_term", 
+			"fof_arguments", "fof_term", "fof_function_term", "tff_conditional_term", 
+			"tff_let_term", "tff_tuple_term", "fof_sequent", "fof_formula_tuple", 
+			"fof_formula_tuple_list", "cnf_formula", "cnf_disjunction", "cnf_literal", 
+			"thf_quantifier", "th0_quantifier", "th1_quantifier", "thf_pair_connective", 
+			"thf_unary_connective", "th1_unary_connective", "type_functor", "defined_type", 
+			"fof_quantifier", "binary_connective", "assoc_connective", "unary_connective", 
+			"defined_infix_pred", "constant", "functor", "system_constant", "system_functor", 
+			"defined_constant", "defined_functor", "defined_term", "variable"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'include'", "'('", "')'", "'.'", "','", "'['", "']'", "'thf'", 
-		"'tff'", "'fof'", "'cnf'", "':'", "'$thf('", "'$tff('", "'$fof('", "'$fot('", 
-		"'$cnf('", "'[]'", "'$ite('", "'$let('", "'<<'", "'>'", "'*'", "'+'", 
-		"'-->'", "'{}'", "'{'", "'}'", "'$ite_f('", "'$let_tf('", "'$let_ff('", 
-		"'>>'", "'$ite_t('", "'$let_ft('", "'$let_tt('", "'|'", "'&'", "'<=>'", 
-		"'=>'", "'<='", "'<~>'", "'~|'", "'~&'", "'~'", "'!!'", "'!>'", "'!='", 
-		"'='", "'!'", "'??'", "'?*'", "'?'", "'^'", "'@@+'", "'@+'", "'@@-'", 
-		"'@-'", "'@='", "'@'", "':='"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		"Or", "And", "Iff", "Impl", "If", "Niff", "Nor", "Nand", "Not", "ForallComb", 
-		"TyForall", "Infix_inequality", "Infix_equality", "Forall", "ExistsComb", 
-		"TyExists", "Exists", "Lambda", "ChoiceComb", "Choice", "DescriptionComb", 
-		"Description", "EqComb", "App", "Assignment", "Real", "Signed_real", "Unsigned_real", 
-		"Rational", "Signed_rational", "Unsigned_rational", "Integer", "Signed_integer", 
-		"Unsigned_integer", "Decimal", "Positive_decimal", "Decimal_exponent", 
-		"Decimal_fraction", "Dot_decimal", "Exp_integer", "Signed_exp_integer", 
-		"Unsigned_exp_integer", "Dollar_word", "Dollar_dollar_word", "Upper_word", 
-		"Lower_word", "Single_quoted", "Distinct_object", "WS", "Line_comment", 
-		"Block_comment"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'include'", "'('", "')'", "'.'", "','", "'['", "']'", "'thf'", 
+			"'tff'", "'fof'", "'cnf'", "':'", "'$thf('", "'$tff('", "'$fof('", "'$fot('", 
+			"'$cnf('", "'[]'", "'$ite('", "'$let('", "'<<'", "'>'", "'*'", "'+'", 
+			"'-->'", "'{}'", "'{'", "'}'", "'$ite_f('", "'$let_tf('", "'$let_ff('", 
+			"'>>'", "'$ite_t('", "'$let_ft('", "'$let_tt('", "'|'", "'&'", "'<=>'", 
+			"'=>'", "'<='", "'<~>'", "'~|'", "'~&'", "'~'", "'!!'", "'!>'", "'!='", 
+			"'='", "'!'", "'??'", "'?*'", "'?'", "'^'", "'@@+'", "'@+'", "'@@-'", 
+			"'@-'", "'@='", "'@'", "':='"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			"Or", "And", "Iff", "Impl", "If", "Niff", "Nor", "Nand", "Not", "ForallComb", 
+			"TyForall", "Infix_inequality", "Infix_equality", "Forall", "ExistsComb", 
+			"TyExists", "Exists", "Lambda", "ChoiceComb", "Choice", "DescriptionComb", 
+			"Description", "EqComb", "App", "Assignment", "Real", "Signed_real", 
+			"Unsigned_real", "Rational", "Signed_rational", "Unsigned_rational", 
+			"Integer", "Signed_integer", "Unsigned_integer", "Decimal", "Positive_decimal", 
+			"Decimal_exponent", "Decimal_fraction", "Dot_decimal", "Exp_integer", 
+			"Signed_exp_integer", "Unsigned_exp_integer", "Dollar_word", "Dollar_dollar_word", 
+			"Upper_word", "Lower_word", "Single_quoted", "Distinct_object", "WS", 
+			"Line_comment", "Block_comment"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**
@@ -197,6 +206,7 @@ public class tptpParser extends Parser {
 		super(input);
 		_interp = new ParserATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
+
 	public static class Tptp_fileContext extends ParserRuleContext {
 		public TerminalNode EOF() { return getToken(tptpParser.EOF, 0); }
 		public List<Tptp_inputContext> tptp_input() {
@@ -5826,6 +5836,7 @@ public class tptpParser extends Parser {
 	}
 
 	public static class Tf1_quantified_typeContext extends ParserRuleContext {
+		public TerminalNode TyForall() { return getToken(tptpParser.TyForall, 0); }
 		public Tff_variable_listContext tff_variable_list() {
 			return getRuleContext(Tff_variable_listContext.class,0);
 		}
@@ -8178,6 +8189,7 @@ public class tptpParser extends Parser {
 		public Cnf_disjunctionContext cnf_disjunction() {
 			return getRuleContext(Cnf_disjunctionContext.class,0);
 		}
+		public TerminalNode Or() { return getToken(tptpParser.Or, 0); }
 		public Cnf_disjunctionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}

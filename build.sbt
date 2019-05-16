@@ -33,7 +33,7 @@ lazy val leo = (project in file(".")).
     // options for native bindings
 //    target in javah := (sourceDirectory in nativeCompile).value / "javah_include",
     // antlr related stuff
-    excludeFilter in unmanagedJars := HiddenFileFilter || "antlr4-tool.jar",
+    excludeFilter in unmanagedJars := HiddenFileFilter,
     antlrFile := baseDirectory.value / "contrib" / "tptp.g4",
     buildParser := {
       val log = streams.value.log
@@ -41,7 +41,7 @@ lazy val leo = (project in file(".")).
         in =>
           print("Generating parser from tptp grammar ...")
           val target = (javaSource in Compile).value / "leo" / "modules" / "parsers" / "antlr"
-          val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr4-tool.jar")),
+          val args: Seq[String] = Seq("-cp", Path.makeString(Seq(unmanagedBase.value / "antlr-4.7.2-complete.jar")),
             "org.antlr.v4.Tool",
             "-o", target.toString) ++ in.map(_.toString)
           val exitCode = Process("java", args) ! log

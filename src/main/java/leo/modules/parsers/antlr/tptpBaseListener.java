@@ -1,4 +1,4 @@
-// Generated from /home/lex/dev/Leo-III/contrib/tptp.g4 by ANTLR 4.7
+// Generated from /home/lex/dev/Leo-III/contrib/tptp.g4 by ANTLR 4.7.2
 
 package leo.modules.parsers.antlr;
 
