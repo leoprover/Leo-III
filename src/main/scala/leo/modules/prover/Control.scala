@@ -2746,7 +2746,7 @@ package  externalProverControl {
             if (unSatAnswers.nonEmpty) {
               val extRes0 = unSatAnswers.head
               wait = false
-              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes0.proverName, extRes0.problem))
+              val emptyClause = AnnotatedClause(Clause.empty, extCallInference(extRes0.prover.name, extRes0.problem))
               endplay(emptyClause, state)
             } else if (System.currentTimeMillis() - startTime <= 1000 * timeout && ExtProverControl.openCallsExist) {
               Out.info(s"[ExtProver] Still waiting ...")
