@@ -3,6 +3,7 @@ package leo.modules.parsers
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Path, Paths}
 
+import leo.Out
 import leo.datastructures.tptp.Commons
 import leo.datastructures.tptp.thf.{LogicFormula => THFFormula}
 import leo.datastructures.{Role, Signature, Term}
@@ -68,32 +69,60 @@ object Input {
     * @return The sequence of annotated TPTP formulae.
     */
   def parseProblemFile(file: String, assumeRead: Set[Path] = Set()): Seq[Commons.AnnotatedFormula] = {
+    // FIXME Assume Read should be a shared between the calls (Dependencies between siblings not detected)
+    var result: Seq[Commons.AnnotatedFormula] = Seq.empty
     val canonicalFile = if (file == "-") canonicalPath(".") else canonicalPath(file) // to allow inputs from CWD if file is stdin
-    if (!assumeRead.contains(canonicalFile)) {
-      val p: Commons.TPTPInput = parseProblemFileShallow(file)
-      val includes = p.getIncludes
-
-      // TODO Assume Read should be a shared between the calls (Dependencies between siblings not detected)
-
-      val pIncludes = includes.map{case (inc, _) =>
+    var assumeRead0 = assumeRead
+    Out.trace(s"assumeRead0: ${assumeRead0.map(_.toString).mkString(",")}")
+    Out.trace(s"canonicalFile: ${canonicalFile.toString}")
+    if (!assumeRead0.contains(canonicalFile)) {
+      Out.debug(s"Parsing $file ...")
+      val problem: Commons.TPTPInput = parseProblemFileShallow(file)
+      assumeRead0 += canonicalFile
+      val includes = problem.getIncludes
+      val includesIt = includes.iterator
+      Out.trace(s"Found ${includes.size} include(s): ${includes.map(ax => s"'${ax._1}'").mkString(",")}")
+      while (includesIt.hasNext) {
+        val (includeFile, _) = includesIt.next()
         try {
-          val next = canonicalFile.getParent.resolve(inc)
-          parseProblemFile(next.toString, assumeRead + canonicalFile)
+          val next = canonicalFile.getParent.resolve(includeFile)
+          var subResult = parseProblemFile(next.toString, assumeRead0)
+          assumeRead0 += canonicalPath(next.toString)
+          result ++= subResult
         } catch {
-          case e : Exception =>
-            try {
-              if (tptpHome != null) {
-                val tnext = tptpHome.resolve(inc)
-                parseProblemFile(tnext.toString, assumeRead + canonicalFile)
-              } else throw e
-            } catch {
-              case _ : Exception => throw new SZSException(SZS_InputError, s"The file $inc does not exist.")
+          case e: SZSException =>
+            e.status match {
+              case SZS_InputError =>
+                // If file was not found, it could still be
+                // an axiom in the TPTP path, so try again with tptpHome
+                if (tptpHome != null) {
+                  try {
+                    Out.info(s"Included file '$includeFile' not found, trying TPTP home directory ...")
+                    val altNext = tptpHome.resolve(includeFile)
+                    val altSubResult = parseProblemFile(altNext.toString, assumeRead0)
+                    assumeRead0 += canonicalPath(altNext.toString)
+                    result ++= altSubResult
+                  } catch {
+                    case _: Throwable =>
+                      throw e
+                    // We throw the original exception as we don't
+                    // want the alternative file path (with TPTP prefix)
+                    // in the error message.
+                  }
+                } else {
+                  Out.info(s"Included file '$includeFile' not found, maybe it is a TPTP axiom and " +
+                    s"you forgot to set your TPTP home path ($$TPTP)?")
+                  throw e
+                }
+              case _ => throw e
             }
         }
       }
-      pIncludes.flatten ++ p.getFormulae
+      result ++= problem.getFormulae
+      result
     } else {
-      Seq()
+      Out.info(s"File '$file' was already parsed, skipping. Maybe it was included multiple times?")
+      Seq.empty
     }
   }
 
