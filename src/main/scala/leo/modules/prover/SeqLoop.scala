@@ -346,13 +346,12 @@ object SeqLoop {
     /* Pre-unify new clauses */
     newclauses = Control.unifyNewClauses(newclauses)(state)
 
-    /* exhaustively CNF new clauses */
-    /* Replace eq symbols on top-level by equational literals. */
-    newclauses = exhaustive[AnnotatedClause]{ cls =>
-      val res0 = Control.cnfSet(cls)
-      res0.map(cl => Control.cheapSimp(Control.liftEq(cl)))
-    }(newclauses)
+    /* exhaustively: */
+    /* (1) CNF (2) replace eq symbols on top-level by equational literals and */
+    /* (3) rewriting */
+    newclauses = Control.exhaustiveCnfSet(newclauses)
 
+    /* Remove trivial clauses eagerly */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
     /////////////////////////////////////////
     // Simplification of newly generated clauses END

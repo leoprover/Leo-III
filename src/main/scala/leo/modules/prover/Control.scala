@@ -29,6 +29,7 @@ object Control {
   // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
+  @inline final def exhaustiveCnfSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.CNFControl.exhaustiveCnfSet(cls)(state)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
   @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
@@ -179,6 +180,29 @@ package inferenceControl {
         result = result union cnf(cl)
       }
       result
+    }
+
+    final def exhaustiveCnfSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
+      import scala.collection.mutable
+      implicit val sig: Signature = state.signature
+      val temp: mutable.Set[AnnotatedClause] = mutable.Set.empty
+      temp ++= cls
+      val finished: mutable.Set[AnnotatedClause] = mutable.Set.empty
+      while (temp.nonEmpty) {
+        val cl = temp.head
+        temp.remove(cl)
+        val clCNF = Control.cnf(cl).iterator
+        while (clCNF.hasNext) {
+          val next = clCNF.next()
+          val simplified = Control.cheapSimp(Control.liftEq(next))
+          if (FullCNF.canApply(simplified.cl)) {
+            temp += simplified
+          } else {
+            finished += next
+          }
+        }
+      }
+      finished.toSet
     }
   }
 
