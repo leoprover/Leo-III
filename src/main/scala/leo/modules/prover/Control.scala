@@ -194,7 +194,8 @@ package inferenceControl {
         val clCNF = Control.cnf(cl).iterator
         while (clCNF.hasNext) {
           val next = clCNF.next()
-          val simplified = Control.cheapSimp(Control.liftEq(next))
+//          val simplified = Control.cheapSimp(Control.liftEq(next))
+          val simplified = Control.liftEq(next)
           if (FullCNF.canApply(simplified.cl)) {
             temp += simplified
           } else {

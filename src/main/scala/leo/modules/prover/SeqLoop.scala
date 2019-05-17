@@ -372,7 +372,9 @@ object SeqLoop {
         endplay(newCl, state)
         return true
       } else {
-        if (!Clause.trivial(newCl.cl) && !state.processed.exists(_.cl == newCl.cl)) Control.addUnprocessed(newCl)
+        // exists test commented out since its computationally quite heavy and
+        // anyway checked by forward subsumption
+        if (!Clause.trivial(newCl.cl) /*&& !state.processed.exists(_.cl == newCl.cl)*/) Control.addUnprocessed(newCl)
         else Out.debug(s"[SeqLoop] Trivial, hence dropped: ${newCl.pretty(sig)}")
       }
     }
