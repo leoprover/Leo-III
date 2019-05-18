@@ -59,20 +59,34 @@ echo "$description" > "$tmpdir/starexec_description.txt"
 chmod +x "$tmpdir/bin/starexec_run_default"
 infilepath=$(dirname "$infile")
 infilefilename=$(basename "$infile")
+allext=""
 rm -f "$outdir/$outfile.tar.gz"
 tar -cf "$tmpdir/$outfile.tar" -C "$infilepath" "$infilefilename"
 tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_default"
 tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "starexec_description.txt"
+#### exec for each ext prover
 for prover in "${externals[@]}"
 do
 	proverpath=$(dirname "$prover")
   proverfilename=$(basename "$prover")
+  extarg="--atp $proverfilename=../externals/$proverfilename"
+  allext="$allext $extarg"
   tar -rf "$tmpdir/$outfile.tar" --transform 's,^,externals/,' -C "$proverpath" "$proverfilename"
   echo "#!/bin/bash
 
-java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p --atp $proverfilename=../externals/$proverfilename" > "$tmpdir/bin/starexec_run_$proverfilename"
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p $extarg" > "$tmpdir/bin/starexec_run_$proverfilename"
   chmod +x "$tmpdir/bin/starexec_run_$proverfilename"
   tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_$proverfilename"
 done
+#### exec for all ext provers at all
+if [ ! -z "$allext" ]
+then
+  echo "#!/bin/bash
+
+java -Xss128m -Xmx2g -Xms1g -jar ../leo3.jar \$1 -t \$STAREXEC_CPU_LIMIT -p $allext" > "$tmpdir/bin/starexec_run_all"
+  chmod +x "$tmpdir/bin/starexec_run_all"
+  tar -rf "$tmpdir/$outfile.tar" -C "$tmpdir/" "bin/starexec_run_all"
+fi
+
 cat "$tmpdir/$outfile.tar" | gzip > "$outdir/$outfile.tar.gz"
 rm -r "$tmpdir"
