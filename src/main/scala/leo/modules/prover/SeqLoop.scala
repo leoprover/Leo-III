@@ -199,7 +199,7 @@ object SeqLoop {
     implicit val sig: Signature = state.signature
     var loop = true
     Out.debug("## Reasoning loop BEGIN")
-    while (loop && !prematureCancel(state.noProcessedCl)) {
+    while (loop && !prematureCancel(state.noProofLoops)) {
       Interaction(state)
 
       if (!Configuration.GUIDED && System.currentTimeMillis() - startTime > 1000 * timeout) {
@@ -486,9 +486,9 @@ object SeqLoop {
     }
   }
 
-  @inline final def prematureCancel(counter: Int): Boolean = {
+  @inline final def prematureCancel(counter: Long): Boolean = {
     try {
-      val limit: Int = Configuration.valueOf("ll").get.head.toInt
+      val limit: Long = Configuration.valueOf("ll").get.head.toLong
       counter >= limit
     } catch {
       case _: NumberFormatException => false
