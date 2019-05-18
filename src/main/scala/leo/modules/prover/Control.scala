@@ -29,7 +29,7 @@ object Control {
   // simplification inferences / preprocessing
   @inline final def cnf(cl: AnnotatedClause)(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnf(cl)(state)
   @inline final def cnfSet(cls: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = inferenceControl.CNFControl.cnfSet(cls)(state)
-  @inline final def exhaustiveCnfSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.CNFControl.exhaustiveCnfSet(cls)(state)
+  @inline final def exhaustiveCnfSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = inferenceControl.CNFControl.exhaustiveCnfSimpSet(cls)(state)
   @inline final def expandDefinitions(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.expandDefinitions(cl)(sig)
   @inline final def miniscope(cl: AnnotatedClause)(implicit sig: Signature): AnnotatedClause = inferenceControl.SimplificationControl.miniscope(cl)(sig)
   @inline final def switchPolarity(cl: AnnotatedClause): AnnotatedClause = inferenceControl.SimplificationControl.switchPolarity(cl)
@@ -182,7 +182,7 @@ package inferenceControl {
       result
     }
 
-    final def exhaustiveCnfSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
+    final def exhaustiveCnfSimpSet(cls: Set[AnnotatedClause])(implicit state: State[AnnotatedClause]): Set[AnnotatedClause] = {
       import scala.collection.mutable
       implicit val sig: Signature = state.signature
       val temp: mutable.Set[AnnotatedClause] = mutable.Set.empty
@@ -216,10 +216,10 @@ package inferenceControl {
     */
   protected[modules] object ParamodControl {
     final def paramodSet(cl: AnnotatedClause, withset: Set[AnnotatedClause])(implicit state: LocalState): Set[AnnotatedClause] = {
+      Out.debug(s"[Paramod] On ${cl.id}")
       val sos = state.runStrategy.sos
       var results: Set[AnnotatedClause] = Set()
       val withsetIt = withset.iterator
-      Out.debug(s"Paramod on ${cl.id} (SOS: ${leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, cl.properties)}) and processed set")
       while (withsetIt.hasNext) {
         val other = withsetIt.next()
         if (!sos || leo.datastructures.isPropSet(ClauseAnnotation.PropSOS, other.properties) ||
@@ -228,10 +228,8 @@ package inferenceControl {
           results = results ++ allParamods(cl, other)(state)
         }
       }
-      if (results.nonEmpty) {
-        Out.trace(s"Paramod result: ${results.map(_.id).mkString(",")}")
-        Out.finest(results.map(_.pretty(state.signature)).mkString("\n\t"))
-      }
+      Out.debug(s"[Paramod] Result: ${results.map(_.id).mkString(",")}")
+      Out.trace(results.map(_.pretty(state.signature)).mkString("\n\t"))
       results
     }
 

@@ -229,6 +229,7 @@ object SeqLoop {
         } else {
           var cur = state.nextUnprocessed
           // cur is the current AnnotatedClause
+          Out.debug(s"[SeqLoop] ------------ next iteration (#${state.noProofLoops+1}) ------------")
           Out.debug(s"[SeqLoop] Taken: ${cur.pretty(sig)}")
           Out.trace(s"[SeqLoop] Maximal: ${cur.cl.maxLits.map(_.pretty(sig)).mkString("\n\t")}")
 
@@ -269,7 +270,6 @@ object SeqLoop {
   private[this] final def mainLoopInferences(cur: AnnotatedClause)(implicit state: LocalState): Boolean = {
     implicit val sig: Signature = state.signature
     var newclauses: Set[AnnotatedClause] = Set.empty
-    Out.trace(s"[SeqLoop] Main loop inferences ...")
     /////////////////////////////////////////
     // Backward simplification BEGIN
     /////////////////////////////////////////
@@ -349,7 +349,7 @@ object SeqLoop {
     /* exhaustively: */
     /* (1) CNF (2) replace eq symbols on top-level by equational literals and */
     /* (3) rewriting */
-    newclauses = Control.exhaustiveCnfSet(newclauses)
+    newclauses = Control.exhaustiveCnfSimpSet(newclauses)
 
     /* Remove trivial clauses eagerly */
     newclauses = newclauses.filterNot(cw => Clause.trivial(cw.cl))
@@ -360,6 +360,7 @@ object SeqLoop {
     /////////////////////////////////////////
     state.incGeneratedCl(newclauses.size)
     Out.debug(s"[SeqLoop] Generated: ${newclauses.map(_.id).mkString(",")}")
+    Out.debug(s"[SeqLoop] \t${newclauses.map(_.pretty(sig)).mkString("\n\t\t\t\t\t\t")}")
     // At the end, for each generated clause add to unprocessed,
     // eagly look for the empty clause
     // and return true if found.
