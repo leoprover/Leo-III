@@ -2249,6 +2249,7 @@ package inferenceControl {
       val replaceLeibniz = !Configuration.isSet("nleq")
       val replaceAndrews = !Configuration.isSet("naeq")
       if (replaceLeibniz || replaceAndrews) {
+        Out.debug(s"[DefEq] On ${clSet.map(_.id).mkString(",")}")
         var newClauses: Set[AnnotatedClause] = Set.empty
         val clSetIt = clSet.iterator
         while (clSetIt.hasNext) {
@@ -2274,6 +2275,8 @@ package inferenceControl {
       else convertLeibniz0(cl)(sig)
     }
     @inline private final def convertLeibniz0(cl: AnnotatedClause)(sig: Signature): AnnotatedClause = {
+      Out.trace(s"[DefEq][LEq] On ${cl.id}")
+      Out.finest(s"[DefEq][LEq] ${cl.pretty(sig)}")
       val (cA_leibniz, leibTermMap) = ReplaceLeibnizEq.canApply(cl.cl)(sig)
       if (cA_leibniz) {
         Out.trace(s"Replace Leibniz equalities in ${cl.id}")
@@ -2281,8 +2284,10 @@ package inferenceControl {
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceLeibnizEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"Result: ${res.pretty(sig)}")
         res
-      } else
+      } else {
+        Out.trace(s"[DefEq][LEq] On ${cl.id}: No Leibniz equalities found.")
         cl
+      }
     }
 
     // Andrews Equalities
@@ -2291,6 +2296,8 @@ package inferenceControl {
       else convertAndrews0(cl)(sig)
     }
     @inline private final def convertAndrews0(cl: AnnotatedClause)(sig: Signature): AnnotatedClause = {
+      Out.trace(s"[DefEq][AEq] On ${cl.id}")
+      Out.finest(s"[DefEq][AEq] ${cl.pretty(sig)}")
       val (cA_Andrews, andrewsTermMap) = ReplaceAndrewsEq.canApply(cl.cl)
       if (cA_Andrews) {
         Out.trace(s"Replace Andrews equalities in ${cl.id}")
@@ -2298,8 +2305,10 @@ package inferenceControl {
         val res = AnnotatedClause(resCl, InferredFrom(ReplaceAndrewsEq, Seq((cl, ToTPTP(subst, cl.cl.implicitlyBound)(sig)))), cl.properties | ClauseAnnotation.PropNeedsUnification)
         Out.finest(s"Result: ${res.pretty(sig)}")
         res
-      } else
+      } else {
+        Out.trace(s"[DefEq][AEq] On ${cl.id}: No Andrews equalities found.")
         cl
+      }
     }
   }
 

@@ -449,23 +449,28 @@ object ReplaceAndrewsEq extends CalculusRule {
 
   def canApply(cl: Clause): (Boolean, Map[Int, Type]) = {
     import leo.datastructures.Term.{Bound, TermApp}
-    var varMap: Map[Int, Type] = Map()
+    var varMap: Map[Int, Type] = Map.empty
 
     val litIt = cl.lits.iterator
     while(litIt.hasNext) {
       val lit = litIt.next()
-      if (lit.flexHead) {
+      Out.finest(s"[DefEq][AEq][canApply] lit = ${lit.pretty}")
+      if (lit.flexHead && !lit.polarity) {
+        Out.finest(s"[DefEq][AEq][canApply] lit is negative flexHead")
         val (head,args) = TermApp.unapply(lit.left).get
         assert(head.isVariable)
         if (args.size == 2) {
-          val (headType, headIndex) = Bound.unapply(head).get
+          Out.finest("[DefEq][AEq][canApply] head has two arguments")
+          val (_, headIndex) = Bound.unapply(head).get
           val (arg1,arg2) = (args.head,args.tail.head)
-          if (arg1 == arg2 && !(arg1.looseBounds contains headIndex)) {
-            if (!lit.polarity) {
-              if (!varMap.contains(headIndex)) {
+          if (arg1 == arg2) {
+            Out.finest("[DefEq][AEq][canApply] arguments are equal, lit = [X t t]^f")
+//            if (!(arg1.looseBounds contains headIndex)) {
+//              if (!varMap.contains(headIndex)) {
+                assert(!varMap.contains(headIndex) || varMap(headIndex) == arg1.ty)
                 varMap = varMap + (headIndex -> arg1.ty)
-              }
-            }
+//              }
+//            }
           }
 
         }
