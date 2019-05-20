@@ -50,11 +50,18 @@ trait Clause extends Pretty with Prettier with HasCongruence[Clause] {
   /** Two clauses `c1` and `c2` are equal if and only if their underlying multi-sets of literals are equal, i.e.
     * `c1 = l1 ∨ l2` is equal to `c2 = l2 ∨ l1` while `c1` is not equal to `c2' = l2 ∨ l1 ∨ l1`. */
   override final def equals(obj : Any): Boolean = obj match {
-    case co : Clause => lits.diff(co.lits).isEmpty && co.lits.diff(lits).isEmpty
+    case co : Clause =>
+      if (lits.size == co.lits.size) {
+        if (posLits.size == co.posLits.size) {
+          if (negLits.size == co.negLits.size) {
+            lits.diff(co.lits).isEmpty && co.lits.diff(lits).isEmpty
+          } else false
+        } else false
+      } else false
     case _ => false
   }
   override final def hashCode(): Int = if (lits.isEmpty) 0
-  else lits.tail.foldLeft(lits.head.hashCode()){case (h,l) => h^l.hashCode()}
+  else scala.util.hashing.MurmurHash3.unorderedHash(lits)
 }
 
 object Clause {
