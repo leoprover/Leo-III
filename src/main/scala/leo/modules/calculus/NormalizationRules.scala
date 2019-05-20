@@ -6,7 +6,7 @@ import leo.datastructures.{Clause, Subst, Type, _}
 import leo.modules.HOLSignature.{!===, &, ===, Exists, Forall, Impl, LitFalse, LitTrue, Not, TyForall, |||}
 import leo.modules.output.{SZS_EquiSatisfiable, SZS_Theorem, SuccessSZS}
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 /**
@@ -716,10 +716,10 @@ object Simp extends CalculusRule {
 
   final private def eqSimp(l: Literal)(implicit sig: Signature): Literal = {
     if (!l.equational) {
-      Literal(internalNormalize(l.left), l.polarity)
+      Literal(normalize(l.left), l.polarity)
     } else {
-      val normLeft = internalNormalize(l.left)
-      val normRight = internalNormalize(l.right)
+      val normLeft = normalize(l.left)
+      val normRight = normalize(l.right)
       (normLeft, normRight) match {
         case (a,b) if a == b => Literal(LitTrue(), l.polarity)
         case _ => Literal.mkOrdered(normLeft, normRight, l.polarity)
@@ -967,111 +967,205 @@ object Simp extends CalculusRule {
   }
 
   //////////////////////////////////
-  //// Simplification implementation by Max
+  //// New Simplification implementation (May 2019)
+  //// Hopefully a bit faster as it has a little fewer unapply checks and recursive calls.
   //////////////////////////////////
-  def normalize(t: Term): Term = internalNormalize(t)
-
-  private def internalNormalize(formula: Term): Term = Term.insert(norm(formula.betaNormalize).betaNormalize)
-
-  import leo.datastructures.Term.{Symbol, Bound, ∙}
-  import leo.datastructures.Term.local._
-  import leo.modules.HOLSignature.<=>
-  private def norm(formula : Term) : Term = formula match {
-    // First normalize, then match
-    case s === t =>
-      (norm(s), norm(t)) match {
-        case (s1,t1) if s1 == t1 => LitTrue
-        case (LitTrue(),t1) => t1
-        case (s1,LitTrue()) => s1
-        case (LitFalse(), t1) => Not(t1)
-        case (s1, LitFalse()) => Not(s1)
-        case (s1,t1)             => ===(s1,t1)
-      }
-    case s & t =>
-      (norm(s), norm(t)) match {
-        case (s1, t1) if s1 == t1     => s1
-        case (s1, Not(t1)) if s1 == t1  => LitFalse
-        case (Not(s1), t1) if s1 == t1  => LitFalse
-        case (s1, LitTrue())            => s1
-        case (LitTrue(), t1)            => t1
-        case (_, LitFalse())           => LitFalse
-        case (LitFalse(), _)           => LitFalse
-        case (s1, t1)                 => &(s1,t1)
-      }
-    case (s ||| t) =>
-      (norm(s),norm(t)) match {
-        case (s1,t1) if s1 == t1      => s1
-        case (s1, Not(t1)) if s1 == t1   => LitTrue
-        case (Not(s1),t1) if s1 == t1   => LitTrue
-        case (_, LitTrue())            => LitTrue
-        case (LitTrue(), _)            => LitTrue
-        case (s1, LitFalse())           => s1
-        case (LitFalse(), t1)           => t1
-        case (s1, t1)                 => |||(s1,t1)
-      }
-    case s <=> t =>
-      val (ns, nt) = (norm(s), norm(t))
-      val res : Term = (ns, nt) match {
-        case (s1, t1) if s1 == t1   => LitTrue
-        case (s1, LitTrue())        => s1
-        case (LitTrue(), t1)        => t1
-        case (s1, LitFalse())       => norm(Not(s1))
-        case (LitFalse(), t1)       => norm(Not(t1))
-        case (s1, t1)               => &(Impl(s1,t1),Impl(t1,s1))
-      }
-      return res
-    case s Impl t =>
-      (norm(s), norm(t)) match {
-        case (s1, t1) if s1 == t1 => LitTrue
-        case (_, LitTrue())        => LitTrue
-        case (s1, LitFalse())       => norm(Not(s1))
-        case (LitTrue(), t1)        => t1
-        case (LitFalse(), _)       => LitTrue
-        case (s1,t1)                => Impl(s1,t1)
-      }
-    case Not(s) => norm(s) match {
-      case LitTrue()    => LitFalse
-      case LitFalse()   => LitTrue
-      case Not(s1)      => s1
-      case s1           => Not(s1)
-    }
-    case Forall(t) => norm(t) match {
-      case ty :::> t1 =>
-        if (t1.looseBounds.contains(1))
-          Forall(mkTermAbs(ty, t1))
-        else
-          removeUnbound(mkTermAbs(ty,t1))
-      case t1         => Forall(t1)
-    }
-    case Exists(t) => norm(t) match {
-      case ty :::> t1 =>
-        if (t1.looseBounds.contains(1))
-          Exists(mkTermAbs(ty, t1))
-        else
-          removeUnbound(mkTermAbs(ty,t1))
-      case t1         => Exists(t1)
-    }
-
-    // Pass through unimportant structures
-    case s@Symbol(_)            => s
-    case s@Bound(_,_)           => s
-    case f ∙ args   => Term.mkApp(norm(f), args.map(_.fold({t => Left(norm(t))},(Right(_)))))
-    case ty :::> s  => Term.mkTermAbs(ty, norm(s))
-    case TypeLambda(t) => Term.mkTypeAbs(norm(t))
-  }
+  final def normalize(t: Term): Term = termSimp(t)
 
   /**
-    * Removes the quantifier from a formula, that is free, by instantiating it
-    * and betanormalization.
+    * Exhaustively applies the simplification rules of `simp` to `t`.
     *
-    * @param formula Abstraction with not bound variable.
-    * @return the term without the function.
+    * @param t The term to be simplified
+    * @return A term `r` that is semantically equivalent to `t` (i.e. has the same interpretation as before).
     */
-  private def removeUnbound(formula : Term) : Term = formula match {
-    case ty :::> t =>
-      //      println("Removed the abstraction in '"+formula.pretty+"'.")
-      mkTermApp(formula,mkBound(ty,-4711)).betaNormalize
-    case _        => formula
+  @inline private[this] final def termSimp(t: Term): Term = {
+    val result = termSimp0(t.betaNormalize)
+    if (t.sharing) Term.insert(result)
+    else result
+  }
+  private[this] final def termSimp0(t: Term): Term = {
+    import leo.datastructures.Term.local._
+    import leo.modules.HOLSignature.<=>
+    import leo.datastructures.Term.{Symbol, ∙}
+    t match {
+      case ty :::> body     => mkTermAbs(ty, termSimp0(body))
+      case TypeLambda(body) => mkTypeAbs(termSimp0(body))
+      case f ∙ args         => f match {
+        case Symbol(id) =>
+          val argsLength = args.size
+          (argsLength: @switch) match {
+            case 3 =>
+              (id: @switch) match {
+                /* three arguments because of additional type argument */
+                case ===.key =>
+                  //                val tyArg = args.head.right.get
+                  val left = args(1).left.get
+                  val right = args(2).left.get
+                  val leftSimp = termSimp0(left)
+                  val rightSimp = termSimp0(right)
+                  (leftSimp, rightSimp) match {
+                    case (LitTrue(), _)   => rightSimp // FIXME The following four cases are extensional!
+                    case (_, LitTrue())   => leftSimp
+                    case (LitFalse(), _)  => rightSimp match {
+                      case Not(body) => body
+                      case _ => Not(rightSimp)
+                    }
+                    case (_, LitFalse())  => leftSimp match {
+                      case Not(body) => body
+                      case _ => Not(leftSimp)
+                    }
+                    case (l,r)            =>
+                      if (l == r) LitTrue
+                      else        ===(l,r)
+                  }
+                case _ =>
+                  val argsSimp = simpList(args)
+                  mkApp(f, argsSimp)
+              }
+            case 2 =>
+              (id: @switch) match {
+                case &.key =>
+                  val left = args.head.left.get
+                  val right = args(1).left.get
+                  val leftSimp = termSimp0(left)
+                  val rightSimp = termSimp0(right)
+                  (leftSimp, rightSimp) match {
+                    case (s1, t1) if s1 == t1     => s1
+                    case (s1, Not(t1)) if s1 == t1  => LitFalse
+                    case (Not(s1), t1) if s1 == t1  => LitFalse
+                    case (s1, LitTrue())            => s1
+                    case (LitTrue(), t1)            => t1
+                    case (_, LitFalse())           => LitFalse
+                    case (LitFalse(), _)           => LitFalse
+                    case (s1, t1)                 => &(s1,t1)
+                  }
+                case |||.key =>
+                  val left = args.head.left.get
+                  val right = args(1).left.get
+                  val leftSimp = termSimp0(left)
+                  val rightSimp = termSimp0(right)
+                  (leftSimp, rightSimp) match {
+                    case (s1,t1) if s1 == t1      => s1
+                    case (s1, Not(t1)) if s1 == t1   => LitTrue
+                    case (Not(s1),t1) if s1 == t1   => LitTrue
+                    case (_, LitTrue())            => LitTrue
+                    case (LitTrue(), _)            => LitTrue
+                    case (s1, LitFalse())           => s1
+                    case (LitFalse(), t1)           => t1
+                    case (s1, t1)                 => |||(s1,t1)
+                  }
+                case Impl.key =>
+                  val left = args.head.left.get
+                  val right = args(1).left.get
+                  val leftSimp = termSimp0(left)
+                  val rightSimp = termSimp0(right)
+                  (leftSimp, rightSimp) match {
+                    case (s1, t1) if s1 == t1 => LitTrue
+                    case (_, LitTrue())        => LitTrue
+                    case (s1, LitFalse())       =>
+                      s1 match {
+                        case Not(s2) => s2
+                        case _ => Not(s1)
+                      }
+                    case (LitTrue(), t1)        => t1
+                    case (LitFalse(), _)       => LitTrue
+                    case (s1,t1)                => Impl(s1,t1)
+                  }
+                case <=>.key =>
+                  val left = args.head.left.get
+                  val right = args(1).left.get
+                  val leftSimp = termSimp0(left)
+                  val rightSimp = termSimp0(right)
+                  (leftSimp, rightSimp) match {
+                    case (s1, t1) if s1 == t1   => LitTrue
+                    case (s1, LitTrue())        => s1
+                    case (LitTrue(), t1)        => t1
+                    case (s1, LitFalse())       => s1 match {
+                      case Not(s2) => s2
+                      case _ => Not(s1)
+                    }
+                    case (LitFalse(), t1)       => t1 match {
+                      case Not(t2) => t2
+                      case _ => Not(t1)
+                    }
+                    case (s1, t1)               => &(Impl(s1,t1),Impl(t1,s1))
+                  }
+                /* forall exists here because of additional type argument */
+                case Forall.key =>
+                  val body = args(1).left.get
+                  val bodySimp = termSimp0(body)
+                  bodySimp match {
+                    case _ :::> absBody =>
+                      if (!absBody.looseBounds.contains(1)) {
+                        absBody.lift(-1)
+                      } else {
+                        Forall(bodySimp)
+                      }
+                    case _ => Forall(bodySimp)
+                  }
+                case Exists.key =>
+                  val body = args(1).left.get
+                  val bodySimp = termSimp0(body)
+                  bodySimp match {
+                    case _ :::> absBody =>
+                      if (!absBody.looseBounds.contains(1)) {
+                        absBody.lift(-1)
+                      } else {
+                        Exists(bodySimp)
+                      }
+                    case _ => Exists(bodySimp)
+                  }
+                case _ =>
+                  val argsSimp = simpList(args)
+                  mkApp(f, argsSimp)
+              }
+            case 1 =>
+              (id: @switch) match {
+                case Not.key =>
+                  val body = args.head.left.get
+                  val bodySimp = termSimp0(body)
+                  bodySimp match {
+                    case LitTrue()  => LitFalse
+                    case LitFalse() => LitTrue
+                    case Not(body2) => body2
+                    case _          => Not(bodySimp)
+                  }
+                case _ =>
+                  val argsSimp = simpList(args)
+                  mkApp(f, argsSimp)
+              }
+            case _ =>
+              val argsSimp = simpList(args)
+              mkApp(f, argsSimp)
+          }
+        case _          =>
+          val argsSimp = simpList(args)
+          if (f.isAtom) {
+            mkApp(f, argsSimp)
+          } else {
+            val fSimp = termSimp0(f)
+            mkApp(fSimp, argsSimp)
+          }
+      }
+    }
+  }
+
+  @inline private[this] final def simpList(args: Seq[Either[Term, Type]]): Seq[Either[Term , Type]] = {
+    if (args.isEmpty) args
+    else {
+      var result: Seq[Either[Term, Type]] = Vector.empty
+      val argsIt = args.iterator
+      while (argsIt.hasNext) {
+        val arg = argsIt.next()
+        if (arg.isLeft) {
+          val t = arg.left.get
+          result = result :+ Left(termSimp0(t))
+        } else {
+          result = result :+ arg
+        }
+      }
+      result
+    }
   }
 }
 
