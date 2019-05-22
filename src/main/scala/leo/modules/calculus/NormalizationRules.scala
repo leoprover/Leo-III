@@ -979,7 +979,9 @@ object Simp extends CalculusRule {
     * @return A term `r` that is semantically equivalent to `t` (i.e. has the same interpretation as before).
     */
   @inline private[this] final def termSimp(t: Term): Term = {
-    val result = termSimp0(t.betaNormalize)
+    val result = termSimp0(t.betaNormalize).betaNormalize // TODO: We dont actually need betaNF here,
+    // but some code requires result to be beta normal and the term doesnt know if
+    // its betanormal unless it was created by .betaNormalize
     if (t.sharing) Term.insert(result)
     else result
   }

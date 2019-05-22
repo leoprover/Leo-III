@@ -37,10 +37,11 @@ protected[datastructures] sealed abstract class TermImpl(protected[TermImpl] var
     else {
       val erg = normalize(Subst.id, Subst.id)
       erg.markBetaNormal()
-      if (sharing)
-        TermImpl.insert0(erg)
-      else
-        erg
+      if (sharing) {
+        val result = TermImpl.insert0(erg)
+        result.markBetaNormal()
+        result
+      } else erg
     }
   }
 
