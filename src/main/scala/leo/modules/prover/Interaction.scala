@@ -41,7 +41,7 @@ object Interaction {
   }
   private def ask(): String = {
     print("> ")
-    scala.io.StdIn.readLine()
+    scala.io.StdIn.readLine().trim
   }
 
   private def checkTriggers()(implicit state: S): Unit = {
@@ -100,6 +100,16 @@ object Interaction {
         false
     }
   })
+  Evaluator.register({in => in == "step"}, { (_, state) =>
+    try {
+      val m = state.noProofLoops
+      addTrigger({s => s.noProofLoops >=  m + 1})
+      true
+    } catch {
+      case _: Exception => println("Invalid input, try again"); false
+    }
+  })
+
   Evaluator.register({in => in.startsWith("pretty")}, { (in,state) =>
     try {
       val n = in.drop(7).toLong
@@ -164,6 +174,21 @@ object Interaction {
       val n = in0.toLong
       val cl = clauseCache(n).get.get
       state.addToHotList(cl)
+    } catch {
+      case _: Exception => println("Invalid input, try again")
+    }
+    false
+  })
+  Evaluator.register({in => in == "processed"}, { (_,state) =>
+    try {
+      if (state.processed.isEmpty) {
+        println("<empty>")
+      } else {
+        println(s"Processed clauses:")
+        state.processed.foreach(cl =>
+          println(cl.pretty(state.signature))
+        )
+      }
     } catch {
       case _: Exception => println("Invalid input, try again")
     }
