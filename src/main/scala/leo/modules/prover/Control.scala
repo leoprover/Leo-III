@@ -199,7 +199,7 @@ package inferenceControl {
           if (FullCNF.canApply(simplified.cl)) {
             temp += simplified
           } else {
-            finished += next
+            finished += simplified
           }
         }
       }
