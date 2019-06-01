@@ -5,7 +5,7 @@ CONTRIB=./contrib
 default: all
 all: TreeLimitedRun leo3
 static: TreeLimitedRunStatic leo3
-native: leo3
+native: static
 
 TreeLimitedRun: $(CONTRIB)/TreeLimitedRun.c
 		@echo Compiling auxiliary scripts ...
@@ -38,8 +38,9 @@ native:
 		native-image -jar bin/leo3.jar \
 			-H:+ReportExceptionStackTraces \
 			-H:Name="leo3-bin" \
-			--delay-class-initialization-to-runtime=leo.modules.modes.Normalization\$$ \
+			--initialize-at-run-time=leo.modules.modes.Normalization\$$ \
 			-H:ReflectionConfigurationFiles=${CONTRIB}/graalvm/reflectconfig \
+			-H:IncludeResources=".*/TreeLimitedRun" \
 			-O2 \
 			--static
 		mv leo3-bin bin/leo3-bin
