@@ -1,0 +1,6 @@
+{
+  "resources":[
+    {"pattern":"scripts/TreeLimitedRun"}, 
+    {"pattern":"scripts/run-script-cascj8-tfa"}
+  ]
+}
