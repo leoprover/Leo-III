@@ -1,4 +1,8 @@
 [
+{
+  "name":"sun.misc.Unsafe",
+  "fields":[{"name":"theUnsafe"}]
+},
   {
     "name" : "parser.ThfAstGen",
     "allDeclaredConstructors" : true,
