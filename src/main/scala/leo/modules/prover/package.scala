@@ -69,10 +69,14 @@ package object prover {
       val formula = inputIt.next()
       formula.role match {
         case Role_Type.pretty => Input.processFormula(formula)(state.signature)
-        case Role_Definition.pretty => Control.relevanceFilterAdd(formula)(state.signature)
-          result = formula +: result // We do not parse directly as possible this is a "malformed" definition
-                                     // that needs to be processed as axiom. We put it in front such that definitions
-                                     // are parsed before axioms; there is no real reason why to do that, I guess.
+        case Role_Definition.pretty =>
+          Control.relevanceFilterAdd(formula)(state.signature)
+          val res = Input.processFormula(formula)(state.signature)
+          if (res._3 != Role_Definition) {
+            // If it is not a definition, then it was not recognized to be one.
+            // So we are treating it like an axiom and add it to the result.
+            result = formula +: result
+          }
         case Role_Conjecture.pretty =>
           if (state.conjecture == null && state.negConjecture.isEmpty) {
             if (Configuration.CONSISTENCY_CHECK) {

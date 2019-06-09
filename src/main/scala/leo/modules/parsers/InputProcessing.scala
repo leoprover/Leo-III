@@ -9,7 +9,7 @@ import leo.datastructures._
 import Term.{mkApp, mkAtom, mkBound, mkTermApp, Λ, λ}
 import Type.{mkFunType, mkProdType, mkType, mkUnionType, mkVarType, typeKind, ∀}
 import leo.modules.SZSException
-import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_TypeError}
+import leo.modules.output.{SZS_Inappropriate, SZS_InputError, SZS_SyntaxError, SZS_TypeError}
 
 /**
   * Processing module from TPTP input.
@@ -103,7 +103,7 @@ object InputProcessing {
             if (res.isLeft)
               Some((input.name, res.left.get, role))
             else
-              throw new SZSException(SZS_InputError)
+              throw new SZSException(SZS_SyntaxError, s"Formula ${input.name} could not be interpreted.")
           case Some((defName, defDef)) =>
             if (sig.exists(defName)) {
               val meta = sig(defName)
