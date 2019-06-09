@@ -70,7 +70,9 @@ package object prover {
       formula.role match {
         case Role_Type.pretty => Input.processFormula(formula)(state.signature)
         case Role_Definition.pretty => Control.relevanceFilterAdd(formula)(state.signature)
-          Input.processFormula(formula)(state.signature)
+          result = formula +: result // We do not parse directly as possible this is a "malformed" definition
+                                     // that needs to be processed as axiom. We put it in front such that definitions
+                                     // are parsed before axioms; there is no real reason why to do that, I guess.
         case Role_Conjecture.pretty =>
           if (state.conjecture == null && state.negConjecture.isEmpty) {
             if (Configuration.CONSISTENCY_CHECK) {
@@ -104,7 +106,7 @@ package object prover {
           throw new SZSException(SZS_InputError, s"Formula ${formula.name} has role 'unknown' which is regarded an error.")
         case _ =>
           Control.relevanceFilterAdd(formula)(state.signature)
-          result = formula +: result
+          result = result :+ formula
       }
     }
     (result,conj)
