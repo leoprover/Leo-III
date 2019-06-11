@@ -111,13 +111,13 @@ else:
   traverseOrder = files
 
 
-print "Prob.\tIncl.\tAx"  
+print("Prob.\tIncl.\tAx")
 for problem in traverseOrder:
-  print problem + "\t" + str(includes[problem]) + "\t" + str(axioms[problem])
+  print(problem + "\t" + str(includes[problem]) + "\t" + str(axioms[problem]))
   
 if tptpNotFound:
-  print "Warning: $TPTP is not set. Some imports may not be resolved properly."
+  print("Warning: $TPTP is not set. Some imports may not be resolved properly.")
   
 if includesNotFound:
-  print "Warning: Some problems contained includes which could not be solved. Statistics may be incorrect."
+  print("Warning: Some problems contained includes which could not be solved. Statistics may be incorrect.")
   
