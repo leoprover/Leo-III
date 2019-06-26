@@ -9,20 +9,21 @@ import leo.{Checked, LeoTestSuite}
   * Created by lex on 09.01.17.
   */
 class MatchingTest extends LeoTestSuite {
+  private val IMPL = HOPatternMatching // HOMatching
 
   private def preCheck(vargen: FreshVarGen, s: Term, t: Term)(implicit sig: Signature): Unit = {
     assert(Term.wellTyped(s), s"${s.pretty(sig)} not well-typed")
     assert(Term.wellTyped(t), s"${t.pretty(sig)} not well-typed")
   }
   private def shouldMatch(vargen: FreshVarGen, s: Term, t: Term)(implicit sig: Signature): Unit = {
-    val result = HOMatching.matchTerms(vargen, s, t).iterator
+    val result = IMPL.matchTerms(vargen, s, t).iterator
     assert(result.nonEmpty, "Terms should have matched")
     result.foreach { case (termSubst, typeSubst) =>
         assert(s.substitute(termSubst, typeSubst).etaExpand == t.etaExpand, s"substitution ${termSubst.pretty} does not match")
     }
   }
   private def shouldNotMatch(vargen: FreshVarGen, s: Term, t: Term)(implicit sig: Signature): Unit = {
-    val result = HOMatching.matchTerms(vargen, s, t).iterator
+    val result = IMPL.matchTerms(vargen, s, t).iterator
     assert(result.isEmpty, "Terms should not have matched")
   }
 
@@ -152,6 +153,25 @@ class MatchingTest extends LeoTestSuite {
 
     val t1 : Term = EQ(mkTermApp(p , a), LitTrue)
     val t2 : Term = EQ(mkTermApp(f , a), mkTermApp(g, a))
+
+    preCheck(vargen, t1, t2)
+    shouldNotMatch(vargen, t1, t2)
+  }
+
+  // Thanks to Petar for reporting this!
+  // p ⋅ (λ[$i]. (3:$i -> $o ⋅ (1:$i;⊥));λ[$i]. (3:$i -> $o ⋅ (1:$i;⊥));⊥)
+  // p ⋅ (λ[$i]. (2:$i -> $o ⋅ (1:$i;⊥));λ[$i]. ($false);⊥)
+  test("p(X,X) = p(Y,lambda.F))", Checked){
+    import leo.modules.HOLSignature.{=== => EQ}
+
+    implicit val s = getFreshSignature
+    val p = mkAtom(s.addUninterpreted("p", (i ->: o) ->: (i ->: o) ->: o))
+    val vargen = freshVarGenFromBlank
+    val x = vargen(i ->: o)
+    val y = vargen(i ->: o)
+
+    val t1 : Term = p(y, y)
+    val t2 : Term = p(x, λ(i)(LitFalse))
 
     preCheck(vargen, t1, t2)
     shouldNotMatch(vargen, t1, t2)

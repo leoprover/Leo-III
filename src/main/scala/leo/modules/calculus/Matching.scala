@@ -567,14 +567,7 @@ object HOPatternMatching extends Matching {
 
         (leftBody, rightBody) match {
           case (hd1 ∙ args1, hd2 ∙ args2) => (hd1, hd2) match {
-//            case (Bound(ty1, idx1), Bound(ty2, idx2))
-//              if idx1 > abstractionCount && idx2 > abstractionCount =>
-//              /* flex-flex */
-//              leo.Out.finest("Apply Flex-flex")
-//              assert(leftBody.ty == rightBody.ty)
-//              val partialUniResult = flexflex(idx1-abstractionCount, ty1, args1, idx2-abstractionCount, ty2, args2, vargen, leftBody.ty)
-//              match1(ueqs.tail, vargen, partialMatcher.comp(partialUniResult._1), partialTyMatcher.comp(partialUniResult._2))
-            case (Bound(ty1, idx1), _) if idx1 > abstractionCount && !forbiddenVars.contains(idx1) =>
+            case (Bound(ty1, idx1), _) if idx1 > abstractionCount && !forbiddenVars.contains(idx1-abstractionCount) =>
               /* flex-rigid or flex-flex */
               if (r.looseBounds.contains(idx1 - abstractionCount)) None
               else {
