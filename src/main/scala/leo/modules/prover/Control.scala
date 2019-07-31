@@ -2656,10 +2656,10 @@ package indexingControl {
               0.50, 2.35)(sig)
           } else if (noAx < 50) { // 20 - 49
             getRelevantAxioms0(input, conjectures,
-              0.56, 2.35)(sig)
+              0.55, 2.35)(sig)
           } else if (noAx < 100) { // 50 - 99
             getRelevantAxioms0(input, conjectures,
-              0.58, 2.35)(sig)
+              0.55, 2.35)(sig)
           } else if (noAx < 200) { // 100 - 199
             getRelevantAxioms0(input, conjectures,
               0.60, 2.35)(sig)
@@ -2671,10 +2671,10 @@ package indexingControl {
               0.64, 2.35)(sig)
           } else if (noAx < 2000) { // 1000 - 1999
             getRelevantAxioms0(input, conjectures,
-              0.68, 2.35)(sig)
+              0.70, 2.35)(sig)
           } else { // 2000 -
             getRelevantAxioms0(input, conjectures,
-              0.73, 2.35)(sig)
+              0.75, 2.35)(sig)
           }
         }
       }
