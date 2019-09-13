@@ -47,6 +47,7 @@ The most important parameters are
 | --primsubst `level` | Use the "itensity" `level` for instantiating flexible heads according to the primitive substitution rule <br><br> Default: 1<br>Valid values: 1-6 |
 | --unifiers `n` | During unification, use at most `n` distinct unifiers<br> <br> Default: 1<br> Valud values: non-negative numbers |
 | --unidepth `n` | During unification, use `n` as maximal unification search depth <br><br>Default: 8<br>Valid values: Non-negative numbers
+| - | Instead of the `problem` parameter. Accepts the input problem on the standard input pipe (stdin) instead of reading a problem file. Allows you to call Leo III as a subprocess without the need of creating an actual problem file. Example: `./leo3 - -param1 -param2 10`.
 
 There are many more parameters, we will add them here some time in the future.
 
