@@ -19,6 +19,12 @@ For using Leo-III to solve a problem `/path/to/someproblem.p`, just give the pro
 > ./leo3 /path/to/someproblem.p
 % SZS status Theorem for /path/to/someproblem.p : 3651 ms resp. 1253 ms w/o parsing
 ```
+
+> :information_source: __Note:__  *As an alternative to the above example, Leo-III can also read problems from stdin. For this to work, please provide a dash '-' as problem name argument. Example:*
+> ```Shell
+> > cat myproblem.p | ./leo3 -
+> ```
+
 The line starting with `% SZS status XXX` indicates the result of Leo-III's reasoning process according
 to the [SZS status ontology](http://www.cs.miami.edu/~tptp/cgi-bin/SeeTPTP?Category=Documents&File=SZSOntology) [Sut08].
 Prominent result values for `XXX` are:
