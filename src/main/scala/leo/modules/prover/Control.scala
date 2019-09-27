@@ -195,7 +195,8 @@ package inferenceControl {
         while (clCNF.hasNext) {
           val next = clCNF.next()
 //          val simplified = Control.cheapSimp(Control.liftEq(next))
-          val simplified = Control.liftEq(next)
+          val lifted = Control.liftEq(next)
+          val simplified = SimplificationControl.cheapSimp2(lifted)
           if (FullCNF.canApply(simplified.cl)) {
             temp += simplified
           } else {
@@ -1930,7 +1931,20 @@ package inferenceControl {
         cl
     }
 
-
+    final def cheapSimp2(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
+      implicit val sig: Signature = state.signature
+      Out.trace(s"[Simp2] Processing ${cl.pretty(sig)}")
+      //      if (isPropSet(ClauseAnnotation.PropShallowSimplified, cl.properties) || isPropSet(ClauseAnnotation.PropFullySimplified, cl.properties))
+      //        cl
+      //      else {
+      val simpResult = Simp(cl.cl)
+      val result0 = if (simpResult == cl.cl) cl
+      else AnnotatedClause(simpResult, InferredFrom(Simp, cl), addProp(ClauseAnnotation.PropShallowSimplified,cl.properties))
+      val result = result0
+      Out.finest(s"[Simp] Result: ${result.pretty(sig)}")
+      result
+      //      }
+    }
     final def cheapSimp(cl: AnnotatedClause)(implicit state: State[AnnotatedClause]): AnnotatedClause = {
       implicit val sig: Signature = state.signature
       Out.trace(s"[Simp] Processing ${cl.pretty(sig)}")

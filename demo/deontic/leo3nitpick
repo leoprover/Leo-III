@@ -1,0 +1,3 @@
+#!/bin/bash
+
+leo3 $@ --atp nitpick --atp-timeout nitpick=60
