@@ -23,6 +23,18 @@ package object leo {
 
   type TermOrdering = leo.datastructures.TermOrdering
 
+  final val version: String = "1.4" // TODO: Read that somehow from build.sbt
+  final val brand: String =
+    raw"""
+       | __                             ______  ______  ______
+       |/\ \                           /\__  _\/\__  _\/\__  _\
+       |\ \ \         __    ___        \/_/\ \/\/_/\ \/\/_/\ \/
+       | \ \ \      /'__`\ / __`\  _______\ \ \   \ \ \   \ \ \
+       |  \ \ \____/\  __//\ \/\ \/\______\\_\ \__ \_\ \__ \_\ \__
+       |   \ \_____\ \____\ \____/\/______//\_____\/\_____\/\_____\
+       |    \/_____/\/____/\/___/          \/_____/\/_____/\/_____/  v${version}
+       |""".stripMargin
+
   /** The main [[leo.modules.output.logger.Logging `Logging`]] facility of Leo-III. */
   def Out: logger.Out.type = logger.Out
 }
